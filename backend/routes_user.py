@@ -1,17 +1,16 @@
 """用户数据路由：点查词典、收藏、订阅。
 
-词典释义按小写单词落盘缓存（每词只调一次 Gemini）；
+词典释义按小写单词落盘缓存（每词只调一次大模型）；
 收藏与订阅是简单的整存整取 JSON 文件。
 """
 import json
 import os
 
 from fastapi import APIRouter, HTTPException
-from google import genai
-from google.genai import types
 from pydantic import BaseModel
 
-from config import HISTORY_DIR
+import llm
+from config import HISTORY_DIR, MODEL_CATALOG
 
 router = APIRouter()
 
@@ -23,6 +22,17 @@ DICT_CACHE_FILE = os.path.join(HISTORY_DIR, "dictionary_cache.json")
 DICT_MODEL = "gemini-3.5-flash-lite"  # fast + cheap for single-word lookups
 # 2.5 Flash-Lite 已对新用户下线（404），旧的配置会让 /api/define 直接 502。
 DICT_FALLBACK_MODEL = "gemini-2.5-flash"  # 词典再挂时退到默认模型，别让查词直接失败
+
+
+def _dict_model_candidates() -> list:
+    """按优先级排出「已配置 Key」的候选模型。
+
+    只有 DeepSeek Key 的用户也能查词：Gemini 候选没 Key 就自动跳过，
+    退到清单里第一个可用的模型。
+    """
+    ordered = [DICT_MODEL, DICT_FALLBACK_MODEL]
+    ordered += [m for m in MODEL_CATALOG if m not in ordered]
+    return [m for m in ordered if llm.is_available(m)]
 
 
 class DefineRequest(BaseModel):
@@ -68,15 +78,9 @@ Return ONLY a JSON object with exactly these fields:
 }}"""
 
     result = None
-    for model_id in (DICT_MODEL, DICT_FALLBACK_MODEL):
+    for model_id in _dict_model_candidates():
         try:
-            client = genai.Client()
-            response = client.models.generate_content(
-                model=model_id,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json"),
-            )
-            result = json.loads(response.text)
+            result = json.loads(llm.generate_json(prompt, model=model_id))
             if isinstance(result, list):
                 result = result[0] if result else {}
             result.setdefault("word", word)

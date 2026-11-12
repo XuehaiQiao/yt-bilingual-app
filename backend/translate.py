@@ -9,8 +9,7 @@ import asyncio
 import json
 import os
 
-from google import genai
-from google.genai import types
+import llm
 
 from config import DEFAULT_MODEL, HISTORY_DIR, VOCAB_LEVELS
 
@@ -27,6 +26,33 @@ def _norm_id(v):
         return v
 
 
+def _extract_block_list(data, depth: int = 0) -> list:
+    """把不同厂商 JSON 外壳里的条目列表拆出来。
+
+    Gemini 直接回数组；DeepSeek 的 json 模式会包一层（见过
+    `{"type": "json_object", "content": [...]}`）；还有的厂商回
+    `{"blocks": [...]}` 或对象套对象。拆不出来就返回 []，交给上面的
+    按 id 对齐/缺失标记逻辑兜底。
+    """
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        for key in ("blocks", "content", "data", "results", "items", "translations"):
+            value = data.get(key)
+            if isinstance(value, list):
+                return value
+            if isinstance(value, dict) and depth < 2:
+                nested = _extract_block_list(value, depth + 1)
+                if nested:
+                    return nested
+        if "zh_text" in data:  # 整批只有一条
+            return [data]
+        values = [v for v in data.values() if isinstance(v, dict) and "zh_text" in v]
+        if values:  # 形如 {"1": {...}, "2": {...}}
+            return values
+    return []
+
+
 def needs_retranslation(zh_text: str) -> bool:
     """True if a stored zh_text is a mock/failed translation placeholder."""
     if not zh_text:
@@ -39,9 +65,7 @@ def needs_retranslation(zh_text: str) -> bool:
 
 
 async def process_llm_batch(blocks: list, model: str = DEFAULT_MODEL, vocab_level: str | None = None) -> list:
-    """Use Gemini API to return Chinese translations and highlights"""
-    client = genai.Client()
-
+    """Use the configured LLM to return Chinese translations and highlights"""
     level_instruction = ""
     if vocab_level in VOCAB_LEVELS:
         level_instruction = (
@@ -69,7 +93,9 @@ async def process_llm_batch(blocks: list, model: str = DEFAULT_MODEL, vocab_leve
     2. Identify 0 to 2 advanced words or phrases (idioms, phrasal verbs, hard vocabulary).{level_instruction}
     3. Return the exact substring of the advanced word in English, and its exact translated substring in the Chinese sentence.
 
-    CRITICAL: YOU MUST Return a JSON list with exactly the same IDs, adding these fields:
+    CRITICAL: return ONLY a JSON object of the form {{"blocks": [...]}} — no prose,
+    no markdown fence. `blocks` must contain exactly the same ids, each entry adding:
+    - id: copy the id from the input data
     - en_text: the original text
     - zh_text: the Chinese translation
     - highlights: list of objects with 'en_word', 'zh_word', and 'color'. The color MUST be exactly "text-purple-400 border-b border-dashed border-purple-400"
@@ -79,21 +105,12 @@ async def process_llm_batch(blocks: list, model: str = DEFAULT_MODEL, vocab_leve
     """
 
     try:
-        response = client.models.generate_content(
-            model=model,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-            ),
-        )
-
-        # Parse the response back into our block format
-        result_data = json.loads(response.text)
+        result_data = json.loads(llm.generate_json(prompt, model=model))
 
         # Match results back by id — models occasionally drop or reorder items,
         # and a positional zip would silently attach translations to the wrong
         # sentences (and truncate the batch when items are missing).
-        results_list = result_data if isinstance(result_data, list) else []
+        results_list = _extract_block_list(result_data)
         by_id = {}
         for res in results_list:
             if isinstance(res, dict) and res.get("id") is not None:
@@ -145,13 +162,12 @@ async def mock_llm_processing(blocks: list) -> list:
 
 
 async def summarize_video_transcript(blocks: list, model: str = DEFAULT_MODEL) -> str:
-    """Use Gemini API to generate a summary of the video based on the transcript"""
+    """Use the configured LLM to summarize the video based on the transcript"""
     full_text = " ".join([b["text"] for b in blocks])
     # If it's too long, truncate it to save tokens (approx 20 mins of speech)
     if len(full_text) > 20000:
         full_text = full_text[:20000] + "..."
 
-    client = genai.Client()
     summary_prompt = f"""
     Please read the following English transcript from a YouTube video and provide a concise summary in Chinese.
     Focus on extracting the core knowledge points and main ideas.
@@ -162,11 +178,7 @@ async def summarize_video_transcript(blocks: list, model: str = DEFAULT_MODEL) -
     """
 
     try:
-        response = client.models.generate_content(
-            model=model,
-            contents=summary_prompt,
-        )
-        return response.text
+        return llm.generate_text(summary_prompt, model=model)
     except Exception as e:
         print(f"Summary Gen Error: {e}")
         return "无法生成总结，请稍后再试或检查 API 配额。"
@@ -271,4 +283,4 @@ async def _stream_translate(transcript: list, indices: list, payload: dict, save
             "progress": {"done": done, "total": total},
         }
         if batch_start + batch_size < total:
-            await asyncio.sleep(4)  # free-tier 15 RPM pacing
+            await asyncio.sleep(llm.batch_pause(model))  # 按 provider 限流节奏

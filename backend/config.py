@@ -54,10 +54,18 @@ VOCAB_LEVELS = {
 }
 
 # --- Real, selectable models. Prices are USD per 1M tokens (approximate,
-# check https://ai.google.dev/pricing for current numbers).
+# check the provider's pricing page for current numbers); None = 未知，
+# 前端会显示"待定"，不要凭印象填数字。
+# 字段：
+#   kind          google = 官方 SDK；openai_compatible = <base_url>/chat/completions
+#   model_id      真正发给厂商的模型名（目录键是前端/请求里用的 id）
+#   api_key_env   该模型需要的密钥环境变量
+#   batch_pause   批与批之间的停顿（秒），按各家限流调
 MODEL_CATALOG = {
     "gemini-2.5-flash": {
         "name": "Gemini 2.5 Flash", "provider": "Google",
+        "kind": "google", "model_id": "gemini-2.5-flash",
+        "api_key_env": "GEMINI_API_KEY", "batch_pause": 4,
         "in": 0.30, "out": 2.50, "quotaInfo": "Default · balanced quality & speed",
     },
     # 2.5 Flash-Lite 已对新用户下线（404: no longer available to new users），
@@ -65,13 +73,26 @@ MODEL_CATALOG = {
     # 这里留 None（成本一栏显示"待定"），不编数字，等官方价格确认后再填。
     "gemini-3.5-flash-lite": {
         "name": "Gemini 3.5 Flash-Lite", "provider": "Google",
+        "kind": "google", "model_id": "gemini-3.5-flash-lite",
+        "api_key_env": "GEMINI_API_KEY", "batch_pause": 4,
         "in": None, "out": None, "quotaInfo": "Cheapest · great for long videos",
     },
     # 2.5 Pro 同样已对新用户下线（404），官方指向 3.1 Pro (preview)。
     # 预览模型在免费额度下容易 429，价格同样没有可靠来源，故留 None。
     "gemini-3.1-pro-preview": {
         "name": "Gemini 3.1 Pro (preview)", "provider": "Google",
+        "kind": "google", "model_id": "gemini-3.1-pro-preview",
+        "api_key_env": "GEMINI_API_KEY", "batch_pause": 5,
         "in": None, "out": None, "quotaInfo": "Highest quality · slower (preview)",
+    },
+    # DeepSeek 的 API 与 OpenAI 协议兼容，换 base_url 就能接。
+    # 价格同样没有可核实的来源，留 None；批间隔按 1s 走（官方无 15 RPM 限制）。
+    "deepseek-chat": {
+        "name": "DeepSeek Chat", "provider": "DeepSeek",
+        "kind": "openai_compatible", "model_id": "deepseek-chat",
+        "base_url": "https://api.deepseek.com/v1",
+        "api_key_env": "DEEPSEEK_API_KEY", "batch_pause": 1,
+        "in": None, "out": None, "quotaInfo": "OpenAI-compatible · strong Chinese",
     },
 }
 DEFAULT_MODEL = "gemini-2.5-flash"

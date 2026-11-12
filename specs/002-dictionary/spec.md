@@ -27,6 +27,6 @@
 - [ ] 同一个词第二次点击，立即返回（命中缓存）。
 
 ## 边界与非目标
-- 释义由 Gemini 生成，不接入外部词典 API。
+- 释义由大模型生成（Gemini 或 DeepSeek，见 [010](../010-multi-provider-llm/spec.md)），不接入外部词典 API。
 - 缓存按小写单词去重，不区分大小写；同词不同语境复用首次释义。
-- 词典模型用更快更便宜的 `gemini-2.5-flash-lite`。
+- 词典优先用更快更便宜的 `gemini-3.5-flash-lite`，失败自动退到 `gemini-2.5-flash`；两把 Key 都没有时按 `MODEL_CATALOG` 里第一个可用的模型兜底。

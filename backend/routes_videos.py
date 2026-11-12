@@ -15,6 +15,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from config import HISTORY_DIR, MODEL_CATALOG, resolve_model
+import llm
 from transcripts import (
     extract_video_id,
     fetch_english_transcript,
@@ -86,17 +87,20 @@ def estimate_cost(url: str):
         out_cost = (output_tokens / 1_000_000) * rates["out"]
         return round(in_cost + out_cost, 6)
 
-    models = [
-        {
+    def model_entry(model_id):
+        spec = MODEL_CATALOG[model_id]
+        available = llm.is_available(model_id)
+        return {
             "id": model_id,
             "name": spec["name"],
             "provider": spec["provider"],
             "estimatedCost": calc_cost(model_id),
-            "available": True,
-            "quotaInfo": spec["quotaInfo"],
+            "available": available,
+            # 没配 Key 的模型直接告诉用户缺哪个环境变量，别只置灰。
+            "quotaInfo": spec["quotaInfo"] if available else f"需要配置 {spec.get('api_key_env', 'API Key')}",
         }
-        for model_id, spec in MODEL_CATALOG.items()
-    ]
+
+    models = [model_entry(model_id) for model_id in MODEL_CATALOG]
 
     return {
         "videoId": video_id,
@@ -172,7 +176,7 @@ async def process_video(request: VideoRequest):
             try:
                 batch_result = await process_llm_batch(batch, model=model)
                 processed_blocks.extend(batch_result)
-                await asyncio.sleep(4)  # Standard 15 RPM delay -> 1 req / 4s
+                await asyncio.sleep(llm.batch_pause(model))  # 按 provider 限流节奏
                 success = True
                 break  # Break out of retry loop
             except Exception as e:
