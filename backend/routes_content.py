@@ -31,6 +31,43 @@ SHOW_METADATA = {
 }
 
 
+def _read_show_meta_file(show_id: str) -> dict:
+    """读取 subtitles/<show_id>/meta.json（导入播放列表时生成，可选）。
+
+    文件损坏或格式不对时只打日志并忽略，不能让一个坏 meta.json 拖垮整个列表。
+    """
+    meta_path = os.path.join(SUBTITLES_DIR, show_id, "meta.json")
+    if not os.path.exists(meta_path):
+        return {}
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError) as exc:
+        print(f"⚠️  忽略无法读取的 {meta_path}：{exc}")
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _resolve_show_meta(show_id: str, default_title: str, default_title_zh: str) -> dict:
+    """合并本地剧集展示元数据，优先级：meta.json > SHOW_METADATA > 自动标题。
+
+    meta.json 只覆盖 title / title_zh / thumbnail，且空字符串不生效；
+    没有 meta.json 时返回的字段与改动前完全一致。
+    """
+    meta = {
+        "title": default_title,
+        "title_zh": default_title_zh,
+        "thumbnail": "",
+    }
+    meta.update(SHOW_METADATA.get(show_id, {}))
+    file_meta = _read_show_meta_file(show_id)
+    for key in ("title", "title_zh", "thumbnail"):
+        value = file_meta.get(key)
+        if isinstance(value, str) and value.strip():
+            meta[key] = value.strip()
+    return meta
+
+
 @router.get("/api/shows")
 def list_shows():
     """List available local shows with subtitles."""
@@ -39,12 +76,11 @@ def list_shows():
         for show_dir in sorted(os.listdir(SUBTITLES_DIR)):
             show_path = os.path.join(SUBTITLES_DIR, show_dir)
             if os.path.isdir(show_path):
-                meta = SHOW_METADATA.get(show_dir, {
-                    "title": show_dir.replace("-", " ").title(),
-                    "title_zh": show_dir,
-                    "thumbnail": "",
-                    "seasons": {}
-                })
+                meta = _resolve_show_meta(
+                    show_dir,
+                    show_dir.replace("-", " ").title(),
+                    show_dir,
+                )
 
                 # Count actual available seasons and episodes
                 seasons_available = {}
@@ -76,7 +112,7 @@ def list_seasons(show_id: str):
     if not os.path.exists(show_path):
         raise HTTPException(status_code=404, detail="Show not found")
 
-    meta = SHOW_METADATA.get(show_id, {})
+    meta = _resolve_show_meta(show_id, show_id, "")
     seasons = []
 
     for season_dir in sorted(os.listdir(show_path)):
@@ -136,8 +172,8 @@ async def process_subtitle(request: SubtitleRequest):
     for idx, b in enumerate(blocks):
         b["id"] = idx + 1
 
-    # Get show metadata
-    meta = SHOW_METADATA.get(request.show_id, {})
+    # Get show metadata（meta.json > SHOW_METADATA > 自动标题）
+    meta = _resolve_show_meta(request.show_id, request.show_id, "")
     show_title = meta.get("title", request.show_id)
     show_title_zh = meta.get("title_zh", "")
 
