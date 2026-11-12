@@ -84,9 +84,10 @@ export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoa
 
     return (
         <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-2">
-                {selectedShow && (
+            {/* Header — detail view only. In list view the card header from InputScreen is the
+                single "Local Shows" title, so ShowBrowser does not render its own. */}
+            {selectedShow && (
+                <div className="flex items-center gap-2 mb-2">
                     <button
                         onClick={() => { setSelectedShow(null); setSeasons([]); setSelectedSeason(null); }}
                         className="inline-flex items-center gap-1 h-7 px-2 -ml-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
@@ -94,12 +95,12 @@ export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoa
                         <ChevronLeft className="w-4 h-4" />
                         Back
                     </button>
-                )}
-                <h3 className="text-base font-semibold text-zinc-200 flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-blue-400" />
-                    {selectedShow ? selectedShow.title_zh || selectedShow.title : 'Local Shows'}
-                </h3>
-            </div>
+                    <h3 className="text-base font-semibold text-zinc-200 flex items-center gap-2">
+                        <BookOpen className="w-5 h-5 text-blue-400" />
+                        {selectedShow.title_zh || selectedShow.title}
+                    </h3>
+                </div>
+            )}
 
             {/* Show List */}
             {!selectedShow && (
