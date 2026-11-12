@@ -14,7 +14,7 @@ import { SentenceView, sentenceFavId } from './components/SentenceView';
 import { segToPlain, CHUNK_STYLE, type Sentence, type SegChunk } from './lib/sentences';
 import { toast, describeApiError } from './lib/toast';
 import { consumeSseStream, findActiveIndex, isUntranslated, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from './lib/transcript';
-import { loadVocabLevel, loadModel, saveModel } from './lib/settings';
+import { loadVocabLevel, loadModel } from './lib/settings';
 import {
   clampSplitRatio,
   DEFAULT_SPLIT_RATIO,
@@ -391,9 +391,11 @@ function App() {
     setIsFavoritesOpen(false);
   };
 
-  const handleUrlSubmit = async (url: string, model?: string) => {
+  const handleUrlSubmit = async (url: string) => {
     setSentenceLevel(null); // leave sentence mode if a video is loaded
-    if (model) saveModel(model); // remember the choice for cached loads / repairs
+    // Model choice is global now: every LLM call reads the same saved setting
+    // instead of taking a per-video argument from a dialog.
+    const model = loadModel();
     // Basic extraction
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
     const id = match ? match[1] : null;
@@ -414,7 +416,7 @@ function App() {
       const response = await apiFetch('/api/process-video-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, model, vocab_level: loadVocabLevel() }),
+        body: JSON.stringify({ url, model: model || undefined, vocab_level: loadVocabLevel() }),
         signal: controller.signal,
       });
 
@@ -483,9 +485,13 @@ function App() {
     setSentenceLevel(null);
     setLoadingState('loading');
     try {
-      // Try loading from history cache first (already processed episodes)
+      // Try loading from history cache first (already processed episodes).
+      // Like any other history load, pass the global model so a cache with
+      // untranslated blocks repairs itself with the model the user picked.
       const cacheFilename = `${showId}_S${season.toString().padStart(2, '0')}E${episode.toString().padStart(2, '0')}.json`;
-      const cacheResponse = await apiFetch(`/api/history/${cacheFilename}`);
+      const savedModel = loadModel();
+      const modelQuery = savedModel ? `?model=${encodeURIComponent(savedModel)}` : '';
+      const cacheResponse = await apiFetch(`/api/history/${cacheFilename}${modelQuery}`);
       
       if (cacheResponse.ok) {
         // Already processed — load directly from cache
@@ -501,7 +507,7 @@ function App() {
         const response = await apiFetch('/api/process-subtitle', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ show_id: showId, season, episode }),
+          body: JSON.stringify({ show_id: showId, season, episode, model: loadModel() || undefined }),
         });
 
         if (!response.ok) throw new Error(await describeApiError(response));
@@ -1352,7 +1358,7 @@ function App() {
         onClose={() => setSelectedChannel(null)}
         channelName={selectedChannel}
         onLoadHistory={handleLoadHistory}
-        onReprocess={(videoId) => handleUrlSubmit(`https://www.youtube.com/watch?v=${videoId}`, loadModel() || undefined)}
+        onReprocess={(videoId) => handleUrlSubmit(`https://www.youtube.com/watch?v=${videoId}`)}
       />
 
       <AnimatePresence>

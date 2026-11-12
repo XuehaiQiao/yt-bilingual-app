@@ -35,9 +35,10 @@ export function saveVocabLevel(level: VocabLevelId) {
     localStorage.setItem(VOCAB_LEVEL_KEY, level);
 }
 
-// Last model the user confirmed in the picker. Used when re-opening a cached
-// video or repairing one, so self-healing retries don't silently fall back to
-// the default provider (which may already be out of quota).
+// Current global model, chosen in the home-screen model bar. Every LLM call
+// (translation, local shows, dictionary) reads it so they all follow the same
+// provider; when nothing is saved yet the bar seeds it from the backend
+// default returned by GET /api/models.
 export const MODEL_KEY = 'yt_bilingual_last_model';
 
 export function loadModel(): string {

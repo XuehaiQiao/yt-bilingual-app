@@ -5,8 +5,9 @@ import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import { ModelSelectionModal } from './ModelSelectionModal';
 import type { EstimationData } from './ModelSelectionModal';
+import { ModelBar } from './ModelBar';
 import { ShowBrowser } from './ShowBrowser';
-import { loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
+import { loadModel, loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
 import { VocabAxis } from './VocabAxis';
 import { TiltCard } from './TiltCard';
 import { AuroraBackground } from './AuroraBackground';
@@ -15,7 +16,7 @@ import { progressPercent, clearProgress } from '../lib/progress';
 import { toast, describeApiError } from '../lib/toast';
 
 interface InputScreenProps {
-    onSubmit: (url: string, model?: string) => void;
+    onSubmit: (url: string) => void;
     onLoadHistory: (filename: string) => void;
     onSelectEpisode: (showId: string, season: number, episode: number) => void;
     onSelectSentenceLevel: (id: number) => void;
@@ -48,6 +49,9 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [pendingUrl, setPendingUrl] = useState('');
     const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
+    // Mirrors the model bar's global setting so the pre-flight estimate can
+    // name and price the model that will actually run.
+    const [currentModelId, setCurrentModelId] = useState(loadModel);
 
     const handleDeleteHistory = async (e: React.MouseEvent, item: HistoryItem) => {
         e.stopPropagation();
@@ -115,9 +119,9 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
         }
     };
 
-    const handleConfirmModel = (modelId: string) => {
+    const handleConfirmStart = () => {
         setIsModalOpen(false);
-        onSubmit(pendingUrl, modelId);
+        onSubmit(pendingUrl);
     };
 
     return (
@@ -159,9 +163,15 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
             <ModelSelectionModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onConfirm={handleConfirmModel}
+                onConfirm={handleConfirmStart}
                 estimationData={estimationData}
+                currentModelId={currentModelId}
             />
+
+            {/* Global model selector — sits right under the top bar on home. */}
+            <div className="absolute top-5 right-6 md:right-8 z-30">
+                <ModelBar onModelResolved={setCurrentModelId} />
+            </div>
 
             <motion.div 
                 className="max-w-5xl w-full space-y-12 shrink-0 z-10"

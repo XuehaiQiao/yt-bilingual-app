@@ -1,6 +1,6 @@
 # 规格：字幕流式管线
 
-**状态：** 已实现 ｜ **对应代码：** `backend/routes_videos.py`（`process_video_stream`）、`backend/translate.py`（`_stream_translate` 等）、`frontend/src/lib/transcript.ts`、`frontend/src/App.tsx`
+**状态：** 已实现 ｜ **对应代码：** `backend/routes_videos.py`（`process_video_stream`）、`backend/translate.py`（`_stream_translate` 等）、`frontend/src/lib/transcript.ts`、`frontend/src/App.tsx`、`frontend/src/components/ModelBar.tsx`
 
 ---
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { X, Volume2, Star, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiFetch } from '../lib/api';
+import { loadModel } from '../lib/settings';
 import { describeApiError } from '../lib/toast';
 import { speak } from '../lib/tts';
 
@@ -102,7 +103,7 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
                 const res = await apiFetch('/api/define', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ word, context }),
+                    body: JSON.stringify({ word, context, model: loadModel() || undefined }),
                 });
                 if (!res.ok) throw new Error(await describeApiError(res));
                 const data = await res.json();

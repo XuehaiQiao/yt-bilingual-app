@@ -1,6 +1,6 @@
 # 规格：多模型接入（Gemini / DeepSeek）
 
-**状态：** 已实现 ｜ **对应代码：** `backend/llm.py`、`backend/config.py`（`MODEL_CATALOG`）、`backend/translate.py`、`backend/routes_user.py`、`backend/routes_videos.py`（`/api/estimate-cost`）、`frontend/src/components/ModelSelectionModal.tsx`
+**状态：** 已实现 ｜ **对应代码：** `backend/llm.py`、`backend/config.py`（`MODEL_CATALOG`）、`backend/translate.py`、`backend/routes_user.py`、`backend/routes_videos.py`（`/api/models`、`/api/estimate-cost`）、`frontend/src/components/ModelBar.tsx`、`frontend/src/lib/settings.ts`
 
 ---
 
@@ -14,6 +14,7 @@
 
 ## 功能需求
 - **必须**：`MODEL_CATALOG` 是唯一模型清单，驱动前端选择器、请求校验、成本估算。
+- **必须**：模型选择是全局的——首页顶部的「模型」栏（数据源 `GET /api/models`）保存并展示当前模型，翻译、总结、本地剧集、查词典都跟随它；不再按视频逐次选模型。
 - **必须**：支持两类 provider——`google`（google-genai SDK）与 `openai_compatible`（`<base_url>/chat/completions`，覆盖 DeepSeek / OpenAI / Qwen / Kimi / GLM / Ollama 等）。
 - **必须**：翻译、总结、词典三条链路都走 `llm.py` 统一适配层，调用点不再直接 import 厂商 SDK。
 - **必须**：批间停顿按 provider 配置（Gemini 免费档 15 RPM → 4 秒；DeepSeek → 1 秒）。
