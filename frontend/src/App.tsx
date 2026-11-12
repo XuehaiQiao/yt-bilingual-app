@@ -31,6 +31,22 @@ interface TranscriptItem {
   }>;
 }
 
+type FeatureName = '看视频' | '本地剧集' | '句子精背';
+
+// Single source of truth for the top-bar feature label. Mirrors the view
+// switch below: sentence pack wins, then local episode, then YouTube; the
+// home screen (no video / empty transcript) has no feature name.
+function getFeatureName(
+  sentenceLevel: number | null,
+  videoId: string,
+  transcriptCount: number,
+  isLocalSubtitle: boolean,
+): FeatureName | null {
+  if (sentenceLevel != null) return '句子精背';
+  if (!videoId || transcriptCount === 0) return null;
+  return isLocalSubtitle ? '本地剧集' : '看视频';
+}
+
 function App() {
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
@@ -532,6 +548,11 @@ function App() {
 
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
 
+  const featureName = useMemo(
+    () => getFeatureName(sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle)),
+    [sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle],
+  );
+
   const handleTranscriptClick = useCallback((time: number) => {
     // Re-pin the loop to the clicked sentence
     if (loopEnabled) {
@@ -641,16 +662,23 @@ function App() {
 
   const renderTopBar = () => (
     <div className="flex-none h-16 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 px-6 flex items-center justify-between z-20">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         <div className="w-10 h-10 rounded-[10px] overflow-hidden shadow-md shadow-black/40 ring-1 ring-white/10 cursor-pointer flex-shrink-0" onClick={handleGoHome}>
             <img src="/hero_icon.png" alt="Logo" className="w-full h-full object-cover" />
         </div>
-        <h1
-          className="text-xl font-semibold text-zinc-100 cursor-pointer tracking-tight hover:text-white transition-colors"
-          onClick={handleGoHome}
-        >
-          Lingua Nova
-        </h1>
+        <div className="flex items-center gap-2 min-w-0">
+          <h1
+            className="text-xl font-semibold text-zinc-100 cursor-pointer tracking-tight hover:text-white transition-colors shrink-0"
+            onClick={handleGoHome}
+          >
+            Lingua Nova
+          </h1>
+          {featureName && (
+            <span className="hidden sm:inline-flex items-center whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/50 border border-white/5 text-zinc-400">
+              {featureName}
+            </span>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <button
