@@ -23,6 +23,7 @@ export const ClickableWords: React.FC<{ text: string; onWordClick: WordClickHand
             return (
                 <span
                     key={i}
+                    data-word-hit={word}
                     onClick={(e) => { e.stopPropagation(); onWordClick(word, e); }}
                     className="cursor-pointer rounded-sm hover:bg-white/10 transition-colors"
                 >
@@ -77,12 +78,12 @@ export const HighlightedText: React.FC<{
         // parentheses, so the Chinese gloss doesn't interrupt the English flow.
         parts.push(
             match.annotation ? (
-                <ruby key={`hl-${i}`} {...clickProps}>
+                <ruby key={`hl-${i}`} {...clickProps} data-word-hit={onWordClick ? phrase : undefined}>
                     {phrase}
                     <rt className="text-[10px] font-medium text-purple-300/90 select-none">{match.annotation}</rt>
                 </ruby>
             ) : (
-                <span key={`hl-${i}`} {...clickProps}>{phrase}</span>
+                <span key={`hl-${i}`} {...clickProps} data-word-hit={onWordClick ? phrase : undefined}>{phrase}</span>
             )
         );
         currentIndex = match.index + match.length;
@@ -189,6 +190,8 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
 
                 <div className="space-y-1">
                     <p
+                        data-lookup-context={enText}
+                        data-lookup-start={start}
                         onClick={blurred ? (e) => { e.stopPropagation(); setRevealed(true); } : undefined}
                         title={blurred ? '点击显示原文' : undefined}
                         className={cn(

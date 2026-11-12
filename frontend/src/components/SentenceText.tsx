@@ -13,7 +13,11 @@ interface SentenceTextProps {
  * 整块可点（按短语查词）。复用字幕的 ClickableWords 与 ruby 渲染逻辑。
  */
 export const SentenceText: React.FC<SentenceTextProps> = ({ seg, context, onWordLookup }) => (
-    <span className="text-[19px] md:text-xl leading-[2.6] tracking-[0.01em] text-zinc-100">
+    <span
+        data-lookup-context={context}
+        data-lookup-start={0}
+        className="text-[19px] md:text-xl leading-[2.6] tracking-[0.01em] text-zinc-100"
+    >
         {seg.map((p, i) => {
             if (typeof p === 'string') {
                 return <ClickableWords key={i} text={p} onWordClick={(w, e) => onWordLookup(w, context, 0, e)} />;
@@ -22,6 +26,7 @@ export const SentenceText: React.FC<SentenceTextProps> = ({ seg, context, onWord
             return (
                 <ruby
                     key={i}
+                    data-word-hit={p.t}
                     className={cn(style.text, 'font-semibold cursor-pointer rounded-sm hover:bg-white/10 transition-colors')}
                     onClick={(e) => { e.stopPropagation(); onWordLookup(p.t, context, 0, e); }}
                 >

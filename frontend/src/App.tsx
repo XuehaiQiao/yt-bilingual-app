@@ -9,7 +9,7 @@ import { TranscriptView } from './components/TranscriptView';
 import { FavoritesModal, type FavoriteItem } from './components/FavoritesModal';
 import { ChannelVideoList } from './components/ChannelVideoList';
 import { Toaster } from './components/Toaster';
-import { WordPopover, type WordDefinition } from './components/WordPopover';
+import { WordPopover, type WordDefinition, type WordLookupTarget } from './components/WordPopover';
 import { SentenceView, sentenceFavId } from './components/SentenceView';
 import { segToPlain, CHUNK_STYLE, type Sentence, type SegChunk } from './lib/sentences';
 import { toast, describeApiError } from './lib/toast';
@@ -85,10 +85,16 @@ function App() {
   const [dictationMode, setDictationMode] = useState(false);
 
   // Click-to-define dictionary popover
-  const [wordLookup, setWordLookup] = useState<{ word: string; context: string; start: number; x: number; y: number } | null>(null);
+  const [wordLookup, setWordLookup] = useState<WordLookupTarget | null>(null);
 
   const handleWordLookup = useCallback((word: string, sentence: string, start: number, e: React.MouseEvent) => {
     setWordLookup({ word, context: sentence, start, x: e.clientX, y: e.clientY });
+  }, []);
+
+  // Hover-to-switch: the card stays mounted; only its target word/position
+  // changes. Guard against a stale dwell timer firing after the card closed.
+  const handleSwitchWord = useCallback((target: WordLookupTarget) => {
+    setWordLookup(prev => (prev ? target : prev));
   }, []);
 
   // Playback controls: speed, play/pause command, single-sentence loop
@@ -1359,6 +1365,7 @@ function App() {
             onClose={() => setWordLookup(null)}
             onToggleFavorite={handleToggleDictFavorite}
             isFavorited={favorites.some(f => f.id === `vocab-${videoId}-${wordLookup.word.replace(/\s+/g, '-')}`)}
+            onSwitchWord={handleSwitchWord}
           />
         )}
       </AnimatePresence>
