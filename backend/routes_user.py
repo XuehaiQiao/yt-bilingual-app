@@ -25,6 +25,74 @@ DICT_CACHE_FILE = os.path.join(HISTORY_DIR, "dictionary_cache.json")
 DICT_MODEL = "gemini-3.5-flash-lite"  # fast + cheap for single-word lookups
 # 2.5 Flash-Lite 已对新用户下线（404），旧的配置会让 /api/define 直接 502。
 DICT_FALLBACK_MODEL = "gemini-2.5-flash"  # 词典再挂时退到默认模型，别让查词直接失败
+# 一个词最多返回这么多义项：长尾词义（尤其多词性）不该撑爆响应。
+MAX_SENSES = 12
+
+
+def _clean_field(value) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _clean_sense(raw) -> dict | None:
+    """把来源不明的义项规整成契约形状；没有中文/英文释义的条目丢弃。"""
+    if not isinstance(raw, dict):
+        return None
+    sense = {
+        "pos": _clean_field(raw.get("pos")),
+        "zh": _clean_field(raw.get("zh")),
+        "definition_en": _clean_field(raw.get("definition_en")),
+    }
+    if not sense["zh"] and not sense["definition_en"]:
+        return None
+    return sense
+
+
+def _top_level_sense(entry: dict) -> dict:
+    return {
+        "pos": _clean_field(entry.get("pos")),
+        "zh": _clean_field(entry.get("zh")),
+        "definition_en": _clean_field(entry.get("definition_en")),
+    }
+
+
+def _normalize_dict_entry(entry, fallback_word: str = "") -> dict:
+    """把任意来源的释义规整成冻结契约：senses 1–12 条，首条 = 顶层字段。
+
+    兼容旧版 `dictionary_cache.json`：没有 senses（或为空/非法）时用顶层字段
+    构造一条，不报错也不返回空。顶层字段是既有前端的契约，因此首条义项以它
+    为准；顶层缺失的字段反过来由首条义项补全。
+    """
+    if not isinstance(entry, dict):
+        entry = {}
+    normalized = dict(entry)
+
+    senses = []
+    raw_senses = normalized.get("senses")
+    if isinstance(raw_senses, list):
+        for raw in raw_senses:
+            sense = _clean_sense(raw)
+            if sense is not None:
+                senses.append(sense)
+    if not senses:
+        senses = [_top_level_sense(normalized)]
+    senses = senses[:MAX_SENSES]
+
+    first = senses[0]
+    for field in ("pos", "zh", "definition_en"):
+        top = _clean_field(normalized.get(field))
+        if top:
+            first[field] = top
+        else:
+            normalized[field] = first[field]
+
+    normalized["senses"] = senses
+    if not _clean_field(normalized.get("word")):
+        normalized["word"] = fallback_word
+    if not _clean_field(normalized.get("lemma")):
+        normalized["lemma"] = normalized.get("word", "")
+    for field in ("ipa", "example"):
+        normalized[field] = _clean_field(normalized.get(field))
+    return normalized
 
 
 def _dict_model_candidates() -> list:
@@ -63,15 +131,17 @@ async def define_word(request: DefineRequest):
     # initial generation — good enough and keeps repeat lookups free).
     cache = _load_dict_cache()
     key = word.lower()
-    if key in cache:
-        return cache[key]
+    cached = cache.get(key)
+    if isinstance(cached, dict):
+        # 旧版缓存没有 senses：读取时用顶层字段补一条，不报错、不返回空。
+        return _normalize_dict_entry(cached, fallback_word=word)
 
     # 本地词典优先：常见词直接秒回，不花模型额度。
     # 本地命中**不写** dictionary_cache.json —— 那里存的是「结合语境生成」的
     # 模型释义；把静态词典释义混进去，会让后续同词查询拿到错位的缓存。
     local_entry = local_dict.lookup(word)
     if local_entry is not None:
-        return local_entry
+        return _normalize_dict_entry(local_entry, fallback_word=word)
 
     context_part = f'It appears in this sentence: "{request.context.strip()}"' if request.context else ""
     prompt = f"""You are an English-Chinese dictionary for Chinese learners of English.
@@ -81,19 +151,32 @@ Return ONLY a JSON object with exactly these fields:
   "word": "{word}",
   "lemma": "base/dictionary form",
   "ipa": "IPA pronunciation like /ˈwɜːrd/",
-  "pos": "part of speech abbreviation (n. / v. / adj. / adv. / phrase ...)",
-  "zh": "简明中文释义，优先该语境下的含义，不超过 20 字",
-  "definition_en": "concise English definition (one sentence)",
-  "example": "one short, natural example sentence in English"
-}}"""
+  "pos": "part of speech abbreviation of the FIRST sense (n. / v. / adj. / adv. / phrase ...)",
+  "zh": "第一条义项的中文释义，不超过 20 字",
+  "definition_en": "concise English definition of the FIRST sense (one sentence)",
+  "example": "one short, natural example sentence in English",
+  "senses": [
+    {{"pos": "n.", "zh": "中文义项", "definition_en": "concise English definition (one sentence)"}}
+  ]
+}}
+Rules for "senses":
+- 2-5 common senses ordered by how common they are; merge rare / long-tail senses instead of listing them all.
+- Each sense is a distinct meaning; change "pos" when the part of speech changes.
+- The first item MUST match the top-level "pos" / "zh" / "definition_en" exactly.
+- A word with only one common meaning may have a single item.
+- If a context sentence is given, put the meaning used in that sentence first."""
 
     result = None
     for model_id in _dict_model_candidates():
         try:
-            result = json.loads(llm.generate_json(prompt, model=model_id))
-            if isinstance(result, list):
-                result = result[0] if result else {}
-            result.setdefault("word", word)
+            parsed = json.loads(llm.generate_json(prompt, model=model_id))
+            if isinstance(parsed, list):
+                parsed = parsed[0] if parsed else {}
+            if not isinstance(parsed, dict):
+                raise ValueError(f"模型返回的不是 JSON 对象（{type(parsed).__name__}）")
+            parsed.setdefault("word", word)
+            # 模型漏返 senses 时，_normalize_dict_entry 会用顶层字段补一条。
+            result = _normalize_dict_entry(parsed, fallback_word=word)
             break
         except Exception as e:
             print(f"Dictionary lookup failed for '{word}' with {model_id}: {e}")

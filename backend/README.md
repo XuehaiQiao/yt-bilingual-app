@@ -14,8 +14,8 @@
 | `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结 |
 | `routes_videos.py` | `/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心）、`/api/history*`、`/api/channel-updates` |
 | `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集）、`/api/sentences*`（句子精背） |
-| `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
-| `routes_user.py` | `/api/define`（词典：`dictionary_cache.json` 语境缓存 → 本地词典 → 「已配 Key 的候选模型」；只有模型结果写缓存）、`/api/favorites`、`/api/subscriptions` |
+| `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
+| `routes_user.py` | `/api/define`（词典：`dictionary_cache.json` 语境缓存 → 本地词典 → 「已配 Key 的候选模型」；模型结果写缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`、`/api/subscriptions` |
 | `requirements.txt` | Python 依赖（faster-whisper 为可选，见文件内注释） |
 
 ## 本地词典（可选，ECDICT）
@@ -43,14 +43,13 @@ python3 scripts/fetch_dictionary.py
 |---|---|
 | `word` / `lemma` | 词条；`lemma` 取 `exchange` 的 `0:` 项（如 `running` → `run`） |
 | `ipa` | `phonetic`，自动补 `/.../` |
-| `pos` | 释义行首的 `n. / v. / adj. / interj. ...` |
-| `zh` | 中文释义首行（去掉行首词性） |
-| `definition_en` | 英文释义首行 |
+| `pos` / `zh` / `definition_en` | **首条**义项的词性 / 中文释义 / 英文释义 |
+| `senses` | `translation` 每行一个义项（含 `pos` / `zh` / `definition_en`），保持 ECDICT 原顺序，最多 12 条；`definition` 里按词性对齐的行补 `definition_en`，对不齐为空字符串 |
 | `example` | 无（固定空字符串） |
 
 - 没有例句：ECDICT 不提供，卡片里例句区直接不显示。
 - 音标是 ECDICT 旧式记法（如 `hә'lәu`），不是严格 IPA，只作读音提示。
-- 释义是静态词义、不结合语境，同词多义只取首行；语境释义仍由大模型在未命中时生成。
+- 释义是静态词义、不结合语境；多义词返回多条 `senses`（首条与顶层字段一致），超过 12 条截断；语境释义仍由大模型在未命中时生成。
 - 无中文释义的条目视为未命中，交给大模型补中文（查词卡片的目标读者是中文用户）。ECDICT 里约 0.16% 词条的 `translation` 其实是英文转写，同样按未命中处理。
 - 本地命中的释义**不会**写进 `dictionary_cache.json`——那里只存大模型生成的语境释义，避免两类释义混用。
 

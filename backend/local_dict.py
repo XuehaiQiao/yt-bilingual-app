@@ -21,9 +21,8 @@
 | `word` | 词条；查询词大小写与词条一致时保留用户输入的大小写 |
 | `lemma` | `exchange` 字段里的 `0:` 项（如 `running` → `run`），没有则同词条 |
 | `ipa` | `phonetic`，自动补 `/.../`；ECDICT 用旧式音标，不是严格 IPA |
-| `pos` | 释义行首的 `n. / v. / adj. ...`，缺失为空字符串 |
-| `zh` | 中文释义首行（去掉行首词性） |
-| `definition_en` | 英文释义首行（去掉行首词性） |
+| `pos` / `zh` / `definition_en` | **首条**义项的词性 / 中文释义 / 英文释义 |
+| `senses` | `translation` 每行一个义项，保持 ECDICT 原顺序（通常常用义在前）；`definition` 里能按词性对齐的行补 `definition_en`，对不齐为空字符串；最多 12 条 |
 | `example` | ECDICT 不提供例句，固定空字符串 |
 """
 import os
@@ -45,18 +44,47 @@ _WS_RE = re.compile(r"\s+")
 # 这些条目对中文读者没有价值，按「未命中」处理。
 _CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
 # 释义行首的词性缩写，如 "n. 罩；风帽" / "adj. 高的" / "interj. 喂"。
+# r./s. 来自 WordNet 的 definition 列（副词 / 形容词卫星），只为对齐用。
 _POS_PREFIX_RE = re.compile(
-    r"^(n|v|vt|vi|adj|adv|ad|a|prep|conj|pron|int|interj|num|art|aux|abbr|phr|pl)\.\s*",
+    r"^(n|v|vt|vi|adj|adv|ad|a|prep|conj|pron|int|interj|num|art|aux|abbr|phr|pl|r|s)\.\s*",
     re.IGNORECASE,
 )
 _POS_DISPLAY = {
     "a": "adj.",
     "adj": "adj.",
+    "s": "adj.",
     "ad": "adv.",
     "adv": "adv.",
+    "r": "adv.",
     "int": "interj.",
     "interj": "interj.",
 }
+# 词性归一类后再与 definition 对齐：vt./vi. 都算 v.，a./s. 都算 adj. ...
+_POS_CANON = {
+    "n": "n",
+    "v": "v",
+    "vt": "v",
+    "vi": "v",
+    "a": "adj",
+    "adj": "adj",
+    "s": "adj",
+    "ad": "adv",
+    "adv": "adv",
+    "r": "adv",
+    "prep": "prep",
+    "conj": "conj",
+    "pron": "pron",
+    "int": "interj",
+    "interj": "interj",
+    "num": "num",
+    "art": "art",
+    "aux": "aux",
+    "abbr": "abbr",
+    "phr": "phr",
+    "pl": "pl",
+}
+# 一个词最多返回这么多义项，避免长尾词义撑爆响应。
+_MAX_SENSES = 12
 
 
 def dict_path() -> str:
@@ -122,30 +150,22 @@ def lookup(word: str) -> dict | None:
 
     lemma = _lemma_from_exchange(row["exchange"], headword)
     ipa = _format_ipa(row["phonetic"])
-    definition_line = _first_line(row["definition"])
 
-    # 取第一条真正含中文的释义：极少数词条第一条义项是英文说明。
-    translation_lines = _lines(row["translation"])
-    zh_line = next(
-        (line for line in translation_lines if _CJK_RE.search(line)), ""
-    )
-    if not zh_line:
+    senses = _build_senses(row["translation"], row["definition"])
+    if not senses:
         # 没有中文释义的条目对中文用户没有意义，留给大模型补中文。
         return None
 
-    pos, zh = _split_pos_prefix(zh_line)
-    _, definition_en = _split_pos_prefix(definition_line)
-    if not pos:
-        pos = _split_pos_prefix(definition_line)[0]
-
+    primary = senses[0]
     return {
         "word": display,
         "lemma": lemma,
         "ipa": ipa,
-        "pos": pos,
-        "zh": zh,
-        "definition_en": definition_en,
+        "pos": primary["pos"],
+        "zh": primary["zh"],
+        "definition_en": primary["definition_en"],
         "example": "",  # ECDICT 无例句
+        "senses": senses,
     }
 
 
@@ -234,11 +254,6 @@ def _lines(text) -> list[str]:
     return [line.strip() for line in normalized.splitlines() if line.strip()]
 
 
-def _first_line(text) -> str:
-    lines = _lines(text)
-    return lines[0] if lines else ""
-
-
 def _split_pos_prefix(line: str) -> tuple[str, str]:
     """把 "n. 罩；风帽" 拆成 ("n.", "罩；风帽")；没有词性前缀时词性为空。"""
     match = _POS_PREFIX_RE.match(line)
@@ -247,6 +262,64 @@ def _split_pos_prefix(line: str) -> tuple[str, str]:
     raw = match.group(1).lower()
     display = _POS_DISPLAY.get(raw, raw + ".")
     return display, line[match.end():].strip()
+
+
+def _canonical_pos(pos: str) -> str:
+    """把词性缩写归一到可比较的类别（vt./vi. → v，a./s. → adj. ...）。"""
+    raw = (pos or "").strip().rstrip(".").lower()
+    return _POS_CANON.get(raw, raw)
+
+
+def _build_senses(translation, definition) -> list[dict]:
+    """把 ECDICT 的 translation 拆成多义项，并用 definition 补英文释义。
+
+    - 只保留含中文的行；纯英文的 Wiktionary 转写对中文读者没有价值；
+    - 保持 ECDICT 原顺序（它本身大致按常用度排列），最多 `_MAX_SENSES` 条；
+    - 英文释义按词性对齐到同词性的 definition 行；两边都没词性标注时按
+      出现顺序配对；对不齐的留空字符串。
+    """
+    senses: list[dict] = []
+    for line in _lines(translation):
+        if not _CJK_RE.search(line):
+            continue
+        pos, zh = _split_pos_prefix(line)
+        if not zh:
+            continue
+        senses.append({"pos": pos, "zh": zh, "definition_en": ""})
+        if len(senses) >= _MAX_SENSES:
+            break
+    if not senses:
+        return []
+
+    definitions = []
+    for line in _lines(definition):
+        pos, text = _split_pos_prefix(line)
+        if text:
+            definitions.append(
+                {"canon": _canonical_pos(pos), "text": text, "used": False}
+            )
+
+    if definitions and all(not item["canon"] for item in definitions):
+        # 有的 ECDICT 数据版本 definition 整列都不带词性：按行序对应。
+        for sense, item in zip(senses, definitions):
+            sense["definition_en"] = item["text"]
+        return senses
+
+    for sense in senses:
+        canon = _canonical_pos(sense["pos"])
+        match = next(
+            (
+                item
+                for item in definitions
+                if not item["used"]
+                and (item["canon"] == canon if canon else not item["canon"])
+            ),
+            None,
+        )
+        if match is not None:
+            match["used"] = True
+            sense["definition_en"] = match["text"]
+    return senses
 
 
 def _format_ipa(phonetic) -> str:

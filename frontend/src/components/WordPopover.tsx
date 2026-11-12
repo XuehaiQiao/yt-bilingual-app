@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Volume2, Star, Loader2 } from 'lucide-react';
+import { X, Volume2, Star, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiFetch } from '../lib/api';
 import { describeApiError } from '../lib/toast';
@@ -13,6 +13,9 @@ export interface WordDefinition {
     zh: string;
     definition_en?: string;
     example?: string;
+    // Multiple senses, ordered by commonness. Older cached/back-end responses
+    // omit this field, so it must stay optional.
+    senses?: Array<{ pos?: string; zh: string; definition_en?: string }>;
 }
 
 interface WordPopoverProps {
@@ -31,11 +34,13 @@ const CARD_EST_HEIGHT = 240;
 export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, onClose, onToggleFavorite, isFavorited }) => {
     const [definition, setDefinition] = useState<WordDefinition | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [showAllSenses, setShowAllSenses] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
         setDefinition(null);
         setError(null);
+        setShowAllSenses(false);
         (async () => {
             try {
                 const res = await apiFetch('/api/define', {
@@ -59,6 +64,22 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
         ? Math.max(12, y - CARD_EST_HEIGHT - 12)
         : y + 12;
 
+    // `senses` is new on the /api/define contract; normalize defensively so a
+    // malformed or pre-`senses` payload still renders the single-sense layout.
+    const senses = Array.isArray(definition?.senses)
+        ? definition.senses
+            .filter((s) => s && typeof s.zh === 'string' && s.zh.trim().length > 0)
+            .map((s, i) => ({
+                // The contract makes senses[0] mirror the top-level fields; if an
+                // older payload is missing them, fall back to the top-level values.
+                pos: (s.pos || (i === 0 ? definition?.pos : '') || '').trim(),
+                zh: s.zh.trim(),
+                definition_en: (s.definition_en || (i === 0 ? definition?.definition_en : '') || '').trim(),
+            }))
+        : [];
+    const hasSenseList = senses.length >= 2;
+    const visibleSenses = hasSenseList && !showAllSenses ? senses.slice(0, 3) : senses;
+
     return (
         <>
             {/* click-away layer */}
@@ -76,7 +97,7 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
                     <div className="flex items-baseline gap-2 flex-wrap min-w-0">
                         <span className="text-[17px] font-semibold tracking-tight text-zinc-100 break-all">{definition?.word || word}</span>
                         {definition?.ipa && <span className="text-xs text-zinc-400">{definition.ipa}</span>}
-                        {definition?.pos && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">{definition.pos}</span>}
+                        {definition?.pos && !hasSenseList && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">{definition.pos}</span>}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                         <button
@@ -111,9 +132,48 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
 
                 {definition && (
                     <div className="space-y-2 mt-1">
-                        <p className="text-base text-zinc-100 font-medium">{definition.zh}</p>
-                        {definition.definition_en && (
-                            <p className="text-xs text-zinc-400 leading-relaxed">{definition.definition_en}</p>
+                        {hasSenseList ? (
+                            <>
+                                {/* List mode replaces the top-level zh/pos/definition_en
+                                    so the first sense is never shown twice. */}
+                                <ul className="space-y-2 max-h-64 overflow-y-auto pr-1 -mr-1">
+                                    {visibleSenses.map((sense, i) => (
+                                        <li key={`${i}-${sense.zh}`} className="flex items-start gap-2">
+                                            {sense.pos && (
+                                                <span className="shrink-0 mt-px text-[11px] font-medium px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">
+                                                    {sense.pos}
+                                                </span>
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm text-zinc-100 leading-relaxed">{sense.zh}</p>
+                                                {sense.definition_en && (
+                                                    <p className="text-[11px] text-zinc-500 leading-relaxed">{sense.definition_en}</p>
+                                                )}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                                {senses.length > 3 && (
+                                    <button
+                                        onClick={() => setShowAllSenses(v => !v)}
+                                        aria-expanded={showAllSenses}
+                                        className="flex w-full items-center justify-center gap-1 h-8 rounded-lg text-[11px] font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
+                                    >
+                                        {showAllSenses ? (
+                                            <>收起 <ChevronUp className="w-3.5 h-3.5" /></>
+                                        ) : (
+                                            <>展开全部 ({senses.length}) <ChevronDown className="w-3.5 h-3.5" /></>
+                                        )}
+                                    </button>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-base text-zinc-100 font-medium">{definition.zh}</p>
+                                {definition.definition_en && (
+                                    <p className="text-xs text-zinc-400 leading-relaxed">{definition.definition_en}</p>
+                                )}
+                            </>
                         )}
                         {definition.example && (
                             <button

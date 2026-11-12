@@ -101,6 +101,13 @@ def test_lookup_maps_ecdict_fields(local_db):
         "zh": "赛跑, 流出, 运转",
         "definition_en": "the state of being in operation",
         "example": "",              # ECDICT 不提供例句
+        "senses": [
+            {
+                "pos": "n.",
+                "zh": "赛跑, 流出, 运转",
+                "definition_en": "the state of being in operation",
+            }
+        ],
     }
 
 
@@ -171,12 +178,15 @@ def test_define_hits_local_dict_without_llm(client, history_dir, local_db, monke
     assert response.status_code == 200
     data = response.json()
     assert set(data) == {
-        "word", "lemma", "ipa", "pos", "zh", "definition_en", "example",
+        "word", "lemma", "ipa", "pos", "zh", "definition_en", "example", "senses",
     }
     assert data["word"] == "Hello"
     assert data["zh"] == "喂, 嘿"
     assert data["pos"] == "interj."
-    assert data["definition_en"] == "an expression of greeting"
+    assert data["definition_en"] == ""
+    assert data["senses"] == [
+        {"pos": "interj.", "zh": "喂, 嘿", "definition_en": ""}
+    ]
     assert calls == [], "本地命中时不应调用大模型"
     assert not (history_dir / "dictionary_cache.json").exists(), (
         "本地命中的静态释义不应写进 LLM 的 dictionary_cache.json"
