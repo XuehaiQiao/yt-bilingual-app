@@ -33,6 +33,7 @@ from translate import (
     process_llm_batch,
     retranslate_marked_blocks,
     summarize_video_transcript,
+    summary_needs_refresh,
 )
 
 router = APIRouter()
@@ -121,6 +122,8 @@ async def process_video(request: VideoRequest):
     except ValueError:
         raise HTTPException(status_code=400, detail="无效的 YouTube 链接，请检查后重试。")
 
+    model = resolve_model(request.model)
+
     # Already processed? Serve the cached result (repairing any failed
     # translations) instead of re-fetching and re-paying for the whole video.
     cached_path = find_history_file_for_video(video_id)
@@ -129,7 +132,14 @@ async def process_video(request: VideoRequest):
         try:
             with open(cached_path, "r", encoding="utf-8") as f:
                 cached_data = json.load(f)
-            return await retranslate_marked_blocks(cached_data, cached_path)
+            cached_data = await retranslate_marked_blocks(cached_data, cached_path, model=model)
+            if summary_needs_refresh(cached_data.get("summary", "")):
+                cached_data["summary"] = await summarize_video_transcript(
+                    [{"text": b["en_text"]} for b in cached_data.get("transcript", [])], model=model
+                )
+                with open(cached_path, "w", encoding="utf-8") as f:
+                    json.dump(cached_data, f, ensure_ascii=False, indent=2)
+            return cached_data
         except (json.JSONDecodeError, KeyError) as e:
             print(f"Cache file corrupt, reprocessing: {e}")
 
@@ -155,7 +165,6 @@ async def process_video(request: VideoRequest):
         b["id"] = idx + 1
 
     # Process blocks in batches of 20 to stay within limits and ensure quality JSON
-    model = resolve_model(request.model)  # 尊重请求里选择的模型，非法值回落到默认
     processed_blocks = []
     batch_size = 20
 
@@ -248,6 +257,10 @@ async def process_video_stream(request: VideoRequest):
                 yield _sse("error", {"detail": "无效的 YouTube 链接，请检查后重试。"})
                 return
 
+            # 先解析模型：缓存路径的自愈（补译/重生成总结）也要用用户选中的模型，
+            # 否则换成 DeepSeek 后仍会拿默认 Gemini 去重试。
+            model = resolve_model(request.model)
+
             # --- Cached video: send everything we have, then repair gaps ---
             cached_path = find_history_file_for_video(video_id)
             cached = None
@@ -268,14 +281,26 @@ async def process_video_stream(request: VideoRequest):
                 })
                 pending = [i for i, b in enumerate(transcript) if needs_retranslation(b.get("zh_text", ""))]
                 if pending:
-                    async for update in _stream_translate(transcript, pending, cached, cached_path):
+                    async for update in _stream_translate(transcript, pending, cached, cached_path, model=model):
                         yield _sse("batch", update)
-                yield _sse("summary", {"summary": cached.get("summary", "")})
+
+                # 上次失败留下的"无法生成总结"占位不能就这么回给用户：用这次选的模型重试一次。
+                summary = cached.get("summary", "")
+                if summary_needs_refresh(summary):
+                    yield _sse("stage", {"stage": "summary"})
+                    summary = await summarize_video_transcript(
+                        [{"text": b["en_text"]} for b in transcript], model=model
+                    )
+                    if not summary_needs_refresh(summary):
+                        cached["summary"] = summary
+                        with open(cached_path, "w", encoding="utf-8") as f:
+                            json.dump(cached, f, ensure_ascii=False, indent=2)
+
+                yield _sse("summary", {"summary": summary})
                 yield _sse("done", {"cached": True})
                 return
 
             # --- Fresh video ---
-            model = resolve_model(request.model)
 
             # Reuse the fetch from a just-run cost estimation when possible
             prefetched = _prefetch_cache.pop(video_id, None)
@@ -399,7 +424,7 @@ def list_history():
 
 
 @router.get("/api/history/{filename}")
-async def get_history(filename: str):
+async def get_history(filename: str, model: str | None = None):
     # Guard against path traversal — only bare filenames inside HISTORY_DIR
     if os.path.basename(filename) != filename:
         raise HTTPException(status_code=404, detail="History file not found")
@@ -409,9 +434,17 @@ async def get_history(filename: str):
 
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    # Self-heal mock/failed translations left over from rate-limited runs
+    # Self-heal mock/failed translations left over from rate-limited runs,
+    # using the model the frontend sent with the request.
     if isinstance(data, dict) and data.get("transcript"):
-        data = await retranslate_marked_blocks(data, file_path)
+        chosen_model = resolve_model(model)
+        data = await retranslate_marked_blocks(data, file_path, model=chosen_model)
+        if summary_needs_refresh(data.get("summary", "")):
+            data["summary"] = await summarize_video_transcript(
+                [{"text": b["en_text"]} for b in data["transcript"]], model=chosen_model
+            )
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
     return data
 
 

@@ -34,3 +34,16 @@ export function loadVocabLevel(): VocabLevelId {
 export function saveVocabLevel(level: VocabLevelId) {
     localStorage.setItem(VOCAB_LEVEL_KEY, level);
 }
+
+// Last model the user confirmed in the picker. Used when re-opening a cached
+// video or repairing one, so self-healing retries don't silently fall back to
+// the default provider (which may already be out of quota).
+export const MODEL_KEY = 'yt_bilingual_last_model';
+
+export function loadModel(): string {
+    return localStorage.getItem(MODEL_KEY) || '';
+}
+
+export function saveModel(modelId: string) {
+    if (modelId) localStorage.setItem(MODEL_KEY, modelId);
+}

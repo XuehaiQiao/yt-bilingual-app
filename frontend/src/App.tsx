@@ -14,7 +14,7 @@ import { SentenceView, sentenceFavId } from './components/SentenceView';
 import { segToPlain, CHUNK_STYLE, type Sentence, type SegChunk } from './lib/sentences';
 import { toast, describeApiError } from './lib/toast';
 import { consumeSseStream, findActiveIndex, isUntranslated, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from './lib/transcript';
-import { loadVocabLevel } from './lib/settings';
+import { loadVocabLevel, loadModel, saveModel } from './lib/settings';
 import { getProgress, saveProgress } from './lib/progress';
 import ReactMarkdown from 'react-markdown';
 
@@ -323,6 +323,7 @@ function App() {
 
   const handleUrlSubmit = async (url: string, model?: string) => {
     setSentenceLevel(null); // leave sentence mode if a video is loaded
+    if (model) saveModel(model); // remember the choice for cached loads / repairs
     // Basic extraction
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
     const id = match ? match[1] : null;
@@ -454,7 +455,11 @@ function App() {
     setSentenceLevel(null);
     setLoadingState('loading');
     try {
-      const response = await apiFetch(`/api/history/${filename}`);
+      // Pass the last picked model so repairing a partially translated cache
+      // retries with the provider the user actually chose.
+      const savedModel = loadModel();
+      const query = savedModel ? `?model=${encodeURIComponent(savedModel)}` : '';
+      const response = await apiFetch(`/api/history/${filename}${query}`);
       if (!response.ok) throw new Error(await describeApiError(response));
 
       const data = await response.json();
@@ -1100,7 +1105,7 @@ function App() {
         onClose={() => setSelectedChannel(null)}
         channelName={selectedChannel}
         onLoadHistory={handleLoadHistory}
-        onReprocess={(videoId) => handleUrlSubmit(`https://www.youtube.com/watch?v=${videoId}`)}
+        onReprocess={(videoId) => handleUrlSubmit(`https://www.youtube.com/watch?v=${videoId}`, loadModel() || undefined)}
       />
 
       <AnimatePresence>

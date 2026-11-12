@@ -17,6 +17,15 @@ from config import DEFAULT_MODEL, HISTORY_DIR, VOCAB_LEVELS
 # re-translated automatically the next time the video is loaded.
 UNTRANSLATED_MARKER = "[未翻译]"
 
+# 总结失败时写进缓存/返回给前端的占位文案。缓存里出现过它，就说明当时没生成成功，
+# 下次打开要用当前选的模型重试（见 routes_videos 的 cached 分支）。
+SUMMARY_ERROR_TEXT = "无法生成总结，请稍后再试或检查 API 配额。"
+
+
+def summary_needs_refresh(summary: str | None) -> bool:
+    """缓存里的总结是空的/失败占位时，需要重新生成。"""
+    return not summary or summary.strip() == SUMMARY_ERROR_TEXT
+
 
 def _norm_id(v):
     """Normalize block ids for matching (models sometimes return '1' for 1)."""
@@ -180,8 +189,8 @@ async def summarize_video_transcript(blocks: list, model: str = DEFAULT_MODEL) -
     try:
         return llm.generate_text(summary_prompt, model=model)
     except Exception as e:
-        print(f"Summary Gen Error: {e}")
-        return "无法生成总结，请稍后再试或检查 API 配额。"
+        print(f"Summary Gen Error ({model}): {e}")
+        return SUMMARY_ERROR_TEXT
 
 
 def find_history_file_for_video(video_id: str):
@@ -195,11 +204,13 @@ def find_history_file_for_video(video_id: str):
     return None
 
 
-async def retranslate_marked_blocks(data: dict, cache_path: str) -> dict:
+async def retranslate_marked_blocks(data: dict, cache_path: str, model: str = DEFAULT_MODEL) -> dict:
     """Re-translate mock/failed blocks in a cached payload, saving progress.
 
     Shared by the YouTube and local-subtitle flows so partially translated
-    results self-heal whenever they are loaded again.
+    results self-heal whenever they are loaded again. `model` must be the
+    model the caller actually wants — otherwise a DeepSeek run would silently
+    retry with the default (Gemini) and hit its quota again.
     """
     transcript = data.get("transcript", [])
     mock_indices = [i for i, b in enumerate(transcript) if needs_retranslation(b.get("zh_text", ""))]
@@ -221,11 +232,11 @@ async def retranslate_marked_blocks(data: dict, cache_path: str) -> dict:
         retry_delay = 15
         for attempt in range(max_retries):
             try:
-                batch_result = await process_llm_batch(batch_blocks)
+                batch_result = await process_llm_batch(batch_blocks, model=model)
                 for j, idx in enumerate(batch_indices):
                     if j < len(batch_result):
                         transcript[idx] = batch_result[j]
-                await asyncio.sleep(6)
+                await asyncio.sleep(llm.batch_pause(model))
                 break
             except Exception as e:
                 error_msg = str(e).lower()
