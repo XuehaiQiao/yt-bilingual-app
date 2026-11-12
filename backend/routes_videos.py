@@ -79,6 +79,9 @@ def estimate_cost(url: str):
 
     def calc_cost(model_id):
         rates = MODEL_CATALOG[model_id]
+        # 价格未知（None）时不估算：前端显示"待定"，绝不假装知道单价。
+        if rates.get("in") is None or rates.get("out") is None:
+            return None
         in_cost = (input_tokens / 1_000_000) * rates["in"]
         out_cost = (output_tokens / 1_000_000) * rates["out"]
         return round(in_cost + out_cost, 6)
@@ -148,6 +151,7 @@ async def process_video(request: VideoRequest):
         b["id"] = idx + 1
 
     # Process blocks in batches of 20 to stay within limits and ensure quality JSON
+    model = resolve_model(request.model)  # 尊重请求里选择的模型，非法值回落到默认
     processed_blocks = []
     batch_size = 20
 
@@ -166,7 +170,7 @@ async def process_video(request: VideoRequest):
 
         for attempt in range(max_retries):
             try:
-                batch_result = await process_llm_batch(batch)
+                batch_result = await process_llm_batch(batch, model=model)
                 processed_blocks.extend(batch_result)
                 await asyncio.sleep(4)  # Standard 15 RPM delay -> 1 req / 4s
                 success = True
@@ -190,7 +194,7 @@ async def process_video(request: VideoRequest):
 
     # Generate summary based on original English blocks
     print("Generating video summary...")
-    summary_text = await summarize_video_transcript(blocks)
+    summary_text = await summarize_video_transcript(blocks, model=model)
 
     # Save to history
     safe_channel = "".join([c for c in metadata["channel"] if c.isalpha() or c.isdigit() or c == ' ']).rstrip()

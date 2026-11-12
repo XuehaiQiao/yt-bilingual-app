@@ -5,7 +5,7 @@ export interface ModelOption {
     id: string;
     name: string;
     provider: string;
-    estimatedCost: number;
+    estimatedCost: number | null;
     available: boolean;
     quotaInfo: string;
 }
@@ -124,7 +124,7 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
                                             </div>
                                             <div className="flex items-center gap-1 text-[11px] font-medium tabular-nums text-zinc-100 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
                                                 <DollarSign className="w-3 h-3" />
-                                                {model.estimatedCost.toFixed(4)}
+                                                {model.estimatedCost != null ? model.estimatedCost.toFixed(4) : '待定'}
                                             </div>
                                         </div>
                                         <p className="text-sm text-zinc-400 flex items-center gap-1.5">

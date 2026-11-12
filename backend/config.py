@@ -60,13 +60,18 @@ MODEL_CATALOG = {
         "name": "Gemini 2.5 Flash", "provider": "Google",
         "in": 0.30, "out": 2.50, "quotaInfo": "Default · balanced quality & speed",
     },
-    "gemini-2.5-flash-lite": {
-        "name": "Gemini 2.5 Flash-Lite", "provider": "Google",
-        "in": 0.10, "out": 0.40, "quotaInfo": "Cheapest · great for long videos",
+    # 2.5 Flash-Lite 已对新用户下线（404: no longer available to new users），
+    # 换成官方报错里指定的 3.5 Flash-Lite。3.5 的价目还没有可靠来源，
+    # 这里留 None（成本一栏显示"待定"），不编数字，等官方价格确认后再填。
+    "gemini-3.5-flash-lite": {
+        "name": "Gemini 3.5 Flash-Lite", "provider": "Google",
+        "in": None, "out": None, "quotaInfo": "Cheapest · great for long videos",
     },
-    "gemini-2.5-pro": {
-        "name": "Gemini 2.5 Pro", "provider": "Google",
-        "in": 1.25, "out": 10.00, "quotaInfo": "Highest quality · slower",
+    # 2.5 Pro 同样已对新用户下线（404），官方指向 3.1 Pro (preview)。
+    # 预览模型在免费额度下容易 429，价格同样没有可靠来源，故留 None。
+    "gemini-3.1-pro-preview": {
+        "name": "Gemini 3.1 Pro (preview)", "provider": "Google",
+        "in": None, "out": None, "quotaInfo": "Highest quality · slower (preview)",
     },
 }
 DEFAULT_MODEL = "gemini-2.5-flash"

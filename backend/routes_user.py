@@ -20,7 +20,9 @@ router = APIRouter()
 # ====================================================
 
 DICT_CACHE_FILE = os.path.join(HISTORY_DIR, "dictionary_cache.json")
-DICT_MODEL = "gemini-2.5-flash-lite"  # fast + cheap for single-word lookups
+DICT_MODEL = "gemini-3.5-flash-lite"  # fast + cheap for single-word lookups
+# 2.5 Flash-Lite 已对新用户下线（404），旧的配置会让 /api/define 直接 502。
+DICT_FALLBACK_MODEL = "gemini-2.5-flash"  # 词典再挂时退到默认模型，别让查词直接失败
 
 
 class DefineRequest(BaseModel):
@@ -65,19 +67,24 @@ Return ONLY a JSON object with exactly these fields:
   "example": "one short, natural example sentence in English"
 }}"""
 
-    try:
-        client = genai.Client()
-        response = client.models.generate_content(
-            model=DICT_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
-        )
-        result = json.loads(response.text)
-        if isinstance(result, list):
-            result = result[0] if result else {}
-        result.setdefault("word", word)
-    except Exception as e:
-        print(f"Dictionary lookup failed for '{word}': {e}")
+    result = None
+    for model_id in (DICT_MODEL, DICT_FALLBACK_MODEL):
+        try:
+            client = genai.Client()
+            response = client.models.generate_content(
+                model=model_id,
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json"),
+            )
+            result = json.loads(response.text)
+            if isinstance(result, list):
+                result = result[0] if result else {}
+            result.setdefault("word", word)
+            break
+        except Exception as e:
+            print(f"Dictionary lookup failed for '{word}' with {model_id}: {e}")
+
+    if result is None:
         raise HTTPException(status_code=502, detail="查词失败，请稍后重试。")
 
     cache[key] = result
