@@ -10,7 +10,7 @@ import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from config import HISTORY_DIR, SENTENCES_DIR, SUBTITLES_DIR
+from config import HISTORY_DIR, SENTENCES_DIR, SUBTITLES_DIR, resolve_model
 from transcripts import group_srt_blocks, parse_srt
 from translate import mock_llm_processing, process_llm_batch, retranslate_marked_blocks
 
@@ -138,11 +138,15 @@ class SubtitleRequest(BaseModel):
     show_id: str
     season: int
     episode: int
+    model: str | None = None
 
 
 @router.post("/api/process-subtitle")
 async def process_subtitle(request: SubtitleRequest):
-    """Process a local SRT subtitle file through Gemini translation."""
+    """Process a local SRT subtitle file through the selected model's translation."""
+    # 模型名经 resolve_model 校验；不存在时回落到默认模型。没配 Key 的模型
+    # 会在调用层失败，走原有的批次降级逻辑，不会让接口直接 500/502。
+    model = resolve_model(request.model)
     srt_path = os.path.join(
         SUBTITLES_DIR, request.show_id,
         f"S{request.season:02d}", f"E{request.episode:02d}.srt"
@@ -159,7 +163,7 @@ async def process_subtitle(request: SubtitleRequest):
         print(f"Loading cached subtitles: {cache_filename}")
         with open(cache_path, "r", encoding="utf-8") as f:
             cached_data = json.load(f)
-        return await retranslate_marked_blocks(cached_data, cache_path)
+        return await retranslate_marked_blocks(cached_data, cache_path, model=model)
 
     # Parse SRT file
     with open(srt_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -202,7 +206,7 @@ async def process_subtitle(request: SubtitleRequest):
 
         for attempt in range(max_retries):
             try:
-                batch_result = await process_llm_batch(batch)
+                batch_result = await process_llm_batch(batch, model=model)
                 processed_blocks.extend(batch_result)
                 await asyncio.sleep(6)  # Longer delay between batches
                 success = True
@@ -229,6 +233,8 @@ async def process_subtitle(request: SubtitleRequest):
         "videoId": f"{request.show_id}-S{request.season:02d}E{request.episode:02d}",
         "metadata": metadata,
         "transcript": processed_blocks,
+        # 本地剧集的 summary 是固定集名标签，不是模型生成的总结；
+        # 模型只作用于翻译与缓存自愈补译。
         "summary": f"📺 {show_title_zh} 第{request.season}季 第{request.episode}集"
     }
 

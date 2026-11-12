@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 import llm
 import local_dict
-from config import HISTORY_DIR, MODEL_CATALOG
+from config import HISTORY_DIR, MODEL_CATALOG, resolve_model
 
 router = APIRouter()
 
@@ -106,9 +106,22 @@ def _dict_model_candidates() -> list:
     return [m for m in ordered if llm.is_available(m)]
 
 
+def _dict_models_for_request(preferred: str | None) -> list:
+    """请求指定的模型（必须已确认存在于目录且已配 Key）排第一，其余沿用候选链并去重。
+
+    请求模型不存在或未传时 `preferred` 为 None；模型存在但没配 Key 时也会
+    退回原候选链。两种情况都不该导致 502。
+    """
+    candidates = _dict_model_candidates()
+    if preferred and llm.is_available(preferred):
+        return [preferred] + [m for m in candidates if m != preferred]
+    return candidates
+
+
 class DefineRequest(BaseModel):
     word: str
     context: str | None = None
+    model: str | None = None
 
 
 def _load_dict_cache() -> dict:
@@ -167,7 +180,10 @@ Rules for "senses":
 - If a context sentence is given, put the meaning used in that sentence first."""
 
     result = None
-    for model_id in _dict_model_candidates():
+    # 只有确实存在于目录里的模型才参与优先排序；不存在的模型交给
+    # `_dict_model_candidates()` 原候选链兜底，而不是挤掉候选链首位。
+    preferred = resolve_model(request.model) if request.model in MODEL_CATALOG else None
+    for model_id in _dict_models_for_request(preferred):
         try:
             parsed = json.loads(llm.generate_json(prompt, model=model_id))
             if isinstance(parsed, list):

@@ -23,6 +23,7 @@
 - **必须**：大模型提示词要求返回 2–5 条常见义项（每条 `pos` / `zh` / `definition_en`，按常用度排序），并保持顶层字段 = 首条；模型漏返 `senses` 时用顶层字段自动补 1 条，不报错。
 - **必须**：`dictionary_cache.json` 保存 `senses`；旧缓存没有 `senses` 时在读取时用顶层字段补 1 条，不报错、不返回空。
 - **必须**：查词顺序为「语境缓存 → 本地词典 → 大模型」；本地词典命中时**不得**调用大模型，也不写语境缓存。
+- **必须**：查词跟随全局模型栏：`POST /api/define` 的可选 `model` 经 `config.resolve_model` 校验后，若该模型已配 Key 则优先使用；模型不存在或没配 Key 时安全回落到原候选链，不因此 502。
 - **必须**：本地词典是可选数据（ECDICT，`data/ecdict.db`，见 [backend/README.md](../../backend/README.md)）：没装、损坏或条目无中文释义时，优雅回落到大模型，不报 500。
 - **必须**：同一个词只调一次 AI，之后从缓存返回（[宪法原则 4](../../CONSTITUTION.md)）。
 - **必须**：卡片内可朗读单词与例句、可一键加入/移出生词本。
@@ -42,4 +43,4 @@
 - 释义来源：优先本地 ECDICT 离线词典（静态词义，秒回、免费），未命中时由大模型生成（Gemini 或 DeepSeek，见 [010](../010-multi-provider-llm/spec.md)）；不调用任何在线词典 API。
 - 本地词典数据不随仓库分发，许可证说明见 [backend/README.md](../../backend/README.md)。
 - 缓存按小写单词去重，不区分大小写；同词不同语境复用首次释义。
-- 词典优先用更快更便宜的 `gemini-3.5-flash-lite`，失败自动退到 `gemini-2.5-flash`；两把 Key 都没有时按 `MODEL_CATALOG` 里第一个可用的模型兜底。
+- 词典跟随全局模型栏：请求指定且已配 Key 的模型优先，否则按「`gemini-3.5-flash-lite` → `gemini-2.5-flash` → `MODEL_CATALOG` 第一个可用模型」候选链兜底。`dictionary_cache.json` 按小写词缓存、与模型无关，换模型不会让已缓存的词重新生成。

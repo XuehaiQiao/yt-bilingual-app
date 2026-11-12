@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from config import HISTORY_DIR, MODEL_CATALOG, resolve_model
+from config import DEFAULT_MODEL, HISTORY_DIR, MODEL_CATALOG, resolve_model
 import llm
 from transcripts import (
     extract_video_id,
@@ -43,6 +43,32 @@ class VideoRequest(BaseModel):
     url: str
     model: str | None = None
     vocab_level: str | None = None
+
+
+def _model_option(model_id: str) -> dict:
+    """全局模型栏的一项：目录里的基础信息 + 当前 Key 是否可用。
+
+    没配 Key 时把 quotaInfo 换成"需要配置哪个环境变量"，前端置灰的同时
+    能直接告诉用户缺什么，不必再猜。
+    """
+    spec = MODEL_CATALOG[model_id]
+    available = llm.is_available(model_id)
+    return {
+        "id": model_id,
+        "name": spec["name"],
+        "provider": spec["provider"],
+        "available": available,
+        "quotaInfo": spec["quotaInfo"] if available else f"需要配置 {spec.get('api_key_env', 'API Key')}",
+    }
+
+
+@router.get("/api/models")
+def list_models():
+    """全局模型选择器的数据源：所有目录模型 + 默认模型，与具体视频无关。"""
+    return {
+        "models": [_model_option(model_id) for model_id in MODEL_CATALOG],
+        "default": DEFAULT_MODEL,
+    }
 
 
 # Metadata + transcript fetched during cost estimation, reused on confirm
@@ -89,17 +115,9 @@ def estimate_cost(url: str):
         return round(in_cost + out_cost, 6)
 
     def model_entry(model_id):
-        spec = MODEL_CATALOG[model_id]
-        available = llm.is_available(model_id)
-        return {
-            "id": model_id,
-            "name": spec["name"],
-            "provider": spec["provider"],
-            "estimatedCost": calc_cost(model_id),
-            "available": available,
-            # 没配 Key 的模型直接告诉用户缺哪个环境变量，别只置灰。
-            "quotaInfo": spec["quotaInfo"] if available else f"需要配置 {spec.get('api_key_env', 'API Key')}",
-        }
+        entry = _model_option(model_id)
+        entry["estimatedCost"] = calc_cost(model_id)
+        return entry
 
     models = [model_entry(model_id) for model_id in MODEL_CATALOG]
 

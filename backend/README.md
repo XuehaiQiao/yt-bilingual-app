@@ -12,8 +12,8 @@
 | `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」，并提供 `is_available`（有没有 Key）与 `batch_pause`（按厂商限流节奏） |
 | `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖） |
 | `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结 |
-| `routes_videos.py` | `/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心）、`/api/history*`、`/api/channel-updates` |
-| `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集）、`/api/sentences*`（句子精背） |
+| `routes_videos.py` | `/api/models`（全局模型栏数据源）、`/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心）、`/api/history*`、`/api/channel-updates` |
+| `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集，翻译与补译跟随请求 `model`）、`/api/sentences*`（句子精背） |
 | `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
 | `routes_user.py` | `/api/define`（词典：`dictionary_cache.json` 语境缓存 → 本地词典 → 「已配 Key 的候选模型」；模型结果写缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`、`/api/subscriptions` |
 | `requirements.txt` | Python 依赖（faster-whisper 为可选，见文件内注释） |
