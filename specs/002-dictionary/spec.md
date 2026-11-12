@@ -1,6 +1,6 @@
 # 规格：点查词典
 
-**状态：** 已实现 ｜ **对应代码：** `backend/routes_user.py`（`/api/define`）、`frontend/src/components/WordPopover.tsx`、`frontend/src/lib/tts.ts`
+**状态：** 已实现 ｜ **对应代码：** `backend/routes_user.py`（`/api/define`）、`backend/local_dict.py`（本地词典）、`frontend/src/components/WordPopover.tsx`、`frontend/src/lib/tts.ts`
 
 ---
 
@@ -16,6 +16,8 @@
 - **必须**：字幕里**每个**单词（不只是 AI 预选的高亮词）都可点击。
 - **必须**：弹出卡片含——单词、音标(IPA)、词性、贴合语境的中文释义、英文释义、例句。
 - **必须**：释义结合该词所在句子的语境生成。
+- **必须**：查词顺序为「语境缓存 → 本地词典 → 大模型」；本地词典命中时**不得**调用大模型，也不写语境缓存。
+- **必须**：本地词典是可选数据（ECDICT，`data/ecdict.db`，见 [backend/README.md](../../backend/README.md)）：没装、损坏或条目无中文释义时，优雅回落到大模型，不报 500。
 - **必须**：同一个词只调一次 AI，之后从缓存返回（[宪法原则 4](../../CONSTITUTION.md)）。
 - **必须**：卡片内可朗读单词与例句、可一键加入/移出生词本。
 - **应当**：卡片自动避让，始终留在视口内。
@@ -25,8 +27,10 @@
 - [ ] 点扬声器图标能朗读该词。
 - [ ] 点星标把该词存入收藏（生词类型，带来源句与时间点）。
 - [ ] 同一个词第二次点击，立即返回（命中缓存）。
+- [ ] 词典数据缺失时点词仍能正常出释义（走大模型），不出现 500。
 
 ## 边界与非目标
-- 释义由大模型生成（Gemini 或 DeepSeek，见 [010](../010-multi-provider-llm/spec.md)），不接入外部词典 API。
+- 释义来源：优先本地 ECDICT 离线词典（静态词义，秒回、免费），未命中时由大模型生成（Gemini 或 DeepSeek，见 [010](../010-multi-provider-llm/spec.md)）；不调用任何在线词典 API。
+- 本地词典数据不随仓库分发，许可证说明见 [backend/README.md](../../backend/README.md)。
 - 缓存按小写单词去重，不区分大小写；同词不同语境复用首次释义。
 - 词典优先用更快更便宜的 `gemini-3.5-flash-lite`，失败自动退到 `gemini-2.5-flash`；两把 Key 都没有时按 `MODEL_CATALOG` 里第一个可用的模型兜底。

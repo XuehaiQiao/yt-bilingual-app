@@ -27,6 +27,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 import config  # noqa: E402
 import llm  # noqa: E402
+import local_dict  # noqa: E402
 import routes_content  # noqa: E402
 import routes_user  # noqa: E402
 import routes_videos  # noqa: E402
@@ -48,6 +49,12 @@ def history_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(routes_user, "FAVORITES_FILE", str(tmp_path / "favorites.json"))
     monkeypatch.setattr(routes_user, "SUBS_FILE", str(tmp_path / "subscriptions.json"))
 
+    # 本地词典也隔离：默认指向不存在的临时路径。否则只要本机下载过
+    # data/ecdict.db，查词就会命中本地词典，让「走 LLM」的用例失去意义。
+    # 需要测本地词典的用例再把它指到自建的小 sqlite。
+    monkeypatch.setenv("LOCAL_DICT_PATH", str(tmp_path / "ecdict.db"))
+    local_dict.reset()
+
     # 模块级全局缓存，用例之间要清干净，避免串味
     routes_videos._prefetch_cache.clear()
 
@@ -58,6 +65,7 @@ def history_dir(tmp_path, monkeypatch):
     yield tmp_path
 
     routes_videos._prefetch_cache.clear()
+    local_dict.reset()
 
 
 @pytest.fixture(autouse=True)

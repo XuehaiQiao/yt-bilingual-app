@@ -1,7 +1,7 @@
 # backend/ — FastAPI 后端
 
 启动：`source venv/bin/activate && uvicorn main:app --port 8000`（入口永远是 `main:app`）。
-验证：`venv/bin/python -m py_compile *.py`；冒烟测试：`venv/bin/python -m pytest tests -q`（先 `venv/bin/python -m pip install pytest`，测试全程离线）。环境变量见 [开发指南](../docs/开发指南.md)。
+验证：`venv/bin/python -m py_compile *.py`；离线测试：`venv/bin/python -m pytest tests -q`（测试全程离线、不联网）。环境变量见 [开发指南](../docs/开发指南.md)。
 
 ## 文件说明
 
@@ -14,11 +14,48 @@
 | `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结 |
 | `routes_videos.py` | `/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心）、`/api/history*`、`/api/channel-updates` |
 | `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集）、`/api/sentences*`（句子精背） |
-| `routes_user.py` | `/api/define`（词典，按「已配 Key 的候选模型」依次尝试，`dictionary_cache.json` 每词只调一次）、`/api/favorites`、`/api/subscriptions` |
+| `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
+| `routes_user.py` | `/api/define`（词典：`dictionary_cache.json` 语境缓存 → 本地词典 → 「已配 Key 的候选模型」；只有模型结果写缓存）、`/api/favorites`、`/api/subscriptions` |
 | `requirements.txt` | Python 依赖（faster-whisper 为可选，见文件内注释） |
+
+## 本地词典（可选，ECDICT）
+
+查词默认**先查本地词典、再调大模型**：本地命中直接返回（秒回、零模型成本），未命中才走原来的模型候选链。**不装词典也能跑**，行为与以前完全一致。
+
+```bash
+# 仓库根目录执行：下载 ECDICT CSV（约 63 MB）并构建 data/ecdict.db（约 104 MB，77 万词条）
+python3 scripts/fetch_dictionary.py
+```
+
+- 运行时路径：默认 `data/ecdict.db`，可用环境变量 `LOCAL_DICT_PATH` 覆盖（相对路径按进程工作目录解析，建议绝对路径）。
+- 也兼容 ECDICT 官方 sqlite 版：把 `ecdict-sqlite-28.zip` 里的 `stardict.db` 直接放成 `data/ecdict.db` 即可（查询只依赖 `stardict` 表的 `word/sw/phonetic/definition/translation/exchange` 列）。
+- 脚本幂等（已有且校验通过就跳过，`--force` 重建）、带进度、失败会清理临时文件并提示手动下载命令；支持 `--csv` / `--dest` / `--keep-csv`。
+
+### 许可证（重要）
+
+- **ECDICT 仓库代码**：MIT License，Copyright (c) 2025 Linwei（见上游 `LICENSE`）。
+- **词典数据**：作者在 README 里说明，数据由 EDictAZ、四六级/GRE 词表、`cdict-1.0-1.rpm`、BNC 语料库等多来源逐步整理，**各来源授权状况不一**，MIT 不能简单覆盖全部数据。
+- 因此本项目**不打包、不提交**词典数据：`data/` 已加入 `.gitignore`，只有 `scripts/fetch_dictionary.py` 在本机按需下载。自用无额外负担；**对外分发/商用前请自行复核 ECDICT 的数据授权**。
+
+### 字段映射与已知限制
+
+| `/api/define` 字段 | 本地词典来源 |
+|---|---|
+| `word` / `lemma` | 词条；`lemma` 取 `exchange` 的 `0:` 项（如 `running` → `run`） |
+| `ipa` | `phonetic`，自动补 `/.../` |
+| `pos` | 释义行首的 `n. / v. / adj. / interj. ...` |
+| `zh` | 中文释义首行（去掉行首词性） |
+| `definition_en` | 英文释义首行 |
+| `example` | 无（固定空字符串） |
+
+- 没有例句：ECDICT 不提供，卡片里例句区直接不显示。
+- 音标是 ECDICT 旧式记法（如 `hә'lәu`），不是严格 IPA，只作读音提示。
+- 释义是静态词义、不结合语境，同词多义只取首行；语境释义仍由大模型在未命中时生成。
+- 无中文释义的条目视为未命中，交给大模型补中文（查词卡片的目标读者是中文用户）。ECDICT 里约 0.16% 词条的 `translation` 其实是英文转写，同样按未命中处理。
+- 本地命中的释义**不会**写进 `dictionary_cache.json`——那里只存大模型生成的语境释义，避免两类释义混用。
 
 ## 关键约定
 
-- 所有持久化都是 `history/` 下的 JSON 文件（无数据库）。
+- 持久化以 `history/` 下的 JSON 文件为主（无数据库）；本地词典数据是可选的 `data/ecdict.db`（gitignore，不入库）。
 - 翻译失败的句子标 `[未翻译]`，下次加载自动补译——改动翻译逻辑时**不要破坏这个自愈闭环**。
 - 对应规格：流式管线见 [specs/001](../specs/001-streaming-pipeline/spec.md)，各路由的行为定义见 [specs/](../specs/README.md)。

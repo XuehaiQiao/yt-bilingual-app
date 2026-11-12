@@ -9,3 +9,4 @@
 | `ingest_youtube.py` | 离线把 YouTube 视频解析进 `history/`：字幕走 yt-dlp（`youtube-transcript-api` 被限流时的备用通路），复用后端的 `group_transcript_blocks` 分句，产出与流式端点同构的英文骨架 + 翻译工单。用法见文件头注释 |
 | `merge_translations.py` | 把 `history/.work/<videoId>/out_*.json` 的译文按 id 合并回 history 缓存，顺带体检：高亮必须是精确子串，可疑译文退回 `[未翻译]` 让 App 自动补译 |
 | `package.json` | 本目录的独立依赖（playwright / gifenc / pngjs） |
+| `fetch_dictionary.py` | 下载 ECDICT（英汉词典，约 77 万词条）并构建本地词典 `data/ecdict.db`：`python3 scripts/fetch_dictionary.py`（幂等，已有则跳过；许可证与数据来源见 [backend/README.md](../backend/README.md#本地词典可选ecdict)）。不装也能跑，查词走大模型 |

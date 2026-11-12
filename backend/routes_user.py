@@ -1,6 +1,8 @@
 """用户数据路由：点查词典、收藏、订阅。
 
-词典释义按小写单词落盘缓存（每词只调一次大模型）；
+查词顺序：`dictionary_cache.json`（按小写词缓存大模型释义）→ 本地 ECDICT
+（`local_dict.lookup`，命中直接返回、不花钱）→ 大模型候选链（结果才写缓存）。
+本地词典是可选数据，没装时行为与以前完全一致。
 收藏与订阅是简单的整存整取 JSON 文件。
 """
 import json
@@ -10,6 +12,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 import llm
+import local_dict
 from config import HISTORY_DIR, MODEL_CATALOG
 
 router = APIRouter()
@@ -62,6 +65,13 @@ async def define_word(request: DefineRequest):
     key = word.lower()
     if key in cache:
         return cache[key]
+
+    # 本地词典优先：常见词直接秒回，不花模型额度。
+    # 本地命中**不写** dictionary_cache.json —— 那里存的是「结合语境生成」的
+    # 模型释义；把静态词典释义混进去，会让后续同词查询拿到错位的缓存。
+    local_entry = local_dict.lookup(word)
+    if local_entry is not None:
+        return local_entry
 
     context_part = f'It appears in this sentence: "{request.context.strip()}"' if request.context else ""
     prompt = f"""You are an English-Chinese dictionary for Chinese learners of English.
