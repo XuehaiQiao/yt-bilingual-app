@@ -1,6 +1,6 @@
 import { apiFetch } from '../lib/api';
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight } from 'lucide-react';
+import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import { ModelSelectionModal } from './ModelSelectionModal';
@@ -11,7 +11,8 @@ import { VocabAxis } from './VocabAxis';
 import { TiltCard } from './TiltCard';
 import { AuroraBackground } from './AuroraBackground';
 import { SentencePacks } from './SentencePacks';
-import { progressPercent } from '../lib/progress';
+import { progressPercent, clearProgress } from '../lib/progress';
+import { toast, describeApiError } from '../lib/toast';
 
 interface InputScreenProps {
     onSubmit: (url: string, model?: string) => void;
@@ -47,6 +48,22 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [pendingUrl, setPendingUrl] = useState('');
     const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
+
+    const handleDeleteHistory = async (e: React.MouseEvent, item: HistoryItem) => {
+        e.stopPropagation();
+        const title = item.metadata?.title || item.filename;
+        if (!window.confirm(`Remove "${title}" from Continue Learning?`)) return;
+        try {
+            const res = await apiFetch(`/api/history/${encodeURIComponent(item.filename)}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error(await describeApiError(res));
+            setHistory(prev => prev.filter(h => h.filename !== item.filename));
+            if (item.videoId) clearProgress(item.videoId);
+            toast.success('Removed from Continue Learning');
+        } catch (err) {
+            console.error('Delete history failed:', err);
+            toast.error(await describeApiError(err));
+        }
+    };
 
     const handleVocabLevelChange = (level: VocabLevelId) => {
         setVocabLevel(level);
@@ -240,8 +257,15 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                                             transition={{ type: "spring", stiffness: 550, damping: 35 }}
                                             onClick={() => onLoadHistory(item.filename)}
                                             data-testid="history-card"
-                                            className="group/card flex items-center gap-4 p-3 rounded-xl bg-zinc-800/30 hover:bg-zinc-800/60 border border-white/5 hover:border-white/10 transition-colors cursor-pointer"
+                                            className="group/card relative flex items-center gap-4 p-3 rounded-xl bg-zinc-800/30 hover:bg-zinc-800/60 border border-white/5 hover:border-white/10 transition-colors cursor-pointer"
                                         >
+                                            <button
+                                                onClick={(e) => handleDeleteHistory(e, item)}
+                                                title="Remove from Continue Learning"
+                                                className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-zinc-900/80 hover:bg-red-500/20 border border-white/5 text-zinc-400 hover:text-red-400 opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto [@media(pointer:coarse)]:opacity-100 [@media(pointer:coarse)]:pointer-events-auto transition-[opacity,background-color,color]"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
                                             <div className="relative w-24 aspect-video rounded-lg overflow-hidden bg-zinc-900 shrink-0">
                                                 {item.metadata?.thumbnail && (
                                                     <img src={item.metadata.thumbnail} alt="thumb" className="w-full h-full object-cover" />
@@ -268,6 +292,14 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                                                         <span className="ml-1 text-emerald-500/90">· {progressPercent(item.videoId)}% watched</span>
                                                     )}
                                                 </p>
+                                                <div className="flex items-center gap-2 mt-1.5">
+                                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-zinc-700/40 border border-white/5 text-zinc-400 truncate max-w-[9rem]">
+                                                        {item.modelName || 'Not recorded'}
+                                                    </span>
+                                                    <span className="text-[10px] text-zinc-500 tabular-nums">
+                                                        {item.studyCount ? `Studied ${item.studyCount}×` : 'No sessions yet'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </motion.div>
                                     ))}

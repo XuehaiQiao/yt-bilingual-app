@@ -36,6 +36,14 @@ export function saveProgress(videoId: string, time: number, duration: number) {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify(map));
 }
 
+export function clearProgress(videoId: string) {
+    const map = loadProgressMap();
+    if (videoId in map) {
+        delete map[videoId];
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(map));
+    }
+}
+
 export function progressPercent(videoId: string): number | null {
     const p = getProgress(videoId);
     if (!p || !p.duration || p.duration < 60) return null;

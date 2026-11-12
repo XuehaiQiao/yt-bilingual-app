@@ -132,13 +132,17 @@ async def process_video(request: VideoRequest):
         try:
             with open(cached_path, "r", encoding="utf-8") as f:
                 cached_data = json.load(f)
+            repaired = any(needs_retranslation(b.get("zh_text", "")) for b in cached_data.get("transcript", []))
             cached_data = await retranslate_marked_blocks(cached_data, cached_path, model=model)
-            if summary_needs_refresh(cached_data.get("summary", "")):
+            refreshed = summary_needs_refresh(cached_data.get("summary", ""))
+            if refreshed:
                 cached_data["summary"] = await summarize_video_transcript(
                     [{"text": b["en_text"]} for b in cached_data.get("transcript", [])], model=model
                 )
-                with open(cached_path, "w", encoding="utf-8") as f:
-                    json.dump(cached_data, f, ensure_ascii=False, indent=2)
+            # 只有真正用这次选的模型重跑过，才更新缓存里的模型标记。
+            if not cached_data.get("model") and (repaired or refreshed):
+                cached_data["model"] = model
+            _bump_study(cached_data, cached_path)
             return cached_data
         except (json.JSONDecodeError, KeyError) as e:
             print(f"Cache file corrupt, reprocessing: {e}")
@@ -220,7 +224,9 @@ async def process_video(request: VideoRequest):
         "videoId": video_id,
         "metadata": metadata,
         "transcript": processed_blocks,
-        "summary": summary_text
+        "summary": summary_text,
+        "model": model,
+        "studyCount": 1,
     }
 
     file_path = os.path.join(HISTORY_DIR, filename)
@@ -245,6 +251,25 @@ def _history_filename(metadata: dict, video_id: str) -> str:
     if not safe_channel:
         safe_channel = "Unknown"
     return f"{safe_channel}_{metadata.get('upload_date', '')}_{video_id}.json".replace(" ", "_")
+
+
+# History files that are not videos — never list or delete them through /api/history.
+HISTORY_META_FILES = {"favorites.json", "subscriptions.json", "dictionary_cache.json"}
+
+
+def _model_display_name(model_id: str | None) -> str:
+    """模型 id → 展示名；老缓存没有记录就如实说 Not recorded。"""
+    if not model_id:
+        return "Not recorded"
+    spec = MODEL_CATALOG.get(model_id)
+    return spec["name"] if spec else model_id
+
+
+def _bump_study(data: dict, path: str) -> None:
+    """打开一次缓存视频 = 一次学习，计数并落盘。"""
+    data["studyCount"] = int(data.get("studyCount") or 0) + 1
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 @router.post("/api/process-video-stream")
@@ -286,15 +311,21 @@ async def process_video_stream(request: VideoRequest):
 
                 # 上次失败留下的"无法生成总结"占位不能就这么回给用户：用这次选的模型重试一次。
                 summary = cached.get("summary", "")
-                if summary_needs_refresh(summary):
+                refreshed = summary_needs_refresh(summary)
+                if refreshed:
                     yield _sse("stage", {"stage": "summary"})
                     summary = await summarize_video_transcript(
                         [{"text": b["en_text"]} for b in transcript], model=model
                     )
                     if not summary_needs_refresh(summary):
                         cached["summary"] = summary
-                        with open(cached_path, "w", encoding="utf-8") as f:
-                            json.dump(cached, f, ensure_ascii=False, indent=2)
+
+                # 只有真正重跑过翻译/总结，才把缓存的模型标记更新成这次用的模型。
+                if not cached.get("model") and (pending or refreshed):
+                    cached["model"] = model
+                cached["studyCount"] = int(cached.get("studyCount") or 0) + 1
+                with open(cached_path, "w", encoding="utf-8") as f:
+                    json.dump(cached, f, ensure_ascii=False, indent=2)
 
                 yield _sse("summary", {"summary": summary})
                 yield _sse("done", {"cached": True})
@@ -361,6 +392,8 @@ async def process_video_stream(request: VideoRequest):
                 "metadata": metadata,
                 "transcript": transcript,
                 "summary": "",
+                "model": model,
+                "studyCount": 1,
             }
             save_path = os.path.join(HISTORY_DIR, _history_filename(metadata, video_id))
             with open(save_path, "w", encoding="utf-8") as f:
@@ -402,7 +435,7 @@ def list_history():
     files = []
     if os.path.exists(HISTORY_DIR):
         for f in os.listdir(HISTORY_DIR):
-            if f.endswith('.json') and f not in ["favorites.json", "subscriptions.json"]:
+            if f.endswith('.json') and f not in HISTORY_META_FILES:
                 file_path = os.path.join(HISTORY_DIR, f)
                 try:
                     with open(file_path, "r", encoding="utf-8") as file:
@@ -412,6 +445,9 @@ def list_history():
                             "filename": f,
                             "videoId": data.get("videoId"),
                             "metadata": data.get("metadata", {}),
+                            "model": data.get("model"),
+                            "modelName": _model_display_name(data.get("model")),
+                            "studyCount": int(data.get("studyCount") or 0),
                             "mtime": mtime
                         })
                 except Exception as e:
@@ -438,14 +474,31 @@ async def get_history(filename: str, model: str | None = None):
     # using the model the frontend sent with the request.
     if isinstance(data, dict) and data.get("transcript"):
         chosen_model = resolve_model(model)
+        repaired = any(needs_retranslation(b.get("zh_text", "")) for b in data["transcript"])
         data = await retranslate_marked_blocks(data, file_path, model=chosen_model)
-        if summary_needs_refresh(data.get("summary", "")):
+        refreshed = summary_needs_refresh(data.get("summary", ""))
+        if refreshed:
             data["summary"] = await summarize_video_transcript(
                 [{"text": b["en_text"]} for b in data["transcript"]], model=chosen_model
             )
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+        if not data.get("model") and (repaired or refreshed):
+            data["model"] = chosen_model
+        _bump_study(data, file_path)
     return data
+
+
+@router.delete("/api/history/{filename}")
+async def delete_history(filename: str):
+    # Guard against path traversal and against deleting non-video metadata files
+    if os.path.basename(filename) != filename or not filename.endswith('.json'):
+        raise HTTPException(status_code=404, detail="History file not found")
+    if filename in HISTORY_META_FILES:
+        raise HTTPException(status_code=400, detail="该文件不是视频缓存，不能删除。")
+    file_path = os.path.join(HISTORY_DIR, filename)
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="History file not found")
+    os.remove(file_path)
+    return {"ok": True, "filename": filename}
 
 
 class ChannelUpdatesRequest(BaseModel):

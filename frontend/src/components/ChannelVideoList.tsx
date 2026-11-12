@@ -14,6 +14,9 @@ export interface HistoryItem {
     filename: string;
     videoId?: string;
     metadata: HistoryMetadata;
+    model?: string | null;
+    modelName?: string;
+    studyCount?: number;
 }
 
 interface ChannelVideoListProps {

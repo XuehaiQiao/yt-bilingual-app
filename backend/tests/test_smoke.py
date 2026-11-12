@@ -201,3 +201,58 @@ def test_process_video_non_streaming(client, history_dir, monkeypatch):
 )
 def test_summary_needs_refresh(summary, expected):
     assert translate.summary_needs_refresh(summary) is expected
+
+# ---------------------------------------------------------------------------
+# History list: model badge / study count / delete endpoint
+# ---------------------------------------------------------------------------
+
+def _write_history(tmp_path, filename, *, model="deepseek-chat", study_count=3):
+    payload = {
+        "videoId": "abc123xyz",
+        "metadata": {"title": "Cached Video", "channel": "Chan", "upload_date": "20240101", "thumbnail": ""},
+        "transcript": [
+            {"id": 1, "start": 0.0, "end": 1.0, "en_text": "Hello world.", "zh_text": "你好，世界。", "highlights": []},
+        ],
+        "summary": "- 总结",
+        "model": model,
+        "studyCount": study_count,
+    }
+    path = tmp_path / filename
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def test_list_history_reports_model_and_study_count(client, history_dir):
+    _write_history(history_dir, "Video_20240101_abc123xyz.json", model="deepseek-chat", study_count=3)
+    # Non-video metadata files must never show up as history cards
+    (history_dir / "dictionary_cache.json").write_text("{}", encoding="utf-8")
+
+    resp = client.get("/api/history")
+    assert resp.status_code == 200
+    items = resp.json()
+    assert [i["filename"] for i in items] == ["Video_20240101_abc123xyz.json"]
+    assert items[0]["model"] == "deepseek-chat"
+    assert items[0]["modelName"] == "DeepSeek Chat"
+    assert items[0]["studyCount"] == 3
+
+
+def test_get_history_bumps_study_count(client, history_dir):
+    path = _write_history(history_dir, "Video_20240101_abc123xyz.json", study_count=0)
+
+    resp = client.get("/api/history/Video_20240101_abc123xyz.json")
+    assert resp.status_code == 200
+    assert resp.json()["studyCount"] == 1
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["studyCount"] == 1, "counter must be persisted, not just returned"
+
+
+def test_delete_history_removes_file_and_guards_metadata(client, history_dir):
+    path = _write_history(history_dir, "Video_20240101_abc123xyz.json")
+    (history_dir / "dictionary_cache.json").write_text("{}", encoding="utf-8")
+
+    assert client.delete("/api/history/Video_20240101_abc123xyz.json").status_code == 200
+    assert not path.exists()
+    assert client.delete("/api/history/Video_20240101_abc123xyz.json").status_code == 404
+    assert client.delete("/api/history/dictionary_cache.json").status_code == 400
+    assert client.delete("/api/history/..%2Ffavorites.json").status_code == 404
