@@ -1,7 +1,7 @@
 # backend/ — FastAPI 后端
 
 启动：`source venv/bin/activate && uvicorn main:app --port 8000`（入口永远是 `main:app`）。
-验证：`venv/bin/python -m py_compile *.py`。环境变量见 [开发指南](../docs/开发指南.md)。
+验证：`venv/bin/python -m py_compile *.py`；冒烟测试：`venv/bin/python -m pytest tests -q`（先 `venv/bin/python -m pip install pytest`，测试全程离线）。环境变量见 [开发指南](../docs/开发指南.md)。
 
 ## 文件说明
 

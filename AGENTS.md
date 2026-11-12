@@ -4,13 +4,13 @@
 
 ## 这是什么项目
 
-**Lingua Nova**：帮中文用户通过 YouTube 视频学英语的本地应用。三种学习模式：看视频（AI 双语字幕流式生成）、本地剧集（SRT）、句子精背。React 19 + FastAPI + Gemini 2.5。
+**Lingua Nova**：帮中文用户通过 YouTube 视频学英语的本地应用。三种学习模式：看视频（AI 双语字幕流式生成）、本地剧集（SRT）、句子精背。React 19 + FastAPI + Gemini / DeepSeek（多模型，模型适配层见 `backend/llm.py`、清单见 `MODEL_CATALOG`）。
 
 ## 读文档的顺序
 
 1. **[CONSTITUTION.md](CONSTITUTION.md)** —— 项目宪法，7 条产品/工程原则。所有决策的最高依据，改代码前必读。
 2. **[docs/架构.md](docs/架构.md)** —— 系统怎么运转：数据流、目录结构、前后端模块分工。
-3. **[specs/README.md](specs/README.md)** —— 9 个功能各一份规格（做什么/为什么）。改哪个功能就读哪份，改完同步更新它。
+3. **[specs/README.md](specs/README.md)** —— 10 个功能各一份规格（做什么/为什么）。改哪个功能就读哪份，改完同步更新它。
 4. **[docs/开发指南.md](docs/开发指南.md)** —— 怎么跑起来、怎么验证、规格驱动工作流。
 5. 改 UI 才读 **[docs/设计语言.md](docs/设计语言.md)** —— 排版/颜色/材质/动效的配方，直接复制类名用。
 
@@ -41,11 +41,11 @@ cd scripts && APP_URL=http://localhost:5173 node capture.mjs all         # 重�
 
 | 目录 | 是什么 | 有 README |
 |---|---|---|
-| `backend/` | FastAPI 后端，7 个模块 | ✓ |
+| `backend/` | FastAPI 后端，8 个模块（含 `llm.py` 模型适配层） | ✓ |
 | `frontend/src/components/` | React UI 组件 | ✓ |
 | `frontend/src/lib/` | 纯逻辑（无 UI） | ✓ |
 | `content/sentences/` | 句子精背静态数据 | ✓ |
-| `specs/` | 功能规格（9 份） | ✓ 索引 |
+| `specs/` | 功能规格（10 份） | ✓ 索引 |
 | `docs/` | 架构/设计/开发文档 | ✓ 导航 |
 | `scripts/` | 媒体录制、字幕下载工具 | ✓ |
 | `mobile/` | Expo 移动端（对接经典 API，未跟进流式） | ✓ |

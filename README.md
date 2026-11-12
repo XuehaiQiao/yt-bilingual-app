@@ -36,6 +36,8 @@ Most language apps make you study *their* content. Lingua Nova flips that: paste
 | **⚡ Instant** | **🎯 Personal** | **🔁 Complete** |
 | English subtitles appear the moment they're fetched — translations stream in live while you watch. Stop anytime; it resumes where it left off. | Set your level on a single axis — Liftoff to Supernova — and the AI highlights only words *above* it. Reopen any video and continue from your last position. | Watch → look up → collect → drill → export to Anki. The whole learning loop, not just a player. |
 
+**Multi-model by design.** Gemini is the default engine; add a `DEEPSEEK_API_KEY` to `.env` and DeepSeek becomes selectable in the in-app model picker. The picker is key-aware — providers whose key isn't configured stay visible but greyed out, naming the variable to set.
+
 <br/>
 
 ## See it in action
@@ -81,14 +83,14 @@ The interface is fully responsive — the same synced bilingual transcript, tap-
 
 ## 🚀 Quick Start
 
-> **Prereqs:** Node 18+, Python 3.10+, and a free [Gemini API key](https://aistudio.google.com/apikey).
+> **Prereqs:** Node 18+, Python 3.10+, and a free [Gemini API key](https://aistudio.google.com/apikey) (the default model). A [DeepSeek API key](https://platform.deepseek.com/api_keys) is optional.
 
 ```bash
 git clone https://github.com/huthvincent/yt-bilingual-app.git
 cd yt-bilingual-app
 
 ./setup.sh                       # installs frontend + backend deps
-cp .env.example .env             # then paste your GEMINI_API_KEY
+cp .env.example .env             # then paste your GEMINI_API_KEY (optionally DEEPSEEK_API_KEY)
 
 ./start_app.command              # macOS one-click (or run the two commands below)
 ```
@@ -111,10 +113,11 @@ Open **http://localhost:5173**, paste a YouTube link, set your level on the axis
 
 | Variable | Where | Purpose |
 |---|---|---|
-| `GEMINI_API_KEY` | `.env` | **Required.** Translation, summaries, dictionary. |
+| `GEMINI_API_KEY` | `.env` | **Required.** Default model for translation, summaries, and the dictionary. |
+| `DEEPSEEK_API_KEY` | `.env` | Optional. Unlocks DeepSeek in the model picker (OpenAI-compatible endpoint). |
 | `WHISPER_MODEL` | `.env` | Whisper size for the no-captions ASR fallback (`base` default). |
 | `CORS_ORIGINS` | `.env` | Comma-separated allowed origins — set before deploying publicly. |
-| `API_AUTH_KEY` | `.env` | When set, every API call must send `X-API-Key`. Protects your Gemini quota on public deployments. |
+| `API_AUTH_KEY` | `.env` | When set, every API call must send `X-API-Key`. Protects your model quota on public deployments. |
 | `VITE_API_BASE` / `VITE_API_KEY` | frontend env | Point the web app at a remote backend / send its API key. |
 | `HISTORY_DIR` / `SUBTITLES_DIR` | env | Relocate the JSON cache / local-show subtitles. |
 

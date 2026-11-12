@@ -36,6 +36,8 @@ AI 双语字幕实时流式生成 · 点击任意单词即查词典 · 内置精
 | **⚡ 即时** | **🎯 个性化** | **🔁 完整闭环** |
 | 英文字幕秒出，翻译边看边流式填充；随时中断，下次打开自动续译。 | 在一条轴上设定水平——Liftoff 到 Supernova——AI 只高亮超出水平的词；每个视频自动续播。 | 看 → 查 → 收藏 → 精听 → 导出 Anki。完整的学习闭环，不只是个播放器。 |
 
+**多模型支持。** 默认引擎仍是 Gemini；在 `.env` 里补一个 `DEEPSEEK_API_KEY`，模型选择器里的 DeepSeek 就会变为可选。选择器会读你的 Key：没配置 Key 的厂商保留显示但置灰，并提示该填哪个环境变量。
+
 <br/>
 
 ## 实际效果
@@ -81,14 +83,14 @@ AI 双语字幕实时流式生成 · 点击任意单词即查词典 · 内置精
 
 ## 🚀 快速开始
 
-> **环境要求：** Node 18+、Python 3.10+、一个免费的 [Gemini API key](https://aistudio.google.com/apikey)。
+> **环境要求：** Node 18+、Python 3.10+、一个免费的 [Gemini API key](https://aistudio.google.com/apikey)（默认模型）；[DeepSeek API key](https://platform.deepseek.com/api_keys) 为可选项。
 
 ```bash
 git clone https://github.com/huthvincent/yt-bilingual-app.git
 cd yt-bilingual-app
 
 ./setup.sh                       # 安装前后端依赖
-cp .env.example .env             # 填入你的 GEMINI_API_KEY
+cp .env.example .env             # 填入 GEMINI_API_KEY（可选再填 DEEPSEEK_API_KEY）
 
 ./start_app.command              # macOS 一键启动（或手动起两个服务，见下）
 ```
@@ -111,10 +113,11 @@ cd frontend && npm run dev
 
 | 变量 | 位置 | 用途 |
 |---|---|---|
-| `GEMINI_API_KEY` | `.env` | **必填。** 翻译、总结、词典。 |
+| `GEMINI_API_KEY` | `.env` | **必填。** 默认模型，负责翻译、总结与词典。 |
+| `DEEPSEEK_API_KEY` | `.env` | 可选。配好后模型选择器出现 DeepSeek（OpenAI 兼容端点）。 |
 | `WHISPER_MODEL` | `.env` | 无字幕 ASR 回退使用的 Whisper 模型大小（默认 `base`）。 |
 | `CORS_ORIGINS` | `.env` | 允许的跨域来源（逗号分隔）——公网部署前务必设置。 |
-| `API_AUTH_KEY` | `.env` | 设置后所有 API 调用必须携带 `X-API-Key`，保护你的 Gemini 配额。 |
+| `API_AUTH_KEY` | `.env` | 设置后所有 API 调用必须携带 `X-API-Key`，保护你的模型配额。 |
 | `VITE_API_BASE` / `VITE_API_KEY` | 前端环境 | 让 Web 端指向远程后端 / 发送其 API key。 |
 | `HISTORY_DIR` / `SUBTITLES_DIR` | 环境变量 | 自定义 JSON 缓存 / 本地剧集字幕目录。 |
 
