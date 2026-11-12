@@ -187,7 +187,7 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                                             const fav = favoriteIds.includes(sentenceFavId(levelId, s.n));
                                             const plain = segToPlain(s.seg);
                                             return (
-                                                <div key={s.n} className="group px-5 py-4">
+                                                <div key={s.n} className="px-5 py-4">
                                                     <div className="flex items-start gap-3">
                                                         <span className="text-[11px] text-zinc-600 tabular-nums pt-2 w-7 shrink-0">{s.n}</span>
                                                         <div className="flex-1 min-w-0">
@@ -198,7 +198,7 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                                                         </div>
                                                         <div className="flex flex-col items-center gap-1 shrink-0">
                                                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400">{CAT_LABEL[s.cat]}</span>
-                                                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-opacity">
+                                                            <div className="flex items-center gap-0.5">
                                                                 <button onClick={() => speak(plain)} title="朗读"
                                                                     className="p-1.5 rounded-lg text-zinc-500 hover:text-blue-400 hover:bg-white/5 transition-colors">
                                                                     <Volume2 className="w-4 h-4" />
