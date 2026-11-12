@@ -129,7 +129,12 @@ def test_define_calls_llm_once_then_hits_cache(client, history_dir, monkeypatch)
     # 同词（大小写不同）再查：直接命中缓存，不再调 LLM
     second = client.post("/api/define", json={"word": "serendipity"})
     assert second.status_code == 200
-    assert second.json() == first.json()
+    # 首次是 LLM 生成，响应多出 model / modelName（透明度字段）；缓存命中
+    # 不声称本次用了模型，因此只比较其余既有字段。
+    assert {
+        k: v for k, v in first.json().items() if k not in ("model", "modelName")
+    } == second.json()
+    assert "model" not in second.json(), "缓存命中不应声称本次用了某个模型"
     assert len(calls) == 1, "第二次查词不应再调用 llm.generate_json"
 
 

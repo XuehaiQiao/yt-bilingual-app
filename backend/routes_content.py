@@ -10,9 +10,15 @@ import os
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+import llm
 from config import HISTORY_DIR, SENTENCES_DIR, SUBTITLES_DIR, resolve_model
 from transcripts import group_srt_blocks, parse_srt
-from translate import mock_llm_processing, process_llm_batch, retranslate_marked_blocks
+from translate import (
+    mock_llm_processing,
+    needs_retranslation,
+    process_llm_batch,
+    retranslate_marked_blocks,
+)
 
 router = APIRouter()
 
@@ -163,6 +169,16 @@ async def process_subtitle(request: SubtitleRequest):
         print(f"Loading cached subtitles: {cache_filename}")
         with open(cache_path, "r", encoding="utf-8") as f:
             cached_data = json.load(f)
+        # 缓存里记录的 `model` 是「生成这批翻译时实际使用的模型」，命中时
+        # 原样返回，供历史列表显示，不因这次请求换了模型而覆盖。
+        # 旧缓存（本字段出现之前生成）没有记录：不臆测当时用的模型；只有
+        # 这次确实用 `model` 补译过失败块，才记上本次模型（与 YouTube
+        # 缓存自愈的语义一致，见 routes_videos.process_video）。
+        repaired = any(
+            needs_retranslation(b.get("zh_text", "")) for b in cached_data.get("transcript", [])
+        )
+        if repaired and not cached_data.get("model"):
+            cached_data["model"] = model
         return await retranslate_marked_blocks(cached_data, cache_path, model=model)
 
     # Parse SRT file
@@ -208,7 +224,9 @@ async def process_subtitle(request: SubtitleRequest):
             try:
                 batch_result = await process_llm_batch(batch, model=model)
                 processed_blocks.extend(batch_result)
-                await asyncio.sleep(6)  # Longer delay between batches
+                # 批间停顿按 provider 的限流节奏走（Gemini 4s / DeepSeek 1s），
+                # 不再固定 6 秒把 DeepSeek 也拖慢。
+                await asyncio.sleep(llm.batch_pause(model))
                 success = True
                 break
             except Exception as e:
@@ -235,7 +253,10 @@ async def process_subtitle(request: SubtitleRequest):
         "transcript": processed_blocks,
         # 本地剧集的 summary 是固定集名标签，不是模型生成的总结；
         # 模型只作用于翻译与缓存自愈补译。
-        "summary": f"📺 {show_title_zh} 第{request.season}季 第{request.episode}集"
+        "summary": f"📺 {show_title_zh} 第{request.season}季 第{request.episode}集",
+        # 记录这批翻译实际使用的模型（resolve 后的 id），历史列表据此显示；
+        # 随 payload 一起落盘，缓存命中时原样返回。
+        "model": model,
     }
 
     # Only cache if all batches succeeded (no mock fallback)

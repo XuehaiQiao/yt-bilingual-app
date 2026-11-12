@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 import llm
 import local_dict
-from config import HISTORY_DIR, MODEL_CATALOG, resolve_model
+from config import DEFAULT_MODEL, HISTORY_DIR, MODEL_CATALOG, resolve_model
 
 router = APIRouter()
 
@@ -24,7 +24,9 @@ router = APIRouter()
 DICT_CACHE_FILE = os.path.join(HISTORY_DIR, "dictionary_cache.json")
 DICT_MODEL = "gemini-3.5-flash-lite"  # fast + cheap for single-word lookups
 # 2.5 Flash-Lite 已对新用户下线（404），旧的配置会让 /api/define 直接 502。
-DICT_FALLBACK_MODEL = "gemini-2.5-flash"  # 词典再挂时退到默认模型，别让查词直接失败
+# 词典再挂时退到全局默认模型；直接引用 DEFAULT_MODEL，避免默认值在这里
+# 再抄一遍而两边漂移（改 config 一处即可）。
+DICT_FALLBACK_MODEL = DEFAULT_MODEL
 # 一个词最多返回这么多义项：长尾词义（尤其多词性）不该撑爆响应。
 MAX_SENSES = 12
 
@@ -98,24 +100,34 @@ def _normalize_dict_entry(entry, fallback_word: str = "") -> dict:
 def _dict_model_candidates() -> list:
     """按优先级排出「已配置 Key」的候选模型。
 
-    只有 DeepSeek Key 的用户也能查词：Gemini 候选没 Key 就自动跳过，
+    首位是**全局默认模型**（`resolve_model(None)`）：请求没带 `model` 时，
+    词典要跟随产品级默认（`DEFAULT_MODEL`），而不是被词典自己的小模型偏好
+    截胡；`DICT_MODEL` 作为后续候选保留（更便宜，默认模型失败时再试）。
+    只有 DeepSeek Key 的用户也能查词：没配 Key 的候选自动跳过，
     退到清单里第一个可用的模型。
     """
-    ordered = [DICT_MODEL, DICT_FALLBACK_MODEL]
+    ordered = [resolve_model(None), DICT_MODEL, DICT_FALLBACK_MODEL]
     ordered += [m for m in MODEL_CATALOG if m not in ordered]
-    return [m for m in ordered if llm.is_available(m)]
+    deduped = list(dict.fromkeys(ordered))  # DICT_FALLBACK_MODEL 现在是 DEFAULT_MODEL 的别名，去重
+    return [m for m in deduped if llm.is_available(m)]
 
 
 def _dict_models_for_request(preferred: str | None) -> list:
     """请求指定的模型（必须已确认存在于目录且已配 Key）排第一，其余沿用候选链并去重。
 
-    请求模型不存在或未传时 `preferred` 为 None；模型存在但没配 Key 时也会
-    退回原候选链。两种情况都不该导致 502。
+    请求模型不存在或未传时 `preferred` 为 None，此时直接用候选链（首位是
+    默认模型）；模型存在但没配 Key 时也会退回原候选链。两种情况都不该导致 502。
     """
     candidates = _dict_model_candidates()
     if preferred and llm.is_available(preferred):
         return [preferred] + [m for m in candidates if m != preferred]
     return candidates
+
+
+def _model_display_name(model_id: str) -> str:
+    """模型 id → 目录里的展示名；目录里没有时原样返回，不编造。"""
+    spec = MODEL_CATALOG.get(model_id)
+    return spec["name"] if spec else model_id
 
 
 class DefineRequest(BaseModel):
@@ -147,6 +159,8 @@ async def define_word(request: DefineRequest):
     cached = cache.get(key)
     if isinstance(cached, dict):
         # 旧版缓存没有 senses：读取时用顶层字段补一条，不报错、不返回空。
+        # 缓存命中不声称「本次用了模型」：model / modelName 只在真正调用
+        # 大模型生成的那次响应里出现，也不写进 dictionary_cache.json。
         return _normalize_dict_entry(cached, fallback_word=word)
 
     # 本地词典优先：常见词直接秒回，不花模型额度。
@@ -154,7 +168,11 @@ async def define_word(request: DefineRequest):
     # 模型释义；把静态词典释义混进去，会让后续同词查询拿到错位的缓存。
     local_entry = local_dict.lookup(word)
     if local_entry is not None:
-        return _normalize_dict_entry(local_entry, fallback_word=word)
+        entry = _normalize_dict_entry(local_entry, fallback_word=word)
+        # 本地词典没有调用任何模型：显式标来源，且不带 model / modelName，
+        # 免得前端把静态释义误标成「由某个模型生成」。
+        entry["source"] = "local"
+        return entry
 
     context_part = f'It appears in this sentence: "{request.context.strip()}"' if request.context else ""
     prompt = f"""You are an English-Chinese dictionary for Chinese learners of English.
@@ -180,6 +198,7 @@ Rules for "senses":
 - If a context sentence is given, put the meaning used in that sentence first."""
 
     result = None
+    used_model = None
     # 只有确实存在于目录里的模型才参与优先排序；不存在的模型交给
     # `_dict_model_candidates()` 原候选链兜底，而不是挤掉候选链首位。
     preferred = resolve_model(request.model) if request.model in MODEL_CATALOG else None
@@ -193,6 +212,7 @@ Rules for "senses":
             parsed.setdefault("word", word)
             # 模型漏返 senses 时，_normalize_dict_entry 会用顶层字段补一条。
             result = _normalize_dict_entry(parsed, fallback_word=word)
+            used_model = model_id
             break
         except Exception as e:
             print(f"Dictionary lookup failed for '{word}' with {model_id}: {e}")
@@ -206,7 +226,13 @@ Rules for "senses":
             json.dump(cache, f, ensure_ascii=False, indent=2)
     except OSError as e:
         print(f"Failed to persist dictionary cache: {e}")
-    return result
+    # 透明度：在既有字段之外补上这次**实际成功使用**的模型（可能是候选链
+    # 降级后的那个）。这两个字段只进响应、不写缓存，既有前端字段不受影响。
+    return {
+        **result,
+        "model": used_model,
+        "modelName": _model_display_name(used_model),
+    }
 
 
 # --- Favorites persistence ---

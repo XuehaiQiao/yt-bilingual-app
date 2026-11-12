@@ -4,8 +4,12 @@
 - `GET /api/models` 暴露完整 `MODEL_CATALOG`、可用标志与默认模型；
 - `/api/define` 优先用请求指定的模型，不可用/非法时安全回落到候选链，
   且候选去重、缓存仍按小写词共享（与模型无关）；
+- `/api/define` 缺省模型语义：没带 model（或空串）时候选链首位是
+  `resolve_model(None)`（`DEFAULT_MODEL`），`DICT_MODEL` 只作后续候选；
+  走 LLM 的响应带实际使用的 `model` / `modelName`，缓存命中不声称用了模型；
 - `/api/process-subtitle` 的翻译批次与缓存自愈都使用请求指定的模型，
-  非法/缺省时回落到默认模型。
+  非法/缺省时回落到默认模型；新处理结果与缓存 payload 记录 `model`，
+  批次间隔按 provider 的 `llm.batch_pause(model)` 走。
 
 所有大模型调用都被 monkeypatch，SRT 与 HISTORY_DIR 都指向 tmp_path，
 不联网、不碰真实 history/ 或 subtitles/。
@@ -159,12 +163,112 @@ def test_define_cache_is_shared_across_models(client, history_dir, monkeypatch):
     second = client.post("/api/define", json={"word": "sharedword", "model": "gemini-2.5-flash"})
 
     assert first.status_code == second.status_code == 200
-    assert first.json() == second.json()
+    # 首次是 LLM 生成，响应多出 model / modelName（透明度字段）；缓存命中
+    # 不声称本次用了模型，因此只比较其余既有字段。
+    assert {
+        k: v for k, v in first.json().items() if k not in ("model", "modelName")
+    } == second.json()
+    assert "model" not in second.json(), "缓存命中不应声称本次用了模型"
     assert calls == ["deepseek-chat"], "缓存按小写词命中，不因换模型重新生成"
     cached = json.loads(
         (history_dir / "dictionary_cache.json").read_text(encoding="utf-8")
     )
     assert "sharedword" in cached
+    assert "model" not in cached["sharedword"], "模型透明度字段只进响应、不写缓存"
+
+
+# ---------------------------------------------------------------------------
+# /api/define 的缺省模型语义（P1）：没带 model → 候选链首位 = DEFAULT_MODEL
+# ---------------------------------------------------------------------------
+
+def test_define_default_candidate_chain_starts_with_default_model():
+    candidates = routes_user._dict_model_candidates()
+
+    assert candidates[0] == config.resolve_model(None) == config.DEFAULT_MODEL
+    assert routes_user.DICT_MODEL in candidates, "DICT_MODEL 仍作为后续候选保留"
+    assert (
+        routes_user.DICT_FALLBACK_MODEL == config.DEFAULT_MODEL
+    ), "兜底模型必须引用 config.DEFAULT_MODEL，避免硬编码漂移"
+    assert len(candidates) == len(set(candidates)), "候选链不能有重复模型"
+
+
+def test_define_default_chain_skips_default_without_key(monkeypatch):
+    """默认模型没配 Key 时跳过它，而不是让查词 502。"""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    candidates = routes_user._dict_model_candidates()
+
+    assert candidates == ["deepseek-chat"]
+
+
+@pytest.mark.parametrize("payload", [{}, {"model": ""}, {"model": None}])
+def test_define_missing_or_empty_model_uses_default_model(client, monkeypatch, payload):
+    calls = []
+    _fake_generate_json(monkeypatch, calls)
+
+    response = client.post("/api/define", json={"word": "defaultchain", **payload})
+
+    assert response.status_code == 200, response.text
+    assert calls[0] == config.resolve_model(None) == config.DEFAULT_MODEL
+    data = response.json()
+    assert data["model"] == config.DEFAULT_MODEL
+    assert data["modelName"] == config.MODEL_CATALOG[config.DEFAULT_MODEL]["name"]
+
+
+def test_define_with_model_uses_it_and_reports_it(client, monkeypatch):
+    calls = []
+    _fake_generate_json(monkeypatch, calls)
+
+    response = client.post(
+        "/api/define", json={"word": "withmodel", "model": "deepseek-chat"}
+    )
+
+    assert response.status_code == 200
+    assert calls == ["deepseek-chat"], "请求指定的可用模型必须排第一"
+    data = response.json()
+    assert data["model"] == "deepseek-chat"
+    assert data["modelName"] == config.MODEL_CATALOG["deepseek-chat"]["name"]
+
+
+def test_define_reports_actual_model_after_fallback(client, monkeypatch):
+    calls = []
+    _fake_generate_json(monkeypatch, calls, fail_models={"deepseek-chat"})
+
+    response = client.post(
+        "/api/define", json={"word": "fallbackmodel", "model": "deepseek-chat"}
+    )
+
+    assert response.status_code == 200
+    assert calls == ["deepseek-chat", config.DEFAULT_MODEL]
+    data = response.json()
+    assert data["model"] == config.DEFAULT_MODEL, "降级后应报告实际成功的模型"
+    assert data["modelName"] == config.MODEL_CATALOG[config.DEFAULT_MODEL]["name"]
+
+
+def test_define_default_failure_falls_back_to_dict_model(client, monkeypatch):
+    """默认模型失败时继续沿候选链走，`DICT_MODEL` 仍作为后续候选。"""
+    calls = []
+    _fake_generate_json(monkeypatch, calls, fail_models={config.DEFAULT_MODEL})
+
+    response = client.post("/api/define", json={"word": "dictfallback"})
+
+    assert response.status_code == 200
+    assert calls[:2] == [config.DEFAULT_MODEL, routes_user.DICT_MODEL]
+    assert response.json()["model"] == routes_user.DICT_MODEL
+
+
+def test_define_cached_hit_does_not_claim_a_model(client, history_dir, monkeypatch):
+    calls = []
+    _fake_generate_json(monkeypatch, calls)
+
+    first = client.post("/api/define", json={"word": "cachemodel"})
+    second = client.post("/api/define", json={"word": "cachemodel"})
+
+    assert first.status_code == second.status_code == 200
+    assert first.json()["model"] == config.DEFAULT_MODEL
+    assert "model" not in second.json(), "缓存命中不声称本次用了模型"
+    assert "modelName" not in second.json()
+    assert len(calls) == 1, "缓存命中不应再调用大模型"
 
 
 # ---------------------------------------------------------------------------
@@ -236,8 +340,12 @@ def test_process_subtitle_uses_requested_model(
     assert len(data["transcript"]) >= 1
     assert batch_calls, "应调用翻译批次"
     assert {call["model"] for call in batch_calls} == {expected}
-    # 成功结果照旧落盘，供下次秒开/自愈
-    assert (history_dir / "demo-show_S01E01.json").exists()
+    # 新处理的返回结果与落盘 payload 都记录实际使用的模型（历史列表用）
+    assert data["model"] == expected
+    saved = json.loads(
+        (history_dir / "demo-show_S01E01.json").read_text(encoding="utf-8")
+    )
+    assert saved["model"] == expected
 
 
 def test_process_subtitle_cached_repair_uses_requested_model(
@@ -281,3 +389,95 @@ def test_process_subtitle_cached_repair_uses_requested_model(
 
     assert response.status_code == 200
     assert calls == ["deepseek-chat"], "缓存补译必须用请求指定的模型"
+    # 旧缓存原本没有 model：这次真的用它补译过，才补记本次模型
+    assert response.json()["model"] == "deepseek-chat"
+
+
+def test_process_subtitle_cache_hit_keeps_generation_model(
+    client, show_srt, history_dir, batch_calls, no_sleep
+):
+    first = client.post(
+        "/api/process-subtitle",
+        json={"show_id": "demo-show", "season": 1, "episode": 1, "model": "deepseek-chat"},
+    )
+    assert first.status_code == 200
+    assert first.json()["model"] == "deepseek-chat"
+    batches_after_first = len(batch_calls)
+
+    # 换一个模型再打开同一集：命中缓存，返回的仍是生成时记录的模型，
+    # 不会被本次请求的模型覆盖（缓存里没有失败块，不触发补译）。
+    second = client.post(
+        "/api/process-subtitle",
+        json={"show_id": "demo-show", "season": 1, "episode": 1, "model": "gemini-2.5-flash"},
+    )
+
+    assert second.status_code == 200
+    assert second.json()["model"] == "deepseek-chat"
+    assert len(batch_calls) == batches_after_first, "缓存命中不应再调用翻译批次"
+
+
+def test_process_subtitle_old_cache_without_model_is_not_invented(
+    client, show_srt, history_dir, batch_calls, no_sleep
+):
+    # 旧缓存（本字段出现之前生成）没有 model，且没有失败块可补译：
+    # 不臆测当时用的模型，也不把本次请求的模型写进去。
+    (history_dir / "demo-show_S01E01.json").write_text(
+        json.dumps(
+            {
+                "videoId": "demo-show-S01E01",
+                "metadata": {"title": "Demo S01E01"},
+                "transcript": [
+                    {
+                        "id": 1,
+                        "start": 0.0,
+                        "end": 1.5,
+                        "en_text": "Hello there.",
+                        "zh_text": "你好。",
+                        "highlights": [],
+                    }
+                ],
+                "summary": "📺 示例 第1季 第1集",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    response = client.post(
+        "/api/process-subtitle",
+        json={"show_id": "demo-show", "season": 1, "episode": 1, "model": "deepseek-chat"},
+    )
+
+    assert response.status_code == 200
+    assert "model" not in response.json()
+    assert batch_calls == []
+
+
+def test_process_subtitle_batch_pause_follows_provider(
+    client, show_srt, history_dir, batch_calls, monkeypatch
+):
+    sleeps = []
+    pause_calls = []
+    real_batch_pause = llm.batch_pause
+
+    async def fake_sleep(seconds):
+        sleeps.append(seconds)
+
+    def recording_batch_pause(model=None):
+        pause_calls.append(model)
+        return real_batch_pause(model)
+
+    monkeypatch.setattr(routes_content, "asyncio", types.SimpleNamespace(sleep=fake_sleep))
+    monkeypatch.setattr(llm, "batch_pause", recording_batch_pause)
+
+    response = client.post(
+        "/api/process-subtitle",
+        json={"show_id": "demo-show", "season": 1, "episode": 1, "model": "deepseek-chat"},
+    )
+
+    assert response.status_code == 200
+    assert pause_calls == ["deepseek-chat"], "批间隔必须按本次使用的模型取"
+    assert sleeps == [llm.batch_pause("deepseek-chat")] == [1.0], (
+        "DeepSeek 走自己的 1s 节奏，而不是写死的 6s"
+    )
+    assert 6 not in sleeps

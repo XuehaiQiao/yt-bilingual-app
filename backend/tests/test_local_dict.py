@@ -179,7 +179,10 @@ def test_define_hits_local_dict_without_llm(client, history_dir, local_db, monke
     data = response.json()
     assert set(data) == {
         "word", "lemma", "ipa", "pos", "zh", "definition_en", "example", "senses",
+        # 本地词典没有调用任何模型：显式标来源，且不带 model / modelName。
+        "source",
     }
+    assert data["source"] == "local"
     assert data["word"] == "Hello"
     assert data["zh"] == "喂, 嘿"
     assert data["pos"] == "interj."
