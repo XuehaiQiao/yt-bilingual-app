@@ -88,7 +88,7 @@ MODEL_CATALOG = {
     # DeepSeek 的 API 与 OpenAI 协议兼容，换 base_url 就能接。
     # 价格同样没有可核实的来源，留 None；批间隔按 1s 走（官方无 15 RPM 限制）。
     "deepseek-chat": {
-        "name": "DeepSeek Chat", "provider": "DeepSeek",
+        "name": "DeepSeek-V4.1-Flash", "provider": "DeepSeek",
         "kind": "openai_compatible", "model_id": "deepseek-chat",
         "base_url": "https://api.deepseek.com/v1",
         "api_key_env": "DEEPSEEK_API_KEY", "batch_pause": 1,

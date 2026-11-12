@@ -232,7 +232,7 @@ def test_list_history_reports_model_and_study_count(client, history_dir):
     items = resp.json()
     assert [i["filename"] for i in items] == ["Video_20240101_abc123xyz.json"]
     assert items[0]["model"] == "deepseek-chat"
-    assert items[0]["modelName"] == "DeepSeek Chat"
+    assert items[0]["modelName"] == "DeepSeek-V4.1-Flash"
     assert items[0]["studyCount"] == 3
 
 
