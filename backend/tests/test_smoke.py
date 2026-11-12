@@ -194,6 +194,7 @@ def test_process_video_non_streaming(client, history_dir, monkeypatch):
     [
         ("", True),
         (None, True),
+        ("   \n\t ", True),
         (translate.SUMMARY_ERROR_TEXT, True),
         ("- 核心观点一\n- 核心观点二", False),
     ],

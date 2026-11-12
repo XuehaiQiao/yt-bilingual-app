@@ -23,8 +23,8 @@ SUMMARY_ERROR_TEXT = "无法生成总结，请稍后再试或检查 API 配额�
 
 
 def summary_needs_refresh(summary: str | None) -> bool:
-    """缓存里的总结是空的/失败占位时，需要重新生成。"""
-    return not summary or summary.strip() == SUMMARY_ERROR_TEXT
+    """缓存里的总结是空的/全是空白/失败占位时，需要重新生成。"""
+    return not summary or not summary.strip() or summary.strip() == SUMMARY_ERROR_TEXT
 
 
 def _norm_id(v):
