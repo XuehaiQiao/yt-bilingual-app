@@ -230,7 +230,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                     {/* Left Column: Recent Learning */}
                     <div className="md:col-span-7 flex flex-col gap-6">
                         {/* History Card */}
-                        <TiltCard className="glass-panel rounded-3xl p-6 h-full overflow-hidden group">
+                        <TiltCard className="glass-panel rounded-3xl p-6 flex-1 overflow-hidden group">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-2 text-zinc-100">
                                     <Clock className="w-5 h-5" />
@@ -308,7 +308,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                         </TiltCard>
 
                         {/* Local Shows Section */}
-                        <TiltCard className="glass-panel rounded-3xl p-6 overflow-hidden">
+                        <TiltCard className="glass-panel rounded-3xl p-6 shrink-0 overflow-hidden">
                              <div className="flex items-center gap-2 mb-6 text-zinc-100">
                                 <Tv className="w-5 h-5 text-blue-400" />
                                 <h3 className="text-[17px] font-semibold tracking-tight">Local Shows</h3>
