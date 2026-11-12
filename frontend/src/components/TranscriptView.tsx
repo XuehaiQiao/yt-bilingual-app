@@ -28,6 +28,10 @@ interface TranscriptViewProps {
     translationMode?: TranslationMode;
     dictation?: boolean;
     onWordLookup?: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
+    /** Draw the hairline divider on the left edge — only when the transcript
+     *  is a right-hand pane. A stacked transcript (under the video) has no
+     *  left edge to divide, so the video view passes false there. */
+    borderLeft?: boolean;
 }
 
 // How long auto-follow stays suspended after the user scrolls manually
@@ -42,7 +46,8 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
     onToggleFavorite,
     translationMode,
     dictation,
-    onWordLookup
+    onWordLookup,
+    borderLeft = true,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const lastUserScrollRef = useRef(0);
@@ -86,7 +91,7 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
     return (
         <div
             ref={containerRef}
-            className="h-full overflow-y-auto bg-transparent border-l border-white/5 custom-scrollbar px-6 py-6 relative"
+            className={`h-full overflow-y-auto bg-transparent custom-scrollbar px-6 py-6 relative ${borderLeft ? 'border-l border-white/5' : ''}`}
         >
             <div className="space-y-1.5 pb-[45vh]">
                 {transcript.map((item, index) => {

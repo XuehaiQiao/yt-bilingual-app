@@ -1,7 +1,7 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff } from 'lucide-react';
+import { Star, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InputScreen } from './components/InputScreen';
 import { VideoPlayer } from './components/VideoPlayer';
@@ -15,6 +15,17 @@ import { segToPlain, CHUNK_STYLE, type Sentence, type SegChunk } from './lib/sen
 import { toast, describeApiError } from './lib/toast';
 import { consumeSseStream, findActiveIndex, isUntranslated, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from './lib/transcript';
 import { loadVocabLevel, loadModel, saveModel } from './lib/settings';
+import {
+  clampSplitRatio,
+  DEFAULT_SPLIT_RATIO,
+  loadSplitRatio,
+  loadTranscriptLayout,
+  MAX_SPLIT_RATIO,
+  MIN_SPLIT_RATIO,
+  saveSplitRatio,
+  saveTranscriptLayout,
+  type TranscriptLayout,
+} from './lib/layout';
 import { getProgress, saveProgress } from './lib/progress';
 import ReactMarkdown from 'react-markdown';
 
@@ -56,6 +67,12 @@ function App() {
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isVocabOpen, setIsVocabOpen] = useState(false);
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
+  // Video-view layout: transcript placement (`stacked` under the video vs
+  // `split` docked right) and the draggable left-column ratio. Both persist.
+  const [transcriptLayout, setTranscriptLayout] = useState<TranscriptLayout>(loadTranscriptLayout);
+  const [leftRatio, setLeftRatio] = useState<number>(loadSplitRatio);
+  const [isResizing, setIsResizing] = useState(false);
+  const isTranscriptExpanded = transcriptLayout === 'split';
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
   const fullscreenWrapperRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -85,6 +102,37 @@ function App() {
   useEffect(() => {
     localStorage.setItem(TRANSLATION_MODE_KEY, translationMode);
   }, [translationMode]);
+
+  // Layout preferences: write the transcript placement immediately, and the
+  // split ratio once a drag settles (no localStorage churn on every frame).
+  useEffect(() => {
+    saveTranscriptLayout(transcriptLayout);
+  }, [transcriptLayout]);
+  useEffect(() => {
+    if (!isResizing) saveSplitRatio(leftRatio);
+  }, [leftRatio, isResizing]);
+
+  // While dragging the divider a transparent shield covers the page (and the
+  // video iframe, which would otherwise swallow pointermove). Releasing
+  // anywhere — including outside the window — ends the drag.
+  useEffect(() => {
+    if (!isResizing) return;
+    const stop = () => setIsResizing(false);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+    window.addEventListener('blur', stop);
+    const prevUserSelect = document.body.style.userSelect;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+    return () => {
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+      window.removeEventListener('blur', stop);
+      document.body.style.userSelect = prevUserSelect;
+      document.body.style.cursor = prevCursor;
+    };
+  }, [isResizing]);
 
   // Streaming translation: progress info + abort handle + deferred seek
   const [translationProgress, setTranslationProgress] = useState<{ done: number; total: number; stage?: string } | null>(null);
@@ -575,6 +623,26 @@ function App() {
     });
   }, [transcript, currentTime]);
 
+  // --- Resizable split: pointer drag + keyboard nudging on the divider ---
+  const handleResizeMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const row = fullscreenWrapperRef.current;
+    if (!row) return;
+    const rect = row.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    setLeftRatio(clampSplitRatio(((e.clientX - rect.left) / rect.width) * 100));
+  }, []);
+
+  const handleDividerKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    let next: number | null = null;
+    if (e.key === 'ArrowLeft') next = leftRatio - 2;
+    else if (e.key === 'ArrowRight') next = leftRatio + 2;
+    else if (e.key === 'Home') next = MIN_SPLIT_RATIO;
+    else if (e.key === 'End') next = MAX_SPLIT_RATIO;
+    else return;
+    e.preventDefault();
+    setLeftRatio(clampSplitRatio(next));
+  };
+
   // Single-sentence loop: jump back when playback passes the pinned block
   useEffect(() => {
     if (!loopEnabled || !loopBlockRef.current) return;
@@ -701,6 +769,381 @@ function App() {
     </div>
   );
 
+  // ── Video view building blocks ──────────────────────────────────────────
+  // The transcript pane and the summary pane each have two possible homes
+  // (below the video vs the right sidebar), so they are built once and placed
+  // by the layout below instead of being duplicated.
+
+  const videoStage = (
+    <div
+      data-testid="video-area"
+      className="flex-none w-full aspect-video max-h-[62%] min-h-[180px] relative bg-transparent"
+    >
+      <VideoPlayer
+        videoId={videoId}
+        seekCommand={seekCommand}
+        onTimeUpdate={handleTimeUpdate}
+        wrapperRef={fullscreenWrapperRef}
+        playbackRate={playbackRate}
+        playToggleCommand={playToggleCommand}
+      />
+    </div>
+  );
+
+  const channelBar = metadata?.channel ? (
+    <div className="glass-panel border-t-0 border-r border-white/5 px-6 py-4 flex items-center justify-between shrink-0 z-10">
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-medium text-zinc-500 whitespace-nowrap">频道：</span>
+        <button
+          onClick={() => setSelectedChannel(metadata.channel)}
+          className="inline-flex items-center h-8 px-3 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 hover:border-white/10 text-blue-400 text-sm font-medium whitespace-nowrap transition-colors"
+        >
+          <span className="truncate max-w-[160px]">{metadata.channel}</span>
+        </button>
+        {metadata.channel_url && (
+          <button
+            onClick={handleToggleSubscription}
+            className={`inline-flex items-center h-8 px-3 text-sm font-medium rounded-lg border whitespace-nowrap transition-colors ${subscriptions.some(s => s.id === metadata.channel_url)
+              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15'
+              : 'bg-zinc-800/60 text-zinc-300 border-white/5 hover:text-zinc-100 hover:bg-zinc-700/60'
+              }`}
+          >
+            {subscriptions.some(s => s.id === metadata.channel_url) ? '已订阅 ✓' : '订阅 +'}
+          </button>
+        )}
+      </div>
+      <h3 className="text-white font-medium text-sm truncate ml-4 max-w-[40%] opacity-80" title={metadata.title}>
+        {metadata.title}
+      </h3>
+    </div>
+  ) : null;
+
+  const summaryBody = (
+    <>
+      {summary ? (
+        <>
+          <button
+            onClick={() => setIsSummaryOpen(prev => !prev)}
+            className="flex items-center justify-between w-full pb-2 cursor-pointer group"
+          >
+            <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 group-hover:text-purple-300 transition-colors">视频总结</h2>
+            <ChevronDown
+              className={`w-4 h-4 text-zinc-400 group-hover:text-purple-400 transition-transform duration-300 ${isSummaryOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+          <div
+            className={`grid transition-[grid-template-rows,opacity] duration-300 ease-apple ${isSummaryOpen ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'}`}
+          >
+            <div className="overflow-hidden min-h-0 text-zinc-300 text-sm leading-relaxed space-y-2">
+              <ReactMarkdown
+                components={{
+                  h1: ({ node, ...props }) => <h1 className="text-base font-semibold text-zinc-100 mt-5 mb-2" {...props} />,
+                  h2: ({ node, ...props }) => <h2 className="text-[15px] font-semibold text-zinc-100 mt-4 mb-1.5" {...props} />,
+                  h3: ({ node, ...props }) => <h3 className="text-sm font-semibold text-zinc-300 mt-3 mb-1.5" {...props} />,
+                  p: ({ node, ...props }) => <p className="text-zinc-300 leading-relaxed" {...props} />,
+                  ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-1 text-zinc-300 marker:text-zinc-600" {...props} />,
+                  ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-1 text-zinc-300 marker:text-zinc-600" {...props} />,
+                  li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+                  strong: ({ node, ...props }) => <strong className="font-semibold text-zinc-100" {...props} />,
+                  code: ({ node, className, children, ...props }: any) => {
+                    const isInline = !className && !String(children).includes('\n');
+                    return isInline
+                      ? <code className="bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded text-xs border border-white/10 font-mono" {...props}>{children}</code>
+                      : <code className="block bg-zinc-800 text-zinc-300 p-3 rounded-lg text-xs overflow-x-auto my-2 border border-white/10 font-mono" {...props}>{children}</code>;
+                  }
+                }}
+              >
+                {summary}
+              </ReactMarkdown>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 mb-2 pb-2">使用提示</h2>
+          <ul className="text-zinc-400 space-y-2 list-disc list-inside">
+            <li>点击字幕任意句子，视频会跳转到对应时间点</li>
+            <li>点击句中任意单词可查看释义、发音，并一键加入生词本</li>
+            <li>快捷键：空格 播放/暂停 · ← → 上下句 · R 重播本句 · L 单句循环</li>
+            <li>用「听写模式」先听后看，训练精听</li>
+          </ul>
+        </>
+      )}
+
+      {/* Vocabulary Summary Accordion */}
+      {transcript.length > 0 && (() => {
+        const seen = new Set<string>();
+        const vocabItems: { en: string; zh: string; start: number; en_text: string; zh_text: string; highlights: any[] }[] = [];
+        for (const block of transcript) {
+          if (block.highlights) {
+            for (const h of block.highlights) {
+              const key = `${h.en_word}|||${h.zh_word}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                vocabItems.push({
+                  en: h.en_word,
+                  zh: h.zh_word,
+                  start: block.start,
+                  en_text: block.en_text,
+                  zh_text: block.zh_text,
+                  highlights: block.highlights
+                });
+              }
+            }
+          }
+        }
+        if (vocabItems.length === 0) return null;
+        return (
+          <div className="mt-6 pt-6 border-t border-white/5">
+            <button
+              onClick={() => setIsVocabOpen(prev => !prev)}
+              className="flex items-center justify-between w-full cursor-pointer group"
+            >
+              <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 group-hover:text-purple-300 transition-colors">
+                生词总览
+                <span className="ml-2 text-sm font-normal text-zinc-500 tabular-nums">({vocabItems.length})</span>
+              </h2>
+              <ChevronDown
+                className={`w-4 h-4 text-zinc-400 group-hover:text-purple-400 transition-transform duration-300 ${isVocabOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            <div
+              className={`grid transition-[grid-template-rows,opacity] duration-300 ease-apple ${isVocabOpen ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0'}`}
+            >
+              <div className="overflow-hidden min-h-0 space-y-1">
+                {vocabItems.map((item, idx) => {
+                  const vocabId = `vocab-${videoId}-${item.en.replace(/\s+/g, '-')}`;
+                  const isFav = favorites.some(f => f.id === vocabId);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setSeekCommand({ time: item.start, timestamp: Date.now() })}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-zinc-800/80 transition-colors group/row cursor-pointer"
+                    >
+                      <span className="text-purple-300 font-medium text-sm text-left group-hover/row:text-purple-200 transition-colors flex-1">{item.en}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-zinc-400 text-sm text-right group-hover/row:text-zinc-300 transition-colors">{item.zh}</span>
+                        <div
+                          onClick={(e) => handleToggleVocabFavorite(e, item)}
+                          className={`p-1.5 rounded-lg hover:bg-white/5 transition-[opacity,background-color,color] duration-200 ${isFav ? 'text-amber-400' : 'text-zinc-500 opacity-0 group-hover/row:opacity-100 [@media(pointer:coarse)]:opacity-100 hover:text-amber-400'}`}
+                        >
+                          <Star className="w-4 h-4" fill={isFav ? "currentColor" : "none"} />
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </>
+  );
+
+  const transcriptContent = (
+    <>
+      {/* Collapse Toggle Button for Local Subtitles (only in split mode) */}
+      {!pipWindow && metadata?.is_local_subtitle && (
+        <button
+          onClick={() => setIsLeftCollapsed(prev => !prev)}
+          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-50 p-1.5 bg-zinc-900/80 backdrop-blur-md border border-white/10 border-l-0 rounded-r-lg hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 transition-colors shadow-lg shadow-black/40"
+          title={isLeftCollapsed ? "展开侧栏" : "收起侧栏"}
+        >
+          {isLeftCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+        </button>
+      )}
+
+      {/* Local subtitle playback controls */}
+      {metadata?.is_local_subtitle && (
+        <div className="flex-none flex items-center justify-between px-4 py-2 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (isSubtitlePlaying) {
+                  pauseSubtitleTimer();
+                } else {
+                  startSubtitleTimer(currentTime);
+                }
+              }}
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-colors duration-200 active:scale-[0.95] bg-white/10 text-zinc-100 hover:bg-white/15 ring-1 ring-white/15"
+            >
+              {isSubtitlePlaying ? (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </button>
+            <span className="text-zinc-400 text-xs font-medium">
+              {metadata?.title || '本地字幕'}
+            </span>
+          </div>
+          <span className="text-[11px] font-medium text-zinc-500 tabular-nums">
+            {Math.floor(currentTime / 60).toString().padStart(2, '0')}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}
+          </span>
+        </div>
+      )}
+
+      {/* Transcript toolbar: translation mode, loop, speed */}
+      <div className="flex-none flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20">
+        <span className="text-xs text-zinc-500 font-medium shrink-0 whitespace-nowrap">中文译文</span>
+        <div className="inline-flex items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5">
+          {([
+            { key: 'all', label: '全显' },
+            { key: 'active', label: '当前句' },
+            { key: 'hidden', label: '隐藏' },
+          ] as { key: TranslationMode; label: string }[]).map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => setTranslationMode(opt.key)}
+              className={`relative px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
+                translationMode === opt.key
+                  ? 'text-zinc-900'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              {translationMode === opt.key && (
+                <motion.span
+                  layoutId="transModeThumb"
+                  className="absolute inset-0 bg-zinc-100 rounded-md shadow-sm"
+                  transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                />
+              )}
+              <span className="relative z-10">{opt.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="w-px h-4 bg-white/10 shrink-0" />
+
+        <button
+          onClick={() => {
+            setDictationMode(prev => {
+              if (!prev) setTranslationMode('hidden'); // 听写时默认全部隐藏
+              return !prev;
+            });
+          }}
+          className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border transition-colors shrink-0 ${
+            dictationMode
+              ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+              : 'bg-zinc-800/80 text-zinc-400 border-white/5 hover:text-zinc-200'
+          }`}
+          title="听写模式：隐藏英文原文，先听后看，点击句子揭示"
+        >
+          <EyeOff className="w-3.5 h-3.5" />
+          听写模式
+        </button>
+
+        <button
+          onClick={toggleLoop}
+          className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border transition-colors shrink-0 ${
+            loopEnabled
+              ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+              : 'bg-zinc-800/80 text-zinc-400 border-white/5 hover:text-zinc-200'
+          }`}
+          title="单句循环（快捷键 L）"
+        >
+          <Repeat className="w-3.5 h-3.5" />
+          单句循环
+        </button>
+
+        {!metadata?.is_local_subtitle && (
+          <select
+            value={playbackRate}
+            onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+            className="appearance-none bg-zinc-800/80 text-zinc-300 text-xs font-medium rounded-lg border border-white/5 h-7 pl-2.5 pr-6 outline-none cursor-pointer hover:text-zinc-100 shrink-0 bg-no-repeat bg-[right_0.5rem_center] bg-[length:10px] bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2010%206%22><path%20d=%22M1%201l4%204%204-4%22%20stroke=%22%2371717a%22%20stroke-width=%221.5%22%20fill=%22none%22%20stroke-linecap=%22round%22/></svg>')]"
+            title="播放速度"
+          >
+            {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => (
+              <option key={r} value={r}>{r}x</option>
+            ))}
+          </select>
+        )}
+
+        <div className="flex-1" />
+
+        <span
+          className="hidden lg:flex items-center gap-1 text-[11px] text-zinc-600 shrink-0 cursor-default"
+          title="空格：播放/暂停 · ← →：上一句/下一句 · R：重播本句 · L：单句循环"
+        >
+          <Keyboard className="w-3.5 h-3.5" /> 空格 ← → R L
+        </span>
+
+        {/* Transcript placement toggle: tucked under the video ↔ docked right */}
+        {!pipWindow && !metadata?.is_local_subtitle && (
+          <button
+            type="button"
+            data-testid="transcript-layout-toggle"
+            onClick={() => setTranscriptLayout(prev => (prev === 'split' ? 'stacked' : 'split'))}
+            aria-pressed={isTranscriptExpanded}
+            title={isTranscriptExpanded
+              ? '字幕收回视频下方，视频总结与生词移到右侧'
+              : '字幕展开到右侧，视频总结与生词移到视频下方'}
+            className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border border-white/5 bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60 transition-colors shrink-0"
+          >
+            {isTranscriptExpanded
+              ? <PanelRightClose className="w-3.5 h-3.5" />
+              : <PanelRightOpen className="w-3.5 h-3.5" />}
+            <span>{isTranscriptExpanded ? '收起' : '展开'}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Streaming translation progress */}
+      {translationProgress && (
+        <div className="flex-none flex items-center gap-3 px-4 py-2 bg-zinc-900/80 backdrop-blur-md backdrop-saturate-150 border-b border-white/5 z-20">
+          <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
+          <span className="text-xs text-zinc-300 font-medium tabular-nums flex-1 truncate">
+            {translationProgress.stage === 'summary'
+              ? 'AI 正在生成视频总结…'
+              : `字幕翻译中 ${translationProgress.done}/${translationProgress.total} 句 — 可以先开始观看`}
+          </span>
+          {translationProgress.total > 0 && (
+            <div className="w-24 h-1.5 rounded-full bg-zinc-800 overflow-hidden shrink-0">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-[width] duration-500 ease-out"
+                style={{ width: `${Math.round((translationProgress.done / translationProgress.total) * 100)}%` }}
+              />
+            </div>
+          )}
+          <button
+            onClick={() => {
+              cancelTranslationStream();
+              toast.info('已停止翻译；已完成的部分已保存，下次打开会自动续译。');
+            }}
+            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-red-400 transition-colors shrink-0"
+            title="停止翻译"
+          >
+            <XCircle className="w-3.5 h-3.5" /> 停止
+          </button>
+        </div>
+      )}
+
+      <div className="relative flex-1 min-h-0 bg-transparent">
+        <div className="absolute top-0 inset-x-0 h-8 bg-gradient-to-b from-[#09090b] to-transparent z-10 pointer-events-none"></div>
+        <TranscriptView
+          transcript={transcript}
+          activeIndex={activeTranscriptIndex}
+          videoId={videoId}
+          favorites={favoriteIds}
+          onTranscriptClick={handleTranscriptClick}
+          onToggleFavorite={handleToggleFavorite}
+          translationMode={translationMode}
+          dictation={dictationMode}
+          onWordLookup={handleWordLookup}
+          borderLeft={Boolean(metadata?.is_local_subtitle) || isTranscriptExpanded}
+        />
+        <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[#09090b] to-transparent z-10 pointer-events-none"></div>
+      </div>
+    </>
+  );
+
+
   return (
     <div className="h-screen w-full flex flex-col bg-[#09090b] overflow-hidden text-zinc-100 selection:bg-purple-500/30">
       {renderTopBar()}
@@ -750,373 +1193,143 @@ function App() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
           ref={fullscreenWrapperRef}
-          className="flex-1 flex flex-col md:flex-row overflow-hidden relative bg-transparent group/wrapper">
-          {/* Left Column: Video/Summary */}
-          <div className={`w-full ${metadata?.is_local_subtitle ? 'hidden md:flex' : ''} ${
-            pipWindow ? 'md:w-full' : (isLeftCollapsed && metadata?.is_local_subtitle ? 'md:w-0 md:opacity-0 md:overflow-hidden' : 'md:w-1/2')
-          } transition-[width,opacity] duration-300 ease-apple h-1/2 md:h-full flex flex-col shrink-0`}>
-            {!metadata?.is_local_subtitle && (
-              <>
-            <div className="flex-1 min-h-0 relative bg-transparent">
-              <VideoPlayer
-                videoId={videoId}
-                seekCommand={seekCommand}
-                onTimeUpdate={handleTimeUpdate}
-                wrapperRef={fullscreenWrapperRef}
-                playbackRate={playbackRate}
-                playToggleCommand={playToggleCommand}
-              />
-            </div>
-            {metadata?.channel && (
-              <div className="glass-panel border-t-0 border-r border-white/5 px-6 py-4 flex items-center justify-between shrink-0 z-10">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-zinc-500 whitespace-nowrap">频道：</span>
-                  <button
-                    onClick={() => setSelectedChannel(metadata.channel)}
-                    className="inline-flex items-center h-8 px-3 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 hover:border-white/10 text-blue-400 text-sm font-medium whitespace-nowrap transition-colors"
-                  >
-                    <span className="truncate max-w-[160px]">{metadata.channel}</span>
-                  </button>
-                  {metadata.channel_url && (
-                    <button
-                      onClick={handleToggleSubscription}
-                      className={`inline-flex items-center h-8 px-3 text-sm font-medium rounded-lg border whitespace-nowrap transition-colors ${subscriptions.some(s => s.id === metadata.channel_url)
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/15'
-                        : 'bg-zinc-800/60 text-zinc-300 border-white/5 hover:text-zinc-100 hover:bg-zinc-700/60'
-                        }`}
-                    >
-                      {subscriptions.some(s => s.id === metadata.channel_url) ? '已订阅 ✓' : '订阅 +'}
-                    </button>
-                  )}
+          className="flex-1 flex flex-col md:flex-row overflow-hidden max-md:overflow-y-auto relative bg-transparent group/wrapper">
+          {metadata?.is_local_subtitle ? (
+            <>
+              {/* Local subtitles keep their existing split: summary on the
+                  left (collapsible), transcript on the right. */}
+              <div className={`w-full hidden md:flex ${
+                pipWindow
+                  ? 'md:w-full'
+                  : isLeftCollapsed
+                    ? 'md:w-0 md:opacity-0 md:overflow-hidden'
+                    : 'md:w-1/2'
+              } transition-[width,opacity] duration-300 ease-apple h-1/2 md:h-full flex flex-col shrink-0`}>
+                <div className="p-6 flex-1 min-h-0 bg-zinc-900/60 backdrop-blur-xl border-white/5 overflow-y-auto custom-scrollbar border-none">
+                  {summaryBody}
                 </div>
-                <h3 className="text-white font-medium text-sm truncate ml-4 max-w-[40%] opacity-80" title={metadata.title}>
-                  {metadata.title}
-                </h3>
               </div>
-            )}
+              {pipWindow ? (
+                createPortal(
+                  <div className="w-full h-full flex flex-col relative bg-[#09090b]">
+                    {transcriptContent}
+                  </div>,
+                  pipWindow.document.body
+                )
+              ) : (
+                <div
+                  data-testid="transcript-column"
+                  className={`w-full ${isLeftCollapsed ? 'md:w-full' : 'md:w-1/2'} transition-[width,opacity] duration-300 ease-apple h-1/2 md:h-full flex flex-col relative border-t md:border-t-0 border-white/5 bg-transparent`}
+                >
+                  {transcriptContent}
+                </div>
+              )}
             </>
-          )}
-            <div className={`p-6 flex-1 min-h-0 bg-zinc-900/60 backdrop-blur-xl border-white/5 overflow-y-auto custom-scrollbar ${metadata?.is_local_subtitle ? 'border-none' : 'border-t hidden md:block'}`}>
-              {summary ? (
-                <>
-                  <button
-                    onClick={() => setIsSummaryOpen(prev => !prev)}
-                    className="flex items-center justify-between w-full pb-2 cursor-pointer group"
-                  >
-                    <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 group-hover:text-purple-300 transition-colors">视频总结</h2>
-                    <ChevronDown
-                      className={`w-4 h-4 text-zinc-400 group-hover:text-purple-400 transition-transform duration-300 ${isSummaryOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
+          ) : (
+            <>
+              {/* Left column: video + whatever sits beneath it — the transcript
+                  by default, the summary/vocabulary when the transcript is
+                  expanded to the right. */}
+              <div
+                data-testid="video-column"
+                style={{ '--left-w': `${leftRatio}%` } as React.CSSProperties}
+                className={`w-full max-md:h-auto md:h-full ${
+                  pipWindow ? 'md:w-full' : 'md:w-[var(--left-w)]'
+                } flex flex-col min-w-0 shrink-0`}
+              >
+                {videoStage}
+                {channelBar}
+
+                {pipWindow || isTranscriptExpanded ? (
                   <div
-                    className={`grid transition-[grid-template-rows,opacity] duration-300 ease-apple ${isSummaryOpen ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0'}`}
+                    data-testid="summary-panel"
+                    className="p-6 bg-zinc-900/60 backdrop-blur-xl border-t border-white/5 md:flex-1 md:min-h-0 md:overflow-y-auto custom-scrollbar"
                   >
-                    <div className="overflow-hidden min-h-0 text-zinc-300 text-sm leading-relaxed space-y-2">
-                      <ReactMarkdown
-                        components={{
-                          h1: ({ node, ...props }) => <h1 className="text-base font-semibold text-zinc-100 mt-5 mb-2" {...props} />,
-                          h2: ({ node, ...props }) => <h2 className="text-[15px] font-semibold text-zinc-100 mt-4 mb-1.5" {...props} />,
-                          h3: ({ node, ...props }) => <h3 className="text-sm font-semibold text-zinc-300 mt-3 mb-1.5" {...props} />,
-                          p: ({ node, ...props }) => <p className="text-zinc-300 leading-relaxed" {...props} />,
-                          ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-1 text-zinc-300 marker:text-zinc-600" {...props} />,
-                          ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-1 text-zinc-300 marker:text-zinc-600" {...props} />,
-                          li: ({ node, ...props }) => <li className="pl-1" {...props} />,
-                          strong: ({ node, ...props }) => <strong className="font-semibold text-zinc-100" {...props} />,
-                          code: ({ node, className, children, ...props }: any) => {
-                            const isInline = !className && !String(children).includes('\n');
-                            return isInline
-                              ? <code className="bg-zinc-800 text-zinc-200 px-1.5 py-0.5 rounded text-xs border border-white/10 font-mono" {...props}>{children}</code>
-                              : <code className="block bg-zinc-800 text-zinc-300 p-3 rounded-lg text-xs overflow-x-auto my-2 border border-white/10 font-mono" {...props}>{children}</code>;
-                          }
-                        }}
-                      >
-                        {summary}
-                      </ReactMarkdown>
-                    </div>
+                    {summaryBody}
                   </div>
-                </>
+                ) : (
+                  <div
+                    data-testid="transcript-column"
+                    className="max-md:h-[52vh] md:flex-1 md:min-h-0 flex flex-col relative border-t border-white/5 bg-transparent"
+                  >
+                    {transcriptContent}
+                  </div>
+                )}
+              </div>
+
+              {pipWindow ? (
+                createPortal(
+                  <div className="w-full h-full flex flex-col relative bg-[#09090b]">
+                    {transcriptContent}
+                  </div>,
+                  pipWindow.document.body
+                )
               ) : (
                 <>
-                  <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 mb-2 pb-2">使用提示</h2>
-                  <ul className="text-zinc-400 space-y-2 list-disc list-inside">
-                    <li>点击右侧任意句子，视频会跳转到对应时间点</li>
-                    <li>点击句中任意单词可查看释义、发音，并一键加入生词本</li>
-                    <li>快捷键：空格 播放/暂停 · ← → 上下句 · R 重播本句 · L 单句循环</li>
-                    <li>用「听写模式」先听后看，训练精听</li>
-                  </ul>
-                </>
-              )}
-
-              {/* Vocabulary Summary Accordion */}
-              {transcript.length > 0 && (() => {
-                const seen = new Set<string>();
-                const vocabItems: { en: string; zh: string; start: number; en_text: string; zh_text: string; highlights: any[] }[] = [];
-                for (const block of transcript) {
-                  if (block.highlights) {
-                    for (const h of block.highlights) {
-                      const key = `${h.en_word}|||${h.zh_word}`;
-                      if (!seen.has(key)) {
-                        seen.add(key);
-                        vocabItems.push({ 
-                          en: h.en_word, 
-                          zh: h.zh_word, 
-                          start: block.start,
-                          en_text: block.en_text,
-                          zh_text: block.zh_text,
-                          highlights: block.highlights
-                        });
-                      }
-                    }
-                  }
-                }
-                if (vocabItems.length === 0) return null;
-                return (
-                  <div className="mt-6 pt-6 border-t border-white/5">
-                    <button
-                      onClick={() => setIsVocabOpen(prev => !prev)}
-                      className="flex items-center justify-between w-full cursor-pointer group"
-                    >
-                      <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 group-hover:text-purple-300 transition-colors">
-                        生词总览
-                        <span className="ml-2 text-sm font-normal text-zinc-500 tabular-nums">({vocabItems.length})</span>
-                      </h2>
-                      <ChevronDown
-                        className={`w-4 h-4 text-zinc-400 group-hover:text-purple-400 transition-transform duration-300 ${isVocabOpen ? 'rotate-180' : ''}`}
-                      />
-                    </button>
-                    <div
-                      className={`grid transition-[grid-template-rows,opacity] duration-300 ease-apple ${isVocabOpen ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0'}`}
-                    >
-                      <div className="overflow-hidden min-h-0 space-y-1">
-                        {vocabItems.map((item, idx) => {
-                          const vocabId = `vocab-${videoId}-${item.en.replace(/\s+/g, '-')}`;
-                          const isFav = favorites.some(f => f.id === vocabId);
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => setSeekCommand({ time: item.start, timestamp: Date.now() })}
-                              className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-zinc-800/80 transition-colors group/row cursor-pointer"
-                            >
-                              <span className="text-purple-300 font-medium text-sm text-left group-hover/row:text-purple-200 transition-colors flex-1">{item.en}</span>
-                              <div className="flex items-center gap-3">
-                                <span className="text-zinc-400 text-sm text-right group-hover/row:text-zinc-300 transition-colors">{item.zh}</span>
-                                <div 
-                                  onClick={(e) => handleToggleVocabFavorite(e, item)}
-                                  className={`p-1.5 rounded-lg hover:bg-white/5 transition-[opacity,background-color,color] duration-200 ${isFav ? 'text-amber-400' : 'text-zinc-500 opacity-0 group-hover/row:opacity-100 [@media(pointer:coarse)]:opacity-100 hover:text-amber-400'}`}
-                                >
-                                  <Star className="w-4 h-4" fill={isFav ? "currentColor" : "none"} />
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Transcript Column: fixed to right half, or floating popup */}
-          {(() => {
-            const transcriptContent = (
-              <>
-                {/* Collapse Toggle Button for Local Subtitles (only in split mode) */}
-                {!pipWindow && metadata?.is_local_subtitle && (
-                  <button
-                    onClick={() => setIsLeftCollapsed(prev => !prev)}
-                    className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-50 p-1.5 bg-zinc-900/80 backdrop-blur-md border border-white/10 border-l-0 rounded-r-lg hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 transition-colors shadow-lg shadow-black/40"
-                    title={isLeftCollapsed ? "展开侧栏" : "收起侧栏"}
-                  >
-                    {isLeftCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-                  </button>
-                )}
-
-                {/* Local subtitle playback controls */}
-                {metadata?.is_local_subtitle && (
-                  <div className="flex-none flex items-center justify-between px-4 py-2 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => {
-                          if (isSubtitlePlaying) {
-                            pauseSubtitleTimer();
-                          } else {
-                            startSubtitleTimer(currentTime);
-                          }
-                        }}
-                        className="w-9 h-9 rounded-full flex items-center justify-center transition-colors duration-200 active:scale-[0.95] bg-white/10 text-zinc-100 hover:bg-white/15 ring-1 ring-white/15"
-                      >
-                        {isSubtitlePlaying ? (
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                            <rect x="6" y="4" width="4" height="16" rx="1" />
-                            <rect x="14" y="4" width="4" height="16" rx="1" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        )}
-                      </button>
-                      <span className="text-zinc-400 text-xs font-medium">
-                        {metadata?.title || '本地字幕'}
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-medium text-zinc-500 tabular-nums">
-                      {Math.floor(currentTime / 60).toString().padStart(2, '0')}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}
-                    </span>
-                  </div>
-                )}
-
-                {/* Transcript toolbar: translation mode, loop, speed */}
-                <div className="flex-none flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20">
-                  <span className="text-xs text-zinc-500 font-medium shrink-0 whitespace-nowrap">中文译文</span>
-                  <div className="inline-flex items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5">
-                    {([
-                      { key: 'all', label: '全显' },
-                      { key: 'active', label: '当前句' },
-                      { key: 'hidden', label: '隐藏' },
-                    ] as { key: TranslationMode; label: string }[]).map(opt => (
-                      <button
-                        key={opt.key}
-                        onClick={() => setTranslationMode(opt.key)}
-                        className={`relative px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
-                          translationMode === opt.key
-                            ? 'text-zinc-900'
-                            : 'text-zinc-400 hover:text-zinc-200'
-                        }`}
-                      >
-                        {translationMode === opt.key && (
-                          <motion.span
-                            layoutId="transModeThumb"
-                            className="absolute inset-0 bg-zinc-100 rounded-md shadow-sm"
-                            transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                          />
-                        )}
-                        <span className="relative z-10">{opt.label}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="w-px h-4 bg-white/10 shrink-0" />
-
-                  <button
-                    onClick={() => {
-                      setDictationMode(prev => {
-                        if (!prev) setTranslationMode('hidden'); // 听写时默认全部隐藏
-                        return !prev;
-                      });
+                  {/* Draggable split: desktop only. Drag changes the left
+                      column percentage within [MIN, MAX]; double-click or
+                      Home/End restore/reset it. */}
+                  <div
+                    data-testid="split-divider"
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="拖动调整视频与侧栏宽度"
+                    aria-valuemin={MIN_SPLIT_RATIO}
+                    aria-valuemax={MAX_SPLIT_RATIO}
+                    aria-valuenow={Math.round(leftRatio)}
+                    tabIndex={0}
+                    title="拖动调整左右宽度 · 双击恢复默认"
+                    onPointerDown={(e) => {
+                      if (e.button !== 0) return;
+                      e.preventDefault();
+                      setIsResizing(true);
                     }}
-                    className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border transition-colors shrink-0 ${
-                      dictationMode
-                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                        : 'bg-zinc-800/80 text-zinc-400 border-white/5 hover:text-zinc-200'
-                    }`}
-                    title="听写模式：隐藏英文原文，先听后看，点击句子揭示"
+                    onKeyDown={handleDividerKeyDown}
+                    onDoubleClick={() => setLeftRatio(DEFAULT_SPLIT_RATIO)}
+                    className="hidden md:flex relative w-2 flex-none cursor-col-resize touch-none select-none items-center justify-center group/divider"
                   >
-                    <EyeOff className="w-3.5 h-3.5" />
-                    听写模式
-                  </button>
+                    <span className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors duration-200 ${isResizing ? 'bg-blue-500/60' : 'bg-white/5 group-hover/divider:bg-white/10'}`} />
+                    <span className={`relative z-10 w-1 h-8 rounded-full transition-[background-color,opacity] duration-200 ${isResizing ? 'bg-blue-400/70' : 'bg-white/10 opacity-0 group-hover/divider:opacity-100 group-focus-visible/divider:opacity-100'}`} />
+                  </div>
 
-                  <button
-                    onClick={toggleLoop}
-                    className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border transition-colors shrink-0 ${
-                      loopEnabled
-                        ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
-                        : 'bg-zinc-800/80 text-zinc-400 border-white/5 hover:text-zinc-200'
-                    }`}
-                    title="单句循环（快捷键 L）"
+                  {/* Right column: summary sidebar by default, transcript when
+                      the transcript is expanded. */}
+                  <div
+                    data-testid="right-column"
+                    className="w-full md:flex-1 min-w-0 max-md:shrink-0 md:h-full flex flex-col relative border-t md:border-t-0 border-white/5 bg-transparent"
                   >
-                    <Repeat className="w-3.5 h-3.5" />
-                    单句循环
-                  </button>
-
-                  {!metadata?.is_local_subtitle && (
-                    <select
-                      value={playbackRate}
-                      onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
-                      className="appearance-none bg-zinc-800/80 text-zinc-300 text-xs font-medium rounded-lg border border-white/5 h-7 pl-2.5 pr-6 outline-none cursor-pointer hover:text-zinc-100 shrink-0 bg-no-repeat bg-[right_0.5rem_center] bg-[length:10px] bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2010%206%22><path%20d=%22M1%201l4%204%204-4%22%20stroke=%22%2371717a%22%20stroke-width=%221.5%22%20fill=%22none%22%20stroke-linecap=%22round%22/></svg>')]"
-                      title="播放速度"
-                    >
-                      {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => (
-                        <option key={r} value={r}>{r}x</option>
-                      ))}
-                    </select>
-                  )}
-
-                  <div className="flex-1" />
-
-                  <span
-                    className="hidden lg:flex items-center gap-1 text-[11px] text-zinc-600 shrink-0 cursor-default"
-                    title="空格：播放/暂停 · ← →：上一句/下一句 · R：重播本句 · L：单句循环"
-                  >
-                    <Keyboard className="w-3.5 h-3.5" /> 空格 ← → R L
-                  </span>
-                </div>
-
-                {/* Streaming translation progress */}
-                {translationProgress && (
-                  <div className="flex-none flex items-center gap-3 px-4 py-2 bg-zinc-900/80 backdrop-blur-md backdrop-saturate-150 border-b border-white/5 z-20">
-                    <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
-                    <span className="text-xs text-zinc-300 font-medium tabular-nums flex-1 truncate">
-                      {translationProgress.stage === 'summary'
-                        ? 'AI 正在生成视频总结…'
-                        : `字幕翻译中 ${translationProgress.done}/${translationProgress.total} 句 — 可以先开始观看`}
-                    </span>
-                    {translationProgress.total > 0 && (
-                      <div className="w-24 h-1.5 rounded-full bg-zinc-800 overflow-hidden shrink-0">
-                        <div
-                          className="h-full bg-blue-500 rounded-full transition-[width] duration-500 ease-out"
-                          style={{ width: `${Math.round((translationProgress.done / translationProgress.total) * 100)}%` }}
-                        />
+                    {isTranscriptExpanded ? (
+                      <div
+                        data-testid="transcript-column"
+                        className="h-[52vh] md:h-full md:flex-1 min-h-0 flex flex-col relative bg-transparent"
+                      >
+                        {transcriptContent}
+                      </div>
+                    ) : (
+                      <div
+                        data-testid="summary-panel"
+                        className="p-6 bg-zinc-900/60 backdrop-blur-xl overflow-y-auto custom-scrollbar md:h-full md:min-h-0"
+                      >
+                        {summaryBody}
                       </div>
                     )}
-                    <button
-                      onClick={() => {
-                        cancelTranslationStream();
-                        toast.info('已停止翻译；已完成的部分已保存，下次打开会自动续译。');
-                      }}
-                      className="flex items-center gap-1 text-xs text-zinc-400 hover:text-red-400 transition-colors shrink-0"
-                      title="停止翻译"
-                    >
-                      <XCircle className="w-3.5 h-3.5" /> 停止
-                    </button>
                   </div>
-                )}
+                </>
+              )}
+            </>
+          )}
 
-                <div className="relative flex-1 min-h-0 bg-transparent">
-                  <div className="absolute top-0 inset-x-0 h-8 bg-gradient-to-b from-[#09090b] to-transparent z-10 pointer-events-none"></div>
-                  <TranscriptView
-                    transcript={transcript}
-                    activeIndex={activeTranscriptIndex}
-                    videoId={videoId}
-                    favorites={favoriteIds}
-                    onTranscriptClick={handleTranscriptClick}
-                    onToggleFavorite={handleToggleFavorite}
-                    translationMode={translationMode}
-                    dictation={dictationMode}
-                    onWordLookup={handleWordLookup}
-                  />
-                  <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[#09090b] to-transparent z-10 pointer-events-none"></div>
-                </div>
-              </>
-            );
-
-            if (pipWindow) {
-              return createPortal(
-                <div className="w-full h-full flex flex-col relative bg-[#09090b]">
-                  {transcriptContent}
-                </div>,
-                pipWindow.document.body
-              );
-            }
-
-            return (
-              <div className={`w-full ${isLeftCollapsed && metadata?.is_local_subtitle ? 'md:w-full' : 'md:w-1/2'} transition-[width,opacity] duration-300 ease-apple h-1/2 md:h-full flex flex-col relative border-t md:border-t-0 border-white/5 bg-transparent`}>
-                {transcriptContent}
-              </div>
-            );
-          })()}
+          {/* Drag shield: covers the video iframe (which would otherwise
+              swallow pointermove) and suppresses text selection while dragging. */}
+          {isResizing && createPortal(
+            <div
+              data-testid="resize-shield"
+              className="fixed inset-0 z-[60] cursor-col-resize select-none"
+              onPointerMove={handleResizeMove}
+              onContextMenu={(e) => e.preventDefault()}
+            />,
+            document.body
+          )}
         </motion.div>
       )}
 
