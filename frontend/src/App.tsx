@@ -1,8 +1,10 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause } from 'lucide-react';
+import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AuthScreen } from './components/AuthScreen';
+import { AuthProvider, useAuth } from './lib/auth';
 import { InputScreen } from './components/InputScreen';
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
@@ -66,7 +68,8 @@ function formatClock(seconds: number): string {
   return `${mm}:${ss}`;
 }
 
-function App() {
+function AppContent() {
+  const { user, logout } = useAuth();
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
@@ -799,7 +802,7 @@ function App() {
   }, []);
 
   const renderTopBar = () => (
-    <div className="flex-none h-16 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 px-6 flex items-center justify-between z-20">
+    <div data-testid="top-bar" className="flex-none h-16 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 px-6 flex items-center justify-between z-20">
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-10 h-10 rounded-[10px] overflow-hidden shadow-md shadow-black/40 ring-1 ring-white/10 cursor-pointer flex-shrink-0" onClick={handleGoHome}>
             <img src="/hero_icon.png" alt="Logo" className="w-full h-full object-cover" />
@@ -824,20 +827,43 @@ function App() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => setIsFavoritesOpen(true)}
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100 transition-[background-color,color,border-color,transform] duration-200 ease-apple active:scale-[0.97]"
+          aria-label={`Favorites (${favorites.length})`}
+          title="Favorites"
+          className="inline-flex items-center gap-2 h-9 px-3 sm:px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100 transition-[background-color,color,border-color,transform] duration-200 ease-apple active:scale-[0.97]"
         >
           <Star className="w-4 h-4 text-amber-400 fill-amber-400/20" />
-          <span className="font-medium text-sm tabular-nums">Favorites ({favorites.length})</span>
+          <span className="hidden sm:inline font-medium text-sm tabular-nums">Favorites ({favorites.length})</span>
         </button>
         {videoId && transcript.length > 0 && (
           <button
             onClick={togglePipMode}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-400 transition-[background-color,color,border-color,transform] duration-200 ease-apple active:scale-[0.97]"
+            aria-label={pipWindow ? 'Close Pop-out' : 'Pop Out'}
+            title={pipWindow ? 'Close Pop-out' : 'Pop Out'}
+            className="inline-flex items-center gap-2 h-9 px-3 sm:px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-400 transition-[background-color,color,border-color,transform] duration-200 ease-apple active:scale-[0.97]"
           >
             <ExternalLink className="w-4 h-4" />
-            <span className="font-medium text-sm">{pipWindow ? 'Close Pop-out' : 'Pop Out'}</span>
+            <span className="hidden sm:inline font-medium text-sm">{pipWindow ? 'Close Pop-out' : 'Pop Out'}</span>
           </button>
         )}
+        <div className="flex items-center gap-2 pl-3 border-l border-white/5 min-w-0">
+          <span
+            data-testid="topbar-user-email"
+            title={user?.email || ''}
+            className="hidden lg:inline-block max-w-[10rem] truncate text-xs text-zinc-500"
+          >
+            {user?.email}
+          </span>
+          <button
+            data-testid="logout-button"
+            onClick={() => { void logout(); }}
+            title="退出登录"
+            aria-label="退出登录"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">退出</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1233,7 +1259,7 @@ function App() {
 
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[#09090b] overflow-hidden text-zinc-100 selection:bg-purple-500/30">
+    <div data-testid="app-shell" className="h-screen w-full flex flex-col bg-[#09090b] overflow-hidden text-zinc-100 selection:bg-purple-500/30">
       {renderTopBar()}
 
       {/* Keyed motion.divs crossfade views on mount; no exit-gating so a
@@ -1416,9 +1442,40 @@ function App() {
           />
         )}
       </AnimatePresence>
-
-      <Toaster />
     </div>
+  );
+}
+
+// Quiet holding screen while GET /api/auth/me decides where the app starts.
+function AuthLoadingScreen() {
+  return (
+    <div
+      data-testid="auth-loading"
+      className="h-screen w-full flex flex-col items-center justify-center gap-3 bg-[#09090b] text-zinc-500"
+    >
+      <Loader2 className="w-6 h-6 animate-spin" />
+      <p className="text-sm">正在检查登录状态…</p>
+    </div>
+  );
+}
+
+// The only switch between the auth screen and the existing app. Session state
+// lives in AuthProvider, so login/signup/logout and global 401s all land here.
+function AuthGate() {
+  const { status } = useAuth();
+  if (status === 'loading') return <AuthLoadingScreen />;
+  if (status === 'anonymous') return <AuthScreen />;
+  return <AppContent />;
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AuthGate />
+      {/* One Toaster for every branch: it survives the auth gate switch, so
+          "session expired" and backend-unreachable toasts are not dropped. */}
+      <Toaster />
+    </AuthProvider>
   );
 }
 

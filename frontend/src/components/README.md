@@ -4,6 +4,7 @@
 
 | 组件 | 用在哪 | 职责 |
 |---|---|---|
+| `AuthScreen.tsx` | 未登录 | 登录/注册门禁：单页两个 tab、邮箱+密码（注册含可选确认密码）、行内错误；成功后由 `AuthProvider` 切进应用 |
 | `InputScreen.tsx` | 首页 | 搜索框、词汇轴、句子精背整宽入口卡、四张 bento 卡（最近学习/本地剧集/订阅/最新视频） |
 | `VocabAxis.tsx` | 首页 | 词汇水平轴（Liftoff→Supernova 六站，见 specs/004） |
 | `SentencePacks.tsx` | 首页 | 句子精背入口卡（5 册 + 进度） |

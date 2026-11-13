@@ -15,9 +15,10 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from config import DEFAULT_MODEL, HISTORY_DIR, MODEL_CATALOG, resolve_model
+from config import DEFAULT_MODEL, MODEL_CATALOG, resolve_model
 import llm
 import local_shows
+import storage
 from transcripts import (
     extract_video_id,
     fetch_english_transcript,
@@ -249,7 +250,7 @@ async def process_video(request: VideoRequest):
         "studyCount": 1,
     }
 
-    file_path = os.path.join(HISTORY_DIR, filename)
+    file_path = os.path.join(storage.history_dir(), filename)
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(result_payload, f, ensure_ascii=False, indent=2)
 
@@ -433,7 +434,9 @@ async def process_video_stream(request: VideoRequest):
                 "model": model,
                 "studyCount": 1,
             }
-            save_path = os.path.join(HISTORY_DIR, _history_filename(metadata, video_id))
+            save_path = os.path.join(
+                storage.history_dir(), _history_filename(metadata, video_id)
+            )
             with open(save_path, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
 
@@ -471,10 +474,11 @@ async def process_video_stream(request: VideoRequest):
 @router.get("/api/history")
 def list_history():
     files = []
-    if os.path.exists(HISTORY_DIR):
-        for f in os.listdir(HISTORY_DIR):
+    history_root = storage.history_dir()
+    if os.path.exists(history_root):
+        for f in os.listdir(history_root):
             if f.endswith('.json') and f not in HISTORY_META_FILES:
-                file_path = os.path.join(HISTORY_DIR, f)
+                file_path = os.path.join(history_root, f)
                 try:
                     with open(file_path, "r", encoding="utf-8") as file:
                         data = json.load(file)
@@ -499,10 +503,10 @@ def list_history():
 
 @router.get("/api/history/{filename}")
 async def get_history(filename: str, model: str | None = None):
-    # Guard against path traversal — only bare filenames inside HISTORY_DIR
+    # Guard against path traversal — only bare filenames inside the user's history dir
     if os.path.basename(filename) != filename:
         raise HTTPException(status_code=404, detail="History file not found")
-    file_path = os.path.join(HISTORY_DIR, filename)
+    file_path = os.path.join(storage.history_dir(), filename)
     if not os.path.exists(file_path) or not filename.endswith('.json'):
         raise HTTPException(status_code=404, detail="History file not found")
 
@@ -541,7 +545,7 @@ async def delete_history(filename: str):
         raise HTTPException(status_code=404, detail="History file not found")
     if filename in HISTORY_META_FILES:
         raise HTTPException(status_code=400, detail="该文件不是视频缓存，不能删除。")
-    file_path = os.path.join(HISTORY_DIR, filename)
+    file_path = os.path.join(storage.history_dir(), filename)
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="History file not found")
     os.remove(file_path)

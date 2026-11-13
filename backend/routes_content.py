@@ -12,7 +12,8 @@ from pydantic import BaseModel
 
 import llm
 import local_shows
-from config import HISTORY_DIR, SENTENCES_DIR, SUBTITLES_DIR, resolve_model
+import storage
+from config import SENTENCES_DIR, SUBTITLES_DIR, resolve_model
 from transcripts import group_srt_blocks, parse_srt
 from translate import (
     mock_llm_processing,
@@ -164,7 +165,7 @@ async def process_subtitle(request: SubtitleRequest):
 
     # Check if already processed (cached in history)
     cache_filename = f"{request.show_id}_S{request.season:02d}E{request.episode:02d}.json"
-    cache_path = os.path.join(HISTORY_DIR, cache_filename)
+    cache_path = os.path.join(storage.history_dir(), cache_filename)
 
     if os.path.exists(cache_path):
         print(f"Loading cached subtitles: {cache_filename}")
@@ -291,7 +292,8 @@ def get_processed_episodes(show_id: str):
     """Return a list of processed episode keys like ['S02E01', 'S04E03'] for a show."""
     prefix = f"{show_id}_S"
     processed = []
-    for filename in os.listdir(HISTORY_DIR):
+    history_root = storage.history_dir()
+    for filename in os.listdir(history_root):
         if filename.startswith(prefix) and filename.endswith(".json"):
             # e.g. "house-of-cards_S02E01.json" -> "S02E01"
             key = filename[len(show_id) + 1:].replace(".json", "")

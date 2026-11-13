@@ -10,8 +10,8 @@ import json
 import os
 
 import llm
-
-from config import DEFAULT_MODEL, HISTORY_DIR, VOCAB_LEVELS
+import storage
+from config import DEFAULT_MODEL, VOCAB_LEVELS
 
 # Marker for blocks whose translation is missing/failed; such blocks are
 # re-translated automatically the next time the video is loaded.
@@ -195,12 +195,13 @@ async def summarize_video_transcript(blocks: list, model: str = DEFAULT_MODEL) -
 
 def find_history_file_for_video(video_id: str):
     """Locate an existing history file for a YouTube video id, if any."""
-    if not os.path.exists(HISTORY_DIR):
+    history_root = storage.history_dir()
+    if not os.path.exists(history_root):
         return None
     suffix = f"_{video_id}.json"
-    for f in os.listdir(HISTORY_DIR):
+    for f in os.listdir(history_root):
         if f.endswith(suffix):
-            return os.path.join(HISTORY_DIR, f)
+            return os.path.join(history_root, f)
     return None
 
 

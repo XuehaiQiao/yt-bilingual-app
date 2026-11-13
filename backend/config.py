@@ -12,6 +12,8 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env
 _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # --- 数据目录（都可用环境变量覆盖） ---
+# HISTORY_DIR 是「无登录用户」时的回落目录（旧数据 / 测试 / 脚本兼容）。
+# 登录用户的数据由 storage.py 写到 USER_DATA_DIR/<user_id>/ 下。
 HISTORY_DIR = os.environ.get("HISTORY_DIR", os.path.join(_BACKEND_DIR, "..", "history"))
 os.makedirs(HISTORY_DIR, exist_ok=True)
 
@@ -22,6 +24,13 @@ SENTENCES_DIR = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "sentences"),
 )
 
+# --- 用户体系数据（SQLite + 每用户目录） ---
+# DATA_DIR 默认仓库根的 data/（已 gitignore）。AUTH_DB_PATH 可单独覆盖到别处；
+# USER_DATA_DIR 是每个登录用户的数据根目录（其下再分 history/ 等）。
+DATA_DIR = os.environ.get("DATA_DIR", os.path.join(_BACKEND_DIR, "..", "data"))
+AUTH_DB_PATH = os.environ.get("AUTH_DB_PATH", os.path.join(DATA_DIR, "app.db"))
+USER_DATA_DIR = os.environ.get("USER_DATA_DIR", os.path.join(DATA_DIR, "users"))
+
 # --- Security configuration ---
 # CORS_ORIGINS: comma-separated allowed origins. Defaults to "*" for local
 # use; ALWAYS set this when deploying publicly.
@@ -30,11 +39,20 @@ ALLOWED_ORIGINS = [o.strip() for o in _cors_env.split(",") if o.strip()] or ["*"
 
 # API_AUTH_KEY: when set, every /api request must carry a matching X-API-Key
 # header. Without it a public deployment is an open proxy for your Gemini key.
+# It is an *additional* deployment gate: user sessions are always required.
 API_AUTH_KEY = os.environ.get("API_AUTH_KEY", "")
 
+# Session cookie hardening. Secure must stay off for plain-HTTP local use;
+# set COOKIE_SECURE=1 (HTTPS) when deploying publicly.
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").strip().lower() in ("1", "true", "yes", "on")
+
+# 30 days, matching the Set-Cookie Max-Age below.
+SESSION_MAX_AGE = 30 * 24 * 60 * 60
+
 if ALLOWED_ORIGINS == ["*"] and not API_AUTH_KEY:
-    print("⚠️  Running fully open (CORS * / no API key) — fine locally, "
-          "set CORS_ORIGINS and API_AUTH_KEY before deploying publicly.")
+    print("⚠️  CORS allows every origin and no API key is set — fine locally "
+          "(user sessions are still required); set CORS_ORIGINS and "
+          "API_AUTH_KEY before deploying publicly.")
 
 # --- Learner level -> description used to calibrate which words get highlighted.
 # UI shows metaphors only; the vocabulary sizes live here for the prompt.

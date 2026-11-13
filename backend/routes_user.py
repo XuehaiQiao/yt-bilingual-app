@@ -13,7 +13,8 @@ from pydantic import BaseModel
 
 import llm
 import local_dict
-from config import DEFAULT_MODEL, HISTORY_DIR, MODEL_CATALOG, resolve_model
+import storage
+from config import DEFAULT_MODEL, MODEL_CATALOG, resolve_model
 
 router = APIRouter()
 
@@ -21,7 +22,6 @@ router = APIRouter()
 # Click-to-define dictionary
 # ====================================================
 
-DICT_CACHE_FILE = os.path.join(HISTORY_DIR, "dictionary_cache.json")
 DICT_MODEL = "gemini-3.5-flash-lite"  # fast + cheap for single-word lookups
 # 2.5 Flash-Lite 已对新用户下线（404），旧的配置会让 /api/define 直接 502。
 # 词典再挂时退到全局默认模型；直接引用 DEFAULT_MODEL，避免默认值在这里
@@ -137,9 +137,10 @@ class DefineRequest(BaseModel):
 
 
 def _load_dict_cache() -> dict:
-    if os.path.exists(DICT_CACHE_FILE):
+    cache_file = storage.dictionary_cache_file()
+    if os.path.exists(cache_file):
         try:
-            with open(DICT_CACHE_FILE, "r", encoding="utf-8") as f:
+            with open(cache_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except json.JSONDecodeError:
             pass
@@ -222,7 +223,7 @@ Rules for "senses":
 
     cache[key] = result
     try:
-        with open(DICT_CACHE_FILE, "w", encoding="utf-8") as f:
+        with open(storage.dictionary_cache_file(), "w", encoding="utf-8") as f:
             json.dump(cache, f, ensure_ascii=False, indent=2)
     except OSError as e:
         print(f"Failed to persist dictionary cache: {e}")
@@ -235,14 +236,14 @@ Rules for "senses":
     }
 
 
-# --- Favorites persistence ---
-FAVORITES_FILE = os.path.join(HISTORY_DIR, "favorites.json")
+# --- Favorites persistence (per authenticated user; legacy fallback in storage) ---
 
 
 @router.get("/api/favorites")
 def get_favorites():
-    if os.path.exists(FAVORITES_FILE):
-        with open(FAVORITES_FILE, "r", encoding="utf-8") as f:
+    favorites_file = storage.favorites_file()
+    if os.path.exists(favorites_file):
+        with open(favorites_file, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 
@@ -250,19 +251,19 @@ def get_favorites():
 @router.put("/api/favorites")
 async def save_favorites(request: dict):
     favorites = request.get("favorites", [])
-    with open(FAVORITES_FILE, "w", encoding="utf-8") as f:
+    with open(storage.favorites_file(), "w", encoding="utf-8") as f:
         json.dump(favorites, f, ensure_ascii=False, indent=2)
     return {"status": "ok", "count": len(favorites)}
 
 
-# --- Subscriptions persistence ---
-SUBS_FILE = os.path.join(HISTORY_DIR, "subscriptions.json")
+# --- Subscriptions persistence (per authenticated user) ---
 
 
 @router.get("/api/subscriptions")
 def get_subscriptions():
-    if os.path.exists(SUBS_FILE):
-        with open(SUBS_FILE, "r", encoding="utf-8") as f:
+    subscriptions_file = storage.subscriptions_file()
+    if os.path.exists(subscriptions_file):
+        with open(subscriptions_file, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 
@@ -270,6 +271,6 @@ def get_subscriptions():
 @router.put("/api/subscriptions")
 async def save_subscriptions(request: dict):
     subs = request.get("subscriptions", [])
-    with open(SUBS_FILE, "w", encoding="utf-8") as f:
+    with open(storage.subscriptions_file(), "w", encoding="utf-8") as f:
         json.dump(subs, f, ensure_ascii=False, indent=2)
     return {"status": "ok", "count": len(subs)}

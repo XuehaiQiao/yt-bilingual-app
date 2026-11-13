@@ -1,5 +1,7 @@
 fastapi==0.110.0
 uvicorn==0.29.0
+# User accounts: Argon2id password hashing (no plaintext passwords on disk).
+argon2-cffi==25.1.0
 # 1.x required: transcripts.py uses the instance API (YouTubeTranscriptApi().fetch),
 # which 0.6.x does not have — pinning 0.6.2 makes the caption path AttributeError.
 youtube-transcript-api>=1.2.0
