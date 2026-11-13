@@ -10,9 +10,22 @@ interface VideoPlayerProps {
     wrapperRef?: React.RefObject<HTMLDivElement | null>;
     playbackRate?: number;
     playToggleCommand?: number | null; // timestamp; toggles play/pause when it changes
+    /** Optional: the embed became playable (used by local episodes to clear a fallback). */
+    onPlayerReady?: () => void;
+    /** Optional: the embed failed (unavailable / embed denied / network). */
+    onPlayerError?: (code: number) => void;
 }
 
-export const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoId, onTimeUpdate, seekCommand, wrapperRef, playbackRate = 1, playToggleCommand }) => {
+export const VideoPlayer: React.FC<VideoPlayerProps> = ({
+    videoId,
+    onTimeUpdate,
+    seekCommand,
+    wrapperRef,
+    playbackRate = 1,
+    playToggleCommand,
+    onPlayerReady,
+    onPlayerError,
+}) => {
     const playerRef = useRef<any>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const isPlayingRef = useRef(false);
@@ -69,16 +82,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoId, onTimeUpdate,
 
     const onReady: YouTubeProps['onReady'] = (event) => {
         playerRef.current = event.target;
+        try {
+            event.target.setPlaybackRate(playbackRate);
+        } catch { /* player not ready yet */ }
         if (seekCommand) {
             event.target.seekTo(seekCommand.time, true);
         }
         event.target.playVideo();
+        onPlayerReady?.();
     };
 
     const onStateChange: YouTubeProps['onStateChange'] = (event) => {
         // PlayerState.PLAYING = 1
         setIsPlaying(event.data === 1);
         isPlayingRef.current = event.data === 1;
+    };
+
+    const onError: YouTubeProps['onError'] = (event) => {
+        // 2 invalid id, 5 HTML5 error, 100/101/150 unavailable or embed-denied.
+        console.error('YouTube player error:', event.data);
+        onPlayerError?.(event.data);
     };
 
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -114,7 +137,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoId, onTimeUpdate,
     };
 
     return (
-        <div className="w-full h-full bg-transparent relative">
+        <div
+            className="w-full h-full bg-transparent relative"
+            data-testid="video-player"
+            data-video-id={videoId}
+        >
             <div className="absolute inset-x-0 inset-y-0 p-4 group/video">
                 <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 relative">
                     <YouTube
@@ -122,6 +149,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoId, onTimeUpdate,
                         opts={opts}
                         onReady={onReady}
                         onStateChange={onStateChange}
+                        onError={onError}
                         className="w-full h-full"
                         iframeClassName="w-full h-full pointer-events-auto"
                     />

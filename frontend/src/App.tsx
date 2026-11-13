@@ -1,7 +1,7 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InputScreen } from './components/InputScreen';
 import { VideoPlayer } from './components/VideoPlayer';
@@ -59,6 +59,13 @@ function getFeatureName(
   return isLocalSubtitle ? '本地剧集' : '看视频';
 }
 
+function formatClock(seconds: number): string {
+  const safe = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+  const mm = Math.floor(safe / 60).toString().padStart(2, '0');
+  const ss = (safe % 60).toString().padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
 function App() {
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
@@ -66,6 +73,19 @@ function App() {
   const [summary, setSummary] = useState<string>('');
   const [metadata, setMetadata] = useState<any>(null);
   const isLocalSubtitle = Boolean(metadata?.is_local_subtitle);
+  // Local episodes may be mapped to a real YouTube video (frozen backend
+  // contract: payload.metadata.youtube_video_id). When present, the same
+  // VideoPlayer as the "看视频" branch drives playback; otherwise the local
+  // episode keeps its simulated wall-clock player.
+  const localYouTubeId = isLocalSubtitle && typeof metadata?.youtube_video_id === 'string'
+    ? metadata.youtube_video_id.trim()
+    : '';
+  const hasLocalVideo = localYouTubeId.length > 0;
+  // Player failure must never block subtitle learning: when the embed errors
+  // out we fall back to the simulated clock for seeking/highlighting.
+  const [localVideoError, setLocalVideoError] = useState(false);
+  const localVideoFallback = hasLocalVideo && localVideoError;
+  const useSubtitleTimer = isLocalSubtitle && (!hasLocalVideo || localVideoFallback);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isVocabOpen, setIsVocabOpen] = useState(false);
   // Learning-view layout: transcript placement (`stacked` under the media vs
@@ -145,6 +165,9 @@ function App() {
   const [translationProgress, setTranslationProgress] = useState<{ done: number; total: number; stage?: string } | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
   const pendingSeekRef = useRef<number | null>(null);
+  // Favorite jump into a local episode: consumed once the episode payload is
+  // in state (the target may be a simulated timer or a real YouTube player).
+  const pendingLocalSeekRef = useRef<number | null>(null);
 
   const cancelTranslationStream = () => {
     streamAbortRef.current?.abort();
@@ -207,7 +230,7 @@ function App() {
   const subtitleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isSubtitlePlaying, setIsSubtitlePlaying] = useState(false);
 
-  const startSubtitleTimer = (fromTime: number) => {
+  const startSubtitleTimer = useCallback((fromTime: number) => {
     // Stop any existing timer
     if (subtitleTimerRef.current) clearInterval(subtitleTimerRef.current);
     setCurrentTime(fromTime);
@@ -218,13 +241,13 @@ function App() {
       const elapsed = (Date.now() - startWall) / 1000;
       setCurrentTime(startOffset + elapsed);
     }, 100);
-  };
+  }, []);
 
-  const pauseSubtitleTimer = () => {
+  const pauseSubtitleTimer = useCallback(() => {
     if (subtitleTimerRef.current) clearInterval(subtitleTimerRef.current);
     subtitleTimerRef.current = null;
     setIsSubtitlePlaying(false);
-  };
+  }, []);
 
 
 
@@ -234,6 +257,17 @@ function App() {
       if (subtitleTimerRef.current) clearInterval(subtitleTimerRef.current);
     };
   }, []);
+
+  // A real video player (the YouTube branch or a mapped local episode) owns
+  // currentTime; leaving the simulated timer running would corrupt it.
+  useEffect(() => {
+    if (!useSubtitleTimer) pauseSubtitleTimer();
+  }, [useSubtitleTimer, pauseSubtitleTimer]);
+
+  // Each newly mapped local episode starts with a clean embed-error state.
+  useEffect(() => {
+    setLocalVideoError(false);
+  }, [localYouTubeId]);
 
   // Favorites logic — load from backend, sync to backend
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
@@ -376,9 +410,10 @@ function App() {
       // Local Subtitle: Extract showId, season, episode from string like "house-of-cards_S03E03"
       const match = favVideoId.match(/^(.+)_S(\d+)E(\d+)$/);
       if (match) {
-        handleSelectEpisode(match[1], parseInt(match[2]), parseInt(match[3])).then(() => {
-          setTimeout(() => startSubtitleTimer(start), 1000);
-        });
+        // The target clock (simulated timer vs. mapped YouTube player) is only
+        // known once the episode payload is loaded, so hand it to the effect.
+        pendingLocalSeekRef.current = start;
+        handleSelectEpisode(match[1], parseInt(match[2]), parseInt(match[3]));
       }
     } else {
       if (favVideoId !== videoId) {
@@ -394,6 +429,7 @@ function App() {
 
   const handleUrlSubmit = async (url: string) => {
     setSentenceLevel(null); // leave sentence mode if a video is loaded
+    pauseSubtitleTimer();
     // Model choice is global now: every LLM call reads the same saved setting
     // instead of taking a per-video argument from a dialog.
     const model = loadModel();
@@ -484,6 +520,7 @@ function App() {
 
   const handleSelectEpisode = async (showId: string, season: number, episode: number) => {
     setSentenceLevel(null);
+    pauseSubtitleTimer();
     setLoadingState('loading');
     try {
       // Try loading from history cache first (already processed episodes).
@@ -522,6 +559,7 @@ function App() {
       }
     } catch (error) {
       console.error(error);
+      pendingLocalSeekRef.current = null;
       toast.error(await describeApiError(error));
     } finally {
       setLoadingState(null);
@@ -530,6 +568,7 @@ function App() {
 
   const handleLoadHistory = async (filename: string) => {
     setSentenceLevel(null);
+    pauseSubtitleTimer();
     setLoadingState('loading');
     try {
       // Pass the last picked model so repairing a partially translated cache
@@ -570,6 +609,22 @@ function App() {
 
   useEffect(() => {
     if (!videoId || transcript.length === 0) return;
+
+    // A local-episode favorite jump takes precedence over resume, and works
+    // whether the episode uses a mapped player or the simulated clock.
+    if (pendingLocalSeekRef.current != null) {
+      const t = pendingLocalSeekRef.current;
+      pendingLocalSeekRef.current = null;
+      resumedVideoRef.current = videoId;
+      lastSavedTimeRef.current = 0;
+      if (useSubtitleTimer) {
+        startSubtitleTimer(t);
+      } else {
+        setSeekCommand({ time: t, timestamp: Date.now() });
+      }
+      return;
+    }
+
     if (resumedVideoRef.current === videoId) return;
     resumedVideoRef.current = videoId;
     lastSavedTimeRef.current = 0;
@@ -581,23 +636,24 @@ function App() {
       const t = saved.time;
       const mm = Math.floor(t / 60).toString().padStart(2, '0');
       const ss = Math.floor(t % 60).toString().padStart(2, '0');
-      if (metadata?.is_local_subtitle) {
+      if (useSubtitleTimer) {
         setCurrentTime(t);
       } else {
         setTimeout(() => setSeekCommand({ time: t, timestamp: Date.now() }), 1200);
       }
       toast.info(`已从上次学习位置 ${mm}:${ss} 继续`);
     }
-  }, [videoId, transcript, metadata?.is_local_subtitle]);
+  }, [videoId, transcript, metadata?.is_local_subtitle, useSubtitleTimer, startSubtitleTimer]);
 
-  // Unified seek for both YouTube and local-subtitle modes
+  // Unified seek: the simulated clock for SRT-only local episodes, a player
+  // command for YouTube and for local episodes mapped to a real video.
   const seekTo = useCallback((time: number) => {
-    if (metadata?.is_local_subtitle) {
+    if (useSubtitleTimer) {
       startSubtitleTimer(time);
     } else {
       setSeekCommand({ time, timestamp: Date.now() });
     }
-  }, [metadata?.is_local_subtitle]);
+  }, [useSubtitleTimer, startSubtitleTimer]);
 
   // Active sentence index — TranscriptView depends on this, not on raw
   // 100ms time ticks, so the 400+ sentence list re-renders only when the
@@ -674,7 +730,7 @@ function App() {
       switch (e.key) {
         case ' ':
           e.preventDefault();
-          if (metadata?.is_local_subtitle) {
+          if (useSubtitleTimer) {
             if (isSubtitlePlaying) pauseSubtitleTimer();
             else startSubtitleTimer(currentTime);
           } else {
@@ -707,10 +763,11 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [videoId, transcript, currentTime, metadata?.is_local_subtitle, isSubtitlePlaying, seekTo, toggleLoop]);
+  }, [videoId, transcript, currentTime, useSubtitleTimer, isSubtitlePlaying, seekTo, toggleLoop, pauseSubtitleTimer, startSubtitleTimer]);
 
   const handleGoHome = () => {
     cancelTranslationStream();
+    pauseSubtitleTimer();
     setVideoId('');
     setTranscript([]);
     setSummary('');
@@ -799,7 +856,7 @@ function App() {
       data-testid="video-area"
       className="flex-none w-full aspect-video max-h-[62%] min-h-[180px] relative bg-transparent"
     >
-      {isLocalSubtitle ? (
+      {isLocalSubtitle && !hasLocalVideo ? (
         <LocalEpisodeStage
           showTitle={metadata?.channel || metadata?.title || '本地剧集'}
           episodeTitle={metadata?.title || ''}
@@ -815,13 +872,54 @@ function App() {
         />
       ) : (
         <VideoPlayer
-          videoId={videoId}
+          videoId={hasLocalVideo ? localYouTubeId : videoId}
           seekCommand={seekCommand}
           onTimeUpdate={handleTimeUpdate}
           wrapperRef={fullscreenWrapperRef}
           playbackRate={playbackRate}
           playToggleCommand={playToggleCommand}
+          onPlayerReady={hasLocalVideo ? () => setLocalVideoError(false) : undefined}
+          onPlayerError={hasLocalVideo ? () => setLocalVideoError(true) : undefined}
         />
+      )}
+
+      {/* The embedded player failed (offline / embed denied / removed video).
+          Keep every subtitle affordance usable and offer a simulated clock
+          instead of blocking the episode behind a dead iframe. */}
+      {hasLocalVideo && localVideoFallback && (
+        <div
+          data-testid="local-video-unavailable"
+          role="status"
+          className="absolute inset-x-4 bottom-4 z-30 flex items-center gap-2.5 rounded-lg bg-zinc-950/85 backdrop-blur-md px-3 py-2 ring-1 ring-white/10 shadow-lg shadow-black/30"
+        >
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <span className="flex-1 min-w-0 text-xs text-zinc-300 truncate">
+            视频暂时无法加载，字幕仍可正常学习。
+          </span>
+          <span
+            data-testid="local-fallback-time"
+            className="shrink-0 text-[11px] font-medium tabular-nums text-zinc-500"
+          >
+            {formatClock(currentTime)}
+          </span>
+          <button
+            type="button"
+            data-testid="local-fallback-play-toggle"
+            onClick={() => {
+              if (isSubtitlePlaying) pauseSubtitleTimer();
+              else startSubtitleTimer(currentTime);
+            }}
+            aria-label={isSubtitlePlaying ? '暂停' : '播放'}
+            title={isSubtitlePlaying ? '暂停（空格）' : '播放（空格）'}
+            className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center bg-white/10 text-zinc-100 hover:bg-white/15 ring-1 ring-white/15 transition-colors active:scale-[0.95]"
+          >
+            {isSubtitlePlaying ? (
+              <Pause className="w-3.5 h-3.5" fill="currentColor" />
+            ) : (
+              <Play className="w-3.5 h-3.5 ml-0.5" fill="currentColor" />
+            )}
+          </button>
+        </div>
       )}
     </div>
   );
@@ -1042,7 +1140,7 @@ function App() {
           单句循环
         </button>
 
-        {!metadata?.is_local_subtitle && (
+        {(!isLocalSubtitle || hasLocalVideo) && (
           <select
             value={playbackRate}
             onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
