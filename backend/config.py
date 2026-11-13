@@ -38,9 +38,16 @@ _cors_env = os.environ.get("CORS_ORIGINS", "")
 ALLOWED_ORIGINS = [o.strip() for o in _cors_env.split(",") if o.strip()] or ["*"]
 
 # API_AUTH_KEY: when set, every /api request must carry a matching X-API-Key
-# header. Without it a public deployment is an open proxy for your Gemini key.
-# It is an *additional* deployment gate: user sessions are always required.
+# header. This is an *additional* deployment gate on top of user sessions.
+# 注意：它会连 /api/auth/* 一起拦——浏览器界面登录也会被挡。公网多用户
+# 浏览器部署不要设；只有移动端/内部客户端（不跑浏览器 UI）才考虑。
 API_AUTH_KEY = os.environ.get("API_AUTH_KEY", "")
+
+# BROWSER_UI：是否计划提供浏览器界面（默认开）。设 0/false 表示纯移动端/内部
+# 客户端部署，此时 API_AUTH_KEY 不会与登录冲突，也不再打印启动警告。
+BROWSER_UI = os.environ.get("BROWSER_UI", "1").strip().lower() not in (
+    "0", "false", "no", "off",
+)
 
 # Session cookie hardening. Secure must stay off for plain-HTTP local use;
 # set COOKIE_SECURE=1 (HTTPS) when deploying publicly.
@@ -49,10 +56,34 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").strip().lower() in ("1", "tr
 # 30 days, matching the Set-Cookie Max-Age below.
 SESSION_MAX_AGE = 30 * 24 * 60 * 60
 
+# --- SSE 心跳间隔 ---
+# 反向代理（Nginx 60s / Cloudflare 100s）会掐断长时间无输出的 SSE 流。
+# 流内每 SSE_HEARTBEAT_SECONDS 秒发一行 `: ping` 注释行；默认 15s，
+# 可用 SSE_HEARTBEAT_INTERVAL（秒，>0）覆盖。
+def _positive_float_env(name: str, default: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        value = 0
+    if value <= 0:
+        print(f"⚠️  {name}={raw!r} 无效，使用默认值 {default:g}s。")
+        return default
+    return value
+
+
+SSE_HEARTBEAT_SECONDS = _positive_float_env("SSE_HEARTBEAT_INTERVAL", 15.0)
+
 if ALLOWED_ORIGINS == ["*"] and not API_AUTH_KEY:
     print("⚠️  CORS allows every origin and no API key is set — fine locally "
-          "(user sessions are still required); set CORS_ORIGINS and "
-          "API_AUTH_KEY before deploying publicly.")
+          "(user sessions are still required); set CORS_ORIGINS before "
+          "deploying publicly.")
+if API_AUTH_KEY and BROWSER_UI:
+    print("⚠️  API_AUTH_KEY 已设置：它会拦截所有 /api 请求（含 /api/auth/*），"
+          "浏览器多用户部署请勿设置（登录会被 401）。仅移动端/内部客户端场景保留；"
+          "确认不需要浏览器界面时设 BROWSER_UI=0 可关闭本提示。")
 
 # --- Learner level -> description used to calibrate which words get highlighted.
 # UI shows metaphors only; the vocabulary sizes live here for the prompt.

@@ -4,18 +4,18 @@
 英文字幕先到先给，翻译逐批推送并落盘，中断自愈。
 """
 import asyncio
+import contextlib
 import datetime
 import json
 import os
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from config import DEFAULT_MODEL, MODEL_CATALOG, resolve_model
+from config import DEFAULT_MODEL, MODEL_CATALOG, SSE_HEARTBEAT_SECONDS, resolve_model
 import llm
 import local_shows
 import storage
@@ -81,20 +81,21 @@ PREFETCH_CACHE_TTL_SECONDS = 600
 
 
 @router.get("/api/estimate-cost")
-def estimate_cost(url: str):
+async def estimate_cost(url: str):
     try:
         video_id = extract_video_id(url)
     except ValueError:
         raise HTTPException(status_code=400, detail="无效的 YouTube 链接，请检查后重试。")
 
     try:
-        metadata = get_video_metadata(url)
+        # yt-dlp 是同步阻塞调用，必须放到线程里，别卡住事件循环。
+        metadata = await asyncio.to_thread(get_video_metadata, url)
     except Exception as e:
         print(f"Failed to fetch metadata for estimate: {e}")
         metadata = {"title": "Unknown Title", "channel": "Unknown Channel", "thumbnail": ""}
 
     # Fetch English transcript to calculate length
-    transcript = fetch_english_transcript(video_id)
+    transcript = await asyncio.to_thread(fetch_english_transcript, video_id)
 
     # Reuse this fetch when the user confirms processing right after
     _prefetch_cache[video_id] = (time.time(), metadata, transcript)
@@ -169,7 +170,7 @@ async def process_video(request: VideoRequest):
             print(f"Cache file corrupt, reprocessing: {e}")
 
     try:
-        metadata = get_video_metadata(request.url)
+        metadata = await asyncio.to_thread(get_video_metadata, request.url)
     except Exception as e:
         print(f"Failed to fetch metadata: {e}")
         metadata = {
@@ -180,7 +181,7 @@ async def process_video(request: VideoRequest):
         }
 
     # Fetch English transcript
-    transcript = fetch_english_transcript(video_id)
+    transcript = await asyncio.to_thread(fetch_english_transcript, video_id)
 
     # Group transcript snippets into sentences/blocks
     blocks = group_transcript_blocks(transcript)
@@ -311,6 +312,51 @@ def _bump_study(data: dict, path: str) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+# SSE 注释行：浏览器 EventSource 与前端 consumeSseStream 都会忽略它（没有 data 行），
+# 但反向代理会把它算作流量，从而避免 60–100s 空闲超时切断长任务流。
+SSE_HEARTBEAT_COMMENT = ": ping\n\n"
+
+
+async def _with_heartbeat(events, interval: float = SSE_HEARTBEAT_SECONDS):
+    """转发事件流；超过 interval 秒没有事件时插入一行 SSE 心跳注释。
+
+    生产者把原始生成器的事件按顺序写进队列，消费者逐条 yield——事件结构与
+    顺序保持不变，只是空闲间隙多了 `: ping` 注释行。LLM 调用、字幕抓取都在
+    线程里跑（P0‑1），事件循环因此有能力按时发心跳。
+    """
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def pump():
+        try:
+            async for event in events:
+                await queue.put(("event", event))
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # 生成器自己已兜底；这里再兜一层，别让流挂死
+            await queue.put(("error", exc))
+        finally:
+            await queue.put(("end", None))
+
+    producer = asyncio.create_task(pump())
+    try:
+        while True:
+            try:
+                kind, payload = await asyncio.wait_for(queue.get(), timeout=interval)
+            except asyncio.TimeoutError:
+                yield SSE_HEARTBEAT_COMMENT
+                continue
+            if kind == "end":
+                break
+            if kind == "error":
+                raise payload
+            yield payload
+    finally:
+        # 客户端断开时，消费端会被取消；顺手停掉生产者，别让它在后台继续跑 LLM。
+        producer.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await producer
+
+
 @router.post("/api/process-video-stream")
 async def process_video_stream(request: VideoRequest):
     async def gen():
@@ -378,7 +424,7 @@ async def process_video_stream(request: VideoRequest):
                 metadata, raw_transcript = prefetched[1], prefetched[2]
             else:
                 try:
-                    raw_transcript = fetch_english_transcript(video_id)
+                    raw_transcript = await asyncio.to_thread(fetch_english_transcript, video_id)
                 except HTTPException as e:
                     # No captions? Fall back to local ASR when available.
                     if e.status_code == 422 and _asr_available():
@@ -402,7 +448,7 @@ async def process_video_stream(request: VideoRequest):
                         return
 
                 try:
-                    metadata = get_video_metadata(request.url)
+                    metadata = await asyncio.to_thread(get_video_metadata, request.url)
                 except Exception as e:
                     print(f"Failed to fetch metadata: {e}")
                     metadata = {
@@ -465,7 +511,7 @@ async def process_video_stream(request: VideoRequest):
             yield _sse("error", {"detail": f"处理失败：{e}"})
 
     return StreamingResponse(
-        gen(),
+        _with_heartbeat(gen(), SSE_HEARTBEAT_SECONDS),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -602,11 +648,16 @@ def _fetch_channel_videos(channel_url: str) -> list:
 
 
 @router.post("/api/channel-updates")
-def get_channel_updates(request: ChannelUpdatesRequest):
+async def get_channel_updates(request: ChannelUpdatesRequest):
     channels = [c for c in request.channels if c]
     if not channels:
         return {"updates": []}
-    # Fetch all subscribed channels concurrently instead of one-by-one
-    with ThreadPoolExecutor(max_workers=min(8, len(channels))) as pool:
-        results = pool.map(_fetch_channel_videos, channels)
+    # 频道列表走 yt-dlp（同步阻塞），放到线程里并发拉取；保留原先最多 8 个并发的上限。
+    semaphore = asyncio.Semaphore(8)
+
+    async def fetch_one(channel_url: str) -> list:
+        async with semaphore:
+            return await asyncio.to_thread(_fetch_channel_videos, channel_url)
+
+    results = await asyncio.gather(*(fetch_one(c) for c in channels))
     return {"updates": [u for channel_updates in results for u in channel_updates]}

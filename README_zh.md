@@ -117,7 +117,7 @@ cd frontend && npm run dev
 | `DEEPSEEK_API_KEY` | `.env` | 可选。配好后模型选择器出现 DeepSeek（OpenAI 兼容端点）。 |
 | `WHISPER_MODEL` | `.env` | 无字幕 ASR 回退使用的 Whisper 模型大小（默认 `base`）。 |
 | `CORS_ORIGINS` | `.env` | 允许的跨域来源（逗号分隔）——公网部署前务必设置。 |
-| `API_AUTH_KEY` | `.env` | 设置后所有 API 调用必须携带 `X-API-Key`，保护你的模型配额。 |
+| `API_AUTH_KEY` | `.env` | 可选的 `X-API-Key` 门禁，仅供移动端/内部客户端。**公网浏览器多用户部署不要设**——它会连 `/api/auth/*` 一起拦，登录会 401。 |
 | `VITE_API_BASE` / `VITE_API_KEY` | 前端环境 | 让 Web 端指向远程后端 / 发送其 API key。 |
 | `HISTORY_DIR` / `SUBTITLES_DIR` | 环境变量 | 自定义 JSON 缓存 / 本地剧集字幕目录。 |
 

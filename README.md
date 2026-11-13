@@ -117,7 +117,7 @@ Open **http://localhost:5173**, paste a YouTube link, set your level on the axis
 | `DEEPSEEK_API_KEY` | `.env` | Optional. Unlocks DeepSeek in the model picker (OpenAI-compatible endpoint). |
 | `WHISPER_MODEL` | `.env` | Whisper size for the no-captions ASR fallback (`base` default). |
 | `CORS_ORIGINS` | `.env` | Comma-separated allowed origins — set before deploying publicly. |
-| `API_AUTH_KEY` | `.env` | When set, every API call must send `X-API-Key`. Protects your model quota on public deployments. |
+| `API_AUTH_KEY` | `.env` | Optional X-API-Key gate for mobile/internal clients. **Do not set it for a public browser deployment** — it also blocks `/api/auth/*`, so logins fail with 401. |
 | `VITE_API_BASE` / `VITE_API_KEY` | frontend env | Point the web app at a remote backend / send its API key. |
 | `HISTORY_DIR` / `SUBTITLES_DIR` | env | Relocate the JSON cache / local-show subtitles. |
 

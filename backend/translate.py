@@ -114,7 +114,11 @@ async def process_llm_batch(blocks: list, model: str = DEFAULT_MODEL, vocab_leve
     """
 
     try:
-        result_data = json.loads(llm.generate_json(prompt, model=model))
+        # 模型 SDK 是同步阻塞的（单次 8–40s）。放进线程执行，事件循环才能继续
+        # 处理心跳、健康检查和其他用户的请求；异常照常传回，由下面的兜底接住。
+        result_data = json.loads(
+            await asyncio.to_thread(llm.generate_json, prompt, model=model)
+        )
 
         # Match results back by id — models occasionally drop or reorder items,
         # and a positional zip would silently attach translations to the wrong
@@ -187,7 +191,8 @@ async def summarize_video_transcript(blocks: list, model: str = DEFAULT_MODEL) -
     """
 
     try:
-        return llm.generate_text(summary_prompt, model=model)
+        # 同步 SDK 调用放进线程，避免生成总结期间卡住事件循环（SSE 心跳也依赖它）。
+        return await asyncio.to_thread(llm.generate_text, summary_prompt, model=model)
     except Exception as e:
         print(f"Summary Gen Error ({model}): {e}")
         return SUMMARY_ERROR_TEXT
