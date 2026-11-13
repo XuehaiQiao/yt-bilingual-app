@@ -9,8 +9,6 @@ import { ModelBar } from './ModelBar';
 import { ShowBrowser } from './ShowBrowser';
 import { loadModel, loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
 import { VocabAxis } from './VocabAxis';
-import { TiltCard } from './TiltCard';
-import { AuroraBackground } from './AuroraBackground';
 import { SentencePacks } from './SentencePacks';
 import { progressPercent, clearProgress } from '../lib/progress';
 import { toast, describeApiError } from '../lib/toast';
@@ -126,9 +124,6 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
 
     return (
         <div className="min-h-screen flex flex-col items-center p-8 pt-20 overflow-y-auto custom-scrollbar relative bg-[#09090b]">
-            {/* Layered animated background: aurora, halo, grid, particles, spotlight */}
-            <AuroraBackground />
-
             <AnimatePresence>
                 {((isLoading || loadingState) && !isEstimating) && (
                     <motion.div 
@@ -185,7 +180,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                         <span className="flex h-2 w-2 rounded-full bg-emerald-500"></span>
                         Lingua Nova Engine
                     </div>
-                    <h2 className="hero-shimmer text-5xl md:text-6xl font-semibold tracking-[-0.015em] mb-4">
+                    <h2 className="text-5xl md:text-6xl font-semibold tracking-[-0.015em] mb-4">
                         Watch YouTube. Learn English.
                     </h2>
                     <p className="text-lg text-zinc-400 font-normal leading-relaxed max-w-2xl mx-auto">
@@ -193,34 +188,29 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                     </p>
                 </motion.div>
 
-                {/* Search Bar - Floating Arc Style */}
+                {/* Search Bar */}
                 <motion.form variants={itemVariants} className="max-w-3xl mx-auto w-full relative" onSubmit={handleSubmit}>
-                    <div className="relative group">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/15 to-purple-500/15 rounded-full blur opacity-25 group-focus-within:opacity-60 transition-opacity duration-300 ease-apple"></div>
-                        {/* light running around the pill's edge */}
-                        <div className="conic-ring" aria-hidden="true"></div>
-                        <div className="relative flex items-center glass-card rounded-full p-2 pl-6 pr-2 border border-white/10 hover:border-white/20 focus-within:border-brand/60 focus-within:ring-4 focus-within:ring-brand/15 transition-[border-color,box-shadow] duration-200 ease-apple">
-                            <Search className="w-5 h-5 text-zinc-400" />
-                            <input
-                                id="video-url"
-                                name="url"
-                                type="url"
-                                disabled={isLoading}
-                                required
-                                className="w-full bg-transparent border-none outline-none text-zinc-100 placeholder-zinc-500 px-4 py-3 text-lg"
-                                placeholder="Paste a YouTube link…"
-                                value={url}
-                                onChange={(e) => setUrl(e.target.value)}
-                            />
-                            <button
-                                type="submit"
-                                disabled={isLoading || !url.trim()}
-                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 h-12 px-6 rounded-full bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform,opacity] duration-200 ease-apple disabled:opacity-50"
-                            >
-                                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Start Learning'}
-                                {!isLoading && <ArrowRight className="w-4 h-4" />}
-                            </button>
-                        </div>
+                    <div className="relative flex items-center rounded-full bg-zinc-900/60 p-2 pl-6 pr-2 border border-white/5 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/15 transition-[border-color,box-shadow] duration-200 ease-apple">
+                        <Search className="w-5 h-5 text-zinc-400" />
+                        <input
+                            id="video-url"
+                            name="url"
+                            type="url"
+                            disabled={isLoading}
+                            required
+                            className="w-full bg-transparent border-none outline-none text-zinc-100 placeholder-zinc-500 px-4 py-3 text-lg"
+                            placeholder="Paste a YouTube link…"
+                            value={url}
+                            onChange={(e) => setUrl(e.target.value)}
+                        />
+                        <button
+                            type="submit"
+                            disabled={isLoading || !url.trim()}
+                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 h-12 px-6 rounded-full bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform,opacity] duration-200 ease-apple disabled:opacity-50"
+                        >
+                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Start Learning'}
+                            {!isLoading && <ArrowRight className="w-4 h-4" />}
+                        </button>
                     </div>
                 </motion.form>
 
@@ -240,7 +230,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                     {/* Left Column: Recent Learning */}
                     <div className="md:col-span-7 flex flex-col gap-6">
                         {/* History Card */}
-                        <TiltCard className="glass-panel rounded-3xl p-6 flex-1 overflow-hidden group">
+                        <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-6 flex-1 overflow-hidden">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-2 text-zinc-100">
                                     <Clock className="w-5 h-5" />
@@ -315,16 +305,16 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                                     ))}
                                 </div>
                             )}
-                        </TiltCard>
+                        </div>
 
                         {/* Local Shows Section */}
-                        <TiltCard className="glass-panel rounded-3xl p-6 shrink-0 overflow-hidden">
+                        <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-6 shrink-0 overflow-hidden">
                              <div className="flex items-center gap-2 mb-6 text-zinc-100">
                                 <Tv className="w-5 h-5 text-blue-400" />
                                 <h3 className="text-[17px] font-semibold tracking-tight">Local Shows</h3>
                             </div>
                             <ShowBrowser onSelectEpisode={onSelectEpisode} isLoading={!!isLoading} />
-                        </TiltCard>
+                        </div>
                     </div>
 
                     {/* Right Column: Subscriptions & Updates */}
@@ -332,7 +322,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                         
                         {/* Channels Bento */}
                         {subscriptions && subscriptions.length > 0 && (
-                            <TiltCard className="glass-panel rounded-3xl p-6">
+                            <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-6">
                                 <div className="flex items-center gap-2 mb-6 text-zinc-100">
                                     <Youtube className="w-5 h-5 text-red-500" />
                                     <h3 className="text-[17px] font-semibold tracking-tight">Subscriptions</h3>
@@ -350,11 +340,11 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                                         </motion.div>
                                     ))}
                                 </div>
-                            </TiltCard>
+                            </div>
                         )}
 
                         {/* Updates Bento */}
-                        <TiltCard className="glass-panel rounded-3xl p-6 flex-1 flex flex-col">
+                        <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-6 flex-1 flex flex-col">
                             <div className="flex items-center gap-2 mb-6 text-zinc-100">
                                 <Bell className="w-5 h-5 text-amber-400" />
                                 <h3 className="text-[17px] font-semibold tracking-tight">Latest Videos</h3>
@@ -385,7 +375,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                                     ))
                                 )}
                             </div>
-                        </TiltCard>
+                        </div>
 
                     </div>
                 </motion.div>

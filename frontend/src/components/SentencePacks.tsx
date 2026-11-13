@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { GraduationCap, ChevronRight } from 'lucide-react';
-import { TiltCard } from './TiltCard';
 import { fetchSentenceLevels, levelPercent, type SentenceLevelMeta } from '../lib/sentences';
 
 interface SentencePacksProps {
@@ -16,7 +15,7 @@ export const SentencePacks: React.FC<SentencePacksProps> = ({ onSelectLevel }) =
     if (levels.length === 0) return null;
 
     return (
-        <TiltCard className="glass-panel rounded-3xl p-6 overflow-hidden">
+        <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-6 overflow-hidden">
             <div className="flex items-center gap-2 mb-5 text-zinc-100">
                 <GraduationCap className="w-5 h-5 text-emerald-400" />
                 <h3 className="text-[17px] font-semibold tracking-tight">句子精背 · Sentence Packs</h3>
@@ -46,6 +45,6 @@ export const SentencePacks: React.FC<SentencePacksProps> = ({ onSelectLevel }) =
                     );
                 })}
             </div>
-        </TiltCard>
+        </div>
     );
 };
