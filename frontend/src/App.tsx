@@ -1,10 +1,11 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InputScreen } from './components/InputScreen';
 import { VideoPlayer } from './components/VideoPlayer';
+import { LocalEpisodeStage } from './components/LocalEpisodeStage';
 import { TranscriptView } from './components/TranscriptView';
 import { FavoritesModal, type FavoriteItem } from './components/FavoritesModal';
 import { ChannelVideoList } from './components/ChannelVideoList';
@@ -64,10 +65,10 @@ function App() {
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [summary, setSummary] = useState<string>('');
   const [metadata, setMetadata] = useState<any>(null);
+  const isLocalSubtitle = Boolean(metadata?.is_local_subtitle);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isVocabOpen, setIsVocabOpen] = useState(false);
-  const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
-  // Video-view layout: transcript placement (`stacked` under the video vs
+  // Learning-view layout: transcript placement (`stacked` under the media vs
   // `split` docked right) and the draggable left-column ratio. Both persist.
   const [transcriptLayout, setTranscriptLayout] = useState<TranscriptLayout>(loadTranscriptLayout);
   const [leftRatio, setLeftRatio] = useState<number>(loadSplitRatio);
@@ -754,7 +755,10 @@ function App() {
             Lingua Nova
           </h1>
           {featureName && (
-            <span className="hidden sm:inline-flex items-center whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/50 border border-white/5 text-zinc-400">
+            <span
+              data-testid="feature-name"
+              className="hidden sm:inline-flex items-center whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/50 border border-white/5 text-zinc-400"
+            >
               {featureName}
             </span>
           )}
@@ -781,24 +785,44 @@ function App() {
     </div>
   );
 
-  // ── Video view building blocks ──────────────────────────────────────────
-  // The transcript pane and the summary pane each have two possible homes
-  // (below the video vs the right sidebar), so they are built once and placed
-  // by the layout below instead of being duplicated.
+  // ── Learning-view building blocks ───────────────────────────────────────
+  // Both learning modes (YouTube and local SRT episodes) share one two-column
+  // shell: the transcript pane and the summary pane each have two possible
+  // homes (below the media vs the right sidebar), so they are built once and
+  // placed by the layout below instead of being duplicated.
 
-  const videoStage = (
+  const episodeDuration = transcript.length > 0 ? transcript[transcript.length - 1]?.end ?? 0 : 0;
+  const localEpisodeLabel = String(metadata?.title || '').match(/S\d+E\d+/i)?.[0]?.toUpperCase() ?? '';
+
+  const mediaStage = (
     <div
       data-testid="video-area"
       className="flex-none w-full aspect-video max-h-[62%] min-h-[180px] relative bg-transparent"
     >
-      <VideoPlayer
-        videoId={videoId}
-        seekCommand={seekCommand}
-        onTimeUpdate={handleTimeUpdate}
-        wrapperRef={fullscreenWrapperRef}
-        playbackRate={playbackRate}
-        playToggleCommand={playToggleCommand}
-      />
+      {isLocalSubtitle ? (
+        <LocalEpisodeStage
+          showTitle={metadata?.channel || metadata?.title || '本地剧集'}
+          episodeTitle={metadata?.title || ''}
+          episodeLabel={localEpisodeLabel}
+          duration={episodeDuration}
+          currentTime={currentTime}
+          isPlaying={isSubtitlePlaying}
+          onTogglePlay={() => {
+            if (isSubtitlePlaying) pauseSubtitleTimer();
+            else startSubtitleTimer(currentTime);
+          }}
+          onSeek={seekTo}
+        />
+      ) : (
+        <VideoPlayer
+          videoId={videoId}
+          seekCommand={seekCommand}
+          onTimeUpdate={handleTimeUpdate}
+          wrapperRef={fullscreenWrapperRef}
+          playbackRate={playbackRate}
+          playToggleCommand={playToggleCommand}
+        />
+      )}
     </div>
   );
 
@@ -929,7 +953,7 @@ function App() {
                   return (
                     <button
                       key={idx}
-                      onClick={() => setSeekCommand({ time: item.start, timestamp: Date.now() })}
+                      onClick={() => seekTo(item.start)}
                       className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-zinc-800/80 transition-colors group/row cursor-pointer"
                     >
                       <span className="text-purple-300 font-medium text-sm text-left group-hover/row:text-purple-200 transition-colors flex-1">{item.en}</span>
@@ -955,52 +979,6 @@ function App() {
 
   const transcriptContent = (
     <>
-      {/* Collapse Toggle Button for Local Subtitles (only in split mode) */}
-      {!pipWindow && metadata?.is_local_subtitle && (
-        <button
-          onClick={() => setIsLeftCollapsed(prev => !prev)}
-          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-50 p-1.5 bg-zinc-900/80 backdrop-blur-md border border-white/10 border-l-0 rounded-r-lg hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 transition-colors shadow-lg shadow-black/40"
-          title={isLeftCollapsed ? "展开侧栏" : "收起侧栏"}
-        >
-          {isLeftCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-        </button>
-      )}
-
-      {/* Local subtitle playback controls */}
-      {metadata?.is_local_subtitle && (
-        <div className="flex-none flex items-center justify-between px-4 py-2 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                if (isSubtitlePlaying) {
-                  pauseSubtitleTimer();
-                } else {
-                  startSubtitleTimer(currentTime);
-                }
-              }}
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-colors duration-200 active:scale-[0.95] bg-white/10 text-zinc-100 hover:bg-white/15 ring-1 ring-white/15"
-            >
-              {isSubtitlePlaying ? (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="6" y="4" width="4" height="16" rx="1" />
-                  <rect x="14" y="4" width="4" height="16" rx="1" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </button>
-            <span className="text-zinc-400 text-xs font-medium">
-              {metadata?.title || '本地字幕'}
-            </span>
-          </div>
-          <span className="text-[11px] font-medium text-zinc-500 tabular-nums">
-            {Math.floor(currentTime / 60).toString().padStart(2, '0')}:{Math.floor(currentTime % 60).toString().padStart(2, '0')}
-          </span>
-        </div>
-      )}
-
       {/* Transcript toolbar: translation mode, loop, speed */}
       <div className="flex-none flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20">
         <span className="text-xs text-zinc-500 font-medium shrink-0 whitespace-nowrap">中文译文</span>
@@ -1086,16 +1064,16 @@ function App() {
           <Keyboard className="w-3.5 h-3.5" /> 空格 ← → R L
         </span>
 
-        {/* Transcript placement toggle: tucked under the video ↔ docked right */}
-        {!pipWindow && !metadata?.is_local_subtitle && (
+        {/* Transcript placement toggle: tucked under the media ↔ docked right */}
+        {!pipWindow && (
           <button
             type="button"
             data-testid="transcript-layout-toggle"
             onClick={() => setTranscriptLayout(prev => (prev === 'split' ? 'stacked' : 'split'))}
             aria-pressed={isTranscriptExpanded}
             title={isTranscriptExpanded
-              ? '字幕收回视频下方，视频总结与生词移到右侧'
-              : '字幕展开到右侧，视频总结与生词移到视频下方'}
+              ? `字幕收回${isLocalSubtitle ? '媒体' : '视频'}下方，视频总结与生词移到右侧`
+              : `字幕展开到右侧，视频总结与生词移到${isLocalSubtitle ? '媒体' : '视频'}下方`}
             className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border border-white/5 bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60 transition-colors shrink-0"
           >
             {isTranscriptExpanded
@@ -1148,7 +1126,7 @@ function App() {
           translationMode={translationMode}
           dictation={dictationMode}
           onWordLookup={handleWordLookup}
-          borderLeft={Boolean(metadata?.is_local_subtitle) || isTranscriptExpanded}
+          borderLeft={isTranscriptExpanded}
         />
         <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[#09090b] to-transparent z-10 pointer-events-none"></div>
       </div>
@@ -1206,128 +1184,93 @@ function App() {
           transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
           ref={fullscreenWrapperRef}
           className="flex-1 flex flex-col md:flex-row overflow-hidden max-md:overflow-y-auto relative bg-transparent group/wrapper">
-          {metadata?.is_local_subtitle ? (
-            <>
-              {/* Local subtitles keep their existing split: summary on the
-                  left (collapsible), transcript on the right. */}
-              <div className={`w-full hidden md:flex ${
-                pipWindow
-                  ? 'md:w-full'
-                  : isLeftCollapsed
-                    ? 'md:w-0 md:opacity-0 md:overflow-hidden'
-                    : 'md:w-1/2'
-              } transition-[width,opacity] duration-300 ease-apple h-1/2 md:h-full flex flex-col shrink-0`}>
-                <div className="p-6 flex-1 min-h-0 bg-zinc-900/60 backdrop-blur-xl border-white/5 overflow-y-auto custom-scrollbar border-none">
-                  {summaryBody}
-                </div>
+          {/* One shell for both learning modes. Left column: media stage +
+              whatever sits beneath it — the transcript by default, the
+              summary/vocabulary when the transcript is expanded to the right. */}
+          <div
+            data-testid="video-column"
+            style={{ '--left-w': `${leftRatio}%` } as React.CSSProperties}
+            className={`w-full max-md:h-auto md:h-full ${
+              pipWindow ? 'md:w-full' : 'md:w-[var(--left-w)]'
+            } flex flex-col min-w-0 shrink-0`}
+          >
+            {mediaStage}
+            {!isLocalSubtitle && channelBar}
+
+            {pipWindow || isTranscriptExpanded ? (
+              <div
+                data-testid="summary-panel"
+                className="p-6 bg-zinc-900/60 backdrop-blur-xl border-t border-white/5 md:flex-1 md:min-h-0 md:overflow-y-auto custom-scrollbar"
+              >
+                {summaryBody}
               </div>
-              {pipWindow ? (
-                createPortal(
-                  <div className="w-full h-full flex flex-col relative bg-[#09090b]">
-                    {transcriptContent}
-                  </div>,
-                  pipWindow.document.body
-                )
-              ) : (
-                <div
-                  data-testid="transcript-column"
-                  className={`w-full ${isLeftCollapsed ? 'md:w-full' : 'md:w-1/2'} transition-[width,opacity] duration-300 ease-apple h-1/2 md:h-full flex flex-col relative border-t md:border-t-0 border-white/5 bg-transparent`}
-                >
-                  {transcriptContent}
-                </div>
-              )}
-            </>
+            ) : (
+              <div
+                data-testid="transcript-column"
+                className="max-md:h-[52vh] md:flex-1 md:min-h-0 flex flex-col relative border-t border-white/5 bg-transparent"
+              >
+                {transcriptContent}
+              </div>
+            )}
+          </div>
+
+          {pipWindow ? (
+            createPortal(
+              <div className="w-full h-full flex flex-col relative bg-[#09090b]">
+                {transcriptContent}
+              </div>,
+              pipWindow.document.body
+            )
           ) : (
             <>
-              {/* Left column: video + whatever sits beneath it — the transcript
-                  by default, the summary/vocabulary when the transcript is
-                  expanded to the right. */}
+              {/* Draggable split: desktop only. Drag changes the left
+                  column percentage within [MIN, MAX]; double-click or
+                  Home/End restore/reset it. */}
               <div
-                data-testid="video-column"
-                style={{ '--left-w': `${leftRatio}%` } as React.CSSProperties}
-                className={`w-full max-md:h-auto md:h-full ${
-                  pipWindow ? 'md:w-full' : 'md:w-[var(--left-w)]'
-                } flex flex-col min-w-0 shrink-0`}
+                data-testid="split-divider"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="拖动调整媒体与侧栏宽度"
+                aria-valuemin={MIN_SPLIT_RATIO}
+                aria-valuemax={MAX_SPLIT_RATIO}
+                aria-valuenow={Math.round(leftRatio)}
+                tabIndex={0}
+                title="拖动调整左右宽度 · 双击恢复默认"
+                onPointerDown={(e) => {
+                  if (e.button !== 0) return;
+                  e.preventDefault();
+                  setIsResizing(true);
+                }}
+                onKeyDown={handleDividerKeyDown}
+                onDoubleClick={() => setLeftRatio(DEFAULT_SPLIT_RATIO)}
+                className="hidden md:flex relative w-2 flex-none cursor-col-resize touch-none select-none items-center justify-center group/divider"
               >
-                {videoStage}
-                {channelBar}
+                <span className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors duration-200 ${isResizing ? 'bg-blue-500/60' : 'bg-white/5 group-hover/divider:bg-white/10'}`} />
+                <span className={`relative z-10 w-1 h-8 rounded-full transition-[background-color,opacity] duration-200 ${isResizing ? 'bg-blue-400/70' : 'bg-white/10 opacity-0 group-hover/divider:opacity-100 group-focus-visible/divider:opacity-100'}`} />
+              </div>
 
-                {pipWindow || isTranscriptExpanded ? (
+              {/* Right column: summary sidebar by default, transcript when
+                  the transcript is expanded. */}
+              <div
+                data-testid="right-column"
+                className="w-full md:flex-1 min-w-0 max-md:shrink-0 md:h-full flex flex-col relative border-t md:border-t-0 border-white/5 bg-transparent"
+              >
+                {isTranscriptExpanded ? (
                   <div
-                    data-testid="summary-panel"
-                    className="p-6 bg-zinc-900/60 backdrop-blur-xl border-t border-white/5 md:flex-1 md:min-h-0 md:overflow-y-auto custom-scrollbar"
+                    data-testid="transcript-column"
+                    className="h-[52vh] md:h-full md:flex-1 min-h-0 flex flex-col relative bg-transparent"
                   >
-                    {summaryBody}
+                    {transcriptContent}
                   </div>
                 ) : (
                   <div
-                    data-testid="transcript-column"
-                    className="max-md:h-[52vh] md:flex-1 md:min-h-0 flex flex-col relative border-t border-white/5 bg-transparent"
+                    data-testid="summary-panel"
+                    className="p-6 bg-zinc-900/60 backdrop-blur-xl overflow-y-auto custom-scrollbar md:h-full md:min-h-0"
                   >
-                    {transcriptContent}
+                    {summaryBody}
                   </div>
                 )}
               </div>
-
-              {pipWindow ? (
-                createPortal(
-                  <div className="w-full h-full flex flex-col relative bg-[#09090b]">
-                    {transcriptContent}
-                  </div>,
-                  pipWindow.document.body
-                )
-              ) : (
-                <>
-                  {/* Draggable split: desktop only. Drag changes the left
-                      column percentage within [MIN, MAX]; double-click or
-                      Home/End restore/reset it. */}
-                  <div
-                    data-testid="split-divider"
-                    role="separator"
-                    aria-orientation="vertical"
-                    aria-label="拖动调整视频与侧栏宽度"
-                    aria-valuemin={MIN_SPLIT_RATIO}
-                    aria-valuemax={MAX_SPLIT_RATIO}
-                    aria-valuenow={Math.round(leftRatio)}
-                    tabIndex={0}
-                    title="拖动调整左右宽度 · 双击恢复默认"
-                    onPointerDown={(e) => {
-                      if (e.button !== 0) return;
-                      e.preventDefault();
-                      setIsResizing(true);
-                    }}
-                    onKeyDown={handleDividerKeyDown}
-                    onDoubleClick={() => setLeftRatio(DEFAULT_SPLIT_RATIO)}
-                    className="hidden md:flex relative w-2 flex-none cursor-col-resize touch-none select-none items-center justify-center group/divider"
-                  >
-                    <span className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors duration-200 ${isResizing ? 'bg-blue-500/60' : 'bg-white/5 group-hover/divider:bg-white/10'}`} />
-                    <span className={`relative z-10 w-1 h-8 rounded-full transition-[background-color,opacity] duration-200 ${isResizing ? 'bg-blue-400/70' : 'bg-white/10 opacity-0 group-hover/divider:opacity-100 group-focus-visible/divider:opacity-100'}`} />
-                  </div>
-
-                  {/* Right column: summary sidebar by default, transcript when
-                      the transcript is expanded. */}
-                  <div
-                    data-testid="right-column"
-                    className="w-full md:flex-1 min-w-0 max-md:shrink-0 md:h-full flex flex-col relative border-t md:border-t-0 border-white/5 bg-transparent"
-                  >
-                    {isTranscriptExpanded ? (
-                      <div
-                        data-testid="transcript-column"
-                        className="h-[52vh] md:h-full md:flex-1 min-h-0 flex flex-col relative bg-transparent"
-                      >
-                        {transcriptContent}
-                      </div>
-                    ) : (
-                      <div
-                        data-testid="summary-panel"
-                        className="p-6 bg-zinc-900/60 backdrop-blur-xl overflow-y-auto custom-scrollbar md:h-full md:min-h-0"
-                      >
-                        {summaryBody}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
             </>
           )}
 
