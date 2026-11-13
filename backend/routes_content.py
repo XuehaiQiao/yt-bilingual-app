@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 import llm
+import local_shows
 from config import HISTORY_DIR, SENTENCES_DIR, SUBTITLES_DIR, resolve_model
 from transcripts import group_srt_blocks, parse_srt
 from translate import (
@@ -179,7 +180,16 @@ async def process_subtitle(request: SubtitleRequest):
         )
         if repaired and not cached_data.get("model"):
             cached_data["model"] = model
-        return await retranslate_marked_blocks(cached_data, cache_path, model=model)
+        cached_data = await retranslate_marked_blocks(cached_data, cache_path, model=model)
+        # 缓存里可能没有 YouTube 映射（老缓存，或 episodes.json 后来才补上）：
+        # 每次命中都从映射现取，只改返回的 payload，不重写缓存文件。
+        local_shows.enrich_metadata(
+            cached_data.get("metadata"),
+            request.show_id,
+            request.season,
+            request.episode,
+        )
+        return cached_data
 
     # Parse SRT file
     with open(srt_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -204,6 +214,11 @@ async def process_subtitle(request: SubtitleRequest):
         "thumbnail": meta.get("thumbnail", ""),
         "is_local_subtitle": True
     }
+    # 有 episodes.json 映射的剧集带上真实 YouTube 视频 id，前端可复用视频播放器；
+    # 没有映射时 payload 形状与改动前完全一致。
+    local_shows.enrich_metadata(
+        metadata, request.show_id, request.season, request.episode
+    )
 
     # Process through Gemini translation (same batching as YouTube)
     processed_blocks = []

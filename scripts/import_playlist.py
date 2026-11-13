@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """把 YouTube 播放列表导入为「本地剧集」（Local Shows）字幕。
 
-本地剧集只有字幕与时间轴，没有视频画面：应用读取
-`subtitles/<show_id>/S<季>/E<集>.srt`，走与 YouTube 视频相同的翻译链路。
+本地剧集以字幕与时间轴为主：应用读取 `subtitles/<show_id>/S<季>/E<集>.srt`，
+走与 YouTube 视频相同的翻译链路；有 `episodes.json` 映射的集还能复用
+「看视频」的 YouTube 播放器。
 
-本脚本只做三件事：
+本脚本只做四件事：
 1. 用 yt-dlp 列出播放列表条目（不下载视频），得到标题与视频 id；
 2. 用 youtube-transcript-api 拉每个视频的英文轨道，转成标准 SRT；
-3. 写入 `subtitles/<show_id>/S01/E01.srt`（按播放列表顺序两位编号），
-   并生成/更新 `subtitles/<show_id>/meta.json`（标题与封面）。
+3. 写入 `subtitles/<show_id>/S01/E01.srt`（按播放列表顺序两位编号）；
+4. 生成/更新 `subtitles/<show_id>/meta.json` 与 `episodes.json`
+   （集 → 真实 videoId 的映射，供应用复用 YouTube 播放器）。
 
 不做翻译、不调用任何大模型——翻译在应用里第一次打开某一集时才发生。
-幂等：已存在的剧集默认跳过；单集失败不会中断，最后打印汇总与可操作提示。
-字幕是版权内容，仅供本机自用；`subtitles/` 已 gitignore，不入库。
+幂等：已存在的剧集默认跳过；`episodes.json` 每次运行都按播放列表重建/合并，
+不受 SRT 是否已存在影响，已有正确映射保留。单集失败不会中断，最后打印汇总与
+可操作提示。字幕是版权内容，仅供本机自用；`subtitles/` 已 gitignore，不入库。
 
 用法（在仓库根目录执行）：
     backend/venv/bin/python scripts/import_playlist.py \
@@ -43,6 +46,7 @@ DEFAULT_SUBTITLES_DIR = os.environ.get(
 
 SEASON = 1
 LANGUAGE = "en"
+EPISODES_FILENAME = "episodes.json"
 # 单集请求之间的间隔，降低触发 YouTube 限流的概率。
 REQUEST_INTERVAL = 2.0
 # 限流/临时错误的重试次数与初始退避秒数（之后每次翻倍）。
@@ -385,6 +389,57 @@ def write_meta(
     return meta_path
 
 
+def episode_key(position: int) -> str:
+    """播放列表序号 -> episodes.json 的键（S01E01）。"""
+    return f"S{SEASON:02d}E{position:02d}"
+
+
+def read_episodes(show_dir: str) -> dict:
+    """读已有 episodes.json；缺失/损坏都当作空映射，不中断导入。"""
+    path = os.path.join(show_dir, EPISODES_FILENAME)
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            loaded = json.load(handle)
+    except (OSError, ValueError) as exc:
+        print(f"⚠️  忽略无法读取的 {path}：{exc}")
+        return {}
+    if not isinstance(loaded, dict):
+        print(f"⚠️  忽略格式不正确的 {path}：顶层应为对象")
+        return {}
+    return loaded
+
+
+def write_episodes(show_dir: str, entries: list[PlaylistEntry]) -> tuple[str, int, int]:
+    """写/更新 episodes.json：集 -> YouTube videoId 映射。
+
+    - 每次运行都按本次 yt-dlp 列表更新，与 SRT 是否已存在无关；
+    - 合并而非覆盖：已有映射（包括本次 --limit 之外的集）保留；
+    - 同一集在新播放列表里换了视频，则以新列表为准；
+    - 没有 video id 的条目跳过（保留该集原有映射，如果有）。
+
+    返回 (路径, 总映射数, 本次新增/更新的条数)。
+    """
+    path = os.path.join(show_dir, EPISODES_FILENAME)
+    episodes = read_episodes(show_dir)
+    changed = 0
+    for entry in entries:
+        if not entry.video_id:
+            continue
+        key = episode_key(entry.position)
+        value = {"videoId": entry.video_id, "title": entry.title}
+        if episodes.get(key) != value:
+            changed += 1
+        episodes[key] = value
+
+    ordered = {key: episodes[key] for key in sorted(episodes)}
+    atomic_write_text(
+        path, json.dumps(ordered, ensure_ascii=False, indent=2) + "\n"
+    )
+    return path, len(ordered), changed
+
+
 # ----------------------------------------------------
 # 主流程
 # ----------------------------------------------------
@@ -440,8 +495,17 @@ def run(args: argparse.Namespace) -> int:
                 print(f"   ⏭️  S01E{entry.position:02d} 已存在：{entry.title}")
             else:
                 print(f"   ⬇️  S01E{entry.position:02d} ← {entry.video_id}：{entry.title}")
+        mapped = sum(1 for entry in entries if entry.video_id)
+        print(f"   🗂️  episodes.json（计划）：{mapped} 集映射")
         print(f"   📝 meta.json（计划）：title={playlist.title!r}，thumbnail={playlist.thumbnail!r}")
         return 0
+
+    # 映射与 SRT 是否已存在无关：每次运行都写，已有正确映射会被保留。
+    episodes_path, mapped_count, updated_count = write_episodes(show_dir, entries)
+    print(
+        f"🗂️  episodes.json：{episodes_path}"
+        f"（共 {mapped_count} 集映射，本次新增/更新 {updated_count}）"
+    )
 
     successful: list[PlaylistEntry] = []
     skipped: list[PlaylistEntry] = []
@@ -506,6 +570,7 @@ def run(args: argparse.Namespace) -> int:
         f"失败 {len(failed)}（共 {len(entries)} 集）"
     )
     print(f"📝 meta.json：{meta_path}")
+    print(f"🗂️  episodes.json：{episodes_path}（{mapped_count} 集映射）")
 
     if failed:
         print("\n失败明细与处理建议：")

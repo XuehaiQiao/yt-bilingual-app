@@ -7,6 +7,7 @@ import asyncio
 import datetime
 import json
 import os
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -16,6 +17,7 @@ from pydantic import BaseModel
 
 from config import DEFAULT_MODEL, HISTORY_DIR, MODEL_CATALOG, resolve_model
 import llm
+import local_shows
 from transcripts import (
     extract_video_id,
     fetch_english_transcript,
@@ -274,6 +276,24 @@ def _history_filename(metadata: dict, video_id: str) -> str:
 # History files that are not videos — never list or delete them through /api/history.
 HISTORY_META_FILES = {"favorites.json", "subscriptions.json", "dictionary_cache.json"}
 
+# 本地剧集缓存文件名：<show_id>_S01E01.json（见 routes_content.process_subtitle）。
+# show_id 本身可能带下划线，所以用贪婪匹配 `.+`，从右边锁住季/集。
+_LOCAL_EPISODE_FILENAME_RE = re.compile(
+    r"^(?P<show_id>.+)_S(?P<season>\d{2})E(?P<episode>\d{2})\.json$"
+)
+
+
+def _local_episode_from_filename(filename: str) -> tuple[str, int, int] | None:
+    """从本地剧集缓存文件名解析 (show_id, season, episode)；不是该格式返回 None。"""
+    match = _LOCAL_EPISODE_FILENAME_RE.match(filename)
+    if not match:
+        return None
+    return (
+        match.group("show_id"),
+        int(match.group("season")),
+        int(match.group("episode")),
+    )
+
 
 def _model_display_name(model_id: str | None) -> str:
     """模型 id → 展示名；老缓存没有记录就如实说 Not recorded。"""
@@ -502,6 +522,15 @@ async def get_history(filename: str, model: str | None = None):
         if not data.get("model") and (repaired or refreshed):
             data["model"] = chosen_model
         _bump_study(data, file_path)
+    # 本地剧集缓存：从 episodes.json 现取 YouTube 映射补进返回的 metadata，
+    # 与 process-subtitle 缓存命中的行为一致；不写回缓存文件，避免映射更新后
+    # 缓存里留下旧 id。普通 YouTube 缓存（无 is_local_subtitle）完全不受影响。
+    if isinstance(data, dict):
+        metadata = data.get("metadata")
+        if isinstance(metadata, dict) and metadata.get("is_local_subtitle") is True:
+            episode = _local_episode_from_filename(filename)
+            if episode:
+                local_shows.enrich_metadata(metadata, *episode)
     return data
 
 
