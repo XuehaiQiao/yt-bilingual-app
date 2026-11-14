@@ -11,7 +11,8 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、用户会话中间件（Cookie → SQLite → `request.state.user` + 数据目录 ContextVar）、挂载四个路由模块、`/health`。**不放业务逻辑** |
 | `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外）、`DEFAULT_MODEL`（默认 `deepseek-chat`，可用同名环境变量覆盖）、`resolve_model`（未知/缺省 → 默认模型）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
-| `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理 |
+| `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
+| `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
 | `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`；`ln_session` Cookie 与登录失败限流 |
 | `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；无用户 → 回落 `config.HISTORY_DIR`。所有用户数据路径必须从这里取 |
 | `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」，并提供 `is_available`（有没有 Key）与 `batch_pause`（按厂商限流节奏）。**SDK 调用是同步阻塞的**，调用方在 async 代码里必须用 `asyncio.to_thread` 包一层 |
@@ -22,7 +23,8 @@
 | `local_shows.py` | 本地剧集 → YouTube 视频映射：`episode_video_map(show_id)` / `lookup_episode_video(show_id, season, episode)` 读取 `subtitles/<show_id>/episodes.json`；缺失/损坏一律降级为无映射并打日志，路径限制在 `SUBTITLES_DIR` 内 |
 | `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
 | `routes_user.py` | `/api/define`（词典：`dictionary_cache.json` 语境缓存 → 本地词典 → 「已配 Key 的候选模型」；缺省 `model` 时候选链首选 `DEFAULT_MODEL`；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；模型结果写缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`、`/api/subscriptions` |
-| `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希；faster-whisper 为可选，见文件内注释） |
+| `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移；faster-whisper 为可选，见文件内注释） |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -46,7 +48,7 @@
 
 ```
 data/                                  # DATA_DIR（gitignore）
-├── app.db                             # AUTH_DB_PATH 默认值；users + sessions
+├── app.db                             # AUTH_DB_PATH 默认值；users + sessions + learning_events（Alembic 管）
 └── users/<user_id>/                   # USER_DATA_DIR/<user_id>/
     ├── history/                       # 视频/本地剧集缓存；含 dictionary_cache.json
     ├── favorites.json
@@ -64,6 +66,39 @@ data/                                  # DATA_DIR（gitignore）
   mv history/favorites.json history/subscriptions.json data/users/<user_id>/ 2>/dev/null || true
   ```
   移动前建议先备份 `history/`。
+
+## 迁移与事件日志（M1：Alembic + learning_events）
+
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+
+命令都在 `backend/` 下执行：
+
+```bash
+venv/bin/alembic upgrade head            # 新库：从零建到最新（0001_baseline → 0002_learning_events）
+venv/bin/alembic current                 # 看当前版本
+
+# 已有 data/app.db（只有 users/sessions，没有 alembic_version）：先纳管再补建新表
+venv/bin/alembic stamp 0001_baseline     # 只写版本号，不执行 DDL、不动数据
+venv/bin/alembic upgrade head            # 补建 learning_events
+
+venv/bin/alembic stamp head              # 已经是最新版本的库：只标最新，不执行 DDL
+```
+
+- 数据库路径与运行时同源：默认 `data/app.db`，可用 `AUTH_DB_PATH` 覆盖（迁移命令与 `config.py` 都读它）。
+- 基线迁移**幂等**（用 inspector 判断表/索引是否存在）：旧库直接 `upgrade head` 不会重建 `users`/`sessions`、不会动数据，只补缺的表；仍建议先备份 `data/app.db`。
+- **不要对旧库直接 `stamp head`**：会把 `0002` 也标记成已应用，`learning_events` 永远不会被建出来。正确顺序是 `stamp 0001_baseline` → `upgrade head`（或直接 `upgrade head`）。
+- `downgrade` 会 DROP 表（`0001` 的 down 会删 `users`/`sessions`），只用于空库/测试回滚，别在真实库上跑。
+- 启动时 `main.py` 的 lifespan 只读检查一次迁移状态：库存在但没迁移会打 WARNING（启动照常成功）；`emit_event` 在表缺失时跳过写入并记 ERROR，学习主流程不受影响。
+- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0003_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
+
+学习事件（`events.py`）：
+
+- 表：`learning_events(id, user_id, device_id, session_id, event_type, content_ref, payload, occurred_at, created_at, pseudonym_id)`；索引 `(user_id, occurred_at)` 与 `(event_type, occurred_at)`。
+- **append-only**：只有 `emit_event()` 追加与 `query_events()`（仅开发/测试）读取，**没有改/删接口**，也**没有对外 HTTP 端点**（前端埋点在下一阶段接）。
+- `occurred_at`：客户端毫秒时间戳（缺省用服务端时间）；`created_at`：服务端毫秒时间戳；`payload`：JSON 文本（dict/list，UTF-8 原文，不做二次转义）。
+- `pseudonym_id = HMAC-SHA256(EVENTS_PSEUDONYM_SALT, user_id)`；未设盐时用开发默认盐并告警一次，**生产必须设置 `EVENTS_PSEUDONYM_SALT`**。按计划书 §8.4，删除权口径（D-10）定稿后明文 `user_id` 会按表级矩阵迁移，事件表最终只靠假名归属。
+- `event_type` 暂不设 CHECK 约束（事件字典 v1 未定稿），示例：`video_open` / `block_visible` / `quiz_answer` / `word_review`。
+- 测试：`venv/bin/python -m pytest tests/test_migrations.py tests/test_events.py -q`（迁移全流程 + append-only 代码层断言）。
 
 ## 本地剧集视频映射（episodes.json）
 

@@ -56,6 +56,12 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").strip().lower() in ("1", "tr
 # 30 days, matching the Set-Cookie Max-Age below.
 SESSION_MAX_AGE = 30 * 24 * 60 * 60
 
+# --- 学习事件日志（learning_events，见 events.py） ---
+# pseudonym_id = HMAC-SHA256(EVENTS_PSEUDONYM_SALT, user_id)。生产必须设置该环境变量；
+# 未设置时退回开发默认盐并告警（可被枚举反推，仅限本地/测试）。逐用户盐表与删除权
+# 口径（D-10 / 计划书 §8.4）定稿后，事件表会按表级矩阵迁移到只存假名。
+EVENTS_PSEUDONYM_SALT = os.environ.get("EVENTS_PSEUDONYM_SALT", "")
+
 # --- SSE 心跳间隔 ---
 # 反向代理（Nginx 60s / Cloudflare 100s）会掐断长时间无输出的 SSE 流。
 # 流内每 SSE_HEARTBEAT_SECONDS 秒发一行 `: ping` 注释行；默认 15s，

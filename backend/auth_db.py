@@ -76,6 +76,12 @@ def _connect() -> sqlite3.Connection:
 
 
 def _init_schema(conn: sqlite3.Connection, path: str) -> None:
+    """users / sessions 的「连库即建表」兼容路径。
+
+    M1 起 schema 由 Alembic 管理（backend/migrations/，基线 0001_baseline 与本函数
+    保持一致）。这里保留 `CREATE TABLE IF NOT EXISTS` 只为旧部署/测试/脚本不跑
+    迁移也能工作；**新增表不要再加在这里**，否则迁移体系会出现两套真源。
+    """
     key = os.path.abspath(path)
     with _schema_lock:
         if key in _initialized_paths:

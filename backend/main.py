@@ -3,6 +3,7 @@
 模块分工见 backend/README.md：
 - config.py          环境、路径、安全、模型目录、词汇水平
 - auth_db.py         用户/会话 SQLite 存储 + Argon2 密码哈希
+- events.py          学习事件日志（append-only；表由 Alembic 迁移创建）
 - routes_auth.py     注册 / 登录 / 登出 / 当前用户
 - storage.py         当前用户的数据根目录（ContextVar，多用户隔离）
 - transcripts.py     字幕获取与切句（YouTube / SRT / Whisper 兜底）
@@ -14,19 +15,35 @@
 请求链路（从外到内）：CORS → API_AUTH_KEY → 用户会话 → 路由。
 Starlette 里后注册的中间件更靠外层，所以 CORS 放在文件最后注册。
 """
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import auth_db
 import config
+import events
 import routes_auth
 import routes_content
 import routes_user
 import routes_videos
 import storage
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """启动时只读检查迁移状态：只告警，不建表、不阻断启动。
+
+    users/sessions 仍保留 auth_db 的「连库即建表」兼容路径；learning_events 等新表
+    一律由 Alembic 创建（backend/migrations/）。这里把「库存在但没迁移」显式说出来，
+    否则事件会静默写不进去。
+    """
+    events.log_schema_status()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 def _is_public_api_path(path: str) -> bool:

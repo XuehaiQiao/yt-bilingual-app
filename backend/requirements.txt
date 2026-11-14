@@ -15,6 +15,11 @@ httpx>=0.28.1
 yt-dlp>=2024.0.0
 python-dotenv>=1.0.0
 
+# Database migrations (baseline users/sessions + learning_events). Alembic pulls
+# SQLAlchemy>=2.0; application code still uses plain sqlite3. Commands run from
+# backend/: venv/bin/alembic upgrade head  (see backend/migrations/README.md).
+alembic==1.20.1
+
 # Optional: local ASR fallback for videos without English captions
 # pip install faster-whisper  (downloads a Whisper model on first use;
 # set WHISPER_MODEL=small/base/medium to choose size, default: base)
