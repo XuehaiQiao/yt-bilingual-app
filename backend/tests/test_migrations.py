@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0003_cost_ledger"
+HEAD = "0004_target_lang"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -134,6 +134,7 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "occurred_at",
         "created_at",
         "usage_date",
+        "target_lang",
     ]
     assert usage["id"]["pk"] == 1
     assert usage["feature"]["notnull"] == 1
@@ -142,6 +143,9 @@ def test_upgrade_head_from_empty_db(tmp_path):
     assert usage["est_cost_usd"]["notnull"] == 1
     assert usage["occurred_at"]["notnull"] == 1
     assert usage["usage_date"]["notnull"] == 1
+    # 0004_target_lang：可空 + 默认 zh-CN（旧数据不改写，读出默认值）
+    assert usage["target_lang"]["notnull"] == 0
+    assert "zh-CN" in str(usage["target_lang"]["default"])
 
     usage_indexes = index_names(db, "ai_usage")
     assert "ix_ai_usage_user_day" in usage_indexes

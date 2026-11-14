@@ -8,18 +8,21 @@ import json
 import os
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 
+import languages
 import llm
 import local_shows
 import storage
-from config import SENTENCES_DIR, SUBTITLES_DIR, resolve_model
+from config import SENTENCES_DIR, SUBTITLES_DIR
 from transcripts import group_srt_blocks, parse_srt
 from translate import (
     mock_llm_processing,
     needs_retranslation,
+    payload_target_lang,
     process_llm_batch,
     retranslate_marked_blocks,
+    stamp_payload_language,
 )
 
 router = APIRouter()
@@ -147,14 +150,36 @@ class SubtitleRequest(BaseModel):
     season: int
     episode: int
     model: str | None = None
+    # specs/012 §5.3：camelCase 为主，snake_case 兼容脚本/旧客户端。
+    target_lang: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("targetLang", "target_lang"),
+    )
+
+
+def _target_lang_or_400(raw: str | None) -> str:
+    """请求参数 → canonical 语言；缺省 zh-CN，非法 400。"""
+    try:
+        return languages.resolve_target_lang(raw)
+    except languages.UnsupportedLanguage as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _local_summary_label(show_title: str, show_title_zh: str, season: int, episode: int) -> str:
+    """中文旧行为：固定集名标签（不是 AI 总结）。"""
+    return f"📺 {show_title_zh} 第{season}季 第{episode}集"
 
 
 @router.post("/api/process-subtitle")
 async def process_subtitle(request: SubtitleRequest):
-    """Process a local SRT subtitle file through the selected model's translation."""
-    # 模型名经 resolve_model 校验；不存在时回落到默认模型。没配 Key 的模型
-    # 会在调用层失败，走原有的批次降级逻辑，不会让接口直接 500/502。
-    model = resolve_model(request.model)
+    """Process a local SRT subtitle file through the selected model's translation.
+
+    目标语言（``targetLang``，缺省 zh-CN）决定：缓存目录、prompt 语言、模型
+    路线、账本维度。非中文缓存落在 ``history/<code>/``，中文继续留在根目录。
+    """
+    lang = _target_lang_or_400(request.target_lang)
+    # 模型按目标语言路线解析；显式选择且可用时优先，没配 Key 的候选自动跳过。
+    model = llm.resolve_model_for_target(request.model, lang)
     srt_path = os.path.join(
         SUBTITLES_DIR, request.show_id,
         f"S{request.season:02d}", f"E{request.episode:02d}.srt"
@@ -163,36 +188,42 @@ async def process_subtitle(request: SubtitleRequest):
     if not os.path.exists(srt_path):
         raise HTTPException(status_code=404, detail="Subtitle file not found")
 
-    # Check if already processed (cached in history)
+    # Check if already processed (cached in the target language directory)
     cache_filename = f"{request.show_id}_S{request.season:02d}E{request.episode:02d}.json"
-    cache_path = os.path.join(storage.history_dir(), cache_filename)
+    cache_path = os.path.join(storage.history_dir(lang), cache_filename)
 
     if os.path.exists(cache_path):
-        print(f"Loading cached subtitles: {cache_filename}")
+        print(f"Loading cached subtitles: {cache_filename} [{lang}]")
         with open(cache_path, "r", encoding="utf-8") as f:
             cached_data = json.load(f)
-        # 缓存里记录的 `model` 是「生成这批翻译时实际使用的模型」，命中时
-        # 原样返回，供历史列表显示，不因这次请求换了模型而覆盖。
-        # 旧缓存（本字段出现之前生成）没有记录：不臆测当时用的模型；只有
-        # 这次确实用 `model` 补译过失败块，才记上本次模型（与 YouTube
-        # 缓存自愈的语义一致，见 routes_videos.process_video）。
-        repaired = any(
-            needs_retranslation(b.get("zh_text", "")) for b in cached_data.get("transcript", [])
-        )
-        if repaired and not cached_data.get("model"):
-            cached_data["model"] = model
-        cached_data = await retranslate_marked_blocks(
-            cached_data, cache_path, model=model, feature="local_show"
-        )
-        # 缓存里可能没有 YouTube 映射（老缓存，或 episodes.json 后来才补上）：
-        # 每次命中都从映射现取，只改返回的 payload，不重写缓存文件。
-        local_shows.enrich_metadata(
-            cached_data.get("metadata"),
-            request.show_id,
-            request.season,
-            request.episode,
-        )
-        return cached_data
+        if payload_target_lang(cached_data) != lang:
+            # 语言不一致视为未命中（规格 §5.4），重新生成当前语言版本。
+            print(f"Cached payload language mismatch, reprocessing: {cache_filename}")
+        else:
+            cached_data = stamp_payload_language(cached_data, lang)
+            # 缓存里记录的 `model` 是「生成这批翻译时实际使用的模型」，命中时
+            # 原样返回，供历史列表显示，不因这次请求换了模型而覆盖。
+            # 旧缓存（本字段出现之前生成）没有记录：不臆测当时用的模型；只有
+            # 这次确实用 `model` 补译过失败块，才记上本次模型（与 YouTube
+            # 缓存自愈的语义一致，见 routes_videos.process_video）。
+            repaired = any(
+                needs_retranslation(b.get("zh_text", "")) for b in cached_data.get("transcript", [])
+            )
+            if repaired and not cached_data.get("model"):
+                cached_data["model"] = model
+            cached_data = await retranslate_marked_blocks(
+                cached_data, cache_path, model=model, feature="local_show",
+                target_lang=lang,
+            )
+            # 缓存里可能没有 YouTube 映射（老缓存，或 episodes.json 后来才补上）：
+            # 每次命中都从映射现取，只改返回的 payload，不重写缓存文件。
+            local_shows.enrich_metadata(
+                cached_data.get("metadata"),
+                request.show_id,
+                request.season,
+                request.episode,
+            )
+            return cached_data
 
     # Parse SRT file
     with open(srt_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -223,12 +254,15 @@ async def process_subtitle(request: SubtitleRequest):
         metadata, request.show_id, request.season, request.episode
     )
 
-    # Process through Gemini translation (same batching as YouTube)
+    # Process through the selected model (same batching as YouTube)
     processed_blocks = []
     batch_size = 20
     has_mock_fallback = False  # Track if any batch used mock
 
-    print(f"Processing {len(blocks)} subtitle blocks for {show_title} S{request.season:02d}E{request.episode:02d}...")
+    print(
+        f"Processing {len(blocks)} subtitle blocks for {show_title} "
+        f"S{request.season:02d}E{request.episode:02d} [{lang}]..."
+    )
 
     for i in range(0, len(blocks), batch_size):
         batch = blocks[i:i + batch_size]
@@ -242,7 +276,7 @@ async def process_subtitle(request: SubtitleRequest):
             try:
                 # 本地剧集翻译单独归到 local_show：账本要能回答「花在哪个功能」。
                 batch_result = await process_llm_batch(
-                    batch, model=model, feature="local_show"
+                    batch, model=model, feature="local_show", target_lang=lang
                 )
                 processed_blocks.extend(batch_result)
                 # 批间停顿按 provider 的限流节奏走（Gemini 4s / DeepSeek 1s），
@@ -265,26 +299,36 @@ async def process_subtitle(request: SubtitleRequest):
 
         if not success:
             has_mock_fallback = True
-            mock_result = await mock_llm_processing(batch)
+            mock_result = await mock_llm_processing(batch, target_lang=lang)
             processed_blocks.extend(mock_result)
 
-    result_payload = {
+    result_payload = stamp_payload_language({
         "videoId": f"{request.show_id}-S{request.season:02d}E{request.episode:02d}",
         "metadata": metadata,
         "transcript": processed_blocks,
         # 本地剧集的 summary 是固定集名标签，不是模型生成的总结；
-        # 模型只作用于翻译与缓存自愈补译。
-        "summary": f"📺 {show_title_zh} 第{request.season}季 第{request.episode}集",
+        # 模型只作用于翻译与缓存自愈补译。中文保留旧标签；其他语言不写中文标签，
+        # 改为结构化字段（前端按 UI 语言渲染），并留空 summary 触发旧行为兼容。
+        "summary": (
+            _local_summary_label(show_title, show_title_zh, request.season, request.episode)
+            if lang == languages.DEFAULT_TARGET_LANG
+            else ""
+        ),
+        "summary_kind": "episode_label",
+        "season": request.season,
+        "episode": request.episode,
+        "show_title": show_title,
+        "show_title_zh": show_title_zh,
         # 记录这批翻译实际使用的模型（resolve 后的 id），历史列表据此显示；
         # 随 payload 一起落盘，缓存命中时原样返回。
         "model": model,
-    }
+    }, lang)
 
     # Only cache if all batches succeeded (no mock fallback)
     if not has_mock_fallback:
         with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(result_payload, f, ensure_ascii=False, indent=2)
-        print(f"Cached result: {cache_filename}")
+        print(f"Cached result: {cache_filename} [{lang}]")
     else:
         print(f"⚠️ Result contains mock translations, NOT caching. Retry later for full translation.")
 
@@ -293,17 +337,22 @@ async def process_subtitle(request: SubtitleRequest):
 
 # --- Processed episodes lookup ---
 @router.get("/api/shows/{show_id}/processed")
-def get_processed_episodes(show_id: str):
-    """Return a list of processed episode keys like ['S02E01', 'S04E03'] for a show."""
+def get_processed_episodes(show_id: str, targetLang: str | None = None):
+    """Return processed episode keys for a show in the requested target language."""
+    lang = _target_lang_or_400(targetLang)
     prefix = f"{show_id}_S"
     processed = []
-    history_root = storage.history_dir()
-    for filename in os.listdir(history_root):
-        if filename.startswith(prefix) and filename.endswith(".json"):
+    history_root = storage.history_dir(lang)
+    if os.path.isdir(history_root):
+        for filename in os.listdir(history_root):
+            if not filename.startswith(prefix) or not filename.endswith(".json"):
+                continue
+            if not os.path.isfile(os.path.join(history_root, filename)):
+                continue
             # e.g. "house-of-cards_S02E01.json" -> "S02E01"
             key = filename[len(show_id) + 1:].replace(".json", "")
             processed.append(key)
-    return {"processed": processed}
+    return {"processed": processed, "targetLang": lang}
 
 
 # ====================================================

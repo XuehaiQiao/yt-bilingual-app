@@ -3,6 +3,8 @@
 启动：`source venv/bin/activate && uvicorn main:app --port 8000`（入口永远是 `main:app`）。
 验证：`venv/bin/python -m py_compile *.py`；离线测试：`venv/bin/python -m pytest tests -q`（测试全程离线、不联网）。环境变量见 [开发指南](../docs/开发指南.md)。
 
+> **翻译目标语言（P0）**：`/api/estimate-cost`、`/api/process-video`、`/api/process-video-stream`、`/api/define`、`/api/process-subtitle` 接受可选 `targetLang`（`zh-CN` 默认 / `vi-VN`）；不带参数 = 中文，旧行为不变。缓存按语言分目录（`history/` 根目录 = zh-CN 兼容位、`history/vi-VN/` = 越南语），模型按语言路线选择。详见下文「多语言目标语言」与 [specs/012](../specs/012-i18n-multilingual/spec.md)。
+
 > **默认模型是 `deepseek-chat`**（DeepSeek，国内可直连，大陆首发商用默认）；Gemini 三档保留在 `MODEL_CATALOG` 里作为**海外可选**（大陆不可用/不合规）。默认模型可用环境变量 `DEFAULT_MODEL` 覆盖（必须是目录里的 id，非法值回落 `deepseek-chat`），`/api/models` 的 `default` 字段与 `resolve_model(None)` 都跟随它。
 
 ## 文件说明
@@ -11,22 +13,23 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、用户会话中间件（Cookie → SQLite → `request.state.user` + 数据目录 ContextVar）、结构化访问日志（request_id + 一行 JSON）、挂载四个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外）、`DEFAULT_MODEL`（默认 `deepseek-chat`，可用同名环境变量覆盖）、`resolve_model`（未知/缺省 → 默认模型）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
+| `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
-| `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini） |
+| `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额** |
 | `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`；`ln_session` Cookie 与登录失败限流 |
-| `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；无用户 → 回落 `config.HISTORY_DIR`。所有用户数据路径必须从这里取 |
-| `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」，并提供 `is_available`（有没有 Key）与 `batch_pause`（按厂商限流节奏）。**SDK 调用是同步阻塞的**，调用方在 async 代码里必须用 `asyncio.to_thread` 包一层；`usage_scope(feature, user_id)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关） |
+| `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；无用户 → 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取 |
+| `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」；端点支持 `base_url` 或 `base_url_env`（Qwen 等区域端点由环境变量给，不写死）。`is_available` 同时检查 Key 与必需端点；`resolve_model_for_target(requested, target_lang)` 按「用户选择 → 该语言首选 → 该语言路线 → 全局默认 → 目录首个可用」解析，未配 Key 的候选自动跳过。**SDK 调用是同步阻塞的**，调用方在 async 代码里必须用 `asyncio.to_thread` 包一层；`usage_scope(feature, user_id, target_lang=…)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关） |
 | `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。这些函数是同步阻塞实现，async 调用方负责放进线程 |
-| `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。LLM 生成调用经 `asyncio.to_thread` 执行，异常仍照常抛回；批间 `batch_pause` 语义不变；翻译/总结带日配额与降级链，`feature` / `user_id` 缺省取请求上下文（本地剧集传 `local_show`） |
-| `routes_videos.py` | `/api/models`（全局模型栏数据源）、`/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心；流内慢任务期间按 `SSE_HEARTBEAT_INTERVAL`（默认 15s）发 `: ping` 注释行心跳）、`/api/history*`（本地剧集缓存按 `episodes.json` 补 `youtube_video_id`）、`/api/channel-updates`（yt-dlp 频道拉取，放线程并发、最多 8 个） |
-| `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集：翻译与补译跟随请求 `model`，新处理结果与缓存 payload 记录 `model`，批间隔按 `llm.batch_pause(model)`；有视频映射的集在 `metadata` 补 `youtube_video_id` / `youtube_title`）、`/api/sentences*`（句子精背） |
+| `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词 + 高亮子串/NFC 校验 + 越南语 CJK 泄漏重试）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。prompt 里的语言名来自 `languages`（不再硬编码 "Chinese"）；JSON 字段名 `zh_text`/`zh_word` 保持 P0 兼容、值为目标语言。LLM 生成调用经 `asyncio.to_thread` 执行，异常仍照常抛回；批间 `batch_pause` 语义不变；翻译/总结带日配额与降级链，`feature` / `user_id` / `target_lang` 缺省取请求上下文（本地剧集传 `local_show`） |
+| `routes_videos.py` | `/api/models`（全局模型栏数据源；`targetLang` → `targetLang`/`recommended`）、`/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心；事件带 `targetLang`，`meta` 另带 `sourceLang`/`promptVersion`；流内慢任务期间按 `SSE_HEARTBEAT_INTERVAL`（默认 15s）发 `: ping` 注释行心跳）、`/api/history*`（按 `targetLang` 只读写对应语言目录；本地剧集缓存按 `episodes.json` 补 `youtube_video_id`）、`/api/channel-updates`（yt-dlp 频道拉取，放线程并发、最多 8 个） |
+| `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集：`targetLang` 决定缓存目录/prompt/模型路线；翻译与补译跟随请求 `model`，新处理结果与缓存 payload 记录 `model` 和 `target_lang`，批间隔按 `llm.batch_pause(model)`；非中文不写中文固定集名标签，改为 `summary_kind="episode_label"` + 季/集/标题结构化字段；有视频映射的集在 `metadata` 补 `youtube_video_id` / `youtube_title`）、`/api/shows/{id}/processed?targetLang=`、`/api/sentences*`（句子精背） |
 | `local_shows.py` | 本地剧集 → YouTube 视频映射：`episode_video_map(show_id)` / `lookup_episode_video(show_id, season, episode)` 读取 `subtitles/<show_id>/episodes.json`；缺失/损坏一律降级为无映射并打日志，路径限制在 `SUBTITLES_DIR` 内 |
 | `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
-| `routes_user.py` | `/api/define`（词典：`dictionary_cache.json` 语境缓存 → 本地词典 → 「已配 Key 的候选模型」；缺省 `model` 时候选链首选 `DEFAULT_MODEL`；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；模型结果写缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
+| `routes_user.py` | `/api/define`（词典：`targetLang` 决定缓存目录与 prompt 语言；语境缓存 → 本地 ECDICT（**仅 zh-CN**）→「已配 Key 的候选模型」；vi-VN 跳过 ECDICT 直接 LLM，只有 DeepSeek Key 也能查；缺省 `model` 时 zh 候选链首选 `DEFAULT_MODEL`、其他语言首选该语言路线；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；响应带 `targetLang`，可选 `pos_label` / `example_translation`；模型结果写按语言隔离的缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -69,14 +72,80 @@ data/                                  # DATA_DIR（gitignore）
   ```
   移动前建议先备份 `history/`。
 
+## 多语言目标语言（targetLang，P0）
+
+规格：[specs/012-i18n-multilingual](../specs/012-i18n-multilingual/spec.md) §5.3–§5.10、§6。P0 范围 = **目标语言**（翻译/总结/词典/缓存/模型路线），UI 语言与 `/api/settings` 属后续任务。
+
+### 请求参数与响应字段
+
+| 端点 | 新增参数 | 缺省 | 响应/落盘 |
+|---|---|---|---|
+| `GET /api/models` | `?targetLang=` | zh-CN | 加 `targetLang`、`recommended`；`default` 为该语言路线首个可用模型 |
+| `GET /api/estimate-cost` | `?targetLang=` | zh-CN | 加 `targetLang`、`recommendedModel` |
+| `POST /api/process-video` | body `targetLang`（也接受 `target_lang`） | zh-CN | 返回的缓存 payload 带 `target_lang` / `source_lang` / `prompt_version` |
+| `POST /api/process-video-stream` | 同上 | zh-CN | 所有 SSE 事件带 `targetLang`；`meta` 另带 `sourceLang`、`promptVersion` |
+| `POST /api/process-subtitle` | 同上 | zh-CN | 缓存 payload 带 `target_lang`；非中文 `summary` 为空 + `summary_kind="episode_label"` |
+| `GET /api/shows/{show_id}/processed` | `?targetLang=` | zh-CN | 返回 `{processed, targetLang}` |
+| `GET /api/history`、`GET/DELETE /api/history/{filename}` | `?targetLang=` | zh-CN | 列表项加 `targetLang`；只在对应语言目录解析/删除 |
+| `POST /api/define` | body `targetLang`（也接受 `target_lang`） | zh-CN | 加 `targetLang`，可选 `pos_label` / `example_translation` |
+
+- 语言代码经 `languages.resolve_target_lang()` 规范化（`zh`/`vi` 等别名可用）；**非法代码 400** `{"detail":"不支持的语言代码：xx-XX"}`。
+- JSON 字段 `zh_text` / `zh_word` / `zh` 是**历史兼容名**，值 = 当前目标语言；语言标记在容器级（`target_lang` / `targetLang`），不要从文本猜语言。
+- 未配 Key 的候选模型自动跳过；运行中失败不自动换厂商（沿用 010 的「不偷偷故障转移」）。
+
+### 数据目录（按语言隔离）
+
+```
+data/users/<user_id>/history/                     # zh-CN 兼容位（长期保留）
+├── <channel>_<date>_<videoId>.json               # 中文视频/剧集缓存
+├── dictionary_cache.json                         # 中文词典缓存
+└── vi-VN/                                        # 其他语言：一个语言一个目录
+    ├── <channel>_<date>_<videoId>.json
+    └── dictionary_cache.json
+```
+
+- **必须**通过 `storage.history_dir(target_lang)` / `storage.dictionary_cache_file(target_lang)` 取路径；不要在路由里手拼 `history_dir()/lang/...`。
+- 读取缓存时校验 payload 的 `target_lang`（旧文件缺省 = zh-CN）；与请求语言不一致视为未命中，绝不返回错误语言的译文。
+- 删除只删当前语言的一份；同一视频的另一语言缓存保留。
+- 总结随视频缓存文件（不另设总结缓存）；旧中文缓存只在正常写盘（学习计数/自愈）时补 `target_lang`，不做批量迁移。
+
+### 模型路线
+
+| 语言 | 代码默认路线 | 环境变量覆盖 |
+|---|---|---|
+| `zh-CN` | `deepseek-chat` → `gemini-2.5-flash` | `MODEL_ROUTE_ZH_CN` |
+| `vi-VN` | `gemini-2.5-flash` → `qwen-plus` → `deepseek-chat` | `MODEL_ROUTE_VI_VN` |
+
+- 每语言首选用 `DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN` 覆盖；全局兜底仍是 `DEFAULT_MODEL`。
+- `qwen-plus` 用 `QWEN_API_KEY` + `QWEN_BASE_URL`（国际站/大陆站端点不同，**代码不写死**）；缺任一视为不可用并跳过。
+- 大陆部署不配 `GEMINI_API_KEY` → Gemini 自动跳过，路线落到 Qwen/DeepSeek；Gemini 不进大陆降级链（降级链逻辑见 `ai/quota.py`）。
+
+### 词典策略
+
+| 目标语言 | 查词顺序 |
+|---|---|
+| `zh-CN` | 语境缓存 → ECDICT（`data/ecdict.db`）→ LLM 候选链 |
+| `vi-VN` | 语境缓存 → **跳过 ECDICT** → LLM 候选链 |
+
+- ECDICT 只在 zh-CN 命中；越南语即使本机装了 ECDICT 也不返回中文静态释义。
+- 缓存键 = `(target_lang, NFC(casefold(word)))`，落盘到该语言的 `dictionary_cache.json`；同词不同语言互不命中。
+- `/api/define` 失败（所有候选都失败）返回 502，不写缓存；本地命中仍 `source: "local"` 且不带 `model`。
+- 账本记录 `target_lang`，但**不按语言拆日限额**（P0 仍按 `(user_id, day, feature)` 计数）。
+
+### 测试
+
+```bash
+venv/bin/python -m pytest tests/test_i18n_target_lang.py -q   # 目标语言 P0（全离线）
+```
+
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 
 ```bash
-venv/bin/alembic upgrade head            # 新库：从零建到最新（0001_baseline → 0002_learning_events → 0003_cost_ledger）
+venv/bin/alembic upgrade head            # 新库：从零建到最新（0001_baseline → 0002_learning_events → 0003_cost_ledger → 0004_target_lang）
 venv/bin/alembic current                 # 看当前版本
 
 # 已有 data/app.db（只有 users/sessions，没有 alembic_version）：先纳管再补建新表
@@ -117,7 +186,7 @@ venv/bin/alembic stamp head              # 已经是最新版本的库：只标�
 {
   "status": "ok",
   "version": "0.0.0-dev",
-  "db": {"ok": true, "migrations": {"current": "0003_cost_ledger", "head": "0003_cost_ledger"}},
+  "db": {"ok": true, "migrations": {"current": "0004_target_lang", "head": "0004_target_lang"}},
   "uptime_seconds": 12.3,
   "time": "2026-11-14T20:16:10.619Z"
 }
@@ -148,7 +217,7 @@ CI（`.github/workflows/ci.yml`）在后端 job 里跑 `py_compile` + 全量离�
 
 ## AI 成本账本与三层配额（M1b）
 
-目标：运营能一条 SQL 回答「用户 X 本月花了多少美元、花在哪个功能」。表由 `0003_cost_ledger` 创建，运行时只追加/累加，不做历史回写。
+目标：运营能一条 SQL 回答「用户 X 本月花了多少美元、花在哪个功能、哪种目标语言」。`ai_usage` 由 `0003_cost_ledger` 建表、`0004_target_lang` 加 `target_lang`；运行时只追加/累加，不做历史回写。
 
 ### 表与字段
 

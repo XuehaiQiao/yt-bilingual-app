@@ -31,6 +31,7 @@ import logging
 import sqlite3
 
 import config
+import languages
 import llm
 from ai import ledger
 from ai.ledger import KNOWN_FEATURES, QuotaExceeded
@@ -122,21 +123,30 @@ def check_and_consume_quota(
     units: int = 1,
     *,
     day: str | None = None,
+    target_lang: str | None = None,
 ) -> dict:
     """三层硬闸入口：预算检查 → 功能日配额原子扣减；超限抛 ``QuotaExceeded``。
 
     未登录（``user_id=None``）直接放行且不写库（正常 API 都是登录态）。
     表未迁移（``no such table``）时 fail-open：记一次 WARNING 并放行，避免
     升级顺序问题把翻译/查词整条链路打死；上线前必须迁移。
+
+    ``target_lang`` 只随结果/账本记录，**不拆限额**（P0 仍按
+    ``(user_id, day, feature)`` 计数，见规格 §5.5「成本与配额」）。
     """
+    resolved_lang = languages.normalize_code(target_lang) or languages.DEFAULT_TARGET_LANG
     global _warned_missing_tables
 
     if not user_id:
-        return ledger.check_and_consume_quota(user_id, feature, units, day=day)
+        return ledger.check_and_consume_quota(
+            user_id, feature, units, day=day, target_lang=resolved_lang
+        )
 
     try:
         ensure_within_budget(user_id, day)
-        result = ledger.check_and_consume_quota(user_id, feature, units, day=day)
+        result = ledger.check_and_consume_quota(
+            user_id, feature, units, day=day, target_lang=resolved_lang
+        )
         result["enforced"] = True
         return result
     except sqlite3.OperationalError as exc:
@@ -158,6 +168,7 @@ def check_and_consume_quota(
             "limit_units": None,
             "remaining": None,
             "units": max(1, int(units)),
+            "target_lang": resolved_lang,
         }
 
 

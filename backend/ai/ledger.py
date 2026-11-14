@@ -35,6 +35,7 @@ from datetime import datetime, timezone as dt_timezone
 from zoneinfo import ZoneInfo
 
 import config
+import languages
 import storage
 
 logger = logging.getLogger(__name__)
@@ -274,6 +275,15 @@ def _require_db() -> str:
 _INSERT_USAGE_SQL = (
     "INSERT INTO ai_usage ("
     "user_id, feature, model_id, provider, input_tokens, output_tokens, calls, "
+    "est_cost_usd, occurred_at, created_at, usage_date, target_lang"
+    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+)
+
+# 0003 时代（未跑 0004_target_lang）的旧库：没有 target_lang 列也能记账。
+# 升级顺序问题不该让账本整条丢数据（与「表未迁移 fail-open」同一口径）。
+_INSERT_USAGE_SQL_WITHOUT_LANG = (
+    "INSERT INTO ai_usage ("
+    "user_id, feature, model_id, provider, input_tokens, output_tokens, calls, "
     "est_cost_usd, occurred_at, created_at, usage_date"
     ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
@@ -289,6 +299,7 @@ def record_usage(
     calls: int = 1,
     occurred_at: int | None = None,
     provider: str | None = None,
+    target_lang: str | None = None,
 ) -> dict | None:
     """追加一条 AI 用量记录，返回落库行；**任何失败只记日志并返回 None**。
 
@@ -300,12 +311,14 @@ def record_usage(
     - ``input_tokens`` / ``output_tokens``：provider usage，负数按 0；
     - ``calls``：本次 API 调用次数（默认 1）；
     - ``occurred_at``：毫秒时间戳，缺省服务端当前时间；
-    - ``provider``：缺省从目录读，目录外记 ``unknown``。
+    - ``provider``：缺省从目录读，目录外记 ``unknown``；
+    - ``target_lang``：目标语言（账本维度，缺省 ``zh-CN``）；**不拆配额限额**。
     """
     if feature not in KNOWN_FEATURES:
         logger.warning("record_usage 收到未知 feature=%r（已丢弃；见 KNOWN_FEATURES）。", feature)
         return None
 
+    resolved_lang = languages.normalize_code(target_lang) or languages.DEFAULT_TARGET_LANG
     resolved_user = user_id if user_id is not None else storage.active_user_id()
     tokens_in = _int_tokens(input_tokens)
     tokens_out = _int_tokens(output_tokens)
@@ -320,22 +333,33 @@ def record_usage(
         _require_db()
         conn = _connect()
         try:
-            cursor = conn.execute(
-                _INSERT_USAGE_SQL,
-                (
-                    resolved_user,
-                    feature,
-                    model_id or "unknown",
-                    resolved_provider,
-                    tokens_in,
-                    tokens_out,
-                    call_count,
-                    cost,
-                    occurred,
-                    created,
-                    usage_date,
-                ),
+            params = (
+                resolved_user,
+                feature,
+                model_id or "unknown",
+                resolved_provider,
+                tokens_in,
+                tokens_out,
+                call_count,
+                cost,
+                occurred,
+                created,
+                usage_date,
             )
+            try:
+                cursor = conn.execute(_INSERT_USAGE_SQL, (*params, resolved_lang))
+            except sqlite3.OperationalError as exc:
+                message = str(exc).lower()
+                if "no such column" not in message and "no column named" not in message:
+                    raise
+                # 未跑 0004_target_lang 的旧库：无列也落账，不丢成本数据。
+                if "target_lang" not in _warned:
+                    _warned.add("target_lang")
+                    logger.warning(
+                        "ai_usage.target_lang 列不存在（未跑 0004_target_lang 迁移），"
+                        "本次记账省略语言维度；请运行 `alembic upgrade head`。"
+                    )
+                cursor = conn.execute(_INSERT_USAGE_SQL_WITHOUT_LANG, params)
             conn.commit()
             return {
                 "id": int(cursor.lastrowid),
@@ -350,6 +374,7 @@ def record_usage(
                 "occurred_at": occurred,
                 "created_at": created,
                 "usage_date": usage_date,
+                "target_lang": resolved_lang,
             }
         finally:
             conn.close()
@@ -562,15 +587,19 @@ def check_and_consume_quota(
     *,
     limit: int | None = None,
     day: str | None = None,
+    target_lang: str | None = None,
 ) -> dict:
     """原子消耗 ``units`` 个当日配额；超限抛 ``QuotaExceeded``。
 
     - 未登录/``user_id=None``：无法归属，直接放行（``anonymous=True``），不写库；
     - ``limit`` 缺省时从 ``ai.quota.limit_for(feature)`` 取（延迟导入避免环）；
     - 表不存在时抛 ``sqlite3.OperationalError``，由 ``ai.quota`` 的包装层决定
-      是否 fail-open（运行时未迁移时不能把翻译整条链路打死）。
+      是否 fail-open（运行时未迁移时不能把翻译整条链路打死）；
+    - ``target_lang`` 只作记录维度（返回在结果里），**不拆限额**：P0 仍是
+      ``(user_id, day, feature)`` 一条配额。
 
-    返回 ``{allowed, feature, day, used_units, limit_units, remaining, units}``。
+    返回 ``{allowed, feature, day, used_units, limit_units, remaining, units,
+    target_lang}``。
     """
     if feature not in KNOWN_FEATURES:
         raise ValueError(f"未知 AI 功能：{feature!r}（见 ai.ledger.KNOWN_FEATURES）")
@@ -579,6 +608,7 @@ def check_and_consume_quota(
     except (TypeError, ValueError) as exc:
         raise ValueError(f"配额 units 必须是正整数：{units!r}") from exc
 
+    resolved_lang = languages.normalize_code(target_lang) or languages.DEFAULT_TARGET_LANG
     day = day or day_of()
     if not user_id:
         return {
@@ -590,6 +620,7 @@ def check_and_consume_quota(
             "limit_units": None,
             "remaining": None,
             "units": units,
+            "target_lang": resolved_lang,
         }
 
     if limit is None:
@@ -651,4 +682,5 @@ def check_and_consume_quota(
         "limit_units": limit_value,
         "remaining": max(0, limit_value - used),
         "units": units,
+        "target_lang": resolved_lang,
     }

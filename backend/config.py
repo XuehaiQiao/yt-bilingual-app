@@ -153,6 +153,17 @@ MODEL_CATALOG = {
         "api_key_env": "DEEPSEEK_API_KEY", "batch_pause": 1,
         "in": None, "out": None, "quotaInfo": "Default · domestic (CN) · strong Chinese",
     },
+    # Qwen（阿里）走 OpenAI 兼容协议；国际站/大陆站端点不同，**不在代码里写死**，
+    # 由 QWEN_BASE_URL 提供（缺失时该模型视为不可用、在路线里自动跳过）。
+    # 价格没有可核实来源，保持 None（前端显示「待定」），不编数字。
+    "qwen-plus": {
+        "name": "Qwen Plus", "provider": "Alibaba",
+        "kind": "openai_compatible", "model_id": "qwen-plus",
+        "base_url_env": "QWEN_BASE_URL",
+        "api_key_env": "QWEN_API_KEY", "batch_pause": 1,
+        "in": None, "out": None,
+        "quotaInfo": "Overseas / mainland endpoints differ · verify region",
+    },
 }
 
 # --- 默认模型 ---
@@ -179,6 +190,82 @@ DEFAULT_MODEL = _default_model_from_env()
 
 def resolve_model(model: str | None) -> str:
     return model if model in MODEL_CATALOG else DEFAULT_MODEL
+
+
+# --- 目标语言模型路线（specs/012-i18n-multilingual §5.5）--- 只增不改。
+#
+# 每种目标语言一条「按顺序尝试」的候选链：路线只在**选择默认模型**时生效，
+# 不改变 010 的「不偷偷故障转移」——运行中某个模型失败仍按批重试/标未翻译。
+# 环境变量逗号分隔、可覆盖；未知/已下线的 id 跳过并告警（不中断启动）。
+# 大陆部署不配 GEMINI_API_KEY 时 Gemini 自动跳过，路线落到 Qwen/DeepSeek；
+# 这里**不把 Gemini 写进任何降级链**（降级链见 ai/quota.py，另按地域过滤）。
+DEFAULT_MODEL_ZH_CN_FALLBACK = "deepseek-chat"
+DEFAULT_MODEL_VI_VN_FALLBACK = "qwen-plus"
+
+
+def _model_route_from_env(name: str, default: list[str]) -> list[str]:
+    """读 ``MODEL_ROUTE_*``（逗号分隔）；缺失用默认值，未知 id 跳过并告警。"""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return list(default)
+    ids = [item.strip() for item in raw.split(",") if item.strip()]
+    unknown = [item for item in ids if item not in MODEL_CATALOG]
+    if unknown:
+        print(f"⚠️  {name} 含不在 MODEL_CATALOG 的模型 id {unknown}，已跳过。")
+    route = [item for item in ids if item in MODEL_CATALOG]
+    if not route:
+        print(f"⚠️  {name} 没有可用模型 id，回落到默认路线 {default}。")
+        return list(default)
+    return route
+
+
+TARGET_LANG_MODEL_ROUTES: dict[str, list[str]] = {
+    # 中文：默认 DeepSeek（大陆可直连）；Gemini 仅作为海外部署的可选后续候选。
+    "zh-CN": _model_route_from_env(
+        "MODEL_ROUTE_ZH_CN", ["deepseek-chat", "gemini-2.5-flash"]
+    ),
+    # 越南语：Qwen（负责人默认）→ Gemini → DeepSeek；没配 Key 的自动跳过。
+    # 负责人 2026-11-15：模型可选、越南语默认 Qwen；Gemini 作为备选。
+    "vi-VN": _model_route_from_env(
+        "MODEL_ROUTE_VI_VN", ["qwen-plus", "gemini-2.5-flash", "deepseek-chat"]
+    ),
+}
+
+
+def _lang_default_model_from_env(name: str, fallback: str) -> str:
+    """按语言的默认模型（``DEFAULT_MODEL_<LANG>``）；非法值告警并回落。"""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return fallback
+    if raw in MODEL_CATALOG:
+        return raw
+    print(f"⚠️  {name}={raw!r} 不在 MODEL_CATALOG 中，回落到 {fallback}。")
+    return fallback
+
+
+# 某语言的首选模型；解析模型时「已配置 Key 且可用」才真正生效（见 llm.py）。
+DEFAULT_MODEL_ZH_CN = _lang_default_model_from_env(
+    "DEFAULT_MODEL_ZH_CN", DEFAULT_MODEL_ZH_CN_FALLBACK
+)
+DEFAULT_MODEL_VI_VN = _lang_default_model_from_env(
+    "DEFAULT_MODEL_VI_VN", DEFAULT_MODEL_VI_VN_FALLBACK
+)
+DEFAULT_MODEL_BY_LANG = {
+    "zh-CN": DEFAULT_MODEL_ZH_CN,
+    "vi-VN": DEFAULT_MODEL_VI_VN,
+}
+
+
+def model_route_for(target_lang: str | None) -> list[str]:
+    """某目标语言的模型路线（过滤掉已不在目录里的 id）；未知语言用中文路线。"""
+    code = target_lang if target_lang in TARGET_LANG_MODEL_ROUTES else "zh-CN"
+    return [mid for mid in TARGET_LANG_MODEL_ROUTES[code] if mid in MODEL_CATALOG]
+
+
+def default_model_for_target(target_lang: str | None) -> str:
+    """某目标语言的首选模型 id（未校验 Key 可用性；不可用时由 llm.py 回落）。"""
+    code = target_lang if target_lang in DEFAULT_MODEL_BY_LANG else "zh-CN"
+    return DEFAULT_MODEL_BY_LANG[code]
 
 
 # --- 可观测性（M1c）--- 只增不改，避免与并行任务冲突。

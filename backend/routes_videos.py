@@ -13,9 +13,10 @@ import time
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 
-from config import DEFAULT_MODEL, MODEL_CATALOG, SSE_HEARTBEAT_SECONDS, resolve_model
+from config import MODEL_CATALOG, SSE_HEARTBEAT_SECONDS
+import languages
 import llm
 import local_shows
 import storage
@@ -28,13 +29,16 @@ from transcripts import (
     _transcribe_audio_with_whisper,
 )
 from translate import (
+    PROMPT_VERSIONS,
     UNTRANSLATED_MARKER,
     _stream_translate,
     find_history_file_for_video,
     mock_llm_processing,
     needs_retranslation,
+    payload_target_lang,
     process_llm_batch,
     retranslate_marked_blocks,
+    stamp_payload_language,
     summarize_video_transcript,
     summary_needs_refresh,
 )
@@ -46,6 +50,19 @@ class VideoRequest(BaseModel):
     url: str
     model: str | None = None
     vocab_level: str | None = None
+    # specs/012 §5.3：请求参数用 camelCase；同时接受 snake_case 以兼容脚本/旧客户端。
+    target_lang: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("targetLang", "target_lang"),
+    )
+
+
+def _target_lang_or_400(raw: str | None) -> str:
+    """请求参数 → canonical 语言；缺省 zh-CN，非法 400（不暴露文件系统路径）。"""
+    try:
+        return languages.resolve_target_lang(raw)
+    except languages.UnsupportedLanguage as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _model_option(model_id: str) -> dict:
@@ -66,11 +83,18 @@ def _model_option(model_id: str) -> dict:
 
 
 @router.get("/api/models")
-def list_models():
-    """全局模型选择器的数据源：所有目录模型 + 默认模型，与具体视频无关。"""
+def list_models(targetLang: str | None = None):
+    """全局模型选择器的数据源：所有目录模型 + 该目标语言的默认/推荐模型。
+
+    省略 ``targetLang`` 时按 zh-CN（旧前端行为不变）；``recommended`` 是该语言
+    路线中「Key/端点已配置」的模型 id 序列（规格 §5.5）。
+    """
+    lang = _target_lang_or_400(targetLang)
     return {
         "models": [_model_option(model_id) for model_id in MODEL_CATALOG],
-        "default": DEFAULT_MODEL,
+        "default": llm.resolve_model_for_target(None, lang),
+        "targetLang": lang,
+        "recommended": llm.recommended_models_for_target(lang),
     }
 
 
@@ -81,7 +105,8 @@ PREFETCH_CACHE_TTL_SECONDS = 600
 
 
 @router.get("/api/estimate-cost")
-async def estimate_cost(url: str):
+async def estimate_cost(url: str, targetLang: str | None = None):
+    lang = _target_lang_or_400(targetLang)
     try:
         video_id = extract_video_id(url)
     except ValueError:
@@ -101,13 +126,13 @@ async def estimate_cost(url: str):
     _prefetch_cache[video_id] = (time.time(), metadata, transcript)
 
     # Calculate rough token estimate. (English word ~ 1.3 tokens).
-    # We also have the system prompt and Chinese output.
+    # We also have the system prompt and target-language output.
     full_text = " ".join([t.text for t in transcript])
     word_count = len(full_text.split())
 
     # Rough estimates:
     input_tokens = int(word_count * 1.5)  # input text + prompt overhead
-    output_tokens = int(word_count * 2.0)  # chinese translation + JSON overhead
+    output_tokens = int(word_count * 2.0)  # target-language translation + JSON overhead
 
     def calc_cost(model_id):
         rates = MODEL_CATALOG[model_id]
@@ -128,6 +153,9 @@ async def estimate_cost(url: str):
     return {
         "videoId": video_id,
         "metadata": metadata,
+        "targetLang": lang,
+        # 该目标语言路线中第一个可用的模型；价格未知时不估算（前端显示"待定"）。
+        "recommendedModel": llm.resolve_model_for_target(None, lang),
         "transcriptStats": {
             "wordCount": word_count,
             "estimatedInputTokens": input_tokens,
@@ -139,33 +167,43 @@ async def estimate_cost(url: str):
 
 @router.post("/api/process-video")
 async def process_video(request: VideoRequest):
+    lang = _target_lang_or_400(request.target_lang)
     try:
         video_id = extract_video_id(request.url)
     except ValueError:
         raise HTTPException(status_code=400, detail="无效的 YouTube 链接，请检查后重试。")
 
-    model = resolve_model(request.model)
+    model = llm.resolve_model_for_target(request.model, lang)
 
-    # Already processed? Serve the cached result (repairing any failed
-    # translations) instead of re-fetching and re-paying for the whole video.
-    cached_path = find_history_file_for_video(video_id)
+    # Already processed? Serve the cached result for **this target language**
+    # (repairing any failed translations) instead of re-fetching/re-paying.
+    cached_path = find_history_file_for_video(video_id, target_lang=lang)
     if cached_path:
-        print(f"Serving cached result for {video_id}: {os.path.basename(cached_path)}")
+        print(f"Serving cached result for {video_id} [{lang}]: {os.path.basename(cached_path)}")
         try:
             with open(cached_path, "r", encoding="utf-8") as f:
                 cached_data = json.load(f)
-            repaired = any(needs_retranslation(b.get("zh_text", "")) for b in cached_data.get("transcript", []))
-            cached_data = await retranslate_marked_blocks(cached_data, cached_path, model=model)
-            refreshed = summary_needs_refresh(cached_data.get("summary", ""))
-            if refreshed:
-                cached_data["summary"] = await summarize_video_transcript(
-                    [{"text": b["en_text"]} for b in cached_data.get("transcript", [])], model=model
+            if payload_target_lang(cached_data) != lang:
+                # 语言不一致视为未命中（规格 §5.4）：不返回错误语言的译文。
+                print(f"Cached payload language mismatch, reprocessing: {cached_path}")
+            else:
+                cached_data = stamp_payload_language(cached_data, lang)
+                repaired = any(needs_retranslation(b.get("zh_text", "")) for b in cached_data.get("transcript", []))
+                cached_data = await retranslate_marked_blocks(
+                    cached_data, cached_path, model=model, target_lang=lang
                 )
-            # 只有真正用这次选的模型重跑过，才更新缓存里的模型标记。
-            if not cached_data.get("model") and (repaired or refreshed):
-                cached_data["model"] = model
-            _bump_study(cached_data, cached_path)
-            return cached_data
+                refreshed = summary_needs_refresh(cached_data.get("summary", ""))
+                if refreshed:
+                    cached_data["summary"] = await summarize_video_transcript(
+                        [{"text": b["en_text"]} for b in cached_data.get("transcript", [])],
+                        model=model,
+                        target_lang=lang,
+                    )
+                # 只有真正用这次选的模型重跑过，才更新缓存里的模型标记。
+                if not cached_data.get("model") and (repaired or refreshed):
+                    cached_data["model"] = model
+                _bump_study(cached_data, cached_path)
+                return cached_data
         except (json.JSONDecodeError, KeyError) as e:
             print(f"Cache file corrupt, reprocessing: {e}")
 
@@ -194,7 +232,7 @@ async def process_video(request: VideoRequest):
     processed_blocks = []
     batch_size = 20
 
-    print(f"Processing {len(blocks)} blocks in batches of {batch_size}...")
+    print(f"Processing {len(blocks)} blocks in batches of {batch_size} [{lang}]...")
 
     # Limit removed to allow processing of full-length videos
     blocks_to_process = blocks
@@ -209,7 +247,9 @@ async def process_video(request: VideoRequest):
 
         for attempt in range(max_retries):
             try:
-                batch_result = await process_llm_batch(batch, model=model)
+                batch_result = await process_llm_batch(
+                    batch, model=model, target_lang=lang
+                )
                 processed_blocks.extend(batch_result)
                 await asyncio.sleep(llm.batch_pause(model))  # 按 provider 限流节奏
                 success = True
@@ -228,30 +268,30 @@ async def process_video(request: VideoRequest):
                     break  # Don't retry for other types of errors (e.g. malformed JSON)
 
         if not success:
-            mock_result = await mock_llm_processing(batch)
+            mock_result = await mock_llm_processing(batch, target_lang=lang)
             processed_blocks.extend(mock_result)
 
     # Generate summary based on original English blocks
     print("Generating video summary...")
-    summary_text = await summarize_video_transcript(blocks, model=model)
+    summary_text = await summarize_video_transcript(blocks, model=model, target_lang=lang)
 
-    # Save to history
+    # Save to history (per target language directory)
     safe_channel = "".join([c for c in metadata["channel"] if c.isalpha() or c.isdigit() or c == ' ']).rstrip()
     if not safe_channel:
         safe_channel = "Unknown"
     date_str = metadata["upload_date"]
     filename = f"{safe_channel}_{date_str}_{video_id}.json".replace(" ", "_")
 
-    result_payload = {
+    result_payload = stamp_payload_language({
         "videoId": video_id,
         "metadata": metadata,
         "transcript": processed_blocks,
         "summary": summary_text,
         "model": model,
         "studyCount": 1,
-    }
+    }, lang)
 
-    file_path = os.path.join(storage.history_dir(), filename)
+    file_path = os.path.join(storage.history_dir(lang), filename)
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(result_payload, f, ensure_ascii=False, indent=2)
 
@@ -359,20 +399,27 @@ async def _with_heartbeat(events, interval: float = SSE_HEARTBEAT_SECONDS):
 
 @router.post("/api/process-video-stream")
 async def process_video_stream(request: VideoRequest):
+    # 语言校验放在流外：非法语言直接 400，而不是先 200 再在流里报错。
+    lang = _target_lang_or_400(request.target_lang)
+
+    def _event(name: str, data: dict) -> str:
+        """所有 SSE 事件都带 targetLang（规格 §5.3 / §6.3）。"""
+        return _sse(name, {**data, "targetLang": lang})
+
     async def gen():
         try:
             try:
                 video_id = extract_video_id(request.url)
             except ValueError:
-                yield _sse("error", {"detail": "无效的 YouTube 链接，请检查后重试。"})
+                yield _event("error", {"detail": "无效的 YouTube 链接，请检查后重试。"})
                 return
 
             # 先解析模型：缓存路径的自愈（补译/重生成总结）也要用用户选中的模型，
-            # 否则换成 DeepSeek 后仍会拿默认 Gemini 去重试。
-            model = resolve_model(request.model)
+            # 否则换成 DeepSeek 后仍会拿默认 Gemini 去重试。路线按目标语言选。
+            model = llm.resolve_model_for_target(request.model, lang)
 
             # --- Cached video: send everything we have, then repair gaps ---
-            cached_path = find_history_file_for_video(video_id)
+            cached_path = find_history_file_for_video(video_id, target_lang=lang)
             cached = None
             if cached_path:
                 try:
@@ -380,27 +427,39 @@ async def process_video_stream(request: VideoRequest):
                         cached = json.load(f)
                 except json.JSONDecodeError:
                     cached = None
+                if cached is not None and payload_target_lang(cached) != lang:
+                    # 语言不一致视为未命中：不把错误语言的译文发给前端。
+                    print(f"Cached payload language mismatch, reprocessing: {cached_path}")
+                    cached = None
 
             if cached and cached.get("transcript"):
+                cached = stamp_payload_language(cached, lang)
                 transcript = cached["transcript"]
-                yield _sse("meta", {
+                yield _event("meta", {
                     "videoId": cached.get("videoId", video_id),
                     "metadata": cached.get("metadata", {}),
                     "blocks": transcript,
                     "cached": True,
+                    "sourceLang": languages.SOURCE_LANG,
+                    "promptVersion": PROMPT_VERSIONS["translate"],
                 })
                 pending = [i for i, b in enumerate(transcript) if needs_retranslation(b.get("zh_text", ""))]
                 if pending:
-                    async for update in _stream_translate(transcript, pending, cached, cached_path, model=model):
-                        yield _sse("batch", update)
+                    async for update in _stream_translate(
+                        transcript, pending, cached, cached_path,
+                        model=model, target_lang=lang,
+                    ):
+                        yield _event("batch", update)
 
                 # 上次失败留下的"无法生成总结"占位不能就这么回给用户：用这次选的模型重试一次。
                 summary = cached.get("summary", "")
                 refreshed = summary_needs_refresh(summary)
                 if refreshed:
-                    yield _sse("stage", {"stage": "summary"})
+                    yield _event("stage", {"stage": "summary"})
                     summary = await summarize_video_transcript(
-                        [{"text": b["en_text"]} for b in transcript], model=model
+                        [{"text": b["en_text"]} for b in transcript],
+                        model=model,
+                        target_lang=lang,
                     )
                     if not summary_needs_refresh(summary):
                         cached["summary"] = summary
@@ -412,8 +471,8 @@ async def process_video_stream(request: VideoRequest):
                 with open(cached_path, "w", encoding="utf-8") as f:
                     json.dump(cached, f, ensure_ascii=False, indent=2)
 
-                yield _sse("summary", {"summary": summary})
-                yield _sse("done", {"cached": True})
+                yield _event("summary", {"summary": summary})
+                yield _event("done", {"cached": True})
                 return
 
             # --- Fresh video ---
@@ -428,23 +487,23 @@ async def process_video_stream(request: VideoRequest):
                 except HTTPException as e:
                     # No captions? Fall back to local ASR when available.
                     if e.status_code == 422 and _asr_available():
-                        yield _sse("stage", {"stage": "asr"})
+                        yield _event("stage", {"stage": "asr"})
                         try:
                             raw_transcript = await asyncio.to_thread(_transcribe_audio_with_whisper, request.url)
                         except Exception as asr_err:
-                            yield _sse("error", {"detail": f"该视频无字幕，本地转写也失败了:{asr_err}"})
+                            yield _event("error", {"detail": f"该视频无字幕，本地转写也失败了:{asr_err}"})
                             return
                         if not raw_transcript:
-                            yield _sse("error", {"detail": "本地转写未识别出任何语音内容。"})
+                            yield _event("error", {"detail": "本地转写未识别出任何语音内容。"})
                             return
                     elif e.status_code == 422:
-                        yield _sse("error", {
+                        yield _event("error", {
                             "detail": e.detail + " 提示：安装本地转写组件后可支持无字幕视频"
                                                 "（backend 环境运行 pip install faster-whisper）。"
                         })
                         return
                     else:
-                        yield _sse("error", {"detail": e.detail})
+                        yield _event("error", {"detail": e.detail})
                         return
 
                 try:
@@ -472,43 +531,53 @@ async def process_video_stream(request: VideoRequest):
                     "highlights": [],
                 })
 
-            payload = {
+            payload = stamp_payload_language({
                 "videoId": video_id,
                 "metadata": metadata,
                 "transcript": transcript,
                 "summary": "",
                 "model": model,
                 "studyCount": 1,
-            }
+            }, lang)
             save_path = os.path.join(
-                storage.history_dir(), _history_filename(metadata, video_id)
+                storage.history_dir(lang), _history_filename(metadata, video_id)
             )
             with open(save_path, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
 
             # English is ready — let the user start watching now
-            yield _sse("meta", {
+            yield _event("meta", {
                 "videoId": video_id,
                 "metadata": metadata,
                 "blocks": transcript,
                 "cached": False,
+                "sourceLang": languages.SOURCE_LANG,
+                "promptVersion": PROMPT_VERSIONS["translate"],
             })
 
-            async for update in _stream_translate(transcript, list(range(len(transcript))), payload, save_path, model=model, vocab_level=request.vocab_level):
-                yield _sse("batch", update)
+            async for update in _stream_translate(
+                transcript, list(range(len(transcript))), payload, save_path,
+                model=model, vocab_level=request.vocab_level, target_lang=lang,
+            ):
+                yield _event("batch", update)
 
-            yield _sse("stage", {"stage": "summary"})
-            summary_text = await summarize_video_transcript([{"text": b["en_text"]} for b in transcript], model=model)
+            yield _event("stage", {"stage": "summary"})
+            summary_text = await summarize_video_transcript(
+                [{"text": b["en_text"]} for b in transcript],
+                model=model,
+                target_lang=lang,
+            )
             payload["summary"] = summary_text
+            stamp_payload_language(payload, lang)
             with open(save_path, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
 
-            yield _sse("summary", {"summary": summary_text})
-            yield _sse("done", {"cached": False})
+            yield _event("summary", {"summary": summary_text})
+            yield _event("done", {"cached": False})
 
         except Exception as e:
             print(f"Stream processing error: {e}")
-            yield _sse("error", {"detail": f"处理失败：{e}"})
+            yield _event("error", {"detail": f"处理失败：{e}"})
 
     return StreamingResponse(
         _with_heartbeat(gen(), SSE_HEARTBEAT_SECONDS),
@@ -518,29 +587,40 @@ async def process_video_stream(request: VideoRequest):
 
 
 @router.get("/api/history")
-def list_history():
+def list_history(targetLang: str | None = None):
+    """只列**当前目标语言**目录里的视频/剧集缓存。
+
+    ``zh-CN`` → ``history/`` 根目录；其他语言 → ``history/<code>/``。
+    省略参数按 zh-CN（旧前端/旧移动端行为不变）。根目录里的元数据文件
+    （收藏/订阅/词典缓存）永远不当历史卡片；遍历时跳过目录（vi-VN 是目录）。
+    """
+    lang = _target_lang_or_400(targetLang)
     files = []
-    history_root = storage.history_dir()
+    history_root = storage.history_dir(lang)
     if os.path.exists(history_root):
         for f in os.listdir(history_root):
-            if f.endswith('.json') and f not in HISTORY_META_FILES:
-                file_path = os.path.join(history_root, f)
-                try:
-                    with open(file_path, "r", encoding="utf-8") as file:
-                        data = json.load(file)
-                        mtime = os.path.getmtime(file_path)
-                        files.append({
-                            "filename": f,
-                            "videoId": data.get("videoId"),
-                            "metadata": data.get("metadata", {}),
-                            "model": data.get("model"),
-                            "modelName": _model_display_name(data.get("model")),
-                            "studyCount": int(data.get("studyCount") or 0),
-                            "mtime": mtime
-                        })
-                except Exception as e:
-                    print(f"Error reading history file {f}: {e}")
-                    files.append({"filename": f, "metadata": {}})
+            if not f.endswith('.json') or f in HISTORY_META_FILES:
+                continue
+            file_path = os.path.join(history_root, f)
+            if not os.path.isfile(file_path):
+                continue  # 语言子目录（vi-VN/ 等）不参与列表
+            try:
+                with open(file_path, "r", encoding="utf-8") as file:
+                    data = json.load(file)
+                    mtime = os.path.getmtime(file_path)
+                    files.append({
+                        "filename": f,
+                        "videoId": data.get("videoId"),
+                        "metadata": data.get("metadata", {}),
+                        "model": data.get("model"),
+                        "modelName": _model_display_name(data.get("model")),
+                        "studyCount": int(data.get("studyCount") or 0),
+                        "mtime": mtime,
+                        "targetLang": lang,
+                    })
+            except Exception as e:
+                print(f"Error reading history file {f}: {e}")
+                files.append({"filename": f, "metadata": {}, "targetLang": lang})
 
     # Sort files by the local processing time (mtime), descending
     files.sort(key=lambda x: x.get("mtime", 0), reverse=True)
@@ -548,26 +628,40 @@ def list_history():
 
 
 @router.get("/api/history/{filename}")
-async def get_history(filename: str, model: str | None = None):
-    # Guard against path traversal — only bare filenames inside the user's history dir
+async def get_history(
+    filename: str,
+    model: str | None = None,
+    targetLang: str | None = None,
+):
+    """在**当前目标语言**目录里解析裸文件名；语言不一致视为未命中。"""
+    lang = _target_lang_or_400(targetLang)
+    # Guard against path traversal — only bare filenames inside the language dir
     if os.path.basename(filename) != filename:
         raise HTTPException(status_code=404, detail="History file not found")
-    file_path = os.path.join(storage.history_dir(), filename)
+    file_path = os.path.join(storage.history_dir(lang), filename)
     if not os.path.exists(file_path) or not filename.endswith('.json'):
         raise HTTPException(status_code=404, detail="History file not found")
 
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
+    if isinstance(data, dict) and payload_target_lang(data) != lang:
+        # 规格 §5.4：读取时校验 payload 的 target_lang；不一致视为缓存未命中。
+        raise HTTPException(status_code=404, detail="History file not found")
     # Self-heal mock/failed translations left over from rate-limited runs,
-    # using the model the frontend sent with the request.
+    # using the model the frontend sent with the request and this language.
     if isinstance(data, dict) and data.get("transcript"):
-        chosen_model = resolve_model(model)
+        data = stamp_payload_language(data, lang)
+        chosen_model = llm.resolve_model_for_target(model, lang)
         repaired = any(needs_retranslation(b.get("zh_text", "")) for b in data["transcript"])
-        data = await retranslate_marked_blocks(data, file_path, model=chosen_model)
+        data = await retranslate_marked_blocks(
+            data, file_path, model=chosen_model, target_lang=lang
+        )
         refreshed = summary_needs_refresh(data.get("summary", ""))
         if refreshed:
             data["summary"] = await summarize_video_transcript(
-                [{"text": b["en_text"]} for b in data["transcript"]], model=chosen_model
+                [{"text": b["en_text"]} for b in data["transcript"]],
+                model=chosen_model,
+                target_lang=lang,
             )
         if not data.get("model") and (repaired or refreshed):
             data["model"] = chosen_model
@@ -585,17 +679,19 @@ async def get_history(filename: str, model: str | None = None):
 
 
 @router.delete("/api/history/{filename}")
-async def delete_history(filename: str):
+async def delete_history(filename: str, targetLang: str | None = None):
+    """只删**当前目标语言**的一份缓存；同一视频的另一语言缓存保留。"""
+    lang = _target_lang_or_400(targetLang)
     # Guard against path traversal and against deleting non-video metadata files
     if os.path.basename(filename) != filename or not filename.endswith('.json'):
         raise HTTPException(status_code=404, detail="History file not found")
     if filename in HISTORY_META_FILES:
         raise HTTPException(status_code=400, detail="该文件不是视频缓存，不能删除。")
-    file_path = os.path.join(storage.history_dir(), filename)
+    file_path = os.path.join(storage.history_dir(lang), filename)
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="History file not found")
     os.remove(file_path)
-    return {"ok": True, "filename": filename}
+    return {"ok": True, "filename": filename, "targetLang": lang}
 
 
 class ChannelUpdatesRequest(BaseModel):

@@ -70,9 +70,13 @@ def isolated_data(tmp_path, monkeypatch):
     routes_videos._prefetch_cache.clear()
     routes_auth.reset_login_throttle()
 
-    # 让「模型是否可用」与本机 .env 无关，断言可重复
+    # 让「模型是否可用」与本机 .env 无关，断言可重复。
+    # Qwen 的端点必须同时给（openai_compatible 模型只有 Key、没有 base_url 时
+    # 视为不可用），见 llm.is_available。
     monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-deepseek-key")
+    monkeypatch.setenv("QWEN_API_KEY", "test-qwen-key")
+    monkeypatch.setenv("QWEN_BASE_URL", "https://example.invalid/v1")
 
     yield tmp_path
 
