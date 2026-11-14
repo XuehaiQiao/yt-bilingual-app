@@ -15,6 +15,7 @@ import {
     type ReactNode,
 } from 'react';
 import { apiFetch, subscribeToUnauthorized } from './api';
+import { t } from '../i18n';
 import { describeApiError, toast } from './toast';
 
 export interface AuthUser {
@@ -41,7 +42,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 async function readUser(res: Response): Promise<AuthUser> {
     const data = (await res.json().catch(() => null)) as UserPayload | null;
     if (!data?.user?.email) {
-        throw new Error('认证响应缺少用户信息，请检查后端契约。');
+        throw new Error(t('errors.missingUser'));
     }
     return data.user;
 }
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // (which is a 401) can never re-enter this handler and loop.
     useEffect(() => subscribeToUnauthorized(() => {
         if (statusRef.current !== 'authenticated') return;
-        toast.info('登录状态已过期，请重新登录。');
+        toast.info(t('errors.sessionExpired'));
         applyAuthState('anonymous', null);
     }), [applyAuthState]);
 

@@ -1,6 +1,8 @@
 import React from 'react';
 import { X, Play, Trash2, Star, Download, FileSpreadsheet } from 'lucide-react';
 import { exportAnkiTsv, exportCsv } from '../lib/exporter';
+import { useI18n } from '../i18n/I18nProvider';
+import type { TranslationKey } from '../i18n';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export interface FavoriteItem {
@@ -32,9 +34,14 @@ import { useState, useMemo } from 'react';
 import { VideoPlayer } from './VideoPlayer';
 import { HighlightedText } from './TranscriptBlock';
 
-// Help functions for grouping logic
-const getGroupTitle = (timestamp?: number) => {
-    if (!timestamp) return '更早';
+// Grouping logic. Bucket labels come from the dictionary; month headings use
+// Intl for the active UI language (2026年1月 / tháng 1 năm 2026).
+const getGroupTitle = (
+    timestamp: number | undefined,
+    t: (key: TranslationKey) => string,
+    formatMonth: (date: Date) => string,
+) => {
+    if (!timestamp) return t('favorites.group.earlier');
 
     const now = new Date();
     const date = new Date(timestamp);
@@ -46,15 +53,16 @@ const getGroupTitle = (timestamp?: number) => {
     const lastWeek = new Date(today);
     lastWeek.setDate(lastWeek.getDate() - 7);
 
-    if (date >= today) return '今天';
-    if (date >= yesterday && date < today) return '昨天';
-    if (date >= lastWeek && date < yesterday) return '过去 7 天';
+    if (date >= today) return t('favorites.group.today');
+    if (date >= yesterday && date < today) return t('favorites.group.yesterday');
+    if (date >= lastWeek && date < yesterday) return t('favorites.group.last7');
     
-    return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+    return formatMonth(date);
 };
 
 // ... inside the component
 export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose, favorites, onRemoveFavorite, onPlayFavorite }) => {
+    const { t, formatMonth } = useI18n();
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
     const [playingFav, setPlayingFav] = useState<{ videoId: string, start: number } | null>(null);
 
@@ -64,13 +72,13 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
         const map: Record<string, typeof favorites> = {};
         
         sorted.forEach(fav => {
-            const title = getGroupTitle(fav.added_at);
+            const title = getGroupTitle(fav.added_at, t, formatMonth);
             if (!map[title]) map[title] = [];
             map[title].push(fav);
         });
 
         return map;
-    }, [favorites]);
+    }, [favorites, t, formatMonth]);
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -103,23 +111,23 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
                         className="w-full flex flex-col h-full mx-auto max-w-5xl bg-zinc-900/80 backdrop-blur-2xl border-x border-white/10"
                     >
                         <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
-                            <h2 className="text-2xl font-semibold text-zinc-100 tracking-tight">我的收藏</h2>
+                            <h2 className="text-2xl font-semibold text-zinc-100 tracking-tight">{t('favorites.title')}</h2>
                             <div className="flex items-center gap-2">
                                 {favorites.length > 0 && (
                                     <>
                                         <button
                                             onClick={() => exportAnkiTsv(favorites)}
                                             className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors"
-                                            title="导出为 Anki 可导入的 TSV 文件（前面：英文，背面：中文+例句）"
+                                            title={t('favorites.exportAnkiTitle')}
                                         >
-                                            <Download className="w-4 h-4" /> 导出 Anki
+                                            <Download className="w-4 h-4" /> {t('favorites.exportAnki')}
                                         </button>
                                         <button
                                             onClick={() => exportCsv(favorites)}
                                             className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors"
-                                            title="导出为 CSV 表格（含完整上下文）"
+                                            title={t('favorites.exportCsvTitle')}
                                         >
-                                            <FileSpreadsheet className="w-4 h-4" /> 导出 CSV
+                                            <FileSpreadsheet className="w-4 h-4" /> {t('favorites.exportCsv')}
                                         </button>
                                     </>
                                 )}
@@ -133,8 +141,8 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
                             {favorites.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-center">
                                     <Star className="w-10 h-10 text-zinc-700 mb-3" />
-                                    <p className="text-sm font-medium text-zinc-400">还没有收藏</p>
-                                    <p className="text-xs text-zinc-600 mt-1">观看时点击句子旁的星标收藏句子，查词后点星号加入生词本。</p>
+                                    <p className="text-sm font-medium text-zinc-400">{t('favorites.empty')}</p>
+                                    <p className="text-xs text-zinc-600 mt-1">{t('favorites.emptyHint')}</p>
                                 </div>
                             ) : (
                                 Object.entries(groups).map(([title, items]) => {
@@ -172,7 +180,7 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
                                                                             {formatTime(fav.start)}
                                                                         </span>
                                                                         {fav.type === 'vocabulary' && (
-                                                                            <span className="text-[11px] font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">生词</span>
+                                                                            <span className="text-[11px] font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">{t('favorites.type.vocabulary')}</span>
                                                                         )}
                                                                     </div>
                                                                     {fav.type === 'vocabulary' && fav.en_text && fav.zh_text ? (
@@ -208,14 +216,14 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
                                                                             }
                                                                         }}
                                                                         className="p-3 bg-zinc-100 hover:bg-white text-zinc-900 rounded-xl transition-[background-color,transform] duration-200 ease-apple active:scale-[0.96]"
-                                                                        title={fav.videoId.length > 11 ? "跳转到原文" : "播放片段"}
+                                                                        title={fav.videoId.length > 11 ? t('favorites.playJump') : t('favorites.playClip')}
                                                                     >
                                                                         <Play className="w-4 h-4 fill-current" />
                                                                     </button>
                                                                     <button
                                                                         onClick={() => onRemoveFavorite(fav.id)}
                                                                         className="p-3 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 text-red-400 rounded-xl transition-colors"
-                                                                        title="删除"
+                                                                        title={t('favorites.delete')}
                                                                     >
                                                                         <Trash2 className="w-4 h-4" />
                                                                     </button>

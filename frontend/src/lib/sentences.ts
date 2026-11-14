@@ -1,6 +1,7 @@
 // 句子精背（Sentence Packs）— 类型、拉取、配色、进度。
 // 详见 specs/009-sentence-packs/
 import { apiFetch } from './api';
+import { t } from '../i18n';
 
 export type ChunkCat = 'adv' | 'col' | 'idi' | 'phr';
 
@@ -30,28 +31,24 @@ export interface SentenceLevel extends SentenceLevelMeta {
     sentences: Sentence[];
 }
 
-// 四类语块的配色（紫=高级词，与 AI 生词高亮同色；其余按语义分色）
-export const CHUNK_STYLE: Record<ChunkCat, { text: string; label: string }> = {
-    adv: { text: 'text-purple-300', label: '高级词' },
-    col: { text: 'text-sky-300', label: '固定搭配' },
-    idi: { text: 'text-amber-300', label: '习语' },
-    phr: { text: 'text-emerald-300', label: '短语动词' },
-};
-
-// 句子主题分类标签
-export const CAT_LABEL: Record<Sentence['cat'], string> = {
-    think: '思辨', work: '职场', daily: '日常',
+// 四类语块的配色（紫=高级词，与 AI 生词高亮同色；其余按语义分色）。
+// 展示名走 i18n 字典（sentences.chunk.* / sentences.cat.*），这里只管颜色。
+export const CHUNK_STYLE: Record<ChunkCat, { text: string }> = {
+    adv: { text: 'text-purple-300' },
+    col: { text: 'text-sky-300' },
+    idi: { text: 'text-amber-300' },
+    phr: { text: 'text-emerald-300' },
 };
 
 // --- 拉取 ---
 export async function fetchSentenceLevels(): Promise<SentenceLevelMeta[]> {
     const r = await apiFetch('/api/sentences/levels');
-    if (!r.ok) throw new Error('无法加载句子库');
+    if (!r.ok) throw new Error(t('errors.loadSentenceLevels'));
     return r.json();
 }
 export async function fetchSentenceLevel(id: number): Promise<SentenceLevel> {
     const r = await apiFetch(`/api/sentences/level/${id}`);
-    if (!r.ok) throw new Error('无法加载该级句子');
+    if (!r.ok) throw new Error(t('errors.loadSentenceLevel'));
     return r.json();
 }
 

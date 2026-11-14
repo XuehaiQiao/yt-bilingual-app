@@ -12,6 +12,7 @@ import { VocabAxis } from './VocabAxis';
 import { SentencePacks } from './SentencePacks';
 import { progressPercent, clearProgress } from '../lib/progress';
 import { toast, describeApiError } from '../lib/toast';
+import { useI18n } from '../i18n/I18nProvider';
 
 interface InputScreenProps {
     onSubmit: (url: string) => void;
@@ -39,6 +40,7 @@ const itemVariants: Variants = {
 };
 
 export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistory, onSelectEpisode, onSelectSentenceLevel, isLoading, loadingState, subscriptions = [], onSelectChannel }) => {
+    const { t } = useI18n();
     const [url, setUrl] = useState('');
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [channelUpdates, setChannelUpdates] = useState<any[]>([]);
@@ -54,13 +56,13 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
     const handleDeleteHistory = async (e: React.MouseEvent, item: HistoryItem) => {
         e.stopPropagation();
         const title = item.metadata?.title || item.filename;
-        if (!window.confirm(`Remove "${title}" from Continue Learning?`)) return;
+        if (!window.confirm(t('home.deleteConfirm', { title }))) return;
         try {
             const res = await apiFetch(`/api/history/${encodeURIComponent(item.filename)}`, { method: 'DELETE' });
             if (!res.ok) throw new Error(await describeApiError(res));
             setHistory(prev => prev.filter(h => h.filename !== item.filename));
             if (item.videoId) clearProgress(item.videoId);
-            toast.success('Removed from Continue Learning');
+            toast.success(t('home.deletedToast'));
         } catch (err) {
             console.error('Delete history failed:', err);
             toast.error(await describeApiError(err));
@@ -132,13 +134,13 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                     >
                         <Loader2 className="w-12 h-12 text-zinc-300 animate-spin mb-6" />
                         <h2 className="text-xl font-semibold tracking-tight text-zinc-100 mb-2">
-                            {loadingState === 'asr' ? 'Transcribing locally…' : loadingState === 'processing' ? 'Fetching subtitles…' : 'Loading…'}
+                            {loadingState === 'asr' ? t('home.loading.asr') : loadingState === 'processing' ? t('home.loading.processing') : t('home.loading.loading')}
                         </h2>
                         {loadingState === 'processing' && (
-                            <p className="text-zinc-400">English appears first — translations stream in while you watch</p>
+                            <p className="text-zinc-400">{t('home.loading.processingHint')}</p>
                         )}
                         {loadingState === 'asr' && (
-                            <p className="text-zinc-400">No captions on this video — transcribing the audio with local Whisper (first run downloads the model, hang tight)</p>
+                            <p className="text-zinc-400">{t('home.loading.asrHint')}</p>
                         )}
                     </motion.div>
                 )}
@@ -149,8 +151,8 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                         className="fixed inset-0 z-50 bg-zinc-950/70 backdrop-blur-md flex flex-col items-center justify-center"
                     >
                         <Loader2 className="w-12 h-12 text-zinc-300 animate-spin mb-6" />
-                        <h2 className="text-xl font-semibold tracking-tight text-zinc-100 mb-2">Analyzing video…</h2>
-                        <p className="text-zinc-400">Counting words and estimating processing cost</p>
+                        <h2 className="text-xl font-semibold tracking-tight text-zinc-100 mb-2">{t('home.analyzing')}</h2>
+                        <p className="text-zinc-400">{t('home.analyzingHint')}</p>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -178,13 +180,13 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                 <motion.div variants={itemVariants} className="text-center mt-12 mb-8">
                     <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full glass-card text-xs font-medium text-zinc-300">
                         <span className="flex h-2 w-2 rounded-full bg-emerald-500"></span>
-                        LinguaTrek Engine
+                        {t('brand.engine')}
                     </div>
                     <h2 className="text-5xl md:text-6xl font-semibold tracking-[-0.015em] mb-4">
-                        Watch YouTube. Learn English.
+                        {t('home.heroTitle')}
                     </h2>
                     <p className="text-lg text-zinc-400 font-normal leading-relaxed max-w-2xl mx-auto">
-                        Paste a link — get synced bilingual subtitles, vocabulary picked for your level, and an AI summary. Instantly.
+                        {t('home.heroSubtitle')}
                     </p>
                 </motion.div>
 
@@ -199,7 +201,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                             disabled={isLoading}
                             required
                             className="w-full bg-transparent border-none outline-none text-zinc-100 placeholder-zinc-500 px-4 py-3 text-lg"
-                            placeholder="Paste a YouTube link…"
+                            placeholder={t('home.searchPlaceholder')}
                             value={url}
                             onChange={(e) => setUrl(e.target.value)}
                         />
@@ -208,7 +210,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                             disabled={isLoading || !url.trim()}
                             className="inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 h-12 px-6 rounded-full bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform,opacity] duration-200 ease-apple disabled:opacity-50"
                         >
-                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Start Learning'}
+                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('home.startLearning')}
                             {!isLoading && <ArrowRight className="w-4 h-4" />}
                         </button>
                     </div>
@@ -234,7 +236,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-2 text-zinc-100">
                                     <Clock className="w-5 h-5" />
-                                    <h3 className="text-[17px] font-semibold tracking-tight">Continue Learning</h3>
+                                    <h3 className="text-[17px] font-semibold tracking-tight">{t('home.continueLearning')}</h3>
                                 </div>
                                 <div className="flex gap-1">
                                     <div className="w-1.5 h-1.5 rounded-full bg-zinc-600"></div>
@@ -246,7 +248,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                             {history.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-center">
                                     <Clock className="w-10 h-10 text-zinc-700 mb-3" />
-                                    <p className="text-sm font-medium text-zinc-400">Nothing here yet — paste a link above to begin</p>
+                                    <p className="text-sm font-medium text-zinc-400">{t('home.continueEmpty')}</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-4">
@@ -261,7 +263,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                                         >
                                             <button
                                                 onClick={(e) => handleDeleteHistory(e, item)}
-                                                title="Remove from Continue Learning"
+                                                title={t('home.removeHistoryTitle')}
                                                 className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-zinc-900/80 hover:bg-red-500/20 border border-white/5 text-zinc-400 hover:text-red-400 opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto [@media(pointer:coarse)]:opacity-100 [@media(pointer:coarse)]:pointer-events-auto transition-[opacity,background-color,color]"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
@@ -285,19 +287,19 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                                                 )}
                                             </div>
                                             <div className="flex flex-col overflow-hidden">
-                                                <h4 className="text-zinc-200 font-medium truncate text-sm mb-1">{item.metadata?.title || 'Unknown Video'}</h4>
+                                                <h4 className="text-zinc-200 font-medium truncate text-sm mb-1">{item.metadata?.title || t('common.unknownVideo')}</h4>
                                                 <p className="text-zinc-500 text-xs flex items-center gap-1">
-                                                    <Youtube className="w-3 h-3" /> {item.metadata?.channel || 'Local File'}
+                                                    <Youtube className="w-3 h-3" /> {item.metadata?.channel || t('common.localFile')}
                                                     {item.videoId && progressPercent(item.videoId) !== null && (
-                                                        <span className="ml-1 text-emerald-500/90">· {progressPercent(item.videoId)}% watched</span>
+                                                        <span className="ml-1 text-emerald-500/90">{t('common.watchedPercent', { percent: progressPercent(item.videoId) ?? 0 })}</span>
                                                     )}
                                                 </p>
                                                 <div className="flex items-center gap-2 mt-1.5">
                                                     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-zinc-700/40 border border-white/5 text-zinc-400 truncate max-w-[9rem]">
-                                                        {item.modelName || 'Not recorded'}
+                                                        {item.modelName || t('common.notRecorded')}
                                                     </span>
                                                     <span className="text-[10px] text-zinc-500 tabular-nums">
-                                                        {item.studyCount ? `Studied ${item.studyCount}×` : 'No sessions yet'}
+                                                        {item.studyCount ? t('common.studiedTimes', { count: item.studyCount }) : t('common.noSessions')}
                                                     </span>
                                                 </div>
                                             </div>
@@ -311,7 +313,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                         <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-6 shrink-0 overflow-hidden">
                              <div className="flex items-center gap-2 mb-6 text-zinc-100">
                                 <Tv className="w-5 h-5 text-blue-400" />
-                                <h3 className="text-[17px] font-semibold tracking-tight">Local Shows</h3>
+                                <h3 className="text-[17px] font-semibold tracking-tight">{t('home.localShows')}</h3>
                             </div>
                             <ShowBrowser onSelectEpisode={onSelectEpisode} isLoading={!!isLoading} />
                         </div>
@@ -325,7 +327,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                             <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-6">
                                 <div className="flex items-center gap-2 mb-6 text-zinc-100">
                                     <Youtube className="w-5 h-5 text-red-500" />
-                                    <h3 className="text-[17px] font-semibold tracking-tight">Subscriptions</h3>
+                                    <h3 className="text-[17px] font-semibold tracking-tight">{t('home.subscriptions')}</h3>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {subscriptions.slice(0, 6).map(sub => (
@@ -347,13 +349,13 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                         <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-6 flex-1 flex flex-col">
                             <div className="flex items-center gap-2 mb-6 text-zinc-100">
                                 <Bell className="w-5 h-5 text-amber-400" />
-                                <h3 className="text-[17px] font-semibold tracking-tight">Latest Videos</h3>
+                                <h3 className="text-[17px] font-semibold tracking-tight">{t('home.latestVideos')}</h3>
                             </div>
                             
                             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
                                 {channelUpdates.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                                        <p className="text-sm font-medium text-zinc-400">No new uploads yet</p>
+                                        <p className="text-sm font-medium text-zinc-400">{t('home.noUploads')}</p>
                                     </div>
                                 ) : (
                                     channelUpdates.map((update, idx) => (

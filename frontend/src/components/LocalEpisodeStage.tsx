@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clapperboard, Pause, Play } from 'lucide-react';
+import { useI18n } from '../i18n/I18nProvider';
 
 /**
  * Media stage for local episodes. There is no video stream for SRT-only
@@ -43,6 +44,7 @@ export const LocalEpisodeStage: React.FC<LocalEpisodeStageProps> = ({
     onTogglePlay,
     onSeek,
 }) => {
+    const { t } = useI18n();
     const total = Number.isFinite(duration) && duration > 0 ? duration : 0;
     const percent = total > 0 ? Math.min(100, Math.max(0, (currentTime / total) * 100)) : 0;
 
@@ -94,7 +96,7 @@ export const LocalEpisodeStage: React.FC<LocalEpisodeStageProps> = ({
                     </div>
                     <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">
                         <Clapperboard className="w-3 h-3" />
-                        本地剧集{episodeLabel ? ` · ${episodeLabel}` : ''}
+                        {t('transcript.localEpisodeBadge')}{episodeLabel ? ` · ${episodeLabel}` : ''}
                     </span>
                     <h2 className="max-w-full truncate text-[17px] font-semibold tracking-tight text-zinc-100">
                         {showTitle}
@@ -109,8 +111,8 @@ export const LocalEpisodeStage: React.FC<LocalEpisodeStageProps> = ({
                         type="button"
                         data-testid="local-play-toggle"
                         onClick={onTogglePlay}
-                        aria-label={isPlaying ? '暂停' : '播放'}
-                        title={isPlaying ? '暂停（空格）' : '播放（空格）'}
+                        aria-label={isPlaying ? t('transcript.pause') : t('transcript.play')}
+                        title={isPlaying ? t('transcript.pauseTitle') : t('transcript.playTitle')}
                         className="w-9 h-9 rounded-full flex items-center justify-center transition-colors duration-200 active:scale-[0.95] bg-white/10 text-zinc-100 hover:bg-white/15 ring-1 ring-white/15 shrink-0"
                     >
                         {isPlaying ? (
@@ -123,7 +125,7 @@ export const LocalEpisodeStage: React.FC<LocalEpisodeStageProps> = ({
                     <div
                         data-testid="local-progress"
                         role="slider"
-                        aria-label="播放进度"
+                        aria-label={t('transcript.progressAria')}
                         aria-valuemin={0}
                         aria-valuemax={Math.round(total)}
                         aria-valuenow={Math.round(Math.min(currentTime, total))}

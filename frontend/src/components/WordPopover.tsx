@@ -5,6 +5,7 @@ import { apiFetch } from '../lib/api';
 import { loadModel } from '../lib/settings';
 import { describeApiError } from '../lib/toast';
 import { speak } from '../lib/tts';
+import { useI18n } from '../i18n/I18nProvider';
 
 export interface WordDefinition {
     word: string;
@@ -84,6 +85,7 @@ function findLookupWordAt(clientX: number, clientY: number): WordLookupTarget | 
 }
 
 export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, onClose, onToggleFavorite, isFavorited, onSwitchWord }) => {
+    const { t } = useI18n();
     const [definition, setDefinition] = useState<WordDefinition | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showAllSenses, setShowAllSenses] = useState(false);
@@ -235,7 +237,7 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
                         <button
                             onClick={() => speak(definition?.word || word)}
                             className="p-1.5 rounded-lg text-zinc-500 hover:text-blue-400 hover:bg-white/5 transition-colors"
-                            title="朗读"
+                            title={t('dictionary.speak')}
                         >
                             <Volume2 className="w-4 h-4" />
                         </button>
@@ -243,7 +245,7 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
                             <button
                                 onClick={() => onToggleFavorite(definition)}
                                 className={`p-1.5 rounded-lg transition-colors hover:bg-white/5 ${isFavorited ? 'text-amber-400' : 'text-zinc-500 hover:text-amber-400'}`}
-                                title={isFavorited ? '移出生词本' : '加入生词本'}
+                                title={isFavorited ? t('dictionary.removeFavorite') : t('dictionary.addFavorite')}
                             >
                                 <Star className="w-4 h-4" fill={isFavorited ? 'currentColor' : 'none'} />
                             </button>
@@ -256,7 +258,7 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
 
                 {!definition && !error && (
                     <div className="flex items-center gap-2 py-4 text-zinc-500 text-sm">
-                        <Loader2 className="w-4 h-4 animate-spin" /> 查询中…
+                        <Loader2 className="w-4 h-4 animate-spin" /> {t('dictionary.loading')}
                     </div>
                 )}
 
@@ -292,9 +294,9 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
                                         className="flex w-full items-center justify-center gap-1 h-8 rounded-lg text-[11px] font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
                                     >
                                         {showAllSenses ? (
-                                            <>收起 <ChevronUp className="w-3.5 h-3.5" /></>
+                                            <>{t('dictionary.showLess')} <ChevronUp className="w-3.5 h-3.5" /></>
                                         ) : (
-                                            <>展开全部 ({senses.length}) <ChevronDown className="w-3.5 h-3.5" /></>
+                                            <>{t('dictionary.showAll', { count: senses.length })} <ChevronDown className="w-3.5 h-3.5" /></>
                                         )}
                                     </button>
                                 )}
@@ -311,13 +313,13 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
                             <button
                                 onClick={() => speak(definition.example!)}
                                 className="w-full text-left text-xs text-zinc-500 italic leading-relaxed border-l-2 border-white/10 pl-2 hover:text-zinc-300 transition-colors"
-                                title="点击朗读例句"
+                                title={t('dictionary.exampleTitle')}
                             >
                                 {definition.example}
                             </button>
                         )}
                         {definition.lemma && definition.lemma.toLowerCase() !== (definition.word || word).toLowerCase() && (
-                            <p className="text-[11px] text-zinc-600">原形：{definition.lemma}</p>
+                            <p className="text-[11px] text-zinc-600">{t('dictionary.lemma', { lemma: definition.lemma })}</p>
                         )}
                     </div>
                 )}

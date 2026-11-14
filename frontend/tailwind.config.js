@@ -8,8 +8,13 @@ export default {
     extend: {
       // SF on Apple platforms, PingFang for Chinese, graceful fallbacks elsewhere.
       fontFamily: {
+        // Vietnamese tone marks (ế ộ ữ …) need a font with the full Latin
+        // Extended Additional block: Segoe UI / Noto Sans cover Windows and
+        // Linux, SF Pro covers macOS, and system-ui is the last-resort
+        // fallback before the generic sans-serif.
         sans: [
           '-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Display"',
+          '"Segoe UI"', '"Noto Sans"',
           '"Helvetica Neue"', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"',
           'Inter', 'system-ui', 'sans-serif',
         ],

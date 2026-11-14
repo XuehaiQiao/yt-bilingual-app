@@ -32,6 +32,8 @@ interface TranscriptViewProps {
      *  is a right-hand pane. A stacked transcript (under the video) has no
      *  left edge to divide, so the video view passes false there. */
     borderLeft?: boolean;
+    /** Passed through to memoized blocks so a UI-language switch re-renders them. */
+    uiLanguage?: import('../i18n').LanguageCode;
 }
 
 // How long auto-follow stays suspended after the user scrolls manually
@@ -48,6 +50,7 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
     dictation,
     onWordLookup,
     borderLeft = true,
+    uiLanguage,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const lastUserScrollRef = useRef(0);
@@ -116,6 +119,7 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
                                 translationMode={translationMode}
                                 dictation={dictation}
                                 onWordLookup={onWordLookup}
+                                uiLanguage={uiLanguage}
                             />
                         </div>
                     );

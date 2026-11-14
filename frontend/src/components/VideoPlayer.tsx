@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { YouTubeProps } from 'react-youtube';
 import YouTube from 'react-youtube';
 import { Maximize, Minimize } from 'lucide-react';
+import { useI18n } from '../i18n/I18nProvider';
 
 interface VideoPlayerProps {
     videoId: string;
@@ -26,6 +27,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     onPlayerReady,
     onPlayerError,
 }) => {
+    const { t } = useI18n();
     const playerRef = useRef<any>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const isPlayingRef = useRef(false);
@@ -158,7 +160,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         <button
                             onClick={toggleFullscreen}
                             className="absolute bottom-4 right-4 p-2.5 bg-zinc-950/60 hover:bg-zinc-950/80 text-white rounded-lg backdrop-blur-md opacity-0 group-hover/video:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-[opacity,background-color,transform] duration-200 ease-apple active:scale-[0.98] flex items-center gap-2 z-50 pointer-events-auto"
-                            title={isFullscreen ? "退出全屏" : "全屏"}
+                            title={isFullscreen ? t('transcript.exitFullscreen') : t('transcript.fullscreen')}
                         >
                             {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
                         </button>

@@ -2,6 +2,7 @@ import { apiFetch } from '../lib/api';
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, BookOpen, Tv, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useI18n } from '../i18n/I18nProvider';
 
 interface Show {
     id: string;
@@ -24,6 +25,7 @@ interface ShowBrowserProps {
 }
 
 export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoading }) => {
+    const { t, language } = useI18n();
     const [shows, setShows] = useState<Show[]>([]);
     const [selectedShow, setSelectedShow] = useState<Show | null>(null);
     const [seasons, setSeasons] = useState<SeasonData[]>([]);
@@ -70,14 +72,16 @@ export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoa
         );
     }
 
+    // Local show titles are content, not UI copy: Chinese prefers the
+    // translated `title_zh`, Vietnamese shows the original title.
+    const showTitle = (show: Show) => (language === 'zh-CN' ? (show.title_zh || show.title) : show.title);
+
     if (shows.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Tv className="w-10 h-10 text-zinc-700 mb-3" />
-                <p className="text-sm font-medium text-zinc-400">No local shows yet</p>
-                <p className="text-xs text-zinc-600 mt-1">
-                    Drop .srt files into subtitles/ to add one
-                </p>
+                <p className="text-sm font-medium text-zinc-400">{t('shows.empty')}</p>
+                <p className="text-xs text-zinc-600 mt-1">{t('shows.emptyHint')}</p>
             </div>
         );
     }
@@ -93,11 +97,11 @@ export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoa
                         className="inline-flex items-center gap-1 h-7 px-2 -ml-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
                     >
                         <ChevronLeft className="w-4 h-4" />
-                        Back
+                        {t('shows.back')}
                     </button>
                     <h3 className="text-base font-semibold text-zinc-200 flex items-center gap-2">
                         <BookOpen className="w-5 h-5 text-blue-400" />
-                        {selectedShow.title_zh || selectedShow.title}
+                        {showTitle(selectedShow)}
                     </h3>
                 </div>
             )}
@@ -120,11 +124,11 @@ export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoa
                             )}
                             <div className="flex-1 min-w-0">
                                 <h4 className="text-white font-medium text-base group-hover:text-white transition-colors">
-                                    {show.title_zh || show.title}
+                                    {showTitle(show)}
                                 </h4>
                                 <p className="text-zinc-400 text-sm mt-0.5">{show.title}</p>
                                 <p className="text-zinc-500 text-xs mt-2">
-                                    {Object.keys(show.seasons_available).length} seasons · {show.total_episodes} episodes
+                                    {t('shows.seasonsEpisodes', { seasons: Object.keys(show.seasons_available).length, episodes: show.total_episodes })}
                                 </p>
                             </div>
                             <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-zinc-300 transition-colors flex-shrink-0" />
@@ -156,8 +160,8 @@ export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoa
                                     />
                                 )}
                                 <span className="relative z-10">
-                                    Season {s.season}
-                                    <span className="ml-1.5 text-xs opacity-70">({s.episode_count} ep)</span>
+                                    {t('shows.season', { number: s.season })}
+                                    <span className="ml-1.5 text-xs opacity-70">{t('shows.episodesShort', { count: s.episode_count })}</span>
                                 </span>
                             </button>
                         ))}
@@ -194,7 +198,7 @@ export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoa
 
                     {!selectedSeason && (
                         <p className="text-zinc-600 text-xs text-center py-4">
-                            Pick a season to start
+                            {t('shows.pickSeason')}
                         </p>
                     )}
                 </div>

@@ -5,9 +5,11 @@ import {
     fetchSentenceLevels, fetchSentenceLevel, segToPlain,
     isDayDone, setDayDone, levelDoneDays, loadZhHidden, saveZhHidden,
     getReviews, toggleReview,
-    CHUNK_STYLE, CAT_LABEL,
-    type SentenceLevel, type SentenceLevelMeta, type Sentence,
+    CHUNK_STYLE,
+    type ChunkCat, type SentenceLevel, type SentenceLevelMeta, type Sentence,
 } from '../lib/sentences';
+import { useI18n } from '../i18n/I18nProvider';
+import type { TranslationKey } from '../i18n';
 import { SentenceText } from './SentenceText';
 import { speak } from '../lib/tts';
 
@@ -21,9 +23,23 @@ interface SentenceViewProps {
 
 export const sentenceFavId = (levelId: number, n: number) => `sentence-L${levelId}-${n}`;
 
+// Display labels for sentence-pack tags; colors stay in lib/sentences.ts.
+const CHUNK_LABEL: Record<ChunkCat, TranslationKey> = {
+    adv: 'sentences.chunk.adv',
+    col: 'sentences.chunk.col',
+    idi: 'sentences.chunk.idi',
+    phr: 'sentences.chunk.phr',
+};
+const CAT_I18N: Record<Sentence['cat'], TranslationKey> = {
+    think: 'sentences.cat.think',
+    work: 'sentences.cat.work',
+    daily: 'sentences.cat.daily',
+};
+
 export const SentenceView: React.FC<SentenceViewProps> = ({
     levelId, onSelectLevel, onWordLookup, onToggleFavorite, favoriteIds,
 }) => {
+    const { t } = useI18n();
     const [levels, setLevels] = useState<SentenceLevelMeta[]>([]);
     const [level, setLevel] = useState<SentenceLevel | null>(null);
     const [query, setQuery] = useState('');
@@ -90,16 +106,16 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                     className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border transition-colors ${
                         zhHidden ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-zinc-800/80 text-zinc-400 border-white/5 hover:text-zinc-200'
                     }`}
-                    title="隐藏中文，先想英文再核对"
+                    title={t('sentences.hideZhTitle')}
                 >
-                    {zhHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />} 自测
+                    {zhHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />} {t('sentences.hideZh')}
                 </button>
                 <button
                     onClick={gotoToday}
                     className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg bg-zinc-800/80 text-zinc-400 border border-white/5 hover:text-zinc-200 transition-colors"
-                    title="跳到第一个未完成的一天"
+                    title={t('sentences.gotoTodayTitle')}
                 >
-                    <CalendarCheck className="w-3.5 h-3.5" /> 今日待背
+                    <CalendarCheck className="w-3.5 h-3.5" /> {t('sentences.gotoToday')}
                 </button>
 
                 <div className="relative flex-1 min-w-[140px]">
@@ -107,14 +123,14 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                     <input
                         value={query}
                         onChange={e => setQuery(e.target.value)}
-                        placeholder="搜索英文 / 中文 / 注释…"
+                        placeholder={t('sentences.searchPlaceholder')}
                         className="w-full h-7 pl-8 pr-3 text-xs rounded-lg bg-zinc-800/80 border border-white/5 text-zinc-200 placeholder-zinc-500 outline-none focus:border-white/10"
                     />
                 </div>
 
                 {level && (
                     <span className="text-[11px] text-zinc-500 tabular-nums shrink-0">
-                        已背 {doneDays}/{level.days} 天
+                        {t('sentences.progressDays', { done: doneDays, total: level.days })}
                     </span>
                 )}
             </div>
@@ -130,9 +146,9 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                         <span>{level.title} · {level.subtitle}</span>
                         <span className="text-zinc-700">·</span>
                         {(Object.keys(CHUNK_STYLE) as (keyof typeof CHUNK_STYLE)[]).map(c => (
-                            <span key={c} className={CHUNK_STYLE[c].text}>■ {CHUNK_STYLE[c].label}</span>
+                            <span key={c} className={CHUNK_STYLE[c].text}>■ {t(CHUNK_LABEL[c])}</span>
                         ))}
-                        <span className="text-zinc-600">中文注释标在词上方</span>
+                        <span className="text-zinc-600">{t('sentences.annotationHint')}</span>
                     </div>
                 </div>
             )}
@@ -140,7 +156,7 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
             {/* 句子列表 */}
             <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 md:px-6 py-5">
                 {!level ? (
-                    <div className="flex flex-col items-center justify-center py-24 text-zinc-500 text-sm">加载中…</div>
+                    <div className="flex flex-col items-center justify-center py-24 text-zinc-500 text-sm">{t('sentences.loading')}</div>
                 ) : (
                     <div className="max-w-3xl mx-auto space-y-5 pb-24">
                         {days.map(({ d, items }) => {
@@ -151,8 +167,8 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                                 <section key={d} id={`sentence-day-${d}`}
                                     className={`rounded-2xl border overflow-hidden transition-colors ${done ? 'border-emerald-500/20 bg-emerald-500/[0.03]' : 'border-white/5 bg-zinc-900/40'}`}>
                                     <div className="flex items-center gap-3 px-5 py-3 bg-zinc-800/30 border-b border-white/5">
-                                        <span className="text-sm font-semibold tracking-tight text-zinc-100">Day {d}</span>
-                                        <span className="text-[11px] text-zinc-500 tabular-nums">第 {items[0].n}–{items[items.length - 1].n} 句</span>
+                                        <span className="text-sm font-semibold tracking-tight text-zinc-100">{t('sentences.day', { day: d })}</span>
+                                        <span className="text-[11px] text-zinc-500 tabular-nums">{t('sentences.range', { from: items[0].n, to: items[items.length - 1].n })}</span>
                                         <div className="ml-auto flex items-center gap-3">
                                             <button
                                                 onClick={() => { setDayDone(levelId, d, !done); setDoneTick(t => t + 1); }}
@@ -160,16 +176,16 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                                                     done ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-zinc-800/60 text-zinc-400 border-white/5 hover:text-zinc-200'
                                                 }`}
                                             >
-                                                <Check className="w-3.5 h-3.5" /> {done ? '已背完' : '标记已背'}
+                                                <Check className="w-3.5 h-3.5" /> {done ? t('sentences.done') : t('sentences.markDone')}
                                             </button>
                                             {/* 复习打卡：每复习一遍勾一个 */}
-                                            <div className="flex items-center gap-1.5" title="每复习一遍打一个勾">
-                                                <span className="text-[11px] text-zinc-500 hidden sm:inline">复习</span>
+                                            <div className="flex items-center gap-1.5" title={t('sentences.reviewTitle')}>
+                                                <span className="text-[11px] text-zinc-500 hidden sm:inline">{t('sentences.review')}</span>
                                                 {getReviews(levelId, d).map((checked, i) => (
                                                     <button
                                                         key={i}
                                                         onClick={() => { toggleReview(levelId, d, i); setDoneTick(t => t + 1); }}
-                                                        title={`第 ${i + 1} 遍`}
+                                                        title={t('sentences.reviewNth', { n: i + 1 })}
                                                         className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
                                                             checked
                                                                 ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
@@ -193,17 +209,17 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                                                         <div className="flex-1 min-w-0">
                                                             <SentenceText seg={s.seg} context={plain} onWordLookup={onWordLookup} />
                                                             <p className={`mt-1.5 text-sm text-zinc-400 leading-relaxed transition ${zhHidden ? 'blur-[5px] hover:blur-0' : ''}`}>
-                                                                <span className="text-zinc-600 text-[11px] mr-1.5">译</span>{s.zh}
+                                                                <span className="text-zinc-600 text-[11px] mr-1.5">{t('sentences.translationMark')}</span>{s.zh}
                                                             </p>
                                                         </div>
                                                         <div className="flex flex-col items-center gap-1 shrink-0">
-                                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400">{CAT_LABEL[s.cat]}</span>
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400">{t(CAT_I18N[s.cat])}</span>
                                                             <div className="flex items-center gap-0.5">
-                                                                <button onClick={() => speak(plain)} title="朗读"
+                                                                <button onClick={() => speak(plain)} title={t('sentences.speak')}
                                                                     className="p-1.5 rounded-lg text-zinc-500 hover:text-blue-400 hover:bg-white/5 transition-colors">
                                                                     <Volume2 className="w-4 h-4" />
                                                                 </button>
-                                                                <button onClick={() => onToggleFavorite(s, levelId)} title={fav ? '移出生词本' : '加入生词本'}
+                                                                <button onClick={() => onToggleFavorite(s, levelId)} title={fav ? t('dictionary.removeFavorite') : t('dictionary.addFavorite')}
                                                                     className={`p-1.5 rounded-lg transition-colors hover:bg-white/5 ${fav ? 'text-amber-400' : 'text-zinc-500 hover:text-amber-400'}`}>
                                                                     <Star className="w-4 h-4" fill={fav ? 'currentColor' : 'none'} />
                                                                 </button>

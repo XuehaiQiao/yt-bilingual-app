@@ -1,5 +1,7 @@
 // Minimal pub/sub toast bus — components call toast.error(...) from anywhere,
-// the <Toaster /> mounted in App renders the stack.
+// the <Toaster /> mounted in App renders the stack. Messages are localized at
+// the moment they are emitted (the runtime language singleton is read here).
+import { t } from '../i18n';
 export interface ToastItem {
     id: number;
     message: string;
@@ -34,12 +36,12 @@ export async function describeApiError(resOrErr: Response | unknown): Promise<st
     if (resOrErr instanceof Response) {
         const body = await resOrErr.json().catch(() => null);
         if (body?.detail && typeof body.detail === 'string') return body.detail;
-        return `请求失败（HTTP ${resOrErr.status}）`;
+        return t('errors.httpStatus', { status: resOrErr.status });
     }
     if (resOrErr instanceof TypeError) {
         // fetch network-level failure
-        return '无法连接后端服务，请确认后端已启动（uvicorn main:app --port 8000）。';
+        return t('errors.network');
     }
     if (resOrErr instanceof Error && resOrErr.message) return resOrErr.message;
-    return '发生未知错误，请重试。';
+    return t('errors.unknown');
 }

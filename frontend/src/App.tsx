@@ -4,7 +4,10 @@ import { createPortal } from 'react-dom';
 import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
+import { LanguageMenu } from './components/LanguageMenu';
 import { AuthProvider, useAuth } from './lib/auth';
+import { I18nProvider, useI18n } from './i18n/I18nProvider';
+import type { TranslationKey } from './i18n';
 import { InputScreen } from './components/InputScreen';
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
@@ -45,7 +48,7 @@ interface TranscriptItem {
   }>;
 }
 
-type FeatureName = '看视频' | '本地剧集' | '句子精背';
+type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences'>;
 
 // Single source of truth for the top-bar feature label. Mirrors the view
 // switch below: sentence pack wins, then local episode, then YouTube; the
@@ -55,10 +58,10 @@ function getFeatureName(
   videoId: string,
   transcriptCount: number,
   isLocalSubtitle: boolean,
-): FeatureName | null {
-  if (sentenceLevel != null) return '句子精背';
+): FeatureNameKey | null {
+  if (sentenceLevel != null) return 'topbar.feature.sentences';
   if (!videoId || transcriptCount === 0) return null;
-  return isLocalSubtitle ? '本地剧集' : '看视频';
+  return isLocalSubtitle ? 'topbar.feature.local' : 'topbar.feature.video';
 }
 
 function formatClock(seconds: number): string {
@@ -70,6 +73,7 @@ function formatClock(seconds: number): string {
 
 function AppContent() {
   const { user, logout } = useAuth();
+  const { t, language } = useI18n();
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
@@ -185,7 +189,7 @@ function AppContent() {
     }
 
     if (!('documentPictureInPicture' in window)) {
-      toast.error('当前浏览器不支持画中画窗口（Document PiP），请使用 Chrome / Edge 116+。');
+      toast.error(t('errors.noPip'));
       return;
     }
 
@@ -224,7 +228,7 @@ function AppContent() {
       setPipWindow(newPipWindow);
     } catch (err) {
       console.error(err);
-      toast.error('打开悬浮窗失败，请重试。');
+      toast.error(t('errors.pipFailed'));
     }
   };
 
@@ -441,7 +445,7 @@ function AppContent() {
     const id = match ? match[1] : null;
 
     if (!id) {
-      toast.error('无效的 YouTube 链接，请检查后重试。');
+      toast.error(t('errors.invalidYoutubeUrl'));
       return;
     }
 
@@ -477,9 +481,9 @@ function AppContent() {
             const untranslated = blocks.filter((b: TranscriptItem) => isUntranslated(b.zh_text)).length;
             setTranslationProgress(untranslated > 0 ? { done: 0, total: untranslated } : null);
             if (pendingSeekRef.current != null) {
-              const t = pendingSeekRef.current;
+              const resumeAt = pendingSeekRef.current;
               pendingSeekRef.current = null;
-              setTimeout(() => setSeekCommand({ time: t, timestamp: Date.now() }), 1000);
+              setTimeout(() => setSeekCommand({ time: resumeAt, timestamp: Date.now() }), 1000);
             }
             break;
           }
@@ -501,7 +505,7 @@ function AppContent() {
             setSummary(evt.data.summary || '');
             break;
           case 'error':
-            throw new Error(evt.data.detail || '处理失败，请重试。');
+            throw new Error(evt.data.detail || t('errors.processFailed'));
           case 'done':
             setTranslationProgress(null);
             break;
@@ -616,14 +620,14 @@ function AppContent() {
     // A local-episode favorite jump takes precedence over resume, and works
     // whether the episode uses a mapped player or the simulated clock.
     if (pendingLocalSeekRef.current != null) {
-      const t = pendingLocalSeekRef.current;
+      const resumeAt = pendingLocalSeekRef.current;
       pendingLocalSeekRef.current = null;
       resumedVideoRef.current = videoId;
       lastSavedTimeRef.current = 0;
       if (useSubtitleTimer) {
-        startSubtitleTimer(t);
+        startSubtitleTimer(resumeAt);
       } else {
-        setSeekCommand({ time: t, timestamp: Date.now() });
+        setSeekCommand({ time: resumeAt, timestamp: Date.now() });
       }
       return;
     }
@@ -636,17 +640,17 @@ function AppContent() {
     const saved = getProgress(videoId);
     const duration = transcript[transcript.length - 1]?.end ?? 0;
     if (saved && saved.time > 15 && saved.time < duration - 30) {
-      const t = saved.time;
-      const mm = Math.floor(t / 60).toString().padStart(2, '0');
-      const ss = Math.floor(t % 60).toString().padStart(2, '0');
+      const resumeAt = saved.time;
+      const mm = Math.floor(resumeAt / 60).toString().padStart(2, '0');
+      const ss = Math.floor(resumeAt % 60).toString().padStart(2, '0');
       if (useSubtitleTimer) {
-        setCurrentTime(t);
+        setCurrentTime(resumeAt);
       } else {
-        setTimeout(() => setSeekCommand({ time: t, timestamp: Date.now() }), 1200);
+        setTimeout(() => setSeekCommand({ time: resumeAt, timestamp: Date.now() }), 1200);
       }
-      toast.info(`已从上次学习位置 ${mm}:${ss} 继续`);
+      toast.info(t('transcript.resumeToast', { time: `${mm}:${ss}` }));
     }
-  }, [videoId, transcript, metadata?.is_local_subtitle, useSubtitleTimer, startSubtitleTimer]);
+  }, [videoId, transcript, metadata?.is_local_subtitle, useSubtitleTimer, startSubtitleTimer, t]);
 
   // Unified seek: the simulated clock for SRT-only local episodes, a player
   // command for YouTube and for local episodes mapped to a real video.
@@ -802,50 +806,51 @@ function AppContent() {
   }, []);
 
   const renderTopBar = () => (
-    <div data-testid="top-bar" className="flex-none h-16 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 px-6 flex items-center justify-between z-20">
+    <div data-testid="top-bar" className="flex-none h-16 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 flex items-center justify-between gap-2 z-20">
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-10 h-10 rounded-[10px] overflow-hidden shadow-md shadow-black/40 ring-1 ring-white/10 cursor-pointer flex-shrink-0" onClick={handleGoHome}>
-            <img src="/hero_icon.png" alt="Logo" className="w-full h-full object-cover" />
+            <img src="/hero_icon.png" alt={t('topbar.logoAlt')} className="w-full h-full object-cover" />
         </div>
         <div className="flex items-center gap-2 min-w-0">
           <h1
-            className="text-xl font-semibold text-zinc-100 cursor-pointer tracking-tight hover:text-white transition-colors shrink-0"
+            className="text-lg sm:text-xl min-w-0 truncate font-semibold text-zinc-100 cursor-pointer tracking-tight hover:text-white transition-colors"
             onClick={handleGoHome}
           >
-            语途
+            {t('brand.name')}
           </h1>
           {featureName && (
             <span
               data-testid="feature-name"
               className="hidden sm:inline-flex items-center whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/50 border border-white/5 text-zinc-400"
             >
-              {featureName}
+              {t(featureName)}
             </span>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <LanguageMenu />
         <button
           onClick={() => setIsFavoritesOpen(true)}
-          aria-label={`Favorites (${favorites.length})`}
-          title="Favorites"
-          className="inline-flex items-center gap-2 h-9 px-3 sm:px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100 transition-[background-color,color,border-color,transform] duration-200 ease-apple active:scale-[0.97]"
+          aria-label={t('topbar.favorites', { count: favorites.length })}
+          title={t('topbar.favorites', { count: favorites.length })}
+          className="inline-flex items-center gap-2 h-9 px-2.5 sm:px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100 transition-[background-color,color,border-color,transform] duration-200 ease-apple active:scale-[0.97]"
         >
           <Star className="w-4 h-4 text-amber-400 fill-amber-400/20" />
-          <span className="hidden sm:inline font-medium text-sm tabular-nums">Favorites ({favorites.length})</span>
+          <span className="hidden sm:inline font-medium text-sm tabular-nums">{t('topbar.favorites', { count: favorites.length })}</span>
         </button>
         {videoId && transcript.length > 0 && (
           <button
             onClick={togglePipMode}
-            aria-label={pipWindow ? 'Close Pop-out' : 'Pop Out'}
-            title={pipWindow ? 'Close Pop-out' : 'Pop Out'}
-            className="inline-flex items-center gap-2 h-9 px-3 sm:px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-400 transition-[background-color,color,border-color,transform] duration-200 ease-apple active:scale-[0.97]"
+            aria-label={pipWindow ? t('topbar.closePopOut') : t('topbar.popOut')}
+            title={pipWindow ? t('topbar.closePopOut') : t('topbar.popOut')}
+            className="inline-flex items-center gap-2 h-9 px-2.5 sm:px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-400 transition-[background-color,color,border-color,transform] duration-200 ease-apple active:scale-[0.97]"
           >
             <ExternalLink className="w-4 h-4" />
-            <span className="hidden sm:inline font-medium text-sm">{pipWindow ? 'Close Pop-out' : 'Pop Out'}</span>
+            <span className="hidden sm:inline font-medium text-sm">{pipWindow ? t('topbar.closePopOut') : t('topbar.popOut')}</span>
           </button>
         )}
-        <div className="flex items-center gap-2 pl-3 border-l border-white/5 min-w-0">
+        <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-white/5 min-w-0">
           <span
             data-testid="topbar-user-email"
             title={user?.email || ''}
@@ -856,12 +861,12 @@ function AppContent() {
           <button
             data-testid="logout-button"
             onClick={() => { void logout(); }}
-            title="退出登录"
-            aria-label="退出登录"
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
+            title={t('topbar.logoutAria')}
+            aria-label={t('topbar.logoutAria')}
+            className="inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
           >
             <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">退出</span>
+            <span className="hidden sm:inline">{t('topbar.logout')}</span>
           </button>
         </div>
       </div>
@@ -884,7 +889,7 @@ function AppContent() {
     >
       {isLocalSubtitle && !hasLocalVideo ? (
         <LocalEpisodeStage
-          showTitle={metadata?.channel || metadata?.title || '本地剧集'}
+          showTitle={metadata?.channel || metadata?.title || t('transcript.localEpisodeBadge')}
           episodeTitle={metadata?.title || ''}
           episodeLabel={localEpisodeLabel}
           duration={episodeDuration}
@@ -920,7 +925,7 @@ function AppContent() {
         >
           <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
           <span className="flex-1 min-w-0 text-xs text-zinc-300 truncate">
-            视频暂时无法加载，字幕仍可正常学习。
+            {t('transcript.videoUnavailable')}
           </span>
           <span
             data-testid="local-fallback-time"
@@ -935,8 +940,8 @@ function AppContent() {
               if (isSubtitlePlaying) pauseSubtitleTimer();
               else startSubtitleTimer(currentTime);
             }}
-            aria-label={isSubtitlePlaying ? '暂停' : '播放'}
-            title={isSubtitlePlaying ? '暂停（空格）' : '播放（空格）'}
+            aria-label={isSubtitlePlaying ? t('transcript.pause') : t('transcript.play')}
+            title={isSubtitlePlaying ? t('transcript.pauseTitle') : t('transcript.playTitle')}
             className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center bg-white/10 text-zinc-100 hover:bg-white/15 ring-1 ring-white/15 transition-colors active:scale-[0.95]"
           >
             {isSubtitlePlaying ? (
@@ -953,7 +958,7 @@ function AppContent() {
   const channelBar = metadata?.channel ? (
     <div className="glass-panel border-t-0 border-r border-white/5 px-6 py-4 flex items-center justify-between shrink-0 z-10">
       <div className="flex items-center gap-3">
-        <span className="text-xs font-medium text-zinc-500 whitespace-nowrap">频道：</span>
+        <span className="text-xs font-medium text-zinc-500 whitespace-nowrap">{t('transcript.channelLabel')}</span>
         <button
           onClick={() => setSelectedChannel(metadata.channel)}
           className="inline-flex items-center h-8 px-3 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 hover:border-white/10 text-blue-400 text-sm font-medium whitespace-nowrap transition-colors"
@@ -968,7 +973,7 @@ function AppContent() {
               : 'bg-zinc-800/60 text-zinc-300 border-white/5 hover:text-zinc-100 hover:bg-zinc-700/60'
               }`}
           >
-            {subscriptions.some(s => s.id === metadata.channel_url) ? '已订阅 ✓' : '订阅 +'}
+            {subscriptions.some(s => s.id === metadata.channel_url) ? t('transcript.subscribed') : t('transcript.subscribe')}
           </button>
         )}
       </div>
@@ -986,7 +991,7 @@ function AppContent() {
             onClick={() => setIsSummaryOpen(prev => !prev)}
             className="flex items-center justify-between w-full pb-2 cursor-pointer group"
           >
-            <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 group-hover:text-purple-300 transition-colors">视频总结</h2>
+            <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 group-hover:text-purple-300 transition-colors">{t('transcript.summaryTitle')}</h2>
             <ChevronDown
               className={`w-4 h-4 text-zinc-400 group-hover:text-purple-400 transition-transform duration-300 ${isSummaryOpen ? 'rotate-180' : ''}`}
             />
@@ -1020,12 +1025,12 @@ function AppContent() {
         </>
       ) : (
         <>
-          <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 mb-2 pb-2">使用提示</h2>
+          <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 mb-2 pb-2">{t('transcript.tipsTitle')}</h2>
           <ul className="text-zinc-400 space-y-2 list-disc list-inside">
-            <li>点击字幕任意句子，视频会跳转到对应时间点</li>
-            <li>点击句中任意单词可查看释义、发音，并一键加入生词本</li>
-            <li>快捷键：空格 播放/暂停 · ← → 上下句 · R 重播本句 · L 单句循环</li>
-            <li>用「听写模式」先听后看，训练精听</li>
+            <li>{t('transcript.tips.1')}</li>
+            <li>{t('transcript.tips.2')}</li>
+            <li>{t('transcript.tips.3')}</li>
+            <li>{t('transcript.tips.4')}</li>
           </ul>
         </>
       )}
@@ -1060,7 +1065,7 @@ function AppContent() {
               className="flex items-center justify-between w-full cursor-pointer group"
             >
               <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 group-hover:text-purple-300 transition-colors">
-                生词总览
+                {t('transcript.vocabTitle')}
                 <span className="ml-2 text-sm font-normal text-zinc-500 tabular-nums">({vocabItems.length})</span>
               </h2>
               <ChevronDown
@@ -1105,12 +1110,12 @@ function AppContent() {
     <>
       {/* Transcript toolbar: translation mode, loop, speed */}
       <div className="flex-none flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20">
-        <span className="text-xs text-zinc-500 font-medium shrink-0 whitespace-nowrap">中文译文</span>
+        <span className="text-xs text-zinc-500 font-medium shrink-0 whitespace-nowrap">{t('transcript.translationLabel')}</span>
         <div className="inline-flex items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5">
           {([
-            { key: 'all', label: '全显' },
-            { key: 'active', label: '当前句' },
-            { key: 'hidden', label: '隐藏' },
+            { key: 'all', label: t('transcript.mode.all') },
+            { key: 'active', label: t('transcript.mode.active') },
+            { key: 'hidden', label: t('transcript.mode.hidden') },
           ] as { key: TranslationMode; label: string }[]).map(opt => (
             <button
               key={opt.key}
@@ -1147,10 +1152,10 @@ function AppContent() {
               ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
               : 'bg-zinc-800/80 text-zinc-400 border-white/5 hover:text-zinc-200'
           }`}
-          title="听写模式：隐藏英文原文，先听后看，点击句子揭示"
+          title={t('transcript.dictationTitle')}
         >
           <EyeOff className="w-3.5 h-3.5" />
-          听写模式
+          {t('transcript.dictation')}
         </button>
 
         <button
@@ -1160,10 +1165,10 @@ function AppContent() {
               ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
               : 'bg-zinc-800/80 text-zinc-400 border-white/5 hover:text-zinc-200'
           }`}
-          title="单句循环（快捷键 L）"
+          title={t('transcript.loopTitle')}
         >
           <Repeat className="w-3.5 h-3.5" />
-          单句循环
+          {t('transcript.loop')}
         </button>
 
         {(!isLocalSubtitle || hasLocalVideo) && (
@@ -1171,7 +1176,7 @@ function AppContent() {
             value={playbackRate}
             onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
             className="appearance-none bg-zinc-800/80 text-zinc-300 text-xs font-medium rounded-lg border border-white/5 h-7 pl-2.5 pr-6 outline-none cursor-pointer hover:text-zinc-100 shrink-0 bg-no-repeat bg-[right_0.5rem_center] bg-[length:10px] bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2010%206%22><path%20d=%22M1%201l4%204%204-4%22%20stroke=%22%2371717a%22%20stroke-width=%221.5%22%20fill=%22none%22%20stroke-linecap=%22round%22/></svg>')]"
-            title="播放速度"
+            title={t('transcript.speedTitle')}
           >
             {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => (
               <option key={r} value={r}>{r}x</option>
@@ -1183,9 +1188,9 @@ function AppContent() {
 
         <span
           className="hidden lg:flex items-center gap-1 text-[11px] text-zinc-600 shrink-0 cursor-default"
-          title="空格：播放/暂停 · ← →：上一句/下一句 · R：重播本句 · L：单句循环"
+          title={t('transcript.shortcutsTitle')}
         >
-          <Keyboard className="w-3.5 h-3.5" /> 空格 ← → R L
+          <Keyboard className="w-3.5 h-3.5" /> {t('transcript.shortcutsHint')}
         </span>
 
         {/* Transcript placement toggle: tucked under the media ↔ docked right */}
@@ -1196,14 +1201,14 @@ function AppContent() {
             onClick={() => setTranscriptLayout(prev => (prev === 'split' ? 'stacked' : 'split'))}
             aria-pressed={isTranscriptExpanded}
             title={isTranscriptExpanded
-              ? `字幕收回${isLocalSubtitle ? '媒体' : '视频'}下方，视频总结与生词移到右侧`
-              : `字幕展开到右侧，视频总结与生词移到${isLocalSubtitle ? '媒体' : '视频'}下方`}
+              ? t('transcript.layout.collapseTitle', { media: isLocalSubtitle ? t('transcript.media.local') : t('transcript.media.video') })
+              : t('transcript.layout.expandTitle', { media: isLocalSubtitle ? t('transcript.media.local') : t('transcript.media.video') })}
             className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border border-white/5 bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60 transition-colors shrink-0"
           >
             {isTranscriptExpanded
               ? <PanelRightClose className="w-3.5 h-3.5" />
               : <PanelRightOpen className="w-3.5 h-3.5" />}
-            <span>{isTranscriptExpanded ? '收起' : '展开'}</span>
+            <span>{isTranscriptExpanded ? t('transcript.layout.collapse') : t('transcript.layout.expand')}</span>
           </button>
         )}
       </div>
@@ -1214,8 +1219,8 @@ function AppContent() {
           <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
           <span className="text-xs text-zinc-300 font-medium tabular-nums flex-1 truncate">
             {translationProgress.stage === 'summary'
-              ? 'AI 正在生成视频总结…'
-              : `字幕翻译中 ${translationProgress.done}/${translationProgress.total} 句 — 可以先开始观看`}
+              ? t('transcript.progress.summary')
+              : t('transcript.progress.translating', { done: translationProgress.done, total: translationProgress.total })}
           </span>
           {translationProgress.total > 0 && (
             <div className="w-24 h-1.5 rounded-full bg-zinc-800 overflow-hidden shrink-0">
@@ -1228,12 +1233,12 @@ function AppContent() {
           <button
             onClick={() => {
               cancelTranslationStream();
-              toast.info('已停止翻译；已完成的部分已保存，下次打开会自动续译。');
+              toast.info(t('transcript.stopToast'));
             }}
             className="flex items-center gap-1 text-xs text-zinc-400 hover:text-red-400 transition-colors shrink-0"
-            title="停止翻译"
+            title={t('transcript.progress.stop')}
           >
-            <XCircle className="w-3.5 h-3.5" /> 停止
+            <XCircle className="w-3.5 h-3.5" /> {t('common.stop')}
           </button>
         </div>
       )}
@@ -1251,6 +1256,7 @@ function AppContent() {
           dictation={dictationMode}
           onWordLookup={handleWordLookup}
           borderLeft={isTranscriptExpanded}
+          uiLanguage={language}
         />
         <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[#09090b] to-transparent z-10 pointer-events-none"></div>
       </div>
@@ -1354,12 +1360,12 @@ function AppContent() {
                 data-testid="split-divider"
                 role="separator"
                 aria-orientation="vertical"
-                aria-label="拖动调整媒体与侧栏宽度"
+                aria-label={t('transcript.splitDividerAria')}
                 aria-valuemin={MIN_SPLIT_RATIO}
                 aria-valuemax={MAX_SPLIT_RATIO}
                 aria-valuenow={Math.round(leftRatio)}
                 tabIndex={0}
-                title="拖动调整左右宽度 · 双击恢复默认"
+                title={t('transcript.splitDividerTitle')}
                 onPointerDown={(e) => {
                   if (e.button !== 0) return;
                   e.preventDefault();
@@ -1448,13 +1454,14 @@ function AppContent() {
 
 // Quiet holding screen while GET /api/auth/me decides where the app starts.
 function AuthLoadingScreen() {
+  const { t } = useI18n();
   return (
     <div
       data-testid="auth-loading"
       className="h-screen w-full flex flex-col items-center justify-center gap-3 bg-[#09090b] text-zinc-500"
     >
       <Loader2 className="w-6 h-6 animate-spin" />
-      <p className="text-sm">正在检查登录状态…</p>
+      <p className="text-sm">{t('auth.checking')}</p>
     </div>
   );
 }
@@ -1470,12 +1477,14 @@ function AuthGate() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AuthGate />
-      {/* One Toaster for every branch: it survives the auth gate switch, so
-          "session expired" and backend-unreachable toasts are not dropped. */}
-      <Toaster />
-    </AuthProvider>
+    <I18nProvider>
+      <AuthProvider>
+        <AuthGate />
+        {/* One Toaster for every branch: it survives the auth gate switch, so
+            "session expired" and backend-unreachable toasts are not dropped. */}
+        <Toaster />
+      </AuthProvider>
+    </I18nProvider>
   );
 }
 

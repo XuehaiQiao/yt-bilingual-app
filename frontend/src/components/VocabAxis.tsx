@@ -1,5 +1,18 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
+import { useI18n } from '../i18n/I18nProvider';
+import type { TranslationKey } from '../i18n';
+
+// Level names stay English in every UI language (they are the product's
+// journey metaphors); only the taglines are localized.
+const LEVEL_I18N: Record<VocabLevelId, { label: TranslationKey; tagline: TranslationKey }> = {
+    liftoff: { label: 'home.vocabLevel.liftoff.label', tagline: 'home.vocabLevel.liftoff.tagline' },
+    orbit: { label: 'home.vocabLevel.orbit.label', tagline: 'home.vocabLevel.orbit.tagline' },
+    moonwalk: { label: 'home.vocabLevel.moonwalk.label', tagline: 'home.vocabLevel.moonwalk.tagline' },
+    interstellar: { label: 'home.vocabLevel.interstellar.label', tagline: 'home.vocabLevel.interstellar.tagline' },
+    'deep-space': { label: 'home.vocabLevel.deep-space.label', tagline: 'home.vocabLevel.deep-space.tagline' },
+    supernova: { label: 'home.vocabLevel.supernova.label', tagline: 'home.vocabLevel.supernova.tagline' },
+};
 
 interface VocabAxisProps {
     value: VocabLevelId;
@@ -12,6 +25,7 @@ interface VocabAxisProps {
  * learner's vocabulary grows.
  */
 export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange }) => {
+    const { t } = useI18n();
     const index = Math.max(0, VOCAB_LEVELS.findIndex(l => l.id === value));
     const pct = (index / (VOCAB_LEVELS.length - 1)) * 100;
     const selected = VOCAB_LEVELS[index];
@@ -19,7 +33,7 @@ export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange }) => {
     return (
         <div className="max-w-2xl mx-auto w-full select-none">
             <p className="text-center text-xs font-medium text-zinc-500 mb-3">
-                How far has your English traveled?
+                {t('home.vocabAxisTitle')}
             </p>
 
             {/* Track */}
@@ -44,7 +58,7 @@ export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange }) => {
                             onClick={() => onChange(level.id)}
                             className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 p-2 group"
                             style={{ left }}
-                            title={level.label}
+                            title={t(LEVEL_I18N[level.id].label)}
                         >
                             <span className={`block w-2 h-2 rounded-full transition-colors duration-200 ${
                                 passed ? 'bg-zinc-100' : 'bg-zinc-600 group-hover:bg-zinc-400'
@@ -74,13 +88,15 @@ export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange }) => {
                         }`}
                         style={{ left: `${(i / (VOCAB_LEVELS.length - 1)) * 100}%` }}
                     >
-                        {level.label}
+                        {t(LEVEL_I18N[level.id].label)}
                     </button>
                 ))}
             </div>
 
             {/* Tagline for the selected stop */}
-            <div className="h-5 mt-2 text-center overflow-hidden">
+            {/* No fixed height + overflow-hidden: Vietnamese tone marks and a
+                wrapped tagline must never be clipped. */}
+            <div className="min-h-5 mt-2 text-center">
                 <AnimatePresence mode="wait">
                     <motion.p
                         key={selected.id}
@@ -90,7 +106,7 @@ export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange }) => {
                         transition={{ duration: 0.18, ease: 'easeOut' }}
                         className="text-xs text-zinc-500"
                     >
-                        {selected.tagline}
+                        {t(LEVEL_I18N[selected.id].tagline)}
                     </motion.p>
                 </AnimatePresence>
             </div>

@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { AlertCircle, Loader2, Lock, LogIn, Mail, UserPlus } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { describeApiError } from '../lib/toast';
+import { useI18n } from '../i18n/I18nProvider';
+import { LanguageMenu } from './LanguageMenu';
 
 type AuthMode = 'login' | 'signup';
 
@@ -13,6 +15,7 @@ type AuthMode = 'login' | 'signup';
  */
 export const AuthScreen = () => {
     const { login, signup } = useAuth();
+    const { t } = useI18n();
     const [mode, setMode] = useState<AuthMode>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -34,11 +37,11 @@ export const AuthScreen = () => {
 
         const trimmedEmail = email.trim();
         if (!trimmedEmail || !password) {
-            setError('请输入邮箱和密码。');
+            setError(t('auth.error.missing'));
             return;
         }
         if (mode === 'signup' && confirmPassword && confirmPassword !== password) {
-            setError('两次输入的密码不一致。');
+            setError(t('auth.error.mismatch'));
             return;
         }
 
@@ -61,15 +64,18 @@ export const AuthScreen = () => {
     return (
         <div
             data-testid="auth-screen"
-            className="min-h-screen w-full flex items-center justify-center bg-[#09090b] px-6 py-12 text-zinc-100"
+            className="relative min-h-screen w-full flex items-center justify-center bg-[#09090b] px-6 py-12 text-zinc-100"
         >
+            <div className="absolute top-5 right-5 sm:top-6 sm:right-6 z-20">
+                <LanguageMenu />
+            </div>
             <div className="w-full max-w-sm">
                 <div className="flex flex-col items-center mb-8">
                     <div className="w-12 h-12 rounded-[10px] overflow-hidden shadow-md shadow-black/40 ring-1 ring-white/10">
-                        <img src="/hero_icon.png" alt="语途（LinguaTrek）" className="w-full h-full object-cover" />
+                        <img src="/hero_icon.png" alt={t('brand.logoAlt')} className="w-full h-full object-cover" />
                     </div>
-                    <h1 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-100">语途（LinguaTrek）</h1>
-                    <p className="mt-1 text-sm text-zinc-500">登录后继续你的英语学习</p>
+                    <h1 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-100">{t('brand.fullName')}</h1>
+                    <p className="mt-1 text-sm text-zinc-500">{t('auth.subtitle')}</p>
                 </div>
 
                 <div className="glass-panel rounded-2xl p-6">
@@ -79,8 +85,8 @@ export const AuthScreen = () => {
                         project the thumb off the tab. */}
                     <motion.div layoutRoot className="inline-flex w-full items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5">
                         {([
-                            { key: 'login' as const, label: '登录' },
-                            { key: 'signup' as const, label: '注册' },
+                            { key: 'login' as const, label: t('auth.tab.login') },
+                            { key: 'signup' as const, label: t('auth.tab.signup') },
                         ]).map(option => (
                             <button
                                 key={option.key}
@@ -108,7 +114,7 @@ export const AuthScreen = () => {
 
                     <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
                         <label className="block">
-                            <span className="text-xs font-medium text-zinc-400">邮箱</span>
+                            <span className="text-xs font-medium text-zinc-400">{t('auth.email')}</span>
                             <div className="mt-1.5 flex items-center gap-2 h-10 px-3 rounded-xl bg-zinc-800/50 border border-white/5 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/15 transition-[border-color,box-shadow] duration-200 ease-apple">
                                 <Mail className="w-4 h-4 text-zinc-500 shrink-0" />
                                 <input
@@ -126,7 +132,7 @@ export const AuthScreen = () => {
                         </label>
 
                         <label className="block">
-                            <span className="text-xs font-medium text-zinc-400">密码</span>
+                            <span className="text-xs font-medium text-zinc-400">{t('auth.password')}</span>
                             <div className="mt-1.5 flex items-center gap-2 h-10 px-3 rounded-xl bg-zinc-800/50 border border-white/5 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/15 transition-[border-color,box-shadow] duration-200 ease-apple">
                                 <Lock className="w-4 h-4 text-zinc-500 shrink-0" />
                                 <input
@@ -137,7 +143,7 @@ export const AuthScreen = () => {
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder={mode === 'login' ? '输入密码' : '设置密码'}
+                                    placeholder={mode === 'login' ? t('auth.passwordPlaceholder.login') : t('auth.passwordPlaceholder.signup')}
                                     className="flex-1 min-w-0 bg-transparent border-none outline-none text-sm text-zinc-100 placeholder:text-zinc-600"
                                 />
                             </div>
@@ -146,7 +152,7 @@ export const AuthScreen = () => {
                         {mode === 'signup' && (
                             <label className="block">
                                 <span className="text-xs font-medium text-zinc-400">
-                                    确认密码 <span className="text-zinc-600">（可选）</span>
+                                    {t('auth.confirmPassword')} <span className="text-zinc-600">{t('auth.optional')}</span>
                                 </span>
                                 <div className="mt-1.5 flex items-center gap-2 h-10 px-3 rounded-xl bg-zinc-800/50 border border-white/5 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/15 transition-[border-color,box-shadow] duration-200 ease-apple">
                                     <Lock className="w-4 h-4 text-zinc-500 shrink-0" />
@@ -157,7 +163,7 @@ export const AuthScreen = () => {
                                         autoComplete="new-password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        placeholder="再次输入密码"
+                                        placeholder={t('auth.confirmPasswordPlaceholder')}
                                         className="flex-1 min-w-0 bg-transparent border-none outline-none text-sm text-zinc-100 placeholder:text-zinc-600"
                                     />
                                 </div>
@@ -188,7 +194,7 @@ export const AuthScreen = () => {
                             ) : (
                                 <UserPlus className="w-4 h-4" />
                             )}
-                            {mode === 'login' ? '登录' : '创建账号'}
+                            {mode === 'login' ? t('auth.submit.login') : t('auth.submit.signup')}
                         </button>
                     </form>
                 </div>

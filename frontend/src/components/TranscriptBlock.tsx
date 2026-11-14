@@ -4,6 +4,8 @@ import { isUntranslated, type TranslationMode } from '../lib/transcript';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { motion } from 'framer-motion';
+import { useI18n } from '../i18n/I18nProvider';
+import type { LanguageCode } from '../i18n';
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -113,9 +115,12 @@ interface TranscriptBlockProps {
     translationMode?: TranslationMode;
     dictation?: boolean;
     onWordLookup?: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
+    /** Forces a re-render of this memoized block when the UI language changes. */
+    uiLanguage?: LanguageCode;
 }
 
 const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, highlights, isActive, isFavorited, onToggleFavorite, translationMode = 'active', dictation = false, onWordLookup }) => {
+    const { t } = useI18n();
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
@@ -169,7 +174,7 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
                                 "p-1.5 rounded-lg transition-colors",
                                 showTranslation ? "bg-blue-500/10 text-blue-400" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
                             )}
-                            title="显示/隐藏本句译文"
+                            title={t('transcript.toggleTranslation')}
                         >
                             <Languages className="w-3.5 h-3.5" />
                         </button>
@@ -193,7 +198,7 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
                         data-lookup-context={enText}
                         data-lookup-start={start}
                         onClick={blurred ? (e) => { e.stopPropagation(); setRevealed(true); } : undefined}
-                        title={blurred ? '点击显示原文' : undefined}
+                        title={blurred ? t('transcript.revealOriginal') : undefined}
                         className={cn(
                             "text-base leading-relaxed tracking-normal transition-[filter,opacity,color] duration-300 ease-apple",
                             isActive ? "text-zinc-50" : "text-zinc-400",
@@ -213,7 +218,7 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
                         <div className="overflow-hidden min-h-0">
                             {isUntranslated(zhText) ? (
                                 <p className="text-[15px] leading-relaxed text-zinc-600 animate-pulse">
-                                    翻译中…
+                                    {t('transcript.translatingLine')}
                                 </p>
                             ) : (
                                 // 中文字号略大于 text-sm：汉字在小字号低对比度下比拉丁字母更难读
@@ -246,5 +251,6 @@ export const TranscriptBlock = React.memo(TranscriptBlockInner, (prev, next) =>
     prev.isFavorited === next.isFavorited &&
     prev.translationMode === next.translationMode &&
     prev.dictation === next.dictation &&
+    prev.uiLanguage === next.uiLanguage &&
     (prev.onWordLookup === undefined) === (next.onWordLookup === undefined)
 );
