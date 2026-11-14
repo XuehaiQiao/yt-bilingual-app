@@ -24,3 +24,4 @@
 | [008](./008-asr-fallback/spec.md) | 无字幕转写回退 | 没字幕时本地 Whisper 转写 | 已实现（可选依赖） |
 | [009](./009-sentence-packs/spec.md) | 句子精背 | 背一批精选地道句子，与看视频并列的第三模式 | 已实现 |
 | [010](./010-multi-provider-llm/spec.md) | 多模型接入 | Gemini / DeepSeek 可切换，按配置的 Key 决定可选模型 | 已实现 |
+| [012](./012-i18n-multilingual/spec.md) | 多语言（UI + 翻译目标语言） | 中文/越南语界面与翻译目标，用户级切换、缓存按语言隔离 | 草稿 |
