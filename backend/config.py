@@ -156,6 +156,14 @@ MODEL_CATALOG = {
     # Qwen（阿里）走 OpenAI 兼容协议；国际站/大陆站端点不同，**不在代码里写死**，
     # 由 QWEN_BASE_URL 提供（缺失时该模型视为不可用、在路线里自动跳过）。
     # 价格没有可核实来源，保持 None（前端显示「待定」），不编数字。
+    "qwen-flash": {
+        "name": "Qwen Flash", "provider": "Alibaba",
+        "kind": "openai_compatible", "model_id": "qwen-flash",
+        "base_url_env": "QWEN_BASE_URL",
+        "api_key_env": "QWEN_API_KEY", "batch_pause": 1,
+        "in": None, "out": None,
+        "quotaInfo": "Default · fast & cheap · verify region",
+    },
     "qwen-plus": {
         "name": "Qwen Plus", "provider": "Alibaba",
         "kind": "openai_compatible", "model_id": "qwen-plus",
@@ -200,7 +208,7 @@ def resolve_model(model: str | None) -> str:
 # 大陆部署不配 GEMINI_API_KEY 时 Gemini 自动跳过，路线落到 Qwen/DeepSeek；
 # 这里**不把 Gemini 写进任何降级链**（降级链见 ai/quota.py，另按地域过滤）。
 DEFAULT_MODEL_ZH_CN_FALLBACK = "deepseek-chat"
-DEFAULT_MODEL_VI_VN_FALLBACK = "qwen-plus"
+DEFAULT_MODEL_VI_VN_FALLBACK = "qwen-flash"
 
 
 def _model_route_from_env(name: str, default: list[str]) -> list[str]:
@@ -224,10 +232,11 @@ TARGET_LANG_MODEL_ROUTES: dict[str, list[str]] = {
     "zh-CN": _model_route_from_env(
         "MODEL_ROUTE_ZH_CN", ["deepseek-chat", "gemini-2.5-flash"]
     ),
-    # 越南语：Qwen 正式启用（负责人 2026-11-15 提供 Key）→ DeepSeek → Gemini。
+    # 越南语：Qwen Flash 默认（负责人 2026-11-15）→ Qwen Plus → DeepSeek → Gemini。
     # 站点：阿里云百炼国内站（该 Key 只在 dashscope.aliyuncs.com 有效）。
     "vi-VN": _model_route_from_env(
-        "MODEL_ROUTE_VI_VN", ["qwen-plus", "deepseek-chat", "gemini-2.5-flash"]
+        "MODEL_ROUTE_VI_VN",
+        ["qwen-flash", "qwen-plus", "deepseek-chat", "gemini-2.5-flash"],
     ),
 }
 
