@@ -812,7 +812,7 @@ function AppContent() {
             className="text-xl font-semibold text-zinc-100 cursor-pointer tracking-tight hover:text-white transition-colors shrink-0"
             onClick={handleGoHome}
           >
-            Lingua Nova
+            语途
           </h1>
           {featureName && (
             <span

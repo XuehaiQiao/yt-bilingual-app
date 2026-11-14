@@ -66,9 +66,9 @@ export const AuthScreen = () => {
             <div className="w-full max-w-sm">
                 <div className="flex flex-col items-center mb-8">
                     <div className="w-12 h-12 rounded-[10px] overflow-hidden shadow-md shadow-black/40 ring-1 ring-white/10">
-                        <img src="/hero_icon.png" alt="Lingua Nova" className="w-full h-full object-cover" />
+                        <img src="/hero_icon.png" alt="语途（LinguaTrek）" className="w-full h-full object-cover" />
                     </div>
-                    <h1 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-100">Lingua Nova</h1>
+                    <h1 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-100">语途（LinguaTrek）</h1>
                     <p className="mt-1 text-sm text-zinc-500">登录后继续你的英语学习</p>
                 </div>
 

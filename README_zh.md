@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/images/readme_octopus.png" alt="Lingua Nova" width="120" />
+<img src="docs/images/readme_octopus.png" alt="语途（LinguaTrek）" width="120" />
 
-# Lingua Nova
+# 语途（LinguaTrek）
 
 ### 把任何 YouTube 视频，变成一堂沉浸式英语课。
 
@@ -21,15 +21,15 @@ AI 双语字幕实时流式生成 · 点击任意单词即查词典 · 内置精
 
 <br/>
 
-<img src="docs/images/hero.gif" alt="Lingua Nova 首页 — 流动极光、流光标题与词汇水平轴" width="860" />
+<img src="docs/images/hero.gif" alt="语途首页 — 流动极光、流光标题与词汇水平轴" width="860" />
 
 </div>
 
 <br/>
 
-## 为什么是 Lingua Nova
+## 为什么是语途
 
-大多数语言应用让你学*它们*准备的内容。Lingua Nova 反过来：粘贴一条**你真正想看的 YouTube 视频**链接，它就变成一堂完整的课——同步双语字幕、按你的水平高亮生词、点击即查的词典、随手可用的精听训练。查词与翻译的摩擦被彻底消除，剩下的只有输入。
+大多数语言应用让你学*它们*准备的内容。语途反过来：粘贴一条**你真正想看的 YouTube 视频**链接，它就变成一堂完整的课——同步双语字幕、按你的水平高亮生词、点击即查的词典、随手可用的精听训练。查词与翻译的摩擦被彻底消除，剩下的只有输入。
 
 | | | |
 |:---:|:---:|:---:|
@@ -76,7 +76,7 @@ AI 双语字幕实时流式生成 · 点击任意单词即查词典 · 内置精
 界面完全自适应——同样的同步双语字幕、点查词典与精听工具，为手机屏幕优化排布。仓库中还附带一个 Expo React Native 客户端（[`mobile/`](mobile)）。
 
 <div align="center">
-<img src="docs/images/mobile.gif" alt="Lingua Nova 手机端 — 视频在上，双语字幕在下滚动" width="300" />
+<img src="docs/images/mobile.gif" alt="语途手机端 — 视频在上，双语字幕在下滚动" width="300" />
 </div>
 
 <br/>

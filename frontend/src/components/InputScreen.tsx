@@ -178,7 +178,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                 <motion.div variants={itemVariants} className="text-center mt-12 mb-8">
                     <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full glass-card text-xs font-medium text-zinc-300">
                         <span className="flex h-2 w-2 rounded-full bg-emerald-500"></span>
-                        Lingua Nova Engine
+                        LinguaTrek Engine
                     </div>
                     <h2 className="text-5xl md:text-6xl font-semibold tracking-[-0.015em] mb-4">
                         Watch YouTube. Learn English.

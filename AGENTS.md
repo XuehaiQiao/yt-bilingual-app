@@ -4,7 +4,7 @@
 
 ## 这是什么项目
 
-**Lingua Nova**：帮中文用户通过 YouTube 视频学英语的本地应用。三种学习模式：看视频（AI 双语字幕流式生成）、本地剧集（SRT）、句子精背。React 19 + FastAPI + Gemini / DeepSeek（多模型，模型适配层见 `backend/llm.py`、清单见 `MODEL_CATALOG`）。
+**语途（LinguaTrek）**：帮中文用户通过 YouTube 视频学英语的本地应用。三种学习模式：看视频（AI 双语字幕流式生成）、本地剧集（SRT）、句子精背。React 19 + FastAPI + Gemini / DeepSeek（多模型，模型适配层见 `backend/llm.py`、清单见 `MODEL_CATALOG`）。
 
 ## 读文档的顺序
 

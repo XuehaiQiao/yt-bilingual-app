@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/images/readme_octopus.png" alt="Lingua Nova" width="120" />
+<img src="docs/images/readme_octopus.png" alt="LinguaTrek" width="120" />
 
-# Lingua Nova
+# LinguaTrek
 
 ### Turn any YouTube video into an immersive English lesson.
 
@@ -21,15 +21,15 @@ Designed for Chinese learners. Built like Apple would.
 
 <br/>
 
-<img src="docs/images/hero.gif" alt="Lingua Nova home — living aurora, shimmering title, and a vocabulary-level axis" width="860" />
+<img src="docs/images/hero.gif" alt="LinguaTrek home — living aurora, shimmering title, and a vocabulary-level axis" width="860" />
 
 </div>
 
 <br/>
 
-## Why Lingua Nova
+## Why LinguaTrek
 
-Most language apps make you study *their* content. Lingua Nova flips that: paste a link to **any YouTube video you actually want to watch**, and it becomes a complete lesson — synchronized bilingual subtitles, vocabulary highlighted *at your level*, a tap-to-define dictionary, and listening drills. The friction of looking things up disappears; only the input remains.
+Most language apps make you study *their* content. LinguaTrek flips that: paste a link to **any YouTube video you actually want to watch**, and it becomes a complete lesson — synchronized bilingual subtitles, vocabulary highlighted *at your level*, a tap-to-define dictionary, and listening drills. The friction of looking things up disappears; only the input remains.
 
 | | | |
 |:---:|:---:|:---:|
@@ -76,7 +76,7 @@ One click on any word in the transcript opens a dictionary card: IPA, part of sp
 The interface is fully responsive — the same synced bilingual transcript, tap-to-define dictionary, and listening tools, sized for a phone. A companion Expo React Native client also ships in [`mobile/`](mobile).
 
 <div align="center">
-<img src="docs/images/mobile.gif" alt="Lingua Nova running on a phone — video on top, bilingual transcript scrolling below" width="300" />
+<img src="docs/images/mobile.gif" alt="LinguaTrek running on a phone — video on top, bilingual transcript scrolling below" width="300" />
 </div>
 
 <br/>
