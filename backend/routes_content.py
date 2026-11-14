@@ -181,7 +181,9 @@ async def process_subtitle(request: SubtitleRequest):
         )
         if repaired and not cached_data.get("model"):
             cached_data["model"] = model
-        cached_data = await retranslate_marked_blocks(cached_data, cache_path, model=model)
+        cached_data = await retranslate_marked_blocks(
+            cached_data, cache_path, model=model, feature="local_show"
+        )
         # 缓存里可能没有 YouTube 映射（老缓存，或 episodes.json 后来才补上）：
         # 每次命中都从映射现取，只改返回的 payload，不重写缓存文件。
         local_shows.enrich_metadata(
@@ -238,7 +240,10 @@ async def process_subtitle(request: SubtitleRequest):
 
         for attempt in range(max_retries):
             try:
-                batch_result = await process_llm_batch(batch, model=model)
+                # 本地剧集翻译单独归到 local_show：账本要能回答「花在哪个功能」。
+                batch_result = await process_llm_batch(
+                    batch, model=model, feature="local_show"
+                )
                 processed_blocks.extend(batch_result)
                 # 批间停顿按 provider 的限流节奏走（Gemini 4s / DeepSeek 1s），
                 # 不再固定 6 秒把 DeepSeek 也拖慢。

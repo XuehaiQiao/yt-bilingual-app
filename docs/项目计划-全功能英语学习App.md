@@ -1044,7 +1044,8 @@ jobs 1─1 artifact_dir（data/jobs/<id>/）
 | **依赖** | D-1（**国际首发**/免费邀请制，已决）、D-2（SQLite，已决）、D-7（内容缓存与衍生姿态）、D-10（删除权口径）、**D-17（仅大陆阶段阻塞；国际首发按 D-19 路由模型，M1 内实测）**——D-7/D-10 不决，M1 做不下去 |
 | **风险** | 最容易「看起来没进度」而被人催着跳过去。**不可跳过（M1 是唯一硬门禁）**。安全与迁移 v0.9 合计 6 天、本轮重估为 10 天（评审：2–3 周级工作，只做子集 + 显式接受残余风险） |
 | **进度（2026-11-15，M1a）** | **① 学习事件日志 + ③ 迁移框架（Alembic）已完成**：`backend/migrations/`（`0001_baseline` = users/sessions，`0002_learning_events` = 事件表）、`backend/events.py`（append-only、无对外 API）、迁移与事件离线测试 19 个（全量 123）；③ 的**离机备份 + 恢复演练 + 双写校验**仍未做。**M1 整阶段未完成** |
-| **进度（2026-11-15，M1c）** | **⑥ 的 CI + 最小可观测性已完成**：`.github/workflows/ci.yml`（后端 Python 3.12 + `py_compile` + 全量离线测试；前端 Node 22 + `npm ci` + `tsc -b` + `vite build`，无需 secrets）、`backend/observability.py`（JSON 行访问/异常日志 + `request_id` 响应头 + 只读 `/healthz`）、`pytest` 写入依赖；全量 135 测试绿（本任务新增 12）。⑥ 的 **3 个告警 / staging / 前端错误上报 / 质量日报页**仍未做。**M1 整阶段未完成** |
+| **进度（2026-11-15，M1c）** | **⑥ 的 CI + 最小可观测性已完成**：`.github/workflows/ci.yml`（后端 Python 3.12 + `py_compile` + 全量离线测试；前端 Node 22 + `npm ci` + `tsc -b` + `vite build`，无需 secrets）、`backend/observability.py`（JSON 行访问/异常日志 + `request_id` 响应头 + 只读 `/healthz`）、`pytest` 写入依赖；全量 148 测试绿（本任务新增 12）。⑥ 的 **3 个告警 / staging / 前端错误上报 / 质量日报页**仍未做。**M1 整阶段未完成** |
+| **进度（2026-11-15，M1b）** | **② AI 成本账本 + 三层配额 + 降级链已完成**：`0003_cost_ledger`（`ai_usage` append-only + `ai_quota` 原子日配额）、`backend/ai/{ledger,quota}.py`、`llm.usage_scope` 采集 provider usage、翻译/总结/查词/本地剧集接入；三层硬闸＝功能日限额（翻译 60 批 ≈120 分钟 / 总结 10 次 / 词典 200 次 / 本地剧集 60 批）+ 用户日预算 + 全局日预算，超限 429；降级链同 provider 更便宜 → 另一个可用 provider（大陆默认不含 Gemini）。全量 148 测试绿（本任务新增 13；并行 M1c 新增 12）。② 的**成本回归 CI 脚本 / 运营看板**未做。**M1 整阶段未完成** |
 
 #### M2 生词本与复习引擎（W9–W13，**20 人日**）
 

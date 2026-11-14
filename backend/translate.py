@@ -11,6 +11,7 @@ import os
 
 import llm
 import storage
+from ai import quota
 from config import DEFAULT_MODEL, VOCAB_LEVELS
 
 # Marker for blocks whose translation is missing/failed; such blocks are
@@ -73,8 +74,65 @@ def needs_retranslation(zh_text: str) -> bool:
     )
 
 
-async def process_llm_batch(blocks: list, model: str = DEFAULT_MODEL, vocab_level: str | None = None) -> list:
-    """Use the configured LLM to return Chinese translations and highlights"""
+def _resolve_feature_user(feature: str | None, user_id: str | None) -> tuple[str, str | None]:
+    """账本/配额用的功能与用户：功能缺省按翻译，用户缺省取请求上下文。"""
+    return (feature or "translate"), (
+        user_id if user_id is not None else storage.active_user_id()
+    )
+
+
+def _align_processed_blocks(input_data: list, result_data) -> list:
+    """把模型返回按 id 对齐回输入块；漏返/乱序都不会错位。"""
+    results_list = _extract_block_list(result_data)
+    by_id = {}
+    for res in results_list:
+        if isinstance(res, dict) and res.get("id") is not None:
+            by_id[_norm_id(res["id"])] = res
+    use_positional = not by_id  # model dropped ids entirely
+
+    processed_blocks = []
+    for i, orig in enumerate(input_data):
+        if use_positional:
+            res = results_list[i] if i < len(results_list) and isinstance(results_list[i], dict) else {}
+        else:
+            res = by_id.get(_norm_id(orig["id"]), {})
+        processed_blocks.append({
+            "id": orig["id"],
+            "start": orig["start"],
+            "end": orig["end"],
+            "en_text": orig["text"],
+            "zh_text": res.get("zh_text") or UNTRANSLATED_MARKER,
+            "highlights": res.get("highlights") or []
+        })
+    return processed_blocks
+
+
+async def process_llm_batch(
+    blocks: list,
+    model: str = DEFAULT_MODEL,
+    vocab_level: str | None = None,
+    *,
+    feature: str = "translate",
+    user_id: str | None = None,
+) -> list:
+    """用配置的大模型翻译一批字幕块（带日配额、降级链与账本归属）。
+
+    - 翻译前先原子扣一次本批的日配额；超限抛 ``QuotaExceeded``（429 语义），
+      不再盲目重试/白花钱，由上层决定提示方式；
+    - 模型失败（限流/5xx/Key 缺失/JSON 解析失败）按
+      ``quota.degradation_chain`` 依次尝试同 provider 更便宜 → 另一个可用
+      provider；全部候选失败才回落到 mock（保持原有自愈占位语义）；
+    - ``feature`` / ``user_id`` 用于账本与配额归属，缺省为 ``translate`` +
+      当前请求上下文；调用方不需要改签名也能拿到正确归属。
+    """
+    if not blocks:
+        return []
+
+    feature, user_id = _resolve_feature_user(feature, user_id)
+    # 硬闸：本批先占 1 个单位。QuotaExceeded 故意放在 mock 兜底之外——
+    # 额度不足不能被「模拟翻译」伪装成成功。
+    quota.check_and_consume_quota(user_id, feature)
+
     level_instruction = ""
     if vocab_level in VOCAB_LEVELS:
         level_instruction = (
@@ -113,48 +171,34 @@ async def process_llm_batch(blocks: list, model: str = DEFAULT_MODEL, vocab_leve
     {json.dumps(input_data, ensure_ascii=False)}
     """
 
-    try:
-        # 模型 SDK 是同步阻塞的（单次 8–40s）。放进线程执行，事件循环才能继续
-        # 处理心跳、健康检查和其他用户的请求；异常照常传回，由下面的兜底接住。
-        result_data = json.loads(
-            await asyncio.to_thread(llm.generate_json, prompt, model=model)
-        )
-
-        # Match results back by id — models occasionally drop or reorder items,
-        # and a positional zip would silently attach translations to the wrong
-        # sentences (and truncate the batch when items are missing).
-        results_list = _extract_block_list(result_data)
-        by_id = {}
-        for res in results_list:
-            if isinstance(res, dict) and res.get("id") is not None:
-                by_id[_norm_id(res["id"])] = res
-        use_positional = not by_id  # model dropped ids entirely
-
-        processed_blocks = []
-        for i, orig in enumerate(input_data):
-            if use_positional:
-                res = results_list[i] if i < len(results_list) and isinstance(results_list[i], dict) else {}
-            else:
-                res = by_id.get(_norm_id(orig["id"]), {})
-            processed_blocks.append({
-                "id": orig["id"],
-                "start": orig["start"],
-                "end": orig["end"],
-                "en_text": orig["text"],
-                "zh_text": res.get("zh_text") or UNTRANSLATED_MARKER,
-                "highlights": res.get("highlights") or []
-            })
-
-        missing = sum(1 for b in processed_blocks if b["zh_text"] == UNTRANSLATED_MARKER)
-        if missing:
-            print(f"Warning: {missing}/{len(input_data)} blocks came back untranslated in this batch")
-
-        return processed_blocks
-
-    except Exception as e:
-        print(f"Gemini API Error: {e}")
-        # Fallback to mock if API fails or parsing fails
+    candidates = quota.degradation_chain(feature=feature, preferred_model=model)
+    if not candidates:
+        print(f"No available model for feature={feature}; falling back to mock.")
         return await mock_llm_processing(blocks)
+
+    last_error: Exception | None = None
+    for candidate in candidates:
+        try:
+            # 模型 SDK 是同步阻塞的（单次 8–40s）。放进线程执行，事件循环才能继续
+            # 处理心跳、健康检查和其他用户的请求；异常照常传回，由下面的兜底接住。
+            with llm.usage_scope(feature, user_id):
+                raw = await asyncio.to_thread(llm.generate_json, prompt, model=candidate)
+            result_data = json.loads(raw)
+            processed_blocks = _align_processed_blocks(input_data, result_data)
+
+            missing = sum(1 for b in processed_blocks if b["zh_text"] == UNTRANSLATED_MARKER)
+            if missing:
+                print(f"Warning: {missing}/{len(input_data)} blocks came back untranslated in this batch")
+            if candidate != model:
+                print(f"Model {model} failed; degraded to {candidate} for this batch.")
+            return processed_blocks
+        except Exception as e:  # noqa: BLE001 - 逐个降级，全部失败才 mock
+            last_error = e
+            print(f"LLM call failed with {candidate}: {e}")
+
+    # 所有候选都失败：保持原有行为，回落到 mock（下次加载会自愈重译）。
+    print(f"All model candidates failed for feature={feature}; falling back to mock: {last_error}")
+    return await mock_llm_processing(blocks)
 
 
 async def mock_llm_processing(blocks: list) -> list:
@@ -174,8 +218,18 @@ async def mock_llm_processing(blocks: list) -> list:
     return processed_blocks
 
 
-async def summarize_video_transcript(blocks: list, model: str = DEFAULT_MODEL) -> str:
-    """Use the configured LLM to summarize the video based on the transcript"""
+async def summarize_video_transcript(
+    blocks: list,
+    model: str = DEFAULT_MODEL,
+    *,
+    feature: str = "summary",
+    user_id: str | None = None,
+) -> str:
+    """用配置的大模型总结视频字幕（带日配额、降级链与账本归属）。
+
+    额度不足时返回 ``SUMMARY_ERROR_TEXT``（缓存里出现它，下次打开会重试），
+    不抛异常——总结是辅助功能，不能把整条视频处理链路打断。
+    """
     full_text = " ".join([b["text"] for b in blocks])
     # If it's too long, truncate it to save tokens (approx 20 mins of speech)
     if len(full_text) > 20000:
@@ -190,12 +244,32 @@ async def summarize_video_transcript(blocks: list, model: str = DEFAULT_MODEL) -
     {full_text}
     """
 
+    feature, user_id = _resolve_feature_user(feature, user_id)
     try:
-        # 同步 SDK 调用放进线程，避免生成总结期间卡住事件循环（SSE 心跳也依赖它）。
-        return await asyncio.to_thread(llm.generate_text, summary_prompt, model=model)
-    except Exception as e:
-        print(f"Summary Gen Error ({model}): {e}")
+        quota.check_and_consume_quota(user_id, feature)
+    except quota.QuotaExceeded as e:
+        print(f"Summary quota exceeded: {e}")
         return SUMMARY_ERROR_TEXT
+
+    candidates = quota.degradation_chain(feature=feature, preferred_model=model)
+    if not candidates:
+        print(f"No available model for feature={feature}; summary skipped.")
+        return SUMMARY_ERROR_TEXT
+
+    last_error: Exception | None = None
+    for candidate in candidates:
+        try:
+            # 同步 SDK 调用放进线程，避免生成总结期间卡住事件循环（SSE 心跳也依赖它）。
+            with llm.usage_scope(feature, user_id):
+                return await asyncio.to_thread(
+                    llm.generate_text, summary_prompt, model=candidate
+                )
+        except Exception as e:  # noqa: BLE001 - 逐个降级，全部失败给占位文案
+            last_error = e
+            print(f"Summary Gen Error ({candidate}): {e}")
+
+    print(f"Summary Gen Error (all candidates failed): {last_error}")
+    return SUMMARY_ERROR_TEXT
 
 
 def find_history_file_for_video(video_id: str):
@@ -210,7 +284,14 @@ def find_history_file_for_video(video_id: str):
     return None
 
 
-async def retranslate_marked_blocks(data: dict, cache_path: str, model: str = DEFAULT_MODEL) -> dict:
+async def retranslate_marked_blocks(
+    data: dict,
+    cache_path: str,
+    model: str = DEFAULT_MODEL,
+    *,
+    feature: str = "translate",
+    user_id: str | None = None,
+) -> dict:
     """Re-translate mock/failed blocks in a cached payload, saving progress.
 
     Shared by the YouTube and local-subtitle flows so partially translated
@@ -238,7 +319,9 @@ async def retranslate_marked_blocks(data: dict, cache_path: str, model: str = DE
         retry_delay = 15
         for attempt in range(max_retries):
             try:
-                batch_result = await process_llm_batch(batch_blocks, model=model)
+                batch_result = await process_llm_batch(
+                    batch_blocks, model=model, feature=feature, user_id=user_id
+                )
                 for j, idx in enumerate(batch_indices):
                     if j < len(batch_result):
                         transcript[idx] = batch_result[j]
@@ -263,7 +346,17 @@ async def retranslate_marked_blocks(data: dict, cache_path: str, model: str = DE
     return data
 
 
-async def _stream_translate(transcript: list, indices: list, payload: dict, save_path: str, model: str = DEFAULT_MODEL, vocab_level: str | None = None):
+async def _stream_translate(
+    transcript: list,
+    indices: list,
+    payload: dict,
+    save_path: str,
+    model: str = DEFAULT_MODEL,
+    vocab_level: str | None = None,
+    *,
+    feature: str = "translate",
+    user_id: str | None = None,
+):
     """Translate the given transcript indices batch by batch.
 
     Yields a dict per batch with the freshly translated blocks and overall
@@ -283,7 +376,13 @@ async def _stream_translate(transcript: list, indices: list, payload: dict, save
         } for i in batch_indices]
 
         try:
-            result = await process_llm_batch(batch_blocks, model=model, vocab_level=vocab_level)
+            result = await process_llm_batch(
+                batch_blocks,
+                model=model,
+                vocab_level=vocab_level,
+                feature=feature,
+                user_id=user_id,
+            )
             for j, idx in enumerate(batch_indices):
                 if j < len(result):
                     transcript[idx] = result[j]

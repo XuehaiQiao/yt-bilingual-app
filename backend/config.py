@@ -179,3 +179,102 @@ DEFAULT_MODEL = _default_model_from_env()
 
 def resolve_model(model: str | None) -> str:
     return model if model in MODEL_CATALOG else DEFAULT_MODEL
+
+
+# --- 可观测性（M1c）--- 只增不改，避免与并行任务冲突。
+#
+# APP_VERSION：/healthz 的 version 字段。优先环境变量（发布时注入 commit/tag），
+# 其次已安装的包元数据，最后是开发占位值。不凭印象写产品版本号。
+def _detect_app_version() -> str:
+    explicit = os.environ.get("APP_VERSION", "").strip()
+    if explicit:
+        return explicit
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+
+        try:
+            return version("linguatrek")
+        except PackageNotFoundError:
+            pass
+    except Exception:
+        pass
+    return "0.0.0-dev"
+
+
+APP_VERSION = _detect_app_version()
+
+# LOG_LEVEL：应用日志级别（DEBUG/INFO/WARNING/ERROR/CRITICAL），默认 INFO。
+# 非法值回落 INFO 并打印一次警告，不中断启动。
+_LOG_LEVELS = ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET")
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").strip().upper() or "INFO"
+if LOG_LEVEL not in _LOG_LEVELS:
+    print(f"⚠️  LOG_LEVEL={LOG_LEVEL!r} 无效，使用默认值 INFO。")
+    LOG_LEVEL = "INFO"
+
+# LOG_JSON：访问/异常日志是否输出一行一个 JSON（默认开）。设 0/false 时输出
+# 人类可读的纯文本，便于本地排查。
+LOG_JSON = os.environ.get("LOG_JSON", "1").strip().lower() not in (
+    "0", "false", "no", "off",
+)
+
+
+# --- AI 成本账本与三层配额（M1b，见 backend/ai/）--- 只增不改，避免与并行任务冲突。
+#
+# 账本默认开启；离线脚本/测试可设 AI_USAGE_LOGGING=0 关掉 llm.py 里的 usage hook。
+AI_USAGE_LOGGING = os.environ.get("AI_USAGE_LOGGING", "1").strip().lower() not in (
+    "0", "false", "no", "off",
+)
+
+# 「日」的边界时区：面向大陆用户，默认 Asia/Shanghai（0 点重置）；配额与账本的
+# usage_date 都按它派生。非法时区回落 UTC 并由 ai/ledger.py 告警一次。
+AI_QUOTA_TIMEZONE = os.environ.get("AI_QUOTA_TIMEZONE", "Asia/Shanghai").strip() or "Asia/Shanghai"
+
+
+def _int_env(name: str, default: int) -> int:
+    """读非负整数环境变量；缺失/非法/负数回落默认值并打印一次警告。"""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        value = -1
+    if value < 0:
+        print(f"⚠️  {name}={raw!r} 无效，使用默认值 {default}。")
+        return default
+    return value
+
+
+def _float_env(name: str, default: float) -> float:
+    """读非负浮点环境变量；缺失/非法/负数回落默认值并打印一次警告。"""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        value = -1.0
+    if value < 0:
+        print(f"⚠️  {name}={raw!r} 无效，使用默认值 {default:g}。")
+        return default
+    return value
+
+
+# 免费额度（每日，0 = 关闭该功能）。翻译按「批」计：1 批 ≤20 个字幕块 ≈ 2 分钟
+# 视频，60 批 ≈ 120 分钟；本地剧集同理，单独一行便于运营区分功能成本。
+AI_DAILY_QUOTA_TRANSLATE_BATCHES = _int_env("AI_DAILY_QUOTA_TRANSLATE_BATCHES", 60)
+AI_DAILY_QUOTA_SUMMARY = _int_env("AI_DAILY_QUOTA_SUMMARY", 10)
+AI_DAILY_QUOTA_DEFINE = _int_env("AI_DAILY_QUOTA_DEFINE", 200)
+AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES = _int_env("AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES", 60)
+
+# 第二、三层预算（美元/日；0 = 不启用该层硬闸）。默认值是保守占位，运营按
+# 实际成本目标调；检查依据是 ai_usage 当日 SUM，不是前端估价。
+AI_DAILY_BUDGET_USER_USD = _float_env("AI_DAILY_BUDGET_USER_USD", 1.0)
+AI_DAILY_BUDGET_GLOBAL_USD = _float_env("AI_DAILY_BUDGET_GLOBAL_USD", 20.0)
+
+# 降级链地域口径：auto（默认，按 DEFAULT_MODEL 判断）/ cn（排除 Google）/ global。
+# 大陆默认模型是 deepseek-chat → auto 即 cn，Gemini 不会进入默认降级链。
+AI_MODEL_REGION = os.environ.get("AI_MODEL_REGION", "auto").strip().lower() or "auto"
+if AI_MODEL_REGION not in ("auto", "cn", "global"):
+    print(f"⚠️  AI_MODEL_REGION={AI_MODEL_REGION!r} 无效，使用 auto。")
+    AI_MODEL_REGION = "auto"

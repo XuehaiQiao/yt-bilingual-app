@@ -15,6 +15,8 @@ from pydantic import BaseModel
 import llm
 import local_dict
 import storage
+from ai import quota
+from ai.ledger import QuotaExceeded
 from config import DEFAULT_MODEL, MODEL_CATALOG, resolve_model
 
 router = APIRouter()
@@ -204,12 +206,24 @@ Rules for "senses":
     # 只有确实存在于目录里的模型才参与优先排序；不存在的模型交给
     # `_dict_model_candidates()` 原候选链兜底，而不是挤掉候选链首位。
     preferred = resolve_model(request.model) if request.model in MODEL_CATALOG else None
+
+    # AI 硬闸：词典是每用户 200 次/日的第三层配额之一；超限返回 429（前端提示
+    # 「今天的 AI 额度用完了」）。预算超限（BudgetExceeded 是其子类）同走这里。
+    user_id = storage.active_user_id()
+    try:
+        quota.check_and_consume_quota(user_id, "define")
+    except QuotaExceeded as e:
+        raise HTTPException(
+            status_code=getattr(e, "status_code", 429), detail=str(e)
+        ) from e
+
     for model_id in _dict_models_for_request(preferred):
         try:
             # 模型 SDK 是同步阻塞调用；放进线程，别卡住事件循环（P0‑1）。
-            parsed = json.loads(
-                await asyncio.to_thread(llm.generate_json, prompt, model=model_id)
-            )
+            with llm.usage_scope("define", user_id):
+                parsed = json.loads(
+                    await asyncio.to_thread(llm.generate_json, prompt, model=model_id)
+                )
             if isinstance(parsed, list):
                 parsed = parsed[0] if parsed else {}
             if not isinstance(parsed, dict):

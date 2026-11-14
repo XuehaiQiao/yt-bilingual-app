@@ -20,6 +20,9 @@ python-dotenv>=1.0.0
 # backend/: venv/bin/alembic upgrade head  (see backend/migrations/README.md).
 alembic==1.20.1
 
+# Offline test suite + CI (backend/tests/); not needed at runtime.
+pytest>=8.0.0
+
 # Optional: local ASR fallback for videos without English captions
 # pip install faster-whisper  (downloads a Whisper model on first use;
 # set WHISPER_MODEL=small/base/medium to choose size, default: base)

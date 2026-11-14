@@ -55,7 +55,7 @@ def show_dir(tmp_path, monkeypatch):
 def no_llm(monkeypatch):
     """process-subtitle 的翻译与批间停顿都换成本地 stub，保证全离线且不等待。"""
 
-    async def fake_process_llm_batch(blocks, model=None, vocab_level=None):
+    async def fake_process_llm_batch(blocks, model=None, vocab_level=None, **kwargs):
         return [
             {"id": block["id"], "zh_text": "中文翻译", "highlights": []}
             for block in blocks

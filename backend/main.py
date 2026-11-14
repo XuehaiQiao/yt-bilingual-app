@@ -11,8 +11,9 @@
 - routes_videos.py   估价 / 处理 / 流式 / 历史 / 频道更新
 - routes_content.py  本地剧集 + 句子精背
 - routes_user.py     词典 / 收藏 / 订阅
+- observability.py   结构化访问日志 / request_id / 只读 /healthz
 
-请求链路（从外到内）：CORS → API_AUTH_KEY → 用户会话 → 路由。
+请求链路（从外到内）：CORS → 访问日志（request_id）→ API_AUTH_KEY → 用户会话 → 路由。
 Starlette 里后注册的中间件更靠外层，所以 CORS 放在文件最后注册。
 """
 from contextlib import asynccontextmanager
@@ -24,6 +25,7 @@ from fastapi.responses import JSONResponse
 import auth_db
 import config
 import events
+import observability
 import routes_auth
 import routes_content
 import routes_user
@@ -39,6 +41,7 @@ async def lifespan(_app: FastAPI):
     一律由 Alembic 创建（backend/migrations/）。这里把「库存在但没迁移」显式说出来，
     否则事件会静默写不进去。
     """
+    observability.configure_logging()
     events.log_schema_status()
     yield
 
@@ -95,6 +98,16 @@ async def require_api_key(request, call_next):
     return await call_next(request)
 
 
+@app.middleware("http")
+async def structured_access_log(request, call_next):
+    """每请求一行 JSON + ``X-Request-ID``；敏感值不落日志（见 observability.py）。
+
+    注册在认证中间件之后、CORS 之前：这样 401/403 也会被记录，CORS 又能在
+    最外层给所有响应（含异常兜底的 500）补上跨域头。
+    """
+    return await observability.record_request(request, call_next)
+
+
 app.include_router(routes_auth.router)
 app.include_router(routes_videos.router)
 app.include_router(routes_content.router)
@@ -127,4 +140,22 @@ else:
 
 @app.get("/health")
 def health_check():
+    """存活探针：只说明进程还在，不碰数据库。"""
     return {"status": "ok"}
+
+
+@app.get("/healthz")
+def health_check_detailed():
+    """就绪探针：版本、只读 DB 检查、迁移版本、uptime、时间。
+
+    - DB 可读时 ``status=ok``（HTTP 200），否则 ``status=degraded``（HTTP 503）；
+    - 任何检查失败都不抛 500，也不创建/修改数据库文件；
+    - ``db.migrations.current != head`` 表示库已可读但迁移未跟上，按字段展示，
+      由运维/告警判断，不阻断进程存活。
+    """
+    snapshot = observability.health_snapshot()
+    return JSONResponse(
+        status_code=200 if snapshot["status"] == "ok" else 503,
+        content=snapshot,
+        headers={"Cache-Control": "no-store"},
+    )

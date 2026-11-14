@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0002_learning_events"
+HEAD = "0003_cost_ledger"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -64,7 +64,10 @@ def test_upgrade_head_from_empty_db(tmp_path):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
 
     tables = table_names(db)
-    assert {"users", "sessions", "learning_events", "alembic_version"} <= tables
+    assert {
+        "users", "sessions", "learning_events",
+        "ai_usage", "ai_quota", "alembic_version",
+    } <= tables
     assert revision(db) == HEAD
 
     # 基线字段与 auth_db.py 一致（名字/顺序/可空性）
@@ -114,6 +117,42 @@ def test_upgrade_head_from_empty_db(tmp_path):
     assert events["event_type"]["notnull"] == 1
     assert events["occurred_at"]["notnull"] == 1
     assert events["created_at"]["notnull"] == 1
+
+
+    # 成本账本 + 日配额表（0003_cost_ledger）
+    usage = columns(db, "ai_usage")
+    assert list(usage) == [
+        "id",
+        "user_id",
+        "feature",
+        "model_id",
+        "provider",
+        "input_tokens",
+        "output_tokens",
+        "calls",
+        "est_cost_usd",
+        "occurred_at",
+        "created_at",
+        "usage_date",
+    ]
+    assert usage["id"]["pk"] == 1
+    assert usage["feature"]["notnull"] == 1
+    assert usage["model_id"]["notnull"] == 1
+    assert usage["input_tokens"]["notnull"] == 1
+    assert usage["est_cost_usd"]["notnull"] == 1
+    assert usage["occurred_at"]["notnull"] == 1
+    assert usage["usage_date"]["notnull"] == 1
+
+    usage_indexes = index_names(db, "ai_usage")
+    assert "ix_ai_usage_user_day" in usage_indexes
+    assert "ix_ai_usage_feature_day" in usage_indexes
+    assert "ix_ai_usage_day" in usage_indexes
+
+    quota = columns(db, "ai_quota")
+    assert list(quota) == ["user_id", "day", "feature", "used_units", "limit_units"]
+    assert [quota[c]["pk"] for c in ("user_id", "day", "feature")] == [1, 2, 3]
+    assert quota["used_units"]["notnull"] == 1
+    assert quota["limit_units"]["notnull"] == 1
 
 
 def test_baseline_schema_matches_auth_db_contract(tmp_path, monkeypatch):

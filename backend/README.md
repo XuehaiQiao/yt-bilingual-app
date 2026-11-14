@@ -9,22 +9,24 @@
 
 | 文件 | 职责 |
 |---|---|
-| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、用户会话中间件（Cookie → SQLite → `request.state.user` + 数据目录 ContextVar）、挂载四个路由模块、`/health`。**不放业务逻辑** |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外）、`DEFAULT_MODEL`（默认 `deepseek-chat`，可用同名环境变量覆盖）、`resolve_model`（未知/缺省 → 默认模型）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
+| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、用户会话中间件（Cookie → SQLite → `request.state.user` + 数据目录 ContextVar）、结构化访问日志（request_id + 一行 JSON）、挂载四个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
+| `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外）、`DEFAULT_MODEL`（默认 `deepseek-chat`，可用同名环境变量覆盖）、`resolve_model`（未知/缺省 → 默认模型）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
+| `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini） |
 | `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`；`ln_session` Cookie 与登录失败限流 |
 | `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；无用户 → 回落 `config.HISTORY_DIR`。所有用户数据路径必须从这里取 |
-| `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」，并提供 `is_available`（有没有 Key）与 `batch_pause`（按厂商限流节奏）。**SDK 调用是同步阻塞的**，调用方在 async 代码里必须用 `asyncio.to_thread` 包一层 |
+| `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」，并提供 `is_available`（有没有 Key）与 `batch_pause`（按厂商限流节奏）。**SDK 调用是同步阻塞的**，调用方在 async 代码里必须用 `asyncio.to_thread` 包一层；`usage_scope(feature, user_id)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关） |
 | `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。这些函数是同步阻塞实现，async 调用方负责放进线程 |
-| `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。LLM 生成调用经 `asyncio.to_thread` 执行，异常仍照常抛回；批间 `batch_pause` 语义不变 |
+| `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。LLM 生成调用经 `asyncio.to_thread` 执行，异常仍照常抛回；批间 `batch_pause` 语义不变；翻译/总结带日配额与降级链，`feature` / `user_id` 缺省取请求上下文（本地剧集传 `local_show`） |
 | `routes_videos.py` | `/api/models`（全局模型栏数据源）、`/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心；流内慢任务期间按 `SSE_HEARTBEAT_INTERVAL`（默认 15s）发 `: ping` 注释行心跳）、`/api/history*`（本地剧集缓存按 `episodes.json` 补 `youtube_video_id`）、`/api/channel-updates`（yt-dlp 频道拉取，放线程并发、最多 8 个） |
 | `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集：翻译与补译跟随请求 `model`，新处理结果与缓存 payload 记录 `model`，批间隔按 `llm.batch_pause(model)`；有视频映射的集在 `metadata` 补 `youtube_video_id` / `youtube_title`）、`/api/sentences*`（句子精背） |
 | `local_shows.py` | 本地剧集 → YouTube 视频映射：`episode_video_map(show_id)` / `lookup_episode_video(show_id, season, episode)` 读取 `subtitles/<show_id>/episodes.json`；缺失/损坏一律降级为无映射并打日志，路径限制在 `SUBTITLES_DIR` 内 |
 | `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
-| `routes_user.py` | `/api/define`（词典：`dictionary_cache.json` 语境缓存 → 本地词典 → 「已配 Key 的候选模型」；缺省 `model` 时候选链首选 `DEFAULT_MODEL`；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；模型结果写缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`、`/api/subscriptions` |
-| `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移；faster-whisper 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `routes_user.py` | `/api/define`（词典：`dictionary_cache.json` 语境缓存 → 本地词典 → 「已配 Key 的候选模型」；缺省 `model` 时候选链首选 `DEFAULT_MODEL`；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；模型结果写缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
+| `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -69,12 +71,12 @@ data/                                  # DATA_DIR（gitignore）
 
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 
 ```bash
-venv/bin/alembic upgrade head            # 新库：从零建到最新（0001_baseline → 0002_learning_events）
+venv/bin/alembic upgrade head            # 新库：从零建到最新（0001_baseline → 0002_learning_events → 0003_cost_ledger）
 venv/bin/alembic current                 # 看当前版本
 
 # 已有 data/app.db（只有 users/sessions，没有 alembic_version）：先纳管再补建新表
@@ -99,6 +101,98 @@ venv/bin/alembic stamp head              # 已经是最新版本的库：只标�
 - `pseudonym_id = HMAC-SHA256(EVENTS_PSEUDONYM_SALT, user_id)`；未设盐时用开发默认盐并告警一次，**生产必须设置 `EVENTS_PSEUDONYM_SALT`**。按计划书 §8.4，删除权口径（D-10）定稿后明文 `user_id` 会按表级矩阵迁移，事件表最终只靠假名归属。
 - `event_type` 暂不设 CHECK 约束（事件字典 v1 未定稿），示例：`video_open` / `block_visible` / `quiz_answer` / `word_review`。
 - 测试：`venv/bin/python -m pytest tests/test_migrations.py tests/test_events.py -q`（迁移全流程 + append-only 代码层断言）。
+
+## 健康检查与结构化日志（M1c）
+
+### 两个探针
+
+| 端点 | 用途 | 行为 |
+|---|---|---|
+| `GET /health` | 存活（liveness） | 固定 `{"status":"ok"}`，不碰数据库 |
+| `GET /healthz` | 就绪（readiness） | `{status, version, db, uptime_seconds, time}`；DB 只读检查，失败 `503` + `status=degraded`，从不 500 |
+
+`/healthz` 字段：
+
+```json
+{
+  "status": "ok",
+  "version": "0.0.0-dev",
+  "db": {"ok": true, "migrations": {"current": "0003_cost_ledger", "head": "0003_cost_ledger"}},
+  "uptime_seconds": 12.3,
+  "time": "2026-11-14T20:16:10.619Z"
+}
+```
+
+- `db.ok`：SQLite 是否可读（以 `mode=ro` 打开，**不建库、不建表、不写版本号**）。
+- `db.migrations.current` / `head`：当前库版本与代码里的 Alembic head（用 `ScriptDirectory` / `MigrationContext` 只读读取）。**库可读但迁移落后时仍是 200**，用 `current != head` 判断并告警；不要靠 `/healthz` 自动跑迁移。
+- `uptime_seconds`：进程启动至今（monotonic）；`time`：UTC ISO8601。
+- `version`：`APP_VERSION` 环境变量 > 已安装包元数据 > `0.0.0-dev`；发布时建议注入 tag/commit。
+
+### 访问日志（每请求一行 JSON）
+
+默认 `LOG_JSON=1`，每个请求输出一行（字段固定，不含 query/body/header）：
+
+```json
+{"event":"http_request","request_id":"7b1e5b4a1f16471d933434fd9122c074","method":"GET","path":"/health","status":200,"duration_ms":1.23,"time":"2026-11-14T20:16:10.619Z","level":"info","logger":"linguatrek.access"}
+```
+
+- `request_id`：优先复用合法的 `X-Request-ID`（8–64 位 `[A-Za-z0-9._-]`），否则生成 UUID hex；同一 id 写进响应头 `X-Request-ID` 与 `request.state.request_id`，4xx/5xx/异常日志都能对上。
+- `duration_ms`：从收到请求到响应开始的时间（普通请求即处理耗时；SSE 是首包耗时）。
+- `user_id`：仅已登录请求出现；未登录不记 Cookie、不记邮箱。
+- **脱敏**：只记 `request.url.path`，不读 query/body/header，所以密码、`X-API-Key`、query 里的 API Key 不会进访问日志。HTTP 客户端（httpx/httpcore）的 INFO 日志也压到 WARNING，避免完整 URL 带 query 泄露。
+- 4xx 记 `warning`、5xx 记 `error`、其余 `info`；未处理异常另有一条 `linguatrek.error` 日志，带 `request_id` 和 `stack`，响应为 `500 {"detail":"服务器内部错误","request_id":...}`。
+- `LOG_JSON=0` 输出人类可读纯文本；`LOG_LEVEL` 控制应用日志级别（默认 `INFO`）。应用内访问日志会接管 uvicorn.access（两种格式都不会每请求两行）。
+- 测试：`venv/bin/python -m pytest tests/test_observability.py -q`。
+
+CI（`.github/workflows/ci.yml`）在后端 job 里跑 `py_compile` + 全量离线测试，前端 job 跑 `npm ci` + `tsc -b` + `vite build`；不需要 secrets。
+
+## AI 成本账本与三层配额（M1b）
+
+目标：运营能一条 SQL 回答「用户 X 本月花了多少美元、花在哪个功能」。表由 `0003_cost_ledger` 创建，运行时只追加/累加，不做历史回写。
+
+### 表与字段
+
+| 表 | 字段 | 说明 |
+|---|---|---|
+| `ai_usage` | `id, user_id, feature, model_id, provider, input_tokens, output_tokens, calls, est_cost_usd, occurred_at, created_at, usage_date` | 每次成功模型调用一行，**append-only**；`usage_date` 是写入时按 `AI_QUOTA_TIMEZONE` 派生的日桶 |
+| `ai_quota` | `(user_id, day, feature)` 主键 + `used_units, limit_units` | 当日已用/日限额，UPSERT 原子递增 |
+
+- 索引：`(user_id, usage_date)`（本月/日预算）、`(feature, usage_date)`（功能成本）、`(usage_date)`（全局日预算）。
+- `feature` 枚举：`translate` / `summary` / `define` / `local_show`；`model_id` 用 `MODEL_CATALOG` 的目录 id 定价。
+- 价格来自 `MODEL_CATALOG.in/out`（USD / 1M tokens）；**未知/缺价按目录里已知最贵计，绝不当 0**（当前目录里 DeepSeek 两价均为 `None`，会按 Gemini 2.5 Flash 的已知价计；目录完全没有已知价时才用保守兜底并告警）。
+- 记账失败（表未迁移/库不可写）只记日志并返回 `None`，翻译/查词主流程不受影响。
+
+### 一条 SQL 回答「用户 X 本月」
+
+```sql
+SELECT feature, SUM(est_cost_usd) AS usd, SUM(calls) AS calls
+FROM ai_usage
+WHERE user_id = ? AND usage_date >= '2026-11-01' AND usage_date < '2026-12-01'
+GROUP BY feature ORDER BY usd DESC;
+```
+
+代码里等价入口：`ai.ledger.monthly_spend(user_id, "YYYY-MM")`、`ai.ledger.daily_usage(user_id, feature, "YYYY-MM-DD")`。
+
+### 三层配额（硬闸，不是提醒）
+
+1. 每用户每功能日限额：`AI_DAILY_QUOTA_TRANSLATE_BATCHES=60`（1 批 ≤20 块 ≈ 2 分钟视频，≈120 分钟/日）、`AI_DAILY_QUOTA_SUMMARY=10`、`AI_DAILY_QUOTA_DEFINE=200`、`AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES=60`；0 = 关闭该功能。
+2. 每用户日预算：`AI_DAILY_BUDGET_USER_USD`（默认 1.0，0 = 不启用）。
+3. 全局日预算：`AI_DAILY_BUDGET_GLOBAL_USD`（默认 20.0，0 = 不启用）。
+
+超限抛 `ai.ledger.QuotaExceeded`（`status_code=429`）；`/api/define` 直接返回 HTTP 429 + 中文提示，翻译/总结按原链路降级/落占位，不会白花钱。**未跑 0003 迁移的库会 fail-open**（记 WARNING、放行），上线前必须 `alembic upgrade head`。
+
+### 降级链
+
+`ai.quota.degradation_chain(feature, preferred_model)`：首选（可用时）→ 同 provider 更便宜 → 另一个可用 provider（按目录价从低到高）。只纳入 `llm.is_available()` 的模型。**大陆口径（`AI_MODEL_REGION=auto` 且默认模型是 DeepSeek，或显式 `cn`）不会把 Google Gemini 放进自动降级链**；`global` 才包含。
+
+### 测试
+
+```bash
+cd backend
+venv/bin/python -m pytest tests/test_ai_ledger.py tests/test_migrations.py -q
+```
+
+覆盖：迁移到 head、记账读回、未知价按最贵、记账失败不抛、配额 UPSERT/超限 429、预算硬闸、未迁移 fail-open、降级链顺序（大陆不含 Gemini / 海外包含）、mock provider 的 usage 落库、`/api/define` 429。
 
 ## 本地剧集视频映射（episodes.json）
 

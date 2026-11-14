@@ -378,7 +378,7 @@ def no_sleep(monkeypatch):
 def batch_calls(monkeypatch):
     calls = []
 
-    async def fake_process_llm_batch(blocks, model=config.DEFAULT_MODEL, vocab_level=None):
+    async def fake_process_llm_batch(blocks, model=config.DEFAULT_MODEL, vocab_level=None, **kwargs):
         calls.append({"model": model, "ids": [b.get("id") for b in blocks]})
         return [
             {
@@ -454,7 +454,7 @@ def test_process_subtitle_cached_repair_uses_requested_model(
 
     calls = []
 
-    async def fake_retranslate(data, path, model=None):
+    async def fake_retranslate(data, path, model=None, **kwargs):
         calls.append(model)
         return data
 
