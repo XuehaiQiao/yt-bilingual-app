@@ -15,8 +15,8 @@ import routes_user
 import routes_videos
 import translate
 
-URL = "https://www.youtube.com/watch?v=abc123xyz"
-VIDEO_ID = "abc123xyz"
+URL = "https://www.youtube.com/watch?v=abc123xyz01"
+VIDEO_ID = "abc123xyz01"
 
 # 两条各自成句的字幕片段：group_transcript_blocks 会正好切成 2 个 block
 TRANSCRIPT = [

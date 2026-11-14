@@ -365,3 +365,27 @@ AI_MODEL_REGION = os.environ.get("AI_MODEL_REGION", "auto").strip().lower() or "
 if AI_MODEL_REGION not in ("auto", "cn", "global"):
     print(f"⚠️  AI_MODEL_REGION={AI_MODEL_REGION!r} 无效，使用 auto。")
     AI_MODEL_REGION = "auto"
+
+
+# --- 安全最小集（M1 ⑦，见 backend/ratelimit.py / llm.py / routes_videos.py）---
+#
+# 限速（进程内固定窗口，单进程实现；多 worker 部署时每个进程独立计数）：
+# 每分钟请求数，0 = 关闭该桶。桶口径见 ratelimit.bucket_for()：
+#   auth          /api/auth/signup、/api/auth/login，按 IP
+#   estimate      /api/estimate-cost，按登录用户
+#   process_video /api/process-video、/api/process-video-stream，按登录用户
+#   define        /api/define，按登录用户
+RATE_LIMIT_AUTH_PER_MINUTE = _int_env("RATE_LIMIT_AUTH_PER_MINUTE", 10)
+RATE_LIMIT_ESTIMATE_COST_PER_MINUTE = _int_env("RATE_LIMIT_ESTIMATE_COST_PER_MINUTE", 20)
+RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE = _int_env("RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE", 6)
+RATE_LIMIT_DEFINE_PER_MINUTE = _int_env("RATE_LIMIT_DEFINE_PER_MINUTE", 60)
+
+# 全局 LLM 并发闸：同一时刻最多允许多少个 provider 调用（0 = 不限）。
+# 包住 llm.generate_json/generate_text 的异步入口；避免一次涌进过多长请求把
+# 线程池/厂商限流打爆。
+LLM_MAX_CONCURRENCY = _int_env("LLM_MAX_CONCURRENCY", 4)
+
+# 估价→确认处理之间的预取缓存（metadata + transcript）容量与 TTL：
+# 超容量淘汰最久未用（LRU）；0 = 关闭该缓存（不占内存，确认时重新抓取）。
+PREFETCH_CACHE_MAX_ENTRIES = _int_env("PREFETCH_CACHE_MAX_ENTRIES", 200)
+PREFETCH_CACHE_TTL_SECONDS = _int_env("PREFETCH_CACHE_TTL_SECONDS", 600)

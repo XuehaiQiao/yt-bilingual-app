@@ -13,16 +13,17 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、用户会话中间件（Cookie → SQLite → `request.state.user` + 数据目录 ContextVar）、结构化访问日志（request_id + 一行 JSON）、挂载四个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
 | `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额** |
 | `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`；`ln_session` Cookie 与登录失败限流 |
 | `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；无用户 → 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取 |
-| `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」；端点支持 `base_url` 或 `base_url_env`（Qwen 等区域端点由环境变量给，不写死）。`is_available` 同时检查 Key 与必需端点；`resolve_model_for_target(requested, target_lang)` 按「用户选择 → 该语言首选 → 该语言路线 → 全局默认 → 目录首个可用」解析，未配 Key 的候选自动跳过。**SDK 调用是同步阻塞的**，调用方在 async 代码里必须用 `asyncio.to_thread` 包一层；`usage_scope(feature, user_id, target_lang=…)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关） |
+| `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」；端点支持 `base_url` 或 `base_url_env`（Qwen 等区域端点由环境变量给，不写死）。`is_available` 同时检查 Key 与必需端点；`resolve_model_for_target(requested, target_lang)` 按「用户选择 → 该语言首选 → 该语言路线 → 全局默认 → 目录首个可用」解析，未配 Key 的候选自动跳过。**SDK 调用是同步阻塞的**：async 代码必须用 `generate_json_async` / `generate_text_async`（内含全局并发闸 + `asyncio.to_thread`）；同步 `generate()` 只给脚本/测试。`concurrency_snapshot()` 暴露并发闸峰值/等待直方图。`usage_scope(feature, user_id, target_lang=…)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关） |
+| `ratelimit.py` | 进程内固定窗口限速（M1 ⑦）：注册/登录按 IP、估价/处理/查词按用户；超限 429 + `Retry-After`；不依赖 Redis。桶与上限见下文「安全最小集」 |
 | `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。这些函数是同步阻塞实现，async 调用方负责放进线程 |
-| `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词 + 高亮子串/NFC 校验 + 越南语 CJK 泄漏重试）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。prompt 里的语言名来自 `languages`（不再硬编码 "Chinese"）；JSON 字段名 `zh_text`/`zh_word` 保持 P0 兼容、值为目标语言。LLM 生成调用经 `asyncio.to_thread` 执行，异常仍照常抛回；批间 `batch_pause` 语义不变；翻译/总结带日配额与降级链，`feature` / `user_id` / `target_lang` 缺省取请求上下文（本地剧集传 `local_show`） |
+| `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词 + 高亮子串/NFC 校验 + 越南语 CJK 泄漏重试）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。prompt 里的语言名来自 `languages`（不再硬编码 "Chinese"）；JSON 字段名 `zh_text`/`zh_word` 保持 P0 兼容、值为目标语言。LLM 生成调用经 `llm.generate_json_async` / `generate_text_async`（全局并发闸 + 线程）执行，异常仍照常抛回；批间 `batch_pause` 语义不变；翻译/总结带日配额与降级链，`feature` / `user_id` / `target_lang` 缺省取请求上下文（本地剧集传 `local_show`） |
 | `routes_videos.py` | `/api/models`（全局模型栏数据源；`targetLang` → `targetLang`/`recommended`）、`/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心；事件带 `targetLang`，`meta` 另带 `sourceLang`/`promptVersion`；流内慢任务期间按 `SSE_HEARTBEAT_INTERVAL`（默认 15s）发 `: ping` 注释行心跳）、`/api/history*`（按 `targetLang` 只读写对应语言目录；本地剧集缓存按 `episodes.json` 补 `youtube_video_id`）、`/api/channel-updates`（yt-dlp 频道拉取，放线程并发、最多 8 个） |
 | `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集：`targetLang` 决定缓存目录/prompt/模型路线；翻译与补译跟随请求 `model`，新处理结果与缓存 payload 记录 `model` 和 `target_lang`，批间隔按 `llm.batch_pause(model)`；非中文不写中文固定集名标签，改为 `summary_kind="episode_label"` + 季/集/标题结构化字段；有视频映射的集在 `metadata` 补 `youtube_video_id` / `youtube_title`）、`/api/shows/{id}/processed?targetLang=`、`/api/sentences*`（句子精背） |
 | `local_shows.py` | 本地剧集 → YouTube 视频映射：`episode_video_map(show_id)` / `lookup_episode_video(show_id, season, episode)` 读取 `subtitles/<show_id>/episodes.json`；缺失/损坏一律降级为无映射并打日志，路径限制在 `SUBTITLES_DIR` 内 |
@@ -311,9 +312,55 @@ python3 scripts/fetch_dictionary.py
 - 无中文释义的条目视为未命中，交给大模型补中文（查词卡片的目标读者是中文用户）。ECDICT 里约 0.16% 词条的 `translation` 其实是英文转写，同样按未命中处理。
 - 本地命中的释义**不会**写进 `dictionary_cache.json`——那里只存大模型生成的语境释义，避免两类释义混用。
 
+## 安全最小集（M1 ⑦）
+
+上线前的「不被一把刷爆 / 不被当成代理」底线，全部进程内实现、零新依赖（计划书 §7.6 的子集；登录失败按账号锁定、域名解析黑名单、抓取响应大小上限、后台 2FA、提示注入隔离仍未做）。
+
+### 限速（`ratelimit.py`）
+
+固定窗口 60 秒、内存计数；超限统一 **429 + `Retry-After`**（秒），响应体 `{"detail":"请求过于频繁，请 N 秒后再试。","retryAfter":N}`：
+
+| 桶 | 端点 | 键 | 默认（次/分钟） | 环境变量 |
+|---|---|---|---|---|
+| `auth` | `POST /api/auth/signup`、`POST /api/auth/login` | 客户端 IP | 10 | `RATE_LIMIT_AUTH_PER_MINUTE` |
+| `estimate` | `GET /api/estimate-cost` | 登录用户 | 20 | `RATE_LIMIT_ESTIMATE_COST_PER_MINUTE` |
+| `process_video` | `POST /api/process-video`、`POST /api/process-video-stream` | 登录用户 | 6 | `RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE` |
+| `define` | `POST /api/define` | 登录用户 | 60 | `RATE_LIMIT_DEFINE_PER_MINUTE` |
+
+- 环境变量值为 `0` = 关闭该桶；默认值在 `config.py` 读取。
+- 在会话中间件里、`401` 之后执行：未登录的 `/api` 仍先得到 401；429 会经过最外层 CORS 补跨域头，前端能看到真实错误。
+- **单进程有效**：`uvicorn --workers N` 时每个进程独立计数；反向代理后 `request.client.host` 可能是代理 IP，默认**不信任**可伪造的 `X-Forwarded-For`。真实 IP/多进程限速留给部署层（计划书显式接受的残余风险：不做 WAF、bot 指纹、IP 信誉库、渗透测试）。
+- `routes_auth.py` 另有登录失败计数（同一 IP 60 秒内失败 10 次），其 429 同样带 `Retry-After`。
+
+### 全局 LLM 并发闸（`llm.py`）
+
+- async 调用一律走 `llm.generate_json_async()` / `llm.generate_text_async()`：进程级 `asyncio.Semaphore`，默认 `LLM_MAX_CONCURRENCY=4`（`0` = 不限）。
+- 只限制「真正在跑的 provider 调用」：排队请求只占协程、不占线程。客户端断开导致协程取消时，许可要等 worker 线程真正结束才释放，避免「取消几次就绕过并发上限」。
+- 可观测：`llm.concurrency_snapshot()` 返回 `limit / active / peak / acquired / waited / wait_ms_total / wait_ms_max / wait_ms_histogram`；等待 ≥100ms 输出一行 JSON 到 `linguatrek.llm`：`{"event":"llm_concurrency_wait","wait_ms":…,"active":…,"limit":…}`（与访问日志共用 `JsonFormatter`，一行一个 JSON）。
+
+### URL 白名单（`transcripts.extract_video_id`）
+
+- 只接受四种锚定形态：`youtube.com/watch?v=<11位>`、`youtu.be/<11位>`、`youtube.com/embed/<11位>`、`youtube.com/shorts/<11位>`；主机仅 `youtube.com`（可带 `www.`/`m.`）与 `youtu.be`（可带 `www.`/`m.`），scheme 仅 http/https，videoId 必须 11 位 `[A-Za-z0-9_-]`。
+- 用 `urlsplit` + 路径/参数精确匹配，**不用** `re.search` 子串匹配；拒绝 userinfo、显式端口、非 http(s) scheme、协议相对 URL、控制字符/反斜杠、缺失/重复 `v`、11 位以外 id，以及把 YouTube 链接藏在其它域名/路径里的字符串。路由层统一返回 400；流式端点在**开流前**校验（不再 200 + error 事件）。
+- 校验通过后，交给 yt-dlp（元数据/Whisper 下载）的 URL 一律用 `transcripts.canonical_watch_url(video_id)` 重建；用户原链接里的 `list=` 等 query 不会带过去，避免被当成播放列表抓取。
+
+### 估价预取缓存上限（`routes_videos.py`）
+
+- `_prefetch_cache` 从无界 dict 改为 `OrderedDict` LRU：默认最多 `PREFETCH_CACHE_MAX_ENTRIES=200` 条、TTL `PREFETCH_CACHE_TTL_SECONDS=600` 秒；超容量淘汰最久未用，过期条目在读写时清理；`0` = 关闭缓存。
+- 只用于「估价 → 确认处理」之间复用 metadata/transcript，取一次即消费。
+
+### 测试
+
+```bash
+cd backend
+venv/bin/python -m pytest tests/test_security_minimum.py -q
+```
+
+覆盖：固定窗口/429+Retry-After/桶路由与按用户隔离/0 关闭、URL 白名单正反例、缓存 LRU+TTL、并发闸上限与直方图、`/api/define` 确实经过闸门。
+
 ## 关键约定
 
-- 事件循环：所有同步阻塞调用（LLM SDK、YouTube 字幕、yt-dlp）在 async 代码里必须经 `asyncio.to_thread` 放进线程；不要直接 `await` 一个同步函数或在 async 生成器里裸调。Whisper 转写同理。
+- 事件循环：所有同步阻塞调用（YouTube 字幕、yt-dlp）在 async 代码里必须经 `asyncio.to_thread` 放进线程；不要直接 `await` 一个同步函数或在 async 生成器里裸调。LLM 调用一律用 `llm.generate_json_async` / `llm.generate_text_async`（内部已含并发闸 + 线程封装），不要自己 `to_thread(llm.generate_json, …)` 绕过闸门。Whisper 转写同理。
 - SSE 心跳：`/api/process-video-stream` 在无事件可发时每 `SSE_HEARTBEAT_INTERVAL`（默认 15s，`config.SSE_HEARTBEAT_SECONDS`）发一行 `: ping\n\n`。它只是注释行、没有 `data:`，前端 `consumeSseStream` 会忽略；不要改成携带 data 的事件，也不要改变事件顺序。
 - 持久化：用户与会话在 `data/app.db`（SQLite）；每个用户的视频/剧集缓存是 `data/users/<user_id>/history/` 下的 JSON；收藏/订阅是对应用户目录下的 JSON。本地词典数据是可选的 `data/ecdict.db`（均 gitignore，不入库）。
 - 所有用户数据路径必须走 `storage.py`（`history_dir()` / `favorites_file()` / `subscriptions_file()` / `dictionary_cache_file()`），**禁止**在新代码里直接拼 `config.HISTORY_DIR`——否则数据会绕过用户隔离。

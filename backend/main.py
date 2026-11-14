@@ -14,7 +14,8 @@
 - routes_user.py     词典 / 收藏 / 订阅
 - observability.py   结构化访问日志 / request_id / 只读 /healthz
 
-请求链路（从外到内）：CORS → 访问日志（request_id）→ API_AUTH_KEY → 用户会话 → 路由。
+请求链路（从外到内）：CORS → 访问日志（request_id）→ API_AUTH_KEY → 用户会话
+（含进程内限速 429）→ 路由。
 Starlette 里后注册的中间件更靠外层，所以 CORS 放在文件最后注册。
 """
 from contextlib import asynccontextmanager
@@ -27,6 +28,7 @@ import auth_db
 import config
 import events
 import observability
+import ratelimit
 import routes_auth
 import routes_content
 import routes_user
@@ -76,6 +78,13 @@ async def require_user_session(request, call_next):
             and user is None
         ):
             return JSONResponse(status_code=401, content={"detail": "未登录"})
+
+        # 安全最小集（M1 ⑦）：注册/登录按 IP、估价/处理/查词按用户做进程内限速。
+        # 放在 401 之后，未登录的 /api 仍先得到 401；超限统一 429 + Retry-After。
+        retry_after = ratelimit.check_request(request, user)
+        if retry_after is not None:
+            return ratelimit.rate_limited_response(retry_after)
+
         return await call_next(request)
     finally:
         storage.current_user_id.reset(context_token)

@@ -18,10 +18,13 @@ AI 成本账本（M1）：
 - 全局开关 ``AI_USAGE_LOGGING=0``（或 ``config.AI_USAGE_LOGGING=False``）可关；
 - 记账失败只记日志，绝不影响模型返回。
 """
+import asyncio
 import contextlib
 import contextvars
+import json
 import logging
 import os
+import time
 
 import httpx
 
@@ -31,6 +34,8 @@ from ai import ledger
 from config import DEFAULT_MODEL, MODEL_CATALOG
 
 logger = logging.getLogger(__name__)
+# 结构化可观测日志（JSON 行由 observability.JsonFormatter 统一格式化）。
+_gate_logger = logging.getLogger("linguatrek.llm")
 
 # 当前调用属于哪个 AI 功能/用户/目标语言；由调用方通过 ``usage_scope`` 设置。
 # 放 ContextVar 是为了不改 generate/generate_json/generate_text 的签名
@@ -288,3 +293,176 @@ def generate_json(prompt: str, model: str | None = None) -> str:
 
 def generate_text(prompt: str, model: str | None = None) -> str:
     return generate(prompt, model, json_mode=False)
+
+
+# ---------------------------------------------------------------------------
+# 全局 LLM 并发闸（M1 安全最小集，计划书 §7.6）
+# ---------------------------------------------------------------------------
+#
+# provider 调用是同步阻塞的（单次 8–40s），走 ``asyncio.to_thread``。没有闸门时，
+# 一次涌进几十个长请求会把默认线程池和厂商限流同时打爆——既慢又容易被 429。
+# 这里用一个进程级 ``asyncio.Semaphore``（``LLM_MAX_CONCURRENCY``，默认 4）把
+# 「真正在跑的 provider 调用」限制住；排队的请求只占一个协程，不占线程。
+#
+# 调用方一律改用 :func:`generate_json_async` / :func:`generate_text_async`；
+# 同步的 :func:`generate` 仍保留给脚本/测试（不受闸门影响）。
+#
+# 可观测：
+# - 每次入闸/出闸更新 :func:`concurrency_snapshot`（active/peak/等待直方图）；
+# - 等待超过 100ms 输出一行结构化 JSON 到 ``linguatrek.llm``：
+#   ``{"event":"llm_concurrency_wait","wait_ms":…,"active":…,"limit":…}``。
+#
+# 取消语义：客户端断开导致协程被取消时，底层线程还在跑 provider 请求。此时
+# **不立刻**释放信号量，而是等线程真正结束（``inner.add_done_callback``）再
+# 释放，否则取消几次就能绕过并发上限。
+
+_gate_semaphore: asyncio.Semaphore | None = None
+_gate_loop: asyncio.AbstractEventLoop | None = None
+_gate_limit = 0
+
+_WAIT_LOG_THRESHOLD_MS = 100.0
+_HISTOGRAM_BOUNDS_MS = (50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0)
+_histogram_labels = tuple(
+    [f"<={int(bound)}" for bound in _HISTOGRAM_BOUNDS_MS]
+    + [f">{int(_HISTOGRAM_BOUNDS_MS[-1])}"]
+)
+
+_gate_stats: dict = {
+    "active": 0,
+    "peak": 0,
+    "acquired": 0,
+    "waited": 0,
+    "wait_ms_total": 0.0,
+    "wait_ms_max": 0.0,
+    "wait_ms_histogram": {label: 0 for label in _histogram_labels},
+}
+
+
+def concurrency_limit() -> int:
+    """当前并发上限（读 config，运行中可改；0 = 不限）。"""
+    try:
+        return max(0, int(getattr(config, "LLM_MAX_CONCURRENCY", 4) or 0))
+    except (TypeError, ValueError):
+        return 4
+
+
+def _semaphore_for(limit: int) -> asyncio.Semaphore:
+    """取当前事件循环的闸门；事件循环/上限变化时重建（测试与多 loop 安全）。"""
+    global _gate_semaphore, _gate_loop, _gate_limit
+    loop = asyncio.get_running_loop()
+    if (
+        _gate_semaphore is None
+        or _gate_loop is not loop
+        or _gate_limit != limit
+    ):
+        _gate_semaphore = asyncio.Semaphore(limit)
+        _gate_loop = loop
+        _gate_limit = limit
+    return _gate_semaphore
+
+
+def _histogram_bucket(wait_ms: float) -> str:
+    for bound, label in zip(_HISTOGRAM_BOUNDS_MS, _histogram_labels[:-1]):
+        if wait_ms <= bound:
+            return label
+    return _histogram_labels[-1]
+
+
+def _record_acquire(wait_ms: float, limit: int) -> None:
+    stats = _gate_stats
+    stats["active"] += 1
+    stats["peak"] = max(stats["peak"], stats["active"])
+    stats["acquired"] += 1
+    stats["wait_ms_total"] += wait_ms
+    stats["wait_ms_max"] = max(stats["wait_ms_max"], wait_ms)
+    stats["wait_ms_histogram"][_histogram_bucket(wait_ms)] += 1
+    if wait_ms >= _WAIT_LOG_THRESHOLD_MS:
+        stats["waited"] += 1
+        _gate_logger.info(
+            json.dumps(
+                {
+                    "event": "llm_concurrency_wait",
+                    "wait_ms": round(wait_ms, 2),
+                    "active": stats["active"],
+                    "limit": limit,
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        )
+
+
+def _record_release(semaphore: asyncio.Semaphore) -> None:
+    semaphore.release()
+    if _gate_stats["active"] > 0:
+        _gate_stats["active"] -= 1
+
+
+def concurrency_snapshot() -> dict:
+    """并发闸快照（只读；调试/日报/测试用）。"""
+    stats = _gate_stats
+    return {
+        "limit": concurrency_limit(),
+        "active": stats["active"],
+        "peak": stats["peak"],
+        "acquired": stats["acquired"],
+        "waited": stats["waited"],
+        "wait_ms_total": round(stats["wait_ms_total"], 2),
+        "wait_ms_max": round(stats["wait_ms_max"], 2),
+        "wait_ms_histogram": dict(stats["wait_ms_histogram"]),
+    }
+
+
+def reset_concurrency_gate() -> None:
+    """清空闸门与统计（测试用；运行中调用会让正在排队的请求使用新闸门）。"""
+    global _gate_semaphore, _gate_loop, _gate_limit
+    _gate_semaphore = None
+    _gate_loop = None
+    _gate_limit = 0
+    _gate_stats.update(
+        {
+            "active": 0,
+            "peak": 0,
+            "acquired": 0,
+            "waited": 0,
+            "wait_ms_total": 0.0,
+            "wait_ms_max": 0.0,
+            "wait_ms_histogram": {label: 0 for label in _histogram_labels},
+        }
+    )
+
+
+async def _run_llm_in_thread(func, *args, **kwargs):
+    """在 worker 线程跑同步 provider 调用，并把并发数限制在 ``LLM_MAX_CONCURRENCY``。"""
+    limit = concurrency_limit()
+    if limit <= 0:
+        return await asyncio.to_thread(func, *args, **kwargs)
+
+    semaphore = _semaphore_for(limit)
+    started = time.perf_counter()
+    await semaphore.acquire()
+    wait_ms = (time.perf_counter() - started) * 1000
+    _record_acquire(wait_ms, limit)
+
+    # shield：外层取消时不取消线程任务；等线程结束再释放许可（见文件头说明）。
+    inner = asyncio.ensure_future(asyncio.to_thread(func, *args, **kwargs))
+    try:
+        result = await asyncio.shield(inner)
+    except asyncio.CancelledError:
+        inner.add_done_callback(lambda _future: _record_release(semaphore))
+        raise
+    except BaseException:
+        _record_release(semaphore)
+        raise
+    _record_release(semaphore)
+    return result
+
+
+async def generate_json_async(prompt: str, model: str | None = None) -> str:
+    """``generate_json`` 的异步入口：受全局并发闸保护，在 worker 线程执行。"""
+    return await _run_llm_in_thread(generate_json, prompt, model=model)
+
+
+async def generate_text_async(prompt: str, model: str | None = None) -> str:
+    """``generate_text`` 的异步入口：受全局并发闸保护，在 worker 线程执行。"""
+    return await _run_llm_in_thread(generate_text, prompt, model=model)

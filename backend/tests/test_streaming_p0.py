@@ -114,7 +114,7 @@ def test_two_concurrent_streams_do_not_block_event_loop(client, monkeypatch):
             started_all = time.perf_counter()
             streams = [
                 asyncio.create_task(stream_once(video_id))
-                for video_id in ("concurrentA1", "concurrentB2")
+                for video_id in ("concurrentA", "concurrentB")
             ]
             # fetch 0.05s + metadata 0.05s 后两条流进入 0.5s 的慢 LLM 调用，
             # 此时探活/调度才是对事件循环是否被阻塞的真正检验。
@@ -162,7 +162,7 @@ def test_sse_stream_sends_heartbeat_comments_during_slow_llm(client, monkeypatch
         "POST",
         "/api/process-video-stream",
         json={
-            "url": URL_TEMPLATE.format(video_id="heartbeat1"),
+            "url": URL_TEMPLATE.format(video_id="heartbeat01"),
             "model": "deepseek-chat",
         },
     ) as response:

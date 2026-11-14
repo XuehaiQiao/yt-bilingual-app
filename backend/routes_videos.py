@@ -10,17 +10,24 @@ import json
 import os
 import re
 import time
+from collections import OrderedDict
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import AliasChoices, BaseModel, Field
 
-from config import MODEL_CATALOG, SSE_HEARTBEAT_SECONDS
+from config import (
+    MODEL_CATALOG,
+    PREFETCH_CACHE_MAX_ENTRIES,
+    PREFETCH_CACHE_TTL_SECONDS,
+    SSE_HEARTBEAT_SECONDS,
+)
 import languages
 import llm
 import local_shows
 import storage
 from transcripts import (
+    canonical_watch_url,
     extract_video_id,
     fetch_english_transcript,
     get_video_metadata,
@@ -100,8 +107,59 @@ def list_models(targetLang: str | None = None):
 
 # Metadata + transcript fetched during cost estimation, reused on confirm
 # so the user doesn't wait for yt-dlp twice.
-_prefetch_cache: dict = {}  # video_id -> (fetched_at, metadata, transcript)
-PREFETCH_CACHE_TTL_SECONDS = 600
+#
+# 安全最小集（M1 ⑦）：估价一次就抓一份完整字幕，若不限容量，反复估价会把
+# 内存撑爆。这里用 OrderedDict 做 LRU：容量上限 + TTL（默认 200 条 / 10 分钟，
+# 环境变量见 config.PREFETCH_CACHE_MAX_ENTRIES / PREFETCH_CACHE_TTL_SECONDS）；
+# 超容量淘汰最久未用，过期条目在读写时清理。0 = 关闭缓存。
+_prefetch_cache: "OrderedDict[str, tuple[float, dict, list]]" = OrderedDict()
+
+
+def _prefetch_prune(now: float | None = None) -> None:
+    """清掉过期条目，并把容量压回上限（LRU：最久未用先淘汰）。"""
+    moment = time.time() if now is None else now
+    if PREFETCH_CACHE_MAX_ENTRIES <= 0 or PREFETCH_CACHE_TTL_SECONDS <= 0:
+        _prefetch_cache.clear()
+        return
+    expired = [
+        video_id
+        for video_id, (fetched_at, _metadata, _transcript) in _prefetch_cache.items()
+        if moment - fetched_at >= PREFETCH_CACHE_TTL_SECONDS
+    ]
+    for video_id in expired:
+        _prefetch_cache.pop(video_id, None)
+    while len(_prefetch_cache) > PREFETCH_CACHE_MAX_ENTRIES:
+        _prefetch_cache.popitem(last=False)
+
+
+def _prefetch_store(
+    video_id: str,
+    metadata: dict,
+    transcript: list,
+    *,
+    now: float | None = None,
+) -> None:
+    """写入估价预取结果；重复 id 视为最新使用（移到队尾）。"""
+    if PREFETCH_CACHE_MAX_ENTRIES <= 0 or PREFETCH_CACHE_TTL_SECONDS <= 0:
+        _prefetch_cache.clear()
+        return
+    moment = time.time() if now is None else now
+    _prefetch_cache[video_id] = (moment, metadata, transcript)
+    _prefetch_cache.move_to_end(video_id)
+    _prefetch_prune(moment)
+
+
+def _prefetch_take(
+    video_id: str, *, now: float | None = None
+) -> tuple[float, dict, list] | None:
+    """取出并消费预取结果（一次性）；过期视为未命中并顺便删除。"""
+    entry = _prefetch_cache.pop(video_id, None)
+    if entry is None:
+        return None
+    moment = time.time() if now is None else now
+    if moment - entry[0] >= PREFETCH_CACHE_TTL_SECONDS:
+        return None
+    return entry
 
 
 @router.get("/api/estimate-cost")
@@ -113,8 +171,11 @@ async def estimate_cost(url: str, targetLang: str | None = None):
         raise HTTPException(status_code=400, detail="无效的 YouTube 链接，请检查后重试。")
 
     try:
-        # yt-dlp 是同步阻塞调用，必须放到线程里，别卡住事件循环。
-        metadata = await asyncio.to_thread(get_video_metadata, url)
+        # yt-dlp 是同步阻塞调用，必须放到线程里，别卡住事件循环。只把**重建后**
+        # 的规范 watch URL 交给 yt-dlp，用户原始 query（list= 等）不会带进去。
+        metadata = await asyncio.to_thread(
+            get_video_metadata, canonical_watch_url(video_id)
+        )
     except Exception as e:
         print(f"Failed to fetch metadata for estimate: {e}")
         metadata = {"title": "Unknown Title", "channel": "Unknown Channel", "thumbnail": ""}
@@ -123,7 +184,7 @@ async def estimate_cost(url: str, targetLang: str | None = None):
     transcript = await asyncio.to_thread(fetch_english_transcript, video_id)
 
     # Reuse this fetch when the user confirms processing right after
-    _prefetch_cache[video_id] = (time.time(), metadata, transcript)
+    _prefetch_store(video_id, metadata, transcript)
 
     # Calculate rough token estimate. (English word ~ 1.3 tokens).
     # We also have the system prompt and target-language output.
@@ -208,7 +269,9 @@ async def process_video(request: VideoRequest):
             print(f"Cache file corrupt, reprocessing: {e}")
 
     try:
-        metadata = await asyncio.to_thread(get_video_metadata, request.url)
+        metadata = await asyncio.to_thread(
+            get_video_metadata, canonical_watch_url(video_id)
+        )
     except Exception as e:
         print(f"Failed to fetch metadata: {e}")
         metadata = {
@@ -399,8 +462,12 @@ async def _with_heartbeat(events, interval: float = SSE_HEARTBEAT_SECONDS):
 
 @router.post("/api/process-video-stream")
 async def process_video_stream(request: VideoRequest):
-    # 语言校验放在流外：非法语言直接 400，而不是先 200 再在流里报错。
+    # 语言/URL 校验放在流外：非法输入直接 400，而不是先 200 再在流里报错。
     lang = _target_lang_or_400(request.target_lang)
+    try:
+        video_id = extract_video_id(request.url)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="无效的 YouTube 链接，请检查后重试。")
 
     def _event(name: str, data: dict) -> str:
         """所有 SSE 事件都带 targetLang（规格 §5.3 / §6.3）。"""
@@ -408,12 +475,6 @@ async def process_video_stream(request: VideoRequest):
 
     async def gen():
         try:
-            try:
-                video_id = extract_video_id(request.url)
-            except ValueError:
-                yield _event("error", {"detail": "无效的 YouTube 链接，请检查后重试。"})
-                return
-
             # 先解析模型：缓存路径的自愈（补译/重生成总结）也要用用户选中的模型，
             # 否则换成 DeepSeek 后仍会拿默认 Gemini 去重试。路线按目标语言选。
             model = llm.resolve_model_for_target(request.model, lang)
@@ -478,8 +539,8 @@ async def process_video_stream(request: VideoRequest):
             # --- Fresh video ---
 
             # Reuse the fetch from a just-run cost estimation when possible
-            prefetched = _prefetch_cache.pop(video_id, None)
-            if prefetched and time.time() - prefetched[0] < PREFETCH_CACHE_TTL_SECONDS:
+            prefetched = _prefetch_take(video_id)
+            if prefetched is not None:
                 metadata, raw_transcript = prefetched[1], prefetched[2]
             else:
                 try:
@@ -489,7 +550,10 @@ async def process_video_stream(request: VideoRequest):
                     if e.status_code == 422 and _asr_available():
                         yield _event("stage", {"stage": "asr"})
                         try:
-                            raw_transcript = await asyncio.to_thread(_transcribe_audio_with_whisper, request.url)
+                            raw_transcript = await asyncio.to_thread(
+                                _transcribe_audio_with_whisper,
+                                canonical_watch_url(video_id),
+                            )
                         except Exception as asr_err:
                             yield _event("error", {"detail": f"该视频无字幕，本地转写也失败了:{asr_err}"})
                             return
@@ -507,7 +571,9 @@ async def process_video_stream(request: VideoRequest):
                         return
 
                 try:
-                    metadata = await asyncio.to_thread(get_video_metadata, request.url)
+                    metadata = await asyncio.to_thread(
+                        get_video_metadata, canonical_watch_url(video_id)
+                    )
                 except Exception as e:
                     print(f"Failed to fetch metadata: {e}")
                     metadata = {

@@ -385,8 +385,8 @@ def test_dictionary_cache_is_per_user(make_client, monkeypatch):
 
 def test_streaming_pipeline_writes_to_user_history_only(client, history_dir, monkeypatch):
     """SSE 生成器在中间件返回后继续跑，ContextVar 仍必须指向当前用户。"""
-    url = "https://www.youtube.com/watch?v=abc123xyz"
-    video_id = "abc123xyz"
+    url = "https://www.youtube.com/watch?v=abc123xyz01"
+    video_id = "abc123xyz01"
 
     monkeypatch.setattr(
         routes_videos,

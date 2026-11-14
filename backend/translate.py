@@ -311,7 +311,7 @@ async def process_llm_batch(
             # 模型 SDK 是同步阻塞的（单次 8–40s）。放进线程执行，事件循环才能继续
             # 处理心跳、健康检查和其他用户的请求；异常照常传回，由下面的兜底接住。
             with llm.usage_scope(feature, user_id, target_lang=lang):
-                raw = await asyncio.to_thread(llm.generate_json, prompt, model=candidate)
+                raw = await llm.generate_json_async(prompt, model=candidate)
             result_data = json.loads(raw)
             processed_blocks, stats = _align_processed_blocks(
                 input_data, result_data, lang
@@ -432,10 +432,9 @@ async def summarize_video_transcript(
     for candidate in candidates:
         try:
             # 同步 SDK 调用放进线程，避免生成总结期间卡住事件循环（SSE 心跳也依赖它）。
+            # 并发闸在 llm.generate_text_async 内部统一排队。
             with llm.usage_scope(feature, user_id, target_lang=lang):
-                return await asyncio.to_thread(
-                    llm.generate_text, summary_prompt, model=candidate
-                )
+                return await llm.generate_text_async(summary_prompt, model=candidate)
         except Exception as e:  # noqa: BLE001 - 逐个降级，全部失败给占位文案
             last_error = e
             print(f"Summary Gen Error ({candidate}): {e}")

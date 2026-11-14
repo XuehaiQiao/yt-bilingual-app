@@ -39,8 +39,8 @@ import translate
 from ai import ledger, quota
 from tests.migration_utils import assert_alembic_ok, columns, run_alembic
 
-URL = "https://www.youtube.com/watch?v=vitest123"
-VIDEO_ID = "vitest123"
+URL = "https://www.youtube.com/watch?v=vitest12345"
+VIDEO_ID = "vitest12345"
 
 # group_transcript_blocks 会切成 2 个 block
 TRANSCRIPT = [

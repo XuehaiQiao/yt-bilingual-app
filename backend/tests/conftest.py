@@ -33,6 +33,7 @@ if str(BACKEND_DIR) not in sys.path:
 import config  # noqa: E402
 import llm  # noqa: E402
 import local_dict  # noqa: E402
+import ratelimit  # noqa: E402
 import routes_auth  # noqa: E402
 import routes_content  # noqa: E402
 import routes_user  # noqa: E402
@@ -69,6 +70,9 @@ def isolated_data(tmp_path, monkeypatch):
     # 模块级全局缓存，用例之间要清干净，避免串味
     routes_videos._prefetch_cache.clear()
     routes_auth.reset_login_throttle()
+    # 安全最小集的进程内状态：限速计数与 LLM 并发闸统计按用例隔离。
+    ratelimit.reset_rate_limits()
+    llm.reset_concurrency_gate()
 
     # 让「模型是否可用」与本机 .env 无关，断言可重复。
     # Qwen 的端点必须同时给（openai_compatible 模型只有 Key、没有 base_url 时
@@ -82,6 +86,8 @@ def isolated_data(tmp_path, monkeypatch):
 
     routes_videos._prefetch_cache.clear()
     routes_auth.reset_login_throttle()
+    ratelimit.reset_rate_limits()
+    llm.reset_concurrency_gate()
     local_dict.reset()
 
 

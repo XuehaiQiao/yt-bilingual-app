@@ -6,6 +6,7 @@
 import datetime
 import os
 import re
+from urllib.parse import parse_qs, urlsplit
 
 import yt_dlp
 from fastapi import HTTPException
@@ -19,20 +20,103 @@ from youtube_transcript_api import (
 )
 
 
-def extract_video_id(url: str) -> str:
-    """Extract YouTube video ID from various URL formats"""
-    patterns = [
-        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&]+)',
-        r'(?:https?:\/\/)?youtu\.be\/([^?]+)',
-        r'(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^?]+)'
-    ]
+# YouTube videoId 固定 11 位 base64url 字符；白名单锚定（计划书 §7.6）：
+# 只接受 youtube.com/watch、youtu.be、youtube.com/embed、youtube.com/shorts 四种
+# 形态。**不做 re.search 子串匹配**——那会把 `https://evil.com/youtu.be/ID` 也
+# 当成合法链接。
+_VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+_ALLOWED_HOSTS = frozenset(
+    {
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "youtu.be",
+        "www.youtu.be",
+        "m.youtu.be",
+    }
+)
+_MAX_URL_LENGTH = 2048
+# 控制字符/换行不只破坏解析，也常被用来夹带第二个 URL；
+# 反斜杠在浏览器与部分客户端里等价于 `/`，统一拒绝。
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
 
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
+
+def _validate_video_id(candidate: str) -> str:
+    if not _VIDEO_ID_RE.fullmatch(candidate or ""):
+        raise ValueError("Invalid YouTube URL")
+    return candidate
+
+
+def extract_video_id(url: str) -> str:
+    """从 YouTube 链接取出 11 位 videoId；不合法一律抛 ``ValueError``。
+
+    接受的锚定形态（scheme 可省略，仅 http/https；主机仅 youtube.com 及
+    www./m. 前缀、youtu.be 及 www./m. 前缀）：
+
+    - ``https://www.youtube.com/watch?v=<id>``（可带其它 query）
+    - ``https://youtu.be/<id>``（可带 ``?si=…``）
+    - ``https://www.youtube.com/embed/<id>``
+    - ``https://www.youtube.com/shorts/<id>``
+
+    明确拒绝：userinfo（``http://user@youtube.com``）、非 http(s) scheme、
+    显式端口、多个/空 ``v``、非 11 位/含非法字符的 id、把 YouTube 链接藏在
+    其它域名/路径里的字符串。路由层把 ``ValueError`` 转成 400。
+    """
+    if not isinstance(url, str):
+        raise ValueError("Invalid YouTube URL")
+    candidate = url.strip()
+    if not candidate or len(candidate) > _MAX_URL_LENGTH:
+        raise ValueError("Invalid YouTube URL")
+    if _CONTROL_CHARS_RE.search(candidate) or "\\" in candidate:
+        raise ValueError("Invalid YouTube URL")
+    # 协议相对 URL（//youtu.be/...）没有明确 scheme，按白名单拒绝。
+    if candidate.startswith("//"):
+        raise ValueError("Invalid YouTube URL")
+    if "://" not in candidate:
+        candidate = "https://" + candidate
+
+    parsed = urlsplit(candidate)  # 非法 IPv6 等会抛 ValueError，由调用方转 400
+    if parsed.scheme.lower() not in ("http", "https"):
+        raise ValueError("Invalid YouTube URL")
+    # userinfo 是最常见的「看起来是 YouTube、其实不是」绕过手法。
+    if not parsed.netloc or "@" in parsed.netloc:
+        raise ValueError("Invalid YouTube URL")
+    try:
+        port = parsed.port
+    except ValueError:
+        raise ValueError("Invalid YouTube URL") from None
+    if port is not None:
+        raise ValueError("Invalid YouTube URL")
+    host = (parsed.hostname or "").lower()
+    if host not in _ALLOWED_HOSTS:
+        raise ValueError("Invalid YouTube URL")
+
+    if host.endswith("youtu.be"):
+        path_parts = [part for part in parsed.path.split("/") if part]
+        if len(path_parts) != 1:
+            raise ValueError("Invalid YouTube URL")
+        return _validate_video_id(path_parts[0])
+
+    if parsed.path == "/watch":
+        values = parse_qs(parsed.query, keep_blank_values=True).get("v", [])
+        if len(values) != 1:
+            raise ValueError("Invalid YouTube URL")
+        return _validate_video_id(values[0])
+
+    path_parts = [part for part in parsed.path.split("/") if part]
+    if len(path_parts) == 2 and path_parts[0] in ("embed", "shorts"):
+        return _validate_video_id(path_parts[1])
 
     raise ValueError("Invalid YouTube URL")
+
+
+def canonical_watch_url(video_id: str) -> str:
+    """把校验过的 videoId 还原成唯一规范的 watch URL。
+
+    下游 yt-dlp（元数据/Whisper 下载）只接收这个重建后的 URL，不接收用户
+    原始输入：即使原链接带 ``list=`` 播放列表等参数，也不会被当成播放列表抓取。
+    """
+    return f"https://www.youtube.com/watch?v={_validate_video_id(video_id)}"
 
 
 def _split_at_sentence_boundaries(text: str) -> list:

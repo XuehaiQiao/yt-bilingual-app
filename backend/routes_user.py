@@ -5,7 +5,6 @@
 本地词典是可选数据，没装时行为与以前完全一致。
 收藏与订阅是简单的整存整取 JSON 文件。
 """
-import asyncio
 import json
 import os
 
@@ -307,10 +306,10 @@ Rules for "senses":
 
     for model_id in _dict_models_for_request(preferred, lang):
         try:
-            # 模型 SDK 是同步阻塞调用；放进线程，别卡住事件循环（P0‑1）。
+            # 模型 SDK 是同步阻塞调用；并发闸 + 线程封装在 llm.generate_json_async 内。
             with llm.usage_scope("define", user_id, target_lang=lang):
                 parsed = json.loads(
-                    await asyncio.to_thread(llm.generate_json, prompt, model=model_id)
+                    await llm.generate_json_async(prompt, model=model_id)
                 )
             if isinstance(parsed, list):
                 parsed = parsed[0] if parsed else {}

@@ -24,7 +24,7 @@ import routes_videos
 from tests.migration_utils import assert_alembic_ok, run_alembic
 
 REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
-URL = "https://www.youtube.com/watch?v=abc123xyz"
+URL = "https://www.youtube.com/watch?v=abc123xyz01"
 
 
 def _access_records(caplog):

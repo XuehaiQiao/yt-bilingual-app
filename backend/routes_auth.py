@@ -143,7 +143,12 @@ def login(credentials: Credentials, request: Request, response: Response):
     # 登录不校验邮箱格式：格式错误/账号不存在/密码错误统一 401，不泄露账号状态。
     ip = _client_ip(request)
     if _is_rate_limited(ip):
-        raise HTTPException(status_code=429, detail="尝试过于频繁，请稍后再试。")
+        # 与全局限速中间件保持同一契约：429 必须带 Retry-After（固定窗口整窗）。
+        raise HTTPException(
+            status_code=429,
+            detail="尝试过于频繁，请稍后再试。",
+            headers={"Retry-After": str(LOGIN_WINDOW_SECONDS)},
+        )
     email = auth_db.normalize_email(credentials.email)
     user = auth_db.authenticate(email, credentials.password)
     if user is None:
