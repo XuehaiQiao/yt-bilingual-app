@@ -7,7 +7,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { LanguageMenu } from './components/LanguageMenu';
 import { AuthProvider, useAuth } from './lib/auth';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
-import type { TranslationKey } from './i18n';
+import { getLanguageMeta, getRuntimeTargetLang, type TranslationKey } from './i18n';
 import { InputScreen } from './components/InputScreen';
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
@@ -73,7 +73,7 @@ function formatClock(seconds: number): string {
 
 function AppContent() {
   const { user, logout } = useAuth();
-  const { t, language } = useI18n();
+  const { t, language, targetLang } = useI18n();
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
@@ -455,6 +455,9 @@ function AppContent() {
     streamAbortRef.current = controller;
 
     setLoadingState('processing');
+    // Capture the target for this stream: late events from the previous
+    // language must never be painted into the new-language UI (spec §5.3).
+    const requestedTargetLang = getRuntimeTargetLang();
 
     try {
       const response = await apiFetch('/api/process-video-stream', {
@@ -469,6 +472,9 @@ function AppContent() {
       }
 
       await consumeSseStream(response.body, (evt) => {
+        if (typeof evt.data?.targetLang === 'string' && evt.data.targetLang !== requestedTargetLang) {
+          return;
+        }
         switch (evt.event) {
           case 'meta': {
             const blocks = evt.data.blocks || [];
@@ -529,6 +535,9 @@ function AppContent() {
     setSentenceLevel(null);
     pauseSubtitleTimer();
     setLoadingState('loading');
+    // The target can change while this request is in flight. The response is
+    // still in the old language, so apply it only if the setting is unchanged.
+    const requestedTargetLang = getRuntimeTargetLang();
     try {
       // Try loading from history cache first (already processed episodes).
       // Like any other history load, pass the global model so a cache with
@@ -537,10 +546,12 @@ function AppContent() {
       const savedModel = loadModel();
       const modelQuery = savedModel ? `?model=${encodeURIComponent(savedModel)}` : '';
       const cacheResponse = await apiFetch(`/api/history/${cacheFilename}${modelQuery}`);
-      
+      if (getRuntimeTargetLang() !== requestedTargetLang) return;
+
       if (cacheResponse.ok) {
         // Already processed — load directly from cache
         const data = await cacheResponse.json();
+        if (getRuntimeTargetLang() !== requestedTargetLang) return;
         setTranscript(data.transcript);
         setSummary(data.summary || '');
         setMetadata({ ...data.metadata, is_local_subtitle: true });
@@ -558,6 +569,7 @@ function AppContent() {
         if (!response.ok) throw new Error(await describeApiError(response));
 
         const data = await response.json();
+        if (getRuntimeTargetLang() !== requestedTargetLang) return;
         setTranscript(data.transcript);
         setSummary(data.summary || '');
         setMetadata({ ...data.metadata, is_local_subtitle: true });
@@ -577,6 +589,7 @@ function AppContent() {
     setSentenceLevel(null);
     pauseSubtitleTimer();
     setLoadingState('loading');
+    const requestedTargetLang = getRuntimeTargetLang();
     try {
       // Pass the last picked model so repairing a partially translated cache
       // retries with the provider the user actually chose.
@@ -586,6 +599,7 @@ function AppContent() {
       if (!response.ok) throw new Error(await describeApiError(response));
 
       const data = await response.json();
+      if (getRuntimeTargetLang() !== requestedTargetLang) return;
       setTranscript(data.transcript);
       setSummary(data.summary || '');
       setMetadata(data.metadata || null);
@@ -783,6 +797,40 @@ function AppContent() {
     setSeekCommand(null);
     setSentenceLevel(null);
   };
+
+  // Translation target language changed. Cost protection (specs/012 §5.3):
+  // abort the in-flight stream and leave the current video/episode rather than
+  // mixing the old language's batches into the new UI. Nothing is re-translated
+  // here; the next submit/open picks the new targetLang up from `apiFetch`.
+  const previousTargetLangRef = useRef(targetLang);
+  useEffect(() => {
+    if (previousTargetLangRef.current === targetLang) return;
+    previousTargetLangRef.current = targetLang;
+
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    setLoadingState(null);
+    setTranslationProgress(null);
+    setWordLookup(null);
+    pendingSeekRef.current = null;
+    pendingLocalSeekRef.current = null;
+
+    const wasLearning = Boolean(videoId) || transcript.length > 0 || sentenceLevel !== null;
+    if (wasLearning) {
+      pauseSubtitleTimer();
+      setVideoId('');
+      setTranscript([]);
+      setSummary('');
+      setMetadata(null);
+      setCurrentTime(0);
+      setSeekCommand(null);
+      setSentenceLevel(null);
+    }
+
+    toast.info(t('language.targetChangedToast', {
+      language: getLanguageMeta(targetLang).displayNames[language],
+    }));
+  }, [targetLang, language, t, videoId, transcript.length, sentenceLevel, pauseSubtitleTimer]);
 
   // Star a sentence into the existing vocabulary book (exportable to Anki)
   const handleToggleSentenceFavorite = useCallback((s: Sentence, levelId: number) => {
@@ -1294,7 +1342,10 @@ function AppContent() {
           transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
           className="flex-1 overflow-auto custom-scrollbar"
         >
+          {/* Remount on a target-language switch: history, local-show marks
+              and the per-language model default all become different lists. */}
           <InputScreen
+            key={targetLang}
             onSubmit={handleUrlSubmit}
             onLoadHistory={handleLoadHistory}
             onSelectEpisode={handleSelectEpisode}

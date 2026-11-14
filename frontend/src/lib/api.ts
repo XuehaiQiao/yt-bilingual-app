@@ -1,13 +1,90 @@
 // Central API base configuration.
 // Override with VITE_API_BASE (e.g. in .env.local or at build time) when the
 // backend is not running on the default local address.
+import { getRuntimeTargetLang, type LanguageCode } from '../i18n';
+
 export const API_BASE: string =
     (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, '') ||
     'http://127.0.0.1:8000';
 
 export const api = (path: string) => `${API_BASE}${path}`;
 
+// ── Translation target language injection ────────────────────────────────
+// Every endpoint that reads or writes translated content is scoped by
+// `targetLang` (specs/012 §6.2). Keeping the list here — rather than sixteen
+// copies in call sites — is what guarantees a new request path cannot silently
+// forget the setting. HTTP uses camelCase `targetLang`; the snake_case
+// `target_lang` exists only inside cache files/prompts.
+const TARGET_LANG_QUERY_PATHS = new Set([
+    '/api/models',
+    '/api/estimate-cost',
+    '/api/history',
+]);
+// History detail/delete share the prefix; shows processed is the only
+// language-scoped endpoint under /api/shows.
+const TARGET_LANG_QUERY_PREFIXES = ['/api/history/'];
+const TARGET_LANG_QUERY_PATTERN = /^\/api\/shows\/[^/]+\/processed$/;
+// POST bodies the backend parses for `targetLang`.
+const TARGET_LANG_BODY_PATHS = new Set([
+    '/api/process-video',
+    '/api/process-video-stream',
+    '/api/process-subtitle',
+    '/api/define',
+]);
+
+function endpointPath(path: string): string {
+    const queryIndex = path.indexOf('?');
+    return queryIndex === -1 ? path : path.slice(0, queryIndex);
+}
+
+function requiresTargetLangQuery(path: string): boolean {
+    const pathname = endpointPath(path);
+    return (
+        TARGET_LANG_QUERY_PATHS.has(pathname) ||
+        TARGET_LANG_QUERY_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+        TARGET_LANG_QUERY_PATTERN.test(pathname)
+    );
+}
+
+/**
+ * Attach `targetLang` to the endpoints that take it as a query parameter
+ * (models, estimate, history/resume, local-show processed marks). An explicit
+ * value already on the path wins, so callers can override when needed.
+ */
+export function withTargetLang(
+    path: string,
+    targetLang: LanguageCode = getRuntimeTargetLang(),
+): string {
+    if (!requiresTargetLangQuery(path) || /(?:[?&])targetLang=/.test(path)) return path;
+    return `${path}${path.includes('?') ? '&' : '?'}targetLang=${encodeURIComponent(targetLang)}`;
+}
+
+/**
+ * Merge `targetLang` into a JSON request body for process/define endpoints.
+ * Non-string bodies, non-JSON bodies and explicitly-set values are left alone.
+ */
+export function withTargetLangBody(
+    path: string,
+    init: RequestInit | undefined,
+    targetLang: LanguageCode = getRuntimeTargetLang(),
+): RequestInit | undefined {
+    if (!init || typeof init.body !== 'string' || !TARGET_LANG_BODY_PATHS.has(endpointPath(path))) {
+        return init;
+    }
+    let payload: unknown;
+    try {
+        payload = JSON.parse(init.body);
+    } catch {
+        return init;
+    }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return init;
+    const record = payload as Record<string, unknown>;
+    if ('targetLang' in record || 'target_lang' in record) return init;
+    return { ...init, body: JSON.stringify({ ...record, targetLang }) };
+}
+
 type UnauthorizedListener = () => void;
+
 
 let unauthorizedListeners: UnauthorizedListener[] = [];
 
@@ -33,13 +110,17 @@ function isAuthEndpoint(path: string): boolean {
 // matching the backend's API_AUTH_KEY protection for public deployments.
 // `credentials: 'include'` makes the browser send/receive the httpOnly
 // `ln_session` cookie on cross-origin dev requests; it defaults to the same
-// behaviour for same-origin calls.
+// behaviour for same-origin calls. Every call also gets the current
+// translation target language where the endpoint accepts it.
 export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
     const key = import.meta.env.VITE_API_KEY as string | undefined;
-    const headers = new Headers(init?.headers);
+    const targetLang = getRuntimeTargetLang();
+    const resolvedPath = withTargetLang(path, targetLang);
+    const resolvedInit = withTargetLangBody(path, init, targetLang);
+    const headers = new Headers(resolvedInit?.headers);
     if (key) headers.set('X-API-Key', key);
-    return fetch(api(path), {
-        ...init,
+    return fetch(api(resolvedPath), {
+        ...resolvedInit,
         credentials: 'include',
         headers,
     }).then((res) => {

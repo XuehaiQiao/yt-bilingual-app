@@ -18,6 +18,8 @@
 | `FavoritesModal.tsx` | 全局 | 收藏夹：分组、迷你播放器、**Anki/CSV 导出** |
 | `ModelBar.tsx` | 首页 | 全局模型栏：/api/models 列表、当前模型、按已配 Key 置灰、选择持久化 |
 | `ModelSelectionModal.tsx` | 首页流程 | 处理前确认：展示当前全局模型与整片费用预估（不再选模型） |
+| `LanguageMenu.tsx` | 顶栏 / 登录页 | 语言入口按钮：打开 `LanguageSettingsModal`，窄屏只留图标 |
+| `LanguageSettingsModal.tsx` | 全局 | 语言设置弹窗：界面语言与翻译目标语言两组独立分段控件，立即生效 |
 | `ChannelVideoList.tsx` | 全局 | 某频道的本地历史视频列表 |
 | `ShowBrowser.tsx` | 首页 | 本地剧集浏览：剧→季→集 |
 | `Toaster.tsx` | 全局 | 轻提示（配合 `lib/toast.ts`） |

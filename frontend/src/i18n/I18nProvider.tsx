@@ -14,6 +14,7 @@ import {
 } from 'react';
 import {
     DEFAULT_LANGUAGE,
+    DEFAULT_TARGET_LANGUAGE,
     formatDate as formatDateWithLanguage,
     formatMonth as formatMonthWithLanguage,
     formatNumber as formatNumberWithLanguage,
@@ -21,7 +22,10 @@ import {
     getRuntimeLanguage,
     LANGUAGES,
     loadStoredLanguage,
+    loadTargetLang,
+    saveTargetLang,
     setRuntimeLanguage,
+    setRuntimeTargetLang,
     storeLanguage,
     translate,
     type LanguageCode,
@@ -33,6 +37,9 @@ import {
 interface I18nContextValue {
     language: LanguageCode;
     setLanguage: (language: LanguageCode) => void;
+    /** Translation target language — independent from the UI language. */
+    targetLang: LanguageCode;
+    setTargetLang: (language: LanguageCode) => void;
     t: (key: TranslationKey, params?: TranslationParams) => string;
     formatNumber: (value: number) => string;
     formatDate: (value: Date | number, options?: Intl.DateTimeFormatOptions) => string;
@@ -55,6 +62,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         return stored;
     });
 
+    // The translation target is its own setting: reading it here (not
+    // deriving it from `language`) is what keeps the two switches independent.
+    const [targetLang, setTargetLangState] = useState<LanguageCode>(() => {
+        const stored = loadTargetLang();
+        setRuntimeTargetLang(stored);
+        return stored;
+    });
+
     const setLanguage = useCallback((next: LanguageCode) => {
         const safe = LANGUAGES.some((languageMeta) => languageMeta.code === next)
             ? next
@@ -62,11 +77,30 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         setLanguageState((prev) => (prev === safe ? prev : safe));
     }, []);
 
+    const setTargetLang = useCallback((next: LanguageCode) => {
+        const safe = LANGUAGES.some((languageMeta) => languageMeta.code === next)
+            ? next
+            : DEFAULT_TARGET_LANGUAGE;
+        // Update the runtime copy synchronously so a request fired in the same
+        // tick (e.g. a refetch triggered by this switch) already uses it.
+        setRuntimeTargetLang(safe);
+        saveTargetLang(safe);
+        setTargetLangState((prev) => (prev === safe ? prev : safe));
+    }, []);
+
     // Keep the runtime singleton in sync even if the module was imported before
     // the provider finished its first render.
     useEffect(() => {
         setRuntimeLanguage(language);
     }, [language]);
+
+    // Persist the target language and mirror it into the runtime singleton.
+    // Writing the default on first mount makes "default zh-CN" observable in
+    // localStorage as well as in request parameters.
+    useEffect(() => {
+        setRuntimeTargetLang(targetLang);
+        saveTargetLang(targetLang);
+    }, [targetLang]);
 
     // Persist + reflect the language on the document. This is what makes the
     // correct Vietnamese glyphs/line-breaking available without a reload.
@@ -83,12 +117,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     const value = useMemo<I18nContextValue>(() => ({
         language,
         setLanguage,
+        targetLang,
+        setTargetLang,
         t: (key, params) => translate(language, key, params),
         formatNumber: (value) => formatNumberWithLanguage(value, language),
         formatDate: (value, options) => formatDateWithLanguage(value, options, language),
         formatMonth: (value) => formatMonthWithLanguage(value, language),
         languages: LANGUAGES,
-    }), [language, setLanguage]);
+    }), [language, setLanguage, targetLang, setTargetLang]);
 
     return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

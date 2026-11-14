@@ -4,7 +4,7 @@
 
 | 模块 | 职责 |
 |---|---|
-| `api.ts` | `API_BASE`（`VITE_API_BASE` 可覆盖）与 `apiFetch`（自动带 `X-API-Key`、`credentials: include`；非 auth 端点 401 广播给认证层） |
+| `api.ts` | `API_BASE`（`VITE_API_BASE` 可覆盖）与 `apiFetch`（自动带 `X-API-Key`、`credentials: include`、按端点注入 `targetLang`；非 auth 端点 401 广播给认证层） |
 | `auth.tsx` | 认证状态：`AuthProvider`/`useAuth`，启动 `GET /api/auth/me`、login/signup/logout、全局 401 回登录页 |
 | `transcript.ts` | 字幕核心逻辑：`findActiveIndex`（当前句判定，含 0.8s 前瞻）、SSE 流解析（`consumeSseStream`）、`[未翻译]` 标记判定、译文显示模式（全显/当前句/隐藏）持久化 |
 | `sentences.ts` | 句子精背：类型、拉取、四色语块配色、按册×天的背诵/复习进度持久化 |

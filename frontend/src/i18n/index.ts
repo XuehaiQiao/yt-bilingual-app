@@ -27,6 +27,8 @@ export interface LanguageMeta {
   /** Name shown in the language picker, in the language itself. */
   nativeName: string;
   englishName: string;
+  /** How to name this language inside a given UI language. */
+  displayNames: Record<LanguageCode, string>;
   dir: 'ltr' | 'rtl';
   htmlLang: string;
   /** Locale handed to Intl.NumberFormat / Intl.DateTimeFormat. */
@@ -38,11 +40,18 @@ export const DEFAULT_LANGUAGE: LanguageCode = 'zh-CN';
 /** localStorage key for the UI language (never the translation target). */
 export const UI_LANGUAGE_STORAGE_KEY = 'yt_bilingual_ui_lang';
 
+/** localStorage key for the translation target language. */
+export const TARGET_LANGUAGE_STORAGE_KEY = 'yt_bilingual_target_lang';
+
+/** Translation target language defaults to Simplified Chinese. */
+export const DEFAULT_TARGET_LANGUAGE: LanguageCode = 'zh-CN';
+
 export const LANGUAGES: readonly LanguageMeta[] = [
   {
     code: 'zh-CN',
     nativeName: '中文',
     englishName: 'Chinese',
+    displayNames: { 'zh-CN': '中文（简体）', 'vi-VN': 'Tiếng Trung (Giản thể)' },
     dir: 'ltr',
     htmlLang: 'zh-CN',
     locale: 'zh-CN',
@@ -51,6 +60,7 @@ export const LANGUAGES: readonly LanguageMeta[] = [
     code: 'vi-VN',
     nativeName: 'Tiếng Việt',
     englishName: 'Vietnamese',
+    displayNames: { 'zh-CN': '越南语', 'vi-VN': 'Tiếng Việt' },
     dir: 'ltr',
     htmlLang: 'vi-VN',
     locale: 'vi-VN',
@@ -99,6 +109,30 @@ export function storeLanguage(code: LanguageCode): void {
     localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, code);
   } catch {
     // Non-fatal: persistence is a convenience, not a requirement.
+  }
+}
+
+/**
+ * Read the translation target language. Invalid or missing values fall back to
+ * `zh-CN`; this setting is deliberately separate from the UI language, so
+ * switching the interface never changes the translation target.
+ */
+export function loadTargetLang(): LanguageCode {
+  try {
+    return normalizeLanguage(localStorage.getItem(TARGET_LANGUAGE_STORAGE_KEY));
+  } catch {
+    // Private mode / storage disabled: keep translating into Chinese.
+    return DEFAULT_TARGET_LANGUAGE;
+  }
+}
+
+export function saveTargetLang(code: LanguageCode): void {
+  try {
+    // Normalize on write too: a bad/legacy value must never persist and then
+    // poison the next request.
+    localStorage.setItem(TARGET_LANGUAGE_STORAGE_KEY, normalizeLanguage(code));
+  } catch {
+    // Non-fatal: the in-memory runtime value still drives requests.
   }
 }
 
@@ -151,6 +185,21 @@ export function getRuntimeLanguage(): LanguageCode {
 
 export function setRuntimeLanguage(language: LanguageCode): void {
   runtimeLanguage = language;
+}
+
+/**
+ * Runtime copy of the translation target language. `apiFetch` reads this on
+ * every request so no call site can forget `targetLang`; the provider updates
+ * it together with localStorage.
+ */
+let runtimeTargetLang: LanguageCode = loadTargetLang();
+
+export function getRuntimeTargetLang(): LanguageCode {
+  return runtimeTargetLang;
+}
+
+export function setRuntimeTargetLang(language: LanguageCode): void {
+  runtimeTargetLang = normalizeLanguage(language);
 }
 
 /** Translate with the current runtime language (non-component code). */
