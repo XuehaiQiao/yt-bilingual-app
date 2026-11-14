@@ -20,6 +20,15 @@ import { SentenceView, sentenceFavId } from './components/SentenceView';
 import { segToPlain, CHUNK_STYLE, type Sentence, type SegChunk } from './lib/sentences';
 import { toast, describeApiError } from './lib/toast';
 import { consumeSseStream, findActiveIndex, isUntranslated, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from './lib/transcript';
+import {
+  clearPendingJob,
+  fetchJobSnapshot,
+  finishJob,
+  loadPendingJob,
+  recordJobMeta,
+  recordJobProgress,
+  type JobSnapshot,
+} from './lib/jobs';
 import { loadVocabLevel, loadModel } from './lib/settings';
 import {
   clampSplitRatio,
@@ -434,7 +443,11 @@ function AppContent() {
     setIsFavoritesOpen(false);
   };
 
-  const handleUrlSubmit = async (url: string) => {
+  // M1 ⑤：`resume` 只在断线续传时传入（jobId + 服务端游标），普通提交不带。
+  const handleUrlSubmit = async (
+    url: string,
+    resume?: { jobId?: string; from?: number },
+  ) => {
     setSentenceLevel(null); // leave sentence mode if a video is loaded
     pauseSubtitleTimer();
     // Model choice is global now: every LLM call reads the same saved setting
@@ -463,7 +476,13 @@ function AppContent() {
       const response = await apiFetch('/api/process-video-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, model: model || undefined, vocab_level: loadVocabLevel() }),
+        body: JSON.stringify({
+          url,
+          model: model || undefined,
+          vocab_level: loadVocabLevel(),
+          // 续传：jobId + 最后收到的 block 游标（后端据此只补未翻译的句子）。
+          ...(resume?.jobId ? { jobId: resume.jobId, from: resume.from ?? 0 } : {}),
+        }),
         signal: controller.signal,
       });
 
@@ -484,8 +503,25 @@ function AppContent() {
             setVideoId(evt.data.videoId || id);
             setCurrentTime(0);
             setLoadingState(null); // English is visible — drop the overlay
+            // M1 ⑤：记住 jobId 与游标，刷新/断线后从这里续传（服务端提供
+            // jobId 时才有；纯缓存秒开没有生成任务，不会留下记录）。
+            recordJobMeta(evt.data, {
+              url,
+              videoId: evt.data.videoId || id,
+              targetLang: requestedTargetLang,
+            });
+            const metaCursor = typeof evt.data.cursor === 'number' ? evt.data.cursor : 0;
+            const metaTotal = typeof evt.data.total === 'number' ? evt.data.total : blocks.length;
             const untranslated = blocks.filter((b: TranscriptItem) => isUntranslated(b.zh_text)).length;
-            setTranslationProgress(untranslated > 0 ? { done: 0, total: untranslated } : null);
+            setTranslationProgress(
+              untranslated > 0
+                // 续传时从「已翻 N 句」接着显示，进度条不会从中途归零。
+                ? (metaCursor > 0 ? { done: metaCursor, total: metaTotal } : { done: 0, total: untranslated })
+                : null,
+            );
+            if (evt.data.resumed === true) {
+              toast.info(t('jobs.resumedHint', { done: metaCursor, total: metaTotal }));
+            }
             if (pendingSeekRef.current != null) {
               const resumeAt = pendingSeekRef.current;
               pendingSeekRef.current = null;
@@ -497,6 +533,8 @@ function AppContent() {
             const byId = new Map<number, TranscriptItem>((evt.data.blocks || []).map((b: TranscriptItem) => [b.id, b]));
             setTranscript(prev => prev.map(b => byId.get(b.id) ?? b));
             if (evt.data.progress) setTranslationProgress(prev => ({ ...prev, ...evt.data.progress }));
+            // 批次游标落 sessionStorage：刷新后从这里继续，不重复付费。
+            recordJobProgress(evt.data);
             break;
           }
           case 'stage':
@@ -514,6 +552,7 @@ function AppContent() {
             throw new Error(evt.data.detail || t('errors.processFailed'));
           case 'done':
             setTranslationProgress(null);
+            finishJob({ jobId: evt.data.jobId, videoId: evt.data.videoId || id });
             break;
         }
       });
@@ -525,11 +564,69 @@ function AppContent() {
       }
       console.error(error);
       toast.error(await describeApiError(error));
+      // 进度已经落盘：告诉用户刷新能接着看，而不是从头再花一次钱。
+      if (loadPendingJob()?.videoId === id) {
+        toast.info(t('jobs.interruptedHint'));
+      }
       setTranslationProgress(null);
     } finally {
       setLoadingState(null);
     }
   };
+
+  // M1 ⑤ 断线续传：页面刷新/重新打开后，如果本标签页还留着未完成的任务，
+  // 先问后端状态（GET /api/jobs/{id}），可续才带 jobId + from 重连；
+  // 已完成/失败/不存在的任务直接丢弃，不重复生成。每个标签页只尝试一次。
+  const resumeCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!user || resumeCheckedRef.current) return;
+    resumeCheckedRef.current = true;
+    void (async () => {
+      const pending = loadPendingJob();
+      if (!pending) return;
+      // 语言切换后旧任务的译文本就不是当前设置要的，直接丢弃。
+      if (pending.targetLang !== getRuntimeTargetLang()) {
+        clearPendingJob();
+        return;
+      }
+      let snapshot: JobSnapshot | null;
+      try {
+        snapshot = await fetchJobSnapshot(pending.jobId);
+        // 刚刷新时服务端可能还没察觉到连接已断（active=true）：等它收尾
+        // 再问一次，避免「刷新后要多刷一次」的竞态。
+        for (let attempt = 0; attempt < 3 && snapshot?.active; attempt += 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          snapshot = await fetchJobSnapshot(pending.jobId);
+        }
+      } catch {
+        return; // 网络暂不可用：保留记录，下次刷新再试
+      }
+      if (!snapshot || snapshot.status === 'done') {
+        clearPendingJob();
+        return;
+      }
+      if (snapshot.status === 'failed') {
+        clearPendingJob();
+        toast.error(t('jobs.failedHint'));
+        return;
+      }
+      if (snapshot.active) {
+        toast.info(t('jobs.busyHint'));
+        return; // 另一条流结束后刷新还能续
+      }
+      if (!snapshot.canResume) {
+        // 产物没了 / 状态已不可续：丢掉记录，避免每次刷新都白问一次。
+        clearPendingJob();
+        return;
+      }
+      await handleUrlSubmit(pending.url, {
+        jobId: pending.jobId,
+        from: snapshot.cursor,
+      });
+    })();
+    // 只在登录态首次就绪时尝试一次；handleUrlSubmit 是普通函数，无需重建。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleSelectEpisode = async (showId: string, season: number, episode: number) => {
     setSentenceLevel(null);

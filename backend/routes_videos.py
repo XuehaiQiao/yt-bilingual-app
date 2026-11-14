@@ -12,7 +12,7 @@ import re
 import time
 from collections import OrderedDict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import AliasChoices, BaseModel, Field
 
@@ -22,6 +22,7 @@ from config import (
     PREFETCH_CACHE_TTL_SECONDS,
     SSE_HEARTBEAT_SECONDS,
 )
+import jobs
 import languages
 import llm
 import local_shows
@@ -54,13 +55,24 @@ router = APIRouter()
 
 
 class VideoRequest(BaseModel):
-    url: str
+    # M1 ⑤：续传请求只要 jobId，url 可省（job.payload 里已经记了 videoId）。
+    url: str | None = None
     model: str | None = None
     vocab_level: str | None = None
     # specs/012 §5.3：请求参数用 camelCase；同时接受 snake_case 以兼容脚本/旧客户端。
     target_lang: str | None = Field(
         default=None,
         validation_alias=AliasChoices("targetLang", "target_lang"),
+    )
+    # M1 ⑤ 断线续传：前端从 sessionStorage 取回 jobId 与最后游标，POST 回来。
+    job_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("jobId", "job_id"),
+    )
+    from_cursor: int | None = Field(
+        default=None,
+        ge=0,
+        validation_alias=AliasChoices("from", "fromCursor", "from_cursor"),
     )
 
 
@@ -371,6 +383,15 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+def _event_factory(lang: str):
+    """所有 SSE 事件都带 targetLang（规格 §5.3 / §6.3）。"""
+
+    def _event(event: str, data: dict) -> str:
+        return _sse(event, {**data, "targetLang": lang})
+
+    return _event
+
+
 def _history_filename(metadata: dict, video_id: str) -> str:
     safe_channel = "".join([c for c in metadata.get("channel", "") if c.isalpha() or c.isdigit() or c == ' ']).rstrip()
     if not safe_channel:
@@ -460,197 +481,670 @@ async def _with_heartbeat(events, interval: float = SSE_HEARTBEAT_SECONDS):
             await producer
 
 
+# ====================================================
+# M1 ⑤：job 绑定 + 断线续传（计划书 §7.3 A-4）
+# ====================================================
+#
+# 生成逻辑与 jobs 表怎么绑：
+# - 第一次请求：按 (user, videoId, targetLang) 复用未完成 job，没有就新建；
+# - 每完成一批：把「已落盘译文的 block 数」写进 job.cursor（只增不减）；
+# - 断线/取消：未完结的 job 落成 partial，前端刷新后先 GET job 再带 jobId 续传；
+# - 续传：要补哪些句子由缓存里的 `[未翻译]` 标记决定，已翻好的 block 不再调
+#   模型（不重复付费）；`from` 只用于进度/事件展示。
+#
+# 产物即 history/ 下按批落盘的缓存 JSON（_stream_translate 已经逐批写盘），
+# job 只记游标与状态，不复制字幕正文。表缺失（旧库没跑 0005_jobs）时
+# jobs.* 全是 no-op，视频处理维持旧行为，只是没有断线续传。
+
+JOB_KIND = jobs.KIND_PROCESS_VIDEO
+
+# SSE 响应头：不缓存 + 关掉反向代理缓冲（长流必须边生成边发）。
+_STREAM_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+
+
+def _job_payload(
+    video_id: str,
+    *,
+    url: str | None = None,
+    model: str | None = None,
+    vocab_level: str | None = None,
+    total: int | None = None,
+) -> dict:
+    """job.payload：只放元数据（供 GET job / 续传解析），不放字幕正文。"""
+    payload: dict = {"videoId": video_id}
+    if url:
+        payload["url"] = url
+    if model:
+        payload["model"] = model
+    if vocab_level:
+        payload["vocabLevel"] = vocab_level
+    if total is not None:
+        payload["total"] = int(total)
+    return payload
+
+
+def _translated_cursor(transcript: list) -> int:
+    """已落盘译文的 block 数（仍是 ``[未翻译]``/空 的不算）——job.cursor 的口径。"""
+    return sum(
+        1 for block in transcript if not needs_retranslation(block.get("zh_text", ""))
+    )
+
+
+def _load_cached_payload(video_id: str, lang: str) -> tuple[str | None, dict | None]:
+    """读该视频在该目标语言下的缓存 payload；语言不符/坏文件视为未命中。"""
+    cached_path = find_history_file_for_video(video_id, target_lang=lang)
+    if not cached_path:
+        return None, None
+    try:
+        with open(cached_path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return cached_path, None
+    if payload_target_lang(payload) != lang:
+        # 语言不一致视为未命中：不把错误语言的译文发给前端（规格 §5.4）。
+        print(f"Cached payload language mismatch, reprocessing: {cached_path}")
+        return cached_path, None
+    if not payload.get("transcript"):
+        return cached_path, None
+    return cached_path, stamp_payload_language(payload, lang)
+
+
+def _load_job_or_http(job_id: str) -> dict:
+    """取 job 并校验归属：不存在 404，不是自己的 403（未登录统一由中间件 401）。"""
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="任务不存在或已过期。")
+    user_id = storage.active_user_id()
+    if not user_id or job["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="无权访问该任务。")
+    return job
+
+
+def _job_video_id(job: dict) -> str | None:
+    payload = job.get("payload") or {}
+    video_id = payload.get("videoId")
+    return video_id if isinstance(video_id, str) and video_id else None
+
+
+def _job_artifact(job: dict) -> tuple[str | None, dict | None]:
+    """任务对应的已落盘 payload（按 videoId + targetLang 找当前缓存文件）。"""
+    video_id = _job_video_id(job)
+    if not video_id:
+        return None, None
+    return _load_cached_payload(video_id, job["target_lang"])
+
+
+def _job_view(job: dict) -> dict:
+    """GET /api/jobs/{id} 的响应：状态/进度/是否可续（不回传 payload 原文）。"""
+    payload = job.get("payload") or {}
+    video_id = _job_video_id(job)
+    total = int(payload.get("total") or 0)
+    cursor = int(job.get("cursor") or 0)
+    status = job.get("status") or jobs.STATUS_QUEUED
+    active = jobs.is_active(job["id"])
+    artifact = bool(video_id) and (
+        find_history_file_for_video(video_id, target_lang=job["target_lang"])
+        is not None
+    )
+    return {
+        "id": job["id"],
+        "kind": job["kind"],
+        "contentRef": job["content_ref"],
+        "videoId": video_id,
+        "targetLang": job["target_lang"],
+        "status": status,
+        "cursor": cursor,
+        "total": total,
+        "progress": {"done": cursor, "total": total},
+        # 只有「未完结 + 产物还在 + 本进程没在生成」才值得让前端重连。
+        "canResume": (
+            status in jobs.RESUMABLE_STATUSES and artifact and not active
+        ),
+        "active": active,
+        "error": job.get("error"),
+        "createdAt": job["created_at"],
+        "updatedAt": job["updated_at"],
+    }
+
+
+def _streaming_response(events) -> StreamingResponse:
+    return StreamingResponse(
+        _with_heartbeat(events, SSE_HEARTBEAT_SECONDS),
+        media_type="text/event-stream",
+        headers=_STREAM_HEADERS,
+    )
+
+
+async def _guarded_stream(events, *, lang: str, job_id: str | None, acquire_job: bool):
+    """统一错误兜底 + 任务收尾：异常 → error 事件；结束后释放执行权。
+
+    执行权（``jobs.try_acquire``）在这里取、在这里的 ``finally`` 放：只要流开始
+    迭代就一定会释放，不会因为 Handler 里提前 return/异常把 job 锁死。第二个
+    并发的同 job 请求拿不到执行权 → 立刻发 error 事件（code=job_busy）后结束，
+    **不会调模型**。
+    """
+    owns_job = False
+    try:
+        if job_id and acquire_job:
+            if not jobs.try_acquire(job_id):
+                yield _sse(
+                    "error",
+                    {
+                        "detail": "该任务正在处理中，请稍后刷新重试。",
+                        "code": "job_busy",
+                        "jobId": job_id,
+                        "targetLang": lang,
+                    },
+                )
+                return
+            owns_job = True
+        async for event in events:
+            yield event
+    except Exception as exc:  # noqa: BLE001 - 生成器自己兜底，别让流挂着
+        print(f"Stream processing error: {exc}")
+        if owns_job and job_id:
+            jobs.mark_failed(job_id, str(exc))
+        yield _sse("error", {"detail": f"处理失败：{exc}", "targetLang": lang})
+    finally:
+        if owns_job and job_id:
+            # 正常结束（done）/显式失败（failed）不会被覆盖；只有断线/取消
+            # 留下的 running 才转成 partial/queued，供下次续传。
+            jobs.settle_interrupted(job_id)
+            jobs.release(job_id)
+
+
+# ---------------------------------------------------------------------------
+# 生成器：已有缓存（含续传） / 全新视频 / 已完成任务的回放
+# ---------------------------------------------------------------------------
+
+async def _cached_stream_gen(
+    cached_path: str,
+    cached: dict,
+    *,
+    lang: str,
+    model: str,
+    vocab_level: str | None,
+    job: dict | None,
+    requested_from: int | None,
+    resumed: bool,
+):
+    """已有缓存：补译 ``[未翻译]`` 的 block（续传走同一条路），再补总结。
+
+    续传语义：要补哪些句子由缓存里的 ``[未翻译]`` 标记决定，与 ``from`` 无关——
+    这样「已翻好的句子」永远不会再花钱；``from`` 只用于事件/进度展示。
+    """
+    _event = _event_factory(lang)
+    job_id = job["id"] if job else None
+    transcript = cached["transcript"]
+    total = len(transcript)
+    cursor = _translated_cursor(transcript)
+    pending = [
+        index
+        for index, block in enumerate(transcript)
+        if needs_retranslation(block.get("zh_text", ""))
+    ]
+
+    yield _event("meta", {
+        "videoId": cached.get("videoId"),
+        "metadata": cached.get("metadata", {}),
+        "blocks": transcript,
+        "cached": True,
+        "resumed": bool(resumed),
+        "jobId": job_id,
+        "cursor": cursor,
+        "from": requested_from or 0,
+        "total": total,
+        "sourceLang": languages.SOURCE_LANG,
+        "promptVersion": PROMPT_VERSIONS["translate"],
+    })
+
+    if job_id and pending:
+        jobs.mark_running(job_id, total=total)
+
+    if pending:
+        async for update in _stream_translate(
+            transcript, pending, cached, cached_path,
+            model=model, vocab_level=vocab_level, target_lang=lang,
+        ):
+            cursor = _translated_cursor(transcript)
+            if job_id:
+                jobs.update_progress(job_id, cursor, total=total)
+            yield _event("batch", {
+                **update,
+                # 续传/补译的进度按「全量已翻句数」报，前端进度条不会从中途归零。
+                "progress": {"done": cursor, "total": total},
+                "cursor": cursor,
+                "total": total,
+                "jobId": job_id,
+            })
+
+    # 上次失败留下的"无法生成总结"占位不能就这么回给用户：用这次选的模型重试一次。
+    summary = cached.get("summary", "")
+    refreshed = summary_needs_refresh(summary)
+    if refreshed:
+        yield _event("stage", {"stage": "summary"})
+        summary = await summarize_video_transcript(
+            [{"text": block["en_text"]} for block in transcript],
+            model=model,
+            target_lang=lang,
+        )
+        if not summary_needs_refresh(summary):
+            cached["summary"] = summary
+
+    # 只有真正重跑过翻译/总结，才把缓存的模型标记更新成这次用的模型。
+    if not cached.get("model") and (pending or refreshed):
+        cached["model"] = model
+    if not resumed:
+        # 续传同一次「打开」的上下文，不重复计学习次数。
+        cached["studyCount"] = int(cached.get("studyCount") or 0) + 1
+    cached["transcript"] = transcript
+    with open(cached_path, "w", encoding="utf-8") as f:
+        json.dump(cached, f, ensure_ascii=False, indent=2)
+
+    yield _event("summary", {"summary": summary, "jobId": job_id})
+    yield _event("done", {
+        "cached": True,
+        "jobId": job_id,
+        "cursor": cursor,
+        "total": total,
+    })
+    if job_id:
+        jobs.mark_done(job_id, cursor=cursor)
+
+
+async def _replay_done_gen(cached: dict, *, lang: str, job: dict):
+    """已完成的 job 被重连：只回放已有内容，*不再调模型*（防重复付费）。"""
+    _event = _event_factory(lang)
+    transcript = cached.get("transcript") or []
+    total = len(transcript)
+    yield _event("meta", {
+        "videoId": cached.get("videoId"),
+        "metadata": cached.get("metadata", {}),
+        "blocks": transcript,
+        "cached": True,
+        "resumed": True,
+        "done": True,
+        "jobId": job["id"],
+        "cursor": job["cursor"],
+        "total": total,
+        "sourceLang": languages.SOURCE_LANG,
+        "promptVersion": PROMPT_VERSIONS["translate"],
+    })
+    yield _event("summary", {"summary": cached.get("summary", ""), "jobId": job["id"]})
+    yield _event("done", {
+        "cached": True,
+        "jobId": job["id"],
+        "cursor": job["cursor"],
+        "total": total,
+    })
+
+
+async def _fresh_stream_gen(
+    video_id: str,
+    *,
+    lang: str,
+    model: str,
+    vocab_level: str | None,
+    url: str,
+    job: dict | None,
+):
+    """全新视频：先给英文字幕（meta），翻译逐批推送并落盘，最后补总结。"""
+    _event = _event_factory(lang)
+    job_id = job["id"] if job else None
+
+    # Reuse the fetch from a just-run cost estimation when possible
+    prefetched = _prefetch_take(video_id)
+    if prefetched is not None:
+        metadata, raw_transcript = prefetched[1], prefetched[2]
+    else:
+        try:
+            raw_transcript = await asyncio.to_thread(fetch_english_transcript, video_id)
+        except HTTPException as e:
+            # No captions? Fall back to local ASR when available.
+            if e.status_code == 422 and _asr_available():
+                yield _event("stage", {"stage": "asr"})
+                try:
+                    raw_transcript = await asyncio.to_thread(
+                        _transcribe_audio_with_whisper,
+                        canonical_watch_url(video_id),
+                    )
+                except Exception as asr_err:
+                    if job_id:
+                        jobs.mark_failed(job_id, f"本地转写失败：{asr_err}")
+                    yield _event("error", {"detail": f"该视频无字幕，本地转写也失败了:{asr_err}"})
+                    return
+                if not raw_transcript:
+                    if job_id:
+                        jobs.mark_failed(job_id, "本地转写未识别出任何语音内容")
+                    yield _event("error", {"detail": "本地转写未识别出任何语音内容。"})
+                    return
+            elif e.status_code == 422:
+                if job_id:
+                    jobs.mark_failed(job_id, f"该视频无可用英文字幕：{e.detail}")
+                yield _event("error", {
+                    "detail": e.detail + " 提示：安装本地转写组件后可支持无字幕视频"
+                                        "（backend 环境运行 pip install faster-whisper）。"
+                })
+                return
+            else:
+                if job_id:
+                    jobs.mark_failed(job_id, f"抓取字幕失败：{e.detail}")
+                yield _event("error", {"detail": e.detail})
+                return
+
+        try:
+            metadata = await asyncio.to_thread(
+                get_video_metadata, canonical_watch_url(video_id)
+            )
+        except Exception as e:
+            print(f"Failed to fetch metadata: {e}")
+            metadata = {
+                "title": "Unknown Title",
+                "channel": "Unknown Channel",
+                "upload_date": datetime.datetime.now().strftime("%Y%m%d"),
+                "thumbnail": ""
+            }
+    if "upload_date" not in metadata or not metadata.get("upload_date"):
+        metadata["upload_date"] = datetime.datetime.now().strftime("%Y%m%d")
+
+    en_blocks = group_transcript_blocks(raw_transcript)
+    transcript = []
+    for idx, b in enumerate(en_blocks):
+        transcript.append({
+            "id": idx + 1,
+            "start": b["start"],
+            "end": b["end"],
+            "en_text": b["text"].replace("\n", " ").strip(),
+            "zh_text": UNTRANSLATED_MARKER,
+            "highlights": [],
+        })
+
+    payload = stamp_payload_language({
+        "videoId": video_id,
+        "metadata": metadata,
+        "transcript": transcript,
+        "summary": "",
+        "model": model,
+        "studyCount": 1,
+    }, lang)
+    save_path = os.path.join(
+        storage.history_dir(lang), _history_filename(metadata, video_id)
+    )
+    with open(save_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+    total = len(transcript)
+    if job_id:
+        jobs.mark_running(job_id, total=total)
+
+    # English is ready — let the user start watching now
+    yield _event("meta", {
+        "videoId": video_id,
+        "metadata": metadata,
+        "blocks": transcript,
+        "cached": False,
+        "resumed": False,
+        "jobId": job_id,
+        "cursor": 0,
+        "total": total,
+        "sourceLang": languages.SOURCE_LANG,
+        "promptVersion": PROMPT_VERSIONS["translate"],
+    })
+
+    cursor = 0
+    async for update in _stream_translate(
+        transcript, list(range(total)), payload, save_path,
+        model=model, vocab_level=vocab_level, target_lang=lang,
+    ):
+        cursor = _translated_cursor(transcript)
+        if job_id:
+            jobs.update_progress(job_id, cursor, total=total)
+        yield _event("batch", {
+            **update,
+            "progress": {"done": cursor, "total": total},
+            "cursor": cursor,
+            "total": total,
+            "jobId": job_id,
+        })
+
+    yield _event("stage", {"stage": "summary"})
+    summary_text = await summarize_video_transcript(
+        [{"text": b["en_text"]} for b in transcript],
+        model=model,
+        target_lang=lang,
+    )
+    payload["summary"] = summary_text
+    stamp_payload_language(payload, lang)
+    with open(save_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+    yield _event("summary", {"summary": summary_text, "jobId": job_id})
+    yield _event("done", {
+        "cached": False,
+        "jobId": job_id,
+        "cursor": cursor,
+        "total": total,
+    })
+    if job_id:
+        jobs.mark_done(job_id, cursor=cursor)
+
+
+# ---------------------------------------------------------------------------
+# 入口：新建 / 复用 / 续传
+# ---------------------------------------------------------------------------
+
+def _start_video_stream(
+    *,
+    video_id: str,
+    url: str,
+    lang: str,
+    model: str | None,
+    vocab_level: str | None,
+) -> StreamingResponse:
+    """无 jobId 的普通请求：命中缓存 → 补译/续传；没有缓存 → 全新生成。
+
+    两个分支都会先按 (user, videoId, targetLang) 复用未完成 job（幂等）：上次
+    断线留下的 job 即使前端没带 jobId，也会从缓存里接着翻，不重复付费。
+    """
+    cached_path, cached = _load_cached_payload(video_id, lang)
+    user_id = storage.active_user_id()
+    effective_model = llm.resolve_model_for_target(model, lang)
+
+    if cached is not None:
+        transcript = cached["transcript"]
+        total = len(transcript)
+        pending = [
+            index
+            for index, block in enumerate(transcript)
+            if needs_retranslation(block.get("zh_text", ""))
+        ]
+        job = None
+        resumed = False
+        if pending:
+            # 只有真的要生成（有未翻译句）才建 job：秒开的纯缓存不产生任务记录。
+            job = jobs.create_or_reuse(
+                user_id=user_id,
+                kind=JOB_KIND,
+                content_ref=video_id,
+                target_lang=lang,
+                payload=_job_payload(
+                    video_id, url=None, model=model,
+                    vocab_level=vocab_level, total=total,
+                ),
+            )
+            if job is not None:
+                if jobs.is_active(job["id"]):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="该任务正在处理中，请等待当前进度完成后再试。",
+                    )
+                resumed = job["cursor"] > 0
+        events = _cached_stream_gen(
+            cached_path, cached,
+            lang=lang, model=effective_model, vocab_level=vocab_level,
+            job=job, requested_from=job["cursor"] if job else 0, resumed=resumed,
+        )
+        return _streaming_response(
+            _guarded_stream(
+                events,
+                lang=lang,
+                job_id=job["id"] if job else None,
+                acquire_job=bool(job),
+            )
+        )
+
+    job = jobs.create_or_reuse(
+        user_id=user_id,
+        kind=JOB_KIND,
+        content_ref=video_id,
+        target_lang=lang,
+        payload=_job_payload(video_id, url=url, model=model, vocab_level=vocab_level),
+    )
+    if job is not None and jobs.is_active(job["id"]):
+        raise HTTPException(
+            status_code=409,
+            detail="该任务正在处理中，请等待当前进度完成后再试。",
+        )
+    events = _fresh_stream_gen(
+        video_id,
+        lang=lang, model=effective_model, vocab_level=vocab_level,
+        url=url, job=job,
+    )
+    return _streaming_response(
+        _guarded_stream(
+            events,
+            lang=lang,
+            job_id=job["id"] if job else None,
+            acquire_job=bool(job),
+        )
+    )
+
+
+def _resume_stream_response(
+    *,
+    job_id: str,
+    lang: str,
+    from_cursor: int | None,
+    model: str | None,
+    vocab_level: str | None,
+) -> StreamingResponse:
+    """带 jobId 的续传：校验归属/语言/产物后，从缓存继续（不重复生成）。"""
+    job = _load_job_or_http(job_id)
+    if job["target_lang"] != lang:
+        raise HTTPException(
+            status_code=400,
+            detail="该任务的目标语言与当前请求不一致，不能续传。",
+        )
+    if job["kind"] != JOB_KIND:
+        raise HTTPException(status_code=409, detail="该任务不支持视频流式续传。")
+
+    cached_path, cached = _job_artifact(job)
+    status = job["status"]
+    if cached is None:
+        if status not in jobs.TERMINAL_STATUSES:
+            jobs.mark_failed(job_id, "任务产物（字幕缓存）已不存在")
+        raise HTTPException(
+            status_code=410, detail="任务产物已不存在，请重新处理该视频。"
+        )
+
+    if status == jobs.STATUS_DONE:
+        # 完成的 job 不再生成：只回放已有内容（前端正常情况下也不会重连）。
+        return _streaming_response(
+            _guarded_stream(
+                _replay_done_gen(cached, lang=lang, job=job),
+                lang=lang,
+                job_id=None,
+                acquire_job=False,
+            )
+        )
+    if status == jobs.STATUS_FAILED:
+        raise HTTPException(
+            status_code=409, detail="该任务已失败，请重新处理该视频。"
+        )
+    if jobs.is_active(job_id):
+        raise HTTPException(
+            status_code=409,
+            detail="该任务正在处理中，请等待当前进度完成后再试。",
+        )
+
+    payload = job.get("payload") or {}
+    effective_model = llm.resolve_model_for_target(
+        model or payload.get("model"), lang
+    )
+    events = _cached_stream_gen(
+        cached_path, cached,
+        lang=lang, model=effective_model,
+        vocab_level=vocab_level or payload.get("vocabLevel"),
+        job=job, requested_from=from_cursor, resumed=True,
+    )
+    return _streaming_response(
+        _guarded_stream(events, lang=lang, job_id=job_id, acquire_job=True)
+    )
+
+
 @router.post("/api/process-video-stream")
 async def process_video_stream(request: VideoRequest):
     # 语言/URL 校验放在流外：非法输入直接 400，而不是先 200 再在流里报错。
     lang = _target_lang_or_400(request.target_lang)
+    if request.job_id:
+        # M1 ⑤ 续传：前端刷新后先 GET /api/jobs/{id}，再带 jobId + from 回来。
+        return _resume_stream_response(
+            job_id=request.job_id,
+            lang=lang,
+            from_cursor=request.from_cursor,
+            model=request.model,
+            vocab_level=request.vocab_level,
+        )
+    if not request.url:
+        raise HTTPException(
+            status_code=400, detail="缺少视频链接（url）或任务 id（jobId）。"
+        )
     try:
         video_id = extract_video_id(request.url)
     except ValueError:
         raise HTTPException(status_code=400, detail="无效的 YouTube 链接，请检查后重试。")
-
-    def _event(name: str, data: dict) -> str:
-        """所有 SSE 事件都带 targetLang（规格 §5.3 / §6.3）。"""
-        return _sse(name, {**data, "targetLang": lang})
-
-    async def gen():
-        try:
-            # 先解析模型：缓存路径的自愈（补译/重生成总结）也要用用户选中的模型，
-            # 否则换成 DeepSeek 后仍会拿默认 Gemini 去重试。路线按目标语言选。
-            model = llm.resolve_model_for_target(request.model, lang)
-
-            # --- Cached video: send everything we have, then repair gaps ---
-            cached_path = find_history_file_for_video(video_id, target_lang=lang)
-            cached = None
-            if cached_path:
-                try:
-                    with open(cached_path, "r", encoding="utf-8") as f:
-                        cached = json.load(f)
-                except json.JSONDecodeError:
-                    cached = None
-                if cached is not None and payload_target_lang(cached) != lang:
-                    # 语言不一致视为未命中：不把错误语言的译文发给前端。
-                    print(f"Cached payload language mismatch, reprocessing: {cached_path}")
-                    cached = None
-
-            if cached and cached.get("transcript"):
-                cached = stamp_payload_language(cached, lang)
-                transcript = cached["transcript"]
-                yield _event("meta", {
-                    "videoId": cached.get("videoId", video_id),
-                    "metadata": cached.get("metadata", {}),
-                    "blocks": transcript,
-                    "cached": True,
-                    "sourceLang": languages.SOURCE_LANG,
-                    "promptVersion": PROMPT_VERSIONS["translate"],
-                })
-                pending = [i for i, b in enumerate(transcript) if needs_retranslation(b.get("zh_text", ""))]
-                if pending:
-                    async for update in _stream_translate(
-                        transcript, pending, cached, cached_path,
-                        model=model, target_lang=lang,
-                    ):
-                        yield _event("batch", update)
-
-                # 上次失败留下的"无法生成总结"占位不能就这么回给用户：用这次选的模型重试一次。
-                summary = cached.get("summary", "")
-                refreshed = summary_needs_refresh(summary)
-                if refreshed:
-                    yield _event("stage", {"stage": "summary"})
-                    summary = await summarize_video_transcript(
-                        [{"text": b["en_text"]} for b in transcript],
-                        model=model,
-                        target_lang=lang,
-                    )
-                    if not summary_needs_refresh(summary):
-                        cached["summary"] = summary
-
-                # 只有真正重跑过翻译/总结，才把缓存的模型标记更新成这次用的模型。
-                if not cached.get("model") and (pending or refreshed):
-                    cached["model"] = model
-                cached["studyCount"] = int(cached.get("studyCount") or 0) + 1
-                with open(cached_path, "w", encoding="utf-8") as f:
-                    json.dump(cached, f, ensure_ascii=False, indent=2)
-
-                yield _event("summary", {"summary": summary})
-                yield _event("done", {"cached": True})
-                return
-
-            # --- Fresh video ---
-
-            # Reuse the fetch from a just-run cost estimation when possible
-            prefetched = _prefetch_take(video_id)
-            if prefetched is not None:
-                metadata, raw_transcript = prefetched[1], prefetched[2]
-            else:
-                try:
-                    raw_transcript = await asyncio.to_thread(fetch_english_transcript, video_id)
-                except HTTPException as e:
-                    # No captions? Fall back to local ASR when available.
-                    if e.status_code == 422 and _asr_available():
-                        yield _event("stage", {"stage": "asr"})
-                        try:
-                            raw_transcript = await asyncio.to_thread(
-                                _transcribe_audio_with_whisper,
-                                canonical_watch_url(video_id),
-                            )
-                        except Exception as asr_err:
-                            yield _event("error", {"detail": f"该视频无字幕，本地转写也失败了:{asr_err}"})
-                            return
-                        if not raw_transcript:
-                            yield _event("error", {"detail": "本地转写未识别出任何语音内容。"})
-                            return
-                    elif e.status_code == 422:
-                        yield _event("error", {
-                            "detail": e.detail + " 提示：安装本地转写组件后可支持无字幕视频"
-                                                "（backend 环境运行 pip install faster-whisper）。"
-                        })
-                        return
-                    else:
-                        yield _event("error", {"detail": e.detail})
-                        return
-
-                try:
-                    metadata = await asyncio.to_thread(
-                        get_video_metadata, canonical_watch_url(video_id)
-                    )
-                except Exception as e:
-                    print(f"Failed to fetch metadata: {e}")
-                    metadata = {
-                        "title": "Unknown Title",
-                        "channel": "Unknown Channel",
-                        "upload_date": datetime.datetime.now().strftime("%Y%m%d"),
-                        "thumbnail": ""
-                    }
-            if "upload_date" not in metadata or not metadata.get("upload_date"):
-                metadata["upload_date"] = datetime.datetime.now().strftime("%Y%m%d")
-
-            en_blocks = group_transcript_blocks(raw_transcript)
-            transcript = []
-            for idx, b in enumerate(en_blocks):
-                transcript.append({
-                    "id": idx + 1,
-                    "start": b["start"],
-                    "end": b["end"],
-                    "en_text": b["text"].replace("\n", " ").strip(),
-                    "zh_text": UNTRANSLATED_MARKER,
-                    "highlights": [],
-                })
-
-            payload = stamp_payload_language({
-                "videoId": video_id,
-                "metadata": metadata,
-                "transcript": transcript,
-                "summary": "",
-                "model": model,
-                "studyCount": 1,
-            }, lang)
-            save_path = os.path.join(
-                storage.history_dir(lang), _history_filename(metadata, video_id)
-            )
-            with open(save_path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False, indent=2)
-
-            # English is ready — let the user start watching now
-            yield _event("meta", {
-                "videoId": video_id,
-                "metadata": metadata,
-                "blocks": transcript,
-                "cached": False,
-                "sourceLang": languages.SOURCE_LANG,
-                "promptVersion": PROMPT_VERSIONS["translate"],
-            })
-
-            async for update in _stream_translate(
-                transcript, list(range(len(transcript))), payload, save_path,
-                model=model, vocab_level=request.vocab_level, target_lang=lang,
-            ):
-                yield _event("batch", update)
-
-            yield _event("stage", {"stage": "summary"})
-            summary_text = await summarize_video_transcript(
-                [{"text": b["en_text"]} for b in transcript],
-                model=model,
-                target_lang=lang,
-            )
-            payload["summary"] = summary_text
-            stamp_payload_language(payload, lang)
-            with open(save_path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False, indent=2)
-
-            yield _event("summary", {"summary": summary_text})
-            yield _event("done", {"cached": False})
-
-        except Exception as e:
-            print(f"Stream processing error: {e}")
-            yield _event("error", {"detail": f"处理失败：{e}"})
-
-    return StreamingResponse(
-        _with_heartbeat(gen(), SSE_HEARTBEAT_SECONDS),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    return _start_video_stream(
+        video_id=video_id,
+        url=request.url,
+        lang=lang,
+        model=request.model,
+        vocab_level=request.vocab_level,
     )
 
+
+@router.get("/api/process-video-stream")
+async def resume_video_stream(
+    jobId: str,
+    from_cursor: int = Query(0, alias="from", ge=0),
+    model: str | None = None,
+    vocab_level: str | None = None,
+    targetLang: str | None = None,
+):
+    """GET 形式的重连入口（等价于 POST body 带 ``jobId`` / ``from``）。
+
+    EventSource 只能发 GET（带 Cookie 的同源 SSE 也能用），所以保留这条路径；
+    校验/续传语义与 POST 完全一致：未知 job → 404，别人的 job → 403。
+    """
+    lang = _target_lang_or_400(targetLang)
+    return _resume_stream_response(
+        job_id=jobId,
+        lang=lang,
+        from_cursor=from_cursor,
+        model=model,
+        vocab_level=vocab_level,
+    )
+
+
+@router.get("/api/jobs/{job_id}")
+def get_job(job_id: str):
+    """任务状态/进度/是否可续（前端刷新后先问这里，再决定要不要重连）。
+
+    - 404：任务不存在（或旧库未跑 0005 迁移）；
+    - 403：任务属于别的用户（不泄漏内容，只给语义）；
+    - 200：``status`` / ``cursor`` / ``total`` / ``canResume`` / ``error``。
+    """
+    job = _load_job_or_http(job_id)
+    return _job_view(job)
 
 @router.get("/api/history")
 def list_history(targetLang: str | None = None):

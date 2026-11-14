@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0004_target_lang"
+HEAD = "0005_jobs"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -66,7 +66,7 @@ def test_upgrade_head_from_empty_db(tmp_path):
     tables = table_names(db)
     assert {
         "users", "sessions", "learning_events",
-        "ai_usage", "ai_quota", "alembic_version",
+        "ai_usage", "ai_quota", "jobs", "alembic_version",
     } <= tables
     assert revision(db) == HEAD
 
@@ -157,6 +157,79 @@ def test_upgrade_head_from_empty_db(tmp_path):
     assert [quota[c]["pk"] for c in ("user_id", "day", "feature")] == [1, 2, 3]
     assert quota["used_units"]["notnull"] == 1
     assert quota["limit_units"]["notnull"] == 1
+
+    # 任务表（0005_jobs）：字段契约 + 用户/时间索引 + 未完成任务的部分唯一索引
+    task_table = columns(db, "jobs")
+    assert list(task_table) == [
+        "id",
+        "user_id",
+        "kind",
+        "content_ref",
+        "target_lang",
+        "status",
+        "cursor",
+        "payload",
+        "error",
+        "created_at",
+        "updated_at",
+    ]
+    assert task_table["id"]["pk"] == 1
+    assert task_table["id"]["notnull"] == 1  # SQLAlchemy 建表默认带 NOT NULL
+    for required in (
+        "user_id", "kind", "content_ref", "target_lang",
+        "status", "cursor", "created_at", "updated_at",
+    ):
+        assert task_table[required]["notnull"] == 1, required
+    assert task_table["payload"]["notnull"] == 0
+    assert task_table["error"]["notnull"] == 0
+    assert "zh-CN" in str(task_table["target_lang"]["default"])
+    assert "queued" in str(task_table["status"]["default"])
+
+    job_indexes = index_names(db, "jobs")
+    assert "ix_jobs_user_created" in job_indexes
+    assert "ux_jobs_active" in job_indexes
+    # 部分唯一索引只约束未完成状态：done/failed 的历史任务可以并存
+    with sqlite3.connect(db) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' AND name='ux_jobs_active'"
+        ).fetchone()
+    assert row and "UNIQUE" in row[0].upper() and "WHERE status IN" in row[0]
+
+    # CHECK 约束：状态拼错写不进去（内部写入路径兜底）
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "INSERT INTO jobs (id, user_id, kind, content_ref, target_lang, status, "
+            "cursor, payload, error, created_at, updated_at) "
+            "VALUES ('j1', 'u1', 'process_video', 'vid', 'zh-CN', 'queued', 0, NULL, "
+            "NULL, 1, 1)"
+        )
+        # 同一 (user, content, lang) 只能有一条未完成 job
+        try:
+            conn.execute(
+                "INSERT INTO jobs (id, user_id, kind, content_ref, target_lang, status, "
+                "cursor, payload, error, created_at, updated_at) "
+                "VALUES ('j2', 'u1', 'process_video', 'vid', 'zh-CN', 'partial', 0, NULL, "
+                "NULL, 2, 2)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("ux_jobs_active 应阻止同一内容出现两条未完成 job")
+        conn.execute("UPDATE jobs SET status='done' WHERE id='j1'")
+        # 完成后可以再建一条新的未完成任务
+        conn.execute(
+            "INSERT INTO jobs (id, user_id, kind, content_ref, target_lang, status, "
+            "cursor, payload, error, created_at, updated_at) "
+            "VALUES ('j3', 'u1', 'process_video', 'vid', 'zh-CN', 'queued', 0, NULL, "
+            "NULL, 3, 3)"
+        )
+        try:
+            conn.execute("UPDATE jobs SET status='bogus' WHERE id='j1'")
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("jobs.status CHECK 应拒绝未知状态")
+        conn.rollback()
 
 
 def test_baseline_schema_matches_auth_db_contract(tmp_path, monkeypatch):

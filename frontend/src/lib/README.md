@@ -13,5 +13,6 @@
 | `exporter.ts` | 收藏导出：Anki TSV（front/back/tags）与完整 CSV |
 | `tts.ts` | 浏览器朗读（speechSynthesis，偏好英语音色） |
 | `toast.ts` | 轻提示总线 + `describeApiError`（把后端/网络错误转成可读中文） |
+| `jobs.ts` | 断线续传（M1 ⑤）：`sessionStorage` 里保存 `jobId`/游标（key `yt_bilingual_pending_job`）、`GET /api/jobs/{id}` 查询状态、`recordJobMeta/recordJobProgress/finishJob` 三个 SSE 事件钩子；刷新后「先查状态、可续才带 `jobId + from` 重连」的判定也在这里 |
 
 约定：localStorage key 全部带 `yt_bilingual_` 或 `sentence-` 前缀；新增持久化跟随此约定。

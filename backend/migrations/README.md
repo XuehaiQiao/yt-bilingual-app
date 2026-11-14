@@ -18,14 +18,15 @@ venv/bin/alembic stamp head              # 已是最新的库：只写版本号�
 | `0002_learning_events` | 学习事件日志 `learning_events`（append-only）+ 两个查询索引 |
 | `0003_cost_ledger` | AI 成本账本 `ai_usage`（append-only）+ 日配额 `ai_quota`（主键 `user_id, day, feature`）+ 三个查询索引 |
 | `0004_target_lang` | 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写、不做 UPDATE）；不拆配额表 |
+| `0005_jobs` | 任务表 `jobs`（`id`/`user_id`/`kind`/`content_ref`/`target_lang`/`status`/`cursor`/`payload`/`error`/`created_at`/`updated_at`，`status` 带 CHECK）+ `ix_jobs_user_created` + 部分唯一索引 `ux_jobs_active`（同一 user+kind+content+语言最多一个未完成 job）；见 [backend/README「任务表与断线续传」](../README.md#任务表与断线续传m1-⑤jobs--sse-重连) |
 
 ## 约定
 
-- **迁移 id 递增**：新迁移用 `--rev-id 0005_xxx`，文件名模板是 `%(rev)s`（Alembic 自动补 `.py`）。
+- **迁移 id 递增**：新迁移用 `--rev-id 0006_xxx`，文件名模板是 `%(rev)s`（Alembic 自动补 `.py`）。
 - **基线幂等**：`0001` / `0002` 都用 inspector 判断表/索引是否已存在，所以对已有
   `users`/`sessions` 的旧库直接 `alembic upgrade head` 也安全（不重建、不动数据）。
-- **不要对旧库直接 `stamp head`**：会把 `0002` / `0003` / `0004` 也标记成已应用，`learning_events`、
-  `ai_usage` / `ai_quota` / `target_lang` 列永远不会被创建。旧库的正确姿势是 `stamp 0001_baseline` → `upgrade head`。
+- **不要对旧库直接 `stamp head`**：会把 `0002` / `0003` / `0004` / `0005` 也标记成已应用，`learning_events`、
+  `ai_usage` / `ai_quota` / `target_lang` 列、`jobs` 表永远不会被创建。旧库的正确姿势是 `stamp 0001_baseline` → `upgrade head`。
 - **`downgrade` 会 DROP 表**（`0001` 的 down 会删 `users`/`sessions`），只用于空库/
   测试回滚，别在真实库上跑。
 - **`learning_events` 是 append-only**：迁移只建表和索引，不建触发器；保留期硬删

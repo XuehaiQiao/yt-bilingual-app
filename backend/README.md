@@ -17,6 +17,7 @@
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
+| `jobs.py` | 任务表 `jobs` 的读写层 + 单进程执行互斥（M1 ⑤）：`create_or_reuse`（同 user+kind+content_ref+targetLang 的未完成 job 复用，进程内锁 + 部分唯一索引兜底幂等）、`get`、`update_progress/mark_running/mark_done/mark_failed/settle_interrupted`（cursor 只增不减）、`try_acquire/release/is_active`（同一 job 同时只允许一条流生成，第二个请求 409/SSE error，杜绝重复付费）。表缺失（旧库没跑 0005）时全部降级为 no-op，只告警一次，视频处理照常 |
 | `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额** |
 | `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`；`ln_session` Cookie 与登录失败限流 |
 | `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；无用户 → 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取 |
@@ -24,13 +25,13 @@
 | `ratelimit.py` | 进程内固定窗口限速（M1 ⑦）：注册/登录按 IP、估价/处理/查词按用户；超限 429 + `Retry-After`；不依赖 Redis。桶与上限见下文「安全最小集」 |
 | `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。这些函数是同步阻塞实现，async 调用方负责放进线程 |
 | `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词 + 高亮子串/NFC 校验 + 越南语 CJK 泄漏重试）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。prompt 里的语言名来自 `languages`（不再硬编码 "Chinese"）；JSON 字段名 `zh_text`/`zh_word` 保持 P0 兼容、值为目标语言。LLM 生成调用经 `llm.generate_json_async` / `generate_text_async`（全局并发闸 + 线程）执行，异常仍照常抛回；批间 `batch_pause` 语义不变；翻译/总结带日配额与降级链，`feature` / `user_id` / `target_lang` 缺省取请求上下文（本地剧集传 `local_show`） |
-| `routes_videos.py` | `/api/models`（全局模型栏数据源；`targetLang` → `targetLang`/`recommended`）、`/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心；事件带 `targetLang`，`meta` 另带 `sourceLang`/`promptVersion`；流内慢任务期间按 `SSE_HEARTBEAT_INTERVAL`（默认 15s）发 `: ping` 注释行心跳）、`/api/history*`（按 `targetLang` 只读写对应语言目录；本地剧集缓存按 `episodes.json` 补 `youtube_video_id`）、`/api/channel-updates`（yt-dlp 频道拉取，放线程并发、最多 8 个） |
+| `routes_videos.py` | `/api/models`（全局模型栏数据源；`targetLang` → `targetLang`/`recommended`）、`/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心；事件带 `targetLang`，`meta` 另带 `sourceLang`/`promptVersion`；流内慢任务期间按 `SSE_HEARTBEAT_INTERVAL`（默认 15s）发 `: ping` 注释行心跳；`jobId`/`from` 可从游标续传，POST body 与 GET query 等价）、`/api/jobs/{id}`（任务状态/进度/`canResume`，见下文「任务表与断线续传」）、`/api/history*`（按 `targetLang` 只读写对应语言目录；本地剧集缓存按 `episodes.json` 补 `youtube_video_id`）、`/api/channel-updates`（yt-dlp 频道拉取，放线程并发、最多 8 个） |
 | `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集：`targetLang` 决定缓存目录/prompt/模型路线；翻译与补译跟随请求 `model`，新处理结果与缓存 payload 记录 `model` 和 `target_lang`，批间隔按 `llm.batch_pause(model)`；非中文不写中文固定集名标签，改为 `summary_kind="episode_label"` + 季/集/标题结构化字段；有视频映射的集在 `metadata` 补 `youtube_video_id` / `youtube_title`）、`/api/shows/{id}/processed?targetLang=`、`/api/sentences*`（句子精背） |
 | `local_shows.py` | 本地剧集 → YouTube 视频映射：`episode_video_map(show_id)` / `lookup_episode_video(show_id, season, episode)` 读取 `subtitles/<show_id>/episodes.json`；缺失/损坏一律降级为无映射并打日志，路径限制在 `SUBTITLES_DIR` 内 |
 | `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
 | `routes_user.py` | `/api/define`（词典：`targetLang` 决定缓存目录与 prompt 语言；语境缓存 → 本地 ECDICT（**仅 zh-CN**）→「已配 Key 的候选模型」；vi-VN 跳过 ECDICT 直接 LLM，只有 DeepSeek Key 也能查；缺省 `model` 时 zh 候选链首选 `DEFAULT_MODEL`、其他语言首选该语言路线；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；响应带 `targetLang`，可选 `pos_label` / `example_translation`；模型结果写按语言隔离的缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -141,7 +142,7 @@ venv/bin/python -m pytest tests/test_i18n_target_lang.py -q   # 目标语言 P0�
 
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 
@@ -161,7 +162,7 @@ venv/bin/alembic stamp head              # 已经是最新版本的库：只标�
 - **不要对旧库直接 `stamp head`**：会把 `0002` 也标记成已应用，`learning_events` 永远不会被建出来。正确顺序是 `stamp 0001_baseline` → `upgrade head`（或直接 `upgrade head`）。
 - `downgrade` 会 DROP 表（`0001` 的 down 会删 `users`/`sessions`），只用于空库/测试回滚，别在真实库上跑。
 - 启动时 `main.py` 的 lifespan 只读检查一次迁移状态：库存在但没迁移会打 WARNING（启动照常成功）；`emit_event` 在表缺失时跳过写入并记 ERROR，学习主流程不受影响。
-- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0003_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
+- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0006_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
 
 学习事件（`events.py`）：
 
@@ -263,6 +264,49 @@ venv/bin/python -m pytest tests/test_ai_ledger.py tests/test_migrations.py -q
 ```
 
 覆盖：迁移到 head、记账读回、未知价按最贵、记账失败不抛、配额 UPSERT/超限 429、预算硬闸、未迁移 fail-open、降级链顺序（大陆不含 Gemini / 海外包含）、mock provider 的 usage 落库、`/api/define` 429。
+
+## 任务表与断线续传（M1 ⑤：jobs + SSE 重连）
+
+规格依赖：计划书 §7.3 A-4 / §8.1 `jobs`、[specs/001-streaming-pipeline](../specs/001-streaming-pipeline/spec.md)。目标：**刷新/断网后接着看已生成的字幕，不重复付费**。
+
+### 表与状态机
+
+`jobs`（迁移 `0005_jobs`）：`id`（uuid4 hex）/ `user_id` / `kind`（`process_video` / `local_show`）/ `content_ref`（YouTube videoId）/ `target_lang` / `status` / `cursor` / `payload`（JSON 元数据）/ `error` / `created_at` / `updated_at`。
+
+```
+queued ──开始──▶ running ──每批落盘──▶ running（cursor 前进）
+running ──正常结束──▶ done
+running ──断线/取消──▶ partial（cursor>0）| queued（还没生成）
+queued/running/partial ──显式错误──▶ failed
+```
+
+- `cursor` = **已落盘译文的有效 block 数**（仍是 `[未翻译]` 的不算），只增不减（SQL `MAX(cursor, ?)`）；`payload.total` 是总句数。
+- **产物就是 `history/` 下按批落盘的缓存 JSON**（`_stream_translate` 每批写盘）：job 不复制字幕正文，删缓存 → `GET /api/jobs/{id}` 的 `canResume=false`、续传请求 410 并把任务标 failed。
+- **幂等**：同一 `(user_id, kind, content_ref, target_lang)` 同时最多一个未完成 job（`jobs.create_or_reuse` 进程内锁 + 迁移里的部分唯一索引 `ux_jobs_active` 兜底）。普通请求不带 `jobId` 也会复用它；`done/failed` 的历史任务不参与复用。
+- **并发**：同一 job 的执行权在进程内（`jobs.try_acquire`）；第二条流请求拿到 409，或（极端竞态下）收到一条 `event: error` + `code=job_busy`，**都不会产生额外的 LLM 调用**。单进程部署即可，不引入独立 worker（计划书「现在不建」清单）。
+- **降级**：库文件/`jobs` 表不存在（旧库没跑迁移）时 `jobs.*` 全部是 no-op（告警一次），SSE 仍按旧行为工作，只是 `meta.jobId = null`、没有断线续传。
+
+### HTTP 契约
+
+| 端点 | 说明 |
+|---|---|
+| `POST /api/process-video-stream` | body 新增可选 `jobId` + `from`（也接受 snake_case）。不带 `jobId` = 普通请求（命中未完成 job 会自动续）；带 `jobId` = 显式续传，`url` 可省。 |
+| `GET /api/process-video-stream?jobId=…&from=N` | 与 POST 续传等价（给 `EventSource`/curl 用）。 |
+| `GET /api/jobs/{id}` | `{id, kind, contentRef, videoId, targetLang, status, cursor, total, progress:{done,total}, canResume, active, error, createdAt, updatedAt}`。 |
+
+- **401**：未登录（`main.py` 中间件统一拦截）；**404**：任务不存在/已过期（或旧库未迁移）；**403**：任务属于别的用户；**400**：续传请求的目标语言与 job 不一致；**409**：该 job 正在生成，或已失败（需要重新处理）；**410**：产物（缓存）已不存在，需要重新处理。
+- 续传语义：要补哪些句子**由缓存里的 `[未翻译]` 标记决定**，与 `from` 无关——已翻好的 block 不会再送模型；`from` 只用于事件/进度展示。SSE 的 `meta` 带 `jobId`/`cursor`/`total`/`resumed`，`batch` 带 `cursor`/`total`/`jobId`，`done` 带 `jobId`/`cursor`/`total`。
+- 已 `done` 的 job 被重连时只回放 `meta → summary → done`，**不调模型**。
+- 前端（`frontend/src/lib/jobs.ts` + `App.tsx`）：`meta` 时把 `jobId`/游标写 `sessionStorage`（`yt_bilingual_pending_job`），`batch` 推进游标，`done` 清除；刷新后先 `GET /api/jobs/{id}`，`canResume` 才带 `jobId + from` 重连，`done/failed` 直接丢弃。
+
+### 测试
+
+```bash
+cd backend
+venv/bin/python -m pytest tests/test_jobs.py tests/test_migrations.py -q
+```
+
+覆盖：建 job / cursor 推进（20→40→45）、断线 partial、续传只补缺失 block 且 LLM 调用次数不增加、无 jobId 重提交复用同一 job、已完成回放不调模型、同 job 并发 409 且不产生额外调用、8 线程并发 `create_or_reuse` 只产生一条记录、纯缓存秒开不建任务、旧库无表降级、401/403/404/410。
 
 ## 本地剧集视频映射（episodes.json）
 

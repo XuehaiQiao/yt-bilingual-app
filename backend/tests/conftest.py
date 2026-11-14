@@ -31,6 +31,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 import config  # noqa: E402
+import jobs  # noqa: E402
 import llm  # noqa: E402
 import local_dict  # noqa: E402
 import ratelimit  # noqa: E402
@@ -70,6 +71,9 @@ def isolated_data(tmp_path, monkeypatch):
     # 模块级全局缓存，用例之间要清干净，避免串味
     routes_videos._prefetch_cache.clear()
     routes_auth.reset_login_throttle()
+    # 任务表执行权/告警标记是进程内状态，按用例隔离。
+    jobs.reset_active_jobs()
+    jobs.reset_warned_state()
     # 安全最小集的进程内状态：限速计数与 LLM 并发闸统计按用例隔离。
     ratelimit.reset_rate_limits()
     llm.reset_concurrency_gate()
@@ -86,6 +90,9 @@ def isolated_data(tmp_path, monkeypatch):
 
     routes_videos._prefetch_cache.clear()
     routes_auth.reset_login_throttle()
+    # 任务表执行权/告警标记是进程内状态，按用例隔离。
+    jobs.reset_active_jobs()
+    jobs.reset_warned_state()
     ratelimit.reset_rate_limits()
     llm.reset_concurrency_gate()
     local_dict.reset()
