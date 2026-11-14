@@ -200,7 +200,7 @@ def resolve_model(model: str | None) -> str:
 # 大陆部署不配 GEMINI_API_KEY 时 Gemini 自动跳过，路线落到 Qwen/DeepSeek；
 # 这里**不把 Gemini 写进任何降级链**（降级链见 ai/quota.py，另按地域过滤）。
 DEFAULT_MODEL_ZH_CN_FALLBACK = "deepseek-chat"
-DEFAULT_MODEL_VI_VN_FALLBACK = "qwen-plus"
+DEFAULT_MODEL_VI_VN_FALLBACK = "deepseek-chat"
 
 
 def _model_route_from_env(name: str, default: list[str]) -> list[str]:
@@ -224,10 +224,11 @@ TARGET_LANG_MODEL_ROUTES: dict[str, list[str]] = {
     "zh-CN": _model_route_from_env(
         "MODEL_ROUTE_ZH_CN", ["deepseek-chat", "gemini-2.5-flash"]
     ),
-    # 越南语：Qwen（负责人默认）→ Gemini → DeepSeek；没配 Key 的自动跳过。
-    # 负责人 2026-11-15：模型可选、越南语默认 Qwen；Gemini 作为备选。
+    # 越南语：**暂时沿用 DeepSeek**（负责人 2026-11-15：Qwen 正式启用前先走
+    # DeepSeek）；Qwen / Gemini 保留为后续候选。启用 Qwen 时把 MODEL_ROUTE_VI_VN
+    # 设为 "qwen-plus,deepseek-chat" 并配置 QWEN_BASE_URL / QWEN_API_KEY 即可。
     "vi-VN": _model_route_from_env(
-        "MODEL_ROUTE_VI_VN", ["qwen-plus", "gemini-2.5-flash", "deepseek-chat"]
+        "MODEL_ROUTE_VI_VN", ["deepseek-chat", "qwen-plus", "gemini-2.5-flash"]
     ),
 }
 

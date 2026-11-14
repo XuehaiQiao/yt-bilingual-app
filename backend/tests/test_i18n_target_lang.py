@@ -313,13 +313,13 @@ def test_estimate_cost_and_models_accept_target_lang(client, monkeypatch):
     assert estimate.status_code == 200
     data = estimate.json()
     assert data["targetLang"] == "vi-VN"
-    assert data["recommendedModel"] == "qwen-plus"
+    assert data["recommendedModel"] == "deepseek-chat"
 
     models = client.get("/api/models", params={"targetLang": "vi-VN"}).json()
     assert models["targetLang"] == "vi-VN"
-    assert models["default"] == "qwen-plus"
+    assert models["default"] == "deepseek-chat"
     assert models["recommended"] == [
-        "qwen-plus", "gemini-2.5-flash", "deepseek-chat",
+        "deepseek-chat", "qwen-plus", "gemini-2.5-flash",
     ]
 
     zh_models = client.get("/api/models").json()
@@ -444,20 +444,22 @@ def test_vi_dictionary_falls_back_to_deepseek_without_other_keys(client, monkeyp
 def test_model_routes_and_key_skipping(monkeypatch):
     assert config.model_route_for("zh-CN") == ["deepseek-chat", "gemini-2.5-flash"]
     assert config.model_route_for("vi-VN") == [
-        "qwen-plus", "gemini-2.5-flash", "deepseek-chat",
+        "deepseek-chat", "qwen-plus", "gemini-2.5-flash",
     ]
 
-    # conftest 配了三家 Key：vi 首选 Qwen（负责人默认）
+    # 负责人决定：Qwen 正式启用前，越南语也先用 DeepSeek。
     assert llm.resolve_model_for_target(None, "zh-CN") == "deepseek-chat"
+    assert llm.resolve_model_for_target(None, "vi-VN") == "deepseek-chat"
+    # 没有 DeepSeek Key → 落到 Qwen（conftest 配了 Key 与端点）
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    assert llm.is_available("deepseek-chat") is False
     assert llm.resolve_model_for_target(None, "vi-VN") == "qwen-plus"
-    # Qwen 只有 Key、没有端点 → 视为不可用（llm.is_available 的必需端点规则）
+    # Qwen 只有 Key、没有端点 → 视为不可用，再落到 Gemini
     monkeypatch.delenv("QWEN_BASE_URL", raising=False)
     assert llm.is_available("qwen-plus") is False
     assert llm.resolve_model_for_target(None, "vi-VN") == "gemini-2.5-flash"
-    # 再没配 Gemini → 跳过，落到 DeepSeek
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert llm.resolve_model_for_target(None, "vi-VN") == "deepseek-chat"
-    # 用户显式选择且可用时优先
+    # 用户显式选择且可用时优先（恢复 DeepSeek Key）
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-deepseek-key")
     assert llm.resolve_model_for_target("deepseek-chat", "vi-VN") == "deepseek-chat"
 
 
