@@ -110,12 +110,15 @@ VOCAB_LEVELS = {
 #   model_id      真正发给厂商的模型名（目录键是前端/请求里用的 id）
 #   api_key_env   该模型需要的密钥环境变量
 #   batch_pause   批与批之间的停顿（秒），按各家限流调
+#
+# provider = Google 的三档 Gemini **仅适合海外部署**：中国大陆无法直连
+# api 且存在合规问题，大陆商用请不要配 GEMINI_API_KEY，默认模型用 DeepSeek。
 MODEL_CATALOG = {
     "gemini-2.5-flash": {
         "name": "Gemini 2.5 Flash", "provider": "Google",
         "kind": "google", "model_id": "gemini-2.5-flash",
         "api_key_env": "GEMINI_API_KEY", "batch_pause": 4,
-        "in": 0.30, "out": 2.50, "quotaInfo": "Default · balanced quality & speed",
+        "in": 0.30, "out": 2.50, "quotaInfo": "Overseas only · balanced quality & speed",
     },
     # 2.5 Flash-Lite 已对新用户下线（404: no longer available to new users），
     # 换成官方报错里指定的 3.5 Flash-Lite。3.5 的价目还没有可靠来源，
@@ -124,7 +127,7 @@ MODEL_CATALOG = {
         "name": "Gemini 3.5 Flash-Lite", "provider": "Google",
         "kind": "google", "model_id": "gemini-3.5-flash-lite",
         "api_key_env": "GEMINI_API_KEY", "batch_pause": 4,
-        "in": None, "out": None, "quotaInfo": "Cheapest · great for long videos",
+        "in": None, "out": None, "quotaInfo": "Overseas only · cheapest · great for long videos",
     },
     # 2.5 Pro 同样已对新用户下线（404），官方指向 3.1 Pro (preview)。
     # 预览模型在免费额度下容易 429，价格同样没有可靠来源，故留 None。
@@ -132,19 +135,40 @@ MODEL_CATALOG = {
         "name": "Gemini 3.1 Pro (preview)", "provider": "Google",
         "kind": "google", "model_id": "gemini-3.1-pro-preview",
         "api_key_env": "GEMINI_API_KEY", "batch_pause": 5,
-        "in": None, "out": None, "quotaInfo": "Highest quality · slower (preview)",
+        "in": None, "out": None, "quotaInfo": "Overseas only · highest quality · slower (preview)",
     },
     # DeepSeek 的 API 与 OpenAI 协议兼容，换 base_url 就能接。
     # 价格同样没有可核实的来源，留 None；批间隔按 1s 走（官方无 15 RPM 限制）。
+    # 大陆首发商用的默认模型就是它：api.deepseek.com 国内可直连。
     "deepseek-chat": {
         "name": "DeepSeek-V4.1-Flash", "provider": "DeepSeek",
         "kind": "openai_compatible", "model_id": "deepseek-chat",
         "base_url": "https://api.deepseek.com/v1",
         "api_key_env": "DEEPSEEK_API_KEY", "batch_pause": 1,
-        "in": None, "out": None, "quotaInfo": "OpenAI-compatible · strong Chinese",
+        "in": None, "out": None, "quotaInfo": "Default · domestic (CN) · strong Chinese",
     },
 }
-DEFAULT_MODEL = "gemini-2.5-flash"
+
+# --- 默认模型 ---
+# 产品在中国大陆首发商用：Google Gemini 在大陆不可用/不合规，默认模型改用
+# 国内可直连的 DeepSeek；Gemini 三档保留在 MODEL_CATALOG 里作海外可选项。
+# 环境变量 DEFAULT_MODEL 可覆盖（海外部署改回 Gemini 不必动代码），但值必须
+# 是 MODEL_CATALOG 里存在的 id，否则回落 deepseek-chat、只打一条警告不中断启动。
+DEFAULT_MODEL_FALLBACK = "deepseek-chat"
+
+
+def _default_model_from_env() -> str:
+    """读 `DEFAULT_MODEL` 环境变量；缺省或非法时用 `DEFAULT_MODEL_FALLBACK`。"""
+    raw = os.environ.get("DEFAULT_MODEL", "").strip()
+    if not raw:
+        return DEFAULT_MODEL_FALLBACK
+    if raw in MODEL_CATALOG:
+        return raw
+    print(f"⚠️  DEFAULT_MODEL={raw!r} 不在 MODEL_CATALOG 中，回落到 {DEFAULT_MODEL_FALLBACK}。")
+    return DEFAULT_MODEL_FALLBACK
+
+
+DEFAULT_MODEL = _default_model_from_env()
 
 
 def resolve_model(model: str | None) -> str:

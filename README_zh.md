@@ -36,7 +36,7 @@ AI 双语字幕实时流式生成 · 点击任意单词即查词典 · 内置精
 | **⚡ 即时** | **🎯 个性化** | **🔁 完整闭环** |
 | 英文字幕秒出，翻译边看边流式填充；随时中断，下次打开自动续译。 | 在一条轴上设定水平——Liftoff 到 Supernova——AI 只高亮超出水平的词；每个视频自动续播。 | 看 → 查 → 收藏 → 精听 → 导出 Anki。完整的学习闭环，不只是个播放器。 |
 
-**多模型支持。** 默认引擎仍是 Gemini；在 `.env` 里补一个 `DEEPSEEK_API_KEY`，模型选择器里的 DeepSeek 就会变为可选。选择器会读你的 Key：没配置 Key 的厂商保留显示但置灰，并提示该填哪个环境变量。
+**多模型支持。** 默认引擎是 DeepSeek（国内可直连）；Gemini 三档作为海外可选项保留——在 `.env` 里补一个 `GEMINI_API_KEY`，模型选择器里的 Gemini 就会变为可选。选择器会读你的 Key：没配置 Key 的厂商保留显示但置灰，并提示该填哪个环境变量。
 
 <br/>
 
@@ -83,14 +83,14 @@ AI 双语字幕实时流式生成 · 点击任意单词即查词典 · 内置精
 
 ## 🚀 快速开始
 
-> **环境要求：** Node 18+、Python 3.10+、一个免费的 [Gemini API key](https://aistudio.google.com/apikey)（默认模型）；[DeepSeek API key](https://platform.deepseek.com/api_keys) 为可选项。
+> **环境要求：** Node 18+、Python 3.10+，以及一个 [DeepSeek API Key](https://platform.deepseek.com/api_keys)（默认模型）；[Gemini API Key](https://aistudio.google.com/apikey) 仅海外可选——大陆不可用/不合规。
 
 ```bash
 git clone https://github.com/huthvincent/yt-bilingual-app.git
 cd yt-bilingual-app
 
 ./setup.sh                       # 安装前后端依赖
-cp .env.example .env             # 填入 GEMINI_API_KEY（可选再填 DEEPSEEK_API_KEY）
+cp .env.example .env             # 填入 DEEPSEEK_API_KEY（Gemini 仅海外可选）
 
 ./start_app.command              # macOS 一键启动（或手动起两个服务，见下）
 ```
@@ -113,8 +113,9 @@ cd frontend && npm run dev
 
 | 变量 | 位置 | 用途 |
 |---|---|---|
-| `GEMINI_API_KEY` | `.env` | **必填。** 默认模型，负责翻译、总结与词典。 |
-| `DEEPSEEK_API_KEY` | `.env` | 可选。配好后模型选择器出现 DeepSeek（OpenAI 兼容端点）。 |
+| `DEEPSEEK_API_KEY` | `.env` | **必填。** 默认模型 `deepseek-chat` 的 Key，负责翻译、总结与词典。 |
+| `GEMINI_API_KEY` | `.env` | 可选，仅海外。配好后模型选择器出现 Gemini 三档；大陆不可用/不合规。 |
+| `DEFAULT_MODEL` | `.env` | 可选。覆盖默认模型 id（默认 `deepseek-chat`）；非法值回落 `deepseek-chat`。 |
 | `WHISPER_MODEL` | `.env` | 无字幕 ASR 回退使用的 Whisper 模型大小（默认 `base`）。 |
 | `CORS_ORIGINS` | `.env` | 允许的跨域来源（逗号分隔）——公网部署前务必设置。 |
 | `API_AUTH_KEY` | `.env` | 可选的 `X-API-Key` 门禁，仅供移动端/内部客户端。**公网浏览器多用户部署不要设**——它会连 `/api/auth/*` 一起拦，登录会 401。 |

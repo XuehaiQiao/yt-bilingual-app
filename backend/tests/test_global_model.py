@@ -1,7 +1,10 @@
 """全局模型选择（后端）契约（全离线）。
 
 覆盖：
-- `GET /api/models` 暴露完整 `MODEL_CATALOG`、可用标志与默认模型；
+- `GET /api/models` 暴露完整 `MODEL_CATALOG`、可用标志与默认模型
+  （大陆首发商用默认 `deepseek-chat`；未配 `GEMINI_API_KEY` 时 Gemini 置灰）；
+- `config.DEFAULT_MODEL` 默认 `deepseek-chat`，`DEFAULT_MODEL` 环境变量可覆盖，
+  非法值回落默认，`resolve_model(None)` 与 `llm` 的缺省模型一致；
 - `/api/define` 优先用请求指定的模型，不可用/非法时安全回落到候选链，
   且候选去重、缓存仍按小写词共享（与模型无关）；
 - `/api/define` 缺省模型语义：没带 model（或空串）时候选链首位是
@@ -15,7 +18,11 @@
 不联网、不碰真实 history/ 或 subtitles/。
 """
 import json
+import os
+import subprocess
+import sys
 import types
+from pathlib import Path
 
 import pytest
 
@@ -23,6 +30,8 @@ import config
 import llm
 import routes_content
 import routes_user
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 DICT_PAYLOAD = {
     "word": "serendipity",
@@ -54,6 +63,7 @@ def test_models_endpoint_exposes_catalog_and_availability(client, monkeypatch):
 
     data = response.json()
     assert data["default"] == config.DEFAULT_MODEL
+    assert data["default"] == "deepseek-chat", "大陆商用默认模型必须是 DeepSeek"
     assert [m["id"] for m in data["models"]] == list(config.MODEL_CATALOG)
 
     by_id = {m["id"]: m for m in data["models"]}
@@ -74,6 +84,72 @@ def test_models_endpoint_exposes_catalog_and_availability(client, monkeypatch):
     assert by_id["deepseek-chat"]["available"] is False
     assert "DEEPSEEK_API_KEY" in by_id["deepseek-chat"]["quotaInfo"]
     assert by_id["gemini-2.5-flash"]["available"] is True
+
+
+def test_models_endpoint_gemini_unavailable_without_key(client, monkeypatch):
+    """大陆部署只配 DeepSeek：默认模型可用，Gemini 三档全部置灰。"""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    data = client.get("/api/models").json()
+    assert data["default"] == "deepseek-chat"
+
+    by_id = {m["id"]: m for m in data["models"]}
+    for gemini_id in ("gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview"):
+        assert by_id[gemini_id]["provider"] == "Google"
+        assert by_id[gemini_id]["available"] is False
+        assert "GEMINI_API_KEY" in by_id[gemini_id]["quotaInfo"]
+    assert by_id["deepseek-chat"]["available"] is True
+
+
+def test_default_model_is_deepseek_and_resolve_falls_back(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-deepseek-key")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    assert config.DEFAULT_MODEL == config.DEFAULT_MODEL_FALLBACK == "deepseek-chat"
+    assert config.resolve_model(None) == "deepseek-chat"
+    assert config.resolve_model("") == "deepseek-chat"
+    assert config.resolve_model("not-a-real-model") == "deepseek-chat"
+    assert config.resolve_model("gemini-2.5-flash") == "gemini-2.5-flash"
+
+
+def test_llm_helpers_work_for_deepseek(monkeypatch):
+    """`is_available` / `batch_pause` 对默认的 DeepSeek 必须有意义。"""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-deepseek-key")
+    assert llm.is_available(None) is True, "None 应解析到默认模型"
+    assert llm.is_available("deepseek-chat") is True
+    assert llm.batch_pause(None) == llm.batch_pause("deepseek-chat") == 1.0
+    assert llm._spec(None)["provider"] == "DeepSeek"
+
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    assert llm.is_available("deepseek-chat") is False
+
+
+def _config_default_in_subprocess(monkeypatch, env_value):
+    """在干净的子进程里 import config，验证「启动时」读取环境变量的行为。"""
+    env = {k: v for k, v in os.environ.items() if k != "DEFAULT_MODEL"}
+    if env_value is not None:
+        env["DEFAULT_MODEL"] = env_value
+    result = subprocess.run(
+        [sys.executable, "-c", "import config; print('RESOLVED=' + config.DEFAULT_MODEL)"],
+        cwd=str(BACKEND_DIR),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stderr
+    resolved = [ln for ln in result.stdout.splitlines() if ln.startswith("RESOLVED=")]
+    assert resolved, f"子进程没有输出默认模型: {result.stdout}{result.stderr}"
+    return resolved[-1].split("=", 1)[1]
+
+
+def test_default_model_env_override(monkeypatch):
+    assert _config_default_in_subprocess(monkeypatch, "gemini-2.5-flash") == "gemini-2.5-flash"
+
+
+@pytest.mark.parametrize("bad_value", [None, "", "not-a-real-model"])
+def test_default_model_env_invalid_falls_back(monkeypatch, bad_value):
+    assert _config_default_in_subprocess(monkeypatch, bad_value) == "deepseek-chat"
 
 
 # ---------------------------------------------------------------------------
@@ -194,11 +270,13 @@ def test_define_default_candidate_chain_starts_with_default_model():
 
 def test_define_default_chain_skips_default_without_key(monkeypatch):
     """默认模型没配 Key 时跳过它，而不是让查词 502。"""
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
 
     candidates = routes_user._dict_model_candidates()
 
-    assert candidates == ["deepseek-chat"]
+    assert config.DEFAULT_MODEL not in candidates
+    assert candidates[0] == routes_user.DICT_MODEL, "默认模型不可用时退到词典小模型"
+    assert set(candidates) == set(config.MODEL_CATALOG) - {config.DEFAULT_MODEL}
 
 
 @pytest.mark.parametrize("payload", [{}, {"model": ""}, {"model": None}])
@@ -232,14 +310,14 @@ def test_define_with_model_uses_it_and_reports_it(client, monkeypatch):
 
 def test_define_reports_actual_model_after_fallback(client, monkeypatch):
     calls = []
-    _fake_generate_json(monkeypatch, calls, fail_models={"deepseek-chat"})
+    _fake_generate_json(monkeypatch, calls, fail_models={"gemini-2.5-flash"})
 
     response = client.post(
-        "/api/define", json={"word": "fallbackmodel", "model": "deepseek-chat"}
+        "/api/define", json={"word": "fallbackmodel", "model": "gemini-2.5-flash"}
     )
 
     assert response.status_code == 200
-    assert calls == ["deepseek-chat", config.DEFAULT_MODEL]
+    assert calls == ["gemini-2.5-flash", config.DEFAULT_MODEL]
     data = response.json()
     assert data["model"] == config.DEFAULT_MODEL, "降级后应报告实际成功的模型"
     assert data["modelName"] == config.MODEL_CATALOG[config.DEFAULT_MODEL]["name"]

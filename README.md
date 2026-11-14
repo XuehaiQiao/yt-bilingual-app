@@ -36,7 +36,7 @@ Most language apps make you study *their* content. Lingua Nova flips that: paste
 | **⚡ Instant** | **🎯 Personal** | **🔁 Complete** |
 | English subtitles appear the moment they're fetched — translations stream in live while you watch. Stop anytime; it resumes where it left off. | Set your level on a single axis — Liftoff to Supernova — and the AI highlights only words *above* it. Reopen any video and continue from your last position. | Watch → look up → collect → drill → export to Anki. The whole learning loop, not just a player. |
 
-**Multi-model by design.** Gemini is the default engine; add a `DEEPSEEK_API_KEY` to `.env` and DeepSeek becomes selectable in the in-app model picker. The picker is key-aware — providers whose key isn't configured stay visible but greyed out, naming the variable to set.
+**Multi-model by design.** DeepSeek is the default engine (reachable from mainland China); the Gemini tiers stay as a selectable overseas option — add a `GEMINI_API_KEY` to `.env` and they become available in the in-app model picker. The picker is key-aware — providers whose key isn't configured stay visible but greyed out, naming the variable to set.
 
 <br/>
 
@@ -83,14 +83,14 @@ The interface is fully responsive — the same synced bilingual transcript, tap-
 
 ## 🚀 Quick Start
 
-> **Prereqs:** Node 18+, Python 3.10+, and a free [Gemini API key](https://aistudio.google.com/apikey) (the default model). A [DeepSeek API key](https://platform.deepseek.com/api_keys) is optional.
+> **Prereqs:** Node 18+, Python 3.10+, and a [DeepSeek API key](https://platform.deepseek.com/api_keys) (the default model). A [Gemini API key](https://aistudio.google.com/apikey) is optional and only for overseas deployments — Gemini is unavailable/incompatible in mainland China.
 
 ```bash
 git clone https://github.com/huthvincent/yt-bilingual-app.git
 cd yt-bilingual-app
 
 ./setup.sh                       # installs frontend + backend deps
-cp .env.example .env             # then paste your GEMINI_API_KEY (optionally DEEPSEEK_API_KEY)
+cp .env.example .env             # then paste your DEEPSEEK_API_KEY (Gemini: overseas only)
 
 ./start_app.command              # macOS one-click (or run the two commands below)
 ```
@@ -113,8 +113,9 @@ Open **http://localhost:5173**, paste a YouTube link, set your level on the axis
 
 | Variable | Where | Purpose |
 |---|---|---|
-| `GEMINI_API_KEY` | `.env` | **Required.** Default model for translation, summaries, and the dictionary. |
-| `DEEPSEEK_API_KEY` | `.env` | Optional. Unlocks DeepSeek in the model picker (OpenAI-compatible endpoint). |
+| `DEEPSEEK_API_KEY` | `.env` | **Required.** Key for the default model `deepseek-chat` (translation, summaries, dictionary). |
+| `GEMINI_API_KEY` | `.env` | Optional, overseas only. Unlocks the Gemini tiers in the model picker; unavailable/incompatible in mainland China. |
+| `DEFAULT_MODEL` | `.env` | Optional. Overrides the default model id (`deepseek-chat`); unknown values fall back to `deepseek-chat`. |
 | `WHISPER_MODEL` | `.env` | Whisper size for the no-captions ASR fallback (`base` default). |
 | `CORS_ORIGINS` | `.env` | Comma-separated allowed origins — set before deploying publicly. |
 | `API_AUTH_KEY` | `.env` | Optional X-API-Key gate for mobile/internal clients. **Do not set it for a public browser deployment** — it also blocks `/api/auth/*`, so logins fail with 401. |

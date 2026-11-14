@@ -3,12 +3,14 @@
 启动：`source venv/bin/activate && uvicorn main:app --port 8000`（入口永远是 `main:app`）。
 验证：`venv/bin/python -m py_compile *.py`；离线测试：`venv/bin/python -m pytest tests -q`（测试全程离线、不联网）。环境变量见 [开发指南](../docs/开发指南.md)。
 
+> **默认模型是 `deepseek-chat`**（DeepSeek，国内可直连，大陆首发商用默认）；Gemini 三档保留在 `MODEL_CATALOG` 里作为**海外可选**（大陆不可用/不合规）。默认模型可用环境变量 `DEFAULT_MODEL` 覆盖（必须是目录里的 id，非法值回落 `deepseek-chat`），`/api/models` 的 `default` 字段与 `resolve_model(None)` 都跟随它。
+
 ## 文件说明
 
 | 文件 | 职责 |
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、用户会话中间件（Cookie → SQLite → `request.state.user` + 数据目录 ContextVar）、挂载四个路由模块、`/health`。**不放业务逻辑** |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外）、`DEFAULT_MODEL`（默认 `deepseek-chat`，可用同名环境变量覆盖）、`resolve_model`（未知/缺省 → 默认模型）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理 |
 | `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`；`ln_session` Cookie 与登录失败限流 |
 | `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；无用户 → 回落 `config.HISTORY_DIR`。所有用户数据路径必须从这里取 |
