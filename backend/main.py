@@ -14,6 +14,7 @@
 - routes_content.py  本地剧集 + 句子精背
 - routes_user.py     词典 / 收藏 / 订阅
 - routes_review.py   生词复习队列 / 作答 / 暂停 / 统计（M2）
+- routes_quiz.py     理解题出题 / 作答 / 结果（M3）
 - observability.py   结构化访问日志 / request_id / 只读 /healthz
 
 请求链路（从外到内）：CORS → 访问日志（request_id）→ API_AUTH_KEY → 身份
@@ -45,6 +46,7 @@ import observability
 import ratelimit
 import routes_auth
 import routes_content
+import routes_quiz
 import routes_review
 import routes_user
 import routes_videos
@@ -159,6 +161,7 @@ app.include_router(routes_videos.router)
 app.include_router(routes_content.router)
 app.include_router(routes_user.router)
 app.include_router(routes_review.router)
+app.include_router(routes_quiz.router)
 
 # 必须最后注册：Starlette 后注册的中间件在最外层，401 响应才能带上 CORS 头，
 # 浏览器里的前端才看得到真正的错误信息。

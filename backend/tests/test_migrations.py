@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0006_review_engine"
+HEAD = "0007_quiz"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -67,7 +67,9 @@ def test_upgrade_head_from_empty_db(tmp_path):
     assert {
         "users", "sessions", "learning_events",
         "ai_usage", "ai_quota", "jobs",
-        "word_states", "review_logs", "word_sources", "alembic_version",
+        "word_states", "review_logs", "word_sources",
+        "content_items", "questions", "attempts",
+        "alembic_version",
     } <= tables
     assert revision(db) == HEAD
 
@@ -320,6 +322,200 @@ def test_upgrade_head_from_empty_db(tmp_path):
         for row in fk_rows
     ), "word_sources 应外键引用 word_states(id) ON DELETE CASCADE"
 
+    # 理解题三表（0007_quiz）
+    content_items = columns(db, "content_items")
+    assert list(content_items) == [
+        "id",
+        "user_id",
+        "kind",
+        "content_ref",
+        "target_lang",
+        "content_hash",
+        "title",
+        "status",
+        "prompt_version",
+        "created_at",
+    ]
+    assert content_items["id"]["pk"] == 1
+    assert content_items["id"]["notnull"] == 1
+    for required in (
+        "user_id", "kind", "content_ref", "target_lang", "content_hash",
+        "title", "status", "prompt_version", "created_at",
+    ):
+        assert content_items[required]["notnull"] == 1, required
+    assert "zh-CN" in str(content_items["target_lang"]["default"])
+    assert "draft" in str(content_items["status"]["default"])
+    assert "quiz.v1" in str(content_items["prompt_version"]["default"])
+
+    with sqlite3.connect(db) as conn:
+        content_unique_sets = []
+        for row in conn.execute("PRAGMA index_list(content_items)"):
+            if row[2]:
+                content_unique_sets.append(
+                    tuple(
+                        col[2]
+                        for col in conn.execute(f"PRAGMA index_info({row[1]})")
+                    )
+                )
+    assert ("user_id", "content_ref", "target_lang") in content_unique_sets
+
+    questions = columns(db, "questions")
+    assert list(questions) == [
+        "id",
+        "content_item_id",
+        "ordinal",
+        "question_type",
+        "prompt",
+        "options",
+        "answer_index",
+        "evidence_block_id",
+        "evidence_start",
+        "evidence_end",
+        "explanation",
+        "status",
+        "model",
+        "created_at",
+    ]
+    assert questions["id"]["pk"] == 1
+    assert questions["id"]["notnull"] == 1
+    for required in (
+        "content_item_id", "ordinal", "question_type", "prompt", "options",
+        "answer_index", "explanation", "status", "created_at",
+    ):
+        assert questions[required]["notnull"] == 1, required
+    for optional in (
+        "evidence_block_id", "evidence_start", "evidence_end", "model",
+    ):
+        assert questions[optional]["notnull"] == 0, optional
+    assert "draft" in str(questions["status"]["default"])
+    assert "ix_questions_content_item" in index_names(db, "questions")
+
+    attempts = columns(db, "attempts")
+    assert list(attempts) == [
+        "id",
+        "user_id",
+        "question_id",
+        "chosen_index",
+        "is_correct",
+        "answered_at",
+        "elapsed_ms",
+    ]
+    assert attempts["id"]["pk"] == 1
+    for required in (
+        "user_id", "question_id", "chosen_index", "is_correct", "answered_at",
+    ):
+        assert attempts[required]["notnull"] == 1, required
+    assert attempts["elapsed_ms"]["notnull"] == 0
+    attempt_indexes = index_names(db, "attempts")
+    assert "ix_attempts_user_answered" in attempt_indexes
+    assert "ix_attempts_question" in attempt_indexes
+
+    with sqlite3.connect(db) as conn:
+        fk_rows = conn.execute("PRAGMA foreign_key_list(questions)").fetchall()
+        assert any(
+            row[2] == "content_items"
+            and row[3] == "content_item_id"
+            and row[4] == "id"
+            and row[6] == "CASCADE"
+            for row in fk_rows
+        ), "questions 应外键引用 content_items(id) ON DELETE CASCADE"
+        fk_rows = conn.execute("PRAGMA foreign_key_list(attempts)").fetchall()
+        assert any(
+            row[2] == "questions"
+            and row[3] == "question_id"
+            and row[4] == "id"
+            and row[6] == "CASCADE"
+            for row in fk_rows
+        ), "attempts 应外键引用 questions(id) ON DELETE CASCADE"
+
+    # 理解题三表的 CHECK / UNIQUE / FK 由数据库兜底。
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(
+            "INSERT INTO content_items (id, user_id, kind, content_ref, "
+            "target_lang, content_hash, title, status, prompt_version, created_at) "
+            "VALUES ('ci1', 'u1', 'video', 'vid1', 'zh-CN', 'hash', 'Title', "
+            "'ready', 'quiz.v1', 1000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO content_items (id, user_id, kind, content_ref, "
+                "target_lang, content_hash, title, status, prompt_version, created_at) "
+                "VALUES ('ci2', 'u1', 'video', 'vid1', 'zh-CN', 'hash2', 'Title2', "
+                "'ready', 'quiz.v1', 1001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError(
+                "UNIQUE(user_id, content_ref, target_lang) 应阻止重复内容项"
+            )
+        try:
+            conn.execute("UPDATE content_items SET kind='audio' WHERE id='ci1'")
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("content_items.kind CHECK 应拒绝未知类型")
+        try:
+            conn.execute("UPDATE content_items SET status='published' WHERE id='ci1'")
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("content_items.status CHECK 应拒绝未知状态")
+
+        conn.execute(
+            "INSERT INTO questions (id, content_item_id, ordinal, question_type, "
+            "prompt, options, answer_index, evidence_block_id, evidence_start, "
+            "evidence_end, explanation, status, model, created_at) "
+            "VALUES ('q1', 'ci1', 1, 'mcq', 'Question?', '[\"a\",\"b\",\"c\",\"d\"]', "
+            "0, '1', 1000, 3000, 'explanation', 'approved', 'model-x', 1000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO questions (id, content_item_id, ordinal, question_type, "
+                "prompt, options, answer_index, explanation, status, created_at) "
+                "VALUES ('q2', 'ci1', 2, 'essay', 'Q?', '[]', 0, '', 'approved', 1000)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("questions.question_type CHECK 应拒绝未知题型")
+        try:
+            conn.execute(
+                "INSERT INTO questions (id, content_item_id, ordinal, question_type, "
+                "prompt, options, answer_index, explanation, status, created_at) "
+                "VALUES ('q3', 'ci1', 3, 'mcq', 'Q?', '[]', 0, '', 'pending', 1000)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("questions.status CHECK 应拒绝未知状态")
+
+        conn.execute(
+            "INSERT INTO attempts (user_id, question_id, chosen_index, is_correct, "
+            "answered_at, elapsed_ms) "
+            "VALUES ('u1', 'q1', 2, 0, 1000, 1234)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO attempts (user_id, question_id, chosen_index, is_correct, "
+                "answered_at) VALUES ('u1', 'q1', 0, 2, 1001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("attempts.is_correct CHECK 应只允许 0/1")
+        try:
+            conn.execute(
+                "INSERT INTO attempts (user_id, question_id, chosen_index, is_correct, "
+                "answered_at) VALUES ('u1', 'missing-question', 0, 1, 1002)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("attempts 外键应拒绝不存在的 question_id")
+        conn.rollback()
+
     # CHECK / UNIQUE 由数据库兜底：重复词、非法 state、非法 rating、孤儿来源都写不进去。
     with sqlite3.connect(db) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
@@ -487,3 +683,23 @@ def test_review_engine_downgrade_to_0005_and_back(tmp_path):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
     assert revision(db) == HEAD
     assert {"word_states", "review_logs", "word_sources"} <= table_names(db)
+
+
+def test_quiz_downgrade_to_0006_and_back(tmp_path):
+    """0007 单独回滚：只删理解题三表，复习/任务/更早的表保留；再升级可恢复。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    assert {"content_items", "questions", "attempts"} <= table_names(db)
+
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0006_review_engine"), "downgrade 0006_review_engine"
+    )
+    assert revision(db) == "0006_review_engine"
+    remaining = table_names(db)
+    assert not ({"content_items", "questions", "attempts"} & remaining)
+    assert "word_states" in remaining
+    assert "jobs" in remaining and "users" in remaining
+
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert revision(db) == HEAD
+    assert {"content_items", "questions", "attempts"} <= table_names(db)

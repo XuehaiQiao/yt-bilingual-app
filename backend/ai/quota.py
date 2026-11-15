@@ -5,7 +5,7 @@
 1. **每用户每功能日限额**：``ai_quota`` 里 ``(user_id, day, feature)`` 的
    ``used_units / limit_units``，原子 UPSERT 递增；免费额度默认值见
    ``config.AI_DAILY_QUOTA_*``（翻译 60 批 ≈ 120 分钟视频、总结 10 次、词典
-   200 次、本地剧集 60 批）。
+   200 次、本地剧集 60 批、理解题 30 个 lesson）。
 2. **每用户日预算**：``ai_usage`` 当日 SUM ≥ ``AI_DAILY_BUDGET_USER_USD``
    → ``BudgetExceeded``。
 3. **全局日预算**：全站当日 SUM ≥ ``AI_DAILY_BUDGET_GLOBAL_USD``
@@ -43,6 +43,7 @@ _FEATURE_LIMIT_ATTRS = {
     "summary": "AI_DAILY_QUOTA_SUMMARY",
     "define": "AI_DAILY_QUOTA_DEFINE",
     "local_show": "AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES",
+    "quiz": "AI_DAILY_QUOTA_QUIZ",
 }
 
 _warned_missing_tables = False

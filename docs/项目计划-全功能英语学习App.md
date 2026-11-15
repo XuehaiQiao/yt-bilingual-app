@@ -1075,6 +1075,7 @@ jobs 1─1 artifact_dir（data/jobs/<id>/）
 | **验收** | ① **引文存在率 100%**（机械校验拦截，不达标即丢弃）；② **答案可证率 ≥90%**（规则 + 双模型复核 + 抽检）；③ **同一用户同一内容只生成一次**（跨用户复用受 `derivative_policy` 约束）；④ 每题平均成本 < $0.005；⑤ 答错能跳到证据时间点（±300 ms）；⑥ 空数组场景显示「这集暂无练习」而非硬编 |
 | **人日** | **19**（工程 11 / 教研 5.5 / 设计 2 / 合规 0.5） |
 | **依赖** | M1（账本/配额/内容模型/schema）；D-7（第三方内容能否被 AI 加工）；**D-19（`target_lang` 与越南语模型选型；英文/中文路径不阻塞）**；**D-17 仅大陆阶段阻塞** |
+| **进度（2026-11-15，M3 理解题后端）** | **M3 的「3 题 + 证据回跳」后端已完成**：`0007_quiz`（`content_items` / `questions` / `attempts`，`UNIQUE(user_id,content_ref,target_lang)` + 证据 block/毫秒时间点 + `(user_id,answered_at)` 索引）、`backend/quiz.py`（读已有双语字幕的 video/local_show，≥8 句；`(content_hash, prompt_version)` 缓存；结构闸 mcq 4 选 1 / tf 判断 + 内容闸英文题面/证据相关；失败重试 1 次、仍失败该题 rejected；作答写 `quiz_answer` 事件）、`backend/routes_quiz.py`（start/questions/answer/result，需登录、游客 403、越权 404、未迁移 503）、`tests/test_quiz.py` 16 个离线测试 + 迁移升级/回滚断言；全量 **319 测试绿**，8001 临时实例（/tmp + mock llm）实测「start → 3 题 → answer 错 → 证据 block 1 / 1.0–3.0s（1000–3000ms） → result 0/1/正确率 0 → 二次 start 仅 1 次 LLM」。规格：[specs/014](../specs/014-quiz/spec.md)。**M3 整阶段未完成**（前端答题/回跳 UI、1 句产出、举报/版权台账、种子题库未做） |
 
 #### M4 定位与难度（W15–W18，**14 人日**）
 

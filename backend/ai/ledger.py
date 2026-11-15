@@ -42,12 +42,13 @@ logger = logging.getLogger(__name__)
 
 # 与计划书 §7.4 / M1 ② 对齐的功能枚举。写入层严格校验：拼错的功能名会让
 # 「花在哪个功能」失真，宁可丢一条并告警，也不污染账本。
-KNOWN_FEATURES = ("translate", "summary", "define", "local_show")
+KNOWN_FEATURES = ("translate", "summary", "define", "local_show", "quiz")
 FEATURE_LABELS = {
     "translate": "翻译",
     "summary": "总结",
     "define": "词典",
     "local_show": "本地剧集",
+    "quiz": "理解题",
 }
 
 # 目录里一个已知价都没有时的保守兜底（非官方报价，只在异常配置下使用）。
@@ -306,7 +307,7 @@ def record_usage(
     参数：
     - ``user_id``：归属用户；``None`` 时回落到当前请求 ContextVar，仍为空则
       记为匿名（``user_id IS NULL``，计入全局预算，不出现在「用户 X」查询里）；
-    - ``feature``：``translate`` / ``summary`` / ``define`` / ``local_show``；
+    - ``feature``：``translate`` / ``summary`` / ``define`` / ``local_show`` / ``quiz``；
     - ``model_id``：目录 id（用于定价；未知/缺价按已知最贵计）；
     - ``input_tokens`` / ``output_tokens``：provider usage，负数按 0；
     - ``calls``：本次 API 调用次数（默认 1）；

@@ -366,6 +366,8 @@ AI_DAILY_QUOTA_TRANSLATE_BATCHES = _int_env("AI_DAILY_QUOTA_TRANSLATE_BATCHES", 
 AI_DAILY_QUOTA_SUMMARY = _int_env("AI_DAILY_QUOTA_SUMMARY", 10)
 AI_DAILY_QUOTA_DEFINE = _int_env("AI_DAILY_QUOTA_DEFINE", 200)
 AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES = _int_env("AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES", 60)
+# M3 理解题：每用户每日「生成一个 lesson 的题目」次数（缓存命中不占额度）。
+AI_DAILY_QUOTA_QUIZ = _int_env("AI_DAILY_QUOTA_QUIZ", 30)
 
 # 第二、三层预算（美元/日；0 = 不启用该层硬闸）。默认值是保守占位，运营按
 # 实际成本目标调；检查依据是 ai_usage 当日 SUM，不是前端估价。
