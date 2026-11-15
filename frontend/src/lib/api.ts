@@ -19,6 +19,10 @@ const TARGET_LANG_QUERY_PATHS = new Set([
     '/api/models',
     '/api/estimate-cost',
     '/api/history',
+    '/api/review/queue',
+    // Omitting `targetLang` on the stats endpoint means "all languages"; the
+    // home card must match the deck, so it is always injected here.
+    '/api/review/stats',
 ]);
 // History detail/delete share the prefix; shows processed is the only
 // language-scoped endpoint under /api/shows.
@@ -30,6 +34,9 @@ const TARGET_LANG_BODY_PATHS = new Set([
     '/api/process-video-stream',
     '/api/process-subtitle',
     '/api/define',
+    '/api/review/words',
+    '/api/review/answer',
+    '/api/review/suspend',
 ]);
 
 function endpointPath(path: string): string {

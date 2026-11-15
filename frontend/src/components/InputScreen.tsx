@@ -1,6 +1,6 @@
 import { apiFetch } from '../lib/api';
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Trash2 } from 'lucide-react';
+import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Repeat, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import { ModelSelectionModal } from './ModelSelectionModal';
@@ -13,6 +13,7 @@ import { SentencePacks } from './SentencePacks';
 import { progressPercent, clearProgress } from '../lib/progress';
 import { toast, describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
+import type { ReviewStats } from '../lib/review';
 
 interface InputScreenProps {
     onSubmit: (url: string) => void;
@@ -24,6 +25,12 @@ interface InputScreenProps {
     subscriptions?: { id: string; name: string }[];
     onSelectChannel: (channelName: string) => void;
     onUnsubscribe?: (channelId: string) => void;
+    /** Review entry card (M2): guests get a login hint, accounts get due counts. */
+    isGuest?: boolean;
+    reviewStats?: ReviewStats | null;
+    reviewStatsLoading?: boolean;
+    reviewStatsFailed?: boolean;
+    onOpenReview?: () => void;
 }
 
 const containerVariants = {
@@ -39,7 +46,21 @@ const itemVariants: Variants = {
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 340, damping: 30, mass: 0.9 } }
 };
 
-export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistory, onSelectEpisode, onSelectSentenceLevel, isLoading, loadingState, subscriptions = [], onSelectChannel }) => {
+export const InputScreen: React.FC<InputScreenProps> = ({
+    onSubmit,
+    onLoadHistory,
+    onSelectEpisode,
+    onSelectSentenceLevel,
+    isLoading,
+    loadingState,
+    subscriptions = [],
+    onSelectChannel,
+    isGuest = false,
+    reviewStats = null,
+    reviewStatsLoading = false,
+    reviewStatsFailed = false,
+    onOpenReview,
+}) => {
     const { t } = useI18n();
     const [url, setUrl] = useState('');
     const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -123,6 +144,31 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
         setIsModalOpen(false);
         onSubmit(pendingUrl);
     };
+
+    // Review entry copy: guests are told to sign in, accounts see their due
+    // count (0 still opens the view, where the empty state lives).
+    const reviewDueNow = reviewStats?.dueNow ?? 0;
+    const reviewDueToday = reviewStats?.dueToday ?? 0;
+    const reviewHasDue = !isGuest && reviewDueNow > 0;
+    const reviewEntryLine = isGuest
+        ? t('review.home.guestHint')
+        : !reviewStats && (reviewStatsLoading || !reviewStatsFailed)
+            ? t('review.home.loading')
+            : reviewStatsFailed && !reviewStats
+                ? t('review.home.error')
+                : reviewHasDue
+                    ? t('review.home.dueCount', { count: reviewDueNow })
+                    : reviewDueToday > 0
+                        ? t('review.home.later', { count: reviewDueToday })
+                        : t('review.home.none');
+    const reviewEntryMeta = !isGuest && reviewStats
+        ? t('review.home.meta', { reviewed: reviewStats.reviewedToday, days: reviewStats.streakDays })
+        : null;
+    const reviewEntryAction = isGuest
+        ? t('review.home.guestAction')
+        : reviewHasDue || !reviewStats
+            ? t('review.home.start')
+            : t('review.home.view');
 
     return (
         <div className="min-h-screen flex flex-col items-center p-8 pt-20 overflow-y-auto custom-scrollbar relative bg-[#09090b]">
@@ -225,6 +271,56 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSubmit, onLoadHistor
                 <motion.div variants={itemVariants}>
                     <SentencePacks onSelectLevel={onSelectSentenceLevel} />
                 </motion.div>
+
+                {/* Today's review — M2 (specs/013). Always enters the view so the
+                    empty state can say "come back tomorrow" instead of hiding. */}
+                {onOpenReview && (
+                    <motion.div variants={itemVariants}>
+                        <div
+                            data-testid="review-entry-card"
+                            data-due={reviewStats ? reviewDueNow : ''}
+                            className="rounded-3xl border border-white/5 bg-zinc-900/40 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6"
+                        >
+                            <div className="flex items-center gap-4 min-w-0 flex-1">
+                                <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                                    <Repeat className="w-5 h-5 text-blue-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className="text-[17px] font-semibold tracking-tight text-zinc-100">
+                                            {t('review.home.title')}
+                                        </h3>
+                                        {reviewHasDue && (
+                                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand/15 border border-brand/20 text-brand-300 tabular-nums">
+                                                {reviewDueNow}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p
+                                        data-testid="review-entry-line"
+                                        className="mt-1 text-sm text-zinc-300 leading-relaxed break-words"
+                                    >
+                                        {reviewEntryLine}
+                                    </p>
+                                    {reviewEntryMeta && (
+                                        <p className="mt-0.5 text-xs text-zinc-500 tabular-nums">
+                                            {reviewEntryMeta}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                data-testid="review-entry-button"
+                                onClick={onOpenReview}
+                                className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform] duration-200 ease-apple shrink-0"
+                            >
+                                {reviewEntryAction}
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
 
                 {/* Bento Grid */}
                 <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-8">

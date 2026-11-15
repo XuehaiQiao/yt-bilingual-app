@@ -18,6 +18,8 @@ import { ChannelVideoList } from './components/ChannelVideoList';
 import { Toaster } from './components/Toaster';
 import { WordPopover, type WordDefinition, type WordLookupTarget } from './components/WordPopover';
 import { SentenceView, sentenceFavId } from './components/SentenceView';
+import { ReviewScreen } from './components/ReviewScreen';
+import { getReviewStats, type ReviewStats } from './lib/review';
 import { segToPlain, CHUNK_STYLE, type Sentence, type SegChunk } from './lib/sentences';
 import { toast, describeApiError } from './lib/toast';
 import { consumeSseStream, findActiveIndex, isUntranslated, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from './lib/transcript';
@@ -58,17 +60,19 @@ interface TranscriptItem {
   }>;
 }
 
-type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences'>;
+type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences' | 'topbar.feature.review'>;
 
 // Single source of truth for the top-bar feature label. Mirrors the view
-// switch below: sentence pack wins, then local episode, then YouTube; the
-// home screen (no video / empty transcript) has no feature name.
+// switch below: review wins, then sentence pack, then local episode, then
+// YouTube; the home screen (no video / empty transcript) has no feature name.
 function getFeatureName(
+  reviewOpen: boolean,
   sentenceLevel: number | null,
   videoId: string,
   transcriptCount: number,
   isLocalSubtitle: boolean,
 ): FeatureNameKey | null {
+  if (reviewOpen) return 'topbar.feature.review';
   if (sentenceLevel != null) return 'topbar.feature.sentences';
   if (!videoId || transcriptCount === 0) return null;
   return isLocalSubtitle ? 'topbar.feature.local' : 'topbar.feature.video';
@@ -118,6 +122,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   // Sentence Packs — third learning mode (null = not in this mode)
   const [sentenceLevel, setSentenceLevel] = useState<number | null>(null);
+
+  // Review — fourth view, alongside the three learning modes. The view state
+  // stays local (like sentenceLevel) so returning always lands on the home
+  // screen, per specs/013.
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
+  const [reviewStatsLoading, setReviewStatsLoading] = useState(false);
+  const [reviewStatsFailed, setReviewStatsFailed] = useState(false);
+  // Bumped whenever the review view closes so the home card refetches.
+  const [reviewStatsNonce, setReviewStatsNonce] = useState(0);
 
   // Dictation (blind listening) mode: English blurred until revealed per sentence
   const [dictationMode, setDictationMode] = useState(false);
@@ -344,6 +358,30 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       body: JSON.stringify({ subscriptions })
     }).catch(() => {});
   }, [subscriptions]);
+
+  // Review stats power the home entry card and the top-bar badge. Guests are
+  // skipped: specs/013 makes every review endpoint 403 without an account.
+  // `targetLang` is part of the key because the deck is language-scoped.
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      setReviewStats(null);
+      setReviewStatsLoading(false);
+      setReviewStatsFailed(false);
+      return;
+    }
+    let cancelled = false;
+    setReviewStatsLoading(true);
+    setReviewStatsFailed(false);
+    getReviewStats()
+      .then(next => { if (!cancelled) setReviewStats(next); })
+      .catch(err => {
+        if (cancelled) return;
+        console.error('Failed to load review stats:', err);
+        setReviewStatsFailed(true);
+      })
+      .finally(() => { if (!cancelled) setReviewStatsLoading(false); });
+    return () => { cancelled = true; };
+  }, [status, targetLang, dataRevision, reviewStatsNonce]);
 
   const handleToggleSubscription = () => {
     if (status === 'guest') {
@@ -829,8 +867,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
 
   const featureName = useMemo(
-    () => getFeatureName(sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle)),
-    [sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle],
+    () => getFeatureName(reviewOpen, sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle)),
+    [reviewOpen, sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle],
   );
 
   const handleTranscriptClick = useCallback((time: number) => {
@@ -938,6 +976,23 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setCurrentTime(0);
     setSeekCommand(null);
     setSentenceLevel(null);
+    setReviewOpen(false);
+    // Returning from review can change the due count; refetch on every go-home
+    // (one cheap request) so the badge never shows a stale number.
+    setReviewStatsNonce(prev => prev + 1);
+  };
+
+  // Review is a full view, but only accounts can use it (specs/013: guests get
+  // 403). The home card still renders for guests and routes them to login.
+  const handleOpenReview = () => {
+    if (status !== 'authenticated') {
+      onRequestLogin?.();
+      return;
+    }
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setReviewOpen(true);
   };
 
   // Translation target language changed. Cost protection (specs/012 §5.3):
@@ -957,7 +1012,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     pendingSeekRef.current = null;
     pendingLocalSeekRef.current = null;
 
-    const wasLearning = Boolean(videoId) || transcript.length > 0 || sentenceLevel !== null;
+    const wasLearning = Boolean(videoId) || transcript.length > 0 || sentenceLevel !== null || reviewOpen;
     if (wasLearning) {
       pauseSubtitleTimer();
       setVideoId('');
@@ -967,12 +1022,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       setCurrentTime(0);
       setSeekCommand(null);
       setSentenceLevel(null);
+      setReviewOpen(false);
     }
 
     toast.info(t('language.targetChangedToast', {
       language: getLanguageMeta(targetLang).displayNames[language],
     }));
-  }, [targetLang, language, t, videoId, transcript.length, sentenceLevel, pauseSubtitleTimer]);
+  }, [targetLang, language, t, videoId, transcript.length, sentenceLevel, reviewOpen, pauseSubtitleTimer]);
 
   // Star a sentence into the existing vocabulary book (exportable to Anki)
   const handleToggleSentenceFavorite = useCallback((s: Sentence, levelId: number) => {
@@ -1016,6 +1072,28 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       </div>
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <LanguageMenu />
+        {status === 'authenticated' && !reviewOpen && (
+          <button
+            type="button"
+            data-testid="topbar-review-button"
+            onClick={handleOpenReview}
+            aria-label={reviewStats && reviewStats.dueNow > 0
+              ? t('review.topbarDue', { count: reviewStats.dueNow })
+              : t('review.title')}
+            title={reviewStats && reviewStats.dueNow > 0
+              ? t('review.topbarDue', { count: reviewStats.dueNow })
+              : t('review.title')}
+            className="relative inline-flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 hover:border-white/10 text-zinc-300 hover:text-zinc-100 transition-[background-color,border-color,color] duration-200 ease-apple shrink-0"
+          >
+            <Repeat className="w-4 h-4 text-blue-400 shrink-0" />
+            <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">{t('review.title')}</span>
+            {reviewStats && reviewStats.dueNow > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-[10px] font-semibold text-white tabular-nums flex items-center justify-center">
+                {reviewStats.dueNow > 99 ? '99+' : reviewStats.dueNow}
+              </span>
+            )}
+          </button>
+        )}
         <button
           onClick={() => setIsFavoritesOpen(true)}
           aria-label={t('topbar.favorites', { count: favorites.length })}
@@ -1471,7 +1549,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
       {/* Keyed motion.divs crossfade views on mount; no exit-gating so a
           backgrounded tab (throttled rAF) can never stall the switch. */}
-      {sentenceLevel != null ? (
+      {reviewOpen ? (
+        <motion.div
+          key="review"
+          initial={{ opacity: 0, scale: 0.99, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          <ReviewScreen onClose={handleGoHome} onRequestLogin={onRequestLogin} />
+        </motion.div>
+      ) : sentenceLevel != null ? (
         <motion.div
           key="sentences"
           initial={{ opacity: 0, scale: 0.99, y: 8 }}
@@ -1508,6 +1596,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             subscriptions={subscriptions}
             onSelectChannel={setSelectedChannel}
             onUnsubscribe={(channelId) => setSubscriptions(prev => prev.filter(s => s.id !== channelId))}
+            isGuest={status === 'guest'}
+            reviewStats={reviewStats}
+            reviewStatsLoading={reviewStatsLoading}
+            reviewStatsFailed={reviewStatsFailed}
+            onOpenReview={handleOpenReview}
           />
         </motion.div>
       ) : (
