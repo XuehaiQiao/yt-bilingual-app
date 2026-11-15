@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import { LanguageMenu } from './LanguageMenu';
+import { PwaInstallButton } from './PwaInstallButton';
 
 type AuthMode = 'login' | 'signup';
 
@@ -217,6 +218,13 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
                         )}
                     </form>
                 </div>
+
+                {/* On the guest-login overlay the app shell underneath already
+                    owns the install entry; showing a second one here would
+                    duplicate the test id and the prompt listener. */}
+                {!onGuestContinue && (
+                    <PwaInstallButton wrapperClassName="mt-6 flex justify-center" />
+                )}
             </div>
         </div>
     );

@@ -26,6 +26,8 @@ import { DiscoverScreen } from './components/DiscoverScreen';
 import { ReaderScreen } from './components/ReaderScreen';
 import { BlogScreen } from './components/BlogScreen';
 import { AdminScreen } from './components/AdminScreen';
+import { OfflineIndicator } from './components/OfflineIndicator';
+import { PwaInstallButton } from './components/PwaInstallButton';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
@@ -2205,6 +2207,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onSelectChannel={setSelectedChannel}
             onUnsubscribe={(channelId) => setSubscriptions(prev => prev.filter(s => s.id !== channelId))}
             isGuest={status === 'guest'}
+            installEntry={<PwaInstallButton wrapperClassName="max-w-5xl w-full flex justify-end mb-3 shrink-0 z-10" />}
             reviewStats={reviewStats}
             reviewStatsLoading={reviewStatsLoading}
             reviewStatsFailed={reviewStatsFailed}
@@ -2411,6 +2414,11 @@ function App() {
     <I18nProvider>
       <AuthProvider>
         <AuthGate />
+        {/* The offline marker sits above the auth gate so it survives every
+            screen, not only the signed-in shell. The install entry itself is
+            inline on home/auth (see InputScreen/AuthScreen) to avoid covering
+            page content on a 375px phone. */}
+        <OfflineIndicator />
         {/* One Toaster for every branch: it survives the auth gate switch, so
             "session expired" and backend-unreachable toasts are not dropped. */}
         <Toaster />

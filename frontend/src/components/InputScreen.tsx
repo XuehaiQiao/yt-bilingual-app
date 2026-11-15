@@ -43,6 +43,8 @@ interface InputScreenProps {
     onOpenReader?: () => void;
     /** Official blog entry (specs/020): open the public blog view. */
     onOpenBlog?: () => void;
+    /** Optional PWA install entry, rendered above the daily workbench. */
+    installEntry?: React.ReactNode;
 }
 
 const containerVariants = {
@@ -77,6 +79,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     onOpenDiscover,
     onOpenReader,
     onOpenBlog,
+    installEntry,
 }) => {
     const { t } = useI18n();
     const [url, setUrl] = useState('');
@@ -260,6 +263,8 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                 currentModelId={currentModelId}
                 onStart={onSubmit}
             />
+
+            {installEntry}
 
             <motion.div 
                 className="max-w-5xl w-full space-y-10 shrink-0 z-10"

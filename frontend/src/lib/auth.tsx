@@ -115,9 +115,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 applyAuthState('guest', null);
             } catch (err) {
                 if (cancelled) return;
-                toast.error(await describeApiError(err));
                 setIsAdmin(false);
                 applyAuthState('anonymous', null);
+                // Offline is an expected state now that the shell is cached:
+                // the global offline marker explains it, so don't claim the
+                // backend is down and send the user chasing uvicorn.
+                if (navigator.onLine) toast.error(await describeApiError(err));
             }
         };
         void bootstrap();
