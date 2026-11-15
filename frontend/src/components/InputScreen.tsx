@@ -1,11 +1,11 @@
 import { apiFetch } from '../lib/api';
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Repeat, Trash2, CalendarRange } from 'lucide-react';
+import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Trash2, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import { ModelSelectionModal } from './ModelSelectionModal';
 import type { EstimationData } from './ModelSelectionModal';
-import { ModelBar } from './ModelBar';
+import { TodayWorkbench, type TodayWeekReport } from './TodayWorkbench';
 import { ShowBrowser } from './ShowBrowser';
 import { loadModel, loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
 import { VocabAxis } from './VocabAxis';
@@ -67,7 +67,14 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     const { t } = useI18n();
     const [url, setUrl] = useState('');
     const [history, setHistory] = useState<HistoryItem[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
     const [channelUpdates, setChannelUpdates] = useState<any[]>([]);
+    // Home summary of the weekly report. The report screen owns its own fetch;
+    // this copy only powers the two numbers on the "this week" card, so it is
+    // deliberately a small shape instead of duplicating the whole payload.
+    const [weekReport, setWeekReport] = useState<TodayWeekReport | null>(null);
+    const [weekReportLoading, setWeekReportLoading] = useState(true);
+    const [weekReportFailed, setWeekReportFailed] = useState(false);
     const [isEstimating, setIsEstimating] = useState(false);
     const [estimationData, setEstimationData] = useState<EstimationData | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -99,10 +106,17 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     };
 
     useEffect(() => {
+        let cancelled = false;
+        setHistoryLoading(true);
         apiFetch('/api/history')
-            .then(res => res.json())
-            .then(data => setHistory(data))
-            .catch(err => console.error("Failed to fetch history:", err));
+            .then(res => (res.ok ? res.json() : []))
+            .then(data => {
+                if (!cancelled) setHistory(Array.isArray(data) ? data : []);
+            })
+            .catch(err => console.error("Failed to fetch history:", err))
+            .finally(() => {
+                if (!cancelled) setHistoryLoading(false);
+            });
 
         if (subscriptions.length > 0) {
             apiFetch('/api/channel-updates', {
@@ -111,10 +125,50 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                 body: JSON.stringify({ channels: subscriptions.map(s => s.id) })
             })
                 .then(res => res.json())
-                .then(data => setChannelUpdates(data.updates || []))
+                .then(data => {
+                    if (!cancelled) setChannelUpdates(data.updates || []);
+                })
                 .catch(err => console.error("Failed to fetch channel updates:", err));
         }
+
+        return () => { cancelled = true; };
     }, [subscriptions]);
+
+    // Weekly summary for the "this week" card. Guests have their own report
+    // identity (M1 guest isolation), so this endpoint never forces a login.
+    useEffect(() => {
+        let cancelled = false;
+        setWeekReportLoading(true);
+        setWeekReportFailed(false);
+        apiFetch('/api/report/week')
+            .then(async response => {
+                if (!response.ok) throw new Error(await describeApiError(response));
+                return response.json();
+            })
+            .then(data => {
+                if (cancelled) return;
+                const numbers = data?.numbers;
+                if (!numbers || typeof numbers.passiveMinutes !== 'number') {
+                    throw new Error('invalid report payload');
+                }
+                setWeekReport({
+                    numbers: {
+                        passiveMinutes: numbers.passiveMinutes,
+                        reviewedWords: typeof numbers.reviewedWords === 'number' ? numbers.reviewedWords : 0,
+                        quizAccuracy: typeof numbers.quizAccuracy === 'number' ? numbers.quizAccuracy : null,
+                    },
+                });
+            })
+            .catch(err => {
+                if (cancelled) return;
+                console.error('Failed to load weekly report summary:', err);
+                setWeekReportFailed(true);
+            })
+            .finally(() => {
+                if (!cancelled) setWeekReportLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, []);
 
     const handleInterceptSubmit = async (targetUrl: string) => {
         setIsEstimating(true);
@@ -148,33 +202,24 @@ export const InputScreen: React.FC<InputScreenProps> = ({
         onSubmit(pendingUrl);
     };
 
-    // Review entry copy: guests are told to sign in, accounts see their due
-    // count (0 still opens the view, where the empty state lives).
-    const reviewDueNow = reviewStats?.dueNow ?? 0;
-    const reviewDueToday = reviewStats?.dueToday ?? 0;
-    const reviewHasDue = !isGuest && reviewDueNow > 0;
-    const reviewEntryLine = isGuest
-        ? t('review.home.guestHint')
-        : !reviewStats && (reviewStatsLoading || !reviewStatsFailed)
-            ? t('review.home.loading')
-            : reviewStatsFailed && !reviewStats
-                ? t('review.home.error')
-                : reviewHasDue
-                    ? t('review.home.dueCount', { count: reviewDueNow })
-                    : reviewDueToday > 0
-                        ? t('review.home.later', { count: reviewDueToday })
-                        : t('review.home.none');
-    const reviewEntryMeta = !isGuest && reviewStats
-        ? t('review.home.meta', { reviewed: reviewStats.reviewedToday, days: reviewStats.streakDays })
-        : null;
-    const reviewEntryAction = isGuest
-        ? t('review.home.guestAction')
-        : reviewHasDue || !reviewStats
-            ? t('review.home.start')
-            : t('review.home.view');
+    // Empty "continue" card lands here: scroll the link input into view and
+    // focus it, so "start your first video" is one tap from the card.
+    const focusStartInput = () => {
+        const input = document.getElementById('video-url') as HTMLInputElement | null;
+        if (!input) return;
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        input.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+        input.focus({ preventScroll: true });
+    };
+
+    // Human-curated discovery is a placeholder for now (project plan §1.3 #4).
+    // No fake recommendations: say it is being prepared and point at the link.
+    const handleCuratedClick = () => {
+        toast.info(t('home.today.curatedSoon'));
+    };
 
     return (
-        <div className="min-h-screen flex flex-col items-center p-8 pt-20 overflow-y-auto custom-scrollbar relative bg-[#09090b]">
+        <div className="min-h-screen flex flex-col items-center px-4 sm:px-8 pt-4 sm:pt-10 pb-12 sm:pb-16 overflow-y-auto overflow-x-hidden custom-scrollbar relative bg-[#09090b]">
             <AnimatePresence>
                 {((isLoading || loadingState) && !isEstimating) && (
                     <motion.div 
@@ -214,59 +259,92 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                 currentModelId={currentModelId}
             />
 
-            {/* Global model selector — sits right under the top bar on home. */}
-            <div className="absolute top-5 right-6 md:right-8 z-30">
-                <ModelBar onModelResolved={setCurrentModelId} />
-            </div>
-
             <motion.div 
-                className="max-w-5xl w-full space-y-12 shrink-0 z-10"
+                className="max-w-5xl w-full space-y-10 shrink-0 z-10"
                 variants={containerVariants}
                 initial="hidden"
                 animate="show"
             >
-                {/* Hero Section */}
-                <motion.div variants={itemVariants} className="text-center mt-12 mb-8">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full glass-card text-xs font-medium text-zinc-300">
-                        <span className="flex h-2 w-2 rounded-full bg-emerald-500"></span>
-                        {t('brand.engine')}
-                    </div>
-                    <h2 className="text-5xl md:text-6xl font-semibold tracking-[-0.015em] mb-4">
-                        {t('home.heroTitle')}
-                    </h2>
-                    <p className="text-lg text-zinc-400 font-normal leading-relaxed max-w-2xl mx-auto">
-                        {t('home.heroSubtitle')}
-                    </p>
+                {/* Today first: date + status, three actions, model switch. */}
+                <motion.div variants={itemVariants}>
+                    <TodayWorkbench
+                        isGuest={isGuest}
+                        reviewStats={reviewStats}
+                        reviewStatsLoading={reviewStatsLoading}
+                        reviewStatsFailed={reviewStatsFailed}
+                        weekReport={weekReport}
+                        weekReportLoading={weekReportLoading}
+                        weekReportFailed={weekReportFailed}
+                        history={history}
+                        historyLoading={historyLoading}
+                        onOpenReview={onOpenReview}
+                        onOpenReport={onOpenReport}
+                        onLoadHistory={onLoadHistory}
+                        onStartFirst={focusStartInput}
+                        onModelResolved={setCurrentModelId}
+                    />
                 </motion.div>
 
-                {/* Search Bar */}
-                <motion.form variants={itemVariants} className="max-w-3xl mx-auto w-full relative" onSubmit={handleSubmit}>
-                    <div className="relative flex items-center rounded-full bg-zinc-900/60 p-2 pl-6 pr-2 border border-white/5 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/15 transition-[border-color,box-shadow] duration-200 ease-apple">
-                        <Search className="w-5 h-5 text-zinc-400" />
-                        <input
-                            id="video-url"
-                            name="url"
-                            type="url"
-                            disabled={isLoading}
-                            required
-                            className="w-full bg-transparent border-none outline-none text-zinc-100 placeholder-zinc-500 px-4 py-3 text-lg"
-                            placeholder={t('home.searchPlaceholder')}
-                            value={url}
-                            onChange={(e) => setUrl(e.target.value)}
-                        />
+                {/* Start learning: the old hero search, moved below today's
+                    actions and reduced to a section-sized input. */}
+                <motion.section
+                    variants={itemVariants}
+                    data-testid="start-learning"
+                    className="rounded-3xl border border-white/5 bg-zinc-900/40 p-4 sm:p-6"
+                >
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                        <h3 className="text-[17px] font-semibold tracking-tight text-zinc-100">
+                            {t('home.today.startTitle')}
+                        </h3>
+                        <p className="text-xs leading-relaxed text-zinc-500">
+                            {t('home.today.startHint')}
+                        </p>
+                    </div>
+
+                    <form className="mt-4 w-full" onSubmit={handleSubmit}>
+                        <div className="flex items-center gap-2 rounded-full bg-zinc-900/60 p-1.5 pl-4 sm:pl-5 border border-white/5 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/15 transition-[border-color,box-shadow] duration-200 ease-apple">
+                            <Search className="w-4 h-4 text-zinc-400 shrink-0" />
+                            <input
+                                id="video-url"
+                                name="url"
+                                type="url"
+                                disabled={isLoading}
+                                required
+                                data-testid="video-url-input"
+                                aria-label={t('home.searchPlaceholder')}
+                                className="w-full min-w-0 bg-transparent border-none outline-none text-zinc-100 placeholder-zinc-500 px-2 py-2.5 text-sm sm:text-base"
+                                placeholder={t('home.searchPlaceholder')}
+                                value={url}
+                                onChange={(e) => setUrl(e.target.value)}
+                            />
+                            <button
+                                type="submit"
+                                disabled={isLoading || !url.trim()}
+                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 h-9 px-4 rounded-full bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform,opacity] duration-200 ease-apple disabled:opacity-50"
+                            >
+                                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('home.startLearning')}
+                                {!isLoading && <ArrowRight className="hidden sm:block w-4 h-4" />}
+                            </button>
+                        </div>
+                    </form>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                        <span>{t('home.today.curatedPrompt')}</span>
                         <button
-                            type="submit"
-                            disabled={isLoading || !url.trim()}
-                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 h-12 px-6 rounded-full bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform,opacity] duration-200 ease-apple disabled:opacity-50"
+                            type="button"
+                            data-testid="curated-entry"
+                            onClick={handleCuratedClick}
+                            className="inline-flex items-center gap-1 h-7 px-1.5 -mx-1.5 rounded-lg font-medium text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-colors"
                         >
-                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('home.startLearning')}
-                            {!isLoading && <ArrowRight className="w-4 h-4" />}
+                            <Sparkles className="w-3.5 h-3.5" />
+                            {t('home.today.curatedAction')}
+                            <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                     </div>
-                </motion.form>
+                </motion.section>
 
                 {/* Learner level: calibrates which words get highlighted */}
-                <motion.div variants={itemVariants} className="-mt-4">
+                <motion.div variants={itemVariants}>
                     <VocabAxis value={vocabLevel} onChange={handleVocabLevelChange} />
                 </motion.div>
 
@@ -275,92 +353,8 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                     <SentencePacks onSelectLevel={onSelectSentenceLevel} />
                 </motion.div>
 
-                {/* Today's review — M2 (specs/013). Always enters the view so the
-                    empty state can say "come back tomorrow" instead of hiding. */}
-                {onOpenReview && (
-                    <motion.div variants={itemVariants}>
-                        <div
-                            data-testid="review-entry-card"
-                            data-due={reviewStats ? reviewDueNow : ''}
-                            className="rounded-3xl border border-white/5 bg-zinc-900/40 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6"
-                        >
-                            <div className="flex items-center gap-4 min-w-0 flex-1">
-                                <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                                    <Repeat className="w-5 h-5 text-blue-400" />
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <h3 className="text-[17px] font-semibold tracking-tight text-zinc-100">
-                                            {t('review.home.title')}
-                                        </h3>
-                                        {reviewHasDue && (
-                                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand/15 border border-brand/20 text-brand-300 tabular-nums">
-                                                {reviewDueNow}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p
-                                        data-testid="review-entry-line"
-                                        className="mt-1 text-sm text-zinc-300 leading-relaxed break-words"
-                                    >
-                                        {reviewEntryLine}
-                                    </p>
-                                    {reviewEntryMeta && (
-                                        <p className="mt-0.5 text-xs text-zinc-500 tabular-nums">
-                                            {reviewEntryMeta}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                data-testid="review-entry-button"
-                                onClick={onOpenReview}
-                                className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform] duration-200 ease-apple shrink-0"
-                            >
-                                {reviewEntryAction}
-                                <ArrowRight className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Weekly report — M5 (specs/015). Guests have their own
-                    report, so this entry never routes through login. */}
-                {onOpenReport && (
-                    <motion.div variants={itemVariants}>
-                        <div
-                            data-testid="report-entry-card"
-                            className="rounded-3xl border border-white/5 bg-zinc-900/40 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6"
-                        >
-                            <div className="flex items-center gap-4 min-w-0 flex-1">
-                                <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                                    <CalendarRange className="w-5 h-5 text-blue-400" />
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className="text-[17px] font-semibold tracking-tight text-zinc-100">
-                                        {t('report.home.title')}
-                                    </h3>
-                                    <p className="mt-1 text-sm text-zinc-300 leading-relaxed break-words">
-                                        {t('report.home.subtitle')}
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                data-testid="report-entry-button"
-                                onClick={onOpenReport}
-                                className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
-                            >
-                                {t('report.home.action')}
-                                <ArrowRight className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
-
                 {/* Bento Grid */}
-                <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-8">
+                <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-12 gap-6">
                     
                     {/* Left Column: Recent Learning */}
                     <div className="md:col-span-7 flex flex-col gap-6">
@@ -378,7 +372,12 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                                 </div>
                             </div>
 
-                            {history.length === 0 ? (
+                            {historyLoading && history.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-16 text-center">
+                                    <Loader2 className="w-6 h-6 text-zinc-500 animate-spin mb-3" />
+                                    <p className="text-sm font-medium text-zinc-400">{t('home.today.loadingHistory')}</p>
+                                </div>
+                            ) : history.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-center">
                                     <Clock className="w-10 h-10 text-zinc-700 mb-3" />
                                     <p className="text-sm font-medium text-zinc-400">{t('home.continueEmpty')}</p>
