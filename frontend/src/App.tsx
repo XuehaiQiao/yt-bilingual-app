@@ -1,7 +1,7 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn } from 'lucide-react';
+import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { LanguageMenu } from './components/LanguageMenu';
@@ -19,7 +19,9 @@ import { Toaster } from './components/Toaster';
 import { WordPopover, type WordDefinition, type WordLookupTarget } from './components/WordPopover';
 import { SentenceView, sentenceFavId } from './components/SentenceView';
 import { ReviewScreen } from './components/ReviewScreen';
+import { QuizScreen } from './components/QuizScreen';
 import { getReviewStats, type ReviewStats } from './lib/review';
+import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { segToPlain, CHUNK_STYLE, type Sentence, type SegChunk } from './lib/sentences';
 import { toast, describeApiError } from './lib/toast';
 import { consumeSseStream, findActiveIndex, isUntranslated, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from './lib/transcript';
@@ -60,18 +62,21 @@ interface TranscriptItem {
   }>;
 }
 
-type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences' | 'topbar.feature.review'>;
+type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences' | 'topbar.feature.review' | 'topbar.feature.quiz'>;
 
 // Single source of truth for the top-bar feature label. Mirrors the view
-// switch below: review wins, then sentence pack, then local episode, then
-// YouTube; the home screen (no video / empty transcript) has no feature name.
+// switch below: quiz wins, then review, then sentence pack, then local
+// episode, then YouTube; the home screen (no video / empty transcript) has
+// no feature name.
 function getFeatureName(
+  quizOpen: boolean,
   reviewOpen: boolean,
   sentenceLevel: number | null,
   videoId: string,
   transcriptCount: number,
   isLocalSubtitle: boolean,
 ): FeatureNameKey | null {
+  if (quizOpen) return 'topbar.feature.quiz';
   if (reviewOpen) return 'topbar.feature.review';
   if (sentenceLevel != null) return 'topbar.feature.sentences';
   if (!videoId || transcriptCount === 0) return null;
@@ -133,6 +138,24 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Bumped whenever the review view closes so the home card refetches.
   const [reviewStatsNonce, setReviewStatsNonce] = useState(0);
 
+  // Comprehension quiz (M3 / specs/014) — a fifth view over the loaded video.
+  // The lesson is kept here while the quiz is open; `quizCacheReady` mirrors
+  // "this video has a bilingual subtitle cache on disk", which is the only
+  // condition the toolbar entry needs (the start endpoint re-checks it).
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [quizLesson, setQuizLesson] = useState<LessonQuestions | null>(null);
+  const [quizStarting, setQuizStarting] = useState(false);
+  const [quizCacheReady, setQuizCacheReady] = useState(false);
+  // Synchronous guard: a double click on the entry must not fire two
+  // `startLesson` requests (a cache miss calls the model once per request).
+  const quizStartBusyRef = useRef(false);
+  // Where the player was when the quiz opened; leaving the quiz (not via an
+  // evidence link) returns there instead of restarting the video at 0.
+  const quizReturnTimeRef = useRef(0);
+  // `currentTime` can keep advancing while `/api/lesson/start` is in flight;
+  // a ref lets the handler read the latest value after the await.
+  const currentTimeRef = useRef(0);
+
   // Dictation (blind listening) mode: English blurred until revealed per sentence
   const [dictationMode, setDictationMode] = useState(false);
 
@@ -160,6 +183,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   useEffect(() => {
     localStorage.setItem(TRANSLATION_MODE_KEY, translationMode);
   }, [translationMode]);
+
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
 
   // Layout preferences: write the transcript placement immediately, and the
   // split ratio once a drag settles (no localStorage churn on every frame).
@@ -533,6 +560,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   ) => {
     setSentenceLevel(null); // leave sentence mode if a video is loaded
     pauseSubtitleTimer();
+    // A fresh stream only proves a cache once the backend writes the payload
+    // (on `meta` for reused caches, on `done` for new ones).
+    setQuizCacheReady(false);
     // Model choice is global now: every LLM call reads the same saved setting
     // instead of taking a per-video argument from a dialog.
     const model = loadModel();
@@ -586,6 +616,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             setVideoId(evt.data.videoId || id);
             setCurrentTime(0);
             setLoadingState(null); // English is visible — drop the overlay
+            // Reused caches are already on disk; a `cached:false` stream waits
+            // for `done` before the quiz entry becomes available.
+            if (evt.data.cached === true) setQuizCacheReady(true);
             // M1 ⑤：记住 jobId 与游标，刷新/断线后从这里续传（服务端提供
             // jobId 时才有；纯缓存秒开没有生成任务，不会留下记录）。
             recordJobMeta(evt.data, {
@@ -636,6 +669,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           case 'done':
             setTranslationProgress(null);
             finishJob({ jobId: evt.data.jobId, videoId: evt.data.videoId || id });
+            // Fresh generation persisted its cache by now.
+            setQuizCacheReady(true);
             break;
         }
       });
@@ -714,6 +749,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const handleSelectEpisode = async (showId: string, season: number, episode: number) => {
     setSentenceLevel(null);
     pauseSubtitleTimer();
+    setQuizCacheReady(false);
     setLoadingState('loading');
     // The target can change while this request is in flight. The response is
     // still in the old language, so apply it only if the setting is unchanged.
@@ -737,6 +773,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         setMetadata({ ...data.metadata, is_local_subtitle: true });
         setVideoId(data.videoId);
         setCurrentTime(0);
+        setQuizCacheReady(true);
       } else {
         setLoadingState('processing');
         // Not yet processed — run the full processing pipeline
@@ -755,6 +792,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         setMetadata({ ...data.metadata, is_local_subtitle: true });
         setVideoId(data.videoId);
         setCurrentTime(0);
+        setQuizCacheReady(true);
       }
     } catch (error) {
       console.error(error);
@@ -768,6 +806,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const handleLoadHistory = async (filename: string) => {
     setSentenceLevel(null);
     pauseSubtitleTimer();
+    setQuizCacheReady(false);
     setLoadingState('loading');
     const requestedTargetLang = getRuntimeTargetLang();
     try {
@@ -785,6 +824,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       setMetadata(data.metadata || null);
       setVideoId(data.videoId);
       setCurrentTime(0);
+      // Loaded straight out of history: the bilingual cache already exists.
+      setQuizCacheReady(true);
     } catch (error) {
       console.error(error);
       toast.error(await describeApiError(error));
@@ -867,8 +908,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
 
   const featureName = useMemo(
-    () => getFeatureName(reviewOpen, sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle)),
-    [reviewOpen, sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle],
+    () => getFeatureName(quizOpen, reviewOpen, sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle)),
+    [quizOpen, reviewOpen, sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle],
   );
 
   const handleTranscriptClick = useCallback((time: number) => {
@@ -923,7 +964,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   // Keyboard shortcuts: Space play/pause, ←→ prev/next sentence, R replay, L loop
   useEffect(() => {
-    if (!videoId || transcript.length === 0) return;
+    // The quiz view owns the keyboard while it is open (1–4 / Enter / Esc).
+    if (!videoId || transcript.length === 0 || quizOpen) return;
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
@@ -964,7 +1006,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [videoId, transcript, currentTime, useSubtitleTimer, isSubtitlePlaying, seekTo, toggleLoop, pauseSubtitleTimer, startSubtitleTimer]);
+  }, [videoId, transcript, currentTime, useSubtitleTimer, isSubtitlePlaying, seekTo, toggleLoop, pauseSubtitleTimer, startSubtitleTimer, quizOpen]);
 
   const handleGoHome = () => {
     cancelTranslationStream();
@@ -977,6 +1019,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setSeekCommand(null);
     setSentenceLevel(null);
     setReviewOpen(false);
+    setQuizOpen(false);
+    setQuizLesson(null);
+    setQuizStarting(false);
+    setQuizCacheReady(false);
     // Returning from review can change the due count; refetch on every go-home
     // (one cheap request) so the badge never shows a stale number.
     setReviewStatsNonce(prev => prev + 1);
@@ -992,7 +1038,90 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setWordLookup(null);
     setIsFavoritesOpen(false);
     setSelectedChannel(null);
+    setQuizOpen(false);
+    setQuizLesson(null);
     setReviewOpen(true);
+  };
+
+  // Comprehension quiz entry — only once the current video has a bilingual
+  // subtitle cache. `startLesson` re-checks on the server (404 → friendly
+  // toast), and fresh-generating videos stay disabled until their `done`.
+  const handleStartQuiz = async () => {
+    if (quizStartBusyRef.current) return;
+    if (!quizCacheReady) {
+      toast.info(t('quiz.entry.disabledHint'));
+      return;
+    }
+    if (status !== 'authenticated') {
+      toast.info(t('quiz.errors.login'));
+      onRequestLogin?.();
+      return;
+    }
+    if (!videoId) return;
+    quizStartBusyRef.current = true;
+    setQuizStarting(true);
+    // A dictionary popover belongs to the video view; entering the quiz must
+    // not leave it floating over the question card.
+    setWordLookup(null);
+    try {
+      const lesson = await startLesson({
+        // Local episode cache filenames and videoIds share the SxxEyy shape;
+        // the backend normalizes it back to `<show_id>-S01E01`.
+        kind: isLocalSubtitle ? 'local_show' : 'video',
+        contentRef: videoId,
+      });
+      if (!lesson.questions || lesson.questions.length === 0) {
+        toast.info(t('quiz.errors.noQuestions'));
+        return;
+      }
+      quizReturnTimeRef.current = currentTimeRef.current;
+      pauseSubtitleTimer();
+      setQuizLesson(lesson);
+      setQuizOpen(true);
+    } catch (err) {
+      if (err instanceof QuizApiError) {
+        if (err.status === 404) {
+          toast.info(t('quiz.errors.noCache'));
+        } else if (err.status === 422) {
+          toast.info(t('quiz.errors.tooShort'));
+        } else if (err.status === 403) {
+          toast.info(t('quiz.errors.login'));
+          onRequestLogin?.();
+        } else if (err.status === 429) {
+          toast.info(t('quiz.errors.rateLimited'));
+        } else {
+          toast.error(await describeApiError(err));
+        }
+      } else {
+        toast.error(await describeApiError(err));
+      }
+    } finally {
+      quizStartBusyRef.current = false;
+      setQuizStarting(false);
+    }
+  };
+
+  // Close the quiz back to the video. Re-issue a seek so the remounted player
+  // resumes where it was when the quiz opened (the iframe is unmounted while
+  // the quiz view is showing, so it would otherwise restart at 0).
+  const handleQuizExit = () => {
+    const resumeAt = quizReturnTimeRef.current;
+    setQuizOpen(false);
+    setQuizLesson(null);
+    if (Number.isFinite(resumeAt) && resumeAt > 0) seekTo(resumeAt);
+  };
+
+  // "回看证据": close the quiz, then seek the player to the evidence second.
+  // `seekTo` also starts playback for the simulated local-episode clock; for
+  // the YouTube branch the remounted player seeks on ready and auto-plays.
+  const handleQuizEvidence = (start: number) => {
+    setQuizOpen(false);
+    setQuizLesson(null);
+    if (Number.isFinite(start)) seekTo(Math.max(0, start));
+  };
+
+  const handleQuizHome = () => {
+    handleGoHome();
   };
 
   // Translation target language changed. Cost protection (specs/012 §5.3):
@@ -1012,7 +1141,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     pendingSeekRef.current = null;
     pendingLocalSeekRef.current = null;
 
-    const wasLearning = Boolean(videoId) || transcript.length > 0 || sentenceLevel !== null || reviewOpen;
+    const wasLearning = Boolean(videoId) || transcript.length > 0 || sentenceLevel !== null || reviewOpen || quizOpen;
     if (wasLearning) {
       pauseSubtitleTimer();
       setVideoId('');
@@ -1023,12 +1152,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       setSeekCommand(null);
       setSentenceLevel(null);
       setReviewOpen(false);
+      setQuizOpen(false);
+      setQuizLesson(null);
+      setQuizStarting(false);
+      setQuizCacheReady(false);
     }
 
     toast.info(t('language.targetChangedToast', {
       language: getLanguageMeta(targetLang).displayNames[language],
     }));
-  }, [targetLang, language, t, videoId, transcript.length, sentenceLevel, reviewOpen, pauseSubtitleTimer]);
+  }, [targetLang, language, t, videoId, transcript.length, sentenceLevel, reviewOpen, quizOpen, pauseSubtitleTimer]);
 
   // Star a sentence into the existing vocabulary book (exportable to Anki)
   const handleToggleSentenceFavorite = useCallback((s: Sentence, levelId: number) => {
@@ -1072,7 +1205,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       </div>
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <LanguageMenu />
-        {status === 'authenticated' && !reviewOpen && (
+        {status === 'authenticated' && !reviewOpen && !quizOpen && (
           <button
             type="button"
             data-testid="topbar-review-button"
@@ -1103,7 +1236,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           <Star className="w-4 h-4 text-amber-400 fill-amber-400/20" />
           <span className="hidden sm:inline font-medium text-sm tabular-nums">{t('topbar.favorites', { count: favorites.length })}</span>
         </button>
-        {videoId && transcript.length > 0 && (
+        {videoId && transcript.length > 0 && !quizOpen && (
           <button
             onClick={togglePipMode}
             aria-label={pipWindow ? t('topbar.closePopOut') : t('topbar.popOut')}
@@ -1463,6 +1596,29 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           </select>
         )}
 
+        {/* Comprehension quiz entry (M3 / specs/014). Enabled only once the
+            current video has a bilingual subtitle cache; without one, the
+            click still explains why instead of being a dead disabled button. */}
+        <button
+          type="button"
+          data-testid="quiz-entry-button"
+          data-cache-ready={quizCacheReady ? 'true' : 'false'}
+          onClick={() => void handleStartQuiz()}
+          aria-disabled={!quizCacheReady || quizStarting}
+          aria-label={quizCacheReady ? t('quiz.entry.title') : t('quiz.entry.disabledHint')}
+          title={quizCacheReady ? t('quiz.entry.title') : t('quiz.entry.disabledHint')}
+          className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border transition-colors shrink-0 ${
+            quizCacheReady
+              ? 'bg-blue-500/10 hover:bg-blue-500/15 border-blue-500/20 text-blue-300'
+              : 'bg-zinc-800/50 border-white/5 text-zinc-500 opacity-60 cursor-not-allowed'
+          }`}
+        >
+          {quizStarting
+            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            : <GraduationCap className="w-3.5 h-3.5" />}
+          <span>{quizStarting ? t('quiz.entry.preparing') : t('quiz.entry')}</span>
+        </button>
+
         <div className="flex-1" />
 
         <span
@@ -1549,7 +1705,23 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
       {/* Keyed motion.divs crossfade views on mount; no exit-gating so a
           backgrounded tab (throttled rAF) can never stall the switch. */}
-      {reviewOpen ? (
+      {quizOpen && quizLesson ? (
+        <motion.div
+          key="quiz"
+          initial={{ opacity: 0, scale: 0.99, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          <QuizScreen
+            lesson={quizLesson}
+            onExit={handleQuizExit}
+            onSeekEvidence={handleQuizEvidence}
+            onHome={handleQuizHome}
+            onRequestLogin={onRequestLogin}
+          />
+        </motion.div>
+      ) : reviewOpen ? (
         <motion.div
           key="review"
           initial={{ opacity: 0, scale: 0.99, y: 8 }}

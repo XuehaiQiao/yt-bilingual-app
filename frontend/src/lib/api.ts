@@ -37,6 +37,9 @@ const TARGET_LANG_BODY_PATHS = new Set([
     '/api/review/words',
     '/api/review/answer',
     '/api/review/suspend',
+    // specs/014-quiz: question generation is language-scoped; the lesson id
+    // scopes the remaining endpoints, so they do not take targetLang.
+    '/api/lesson/start',
 ]);
 
 function endpointPath(path: string): string {
