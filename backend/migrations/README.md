@@ -21,14 +21,15 @@ venv/bin/alembic stamp head              # 已是最新的库：只写版本号�
 | `0005_jobs` | 任务表 `jobs`（`id`/`user_id`/`kind`/`content_ref`/`target_lang`/`status`/`cursor`/`payload`/`error`/`created_at`/`updated_at`，`status` 带 CHECK）+ `ix_jobs_user_created` + 部分唯一索引 `ux_jobs_active`（同一 user+kind+content+语言最多一个未完成 job）；见 [backend/README「任务表与断线续传」](../README.md#任务表与断线续传m1-⑤jobs--sse-重连) |
 | `0006_review_engine` | 复习引擎三表：`word_states`（状态/FSRS 参数/到期，`UNIQUE(user_id,lemma,target_lang)` + `(user_id,due_at)` 索引）、`review_logs`（append-only 流水 + `(user_id,reviewed_at)` 索引）、`word_sources`（词来源，FK → `word_states.id` ON DELETE CASCADE + `word_state_id` 索引）；见 [backend/README「复习引擎」](../README.md#复习引擎m2fsrs-6--队列--复习日志) |
 | `0007_quiz` | 理解题三表：`content_items`（用户内容项，`UNIQUE(user_id,content_ref,target_lang)` + 内部列 `prompt_version`）、`questions`（题目/选项/答案/证据 block 与毫秒时间点，状态 CHECK）、`attempts`（append-only 作答流水 + `(user_id,answered_at)` 索引）；见 [backend/README「理解题」](../README.md#理解题m3-后端出题--作答--证据回跳) 与 [specs/014](../../specs/014-quiz/spec.md) |
+| `0008_weekly_report` | 观看事件 `watch_events`（`user_id` 归属键含游客 `guest:<sha256>` + 可空 `guest_hash`、`UNIQUE(user_id,client_event_id)`、`(user_id,occurred_at)` 索引、秒数 CHECK 0–86400）+ 周报快照 `weekly_reports`（`UNIQUE(user_id,week_start)`、`payload` JSON 文本）；见 [backend/README「学习事件上报与周报」](../README.md#学习事件上报与周报m5-后端观看事件--周报快照) 与 [specs/015](../../specs/015-weekly-report/spec.md) |
 
 ## 约定
 
-- **迁移 id 递增**：新迁移用 `--rev-id 0008_xxx`，文件名模板是 `%(rev)s`（Alembic 自动补 `.py`）。
+- **迁移 id 递增**：新迁移用 `--rev-id 0009_xxx`，文件名模板是 `%(rev)s`（Alembic 自动补 `.py`）。
 - **基线幂等**：`0001` / `0002` 都用 inspector 判断表/索引是否已存在，所以对已有
   `users`/`sessions` 的旧库直接 `alembic upgrade head` 也安全（不重建、不动数据）。
-- **不要对旧库直接 `stamp head`**：会把 `0002` / `0003` / `0004` / `0005` / `0006` / `0007` 也标记成已应用，`learning_events`、
-  `ai_usage` / `ai_quota` / `target_lang` 列、`jobs` 表、复习三表、理解题三表永远不会被创建。旧库的正确姿势是 `stamp 0001_baseline` → `upgrade head`。
+- **不要对旧库直接 `stamp head`**：会把 `0002` / `0003` / `0004` / `0005` / `0006` / `0007` / `0008` 也标记成已应用，`learning_events`、
+  `ai_usage` / `ai_quota` / `target_lang` 列、`jobs` 表、复习三表、理解题三表、观看事件/周报快照永远不会被创建。旧库的正确姿势是 `stamp 0001_baseline` → `upgrade head`。
 - **`downgrade` 会 DROP 表**（`0001` 的 down 会删 `users`/`sessions`），只用于空库/
   测试回滚，别在真实库上跑。
 - **`learning_events` 是 append-only**：迁移只建表和索引，不建触发器；保留期硬删
@@ -41,4 +42,9 @@ venv/bin/alembic stamp head              # 已是最新的库：只写版本号�
   一道题（选项 JSON、答案下标、证据 block + 毫秒时间点）；`attempts` append-only。
   运行时不建表；表缺失时 `backend/quiz.py` 抛 `QuizUnavailable`，路由返回 503。详见
   [specs/014](../../specs/014-quiz/spec.md)。
+- **观看事件 + 周报快照**：`watch_events` 也是 append-only（应用层只 INSERT/SELECT），
+  `user_id` 对游客存 `guest:<sha256>` 作为归属键，保证 `UNIQUE(user_id,client_event_id)`
+  对游客同样幂等；`weekly_reports` 用 `INSERT OR IGNORE` 保留同周首份快照。运行时不建表；
+  表缺失时 `backend/reports.py` 抛 `ReportUnavailable`，路由返回 503。详见
+  [specs/015](../../specs/015-weekly-report/spec.md)。
 - 新增表一律写在这里，**不要**再往 `auth_db.py` 的 `_init_schema` 里加 `CREATE TABLE`。

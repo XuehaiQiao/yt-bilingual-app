@@ -8,7 +8,8 @@
   不阻断主流程，并且留下日志；
 - 只读查询的过滤与排序；
 - **append-only 的代码层断言**：events.py 里没有改/删 SQL，没有改/删入口，
-  也没有对外 HTTP 端点；表结构只由迁移创建。
+  也没有对外开放的查询/修改 HTTP 端点（M5 的批量上报端点在 reports.py +
+  routes_events.py，不在 events.py）；表结构只由迁移创建。
 
 所有用例用 tmp 库：先用 Alembic 建一份模板库，再按用例复制。
 """
@@ -216,14 +217,16 @@ def test_schema_status_tracks_migration_state(tmp_path, monkeypatch):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
     migrated = events.schema_status()
     assert migrated["events_table"] is True
-    assert migrated["alembic_revision"] == "0007_quiz"
+    assert migrated["alembic_revision"] == "0008_weekly_report"
     assert migrated["ready"] is True
 
 
-def test_no_public_event_api():
-    """M1a 只做内部写入层，不新增对外端点（下一阶段再接前端）。"""
+def test_only_batch_event_endpoint_is_public():
+    """M5 起只开放批量上报 ``POST /api/events``，不开放事件查询/修改端点。"""
     paths = {getattr(route, "path", "") for route in main.app.routes}
-    assert not any("event" in path.lower() for path in paths)
+    assert "/api/events" in paths
+    event_paths = {path for path in paths if "event" in path.lower()}
+    assert event_paths == {"/api/events"}
 
 
 def _non_docstring_strings(source: str) -> list[str]:

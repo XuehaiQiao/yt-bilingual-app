@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0007_quiz"
+HEAD = "0008_weekly_report"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -69,6 +69,7 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "ai_usage", "ai_quota", "jobs",
         "word_states", "review_logs", "word_sources",
         "content_items", "questions", "attempts",
+        "watch_events", "weekly_reports",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD
@@ -428,6 +429,123 @@ def test_upgrade_head_from_empty_db(tmp_path):
             for row in fk_rows
         ), "attempts 应外键引用 questions(id) ON DELETE CASCADE"
 
+    # 观看事件 + 周报快照（0008_weekly_report）
+    watch_events = columns(db, "watch_events")
+    assert list(watch_events) == [
+        "id",
+        "user_id",
+        "guest_hash",
+        "content_ref",
+        "kind",
+        "target_lang",
+        "watched_seconds",
+        "position_seconds",
+        "occurred_at",
+        "client_event_id",
+    ]
+    assert watch_events["id"]["pk"] == 1
+    for required in (
+        "user_id",
+        "content_ref",
+        "kind",
+        "target_lang",
+        "watched_seconds",
+        "position_seconds",
+        "occurred_at",
+        "client_event_id",
+    ):
+        assert watch_events[required]["notnull"] == 1, required
+    assert watch_events["guest_hash"]["notnull"] == 0
+    assert "zh-CN" in str(watch_events["target_lang"]["default"])
+    assert "ix_watch_events_user_occurred" in index_names(db, "watch_events")
+
+    with sqlite3.connect(db) as conn:
+        unique_sets = []
+        for row in conn.execute("PRAGMA index_list(watch_events)"):
+            if row[2]:
+                unique_sets.append(
+                    tuple(
+                        col[2]
+                        for col in conn.execute(f"PRAGMA index_info({row[1]})")
+                    )
+                )
+    assert ("user_id", "client_event_id") in unique_sets
+
+    reports = columns(db, "weekly_reports")
+    assert list(reports) == [
+        "id",
+        "user_id",
+        "week_start",
+        "payload",
+        "created_at",
+    ]
+    assert reports["id"]["pk"] == 1
+    for required in ("user_id", "week_start", "payload", "created_at"):
+        assert reports[required]["notnull"] == 1, required
+    assert reports["week_start"]["type"] == "DATE"
+    with sqlite3.connect(db) as conn:
+        unique_sets = []
+        for row in conn.execute("PRAGMA index_list(weekly_reports)"):
+            if row[2]:
+                unique_sets.append(
+                    tuple(
+                        col[2]
+                        for col in conn.execute(f"PRAGMA index_info({row[1]})")
+                    )
+                )
+    assert ("user_id", "week_start") in unique_sets
+
+    # CHECK / UNIQUE 由数据库兜底：非法 kind、负数秒、重复 clientEventId 都写不进。
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "INSERT INTO watch_events (user_id, guest_hash, content_ref, kind, "
+            "target_lang, watched_seconds, position_seconds, occurred_at, "
+            "client_event_id) VALUES ('u1', NULL, 'vid1', 'video', 'zh-CN', "
+            "60, 10, 1000, 'c1')"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO watch_events (user_id, guest_hash, content_ref, kind, "
+                "target_lang, watched_seconds, position_seconds, occurred_at, "
+                "client_event_id) VALUES ('u1', NULL, 'vid1', 'video', 'zh-CN', "
+                "60, 10, 1001, 'c1')"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError(
+                "UNIQUE(user_id, client_event_id) 应阻止重复上报"
+            )
+        try:
+            conn.execute("UPDATE watch_events SET kind='audio' WHERE id=1")
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("watch_events.kind CHECK 应拒绝未知类型")
+        try:
+            conn.execute("UPDATE watch_events SET watched_seconds=-1 WHERE id=1")
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("watch_events.watched_seconds CHECK 应拒绝负数")
+
+        conn.execute(
+            "INSERT INTO weekly_reports (user_id, week_start, payload, created_at) "
+            "VALUES ('u1', '2026-11-09', '{}', 1000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO weekly_reports (user_id, week_start, payload, created_at) "
+                "VALUES ('u1', '2026-11-09', '{}', 1001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError(
+                "UNIQUE(user_id, week_start) 应阻止同一周写两份快照"
+            )
+        conn.rollback()
+
     # 理解题三表的 CHECK / UNIQUE / FK 由数据库兜底。
     with sqlite3.connect(db) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
@@ -703,3 +821,22 @@ def test_quiz_downgrade_to_0006_and_back(tmp_path):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
     assert revision(db) == HEAD
     assert {"content_items", "questions", "attempts"} <= table_names(db)
+
+
+def test_weekly_report_downgrade_to_0007_and_back(tmp_path):
+    """0008 单独回滚：只删观看事件/周报快照，理解题与更早的表保留；再升级可恢复。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    assert {"watch_events", "weekly_reports"} <= table_names(db)
+
+    assert_alembic_ok(run_alembic(db, "downgrade", "0007_quiz"), "downgrade 0007_quiz")
+    assert revision(db) == "0007_quiz"
+    remaining = table_names(db)
+    assert not ({"watch_events", "weekly_reports"} & remaining)
+    assert "attempts" in remaining
+    assert "word_states" in remaining
+    assert "users" in remaining
+
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert revision(db) == HEAD
+    assert {"watch_events", "weekly_reports"} <= table_names(db)

@@ -11,7 +11,7 @@
 
 | 文件 | 职责 |
 |---|---|
-| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载五个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
+| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载七个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
 | `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
@@ -36,8 +36,10 @@
 | `routes_review.py` | 复习引擎 HTTP 路由（**需登录，游客 403**）：`POST /api/review/words`、`GET /api/review/queue`、`POST /api/review/answer`、`GET /api/review/stats`、`POST/DELETE /api/review/suspend`；契约与错误语义见下文「复习引擎」与 [specs/013](../specs/013-review-engine/spec.md) |
 | `quiz.py` | **理解题生成与作答（M3）**：读当前用户已有双语字幕缓存（video / local_show，≥8 句）→ 按 `(content_hash, prompt_version)` 缓存出 3 道题 → 两道闸（结构：mcq 4 选 1 / tf 判断；内容：英文题面不混中文、题目与证据句相关）→ 写 `content_items` / `questions` / `attempts` → 返回证据 block 与秒/毫秒时间点；失败重试 1 次，仍失败该题 `rejected`；表由 `0007_quiz` 创建，运行时不建表；作答写 `learning_events(quiz_answer)` |
 | `routes_quiz.py` | 理解题 HTTP 路由（**需登录，游客 403**）：`POST /api/lesson/start`、`GET /api/lesson/{id}/questions`、`POST /api/lesson/answer`、`GET /api/lesson/{id}/result`；契约与错误语义见下文「理解题」与 [specs/014](../specs/014-quiz/spec.md) |
+| `reports.py` | **观看事件 + 周报聚合（M5）**：`record_watch_events` 批量写 `watch_events`（`UNIQUE(user_id, client_event_id)` 幂等，游客归属 `guest:<sha256>`，0–86400 秒与未来 5 分钟校验）；`week_report` 用 SQL 算 UTC 周「被动学习分钟 / 复习词数 / 理解题正确率」、规则生成事实与下一步、取错题证据或最近观看的 5 秒窗口、算连续学习天数，并把首份结果写 `weekly_reports` 快照（同周不覆盖）；表由 `0008_weekly_report` 创建，运行时不建表；不调用模型 |
+| `routes_events.py` | 学习事件与周报 HTTP 路由（**游客可用**）：`POST /api/events`、`GET /api/report/week`；契约与错误语义见下文「学习事件上报与周报」与 [specs/015](../specs/015-weekly-report/spec.md) |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -242,6 +244,93 @@ venv/bin/python -m pytest tests -q            # 全量离线（含迁移升级/�
 
 
 
+## 学习事件上报与周报（M5 后端：观看事件 + 周报快照）
+
+前端批量上报「看了多久 / 看了哪个内容」，服务端按 **UTC 周**聚合出
+「3 个数字 + 1 句事实 + 1 个下一步 + 1 段可回看证据」；首份结果写
+`weekly_reports` 快照，供站内页与未来邮件复用。本阶段只做后端，周报页/邮件
+下一轮。规格：[specs/015-weekly-report](../specs/015-weekly-report/spec.md)。
+
+### 表（迁移 `0008_weekly_report`）
+
+| 表 | 内容 |
+|---|---|
+| `watch_events` | append-only 观看流水：`user_id`（**归属键**，登录用户 = `users.id`；游客 = `guest:<sha256>`）、`guest_hash`（游客 sha256，登录用户 NULL；为认领迁移预留）、`content_ref`、`kind`（`video` / `local_show`）、`target_lang`、`watched_seconds` / `position_seconds`（秒，CHECK 0–86400）、`occurred_at`（客户端毫秒 UTC）、`client_event_id`；`UNIQUE(user_id, client_event_id)` + `(user_id, occurred_at)` 索引 |
+| `weekly_reports` | 周报快照：`user_id`、`week_start`（DATE，UTC 周一）、`payload`（完整报告 JSON 文本：`version` / `generatedAt` / `report`）、`created_at`；`UNIQUE(user_id, week_start)`，同周只留首份 |
+
+- 运行时不建表：未跑 `0008` 时两个端点统一返回 **503** 并提示 `alembic upgrade head`。
+- `watch_events` 也是 append-only（`reports.py` 只 INSERT/SELECT）。
+- 游客归属写成 `guest:<sha256>` 而不是 NULL，`UNIQUE(user_id, client_event_id)`
+  对游客同样生效；`guest_hash` 不对外返回。
+
+### 事件上报 `POST /api/events`
+
+```json
+{"events": [
+  {"type": "watch", "contentRef": "dQw4w9WgXcQ", "kind": "video",
+   "targetLang": "zh-CN", "watchedSeconds": 42, "positionSeconds": 128,
+   "occurredAt": 1794398400000, "clientEventId": "w-2026-11-09-a1"}
+]}
+```
+
+- 单次 **最多 50 条**；`type` 目前只支持 `watch`；`contentRef` 规则与理解题一致
+  （`local_show` 会规范化成 `<show>-SxxEyy`）。
+- `watchedSeconds` / `positionSeconds`：数字，0–86400 秒，落库取整；
+  `occurredAt`：整数毫秒，不能比服务端时间晚 5 分钟以上；
+  `clientEventId`：非空、≤128 字符，客户端生成的幂等键。
+- **任一条非法 → 整批 400，不写任何一条**（先全量校验，再开事务）。
+- 响应：`{"received", "accepted", "duplicated"}`；重复 `clientEventId`
+  计入 `duplicated`，不重复计数。
+- 游客可用：无会话时归属 `guest:<sha256>`，游客周报与登录用户、其他游客隔离。
+
+### 周报 `GET /api/report/week?weekStart=YYYY-MM-DD`
+
+- 周界：**UTC 周一 00:00 左闭右开** `[weekStart, weekStart+7d)`；`weekStart`
+  缺省本周一，传任意日期归一到所在周周一；非法日期 400。
+- `numbers`：`passiveMinutes`（`watched_seconds` 求和 ÷60，1 位小数）、
+  `reviewedWords`（`review_logs` distinct lemma）、`quizAccuracy`
+  （`attempts` 正确率 0–1，**无作答为 null**）。
+- `fact`：一句中文事实（例：「你本周看了 1 个视频和 1 集剧集，完成 6 道题，
+  复习了 3 个词。」）；无数据为「这周还没有可统计的学习记录。」。
+- `nextStep`：规则生成，优先级 = 无任何数据 → 无作答（「明天做一次理解练习」）
+  → 有到期词（「复习 N 个到期词」）→ 无观看 → 无复习 → ≥4 次作答且正确率
+  <0.6 → 默认「保持这个节奏，明天学 10 分钟」。
+- `evidence`：优先本周最近一条**答错题**的 evidence block（`source=quiz_wrong`，
+  contentRef + 秒/毫秒起止 + 从当前身份字幕缓存解析的 `sentence`）；没有错题
+  则取最近一次观看的 **5 秒窗口**（`source=watch`，以进度为中心）；都没有为
+  `null`。句子缓存缺失时 `sentence=null`，时间点仍返回；`blockId` 数字返回 int
+  （与理解题一致）。
+- `streakDays`：有任意 watch / quiz / review 的 UTC 日连续天数（今天没有记录
+  从昨天数，最多回溯 400 天）。
+- `quiz`：本周 `attempts` / `correct`；`words`：`new`（本周新建词状态数）、
+  `reviewed`、`dueTomorrow`（到明天结束前该复习的词，含逾期）。
+- 快照：首次生成时 `INSERT OR IGNORE` 写入 `weekly_reports`；同周后续 GET
+  返回实时数字但不覆盖首份快照；无数据也写快照；不同周各一份。
+- 错误码：`weekStart` 非法 **400**；表未迁移 **503**。
+
+### 运行与验证
+
+```bash
+cd backend
+venv/bin/alembic upgrade head                 # 新库迁到 0008；旧库先 stamp 0001 再 upgrade
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_weekly_report.py -q
+venv/bin/python -m pytest tests -q            # 全量离线（含迁移升级/回滚）
+
+# 手工冒烟（临时 /tmp 库，不碰 data/app.db）
+mkdir -p /tmp/yt/data/users /tmp/yt/data/guests
+AUTH_DB_PATH=/tmp/yt/app.db venv/bin/alembic upgrade head
+AUTH_DB_PATH=/tmp/yt/app.db DATA_DIR=/tmp/yt/data USER_DATA_DIR=/tmp/yt/data/users \
+  GUEST_DATA_DIR=/tmp/yt/data/guests HISTORY_DIR=/tmp/yt/legacy \
+  venv/bin/uvicorn main:app --port 8001
+```
+
+已知边界：游客认领账号时已上报的观看事件暂不迁移（`guest_hash` 已预留）；
+`dueTomorrow` 相对当前时刻计算（补看历史周时语义需再确认）；不做客户端时长
+反作弊；本轮不切片音频，只给 5 秒时间窗。
+
+
+
 ## 多语言目标语言（targetLang，P0）
 
 规格：[specs/012-i18n-multilingual](../specs/012-i18n-multilingual/spec.md) §5.3–§5.10、§6。P0 范围 = **目标语言**（翻译/总结/词典/缓存/模型路线），UI 语言与 `/api/settings` 属后续任务。
@@ -310,12 +399,12 @@ venv/bin/python -m pytest tests/test_i18n_target_lang.py -q   # 目标语言 P0�
 
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 
 ```bash
-venv/bin/alembic upgrade head            # 新库：从零建到最新（0001 → … → 0007_quiz）
+venv/bin/alembic upgrade head            # 新库：从零建到最新（0001 → … → 0008_weekly_report）
 venv/bin/alembic current                 # 看当前版本
 
 # 已有 data/app.db（只有 users/sessions，没有 alembic_version）：先纳管再补建新表

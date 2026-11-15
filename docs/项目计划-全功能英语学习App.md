@@ -1098,6 +1098,7 @@ jobs 1─1 artifact_dir（data/jobs/<id>/）
 | **验收** | ① 新用户 7 天内能完成「看→查→复习→周报」一圈；② 周报数字可被 SQL 复算（口径一致）；③ **周报邮件在 3 个主流邮箱（Gmail/Outlook/QQ）都能进收件箱**，含退订链接且退订生效；④ 手机 390px 上主流程无横向滚动、主按钮在屏幕下 1/3；⑤ **切后台 5 分钟回来仍在同一秒；网络中断后 UI 给出重连提示并可继续**；⑥ 止血台 4 个动作都能生效并留痕；⑦ 反馈入口能带出 `request_id`；⑧ 退款/补偿动作能在后台一键执行并留痕（收款前只用于 AI 出错补偿） |
 | **人日** | **20**（工程 13 / 设计 3 / 客服与合规文本 3 / 运营 1） |
 | **依赖** | M1–M4 全部；D-4（旅程感验收定义）、D-9（报告口径）、D-13（退款政策） |
+| **进度（2026-11-15，M5 周报后端）** | **M5 的「学习事件上报 + 周报（3 数字 + 1 句事实 + 1 个下一步 + 1 段证据）」后端已完成**：`0008_weekly_report`（`watch_events`：`user_id` 归属键含游客 `guest:<sha256>`、可空 `guest_hash`、`UNIQUE(user_id,client_event_id)`、`(user_id,occurred_at)` 索引、0–86400 秒 CHECK；`weekly_reports`：`UNIQUE(user_id,week_start)`、payload JSON）；`backend/reports.py`（批量上报幂等/游客/校验、UTC 周一 00:00 左闭右开聚合、事实与下一步规则、错题 evidence 或最近观看 5 秒窗口、连续学习天数、首份快照 INSERT OR IGNORE、数字全 SQL 不调模型）+ `backend/routes_events.py`（`POST /api/events`、`GET /api/report/week`，游客可用，未迁移 503）；`tests/test_weekly_report.py` 11 个离线测试 + 迁移断言，全量 **331 测试绿**；8001 临时实例（/tmp）实测：重复上报 accepted 3/duplicated 1 → 再报 accepted 0/duplicated 4 且行数不变；周报 passiveMinutes 17.0、fact/nextStep/evidence（错题 block 10–13s + 句子）正确，快照同周只写一份。规格：[specs/015](../specs/015-weekly-report/spec.md)。**M5 整阶段未完成**（周报页/邮件/带回卡片/止血台/客服/移动可用未做） |
 
 **合计：60 + 20 + 19 + 14 + 20 = 133 人日；+ 验证实验 17 人日 = 150 人日 = 20 周。**
 **上线点：W15（M1+M2+M3+E-1/E-2 = 112 人日）；Gate-1：W20；含 15% 缓冲的对外承诺：W23。**
