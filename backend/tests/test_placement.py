@@ -772,3 +772,65 @@ def test_preliminary_flag_flips_at_100_users(placement_db):
     fetched = placement_db.get("/api/placement/profile").json()
     assert fetched["sampleSize"] == 100
     assert fetched["preliminary"] is False
+
+
+# ---------------------------------------------------------------------------
+# 8. 游客开始 → 中途登录：会话应转给账号，不能整卷作废
+# ---------------------------------------------------------------------------
+
+def test_guest_session_claimed_when_logging_in_mid_test(placement_db, guest_client):
+    """先以游客开始定位测，注册/登录后 claim-guest 应把会话迁移到账号。"""
+    data = _start(guest_client)
+    session_id = data["sessionId"]
+
+    email = "midway-claim@example.com"
+    signup = guest_client.post("/api/auth/signup", json={"email": email, "password": PASSWORD})
+    assert signup.status_code == 201, signup.text
+    user_id = signup.json()["user"]["id"]
+
+    claim = guest_client.post("/api/auth/claim-guest")
+    assert claim.status_code == 200, claim.text
+    assert claim.json()["merged"]["placement"] == 1
+
+    conn = _db()
+    try:
+        row = conn.execute(
+            "SELECT user_id, guest_hash FROM placement_sessions WHERE id = ?",
+            (session_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row["user_id"] == user_id
+    assert row["guest_hash"] is None
+
+    result = _submit(guest_client, data, _build_answers(data))
+    assert result.status_code == 200, result.text
+    assert result.json()["cefr"]["low"] in {"A1", "A2", "B1", "B2", "C1"}
+    assert guest_client.get("/api/placement/profile").json()["profile"] is not None
+
+
+def test_guest_session_adopted_when_submitting_after_login(placement_db, guest_client):
+    """没有显式 claim 时，提交也能把本次游客会话转给刚登录的账号。"""
+    data = _start(guest_client)
+    session_id = data["sessionId"]
+
+    signup = guest_client.post(
+        "/api/auth/signup",
+        json={"email": "midway-submit@example.com", "password": PASSWORD},
+    )
+    assert signup.status_code == 201, signup.text
+    user_id = signup.json()["user"]["id"]
+
+    result = _submit(guest_client, data, _build_answers(data))
+    assert result.status_code == 200, result.text
+
+    conn = _db()
+    try:
+        row = conn.execute(
+            "SELECT user_id, guest_hash FROM placement_sessions WHERE id = ?",
+            (session_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row["user_id"] == user_id
+    assert row["guest_hash"] is None

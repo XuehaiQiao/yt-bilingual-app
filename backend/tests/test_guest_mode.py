@@ -452,6 +452,7 @@ def test_claim_merges_data_and_clears_guest(make_client, monkeypatch):
             "history": 0,
             "favorites": 0,
             "subscriptions": 0,
+            "placement": 0,
         }
         assert len(client.get("/api/favorites").json()) == 1
         assert len(list((user_root / "history").glob("*.json"))) == 1

@@ -69,6 +69,20 @@ def _identity(request: Request) -> tuple[str, str | None]:
     raise HTTPException(status_code=403, detail="缺少定位测身份（请启用 Cookie）。")
 
 
+def _guest_hash_any(request: Request) -> str | None:
+    """登录用户也取出游客 Cookie 的 hash（中间件登录时不会填 state.guest_hash）。
+
+    用于「游客开始、中途登录」的会话迁移；没有游客 Cookie 时返回 None。
+    """
+    state_guest = getattr(request.state, "guest_hash", None)
+    if state_guest:
+        return state_guest
+    token = request.cookies.get(guest.COOKIE_NAME)
+    if guest.is_valid_token(token):
+        return guest.hash_token(token)
+    return None
+
+
 def _raise_placement_error(exc: Exception) -> None:
     """把 placement 的领域异常映射成 HTTP 错误。"""
     if isinstance(exc, placement.PlacementUnavailable):
@@ -87,6 +101,10 @@ def start_placement(request: Request):
     """开始或复用定位测；同一用户未完成的会话会被复用。"""
     identity, guest_hash = _identity(request)
     try:
+        user = getattr(request.state, "user", None)
+        state_guest = _guest_hash_any(request)
+        if user and state_guest:
+            placement.claim_guest_sessions(state_guest, user["id"])
         return placement.start(identity, guest_hash)
     except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
         _raise_placement_error(exc)
@@ -102,6 +120,12 @@ def submit_placement(payload: SubmitRequest, request: Request):
         for answer in payload.answers
     ]
     try:
+        # 先做定位测、中途登录：把本次游客会话转给当前账号再提交，避免
+        # 「会话不属于当前用户」导致整卷作废。
+        user = getattr(request.state, "user", None)
+        state_guest = _guest_hash_any(request)
+        if user and state_guest:
+            placement.adopt_guest_session(payload.session_id, state_guest, user["id"])
         return placement.submit(
             identity,
             guest_hash,
@@ -119,6 +143,10 @@ def placement_profile(request: Request):
     """当前能力画像；没有完成过定位测时 ``profile`` 为 null。"""
     identity, _guest_hash = _identity(request)
     try:
+        user = getattr(request.state, "user", None)
+        state_guest = _guest_hash_any(request)
+        if user and state_guest:
+            placement.claim_guest_sessions(state_guest, user["id"])
         return placement.get_profile(identity)
     except Exception as exc:  # noqa: BLE001
         _raise_placement_error(exc)

@@ -704,6 +704,68 @@ def _load_row(conn: sqlite3.Connection, session_id: str, identity: str) -> sqlit
     ).fetchone()
 
 
+def adopt_guest_session(session_id: str, guest_hash: str, user_id: str) -> bool:
+    """把「游客开始的定位测会话」转给刚登录的用户（幂等）。
+
+    只在该会话当前归属 ``guest:<hash>`` 时生效；用于「先做定位测、做到一半
+    登录/注册」的场景。转移后提交按登录用户评分。
+    """
+    if not session_id or not guest_hash or not user_id:
+        return False
+    owner = "guest:" + guest_hash
+    try:
+        conn = _connect()
+    except PlacementUnavailable:
+        return False
+    try:
+        try:
+            _require_tables(conn)
+        except PlacementUnavailable:
+            # 定位测表还没迁移（例如只跑了旧迁移）：认领不应因此 500。
+            return False
+        with conn:
+            cur = conn.execute(
+                "UPDATE placement_sessions SET user_id = ?, guest_hash = NULL "
+                "WHERE id = ? AND user_id = ?",
+                (user_id, session_id, owner),
+            )
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def claim_guest_sessions(guest_hash: str, user_id: str) -> int:
+    """把游客名下的定位测会话与画像迁移到登录账号（登录认领时调用）。"""
+    if not guest_hash or not user_id:
+        return 0
+    owner = "guest:" + guest_hash
+    try:
+        conn = _connect()
+    except PlacementUnavailable:
+        return 0
+    try:
+        try:
+            _require_tables(conn)
+        except PlacementUnavailable:
+            return 0
+        with conn:
+            cur = conn.execute(
+                "UPDATE placement_sessions SET user_id = ?, guest_hash = NULL "
+                "WHERE user_id = ?",
+                (user_id, owner),
+            )
+            moved = int(cur.rowcount or 0)
+            conn.execute(
+                "UPDATE user_profiles SET user_id = ? "
+                "WHERE user_id = ? AND NOT EXISTS "
+                "(SELECT 1 FROM user_profiles WHERE user_id = ?)",
+                (user_id, owner, user_id),
+            )
+        return moved
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # 对外用例：start / submit / profile / reset
 # ---------------------------------------------------------------------------

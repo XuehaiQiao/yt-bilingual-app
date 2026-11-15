@@ -28,6 +28,7 @@ import auth_db
 import auth_lockout
 import config
 import guest
+import placement
 
 logger = logging.getLogger("linguatrek.auth")
 
@@ -235,7 +236,7 @@ def claim_guest(request: Request, response: Response):
     token = request.cookies.get(guest.COOKIE_NAME)
     empty = {
         "claimed": False,
-        "merged": {"history": 0, "favorites": 0, "subscriptions": 0},
+        "merged": {"history": 0, "favorites": 0, "subscriptions": 0, "placement": 0},
         "skipped": {"history": 0, "favorites": 0, "subscriptions": 0},
         "guestFiles": 0,
     }
@@ -247,7 +248,11 @@ def claim_guest(request: Request, response: Response):
 
     guest_hash = guest.hash_token(token)
     try:
+        # 定位测会话存在数据库里（不在游客目录），与文件合并分开迁移；
+        # 中途登录后仍能接着提交，不会因「归属不同」整卷作废。
+        moved_placement = placement.claim_guest_sessions(guest_hash, user["id"])
         result = guest.claim_guest_data(guest_hash, user["id"])
+        result.setdefault("merged", {})["placement"] = moved_placement
     except guest.GuestClaimError:
         # 游客目录保留（合并是幂等的，下次登录可重试）；不删 Cookie。
         logger.exception("游客数据认领失败：guest=%s user=%s", guest_hash[:12], user["id"])
