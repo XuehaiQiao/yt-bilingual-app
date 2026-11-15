@@ -1,0 +1,356 @@
+{
+  "_meta": {
+    "notice": "人工精选草稿，待运营复核",
+    "version": 1,
+    "updatedAt": "2026-11-15",
+    "count": 30,
+    "levels": {
+      "A2": 4,
+      "B1": 10,
+      "B2": 10,
+      "C1": 6
+    },
+    "topics": {
+      "technology": 6,
+      "business": 6,
+      "psychology": 6,
+      "culture": 6,
+      "environment": 6
+    },
+    "method": "yt-dlp ytsearch 收集候选，逐个 watch 元数据校验（videoId/title/channel/duration/upload_date，2026-11-15）；thumbnail 统一用 hqdefault.jpg。",
+    "notes": "难度带与推荐语由编辑初拟；运营复核后再调整。推荐接口把这里的推荐语作为内容钩子附加在规则理由之后（仅 zh-CN）。",
+    "validation": "2026-11-15：每个 videoId 用 yt-dlp --skip-download --dump-json watch URL 校验 title/channel/duration/upload_date 可解析（30/30）；thumbnail HEAD 全部 200。"
+  },
+  "items": [
+    {
+      "videoId": "StEB_wntlZ0",
+      "title": "Is technology harmful to youngsters? 6 Minute English",
+      "channel": "BBC Learning English",
+      "duration": 382,
+      "thumbnail": "https://i.ytimg.com/vi/StEB_wntlZ0/hqdefault.jpg",
+      "topic": "technology",
+      "level": "A2",
+      "publishedAt": "2022-04-16",
+      "reason": "BBC 6 Minute English：6 分钟讨论科技对青少年的影响，语速适中，适合入门精听。"
+    },
+    {
+      "videoId": "er3v4PVNQqE",
+      "title": "The hidden network that makes the internet possible - Sajan Saini",
+      "channel": "TED-Ed",
+      "duration": 319,
+      "thumbnail": "https://i.ytimg.com/vi/er3v4PVNQqE/hqdefault.jpg",
+      "topic": "technology",
+      "level": "B1",
+      "publishedAt": "2019-04-22",
+      "reason": "TED-Ed 动画讲解互联网背后的海底光缆，术语少、画面帮助理解。"
+    },
+    {
+      "videoId": "DHyUYg8X31c",
+      "title": "Do Robots Deserve Rights? What if Machines Become Conscious?",
+      "channel": "Kurzgesagt – In a Nutshell",
+      "duration": 394,
+      "thumbnail": "https://i.ytimg.com/vi/DHyUYg8X31c/hqdefault.jpg",
+      "topic": "technology",
+      "level": "B1",
+      "publishedAt": "2017-02-23",
+      "reason": "Kurzgesagt 用 6 分钟动画讨论机器人权利，句子短、观点清晰。"
+    },
+    {
+      "videoId": "_zfN9wnPvU0",
+      "title": "AI Slop Is Destroying The Internet",
+      "channel": "Kurzgesagt – In a Nutshell",
+      "duration": 592,
+      "thumbnail": "https://i.ytimg.com/vi/_zfN9wnPvU0/hqdefault.jpg",
+      "topic": "technology",
+      "level": "B2",
+      "publishedAt": "2025-10-07",
+      "reason": "2025 年新片，聊 AI 垃圾内容如何淹没互联网，贴近日常使用场景。"
+    },
+    {
+      "videoId": "eXdVDhOGqoE",
+      "title": "AI Is Dangerous, but Not for the Reasons You Think | Sasha Luccioni | TED",
+      "channel": "TED",
+      "duration": 619,
+      "thumbnail": "https://i.ytimg.com/vi/eXdVDhOGqoE/hqdefault.jpg",
+      "topic": "technology",
+      "level": "B2",
+      "publishedAt": "2023-11-06",
+      "reason": "TED 演讲者用具体例子拆解 AI 风险，适合练论证类听力。"
+    },
+    {
+      "videoId": "KKNCiRWd_j0",
+      "title": "What Is an AI Anyway? | Mustafa Suleyman | TED",
+      "channel": "TED",
+      "duration": 1322,
+      "thumbnail": "https://i.ytimg.com/vi/KKNCiRWd_j0/hqdefault.jpg",
+      "topic": "technology",
+      "level": "C1",
+      "publishedAt": "2024-04-22",
+      "reason": "DeepMind 负责人 22 分钟完整论述 AI 的本质，长句与抽象概念多，适合 C1 精听。"
+    },
+    {
+      "videoId": "TL61VKkme14",
+      "title": "Talking about meetings 🗓️🤝👔 Real Easy English",
+      "channel": "BBC Learning English",
+      "duration": 351,
+      "thumbnail": "https://i.ytimg.com/vi/TL61VKkme14/hqdefault.jpg",
+      "topic": "business",
+      "level": "A2",
+      "publishedAt": "2026-05-17",
+      "reason": "BBC 慢速对话演示开会的常用表达，可直接搬到真实会议。"
+    },
+    {
+      "videoId": "6MK6tuZ7Rws",
+      "title": "How do we create a better economy?",
+      "channel": "TED-Ed",
+      "duration": 364,
+      "thumbnail": "https://i.ytimg.com/vi/6MK6tuZ7Rws/hqdefault.jpg",
+      "topic": "business",
+      "level": "B1",
+      "publishedAt": "2022-11-29",
+      "reason": "TED-Ed 用 6 分钟讲清 GDP 之外的经济目标，图表词多但结构清楚。"
+    },
+    {
+      "videoId": "wCLP3djiKvM",
+      "title": "Do tax cuts stimulate the economy? - Jonathan Smith",
+      "channel": "TED-Ed",
+      "duration": 279,
+      "thumbnail": "https://i.ytimg.com/vi/wCLP3djiKvM/hqdefault.jpg",
+      "topic": "business",
+      "level": "B1",
+      "publishedAt": "2022-05-12",
+      "reason": "从减税切入宏观经济学，4 分钟一个核心问题，适合 B1 起步。"
+    },
+    {
+      "videoId": "3ez10ADR_gM",
+      "title": "Intro to Economics: Crash Course Econ #1",
+      "channel": "CrashCourse",
+      "duration": 729,
+      "thumbnail": "https://i.ytimg.com/vi/3ez10ADR_gM/hqdefault.jpg",
+      "topic": "business",
+      "level": "B2",
+      "publishedAt": "2015-07-08",
+      "reason": "Crash Course 经济学第一课，语速偏快但概念系统，适合 B2 系统补课。"
+    },
+    {
+      "videoId": "XNZN6gYhpLU",
+      "title": "How Kalshi Became the Biggest Prediction Market | The Circuit with Emily Chang",
+      "channel": "Bloomberg Originals",
+      "duration": 1441,
+      "thumbnail": "https://i.ytimg.com/vi/XNZN6gYhpLU/hqdefault.jpg",
+      "topic": "business",
+      "level": "C1",
+      "publishedAt": "2026-10-28",
+      "reason": "彭博 2026 年深度访谈，预测市场与监管话题，真实商业语料。"
+    },
+    {
+      "videoId": "DX_HLqz7l2g",
+      "title": "The Rise, Bankruptcy and Rebirth of 23andMe | The Circuit",
+      "channel": "Bloomberg Originals",
+      "duration": 1892,
+      "thumbnail": "https://i.ytimg.com/vi/DX_HLqz7l2g/hqdefault.jpg",
+      "topic": "business",
+      "level": "C1",
+      "publishedAt": "2026-06-03",
+      "reason": "31 分钟完整复盘 23andMe 起落，叙事型商业长片，适合 C1 泛听。"
+    },
+    {
+      "videoId": "4C4wlOAscvY",
+      "title": "Talking about food 🍔🥒🍫 Real Easy English",
+      "channel": "BBC Learning English",
+      "duration": 343,
+      "thumbnail": "https://i.ytimg.com/vi/4C4wlOAscvY/hqdefault.jpg",
+      "topic": "culture",
+      "level": "A2",
+      "publishedAt": "2025-06-29",
+      "reason": "BBC 慢速聊各国饮食，食物词汇密集，入门友好。"
+    },
+    {
+      "videoId": "oTPZWpQ9pbA",
+      "title": "Cultural differences and body language - 6 Minute English",
+      "channel": "BBC Learning English",
+      "duration": 372,
+      "thumbnail": "https://i.ytimg.com/vi/oTPZWpQ9pbA/hqdefault.jpg",
+      "topic": "culture",
+      "level": "B1",
+      "publishedAt": "2017-09-14",
+      "reason": "6 分钟讲肢体语言的文化差异，例子具体、语速适中。"
+    },
+    {
+      "videoId": "iWDKsHm6gTA",
+      "title": "How languages evolve - Alex Gendler",
+      "channel": "TED-Ed",
+      "duration": 243,
+      "thumbnail": "https://i.ytimg.com/vi/iWDKsHm6gTA/hqdefault.jpg",
+      "topic": "culture",
+      "level": "B1",
+      "publishedAt": "2014-05-27",
+      "reason": "TED-Ed 动画梳理语言演化，4 分钟建立语言学常识。"
+    },
+    {
+      "videoId": "MMmOLN5zBLY",
+      "title": "The benefits of a bilingual brain - Mia Nacamulli",
+      "channel": "TED-Ed",
+      "duration": 304,
+      "thumbnail": "https://i.ytimg.com/vi/MMmOLN5zBLY/hqdefault.jpg",
+      "topic": "culture",
+      "level": "B2",
+      "publishedAt": "2015-06-23",
+      "reason": "双语大脑的科普短片，认知类词汇多，适合 B2 拓展。"
+    },
+    {
+      "videoId": "fbQ3LGoFaLc",
+      "title": "The surprising implications of culture on language and how we talk",
+      "channel": "TEDx Talks",
+      "duration": 553,
+      "thumbnail": "https://i.ytimg.com/vi/fbQ3LGoFaLc/hqdefault.jpg",
+      "topic": "culture",
+      "level": "B2",
+      "publishedAt": "2022-07-11",
+      "reason": "TEDx 讲文化与语言如何互相塑造，带口音的真实演讲。"
+    },
+    {
+      "videoId": "RKK7wGAYP6k",
+      "title": "How Language Shapes the Way We Think | Lera Boroditsky | TED",
+      "channel": "TED",
+      "duration": 853,
+      "thumbnail": "https://i.ytimg.com/vi/RKK7wGAYP6k/hqdefault.jpg",
+      "topic": "culture",
+      "level": "C1",
+      "publishedAt": "2018-05-02",
+      "reason": "Lera Boroditsky 经典 TED 演讲，抽象论证与实验描述，C1 精听素材。"
+    },
+    {
+      "videoId": "yLu_M4yiCho",
+      "title": "Talking about sleep 😴 🛏️  Real Easy English",
+      "channel": "BBC Learning English",
+      "duration": 329,
+      "thumbnail": "https://i.ytimg.com/vi/yLu_M4yiCho/hqdefault.jpg",
+      "topic": "psychology",
+      "level": "A2",
+      "publishedAt": "2025-11-23",
+      "reason": "BBC 慢速聊睡眠习惯，日常表达多，适合 A2 跟读。"
+    },
+    {
+      "videoId": "WuyPuH9ojCE",
+      "title": "How stress affects your brain - Madhumita Murgia",
+      "channel": "TED-Ed",
+      "duration": 256,
+      "thumbnail": "https://i.ytimg.com/vi/WuyPuH9ojCE/hqdefault.jpg",
+      "topic": "psychology",
+      "level": "B1",
+      "publishedAt": "2015-11-09",
+      "reason": "4 分钟动画讲压力对大脑的影响，术语有画面辅助。"
+    },
+    {
+      "videoId": "FWTNMzK9vG4",
+      "title": "Why you procrastinate even when it feels bad",
+      "channel": "TED-Ed",
+      "duration": 345,
+      "thumbnail": "https://i.ytimg.com/vi/FWTNMzK9vG4/hqdefault.jpg",
+      "topic": "psychology",
+      "level": "B1",
+      "publishedAt": "2022-10-27",
+      "reason": "拖延心理学短讲，贴近学生生活，句子结构清晰。"
+    },
+    {
+      "videoId": "qYvXk_bqlBk",
+      "title": "Who are you, really? The puzzle of personality | Brian Little | TED",
+      "channel": "TED",
+      "duration": 916,
+      "thumbnail": "https://i.ytimg.com/vi/qYvXk_bqlBk/hqdefault.jpg",
+      "topic": "psychology",
+      "level": "B2",
+      "publishedAt": "2016-07-19",
+      "reason": "Brian Little 用幽默方式讲人格心理学，适合练长段听力。"
+    },
+    {
+      "videoId": "8KkKuTCFvzI",
+      "title": "What Makes a Good Life? Lessons from the Longest Study on Happiness | Robert Waldinger | TED",
+      "channel": "TED",
+      "duration": 767,
+      "thumbnail": "https://i.ytimg.com/vi/8KkKuTCFvzI/hqdefault.jpg",
+      "topic": "psychology",
+      "level": "B2",
+      "publishedAt": "2016-01-25",
+      "reason": "哈佛 75 年幸福研究，叙事清晰，B2 泛听经典。"
+    },
+    {
+      "videoId": "arj7oStGLkU",
+      "title": "Inside the Mind of a Master Procrastinator | Tim Urban | TED",
+      "channel": "TED",
+      "duration": 844,
+      "thumbnail": "https://i.ytimg.com/vi/arj7oStGLkU/hqdefault.jpg",
+      "topic": "psychology",
+      "level": "C1",
+      "publishedAt": "2016-04-06",
+      "reason": "Tim Urban 语速快、梗多，练 C1 听幽默与即兴表达。"
+    },
+    {
+      "videoId": "2njn71TqkjA",
+      "title": "What Earth in 2050 could look like - Shannon Odell",
+      "channel": "TED-Ed",
+      "duration": 299,
+      "thumbnail": "https://i.ytimg.com/vi/2njn71TqkjA/hqdefault.jpg",
+      "topic": "environment",
+      "level": "B1",
+      "publishedAt": "2024-03-28",
+      "reason": "TED-Ed 推演 2050 年的地球，数据表达多，B1 可跟。"
+    },
+    {
+      "videoId": "ZCKRjP_DMII",
+      "title": "Can wildlife adapt to climate change? - Erin Eastwood",
+      "channel": "TED-Ed",
+      "duration": 287,
+      "thumbnail": "https://i.ytimg.com/vi/ZCKRjP_DMII/hqdefault.jpg",
+      "topic": "environment",
+      "level": "B1",
+      "publishedAt": "2016-03-03",
+      "reason": "野生动物如何适应气候变化，4 分钟一个科学问题。"
+    },
+    {
+      "videoId": "wbR-5mHI6bo",
+      "title": "Is It Too Late To Stop Climate Change? Well, it's Complicated.",
+      "channel": "Kurzgesagt – In a Nutshell",
+      "duration": 607,
+      "thumbnail": "https://i.ytimg.com/vi/wbR-5mHI6bo/hqdefault.jpg",
+      "topic": "environment",
+      "level": "B2",
+      "publishedAt": "2020-09-29",
+      "reason": "Kurzgesagt 用 10 分钟拆解气候行动的三种情景。"
+    },
+    {
+      "videoId": "-IlDkCEvsYw",
+      "title": "How climate change affects your mental health | Britt Wray",
+      "channel": "TED",
+      "duration": 452,
+      "thumbnail": "https://i.ytimg.com/vi/-IlDkCEvsYw/hqdefault.jpg",
+      "topic": "environment",
+      "level": "B2",
+      "publishedAt": "2019-09-20",
+      "reason": "气候焦虑与心理健康，话题新、演讲结构清楚。"
+    },
+    {
+      "videoId": "LxgMdjyw8uw",
+      "title": "We WILL Fix Climate Change!",
+      "channel": "Kurzgesagt – In a Nutshell",
+      "duration": 851,
+      "thumbnail": "https://i.ytimg.com/vi/LxgMdjyw8uw/hqdefault.jpg",
+      "topic": "environment",
+      "level": "B2",
+      "publishedAt": "2022-04-05",
+      "reason": "14 分钟乐观版气候科普，信息密度高，适合 B2 精听。"
+    },
+    {
+      "videoId": "Vl6VhCAeEfQ",
+      "title": "The Tipping Points of Climate Change — and Where We Stand | Johan Rockström | TED",
+      "channel": "TED",
+      "duration": 1116,
+      "thumbnail": "https://i.ytimg.com/vi/Vl6VhCAeEfQ/hqdefault.jpg",
+      "topic": "environment",
+      "level": "C1",
+      "publishedAt": "2024-08-15",
+      "reason": "Johan Rockström 讲气候临界点，学术词汇与复杂论证，C1 挑战。"
+    }
+  ]
+}

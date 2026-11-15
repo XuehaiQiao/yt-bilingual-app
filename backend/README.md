@@ -13,7 +13,7 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载八个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
@@ -42,6 +42,8 @@
 | `routes_placement.py` | 能力定位测 HTTP 路由（**游客可用**）：`GET /api/placement/start`、`POST /api/placement/submit`、`GET /api/placement/profile`、`POST /api/placement/reset`；契约与错误语义见下文「能力定位测与能力画像」与 [specs/016](../specs/016-placement/spec.md) |
 | `discover.py` | **内容发现（V1）**：LLM 意图改写（2–3 个英文检索词，JSON 容错/降级原 query）→ yt-dlp `ytsearchN:` 并发搜索（≤3，单 query 8 条、失败不拖垮整体）→ 跨 query 去重 + 直播/90s–90min 过滤 → `youtube-transcript-api.list()` 并发探测英文字幕（≤4、2s，失败标 unknown 不误杀）→ LLM 重排 3–5 个（A1–C1 + 中文一句理由；失败规则排序 + 模板理由）→ `discover_queries` 24h 缓存。只读公开元数据/轨道列表，不下载、不存字幕正文；总预算 20s |
 | `routes_discover.py` | 内容发现 HTTP 路由：`POST /api/discover`（**需登录，游客 403**；5 次/分钟/用户）；契约/错误语义见下文「内容发现」与 [specs/017](../specs/017-discover/spec.md) |
+| `recommend.py` | **规则推荐（V1）**：读 `content/curated.json`（30 条人工精选）+ 登录用户 `user_profiles` 的 CEFR 区间（无画像默认 A2–B1）+ 当前身份 history 缓存；按 band±1、主题轮转、新鲜度、已看排除排序，生成中文/越语一句理由；不调用 LLM、不联网、不建表；10 分钟进程内缓存 |
+| `routes_recommend.py` | 规则推荐 HTTP 路由：`GET /api/recommendations?limit=6&targetLang=zh-CN&seed=0`（游客可用）；契约/错误语义见下文「规则推荐」与 [specs/018](../specs/018-recommendations/spec.md) |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
 | `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
@@ -528,6 +530,91 @@ venv/bin/python -m pytest tests -q                    # 全量（含迁移升级
 检查候选字段、英文字幕过滤与第二次 `cached:true`；或起 8001 临时实例并用
 `/tmp` 数据目录 + mock 搜索/探测/LLM 验证端点、缓存与 `force`（不污染仓库
 `data/`、`history/`）。
+
+
+## 规则推荐（V1：按能力画像推荐人工精选内容）
+
+首页「为你推荐」的后端：**不调用 LLM**，用「人工精选池 + 定位测区间 + 已看历史」
+做规则推荐。规格：[specs/018-recommendations](../specs/018-recommendations/spec.md)。
+
+### 端点
+
+`GET /api/recommendations?limit=6&targetLang=zh-CN&seed=0`（**游客可用**）
+
+| 参数 | 说明 |
+|---|---|
+| `limit` | 1–12，默认 6；越界/非整数 422 |
+| `targetLang` | `zh-CN`（缺省）/ `vi-VN`；非法 400 |
+| `seed` | 0–9999，默认 0；前端「换一批」用确定性轮转，不改变筛选规则 |
+
+成功响应（200）：
+
+```json
+{
+  "items": [
+    {
+      "videoId": "KKNCiRWd_j0",
+      "title": "What Is an AI Anyway? | Mustafa Suleyman | TED",
+      "channel": "TED",
+      "duration": 1322,
+      "thumbnail": "https://i.ytimg.com/vi/KKNCiRWd_j0/hqdefault.jpg",
+      "level": "C1",
+      "topic": "technology",
+      "reason": "适合你的 C1 水平。DeepMind 负责人 22 分钟完整论述 AI 的本质……",
+      "url": "https://www.youtube.com/watch?v=KKNCiRWd_j0"
+    }
+  ],
+  "basis": {"band": "B1–B2", "source": "profile"},
+  "preliminary": true
+}
+```
+
+- `basis.source`：`profile` = 用了登录用户画像区间；`default` = 无画像、游客，
+  或画像区间无候选后回退到默认 `A2–B1`。
+- `preliminary`：无画像或定位测样本 <100 时为 `true`；前端不得显示成「准确」。
+- 返回 1–6 条为常态；候选不足/已看太多时返回实际数量，**不伪造**。
+- 错误：400（targetLang 非法）、422（limit/seed 越界）、503（`content/curated.json`
+  缺失/损坏/未标「待运营复核」）。
+- 缓存：进程内 10 分钟 + 响应头 `Cache-Control: private, max-age=600`。缓存键
+  含身份、语言、limit、seed、区间、来源与 history 指纹，history/画像变化自动失效。
+
+### 规则
+
+1. **画像**：登录用户读 `user_profiles.level_band_low/high`；无画像/表未迁移 →
+   默认 `A2–B1`。**游客即使有游客画像也一律默认 `A2–B1`**（任务口径）。
+2. **已看历史**：只读当前身份 + 目标语言 `history/` 下缓存的 `videoId` /
+   `metadata.channel` / `metadata.title`，不读字幕正文；已缓存 videoId 全部排除。
+   频道/标题只用于推断「最近在看什么主题」（关键词 + 精选池同频道映射），不当作
+   排除条件。
+3. **难度**：只保留区间内 + 相邻 ±1；先区间内（distance=0），不足 limit 再补 ±1。
+4. **主题多样性**：每轮每主题最多 1 条、每主题总数 ≤2；`limit=5` 时五主题各一条，
+   `limit=6` 时先覆盖五主题再补第 2 条。
+5. **新鲜度**：同主题内按精选池 `publishedAt` 从新到旧；同日保持文件顺序。
+6. **回退**：画像区间无候选（例如都看过）→ 默认 `A2–B1` 重算；仍无 → `items: []`。
+7. **理由**：中文为「适合你的 B1 水平 / 比区间略低(高) / 入门区间」+ 最近主题
+   + 精选池编辑推荐语；越南语只输出越语模板，不混中文。
+
+### 精选池
+
+`content/curated.json`：30 条真实 YouTube 视频（A2 4 / B1 10 / B2 10 / C1 6；
+technology/business/psychology/culture/environment 各 6；4–32 分钟）。内容闸门
+校验草稿标记、id 唯一 11 位、时长 180–2400s、主题/难度枚举、缩略图与 id 一致、
+`_meta.count` 一致；坏内容 503。字段与维护方式见
+[content/README](../content/README.md)。
+
+### 测试与实测
+
+```bash
+cd backend
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_recommend.py -q   # 17 个离线用例
+venv/bin/python -m pytest tests -q                    # 全量 395
+```
+
+2026-11-15 实测（8001 临时实例，/tmp 数据目录）：无画像 `A2–B1/default` 6 条；
+写入 B1–B2 画像后 `B1–B2/profile` 6 条（全 B1/B2）；加一条科技类 history 后该
+视频被排除且理由出现「你最近在看科技类」；游客默认 `A2–B1`；推荐 URL 调真实
+`/api/estimate-cost` 返回同一 videoId（`eXdVDhOGqoE`）。
 
 
 ## 多语言目标语言（targetLang，P0）

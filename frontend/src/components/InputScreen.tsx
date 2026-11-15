@@ -5,6 +5,7 @@ import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import { EstimateDialog, type EstimateDialogHandle } from './EstimateDialog';
 import { TodayWorkbench, type TodayWeekReport } from './TodayWorkbench';
+import { HomeRecommendations } from './HomeRecommendations';
 import { ShowBrowser } from './ShowBrowser';
 import { loadModel, loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
 import { VocabAxis } from './VocabAxis';
@@ -281,6 +282,13 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                         placementFailed={placementFailed}
                         onOpenPlacement={onOpenPlacement}
                     />
+                </motion.div>
+
+                {/* "For you" rule recommendations (user request #10): manual
+                    curation + placement band + watch history. Clicking a card
+                    reuses the exact same estimate flow as the link input. */}
+                <motion.div variants={itemVariants}>
+                    <HomeRecommendations onSelect={handleInterceptSubmit} />
                 </motion.div>
 
                 {/* Start learning: the old hero search, moved below today's

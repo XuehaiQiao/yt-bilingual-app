@@ -19,6 +19,8 @@
 - routes_placement.py 能力定位测 / 能力画像（M4）
 - discover.py        内容发现：意图改写 / 搜索 / 字幕探测 / 重排 / 24h 缓存（V1）
 - routes_discover.py POST /api/discover（需登录）
+- recommend.py       规则推荐：画像区间 + 已看历史 + 人工精选池（V1）
+- routes_recommend.py GET /api/recommendations（游客可用）
 - reports.py         观看事件 + 周报 SQL 聚合（M5）
 - placement.py       定位测题库抽样 / 加权评分 / CEFR 区间 / 画像（M4）
 - observability.py   结构化访问日志 / request_id / 只读 /healthz
@@ -56,6 +58,7 @@ import routes_discover
 import routes_events
 import routes_placement
 import routes_quiz
+import routes_recommend
 import routes_review
 import routes_user
 import routes_videos
@@ -174,6 +177,7 @@ app.include_router(routes_quiz.router)
 app.include_router(routes_events.router)
 app.include_router(routes_placement.router)
 app.include_router(routes_discover.router)
+app.include_router(routes_recommend.router)
 
 # 必须最后注册：Starlette 后注册的中间件在最外层，401 响应才能带上 CORS 头，
 # 浏览器里的前端才看得到真正的错误信息。

@@ -17,6 +17,7 @@ export const api = (path: string) => `${API_BASE}${path}`;
 // `target_lang` exists only inside cache files/prompts.
 const TARGET_LANG_QUERY_PATHS = new Set([
     '/api/models',
+    '/api/recommendations',
     '/api/estimate-cost',
     '/api/history',
     '/api/review/queue',
