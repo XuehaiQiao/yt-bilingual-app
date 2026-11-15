@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0009_placement"
+HEAD = "0010_discover"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -71,6 +71,7 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "content_items", "questions", "attempts",
         "watch_events", "weekly_reports",
         "placement_sessions", "placement_answers", "user_profiles",
+        "discover_queries",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD
@@ -906,6 +907,65 @@ def test_upgrade_head_from_empty_db(tmp_path):
             raise AssertionError("word_sources 外键应拒绝不存在的 word_state_id")
         conn.rollback()
 
+    # 内容发现缓存（0010_discover）：检索词审计 + 24h 缓存，不存字幕正文
+    discover_queries = columns(db, "discover_queries")
+    assert list(discover_queries) == [
+        "id",
+        "user_id",
+        "query_hash",
+        "query",
+        "target_lang",
+        "result",
+        "created_at",
+        "expires_at",
+    ]
+    assert discover_queries["id"]["pk"] == 1
+    assert discover_queries["id"]["notnull"] == 1
+    assert discover_queries["user_id"]["notnull"] == 0, "user_id 可空（脚本/运维审计）"
+    for required in (
+        "query_hash", "query", "target_lang", "result", "created_at", "expires_at",
+    ):
+        assert discover_queries[required]["notnull"] == 1, required
+    assert "zh-CN" in str(discover_queries["target_lang"]["default"])
+    assert "ix_discover_queries_expires" in index_names(db, "discover_queries")
+
+    with sqlite3.connect(db) as conn:
+        unique_sets = []
+        for row in conn.execute("PRAGMA index_list(discover_queries)"):
+            if row[2]:
+                unique_sets.append(
+                    tuple(
+                        col[2]
+                        for col in conn.execute(f"PRAGMA index_info({row[1]})")
+                    )
+                )
+        assert ("query_hash", "target_lang") in unique_sets
+
+        conn.execute(
+            "INSERT INTO discover_queries "
+            "(user_id, query_hash, query, target_lang, result, created_at, expires_at) "
+            "VALUES (NULL, 'h1', 'TED talk about AI', 'zh-CN', '{}', 1000, 2000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO discover_queries "
+                "(user_id, query_hash, query, target_lang, result, created_at, "
+                "expires_at) VALUES ('u1', 'h1', 'same hash', 'zh-CN', '{}', 1001, 2001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError(
+                "UNIQUE(query_hash, target_lang) 应阻止同语言重复缓存"
+            )
+        # 同一 query_hash 的不同目标语言是两条独立缓存。
+        conn.execute(
+            "INSERT INTO discover_queries "
+            "(user_id, query_hash, query, target_lang, result, created_at, expires_at) "
+            "VALUES ('u1', 'h1', 'same hash', 'vi-VN', '{}', 1002, 2002)"
+        )
+        conn.rollback()
+
 
 def test_baseline_schema_matches_auth_db_contract(tmp_path, monkeypatch):
     """基线迁移与 auth_db.py 的现存 schema 逐列/逐索引一致（含可空性）。"""
@@ -1079,3 +1139,25 @@ def test_placement_downgrade_to_0008_and_back(tmp_path):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
     assert revision(db) == HEAD
     assert {"placement_sessions", "placement_answers", "user_profiles"} <= table_names(db)
+
+
+def test_discover_downgrade_to_0009_and_back(tmp_path):
+    """0010 单独回滚：只删发现缓存表，定位测与更早的表保留；再升级可恢复。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    assert "discover_queries" in table_names(db)
+
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0009_placement"),
+        "downgrade 0009_placement",
+    )
+    assert revision(db) == "0009_placement"
+    remaining = table_names(db)
+    assert "discover_queries" not in remaining
+    assert "placement_sessions" in remaining
+    assert "user_profiles" in remaining
+    assert "users" in remaining
+
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert revision(db) == HEAD
+    assert "discover_queries" in table_names(db)

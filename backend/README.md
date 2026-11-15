@@ -13,7 +13,7 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载八个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
@@ -23,7 +23,7 @@
 | `guest.py` | 游客态（M1 ⑧）：32 字节随机 `ln_guest` Cookie（服务端只存 sha256）、`data/guests/<sha256>/` 隔离目录、游客累计试译上限、登录后把 `history/` / `favorites.json` / `subscriptions.json` 幂等合并到用户目录（同 videoId / 同收藏指纹 / 同订阅键去重，用户数据优先）。**不建表、不新增迁移** |
 | `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；游客 → `data/guests/<sha256(ln_guest)>/`；两者都没有（脚本/测试）→ 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取。`favorites_file()` / `favorites_tombstones_file()` 是收藏主文件与删除墓碑的**唯一入口**（按用户隔离、不按语言分文件） |
 | `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」；端点支持 `base_url` 或 `base_url_env`（Qwen 等区域端点由环境变量给，不写死）。`is_available` 同时检查 Key 与必需端点；`resolve_model_for_target(requested, target_lang)` 按「用户选择 → 该语言首选 → 该语言路线 → 全局默认 → 目录首个可用」解析，未配 Key 的候选自动跳过。**SDK 调用是同步阻塞的**：async 代码必须用 `generate_json_async` / `generate_text_async`（内含全局并发闸 + `asyncio.to_thread`）；同步 `generate()` 只给脚本/测试。`concurrency_snapshot()` 暴露并发闸峰值/等待直方图。`usage_scope(feature, user_id, target_lang=…)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关） |
-| `ratelimit.py` | 进程内固定窗口限速（M1 ⑦）：注册/登录按 IP、估价/处理/查词按用户；游客（M1 ⑧）同桶但更紧上限、键为 `guest:<sha256>`；超限 429 + `Retry-After`；不依赖 Redis。桶与上限见下文「安全最小集」 |
+| `ratelimit.py` | 进程内固定窗口限速（M1 ⑦）：注册/登录按 IP、估价/处理/查词/发现按用户；游客（M1 ⑧）同桶但更紧上限、键为 `guest:<sha256>`；超限 429 + `Retry-After`；不依赖 Redis。桶与上限见下文「安全最小集」 |
 | `auth_lockout.py` | 登录失败锁定（M1 ⑦ 残余项）：账号 + IP 双维度连续失败锁定；锁定期间正确密码也 429 + `Retry-After`；成功登录清零；只存进程内存与邮箱哈希，不存明文 |
 | `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。抓取带超时 / 响应体大小 / 字幕块数上限（`_BoundedSession`，M1 ⑦ 残余项）；这些函数是同步阻塞实现，async 调用方负责放进线程 |
 | `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词 + 高亮子串/NFC 校验 + 越南语 CJK 泄漏重试）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。prompt 里的语言名来自 `languages`（不再硬编码 "Chinese"）；JSON 字段名 `zh_text`/`zh_word` 保持 P0 兼容、值为目标语言。LLM 生成调用经 `llm.generate_json_async` / `generate_text_async`（全局并发闸 + 线程）执行，异常仍照常抛回；批间 `batch_pause` 语义不变；翻译/总结带日配额与降级链，`feature` / `user_id` / `target_lang` 缺省取请求上下文（本地剧集传 `local_show`） |
@@ -40,8 +40,10 @@
 | `routes_events.py` | 学习事件与周报 HTTP 路由（**游客可用**）：`POST /api/events`、`GET /api/report/week`；契约与错误语义见下文「学习事件上报与周报」与 [specs/015](../specs/015-weekly-report/spec.md) |
 | `placement.py` | **能力定位测（M4）**：读 `content/placement/` 三份静态题库（30 词汇 + 5 阅读 + 4 伪词，校验草稿标记/选项/正确项）；按 sessionId 确定性抽 24+3+5 并打乱（银行 id 不外发）；加权评分（A1=0.5…C1=2.5）、CEFR 点估计 ±1 带、置信度（完成度 + 用时 − 伪词过度声称）、强弱项与 1 条规则建议；写 `placement_sessions` / `placement_answers` 并 upsert `user_profiles`；同一会话重复提交幂等；`start` 复用未完成会话；表由 `0009_placement` 创建，运行时不建表；不调用模型 |
 | `routes_placement.py` | 能力定位测 HTTP 路由（**游客可用**）：`GET /api/placement/start`、`POST /api/placement/submit`、`GET /api/placement/profile`、`POST /api/placement/reset`；契约与错误语义见下文「能力定位测与能力画像」与 [specs/016](../specs/016-placement/spec.md) |
+| `discover.py` | **内容发现（V1）**：LLM 意图改写（2–3 个英文检索词，JSON 容错/降级原 query）→ yt-dlp `ytsearchN:` 并发搜索（≤3，单 query 8 条、失败不拖垮整体）→ 跨 query 去重 + 直播/90s–90min 过滤 → `youtube-transcript-api.list()` 并发探测英文字幕（≤4、2s，失败标 unknown 不误杀）→ LLM 重排 3–5 个（A1–C1 + 中文一句理由；失败规则排序 + 模板理由）→ `discover_queries` 24h 缓存。只读公开元数据/轨道列表，不下载、不存字幕正文；总预算 20s |
+| `routes_discover.py` | 内容发现 HTTP 路由：`POST /api/discover`（**需登录，游客 403**；5 次/分钟/用户）；契约/错误语义见下文「内容发现」与 [specs/017](../specs/017-discover/spec.md) |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -402,6 +404,132 @@ AUTH_DB_PATH=/tmp/yt-plc/app.db DATA_DIR=/tmp/yt-plc/data \
 CAT 标定、题型只有词汇识别 + 短阅读、前端未做、游客认领账号时定位结果不迁移。
 
 
+## 内容发现（V1 后端）
+
+把「粘贴 YouTube 链接」扩展成「描述想看什么」，由后端找 3–5 个适合英语学习的
+候选；用户选中后仍走现有链路：`/api/estimate-cost` → 选模型 → 双语字幕流式翻译。
+规格：[specs/017-discover](../specs/017-discover/spec.md)。
+
+### 端点
+
+`POST /api/discover`（**需登录；游客/未登录 403**；限速 5 次/分钟/用户）
+
+```json
+{"query": "推荐一些关于人工智能的演讲", "targetLang": "zh-CN", "force": false}
+```
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `query` | 是 | 1–200 字自然语言（中/英）；空白/超长/YouTube 链接 → 400 |
+| `targetLang` | 否 | `zh-CN`（缺省）/ `vi-VN`；用于缓存键与审计，非法 → 400 |
+| `force` | 否 | `true` 绕过 24h 缓存，重新搜索/重排（用于「换一批」） |
+
+成功响应（200）：
+
+```json
+{
+  "queries": ["TED talk about artificial intelligence", "AI future explained", "MIT AI lecture"],
+  "candidates": [
+    {
+      "videoId": "KKNCiRWd_j0",
+      "title": "What Is an AI Anyway? | TED",
+      "channel": "TED",
+      "duration": 1322,
+      "thumbnail": "https://i.ytimg.com/vi/KKNCiRWd_j0/hqdefault.jpg",
+      "level": "B2",
+      "reason": "TED 官方演讲，主题直接命中；22 分钟，适合完整看一场。",
+      "hasEnglishSubs": true,
+      "alreadyProcessed": false
+    }
+  ],
+  "cached": false,
+  "degraded": false,
+  "disclaimer": "字幕与时长可能随视频更新，候选由 AI/规则筛选，请以点击后的实际页面为准。"
+}
+```
+
+- `queries`：实际使用的英文检索词（LLM 失败时是原 query，仍照常搜索）。
+- `candidates`：3–5 个；搜索/过滤后不足 3 个时返回实际数量（空数组也是 200，
+  不伪造候选）。`duration` 为秒；`thumbnail` 固定用稳定的
+  `i.ytimg.com/vi/<id>/hqdefault.jpg`（不下载）。
+- `level`：A1/A2/B1/B2/C1 的**估计**；`reason`：一句中文，只基于标题/频道/时长/
+  字幕状态等可见字段，不评价发音/画面。
+- `hasEnglishSubs`：`true` 有英文轨；`null` 探测失败（unknown，保留候选）；
+  明确没有英文字轨的候选已过滤，不会以 `false` 出现在列表里。
+- `alreadyProcessed`：按**当前用户 + targetLang** 的本地历史缓存计算；缓存命中时
+  也会重算，不会把别人的「已学过」带过来。
+- `degraded`：任一环节降级（意图→原 query、重排→规则/模板理由、部分 query
+  搜索失败）为 `true`，此时理由可能来自模板而不是模型。
+
+错误：`400` 参数/语言/链接；`403` 未登录/游客；`429` 限速（带 `Retry-After`）；
+`503` 搜索全部失败（yt-dlp 不可用）；`504` 整体预算耗尽且没有可用候选。
+
+### 流程与边界
+
+1. LLM 意图改写：2–3 个英文检索词，JSON 容错（去围栏/首尾花括号）；不可用、
+   超时、非法 JSON 或不足 2 个合法英文词 → 原 query。
+2. yt-dlp `ytsearchN:`（每 query 8 条，并发 ≤3，单 query 8s/失败不拖垮整体）；
+   提取 id/title/channel/duration/description/verified；跨 query 按 videoId 去重，
+   过滤直播/预告、<90s、>90min、缺时长。
+3. 字幕探测：只 `list()` 轨道，不 `fetch()` 正文；并发 ≤4、每视频 2s；
+   已处理视频直接视为有英文字幕且不联网；失败/超时标 unknown 保留。
+4. LLM 重排 top 10：输出 3–5 个 + A1–C1 + 中文一句理由；非法 index 丢弃、
+   不足 3 个用规则补足；LLM 失败/无 Key → 规则排序（时长贴合 + 频道认证 +
+   字幕可用）+ 模板理由。
+5. 整体预算 20s；超时返回已有候选（重排退化为规则），完全无候选才 504。
+
+发现阶段**不下载视频/音频/字幕文件，不保存字幕正文**，也不触发翻译/总结；
+选片后由现有估价端点和流式管线处理。
+
+### 24h 缓存（迁移 `0010_discover`）
+
+表 `discover_queries`：`id` / `user_id`（可空）/ `query_hash` / `query` /
+`target_lang` / `result`（响应 JSON 文本）/ `created_at` / `expires_at`，
+`UNIQUE(query_hash, target_lang)` + `ix_discover_queries_expires`。
+
+- 缓存键 = `sha256(NFKC + casefold(规范化 query)) + target_lang`，默认 TTL 24h；
+  命中时 `cached:true`，**不再调用搜索/字幕探测/LLM**（已处理状态按当前用户重算）。
+- `force:true` 绕过读取并覆盖写。
+- 只缓存「有候选且没有 query 搜索失败」的成功结果；空结果、全失败、部分搜索
+  失败不写缓存，避免把一次坏结果锁 24h。
+- 不存字幕正文；缓存行可由 `DELETE FROM discover_queries` 清理（不影响学习缓存）。
+- 未跑 `0010` 的旧库：缓存读写降级为未命中/不写（只告警一次），端点仍可用；
+  上线前仍应 `alembic upgrade head`。
+
+### 配置（默认值）
+
+| 环境变量 | 默认 | 说明 |
+|---|---:|---|
+| `RATE_LIMIT_DISCOVER_PER_MINUTE` | 5 | 每登录用户每分钟发现次数（0=关闭） |
+| `DISCOVER_RESULTS_PER_QUERY` | 8 | 每个检索词取多少条 flat 结果 |
+| `DISCOVER_MAX_QUERIES` | 3 | 单次最多检索词（2–3 生效） |
+| `DISCOVER_POOL_LIMIT` | 10 | 去重/过滤后进入探测与重排的候选上限 |
+| `DISCOVER_SEARCH_CONCURRENCY` | 3 | yt-dlp 查询并发 |
+| `DISCOVER_CAPTION_CONCURRENCY` | 4 | 字幕探测并发 |
+| `DISCOVER_MIN_DURATION_SECONDS` | 90 | 时长硬下限 |
+| `DISCOVER_MAX_DURATION_SECONDS` | 5400 | 时长硬上限（90 分钟） |
+| `DISCOVER_CACHE_HOURS` | 24 | 结果缓存 TTL（0=关闭缓存） |
+| `DISCOVER_TOTAL_SECONDS` | 20 | 单次请求总预算 |
+| `DISCOVER_INTENT_TIMEOUT_SECONDS` | 6 | 意图改写超时 |
+| `DISCOVER_SEARCH_TIMEOUT_SECONDS` | 8 | 单 query 搜索超时 |
+| `DISCOVER_CAPTION_TIMEOUT_SECONDS` | 2 | 单视频字幕探测超时 |
+| `DISCOVER_RERANK_TIMEOUT_SECONDS` | 8 | 重排超时 |
+
+### 测试与手动实测
+
+```bash
+cd backend
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_discover.py -q   # 26 个离线用例（mock 三处外部调用）
+venv/bin/python -m pytest tests -q                    # 全量（含迁移升级/回滚）
+```
+
+手动实测（真实网络）：登录后 `POST /api/discover {"query":"TED talk about AI"}`，
+检查候选字段、英文字幕过滤与第二次 `cached:true`；或起 8001 临时实例并用
+`/tmp` 数据目录 + mock 搜索/探测/LLM 验证端点、缓存与 `force`（不污染仓库
+`data/`、`history/`）。
+
+
 ## 多语言目标语言（targetLang，P0）
 
 规格：[specs/012-i18n-multilingual](../specs/012-i18n-multilingual/spec.md) §5.3–§5.10、§6。P0 范围 = **目标语言**（翻译/总结/词典/缓存/模型路线），UI 语言与 `/api/settings` 属后续任务。
@@ -470,7 +598,7 @@ venv/bin/python -m pytest tests/test_i18n_target_lang.py -q   # 目标语言 P0�
 
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）；`0010_discover` 建内容发现缓存/审计表 `discover_queries`（V1，见上文「内容发现」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 
@@ -480,17 +608,17 @@ venv/bin/alembic current                 # 看当前版本
 
 # 已有 data/app.db（只有 users/sessions，没有 alembic_version）：先纳管再补建新表
 venv/bin/alembic stamp 0001_baseline     # 只写版本号，不执行 DDL、不动数据
-venv/bin/alembic upgrade head            # 补建 learning_events / 账本 / jobs / 复习三表 / 理解题三表 / 周报两张 / 定位测三表
+venv/bin/alembic upgrade head            # 补建 learning_events / 账本 / jobs / 复习三表 / 理解题三表 / 周报两张 / 定位测三表 / 发现缓存表
 
 venv/bin/alembic stamp head              # 已经是最新版本的库：只标最新，不执行 DDL
 ```
 
 - 数据库路径与运行时同源：默认 `data/app.db`，可用 `AUTH_DB_PATH` 覆盖（迁移命令与 `config.py` 都读它）。
 - 基线迁移**幂等**（用 inspector 判断表/索引是否存在）：旧库直接 `upgrade head` 不会重建 `users`/`sessions`、不会动数据，只补缺的表；仍建议先备份 `data/app.db`。
-- **不要对旧库直接 `stamp head`**：会把 `0002`–`0009` 都标记成已应用，`learning_events` / 账本 / 任务表 / 复习三表 / 理解题三表 / 周报两张 / 定位测三表永远不会被建出来。正确顺序是 `stamp 0001_baseline` → `upgrade head`（或直接 `upgrade head`）。
+- **不要对旧库直接 `stamp head`**：会把 `0002`–`0010` 都标记成已应用，`learning_events` / 账本 / 任务表 / 复习三表 / 理解题三表 / 周报两张 / 定位测三表 / 发现缓存表永远不会被建出来。正确顺序是 `stamp 0001_baseline` → `upgrade head`（或直接 `upgrade head`）。
 - `downgrade` 会 DROP 表（`0001` 的 down 会删 `users`/`sessions`），只用于空库/测试回滚，别在真实库上跑。
 - 启动时 `main.py` 的 lifespan 只读检查一次迁移状态：库存在但没迁移会打 WARNING（启动照常成功）；`emit_event` 在表缺失时跳过写入并记 ERROR，学习主流程不受影响。
-- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0010_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
+- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0011_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
 
 学习事件（`events.py`）：
 
@@ -698,6 +826,7 @@ python3 scripts/fetch_dictionary.py
 | `estimate` | `GET /api/estimate-cost` | 登录用户 | 20 | `RATE_LIMIT_ESTIMATE_COST_PER_MINUTE` |
 | `process_video` | `POST /api/process-video`、`POST /api/process-video-stream` | 登录用户 | 6 | `RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE` |
 | `define` | `POST /api/define` | 登录用户 | 60 | `RATE_LIMIT_DEFINE_PER_MINUTE` |
+| `discover` | `POST /api/discover` | 登录用户 | 5 | `RATE_LIMIT_DISCOVER_PER_MINUTE` |
 | `estimate`（游客） | 同上 | `guest:<sha256>` | 10 | `RATE_LIMIT_GUEST_ESTIMATE_COST_PER_MINUTE` |
 | `process_video`（游客） | 同上 | `guest:<sha256>` | 2 | `RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE` |
 | `define`（游客） | 同上 | `guest:<sha256>` | 20 | `RATE_LIMIT_GUEST_DEFINE_PER_MINUTE` |

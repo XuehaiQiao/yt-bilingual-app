@@ -397,10 +397,14 @@ if AI_MODEL_REGION not in ("auto", "cn", "global"):
 #   estimate      /api/estimate-cost，按登录用户
 #   process_video /api/process-video、/api/process-video-stream，按登录用户
 #   define        /api/define，按登录用户
+#   discover      /api/discover，按登录用户
 RATE_LIMIT_AUTH_PER_MINUTE = _int_env("RATE_LIMIT_AUTH_PER_MINUTE", 10)
 RATE_LIMIT_ESTIMATE_COST_PER_MINUTE = _int_env("RATE_LIMIT_ESTIMATE_COST_PER_MINUTE", 20)
 RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE = _int_env("RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE", 6)
 RATE_LIMIT_DEFINE_PER_MINUTE = _int_env("RATE_LIMIT_DEFINE_PER_MINUTE", 60)
+# 内容发现（V1）：一次请求会做 2–3 次网络搜索 + 字幕探测 + 2 次 LLM，
+# 按用户限 5 次/分钟，挡住误刷模型额度与 YouTube 反爬。
+RATE_LIMIT_DISCOVER_PER_MINUTE = _int_env("RATE_LIMIT_DISCOVER_PER_MINUTE", 5)
 
 # 游客态（M1 ⑧）：同样的桶，游客用更紧的上限（按 ln_guest 的 sha256 计数）。
 # 0 = 关闭该桶。总试译上限 GUEST_MAX_TRANSLATED_VIDEOS 是**累计**口径（不是每分钟）：
@@ -443,3 +447,22 @@ MAX_TRANSCRIPT_BLOCKS = _int_env("MAX_TRANSCRIPT_BLOCKS", 5000)
 MAX_FETCH_BYTES = _int_env("MAX_FETCH_BYTES", 5 * 1024 * 1024)
 # 频道视频列表「单频道」最多返回条数（硬上限）；当前 yt-dlp 仍只取最近 5 条。
 MAX_CHANNEL_VIDEOS = _int_env("MAX_CHANNEL_VIDEOS", 200)
+
+
+# --- 内容发现（V1 主题搜索，见 discover.py / routes_discover.py / specs/017）---
+# 探索阶段只读 YouTube 公开元数据与字幕轨道列表：不下载视频/字幕正文，结果落
+# discover_queries 表做 24h 缓存与审计（不存字幕正文）。
+DISCOVER_RESULTS_PER_QUERY = _int_env("DISCOVER_RESULTS_PER_QUERY", 8)
+DISCOVER_MAX_QUERIES = _int_env("DISCOVER_MAX_QUERIES", 3)
+DISCOVER_POOL_LIMIT = _int_env("DISCOVER_POOL_LIMIT", 10)
+DISCOVER_SEARCH_CONCURRENCY = _int_env("DISCOVER_SEARCH_CONCURRENCY", 3)
+DISCOVER_CAPTION_CONCURRENCY = _int_env("DISCOVER_CAPTION_CONCURRENCY", 4)
+DISCOVER_MIN_DURATION_SECONDS = _int_env("DISCOVER_MIN_DURATION_SECONDS", 90)
+DISCOVER_MAX_DURATION_SECONDS = _int_env("DISCOVER_MAX_DURATION_SECONDS", 5400)
+DISCOVER_CACHE_HOURS = _int_env("DISCOVER_CACHE_HOURS", 24)
+# 单次请求总预算（秒）；LLM 意图 6s、搜索 8s、字幕 2s/个、重排 8s 都在此预算内。
+DISCOVER_TOTAL_SECONDS = _float_env("DISCOVER_TOTAL_SECONDS", 20.0)
+DISCOVER_INTENT_TIMEOUT_SECONDS = _float_env("DISCOVER_INTENT_TIMEOUT_SECONDS", 6.0)
+DISCOVER_SEARCH_TIMEOUT_SECONDS = _float_env("DISCOVER_SEARCH_TIMEOUT_SECONDS", 8.0)
+DISCOVER_CAPTION_TIMEOUT_SECONDS = _float_env("DISCOVER_CAPTION_TIMEOUT_SECONDS", 2.0)
+DISCOVER_RERANK_TIMEOUT_SECONDS = _float_env("DISCOVER_RERANK_TIMEOUT_SECONDS", 8.0)

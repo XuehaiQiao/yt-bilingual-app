@@ -31,6 +31,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 import config  # noqa: E402
+import discover  # noqa: E402
 import jobs  # noqa: E402
 import llm  # noqa: E402
 import local_dict  # noqa: E402
@@ -114,6 +115,15 @@ def offline_guard(monkeypatch):
     # routes_videos 是 from transcripts import ...，模块里存的是独立引用
     monkeypatch.setattr(routes_videos, "fetch_english_transcript", _blocked)
     monkeypatch.setattr(routes_videos, "get_video_metadata", _blocked)
+
+    # 内容发现：yt-dlp / 字幕轨道 / LLM 三处外部调用也必须显式 mock；
+    # _call_llm 是异步入口，用 async 断言版本。
+    async def _blocked_async(*args, **kwargs):
+        raise AssertionError("离线测试中禁止真实外部调用")
+
+    monkeypatch.setattr(discover, "_search_ytdlp", _blocked)
+    monkeypatch.setattr(discover, "_probe_caption", _blocked)
+    monkeypatch.setattr(discover, "_call_llm", _blocked_async)
 
 
 @contextlib.contextmanager
