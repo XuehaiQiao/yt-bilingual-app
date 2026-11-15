@@ -174,6 +174,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Reading (specs/019): a full view like discovery. The screen owns its
   // list/reader internal state; this flag only decides which view is mounted.
   const [readerOpen, setReaderOpen] = useState(false);
+  // Favorites can jump straight to one article ("出处" link). The nonce forces
+  // a fresh reader mount so re-opening the same article from its list still
+  // lands on it; the ordinary top-bar entry clears both.
+  const [readerInitialArticleId, setReaderInitialArticleId] = useState<string | null>(null);
+  const [readerOpenNonce, setReaderOpenNonce] = useState(0);
   // Official blog (specs/020): a public read-only view over content/blog/*.md.
   // Like the reader, the screen owns list/detail state internally.
   const [blogOpen, setBlogOpen] = useState(false);
@@ -225,23 +230,37 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setWordLookup({ word, context: sentence, start, x: e.clientX, y: e.clientY });
   }, []);
 
-  // Reading lookups carry the article id so the star in the dictionary card
-  // saves the word under that article instead of the (empty) current video.
+  // Reading lookups carry the article id/title so the star in the dictionary
+  // card saves the word under that article (and the favorites "出处" row can
+  // name/link it) instead of the (empty) current video.
   const handleReaderWordLookup = useCallback((
     word: string,
     sentence: string,
     start: number,
     e: React.MouseEvent,
     sourceId?: string,
+    sourceTitle?: string,
   ) => {
-    setWordLookup({ word, context: sentence, start, x: e.clientX, y: e.clientY, sourceId });
+    setWordLookup({
+      word,
+      context: sentence,
+      start,
+      x: e.clientX,
+      y: e.clientY,
+      ...(sourceId ? { sourceId, sourceTitle, sourceKind: 'article' as const } : {}),
+    });
   }, []);
 
   // Hover-to-switch: the card stays mounted; only its target word/position
   // changes. Guard against a stale dwell timer firing after the card closed.
   // The lookup source (e.g. a reading article id) survives the switch.
   const handleSwitchWord = useCallback((target: WordLookupTarget) => {
-    setWordLookup(prev => (prev ? { ...target, sourceId: prev.sourceId } : prev));
+    setWordLookup(prev => (prev ? {
+      ...target,
+      sourceId: prev.sourceId,
+      sourceTitle: prev.sourceTitle,
+      sourceKind: prev.sourceKind,
+    } : prev));
   }, []);
 
   // Playback controls: speed, play/pause command, single-sentence loop
@@ -516,6 +535,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       type: draft.type,
       context_en: draft.context_en,
       context_zh: draft.context_zh,
+      source_kind: draft.source_kind,
+      source_ref: draft.source_ref,
+      source_title: draft.source_title,
     };
     setFavorites(prev => (prev.some(f => f.id === optimistic.id) ? prev : [...prev, optimistic]));
     try {
@@ -558,6 +580,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
   }, [favorites, addFavoriteOptimistically, removeFavoriteOptimistically, status, t]);
 
+  // Where the currently loaded content lives, attached to every favorite made
+  // from it. Local episodes are refs like `show_S01E01`; videos are 11-char
+  // ids. Titles may be missing (live streams / old caches) — the favorites
+  // row then shows "来源未知" instead of pretending.
+  const currentSourceFields = useCallback((): Pick<FavoriteDraft, 'source_kind' | 'source_ref' | 'source_title'> => ({
+    source_kind: metadata?.is_local_subtitle ? 'local_show' : 'video',
+    source_ref: videoId,
+    source_title: typeof metadata?.title === 'string' && metadata.title.trim() ? metadata.title : undefined,
+  }), [videoId, metadata?.is_local_subtitle, metadata?.title]);
+
   const handleToggleFavorite = useCallback((item: TranscriptItem) => {
     toggleFavorite({
       id: `${videoId}-${item.id}`,
@@ -568,8 +600,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       added_at: Date.now(),
       highlights: item.highlights,
       type: 'sentence',
+      ...currentSourceFields(),
     });
-  }, [videoId, toggleFavorite]);
+  }, [videoId, toggleFavorite, currentSourceFields]);
 
   const handleToggleVocabFavorite = (e: React.MouseEvent, item: any) => {
     e.stopPropagation();
@@ -584,6 +617,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       added_at: Date.now(),
       highlights: item.highlights,
       type: 'vocabulary',
+      ...currentSourceFields(),
     });
   };
 
@@ -591,9 +625,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     void removeFavoriteOptimistically(id);
   };
 
-  // Add/remove a dictionary lookup to the vocabulary favorites
+  // Add/remove a dictionary lookup to the vocabulary favorites. Reading
+  // lookups know their article (id + title); transcript lookups fall back to
+  // the currently loaded video/episode.
   const handleToggleDictFavorite = (def: WordDefinition) => {
     if (!wordLookup) return;
+    const isArticle = wordLookup.sourceKind === 'article' || Boolean(wordLookup.sourceId);
     const sourceId = wordLookup.sourceId || videoId;
     toggleFavorite({
       id: `vocab-${sourceId}-${def.word.replace(/\s+/g, '-')}`,
@@ -606,6 +643,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       added_at: Date.now(),
       highlights: [],
       type: 'vocabulary',
+      ...(isArticle
+        ? {
+          source_kind: 'article' as const,
+          source_ref: sourceId,
+          source_title: wordLookup.sourceTitle,
+        }
+        : currentSourceFields()),
     });
   };
 
@@ -1143,6 +1187,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setReviewOpen(false);
     setDiscoverOpen(false);
     setReaderOpen(false);
+    setReaderInitialArticleId(null);
     setBlogOpen(false);
     setAdminOpen(false);
     setReportOpen(false);
@@ -1190,11 +1235,55 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setQuizOpen(false);
     setQuizLesson(null);
     setDiscoverOpen(false);
+    setReaderInitialArticleId(null);
+    setReaderOpen(true);
+  };
+
+  // Favorites "出处" jump into one article (specs/019 detail view). Unlike the
+  // ordinary entry this opens the reader at that article; the nonce makes even
+  // a same-article re-open mount a fresh, detail-view reader.
+  const handleOpenFavoriteArticle = (articleId: string) => {
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setReviewOpen(false);
+    setReportOpen(false);
+    setPlacementOpen(false);
+    setDiscoverOpen(false);
+    setBlogOpen(false);
+    setExamOpen(false);
+    setAdminOpen(false);
+    setQuizOpen(false);
+    setQuizLesson(null);
+    setReaderInitialArticleId(articleId);
+    setReaderOpenNonce(prev => prev + 1);
     setReaderOpen(true);
   };
 
   const handleCloseReader = () => {
     setReaderOpen(false);
+    setReaderInitialArticleId(null);
+  };
+
+  // Favorites "出处" jump into a sentence pack (`source_ref` = `L<levelId>`).
+  // The pack view owns its own level state, so opening another view first
+  // keeps the tree single-purpose.
+  const handleOpenFavoriteSentencePack = (levelId: number) => {
+    if (!Number.isInteger(levelId) || levelId <= 0) return;
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setReaderOpen(false);
+    setBlogOpen(false);
+    setReviewOpen(false);
+    setReportOpen(false);
+    setPlacementOpen(false);
+    setDiscoverOpen(false);
+    setExamOpen(false);
+    setAdminOpen(false);
+    setQuizOpen(false);
+    setQuizLesson(null);
+    setSentenceLevel(levelId);
   };
 
   // Official blog (specs/020). Public and read-only; opening it closes every
@@ -1522,7 +1611,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   }, [targetLang, language, t, videoId, transcript.length, sentenceLevel, reviewOpen, quizOpen, pauseSubtitleTimer]);
 
   // Star a sentence into the existing vocabulary book (exportable to Anki)
-  const handleToggleSentenceFavorite = useCallback((s: Sentence, levelId: number) => {
+  const handleToggleSentenceFavorite = useCallback((s: Sentence, levelId: number, levelTitle?: string) => {
     toggleFavorite({
       id: sentenceFavId(levelId, s.n),
       // >11 chars so the favorites modal never mistakes it for a YouTube id
@@ -1535,6 +1624,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         .filter((p): p is SegChunk => typeof p !== 'string')
         .map(p => ({ en_word: p.t, zh_word: p.g, color: CHUNK_STYLE[p.c].text })),
       type: 'sentence',
+      source_kind: 'sentence_pack',
+      source_ref: `L${levelId}`,
+      source_title: levelTitle?.trim() || undefined,
     });
   }, [toggleFavorite]);
 
@@ -1613,6 +1705,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           </button>
         )}
         <button
+          type="button"
+          data-testid="topbar-favorites"
           onClick={() => setIsFavoritesOpen(true)}
           aria-label={t('topbar.favorites', { count: favorites.length })}
           title={t('topbar.favorites', { count: favorites.length })}
@@ -2188,8 +2282,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       ) : readerOpen ? (
         <motion.div
           // Remount on a target-language switch: the list/detail are scoped by
-          // targetLang, so a stale translation cache must never be shown.
-          key={`reader:${targetLang}`}
+          // targetLang, so a stale translation cache must never be shown. The
+          // nonce forces a fresh detail view when favorites jump to an article.
+          key={`reader:${targetLang}:${readerOpenNonce}`}
           initial={{ opacity: 0, scale: 0.99, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
@@ -2200,6 +2295,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onRequestLogin={onRequestLogin}
             isGuest={status === 'guest'}
             onWordLookup={handleReaderWordLookup}
+            initialArticleId={readerInitialArticleId ?? undefined}
           />
         </motion.div>
       ) : blogOpen ? (
@@ -2381,6 +2477,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         favorites={favorites}
         onRemoveFavorite={handleRemoveFavorite}
         onPlayFavorite={handlePlayFavorite}
+        onOpenArticle={handleOpenFavoriteArticle}
+        onOpenSentencePack={handleOpenFavoriteSentencePack}
       />
 
       <ChannelVideoList

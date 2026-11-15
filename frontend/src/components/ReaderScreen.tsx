@@ -54,6 +54,11 @@ interface ReaderScreenProps {
     onClose: () => void;
     onRequestLogin?: () => void;
     isGuest?: boolean;
+    /**
+     * Open this article on mount instead of the list (favorites "出处" jump).
+     * App remounts the screen for a new target; ordinary entries omit it.
+     */
+    initialArticleId?: string;
     /** Reuse the app-wide dictionary card (App owns its state/favorites). */
     onWordLookup: (
         word: string,
@@ -61,6 +66,7 @@ interface ReaderScreenProps {
         start: number,
         e: React.MouseEvent,
         sourceId?: string,
+        sourceTitle?: string,
     ) => void;
 }
 
@@ -182,6 +188,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     onClose,
     onRequestLogin,
     isGuest = false,
+    initialArticleId,
     onWordLookup,
 }) => {
     const { t, targetLang, formatNumber } = useI18n();
@@ -333,6 +340,15 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
             }
         }
     }, [flushProgress, targetLang]);
+
+    // Favorites "出处" jump: open the requested article instead of the list.
+    // App remounts this screen when a different target arrives, so this runs
+    // for the mount that carries the request (the guard skips a re-run when the
+    // dependency identity changes but the article is already open).
+    useEffect(() => {
+        if (!initialArticleId || selectedIdRef.current === initialArticleId) return;
+        void openArticle(initialArticleId);
+    }, [initialArticleId, openArticle]);
 
     const goBackToList = useCallback(() => {
         flushProgress();
@@ -1113,6 +1129,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                                         paragraph.idx,
                                                         e,
                                                         article.articleId,
+                                                        article.title || t('reader.untitled'),
                                                     )}
                                                 />
                                             </p>

@@ -19,7 +19,8 @@ interface SentenceViewProps {
     levelId: number;
     onSelectLevel: (id: number) => void;
     onWordLookup: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
-    onToggleFavorite: (sentence: Sentence, levelId: number) => void;
+    /** `levelTitle` is the pack name, stored on the favorite as its source. */
+    onToggleFavorite: (sentence: Sentence, levelId: number, levelTitle?: string) => void;
     favoriteIds: string[];
 }
 
@@ -230,7 +231,7 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                                                                     className="p-1.5 rounded-lg text-zinc-500 hover:text-blue-400 hover:bg-white/5 transition-colors">
                                                                     <Volume2 className="w-4 h-4" />
                                                                 </button>
-                                                                <button onClick={() => onToggleFavorite(s, levelId)} title={fav ? t('dictionary.removeFavorite') : t('dictionary.addFavorite')}
+                                                                <button onClick={() => onToggleFavorite(s, levelId, level?.title)} title={fav ? t('dictionary.removeFavorite') : t('dictionary.addFavorite')}
                                                                     className={`p-1.5 rounded-lg transition-colors hover:bg-white/5 ${fav ? 'text-amber-400' : 'text-zinc-500 hover:text-amber-400'}`}>
                                                                     <Star className="w-4 h-4" fill={fav ? 'currentColor' : 'none'} />
                                                                 </button>

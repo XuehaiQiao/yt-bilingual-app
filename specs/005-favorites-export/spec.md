@@ -1,6 +1,6 @@
 # 规格：收藏与导出
 
-**状态：** 已实现（M1 ④ 按条 API：2026-11-15）｜ **对应代码：** `backend/routes_user.py`（`/api/favorites`）、`backend/storage.py`（路径 + 墓碑文件）、`frontend/src/lib/favorites.ts`、`frontend/src/App.tsx`、`frontend/src/components/FavoritesModal.tsx`、`frontend/src/lib/exporter.ts`
+**状态：** 已实现（M1 ④ 按条 API：2026-11-15；生词折叠与出处：2026-11-16）｜ **对应代码：** `backend/routes_user.py`（`/api/favorites`）、`backend/storage.py`（路径 + 墓碑文件）、`frontend/src/lib/favorites.ts`、`frontend/src/App.tsx`、`frontend/src/components/FavoritesModal.tsx`、`frontend/src/components/ReaderScreen.tsx`、`frontend/src/components/SentenceView.tsx`、`frontend/src/lib/exporter.ts`
 
 ---
 
@@ -24,6 +24,9 @@
 - **必须**：导出**完整 CSV**（含类型、英文、中文、语境、视频 id、时间点、日期）。
 - **应当**：收藏夹按时间分组（今天 / 昨天 / 更早）。
 - **应当**：`GET /api/favorites?since=<ms>` 返回增量（含删除墓碑），供未来多设备同步使用。
+- **必须**（2026-11-16）：收藏写入时带出处 `meta.source_kind`（`video` / `local_show` / `article` / `sentence_pack`）、`source_ref`（videoId / showId / articleId / `L<level>`）、`source_title`；后端按“未知字段原样保留”落盘，GET 顶层返回。
+- **应当**：没有 `source_*` 的旧收藏按 `videoId` 启发式推断（11 位 → 视频；`sentence-pack-L*` → 句子精背；其他长 id → 文章），标题未知时显示「来源未知」且不可点。
+- **必须**：收藏夹里的生词默认收起为**一行**（单词 + IPA + 释义）；展开后显示出处（带确认框的跳转）、原句（英文 + 译文）与回看/删除/分享。句子收藏保持原卡片样式。
 
 ## API 契约（M1 ④）
 
@@ -48,6 +51,9 @@
 - [x] 点"导出 CSV"，下载的表格含完整上下文列。
 - [x] 两个并发 POST 都落盘；删除一条只影响这一条；旧无 id 数据 GET 可读、可删。
 - [x] `backend/tests/test_favorites_api.py` 全离线覆盖新增/删除/幂等/400/404/排序/旧数据/墓碑/并发。
+- [x] 生词收藏默认一行收起（单词/IPA/释义），展开显示出处与原句；出处点击先弹自定义确认框。
+- [x] 出处跳转：视频/本地剧集复用回看、文章打开阅读器对应文章（`ReaderScreen.initialArticleId`）、句子精背打开对应册；旧收藏无标题时禁用。
+- [x] 375px 无横向溢出；zh-CN / vi-VN 文案与 placeholder 对齐（`npm run check:i18n`）。
 
 ## 边界与非目标
 - 不内置复习/间隔重复（导出到 Anki 承担复习；应用内复习属未来路线）。

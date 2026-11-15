@@ -5,6 +5,7 @@ import { apiFetch } from '../lib/api';
 import { loadModel } from '../lib/settings';
 import { describeApiError } from '../lib/toast';
 import { speak } from '../lib/tts';
+import type { FavoriteSourceKind } from '../lib/favorites';
 import { useI18n } from '../i18n/I18nProvider';
 
 export interface WordDefinition {
@@ -33,6 +34,10 @@ export interface WordLookupTarget {
      * so they keep using the current video id.
      */
     sourceId?: string;
+    /** Human-readable title of that content (article title). */
+    sourceTitle?: string;
+    /** What the source is; reading lookups set `article`. */
+    sourceKind?: FavoriteSourceKind;
 }
 
 interface WordPopoverProps {

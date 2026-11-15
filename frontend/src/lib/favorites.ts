@@ -12,7 +12,24 @@ export interface FavoriteHighlight {
     color: string;
 }
 
-export interface FavoriteItem {
+/** Where a favorite came from (`video` = YouTube). */
+export type FavoriteSourceKind = 'video' | 'local_show' | 'article' | 'sentence_pack';
+
+/**
+ * Provenance of a favorite. Optional because records created before this
+ * existed have no source_* fields; `FavoritesModal` falls back to the videoId
+ * heuristic for those. The backend flattens `meta` into the stored record and
+ * keeps unknown keys, so these arrive at the top level on GET.
+ */
+export interface FavoriteSourceFields {
+    source_kind?: FavoriteSourceKind;
+    /** videoId / showId / articleId / `L<levelId>`. */
+    source_ref?: string;
+    /** Video / show / article / sentence-pack title. */
+    source_title?: string;
+}
+
+export interface FavoriteItem extends FavoriteSourceFields {
     id: string;
     videoId: string;
     start: number;
@@ -26,7 +43,7 @@ export interface FavoriteItem {
 }
 
 /** What a call site knows before the server normalizes/assigns fields. */
-export interface FavoriteDraft {
+export interface FavoriteDraft extends FavoriteSourceFields {
     id: string;
     type: FavoriteType;
     videoId: string;
@@ -70,6 +87,9 @@ export async function addFavorite(draft: FavoriteDraft): Promise<FavoriteItem> {
             ...(draft.context_en ? { context_en: draft.context_en } : {}),
             ...(draft.context_zh ? { context_zh: draft.context_zh } : {}),
             ...(draft.highlights?.length ? { highlights: draft.highlights } : {}),
+            ...(draft.source_kind ? { source_kind: draft.source_kind } : {}),
+            ...(draft.source_ref ? { source_ref: draft.source_ref } : {}),
+            ...(draft.source_title ? { source_title: draft.source_title } : {}),
         },
     };
     const response = await apiFetch('/api/favorites', {
