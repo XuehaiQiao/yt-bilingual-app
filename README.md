@@ -34,7 +34,7 @@ Most language apps make you study *their* content. LinguaTrek flips that: paste 
 | | | |
 |:---:|:---:|:---:|
 | **⚡ Instant** | **🎯 Personal** | **🔁 Complete** |
-| English subtitles appear the moment they're fetched — translations stream in live while you watch. Stop anytime; it resumes where it left off. | Set your level on a single axis — Liftoff to Supernova — and the AI highlights only words *above* it. Reopen any video and continue from your last position. | Watch → look up → collect → drill → export to Anki. The whole learning loop, not just a player. |
+| English subtitles appear the moment they're fetched — translations stream in live while you watch. Stop anytime; it resumes where it left off. | Set your CEFR level — A1 to C2 — on a single axis and the AI highlights only words *above* it. Reopen any video and continue from your last position. | Watch → look up → collect → drill → export to Anki. The whole learning loop, not just a player. |
 
 **Multi-model by design.** DeepSeek is the default engine (reachable from mainland China); the Gemini tiers stay as a selectable overseas option — add a `GEMINI_API_KEY` to `.env` and they become available in the in-app model picker. The picker is key-aware — providers whose key isn't configured stay visible but greyed out, naming the variable to set.
 
@@ -137,7 +137,7 @@ The repository ships a multi-stage [`Dockerfile`](Dockerfile), [`docker-compose.
 - [x] Progressive SSE pipeline with resume & self-healing translations
 - [x] Tap-to-define dictionary with IPA, TTS, and vocabulary book
 - [x] Dictation mode, sentence loop, playback speed, keyboard control
-- [x] Vocabulary highlighting on a Liftoff → Supernova level axis
+- [x] Vocabulary highlighting on an A1 → C2 (CEFR) level axis
 - [x] Anki / CSV export
 - [x] Whisper ASR fallback for caption-less videos
 - [ ] AI pronunciation assessment (speak the sentence, get scored)

@@ -4,13 +4,15 @@ export const VOCAB_LEVEL_KEY = 'yt_bilingual_vocab_level';
 
 // Six levels along a vocabulary-size axis (~4k → 20k+ words), named after a
 // journey into space — numbers stay backstage, the metaphor does the talking.
+// Displayed as CEFR bands A1–C2 (the plan deliberately drops the old space
+// metaphors). Internal ids stay unchanged so saved settings keep working.
 export const VOCAB_LEVELS = [
-    { id: 'liftoff', label: 'Liftoff', tagline: 'Just left the ground — everyday English is home base' },
-    { id: 'orbit', label: 'Orbit', tagline: 'Cruising steadily — subtitles are still good company' },
-    { id: 'moonwalk', label: 'Moonwalk', tagline: 'Confident steps on unfamiliar terrain' },
-    { id: 'interstellar', label: 'Interstellar', tagline: 'Long-haul listening, rarely needs a lifeline' },
-    { id: 'deep-space', label: 'Deep Space', tagline: 'Navigates almost anything without a map' },
-    { id: 'supernova', label: 'Supernova', tagline: 'Near-native — only the rarest sparks are new' },
+    { id: 'liftoff', label: 'A1', tagline: 'Beginner — everyday words are still new' },
+    { id: 'orbit', label: 'A2', tagline: 'Elementary — handles simple daily exchanges' },
+    { id: 'moonwalk', label: 'B1', tagline: 'Intermediate — follows familiar topics with help' },
+    { id: 'interstellar', label: 'B2', tagline: 'Upper-intermediate — reads and listens with less support' },
+    { id: 'deep-space', label: 'C1', tagline: 'Advanced — long texts and implicit meaning' },
+    { id: 'supernova', label: 'C2', tagline: 'Mastery — only the rarest expressions are new' },
 ] as const;
 
 export type VocabLevelId = typeof VOCAB_LEVELS[number]['id'];

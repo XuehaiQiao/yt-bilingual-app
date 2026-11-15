@@ -3,8 +3,7 @@ import { VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 
-// Level names stay English in every UI language (they are the product's
-// journey metaphors); only the taglines are localized.
+// Labels are CEFR bands (A1–C2) in every UI language; taglines are localized.
 const LEVEL_I18N: Record<VocabLevelId, { label: TranslationKey; tagline: TranslationKey }> = {
     liftoff: { label: 'home.vocabLevel.liftoff.label', tagline: 'home.vocabLevel.liftoff.tagline' },
     orbit: { label: 'home.vocabLevel.orbit.label', tagline: 'home.vocabLevel.orbit.tagline' },
@@ -20,9 +19,8 @@ interface VocabAxisProps {
 }
 
 /**
- * Vocabulary level as a journey along an axis: six stops from Liftoff to
- * Supernova. No numbers — the gradient fills toward deeper space as the
- * learner's vocabulary grows.
+ * Vocabulary level as six CEFR stops A1 → C2. The gradient fills toward the
+ * higher band as the learner's vocabulary grows.
  */
 export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange }) => {
     const { t } = useI18n();

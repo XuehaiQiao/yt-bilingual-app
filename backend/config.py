@@ -147,18 +147,19 @@ if API_AUTH_KEY and BROWSER_UI:
 # --- Learner level -> description used to calibrate which words get highlighted.
 # UI shows metaphors only; the vocabulary sizes live here for the prompt.
 VOCAB_LEVELS = {
-    "liftoff": "~4,000-word vocabulary (CEFR A2-B1). Highlight anything beyond everyday conversational basics.",
-    "orbit": "~6,000-word vocabulary (CEFR B1+). Highlight words beyond common conversational English.",
-    "moonwalk": "~8,000-word vocabulary (CEFR B2). Highlight lower-frequency words, idioms and phrasal verbs.",
-    "interstellar": "~12,000-word vocabulary (CEFR C1). Highlight genuinely advanced or idiomatic usage only.",
-    "deep-space": "~16,000-word vocabulary (CEFR C1+). Highlight only rare words, subtle idioms, cultural references.",
-    "supernova": "~20,000+ word vocabulary (near-native, CEFR C2). Only the rarest idioms, slang or specialist jargon.",
+    # 前端难度轴现在直接展示 CEFR A1–C2；内部 id 保持旧值只为兼容已保存的设置。
+    "liftoff": "CEFR A1 (~1,500-2,500 words). Highlight everything beyond the most basic everyday words.",
+    "orbit": "CEFR A2 (~3,000-4,000 words). Highlight words beyond common everyday expressions.",
+    "moonwalk": "CEFR B1 (~5,000-6,000 words). Highlight lower-frequency words, phrasal verbs and common idioms.",
+    "interstellar": "CEFR B2 (~8,000-10,000 words). Highlight genuinely advanced or idiomatic usage.",
+    "deep-space": "CEFR C1 (~12,000-15,000 words). Highlight only rare words, subtle idioms and cultural references.",
+    "supernova": "CEFR C2 (~20,000+ words, near-native). Only the rarest idioms, slang or specialist jargon.",
     # Legacy ids from earlier releases
-    "cet4": "~4,500-word vocabulary (CEFR B1). Highlight words above this level.",
-    "cet6": "~6,000-word vocabulary (CEFR B2). Highlight words above this level.",
-    "kaoyan": "~8,000-word vocabulary (CEFR B2+). Highlight low-frequency words, idioms and phrasal verbs.",
-    "ielts": "~12,000-word vocabulary (CEFR C1). Only highlight genuinely advanced or idiomatic usage.",
-    "advanced": "near-native (CEFR C2). Only highlight rare idioms, slang, or cultural references.",
+    "cet4": "CEFR B1 (~4,500-5,000 words). Highlight words above this level.",
+    "cet6": "CEFR B2 (~6,000-8,000 words). Highlight words above this level.",
+    "kaoyan": "CEFR B2+ (~8,000-10,000 words). Highlight low-frequency words, idioms and phrasal verbs.",
+    "ielts": "CEFR C1 (~12,000 words). Only highlight genuinely advanced or idiomatic usage.",
+    "advanced": "CEFR C2 (near-native). Only highlight rare idioms, slang, or cultural references.",
 }
 
 # --- Real, selectable models. Prices are USD per 1M tokens (approximate,
