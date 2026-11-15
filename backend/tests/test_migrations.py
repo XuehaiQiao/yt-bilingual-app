@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0005_jobs"
+HEAD = "0006_review_engine"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -66,7 +66,8 @@ def test_upgrade_head_from_empty_db(tmp_path):
     tables = table_names(db)
     assert {
         "users", "sessions", "learning_events",
-        "ai_usage", "ai_quota", "jobs", "alembic_version",
+        "ai_usage", "ai_quota", "jobs",
+        "word_states", "review_logs", "word_sources", "alembic_version",
     } <= tables
     assert revision(db) == HEAD
 
@@ -231,6 +232,150 @@ def test_upgrade_head_from_empty_db(tmp_path):
             raise AssertionError("jobs.status CHECK 应拒绝未知状态")
         conn.rollback()
 
+    # 复习引擎三表（0006_review_engine）
+    word_states = columns(db, "word_states")
+    assert list(word_states) == [
+        "id",
+        "user_id",
+        "lemma",
+        "target_lang",
+        "state",
+        "due_at",
+        "stability",
+        "difficulty",
+        "reps",
+        "lapses",
+        "step",
+        "fail_streak",
+        "last_reviewed_at",
+        "created_at",
+    ]
+    assert word_states["id"]["pk"] == 1
+    assert word_states["id"]["notnull"] == 1
+    for required in (
+        "user_id", "lemma", "target_lang", "state", "due_at",
+        "reps", "lapses", "step", "fail_streak", "created_at",
+    ):
+        assert word_states[required]["notnull"] == 1, required
+    assert word_states["stability"]["notnull"] == 0
+    assert word_states["difficulty"]["notnull"] == 0
+    assert word_states["last_reviewed_at"]["notnull"] == 0
+    assert "zh-CN" in str(word_states["target_lang"]["default"])
+    assert "new" in str(word_states["state"]["default"])
+
+    state_indexes = index_names(db, "word_states")
+    assert "ix_word_states_user_due" in state_indexes
+    # UNIQUE(user_id, lemma, target_lang)：列组合唯一（SQLite 用自动索引表达）
+    with sqlite3.connect(db) as conn:
+        unique_sets = []
+        for row in conn.execute("PRAGMA index_list(word_states)"):
+            if row[2]:
+                unique_sets.append(
+                    tuple(
+                        col[2]
+                        for col in conn.execute(f"PRAGMA index_info({row[1]})")
+                    )
+                )
+    assert ("user_id", "lemma", "target_lang") in unique_sets
+
+    review_logs = columns(db, "review_logs")
+    assert list(review_logs) == [
+        "id",
+        "user_id",
+        "lemma",
+        "target_lang",
+        "rating",
+        "state_before",
+        "state_after",
+        "reviewed_at",
+        "elapsed_ms",
+    ]
+    assert review_logs["id"]["pk"] == 1
+    for required in (
+        "user_id", "lemma", "target_lang", "rating",
+        "state_before", "state_after", "reviewed_at",
+    ):
+        assert review_logs[required]["notnull"] == 1, required
+    assert review_logs["elapsed_ms"]["notnull"] == 0
+    assert "ix_review_logs_user_reviewed" in index_names(db, "review_logs")
+
+    word_sources = columns(db, "word_sources")
+    assert list(word_sources) == [
+        "word_state_id",
+        "content_ref",
+        "sentence_id",
+        "created_at",
+    ]
+    assert word_sources["word_state_id"]["notnull"] == 1
+    assert word_sources["content_ref"]["notnull"] == 0
+    assert word_sources["sentence_id"]["notnull"] == 0
+    assert "ix_word_sources_word_state" in index_names(db, "word_sources")
+    with sqlite3.connect(db) as conn:
+        fk_rows = conn.execute("PRAGMA foreign_key_list(word_sources)").fetchall()
+    assert any(
+        row[2] == "word_states"
+        and row[3] == "word_state_id"
+        and row[4] == "id"
+        and row[6] == "CASCADE"
+        for row in fk_rows
+    ), "word_sources 应外键引用 word_states(id) ON DELETE CASCADE"
+
+    # CHECK / UNIQUE 由数据库兜底：重复词、非法 state、非法 rating、孤儿来源都写不进去。
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(
+            "INSERT INTO word_states (id, user_id, lemma, target_lang, state, "
+            "due_at, reps, lapses, step, fail_streak, created_at) "
+            "VALUES ('ws1', 'u1', 'hello', 'zh-CN', 'new', 1000, 0, 0, 0, 0, 1000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO word_states (id, user_id, lemma, target_lang, state, "
+                "due_at, reps, lapses, step, fail_streak, created_at) "
+                "VALUES ('ws2', 'u1', 'hello', 'zh-CN', 'new', 1000, 0, 0, 0, 0, 1000)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("UNIQUE(user_id, lemma, target_lang) 应阻止重复词")
+        try:
+            conn.execute("UPDATE word_states SET state='bogus' WHERE id='ws1'")
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("word_states.state CHECK 应拒绝未知状态")
+
+        conn.execute(
+            "INSERT INTO review_logs (user_id, lemma, target_lang, rating, "
+            "state_before, state_after, reviewed_at, elapsed_ms) "
+            "VALUES ('u1', 'hello', 'zh-CN', 'good', '{}', '{}', 1000, 12)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO review_logs (user_id, lemma, target_lang, rating, "
+                "state_before, state_after, reviewed_at, elapsed_ms) "
+                "VALUES ('u1', 'hello', 'zh-CN', 'perfect', '{}', '{}', 1001, 12)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("review_logs.rating CHECK 应拒绝未知评分")
+
+        conn.execute(
+            "INSERT INTO word_sources (word_state_id, content_ref, sentence_id, "
+            "created_at) VALUES ('ws1', 'vid1', 's1', 1000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO word_sources (word_state_id, content_ref, sentence_id, "
+                "created_at) VALUES ('missing', 'vid1', 's1', 1000)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("word_sources 外键应拒绝不存在的 word_state_id")
+        conn.rollback()
+
 
 def test_baseline_schema_matches_auth_db_contract(tmp_path, monkeypatch):
     """基线迁移与 auth_db.py 的现存 schema 逐列/逐索引一致（含可空性）。"""
@@ -317,9 +462,28 @@ def test_downgrade_base_then_upgrade_head_roundtrip(tmp_path):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
     assert_alembic_ok(run_alembic(db, "downgrade", "base"), "downgrade base")
 
-    # 两个迁移的 down 都执行过：业务表清空，只剩 alembic 版本表
+    # 所有迁移的 down 都执行过：业务表清空，只剩 alembic 版本表
     assert table_names(db) == {"alembic_version"}
     assert revision(db) is None
 
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (after downgrade)")
     assert {"users", "sessions", "learning_events"} <= table_names(db)
+
+
+def test_review_engine_downgrade_to_0005_and_back(tmp_path):
+    """0006 单独回滚：只删复习三表，jobs 与更早的表保留；再升级可恢复。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    assert {"word_states", "review_logs", "word_sources"} <= table_names(db)
+
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0005_jobs"), "downgrade 0005_jobs"
+    )
+    assert revision(db) == "0005_jobs"
+    remaining = table_names(db)
+    assert not ({"word_states", "review_logs", "word_sources"} & remaining)
+    assert "jobs" in remaining and "users" in remaining and "sessions" in remaining
+
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert revision(db) == HEAD
+    assert {"word_states", "review_logs", "word_sources"} <= table_names(db)

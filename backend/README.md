@@ -11,7 +11,7 @@
 
 | 文件 | 职责 |
 |---|---|
-| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载四个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
+| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载五个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
 | `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
@@ -32,8 +32,10 @@
 | `local_shows.py` | 本地剧集 → YouTube 视频映射：`episode_video_map(show_id)` / `lookup_episode_video(show_id, season, episode)` 读取 `subtitles/<show_id>/episodes.json`；缺失/损坏一律降级为无映射并打日志，路径限制在 `SUBTITLES_DIR` 内 |
 | `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
 | `routes_user.py` | `/api/define`（词典：`targetLang` 决定缓存目录与 prompt 语言；语境缓存 → 本地 ECDICT（**仅 zh-CN**）→「已配 Key 的候选模型」；vi-VN 跳过 ECDICT 直接 LLM，只有 DeepSeek Key 也能查；缺省 `model` 时 zh 候选链首选 `DEFAULT_MODEL`、其他语言首选该语言路线；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；响应带 `targetLang`，可选 `pos_label` / `example_translation`；模型结果写按语言隔离的缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`（M1 ④ 按条 API：POST/GET/DELETE + 旧 PUT 兼容 + `?since=` 增量；文件锁 + 原子写，见下文「收藏按条 API」）、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
-| `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `srs.py` | **复习调度与词状态读写（M2）**：`review(word_state, rating, now)` 纯函数走 FSRS-6（PyPI `fsrs` 6.3.3，目标保持率 0.9、关闭 fuzz 保证确定性）；`add_word` 幂等建词（重复添加不重置进度，只补来源）；`get_due` 到期词 + 新词队列；`record_answer` 同一事务更新状态并追加 `review_logs` 快照；连续 3 次 `again` 自动 suspend，`set_suspended` 手工暂停/恢复；`get_stats` 今日到期/已复习/新词/连续天数。表由 `0006_review_engine` 创建，运行时不建表；时间全部毫秒 UTC |
+| `routes_review.py` | 复习引擎 HTTP 路由（**需登录，游客 403**）：`POST /api/review/words`、`GET /api/review/queue`、`POST /api/review/answer`、`GET /api/review/stats`、`POST/DELETE /api/review/suspend`；契约与错误语义见下文「复习引擎」与 [specs/013](../specs/013-review-engine/spec.md) |
+| `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -125,6 +127,58 @@ data/                                  # DATA_DIR（gitignore）
 - 前端：`lib/favorites.ts` 提供 `fetchFavorites/addFavorite/removeFavorite`，`replaceAllFavorites` 仅为兼容路径；App 先乐观更新，失败回滚 + toast。
 - 测试：`venv/bin/python -m pytest tests/test_favorites_api.py -q`（全离线：增删/幂等/400/404/排序/旧数据/墓碑/并发）。
 
+## 复习引擎（M2：FSRS-6 + 队列 + 复习日志）
+
+把收藏夹升级成「可调度的记忆系统」：每个词有状态、FSRS 参数、到期时间与复习流水。
+**服务端状态是唯一真源**，换设备登录后队列一致；本阶段只做后端，前端复习 UI 下一轮。
+规格：[specs/013-review-engine](../specs/013-review-engine/spec.md)。
+
+### 表（迁移 `0006_review_engine`）
+
+| 表 | 内容 |
+|---|---|
+| `word_states` | 每个用户每个词（按 `target_lang` 分开）一条当前状态：`state`（`new` / `learning` / `review` / `relearning` / `suspended`）、`due_at`、`stability` / `difficulty`（FSRS-6）、`reps` / `lapses`、`last_reviewed_at`、`created_at`；内部列 `step`（FSRS 学习/重学子日 step）与 `fail_streak`（连续 Again 计数）。`UNIQUE(user_id, lemma, target_lang)` + `INDEX(user_id, due_at)` |
+| `review_logs` | append-only 流水：`rating`（`again` / `hard` / `good` / `easy`）、`state_before` / `state_after`（JSON 快照）、`reviewed_at`、`elapsed_ms`；索引 `(user_id, reviewed_at)` |
+| `word_sources` | 词从哪来：`word_state_id`（FK → `word_states.id`，CASCADE）、`content_ref`（videoId / 剧集 / 文章）、`sentence_id`、`created_at`；索引 `word_state_id` |
+
+- 运行时不建表：未跑 `0006` 时复习端点统一返回 **503** 并提示 `alembic upgrade head`，不静默空队列。
+- `lemma` 由 `srs.add_word` 规范为 NFC + 小写；`target_lang` 缺省 `zh-CN`，非法代码 400。
+- 所有时间字段是**毫秒 UTC**；时区展示交给前端。统计的「今日」按 UTC 日界（文档与响应 `today` 都写明）。
+
+### 调度规则
+
+- 依赖 PyPI **`fsrs` 6.3.3**（FSRS-6），目标保持率 0.9，关闭 fuzz → 同输入同输出，测试注入时钟断言。该包已验证可用并在 `requirements.txt` 固定版本，**不启用 SM-2 兼容降级**（缺包时端点 503 并提示安装；不会静默换算法）。
+- 新词首次作答进入学习步长（Again 1 分钟 / Hard 5.5 分钟 / Good 10 分钟 / Easy 直接毕业到 Review），复习时 Again 进入 10 分钟重学。
+- 每次作答 `reps+1`；`again` 同时 `lapses+1`、`fail_streak+1`，其他评分把 `fail_streak` 清零。
+- `fail_streak >= 3` → 自动 `suspended`（仍写当次日志）；`suspended` 不进队列，作答 **409**。
+- 手工 suspend / restore 幂等；恢复后有历史 → `review`（无历史 → `new`），`due_at=now`、`fail_streak=0`，保留 FSRS 参数，不会被恢复前的旧日志立刻再次判死。
+
+### HTTP 契约（全部需登录；游客/未登录 403）
+
+| 端点 | 请求 | 成功 |
+|---|---|---|
+| `POST /api/review/words` | `{lemma, targetLang?, source?}`；`source` 可为 `{contentRef,sentenceId}`（也接受 `videoId` / snake_case）或字符串 | `201 {"status":"ok","created":true,"word":{…}}`；已存在 `200 created:false`，**不重置进度**，只补来源 |
+| `GET /api/review/queue?limit=20&newLimit=10&targetLang=zh-CN` | `limit` 1–100（总条数）、`newLimit` 0–100 | `{targetLang, now, limit, newLimit, counts, due, new, items}`；`due` 按 `due_at` 升序、`new` 按 `created_at` 升序；不返回释义（前端需要时再调 `/api/define`） |
+| `POST /api/review/answer` | `{lemma, rating, targetLang?, elapsedMs?}` | `{status:"ok", word, suspended, autoSuspended, dueAt}`；词不存在 404、已暂停 409、评分非法 400 |
+| `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `{targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, streakDays}` |
+| `POST /api/review/suspend` | `{lemma, targetLang?}` | `{status:"ok", suspended:true, word}`；不存在 404 |
+| `DELETE /api/review/suspend?lemma=&targetLang=` | 也接受 JSON body | `{status:"ok", suspended:false, word}`；不存在 404 |
+
+`word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, sources}`。
+数据库未迁移 → **503**；参数错误 → **400**；游客 → **403**。
+
+### 运行与验证
+
+```bash
+cd backend
+venv/bin/alembic upgrade head                 # 新库迁到 0006；旧库先 stamp 0001 再 upgrade
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_review_engine.py -q
+venv/bin/python -m pytest tests -q            # 全量离线（含迁移升级/回滚）
+```
+
+
+
 ## 多语言目标语言（targetLang，P0）
 
 规格：[specs/012-i18n-multilingual](../specs/012-i18n-multilingual/spec.md) §5.3–§5.10、§6。P0 范围 = **目标语言**（翻译/总结/词典/缓存/模型路线），UI 语言与 `/api/settings` 属后续任务。
@@ -193,7 +247,7 @@ venv/bin/python -m pytest tests/test_i18n_target_lang.py -q   # 目标语言 P0�
 
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 
@@ -210,10 +264,10 @@ venv/bin/alembic stamp head              # 已经是最新版本的库：只标�
 
 - 数据库路径与运行时同源：默认 `data/app.db`，可用 `AUTH_DB_PATH` 覆盖（迁移命令与 `config.py` 都读它）。
 - 基线迁移**幂等**（用 inspector 判断表/索引是否存在）：旧库直接 `upgrade head` 不会重建 `users`/`sessions`、不会动数据，只补缺的表；仍建议先备份 `data/app.db`。
-- **不要对旧库直接 `stamp head`**：会把 `0002` 也标记成已应用，`learning_events` 永远不会被建出来。正确顺序是 `stamp 0001_baseline` → `upgrade head`（或直接 `upgrade head`）。
+- **不要对旧库直接 `stamp head`**：会把 `0002`–`0006` 都标记成已应用，`learning_events` / 账本 / 任务表 / 复习三表永远不会被建出来。正确顺序是 `stamp 0001_baseline` → `upgrade head`（或直接 `upgrade head`）。
 - `downgrade` 会 DROP 表（`0001` 的 down 会删 `users`/`sessions`），只用于空库/测试回滚，别在真实库上跑。
 - 启动时 `main.py` 的 lifespan 只读检查一次迁移状态：库存在但没迁移会打 WARNING（启动照常成功）；`emit_event` 在表缺失时跳过写入并记 ERROR，学习主流程不受影响。
-- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0006_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
+- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0007_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
 
 学习事件（`events.py`）：
 

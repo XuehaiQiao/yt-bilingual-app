@@ -26,6 +26,12 @@ alembic==1.20.1
 # Offline test suite + CI (backend/tests/); not needed at runtime.
 pytest>=8.0.0
 
+# FSRS-6 spaced-repetition scheduling for the M2 review engine (backend/srs.py).
+# Pinned: scheduling results are part of the API contract and are asserted in
+# tests, so a silent minor bump could change intervals. 6.3.3 is the version
+# verified here; upgrade deliberately (and re-run tests/test_review_engine.py).
+fsrs==6.3.3
+
 # Optional: local ASR fallback for videos without English captions
 # pip install faster-whisper  (downloads a Whisper model on first use;
 # set WHISPER_MODEL=small/base/medium to choose size, default: base)

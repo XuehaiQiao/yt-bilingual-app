@@ -1,0 +1,116 @@
+# 规格：词状态与 FSRS 复习引擎（后端）
+
+**状态：** 已实现（2026-11-15，M2 后端；前端复习 UI 下一轮）｜ **对应代码：** `backend/srs.py`、`backend/routes_review.py`、`backend/migrations/versions/0006_review_engine.py`、`backend/tests/test_review_engine.py`
+
+> 计划书 §13.2 M2 的第一块：把「收藏夹」从「存一条记录」升级为**可调度的记忆系统**。
+> 本规格只冻结**后端契约**：词状态、到期队列、复习作答、暂停/恢复、统计。
+> 4 种卡面、TTS、复习页交互与收藏夹迁移到词状态的界面流程在下一轮实现。
+
+---
+
+## 目标
+
+- **G1 状态在服务端**：每个词有 FSRS 参数、当前状态与到期时间；换设备登录后队列一致，不依赖 localStorage。
+- **G2 调度可复现**：同一份状态 + 同一评分 + 同一时刻 → 同一结果；测试注入时钟，不读真实时间。
+- **G3 队列可解释**：返回「到期词」与「新词」两类，各自有上限；排序稳定，跨用户严格隔离。
+- **G4 失败可止损**：连续 3 次 `again` 自动 suspend，不无限耗复习耐心；用户可手工恢复。
+- **G5 全离线可验**：不联网、不调 LLM；释义由前端后续调 `/api/define` 获取。
+
+## 非目标
+
+- 不做前端复习 UI、4 卡面、TTS、听写（下一轮 / M3）。
+- 不迁移 `favorites.json` 存量收藏到 `word_states`（下一轮随前端一起做）。
+- 不做每日新词/复习总量的服务端硬上限（当前用 `limit` + `newLimit` 控制返回量；长期上限待教研定）。
+- 不做多设备实时推送/冲突合并：同一账号后写覆盖先写，服务端状态是唯一真源。
+- 不做时区展示：库里一律毫秒 UTC，前端按用户本地时区展示。
+
+---
+
+## 数据模型（迁移 `0006_review_engine`）
+
+### `word_states`
+
+| 列 | 类型 | 说明 |
+|---|---|---|
+| `id` | TEXT PK | uuid4 hex |
+| `user_id` | TEXT NOT NULL | 归属用户 |
+| `lemma` | TEXT NOT NULL | 词条；NFC + 小写规范化后存储 |
+| `target_lang` | TEXT NOT NULL DEFAULT `zh-CN` | 与 i18n 口径一致 |
+| `state` | TEXT NOT NULL | `new` / `learning` / `review` / `relearning` / `suspended`（CHECK） |
+| `due_at` | INTEGER NOT NULL | 下次到期，毫秒 UTC |
+| `stability` / `difficulty` | REAL NULL | FSRS-6 参数；`new` 时为空 |
+| `reps` / `lapses` | INTEGER NOT NULL DEFAULT 0 | 总复习次数 / 累计 `again` 次数 |
+| `step` | INTEGER NOT NULL DEFAULT 0 | **内部列**：FSRS 学习/重学子日 step |
+| `fail_streak` | INTEGER NOT NULL DEFAULT 0 | **内部列**：连续 `again` 次数 |
+| `last_reviewed_at` | INTEGER NULL | 上次复习，毫秒 UTC |
+| `created_at` | INTEGER NOT NULL | 入词时间，毫秒 UTC |
+
+- `UNIQUE(user_id, lemma, target_lang)`：同用户同语言同一个词只有一条状态。
+- `INDEX (user_id, due_at)`：到期队列主查询路径。
+
+### `review_logs`
+
+`id`（自增 PK）、`user_id`、`lemma`、`target_lang`、`rating`（`again`/`hard`/`good`/`easy`，CHECK）、`state_before` / `state_after`（JSON 文本快照）、`reviewed_at`（毫秒 UTC）、`elapsed_ms`（可空）。
+索引：`(user_id, reviewed_at)`。追加写，不提供修改/删除入口。
+
+### `word_sources`
+
+`word_state_id`（FK → `word_states.id`，ON DELETE CASCADE）、`content_ref`（videoId / 剧集 / 文章）、`sentence_id`、`created_at`。索引 `word_state_id`。
+一个词可来自多处；同一来源重复添加幂等去重。
+
+---
+
+## 调度规则
+
+- 依赖 **PyPI `fsrs` 6.3.3**（FSRS-6），目标保持率 **0.9**，关闭 fuzz → 结果确定。
+  该包已验证可用（`requirements.txt` 固定版本），因此**不启用** SM-2 兼容降级：
+  缺包时 `srs` 抛 `ReviewUnavailable`，端点返回 503 并提示安装依赖，不会静默换算法导致调度口径漂移。
+- 新词 = `new`、`reps=0`；首次作答后进入 `learning` 或 `review`。学习步长沿用 FSRS 默认（1 分钟 / 10 分钟），重学步长 10 分钟。
+- 每次作答：`reps+1`；`again` 时 `lapses+1`、`fail_streak+1`，其他评分把 `fail_streak` 清零。
+- `fail_streak >= 3` → 自动 `suspended`（仍写当次日志，便于审计）。
+- 手工 suspend / restore 都幂等；restore 把状态放回 `review`（`reps=0` 时回 `new`）、`due_at=now`、`fail_streak=0`，保留 FSRS 参数。
+- `suspended` 的词不出现在队列里，作答返回 **409**，需先恢复。
+
+## API 契约
+
+全部端点**需登录**；游客/未登录返回 **403**。`targetLang` 缺省 `zh-CN`，非法代码 **400**。时间均为毫秒 UTC。
+
+| 端点 | 请求 | 成功 |
+|---|---|---|
+| `POST /api/review/words` | `{lemma, targetLang?, source?}`；`source` 可含 `contentRef`/`sentenceId`（也接受 snake_case） | `201 {"status":"ok","created":true,"word":{…}}`；已存在 `200 created:false`，**不重置进度** |
+| `GET /api/review/queue?limit=20&newLimit=10&targetLang=zh-CN` | `limit` 1–100（总条数上限）；`newLimit` 0–100 | `200 {targetLang, now, items, due, new, counts}`；`due` 按 `due_at` 升序，`new` 按 `created_at` 升序；`items = due + new` |
+| `POST /api/review/answer` | `{lemma, rating, targetLang?, elapsedMs?}` | `200 {status:"ok", word, suspended, autoSuspended}`；词不存在 **404**，已暂停 **409**，评分非法 **400** |
+| `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `200 {targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, streakDays}`；「今日」按 UTC 日界 |
+| `POST /api/review/suspend` | `{lemma, targetLang?}` | `200 {status:"ok", suspended:true, word}`；不存在 **404**；重复调用幂等 |
+| `DELETE /api/review/suspend?lemma=&targetLang=`（也接受 JSON body） | — | `200 {status:"ok", suspended:false, word}`；不存在 **404** |
+
+`word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, sources:[{contentRef,sentenceId,createdAt}]}`。
+队列项额外带 `sources`，不返回释义（前端需要时再调 `/api/define`，语言由 `targetLang` 决定）。
+
+错误语义：数据库未跑 `0006` 迁移时返回 **503**（`detail` 提示先 `alembic upgrade head`），不静默 500。
+
+## 验收
+
+- [x] 迁移 `upgrade head` 建三表/索引/唯一约束/CHECK；`downgrade` 可回滚到 `0005` 再升级。
+- [x] FSRS 调度确定性：同输入同 now 结果一致；四档评分首次间隔 `again < hard < good < easy`。
+- [x] 连续 3 次 `again` 自动 suspend；手工恢复后可继续，恢复记录清零失败计数。
+- [x] `add_word` 幂等：重复添加不重置 `reps` / `due_at`，但可补充新来源。
+- [x] 队列跨用户隔离、`targetLang` 过滤、稳定排序、`limit` 与 `newLimit` 生效。
+- [x] 统计：今日到期/今日已复习/新词/连续天数；跨日注入时钟可复现。
+- [x] 游客 403；现有 284 个后端测试保持全绿。
+
+## 测试
+
+```bash
+cd backend
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_review_engine.py -q
+venv/bin/python -m pytest tests -q
+```
+
+## 后续（下一轮）
+
+- 前端 `features/review/`：单卡全屏、1–4 键、Undo、四卡面、语境句、TTS。
+- `favorites.json` → `word_states` 的一次性迁移 + 去重；收藏语义从「记录」改为「建档」。
+- 每日新词/复习配额、积压保护与「明天预计 M」的跨日预测。
+- 复习事件接入 `learning_events`（`word_review`）与周报。

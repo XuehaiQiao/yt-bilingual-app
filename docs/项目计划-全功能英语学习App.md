@@ -1063,6 +1063,7 @@ jobs 1─1 artifact_dir（data/jobs/<id>/）
 | **验收** | ① due 排程正确（跨日、跨时区）；② 迁移后用户收藏零丢失、无重复；③ 复习页显示「今天到期 N / 明天预计 M」；④ 连续 3 次失败自动 suspend；⑤ 换浏览器登录后复习队列一致；⑥ 播放位置回到同一秒（±2s） |
 | **人日** | **20**（工程 13 / 教研 4 / 设计 3） |
 | **依赖** | M1（事件、账本、迁移、收藏 API）；D-3（能力测试形态，决定临时版） |
+| **进度（2026-11-15，M2 复习引擎后端）** | **M2 的「词状态 + FSRS-6 + 复习队列 API」后端已完成**：`0006_review_engine`（`word_states` / `review_logs` / `word_sources`，`UNIQUE(user_id,lemma,target_lang)` + `(user_id,due_at)` 索引）、`backend/srs.py`（PyPI `fsrs` 6.3.3，目标保持率 0.9、关闭 fuzz；`review` 纯函数可注入时钟、`add_word` 幂等、`get_due`、连续 3 次 again 自动 suspend、手工恢复、毫秒 UTC 存储）、`backend/routes_review.py`（words/queue/answer/stats/suspend，全部需登录、游客 403；表缺失 503）、`tests/test_review_engine.py` 17 个离线测试 + 迁移升级/回滚断言；全量 **302 测试绿**，8001 临时实例实测「加词 → 队列出现 → answer good 后 due 后移 → 重复 add 不重置 → 三次 again suspend」。规格：[specs/013](../specs/013-review-engine/spec.md)。**M2 整阶段未完成**（前端复习 UI、`favorites.json` 迁移、每日上限/积压保护未做） |
 
 #### M3 从「看」到「学」（W13–W15，**19 人日**）— **W15 可上线（Gate-A · 免费邀请制）**
 
