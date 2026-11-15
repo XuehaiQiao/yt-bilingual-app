@@ -1,5 +1,5 @@
 // Export favorites to Anki-importable TSV or generic CSV.
-import type { FavoriteItem } from '../components/FavoritesModal';
+import type { FavoriteItem } from './favorites';
 import { formatDate, t } from '../i18n';
 
 function downloadFile(filename: string, content: string, mime: string) {

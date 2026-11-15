@@ -8,7 +8,9 @@ import os
 import re
 from urllib.parse import parse_qs, urlsplit
 
+import requests
 import yt_dlp
+from urllib3.exceptions import ReadTimeoutError as _Urllib3ReadTimeoutError
 from fastapi import HTTPException
 from youtube_transcript_api import (
     YouTubeTranscriptApi,
@@ -18,6 +20,8 @@ from youtube_transcript_api import (
     IpBlocked,
     RequestBlocked,
 )
+
+from config import FETCH_TIMEOUT_SECONDS, MAX_FETCH_BYTES, MAX_TRANSCRIPT_BLOCKS
 
 
 # YouTube videoId 固定 11 位 base64url 字符；白名单锚定（计划书 §7.6）：
@@ -110,6 +114,77 @@ def extract_video_id(url: str) -> str:
     raise ValueError("Invalid YouTube URL")
 
 
+# 频道 URL 也来自客户端（订阅列表），同样只能交给 yt-dlp 抓取 YouTube 自身。
+# 这里复用视频白名单的主机集合，但 youtu.be 没有频道路径，故排除。
+_CHANNEL_ALLOWED_HOSTS = frozenset({"youtube.com", "www.youtube.com", "m.youtube.com"})
+_CHANNEL_HANDLE_RE = re.compile(r"^@[A-Za-z0-9._-]{1,100}$")
+_CHANNEL_ID_RE = re.compile(r"^UC[A-Za-z0-9_-]{22}$")
+_CHANNEL_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
+_CHANNEL_TABS = frozenset({"videos"})
+
+
+def _valid_channel_path(parts: list[str]) -> bool:
+    """只接受 /@handle、/channel/UC…、/c/name、/user/name（可选 /videos）。"""
+    if not parts:
+        return False
+    if parts[0].startswith("@"):
+        valid = bool(_CHANNEL_HANDLE_RE.fullmatch(parts[0]))
+        rest = parts[1:]
+    elif parts[0] == "channel" and len(parts) >= 2:
+        valid = bool(_CHANNEL_ID_RE.fullmatch(parts[1]))
+        rest = parts[2:]
+    elif parts[0] in ("c", "user") and len(parts) >= 2:
+        valid = bool(_CHANNEL_NAME_RE.fullmatch(parts[1]))
+        rest = parts[2:]
+    else:
+        return False
+    if not valid:
+        return False
+    return not rest or (len(rest) == 1 and rest[0] in _CHANNEL_TABS)
+
+
+def validate_channel_url(url: str) -> str:
+    """校验 `/api/channel-updates` 交给 yt-dlp 的频道 URL；不合法抛 ``ValueError``。
+
+    与视频 URL 用同一套「锚定主机」思路：只允许 http/https + YouTube 主机 +
+    已知频道路径，拒绝 userinfo、显式端口、query/fragment、控制字符/反斜杠与
+    其它域名。这样 `/api/channel-updates` 的 ``channels`` 就不能把 yt-dlp
+    引到内网/``file://``/任意站点（计划书 §7.6 的抓取面）。
+    """
+    if not isinstance(url, str):
+        raise ValueError("Invalid YouTube channel URL")
+    candidate = url.strip()
+    if not candidate or len(candidate) > _MAX_URL_LENGTH:
+        raise ValueError("Invalid YouTube channel URL")
+    if _CONTROL_CHARS_RE.search(candidate) or "\\" in candidate:
+        raise ValueError("Invalid YouTube channel URL")
+    if candidate.startswith("//"):
+        raise ValueError("Invalid YouTube channel URL")
+    if "://" not in candidate:
+        candidate = "https://" + candidate
+
+    parsed = urlsplit(candidate)
+    if parsed.scheme.lower() not in ("http", "https"):
+        raise ValueError("Invalid YouTube channel URL")
+    if not parsed.netloc or "@" in parsed.netloc:
+        raise ValueError("Invalid YouTube channel URL")
+    try:
+        port = parsed.port
+    except ValueError:
+        raise ValueError("Invalid YouTube channel URL") from None
+    if port is not None:
+        raise ValueError("Invalid YouTube channel URL")
+    host = (parsed.hostname or "").lower()
+    if host not in _CHANNEL_ALLOWED_HOSTS:
+        raise ValueError("Invalid YouTube channel URL")
+    if parsed.query or parsed.fragment:
+        raise ValueError("Invalid YouTube channel URL")
+    path_parts = [part for part in parsed.path.split("/") if part]
+    if not _valid_channel_path(path_parts):
+        raise ValueError("Invalid YouTube channel URL")
+    return candidate
+
+
 def canonical_watch_url(video_id: str) -> str:
     """把校验过的 videoId 还原成唯一规范的 watch URL。
 
@@ -117,6 +192,67 @@ def canonical_watch_url(video_id: str) -> str:
     原始输入：即使原链接带 ``list=`` 播放列表等参数，也不会被当成播放列表抓取。
     """
     return f"https://www.youtube.com/watch?v={_validate_video_id(video_id)}"
+
+
+# ====================================================
+# 抓取边界：超时与响应体大小上限（M1 ⑦ 残余项）
+# ====================================================
+
+class _ResponseTooLarge(Exception):
+    """HTTP 响应体超过 ``MAX_FETCH_BYTES``。"""
+
+    def __init__(self, limit: int):
+        self.limit = limit
+        super().__init__(f"response body exceeds {limit} bytes")
+
+
+class _BoundedSession(requests.Session):
+    """给 youtube-transcript-api 用的 requests.Session：
+
+    - 所有请求注入 ``FETCH_TIMEOUT_SECONDS`` 的 connect/read 超时；
+    - 读取响应体时按 ``MAX_FETCH_BYTES`` 分块计数，超限立即失败——不会先把
+      整个响应读进内存再检查（否则大小上限就失去意义）。
+    """
+
+    def request(self, method, url, **kwargs):
+        if FETCH_TIMEOUT_SECONDS > 0:
+            kwargs.setdefault("timeout", FETCH_TIMEOUT_SECONDS)
+        return super().request(method, url, **kwargs)
+
+    def send(self, request, **kwargs):
+        limit = MAX_FETCH_BYTES
+        if limit <= 0:
+            return super().send(request, **kwargs)
+        # 强制流式读取；requests 默认会在 adapter 里把整个 body 读完。
+        kwargs["stream"] = True
+        response = super().send(request, **kwargs)
+        try:
+            chunks = []
+            total = 0
+            for chunk in response.iter_content(chunk_size=64 * 1024):
+                if not chunk:
+                    continue
+                total += len(chunk)
+                if total > limit:
+                    raise _ResponseTooLarge(limit)
+                chunks.append(chunk)
+            response._content = b"".join(chunks)  # noqa: SLF001 - 让 .text/.json() 复用已读内容
+            response._content_consumed = True
+            return response
+        except requests.exceptions.ConnectionError as exc:
+            # 正文读到一半超时：requests 会把 urllib3 的 ReadTimeoutError 包成
+            # ConnectionError；转回 requests.Timeout，路由才能稳定映射 504。
+            if isinstance(exc.__context__, _Urllib3ReadTimeoutError) or "timed out" in str(exc).lower():
+                raise requests.Timeout(str(exc)) from exc
+            raise
+        finally:
+            response.close()
+
+
+def _format_bytes(value: int) -> str:
+    if value >= 1024 * 1024 and value % (1024 * 1024) == 0:
+        return f"{value // (1024 * 1024)} MB"
+    return f"{value} 字节"
 
 
 def _split_at_sentence_boundaries(text: str) -> list:
@@ -223,9 +359,31 @@ def group_transcript_blocks(transcript: list) -> list:
 
 
 def fetch_english_transcript(video_id: str):
-    """Fetch the English transcript, mapping failures to actionable errors."""
+    """Fetch the English transcript, mapping failures to actionable errors.
+
+    边界（M1 ⑦ 残余项）：
+
+    - 超时 → 504（不是 500；不触发流式路径的「无字幕 → Whisper」兜底）；
+    - 响应体超过 ``MAX_FETCH_BYTES``、块数超过 ``MAX_TRANSCRIPT_BLOCKS``
+      → 400。这里不用 422：流式路径把 422 当作「无字幕」去走 Whisper 兜底，
+      用 400 可以避免为超大字幕再下载一遍音频。
+    """
+    session = _BoundedSession()
     try:
-        return YouTubeTranscriptApi().fetch(video_id, languages=['en'])
+        fetched = YouTubeTranscriptApi(http_client=session).fetch(
+            video_id, languages=['en']
+        )
+    except _ResponseTooLarge as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"字幕抓取响应体超过上限（{_format_bytes(exc.limit)}），无法处理该视频。",
+        ) from exc
+    except requests.Timeout as exc:
+        if FETCH_TIMEOUT_SECONDS > 0:
+            detail = f"抓取字幕超时（超过 {FETCH_TIMEOUT_SECONDS:g} 秒），请稍后再试。"
+        else:
+            detail = "抓取字幕超时，请稍后再试。"
+        raise HTTPException(status_code=504, detail=detail) from exc
     except TranscriptsDisabled:
         raise HTTPException(status_code=422, detail="该视频关闭了字幕功能，无法获取英文字幕。")
     except NoTranscriptFound:
@@ -236,14 +394,25 @@ def fetch_english_transcript(video_id: str):
         raise HTTPException(status_code=429, detail="YouTube 暂时限制了当前 IP 的字幕请求，请稍后再试。")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"获取字幕失败：{e}")
+    finally:
+        session.close()
+
+    if MAX_TRANSCRIPT_BLOCKS > 0 and len(fetched) > MAX_TRANSCRIPT_BLOCKS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"字幕块数超过上限（{MAX_TRANSCRIPT_BLOCKS} 块），无法处理该视频。",
+        )
+    return fetched
 
 
 def get_video_metadata(url: str):
-    """Fetch video metadata using yt-dlp"""
+    """Fetch video metadata using yt-dlp（带 socket 超时，避免线程被永久占住）。"""
     ydl_opts = {
         'quiet': True,
         'skip_download': True,
     }
+    if FETCH_TIMEOUT_SECONDS > 0:
+        ydl_opts['socket_timeout'] = FETCH_TIMEOUT_SECONDS
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         return {
@@ -398,8 +567,22 @@ def _transcribe_audio_with_whisper(url: str) -> list:
             "outtmpl": audio_path,
             "quiet": True,
         }
+        if FETCH_TIMEOUT_SECONDS > 0:
+            ydl_opts["socket_timeout"] = FETCH_TIMEOUT_SECONDS
+        if MAX_FETCH_BYTES > 0:
+            # yt-dlp 在选格式阶段就跳过超限文件；下面再按实际落盘大小复核。
+            ydl_opts["max_filesize"] = MAX_FETCH_BYTES
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
+
+        if not os.path.exists(audio_path):
+            raise RuntimeError("音频下载失败，或文件超过大小上限，已跳过本地转写。")
+        if MAX_FETCH_BYTES > 0:
+            actual_size = os.path.getsize(audio_path)
+            if actual_size > MAX_FETCH_BYTES:
+                raise RuntimeError(
+                    f"音频文件超过 {_format_bytes(MAX_FETCH_BYTES)} 上限，已跳过本地转写。"
+                )
 
         model_size = os.environ.get("WHISPER_MODEL", "base")
         model = WhisperModel(model_size, device="auto", compute_type="int8")

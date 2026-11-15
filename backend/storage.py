@@ -100,6 +100,16 @@ def favorites_file() -> str:
     return os.path.join(_user_root(), "favorites.json")
 
 
+def favorites_tombstones_file() -> str:
+    """收藏删除墓碑（tombstone）文件路径（按用户隔离）。
+
+    M1 ④ 按条 API 的删除不再只靠「文件里没有这条」表达：删除时在旁路文件记
+    ``{favorite_id: deleted_at_ms}``，供 ``GET /api/favorites?since=`` 做增量同
+    步。文件格式是普通 JSON 对象，旧代码/回滚后的旧版本不会读它，互不影响。
+    """
+    return os.path.join(_user_root(), "favorites_tombstones.json")
+
+
 def subscriptions_file() -> str:
     """频道订阅 JSON 文件路径（按用户隔离；不按语言分文件）。"""
     return os.path.join(_user_root(), "subscriptions.json")

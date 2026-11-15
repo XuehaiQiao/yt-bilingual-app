@@ -17,6 +17,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import AliasChoices, BaseModel, Field
 
 from config import (
+    FETCH_TIMEOUT_SECONDS,
+    MAX_CHANNEL_VIDEOS,
     MODEL_CATALOG,
     PREFETCH_CACHE_MAX_ENTRIES,
     PREFETCH_CACHE_TTL_SECONDS,
@@ -33,6 +35,7 @@ from transcripts import (
     fetch_english_transcript,
     get_video_metadata,
     group_transcript_blocks,
+    validate_channel_url,
     _asr_available,
     _transcribe_audio_with_whisper,
 )
@@ -1268,6 +1271,14 @@ def _fetch_channel_videos(channel_url: str) -> list:
     """Fetch the latest videos for one channel (blocking, run in a thread)."""
     import yt_dlp
 
+    # 频道 URL 来自客户端订阅；只放行 YouTube 频道形态，防止把 yt-dlp 引到
+    # 内网/file:// 或任意站点（与视频 URL 白名单同一套主机锚定思路）。
+    try:
+        channel_url = validate_channel_url(channel_url)
+    except ValueError:
+        print("Rejected invalid channel URL (not an allowed YouTube channel form).")
+        return []
+
     cached = _channel_cache.get(channel_url)
     if cached and time.time() - cached[0] < CHANNEL_CACHE_TTL_SECONDS:
         return cached[1]
@@ -1278,6 +1289,8 @@ def _fetch_channel_videos(channel_url: str) -> list:
         'playlistend': 5,  # Top 5 recent videos per channel
         'quiet': True,
     }
+    if FETCH_TIMEOUT_SECONDS > 0:
+        ydl_opts['socket_timeout'] = FETCH_TIMEOUT_SECONDS
     try:
         target_url = channel_url.rstrip("/") + "/videos" if not channel_url.endswith("/videos") else channel_url
         # One YoutubeDL instance per call: instances are not thread-safe
@@ -1297,6 +1310,10 @@ def _fetch_channel_videos(channel_url: str) -> list:
                     "channel": channel_name,
                     "thumbnail": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
                 })
+                # 单频道硬上限：当前 playlistend=5 已很小，但 yt-dlp 忽略该参数或
+                # 被 mock 返回更多条目时，也不允许无限放大响应/内存（0 = 不限）。
+                if MAX_CHANNEL_VIDEOS > 0 and len(updates) >= MAX_CHANNEL_VIDEOS:
+                    break
         _channel_cache[channel_url] = (time.time(), updates)
     except Exception as e:
         print(f"Error fetching updates for {channel_url}: {e}")

@@ -4,23 +4,7 @@ import { exportAnkiTsv, exportCsv } from '../lib/exporter';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { motion, AnimatePresence } from 'framer-motion';
-
-export interface FavoriteItem {
-    id: string;
-    videoId: string;
-    start: number;
-    en_text: string;
-    zh_text: string;
-    added_at?: number;
-    highlights?: Array<{
-        en_word: string;
-        zh_word: string;
-        color: string;
-    }>;
-    type?: 'sentence' | 'vocabulary';
-    context_en?: string;
-    context_zh?: string;
-}
+import type { FavoriteItem } from '../lib/favorites';
 
 interface FavoritesModalProps {
     isOpen: boolean;

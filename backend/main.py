@@ -5,6 +5,7 @@
 - auth_db.py         用户/会话 SQLite 存储 + Argon2 密码哈希
 - events.py          学习事件日志（append-only；表由 Alembic 迁移创建）
 - routes_auth.py     注册 / 登录 / 登出 / 当前用户
+- auth_lockout.py    登录失败锁定（账号 + IP，进程内存）
 - storage.py         当前用户的数据根目录（ContextVar，多用户隔离 + 按目标语言分目录）
 - languages.py       目标语言注册表（targetLang 校验/NFC/prompt 语言名）
 - transcripts.py     字幕获取与切句（YouTube / SRT / Whisper 兜底）

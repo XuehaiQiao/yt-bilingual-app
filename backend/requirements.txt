@@ -5,6 +5,9 @@ argon2-cffi==25.1.0
 # 1.x required: transcripts.py uses the instance API (YouTubeTranscriptApi().fetch),
 # which 0.6.x does not have — pinning 0.6.2 makes the caption path AttributeError.
 youtube-transcript-api>=1.2.0
+# transcripts.py 直接用 requests.Session 做超时/响应体大小上限（也是
+# youtube-transcript-api 的依赖，这里显式声明，避免将来它换传输层时断掉）。
+requests>=2.31.0
 pydantic==2.6.4
 google-genai>=1.0.0
 # OpenAI-compatible providers (DeepSeek, OpenAI, Qwen, Kimi, Ollama ...) in llm.py.

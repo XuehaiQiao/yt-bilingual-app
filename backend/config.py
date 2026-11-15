@@ -398,3 +398,22 @@ LLM_MAX_CONCURRENCY = _int_env("LLM_MAX_CONCURRENCY", 4)
 # 超容量淘汰最久未用（LRU）；0 = 关闭该缓存（不占内存，确认时重新抓取）。
 PREFETCH_CACHE_MAX_ENTRIES = _int_env("PREFETCH_CACHE_MAX_ENTRIES", 200)
 PREFETCH_CACHE_TTL_SECONDS = _int_env("PREFETCH_CACHE_TTL_SECONDS", 600)
+
+# --- 登录失败锁定（M1 ⑦ 残余项，见 backend/auth_lockout.py）---
+# 同一账号或同一 IP「连续」失败达到阈值 → 锁定 N 分钟；锁定期间即使密码
+# 正确也返回 429 + Retry-After（与全局限速同一契约）。阈值/分钟任一为 0
+# 表示关闭该机制。计数只放进程内存，进程重启即清空（多 worker 各算各的）。
+AUTH_LOCK_THRESHOLD = _int_env("AUTH_LOCK_THRESHOLD", 5)
+AUTH_LOCK_MINUTES = _int_env("AUTH_LOCK_MINUTES", 15)
+
+# --- 抓取边界（M1 ⑦ 残余项，见 backend/transcripts.py / routes_videos.py）---
+# YouTube 字幕与 yt-dlp 的网络超时（秒）。0 = 不设超时（不建议）。
+# 实现口径：requests 的 connect/read timeout + yt-dlp 的 socket_timeout，
+# 不是严格的「整个请求总时限」。
+FETCH_TIMEOUT_SECONDS = _float_env("FETCH_TIMEOUT_SECONDS", 15.0)
+# 单条字幕最多块数；超出返回 400（0 = 不限）。
+MAX_TRANSCRIPT_BLOCKS = _int_env("MAX_TRANSCRIPT_BLOCKS", 5000)
+# 字幕响应体 / 无字幕视频音频下载的单次上限（字节）；超出返回 400 / 跳过下载。
+MAX_FETCH_BYTES = _int_env("MAX_FETCH_BYTES", 5 * 1024 * 1024)
+# 频道视频列表「单频道」最多返回条数（硬上限）；当前 yt-dlp 仍只取最近 5 条。
+MAX_CHANNEL_VIDEOS = _int_env("MAX_CHANNEL_VIDEOS", 200)

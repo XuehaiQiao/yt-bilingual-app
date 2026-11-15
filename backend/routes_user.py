@@ -3,13 +3,25 @@
 查词顺序：`dictionary_cache.json`（按小写词缓存大模型释义）→ 本地 ECDICT
 （`local_dict.lookup`，命中直接返回、不花钱）→ 大模型候选链（结果才写缓存）。
 本地词典是可选数据，没装时行为与以前完全一致。
-收藏与订阅是简单的整存整取 JSON 文件。
+收藏已从「整文件 PUT」升级为按条 API（POST / DELETE），旧 PUT 仅作兼容保留；
+订阅仍是简单的整存整取 JSON 文件。
 """
+import contextlib
+import hashlib
 import json
+import math
 import os
+import tempfile
+import threading
+import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import AliasChoices, BaseModel, Field
+
+try:  # Unix 下用 fcntl 做跨进程文件锁；Windows 退化为进程内线程锁。
+    import fcntl
+except ImportError:  # pragma: no cover - 项目只在 macOS/Linux 上跑
+    fcntl = None
 
 import languages
 import llm
@@ -343,23 +355,487 @@ Rules for "senses":
 
 
 # --- Favorites persistence (per authenticated user; legacy fallback in storage) ---
+#
+# M1 ④：从「GET/PUT 整文件」升级为「按条 POST/DELETE；GET 保留；旧 PUT 兼容」。
+# 存储仍是每个用户一个 JSON 数组文件（不改 Alembic/SQLite），但：
+# - 所有写入都经过同一把「进程内线程锁 + fcntl 文件锁」串行化，读-改-写不会
+#   互相覆盖；落盘用 tmp + os.replace 原子替换，读方永远看到完整文件。
+# - 旧文件里没有 id 的收藏，读取时按内容指纹补一个稳定 id（不改文件）；拿到
+#   GET 返回的 id 后可以直接 DELETE。
+# - POST 幂等：先按 id、再按内容指纹去重；重复提交返回已存在的条目。
+# - 删除写旁路墓碑文件 favorites_tombstones.json，`GET ?since=` 可做增量同步；
+#   旧代码/回滚后的旧版本不会读墓碑文件，互不影响。
+
+FAVORITES_TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000
+MAX_TOMBSTONES = 5000
+FAVORITE_TYPES = ("sentence", "vocabulary")
+# 只有「像收藏」的旧记录才补 id / 参与幂等判断；其他 JSON 对象原样保留，
+# 让把 favorites.json 当任意 JSON 用的旧测试/旧客户端不受影响。
+_FAVORITE_MARKER_FIELDS = (
+    "en_text", "text", "zh_text", "translation",
+    "videoId", "video_id", "start", "time",
+    "highlights", "context_en", "context_zh",
+)
+_FAVORITE_CONSUMED_FIELDS = {
+    "id", "type", "kind", "text", "en_text", "translation", "zh_text",
+    "videoId", "video_id", "time", "start", "added_at", "addedAt",
+    "updated_at", "meta", "highlights", "context_en", "context_zh",
+}
+_FAVORITES_THREAD_LOCKS: dict[str, threading.Lock] = {}
+_FAVORITES_LOCKS_GUARD = threading.Lock()
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+def _clean_text(value) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _first_text(record: dict, *keys: str) -> str:
+    for key in keys:
+        text = _clean_text(record.get(key))
+        if text:
+            return text
+    return ""
+
+
+def _coerce_ms(value, default: int) -> int:
+    """宽松地把客户端时间戳转成毫秒整数；非法值用 default，不因脏数据 500。"""
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)) and math.isfinite(float(value)):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            parsed = float(value.strip())
+        except ValueError:
+            return default
+        if math.isfinite(parsed):
+            return int(parsed)
+    return default
+
+
+def _coerce_seconds(value) -> float:
+    """收藏时间点（秒）：接受数字或数字字符串，非法值归 0。"""
+    if isinstance(value, bool):
+        return 0.0
+    if isinstance(value, (int, float)) and math.isfinite(float(value)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            parsed = float(value.strip())
+        except ValueError:
+            return 0.0
+        if math.isfinite(parsed):
+            return parsed
+    return 0.0
+
+
+def _favorite_kind(record: dict) -> str:
+    return _clean_text(record.get("type")) or _clean_text(record.get("kind"))
+
+
+def _favorite_video_id(record: dict) -> str:
+    return _clean_text(record.get("videoId")) or _clean_text(record.get("video_id"))
+
+
+def _favorite_added_at(record: dict) -> int:
+    value = record["added_at"] if "added_at" in record else record.get("addedAt")
+    return _coerce_ms(value, 0)
+
+
+def _looks_like_favorite(record) -> bool:
+    """旧 JSON 里的记录是否像一条收藏（用于只给收藏补 id）。"""
+    return isinstance(record, dict) and any(
+        field in record for field in _FAVORITE_MARKER_FIELDS
+    )
+
+
+def _favorite_fingerprint(record: dict) -> str:
+    """内容指纹：同一收藏在不同设备/旧文件里生成同一个稳定 id。"""
+    payload = {
+        "type": _favorite_kind(record) or "sentence",
+        "videoId": _favorite_video_id(record),
+        "start": round(_coerce_seconds(record["time"] if "time" in record else record.get("start")), 3),
+        "en_text": _first_text(record, "en_text", "text"),
+        "zh_text": _first_text(record, "zh_text", "translation"),
+        "context_en": _clean_text(record.get("context_en")),
+        "context_zh": _clean_text(record.get("context_zh")),
+    }
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return "fav-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def _normalize_favorite_input(raw, *, require_text: bool) -> dict:
+    """把按条 API / 旧 PUT 的任意条目规整成内部收藏结构。
+
+    接受两套字段名：新 API 的 `type/kind`、`text`、`translation`、`time`、
+    `meta`，以及旧前端的 `en_text` / `zh_text` / `start` / `added_at`。
+    `meta` 里的字段展开到顶层，顶层同名字段优先。未知字段保留，避免丢数据。
+    """
+    if not isinstance(raw, dict):
+        raise ValueError("收藏条目必须是 JSON 对象。")
+    data = dict(raw)
+    meta = data.pop("meta", None)
+    if meta is not None:
+        if not isinstance(meta, dict):
+            raise ValueError("meta 必须是 JSON 对象。")
+        merged = dict(meta)
+        merged.update(data)  # 顶层字段优先
+        data = merged
+
+    kind = _favorite_kind(data) or "sentence"
+    if kind not in FAVORITE_TYPES:
+        raise ValueError("收藏类型必须是 sentence 或 vocabulary。")
+
+    text = _first_text(data, "text", "en_text")
+    if require_text and not text:
+        raise ValueError("收藏缺少 text 字段。")
+    translation = _first_text(data, "translation", "zh_text")
+    video_id = _favorite_video_id(data)
+    start = _coerce_seconds(data["time"] if "time" in data else data.get("start"))
+
+    entered_id = _clean_text(data.get("id"))
+    if len(entered_id) > 300:
+        raise ValueError("收藏 id 过长。")
+    favorite_id = entered_id or _favorite_fingerprint(data)
+
+    added_at = _coerce_ms(
+        data["added_at"] if "added_at" in data else data.get("addedAt"),
+        _now_ms(),
+    )
+
+    item = {
+        "id": favorite_id,
+        "type": kind,
+        "videoId": video_id,
+        "start": start,
+        "en_text": text,
+        "zh_text": translation,
+        "added_at": added_at,
+    }
+    # 可选字段：有就保留，避免把旧收藏的语境/高亮丢掉。
+    highlights = data.get("highlights")
+    if isinstance(highlights, list):
+        item["highlights"] = highlights
+    for key in ("context_en", "context_zh"):
+        value = _clean_text(data.get(key))
+        if value:
+            item[key] = value
+    # 未知字段原样保留（例如 targetLang 或以后新增的元数据）。
+    for key, value in data.items():
+        if key not in _FAVORITE_CONSUMED_FIELDS:
+            item[key] = value
+    return item
+
+
+def _with_missing_ids(records: list) -> list:
+    """给旧收藏补稳定 id；返回内存副本，不修改磁盘文件。"""
+    result = []
+    used: set[str] = set()
+    for raw in records:
+        if not isinstance(raw, dict):
+            result.append(raw)
+            continue
+        item = dict(raw)
+        if _looks_like_favorite(item):
+            current = item.get("id")
+            if not (isinstance(current, str) and current.strip()):
+                base = _favorite_fingerprint(item)
+                candidate = base
+                suffix = 2
+                while candidate in used:
+                    candidate = f"{base}-{suffix}"
+                    suffix += 1
+                item["id"] = candidate
+            current = item.get("id")
+            if isinstance(current, str) and current:
+                used.add(current)
+        result.append(item)
+    return result
+
+
+def _favorite_sort_key(record):
+    if not isinstance(record, dict):
+        return (0.0, "")
+    return (-float(_favorite_added_at(record)), str(record.get("id") or ""))
+
+
+def _sort_favorites(records: list) -> list:
+    """最新收藏在前；同一时间戳按 id 稳定排序。"""
+    return sorted(records, key=_favorite_sort_key)
+
+
+def _load_favorites_unlocked(path: str) -> list:
+    """读取收藏数组；不存在的文件 = 空收藏，损坏/形状不对 = 500。"""
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=500, detail="收藏数据文件损坏，无法读取。"
+        ) from exc
+    if not isinstance(data, list):
+        raise HTTPException(status_code=500, detail="收藏数据文件格式异常。")
+    return data
+
+
+def _atomic_write_json(path: str, data) -> None:
+    """tmp + os.replace 原子写：读方要么看到旧文件，要么看到完整新文件。"""
+    directory = os.path.dirname(path) or "."
+    os.makedirs(directory, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix=".favorites-", suffix=".tmp", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise
+
+
+def _write_favorites_unlocked(path: str, records: list) -> None:
+    _atomic_write_json(path, records)
+
+
+@contextlib.contextmanager
+def _favorites_file_lock(path: str):
+    """同一收藏文件的读-改-写串行化：线程锁（同进程）+ fcntl（跨进程）。"""
+    with _FAVORITES_LOCKS_GUARD:
+        lock = _FAVORITES_THREAD_LOCKS.get(path)
+        if lock is None:
+            lock = threading.Lock()
+            _FAVORITES_THREAD_LOCKS[path] = lock
+    with lock:
+        lock_path = f"{path}.lock"
+        os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
+        with open(lock_path, "a+", encoding="utf-8") as lock_file:
+            if fcntl is not None:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                if fcntl is not None:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def _load_tombstones_unlocked(path: str) -> dict[str, int]:
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {
+        key: _coerce_ms(value, 0)
+        for key, value in data.items()
+        if isinstance(key, str) and key
+    }
+
+
+def _prune_tombstones(tombstones: dict[str, int], now: int) -> dict[str, int]:
+    cutoff = now - FAVORITES_TOMBSTONE_TTL_MS
+    kept = {key: value for key, value in tombstones.items() if value >= cutoff}
+    if len(kept) > MAX_TOMBSTONES:
+        newest = sorted(kept.items(), key=lambda item: item[1], reverse=True)
+        kept = dict(newest[:MAX_TOMBSTONES])
+    return kept
+
+
+def _write_tombstones_unlocked(path: str, tombstones: dict[str, int]) -> None:
+    """墓碑是旁路同步数据：写失败只告警，不让收藏主数据写入失败。"""
+    tombstones = _prune_tombstones(tombstones, _now_ms())
+    try:
+        if tombstones:
+            _atomic_write_json(path, tombstones)
+        else:
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(path)
+    except OSError as exc:
+        print(f"Failed to persist favorites tombstones: {exc}")
+
+
+def _clear_tombstone_unlocked(favorite_id: str) -> None:
+    path = storage.favorites_tombstones_file()
+    tombstones = _load_tombstones_unlocked(path)
+    if favorite_id in tombstones:
+        tombstones.pop(favorite_id, None)
+        _write_tombstones_unlocked(path, tombstones)
+
+
+def _find_duplicate_favorite(
+    records: list, incoming: dict, incoming_fingerprint: str
+) -> dict | None:
+    """按 id → 内容指纹去重；返回已存在的条目（没有则 None）。"""
+    for item in records:
+        if isinstance(item, dict) and item.get("id") == incoming["id"]:
+            return item
+    for item in records:
+        if not _looks_like_favorite(item):
+            continue
+        if _favorite_fingerprint(item) == incoming_fingerprint:
+            return item
+    return None
+
+
+def _normalize_snapshot_items(raw_items: list) -> list:
+    """旧 PUT 的整份快照：收藏条目走同一套规整，其他 JSON 对象原样保留。"""
+    normalized = []
+    for raw in raw_items:
+        if not _looks_like_favorite(raw):
+            normalized.append(raw)
+            continue
+        try:
+            item = _normalize_favorite_input(raw, require_text=False)
+        except ValueError:
+            # 旧文件里的异常记录不阻断整份快照写入；原样保留（读取时补 id）。
+            normalized.append(raw)
+            continue
+        duplicate_index = next(
+            (
+                index
+                for index, existing in enumerate(normalized)
+                if isinstance(existing, dict) and existing.get("id") == item["id"]
+            ),
+            None,
+        )
+        if duplicate_index is None:
+            normalized.append(item)
+        else:
+            normalized[duplicate_index] = item
+    return normalized
+
+
+def _favorite_ids(records: list) -> set[str]:
+    return {
+        item["id"]
+        for item in records
+        if isinstance(item, dict)
+        and isinstance(item.get("id"), str)
+        and item["id"]
+    }
 
 
 @router.get("/api/favorites")
-def get_favorites():
-    favorites_file = storage.favorites_file()
-    if os.path.exists(favorites_file):
-        with open(favorites_file, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return []
+def get_favorites(since: int | None = None):
+    """收藏列表（最新在前）。
+
+    不带 `since` 时返回数组，保持旧前端契约；带 `since`（毫秒时间戳）时返回
+    `{favorites, deleted, since, serverTime}` 供增量同步，`deleted` 是墓碑。
+    """
+    favorites = _sort_favorites(
+        _with_missing_ids(_load_favorites_unlocked(storage.favorites_file()))
+    )
+    if since is None:
+        return favorites
+
+    now = _now_ms()
+    tombstones = _prune_tombstones(
+        _load_tombstones_unlocked(storage.favorites_tombstones_file()), now
+    )
+    deleted = [
+        {"id": favorite_id, "deleted_at": deleted_at}
+        for favorite_id, deleted_at in tombstones.items()
+        if deleted_at >= since
+    ]
+    deleted.sort(key=lambda entry: (-entry["deleted_at"], entry["id"]))
+    return {
+        "favorites": [
+            item
+            for item in favorites
+            if isinstance(item, dict) and _favorite_added_at(item) >= since
+        ],
+        "deleted": deleted,
+        "since": since,
+        "serverTime": now,
+    }
+
+
+@router.post("/api/favorites")
+def add_favorite(request: dict, response: Response):
+    """新增一条收藏；按 id 或内容指纹幂等（重复提交返回已有条目）。"""
+    try:
+        incoming = _normalize_favorite_input(request, require_text=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    path = storage.favorites_file()
+    fingerprint = _favorite_fingerprint(incoming)
+    with _favorites_file_lock(path):
+        records = _with_missing_ids(_load_favorites_unlocked(path))
+        existing = _find_duplicate_favorite(records, incoming, fingerprint)
+        if existing is not None:
+            _clear_tombstone_unlocked(str(existing.get("id") or incoming["id"]))
+            response.status_code = 200
+            return {"status": "ok", "created": False, "favorite": existing}
+        records.append(incoming)
+        _write_favorites_unlocked(path, records)
+        _clear_tombstone_unlocked(incoming["id"])
+    response.status_code = 201
+    return {"status": "ok", "created": True, "favorite": incoming}
+
+
+@router.delete("/api/favorites/{favorite_id:path}")
+def delete_favorite(favorite_id: str):
+    """按 id 删除一条收藏；不存在时 404。"""
+    favorite_id = favorite_id.strip()
+    if not favorite_id:
+        raise HTTPException(status_code=404, detail="收藏不存在。")
+
+    path = storage.favorites_file()
+    with _favorites_file_lock(path):
+        records = _with_missing_ids(_load_favorites_unlocked(path))
+        remaining = [
+            item
+            for item in records
+            if not (isinstance(item, dict) and item.get("id") == favorite_id)
+        ]
+        if len(remaining) == len(records):
+            raise HTTPException(status_code=404, detail="收藏不存在。")
+        _write_favorites_unlocked(path, remaining)
+        tombstones = _load_tombstones_unlocked(storage.favorites_tombstones_file())
+        tombstones[favorite_id] = _now_ms()
+        _write_tombstones_unlocked(storage.favorites_tombstones_file(), tombstones)
+    return {"status": "ok", "deleted": True, "id": favorite_id}
 
 
 @router.put("/api/favorites")
-async def save_favorites(request: dict):
-    favorites = request.get("favorites", [])
-    with open(storage.favorites_file(), "w", encoding="utf-8") as f:
-        json.dump(favorites, f, ensure_ascii=False, indent=2)
-    return {"status": "ok", "count": len(favorites)}
+def save_favorites(request: dict):
+    """旧整文件 PUT（兼容保留）：整份快照语义，内部走同一套归并/原子写。
+
+    旧前端仍可整份提交；不在快照里的已有收藏会记墓碑。新前端默认不再使用
+    这个端点（改用 POST/DELETE 按条更新）。
+    """
+    favorites = request.get("favorites")
+    if not isinstance(favorites, list):
+        raise HTTPException(status_code=400, detail="favorites 必须是数组。")
+
+    path = storage.favorites_file()
+    with _favorites_file_lock(path):
+        old_records = _with_missing_ids(_load_favorites_unlocked(path))
+        new_records = _normalize_snapshot_items(favorites)
+        _write_favorites_unlocked(path, new_records)
+
+        old_ids = _favorite_ids(old_records)
+        new_ids = _favorite_ids(new_records)
+        tombstones = _load_tombstones_unlocked(storage.favorites_tombstones_file())
+        now = _now_ms()
+        for removed_id in old_ids - new_ids:
+            tombstones[removed_id] = now
+        for kept_id in new_ids:
+            tombstones.pop(kept_id, None)
+        _write_tombstones_unlocked(storage.favorites_tombstones_file(), tombstones)
+    return {"status": "ok", "count": len(new_records)}
 
 
 # --- Subscriptions persistence (per authenticated user) ---

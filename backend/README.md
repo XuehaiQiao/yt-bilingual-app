@@ -13,23 +13,24 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、用户会话中间件（Cookie → SQLite → `request.state.user` + 数据目录 ContextVar）、结构化访问日志（request_id + 一行 JSON）、挂载四个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
 | `jobs.py` | 任务表 `jobs` 的读写层 + 单进程执行互斥（M1 ⑤）：`create_or_reuse`（同 user+kind+content_ref+targetLang 的未完成 job 复用，进程内锁 + 部分唯一索引兜底幂等）、`get`、`update_progress/mark_running/mark_done/mark_failed/settle_interrupted`（cursor 只增不减）、`try_acquire/release/is_active`（同一 job 同时只允许一条流生成，第二个请求 409/SSE error，杜绝重复付费）。表缺失（旧库没跑 0005）时全部降级为 no-op，只告警一次，视频处理照常 |
 | `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额** |
-| `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`；`ln_session` Cookie 与登录失败限流 |
-| `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；无用户 → 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取 |
+| `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`；`ln_session` Cookie、登录失败短窗限流与 `auth_lockout` 接入（锁定统一 429 + `Retry-After`） |
+| `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；无用户 → 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取。`favorites_file()` / `favorites_tombstones_file()` 是收藏主文件与删除墓碑的**唯一入口**（按用户隔离、不按语言分文件） |
 | `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」；端点支持 `base_url` 或 `base_url_env`（Qwen 等区域端点由环境变量给，不写死）。`is_available` 同时检查 Key 与必需端点；`resolve_model_for_target(requested, target_lang)` 按「用户选择 → 该语言首选 → 该语言路线 → 全局默认 → 目录首个可用」解析，未配 Key 的候选自动跳过。**SDK 调用是同步阻塞的**：async 代码必须用 `generate_json_async` / `generate_text_async`（内含全局并发闸 + `asyncio.to_thread`）；同步 `generate()` 只给脚本/测试。`concurrency_snapshot()` 暴露并发闸峰值/等待直方图。`usage_scope(feature, user_id, target_lang=…)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关） |
 | `ratelimit.py` | 进程内固定窗口限速（M1 ⑦）：注册/登录按 IP、估价/处理/查词按用户；超限 429 + `Retry-After`；不依赖 Redis。桶与上限见下文「安全最小集」 |
-| `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。这些函数是同步阻塞实现，async 调用方负责放进线程 |
+| `auth_lockout.py` | 登录失败锁定（M1 ⑦ 残余项）：账号 + IP 双维度连续失败锁定；锁定期间正确密码也 429 + `Retry-After`；成功登录清零；只存进程内存与邮箱哈希，不存明文 |
+| `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。抓取带超时 / 响应体大小 / 字幕块数上限（`_BoundedSession`，M1 ⑦ 残余项）；这些函数是同步阻塞实现，async 调用方负责放进线程 |
 | `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词 + 高亮子串/NFC 校验 + 越南语 CJK 泄漏重试）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。prompt 里的语言名来自 `languages`（不再硬编码 "Chinese"）；JSON 字段名 `zh_text`/`zh_word` 保持 P0 兼容、值为目标语言。LLM 生成调用经 `llm.generate_json_async` / `generate_text_async`（全局并发闸 + 线程）执行，异常仍照常抛回；批间 `batch_pause` 语义不变；翻译/总结带日配额与降级链，`feature` / `user_id` / `target_lang` 缺省取请求上下文（本地剧集传 `local_show`） |
-| `routes_videos.py` | `/api/models`（全局模型栏数据源；`targetLang` → `targetLang`/`recommended`）、`/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心；事件带 `targetLang`，`meta` 另带 `sourceLang`/`promptVersion`；流内慢任务期间按 `SSE_HEARTBEAT_INTERVAL`（默认 15s）发 `: ping` 注释行心跳；`jobId`/`from` 可从游标续传，POST body 与 GET query 等价）、`/api/jobs/{id}`（任务状态/进度/`canResume`，见下文「任务表与断线续传」）、`/api/history*`（按 `targetLang` 只读写对应语言目录；本地剧集缓存按 `episodes.json` 补 `youtube_video_id`）、`/api/channel-updates`（yt-dlp 频道拉取，放线程并发、最多 8 个） |
+| `routes_videos.py` | `/api/models`（全局模型栏数据源；`targetLang` → `targetLang`/`recommended`）、`/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心；事件带 `targetLang`，`meta` 另带 `sourceLang`/`promptVersion`；流内慢任务期间按 `SSE_HEARTBEAT_INTERVAL`（默认 15s）发 `: ping` 注释行心跳；`jobId`/`from` 可从游标续传，POST body 与 GET query 等价）、`/api/jobs/{id}`（任务状态/进度/`canResume`，见下文「任务表与断线续传」）、`/api/history*`（按 `targetLang` 只读写对应语言目录；本地剧集缓存按 `episodes.json` 补 `youtube_video_id`）、`/api/channel-updates`（yt-dlp 频道拉取，先过 YouTube 频道 URL 白名单，放线程并发、最多 8 个；单频道硬上限 `MAX_CHANNEL_VIDEOS=200`） |
 | `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集：`targetLang` 决定缓存目录/prompt/模型路线；翻译与补译跟随请求 `model`，新处理结果与缓存 payload 记录 `model` 和 `target_lang`，批间隔按 `llm.batch_pause(model)`；非中文不写中文固定集名标签，改为 `summary_kind="episode_label"` + 季/集/标题结构化字段；有视频映射的集在 `metadata` 补 `youtube_video_id` / `youtube_title`）、`/api/shows/{id}/processed?targetLang=`、`/api/sentences*`（句子精背） |
 | `local_shows.py` | 本地剧集 → YouTube 视频映射：`episode_video_map(show_id)` / `lookup_episode_video(show_id, season, episode)` 读取 `subtitles/<show_id>/episodes.json`；缺失/损坏一律降级为无映射并打日志，路径限制在 `SUBTITLES_DIR` 内 |
 | `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
-| `routes_user.py` | `/api/define`（词典：`targetLang` 决定缓存目录与 prompt 语言；语境缓存 → 本地 ECDICT（**仅 zh-CN**）→「已配 Key 的候选模型」；vi-VN 跳过 ECDICT 直接 LLM，只有 DeepSeek Key 也能查；缺省 `model` 时 zh 候选链首选 `DEFAULT_MODEL`、其他语言首选该语言路线；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；响应带 `targetLang`，可选 `pos_label` / `example_translation`；模型结果写按语言隔离的缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
+| `routes_user.py` | `/api/define`（词典：`targetLang` 决定缓存目录与 prompt 语言；语境缓存 → 本地 ECDICT（**仅 zh-CN**）→「已配 Key 的候选模型」；vi-VN 跳过 ECDICT 直接 LLM，只有 DeepSeek Key 也能查；缺省 `model` 时 zh 候选链首选 `DEFAULT_MODEL`、其他语言首选该语言路线；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；响应带 `targetLang`，可选 `pos_label` / `example_translation`；模型结果写按语言隔离的缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`（M1 ④ 按条 API：POST/GET/DELETE + 旧 PUT 兼容 + `?since=` 增量；文件锁 + 原子写，见下文「收藏按条 API」）、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
 | `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
@@ -58,7 +59,9 @@ data/                                  # DATA_DIR（gitignore）
 ├── app.db                             # AUTH_DB_PATH 默认值；users + sessions + learning_events（Alembic 管）
 └── users/<user_id>/                   # USER_DATA_DIR/<user_id>/
     ├── history/                       # 视频/本地剧集缓存；含 dictionary_cache.json
-    ├── favorites.json
+    ├── favorites.json                 # 收藏数组（按条 API 写入；GET 保持旧数组契约）
+    ├── favorites_tombstones.json      # 删除墓碑 {id: deleted_at_ms}，?since= 增量用，保留 30 天
+    ├── favorites.json.lock            # 收藏读-改-写文件锁（fcntl，0 字节）
     └── subscriptions.json
 ```
 
@@ -73,6 +76,25 @@ data/                                  # DATA_DIR（gitignore）
   mv history/favorites.json history/subscriptions.json data/users/<user_id>/ 2>/dev/null || true
   ```
   移动前建议先备份 `history/`。
+
+## 收藏按条 API（M1 ④）
+
+收藏仍是**每用户一个 JSON 文件**（不建表、不改 Alembic），但读写协议从「前端整文件 PUT」升级为「按条增删」。目标：两个标签页/两台设备同时改收藏时不再互相覆盖。
+
+| 端点 | 请求 | 成功 | 失败 |
+|---|---|---|---|
+| `GET /api/favorites` | — | `200` 数组，最新在前（旧前端契约不变） | `500` 文件损坏/形状不对 |
+| `GET /api/favorites?since=<ms>` | 毫秒时间戳 | `200 {"favorites":[…],"deleted":[{"id","deleted_at"}],"since","serverTime"}` | `422` 参数非整数 |
+| `POST /api/favorites` | `{id?, type/kind, text, translation, videoId, time, meta, addedAt?}`；兼容旧字段 `en_text/zh_text/start/added_at` | `201 {"status":"ok","created":true,"favorite":{…}}`；内容/id 重复时 `200` + `created:false` | `400` 缺 `text` / 非法 `type` / `meta` 非对象 |
+| `DELETE /api/favorites/{id}` | — | `200 {"status":"ok","deleted":true,"id"}` | `404` 收藏不存在 |
+| `PUT /api/favorites`（兼容保留） | `{favorites:[…]}` | `200 {"status":"ok","count":N}` | `400` `favorites` 非数组 |
+
+- **并发安全**：同一用户文件的读-改-写先取「进程内线程锁 + `favorites.json.lock` 的 fcntl 排它锁」，再用 tmp 文件 + `os.replace` 原子替换；并发 POST 不会丢条目，读方也不会看到半截 JSON。
+- **幂等**：POST 先按 `id`、再按内容指纹（type/videoId/start/en_text/zh_text/context）去重；同一收藏重复提交只保留一条。
+- **旧数据兼容**：旧文件里没有 `id` 的收藏在 GET 时按内容指纹补 `fav-<16 hex>` 稳定 id（**只读不改文件**），可直接用这个 id DELETE；下次写入时 id 才落盘。无法识别的任意 JSON 对象原样保存/返回（旧测试与旧客户端兼容）。
+- **旧 PUT**：保持整份快照语义（不在快照里的旧 id 记墓碑），内部走同一套规整与原子写；新前端不再调用。`favorites_tombstones.json` 只增旁路记录，旧代码回滚后仍能正常读 `favorites.json`。
+- 前端：`lib/favorites.ts` 提供 `fetchFavorites/addFavorite/removeFavorite`，`replaceAllFavorites` 仅为兼容路径；App 先乐观更新，失败回滚 + toast。
+- 测试：`venv/bin/python -m pytest tests/test_favorites_api.py -q`（全离线：增删/幂等/400/404/排序/旧数据/墓碑/并发）。
 
 ## 多语言目标语言（targetLang，P0）
 
@@ -358,7 +380,7 @@ python3 scripts/fetch_dictionary.py
 
 ## 安全最小集（M1 ⑦）
 
-上线前的「不被一把刷爆 / 不被当成代理」底线，全部进程内实现、零新依赖（计划书 §7.6 的子集；登录失败按账号锁定、域名解析黑名单、抓取响应大小上限、后台 2FA、提示注入隔离仍未做）。
+上线前的「不被一把刷爆 / 不被当成代理」底线，全部进程内实现、零新依赖（计划书 §7.6 的子集）。登录失败锁定与抓取超时/大小上限已补齐；域名解析黑名单按设计不加（理由见下）；后台独立角色 + 2FA、审计日志、提示注入隔离仍未做，已登记到 [运行手册「已知风险」](../docs/运行手册.md#6-已知风险与残余风险)。
 
 ### 限速（`ratelimit.py`）
 
@@ -374,7 +396,26 @@ python3 scripts/fetch_dictionary.py
 - 环境变量值为 `0` = 关闭该桶；默认值在 `config.py` 读取。
 - 在会话中间件里、`401` 之后执行：未登录的 `/api` 仍先得到 401；429 会经过最外层 CORS 补跨域头，前端能看到真实错误。
 - **单进程有效**：`uvicorn --workers N` 时每个进程独立计数；反向代理后 `request.client.host` 可能是代理 IP，默认**不信任**可伪造的 `X-Forwarded-For`。真实 IP/多进程限速留给部署层（计划书显式接受的残余风险：不做 WAF、bot 指纹、IP 信誉库、渗透测试）。
-- `routes_auth.py` 另有登录失败计数（同一 IP 60 秒内失败 10 次），其 429 同样带 `Retry-After`。
+- `routes_auth.py` 另有登录失败计数（同一 IP 60 秒内失败 10 次），其 429 同样带 `Retry-After`；它与下面的账号锁定叠加（突发层 + 持续层）。
+
+### 登录失败锁定（`auth_lockout.py`）
+
+- 账号 + IP 双维度：同一账号或同一 IP 连续失败 `AUTH_LOCK_THRESHOLD`（默认 **5**）次 → 锁定 `AUTH_LOCK_MINUTES`（默认 **15**）分钟。任一维度命中，锁定期间**即使密码正确**也拒绝。
+- 响应统一为 **429 + `Retry-After`（秒）**，不用 423：与全局限速共用同一状态码/响应头契约，前端不必新增错误分支；正文文案「登录尝试次数过多，已暂时锁定，请 N 秒后再试。」账号/IP 两个维度完全相同。
+- 成功登录清空该账号与该 IP 的失败计数；锁定到期后计数清零。未达阈值的失败计数在 15 分钟内没有新失败也会过期，避免「一年攒 4 次失败，最后一次被锁」。
+- 账号不存在/邮箱格式错误同样计数并锁定；账号键是规范化邮箱的 SHA-256（内存里不存明文），401 与 429 文案都不泄露账号是否存在。
+- 仅进程内存，重启清空；`AUTH_LOCK_THRESHOLD=0` 或 `AUTH_LOCK_MINUTES=0` 关闭。日志只记命中的维度/等待秒数/阈值，不记邮箱或 IP 明文。
+- 与限速相同的已知边界：单进程有效，`uvicorn --workers N` 时各进程独立计数。
+
+### 抓取边界（`transcripts.py` / `routes_videos.py`）
+
+- `FETCH_TIMEOUT_SECONDS=15`：youtube-transcript-api 的 `requests.Session` 注入 connect/read timeout；yt-dlp 的元数据、频道列表与 Whisper 下载传 `socket_timeout`。字幕超时 → **504**；元数据超时沿用原有降级（`Unknown Title`），频道超时返回空列表——都不 500。
+- `MAX_FETCH_BYTES=5MB`：`_BoundedSession` 用 `stream=True` + 64KB 分块读取字幕 HTTP 响应，累计超限**立即中断并关闭连接**（不会先读完整 body 再检查）；Whisper 下载同时用 yt-dlp `max_filesize` 与落盘大小复核。字幕响应超限 → **400**；音频超限 → 跳过本地转写并给出原因。
+- `MAX_TRANSCRIPT_BLOCKS=5000`：解析后字幕块数超限 → **400**。
+- 大小/块数用 400 而不是 422：流式路径把 422 当作「无字幕」去走 Whisper 兜底，400 可避免为一份超大字幕再下载一遍音频。所有超时/超限错误都有中文 detail，不会变成 500。
+- `MAX_CHANNEL_VIDEOS=200`：单频道硬上限；当前 yt-dlp 用 `playlistend=5` 只取最近 5 条，上限用于防未来调大提取量或异常返回炸内存。频道并发仍是最多 8 个。
+- **域名解析黑名单（按设计不加）**：所有出站抓取目标都由代码派生或先过白名单——`extract_video_id` 只接受锚定的 YouTube host，yt-dlp 只接收 `canonical_watch_url(video_id)` 重建的 URL；`/api/channel-updates` 的频道 URL 先过 `validate_channel_url`（同一套 YouTube host 白名单 + `@handle`/`channel`/`c`/`user` 形态，可选 `/videos`；拒绝 userinfo/端口/query/`file://`/内网地址），再交给 yt-dlp；youtube-transcript-api 自己构造 youtube.com 请求。不存在「用户提供任意域名/IP」的抓取路径，`file://`、内网地址、`169.254.169.254` 根本进不来。若再加 DNS/IP 黑名单，需要 hook yt-dlp 的解析器并维护 YouTube CDN 大量轮换 IP，收益低、误杀风险高。**前提是以后不要新增任意 URL 抓取**；新增时必须同时加 scheme/host 白名单 + 解析后 IP 黑名单。
+- 已知边界：`requests` 的 timeout 是连接/读取超时，不是严格「整个请求总时限」；`MAX_FETCH_BYTES` 不覆盖 yt-dlp 元数据/频道列表的 HTML（`extract_flat` 响应很小）；多进程部署时锁定/限速各算各的。
 
 ### 全局 LLM 并发闸（`llm.py`）
 
@@ -397,10 +438,10 @@ python3 scripts/fetch_dictionary.py
 
 ```bash
 cd backend
-venv/bin/python -m pytest tests/test_security_minimum.py -q
+venv/bin/python -m pytest tests/test_security_minimum.py tests/test_residual_security.py -q
 ```
 
-覆盖：固定窗口/429+Retry-After/桶路由与按用户隔离/0 关闭、URL 白名单正反例、缓存 LRU+TTL、并发闸上限与直方图、`/api/define` 确实经过闸门。
+覆盖：固定窗口/429+Retry-After/桶路由与按用户隔离/0 关闭、URL 白名单正反例、缓存 LRU+TTL、并发闸上限与直方图、`/api/define` 确实经过闸门；登录锁定（账号/IP、正确密码仍 429、到期恢复、成功清零、0 关闭、未知账号同文案）、字幕超时 504、超块/超大 400 且非 500、`_BoundedSession` 流式字节上限与 timeout 注入、yt-dlp `socket_timeout`、频道单频道 200 条上限、频道 URL 白名单（拒绝内网/`file://`/任意域名）。
 
 ## 关键约定
 

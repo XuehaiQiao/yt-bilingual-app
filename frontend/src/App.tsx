@@ -12,7 +12,8 @@ import { InputScreen } from './components/InputScreen';
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
 import { TranscriptView } from './components/TranscriptView';
-import { FavoritesModal, type FavoriteItem } from './components/FavoritesModal';
+import { FavoritesModal } from './components/FavoritesModal';
+import { addFavorite, fetchFavorites, removeFavorite, type FavoriteDraft, type FavoriteItem } from './lib/favorites';
 import { ChannelVideoList } from './components/ChannelVideoList';
 import { Toaster } from './components/Toaster';
 import { WordPopover, type WordDefinition, type WordLookupTarget } from './components/WordPopover';
@@ -285,7 +286,8 @@ function AppContent() {
     setLocalVideoError(false);
   }, [localYouTubeId]);
 
-  // Favorites logic — load from backend, sync to backend
+  // Favorites logic — per-item API (M1 ④). The backend serializes file writes;
+  // each mutation is optimistic here and rolls back with a toast on failure.
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const favoritesLoaded = useRef(false);
@@ -299,13 +301,14 @@ function AppContent() {
 
   // Load favorites & subscriptions from backend on mount
   useEffect(() => {
-    apiFetch('/api/favorites')
-      .then(r => r.json())
+    fetchFavorites()
       .then(data => { setFavorites(data); favoritesLoaded.current = true; })
       .catch(() => {
         // Fallback to localStorage
         const saved = localStorage.getItem('yt_bilingual_favorites');
-        if (saved) setFavorites(JSON.parse(saved));
+        if (saved) {
+          try { setFavorites(JSON.parse(saved)); } catch { localStorage.removeItem('yt_bilingual_favorites'); }
+        }
         favoritesLoaded.current = true;
       });
     apiFetch('/api/subscriptions')
@@ -318,15 +321,13 @@ function AppContent() {
       });
   }, []);
 
-  // Sync favorites to backend + localStorage whenever they change
+  // Favorites are persisted one item at a time by the handlers below. The old
+  // whole-file PUT path still exists server-side for legacy clients (see
+  // lib/favorites.replaceAllFavorites), but the app never sends it: two tabs
+  // using PUT would overwrite each other again.
   useEffect(() => {
     if (!favoritesLoaded.current) return; // Don't save on initial load
     localStorage.setItem('yt_bilingual_favorites', JSON.stringify(favorites));
-    apiFetch('/api/favorites', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ favorites })
-    }).catch(() => {});
   }, [favorites]);
 
   // Sync subscriptions to backend + localStorage whenever they change
@@ -350,74 +351,104 @@ function AppContent() {
     }
   };
 
-  const handleToggleFavorite = useCallback((item: TranscriptItem) => {
-    const id = `${videoId}-${item.id}`;
-    setFavorites(prev => {
-      const exists = prev.find(f => f.id === id);
-      if (exists) {
-        return prev.filter(f => f.id !== id);
-      } else {
-        return [...prev, {
-          id,
-          videoId,
-          start: item.start,
-          en_text: item.en_text,
-          zh_text: item.zh_text,
-          added_at: Date.now(),
-          highlights: item.highlights,
-          type: 'sentence' as const
-        }];
+  // Per-item favorite mutations: optimistic local state, rollback + toast on
+  // failure. Both operations are server-idempotent, so a double click or a
+  // concurrent tab cannot corrupt the stored list.
+  const addFavoriteOptimistically = useCallback(async (draft: FavoriteDraft) => {
+    const optimistic: FavoriteItem = {
+      id: draft.id,
+      videoId: draft.videoId,
+      start: draft.start,
+      en_text: draft.en_text,
+      zh_text: draft.zh_text,
+      added_at: draft.added_at,
+      highlights: draft.highlights,
+      type: draft.type,
+      context_en: draft.context_en,
+      context_zh: draft.context_zh,
+    };
+    setFavorites(prev => (prev.some(f => f.id === optimistic.id) ? prev : [...prev, optimistic]));
+    try {
+      const saved = await addFavorite(draft);
+      setFavorites(prev => {
+        const next = prev.map(f => (f.id === optimistic.id ? { ...optimistic, ...saved } : f));
+        // 服务端按内容指纹去重时可能返回另一个已有 id；按 id 去重避免重复卡片。
+        return next.filter((fav, index) => next.findIndex(other => other.id === fav.id) === index);
+      });
+    } catch (err) {
+      setFavorites(prev => prev.filter(f => f.id !== optimistic.id));
+      toast.error(await describeApiError(err));
+    }
+  }, []);
+
+  const removeFavoriteOptimistically = useCallback(async (id: string) => {
+    const removed = favorites.find(f => f.id === id);
+    setFavorites(prev => prev.filter(f => f.id !== id));
+    try {
+      await removeFavorite(id);
+    } catch (err) {
+      if (removed) {
+        setFavorites(prev => (prev.some(f => f.id === id) ? prev : [...prev, removed]));
       }
+      toast.error(await describeApiError(err));
+    }
+  }, [favorites]);
+
+  const toggleFavorite = useCallback((draft: FavoriteDraft) => {
+    if (favorites.some(f => f.id === draft.id)) {
+      void removeFavoriteOptimistically(draft.id);
+    } else {
+      void addFavoriteOptimistically(draft);
+    }
+  }, [favorites, addFavoriteOptimistically, removeFavoriteOptimistically]);
+
+  const handleToggleFavorite = useCallback((item: TranscriptItem) => {
+    toggleFavorite({
+      id: `${videoId}-${item.id}`,
+      videoId,
+      start: item.start,
+      en_text: item.en_text,
+      zh_text: item.zh_text,
+      added_at: Date.now(),
+      highlights: item.highlights,
+      type: 'sentence',
     });
-  }, [videoId]);
+  }, [videoId, toggleFavorite]);
 
   const handleToggleVocabFavorite = (e: React.MouseEvent, item: any) => {
     e.stopPropagation();
-    const id = `vocab-${videoId}-${item.en.replace(/\s+/g, '-')}`;
-    setFavorites(prev => {
-      const exists = prev.find(f => f.id === id);
-      if (exists) {
-        return prev.filter(f => f.id !== id);
-      } else {
-        return [...prev, {
-          id,
-          videoId,
-          start: item.start,
-          en_text: item.en,
-          zh_text: item.zh,
-          context_en: item.en_text,
-          context_zh: item.zh_text,
-          added_at: Date.now(),
-          highlights: item.highlights,
-          type: 'vocabulary'
-        }];
-      }
+    toggleFavorite({
+      id: `vocab-${videoId}-${item.en.replace(/\s+/g, '-')}`,
+      videoId,
+      start: item.start,
+      en_text: item.en,
+      zh_text: item.zh,
+      context_en: item.en_text,
+      context_zh: item.zh_text,
+      added_at: Date.now(),
+      highlights: item.highlights,
+      type: 'vocabulary',
     });
   };
 
   const handleRemoveFavorite = (id: string) => {
-    setFavorites(prev => prev.filter(fav => fav.id !== id));
+    void removeFavoriteOptimistically(id);
   };
 
   // Add/remove a dictionary lookup to the vocabulary favorites
   const handleToggleDictFavorite = (def: WordDefinition) => {
     if (!wordLookup) return;
-    const id = `vocab-${videoId}-${def.word.replace(/\s+/g, '-')}`;
-    setFavorites(prev => {
-      const exists = prev.find(f => f.id === id);
-      if (exists) return prev.filter(f => f.id !== id);
-      return [...prev, {
-        id,
-        videoId,
-        start: wordLookup.start,
-        en_text: def.word,
-        zh_text: [def.ipa, def.zh].filter(Boolean).join(' '),
-        context_en: wordLookup.context,
-        context_zh: '',
-        added_at: Date.now(),
-        highlights: [],
-        type: 'vocabulary' as const
-      }];
+    toggleFavorite({
+      id: `vocab-${videoId}-${def.word.replace(/\s+/g, '-')}`,
+      videoId,
+      start: wordLookup.start,
+      en_text: def.word,
+      zh_text: [def.ipa, def.zh].filter(Boolean).join(' '),
+      context_en: wordLookup.context,
+      context_zh: '',
+      added_at: Date.now(),
+      highlights: [],
+      type: 'vocabulary',
     });
   };
 
@@ -931,24 +962,20 @@ function AppContent() {
 
   // Star a sentence into the existing vocabulary book (exportable to Anki)
   const handleToggleSentenceFavorite = useCallback((s: Sentence, levelId: number) => {
-    const id = sentenceFavId(levelId, s.n);
-    setFavorites(prev => {
-      if (prev.find(f => f.id === id)) return prev.filter(f => f.id !== id);
-      return [...prev, {
-        id,
-        // >11 chars so the favorites modal never mistakes it for a YouTube id
-        videoId: `sentence-pack-L${levelId}`,
-        start: 0,
-        en_text: segToPlain(s.seg),
-        zh_text: s.zh,
-        added_at: Date.now(),
-        highlights: s.seg
-          .filter((p): p is SegChunk => typeof p !== 'string')
-          .map(p => ({ en_word: p.t, zh_word: p.g, color: CHUNK_STYLE[p.c].text })),
-        type: 'sentence' as const,
-      }];
+    toggleFavorite({
+      id: sentenceFavId(levelId, s.n),
+      // >11 chars so the favorites modal never mistakes it for a YouTube id
+      videoId: `sentence-pack-L${levelId}`,
+      start: 0,
+      en_text: segToPlain(s.seg),
+      zh_text: s.zh,
+      added_at: Date.now(),
+      highlights: s.seg
+        .filter((p): p is SegChunk => typeof p !== 'string')
+        .map(p => ({ en_word: p.t, zh_word: p.g, color: CHUNK_STYLE[p.c].text })),
+      type: 'sentence',
     });
-  }, []);
+  }, [toggleFavorite]);
 
   const renderTopBar = () => (
     <div data-testid="top-bar" className="flex-none h-16 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 flex items-center justify-between gap-2 z-20">

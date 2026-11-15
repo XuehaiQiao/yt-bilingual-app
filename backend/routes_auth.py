@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 import auth_db
+import auth_lockout
 import config
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -79,9 +80,22 @@ def _clear_login_failures(ip: str) -> None:
 
 
 def reset_login_throttle() -> None:
-    """清空限流计数（测试用；运维也可在排查时调用）。"""
+    """清空限流与失败锁定状态（测试用；运维也可在排查误封时调用）。"""
     with _login_lock:
         _login_failures.clear()
+    auth_lockout.reset()
+
+
+def _lockout_error(status: auth_lockout.LockStatus) -> HTTPException:
+    """锁定响应统一 429 + Retry-After；账号/IP 两个维度用同一文案。"""
+    return HTTPException(
+        status_code=429,
+        detail=f"登录尝试次数过多，已暂时锁定，请 {status.retry_after} 秒后再试。",
+        headers={
+            "Retry-After": str(status.retry_after),
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 def _validate_signup(email: str, password: str) -> str:
@@ -150,11 +164,20 @@ def login(credentials: Credentials, request: Request, response: Response):
             headers={"Retry-After": str(LOGIN_WINDOW_SECONDS)},
         )
     email = auth_db.normalize_email(credentials.email)
+
+    # 连续失败锁定（账号 + IP）：先于密码校验，锁定期间即使密码正确也拒绝。
+    # 不存在的邮箱同样计数/锁定，响应与真实账号一致，不泄露账号是否存在。
+    locked = auth_lockout.check(email, ip)
+    if locked is not None:
+        raise _lockout_error(locked)
+
     user = auth_db.authenticate(email, credentials.password)
     if user is None:
         _record_login_failure(ip)
+        auth_lockout.record_failure(email, ip)
         raise HTTPException(status_code=401, detail="邮箱或密码错误。")
     _clear_login_failures(ip)
+    auth_lockout.clear(email, ip)
     token = auth_db.create_session(user["id"])
     set_session_cookie(response, token)
     return {"user": _public_user(user)}
