@@ -667,16 +667,21 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
         {/* ── Actions ──────────────────────────────────────────────────── */}
         <section className="mt-8 space-y-3">
           {isAdmin && onOpenAdmin && (
-            <button
-              type="button"
-              data-testid="account-admin-entry"
-              onClick={onOpenAdmin}
-              className="w-full inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-sm font-medium text-blue-300 hover:text-blue-200 transition-colors"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              {t('account.adminEntry')}
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            <div>
+              <button
+                type="button"
+                data-testid="account-admin-entry"
+                onClick={onOpenAdmin}
+                className="w-full inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-sm font-medium text-blue-300 hover:text-blue-200 transition-colors"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                {t('account.adminEntry')}
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <p className="mt-1.5 text-center text-[11px] leading-relaxed text-zinc-500">
+                {t('account.adminEntryHint')}
+              </p>
+            </div>
           )}
 
           <button

@@ -1,10 +1,11 @@
-# 规格：后台止血台（Admin MVP，只读）
+# 规格：后台止血台（Admin MVP，读端点）→ 独立管理控制台
 
-**状态：** 已实现（2026-11-15，后端 + 前端）｜
+**状态：** 已实现（2026-11-15 读端点；2026-11-16 独立管理控制台）｜
 **对应代码：** `backend/routes_admin.py`、`backend/config.py::ADMIN_EMAILS`、
 `backend/routes_auth.py`（`isAdmin`）、`backend/tests/test_admin.py`、
-`frontend/src/components/AdminScreen.tsx`、`frontend/src/lib/admin.ts`、
-`frontend/src/lib/auth.tsx`、`frontend/src/App.tsx`（顶栏入口）。
+`frontend/src/components/AdminConsoleScreen.tsx`、`frontend/src/lib/admin.ts`、
+`frontend/src/lib/auth.tsx`、`frontend/src/components/AccountScreen.tsx`（入口）、
+`frontend/src/App.tsx`（`'admin'` 全页视图 + `/admin`（或 `#admin`）直达守卫）。
 
 > 用户需求 #12「后台」的 MVP，计划 M1 ⑥ 止血台。目标不是 CMS，而是
 > **出事时 60 秒内看清「用户 / 花费 / 任务 / 错误」在哪**。因此所有端点
@@ -16,6 +17,11 @@
 > 封禁解封 / 维护模式 / 公告），本规格的「只读」边界只适用于
 > `stats` / `users` / `usage` / `health` 四个读端点；`GET /api/admin/users`
 > 的字段由 023 扩展（新增 username/credits/status/userId）。
+>
+> **2026-11-16 前端升级**：顶栏 admin 按钮已移除；唯一应用内入口是用户页
+> 「管理控制台」（仅 `isAdmin`）。原只读 `AdminScreen` 被独立整页
+> `AdminConsoleScreen` 取代（概览 / 用户 / 设置 / 用量与健康四个分区），
+> 并接入 023 的四个写操作。四个读端点的契约不变。
 
 ---
 
@@ -25,13 +31,14 @@
   决定；默认空 = 没有管理员。`/api/auth/me` 对登录用户额外返回顶层
   `isAdmin: boolean`；未登录/游客响应保持 `{user:null, guest:true}` 不变。
 - **G2 管理端点**：`/api/admin/*` 需要登录 + 管理员；未登录 401，普通用户 403，
-  管理员 200。全部只读，不改任何表/文件。
+  管理员 200。本规格的四个读端点只读，不改任何表/文件；写端点见 specs/023。
 - **G3 一页止血**：`GET /api/admin/stats` 给用户量/活跃、AI 花费与今日功能调用、
   jobs 状态；`GET /api/admin/users` 给用户列表（搜索/分页）；
   `GET /api/admin/usage` 给按天×功能的用量；`GET /api/admin/health` 聚合
   `/healthz`、`data/` 磁盘占用与最近 10 条 failed jobs。
-- **G4 前端入口**：仅 `isAdmin` 用户能看到顶栏入口；页面含总览卡片、7 天用量表、
-  用户表（搜索/分页）、健康信息；中越双语；375px 下表格横向滚动，不撑破页面。
+- **G4 前端入口**：仅 `isAdmin` 用户能在用户页看到「管理控制台」入口；控制台是
+  独立整页视图（概览 / 用户 / 设置 / 用量与健康），普通用户没有任何入口，直接
+  进入 `/admin`（或 `#admin`）也被 toast 拦回首页；中越双语；375px 下表格横向滚动，不撑破页面。
 - **G5 限速**：`/api/admin/*` 按登录用户 30 次/分钟（进程内固定窗口，复用
   `backend/ratelimit.py`；`RATE_LIMIT_ADMIN_PER_MINUTE` 可配，0 = 关闭）。
 
@@ -43,7 +50,9 @@
 - 不做独立 role 表、2FA、审计日志、操作留痕（计划书 M1 ⑦ 残余项）。
 - 不做图表库/数据大屏；数字用表格与卡片呈现。
 - 不做分页游标/排序参数；固定按注册时间倒序、`limit/offset` 分页。
-- 不做前端独立 URL 路由（沿用当前应用内视图）。
+- 不做前端独立 URL 路由：沿用 `App.tsx` 的视图状态；额外支持 `/admin`（或 `#admin`）直达
+  入口（启动时读取一次并按 `isAdmin` 放行/拒绝），它不是 router，也不改视图
+  之外的地址。
 
 ## 管理员身份
 
@@ -189,23 +198,47 @@
 - 所有 SQL 均为 `SELECT`；连接建立后执行 `PRAGMA query_only = ON`，任何
   误写会被 SQLite 拒绝。
 - 不创建数据库、不建表、不写 `data/`；磁盘统计用 `os.scandir`/`os.walk` 只读。
-- 不提供任何 `POST/PUT/PATCH/DELETE` 端点。
+- 本规格的四个读端点不提供任何 `POST/PUT/PATCH/DELETE`；调余额 / 封禁解封 /
+  设置写端点由 [specs/023](../023-user-profile/spec.md) 定义（同样需要管理员）。
 
 ## 前端
 
-- 入口：顶栏 `ShieldCheck` 图标按钮（`data-testid="admin-entry"`），仅
-  `isAdmin` 为真时渲染；点击进入全屏 `AdminScreen`，可返回原视图。
-- 总览卡片：总用户、今日活跃、今日 AI 花费、失败任务（各带一行副指标：
-  近 7 天新增/游客数、本月花费/今日调用、运行中/待重试）。
-- 7 天用量表：日期 × 功能 × 调用 × 输入/输出 tokens × 成本，底部总计。
-- 用户表：搜索框（回车/输入防抖）、上一页/下一页、总数、ID/邮箱/注册时间/
-  本月花费/事件数/最后活跃。
-- 健康：状态、版本、DB 迁移 current/head、uptime、`data/` 大小、最近 failed
-  jobs 列表（错误文本可换行）。
-- 所有表格外层 `overflow-x-auto`，内部 `min-w-[...]`；页面根 `overflow-x-hidden`
-  且 `max-w-6xl`；375px 下页面本身不横向滚动。
-- 文案全部走 `frontend/src/i18n/*.json` 的 `admin.*` 键，zh-CN 与 vi-VN 对齐，
-  越南语字典不含 CJK。
+**入口（2026-11-16 起）**
+
+- 顶栏不再有 admin 按钮；唯一应用内入口是用户页 `AccountScreen` 的「管理控制台」
+  （`data-testid="account-admin-entry"`，仅 `isAdmin` 渲染）。控制台是独立整页
+  `'admin'` 视图（`AdminConsoleScreen`），自带返回；从用户页进入时关闭返回用户页，
+  从直达链接进入时回首页。
+- 非管理员没有任何入口；`App.tsx` 在打开控制台前再查 `isAdmin`。直接访问
+  `/admin`（或 `#admin`；启动时读取一次）会被 toast「需要管理员权限。」并留在首页；控制台
+  内部再校验一次 `isAdmin`，丢失权限/会话时同样 toast 并回首页。
+- 控制台不写入 URL；`/admin`（或 `#admin`）只是直达守卫，不是 router。
+
+**四个分区**（`AdminConsoleScreen.tsx`，分段 tab 切换）
+
+- 概览：总用户 / 近 7 天新增 / 今日活跃 / 游客 / 今日 AI 花费 / 失败任务，
+  复用 `GET /api/admin/stats`；维护模式开启时显示提示条。
+- 用户：`GET /api/admin/users?limit=20&offset&search=`，搜索 email/username、
+  上一页/下一页；表格列用户名 / 邮箱 / 余额 / 状态 / 注册时间 / 操作。
+  - 调整余额：弹窗输入带符号整数（±100000、非 0）+ 原因（1–200 字），
+    `POST /api/admin/users/{userId}/credits`；成功 toast + 刷新列表，后端 400
+    （如余额不足）原文显示在弹窗内并 toast。
+  - 封禁/解封：二次确认弹窗，`PATCH /api/admin/users/{userId}`；成功刷新状态。
+    自己的行禁用封禁并提示；封禁自己 / 最后一个管理员等后端 400 原文显示在
+    弹窗内。
+- 设置：`GET/PUT /api/admin/settings`；维护模式开关（说明开启后非管理员
+  `/api` 返回 503）、公告文本（可为空，空保存为 `null`）；保存成功显示已保存，
+  并给公告条预览。公开公告条尚未接入：它需要公开读取接口，本轮只落库。
+- 用量与健康：`GET /api/admin/usage?days=7` 按天×功能表格 + 合计；
+  `GET /api/admin/health` 迁移 current/head、磁盘、运行时长、最近 failed jobs。
+
+**通用**
+
+- 请求全部走 `lib/admin.ts` → `apiFetch`（带 credentials）；401/403 toast 并
+  离开控制台，其它错误行内 + toast。
+- 加载 / 空态 / 错误重试齐备；所有表格外层 `overflow-x-auto` + 内部 `min-w`，
+  页面根 `overflow-x-hidden`；375px 页面不横向滚动，只滚表格。
+- 文案走 `admin.*`，zh-CN / vi-VN 对齐（`npm run check:i18n`），越南语无 CJK。
 
 ## 限速
 
@@ -231,6 +264,37 @@
 
 - `backend/venv/bin/python -m py_compile *.py` 通过；
 - `pytest tests -q` 全绿（现有 457 + 本规格新增）；
-- 前端 `npx tsc -b`、`npm run check:i18n` 通过；
+- 前端 `npx tsc -b`、`npm run check:i18n`、`npm run build` 通过；
 - 8001 临时实例（`/tmp` 数据）：设 `ADMIN_EMAILS` 后管理员四端点 200，
-  普通用户 403，未登录 401；stats 数值与手工造数一致。
+  普通用户 403，未登录 401；stats 数值与手工造数一致；
+- Playwright（系统 Chrome，5173，mock `/api/admin/*`）23 项通过：管理员从用户页
+  进控制台、普通用户无入口且 `/admin`（或 `#admin`）被踢回首页、概览六项数字、用户搜索与
+  分页、+100 调账成功刷新 / 负数 400 行内提示、封禁与解封二次确认、维护模式
+  与公告保存、用量与健康表格、中越双语、375px；截图 `/tmp/admin-console-shots/`。
+
+## 2026-11-16 前端：独立管理控制台（用户需求 #3 收口）
+
+**改动文件**
+
+- `frontend/src/components/AdminConsoleScreen.tsx`（新增，替代已删除的
+  `AdminScreen.tsx`）：整页控制台、四个分段 tab、两个确认弹窗、管理端四个写操作；
+- `frontend/src/lib/admin.ts`：用户行扩展 `userId/username/credits/status`，
+  新增 `fetchAdminSettings/saveAdminSettings/adjustAdminUserCredits/updateAdminUserStatus`；
+- `frontend/src/App.tsx`：移除顶栏 admin 按钮，新增 `'admin'` 全页视图 + 返回目标
+  （用户页/首页）、`/admin`（或 `#admin`）直达守卫、非管理员 toast 回首页；
+- `frontend/src/components/AccountScreen.tsx`：管理控制台入口补充说明文案；
+- `frontend/src/i18n/{zh-CN,vi-VN}.json`：新增控制台文案（全量 998 keys × 2 对齐）；
+- `frontend/src/components/README.md`、`frontend/src/lib/README.md`：文件职责更新。
+
+**验收（2026-11-16）**
+
+`npx tsc -b`、`npm run check:i18n`、`npm run build` 通过；Playwright 23/23，
+截图在 `/tmp/admin-console-shots/`（概览、用户表、调账弹窗与 400、封禁确认、
+设置、用量与健康、越南语、375px、非管理员被踢）。控制台错误统一 toast +
+行内提示；用户表每页 20 条；所有表格在 375px 横向滚动且页面不横向溢出。
+
+**未做**
+
+- 公告的公开读取端点 / App 顶部公告条（需要后端新端点，本轮只保存公告）；
+- 操作审计日志（`credit_transactions` 已记录调账流水，其它动作仅服务端日志）；
+- 独立 URL 路由（仍是 App 视图状态 + `/admin`（或 `#admin`）直达守卫）。

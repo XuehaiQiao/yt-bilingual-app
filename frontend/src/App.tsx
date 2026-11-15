@@ -1,7 +1,7 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn, GraduationCap, CalendarRange, ShieldCheck, UserRound } from 'lucide-react';
+import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn, GraduationCap, CalendarRange, UserRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { LanguageMenu } from './components/LanguageMenu';
@@ -26,7 +26,7 @@ import { ExamScreen } from './components/ExamScreen';
 import { DiscoverScreen } from './components/DiscoverScreen';
 import { ReaderScreen } from './components/ReaderScreen';
 import { BlogScreen } from './components/BlogScreen';
-import { AdminScreen } from './components/AdminScreen';
+import { AdminConsoleScreen } from './components/AdminConsoleScreen';
 import { AccountScreen } from './components/AccountScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PwaInstallButton } from './components/PwaInstallButton';
@@ -184,9 +184,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Official blog (specs/020): a public read-only view over content/blog/*.md.
   // Like the reader, the screen owns list/detail state internally.
   const [blogOpen, setBlogOpen] = useState(false);
-  // Admin stop-the-bleed dashboard (specs/021): only rendered for `isAdmin`;
-  // opening it does not clear the current view, so closing returns there.
+  // Admin console (specs/021 + 023): a standalone full-page view that replaces
+  // the whole user shell (top bar included). `adminReturnTo` remembers where
+  // the back button should land: the account page (the only in-app entry) or
+  // a clean home screen (the `#admin` direct link / access-lost fallback).
   const [adminOpen, setAdminOpen] = useState(false);
+  const [adminReturnTo, setAdminReturnTo] = useState<'home' | 'account'>('home');
   // Account / user page (specs/023 frontend): a full view opened from the
   // top-bar avatar. Like the admin view it keeps whatever sits behind it, so
   // closing the page returns to the same video / home screen.
@@ -1313,17 +1316,36 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setBlogOpen(false);
   };
 
-  const handleOpenAdmin = () => {
-    // The top bar is shared chrome; drop transient overlays so the dashboard
-    // opens on a clean surface, but keep the current view behind it.
+  // Admin console (specs/021 + 023). It is a standalone page rather than a
+  // dialog, and its only in-app entry is the administrator section of the
+  // account page. Non-admins get a toast and never reach the view.
+  const openAdminView = (returnTo: 'home' | 'account') => {
+    if (!isAdmin) {
+      toast.error(t('admin.error.forbidden'));
+      return;
+    }
     setWordLookup(null);
     setIsFavoritesOpen(false);
     setSelectedChannel(null);
+    setAdminReturnTo(returnTo);
     setAdminOpen(true);
   };
 
   const handleCloseAdmin = () => {
+    const returnTo = adminReturnTo;
     setAdminOpen(false);
+    setAdminReturnTo('home');
+    if (returnTo === 'account') setAccountOpen(true);
+    else handleGoHome();
+  };
+
+  // Access lost while the console is mounted (non-admin direct entry, session
+  // downgraded, admin flag withdrawn): toast comes from the console, then the
+  // app lands on a clean home screen.
+  const handleAdminDenied = () => {
+    setAdminOpen(false);
+    setAdminReturnTo('home');
+    handleGoHome();
   };
 
   // Account view (specs/023 frontend). The top-bar avatar always opens it on a
@@ -1350,8 +1372,42 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const handleAccountOpenAdmin = () => {
     setAccountOpen(false);
-    handleOpenAdmin();
+    openAdminView('account');
   };
+
+  // `/admin` (SPA fallback) and `#admin` are direct entries — bookmarks or a
+  // support shortcut — not a router. They are read once: administrators land on
+  // the console, everyone else gets the "需要管理员权限" toast and stays on the
+  // home screen. The decision waits one tick because right after login the
+  // admin flag is fetched separately; denying on the first render would kick a
+  // just-signed-in administrator.
+  const adminDeepLinkRef = useRef(false);
+  useEffect(() => {
+    if (adminDeepLinkRef.current) return;
+    if (status === 'loading') return;
+    const pathname = window.location.pathname;
+    const byPath = /(?:^|\/)admin\/?$/.test(pathname);
+    if (window.location.hash !== '#admin' && !byPath) {
+      adminDeepLinkRef.current = true;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (!byPath && window.location.hash !== '#admin') return;
+      adminDeepLinkRef.current = true;
+      const nextPath = byPath ? pathname.replace(/\/admin\/?$/, '/') : pathname;
+      window.history.replaceState(null, '', `${nextPath}${window.location.search}`);
+      if (!isAdmin) {
+        toast.error(t('admin.error.forbidden'));
+        return;
+      }
+      setWordLookup(null);
+      setIsFavoritesOpen(false);
+      setSelectedChannel(null);
+      setAdminReturnTo('home');
+      setAdminOpen(true);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [isAdmin, status, t]);
 
   const handleDiscoverStart = (url: string) => {
     // Leave the discovery view first; processing renders the learning view.
@@ -1682,7 +1738,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           >
             {t('brand.name')}
           </h1>
-          {featureName && !adminOpen && !accountOpen && (
+          {featureName && !accountOpen && (
             <span
               data-testid="feature-name"
               className="hidden sm:inline-flex items-center whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/50 border border-white/5 text-zinc-400"
@@ -1694,21 +1750,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       </div>
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <LanguageMenu />
-        {isAdmin && !accountOpen && (
-          <button
-            type="button"
-            data-testid="admin-entry"
-            onClick={handleOpenAdmin}
-            aria-pressed={adminOpen}
-            aria-label={t('admin.entry')}
-            title={t('admin.entry')}
-            className="inline-flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-300 hover:text-blue-200 transition-colors shrink-0"
-          >
-            <ShieldCheck className="w-4 h-4 shrink-0" />
-            <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">{t('admin.entry')}</span>
-          </button>
-        )}
-        {status === 'authenticated' && !adminOpen && !accountOpen && !reviewOpen && !quizOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
+        {status === 'authenticated' && !accountOpen && !reviewOpen && !quizOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
           <button
             type="button"
             data-testid="topbar-review-button"
@@ -1730,7 +1772,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             )}
           </button>
         )}
-        {!adminOpen && !accountOpen && !quizOpen && !reportOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
+        {!accountOpen && !quizOpen && !reportOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
           <button
             type="button"
             data-testid="topbar-report-button"
@@ -2256,6 +2298,20 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   );
 
 
+  // The admin console is its own full-page shell: no consumer top bar, no
+  // overlays from the learning views. Closing it returns to the account page
+  // (where it was opened) or to a clean home screen.
+  if (adminOpen) {
+    return (
+      <div
+        data-testid="app-shell"
+        className="h-screen w-full flex flex-col bg-[#09090b] overflow-hidden text-zinc-100 selection:bg-purple-500/30"
+      >
+        <AdminConsoleScreen onClose={handleCloseAdmin} onDenied={handleAdminDenied} />
+      </div>
+    );
+  }
+
   return (
     <div data-testid="app-shell" className="h-screen w-full flex flex-col bg-[#09090b] overflow-hidden text-zinc-100 selection:bg-purple-500/30">
       {renderTopBar()}
@@ -2276,16 +2332,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenAdmin={handleAccountOpenAdmin}
             onRequestLogin={onRequestLogin}
           />
-        </motion.div>
-      ) : adminOpen ? (
-        <motion.div
-          key="admin"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <AdminScreen onClose={handleCloseAdmin} />
         </motion.div>
       ) : placementOpen ? (
         <motion.div

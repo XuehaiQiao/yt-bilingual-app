@@ -1,19 +1,22 @@
 # 规格：用户名 / 用户页数据 / 余额与后台手动设置
 
-**状态：** 已实现（2026-11-16：后端 + 用户页前端；后台控制台前端下一轮）｜
+**状态：** 已实现（2026-11-16：后端 + 用户页前端 + 独立后台控制台）｜
 **对应代码：** 后端 `backend/migrations/versions/0013_user_profile.py`、
 `backend/account.py`、`backend/routes_account.py`、`backend/routes_auth.py`、
 `backend/routes_admin.py`、`backend/main.py`、`backend/tests/test_user_profile.py`、
 `backend/tests/test_migrations.py`；前端 `frontend/src/lib/auth.tsx`、
 `frontend/src/lib/username.ts`、`frontend/src/components/AuthScreen.tsx`、
-`frontend/src/components/AccountScreen.tsx`、`frontend/src/App.tsx`、
-`frontend/src/i18n/{zh-CN,vi-VN}.json`。
+`frontend/src/components/AccountScreen.tsx`、
+`frontend/src/components/AdminConsoleScreen.tsx`、`frontend/src/lib/admin.ts`、
+`frontend/src/App.tsx`、`frontend/src/i18n/{zh-CN,vi-VN}.json`。
 
 > 用户需求 1/2/3：① 注册必须设用户名（可改）；② 独立「用户页」要能拿到用户
 > 信息 / 余额 / 本月花费 / 版本；③ 独立后台可手动调余额、封禁/解封、维护模式
-> 与公告，且普通用户无法访问后台接口。后端先落地；用户页前端随后完成（本轮），
-> 独立后台控制台前端仍在下一轮（用户页只提供管理员入口占位）。余额语义暂定
-> `credits`（默认 0，管理员手动发放）；支付/充值体系未实现。
+> 与公告，且普通用户无法访问后台接口。后端先落地；用户页前端随后完成；
+> **2026-11-16 独立后台控制台前端也已完成**（详见
+> [specs/021](../021-admin/spec.md) 的「2026-11-16 前端」一节），用户页的
+> 管理员入口打开整页控制台。余额语义暂定 `credits`（默认 0，管理员手动发放）；
+> 支付/充值体系未实现。
 
 ---
 
@@ -217,8 +220,9 @@
 
 ## 非目标
 
-- 不做独立后台控制台前端（下一轮；本轮用户页只放管理入口占位，点击进入现有
-  只读止血台视图）；不新增前端路由守卫（沿用 `App.tsx` 的视图 flag 状态机）。
+- ~~不做独立后台控制台前端~~：已由 [specs/021](../021-admin/spec.md) 的
+  2026-11-16 前端升级完成（整页控制台 + 四个写操作）；仍不做独立 URL 路由
+  （沿用 `App.tsx` 的视图状态；`/admin`（或 `#admin`）只是启动时读取一次的直达守卫）。
 - 不做支付/充值/退款/账单；`credits` 只是管理员手动发放的余额（语义暂定）。
 - 不做独立 role 表、2FA、后台操作审计日志；`credit_transactions` 只记录调账
   操作者 id，不覆盖其它后台动作。
@@ -244,6 +248,11 @@
 - [x] 前端：内联改用户名成功，页面标题与顶栏同时更新；非法值行内报错。
 - [x] 前端：用户页可切换界面/翻译语言与默认模型，选择立即生效并持久化。
 - [x] 前端：中越双语 + 375px 无横向溢出；游客进入用户页显示登录提示。
+- [x] 前端：管理员入口打开独立整页控制台；普通用户无入口，直接访问 `/admin`（或 `#admin`）
+      被 toast 拦回首页；控制台关闭后回到用户页/首页。
+- [x] 前端：控制台四分区可用——概览六项数字、用户搜索/分页、调余额（+ 成功
+      刷新 / 负数 400 行内提示）、封禁解封二次确认、维护模式 + 公告保存、
+      用量与健康表格；中越双语、375px 表格横向滚动不撑破页面。
 - [ ] 管理员 `+`/`-` 余额成功、余额不足 400、0/越界/原因非法 400、用户不存在 404、
       普通用户 403；每次成功调账留下一条 `credit_transactions`；并发调账不丢更新。
 - [ ] 封禁后登录 403、旧会话下一次 `/api` 请求 403、解封后原 Cookie 恢复；
@@ -269,3 +278,24 @@
 必填/过短、顶栏显示用户名并进入用户页、余额/花费/分钟/版本、内联改名同步顶栏、
 界面/翻译语言与模型切换、退出登录、中越双语、375px 溢出与游客登录提示；截图在
 `/tmp/account-shots/`。
+
+## 2026-11-16 后台控制台前端（收口）
+
+`frontend/src/components/AdminConsoleScreen.tsx`（替代已删除的 `AdminScreen.tsx`）
+把 023 的后台端点接进了真实界面：
+
+- 入口：仅用户页可见的「管理控制台」；`App.tsx` 新增独立 `'admin'` 全页视图，
+  打开前查 `isAdmin`；非管理员无入口，`/admin`（或 `#admin`）直达也会被 toast 拦回首页。
+  关闭后从用户页来的回用户页，其余回首页。
+- 用户：每页 20 条，搜索 email/username；行内「调整余额」弹窗（带符号整数 +
+  原因，`POST /api/admin/users/{id}/credits`，成功刷新；400 原文展示）与
+  「封禁/解封」二次确认（`PATCH /api/admin/users/{id}`）；自己禁用封禁按钮，
+  最后一个管理员等后端 400 友好展示。
+- 设置：`GET/PUT /api/admin/settings`，维护模式开关 + 公告（空 = null），
+  保存后显示已保存；公告条只有预览，公开公告条需公开读取端点（未做）。
+- 概览与用量/健康：复用四个只读端点，概览 6 张卡，用量按天×功能 + 合计，
+  健康含迁移 current/head、磁盘、运行时长、最近 failed jobs。
+
+验收：`npx tsc -b`、`npm run check:i18n`、`npm run build` 通过；Playwright
+（系统 Chrome，5173，mock `/api/admin/*`）23/23 通过，截图
+`/tmp/admin-console-shots/`。
