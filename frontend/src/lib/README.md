@@ -19,6 +19,7 @@
 | `discover.ts` | 内容发现客户端（specs/017）：/api/discover 的候选/结果类型与 `discoverContent(query,targetLang,force)`；失败抛带 HTTP 状态与 `Retry-After` 的 `DiscoverApiError`；候选不补造、不强行凑足 3–5 个，`hasEnglishSubs` 只接受 true/null |
 | `reading.ts` | 读文章客户端（specs/019）：`importArticle`/`getArticle`/`translateArticle`/`listArticles`/`deleteArticle`/`saveProgress` 与文章/段落/译文/进度类型；读取显式带 `targetLang`，失败抛带 HTTP 状态的 `ReadingApiError`；不补造文章内容，译文失败按后端 `translationFailed` 标记展示 |
 | `recommend.ts` | 规则推荐客户端（specs/018）：`/api/recommendations` 的条目/区间类型与 `fetchRecommendations({limit,seed})`；不补造条目、`reason`/`basis`/`preliminary` 原样交给 UI；时长格式化为 `mm:ss` |
+| `blog.ts` | 官方博客客户端（specs/020）：`/api/blog/posts`、`/api/blog/posts/{slug}`、`/api/blog/feed.xml` 的类型与 `listBlogPosts/getBlogPost/blogFeedUrl`；只读公开接口，失败抛带状态码的 `BlogApiError`；前端用 Markdown 字段配合 `react-markdown`，不注入后端 HTML |
 | `tts.ts` | 浏览器朗读（speechSynthesis，偏好英语音色） |
 | `toast.ts` | 轻提示总线 + `describeApiError`（把后端/网络错误转成可读中文） |
 | `jobs.ts` | 断线续传（M1 ⑤）：`sessionStorage` 里保存 `jobId`/游标（key `yt_bilingual_pending_job`）、`GET /api/jobs/{id}` 查询状态、`recordJobMeta/recordJobProgress/finishJob` 三个 SSE 事件钩子；刷新后「先查状态、可续才带 `jobId + from` 重连」的判定也在这里 |

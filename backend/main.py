@@ -21,6 +21,7 @@
 - routes_discover.py POST /api/discover（需登录）
 - recommend.py       规则推荐：画像区间 + 已看历史 + 人工精选池（V1）
 - routes_recommend.py GET /api/recommendations（游客可用）
+- routes_blog.py     官方博客：只读 content/blog/*.md + 安全 Markdown + RSS（V1）
 - reports.py         观看事件 + 周报 SQL 聚合（M5）
 - placement.py       定位测题库抽样 / 加权评分 / CEFR 区间 / 画像（M4）
 - observability.py   结构化访问日志 / request_id / 只读 /healthz
@@ -37,6 +38,8 @@
 - 除认证路由自己要求的登录（如 `claim-guest`）外，`/api/*` 均允许游客访问；
   游客的估价/处理/查词走更紧的进程内限速（见 ratelimit.py），翻译总量也
   有累计上限（见 routes_videos.py / routes_content.py）。
+- `/api/blog/*` 是**公开只读**内容（与 /api/auth、/health 同列）：不需要登录，
+  中间件也不为它创建游客身份、不下发 `ln_guest`；文章只来自仓库内 Markdown。
 
 Starlette 里后注册的中间件更靠外层，所以 CORS 放在文件最后注册。
 """
@@ -53,6 +56,7 @@ import guest
 import observability
 import ratelimit
 import routes_auth
+import routes_blog
 import routes_content
 import routes_discover
 import routes_events
@@ -86,6 +90,11 @@ def _is_api_path(path: str) -> bool:
     return path == "/api" or path.startswith("/api/")
 
 
+def _is_public_api_path(path: str) -> bool:
+    """公开只读端点：不需要登录，也不创建游客身份（/api/blog/*）。"""
+    return path == "/api/blog" or path.startswith("/api/blog/")
+
+
 @app.middleware("http")
 async def resolve_identity(request, call_next):
     """解析会话/游客 Cookie → request.state + ContextVar；游客首次访问下发 Cookie。
@@ -93,6 +102,7 @@ async def resolve_identity(request, call_next):
     - 会话优先：有有效 `ln_session` 时忽略 `ln_guest`（登录用户的数据目录唯一）；
     - 游客 Cookie 只做形状校验，服务端用 sha256(token) 当目录名；非法/缺失时
       重新下发，**绝不把 Cookie 原文当路径**；
+    - `/api/blog/*` 公开只读：跳过游客签发（不往公开页面塞身份 Cookie）；
     - 其余 `/api/*` 不再 401：游客可以估价、看视频、查词，但限速更紧。
     """
     if request.method == "OPTIONS":  # 让 CORS 预检通过
@@ -106,7 +116,11 @@ async def resolve_identity(request, call_next):
 
     guest_hash = None
     issued_guest_token = None
-    if user is None and _is_api_path(request.url.path):
+    if (
+        user is None
+        and _is_api_path(request.url.path)
+        and not _is_public_api_path(request.url.path)
+    ):
         candidate = request.cookies.get(guest.COOKIE_NAME)
         if guest.is_valid_token(candidate):
             guest_hash = guest.hash_token(candidate)
@@ -180,6 +194,7 @@ app.include_router(routes_placement.router)
 app.include_router(routes_discover.router)
 app.include_router(routes_reading.router)
 app.include_router(routes_recommend.router)
+app.include_router(routes_blog.router)
 
 # 必须最后注册：Starlette 后注册的中间件在最外层，401 响应才能带上 CORS 头，
 # 浏览器里的前端才看得到真正的错误信息。

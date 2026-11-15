@@ -1,6 +1,6 @@
 import { apiFetch } from '../lib/api';
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Trash2, Compass, BookOpen } from 'lucide-react';
+import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Trash2, Compass, BookOpen, Newspaper, Rss } from 'lucide-react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import { EstimateDialog, type EstimateDialogHandle } from './EstimateDialog';
@@ -15,6 +15,7 @@ import { toast, describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import type { ReviewStats } from '../lib/review';
 import { getProfile, type PlacementProfile } from '../lib/placement';
+import { blogFeedUrl } from '../lib/blog';
 
 interface InputScreenProps {
     onSubmit: (url: string) => void;
@@ -40,6 +41,8 @@ interface InputScreenProps {
     onOpenDiscover?: () => void;
     /** Reading entry (specs/019): open the article list/reader view. */
     onOpenReader?: () => void;
+    /** Official blog entry (specs/020): open the public blog view. */
+    onOpenBlog?: () => void;
 }
 
 const containerVariants = {
@@ -73,6 +76,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     onOpenPlacement,
     onOpenDiscover,
     onOpenReader,
+    onOpenBlog,
 }) => {
     const { t } = useI18n();
     const [url, setUrl] = useState('');
@@ -538,6 +542,39 @@ export const InputScreen: React.FC<InputScreenProps> = ({
 
                     </div>
                 </motion.div>
+
+                {/* Footer: the official blog is the public window into the
+                    product; the RSS link is the same content for feed readers. */}
+                <motion.footer
+                    variants={itemVariants}
+                    className="mt-2 pt-6 border-t border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                >
+                    <p className="text-xs leading-relaxed text-zinc-500">{t('blog.footerNote')}</p>
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                        {onOpenBlog && (
+                            <button
+                                type="button"
+                                data-testid="blog-entry"
+                                onClick={onOpenBlog}
+                                className="inline-flex items-center gap-1.5 h-8 px-2 -mx-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
+                            >
+                                <Newspaper className="w-4 h-4" />
+                                {t('blog.title')}
+                            </button>
+                        )}
+                        <a
+                            href={blogFeedUrl()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            data-testid="blog-feed-link"
+                            aria-label={t('blog.feedAria')}
+                            className="inline-flex items-center gap-1.5 h-8 px-2 -mx-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
+                        >
+                            <Rss className="w-4 h-4" />
+                            {t('blog.feed')}
+                        </a>
+                    </div>
+                </motion.footer>
             </motion.div>
         </div>
     );

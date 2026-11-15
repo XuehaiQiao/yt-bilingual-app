@@ -6,6 +6,7 @@
 |---|---|
 | `sentences/` | 句子精背的 500 句精选（5 册 × 100 句），见 [sentences/README](./sentences/README.md) |
 | `placement/` | 能力定位测题库（M4，草稿待教研审校）：30 词汇 + 5 阅读 + 4 伪词，见 [placement/README](./placement/README.md) |
+| `blog/` | 官方博客的 4 篇 Markdown 文章（V1，可发布草稿待运营复核），见 [blog/README](./blog/README.md) |
 | `curated.json` | 人工精选推荐池（V1 规则推荐，草稿待运营复核）：30 条真实 YouTube 视频，A2–C1 / 5 主题 / 4–32 分钟，见下文 |
 
 ## curated.json（人工精选推荐池）

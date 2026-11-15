@@ -24,6 +24,7 @@ import { ReportScreen, type WeekReportEvidence } from './components/ReportScreen
 import { PlacementScreen, type PlacementInitialView } from './components/PlacementScreen';
 import { DiscoverScreen } from './components/DiscoverScreen';
 import { ReaderScreen } from './components/ReaderScreen';
+import { BlogScreen } from './components/BlogScreen';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
@@ -67,15 +68,16 @@ interface TranscriptItem {
   }>;
 }
 
-type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences' | 'topbar.feature.review' | 'topbar.feature.quiz' | 'topbar.feature.discover' | 'topbar.feature.reader'>;
+type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences' | 'topbar.feature.review' | 'topbar.feature.quiz' | 'topbar.feature.discover' | 'topbar.feature.reader' | 'topbar.feature.blog'>;
 
 // Single source of truth for the top-bar feature label. Mirrors the view
-// switch below: quiz wins, then reading, then discovery, then review, then
-// sentence pack, then local episode, then YouTube; the home screen (no video /
-// empty transcript) has no feature name.
+// switch below: quiz wins, then reading, then the blog, then discovery, then
+// review, then sentence pack, then local episode, then YouTube; the home screen
+// (no video / empty transcript) has no feature name.
 function getFeatureName(
   quizOpen: boolean,
   readerOpen: boolean,
+  blogOpen: boolean,
   discoverOpen: boolean,
   reviewOpen: boolean,
   sentenceLevel: number | null,
@@ -85,6 +87,7 @@ function getFeatureName(
 ): FeatureNameKey | null {
   if (quizOpen) return 'topbar.feature.quiz';
   if (readerOpen) return 'topbar.feature.reader';
+  if (blogOpen) return 'topbar.feature.blog';
   if (discoverOpen) return 'topbar.feature.discover';
   if (reviewOpen) return 'topbar.feature.review';
   if (sentenceLevel != null) return 'topbar.feature.sentences';
@@ -167,6 +170,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Reading (specs/019): a full view like discovery. The screen owns its
   // list/reader internal state; this flag only decides which view is mounted.
   const [readerOpen, setReaderOpen] = useState(false);
+  // Official blog (specs/020): a public read-only view over content/blog/*.md.
+  // Like the reader, the screen owns list/detail state internally.
+  const [blogOpen, setBlogOpen] = useState(false);
   // Weekly report — its own view (M5). Opening it from a video pauses the
   // player without discarding it; closing returns to the same content.
   const [reportOpen, setReportOpen] = useState(false);
@@ -1014,8 +1020,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
 
   const featureName = useMemo(
-    () => getFeatureName(quizOpen, readerOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle)),
-    [quizOpen, readerOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle],
+    () => getFeatureName(quizOpen, readerOpen, blogOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle)),
+    [quizOpen, readerOpen, blogOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle],
   );
 
   const handleTranscriptClick = useCallback((time: number) => {
@@ -1127,6 +1133,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setReviewOpen(false);
     setDiscoverOpen(false);
     setReaderOpen(false);
+    setBlogOpen(false);
     setReportOpen(false);
     setPlacementOpen(false);
     setQuizOpen(false);
@@ -1176,6 +1183,26 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const handleCloseReader = () => {
     setReaderOpen(false);
+  };
+
+  // Official blog (specs/020). Public and read-only; opening it closes every
+  // other full view so the tree stays single-purpose.
+  const handleOpenBlog = () => {
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setReviewOpen(false);
+    setReportOpen(false);
+    setPlacementOpen(false);
+    setQuizOpen(false);
+    setQuizLesson(null);
+    setDiscoverOpen(false);
+    setReaderOpen(false);
+    setBlogOpen(true);
+  };
+
+  const handleCloseBlog = () => {
+    setBlogOpen(false);
   };
 
   const handleDiscoverStart = (url: string) => {
@@ -1487,7 +1514,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       </div>
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <LanguageMenu />
-        {status === 'authenticated' && !reviewOpen && !quizOpen && !placementOpen && !discoverOpen && !readerOpen && (
+        {status === 'authenticated' && !reviewOpen && !quizOpen && !placementOpen && !discoverOpen && !readerOpen && !blogOpen && (
           <button
             type="button"
             data-testid="topbar-review-button"
@@ -1509,7 +1536,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             )}
           </button>
         )}
-        {!quizOpen && !reportOpen && !placementOpen && !discoverOpen && !readerOpen && (
+        {!quizOpen && !reportOpen && !placementOpen && !discoverOpen && !readerOpen && !blogOpen && (
           <button
             type="button"
             data-testid="topbar-report-button"
@@ -2088,6 +2115,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onWordLookup={handleReaderWordLookup}
           />
         </motion.div>
+      ) : blogOpen ? (
+        <motion.div
+          key="blog"
+          initial={{ opacity: 0, scale: 0.99, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          <BlogScreen onClose={handleCloseBlog} />
+        </motion.div>
       ) : sentenceLevel != null ? (
         <motion.div
           key="sentences"
@@ -2134,6 +2171,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenPlacement={handleOpenPlacement}
             onOpenDiscover={handleOpenDiscover}
             onOpenReader={handleOpenReader}
+            onOpenBlog={handleOpenBlog}
           />
         </motion.div>
       ) : (

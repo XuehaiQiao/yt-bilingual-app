@@ -38,6 +38,13 @@ CURATED_CONTENT_PATH = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "curated.json"),
 )
 
+# 官方博客（V1，见 routes_blog.py / specs/020）：content/blog/*.md 直接随仓库
+# 分发，无数据库/后台 CMS；测试可指向 tmp 目录验证 front matter/渲染/404。
+BLOG_DIR = os.environ.get(
+    "BLOG_DIR",
+    os.path.join(_BACKEND_DIR, "..", "content", "blog"),
+)
+
 # --- 用户体系数据（SQLite + 每用户目录） ---
 # DATA_DIR 默认仓库根的 data/（已 gitignore）。AUTH_DB_PATH 可单独覆盖到别处；
 # USER_DATA_DIR 是每个登录用户的数据根目录（其下再分 history/ 等）。

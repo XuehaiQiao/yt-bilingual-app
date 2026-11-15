@@ -13,7 +13,7 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载八个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*` / `READING_*` / `AI_DAILY_QUOTA_READING_BATCHES` / `RATE_LIMIT_READING_PER_MINUTE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*` / `READING_*` / `AI_DAILY_QUOTA_READING_BATCHES` / `RATE_LIMIT_READING_PER_MINUTE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`）、`BLOG_DIR`（官方博客 Markdown 目录，默认 `content/blog`） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
@@ -46,6 +46,7 @@
 | `routes_recommend.py` | 规则推荐 HTTP 路由：`GET /api/recommendations?limit=6&targetLang=zh-CN&seed=0`（游客可用）；契约/错误语义见下文「规则推荐」与 [specs/018](../specs/018-recommendations/spec.md) |
 | `reading.py` | **读文章（V1）**：URL 导入（SSRF 校验 + 10s/2MB/重定向 ≤3）或粘贴正文 → `trafilatura` → readability → 标准库 `<p>` 三级抽取 → 200 段/单段 4000 字符上限 → `articles` / `article_paragraphs`；逐段翻译（`feature=reading` 配额/账本/降级链，只补缺失段，失败写 `[未翻译]`）；进度/列表/删除；表由 `0011_reading` 创建，运行时不建表 |
 | `routes_reading.py` | 读文章 HTTP 路由（**需登录，游客 403**）：`POST /api/article/import`、`POST /api/article/{id}/translate`、`GET /api/article/{id}`、`GET /api/articles`、`DELETE /api/article/{id}`、`PUT /api/article/{id}/progress`；契约/错误语义见下文「读文章」与 [specs/019](../specs/019-reading/spec.md) |
+| `routes_blog.py` | 官方博客 HTTP 路由（**公开只读，无需登录**）：`GET /api/blog/posts`、`GET /api/blog/posts/{slug}`、`GET /api/blog/feed.xml`；只读 `content/blog/*.md`，自带 front matter 校验、HTML 转义 + 链接白名单的轻量 Markdown 渲染、RSS 2.0；无数据库/无迁移；见下文「官方博客」与 [specs/020](../specs/020-blog/spec.md) |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`trafilatura` 用于文章正文抽取、`pytest` 用于离线测试/CI；faster-whisper、readability-lxml/bs4 为可选，见文件内注释） |
 | `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
@@ -700,7 +701,7 @@ venv/bin/python -m pytest tests -q                    # 全量 395
 cd backend
 venv/bin/python -m py_compile *.py
 venv/bin/python -m pytest tests/test_reading.py -q   # 50 个离线用例（FakeClient + LLM 桩）
-venv/bin/python -m pytest tests -q                    # 全量 445
+venv/bin/python -m pytest tests -q                    # 全量 457（含 12 个博客用例）
 ```
 
 2026-11-15 8001 临时实例（`/tmp` 数据目录 + 真实 Alembic + mock HTTP/LLM）实测：
@@ -709,6 +710,50 @@ venv/bin/python -m pytest tests -q                    # 全量 445
 互不覆盖；再次 zh 翻译 `cached`/0 批；进度与列表正确；`127.0.0.1` / `10.x` /
 `169.254.169.254` / `[::1]` / `metadata.google.internal` / `file://` 全部 422；
 删除后 404；第二个用户读第一用户文章 404。
+
+## 官方博客（V1：Markdown + RSS + 公开只读）
+
+站内「官方博客」频道：内容来自仓库内 `content/blog/*.md`，**不用数据库、没有后台 CMS、没有新增迁移**。规格：[specs/020-blog](../specs/020-blog/spec.md)。
+
+### 端点（全部公开只读，无需登录）
+
+| 端点 | 成功 | 失败 |
+|---|---|---|
+| `GET /api/blog/posts` | `200 {"posts":[{slug,title,date,excerpt,tags,lang,readingMinutes}],"count":N}`，日期倒序 | 503（目录缺失/内容坏） |
+| `GET /api/blog/posts/{slug}` | `200` 摘要 + `published:true` + `markdown` + `html` | 404（不存在/`published:false`/slug 形状非法）；503 |
+| `GET /api/blog/feed.xml` | `200 application/rss+xml`（channel title/link/description/language + 每篇 title/link/guid/description/pubDate） | 503 |
+
+`/api/blog/*` 与 `/api/auth/*`、`/health` 同属公开路径：中间件不要求登录，也**不创建游客身份、不下发 `ln_guest`**（见 `main.py` 的 `_is_public_api_path`）。`API_AUTH_KEY` 是可选的部署级门禁，若设置仍按原规则作用于所有 `/api/*`。
+
+### 内容格式与闸门
+
+- front matter：`title/date/slug/tags/excerpt/published` 六项必填；`slug` 只允许 `a-z0-9-` 且全目录唯一；`published:false` 的文章不出现在列表/详情/RSS。
+- 文件 UTF-8、≤256KB；正文 ≤200,000 字符；`README.md` 不作为文章。
+- 缺 front matter、字段非法、正文为空、slug 重复 → **503**（宁可不发，也不静默发布半篇文章）。
+- 正文开头用于「可发布草稿，运营复核后发布」的 HTML 注释会被剥离，不显示给读者。
+- 修改文件即时生效（不做进程缓存），只读、无写入。
+
+### Markdown 渲染与安全
+
+`routes_blog.py` 内置轻量渲染器（不新增 Python 依赖）：标题/段落/粗斜体/行内与围栏代码/列表/引用/分隔线/链接/删除线。安全约定：
+
+1. **源文本先整段 HTML 转义**，再插入受控标签；文章里的 `<script>` 只会成为文本。
+2. 链接只放行 `http`/`https`/`mailto` 与相对地址；`javascript:`/`data:` 等降级为纯文本。
+3. 不做原始 HTML 透传、不做表格/脚注/嵌套列表；新增渲染能力必须同时补 XSS 用例。
+
+前端 `BlogScreen.tsx` 用 `react-markdown` 渲染 Markdown（默认不执行原始 HTML），并 `skipHtml`；后端返回的 `html` 字段留给 RSS/其他消费方，不通过 `dangerouslySetInnerHTML` 注入。
+
+### 测试与手动实测
+
+```bash
+cd backend
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_blog.py -q   # 12 个离线用例
+venv/bin/python -m pytest tests -q                # 全量 457
+```
+
+2026-11-15 8001 临时实例（仓库内 `content/blog/`）实测：未登录 `GET /api/blog/posts` → 4 篇；`GET /api/blog/posts/why-linguatrek` → 元数据 + Markdown + HTML；`GET /api/blog/feed.xml` → RSS 2.0（4 个 item）；未知 slug 404；含 `<script>` / `javascript:` 链接的样例只渲染为转义文本（无标签执行）。
+
 
 ## 多语言目标语言（targetLang，P0）
 

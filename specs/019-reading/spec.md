@@ -208,7 +208,8 @@ tmp 库真实 Alembic 迁移）：
   配额 429、非法语言 400、模型输出容错解析；
 - 进度/列表/删除级联/跨用户 404/游客 403/未迁移 503。
 
-全量：`cd backend && venv/bin/python -m pytest tests -q`（当前 **445 绿**）。
+全量：`cd backend && venv/bin/python -m pytest tests -q`（本规格完成时 445 绿；
+加入 020 官博后当前 **457 绿**）。
 
 ## 手动验收（2026-11-15，8001 临时实例）
 
