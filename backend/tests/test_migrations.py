@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0011_reading"
+HEAD = "0012_exam"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -73,6 +73,7 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "placement_sessions", "placement_answers", "user_profiles",
         "discover_queries",
         "articles", "article_paragraphs", "article_translations", "article_progress",
+        "exam_sessions", "exam_answers",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD
@@ -967,6 +968,154 @@ def test_upgrade_head_from_empty_db(tmp_path):
         )
         conn.rollback()
 
+    # 考试练习两表（0012_exam）：会话只存卷面 id，作答只存已答题，不存分数。
+    exam_sessions = columns(db, "exam_sessions")
+    assert list(exam_sessions) == [
+        "id",
+        "user_id",
+        "exam_type",
+        "status",
+        "item_ids",
+        "started_at",
+        "submitted_at",
+        "duration_ms",
+    ]
+    assert exam_sessions["id"]["pk"] == 1
+    assert exam_sessions["id"]["notnull"] == 1
+    for required in (
+        "user_id", "exam_type", "status", "item_ids", "started_at",
+    ):
+        assert exam_sessions[required]["notnull"] == 1, required
+    assert exam_sessions["submitted_at"]["notnull"] == 0
+    assert exam_sessions["duration_ms"]["notnull"] == 0
+    assert "in_progress" in str(exam_sessions["status"]["default"])
+    session_indexes = index_names(db, "exam_sessions")
+    assert "ix_exam_sessions_user_started" in session_indexes
+    assert "ix_exam_sessions_user_submitted" in session_indexes
+    assert "ux_exam_sessions_active" in session_indexes
+    with sqlite3.connect(db) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' "
+            "AND name='ux_exam_sessions_active'"
+        ).fetchone()
+    assert row and "UNIQUE" in row[0].upper()
+    assert "WHERE status = 'in_progress'" in row[0]
+
+    exam_answers = columns(db, "exam_answers")
+    assert list(exam_answers) == [
+        "session_id",
+        "item_id",
+        "chosen_index",
+        "correct",
+        "answered_at",
+    ]
+    assert exam_answers["session_id"]["pk"] == 1
+    assert exam_answers["item_id"]["pk"] == 2
+    for required in (
+        "session_id", "item_id", "chosen_index", "correct", "answered_at",
+    ):
+        assert exam_answers[required]["notnull"] == 1, required
+    with sqlite3.connect(db) as conn:
+        fk_rows = conn.execute("PRAGMA foreign_key_list(exam_answers)").fetchall()
+    assert any(
+        row[2] == "exam_sessions"
+        and row[3] == "session_id"
+        and row[4] == "id"
+        and row[6] == "CASCADE"
+        for row in fk_rows
+    ), "exam_answers 应外键引用 exam_sessions(id) ON DELETE CASCADE"
+
+    # CHECK / UNIQUE / FK 由数据库兜底：同一用户一个未完成会话、状态/用时/
+    # 选项/正确标记非法都写不进去，重复作答与孤儿作答也会被拒绝。
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(
+            "INSERT INTO exam_sessions "
+            "(id, user_id, exam_type, status, item_ids, started_at) "
+            "VALUES ('es1', 'u-exam', 'cet4', 'in_progress', '[]', 1000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO exam_sessions "
+                "(id, user_id, exam_type, status, item_ids, started_at) "
+                "VALUES ('es2', 'u-exam', 'cet4', 'in_progress', '[]', 1001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError(
+                "ux_exam_sessions_active 应阻止同一用户两个未提交会话"
+            )
+        try:
+            conn.execute("UPDATE exam_sessions SET status='abandoned' WHERE id='es1'")
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("exam_sessions.status CHECK 应拒绝未知状态")
+        try:
+            conn.execute(
+                "UPDATE exam_sessions SET duration_ms=-1 WHERE id='es1'"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("exam_sessions.duration_ms CHECK 应拒绝负数")
+        conn.execute("UPDATE exam_sessions SET status='submitted' WHERE id='es1'")
+        conn.execute(
+            "INSERT INTO exam_sessions "
+            "(id, user_id, exam_type, status, item_ids, started_at) "
+            "VALUES ('es2', 'u-exam', 'cet4', 'in_progress', '[]', 1001)"
+        )
+
+        conn.execute(
+            "INSERT INTO exam_answers "
+            "(session_id, item_id, chosen_index, correct, answered_at) "
+            "VALUES ('es2', 'v-002', 0, 0, 1000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO exam_answers "
+                "(session_id, item_id, chosen_index, correct, answered_at) "
+                "VALUES ('es2', 'v-002', 1, 1, 1001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError(
+                "PRIMARY KEY(session_id, item_id) 应阻止同一会话重复作答"
+            )
+        try:
+            conn.execute(
+                "INSERT INTO exam_answers "
+                "(session_id, item_id, chosen_index, correct, answered_at) "
+                "VALUES ('es2', 'v-003', 4, 0, 1002)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("exam_answers.chosen_index CHECK 应拒绝 4")
+        try:
+            conn.execute(
+                "INSERT INTO exam_answers "
+                "(session_id, item_id, chosen_index, correct, answered_at) "
+                "VALUES ('es2', 'v-004', 0, 2, 1003)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("exam_answers.correct CHECK 应只允许 0/1")
+        try:
+            conn.execute(
+                "INSERT INTO exam_answers "
+                "(session_id, item_id, chosen_index, correct, answered_at) "
+                "VALUES ('missing', 'v-005', 0, 0, 1004)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("exam_answers 外键应拒绝不存在的 session_id")
+        conn.rollback()
+
 
 def test_baseline_schema_matches_auth_db_contract(tmp_path, monkeypatch):
     """基线迁移与 auth_db.py 的现存 schema 逐列/逐索引一致（含可空性）。"""
@@ -1162,3 +1311,25 @@ def test_discover_downgrade_to_0009_and_back(tmp_path):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
     assert revision(db) == HEAD
     assert "discover_queries" in table_names(db)
+
+
+def test_exam_downgrade_to_0011_and_back(tmp_path):
+    """0012 单独回滚：只删考试练习两表，读文章与更早的表保留；再升级可恢复。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    assert {"exam_sessions", "exam_answers"} <= table_names(db)
+
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0011_reading"), "downgrade 0011_reading"
+    )
+    assert revision(db) == "0011_reading"
+    remaining = table_names(db)
+    assert "exam_sessions" not in remaining
+    assert "exam_answers" not in remaining
+    assert "articles" in remaining
+    assert "placement_sessions" in remaining
+    assert "users" in remaining
+
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert revision(db) == HEAD
+    assert {"exam_sessions", "exam_answers"} <= table_names(db)

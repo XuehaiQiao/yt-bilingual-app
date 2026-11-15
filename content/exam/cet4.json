@@ -1,0 +1,499 @@
+{
+  "_meta": {
+    "status": "draft",
+    "notice": "草稿，待教研审校",
+    "version": "exam.cet4.v1",
+    "updated": "2026-11-15",
+    "kind": "cet4",
+    "label": "CET-4 风格练习",
+    "itemCount": 30,
+    "sessionItemCount": 10,
+    "noticeDetail": "全部为自编练习题，不含任何真题；只做题型练习，不报分、不预测成绩。",
+    "reviewNotes": [
+      "30 题 = 15 词汇 + 5 语法 + 10 阅读（3 段短文，每段 3–4 题）；每题 4 选 1。",
+      "词汇与语法题用英文句子设空，阅读题题干与选项为英文；explanation 只讲词义、固定搭配或语法规则，不编出处。",
+      "难度带为教研初分（A2–B2），审校时请按 CET-4 常见词表与语法点复核。",
+      "审校时请确认每题只有一个最佳答案，并复核干扰项是否合理。",
+      "正确项位置已按题目打散，避免形成位置规律。"
+    ]
+  },
+  "passages": [
+    {
+      "id": "p-01",
+      "title": "A Small Change in the Cafeteria",
+      "text": "Last spring, the student council at Northside College noticed that a lot of food was thrown away every day. They decided to try a simple experiment. For one month, the cafeteria served smaller portions and let students ask for more food if they were still hungry. The council also put signs near the bins reminding students to take only what they could eat. At the end of the month, food waste had fallen by nearly a third. The experiment cost very little, and most students said they did not feel hungrier. Next year, the college plans to use the money saved to buy more fruits and vegetables."
+    },
+    {
+      "id": "p-02",
+      "title": "The Four-Day Workweek",
+      "text": "Some companies in Europe have tested a four-day workweek. Employees work the same number of hours as before, but they spread them over four longer days. In one trial, workers reported feeling less stressed and more satisfied with their jobs. Managers also said that meetings became shorter because everyone had less time to waste. However, not every job fits this model. Nurses, shop assistants and bus drivers must be at work on fixed schedules, so their employers cannot simply close the workplace for an extra day. The researchers therefore warn that the four-day week is not a solution for every industry."
+    },
+    {
+      "id": "p-03",
+      "title": "Learning by Walking",
+      "text": "Many students believe that the best way to prepare for an exam is to sit at a desk for hours. However, a growing number of teachers suggest something different: reviewing notes while walking. Scientists explain that light exercise increases blood flow to the brain, which can help people remember information. In one small study, students who walked for ten minutes before a test remembered more words than students who sat quietly. The effect is not huge, and walking cannot replace careful study. But teachers say it is an easy habit to add to a daily routine, especially for students who spend most of the day sitting still."
+    }
+  ],
+  "items": [
+    {
+      "id": "v-001",
+      "type": "vocab",
+      "band": "A2",
+      "topic": "校园",
+      "prompt": "The library is a quiet place where students can ____ on their exams.",
+      "options": [
+        "refuse",
+        "borrow",
+        "focus",
+        "complain"
+      ],
+      "answerIndex": 2,
+      "explanation": "focus on 表示「集中注意力于」，与 quiet place、exams 的语境一致；refuse 是「拒绝」，borrow 是「借入」，complain 是「抱怨」，都不符合句意。"
+    },
+    {
+      "id": "v-002",
+      "type": "vocab",
+      "band": "A2",
+      "topic": "出行",
+      "prompt": "We arrived at the station early to ____ the train.",
+      "options": [
+        "miss",
+        "lose",
+        "catch",
+        "drop"
+      ],
+      "answerIndex": 2,
+      "explanation": "catch the train 是固定搭配，表示「赶上火车」；miss 是「错过」，lose 是「丢失」，drop 是「掉落」，都与 early 的目的相反或无关。"
+    },
+    {
+      "id": "v-003",
+      "type": "vocab",
+      "band": "B1",
+      "topic": "工作",
+      "prompt": "The manager asked us to ____ the report before Friday.",
+      "options": [
+        "admit",
+        "permit",
+        "commit",
+        "submit"
+      ],
+      "answerIndex": 3,
+      "explanation": "submit the report 表示「提交报告」；admit 是「承认」或「准许进入」，permit 是「允许」，commit 是「犯（错误）」或「承诺」，都不能与 report 搭配成句意。"
+    },
+    {
+      "id": "v-004",
+      "type": "vocab",
+      "band": "A2",
+      "topic": "健康",
+      "prompt": "The doctor told him to ____ more water every day.",
+      "options": [
+        "eat",
+        "raise",
+        "build",
+        "drink"
+      ],
+      "answerIndex": 3,
+      "explanation": "drink water 是「喝水」的常用搭配；eat 用于食物，raise 是「举起/提高」，build 是「建造」，都不能与 water 搭配表示喝水。"
+    },
+    {
+      "id": "v-005",
+      "type": "vocab",
+      "band": "B1",
+      "topic": "环境",
+      "prompt": "The city plans to ____ plastic bags in supermarkets next year.",
+      "options": [
+        "break",
+        "ban",
+        "build",
+        "bring"
+      ],
+      "answerIndex": 1,
+      "explanation": "ban 表示「禁止」，与 plastic bags in supermarkets 的政策语境一致；break 是「打破」，build 是「建造」，bring 是「带来」，都不符合句意。"
+    },
+    {
+      "id": "v-006",
+      "type": "vocab",
+      "band": "B1",
+      "topic": "科技",
+      "prompt": "Please ____ the file to the email before you send it.",
+      "options": [
+        "attach",
+        "attack",
+        "attend",
+        "attract"
+      ],
+      "answerIndex": 0,
+      "explanation": "attach a file to an email 是「把文件附在邮件上」的固定说法；attack 是「攻击」，attend 是「参加/出席」，attract 是「吸引」，都不符合句意。"
+    },
+    {
+      "id": "v-007",
+      "type": "vocab",
+      "band": "B2",
+      "topic": "工作",
+      "prompt": "The two companies decided to ____ a new product together.",
+      "options": [
+        "delete",
+        "defend",
+        "depend",
+        "develop"
+      ],
+      "answerIndex": 3,
+      "explanation": "develop a product 表示「开发产品」，与 together 的合作语境一致；delete 是「删除」，defend 是「辩护/保卫」，depend 是「依赖」，都不能与 new product 搭配成句意。"
+    },
+    {
+      "id": "v-008",
+      "type": "vocab",
+      "band": "B1",
+      "topic": "校园",
+      "prompt": "She was ____ to hear that she had passed the exam.",
+      "options": [
+        "delighted",
+        "annoying",
+        "boring",
+        "tiring"
+      ],
+      "answerIndex": 0,
+      "explanation": "delighted 表示「人感到高兴的」，通常描述人的感受；annoying、boring、tiring 通常描述「让人烦/无聊/累」的事物，且与 passed the exam 的好消息相反。"
+    },
+    {
+      "id": "v-009",
+      "type": "vocab",
+      "band": "B1",
+      "topic": "健康",
+      "prompt": "Regular exercise can ____ the risk of heart disease.",
+      "options": [
+        "refuse",
+        "reduce",
+        "record",
+        "review"
+      ],
+      "answerIndex": 1,
+      "explanation": "reduce the risk 表示「降低风险」，与 regular exercise 的健康语境一致；refuse 是「拒绝」，record 是「记录」，review 是「复习」，都不符合句意。"
+    },
+    {
+      "id": "v-010",
+      "type": "vocab",
+      "band": "B2",
+      "topic": "环境",
+      "prompt": "The government has introduced new rules to ____ air pollution.",
+      "options": [
+        "collect",
+        "correct",
+        "connect",
+        "control"
+      ],
+      "answerIndex": 3,
+      "explanation": "control air pollution 表示「控制空气污染」，与 new rules 的目的相符；collect 是「收集」，correct 是「纠正」，connect 是「连接」，都不符合此处搭配。"
+    },
+    {
+      "id": "v-011",
+      "type": "vocab",
+      "band": "B1",
+      "topic": "文化",
+      "prompt": "The festival is held every year to ____ the local harvest.",
+      "options": [
+        "congratulate",
+        "appreciate",
+        "celebrate",
+        "participate"
+      ],
+      "answerIndex": 2,
+      "explanation": "celebrate the harvest 表示「庆祝丰收」；congratulate 的对象通常是人，appreciate 是「欣赏/感激」，participate 后接 in 表示「参加」，都不符合此处搭配。"
+    },
+    {
+      "id": "v-012",
+      "type": "vocab",
+      "band": "A2",
+      "topic": "出行",
+      "prompt": "The travel agency offers a guided ____ of the old town.",
+      "options": [
+        "tour",
+        "turn",
+        "tool",
+        "task"
+      ],
+      "answerIndex": 0,
+      "explanation": "a guided tour 是固定搭配，表示「有导游的游览」；turn 是「转弯/轮次」，tool 是「工具」，task 是「任务」，都不能与 guided ... of the old town 搭配。"
+    },
+    {
+      "id": "v-013",
+      "type": "vocab",
+      "band": "B1",
+      "topic": "科技",
+      "prompt": "Many people use their phones to ____ their daily schedules.",
+      "options": [
+        "manufacture",
+        "manage",
+        "mention",
+        "measure"
+      ],
+      "answerIndex": 1,
+      "explanation": "manage a schedule 表示「管理日程」；manufacture 是「制造」，mention 是「提到」，measure 是「测量」，都不符合用手机安排日程的句意。"
+    },
+    {
+      "id": "v-014",
+      "type": "vocab",
+      "band": "B2",
+      "topic": "出行",
+      "prompt": "The map was so ____ that we found the museum without any difficulty.",
+      "options": [
+        "clean",
+        "clear",
+        "close",
+        "clever"
+      ],
+      "answerIndex": 1,
+      "explanation": "clear 表示「清楚的、易懂的」，可以形容 map；clean 是「干净的」，close 是「近的」，clever 是「聪明的」，通常不直接形容地图是否易懂。"
+    },
+    {
+      "id": "v-015",
+      "type": "vocab",
+      "band": "B2",
+      "topic": "工作",
+      "prompt": "After months of preparation, the team finally ____ the project on time.",
+      "options": [
+        "competed",
+        "complained",
+        "completed",
+        "compared"
+      ],
+      "answerIndex": 2,
+      "explanation": "complete the project 表示「完成项目」，与 on time 搭配自然；compete 是「竞争」，complain 是「抱怨」，compare 是「比较」，都不符合句意。"
+    },
+    {
+      "id": "g-001",
+      "type": "grammar",
+      "band": "B1",
+      "topic": "时态",
+      "prompt": "By the time we arrived, the film ____.",
+      "options": [
+        "had started",
+        "has started",
+        "starts",
+        "is starting"
+      ],
+      "answerIndex": 0,
+      "explanation": "by the time 从句用一般过去时 arrived，主句动作发生在「到达」之前，因此用过去完成时 had started。"
+    },
+    {
+      "id": "g-002",
+      "type": "grammar",
+      "band": "B1",
+      "topic": "非谓语",
+      "prompt": "The teacher asked us ____ a short essay about our hometown.",
+      "options": [
+        "to write",
+        "writing",
+        "write",
+        "wrote"
+      ],
+      "answerIndex": 0,
+      "explanation": "ask somebody to do something 是固定结构，因此用不定式 to write；writing、write、wrote 都不能直接接在 asked us 之后。"
+    },
+    {
+      "id": "g-003",
+      "type": "grammar",
+      "band": "B2",
+      "topic": "条件句",
+      "prompt": "If I ____ enough time, I would join the volunteer program.",
+      "options": [
+        "had",
+        "have",
+        "will have",
+        "am having"
+      ],
+      "answerIndex": 0,
+      "explanation": "主句用 would + 动词原形，表示与现在事实相反的假设，if 从句应用一般过去时 had；have、will have、am having 都不符合这一虚拟条件句结构。"
+    },
+    {
+      "id": "g-004",
+      "type": "grammar",
+      "band": "B1",
+      "topic": "被动语态",
+      "prompt": "The new bridge ____ by the end of next year.",
+      "options": [
+        "will complete",
+        "will be completed",
+        "completes",
+        "is completing"
+      ],
+      "answerIndex": 1,
+      "explanation": "bridge 是「被完成」的对象，且时间状语是 by the end of next year，因此用将来时的被动语态 will be completed。"
+    },
+    {
+      "id": "g-005",
+      "type": "grammar",
+      "band": "B2",
+      "topic": "定语从句",
+      "prompt": "The book ____ I borrowed from the library was very useful.",
+      "options": [
+        "what",
+        "whose",
+        "whom",
+        "that"
+      ],
+      "answerIndex": 3,
+      "explanation": "先行词 the book 在定语从句中作 borrowed 的宾语，可以用 that（或 which）引导；what 不能引导定语从句，whose 表示所属，whom 只指人。"
+    },
+    {
+      "id": "r-001",
+      "type": "reading",
+      "band": "B1",
+      "topic": "校园",
+      "passageId": "p-01",
+      "prompt": "What problem did the student council notice?",
+      "options": [
+        "Students were spending too much money.",
+        "A lot of food was being wasted.",
+        "The cafeteria was too small.",
+        "Students were not eating vegetables."
+      ],
+      "answerIndex": 1,
+      "explanation": "第一句提到 a lot of food was thrown away every day，说明学生委员会注意到的是食物浪费问题；其余选项文中没有依据。"
+    },
+    {
+      "id": "r-002",
+      "type": "reading",
+      "band": "B1",
+      "topic": "校园",
+      "passageId": "p-01",
+      "prompt": "What did the cafeteria do during the experiment?",
+      "options": [
+        "It offered smaller portions and allowed students to ask for more.",
+        "It stopped serving hot food.",
+        "It gave every student the same large portion.",
+        "It closed for one month."
+      ],
+      "answerIndex": 0,
+      "explanation": "文中说 cafeteria served smaller portions and let students ask for more food，即先给较小份量、不够可以再加；其余选项与原文不符。"
+    },
+    {
+      "id": "r-003",
+      "type": "reading",
+      "band": "B1",
+      "topic": "校园",
+      "passageId": "p-01",
+      "prompt": "What was the result of the experiment?",
+      "options": [
+        "More students ate in the cafeteria.",
+        "The cost of food doubled.",
+        "Food waste dropped by about 30%.",
+        "Students complained about feeling hungry."
+      ],
+      "answerIndex": 2,
+      "explanation": "文中说 food waste had fallen by nearly a third，nearly a third 即接近三分之一，对应约 30%；其余选项文中都没有提到。"
+    },
+    {
+      "id": "r-004",
+      "type": "reading",
+      "band": "B1",
+      "topic": "校园",
+      "passageId": "p-01",
+      "prompt": "What does the college plan to do with the money saved?",
+      "options": [
+        "Build a new dining hall.",
+        "Reduce the price of meals.",
+        "Buy more fruits and vegetables.",
+        "Hire more cafeteria workers."
+      ],
+      "answerIndex": 2,
+      "explanation": "最后一句说 use the money saved to buy more fruits and vegetables，因此选「买更多水果和蔬菜」；其余选项文中没有依据。"
+    },
+    {
+      "id": "r-005",
+      "type": "reading",
+      "band": "B2",
+      "topic": "工作",
+      "passageId": "p-02",
+      "prompt": "How do employees in the four-day workweek trial keep the same number of hours?",
+      "options": [
+        "They work on weekends.",
+        "They take work home.",
+        "They skip lunch every day.",
+        "They work longer days."
+      ],
+      "answerIndex": 3,
+      "explanation": "文中说 employees work the same number of hours as before, but they spread them over four longer days，即把同样的工时分配到四个更长的工作日；没有提到周末加班、带工作回家或不吃午饭。"
+    },
+    {
+      "id": "r-006",
+      "type": "reading",
+      "band": "B2",
+      "topic": "工作",
+      "passageId": "p-02",
+      "prompt": "What did managers notice during the trial?",
+      "options": [
+        "Employees arrived late.",
+        "Customers were unhappy.",
+        "More people left their jobs.",
+        "Meetings became shorter."
+      ],
+      "answerIndex": 3,
+      "explanation": "文中说 meetings became shorter because everyone had less time to waste；其余选项在文中都没有提到。"
+    },
+    {
+      "id": "r-007",
+      "type": "reading",
+      "band": "B2",
+      "topic": "工作",
+      "passageId": "p-02",
+      "prompt": "Why does the four-day week not suit every job?",
+      "options": [
+        "Most workers prefer five days.",
+        "Companies cannot afford to pay the same wages.",
+        "Some jobs require people to be present on fixed schedules.",
+        "Employees cannot work long hours."
+      ],
+      "answerIndex": 2,
+      "explanation": "文中以护士、店员和公交司机为例，说他们 must be at work on fixed schedules，说明有些岗位需要按固定时间表在岗；工资、员工偏好等并不是文中给出的原因。"
+    },
+    {
+      "id": "r-008",
+      "type": "reading",
+      "band": "B1",
+      "topic": "学习",
+      "passageId": "p-03",
+      "prompt": "What do some teachers suggest students do?",
+      "options": [
+        "Study only in the morning.",
+        "Review notes while walking.",
+        "Take longer exams.",
+        "Stop exercising before tests."
+      ],
+      "answerIndex": 1,
+      "explanation": "文中说 a growing number of teachers suggest reviewing notes while walking，即建议边走边复习笔记；其余选项与原文不符。"
+    },
+    {
+      "id": "r-009",
+      "type": "reading",
+      "band": "B1",
+      "topic": "健康",
+      "passageId": "p-03",
+      "prompt": "According to the passage, why can light exercise help memory?",
+      "options": [
+        "It increases blood flow to the brain.",
+        "It makes students less tired.",
+        "It helps students sleep better.",
+        "It makes tests easier."
+      ],
+      "answerIndex": 0,
+      "explanation": "文中明确说 light exercise increases blood flow to the brain, which can help people remember information；其余选项都不是文中给出的原因。"
+    },
+    {
+      "id": "r-010",
+      "type": "reading",
+      "band": "B1",
+      "topic": "学习",
+      "passageId": "p-03",
+      "prompt": "What is the writer's attitude toward walking before study?",
+      "options": [
+        "It is the only way to remember new words.",
+        "It is useful but cannot replace careful study.",
+        "It is too difficult for most students.",
+        "It is not supported by any research."
+      ],
+      "answerIndex": 1,
+      "explanation": "文中说 the effect is not huge, and walking cannot replace careful study，但仍认为它是 easy habit，说明作者认为有帮助但不能替代认真复习；其余选项都夸大了或歪曲了作者态度。"
+    }
+  ]
+}

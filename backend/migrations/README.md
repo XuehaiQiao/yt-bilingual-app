@@ -25,14 +25,15 @@ venv/bin/alembic stamp head              # 已是最新的库：只写版本号�
 | `0009_placement` | 能力定位测三表：`placement_sessions`（`id` TEXT PK、`user_id` 归属键含游客 `guest:<sha256>`、`status` CHECK、`started_at/submitted_at/duration_ms/score/cefr/confidence/breakdown`，`(user_id,started_at)` 索引 + 部分唯一索引 `ux_placement_sessions_active` 保证同一用户最多一个未完成会话）、`placement_answers`（FK → sessions CASCADE、`item_type`/`chosen_index=-1..3`/`correct`/`difficulty_band` CHECK、`UNIQUE(session_id,item_id)`）、`user_profiles`（每归属键一行：区间/词汇量估计/阅读带/置信度/伪词可疑度/来源）；见 [backend/README「能力定位测与能力画像」](../README.md#能力定位测与能力画像m4-后端) 与 [specs/016](../../specs/016-placement/spec.md) |
 | `0010_discover` | 内容发现缓存/审计表 `discover_queries`：`id` INTEGER PK、可空 `user_id`、`query_hash`、`query`、`target_lang`（默认 `zh-CN`）、`result`（响应 JSON 文本，不含字幕正文）、`created_at`/`expires_at`（毫秒 UTC），`UNIQUE(query_hash,target_lang)` 24h 缓存键 + `ix_discover_queries_expires`；见 [backend/README「内容发现」](../README.md#内容发现v1-后端) 与 [specs/017](../../specs/017-discover/spec.md) |
 | `0011_reading` | 读文章四表：`articles`（用户文章，可空 `source_url` + `ix_articles_user_created` + 部分唯一索引 `ux_articles_user_url` 保证同用户同 URL 一篇）、`article_paragraphs`（PK `article_id,idx`，FK CASCADE）、`article_translations`（PK `article_id,idx,target_lang`，`model` 可空，失败段 `text='[未翻译]'`）、`article_progress`（PK `user_id,article_id`，`paragraph_idx` CHECK ≥0）；见 [backend/README「读文章」](../README.md#读文章v1-后端url正文导入--逐段翻译--进度) 与 [specs/019](../../specs/019-reading/spec.md) |
+| `0012_exam` | 考试练习两表：`exam_sessions`（`id` TEXT PK、`user_id`、`exam_type`、`status` CHECK `in_progress`/`submitted`、`item_ids` 卷面 JSON、`started_at/submitted_at/duration_ms`，`(user_id,started_at)`/`(user_id,submitted_at)` 索引 + 部分唯一索引 `ux_exam_sessions_active` 保证同一用户最多一个未提交会话）、`exam_answers`（PK `session_id,item_id`、`chosen_index` 0–3 CHECK、`correct` 0/1 CHECK、`answered_at`，FK → sessions CASCADE；只存已作答的题）；不存题库/分数，见 [backend/README「考试练习」](../README.md#考试练习v2-后端) 与 [specs/022](../../specs/022-exam-practice/spec.md) |
 
 ## 约定
 
-- **迁移 id 递增**：新迁移用 `--rev-id 0011_xxx`，文件名模板是 `%(rev)s`（Alembic 自动补 `.py`）。
+- **迁移 id 递增**：新迁移用 `--rev-id 0013_xxx`，文件名模板是 `%(rev)s`（Alembic 自动补 `.py`）。
 - **基线幂等**：`0001` / `0002` 都用 inspector 判断表/索引是否已存在，所以对已有
   `users`/`sessions` 的旧库直接 `alembic upgrade head` 也安全（不重建、不动数据）。
-- **不要对旧库直接 `stamp head`**：会把 `0002`–`0011` 也标记成已应用，`learning_events`、
-  `ai_usage` / `ai_quota` / `target_lang` 列、`jobs` 表、复习三表、理解题三表、观看事件/周报快照、定位测三表、发现缓存表、读文章四表永远不会被创建。旧库的正确姿势是 `stamp 0001_baseline` → `upgrade head`。
+- **不要对旧库直接 `stamp head`**：会把 `0002`–`0012` 也标记成已应用，`learning_events`、
+  `ai_usage` / `ai_quota` / `target_lang` 列、`jobs` 表、复习三表、理解题三表、观看事件/周报快照、定位测三表、发现缓存表、读文章四表、考试练习两表永远不会被创建。旧库的正确姿势是 `stamp 0001_baseline` → `upgrade head`。
 - **`downgrade` 会 DROP 表**（`0001` 的 down 会删 `users`/`sessions`），只用于空库/
   测试回滚，别在真实库上跑。
 - **`learning_events` 是 append-only**：迁移只建表和索引，不建触发器；保留期硬删

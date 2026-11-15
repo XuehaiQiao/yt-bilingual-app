@@ -31,6 +31,13 @@ PLACEMENT_DIR = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "placement"),
 )
 
+# 考试练习题库（V2，见 exam.py / specs/022）：content/exam/cet4.json 只读静态
+# 文件，随仓库分发；测试可指向 tmp 副本验证题库校验/503。
+EXAM_DIR = os.environ.get(
+    "EXAM_DIR",
+    os.path.join(_BACKEND_DIR, "..", "content", "exam"),
+)
+
 # 人工精选推荐池（V1 规则推荐，见 recommend.py / specs/018）：只读静态文件，
 # 随仓库分发；测试可指向 tmp 副本验证内容闸门与回退。
 CURATED_CONTENT_PATH = os.environ.get(

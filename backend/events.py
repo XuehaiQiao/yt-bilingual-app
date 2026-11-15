@@ -38,6 +38,8 @@ KNOWN_EVENT_TYPES = (
     "block_visible",
     "quiz_answer",
     "word_review",
+    "exam_start",
+    "exam_submit",
 )
 
 # 未配置 EVENTS_PSEUDONYM_SALT 时的开发默认盐：能让本地与测试跑起来，

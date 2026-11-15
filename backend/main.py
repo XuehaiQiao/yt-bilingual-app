@@ -17,6 +17,7 @@
 - routes_quiz.py     理解题出题 / 作答 / 结果（M3）
 - routes_events.py   学习事件上报 / 周报（M5）
 - routes_placement.py 能力定位测 / 能力画像（M4）
+- routes_exam.py     考试练习：题型 / 抽题 / 提交 / 历史（V2）
 - discover.py        内容发现：意图改写 / 搜索 / 字幕探测 / 重排 / 24h 缓存（V1）
 - routes_discover.py POST /api/discover（需登录）
 - recommend.py       规则推荐：画像区间 + 已看历史 + 人工精选池（V1）
@@ -25,6 +26,7 @@
 - routes_admin.py    后台止血台：只读聚合用户/花费/任务/健康（需管理员，M1 ⑥）
 - reports.py         观看事件 + 周报 SQL 聚合（M5）
 - placement.py       定位测题库抽样 / 加权评分 / CEFR 区间 / 画像（M4）
+- exam.py            考试题库校验 / 抽题 / 评分 / 历史（V2）
 - observability.py   结构化访问日志 / request_id / 只读 /healthz
 
 请求链路（从外到内）：CORS → 访问日志（request_id）→ API_AUTH_KEY → 身份
@@ -62,6 +64,7 @@ import routes_blog
 import routes_content
 import routes_discover
 import routes_events
+import routes_exam
 import routes_placement
 import routes_quiz
 import routes_reading
@@ -194,6 +197,7 @@ app.include_router(routes_review.router)
 app.include_router(routes_quiz.router)
 app.include_router(routes_events.router)
 app.include_router(routes_placement.router)
+app.include_router(routes_exam.router)
 app.include_router(routes_discover.router)
 app.include_router(routes_reading.router)
 app.include_router(routes_recommend.router)
