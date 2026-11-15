@@ -1,0 +1,39 @@
+# =============================================================================
+# 语途（LinguaTrek）Caddy 配置 —— Docker 方式（宿主机 TLS 终止）
+#
+# Docker 镜像内的 uvicorn 已经同时服务前端静态文件与 /api（deploy/serve.py），
+# 所以宿主机 Caddy 只做两件事：自动 HTTPS + 反代到 127.0.0.1:8000。
+# 不要在这里再配 root/try_files（容器里已经做过 SPA fallback）。
+#
+# 安装：
+#   sudo cp deploy/Caddyfile.proxy /etc/caddy/Caddyfile
+#   sudoedit /etc/caddy/Caddyfile        # 改 ln.example.com 为你的域名
+#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# 安全头与 deploy/Caddyfile 保持一致；改一处时请同步另一份。
+# =============================================================================
+
+ln.example.com {
+    encode zstd gzip
+
+    header {
+        Strict-Transport-Security "max-age=15552000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://s.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.ytimg.com https://*.ytimg.com https://*.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self'; font-src 'self' data:; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+        -Server
+    }
+
+    reverse_proxy 127.0.0.1:8000 {
+        # SSE：不缓冲，长超时。后端心跳 15s，见 backend/config.py。
+        flush_interval -1
+        transport http {
+            read_timeout 24h
+            response_header_timeout 24h
+        }
+    }
+
+    log
+}

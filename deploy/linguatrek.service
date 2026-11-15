@@ -1,0 +1,72 @@
+# =============================================================================
+# 语途（LinguaTrek）systemd 服务 —— VPS 裸机方式
+#
+# 安装：
+#   sudo cp deploy/linguatrek.service /etc/systemd/system/linguatrek.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now linguatrek
+#   journalctl -u linguatrek -f
+#
+# 路径约定（与 docs/部署指南.md 一致）：
+#   /srv/ln/current -> /srv/ln/releases/<stamp>    发布目录（只读）
+#   /srv/ln/releases/<stamp>/venv                    Python 依赖（随 release 回滚）
+#   /srv/ln/data/{app.db,users,guests,history}      持久化数据（唯一可写业务目录）
+#   /etc/linguatrek/env                             环境变量（chmod 600，属主 ln）
+#
+# 单 worker 是硬约束：SQLite 单写进程 + 进程内限流/缓存（计划书 C13）。
+# 改完先 `sudo systemd-analyze verify /etc/systemd/system/linguatrek.service`。
+# =============================================================================
+
+[Unit]
+Description=LinguaTrek (语途) API + static
+After=network-online.target
+Wants=network-online.target
+# 防止配置错误导致无限重启刷日志（systemd >= 230）。
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=ln
+Group=ln
+WorkingDirectory=/srv/ln/current/backend
+EnvironmentFile=/etc/linguatrek/env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=HOME=/srv/ln/data/home
+
+# uvicorn 只监听本机，公网入口是 Caddy；--proxy-headers 让登录限流拿到真实 IP。
+# 生产禁用 --reload。--timeout-keep-alive 75 与 Caddy 反代配合。
+ExecStart=/srv/ln/current/venv/bin/uvicorn main:app \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --workers 1 \
+    --proxy-headers \
+    --forwarded-allow-ips=127.0.0.1 \
+    --timeout-keep-alive 75
+
+Restart=always
+RestartSec=3
+TimeoutStopSec=30
+KillSignal=SIGTERM
+SyslogIdentifier=linguatrek
+
+# ---- 沙箱（最小权限） ----
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# 只允许写数据、字幕和临时目录；发布目录 /srv/ln/current 保持只读。
+ReadWritePaths=/srv/ln/data /srv/ln/subtitles /srv/ln/backups
+UMask=0077
+LimitNOFILE=65535
+RemoveIPC=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target

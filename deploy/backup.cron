@@ -1,0 +1,36 @@
+# =============================================================================
+# 语途（LinguaTrek）每日备份 —— cron（VPS 裸机 / systemd 方式）
+#
+# 脚本：scripts/backup.sh（WAL 安全的 app.db 快照 + data/users + 配置键名，
+#       生成 linguatrek-backup-YYYYmmdd-HHMMSS.tar.gz，默认保留最近 7 份）。
+# 安装：
+#   sudo mkdir -p /srv/ln/backups && sudo chown ln:ln /srv/ln/backups
+#   sudo install -m 644 deploy/backup.cron /etc/cron.d/linguatrek-backup
+#   sudo -u ln /srv/ln/current/scripts/backup.sh --keep 7   # 先手工跑一次
+#   sudo tail -f /srv/ln/backups/backup.log
+#
+# 注意：脚本只读 .env 的“键名”用于清单，不复制值/密钥；ENV_FILE 指向
+# systemd 的 EnvironmentFile，便于恢复时知道要重新配哪些键。
+# SSH 用户/路径按实际修改；本文件由 root 安装、以 ln 用户运行。
+# =============================================================================
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# 每天 03:17（服务器本地时区；建议 os 时区统一 Asia/Shanghai，见部署指南）
+17 3 * * * ln cd /srv/ln/current && DATA_DIR=/srv/ln/data AUTH_DB_PATH=/srv/ln/data/app.db USER_DATA_DIR=/srv/ln/data/users BACKUP_ROOT=/srv/ln/backups ENV_FILE=/etc/linguatrek/env /srv/ln/current/scripts/backup.sh --keep 7 >> /srv/ln/backups/backup.log 2>&1
+
+# -----------------------------------------------------------------------------
+# 离机上传示例（rclone）：每日副本推到 R2/B2/S3。先以 ln 用户配置远端：
+#   sudo -u ln rclone config          # 例：remote 名为 r2，bucket 名为 linguatrek-backup
+# 然后取消下面两行注释，并确保 /srv/ln/backups/rclone.log 可写：
+#
+# 25 3 * * * ln rclone copy /srv/ln/backups r2:linguatrek-backup/daily --include "linguatrek-backup-*.tar.gz" --checksum --transfers 2 >> /srv/ln/backups/rclone.log 2>&1
+# 15 4 1 * * ln rclone delete r2:linguatrek-backup/daily --min-age 30d >> /srv/ln/backups/rclone.log 2>&1
+#
+# 更稳妥：对象存储侧再配一条生命周期规则（保留 30–90 天 + 版本控制），
+# 不要只依赖本机定时任务。恢复演练命令见 docs/部署指南.md「备份与恢复」。
+#
+# Docker 方式不用本文件：数据在命名卷里，用 docker compose run 调用同一脚本
+# （命令见部署指南「方式 A」的备份小节）。
+# =============================================================================

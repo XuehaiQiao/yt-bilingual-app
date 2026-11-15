@@ -122,6 +122,14 @@ Open **http://localhost:5173**, paste a YouTube link, set your level on the axis
 | `VITE_API_BASE` / `VITE_API_KEY` | frontend env | Point the web app at a remote backend / send its API key. |
 | `HISTORY_DIR` / `SUBTITLES_DIR` | env | Relocate the JSON cache / local-show subtitles. |
 
+### Deployment
+
+The repository ships a multi-stage [`Dockerfile`](Dockerfile), [`docker-compose.yml`](docker-compose.yml), and Caddy / systemd / backup files under [`deploy/`](deploy/). Step-by-step setup (Chinese) for either Docker or a bare-metal VPS — required env vars, first migration, `/healthz` verification, backup & restore drill, and rollback:
+
+**[docs/部署指南.md](docs/部署指南.md)** → deployment guide
+
+> **Hard rules:** never commit `.env` / `data/`; never set `API_AUTH_KEY` or `VITE_API_KEY` for a browser deployment; set `COOKIE_SECURE=1` behind HTTPS.
+
 <br/>
 
 ## 🗺 Roadmap

@@ -1,0 +1,51 @@
+# Docker 构建上下文黑名单。
+# 注意：.gitignore 不作用于 docker build，没有本文件时 `COPY .` 会把
+# .env（真密钥）、data/（用户数据库）、history/、subtitles/ 打进镜像层。
+# 部署配置与文档：docs/部署指南.md
+
+# 版本库与 CI
+.git
+.gitignore
+.github
+
+# 密钥：绝不进镜像（运行时用 docker run --env-file / compose env_file 注入）
+.env
+.env.*
+*.pem
+
+# 运行时数据与个人内容
+data/
+history/
+subtitles/
+backups/
+
+# Python
+backend/venv/
+backend/.venv/
+backend/tests/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+.pytest_cache/
+
+# Node / 前端构建产物（镜像里由 node 阶段重新构建）
+frontend/node_modules/
+frontend/dist/
+node_modules/
+**/node_modules/
+
+# 与本镜像无关的目录（保持构建上下文小且不含隐私）
+docs/
+specs/
+mobile/
+scripts/
+.specify/
+.claude/
+.idea/
+.vscode/
+.vscode-server/
+
+# 杂项
+.DS_Store
+*.zip
+*.log

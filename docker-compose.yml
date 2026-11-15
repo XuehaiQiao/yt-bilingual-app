@@ -1,0 +1,57 @@
+# =============================================================================
+# 语途（LinguaTrek）Docker Compose —— 单容器（SQLite，无数据库容器）
+#
+# 用法（完整步骤见 docs/部署指南.md「方式 A：Docker」）：
+#   1) cp deploy/linguatrek.env.example .env && chmod 600 .env   # 填入生产值
+#   2) docker compose build                                       # 读 .env 里的 VITE_API_BASE
+#   3) docker compose run --rm app alembic upgrade head            # 首次迁移
+#   4) docker compose up -d
+#
+# 端口只发布到宿主机 127.0.0.1:8000；公网 TLS 由宿主机上的 Caddy 负责
+# （见 deploy/Caddyfile.proxy），不要把 8000 直接暴露到公网。
+# =============================================================================
+
+name: linguatrek
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # 构建期写进前端 bundle；生产必须改成 https://你的域名。
+        # Compose 会自动读取仓库根 .env，所以改 .env 里的 VITE_API_BASE 即可。
+        VITE_API_BASE: ${VITE_API_BASE:-http://127.0.0.1:8000}
+    image: linguatrek:${IMAGE_TAG:-latest}
+
+    # SQLite + 进程内限流/缓存：只能 1 个副本，不要 scale。
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+    # 密钥/demo 配置通过 env 文件注入，不进镜像（.dockerignore 已排除 .env*）。
+    env_file:
+      - .env
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    # 唯一持久化位置：app.db（用户/会话/迁移）+ users/ + guests/ + history/。
+    # 备份/恢复命令会复用这个卷，见部署指南。
+    volumes:
+      - linguatrek-data:/data
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  linguatrek-data:

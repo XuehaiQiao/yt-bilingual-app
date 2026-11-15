@@ -1,0 +1,80 @@
+# =============================================================================
+# 语途（LinguaTrek）Caddy 配置 —— VPS 裸机方式（systemd + Caddy）
+#
+# 架构：Caddy 终止 TLS，同域服务 frontend/dist，/api 反代 uvicorn 127.0.0.1:8000。
+# 安装：
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudoedit /etc/caddy/Caddyfile        # 改 ln.example.com 为你的域名
+#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# HTTPS：DNS 的 A/AAAA 记录指向本机、80/443 放行后，Caddy 会自动向
+# Let's Encrypt 申请并续期证书（无需 certbot）。若用 Cloudflare，首次签发建议
+# 先设为 DNS only（灰云），拿到证书后再决定是否开橙云（其默认 100s 空闲超时会
+# 影响 SSE，必须确认后端 15s 心跳已生效）。
+#
+# Docker 方式不要用本文件：容器已内置静态服务，宿主机 Caddy 只需反代，
+# 见 deploy/Caddyfile.proxy。
+# =============================================================================
+
+# 可选：ACME 账号邮箱（证书到期提醒）。取消注释并改成你的邮箱。
+# {
+#     email ops@example.com
+# }
+
+ln.example.com {
+    encode zstd gzip
+
+    root * /srv/ln/current/frontend/dist
+
+    # 安全头（基础集）。CSP 按当前前端依赖编写：
+    # - react-youtube 需要从 www.youtube.com / s.ytimg.com 加载 iframe API；
+    # - framer-motion 使用内联样式，style-src 必须允许 'unsafe-inline'；
+    # - PWA service worker 需要 worker-src 'self'。
+    # 建议先用 Content-Security-Policy-Report-Only 观察一周再强制（计划书 C12）。
+    header {
+        Strict-Transport-Security "max-age=15552000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://s.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.ytimg.com https://*.ytimg.com https://*.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self'; font-src 'self' data:; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+        -Server
+    }
+
+    # 带内容哈希的构建产物可以长缓存；入口 HTML 与 SW 必须每次回源。
+    @assets path /assets/*
+    header @assets Cache-Control "public, max-age=31536000, immutable"
+
+    @entry path / /index.html /sw.js /manifest.webmanifest
+    header @entry Cache-Control "no-cache"
+
+    # 健康检查也走后端（它不在 /api 下）。
+    handle /healthz {
+        reverse_proxy 127.0.0.1:8000
+    }
+    handle /health {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    # SSE 关键：关闭反向代理缓冲（flush_interval -1），读写超时拉长到 24h。
+    # 后端每 15s 发一行 `: ping` 心跳；前端单流上限由后端控制。
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8000 {
+            flush_interval -1
+            transport http {
+                read_timeout 24h
+                response_header_timeout 24h
+            }
+        }
+    }
+
+    # SPA fallback：深链刷新返回 index.html。
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+
+    # 访问日志默认写 stdout，由 journald 收集（journalctl -u caddy）。
+    # 若要写文件，加 output file /var/log/caddy/linguatrek.log { roll_size 20MiB roll_keep 10 }。
+    log
+}

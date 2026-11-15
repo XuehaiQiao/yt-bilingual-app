@@ -122,6 +122,14 @@ cd frontend && npm run dev
 | `VITE_API_BASE` / `VITE_API_KEY` | 前端环境 | 让 Web 端指向远程后端 / 发送其 API key。 |
 | `HISTORY_DIR` / `SUBTITLES_DIR` | 环境变量 | 自定义 JSON 缓存 / 本地剧集字幕目录。 |
 
+### 部署
+
+仓库内置多阶段 [`Dockerfile`](Dockerfile)、[`docker-compose.yml`](docker-compose.yml)，以及 Caddy / systemd / 备份配置（[`deploy/`](deploy/)）。从买 VPS、配域名到上线的逐步命令（Docker 与 VPS 裸机两种方式、必填 env、首次迁移、`/healthz` 验证、备份恢复演练、回滚）见：
+
+**[docs/部署指南.md](docs/部署指南.md)** → 部署指南
+
+> **硬规则**：不要提交 `.env` / `data/`；浏览器部署不要设 `API_AUTH_KEY` 与 `VITE_API_KEY`；HTTPS 下 `COOKIE_SECURE=1`。
+
 <br/>
 
 ## 🗺 路线图
