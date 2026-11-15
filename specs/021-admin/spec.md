@@ -10,6 +10,12 @@
 > **出事时 60 秒内看清「用户 / 花费 / 任务 / 错误」在哪**。因此所有端点
 > **只读**：不提供删除、封号、退款、开关切换等写操作（那些是后续 M5 的
 > 4 个急救动作，本规格明确不做）。
+>
+> **2026-11-16 更新**：用户需求 1–3 的运营写操作已由
+> [specs/023](../023-user-profile/spec.md) 以**新增端点**的方式落地（调余额 /
+> 封禁解封 / 维护模式 / 公告），本规格的「只读」边界只适用于
+> `stats` / `users` / `usage` / `health` 四个读端点；`GET /api/admin/users`
+> 的字段由 023 扩展（新增 username/credits/status/userId）。
 
 ---
 
@@ -46,7 +52,7 @@
 | 配置 | `ADMIN_EMAILS` 环境变量，逗号分隔；`strip().lower()` 后匹配 |
 | 默认 | 空字符串 = 无管理员；所有 `/api/admin/*` 对任何登录用户都 403 |
 | 判断 | `config.is_admin_email(email)`；只读环境变量，不改库、不写 Cookie |
-| `/api/auth/me` | 登录时 `200 {"user":{"id","email"},"isAdmin":true|false}`；游客保持 `{"user":null,"guest":true}` |
+| `/api/auth/me` | 登录时 `200 {"user":{…},"isAdmin":true|false}`；游客保持 `{"user":null,"guest":true}`（`user` 字段自 023 起增加 username/credits/status，`isAdmin` 仍只在顶层） |
 | 登录/注册 | 响应的 `{"user":{...}}` 契约不变（不塞 `isAdmin`）；前端登录后会补拉一次 `/api/auth/me` 以刷新入口 |
 
 > 为什么用邮箱而不是 user_id：线上排障时运维只知道「给谁开了管理员」，

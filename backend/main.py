@@ -5,6 +5,8 @@
 - auth_db.py         用户/会话 SQLite 存储 + Argon2 密码哈希
 - events.py          学习事件日志（append-only；表由 Alembic 迁移创建）
 - routes_auth.py     注册 / 登录 / 登出 / 当前用户
+- account.py         用户名 / 余额调账 / 用户页摘要 / app_settings + 维护模式
+- routes_account.py  PATCH /api/user/profile、GET /api/user/summary（需登录）
 - auth_lockout.py    登录失败锁定（账号 + IP，进程内存）
 - storage.py         当前用户的数据根目录（ContextVar，多用户隔离 + 按目标语言分目录）
 - languages.py       目标语言注册表（targetLang 校验/NFC/prompt 语言名）
@@ -52,12 +54,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+import account
 import auth_db
 import config
 import events
 import guest
 import observability
 import ratelimit
+import routes_account
 import routes_admin
 import routes_auth
 import routes_blog
@@ -100,6 +104,23 @@ def _is_public_api_path(path: str) -> bool:
     return path == "/api/blog" or path.startswith("/api/blog/")
 
 
+# 维护模式白名单：认证（让管理员/用户能登录）、后台（管理员处置）、健康探针
+# 不受影响；其余 /api/* 一律 503（管理员本人不受影响，见中间件）。
+_MAINTENANCE_EXEMPT_PREFIXES = ("/api/auth/", "/api/admin/")
+_MAINTENANCE_EXEMPT_EXACT = {
+    "/api/auth",
+    "/api/admin",
+    "/health",
+    "/healthz",
+}
+
+
+def _is_maintenance_exempt(path: str) -> bool:
+    if path in _MAINTENANCE_EXEMPT_EXACT:
+        return True
+    return any(path.startswith(prefix) for prefix in _MAINTENANCE_EXEMPT_PREFIXES)
+
+
 @app.middleware("http")
 async def resolve_identity(request, call_next):
     """解析会话/游客 Cookie → request.state + ContextVar；游客首次访问下发 Cookie。
@@ -108,7 +129,11 @@ async def resolve_identity(request, call_next):
     - 游客 Cookie 只做形状校验，服务端用 sha256(token) 当目录名；非法/缺失时
       重新下发，**绝不把 Cookie 原文当路径**；
     - `/api/blog/*` 公开只读：跳过游客签发（不往公开页面塞身份 Cookie）；
-    - 其余 `/api/*` 不再 401：游客可以估价、看视频、查词，但限速更紧。
+    - 其余 `/api/*` 不再 401：游客可以估价、看视频、查词，但限速更紧；
+    - 账号状态：``users.status='banned'`` 的旧会话在**下一次 /api 请求**直接
+      403「账号已被停用」（不删会话，解封后原 Cookie 恢复）；
+    - 维护模式：``app_settings.maintenance_mode=1`` 时非管理员访问非白名单
+      ``/api/*`` 返回 503；管理员不受影响（可在后台关闭维护）。
     """
     if request.method == "OPTIONS":  # 让 CORS 预检通过
         return await call_next(request)
@@ -119,12 +144,33 @@ async def resolve_identity(request, call_next):
         user = auth_db.get_session(token)
     request.state.user = user
 
+    path = request.url.path
+    if user and (user.get("status") or account.STATUS_ACTIVE) == account.STATUS_BANNED:
+        if _is_api_path(path):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "账号已被停用"},
+                headers={"Cache-Control": "no-store"},
+            )
+
+    if (
+        _is_api_path(path)
+        and not _is_maintenance_exempt(path)
+        and not (user and config.is_admin_email(user.get("email")))
+        and account.maintenance_enabled()
+    ):
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "系统维护中，请稍后重试。"},
+            headers={"Cache-Control": "no-store"},
+        )
+
     guest_hash = None
     issued_guest_token = None
     if (
         user is None
-        and _is_api_path(request.url.path)
-        and not _is_public_api_path(request.url.path)
+        and _is_api_path(path)
+        and not _is_public_api_path(path)
     ):
         candidate = request.cookies.get(guest.COOKIE_NAME)
         if guest.is_valid_token(candidate):
@@ -189,6 +235,7 @@ async def structured_access_log(request, call_next):
 
 
 app.include_router(routes_auth.router)
+app.include_router(routes_account.router)
 app.include_router(routes_admin.router)
 app.include_router(routes_videos.router)
 app.include_router(routes_content.router)

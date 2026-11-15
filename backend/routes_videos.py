@@ -194,6 +194,19 @@ def _prefetch_take(
     return entry
 
 
+def _stamp_subtitle_source(metadata: dict, transcript) -> dict:
+    """把字幕来源写进 metadata（随缓存 JSON / 流式 meta 事件到前端）。
+
+    只对新的 ``EnglishTranscript`` 生效：旧缓存/测试桩是普通 list，没有来源
+    字段时保持 metadata 原样，不伪造 ``auto_generated``。
+    """
+    source = getattr(transcript, "subtitle_source", None)
+    if source:
+        metadata["subtitle_source"] = source
+        metadata["auto_generated"] = bool(getattr(transcript, "auto_generated", False))
+    return metadata
+
+
 @router.get("/api/estimate-cost")
 async def estimate_cost(url: str, targetLang: str | None = None):
     lang = _target_lang_or_400(targetLang)
@@ -214,6 +227,7 @@ async def estimate_cost(url: str, targetLang: str | None = None):
 
     # Fetch English transcript to calculate length
     transcript = await asyncio.to_thread(fetch_english_transcript, video_id)
+    metadata = _stamp_subtitle_source(metadata, transcript)
 
     # Reuse this fetch when the user confirms processing right after
     _prefetch_store(video_id, metadata, transcript)
@@ -318,6 +332,7 @@ async def process_video(request: VideoRequest):
 
     # Fetch English transcript
     transcript = await asyncio.to_thread(fetch_english_transcript, video_id)
+    metadata = _stamp_subtitle_source(metadata, transcript)
 
     # Group transcript snippets into sentences/blocks
     blocks = group_transcript_blocks(transcript)
@@ -867,6 +882,7 @@ async def _fresh_stream_gen(
                 "upload_date": datetime.datetime.now().strftime("%Y%m%d"),
                 "thumbnail": ""
             }
+    metadata = _stamp_subtitle_source(metadata, raw_transcript)
     if "upload_date" not in metadata or not metadata.get("upload_date"):
         metadata["upload_date"] = datetime.datetime.now().strftime("%Y%m%d")
 

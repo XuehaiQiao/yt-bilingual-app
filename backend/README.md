@@ -11,21 +11,23 @@
 
 | 文件 | 职责 |
 |---|---|
-| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载八个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
+| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速、封禁账号 403、维护模式 503）、结构化访问日志（request_id + 一行 JSON）、挂载路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
 | `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*` / `READING_*` / `AI_DAILY_QUOTA_READING_BATCHES` / `RATE_LIMIT_READING_PER_MINUTE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`）、`BLOG_DIR`（官方博客 Markdown 目录，默认 `content/blog`）、`ADMIN_EMAILS`（后台管理员邮箱，逗号分隔、大小写不敏感，默认空 = 无管理员） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
-| `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
+| `auth_db.py` | 用户与会话 SQLite：建表/补列、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users` 自 0013 起带 `username` / `credits` / `status`；`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
+| `account.py` | 账号资料与运营设置（specs/023）：用户名 2–24 字符校验、`PATCH /api/user/profile` 的落库、余额原子调账（`BEGIN IMMEDIATE` + `credit_transactions` 流水、不允许负余额）、封禁/解封规则（不能封自己/最后一个管理员）、`app_settings` 读写与**维护模式 5 秒进程内缓存**、用户页摘要（本月 AI 花费 / 今日分钟 / 版本） |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
 | `jobs.py` | 任务表 `jobs` 的读写层 + 单进程执行互斥（M1 ⑤）：`create_or_reuse`（同 user+kind+content_ref+targetLang 的未完成 job 复用，进程内锁 + 部分唯一索引兜底幂等）、`get`、`update_progress/mark_running/mark_done/mark_failed/settle_interrupted`（cursor 只增不减）、`try_acquire/release/is_active`（同一 job 同时只允许一条流生成，第二个请求 409/SSE error，杜绝重复付费）。表缺失（旧库没跑 0005）时全部降级为 no-op，只告警一次，视频处理照常 |
 | `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。功能枚举 `translate` / `summary` / `define` / `local_show` / `quiz`。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额** |
-| `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`（游客返回 `{user:null,guest:true}`）、`/api/auth/claim-guest`（登录后幂等认领游客数据）；`ln_session` Cookie、登录失败短窗限流与 `auth_lockout` 接入（锁定统一 429 + `Retry-After`） |
+| `routes_auth.py` | `/api/auth/signup`（`username` 必填/旧客户端回落 email 前缀）、`/api/auth/login`（封禁账号 403）、`/api/auth/logout`、`/api/auth/me`（user 带 username/credits/status；游客返回 `{user:null,guest:true}`）、`/api/auth/claim-guest`（登录后幂等认领游客数据）；`ln_session` Cookie、登录失败短窗限流与 `auth_lockout` 接入（锁定统一 429 + `Retry-After`） |
+| `routes_account.py` | 用户页数据（specs/023）：`PATCH /api/user/profile`（改用户名）、`GET /api/user/summary`（用户信息/余额/本月花费/今日分钟/版本）；均需登录，游客 403 |
 | `guest.py` | 游客态（M1 ⑧）：32 字节随机 `ln_guest` Cookie（服务端只存 sha256）、`data/guests/<sha256>/` 隔离目录、游客累计试译上限、登录后把 `history/` / `favorites.json` / `subscriptions.json` 幂等合并到用户目录（同 videoId / 同收藏指纹 / 同订阅键去重，用户数据优先）。**不建表、不新增迁移** |
 | `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；游客 → `data/guests/<sha256(ln_guest)>/`；两者都没有（脚本/测试）→ 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取。`favorites_file()` / `favorites_tombstones_file()` 是收藏主文件与删除墓碑的**唯一入口**（按用户隔离、不按语言分文件） |
 | `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」；端点支持 `base_url` 或 `base_url_env`（Qwen 等区域端点由环境变量给，不写死）。`is_available` 同时检查 Key 与必需端点；`resolve_model_for_target(requested, target_lang)` 按「用户选择 → 该语言首选 → 该语言路线 → 全局默认 → 目录首个可用」解析，未配 Key 的候选自动跳过。**SDK 调用是同步阻塞的**：async 代码必须用 `generate_json_async` / `generate_text_async`（内含全局并发闸 + `asyncio.to_thread`）；同步 `generate()` 只给脚本/测试。`concurrency_snapshot()` 暴露并发闸峰值/等待直方图。`usage_scope(feature, user_id, target_lang=…)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关） |
 | `ratelimit.py` | 进程内固定窗口限速（M1 ⑦）：注册/登录按 IP、估价/处理/查词/发现按用户；游客（M1 ⑧）同桶但更紧上限、键为 `guest:<sha256>`；超限 429 + `Retry-After`；不依赖 Redis。桶与上限见下文「安全最小集」 |
 | `auth_lockout.py` | 登录失败锁定（M1 ⑦ 残余项）：账号 + IP 双维度连续失败锁定；锁定期间正确密码也 429 + `Retry-After`；成功登录清零；只存进程内存与邮箱哈希，不存明文 |
-| `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。抓取带超时 / 响应体大小 / 字幕块数上限（`_BoundedSession`，M1 ⑦ 残余项）；这些函数是同步阻塞实现，async 调用方负责放进线程 |
+| `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT/VTT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。字幕抓取先 `list()` 探测轨道（手动 en 优先，其次自动生成的 en/en-US/en-GB/en-orig 等前缀码），API 失败再用 yt-dlp 下载自动字幕 VTT 回退；返回值带 `subtitle_source` / `auto_generated`。抓取带超时 / 响应体大小 / 字幕块数上限（`_BoundedSession`，M1 ⑦ 残余项）；这些函数是同步阻塞实现，async 调用方负责放进线程 |
 | `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词 + 高亮子串/NFC 校验 + 越南语 CJK 泄漏重试）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。prompt 里的语言名来自 `languages`（不再硬编码 "Chinese"）；JSON 字段名 `zh_text`/`zh_word` 保持 P0 兼容、值为目标语言。LLM 生成调用经 `llm.generate_json_async` / `generate_text_async`（全局并发闸 + 线程）执行，异常仍照常抛回；批间 `batch_pause` 语义不变；翻译/总结带日配额与降级链，`feature` / `user_id` / `target_lang` 缺省取请求上下文（本地剧集传 `local_show`） |
 | `routes_videos.py` | `/api/models`（全局模型栏数据源；`targetLang` → `targetLang`/`recommended`）、`/api/estimate-cost`、`/api/process-video`（经典，移动端用）、`/api/process-video-stream`（SSE，产品核心；事件带 `targetLang`，`meta` 另带 `sourceLang`/`promptVersion`；流内慢任务期间按 `SSE_HEARTBEAT_INTERVAL`（默认 15s）发 `: ping` 注释行心跳；`jobId`/`from` 可从游标续传，POST body 与 GET query 等价）、`/api/jobs/{id}`（任务状态/进度/`canResume`，见下文「任务表与断线续传」）、`/api/history*`（按 `targetLang` 只读写对应语言目录；本地剧集缓存按 `episodes.json` 补 `youtube_video_id`）、`/api/channel-updates`（yt-dlp 频道拉取，先过 YouTube 频道 URL 白名单，放线程并发、最多 8 个；单频道硬上限 `MAX_CHANNEL_VIDEOS=200`） |
 | `routes_content.py` | `/api/shows*`、`/api/process-subtitle`（本地剧集：`targetLang` 决定缓存目录/prompt/模型路线；翻译与补译跟随请求 `model`，新处理结果与缓存 payload 记录 `model` 和 `target_lang`，批间隔按 `llm.batch_pause(model)`；非中文不写中文固定集名标签，改为 `summary_kind="episode_label"` + 季/集/标题结构化字段；有视频映射的集在 `metadata` 补 `youtube_video_id` / `youtube_title`）、`/api/shows/{id}/processed?targetLang=`、`/api/sentences*`（句子精背） |
@@ -49,21 +51,24 @@
 | `reading.py` | **读文章（V1）**：URL 导入（SSRF 校验 + 10s/2MB/重定向 ≤3）或粘贴正文 → `trafilatura` → readability → 标准库 `<p>` 三级抽取 → 200 段/单段 4000 字符上限 → `articles` / `article_paragraphs`；逐段翻译（`feature=reading` 配额/账本/降级链，只补缺失段，失败写 `[未翻译]`）；进度/列表/删除；表由 `0011_reading` 创建，运行时不建表 |
 | `routes_reading.py` | 读文章 HTTP 路由（**需登录，游客 403**）：`POST /api/article/import`、`POST /api/article/{id}/translate`、`GET /api/article/{id}`、`GET /api/articles`、`DELETE /api/article/{id}`、`PUT /api/article/{id}/progress`；契约/错误语义见下文「读文章」与 [specs/019](../specs/019-reading/spec.md) |
 | `routes_blog.py` | 官方博客 HTTP 路由（**公开只读，无需登录**）：`GET /api/blog/posts`、`GET /api/blog/posts/{slug}`、`GET /api/blog/feed.xml`；只读 `content/blog/*.md`，自带 front matter 校验、HTML 转义 + 链接白名单的轻量 Markdown 渲染、RSS 2.0；无数据库/无迁移；见下文「官方博客」与 [specs/020](../specs/020-blog/spec.md) |
-| `routes_admin.py` | 后台止血台 HTTP 路由（**需登录 + 管理员，全部只读**）：`GET /api/admin/stats`、`/users`（搜索/分页）、`/usage`（按天×功能）、`/health`（/healthz + data/ 磁盘 + 最近 10 条 failed jobs）；连接 `PRAGMA query_only=ON`，无任何写端点；管理员由 `config.ADMIN_EMAILS` 决定；限速 30 次/分钟；见下文「后台止血台」与 [specs/021](../specs/021-admin/spec.md) |
+| `routes_admin.py` | 后台管理 HTTP 路由（**需登录 + 管理员**）：只读止血台（M1 ⑥：`GET /api/admin/stats`、`/users`、`/usage`、`/health`，连接 `PRAGMA query_only=ON`）+ 运营写操作（specs/023：`POST /users/{id}/credits`、`PATCH /users/{id}`、`GET/PUT /settings`）；管理员由 `config.ADMIN_EMAILS` 决定；限速 30 次/分钟 |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`trafilatura` 用于文章正文抽取、`pytest` 用于离线测试/CI；faster-whisper、readability-lxml/bs4 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）、`0012_exam.py`（`exam_sessions` / `exam_answers` + 未提交会话部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）、`0012_exam.py`（`exam_sessions` / `exam_answers` + 未提交会话部分唯一索引）、`0013_user_profile.py`（`users.username/credits/status` + 旧用户 username 回填 + `credit_transactions` + `app_settings`）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
-前端并行开发用的**冻结契约**（状态码/字段不可改）：
+前端并行开发用的**冻结契约**（状态码/字段不可改；0013 起 `user` 增加
+`username` / `credits` / `status`，见下方「用户资料、余额与后台设置」）：
 
 | 端点 | 成功 | 失败 |
 |---|---|---|
-| `POST /api/auth/signup` `{email,password}` | `201 {"user":{"id","email"}}` + 设置 Cookie | `409` 邮箱已存在；`400` 邮箱格式或密码 < 8 位 |
-| `POST /api/auth/login` `{email,password}` | `200 {"user":{"id","email"}}` + 设置 Cookie | `401` 邮箱或密码错（不区分，避免账号枚举） |
+| `POST /api/auth/signup` `{email,password,username}` | `201 {"user":{"id","email","username","credits","status"}}` + 设置 Cookie | `409` 邮箱已存在；`400` 邮箱格式/密码 < 8 位/用户名非法（2–24 字，中文/英文/数字/下划线/连字符，首尾不能空白）；完全不传 `username` 的旧客户端回落 email 前缀 |
+| `POST /api/auth/login` `{email,password}` | `200 {"user":{…}}` + 设置 Cookie | `401` 邮箱或密码错（不区分，避免账号枚举）；`403 {"detail":"账号已被停用"}` 封禁账号 |
 | `POST /api/auth/logout` | `200 {"ok":true}` 并清除 Cookie | — |
-| `GET /api/auth/me` | `200 {"user":{"id","email"},"isAdmin":bool}`（登录用户；`isAdmin` 来自 `ADMIN_EMAILS`，顶层字段不改变 `user` 契约）；未登录/游客保持 `200 {"user":null,"guest":true}`（并下发 `ln_guest`） | — |
+| `GET /api/auth/me` | `200 {"user":{"id","email","username","credits","status"},"isAdmin":bool}`（登录用户；`isAdmin` 来自 `ADMIN_EMAILS`，顶层字段不改变 `user` 契约）；未登录/游客保持 `200 {"user":null,"guest":true}`（并下发 `ln_guest`） | 封禁账号的旧会话在中间件直接 `403 {"detail":"账号已被停用"}` |
 | `POST /api/auth/claim-guest`（需登录） | `200 {"ok":true,"claimed":bool,"merged":{history,favorites,subscriptions},"skipped":{…},"guestFiles":N}` | `401 {"detail":"未登录"}`；合并文件操作失败 `500`（游客目录保留可重试） |
+| `PATCH /api/user/profile`（需登录） | `200 {"user":{"id","email","username","credits","status"}}` | `400` 用户名非法/缺字段；`403` 游客/未登录 |
+| `GET /api/user/summary`（需登录） | `200 {"user":{id,email,username,credits,memberSince,status},"monthSpendUsd":0.0,"usageToday":{"minutes":0.0},"version":"…","preliminary":false}` | `403` 游客/未登录；`404` 用户不存在（竞态） |
 
 - `/api/*` 对游客开放（M1 ⑧）：没有会话时按 `ln_guest` 隔离目录工作，可以估价、看视频、查词；只有需要账号的动作（`claim-guest`）自己要求登录。未登录不再统一 401。
 - Cookie 名 `ln_session`：httpOnly、SameSite=Lax、Path=/、Max-Age=30 天；`Secure` 由 `COOKIE_SECURE=1` 控制（本地 HTTP 默认关）。前端不要读 Cookie，也不要把 token 存 localStorage。
@@ -90,7 +95,8 @@ data/                                  # DATA_DIR（gitignore）
     └── subscriptions.json
 ```
 
-- `users(id, email, password_hash, created_at)`：email 统一小写；密码只存 Argon2id 哈希。
+- `users(id, email, password_hash, created_at, username, credits, status)`：email 统一小写；密码只存 Argon2id 哈希；`username` 是显示名（不唯一，旧用户回填 email 前缀）；`credits` 是管理员手动发放的余额（默认 0）；`status` 是 `active`/`banned`。
+- `credit_transactions(id, user_id, delta, reason, admin_id, created_at)`：余额变动流水（append-only，`(user_id, created_at)` 索引）；`app_settings(key, value, updated_at)`：维护模式 / 公告。
 - `sessions(token_hash, user_id, expires_at, created_at)`：Cookie 里是 `secrets.token_urlsafe(32)` 的随机 token，库里只存 sha256。
 - 词典缓存**按用户隔离**（放在该用户 `history/dictionary_cache.json`）：与视频缓存同一套目录规则，用户的坏缓存不会影响别人；代价只是同词在不同用户间各生成一次，缓存很小，可接受。
 - 未登录上下文（测试/脚本）仍回落到 `HISTORY_DIR`（旧 `history/` 目录），保持兼容；正常经 API 的请求一定带身份（登录用户或游客），不会写到旧目录。
@@ -825,27 +831,107 @@ venv/bin/python -m pytest tests -q                # 全量 466
 2026-11-15 8001 临时实例（仓库内 `content/blog/`）实测：未登录 `GET /api/blog/posts` → 4 篇；`GET /api/blog/posts/why-linguatrek` → 元数据 + Markdown + HTML；`GET /api/blog/feed.xml` → RSS 2.0（4 个 item）；未知 slug 404；含 `<script>` / `javascript:` 链接的样例只渲染为转义文本（无标签执行）。
 
 
-## 后台止血台（M1 ⑥，只读）
+## 用户资料、余额与后台设置（V1 用户需求 1–3 / specs/023）
+
+用户需求 1/2/3 的后端：注册必须设用户名（可改）；独立「用户页」能拿到用户
+信息/余额/本月花费/版本；后台可手动调余额、封禁/解封、开关维护模式与写公告。
+规格：[specs/023-user-profile](../specs/023-user-profile/spec.md)。**仅后端**，
+前端用户页/后台控制台在下一任务。
+
+### 迁移 `0013_user_profile`
+
+| 表 / 列 | 内容 |
+|---|---|
+| `users.username` | TEXT 可空；新注册必填（旧客户端回落 email 前缀）；**不唯一**（显示名）；迁移回填旧用户为 `@` 前缀 |
+| `users.credits` | INTEGER NOT NULL DEFAULT 0；管理员手动发放/扣减，不允许负余额 |
+| `users.status` | TEXT NOT NULL DEFAULT 'active'；`active` / `banned` |
+| `credit_transactions` | `id` TEXT PK、`user_id`、`delta` INTEGER、`reason` TEXT、`admin_id` TEXT 可空、`created_at`（毫秒）；索引 `(user_id, created_at)`；append-only |
+| `app_settings` | `key` TEXT PK、`value` TEXT 可空、`updated_at` INTEGER（秒）；存 `maintenance_mode`（`0`/`1`）与 `announcement`（字符串或 NULL） |
+
+旧库升级：`alembic upgrade head`（**不要**直接 `stamp head`）。未迁移时读接口
+降级（维护模式按未开启、摘要 `preliminary=true`），写设置/调账返回 **503** 并
+提示先跑迁移；`auth_db.py` 的兼容建表会补 users 三列，保证旧部署仍能登录/注册。
+
+### 端点
+
+| 端点 | 说明 |
+|---|---|
+| `POST /api/auth/signup` | body 增加 `username`；2–24 字，中文/英文/数字/下划线/连字符，首尾不能空白；缺失/非法 400（**完全不传字段** = 旧客户端，回落 email 前缀）；不要求唯一 |
+| `POST /api/auth/login` | user 带 `username/credits/status`；封禁账号密码正确 → **403「账号已被停用」** |
+| `GET /api/auth/me` | user 同上；顶层 `isAdmin` 不变；封禁账号旧会话在中间件 403 |
+| `PATCH /api/user/profile` | body `{username}`；登录用户改显示名，校验同上；返回 `{"user":{…}}`；游客/未登录 403 |
+| `GET /api/user/summary` | 登录用户：`user{id,email,username,credits,memberSince(ms),status}`、`monthSpendUsd`（`ai_usage` 当月 SUM，估算）、`usageToday.minutes`（`watch_events` 当地今天 `watched_seconds`÷60）、`version`（`APP_VERSION`）、`preliminary`（统计源表缺失=true，正常 false）；无数据为 0 |
+| `GET /api/admin/users` | 在 021 字段上增加 `username` / `credits` / `status`，并加完整 id `userId`（调账/封禁端点用；展示用 `id` 前 8 位）；搜索同时匹配 email 与 username |
+| `POST /api/admin/users/{id}/credits` | body `{delta:int≠0,-100000..100000, reason:1–200 字}`；`BEGIN IMMEDIATE` 原子更新余额 + 写流水；扣后 <0 → 400 余额不足；用户不存在 404；返回 `{"credits":新余额}` |
+| `PATCH /api/admin/users/{id}` | body `{status?: 'active'|'banned'}`；不能封自己/最后一个管理员（400）；`isAdmin` 显式传入 400（不实现）；返回 `{"user":{…,createdAt}}` |
+| `GET/PUT /api/admin/settings` | `{maintenance_mode:bool, announcement:str|null}`；PUT 按字段 upsert（`announcement:null` 清空，不传保留）；返回当前值 |
+
+后台错误语义：未登录 401、非管理员 403、用户不存在 404、余额不足/参数非法
+400、未迁移 503；`/api/admin/*` 沿用 30 次/分钟限速桶。
+
+### 维护模式
+
+- `app_settings.maintenance_mode=1` 时，**非管理员**访问 `/api/*`（除
+  `/api/auth/*`、`/api/admin/*`、`/health`、`/healthz`）返回
+  **503 `{"detail":"系统维护中，请稍后重试。"}`**；管理员不受影响。
+- 判断在 `main.py` 身份中间件：先拒封禁账号（403），再判维护（503），因此
+  游客/未登录也拿到维护提示，而不是业务层的 403。
+- 进程内缓存 5 秒（`account.SETTINGS_CACHE_SECONDS`），后台 PUT 会立即刷新；
+  多进程部署时每个进程最多滞后 5 秒（与限速同一边界）。
+- 设置表缺失/读失败按「未开启」处理，设置表故障不会把整个 API 拖进维护态。
+
+### 安全 / 一致性
+
+- 余额调账用 `BEGIN IMMEDIATE` 事务：校验 → 更新 → 追加流水一次提交；并发
+  调账不丢更新、不会出现「扣成负数」或「余额变了没有流水」。
+- 封禁不删除会话：旧 Cookie 下一次 `/api` 请求被 403，解封后自动恢复；登录
+  端点单独返回 403，便于前端区分「密码错」与「账号被停用」。
+- 管理员身份仍只看 `ADMIN_EMAILS`；不新增 role 表、2FA、审计日志（沿用
+  specs/021 已知边界；本次流水只记录调账操作者 `admin_id`）。
+- 用户名不唯一：它是显示名，不作为登录凭据（登录仍用 email）。
+
+### 测试与手动实测
+
+```bash
+cd backend
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_user_profile.py tests/test_migrations.py -q  # 32 + 迁移用例
+venv/bin/python -m pytest tests -q                                                # 全量离线
+```
+
+`tests/test_user_profile.py` 覆盖：注册合法/回落/非法、登录与 me 新字段、
+改用户名、余额正负/不足/流水/并发原子、封禁后旧会话与登录 403、解封恢复、
+不能封自己/最后管理员、settings 读写、维护模式 503（管理员不受影响）、
+游客 403、旧库降级。迁移用例覆盖 0013 升级/回滚与旧用户 username 回填。
+
+8001 临时实例（`/tmp` 数据 + 真实 Alembic + `ADMIN_EMAILS`）实测：
+注册带用户名 → `/api/auth/me` 有 credits=0 → 管理员调 +100 → `/api/user/summary`
+显示余额 100 → 封禁后旧会话与登录 403 → 维护模式普通用户 503、管理员 200。
+
+
+
+## 后台止血台（M1 ⑥，只读聚合）
 
 用户需求 #12「后台」的 MVP：出事时在一页里看清「用户量/活跃、AI 花费与配额、
-任务状态、错误概览」。**不是 CMS**——只有 SELECT，没有删除/封号/退款/开关；
-连接建立后 `PRAGMA query_only = ON`，连误写都会被 SQLite 拒绝。规格：
+任务状态、错误概览」。**这四个读端点**只读（`PRAGMA query_only = ON`，防误
+写）；封禁/调余额/维护模式等写操作见上文「用户资料、余额与后台设置」
+与 [specs/023](../specs/023-user-profile/spec.md)。规格：
 [specs/021-admin](../specs/021-admin/spec.md)。
 
 ### 管理员身份
 
 - `ADMIN_EMAILS`：逗号分隔、大小写不敏感的邮箱名单；默认空 = **没有管理员**
   （所有 `/api/admin/*` 对任何登录用户 403）。改完需重启后端（启动时读取）。
-- `/api/auth/me` 登录时返回顶层 `isAdmin: true|false`；`user` 对象仍是
-  `{id,email}`，游客响应仍是 `{user:null,guest:true}`（旧前端零改动）。
-- 不新增迁移、不建 role 表：身份只是环境变量判断。
+- `/api/auth/me` 登录时返回顶层 `isAdmin: true|false`；`user` 对象自 0013 起为
+  `{id,email,username,credits,status}`，游客响应仍是 `{user:null,guest:true}`。
+- 不建 role 表：身份只是环境变量判断（写操作另见 specs/023）。
 
 ### 端点（全部需登录 + 管理员；失败 401/403）
 
 | 端点 | 成功 | 口径 |
 |---|---|---|
 | `GET /api/admin/stats` | 200 | `users{total,new7d,activeToday,guests}`、`ai{todayCostUsd,monthCostUsd,todayCalls,todayByFeature}`、`jobs{failed,running,pendingRetry}`、`generatedAt` |
-| `GET /api/admin/users?limit=50&offset=0&search=` | 200 | `users[{id(前8位),email,createdAt,monthCostUsd,eventCount,lastActiveAt}]` + `total/limit/offset/hasMore`；按注册时间倒序 |
+| `GET /api/admin/users?limit=50&offset=0&search=` | 200 | `users[{id(前8位),userId(完整),email,username,credits,status,createdAt,monthCostUsd,eventCount,lastActiveAt}]` + `total/limit/offset/hasMore`；按注册时间倒序；搜索匹配 email/username |
 | `GET /api/admin/usage?days=7` | 200 | `rows[{day,feature,calls,inputTokens,outputTokens,costUsd}]` + `daysSummary` + `totals`；`days` 夹在 1..90 |
 | `GET /api/admin/health` | 200 | `health`（/healthz 快照；**始终 200，由 `health.status` 表达 degraded**）+ `disk{dataDir,sizeBytes}` + `failedJobs`（最多 10 条，按 `updated_at` 倒序） |
 
@@ -872,8 +958,9 @@ venv/bin/python -m pytest tests -q                # 全量 466
 ```bash
 cd backend
 venv/bin/python -m py_compile *.py
-venv/bin/python -m pytest tests/test_admin.py -q   # 9 个离线用例
-venv/bin/python -m pytest tests -q                 # 全量 466
+venv/bin/python -m pytest tests/test_admin.py -q            # 9 个只读用例
+venv/bin/python -m pytest tests/test_user_profile.py -q     # 32 个账号/余额/维护用例
+venv/bin/python -m pytest tests -q                           # 全量离线
 cd ../frontend && npx tsc -b && npm run check:i18n
 ```
 
@@ -952,27 +1039,27 @@ venv/bin/python -m pytest tests/test_i18n_target_lang.py -q   # 目标语言 P0�
 
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）；`0010_discover` 建内容发现缓存/审计表 `discover_queries`（V1，见上文「内容发现」）；`0011_reading` 建读文章四表；`0012_exam` 建考试练习两表（V2，见上文「考试练习」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）；`0010_discover` 建内容发现缓存/审计表 `discover_queries`（V1，见上文「内容发现」）；`0011_reading` 建读文章四表；`0012_exam` 建考试练习两表（V2，见上文「考试练习」）；`0013_user_profile` 给 `users` 加 `username`/`credits`/`status`（旧用户 username 回填 email 前缀）、建余额流水 `credit_transactions` 与应用设置 `app_settings`（V1 用户需求 1–3，见上文「用户资料、余额与后台设置」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 
 ```bash
-venv/bin/alembic upgrade head            # 新库：从零建到最新（0001 → … → 0012_exam）
+venv/bin/alembic upgrade head            # 新库：从零建到最新（0001 → … → 0013_user_profile）
 venv/bin/alembic current                 # 看当前版本
 
 # 已有 data/app.db（只有 users/sessions，没有 alembic_version）：先纳管再补建新表
 venv/bin/alembic stamp 0001_baseline     # 只写版本号，不执行 DDL、不动数据
-venv/bin/alembic upgrade head            # 补建 learning_events / 账本 / jobs / 复习三表 / 理解题三表 / 周报两张 / 定位测三表 / 发现缓存表 / 读文章四表 / 考试练习两表
+venv/bin/alembic upgrade head            # 补建 learning_events / 账本 / jobs / 复习三表 / 理解题三表 / 周报两张 / 定位测三表 / 发现缓存表 / 读文章四表 / 考试练习两表 / 用户资料三列与余额流水、应用设置两表
 
 venv/bin/alembic stamp head              # 已经是最新版本的库：只标最新，不执行 DDL
 ```
 
 - 数据库路径与运行时同源：默认 `data/app.db`，可用 `AUTH_DB_PATH` 覆盖（迁移命令与 `config.py` 都读它）。
 - 基线迁移**幂等**（用 inspector 判断表/索引是否存在）：旧库直接 `upgrade head` 不会重建 `users`/`sessions`、不会动数据，只补缺的表；仍建议先备份 `data/app.db`。
-- **不要对旧库直接 `stamp head`**：会把 `0002`–`0012` 都标记成已应用，`learning_events` / 账本 / 任务表 / 复习三表 / 理解题三表 / 周报两张 / 定位测三表 / 发现缓存表 / 读文章四表 / 考试练习两表永远不会被建出来。正确顺序是 `stamp 0001_baseline` → `upgrade head`（或直接 `upgrade head`）。
+- **不要对旧库直接 `stamp head`**：会把 `0002`–`0013` 都标记成已应用，`learning_events` / 账本 / 任务表 / 复习三表 / 理解题三表 / 周报两张 / 定位测三表 / 发现缓存表 / 读文章四表 / 考试练习两表 / 用户资料列与余额流水、应用设置永远不会被建出来。正确顺序是 `stamp 0001_baseline` → `upgrade head`（或直接 `upgrade head`）。
 - `downgrade` 会 DROP 表（`0001` 的 down 会删 `users`/`sessions`），只用于空库/测试回滚，别在真实库上跑。
 - 启动时 `main.py` 的 lifespan 只读检查一次迁移状态：库存在但没迁移会打 WARNING（启动照常成功）；`emit_event` 在表缺失时跳过写入并记 ERROR，学习主流程不受影响。
-- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0013_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
+- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0014_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
 
 学习事件（`events.py`）：
 
@@ -1201,10 +1288,36 @@ python3 scripts/fetch_dictionary.py
 - 仅进程内存，重启清空；`AUTH_LOCK_THRESHOLD=0` 或 `AUTH_LOCK_MINUTES=0` 关闭。日志只记命中的维度/等待秒数/阈值，不记邮箱或 IP 明文。
 - 与限速相同的已知边界：单进程有效，`uvicorn --workers N` 时各进程独立计数。
 
+### 字幕获取链路（手动 → 自动 → yt-dlp 回退）
+
+用户需求 4：只要视频有**自动生成的英文字幕**就允许播放。`fetch_english_transcript` 不再只调
+`fetch(video_id, languages=['en'])`（精确匹配会漏掉 `en-US` / `en-GB` / `en-orig`），而是：
+
+1. **`list()` 探测轨道**：遍历可用轨道，手动 en 优先，其次自动生成 en；语言码按 `en`
+   前缀匹配（`en` / `en-US` / `en-GB` / `en-orig` / `en-auto` 等）。同类型里的优先顺序为
+   `en` > `en-orig` > `en-US` > `en-GB` > 其他 `en-*`。
+2. **按具体语言码 fetch**：直接 fetch 探测到的 `Transcript` 对象（等价于用它自己的
+   `language_code` 调 fetch），不再二次 `list()`，也不会因只传 `['en']` 漏抓区域码轨。
+3. **yt-dlp 回退**：API 抛 `NoTranscriptFound` / `IpBlocked` / `RequestBlocked` / 超时 / 其他
+   异常时，用 `canonical_watch_url(video_id)` 调 `extract_info(download=False)`，在
+   `subtitles`（手动）与 `automatic_captions`（自动）里找 en 前缀轨；再用 `download=True`
+   + `skip_download`（只写字幕）+ `writesubtitles` / `writeautomaticsub` +
+   `subtitleslangs=[探测到的语言码]` + `subtitlesformat='vtt'` 下载到临时目录，
+   `parse_vtt` 清洗后复用现有切句链路（`group_transcript_blocks`）。
+4. **来源标记**：返回值是 `EnglishTranscript`（list 子类），带 `subtitle_source`
+   （`manual` / `auto` / `manual-ytdlp` / `auto-ytdlp`）与 `auto_generated`（bool）。
+   估价、经典处理与流式处理都把它写进 `metadata.subtitle_source` /
+   `metadata.auto_generated`，随缓存 JSON 与 SSE `meta` 事件下发（UI 后续可显示
+   「自动生成字幕」）。
+5. **失败语义**：确实没有任何英文轨 → **422**「该视频没有英文字幕（含自动生成）」；超时
+   → **504**；响应体/字幕文件超过 `MAX_FETCH_BYTES`、块数超过 `MAX_TRANSCRIPT_BLOCKS`
+   → **400**；yt-dlp 回退也失败时**还原 API 的原始错误**（限流仍 429、无轨仍 422），
+   不叠加成 502。
+
 ### 抓取边界（`transcripts.py` / `routes_videos.py`）
 
-- `FETCH_TIMEOUT_SECONDS=15`：youtube-transcript-api 的 `requests.Session` 注入 connect/read timeout；yt-dlp 的元数据、频道列表与 Whisper 下载传 `socket_timeout`。字幕超时 → **504**；元数据超时沿用原有降级（`Unknown Title`），频道超时返回空列表——都不 500。
-- `MAX_FETCH_BYTES=5MB`：`_BoundedSession` 用 `stream=True` + 64KB 分块读取字幕 HTTP 响应，累计超限**立即中断并关闭连接**（不会先读完整 body 再检查）；Whisper 下载同时用 yt-dlp `max_filesize` 与落盘大小复核。字幕响应超限 → **400**；音频超限 → 跳过本地转写并给出原因。
+- `FETCH_TIMEOUT_SECONDS=15`：youtube-transcript-api 的 `requests.Session` 注入 connect/read timeout；yt-dlp 的元数据、频道列表、字幕回退下载与 Whisper 下载传 `socket_timeout`。字幕超时 → **504**；元数据超时沿用原有降级（`Unknown Title`），频道超时返回空列表——都不 500。
+- `MAX_FETCH_BYTES=5MB`：`_BoundedSession` 用 `stream=True` + 64KB 分块读取字幕 HTTP 响应，累计超限**立即中断并关闭连接**（不会先读完整 body 再检查）；yt-dlp 回退下载的 VTT 落盘后复核大小；Whisper 下载同时用 yt-dlp `max_filesize` 与落盘大小复核。字幕响应/文件超限 → **400**；音频超限 → 跳过本地转写并给出原因。
 - `MAX_TRANSCRIPT_BLOCKS=5000`：解析后字幕块数超限 → **400**。
 - 大小/块数用 400 而不是 422：流式路径把 422 当作「无字幕」去走 Whisper 兜底，400 可避免为一份超大字幕再下载一遍音频。所有超时/超限错误都有中文 detail，不会变成 500。
 - `MAX_CHANNEL_VIDEOS=200`：单频道硬上限；当前 yt-dlp 用 `playlistend=5` 只取最近 5 条，上限用于防未来调大提取量或异常返回炸内存。频道并发仍是最多 8 个。

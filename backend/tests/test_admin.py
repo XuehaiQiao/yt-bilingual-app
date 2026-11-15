@@ -187,7 +187,7 @@ def test_me_reports_is_admin_flag(admin_client, other_client):
     body = me.json()
     assert body["isAdmin"] is True
     # 冻结契约：user 对象仍然只有 id/email
-    assert set(body["user"]) == {"id", "email"}
+    assert set(body["user"]) == {"id", "email", "username", "credits", "status"}
     assert set(body) == {"user", "isAdmin"}
 
     other_me = other_client.get("/api/auth/me")

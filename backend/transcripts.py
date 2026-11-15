@@ -1,11 +1,15 @@
-"""字幕获取与切句：YouTube 字幕、yt-dlp 元数据、SRT 解析、Whisper 转写兜底。
+"""字幕获取与切句：YouTube 字幕（手动/自动 + yt-dlp 回退）、yt-dlp 元数据、
+SRT/VTT 解析、Whisper 转写兜底。
 
 产出统一的"片段"结构（text/start/duration 或 start/end），
 供 translate.py 分批翻译。
 """
 import datetime
+import html
 import os
 import re
+import tempfile
+from dataclasses import dataclass
 from urllib.parse import parse_qs, urlsplit
 
 import requests
@@ -195,6 +199,106 @@ def canonical_watch_url(video_id: str) -> str:
 
 
 # ====================================================
+# 英文字幕来源：手动 / 自动生成 / yt-dlp 回退
+# ====================================================
+#
+# 用户需求：只要视频有**自动生成的英文字幕**就允许播放。youtube-transcript-api
+# 的 ``fetch(languages=['en'])`` 只做精确语言码匹配，遇到 ``en-US`` / ``en-GB`` /
+# ``en-orig`` 就会误报 NoTranscriptFound；被限流时也会直接失败。因此抓取分两层：
+#   1. ``list()`` 探测轨道：手动 en 优先，其次自动生成 en（``en`` 前缀匹配）；
+#   2. API 失败（无轨/限流/超时等）→ yt-dlp 下载自动字幕并解析 WebVTT。
+# 返回值带 ``subtitle_source`` / ``auto_generated``，由路由写进 metadata 缓存。
+
+# 精确码优先于区域码；``en-orig`` 是原声自动轨，通常比机翻的 en-US/en-GB 更准。
+_EN_LANG_PREFERENCE = {"en": 0, "en-orig": 1, "en-us": 2, "en-gb": 3}
+
+
+def _english_language_rank(language_code: str | None) -> int | None:
+    """``en`` 前缀语言码 → 优先级数字；不是英文轨返回 ``None``。"""
+    code = (language_code or "").strip().lower()
+    if code != "en" and not code.startswith("en-"):
+        return None
+    return _EN_LANG_PREFERENCE.get(code, 4)
+
+
+@dataclass(frozen=True)
+class _Snippet:
+    """yt-dlp 解析出的字幕片段；与 FetchedTranscriptSnippet 同形（text/start/duration）。"""
+
+    text: str
+    start: float
+    duration: float
+
+
+class EnglishTranscript(list):
+    """字幕片段列表 + 来源标记（list 子类，调用方按原方式迭代/取长度）。
+
+    - ``subtitle_source``：``manual`` / ``auto``（API）/ ``manual-ytdlp`` /
+      ``auto-ytdlp``（yt-dlp 回退）；
+    - ``auto_generated``：是否自动生成字幕；UI 可据此显示「自动生成字幕」。
+    """
+
+    def __init__(
+        self,
+        snippets,
+        *,
+        subtitle_source: str,
+        auto_generated: bool | None = None,
+    ):
+        super().__init__(snippets)
+        self.subtitle_source = subtitle_source
+        self.auto_generated = (
+            subtitle_source in ("auto", "auto-ytdlp")
+            if auto_generated is None
+            else bool(auto_generated)
+        )
+
+
+class _NoEnglishTranscript(Exception):
+    """轨道列表 / yt-dlp 元数据里确实没有任何英文字幕轨。"""
+
+
+def _pick_english_track(tracks) -> object | None:
+    """从 ``YouTubeTranscriptApi.list()`` 的轨道里选手动 en，其次自动 en。
+
+    手动轨整体优先于自动轨；同类里按 ``_EN_LANG_PREFERENCE`` 取最具体的
+    ``language_code``。没有英文轨返回 ``None``（由调用方决定是否回退）。
+    """
+    manual: list[tuple[int, object]] = []
+    generated: list[tuple[int, object]] = []
+    for track in tracks:
+        rank = _english_language_rank(getattr(track, "language_code", None))
+        if rank is None:
+            continue
+        bucket = generated if getattr(track, "is_generated", False) else manual
+        bucket.append((rank, track))
+    if manual:
+        return min(manual, key=lambda item: item[0])[1]
+    if generated:
+        return min(generated, key=lambda item: item[0])[1]
+    return None
+
+
+def _fetch_with_track_list(api, video_id: str) -> EnglishTranscript:
+    """``list()`` 探测 + 用具体 language_code 对应的轨道 ``fetch()``。"""
+    track = _pick_english_track(api.list(video_id))
+    if track is None:
+        raise _NoEnglishTranscript(f"{video_id}: no English caption track")
+    # 直接 fetch 探测到的轨道：不再调一次 list()，也避免 fetch(['en']) 的
+    # 精确匹配把 en-US/en-orig 漏掉；仍受同一个 _BoundedSession 超时/大小上限约束。
+    fetched = track.fetch()
+    source = "auto" if getattr(track, "is_generated", False) else "manual"
+    return EnglishTranscript(fetched, subtitle_source=source)
+
+
+def _fetch_legacy_api(api, video_id: str) -> EnglishTranscript:
+    """旧版 youtube-transcript-api（没有 ``list()``）的兼容路径。"""
+    fetched = api.fetch(video_id, languages=["en"])
+    source = "auto" if getattr(fetched, "is_generated", False) else "manual"
+    return EnglishTranscript(fetched, subtitle_source=source)
+
+
+# ====================================================
 # 抓取边界：超时与响应体大小上限（M1 ⑦ 残余项）
 # ====================================================
 
@@ -358,8 +462,157 @@ def group_transcript_blocks(transcript: list) -> list:
     return blocks
 
 
-def fetch_english_transcript(video_id: str):
+def _ytdlp_caption_opts() -> dict:
+    """yt-dlp 公共选项：静音、不下载媒体、带 socket 超时。"""
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "noprogress": True,
+        "skip_download": True,
+    }
+    if FETCH_TIMEOUT_SECONDS > 0:
+        opts["socket_timeout"] = FETCH_TIMEOUT_SECONDS
+    return opts
+
+
+def _ranked_english_caption_codes(captions) -> list[str]:
+    """yt-dlp ``subtitles`` / ``automatic_captions`` 里的英文语言码，按优先级排序。"""
+    ranked: list[tuple[int, str]] = []
+    for code in (captions or {}):
+        rank = _english_language_rank(code)
+        if rank is not None:
+            ranked.append((rank, code))
+    return [code for _rank, code in sorted(ranked, key=lambda item: (item[0], item[1]))]
+
+
+def _select_ytdlp_caption(info: dict) -> tuple[str, str] | None:
+    """从 yt-dlp 元数据选英文轨：手动优先，其次自动；返回 (语言码, manual/auto)。"""
+    if not isinstance(info, dict):
+        return None
+    manual = _ranked_english_caption_codes(info.get("subtitles"))
+    if manual:
+        return manual[0], "manual"
+    automatic = _ranked_english_caption_codes(info.get("automatic_captions"))
+    if automatic:
+        return automatic[0], "auto"
+    return None
+
+
+def _find_downloaded_vtt(tmpdir: str, language_code: str) -> str | None:
+    """在临时目录找 yt-dlp 写出的 VTT；优先语言码精确匹配，再放宽到 en。"""
+    paths = sorted(
+        os.path.join(tmpdir, name)
+        for name in os.listdir(tmpdir)
+        if name.lower().endswith(".vtt")
+    )
+    if not paths:
+        return None
+    marker = f".{language_code.lower()}."
+    for path in paths:
+        if marker in os.path.basename(path).lower():
+            return path
+    for path in paths:
+        if ".en" in os.path.basename(path).lower():
+            return path
+    return paths[0]
+
+
+def _fetch_english_transcript_with_ytdlp(video_id: str) -> EnglishTranscript:
+    """youtube-transcript-api 失败后的回退：用 yt-dlp 下载英文（自动）字幕。
+
+    先 ``extract_info(download=False)`` 看 ``subtitles`` / ``automatic_captions``
+    选轨；再 ``download=True``（``skip_download`` 只写字幕）+ ``writeautomaticsub``
+    下载 VTT 到临时目录，解析后返回与 API 同形的片段列表。
+    """
+    url = canonical_watch_url(video_id)
+
+    with yt_dlp.YoutubeDL(_ytdlp_caption_opts()) as ydl:
+        info = ydl.extract_info(url, download=False) or {}
+    selected = _select_ytdlp_caption(info)
+    if selected is None:
+        raise _NoEnglishTranscript(f"{video_id}: no English caption track in yt-dlp")
+    language_code, kind = selected
+
+    with tempfile.TemporaryDirectory(prefix="linguatrek-subs-") as tmpdir:
+        opts = _ytdlp_caption_opts()
+        opts.update(
+            {
+                # 选中的是手动轨就只要 subtitles，是自动轨就只要自动字幕；
+                # 不让同名两种轨互相覆盖，来源标记才可信。
+                "writesubtitles": kind == "manual",
+                "writeautomaticsub": kind == "auto",
+                "subtitleslangs": [language_code],
+                "subtitlesformat": "vtt",
+                "outtmpl": os.path.join(tmpdir, "%(id)s.%(ext)s"),
+            }
+        )
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.download([url])
+
+        path = _find_downloaded_vtt(tmpdir, language_code)
+        if path is None:
+            raise RuntimeError("yt-dlp 未写出任何 VTT 字幕文件")
+        if MAX_FETCH_BYTES > 0:
+            actual_size = os.path.getsize(path)
+            if actual_size > MAX_FETCH_BYTES:
+                raise _ResponseTooLarge(MAX_FETCH_BYTES)
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+
+    cues = parse_vtt(content)
+    snippets = [
+        _Snippet(
+            text=cue["text"],
+            start=float(cue["start"]),
+            duration=max(0.0, float(cue["end"]) - float(cue["start"])),
+        )
+        for cue in cues
+    ]
+    if not snippets:
+        raise _NoEnglishTranscript(f"{video_id}: downloaded caption file is empty")
+    source = "auto-ytdlp" if kind == "auto" else "manual-ytdlp"
+    return EnglishTranscript(snippets, subtitle_source=source)
+
+
+def _transcript_error(exc: Exception) -> HTTPException:
+    """原始抓取异常 → 稳定的 HTTP 错误（文案保持既有契约）。"""
+    if isinstance(exc, _ResponseTooLarge):
+        return HTTPException(
+            status_code=400,
+            detail=f"字幕抓取响应体超过上限（{_format_bytes(exc.limit)}），无法处理该视频。",
+        )
+    if isinstance(exc, requests.Timeout):
+        if FETCH_TIMEOUT_SECONDS > 0:
+            detail = f"抓取字幕超时（超过 {FETCH_TIMEOUT_SECONDS:g} 秒），请稍后再试。"
+        else:
+            detail = "抓取字幕超时，请稍后再试。"
+        return HTTPException(status_code=504, detail=detail)
+    if isinstance(exc, TranscriptsDisabled):
+        return HTTPException(status_code=422, detail="该视频关闭了字幕功能，无法获取英文字幕。")
+    if isinstance(exc, (NoTranscriptFound, _NoEnglishTranscript)):
+        return HTTPException(status_code=422, detail="该视频没有英文字幕（含自动生成）。")
+    if isinstance(exc, VideoUnavailable):
+        return HTTPException(status_code=404, detail="视频不可用：可能已删除、设为私密或有地区限制。")
+    if isinstance(exc, (IpBlocked, RequestBlocked)):
+        return HTTPException(
+            status_code=429,
+            detail="YouTube 暂时限制了当前 IP 的字幕请求，请稍后再试。",
+        )
+    return HTTPException(status_code=502, detail=f"获取字幕失败：{exc}")
+
+
+def fetch_english_transcript(video_id: str) -> EnglishTranscript:
     """Fetch the English transcript, mapping failures to actionable errors.
+
+    抓取链（用户需求 4）：
+
+    1. ``list()`` 探测轨道：手动 en 优先，其次自动生成 en（含 en-US/en-GB/
+       en-orig 等前缀）；用探测到的具体语言码的轨道 ``fetch()``。
+    2. API 抛 NoTranscriptFound / IpBlocked / RequestBlocked / 超时 / 其他异常
+       → yt-dlp 回退：``extract_info`` 选 en 轨 → 下载自动字幕 VTT →
+       ``parse_vtt`` 清洗。回退仍失败时**还原 API 的原始错误**（限流仍 429、
+       无轨仍 422），不让用户看到两层叠加的错误。
+    3. 返回 ``EnglishTranscript``，携带 ``subtitle_source`` / ``auto_generated``。
 
     边界（M1 ⑦ 残余项）：
 
@@ -370,39 +623,49 @@ def fetch_english_transcript(video_id: str):
     """
     session = _BoundedSession()
     try:
-        fetched = YouTubeTranscriptApi(http_client=session).fetch(
-            video_id, languages=['en']
-        )
+        api = YouTubeTranscriptApi(http_client=session)
+        supports_track_list = hasattr(api, "list")
+        try:
+            if supports_track_list:
+                transcript = _fetch_with_track_list(api, video_id)
+            else:
+                # 旧版库/测试替身没有 list()：退回旧行为，也无法做 yt-dlp 回退。
+                transcript = _fetch_legacy_api(api, video_id)
+        except _ResponseTooLarge:
+            raise
+        except Exception as api_error:
+            if not supports_track_list:
+                raise
+            try:
+                transcript = _fetch_english_transcript_with_ytdlp(video_id)
+            except _ResponseTooLarge:
+                raise
+            except Exception as fallback_error:
+                print(f"yt-dlp caption fallback failed for {video_id}: {fallback_error}")
+                raise api_error
     except _ResponseTooLarge as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=f"字幕抓取响应体超过上限（{_format_bytes(exc.limit)}），无法处理该视频。",
-        ) from exc
+        raise _transcript_error(exc) from exc
     except requests.Timeout as exc:
-        if FETCH_TIMEOUT_SECONDS > 0:
-            detail = f"抓取字幕超时（超过 {FETCH_TIMEOUT_SECONDS:g} 秒），请稍后再试。"
-        else:
-            detail = "抓取字幕超时，请稍后再试。"
-        raise HTTPException(status_code=504, detail=detail) from exc
-    except TranscriptsDisabled:
-        raise HTTPException(status_code=422, detail="该视频关闭了字幕功能，无法获取英文字幕。")
-    except NoTranscriptFound:
-        raise HTTPException(status_code=422, detail="该视频没有英文字幕（包括自动生成字幕）。")
-    except VideoUnavailable:
-        raise HTTPException(status_code=404, detail="视频不可用：可能已删除、设为私密或有地区限制。")
-    except (IpBlocked, RequestBlocked):
-        raise HTTPException(status_code=429, detail="YouTube 暂时限制了当前 IP 的字幕请求，请稍后再试。")
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"获取字幕失败：{e}")
+        raise _transcript_error(exc) from exc
+    except TranscriptsDisabled as exc:
+        raise _transcript_error(exc) from exc
+    except (NoTranscriptFound, _NoEnglishTranscript) as exc:
+        raise _transcript_error(exc) from exc
+    except VideoUnavailable as exc:
+        raise _transcript_error(exc) from exc
+    except (IpBlocked, RequestBlocked) as exc:
+        raise _transcript_error(exc) from exc
+    except Exception as exc:
+        raise _transcript_error(exc) from exc
     finally:
         session.close()
 
-    if MAX_TRANSCRIPT_BLOCKS > 0 and len(fetched) > MAX_TRANSCRIPT_BLOCKS:
+    if MAX_TRANSCRIPT_BLOCKS > 0 and len(transcript) > MAX_TRANSCRIPT_BLOCKS:
         raise HTTPException(
             status_code=400,
             detail=f"字幕块数超过上限（{MAX_TRANSCRIPT_BLOCKS} 块），无法处理该视频。",
         )
-    return fetched
+    return transcript
 
 
 def get_video_metadata(url: str):
@@ -460,6 +723,117 @@ def parse_srt(content: str) -> list:
             blocks.append({"start": start, "end": end, "text": text})
 
     return blocks
+
+
+# ====================================================
+# WebVTT 解析（yt-dlp 回退下载的自动字幕）
+# ====================================================
+
+_VTT_TIMESTAMP_RE = re.compile(
+    r"(?:(?P<hours>\d{1,2}):)?(?P<minutes>\d{1,2}):(?P<seconds>\d{2})[.,](?P<millis>\d{3})"
+)
+# YouTube 自动字幕的行内时间标签：<00:00:19.039><c> word</c> / <c.colorE5E5E5>…
+_VTT_INLINE_TAG_RE = re.compile(r"<[^>]*>")
+
+
+def _vtt_timestamp_to_seconds(value: str) -> float:
+    """``00:00:01.200`` / ``01:02.345`` → 秒；非法格式抛 ``ValueError``。"""
+    match = _VTT_TIMESTAMP_RE.fullmatch(value.strip())
+    if not match:
+        raise ValueError(f"invalid WebVTT timestamp: {value!r}")
+    hours = int(match.group("hours") or 0)
+    minutes = int(match.group("minutes"))
+    seconds = int(match.group("seconds"))
+    millis = int(match.group("millis"))
+    return hours * 3600 + minutes * 60 + seconds + millis / 1000
+
+
+def _clean_vtt_text(line: str) -> str:
+    """去行内时间/样式标签、HTML 实体与多余空白；空行返回空串。"""
+    text = _VTT_INLINE_TAG_RE.sub("", line)
+    text = html.unescape(text)
+    text = text.replace("\u200b", "").replace("\xa0", " ")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _parse_vtt_timing(line: str) -> tuple[float, float] | None:
+    """解析 ``start --> end [settings]``；不是合法时间行返回 ``None``。"""
+    if "-->" not in line:
+        return None
+    start_raw, _, rest = line.partition("-->")
+    end_raw = rest.strip().split()[0] if rest.strip() else ""
+    try:
+        return (
+            _vtt_timestamp_to_seconds(start_raw),
+            _vtt_timestamp_to_seconds(end_raw),
+        )
+    except ValueError:
+        return None
+
+
+def parse_vtt(content: str) -> list:
+    """Parse WebVTT into cleaned ``{start,end,text}`` cues.
+
+    YouTube 自动字幕的滚动窗口会让同一行在相邻 cue 里重复出现（整行重复，
+    或在下一 cue 首行回显上一句）。这里按「上一 cue 已出现过的行」去重：
+    只保留本 cue 新增的行，空 cue / 纯重复 cue 不更新已见集合，避免把上文
+    清空后又把同一句吐一遍。行内 ``<00:00:01.234>`` / ``<c>`` 标签与
+    ``align:start position:0%`` 设置行都会被剥掉；同一 cue 的多行合并成一句。
+    """
+    if not isinstance(content, str) or not content.strip():
+        return []
+
+    normalized = content.replace("\r\n", "\n").replace("\r", "\n").lstrip("\ufeff")
+    # 一行一行扫，避免把 cue 内「只有空格」的文本行误当成 cue 分隔符
+    # （YouTube 自动字幕的 cue 首行经常就是一个空格）。
+    raw_cues: list[dict] = []
+    current: dict | None = None
+    for raw_line in normalized.split("\n"):
+        if "-->" in raw_line:
+            timing = _parse_vtt_timing(raw_line)
+            if timing is not None:
+                if current is not None:
+                    raw_cues.append(current)
+                current = {"start": timing[0], "end": timing[1], "lines": []}
+                continue
+        if raw_line == "":
+            if current is not None:
+                raw_cues.append(current)
+                current = None
+            continue
+        if current is not None:
+            current["lines"].append(raw_line)
+    if current is not None:
+        raw_cues.append(current)
+
+    cues: list[dict] = []
+    previous_lines: set[str] = set()
+
+    for cue in raw_cues:
+        start, end = cue["start"], cue["end"]
+        cleaned_lines = [
+            cleaned for cleaned in (_clean_vtt_text(raw) for raw in cue["lines"]) if cleaned
+        ]
+        if not cleaned_lines:
+            continue
+
+        new_lines: list[str] = []
+        for line in cleaned_lines:
+            if line in previous_lines or line in new_lines:
+                continue
+            new_lines.append(line)
+        # 本 cue 全是上一 cue 的回显（滚动字幕的冻结帧）：不产出、也不更新
+        # previous_lines——下一 cue 还会带着这行，届时能正确只取新增部分。
+        if not new_lines:
+            continue
+
+        text = " ".join(new_lines).strip()
+        previous_lines = set(cleaned_lines)
+        if cues and cues[-1]["text"] == text:
+            continue
+        cues.append({"start": start, "end": end, "text": text})
+
+    return cues
 
 
 def group_srt_blocks(blocks: list) -> list:
@@ -557,7 +931,6 @@ def _transcribe_audio_with_whisper(url: str) -> list:
     Used as a fallback for videos without English captions. Returns snippet
     dicts compatible with group_transcript_blocks. Blocking — run in a thread.
     """
-    import tempfile
     from faster_whisper import WhisperModel
 
     with tempfile.TemporaryDirectory() as tmpdir:

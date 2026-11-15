@@ -1,17 +1,21 @@
-"""后台止血台（Admin MVP，只读）——用户需求 #12 / 计划 M1 ⑥。
+"""后台管理（Admin）：只读止血台 + 运营写操作（用户需求 #12 / 1–3）。
 
-目标：出事时能在一页里看清「用户量/活跃、AI 花费与配额、任务状态、错误
-概览」。**不是 CMS**：本模块只有 SELECT，没有任何删除/改数据/封号/退款
-入口；连接建立后直接 ``PRAGMA query_only = ON``，SQLite 会拒绝任何误写。
+原有只读止血台（M1 ⑥，specs/021-admin）：用户量/活跃、AI 花费与配额、任务
+状态、错误概览。2026-11-16 起按 specs/023-user-profile 增加运营写操作：
+
+- ``GET  /api/admin/users``：在原有字段上增加 username / credits / status；
+- ``POST /api/admin/users/{id}/credits``：手动调余额（原子更新 + 流水，不允许负余额）；
+- ``PATCH /api/admin/users/{id}``：封禁/解封（不能封自己或最后一个管理员）；
+- ``GET/PUT /api/admin/settings``：维护模式与公告。
 
 身份（见 config.py / routes_auth.py / specs/021-admin）：
 
 - 管理员 = ``ADMIN_EMAILS`` 环境变量（逗号分隔、大小写不敏感）；默认空 =
   没有管理员；
-- ``/api/admin/*`` 需登录 + 管理员：未登录 401，普通用户 403；
-- 不新增迁移、不建表：只读聚合既有的 ``users`` / ``learning_events`` /
-  ``attempts`` / ``ai_usage`` / ``jobs`` 表与 ``data/`` 目录。表不存在时字段
-  降级为 0/空（旧库没跑迁移也能打开止血台），只有健康检查如实标记 degraded。
+- ``/api/admin/*`` 需登录 + 管理员：未登录 401，普通用户 403；封禁账号由
+  身份中间件在进入路由前 403；
+- 读聚合用只读连接（``PRAGMA query_only = ON``），写操作只经 ``account.py``
+  的受控函数；不提供删除用户/改密码/退款等其它写操作。
 
 「今天/当月」按 ``AI_QUOTA_TIMEZONE``（默认 Asia/Shanghai）划分，与
 ``ai.ledger`` 的 ``usage_date`` 同口径。所有成本单位是美元（est_cost_usd，
@@ -28,7 +32,9 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import AliasChoices, BaseModel, Field
 
+import account
 import config
 import guest
 import observability
@@ -40,6 +46,36 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 _MAX_SEARCH_CHARS = 100
 _MAX_ERROR_CHARS = 500
 _MAX_FAILED_JOBS = 10
+_MAX_ANNOUNCEMENT_CHARS = 2000
+
+
+# ---------------------------------------------------------------------------
+# 写操作请求模型（specs/023）
+# ---------------------------------------------------------------------------
+
+class CreditAdjustRequest(BaseModel):
+    """``POST /users/{id}/credits``：整数金额 + 原因；校验在 account 里做。"""
+
+    delta: int | None = None
+    reason: str | None = None
+
+
+class UserPatchRequest(BaseModel):
+    """``PATCH /users/{id}``：只支持 status（active/banned）。"""
+
+    status: str | None = None
+    # 需求明确「isAdmin 不实现」：显式传了就 400，避免被误以为已经改成功。
+    is_admin: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("isAdmin", "is_admin"),
+    )
+
+
+class SettingsUpdateRequest(BaseModel):
+    """``PUT /settings``：字段可选；announcement 可为 null（清空公告）。"""
+
+    maintenance_mode: bool | None = None
+    announcement: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -332,16 +368,16 @@ def _escape_like(value: str) -> str:
 
 
 def build_users(limit: int = 50, offset: int = 0, search: str = "") -> dict:
-    """``GET /api/admin/users`` 的数据体；id 只返回前 8 位。"""
+    """``GET /api/admin/users`` 的数据体。
+
+    保留 021 的既有字段（``id`` 前 8 位 / email / createdAt / monthCostUsd /
+    eventCount / lastActiveAt），新增 ``username`` / ``credits`` / ``status``
+    与完整 id ``userId``（调余额/封禁端点需要完整 id；列表展示仍用 8 位）。
+    搜索同时匹配 email 与 username（大小写不敏感）。
+    """
     limit = max(1, min(int(limit), 100))
     offset = max(0, min(int(offset), 100_000))
     query = (search or "").strip()[: _MAX_SEARCH_CHARS]
-
-    where = ""
-    params: list[object] = []
-    if query:
-        where = " WHERE email LIKE ? ESCAPE '\\'"
-        params.append(f"%{_escape_like(query.lower())}%")
 
     result = {
         "users": [],
@@ -354,12 +390,34 @@ def build_users(limit: int = 50, offset: int = 0, search: str = "") -> dict:
         if conn is None or not _table_exists(conn, "users"):
             return result
 
+        user_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()
+        }
+        has_profile = {"username", "credits", "status"} <= user_columns
+
+        where = ""
+        params: list[object] = []
+        if query:
+            like = f"%{_escape_like(query.lower())}%"
+            if has_profile:
+                where = (
+                    " WHERE email LIKE ? ESCAPE '\\' "
+                    "OR username LIKE ? ESCAPE '\\'"
+                )
+                params.extend([like, like])
+            else:
+                where = " WHERE email LIKE ? ESCAPE '\\'"
+                params.append(like)
+
         result["total"] = int(
             _scalar(conn, f"SELECT COUNT(*) FROM users{where}", tuple(params)) or 0
         )
+        selected = "id, email, created_at"
+        if has_profile:
+            selected += ", username, credits, status"
         try:
             rows = conn.execute(
-                "SELECT id, email, created_at FROM users"
+                f"SELECT {selected} FROM users"
                 f"{where} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
                 (*params, limit, offset),
             ).fetchall()
@@ -421,7 +479,13 @@ def build_users(limit: int = 50, offset: int = 0, search: str = "") -> dict:
             users.append(
                 {
                     "id": user_id[:8],
+                    "userId": user_id,
                     "email": row["email"],
+                    "username": row["username"] if has_profile else None,
+                    "credits": int(row["credits"] or 0) if has_profile else 0,
+                    "status": (
+                        row["status"] or account.STATUS_ACTIVE
+                    ) if has_profile else account.STATUS_ACTIVE,
                     "createdAt": int(row["created_at"] or 0) * 1000,
                     "monthCostUsd": month_cost,
                     "eventCount": event_count,
@@ -597,7 +661,7 @@ def build_health() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# HTTP 端点（全部只读；限速桶见 ratelimit.py）
+# HTTP 端点（读聚合 + specs/023 写操作；限速桶见 ratelimit.py）
 # ---------------------------------------------------------------------------
 
 @router.get("/stats")
@@ -613,7 +677,7 @@ def admin_users(
     search: str = "",
     _user: dict = Depends(require_admin),
 ):
-    """用户列表：id 前 8 位 + 邮箱 + 注册时间 + 本月花费 + 事件数 + 最后活跃。"""
+    """用户列表：id 前 8 位 + userId + 邮箱/用户名/余额/状态 + 本月花费等。"""
     return build_users(limit=limit, offset=offset, search=search)
 
 
@@ -627,3 +691,117 @@ def admin_usage(days: int = 7, _user: dict = Depends(require_admin)):
 def admin_health(_user: dict = Depends(require_admin)):
     """聚合 /healthz + data/ 磁盘占用 + 最近 10 条 failed jobs。"""
     return build_health()
+
+
+@router.post("/users/{user_id}/credits")
+def admin_adjust_credits(
+    user_id: str,
+    payload: CreditAdjustRequest,
+    user: dict = Depends(require_admin),
+):
+    """手动调余额：delta 非 0、-100000..100000，reason 1–200 字。
+
+    原子更新 users.credits 并追加 credit_transactions；扣减后余额 < 0 拒绝
+    （400），用户不存在 404，未迁移 503。返回 ``{"credits": 新余额}``。
+    """
+    try:
+        delta, reason = account.validate_adjustment(payload.delta, payload.reason)
+    except account.InvalidAdjustment as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    try:
+        credits = account.adjust_credits(
+            user_id, delta, reason, admin_id=user["id"]
+        )
+    except account.UserNotFound:
+        raise HTTPException(status_code=404, detail="用户不存在。")
+    except account.InsufficientCredits:
+        raise HTTPException(
+            status_code=400, detail="余额不足，不能扣成负数。"
+        )
+    except account.CreditsUnavailable:
+        raise HTTPException(
+            status_code=503,
+            detail="数据库未迁移（credit_transactions 缺失），请先执行 alembic upgrade head。",
+        )
+    return {"credits": credits}
+
+
+@router.patch("/users/{user_id}")
+def admin_patch_user(
+    user_id: str,
+    payload: UserPatchRequest,
+    user: dict = Depends(require_admin),
+):
+    """封禁/解封用户（只允许 status；isAdmin 不实现）。
+
+    不能封禁自己或最后一个 active 管理员；用户不存在 404。
+    返回 ``{"user": {id,email,username,credits,status,createdAt}}``。
+    """
+    if payload.is_admin is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="暂不支持通过该接口修改管理员身份。",
+        )
+    if "status" not in payload.model_fields_set or payload.status is None:
+        raise HTTPException(status_code=400, detail="请提供 status。")
+    status = payload.status.strip().lower()
+    if status not in account.STATUSES:
+        raise HTTPException(
+            status_code=400, detail="status 只支持 active 或 banned。"
+        )
+    try:
+        updated = account.set_user_status(
+            user_id, status, actor_id=user["id"]
+        )
+    except account.UserNotFound:
+        raise HTTPException(status_code=404, detail="用户不存在。")
+    except account.CannotBanSelf:
+        raise HTTPException(status_code=400, detail="不能封禁自己。")
+    except account.LastAdmin:
+        raise HTTPException(
+            status_code=400, detail="不能封禁最后一个管理员。"
+        )
+    return {"user": updated}
+
+
+@router.get("/settings")
+def admin_get_settings(_user: dict = Depends(require_admin)):
+    """当前应用设置：``{maintenance_mode: bool, announcement: str|null}``。"""
+    return account.get_settings()
+
+
+@router.put("/settings")
+def admin_update_settings(
+    payload: SettingsUpdateRequest,
+    _user: dict = Depends(require_admin),
+):
+    """按字段 upsert 维护模式/公告并返回当前值。
+
+    - ``maintenance_mode``：bool（开着时非管理员 /api/* 返回 503）；
+    - ``announcement``：字符串或 null（null = 清空）；不传 = 保留原值。
+    """
+    fields = payload.model_fields_set
+    kwargs: dict[str, object] = {}
+    if "maintenance_mode" in fields:
+        if payload.maintenance_mode is None:
+            raise HTTPException(
+                status_code=400, detail="maintenance_mode 必须是布尔值。"
+            )
+        kwargs["maintenance_mode"] = payload.maintenance_mode
+    if "announcement" in fields:
+        if (
+            payload.announcement is not None
+            and len(payload.announcement) > _MAX_ANNOUNCEMENT_CHARS
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=f"公告最多 {_MAX_ANNOUNCEMENT_CHARS} 个字符。",
+            )
+        kwargs["announcement"] = payload.announcement
+    try:
+        return account.update_settings(**kwargs)
+    except account.SettingsUnavailable:
+        raise HTTPException(
+            status_code=503,
+            detail="数据库未迁移（app_settings 缺失），请先执行 alembic upgrade head。",
+        )

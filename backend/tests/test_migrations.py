@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0012_exam"
+HEAD = "0013_user_profile"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -74,18 +74,33 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "discover_queries",
         "articles", "article_paragraphs", "article_translations", "article_progress",
         "exam_sessions", "exam_answers",
+        "credit_transactions", "app_settings",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD
 
     # 基线字段与 auth_db.py 一致（名字/顺序/可空性）
     users = columns(db, "users")
-    assert list(users) == ["id", "email", "password_hash", "created_at"]
+    assert list(users) == [
+        "id",
+        "email",
+        "password_hash",
+        "created_at",
+        "username",
+        "credits",
+        "status",
+    ]
     assert users["id"]["pk"] == 1
     assert users["id"]["notnull"] == 0  # 与 auth_db.py 的 `id TEXT PRIMARY KEY` 一致
     assert users["email"]["notnull"] == 1
     assert users["password_hash"]["notnull"] == 1
     assert users["created_at"]["notnull"] == 1
+    # 0013：username 可空（旧用户回填、允许重名）；credits/status 非空带默认值
+    assert users["username"]["notnull"] == 0
+    assert users["credits"]["notnull"] == 1
+    assert str(users["credits"]["default"]) == "0"
+    assert users["status"]["notnull"] == 1
+    assert "active" in str(users["status"]["default"])
 
     sessions = columns(db, "sessions")
     assert list(sessions) == ["token_hash", "user_id", "expires_at", "created_at"]
@@ -1115,6 +1130,141 @@ def test_upgrade_head_from_empty_db(tmp_path):
         else:
             raise AssertionError("exam_answers 外键应拒绝不存在的 session_id")
         conn.rollback()
+
+    # 用户资料 / 余额 / 应用设置（0013_user_profile）
+    transactions = columns(db, "credit_transactions")
+    assert list(transactions) == [
+        "id", "user_id", "delta", "reason", "admin_id", "created_at",
+    ]
+    assert transactions["id"]["pk"] == 1
+    for required in ("user_id", "delta", "reason", "created_at"):
+        assert transactions[required]["notnull"] == 1, required
+    assert transactions["admin_id"]["notnull"] == 0
+    assert (
+        "ix_credit_transactions_user_created"
+        in index_names(db, "credit_transactions")
+    )
+
+    settings = columns(db, "app_settings")
+    assert list(settings) == ["key", "value", "updated_at"]
+    assert settings["key"]["pk"] == 1
+    assert settings["key"]["notnull"] == 1
+    assert settings["value"]["notnull"] == 0  # announcement 可为 NULL
+    assert settings["updated_at"]["notnull"] == 1
+
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "INSERT INTO credit_transactions "
+            "(id, user_id, delta, reason, admin_id, created_at) "
+            "VALUES ('ct1', 'u-profile', 100, '测试发放', 'admin', 1000)"
+        )
+        conn.execute(
+            "INSERT INTO app_settings (key, value, updated_at) "
+            "VALUES ('maintenance_mode', '1', 1000)"
+        )
+        # app_settings.key 是主键：重复 key 写不进去（应用层用 upsert）。
+        try:
+            conn.execute(
+                "INSERT INTO app_settings (key, value, updated_at) "
+                "VALUES ('maintenance_mode', '0', 1001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("app_settings.key 主键应阻止重复 key")
+        conn.rollback()
+
+
+def test_user_profile_migration_backfills_legacy_users(tmp_path):
+    """真正旧的 users 表（只有 4 列）升级后：回填 username、补默认值、允许重名。"""
+    db = tmp_path / "app.db"
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "CREATE TABLE users ("
+            "id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE, "
+            "password_hash TEXT NOT NULL, created_at INTEGER NOT NULL)"
+        )
+        conn.execute(
+            "CREATE TABLE sessions ("
+            "token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, "
+            "expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL)"
+        )
+        conn.execute(
+            "INSERT INTO users VALUES "
+            "('u1', 'alice@example.com', 'hash', 1000), "
+            "('u2', 'alice@other.com', 'hash', 1001), "
+            "('u3', 'bob@example.com', 'hash', 1002)"
+        )
+
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (legacy users)")
+
+    with sqlite3.connect(db) as conn:
+        rows = conn.execute(
+            "SELECT id, username, credits, status FROM users ORDER BY id"
+        ).fetchall()
+        # email 前缀回填；两个 alice 重名不管（username 不是唯一键）。
+        assert rows == [
+            ("u1", "alice", 0, "active"),
+            ("u2", "alice", 0, "active"),
+            ("u3", "bob", 0, "active"),
+        ]
+        # 0001 幂等：旧数据没被重建/删除。
+        assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 3
+        assert conn.execute(
+            "SELECT COUNT(*) FROM credit_transactions"
+        ).fetchone()[0] == 0
+
+    columns_after = columns(db, "users")
+    assert {"username", "credits", "status"} <= set(columns_after)
+
+
+def test_user_profile_downgrade_to_0012_and_back(tmp_path):
+    """0013 单独回滚：删两张新表 + users 三列，保留用户行；再升级回填。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "INSERT INTO users "
+            "(id, email, password_hash, created_at, username, credits, status) "
+            "VALUES ('u-keep', 'keep@example.com', 'hash', 1000, '保留用户', 5, 'banned')"
+        )
+        conn.execute(
+            "INSERT INTO credit_transactions "
+            "(id, user_id, delta, reason, admin_id, created_at) "
+            "VALUES ('ct-keep', 'u-keep', 5, '初始发放', NULL, 1000)"
+        )
+        conn.execute(
+            "INSERT INTO app_settings (key, value, updated_at) "
+            "VALUES ('maintenance_mode', '1', 1000)"
+        )
+        conn.commit()
+
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0012_exam"), "downgrade 0012_exam"
+    )
+    assert revision(db) == "0012_exam"
+    remaining = table_names(db)
+    assert "credit_transactions" not in remaining
+    assert "app_settings" not in remaining
+    assert list(columns(db, "users")) == [
+        "id", "email", "password_hash", "created_at",
+    ]
+    with sqlite3.connect(db) as conn:
+        # 用户行本身不丢（其余字段仍在）。
+        assert conn.execute(
+            "SELECT email, password_hash, created_at FROM users WHERE id='u-keep'"
+        ).fetchone() == ("keep@example.com", "hash", 1000)
+
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert revision(db) == HEAD
+    users_after = columns(db, "users")
+    assert {"username", "credits", "status"} <= set(users_after)
+    assert {"credit_transactions", "app_settings"} <= table_names(db)
+    with sqlite3.connect(db) as conn:
+        # 重新加列后 username 由 email 前缀回填，credits/status 回到默认值。
+        assert conn.execute(
+            "SELECT username, credits, status FROM users WHERE id='u-keep'"
+        ).fetchone() == ("keep", 0, "active")
 
 
 def test_baseline_schema_matches_auth_db_contract(tmp_path, monkeypatch):

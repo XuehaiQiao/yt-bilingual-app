@@ -30,6 +30,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+import account  # noqa: E402
 import config  # noqa: E402
 import discover  # noqa: E402
 import jobs  # noqa: E402
@@ -81,6 +82,8 @@ def isolated_data(tmp_path, monkeypatch):
     ratelimit.reset_rate_limits()
     llm.reset_concurrency_gate()
 
+    # 维护模式的 5 秒进程内缓存也属于模块级全局状态。
+    account.reset_settings_cache()
     # 让「模型是否可用」与本机 .env 无关，断言可重复。
     # Qwen 的端点必须同时给（openai_compatible 模型只有 Key、没有 base_url 时
     # 视为不可用），见 llm.is_available。
@@ -99,6 +102,7 @@ def isolated_data(tmp_path, monkeypatch):
     ratelimit.reset_rate_limits()
     llm.reset_concurrency_gate()
     local_dict.reset()
+    account.reset_settings_cache()
 
 
 @pytest.fixture(autouse=True)

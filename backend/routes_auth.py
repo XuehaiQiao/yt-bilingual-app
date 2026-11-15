@@ -1,11 +1,15 @@
 """认证路由：注册 / 登录 / 登出 / 当前用户 / 游客认领。
 
-冻结契约（前端并行开发，不要改字段与状态码）：
+契约（前端并行开发，不要改字段与状态码）：
 
-- POST /api/auth/signup  {"email","password"} -> 201 {"user":{"id","email"}} + Cookie
-- POST /api/auth/login   {"email","password"} -> 200 {"user":{"id","email"}} + Cookie
+- POST /api/auth/signup  {"email","password","username"?} -> 201
+  {"user":{"id","email","username","credits","status"}} + Cookie
+  新客户端必须带 username（2–24 字符，中文/英文/数字/下划线/连字符）；
+  完全不传该字段的旧客户端回落 email 前缀（兼容，不校验长度/字符集）。
+- POST /api/auth/login   {"email","password"} -> 200 同上 user + Cookie；
+  已封禁账号密码正确时 403 {"detail":"账号已被停用"}
 - POST /api/auth/logout                        -> 200 {"ok": true} + 清除 Cookie
-- GET  /api/auth/me                            -> 200 {"user":{"id","email"}}
+- GET  /api/auth/me                            -> 200 {"user":{...},"isAdmin":bool}
                                                   或 200 {"user": null, "guest": true}
 - POST /api/auth/claim-guest（需登录）          -> 200 {"ok":true,"claimed":bool,
                                                   "merged":{history,favorites,subscriptions},
@@ -15,6 +19,9 @@
 Cookie：`ln_session`，httpOnly、SameSite=Lax、Path=/、Max-Age 30 天；
 `Secure` 由 `COOKIE_SECURE=1` 控制（本地 HTTP 默认关）。游客 Cookie `ln_guest`
 由 `main.py` 的中间件下发/校验（见 guest.py），本模块只在认领成功后清除它。
+
+封禁：登录时 403；已存在的会话由 `main.py` 身份中间件按 `users.status` 拦截
+（下一次请求即 403，不需要删会话——解封后原 Cookie 恢复）。
 """
 import logging
 import re
@@ -24,6 +31,7 @@ import time
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
+import account
 import auth_db
 import auth_lockout
 import config
@@ -56,6 +64,10 @@ MIN_PASSWORD_LENGTH = 8
 class Credentials(BaseModel):
     email: str
     password: str
+    # 用 object 而不是 str|None：非字符串（数字/数组/对象）也走 400，而不是
+    # pydantic 的 422。缺省 None 用于识别「旧客户端完全没传 username」；
+    # 传了 null/空串按非法 400。
+    username: object = None
 
 
 def _client_ip(request: Request) -> str:
@@ -148,14 +160,24 @@ def clear_session_cookie(response: Response) -> None:
 
 def _public_user(user: dict) -> dict:
     """只暴露契约里的字段，绝不把 password_hash 带出。"""
-    return {"id": user["id"], "email": user["email"]}
+    return account.public_user(user)
 
 
 @router.post("/signup", status_code=201)
 def signup(credentials: Credentials, response: Response):
     email = _validate_signup(credentials.email, credentials.password)
+    # 新契约 username 必填（校验失败 400）；旧客户端完全不传该字段时回落 email
+    # 前缀，保证老版本升级后还能注册。区分「没传」与「传了空/null」用
+    # model_fields_set，避免把空字符串静默当成没传。
+    if "username" in credentials.model_fields_set:
+        try:
+            username = account.validate_username(credentials.username)
+        except account.InvalidUsername as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+    else:
+        username = auth_db.email_prefix_username(email)
     try:
-        user = auth_db.create_user(email, credentials.password)
+        user = auth_db.create_user(email, credentials.password, username=username)
     except auth_db.EmailExistsError:
         raise HTTPException(status_code=409, detail="邮箱已注册。")
     token = auth_db.create_session(user["id"])
@@ -187,8 +209,12 @@ def login(credentials: Credentials, request: Request, response: Response):
         _record_login_failure(ip)
         auth_lockout.record_failure(email, ip)
         raise HTTPException(status_code=401, detail="邮箱或密码错误。")
+    # 封禁账号：密码正确才走到这里，用 403 明确告知「账号已被停用」；
+    # 先清失败计数，避免解封后还被之前的失败锁定影响。
     _clear_login_failures(ip)
     auth_lockout.clear(email, ip)
+    if (user.get("status") or account.STATUS_ACTIVE) == account.STATUS_BANNED:
+        raise HTTPException(status_code=403, detail="账号已被停用")
     token = auth_db.create_session(user["id"])
     set_session_cookie(response, token)
     return {"user": _public_user(user)}
@@ -205,12 +231,12 @@ def logout(request: Request, response: Response):
 def me(request: Request):
     """当前身份：登录用户返回 user + isAdmin；否则游客态 `{user:null, guest:true}`。
 
-    游客态不再返回 401——前端据此直接进入游客模式（不拦登录页），并在需要
+    游客态不返回 401——前端据此直接进入游客模式（不拦登录页），并在需要
     保存/收藏时提示登录。`ln_guest` 由 main.py 的中间件在首次访问时下发。
 
-    `isAdmin` 只加在登录分支的**顶层**（不塞进 user 对象，保持
-    ``{"user":{"id","email"}}`` 冻结契约不变）；游客分支也保持原样，避免
-    给公开响应增加字段。管理员名单来自 ``config.ADMIN_EMAILS``。
+    `user` 自 0013 起包含 ``username`` / ``credits`` / ``status``（注册/登录
+    同契约）；`isAdmin` 只加在登录分支的**顶层**，不塞进 user 对象。
+    管理员名单来自 ``config.ADMIN_EMAILS``。
     """
     user = getattr(request.state, "user", None)
     if not user:
