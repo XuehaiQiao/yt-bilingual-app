@@ -37,6 +37,8 @@ interface InputScreenProps {
     onOpenReport?: () => void;
     /** Ability placement / profile entry (M4 / specs/016). */
     onOpenPlacement?: (view: 'intro' | 'profile') => void;
+    /** Exam practice entry (V2 / specs/022). */
+    onOpenExam?: () => void;
     /** Content discovery entry (specs/017): open the discover view. */
     onOpenDiscover?: () => void;
     /** Reading entry (specs/019): open the article list/reader view. */
@@ -76,6 +78,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     onOpenReview,
     onOpenReport,
     onOpenPlacement,
+    onOpenExam,
     onOpenDiscover,
     onOpenReader,
     onOpenBlog,
@@ -293,6 +296,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                         placementLoading={placementLoading}
                         placementFailed={placementFailed}
                         onOpenPlacement={onOpenPlacement}
+                        onOpenExam={onOpenExam}
                     />
                 </motion.div>
 

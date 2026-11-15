@@ -22,6 +22,7 @@ import { ReviewScreen } from './components/ReviewScreen';
 import { QuizScreen } from './components/QuizScreen';
 import { ReportScreen, type WeekReportEvidence } from './components/ReportScreen';
 import { PlacementScreen, type PlacementInitialView } from './components/PlacementScreen';
+import { ExamScreen } from './components/ExamScreen';
 import { DiscoverScreen } from './components/DiscoverScreen';
 import { ReaderScreen } from './components/ReaderScreen';
 import { BlogScreen } from './components/BlogScreen';
@@ -187,6 +188,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // `intro` is the no-profile landing; `profile` is the saved-profile page.
   const [placementOpen, setPlacementOpen] = useState(false);
   const [placementInitialView, setPlacementInitialView] = useState<PlacementInitialView>('intro');
+  // Exam practice (V2 / specs/022) — a full view like placement. The screen
+  // owns its types/quiz/result/history phases and its local draft answers.
+  const [examOpen, setExamOpen] = useState(false);
   const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
   const [reviewStatsLoading, setReviewStatsLoading] = useState(false);
   const [reviewStatsFailed, setReviewStatsFailed] = useState(false);
@@ -1143,6 +1147,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setAdminOpen(false);
     setReportOpen(false);
     setPlacementOpen(false);
+    setExamOpen(false);
     setQuizOpen(false);
     setQuizLesson(null);
     setQuizStarting(false);
@@ -1252,6 +1257,30 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setPlacementOpen(false);
     // The workbench reads the profile on mount; a completion changes it and
     // the home branch remounts on the next render anyway.
+    setReviewStatsNonce(prev => prev + 1);
+  };
+
+  // Exam practice (V2 / specs/022). Full view, account-only: guests are routed
+  // to login from the home entry instead of mounting the screen. Closing
+  // remounts the home screen (its history list is static, nothing to refresh).
+  const handleOpenExam = () => {
+    if (status !== 'authenticated') {
+      onRequestLogin?.();
+      return;
+    }
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setReviewOpen(false);
+    setReportOpen(false);
+    setPlacementOpen(false);
+    setQuizOpen(false);
+    setQuizLesson(null);
+    setExamOpen(true);
+  };
+
+  const handleCloseExam = () => {
+    setExamOpen(false);
     setReviewStatsNonce(prev => prev + 1);
   };
 
@@ -1548,7 +1577,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">{t('admin.entry')}</span>
           </button>
         )}
-        {status === 'authenticated' && !adminOpen && !reviewOpen && !quizOpen && !placementOpen && !discoverOpen && !readerOpen && !blogOpen && (
+        {status === 'authenticated' && !adminOpen && !reviewOpen && !quizOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
           <button
             type="button"
             data-testid="topbar-review-button"
@@ -1570,7 +1599,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             )}
           </button>
         )}
-        {!adminOpen && !quizOpen && !reportOpen && !placementOpen && !discoverOpen && !readerOpen && !blogOpen && (
+        {!adminOpen && !quizOpen && !reportOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
           <button
             type="button"
             data-testid="topbar-report-button"
@@ -2088,6 +2117,20 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onRequestLogin={onRequestLogin}
           />
         </motion.div>
+      ) : examOpen ? (
+        <motion.div
+          key="exam"
+          initial={{ opacity: 0, scale: 0.99, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          <ExamScreen
+            isGuest={status === 'guest'}
+            onClose={handleCloseExam}
+            onRequestLogin={onRequestLogin}
+          />
+        </motion.div>
       ) : quizOpen && quizLesson ? (
         <motion.div
           key="quiz"
@@ -2214,6 +2257,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenReview={handleOpenReview}
             onOpenReport={handleOpenReport}
             onOpenPlacement={handleOpenPlacement}
+            onOpenExam={handleOpenExam}
             onOpenDiscover={handleOpenDiscover}
             onOpenReader={handleOpenReader}
             onOpenBlog={handleOpenBlog}

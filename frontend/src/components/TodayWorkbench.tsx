@@ -10,7 +10,7 @@
 // routes to the profile / retest page. The link input moved below these cards
 // (see InputScreen) and stays one paste away — this component never owns the
 // submit pipeline.
-import { ArrowRight, CalendarRange, Gauge, Play, Repeat } from 'lucide-react';
+import { ArrowRight, CalendarRange, Gauge, GraduationCap, Play, Repeat } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import type { ReviewStats } from '../lib/review';
@@ -57,6 +57,8 @@ interface TodayWorkbenchProps {
     placementFailed?: boolean;
     /** No profile → intro; saved profile → profile / retest page. */
     onOpenPlacement?: (view: 'intro' | 'profile') => void;
+    /** Exam practice entry (V2 / specs/022): account-only full view. */
+    onOpenExam?: () => void;
 }
 
 const CARD = 'rounded-3xl border border-white/5 bg-zinc-900/40 p-3.5 sm:p-5 flex flex-col min-w-0';
@@ -86,6 +88,7 @@ export function TodayWorkbench({
     placementLoading = false,
     placementFailed = false,
     onOpenPlacement,
+    onOpenExam,
 }: TodayWorkbenchProps) {
     const { t, formatNumber, formatDate } = useI18n();
 
@@ -491,6 +494,54 @@ export function TodayWorkbench({
                     </button>
                 </motion.section>
             </div>
+
+            {/* Exam practice entry (V2 / specs/022). Sits below the three
+                daily actions: a deliberately quiet strip, not a fourth card,
+                so it never competes with "what do I do today". Guests get the
+                login prompt; accounts go straight to type selection. */}
+            <section
+                data-testid="exam-entry"
+                data-guest={isGuest ? 'true' : 'false'}
+                className="mt-3 sm:mt-4 rounded-2xl sm:rounded-3xl border border-white/5 bg-zinc-900/40 px-3.5 py-3 sm:px-5 sm:py-4"
+            >
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                        <div className={CARD_ICON}>
+                            <GraduationCap className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[10px] sm:text-[11px] font-medium text-zinc-500">
+                                {t('exam.home.badge')}
+                            </p>
+                            <p
+                                data-testid="exam-entry-title"
+                                className="mt-0.5 text-[13px] sm:text-sm font-medium leading-relaxed text-zinc-200 break-words"
+                            >
+                                {isGuest ? t('exam.home.guest') : t('exam.home.title')}
+                            </p>
+                            <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500 break-words">
+                                {isGuest ? t('exam.home.guestHint') : t('exam.home.hint')}
+                            </p>
+                            <p className="mt-1 text-[10px] leading-relaxed text-zinc-600 break-words">
+                                {t('exam.home.disclaimer')}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        data-testid="exam-entry-button"
+                        onClick={onOpenExam}
+                        className={`${ENTRY_ACTION} ${
+                            isGuest
+                                ? 'bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-300 hover:text-blue-200'
+                                : 'bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100'
+                        }`}
+                    >
+                        {isGuest ? t('exam.home.guestAction') : t('exam.home.start')}
+                        <ArrowRight className="w-4 h-4" />
+                    </button>
+                </div>
+            </section>
         </div>
     );
 }
