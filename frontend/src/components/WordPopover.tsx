@@ -27,6 +27,12 @@ export interface WordLookupTarget {
     start: number;
     x: number;
     y: number;
+    /**
+     * Optional owning content id (e.g. a reading article id) used when the
+     * looked-up word is saved to favorites. Transcript lookups leave it unset
+     * so they keep using the current video id.
+     */
+    sourceId?: string;
 }
 
 interface WordPopoverProps {

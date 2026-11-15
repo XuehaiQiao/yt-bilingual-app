@@ -1,6 +1,6 @@
 import { apiFetch } from '../lib/api';
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Trash2, Compass } from 'lucide-react';
+import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Trash2, Compass, BookOpen } from 'lucide-react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import { EstimateDialog, type EstimateDialogHandle } from './EstimateDialog';
@@ -38,6 +38,8 @@ interface InputScreenProps {
     onOpenPlacement?: (view: 'intro' | 'profile') => void;
     /** Content discovery entry (specs/017): open the discover view. */
     onOpenDiscover?: () => void;
+    /** Reading entry (specs/019): open the article list/reader view. */
+    onOpenReader?: () => void;
 }
 
 const containerVariants = {
@@ -70,6 +72,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     onOpenReport,
     onOpenPlacement,
     onOpenDiscover,
+    onOpenReader,
 }) => {
     const { t } = useI18n();
     const [url, setUrl] = useState('');
@@ -334,18 +337,34 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                         </div>
                     </form>
 
-                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                        <span>{t('home.discover.prompt')}</span>
-                        <button
-                            type="button"
-                            data-testid="discover-entry"
-                            onClick={onOpenDiscover}
-                            className="inline-flex items-center gap-1 h-7 px-1.5 -mx-1.5 rounded-lg font-medium text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-colors"
-                        >
-                            <Compass className="w-3.5 h-3.5" />
-                            {t('home.discover.action')}
-                            <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
+                        <div className="flex items-center gap-x-2">
+                            <span>{t('home.discover.prompt')}</span>
+                            <button
+                                type="button"
+                                data-testid="discover-entry"
+                                onClick={onOpenDiscover}
+                                className="inline-flex items-center gap-1 h-7 px-1.5 -mx-1.5 rounded-lg font-medium text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-colors"
+                            >
+                                <Compass className="w-3.5 h-3.5" />
+                                {t('home.discover.action')}
+                                <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                        <span aria-hidden="true" className="hidden sm:block w-px h-3 bg-white/10" />
+                        <div className="flex items-center gap-x-2">
+                            <span>{t('home.reader.prompt')}</span>
+                            <button
+                                type="button"
+                                data-testid="reader-entry"
+                                onClick={onOpenReader}
+                                className="inline-flex items-center gap-1 h-7 px-1.5 -mx-1.5 rounded-lg font-medium text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-colors"
+                            >
+                                <BookOpen className="w-3.5 h-3.5" />
+                                {t('home.reader.action')}
+                                <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
                     </div>
                 </motion.section>
 
