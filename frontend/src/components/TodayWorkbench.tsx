@@ -5,15 +5,20 @@
 //   1. continue the last unfinished item,
 //   2. review today's due words,
 //   3. open this week's report.
-// The link input moved below these cards (see InputScreen) and stays one
-// paste away — this component never owns the submit pipeline.
-import { ArrowRight, CalendarRange, Play, Repeat } from 'lucide-react';
+// Above them sits the ability-placement strip (specs/016): with no profile it
+// invites a 12-minute test; with a profile it names the saved CEFR interval and
+// routes to the profile / retest page. The link input moved below these cards
+// (see InputScreen) and stays one paste away — this component never owns the
+// submit pipeline.
+import { ArrowRight, CalendarRange, Gauge, Play, Repeat } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import type { ReviewStats } from '../lib/review';
+import type { PlacementProfile } from '../lib/placement';
 import { progressPercent } from '../lib/progress';
 import { ModelBar } from './ModelBar';
 import { useI18n } from '../i18n/I18nProvider';
+import type { TranslationKey } from '../i18n';
 
 export interface TodayWeekReport {
     numbers: {
@@ -22,6 +27,12 @@ export interface TodayWeekReport {
         quizAccuracy: number | null;
     };
 }
+
+const CONFIDENCE_KEYS: Record<string, TranslationKey> = {
+    high: 'placement.confidence.high',
+    medium: 'placement.confidence.medium',
+    low: 'placement.confidence.low',
+};
 
 interface TodayWorkbenchProps {
     isGuest: boolean;
@@ -40,6 +51,12 @@ interface TodayWorkbenchProps {
     onStartFirst: () => void;
     /** Keeps the pre-flight estimate in sync with the global model. */
     onModelResolved: (modelId: string) => void;
+    /** Ability profile (M4): drives the placement strip copy. */
+    placementProfile?: PlacementProfile | null;
+    placementLoading?: boolean;
+    placementFailed?: boolean;
+    /** No profile → intro; saved profile → profile / retest page. */
+    onOpenPlacement?: (view: 'intro' | 'profile') => void;
 }
 
 const CARD = 'rounded-3xl border border-white/5 bg-zinc-900/40 p-3.5 sm:p-5 flex flex-col min-w-0';
@@ -47,6 +64,8 @@ const CARD_ICON =
     'w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0';
 const ACTION =
     'mt-3 sm:mt-4 inline-flex w-full items-center justify-center gap-2 h-9 sm:h-10 px-4 rounded-xl text-sm font-semibold transition-[background-color,border-color,color,transform] duration-200 ease-apple active:scale-[0.98]';
+const ENTRY_ACTION =
+    'inline-flex items-center justify-center gap-2 h-9 px-4 rounded-xl text-sm font-medium transition-colors shrink-0 w-full sm:w-auto';
 
 export function TodayWorkbench({
     isGuest,
@@ -63,6 +82,10 @@ export function TodayWorkbench({
     onLoadHistory,
     onStartFirst,
     onModelResolved,
+    placementProfile = null,
+    placementLoading = false,
+    placementFailed = false,
+    onOpenPlacement,
 }: TodayWorkbenchProps) {
     const { t, formatNumber, formatDate } = useI18n();
 
@@ -72,6 +95,12 @@ export function TodayWorkbench({
         month: 'long',
         day: 'numeric',
     });
+
+    const placementConfidence = placementProfile
+        ? (CONFIDENCE_KEYS[placementProfile.confidenceLabel]
+            ? t(CONFIDENCE_KEYS[placementProfile.confidenceLabel])
+            : placementProfile.confidenceLabelZh || placementProfile.confidenceLabel)
+        : '';
 
     // The history list is already newest-first (backend sorts by mtime), so
     // the first row is the most recent unfinished item. A missing local
@@ -169,6 +198,98 @@ export function TodayWorkbench({
                     <ModelBar onModelResolved={onModelResolved} />
                 </div>
             </header>
+
+            {/* Ability placement strip (M4 / specs/016). One line, one action:
+                no profile → offer the 12-minute test; profile → name the saved
+                interval and route to the profile / retest page. */}
+            <motion.section
+                data-testid="placement-entry"
+                data-has-profile={placementProfile ? 'true' : 'false'}
+                data-loading={placementLoading ? 'true' : 'false'}
+                initial={false}
+                className="mt-4 sm:mt-5 rounded-2xl sm:rounded-3xl border border-white/5 bg-zinc-900/40 px-3.5 py-3 sm:px-5 sm:py-4"
+            >
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className={CARD_ICON}>
+                            <Gauge className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[10px] sm:text-[11px] font-medium text-zinc-500">
+                                {t('placement.home.badge')}
+                            </p>
+                            {placementLoading ? (
+                                <p
+                                    data-testid="placement-entry-loading"
+                                    className="mt-0.5 text-[13px] sm:text-sm text-zinc-400"
+                                >
+                                    {t('placement.home.loading')}
+                                </p>
+                            ) : placementProfile ? (
+                                <>
+                                    <p
+                                        data-testid="placement-entry-level"
+                                        className="mt-0.5 text-[13px] sm:text-sm leading-relaxed text-zinc-200 break-words"
+                                    >
+                                        {t('placement.home.levelLine', {
+                                            level: placementProfile.cefr,
+                                        })}
+                                        <span className="mx-1 text-zinc-600">·</span>
+                                        <button
+                                            type="button"
+                                            data-testid="placement-entry-retest"
+                                            onClick={() => onOpenPlacement?.('profile')}
+                                            className="text-blue-300 hover:text-blue-200 transition-colors"
+                                        >
+                                            {t('placement.home.retest')}
+                                        </button>
+                                    </p>
+                                    <p
+                                        data-testid="placement-entry-meta"
+                                        className="mt-0.5 text-[11px] leading-relaxed text-zinc-500 break-words"
+                                    >
+                                        {t('placement.home.meta', {
+                                            confidence: placementConfidence,
+                                            date: formatDate(placementProfile.updatedAt, {
+                                                dateStyle: 'medium',
+                                            }),
+                                        })}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p
+                                        data-testid="placement-entry-title"
+                                        className="mt-0.5 text-[13px] sm:text-sm font-medium leading-relaxed text-zinc-200 break-words"
+                                    >
+                                        {t('placement.home.ctaTitle')}
+                                    </p>
+                                    <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500 break-words">
+                                        {placementFailed
+                                            ? t('placement.home.failed')
+                                            : t('placement.home.ctaHint')}
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    {!placementLoading && (
+                        <button
+                            type="button"
+                            data-testid={placementProfile ? 'placement-entry-profile' : 'placement-entry-start'}
+                            onClick={() => onOpenPlacement?.(placementProfile ? 'profile' : 'intro')}
+                            className={`${ENTRY_ACTION} ${
+                                placementProfile
+                                    ? 'bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100'
+                                    : 'bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-300 hover:text-blue-200'
+                            }`}
+                        >
+                            {placementProfile ? t('placement.home.viewProfile') : t('placement.home.start')}
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
+            </motion.section>
 
             {/* Three actions. Equal-height cards; each action sits at the
                 bottom so the row scans as one band. */}

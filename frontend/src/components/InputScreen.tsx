@@ -14,6 +14,7 @@ import { progressPercent, clearProgress } from '../lib/progress';
 import { toast, describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import type { ReviewStats } from '../lib/review';
+import { getProfile, type PlacementProfile } from '../lib/placement';
 
 interface InputScreenProps {
     onSubmit: (url: string) => void;
@@ -33,6 +34,8 @@ interface InputScreenProps {
     onOpenReview?: () => void;
     /** Weekly report entry (M5): same placement as today's review. */
     onOpenReport?: () => void;
+    /** Ability placement / profile entry (M4 / specs/016). */
+    onOpenPlacement?: (view: 'intro' | 'profile') => void;
 }
 
 const containerVariants = {
@@ -63,6 +66,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     reviewStatsFailed = false,
     onOpenReview,
     onOpenReport,
+    onOpenPlacement,
 }) => {
     const { t } = useI18n();
     const [url, setUrl] = useState('');
@@ -75,6 +79,12 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     const [weekReport, setWeekReport] = useState<TodayWeekReport | null>(null);
     const [weekReportLoading, setWeekReportLoading] = useState(true);
     const [weekReportFailed, setWeekReportFailed] = useState(false);
+    // Ability profile (M4): the workbench strip names the interval when one is
+    // saved and offers the 12-minute test otherwise. Refetched on every home
+    // remount (returning from the placement view remounts this screen).
+    const [placementProfile, setPlacementProfile] = useState<PlacementProfile | null>(null);
+    const [placementLoading, setPlacementLoading] = useState(true);
+    const [placementFailed, setPlacementFailed] = useState(false);
     const [isEstimating, setIsEstimating] = useState(false);
     const [estimationData, setEstimationData] = useState<EstimationData | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -166,6 +176,29 @@ export const InputScreen: React.FC<InputScreenProps> = ({
             })
             .finally(() => {
                 if (!cancelled) setWeekReportLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
+    // Ability profile for the placement strip. No profile is a normal state
+    // (`profile: null`), not an error; a failed fetch only degrades the strip
+    // copy — the test itself stays accessible.
+    useEffect(() => {
+        let cancelled = false;
+        setPlacementLoading(true);
+        setPlacementFailed(false);
+        getProfile()
+            .then(data => {
+                if (cancelled) return;
+                setPlacementProfile(data?.profile ?? null);
+            })
+            .catch(err => {
+                if (cancelled) return;
+                console.error('Failed to load placement profile:', err);
+                setPlacementFailed(true);
+            })
+            .finally(() => {
+                if (!cancelled) setPlacementLoading(false);
             });
         return () => { cancelled = true; };
     }, []);
@@ -282,6 +315,10 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                         onLoadHistory={onLoadHistory}
                         onStartFirst={focusStartInput}
                         onModelResolved={setCurrentModelId}
+                        placementProfile={placementProfile}
+                        placementLoading={placementLoading}
+                        placementFailed={placementFailed}
+                        onOpenPlacement={onOpenPlacement}
                     />
                 </motion.div>
 

@@ -21,6 +21,7 @@ import { SentenceView, sentenceFavId } from './components/SentenceView';
 import { ReviewScreen } from './components/ReviewScreen';
 import { QuizScreen } from './components/QuizScreen';
 import { ReportScreen, type WeekReportEvidence } from './components/ReportScreen';
+import { PlacementScreen, type PlacementInitialView } from './components/PlacementScreen';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
@@ -158,6 +159,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // player without discarding it; closing returns to the same content.
   const [reportOpen, setReportOpen] = useState(false);
   const reportReturnTimeRef = useRef(0);
+  // Ability placement / profile (M4 / specs/016) — a full view like review.
+  // `intro` is the no-profile landing; `profile` is the saved-profile page.
+  const [placementOpen, setPlacementOpen] = useState(false);
+  const [placementInitialView, setPlacementInitialView] = useState<PlacementInitialView>('intro');
   const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
   const [reviewStatsLoading, setReviewStatsLoading] = useState(false);
   const [reviewStatsFailed, setReviewStatsFailed] = useState(false);
@@ -1095,6 +1100,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setSentenceLevel(null);
     setReviewOpen(false);
     setReportOpen(false);
+    setPlacementOpen(false);
     setQuizOpen(false);
     setQuizLesson(null);
     setQuizStarting(false);
@@ -1102,6 +1108,44 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     // Returning from review can change the due count; refetch on every go-home
     // (one cheap request) so the badge never shows a stale number.
     setReviewStatsNonce(prev => prev + 1);
+  };
+
+  // Ability placement (M4). Like review/report it is a full view; the home
+  // workbench picks the landing (`intro` without a profile, `profile` with
+  // one). Closing remounts the home screen, which refetches the profile.
+  const handleOpenPlacement = (view: PlacementInitialView) => {
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setReviewOpen(false);
+    setReportOpen(false);
+    setQuizOpen(false);
+    setQuizLesson(null);
+    pauseSubtitleTimer();
+    pauseWatch(currentTimeRef.current);
+    setPlacementInitialView(view);
+    setPlacementOpen(true);
+  };
+
+  const handleClosePlacement = () => {
+    setPlacementOpen(false);
+    // The workbench reads the profile on mount; a completion changes it and
+    // the home branch remounts on the next render anyway.
+    setReviewStatsNonce(prev => prev + 1);
+  };
+
+  // Result page "去学习": home is the learning entry, so close and drop the
+  // cursor into the paste-a-link input once it has mounted.
+  const handlePlacementStartLearning = () => {
+    setPlacementOpen(false);
+    setReviewStatsNonce(prev => prev + 1);
+    window.setTimeout(() => {
+      const input = document.getElementById('video-url') as HTMLInputElement | null;
+      if (!input) return;
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      input.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+      input.focus({ preventScroll: true });
+    }, 350);
   };
 
   // ── Weekly report view (M5) ──────────────────────────────────────────────
@@ -1369,7 +1413,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       </div>
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <LanguageMenu />
-        {status === 'authenticated' && !reviewOpen && !quizOpen && (
+        {status === 'authenticated' && !reviewOpen && !quizOpen && !placementOpen && (
           <button
             type="button"
             data-testid="topbar-review-button"
@@ -1391,7 +1435,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             )}
           </button>
         )}
-        {!quizOpen && !reportOpen && (
+        {!quizOpen && !reportOpen && !placementOpen && (
           <button
             type="button"
             data-testid="topbar-report-button"
@@ -1883,7 +1927,23 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
       {/* Keyed motion.divs crossfade views on mount; no exit-gating so a
           backgrounded tab (throttled rAF) can never stall the switch. */}
-      {quizOpen && quizLesson ? (
+      {placementOpen ? (
+        <motion.div
+          key="placement"
+          initial={{ opacity: 0, scale: 0.99, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          <PlacementScreen
+            initialView={placementInitialView}
+            isGuest={status === 'guest'}
+            onClose={handleClosePlacement}
+            onStartLearning={handlePlacementStartLearning}
+            onRequestLogin={onRequestLogin}
+          />
+        </motion.div>
+      ) : quizOpen && quizLesson ? (
         <motion.div
           key="quiz"
           initial={{ opacity: 0, scale: 0.99, y: 8 }}
@@ -1966,6 +2026,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             reviewStatsFailed={reviewStatsFailed}
             onOpenReview={handleOpenReview}
             onOpenReport={handleOpenReport}
+            onOpenPlacement={handleOpenPlacement}
           />
         </motion.div>
       ) : (
