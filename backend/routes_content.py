@@ -10,6 +10,7 @@ import os
 from fastapi import APIRouter, HTTPException
 from pydantic import AliasChoices, BaseModel, Field
 
+import guest
 import languages
 import llm
 import local_shows
@@ -224,6 +225,16 @@ async def process_subtitle(request: SubtitleRequest):
                 request.episode,
             )
             return cached_data
+
+    # 游客累计试译上限：本地剧集与 YouTube 视频共用同一额度（缓存命中不拦）。
+    try:
+        guest.ensure_can_translate(storage.active_guest_hash())
+    except guest.GuestLimitError as exc:
+        raise HTTPException(
+            status_code=403,
+            detail=str(exc),
+            headers={"X-Guest-Limit": "translate", "Cache-Control": "no-store"},
+        ) from exc
 
     # Parse SRT file
     with open(srt_path, "r", encoding="utf-8", errors="ignore") as f:

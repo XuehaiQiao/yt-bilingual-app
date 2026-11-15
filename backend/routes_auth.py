@@ -1,15 +1,22 @@
-"""认证路由：注册 / 登录 / 登出 / 当前用户。
+"""认证路由：注册 / 登录 / 登出 / 当前用户 / 游客认领。
 
 冻结契约（前端并行开发，不要改字段与状态码）：
 
 - POST /api/auth/signup  {"email","password"} -> 201 {"user":{"id","email"}} + Cookie
 - POST /api/auth/login   {"email","password"} -> 200 {"user":{"id","email"}} + Cookie
 - POST /api/auth/logout                        -> 200 {"ok": true} + 清除 Cookie
-- GET  /api/auth/me                            -> 200 {"user":{"id","email"}} / 401 {"detail":"未登录"}
+- GET  /api/auth/me                            -> 200 {"user":{"id","email"}}
+                                                  或 200 {"user": null, "guest": true}
+- POST /api/auth/claim-guest（需登录）          -> 200 {"ok":true,"claimed":bool,
+                                                  "merged":{history,favorites,subscriptions},
+                                                  "skipped":{...},"guestFiles":int}
+                                                  未登录 -> 401 {"detail":"未登录"}
 
 Cookie：`ln_session`，httpOnly、SameSite=Lax、Path=/、Max-Age 30 天；
-`Secure` 由 `COOKIE_SECURE=1` 控制（本地 HTTP 默认关）。
+`Secure` 由 `COOKIE_SECURE=1` 控制（本地 HTTP 默认关）。游客 Cookie `ln_guest`
+由 `main.py` 的中间件下发/校验（见 guest.py），本模块只在认领成功后清除它。
 """
+import logging
 import re
 import threading
 import time
@@ -20,6 +27,9 @@ from pydantic import BaseModel
 import auth_db
 import auth_lockout
 import config
+import guest
+
+logger = logging.getLogger("linguatrek.auth")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -192,7 +202,54 @@ def logout(request: Request, response: Response):
 
 @router.get("/me")
 def me(request: Request):
+    """当前身份：登录用户返回 user；否则游客态 `{user:null, guest:true}`。
+
+    游客态不再返回 401——前端据此直接进入游客模式（不拦登录页），并在需要
+    保存/收藏时提示登录。`ln_guest` 由 main.py 的中间件在首次访问时下发。
+    """
+    user = getattr(request.state, "user", None)
+    if not user:
+        return {"user": None, "guest": True}
+    return {"user": _public_user(user)}
+
+
+@router.post("/claim-guest")
+def claim_guest(request: Request, response: Response):
+    """把 `ln_guest` 对应的游客数据幂等认领到当前登录账号。
+
+    合并 `history/`、`favorites.json`、`subscriptions.json`：同 videoId / 同收藏
+    指纹 / 同订阅键去重，**用户数据优先**；成功后删除游客目录并清 `ln_guest`。
+    重复调用（目录已不存在）返回 `claimed:false` + 全 0，不报错。
+    """
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=401, detail="未登录")
-    return {"user": _public_user(user)}
+
+    token = request.cookies.get(guest.COOKIE_NAME)
+    empty = {
+        "claimed": False,
+        "merged": {"history": 0, "favorites": 0, "subscriptions": 0},
+        "skipped": {"history": 0, "favorites": 0, "subscriptions": 0},
+        "guestFiles": 0,
+    }
+    if not guest.is_valid_token(token):
+        # 没有游客 Cookie（直接注册/登录）或值非法：没有可认领的数据。
+        if token:
+            guest.clear_guest_cookie(response)
+        return {"ok": True, **empty}
+
+    guest_hash = guest.hash_token(token)
+    try:
+        result = guest.claim_guest_data(guest_hash, user["id"])
+    except guest.GuestClaimError:
+        # 游客目录保留（合并是幂等的，下次登录可重试）；不删 Cookie。
+        logger.exception("游客数据认领失败：guest=%s user=%s", guest_hash[:12], user["id"])
+        raise HTTPException(
+            status_code=500,
+            detail="游客数据合并未完成，游客记录已保留，请稍后重试。",
+        )
+
+    # 成功（或游客目录本来就不存在 = 已认领过）：清掉客户端 Cookie，避免
+    # 下次登录又去认领一个空目录。
+    guest.clear_guest_cookie(response)
+    return {"ok": True, **result}

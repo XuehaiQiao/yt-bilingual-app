@@ -23,18 +23,33 @@ export interface AuthUser {
     email: string;
 }
 
-export type AuthStatus = 'loading' | 'anonymous' | 'authenticated';
+// `guest` is the normal "not logged in" state since M1 ⑧: the backend issues an
+// httpOnly `ln_guest` cookie and keeps guest data in an isolated directory, so
+// the app can be used (estimate / watch / lookup) before signing up.
+export type AuthStatus = 'loading' | 'anonymous' | 'guest' | 'authenticated';
 
 interface AuthContextValue {
     status: AuthStatus;
     user: AuthUser | null;
+    /** Bumped after a successful guest claim so data-loading effects refetch. */
+    dataRevision: number;
     login: (email: string, password: string) => Promise<void>;
     signup: (email: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
 }
 
 interface UserPayload {
-    user?: AuthUser;
+    user?: AuthUser | null;
+    guest?: boolean;
+}
+
+interface ClaimPayload {
+    claimed?: boolean;
+    merged?: {
+        history?: number;
+        favorites?: number;
+        subscriptions?: number;
+    };
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -56,6 +71,7 @@ async function readUser(res: Response): Promise<AuthUser> {
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [status, setStatus] = useState<AuthStatus>('loading');
     const [user, setUser] = useState<AuthUser | null>(null);
+    const [dataRevision, setDataRevision] = useState(0);
     // Latest status for the 401 listener without re-subscribing on each change.
     // Updated synchronously so a burst of business-request 401s (models,
     // history, favorites…) only signs the user out once and toasts once.
@@ -66,8 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setStatus(next);
     }, []);
 
-    // Boot: ask the backend who is logged in. A 401 is the normal anonymous
-    // answer; any other failure is surfaced but still lands on the auth screen
+    // Boot: ask the backend who is logged in. A 401 is the legacy anonymous
+    // answer; `{guest:true}` is the M1 ⑧ guest state (backend already issued the
+    // httpOnly `ln_guest` cookie). Other failures still land on the auth screen
     // instead of blocking the app behind a dead backend.
     useEffect(() => {
         let cancelled = false;
@@ -80,9 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     return;
                 }
                 if (!res.ok) throw new Error(await describeApiError(res));
-                const nextUser = await readUser(res);
+                const data = (await res.json().catch(() => null)) as UserPayload | null;
                 if (cancelled) return;
-                applyAuthState('authenticated', nextUser);
+                if (!data?.guest && data?.user?.email) {
+                    applyAuthState('authenticated', data.user);
+                    return;
+                }
+                applyAuthState('guest', null);
             } catch (err) {
                 if (cancelled) return;
                 toast.error(await describeApiError(err));
@@ -103,6 +124,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         applyAuthState('anonymous', null);
     }), [applyAuthState]);
 
+    // Merge the guest directory into the account (idempotent server-side) and
+    // refresh data. Never blocks a successful login: if the merge fails, the
+    // guest directory is kept and the next login retries automatically.
+    const claimGuest = useCallback(async () => {
+        try {
+            const res = await apiFetch('/api/auth/claim-guest', { method: 'POST' });
+            if (!res.ok) throw new Error(await describeApiError(res));
+            const data = (await res.json().catch(() => null)) as ClaimPayload | null;
+            const merged = data?.merged;
+            const total =
+                (merged?.history ?? 0) + (merged?.favorites ?? 0) + (merged?.subscriptions ?? 0);
+            if (data?.claimed && total > 0) toast.success(t('guest.claimed'));
+        } catch (err) {
+            // Keep the user signed in; the guest cookie is still there for a retry.
+            console.warn('Guest claim failed:', err);
+            toast.info(t('guest.claimFailed'));
+        }
+    }, []);
+
     const authenticate = useCallback(async (
         path: '/api/auth/login' | '/api/auth/signup',
         email: string,
@@ -115,8 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (!res.ok) throw new Error(await describeApiError(res));
         const nextUser = await readUser(res);
+        await claimGuest();
+        setDataRevision((revision) => revision + 1);
         applyAuthState('authenticated', nextUser);
-    }, [applyAuthState]);
+    }, [applyAuthState, claimGuest]);
 
     const login = useCallback(
         (email: string, password: string) => authenticate('/api/auth/login', email, password),
@@ -137,12 +179,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // been cleared and could restore the session on the next load.
             toast.error(await describeApiError(err));
         } finally {
+            setDataRevision((revision) => revision + 1);
             applyAuthState('anonymous', null);
         }
     }, [applyAuthState]);
 
     return (
-        <AuthContext.Provider value={{ status, user, login, signup, logout }}>
+        <AuthContext.Provider value={{ status, user, dataRevision, login, signup, logout }}>
             {children}
         </AuthContext.Provider>
     );

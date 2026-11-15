@@ -11,7 +11,7 @@
 
 | 文件 | 职责 |
 |---|---|
-| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、用户会话中间件（Cookie → SQLite → `request.state.user` + 数据目录 ContextVar）、结构化访问日志（request_id + 一行 JSON）、挂载四个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
+| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载四个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
 | `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
@@ -19,10 +19,11 @@
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
 | `jobs.py` | 任务表 `jobs` 的读写层 + 单进程执行互斥（M1 ⑤）：`create_or_reuse`（同 user+kind+content_ref+targetLang 的未完成 job 复用，进程内锁 + 部分唯一索引兜底幂等）、`get`、`update_progress/mark_running/mark_done/mark_failed/settle_interrupted`（cursor 只增不减）、`try_acquire/release/is_active`（同一 job 同时只允许一条流生成，第二个请求 409/SSE error，杜绝重复付费）。表缺失（旧库没跑 0005）时全部降级为 no-op，只告警一次，视频处理照常 |
 | `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额** |
-| `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`；`ln_session` Cookie、登录失败短窗限流与 `auth_lockout` 接入（锁定统一 429 + `Retry-After`） |
-| `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；无用户 → 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取。`favorites_file()` / `favorites_tombstones_file()` 是收藏主文件与删除墓碑的**唯一入口**（按用户隔离、不按语言分文件） |
+| `routes_auth.py` | `/api/auth/signup`、`/api/auth/login`、`/api/auth/logout`、`/api/auth/me`（游客返回 `{user:null,guest:true}`）、`/api/auth/claim-guest`（登录后幂等认领游客数据）；`ln_session` Cookie、登录失败短窗限流与 `auth_lockout` 接入（锁定统一 429 + `Retry-After`） |
+| `guest.py` | 游客态（M1 ⑧）：32 字节随机 `ln_guest` Cookie（服务端只存 sha256）、`data/guests/<sha256>/` 隔离目录、游客累计试译上限、登录后把 `history/` / `favorites.json` / `subscriptions.json` 幂等合并到用户目录（同 videoId / 同收藏指纹 / 同订阅键去重，用户数据优先）。**不建表、不新增迁移** |
+| `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；游客 → `data/guests/<sha256(ln_guest)>/`；两者都没有（脚本/测试）→ 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取。`favorites_file()` / `favorites_tombstones_file()` 是收藏主文件与删除墓碑的**唯一入口**（按用户隔离、不按语言分文件） |
 | `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」；端点支持 `base_url` 或 `base_url_env`（Qwen 等区域端点由环境变量给，不写死）。`is_available` 同时检查 Key 与必需端点；`resolve_model_for_target(requested, target_lang)` 按「用户选择 → 该语言首选 → 该语言路线 → 全局默认 → 目录首个可用」解析，未配 Key 的候选自动跳过。**SDK 调用是同步阻塞的**：async 代码必须用 `generate_json_async` / `generate_text_async`（内含全局并发闸 + `asyncio.to_thread`）；同步 `generate()` 只给脚本/测试。`concurrency_snapshot()` 暴露并发闸峰值/等待直方图。`usage_scope(feature, user_id, target_lang=…)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关） |
-| `ratelimit.py` | 进程内固定窗口限速（M1 ⑦）：注册/登录按 IP、估价/处理/查词按用户；超限 429 + `Retry-After`；不依赖 Redis。桶与上限见下文「安全最小集」 |
+| `ratelimit.py` | 进程内固定窗口限速（M1 ⑦）：注册/登录按 IP、估价/处理/查词按用户；游客（M1 ⑧）同桶但更紧上限、键为 `guest:<sha256>`；超限 429 + `Retry-After`；不依赖 Redis。桶与上限见下文「安全最小集」 |
 | `auth_lockout.py` | 登录失败锁定（M1 ⑦ 残余项）：账号 + IP 双维度连续失败锁定；锁定期间正确密码也 429 + `Retry-After`；成功登录清零；只存进程内存与邮箱哈希，不存明文 |
 | `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。抓取带超时 / 响应体大小 / 字幕块数上限（`_BoundedSession`，M1 ⑦ 残余项）；这些函数是同步阻塞实现，async 调用方负责放进线程 |
 | `translate.py` | AI 翻译核心：`process_llm_batch`（大模型批翻 + **按 id 对齐**防错位 + 按水平挑生词 + 高亮子串/NFC 校验 + 越南语 CJK 泄漏重试）、`UNTRANSLATED_MARKER` 自愈约定、`retranslate_marked_blocks`（补译）、`_stream_translate`（逐批落盘的流式生成器）、视频总结。prompt 里的语言名来自 `languages`（不再硬编码 "Chinese"）；JSON 字段名 `zh_text`/`zh_word` 保持 P0 兼容、值为目标语言。LLM 生成调用经 `llm.generate_json_async` / `generate_text_async`（全局并发闸 + 线程）执行，异常仍照常抛回；批间 `batch_pause` 语义不变；翻译/总结带日配额与降级链，`feature` / `user_id` / `target_lang` 缺省取请求上下文（本地剧集传 `local_show`） |
@@ -43,10 +44,12 @@
 | `POST /api/auth/signup` `{email,password}` | `201 {"user":{"id","email"}}` + 设置 Cookie | `409` 邮箱已存在；`400` 邮箱格式或密码 < 8 位 |
 | `POST /api/auth/login` `{email,password}` | `200 {"user":{"id","email"}}` + 设置 Cookie | `401` 邮箱或密码错（不区分，避免账号枚举） |
 | `POST /api/auth/logout` | `200 {"ok":true}` 并清除 Cookie | — |
-| `GET /api/auth/me` | `200 {"user":{"id","email"}}` | `401 {"detail":"未登录"}` |
+| `GET /api/auth/me` | `200 {"user":{"id","email"}}`；未登录/游客 `200 {"user":null,"guest":true}`（并下发 `ln_guest`） | — |
+| `POST /api/auth/claim-guest`（需登录） | `200 {"ok":true,"claimed":bool,"merged":{history,favorites,subscriptions},"skipped":{…},"guestFiles":N}` | `401 {"detail":"未登录"}`；合并文件操作失败 `500`（游客目录保留可重试） |
 
-- 除 `/api/auth/*` 与 `/health` 外，所有 `/api/*` 都要求登录；未登录统一 `401 {"detail":"未登录"}`。
+- `/api/*` 对游客开放（M1 ⑧）：没有会话时按 `ln_guest` 隔离目录工作，可以估价、看视频、查词；只有需要账号的动作（`claim-guest`）自己要求登录。未登录不再统一 401。
 - Cookie 名 `ln_session`：httpOnly、SameSite=Lax、Path=/、Max-Age=30 天；`Secure` 由 `COOKIE_SECURE=1` 控制（本地 HTTP 默认关）。前端不要读 Cookie，也不要把 token 存 localStorage。
+- 游客 Cookie 名 `ln_guest`：同样 httpOnly / SameSite=Lax / Path=/ / Max-Age=30 天；值是 32 字节随机 token，服务端只用 `sha256(token)` 当目录名（原始 token 不落盘、不进日志）。浏览器删掉它 = 换一个新的空游客（Cookie 方案的已知边界）；成本侧由更紧限速 + 每游客配额 + 全站日预算兜底。
 - 本地前后端分离开发时，`localhost` 与 `127.0.0.1` 属于不同 site，浏览器不会在 fetch 里带 SameSite=Lax 的 Cookie；前后端请统一用同一个主机名（都 `127.0.0.1` 或都 `localhost`），或走 Vite 代理。默认 `CORS_ORIGINS=*` 会回显请求 Origin 以兼容 `credentials: include`；公网部署仍应显式设置允许来源。
 - **公网多用户浏览器部署不要设 `API_AUTH_KEY`**：它拦所有 `/api`（含 `/api/auth/*`），登录会被 401；把 key 塞进前端 `VITE_API_KEY` 又等于公开密钥。仅「移动端/内部客户端、不跑浏览器 UI」的部署才考虑它（建议同时设 `BROWSER_UI=0`）；`API_AUTH_KEY` 非空且 `BROWSER_UI` 未关闭时，`config.py` 启动会打印警告。
 - 登录失败按 IP 内存限流（默认 60 秒内 10 次失败后返回 429），成功登录清零；用户不存在时也会跑一次等价的 Argon2 校验，响应时间不泄露账号是否存在。
@@ -57,6 +60,10 @@
 ```
 data/                                  # DATA_DIR（gitignore）
 ├── app.db                             # AUTH_DB_PATH 默认值；users + sessions + learning_events（Alembic 管）
+├── guests/<sha256>/                   # GUEST_DATA_DIR（M1 ⑧）；布局与下面用户目录一致
+│   ├── history/                       # 游客自己的视频/剧集缓存 + dictionary_cache.json
+│   ├── favorites.json
+│   └── subscriptions.json
 └── users/<user_id>/                   # USER_DATA_DIR/<user_id>/
     ├── history/                       # 视频/本地剧集缓存；含 dictionary_cache.json
     ├── favorites.json                 # 收藏数组（按条 API 写入；GET 保持旧数组契约）
@@ -68,7 +75,7 @@ data/                                  # DATA_DIR（gitignore）
 - `users(id, email, password_hash, created_at)`：email 统一小写；密码只存 Argon2id 哈希。
 - `sessions(token_hash, user_id, expires_at, created_at)`：Cookie 里是 `secrets.token_urlsafe(32)` 的随机 token，库里只存 sha256。
 - 词典缓存**按用户隔离**（放在该用户 `history/dictionary_cache.json`）：与视频缓存同一套目录规则，用户的坏缓存不会影响别人；代价只是同词在不同用户间各生成一次，缓存很小，可接受。
-- 未登录上下文（测试/脚本）仍回落到 `HISTORY_DIR`（旧 `history/` 目录），保持兼容；正常经 API 的请求一定带用户，不会写到旧目录。
+- 未登录上下文（测试/脚本）仍回落到 `HISTORY_DIR`（旧 `history/` 目录），保持兼容；正常经 API 的请求一定带身份（登录用户或游客），不会写到旧目录。
 - **旧本地数据不会自动迁移**：升级后原 `history/` 里的个人数据不会出现在任何账号下。需要保留时，登录后从 `/api/auth/me` 或 `sqlite3 data/app.db "select id,email from users"` 拿到 user_id，再手动移动：
   ```bash
   mkdir -p data/users/<user_id>/history
@@ -76,6 +83,28 @@ data/                                  # DATA_DIR（gitignore）
   mv history/favorites.json history/subscriptions.json data/users/<user_id>/ 2>/dev/null || true
   ```
   移动前建议先备份 `history/`。
+
+## 游客态（M1 ⑧）
+
+未登录也能先试用：首次访问任一 `/api/*`（含前端启动必调的 `/api/auth/me`）时，中间件下发 `ln_guest`
+（32 字节随机、httpOnly、SameSite=Lax、30 天），`GET /api/auth/me` 返回
+`{user:null, guest:true}`，前端据此进入游客态而不是登录页。**不建表、不新增迁移**：游客身份就是
+`sha256(ln_guest)`，数据写 `data/guests/<sha256>/`，目录布局与用户目录完全一致。
+
+- **隔离**：不同游客、游客与登录用户之间互不可见；路径只接受 64 位小写十六进制哈希（防穿越），
+  Cookie 原文不落盘。形状不合法的 `ln_guest` 视为没有 Cookie，重新下发，绝不把任意字符串当目录名。
+- **限速更紧**（按 `guest:<sha256>` 计；见下表）；游客累计最多试译 `GUEST_MAX_TRANSLATED_VIDEOS`
+  （默认 1）个视频/剧集，新翻译请求返回 **403** + 提示登录；已缓存的那个视频仍可打开/补译。
+- **认领**：登录后前端自动 `POST /api/auth/claim-guest`，服务端把游客目录的 `history/`、
+  `favorites.json`、`subscriptions.json` 合并到用户目录：同 `videoId`、同收藏指纹（id → 内容指纹）、
+  同订阅键去重，**用户数据优先**；成功后删除游客目录并清 `ln_guest`。重复调用幂等
+  （`claimed:false`、计数全 0）；任何文件操作失败都保留游客目录并返回 500，重试安全。
+- **成本**：游客的 AI 用量以 `guest:<sha256>` 归户写进 `ai_usage` / `ai_quota`，因此同样受每功能日
+  配额、每租户日预算与全站日预算约束，不会被「匿名」绕过（清理 Cookie 会得到新游客，这是 Cookie
+  方案显式接受的边界；全站日预算是最后硬闸）。
+
+测试（全离线）：`venv/bin/python -m pytest tests/test_guest_mode.py -q`（Cookie/落盘/隔离/伪造/限速/
+1 视频上限/认领合并去重/幂等/路径校验）。
 
 ## 收藏按条 API（M1 ④）
 
@@ -392,9 +421,12 @@ python3 scripts/fetch_dictionary.py
 | `estimate` | `GET /api/estimate-cost` | 登录用户 | 20 | `RATE_LIMIT_ESTIMATE_COST_PER_MINUTE` |
 | `process_video` | `POST /api/process-video`、`POST /api/process-video-stream` | 登录用户 | 6 | `RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE` |
 | `define` | `POST /api/define` | 登录用户 | 60 | `RATE_LIMIT_DEFINE_PER_MINUTE` |
+| `estimate`（游客） | 同上 | `guest:<sha256>` | 10 | `RATE_LIMIT_GUEST_ESTIMATE_COST_PER_MINUTE` |
+| `process_video`（游客） | 同上 | `guest:<sha256>` | 2 | `RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE` |
+| `define`（游客） | 同上 | `guest:<sha256>` | 20 | `RATE_LIMIT_GUEST_DEFINE_PER_MINUTE` |
 
 - 环境变量值为 `0` = 关闭该桶；默认值在 `config.py` 读取。
-- 在会话中间件里、`401` 之后执行：未登录的 `/api` 仍先得到 401；429 会经过最外层 CORS 补跨域头，前端能看到真实错误。
+- 在身份中间件里执行：登录用户按 `user:<id>`、游客按 `guest:<sha256>`、注册/登录按 IP 分别计数；429 会经过最外层 CORS 补跨域头，前端能看到真实错误。
 - **单进程有效**：`uvicorn --workers N` 时每个进程独立计数；反向代理后 `request.client.host` 可能是代理 IP，默认**不信任**可伪造的 `X-Forwarded-For`。真实 IP/多进程限速留给部署层（计划书显式接受的残余风险：不做 WAF、bot 指纹、IP 信誉库、渗透测试）。
 - `routes_auth.py` 另有登录失败计数（同一 IP 60 秒内失败 10 次），其 429 同样带 `Retry-After`；它与下面的账号锁定叠加（突发层 + 持续层）。
 
@@ -447,7 +479,7 @@ venv/bin/python -m pytest tests/test_security_minimum.py tests/test_residual_sec
 
 - 事件循环：所有同步阻塞调用（YouTube 字幕、yt-dlp）在 async 代码里必须经 `asyncio.to_thread` 放进线程；不要直接 `await` 一个同步函数或在 async 生成器里裸调。LLM 调用一律用 `llm.generate_json_async` / `llm.generate_text_async`（内部已含并发闸 + 线程封装），不要自己 `to_thread(llm.generate_json, …)` 绕过闸门。Whisper 转写同理。
 - SSE 心跳：`/api/process-video-stream` 在无事件可发时每 `SSE_HEARTBEAT_INTERVAL`（默认 15s，`config.SSE_HEARTBEAT_SECONDS`）发一行 `: ping\n\n`。它只是注释行、没有 `data:`，前端 `consumeSseStream` 会忽略；不要改成携带 data 的事件，也不要改变事件顺序。
-- 持久化：用户与会话在 `data/app.db`（SQLite）；每个用户的视频/剧集缓存是 `data/users/<user_id>/history/` 下的 JSON；收藏/订阅是对应用户目录下的 JSON。本地词典数据是可选的 `data/ecdict.db`（均 gitignore，不入库）。
+- 持久化：用户与会话在 `data/app.db`（SQLite）；每个用户的视频/剧集缓存是 `data/users/<user_id>/history/` 下的 JSON；收藏/订阅是对应用户目录下的 JSON；游客数据在 `data/guests/<sha256>/`（布局相同，认领时按键合并）。本地词典数据是可选的 `data/ecdict.db`（均 gitignore，不入库）。
 - 所有用户数据路径必须走 `storage.py`（`history_dir()` / `favorites_file()` / `subscriptions_file()` / `dictionary_cache_file()`），**禁止**在新代码里直接拼 `config.HISTORY_DIR`——否则数据会绕过用户隔离。
 - 翻译失败的句子标 `[未翻译]`，下次加载自动补译——改动翻译逻辑时**不要破坏这个自愈闭环**。
 - 对应规格：流式管线见 [specs/001](../specs/001-streaming-pipeline/spec.md)，各路由的行为定义见 [specs/](../specs/README.md)。

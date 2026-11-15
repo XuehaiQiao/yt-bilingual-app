@@ -1,7 +1,7 @@
 """用户体系契约测试（全离线）。
 
 覆盖冻结契约：注册 / 重复注册 / 参数校验 / 登录 / 错密码 / 登出 /
-未登录 401 / 会话过期 / 会话 token 只存哈希 / 每用户数据隔离 /
+游客态（/me 返回 guest:true） / 会话过期 / 会话 token 只存哈希 / 每用户数据隔离 /
 API_AUTH_KEY 与会话共存 / 登录失败限流 / Cookie 安全属性。
 """
 import hashlib
@@ -217,12 +217,17 @@ def test_logout_clears_cookie_and_invalidates_session(make_client):
         attrs = _cookie_attributes(logout)
         assert attrs.get("max-age") == "0", "登出必须让浏览器删除 Cookie"
 
-        assert client.get("/api/auth/me").status_code == 401
+        # M1 ⑧：登出后回到游客态（不是 401），前端可继续试用。
+        after_logout = client.get("/api/auth/me")
+        assert after_logout.status_code == 200
+        assert after_logout.json() == {"user": None, "guest": True}
 
-        # 即使有人保存了旧 token 手工重放，服务端会话也已删除
+        # 即使有人保存了旧 token 手工重放，服务端会话也已删除（只剩游客态）
         with make_client() as replay:
             replay.cookies.set("ln_session", token)
-            assert replay.get("/api/auth/me").status_code == 401
+            replay_me = replay.get("/api/auth/me")
+            assert replay_me.status_code == 200
+            assert replay_me.json() == {"user": None, "guest": True}
 
 
 def test_logout_without_session_is_still_ok(make_client):
@@ -232,22 +237,40 @@ def test_logout_without_session_is_still_ok(make_client):
         assert response.json() == {"ok": True}
 
 
-def test_me_requires_login(make_client):
+def test_me_returns_guest_state_and_issues_guest_cookie(make_client):
+    """M1 ⑧：首次访问 /me 不再是 401，而是游客态 + 下发 ln_guest。"""
     with make_client() as client:
         response = client.get("/api/auth/me")
-        assert response.status_code == 401
-        assert response.json() == {"detail": "未登录"}
+        assert response.status_code == 200
+        assert response.json() == {"user": None, "guest": True}
+
+        raw = response.headers.get("set-cookie", "")
+        assert raw.startswith("ln_guest=")
+        attrs = _cookie_attributes(response)
+        assert attrs.get("httponly") == ""
+        assert attrs.get("samesite", "").lower() == "lax"
+        assert attrs.get("path") == "/"
+        assert attrs.get("max-age") == str(30 * 24 * 60 * 60)
+        token = _cookie_name_value(response).partition("=")[2]
+        assert len(token) == 43, "32 字节随机 → token_urlsafe 43 字符"
+        assert token not in raw.split(";")[1:]  # 属性里没有其它可读拷贝
 
 
 @pytest.mark.parametrize(
-    "path",
-    ["/api/models", "/api/favorites", "/api/subscriptions", "/api/history"],
+    "path,expected",
+    [
+        ("/api/models", lambda body: "models" in body),
+        ("/api/favorites", lambda body: body == []),
+        ("/api/subscriptions", lambda body: body == []),
+        ("/api/history", lambda body: body == []),
+    ],
 )
-def test_protected_api_requires_login(make_client, path):
+def test_guest_can_access_api_with_isolated_empty_data(make_client, path, expected):
+    """M1 ⑧：其余 /api/* 允许游客访问，读到的只能是游客自己的空数据。"""
     with make_client() as client:
         response = client.get(path)
-        assert response.status_code == 401
-        assert response.json() == {"detail": "未登录"}
+        assert response.status_code == 200, response.text
+        assert expected(response.json())
 
 
 def test_health_stays_public(make_client):
@@ -271,9 +294,10 @@ def test_session_expiry_is_rejected_and_cleaned(make_client):
         finally:
             conn.close()
 
+        # 过期会话被清理后回落为游客态（M1 ⑧），不是 401。
         response = client.get("/api/auth/me")
-        assert response.status_code == 401
-        assert response.json() == {"detail": "未登录"}
+        assert response.status_code == 200
+        assert response.json() == {"user": None, "guest": True}
 
     remaining = _db_query("SELECT token_hash FROM sessions WHERE token_hash = ?", (token_hash,))
     assert remaining == [], "过期会话应在读取时被清理"
@@ -444,9 +468,11 @@ def test_api_key_and_session_are_both_required(make_client, monkeypatch):
         assert blocked.status_code == 401
         assert "API Key" in blocked.json()["detail"]
 
-    # 有正确 API Key、没有会话：仍要求登录；登录后才放行
+    # 有正确 API Key、没有会话：进入游客态（M1 ⑧）；登录后才落到用户目录
     with make_client(headers={"x-api-key": "deploy-secret"}) as keyed:
-        assert keyed.get("/api/models").json() == {"detail": "未登录"}
+        guest_models = keyed.get("/api/models")
+        assert guest_models.status_code == 200
+        assert keyed.get("/api/auth/me").json() == {"user": None, "guest": True}
         assert _signup(keyed, email="key-only@example.com").status_code == 201
         assert keyed.get("/api/auth/me").status_code == 200
         assert keyed.get("/api/models").status_code == 200
@@ -484,8 +510,10 @@ def test_cors_headers_survive_auth_401(make_client):
         else config.ALLOWED_ORIGINS[0]
     )
     with make_client() as anon:
-        response = anon.get("/api/models", headers={"Origin": origin})
+        # 需要登录的路由（claim-guest 无会话）仍会 401；CORS 头必须保留。
+        response = anon.post("/api/auth/claim-guest", headers={"Origin": origin})
         assert response.status_code == 401
+        assert response.json() == {"detail": "未登录"}
         # 带凭据的 CORS 必须回显具体 Origin，不能用 `*`（浏览器会拒绝）。
         assert response.headers["access-control-allow-origin"] == origin
         assert response.headers["access-control-allow-credentials"] == "true"

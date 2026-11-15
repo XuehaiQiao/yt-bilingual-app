@@ -66,7 +66,8 @@ def usage_scope(
         with llm.usage_scope("translate", user_id, target_lang="vi-VN"):
             text = llm.generate_json(prompt, model=model)
 
-    ``user_id`` 省略时由账本回落到 ``storage.active_user_id()``（请求上下文）；
+    ``user_id`` 省略时由账本回落到 ``storage.active_identity()``（请求上下文：
+    登录用户 id 或游客 ``guest:<sha256>``）；
     ``feature`` 为空时本次调用不记账。``target_lang`` 只进账本维度，
     **不参与配额限额**（P0 不按语言拆日限额）。
     """

@@ -12,7 +12,7 @@
 6. 同一 job 并发请求：执行权被占用时 409，不产生额外 LLM 调用；
 7. 并发 ``create_or_reuse``：8 个线程只产生一条未完成任务；
 8. 纯缓存秒开（没有未翻译句）不建任务记录；
-9. 401（未登录）/ 403（别人的 job）/ 404（不存在）语义；
+9. 游客（无会话）403（别人的 job）/ 403（jobId 不是自己的）/ 404（不存在）语义；
 10. 旧库没跑 0005 迁移时降级：流照常可用，只是没有 jobId。
 
 全部离线：字幕抓取 / 元数据 / LLM 全部 monkeypatch，数据库在 tmp_path。
@@ -485,11 +485,14 @@ def test_job_endpoint_auth_and_ownership(migrated, make_client):
     assert migrated.get("/api/jobs/does-not-exist").status_code == 404
 
     with make_client() as anonymous:
-        assert anonymous.get(f"/api/jobs/{job['id']}").status_code == 401
+        # M1 ⑧：无会话即游客（guest:<sha256>），不是 job 的所有者 → 403，
+        # 不存在 → 404；游客拿不到任何别人的 job。
+        assert anonymous.get("/api/jobs/does-not-exist").status_code == 404
+        assert anonymous.get(f"/api/jobs/{job['id']}").status_code == 403
         assert anonymous.post(
             "/api/process-video-stream",
             json={"url": URL, "jobId": job["id"]},
-        ).status_code == 401
+        ).status_code == 403
 
     with make_client() as other:
         signup = other.post(

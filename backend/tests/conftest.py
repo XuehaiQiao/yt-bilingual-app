@@ -60,6 +60,8 @@ def isolated_data(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "DATA_DIR", str(data_dir), raising=False)
     monkeypatch.setattr(config, "USER_DATA_DIR", str(data_dir / "users"), raising=False)
     monkeypatch.setattr(config, "AUTH_DB_PATH", str(data_dir / "app.db"), raising=False)
+    # 游客目录（M1 ⑧）也必须在 tmp_path 下，绝不能写到仓库的 data/guests/。
+    monkeypatch.setattr(config, "GUEST_DATA_DIR", str(data_dir / "guests"), raising=False)
     monkeypatch.setattr(config, "COOKIE_SECURE", False, raising=False)
 
     # 本地词典也隔离：默认指向不存在的临时路径。否则只要本机下载过

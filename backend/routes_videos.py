@@ -24,6 +24,7 @@ from config import (
     PREFETCH_CACHE_TTL_SECONDS,
     SSE_HEARTBEAT_SECONDS,
 )
+import guest
 import jobs
 import languages
 import llm
@@ -85,6 +86,22 @@ def _target_lang_or_400(raw: str | None) -> str:
         return languages.resolve_target_lang(raw)
     except languages.UnsupportedLanguage as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _ensure_guest_translation_allowed() -> None:
+    """游客累计试译上限（登录用户直接放行）；403 + 提示登录。
+
+    放在「缓存命中」之后：游客试译过的那个视频刷新/补译不受影响，只有**新的**
+    翻译请求会被拦。详情消息由 guest.GuestLimitError 统一给出。
+    """
+    try:
+        guest.ensure_can_translate(storage.active_guest_hash())
+    except guest.GuestLimitError as exc:
+        raise HTTPException(
+            status_code=403,
+            detail=str(exc),
+            headers={"X-Guest-Limit": "translate", "Cache-Control": "no-store"},
+        ) from exc
 
 
 def _model_option(model_id: str) -> dict:
@@ -282,6 +299,9 @@ async def process_video(request: VideoRequest):
                 return cached_data
         except (json.JSONDecodeError, KeyError) as e:
             print(f"Cache file corrupt, reprocessing: {e}")
+
+    # 游客：累计试译的新视频数量到上限后提示登录（缓存命中已在上面返回）。
+    _ensure_guest_translation_allowed()
 
     try:
         metadata = await asyncio.to_thread(
@@ -995,6 +1015,9 @@ def _start_video_stream(
                 acquire_job=bool(job),
             )
         )
+
+    # 游客累计试译上限：只拦新视频；已命中缓存的上面已经 return。
+    _ensure_guest_translation_allowed()
 
     job = jobs.create_or_reuse(
         user_id=user_id,

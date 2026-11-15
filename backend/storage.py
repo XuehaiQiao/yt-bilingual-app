@@ -1,11 +1,15 @@
-"""当前请求的数据根目录：按登录用户隔离，未登录时回落到旧目录。
+"""当前请求的数据根目录：按登录用户 / 游客隔离，未登录时回落到旧目录。
 
-会话中间件（见 main.py）在每个请求里把当前用户 id 写进 ContextVar
-`current_user_id`。所有「写用户数据」的模块都必须通过本模块取路径，
-不要再直接引用 `config.HISTORY_DIR`：
+会话中间件（见 main.py）在每个请求里把当前身份写进 ContextVar：
 
-- 有登录用户：`<USER_DATA_DIR>/<user_id>/history/...`（默认 data/users/<id>/）
-- 无登录用户：回落到 `config.HISTORY_DIR`（保持旧数据 / 测试 / 脚本兼容）
+- 登录用户：`current_user_id` → `<USER_DATA_DIR>/<user_id>/`
+- 游客（无会话但有 `ln_guest`）：`current_guest_hash` → `<GUEST_DATA_DIR>/<sha256>/`
+- 两者都没有（脚本/测试直接调用）：回落到 `config.HISTORY_DIR`（保持旧数据兼容）
+
+游客目录布局与用户目录完全一致（`history/`、`favorites.json`、
+`subscriptions.json`），所以认领时只需按键合并，不需要第二套路径规则。
+所有「写用户数据」的模块都必须通过本模块取路径，不要再直接引用
+`config.HISTORY_DIR`。
 
 语言维度（specs/012 §5.4）：逻辑键 = `(target_lang, 资源文件名)`，落盘 =
 `history/<target_lang>/<文件>`；**zh-CN 兼容映射到 history/ 根目录**，所以旧
@@ -24,6 +28,7 @@ import os
 from contextvars import ContextVar
 
 import config
+import guest
 import languages
 
 # 当前请求的登录用户 id；中间件在每个请求开始时 set，请求结束时 reset。
@@ -31,10 +36,35 @@ import languages
 # 值在同步端点里同样可见。
 current_user_id: ContextVar[str | None] = ContextVar("ln_current_user_id", default=None)
 
+# 当前请求的游客身份（sha256，不是 Cookie 原文）；登录用户与非 API 请求为 None。
+current_guest_hash: ContextVar[str | None] = ContextVar(
+    "ln_current_guest_hash", default=None
+)
+
 
 def active_user_id() -> str | None:
-    """当前请求的登录用户 id；未登录返回 None。"""
+    """当前请求的登录用户 id；未登录/游客返回 None。"""
     return current_user_id.get()
+
+
+def active_guest_hash() -> str | None:
+    """当前请求的游客身份（sha256）；登录用户返回 None。"""
+    return current_guest_hash.get()
+
+
+def active_identity() -> str | None:
+    """配额/账本归属：登录用户 id，否则游客 `guest:<sha256>`，都没有为 None。
+
+    游客用量因此仍计入账本与全站日预算，不会被「匿名」绕过；它不是数据库
+    主键，也不会出现在任何面向用户的字段里。
+    """
+    user_id = current_user_id.get()
+    if user_id:
+        return user_id
+    guest_hash = current_guest_hash.get()
+    if guest_hash:
+        return guest.guest_id(guest_hash)
+    return None
 
 
 def _canonical_lang(target_lang: str | None) -> str:
@@ -72,18 +102,24 @@ def user_history_dir(user_id: str, target_lang: str | None = None) -> str:
 
 
 def _history_root() -> str:
-    """当前用户的 history 根目录（zh-CN 兼容位）。"""
+    """当前身份（用户/游客）的 history 根目录（zh-CN 兼容位）。"""
     user_id = current_user_id.get()
     if user_id:
         return _ensure_dir(os.path.join(user_data_dir(user_id), "history"))
+    guest_hash = current_guest_hash.get()
+    if guest_hash:
+        return _ensure_dir(guest.guest_history_dir(guest_hash, create=True))
     return _ensure_dir(config.HISTORY_DIR)
 
 
 def _user_root() -> str:
-    """当前用户的数据根；未登录回落到旧 HISTORY_DIR。"""
+    """当前身份（用户/游客）的数据根；都没有时回落到旧 HISTORY_DIR。"""
     user_id = current_user_id.get()
     if user_id:
         return _ensure_dir(user_data_dir(user_id))
+    guest_hash = current_guest_hash.get()
+    if guest_hash:
+        return _ensure_dir(guest.guest_dir(guest_hash, create=True))
     return _ensure_dir(config.HISTORY_DIR)
 
 
@@ -96,12 +132,12 @@ def history_dir(target_lang: str | None = None) -> str:
 
 
 def favorites_file() -> str:
-    """收藏 JSON 文件路径（按用户隔离；不按语言分文件）。"""
+    """收藏 JSON 文件路径（按用户/游客隔离；不按语言分文件）。"""
     return os.path.join(_user_root(), "favorites.json")
 
 
 def favorites_tombstones_file() -> str:
-    """收藏删除墓碑（tombstone）文件路径（按用户隔离）。
+    """收藏删除墓碑（tombstone）文件路径（按用户/游客隔离）。
 
     M1 ④ 按条 API 的删除不再只靠「文件里没有这条」表达：删除时在旁路文件记
     ``{favorite_id: deleted_at_ms}``，供 ``GET /api/favorites?since=`` 做增量同
@@ -111,7 +147,7 @@ def favorites_tombstones_file() -> str:
 
 
 def subscriptions_file() -> str:
-    """频道订阅 JSON 文件路径（按用户隔离；不按语言分文件）。"""
+    """频道订阅 JSON 文件路径（按用户/游客隔离；不按语言分文件）。"""
     return os.path.join(_user_root(), "subscriptions.json")
 
 

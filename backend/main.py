@@ -15,8 +15,19 @@
 - routes_user.py     词典 / 收藏 / 订阅
 - observability.py   结构化访问日志 / request_id / 只读 /healthz
 
-请求链路（从外到内）：CORS → 访问日志（request_id）→ API_AUTH_KEY → 用户会话
-（含进程内限速 429）→ 路由。
+请求链路（从外到内）：CORS → 访问日志（request_id）→ API_AUTH_KEY → 身份
+（会话 Cookie / 游客 Cookie，含进程内限速 429）→ 路由。
+
+身份规则（M1 ⑧ 游客态，见 guest.py）：
+
+- 有有效 `ln_session` → 登录用户，数据写 `data/users/<id>/`；
+- 无会话、有合法 `ln_guest` → 游客，数据写 `data/guests/<sha256>/`；
+- 都没有 → 中间件下发新的 32 字节随机 `ln_guest`，本请求即游客（所以
+  `GET /api/auth/me` 首次访问就能返回 `{user:null, guest:true}`）；
+- 除认证路由自己要求的登录（如 `claim-guest`）外，`/api/*` 均允许游客访问；
+  游客的估价/处理/查词走更紧的进程内限速（见 ratelimit.py），翻译总量也
+  有累计上限（见 routes_videos.py / routes_content.py）。
+
 Starlette 里后注册的中间件更靠外层，所以 CORS 放在文件最后注册。
 """
 from contextlib import asynccontextmanager
@@ -28,6 +39,7 @@ from fastapi.responses import JSONResponse
 import auth_db
 import config
 import events
+import guest
 import observability
 import ratelimit
 import routes_auth
@@ -53,14 +65,19 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-def _is_public_api_path(path: str) -> bool:
-    """/api/auth/* 由路由自己处理（me/logout 需要读会话，但不强制登录）。"""
-    return path == "/api/auth" or path.startswith("/api/auth/")
+def _is_api_path(path: str) -> bool:
+    return path == "/api" or path.startswith("/api/")
 
 
 @app.middleware("http")
-async def require_user_session(request, call_next):
-    """解析 Cookie → 查会话 → request.state.user + ContextVar；未登录拦截 /api。"""
+async def resolve_identity(request, call_next):
+    """解析会话/游客 Cookie → request.state + ContextVar；游客首次访问下发 Cookie。
+
+    - 会话优先：有有效 `ln_session` 时忽略 `ln_guest`（登录用户的数据目录唯一）；
+    - 游客 Cookie 只做形状校验，服务端用 sha256(token) 当目录名；非法/缺失时
+      重新下发，**绝不把 Cookie 原文当路径**；
+    - 其余 `/api/*` 不再 401：游客可以估价、看视频、查词，但限速更紧。
+    """
     if request.method == "OPTIONS":  # 让 CORS 预检通过
         return await call_next(request)
 
@@ -70,25 +87,41 @@ async def require_user_session(request, call_next):
         user = auth_db.get_session(token)
     request.state.user = user
 
-    # 数据隔离的关键：本请求内所有 storage.*() 都指向该用户自己的目录。
-    context_token = storage.current_user_id.set(user["id"] if user else None)
+    guest_hash = None
+    issued_guest_token = None
+    if user is None and _is_api_path(request.url.path):
+        candidate = request.cookies.get(guest.COOKIE_NAME)
+        if guest.is_valid_token(candidate):
+            guest_hash = guest.hash_token(candidate)
+        else:
+            # 首次访问（或非法/伪造形状）：服务端签发新游客，本请求先按新身份处理。
+            issued_guest_token = guest.new_token()
+            guest_hash = guest.hash_token(issued_guest_token)
+    request.state.guest_hash = guest_hash
+    request.state.is_guest = bool(guest_hash)
+    request.state.issued_guest_token = issued_guest_token
+
+    # 数据隔离的关键：本请求内所有 storage.*() 都指向该用户/游客自己的目录。
+    user_token = storage.current_user_id.set(user["id"] if user else None)
+    guest_token = storage.current_guest_hash.set(guest_hash if user is None else None)
     try:
-        if (
-            request.url.path.startswith("/api")
-            and not _is_public_api_path(request.url.path)
-            and user is None
-        ):
-            return JSONResponse(status_code=401, content={"detail": "未登录"})
-
-        # 安全最小集（M1 ⑦）：注册/登录按 IP、估价/处理/查词按用户做进程内限速。
-        # 放在 401 之后，未登录的 /api 仍先得到 401；超限统一 429 + Retry-After。
-        retry_after = ratelimit.check_request(request, user)
+        # 安全最小集（M1 ⑦）：注册/登录按 IP，估价/处理/查词按用户；游客同桶、
+        # 更紧的上限，按 sha256 计数。超限统一 429 + Retry-After。
+        retry_after = ratelimit.check_request(
+            request, user, guest_hash=None if user else guest_hash
+        )
         if retry_after is not None:
-            return ratelimit.rate_limited_response(retry_after)
-
-        return await call_next(request)
+            response = ratelimit.rate_limited_response(retry_after)
+        else:
+            response = await call_next(request)
+        # 新游客的 Cookie 必须在响应发出前挂上；带上它的前端下一次请求才能找回
+        # 同一个游客目录（估价/处理/查词产生的数据才不会丢）。
+        if issued_guest_token is not None:
+            guest.set_guest_cookie(response, issued_guest_token)
+        return response
     finally:
-        storage.current_user_id.reset(context_token)
+        storage.current_guest_hash.reset(guest_token)
+        storage.current_user_id.reset(user_token)
 
 
 @app.middleware("http")

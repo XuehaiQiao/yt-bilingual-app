@@ -12,8 +12,16 @@ type AuthMode = 'login' | 'signup';
  * Login / signup gate. One page, two tabs, one submit path: the AuthProvider
  * owns the request and flips the shell to the app once the backend answers
  * with `{ user }` and the httpOnly session cookie.
+ *
+ * Since M1 ⑧ the app can also run in guest mode. When `onGuestContinue` is
+ * provided (guest-triggered login), a "keep trying" escape hatch appears so
+ * the visitor is never trapped behind the login form.
  */
-export const AuthScreen = () => {
+interface AuthScreenProps {
+    onGuestContinue?: () => void;
+}
+
+export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
     const { login, signup } = useAuth();
     const { t } = useI18n();
     const [mode, setMode] = useState<AuthMode>('login');
@@ -196,6 +204,17 @@ export const AuthScreen = () => {
                             )}
                             {mode === 'login' ? t('auth.submit.login') : t('auth.submit.signup')}
                         </button>
+
+                        {onGuestContinue && (
+                            <button
+                                type="button"
+                                data-testid="auth-guest-continue"
+                                onClick={onGuestContinue}
+                                className="mt-3 w-full text-center text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                            >
+                                {t('auth.guestContinue')}
+                            </button>
+                        )}
                     </form>
                 </div>
             </div>

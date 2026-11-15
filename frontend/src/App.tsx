@@ -1,7 +1,7 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut } from 'lucide-react';
+import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { LanguageMenu } from './components/LanguageMenu';
@@ -81,8 +81,8 @@ function formatClock(seconds: number): string {
   return `${mm}:${ss}`;
 }
 
-function AppContent() {
-  const { user, logout } = useAuth();
+function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
+  const { user, logout, status, dataRevision } = useAuth();
   const { t, language, targetLang } = useI18n();
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
@@ -299,8 +299,12 @@ function AppContent() {
   const [subscriptions, setSubscriptions] = useState<{ id: string, name: string }[]>([]);
   const subsLoaded = useRef(false);
 
-  // Load favorites & subscriptions from backend on mount
+  // Load favorites & subscriptions from backend on mount, and again after a
+  // guest claim (`dataRevision`): login merges the guest directory server-side,
+  // so the already-mounted app must refetch instead of keeping guest data.
   useEffect(() => {
+    favoritesLoaded.current = false;
+    subsLoaded.current = false;
     fetchFavorites()
       .then(data => { setFavorites(data); favoritesLoaded.current = true; })
       .catch(() => {
@@ -319,7 +323,7 @@ function AppContent() {
         if (saved) setSubscriptions(JSON.parse(saved));
         subsLoaded.current = true;
       });
-  }, []);
+  }, [dataRevision]);
 
   // Favorites are persisted one item at a time by the handlers below. The old
   // whole-file PUT path still exists server-side for legacy clients (see
@@ -342,6 +346,10 @@ function AppContent() {
   }, [subscriptions]);
 
   const handleToggleSubscription = () => {
+    if (status === 'guest') {
+      toast.info(t('guest.loginToSave'));
+      return;
+    }
     if (!metadata?.channel_url || !metadata?.channel) return;
     const isSubbed = subscriptions.some(s => s.id === metadata.channel_url);
     if (isSubbed) {
@@ -395,12 +403,18 @@ function AppContent() {
   }, [favorites]);
 
   const toggleFavorite = useCallback((draft: FavoriteDraft) => {
+    // Guests may sample the app but not save: prompt to log in instead of
+    // writing data that would be easy to lose (M1 ⑧ requirement).
+    if (status === 'guest') {
+      toast.info(t('guest.loginToSave'));
+      return;
+    }
     if (favorites.some(f => f.id === draft.id)) {
       void removeFavoriteOptimistically(draft.id);
     } else {
       void addFavoriteOptimistically(draft);
     }
-  }, [favorites, addFavoriteOptimistically, removeFavoriteOptimistically]);
+  }, [favorites, addFavoriteOptimistically, removeFavoriteOptimistically, status, t]);
 
   const handleToggleFavorite = useCallback((item: TranscriptItem) => {
     toggleFavorite({
@@ -1023,23 +1037,38 @@ function AppContent() {
           </button>
         )}
         <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-white/5 min-w-0">
-          <span
-            data-testid="topbar-user-email"
-            title={user?.email || ''}
-            className="hidden lg:inline-block max-w-[10rem] truncate text-xs text-zinc-500"
-          >
-            {user?.email}
-          </span>
-          <button
-            data-testid="logout-button"
-            onClick={() => { void logout(); }}
-            title={t('topbar.logoutAria')}
-            aria-label={t('topbar.logoutAria')}
-            className="inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('topbar.logout')}</span>
-          </button>
+          {status === 'guest' ? (
+            <button
+              data-testid="guest-login-button"
+              onClick={onRequestLogin}
+              title={t('topbar.guestLoginAria')}
+              aria-label={t('topbar.guestLoginAria')}
+              className="inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg bg-brand/10 hover:bg-brand/15 border border-brand/20 text-xs font-medium text-brand-300 hover:text-brand-400 transition-colors shrink-0"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>{t('topbar.guestLogin')}</span>
+            </button>
+          ) : (
+            <>
+              <span
+                data-testid="topbar-user-email"
+                title={user?.email || ''}
+                className="hidden lg:inline-block max-w-[10rem] truncate text-xs text-zinc-500"
+              >
+                {user?.email}
+              </span>
+              <button
+                data-testid="logout-button"
+                onClick={() => { void logout(); }}
+                title={t('topbar.logoutAria')}
+                aria-label={t('topbar.logoutAria')}
+                className="inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('topbar.logout')}</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1469,7 +1498,7 @@ function AppContent() {
           {/* Remount on a target-language switch: history, local-show marks
               and the per-language model default all become different lists. */}
           <InputScreen
-            key={targetLang}
+            key={`${targetLang}:${dataRevision}`}
             onSubmit={handleUrlSubmit}
             onLoadHistory={handleLoadHistory}
             onSelectEpisode={handleSelectEpisode}
@@ -1643,10 +1672,31 @@ function AuthLoadingScreen() {
 
 // The only switch between the auth screen and the existing app. Session state
 // lives in AuthProvider, so login/signup/logout and global 401s all land here.
+//
+// M1 ⑧: `guest` is the normal pre-signup state — the app stays usable and the
+// top bar offers "游客 · 登录保存". Clicking it overlays the auth screen instead
+// of replacing the app, so a guest who changes their mind keeps their video.
 function AuthGate() {
   const { status } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
+
   if (status === 'loading') return <AuthLoadingScreen />;
   if (status === 'anonymous') return <AuthScreen />;
+  if (status === 'guest') {
+    return (
+      <>
+        <AppContent onRequestLogin={() => setShowAuth(true)} />
+        {showAuth && (
+          <div
+            data-testid="guest-auth-overlay"
+            className="fixed inset-0 z-50 overflow-auto bg-[#09090b]"
+          >
+            <AuthScreen onGuestContinue={() => setShowAuth(false)} />
+          </div>
+        )}
+      </>
+    );
+  }
   return <AppContent />;
 }
 

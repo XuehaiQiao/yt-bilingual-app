@@ -319,7 +319,9 @@ def record_usage(
         return None
 
     resolved_lang = languages.normalize_code(target_lang) or languages.DEFAULT_TARGET_LANG
-    resolved_user = user_id if user_id is not None else storage.active_user_id()
+    # 未显式传 user_id 时跟随请求身份：登录用户 id 或游客 `guest:<sha256>`。
+    # 游客用量因此仍能进入全站日预算，不会被「匿名」无限刷。
+    resolved_user = user_id if user_id is not None else storage.active_identity()
     tokens_in = _int_tokens(input_tokens)
     tokens_out = _int_tokens(output_tokens)
     call_count = _int_tokens(calls)
@@ -591,7 +593,8 @@ def check_and_consume_quota(
 ) -> dict:
     """原子消耗 ``units`` 个当日配额；超限抛 ``QuotaExceeded``。
 
-    - 未登录/``user_id=None``：无法归属，直接放行（``anonymous=True``），不写库；
+    - ``user_id=None``：无法归属，直接放行（``anonymous=True``），不写库；
+      正常 API 请求由调用方传登录用户 id 或游客 ``guest:<sha256>``（M1 ⑧）；
     - ``limit`` 缺省时从 ``ai.quota.limit_for(feature)`` 取（延迟导入避免环）；
     - 表不存在时抛 ``sqlite3.OperationalError``，由 ``ai.quota`` 的包装层决定
       是否 fail-open（运行时未迁移时不能把翻译整条链路打死）；

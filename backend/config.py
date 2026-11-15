@@ -31,6 +31,10 @@ DATA_DIR = os.environ.get("DATA_DIR", os.path.join(_BACKEND_DIR, "..", "data"))
 AUTH_DB_PATH = os.environ.get("AUTH_DB_PATH", os.path.join(DATA_DIR, "app.db"))
 USER_DATA_DIR = os.environ.get("USER_DATA_DIR", os.path.join(DATA_DIR, "users"))
 
+# 游客态（M1 ⑧，见 guest.py）：游客目录 = GUEST_DATA_DIR/<sha256(ln_guest)>。
+# 不建表、不新增迁移；目录名就是游客身份，与其他游客/登录用户完全隔离。
+GUEST_DATA_DIR = os.environ.get("GUEST_DATA_DIR", os.path.join(DATA_DIR, "guests"))
+
 # --- Security configuration ---
 # CORS_ORIGINS: comma-separated allowed origins. Defaults to "*" for local
 # use; ALWAYS set this when deploying publicly.
@@ -388,6 +392,19 @@ RATE_LIMIT_AUTH_PER_MINUTE = _int_env("RATE_LIMIT_AUTH_PER_MINUTE", 10)
 RATE_LIMIT_ESTIMATE_COST_PER_MINUTE = _int_env("RATE_LIMIT_ESTIMATE_COST_PER_MINUTE", 20)
 RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE = _int_env("RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE", 6)
 RATE_LIMIT_DEFINE_PER_MINUTE = _int_env("RATE_LIMIT_DEFINE_PER_MINUTE", 60)
+
+# 游客态（M1 ⑧）：同样的桶，游客用更紧的上限（按 ln_guest 的 sha256 计数）。
+# 0 = 关闭该桶。总试译上限 GUEST_MAX_TRANSLATED_VIDEOS 是**累计**口径（不是每分钟）：
+# 游客目录里已有 N 个视频/剧集缓存后，新的翻译请求返回 403 并提示登录；
+# 已缓存内容的再次观看/补译不受影响。
+RATE_LIMIT_GUEST_ESTIMATE_COST_PER_MINUTE = _int_env(
+    "RATE_LIMIT_GUEST_ESTIMATE_COST_PER_MINUTE", 10
+)
+RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE = _int_env(
+    "RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE", 2
+)
+RATE_LIMIT_GUEST_DEFINE_PER_MINUTE = _int_env("RATE_LIMIT_GUEST_DEFINE_PER_MINUTE", 20)
+GUEST_MAX_TRANSLATED_VIDEOS = _int_env("GUEST_MAX_TRANSLATED_VIDEOS", 1)
 
 # 全局 LLM 并发闸：同一时刻最多允许多少个 provider 调用（0 = 不限）。
 # 包住 llm.generate_json/generate_text 的异步入口；避免一次涌进过多长请求把

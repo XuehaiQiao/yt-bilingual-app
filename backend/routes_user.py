@@ -308,7 +308,8 @@ Rules for "senses":
     # AI 硬闸：词典是每用户 200 次/日的第三层配额之一；超限返回 429（前端提示
     # 「今天的 AI 额度用完了」）。预算超限（BudgetExceeded 是其子类）同走这里。
     # 目标语言只进账本维度，不拆限额。
-    user_id = storage.active_user_id()
+    # 游客同样记账（guest:<sha256>）：配额/全站日预算都算得到匿名用量。
+    user_id = storage.active_identity()
     try:
         quota.check_and_consume_quota(user_id, "define", target_lang=lang)
     except QuotaExceeded as e:

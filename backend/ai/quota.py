@@ -127,9 +127,11 @@ def check_and_consume_quota(
 ) -> dict:
     """三层硬闸入口：预算检查 → 功能日配额原子扣减；超限抛 ``QuotaExceeded``。
 
-    未登录（``user_id=None``）直接放行且不写库（正常 API 都是登录态）。
-    表未迁移（``no such table``）时 fail-open：记一次 WARNING 并放行，避免
-    升级顺序问题把翻译/查词整条链路打死；上线前必须迁移。
+    ``user_id=None``（脚本/旧调用）直接放行且不写库；正常 API 请求会传登录
+    用户 id 或游客 ``guest:<sha256>``（M1 ⑧，见 storage.active_identity），
+    游客同样受日配额/预算约束。表/数据库尚未初始化（``no such table`` 或
+    ``数据库文件不存在``）时 fail-open：记一次 WARNING 并放行，避免升级顺序
+    问题或「游客先于首个注册到达」把翻译/查词整条链路打死；上线前必须迁移。
 
     ``target_lang`` 只随结果/账本记录，**不拆限额**（P0 仍按
     ``(user_id, day, feature)`` 计数，见规格 §5.5「成本与配额」）。
@@ -150,13 +152,14 @@ def check_and_consume_quota(
         result["enforced"] = True
         return result
     except sqlite3.OperationalError as exc:
-        if "no such table" not in str(exc).lower():
+        message = str(exc).lower()
+        if "no such table" not in message and "数据库文件不存在" not in str(exc):
             raise
         if not _warned_missing_tables:
             _warned_missing_tables = True
             logger.warning(
-                "ai_usage/ai_quota 表不存在（未跑 0003_cost_ledger 迁移），"
-                "AI 配额与预算本次跳过；上线前必须运行 `alembic upgrade head`。"
+                "ai_usage/ai_quota 表不可用（未初始化数据库或未跑 0003_cost_ledger "
+                "迁移），AI 配额与预算本次跳过；上线前必须运行 `alembic upgrade head`。"
             )
         return {
             "allowed": True,

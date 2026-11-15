@@ -9,8 +9,9 @@
   ``X-Forwarded-For``（可伪造），需要按真实 IP 限速时由反代层处理；
 - 只做「请求频率」这一层，不做 WAF / bot 指纹 / IP 信誉库（计划书残余风险）。
 
-桶与键（路径 → 桶 → 键）见 :func:`bucket_for`：注册/登录按 IP，估价/处理/
-查词按登录用户。超限由 ``main.py`` 的会话中间件返回 **429 + Retry-After**。
+桶与键（路径 → 桶 → 键）见 :func:`bucket_for`：注册/登录按 IP；估价/处理/
+查词按登录用户；游客（M1 ⑧）用同一组 business 桶但更紧的上限，键为
+``guest:<sha256>``。超限由 ``main.py`` 的身份中间件返回 **429 + Retry-After**。
 """
 from __future__ import annotations
 
@@ -62,6 +63,15 @@ _LIMIT_ATTRS = {
     "define": "RATE_LIMIT_DEFINE_PER_MINUTE",
 }
 
+# 游客（无会话、只有 ln_guest）用更紧的上限；auth 桶仍按 IP（游客不适用）。
+# 键为 `guest:<sha256>`，与其他游客/登录用户互不影响；clear-cookie 会得到
+# 新的空游客（Cookie 方案的已知边界，见 guest.py 文档）。
+_GUEST_LIMIT_ATTRS = {
+    "estimate": "RATE_LIMIT_GUEST_ESTIMATE_COST_PER_MINUTE",
+    "process_video": "RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE",
+    "define": "RATE_LIMIT_GUEST_DEFINE_PER_MINUTE",
+}
+
 # key = "<bucket>:<identity>"；value = 当前窗口内的请求时间（monotonic，递增）。
 _hits: dict[str, deque[float]] = {}
 _lock = threading.Lock()
@@ -80,9 +90,15 @@ def bucket_for(path: str) -> Bucket | None:
     return None
 
 
-def limit_for(bucket_name: str) -> int:
-    """桶的每分钟上限（运行中可被测试/运维改 config 属性）；0 = 关闭。"""
-    attr = _LIMIT_ATTRS.get(bucket_name)
+def limit_for(bucket_name: str, *, guest: bool = False) -> int:
+    """桶的每分钟上限（运行中可被测试/运维改 config 属性）；0 = 关闭。
+
+    ``guest=True`` 时查游客专用上限（更紧）；auth 桶没有游客专用值，仍按 IP
+    使用 ``RATE_LIMIT_AUTH_PER_MINUTE``（爆破防护不看是否游客）。
+    """
+    attr = _GUEST_LIMIT_ATTRS.get(bucket_name) if guest else None
+    if not attr:
+        attr = _LIMIT_ATTRS.get(bucket_name)
     if not attr:
         return 0
     try:
@@ -91,10 +107,18 @@ def limit_for(bucket_name: str) -> int:
         return 0
 
 
-def _identity(request: Request, bucket: Bucket, user: dict | None) -> str:
-    if bucket.scope == "user" and isinstance(user, dict) and user.get("id"):
-        return f"user:{user['id']}"
-    # 用户桶在未登录时理论上到不了这里（/api 会先 401）；直接调用时按 IP 兜底。
+def _identity(
+    request: Request,
+    bucket: Bucket,
+    user: dict | None,
+    guest_hash: str | None = None,
+) -> str:
+    if bucket.scope == "user":
+        if isinstance(user, dict) and user.get("id"):
+            return f"user:{user['id']}"
+        if guest_hash:
+            return f"guest:{guest_hash}"
+    # 用户桶在未登录且无游客身份时直接调用：按 IP 兜底。
     host = request.client.host if request.client else "unknown"
     return f"ip:{host}"
 
@@ -142,15 +166,25 @@ def _sweep_locked(now: float) -> None:
         _hits.pop(key, None)
 
 
-def check_request(request: Request, user: dict | None) -> int | None:
-    """中间件入口：按路径选桶 → 取键 → 计数；超限返回 Retry-After 秒数。"""
+def check_request(
+    request: Request,
+    user: dict | None,
+    guest_hash: str | None = None,
+) -> int | None:
+    """中间件入口：按路径选桶 → 取键 → 计数；超限返回 Retry-After 秒数。
+
+    ``guest_hash`` 非空且没有登录用户时，business 桶使用游客专用上限与
+    ``guest:<hash>`` 键；auth 桶始终按 IP。
+    """
     bucket = bucket_for(request.url.path)
     if bucket is None:
         return None
-    limit = limit_for(bucket.name)
+    is_guest = user is None and bool(guest_hash)
+    limit = limit_for(bucket.name, guest=is_guest)
     if limit <= 0:
         return None
-    retry_after = consume(bucket.name, _identity(request, bucket, user), limit)
+    identity = _identity(request, bucket, user, guest_hash)
+    retry_after = consume(bucket.name, identity, limit)
     if retry_after is None:
         return None
     logger.warning(
@@ -158,7 +192,7 @@ def check_request(request: Request, user: dict | None) -> int | None:
             {
                 "event": "rate_limited",
                 "bucket": bucket.name,
-                "scope": bucket.scope,
+                "scope": "guest" if is_guest else bucket.scope,
                 "path": request.url.path,
                 "retry_after": retry_after,
                 "limit_per_minute": limit,

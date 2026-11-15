@@ -91,9 +91,13 @@ def needs_retranslation(zh_text: str) -> bool:
 
 
 def _resolve_feature_user(feature: str | None, user_id: str | None) -> tuple[str, str | None]:
-    """账本/配额用的功能与用户：功能缺省按翻译，用户缺省取请求上下文。"""
+    """账本/配额用的功能与身份：功能缺省按翻译，缺省取请求上下文。
+
+    请求上下文可能是登录用户 id，也可能是游客 `guest:<sha256>`（M1 ⑧）：
+    游客用量同样计入账本/配额/全站日预算，不能靠匿名绕过。
+    """
     return (feature or "translate"), (
-        user_id if user_id is not None else storage.active_user_id()
+        user_id if user_id is not None else storage.active_identity()
     )
 
 
