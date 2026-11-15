@@ -31,6 +31,8 @@ export type AuthStatus = 'loading' | 'anonymous' | 'guest' | 'authenticated';
 interface AuthContextValue {
     status: AuthStatus;
     user: AuthUser | null;
+    /** Backend `isAdmin` flag (`GET /api/auth/me`); drives the admin entry. */
+    isAdmin: boolean;
     /** Bumped after a successful guest claim so data-loading effects refetch. */
     dataRevision: number;
     login: (email: string, password: string) => Promise<void>;
@@ -41,6 +43,7 @@ interface AuthContextValue {
 interface UserPayload {
     user?: AuthUser | null;
     guest?: boolean;
+    isAdmin?: boolean;
 }
 
 interface ClaimPayload {
@@ -71,6 +74,10 @@ async function readUser(res: Response): Promise<AuthUser> {
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [status, setStatus] = useState<AuthStatus>('loading');
     const [user, setUser] = useState<AuthUser | null>(null);
+    // Separate from `user`: the frozen `/api/auth/me` user object stays
+    // `{id,email}`, while the admin flag is a top-level field. Keeping it in
+    // its own state means an admin flag refresh never rewrites identity.
+    const [isAdmin, setIsAdmin] = useState(false);
     const [dataRevision, setDataRevision] = useState(0);
     // Latest status for the 401 listener without re-subscribing on each change.
     // Updated synchronously so a burst of business-request 401s (models,
@@ -100,13 +107,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const data = (await res.json().catch(() => null)) as UserPayload | null;
                 if (cancelled) return;
                 if (!data?.guest && data?.user?.email) {
+                    setIsAdmin(data.isAdmin === true);
                     applyAuthState('authenticated', data.user);
                     return;
                 }
+                setIsAdmin(false);
                 applyAuthState('guest', null);
             } catch (err) {
                 if (cancelled) return;
                 toast.error(await describeApiError(err));
+                setIsAdmin(false);
                 applyAuthState('anonymous', null);
             }
         };
@@ -121,8 +131,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => subscribeToUnauthorized(() => {
         if (statusRef.current !== 'authenticated') return;
         toast.info(t('errors.sessionExpired'));
+        setIsAdmin(false);
         applyAuthState('anonymous', null);
     }), [applyAuthState]);
+
+    // Login/signup responses keep the frozen `{user}` shape, so the admin flag
+    // is fetched once after a successful sign-in (the only extra request).
+    const syncAdminFlag = useCallback(async () => {
+        try {
+            const res = await apiFetch('/api/auth/me');
+            if (!res.ok) return;
+            const data = (await res.json().catch(() => null)) as UserPayload | null;
+            setIsAdmin(data?.isAdmin === true);
+        } catch {
+            // Non-fatal: the app works, only the admin entry may stay hidden.
+            setIsAdmin(false);
+        }
+    }, []);
 
     // Merge the guest directory into the account (idempotent server-side) and
     // refresh data. Never blocks a successful login: if the merge fails, the
@@ -158,7 +183,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await claimGuest();
         setDataRevision((revision) => revision + 1);
         applyAuthState('authenticated', nextUser);
-    }, [applyAuthState, claimGuest]);
+        // Fire-and-forget: the app must not wait on a flag request to finish
+        // signing in; the entry appears as soon as `/me` answers.
+        void syncAdminFlag();
+    }, [applyAuthState, claimGuest, syncAdminFlag]);
 
     const login = useCallback(
         (email: string, password: string) => authenticate('/api/auth/login', email, password),
@@ -180,12 +208,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             toast.error(await describeApiError(err));
         } finally {
             setDataRevision((revision) => revision + 1);
+            setIsAdmin(false);
             applyAuthState('anonymous', null);
         }
     }, [applyAuthState]);
 
     return (
-        <AuthContext.Provider value={{ status, user, dataRevision, login, signup, logout }}>
+        <AuthContext.Provider value={{ status, user, isAdmin, dataRevision, login, signup, logout }}>
             {children}
         </AuthContext.Provider>
     );

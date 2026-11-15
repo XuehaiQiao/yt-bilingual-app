@@ -81,6 +81,27 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").strip().lower() in ("1", "tr
 # 30 days, matching the Set-Cookie Max-Age below.
 SESSION_MAX_AGE = 30 * 24 * 60 * 60
 
+# --- 后台管理员（M1 ⑥ 止血台，见 routes_admin.py / specs/021-admin） ---
+# ADMIN_EMAILS：逗号分隔的管理员邮箱，大小写不敏感；默认空 = 没有管理员。
+# 只做「是否管理员」的布尔判断，不做独立 role 表/2FA/审计日志（计划书
+# M1 ⑦ 残余项，已登记运行手册）。**不新增迁移**：身份完全由环境变量决定。
+def _email_set_env(name: str) -> frozenset[str]:
+    """读逗号分隔的邮箱集合；去空白、统一小写，非法空项忽略。"""
+    raw = os.environ.get(name, "")
+    return frozenset(
+        item.strip().lower() for item in raw.split(",") if item.strip()
+    )
+
+
+ADMIN_EMAILS = _email_set_env("ADMIN_EMAILS")
+
+
+def is_admin_email(email: str | None) -> bool:
+    """邮箱是否在管理员名单里（大小写不敏感；空名单 → 永远 False）。"""
+    if not email or not ADMIN_EMAILS:
+        return False
+    return email.strip().lower() in ADMIN_EMAILS
+
 # --- 学习事件日志（learning_events，见 events.py） ---
 # pseudonym_id = HMAC-SHA256(EVENTS_PSEUDONYM_SALT, user_id)。生产必须设置该环境变量；
 # 未设置时退回开发默认盐并告警（可被枚举反推，仅限本地/测试）。逐用户盐表与删除权
@@ -414,10 +435,13 @@ if AI_MODEL_REGION not in ("auto", "cn", "global"):
 #   process_video /api/process-video、/api/process-video-stream，按登录用户
 #   define        /api/define，按登录用户
 #   discover      /api/discover，按登录用户
+#   admin         /api/admin/*，按登录用户（后台止血台，30 次/分钟）
 RATE_LIMIT_AUTH_PER_MINUTE = _int_env("RATE_LIMIT_AUTH_PER_MINUTE", 10)
 RATE_LIMIT_ESTIMATE_COST_PER_MINUTE = _int_env("RATE_LIMIT_ESTIMATE_COST_PER_MINUTE", 20)
 RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE = _int_env("RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE", 6)
 RATE_LIMIT_DEFINE_PER_MINUTE = _int_env("RATE_LIMIT_DEFINE_PER_MINUTE", 60)
+# 后台止血台（M1 ⑥）：只读聚合也要限速，避免一次刷新/脚本循环把 SQLite 打满。
+RATE_LIMIT_ADMIN_PER_MINUTE = _int_env("RATE_LIMIT_ADMIN_PER_MINUTE", 30)
 # 内容发现（V1）：一次请求会做 2–3 次网络搜索 + 字幕探测 + 2 次 LLM，
 # 按用户限 5 次/分钟，挡住误刷模型额度与 YouTube 反爬。
 RATE_LIMIT_DISCOVER_PER_MINUTE = _int_env("RATE_LIMIT_DISCOVER_PER_MINUTE", 5)

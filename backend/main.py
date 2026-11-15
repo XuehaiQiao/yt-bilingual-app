@@ -22,6 +22,7 @@
 - recommend.py       规则推荐：画像区间 + 已看历史 + 人工精选池（V1）
 - routes_recommend.py GET /api/recommendations（游客可用）
 - routes_blog.py     官方博客：只读 content/blog/*.md + 安全 Markdown + RSS（V1）
+- routes_admin.py    后台止血台：只读聚合用户/花费/任务/健康（需管理员，M1 ⑥）
 - reports.py         观看事件 + 周报 SQL 聚合（M5）
 - placement.py       定位测题库抽样 / 加权评分 / CEFR 区间 / 画像（M4）
 - observability.py   结构化访问日志 / request_id / 只读 /healthz
@@ -55,6 +56,7 @@ import events
 import guest
 import observability
 import ratelimit
+import routes_admin
 import routes_auth
 import routes_blog
 import routes_content
@@ -184,6 +186,7 @@ async def structured_access_log(request, call_next):
 
 
 app.include_router(routes_auth.router)
+app.include_router(routes_admin.router)
 app.include_router(routes_videos.router)
 app.include_router(routes_content.router)
 app.include_router(routes_user.router)

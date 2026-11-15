@@ -1,7 +1,7 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn, GraduationCap, CalendarRange } from 'lucide-react';
+import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn, GraduationCap, CalendarRange, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { LanguageMenu } from './components/LanguageMenu';
@@ -25,6 +25,7 @@ import { PlacementScreen, type PlacementInitialView } from './components/Placeme
 import { DiscoverScreen } from './components/DiscoverScreen';
 import { ReaderScreen } from './components/ReaderScreen';
 import { BlogScreen } from './components/BlogScreen';
+import { AdminScreen } from './components/AdminScreen';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
@@ -123,7 +124,7 @@ function contentRefMatches(
 }
 
 function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
-  const { user, logout, status, dataRevision } = useAuth();
+  const { user, logout, status, isAdmin, dataRevision } = useAuth();
   const { t, language, targetLang } = useI18n();
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
@@ -173,6 +174,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Official blog (specs/020): a public read-only view over content/blog/*.md.
   // Like the reader, the screen owns list/detail state internally.
   const [blogOpen, setBlogOpen] = useState(false);
+  // Admin stop-the-bleed dashboard (specs/021): only rendered for `isAdmin`;
+  // opening it does not clear the current view, so closing returns there.
+  const [adminOpen, setAdminOpen] = useState(false);
   // Weekly report — its own view (M5). Opening it from a video pauses the
   // player without discarding it; closing returns to the same content.
   const [reportOpen, setReportOpen] = useState(false);
@@ -1134,6 +1138,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setDiscoverOpen(false);
     setReaderOpen(false);
     setBlogOpen(false);
+    setAdminOpen(false);
     setReportOpen(false);
     setPlacementOpen(false);
     setQuizOpen(false);
@@ -1203,6 +1208,19 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const handleCloseBlog = () => {
     setBlogOpen(false);
+  };
+
+  const handleOpenAdmin = () => {
+    // The top bar is shared chrome; drop transient overlays so the dashboard
+    // opens on a clean surface, but keep the current view behind it.
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setAdminOpen(true);
+  };
+
+  const handleCloseAdmin = () => {
+    setAdminOpen(false);
   };
 
   const handleDiscoverStart = (url: string) => {
@@ -1502,7 +1520,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           >
             {t('brand.name')}
           </h1>
-          {featureName && (
+          {featureName && !adminOpen && (
             <span
               data-testid="feature-name"
               className="hidden sm:inline-flex items-center whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/50 border border-white/5 text-zinc-400"
@@ -1514,7 +1532,21 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       </div>
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <LanguageMenu />
-        {status === 'authenticated' && !reviewOpen && !quizOpen && !placementOpen && !discoverOpen && !readerOpen && !blogOpen && (
+        {isAdmin && (
+          <button
+            type="button"
+            data-testid="admin-entry"
+            onClick={handleOpenAdmin}
+            aria-pressed={adminOpen}
+            aria-label={t('admin.entry')}
+            title={t('admin.entry')}
+            className="inline-flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-300 hover:text-blue-200 transition-colors shrink-0"
+          >
+            <ShieldCheck className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">{t('admin.entry')}</span>
+          </button>
+        )}
+        {status === 'authenticated' && !adminOpen && !reviewOpen && !quizOpen && !placementOpen && !discoverOpen && !readerOpen && !blogOpen && (
           <button
             type="button"
             data-testid="topbar-review-button"
@@ -1536,7 +1568,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             )}
           </button>
         )}
-        {!quizOpen && !reportOpen && !placementOpen && !discoverOpen && !readerOpen && !blogOpen && (
+        {!adminOpen && !quizOpen && !reportOpen && !placementOpen && !discoverOpen && !readerOpen && !blogOpen && (
           <button
             type="button"
             data-testid="topbar-report-button"
@@ -2028,7 +2060,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
       {/* Keyed motion.divs crossfade views on mount; no exit-gating so a
           backgrounded tab (throttled rAF) can never stall the switch. */}
-      {placementOpen ? (
+      {adminOpen ? (
+        <motion.div
+          key="admin"
+          initial={{ opacity: 0, scale: 0.99, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          <AdminScreen onClose={handleCloseAdmin} />
+        </motion.div>
+      ) : placementOpen ? (
         <motion.div
           key="placement"
           initial={{ opacity: 0, scale: 0.99, y: 8 }}

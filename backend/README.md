@@ -13,7 +13,7 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载八个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*` / `READING_*` / `AI_DAILY_QUOTA_READING_BATCHES` / `RATE_LIMIT_READING_PER_MINUTE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`）、`BLOG_DIR`（官方博客 Markdown 目录，默认 `content/blog`） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*` / `READING_*` / `AI_DAILY_QUOTA_READING_BATCHES` / `RATE_LIMIT_READING_PER_MINUTE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`）、`BLOG_DIR`（官方博客 Markdown 目录，默认 `content/blog`）、`ADMIN_EMAILS`（后台管理员邮箱，逗号分隔、大小写不敏感，默认空 = 无管理员） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
@@ -47,6 +47,7 @@
 | `reading.py` | **读文章（V1）**：URL 导入（SSRF 校验 + 10s/2MB/重定向 ≤3）或粘贴正文 → `trafilatura` → readability → 标准库 `<p>` 三级抽取 → 200 段/单段 4000 字符上限 → `articles` / `article_paragraphs`；逐段翻译（`feature=reading` 配额/账本/降级链，只补缺失段，失败写 `[未翻译]`）；进度/列表/删除；表由 `0011_reading` 创建，运行时不建表 |
 | `routes_reading.py` | 读文章 HTTP 路由（**需登录，游客 403**）：`POST /api/article/import`、`POST /api/article/{id}/translate`、`GET /api/article/{id}`、`GET /api/articles`、`DELETE /api/article/{id}`、`PUT /api/article/{id}/progress`；契约/错误语义见下文「读文章」与 [specs/019](../specs/019-reading/spec.md) |
 | `routes_blog.py` | 官方博客 HTTP 路由（**公开只读，无需登录**）：`GET /api/blog/posts`、`GET /api/blog/posts/{slug}`、`GET /api/blog/feed.xml`；只读 `content/blog/*.md`，自带 front matter 校验、HTML 转义 + 链接白名单的轻量 Markdown 渲染、RSS 2.0；无数据库/无迁移；见下文「官方博客」与 [specs/020](../specs/020-blog/spec.md) |
+| `routes_admin.py` | 后台止血台 HTTP 路由（**需登录 + 管理员，全部只读**）：`GET /api/admin/stats`、`/users`（搜索/分页）、`/usage`（按天×功能）、`/health`（/healthz + data/ 磁盘 + 最近 10 条 failed jobs）；连接 `PRAGMA query_only=ON`，无任何写端点；管理员由 `config.ADMIN_EMAILS` 决定；限速 30 次/分钟；见下文「后台止血台」与 [specs/021](../specs/021-admin/spec.md) |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`trafilatura` 用于文章正文抽取、`pytest` 用于离线测试/CI；faster-whisper、readability-lxml/bs4 为可选，见文件内注释） |
 | `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
@@ -59,7 +60,7 @@
 | `POST /api/auth/signup` `{email,password}` | `201 {"user":{"id","email"}}` + 设置 Cookie | `409` 邮箱已存在；`400` 邮箱格式或密码 < 8 位 |
 | `POST /api/auth/login` `{email,password}` | `200 {"user":{"id","email"}}` + 设置 Cookie | `401` 邮箱或密码错（不区分，避免账号枚举） |
 | `POST /api/auth/logout` | `200 {"ok":true}` 并清除 Cookie | — |
-| `GET /api/auth/me` | `200 {"user":{"id","email"}}`；未登录/游客 `200 {"user":null,"guest":true}`（并下发 `ln_guest`） | — |
+| `GET /api/auth/me` | `200 {"user":{"id","email"},"isAdmin":bool}`（登录用户；`isAdmin` 来自 `ADMIN_EMAILS`，顶层字段不改变 `user` 契约）；未登录/游客保持 `200 {"user":null,"guest":true}`（并下发 `ln_guest`） | — |
 | `POST /api/auth/claim-guest`（需登录） | `200 {"ok":true,"claimed":bool,"merged":{history,favorites,subscriptions},"skipped":{…},"guestFiles":N}` | `401 {"detail":"未登录"}`；合并文件操作失败 `500`（游客目录保留可重试） |
 
 - `/api/*` 对游客开放（M1 ⑧）：没有会话时按 `ln_guest` 隔离目录工作，可以估价、看视频、查词；只有需要账号的动作（`claim-guest`）自己要求登录。未登录不再统一 401。
@@ -701,7 +702,7 @@ venv/bin/python -m pytest tests -q                    # 全量 395
 cd backend
 venv/bin/python -m py_compile *.py
 venv/bin/python -m pytest tests/test_reading.py -q   # 50 个离线用例（FakeClient + LLM 桩）
-venv/bin/python -m pytest tests -q                    # 全量 457（含 12 个博客用例）
+venv/bin/python -m pytest tests -q                    # 全量 466（含 12 个博客 + 9 个止血台用例）
 ```
 
 2026-11-15 8001 临时实例（`/tmp` 数据目录 + 真实 Alembic + mock HTTP/LLM）实测：
@@ -749,10 +750,69 @@ venv/bin/python -m pytest tests -q                    # 全量 457（含 12 个�
 cd backend
 venv/bin/python -m py_compile *.py
 venv/bin/python -m pytest tests/test_blog.py -q   # 12 个离线用例
-venv/bin/python -m pytest tests -q                # 全量 457
+venv/bin/python -m pytest tests -q                # 全量 466
 ```
 
 2026-11-15 8001 临时实例（仓库内 `content/blog/`）实测：未登录 `GET /api/blog/posts` → 4 篇；`GET /api/blog/posts/why-linguatrek` → 元数据 + Markdown + HTML；`GET /api/blog/feed.xml` → RSS 2.0（4 个 item）；未知 slug 404；含 `<script>` / `javascript:` 链接的样例只渲染为转义文本（无标签执行）。
+
+
+## 后台止血台（M1 ⑥，只读）
+
+用户需求 #12「后台」的 MVP：出事时在一页里看清「用户量/活跃、AI 花费与配额、
+任务状态、错误概览」。**不是 CMS**——只有 SELECT，没有删除/封号/退款/开关；
+连接建立后 `PRAGMA query_only = ON`，连误写都会被 SQLite 拒绝。规格：
+[specs/021-admin](../specs/021-admin/spec.md)。
+
+### 管理员身份
+
+- `ADMIN_EMAILS`：逗号分隔、大小写不敏感的邮箱名单；默认空 = **没有管理员**
+  （所有 `/api/admin/*` 对任何登录用户 403）。改完需重启后端（启动时读取）。
+- `/api/auth/me` 登录时返回顶层 `isAdmin: true|false`；`user` 对象仍是
+  `{id,email}`，游客响应仍是 `{user:null,guest:true}`（旧前端零改动）。
+- 不新增迁移、不建 role 表：身份只是环境变量判断。
+
+### 端点（全部需登录 + 管理员；失败 401/403）
+
+| 端点 | 成功 | 口径 |
+|---|---|---|
+| `GET /api/admin/stats` | 200 | `users{total,new7d,activeToday,guests}`、`ai{todayCostUsd,monthCostUsd,todayCalls,todayByFeature}`、`jobs{failed,running,pendingRetry}`、`generatedAt` |
+| `GET /api/admin/users?limit=50&offset=0&search=` | 200 | `users[{id(前8位),email,createdAt,monthCostUsd,eventCount,lastActiveAt}]` + `total/limit/offset/hasMore`；按注册时间倒序 |
+| `GET /api/admin/usage?days=7` | 200 | `rows[{day,feature,calls,inputTokens,outputTokens,costUsd}]` + `daysSummary` + `totals`；`days` 夹在 1..90 |
+| `GET /api/admin/health` | 200 | `health`（/healthz 快照；**始终 200，由 `health.status` 表达 degraded**）+ `disk{dataDir,sizeBytes}` + `failedJobs`（最多 10 条，按 `updated_at` 倒序） |
+
+- 「今天/当月」按 `AI_QUOTA_TIMEZONE`（默认 Asia/Shanghai）划分，与
+  `ai.ledger` 的 `usage_date` 同口径；成本是账本 `est_cost_usd` 估算值，不是真实账单。
+- `activeToday` = 当地今天内 `learning_events.occurred_at` 或
+  `attempts.answered_at` 出现过的去重 `user_id`。
+- `guests` = `GUEST_DATA_DIR` 下 64 位小写十六进制目录数（只读，不建目录）。
+- `jobs.pendingRetry` = `queued + partial`（等待/可续传），与 `failed` 分开。
+- 旧库没跑迁移时统计字段降级为 0/空并照常 200；`health` 会如实显示
+  `db.migrations.current` 与 degraded 详情。
+- 限速桶 `admin`：30 次/分钟/登录用户（`RATE_LIMIT_ADMIN_PER_MINUTE`，0 关闭），
+  超限 429 + `Retry-After`。
+
+### 前端入口
+
+`isAdmin` 为真时顶栏显示「止血台」按钮（`data-testid="admin-entry"`）→
+`frontend/src/components/AdminScreen.tsx`：总览卡片、7 天用量表、用户表
+（搜索/分页）、健康与失败任务；中越双语（`admin.*`）；表格各自横向滚动，
+375px 下页面本身不横向滚动。API 客户端在 `frontend/src/lib/admin.ts`。
+
+### 测试与手动实测
+
+```bash
+cd backend
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_admin.py -q   # 9 个离线用例
+venv/bin/python -m pytest tests -q                 # 全量 466
+cd ../frontend && npx tsc -b && npm run check:i18n
+```
+
+8001 临时实例（`/tmp` 数据 + `ADMIN_EMAILS`）：管理员四端点 200，普通用户
+403、未登录 401；stats 的今日花费/活跃/失败任务与手工造数一致。
+前端 Chromium 375×844 实测：管理员顶栏入口可见、AdminScreen 四区块渲染，
+`documentElement.scrollWidth = 375`（页面无横向溢出）、表格容器 `overflow-x:auto`
+（表宽 640 > 视口 335，只在容器内滚动）。
 
 
 ## 多语言目标语言（targetLang，P0）
@@ -1053,6 +1113,7 @@ python3 scripts/fetch_dictionary.py
 | `define` | `POST /api/define` | 登录用户 | 60 | `RATE_LIMIT_DEFINE_PER_MINUTE` |
 | `discover` | `POST /api/discover` | 登录用户 | 5 | `RATE_LIMIT_DISCOVER_PER_MINUTE` |
 | `reading` | `POST /api/article/import` | 登录用户 | 10 | `RATE_LIMIT_READING_PER_MINUTE` |
+| `admin` | `/api/admin/*` | 登录用户 | 30 | `RATE_LIMIT_ADMIN_PER_MINUTE` |
 | `estimate`（游客） | 同上 | `guest:<sha256>` | 10 | `RATE_LIMIT_GUEST_ESTIMATE_COST_PER_MINUTE` |
 | `process_video`（游客） | 同上 | `guest:<sha256>` | 2 | `RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE` |
 | `define`（游客） | 同上 | `guest:<sha256>` | 20 | `RATE_LIMIT_GUEST_DEFINE_PER_MINUTE` |

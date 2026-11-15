@@ -5,7 +5,7 @@
 | 模块 | 职责 |
 |---|---|
 | `api.ts` | `API_BASE`（`VITE_API_BASE` 可覆盖）与 `apiFetch`（自动带 `X-API-Key`、`credentials: include`、按端点注入 `targetLang`；非 auth 端点 401 广播给认证层） |
-| `auth.tsx` | 认证状态：`AuthProvider`/`useAuth`，启动 `GET /api/auth/me`、login/signup/logout、全局 401 回登录页 |
+| `auth.tsx` | 认证状态：`AuthProvider`/`useAuth`（含 `isAdmin`，来自 `/api/auth/me`）、启动 `GET /api/auth/me`、login/signup/logout、全局 401 回登录页 |
 | `transcript.ts` | 字幕核心逻辑：`findActiveIndex`（当前句判定，含 0.8s 前瞻）、SSE 流解析（`consumeSseStream`）、`[未翻译]` 标记判定、译文显示模式（全显/当前句/隐藏）持久化 |
 | `sentences.ts` | 句子精背：类型、拉取、四色语块配色、按册×天的背诵/复习进度持久化 |
 | `settings.ts` | 词汇水平（六站轴）与全局模型（`yt_bilingual_last_model`）的 localStorage 读写，含旧考试制存档迁移 |
@@ -21,6 +21,7 @@
 | `recommend.ts` | 规则推荐客户端（specs/018）：`/api/recommendations` 的条目/区间类型与 `fetchRecommendations({limit,seed})`；不补造条目、`reason`/`basis`/`preliminary` 原样交给 UI；时长格式化为 `mm:ss` |
 | `blog.ts` | 官方博客客户端（specs/020）：`/api/blog/posts`、`/api/blog/posts/{slug}`、`/api/blog/feed.xml` 的类型与 `listBlogPosts/getBlogPost/blogFeedUrl`；只读公开接口，失败抛带状态码的 `BlogApiError`；前端用 Markdown 字段配合 `react-markdown`，不注入后端 HTML |
 | `tts.ts` | 浏览器朗读（speechSynthesis，偏好英语音色） |
+| `admin.ts` | 后台止血台客户端（specs/021）：`fetchAdminStats/fetchAdminUsers/fetchAdminUsage/fetchAdminHealth` 与响应类型；只读、无写函数，失败抛带 HTTP 状态的 `AdminApiError` |
 | `toast.ts` | 轻提示总线 + `describeApiError`（把后端/网络错误转成可读中文） |
 | `jobs.ts` | 断线续传（M1 ⑤）：`sessionStorage` 里保存 `jobId`/游标（key `yt_bilingual_pending_job`）、`GET /api/jobs/{id}` 查询状态、`recordJobMeta/recordJobProgress/finishJob` 三个 SSE 事件钩子；刷新后「先查状态、可续才带 `jobId + from` 重连」的判定也在这里 |
 

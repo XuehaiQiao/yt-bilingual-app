@@ -22,6 +22,7 @@
 | `DiscoverScreen.tsx` | 内容发现 | 主题搜索全屏视图（specs/017）：搜索框 + 示例、约 10–20 秒 loading、3–5 张候选卡（缩略图/频道/时长/A1–C1/理由/字幕有或未知/已学过）、「换一批」force、空/失败/degraded 提示与重试；点击候选接现有估价流程，上次结果留在 sessionStorage |
 | `ReaderScreen.tsx` | 读文章 | 阅读器全屏视图（specs/019）：我的文章列表、URL/粘贴正文双 tab 导入（loading/SSRF/超限/网络错误可读）、阅读态标题与英文段落、全部/隐藏译文切换、缺译文时翻译（真实进度、失败段可重试）、点词复用 `WordPopover`、滚动节流保存进度并恢复、删除确认、空/错误态、中越双语与 375px |
 | `BlogScreen.tsx` | 官方博客 | 官方博客全屏视图（specs/020）：列表（日期/阅读时长/标题/摘要/标签/RSS）→ 详情（`react-markdown` 排版、文章中文标注、来源文章标签）；加载/错误/空态、首页底部入口、Giscus 预留（未配置显示「评论即将开放」）、中越双语与 375px；正文来自仓库 `content/blog/*.md`，无 CMS |
+| `AdminScreen.tsx` | 后台止血台 | 管理员只读运营视图（specs/021）：总览卡片（用户/活跃/今日花费/失败任务）、7 天用量表、用户搜索分页、健康与最近 failed jobs；中越双语；表格各自横向滚动，375px 不撑破页面；无删除/改数据按钮 |
 | `EstimateDialog.tsx` | 首页 / 内容发现 | 共用的处理前估价流程：`/api/estimate-cost` loading 覆盖层 → `ModelSelectionModal` → 确认后交给调用方开始处理；首页链接输入与发现页候选点击都走它 |
 | `ReportScreen.tsx` | 本周报告 | 本周报告全屏视图（M5 / specs/015）：周一到今天日期范围、三个数字（无答题显示「暂无」）、一句事实/下一步/连续天数、证据句子与「回看 mm:ss」、明日到期词入口；加载/错误/空数据态，中越双语、375px 单列 |
 | `SentenceText.tsx` | 句子精背 | seg 渲染：四色语块 + ruby 注音 + 逐词可点 |

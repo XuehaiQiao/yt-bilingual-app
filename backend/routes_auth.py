@@ -202,15 +202,22 @@ def logout(request: Request, response: Response):
 
 @router.get("/me")
 def me(request: Request):
-    """当前身份：登录用户返回 user；否则游客态 `{user:null, guest:true}`。
+    """当前身份：登录用户返回 user + isAdmin；否则游客态 `{user:null, guest:true}`。
 
     游客态不再返回 401——前端据此直接进入游客模式（不拦登录页），并在需要
     保存/收藏时提示登录。`ln_guest` 由 main.py 的中间件在首次访问时下发。
+
+    `isAdmin` 只加在登录分支的**顶层**（不塞进 user 对象，保持
+    ``{"user":{"id","email"}}`` 冻结契约不变）；游客分支也保持原样，避免
+    给公开响应增加字段。管理员名单来自 ``config.ADMIN_EMAILS``。
     """
     user = getattr(request.state, "user", None)
     if not user:
         return {"user": None, "guest": True}
-    return {"user": _public_user(user)}
+    return {
+        "user": _public_user(user),
+        "isAdmin": config.is_admin_email(user["email"]),
+    }
 
 
 @router.post("/claim-guest")

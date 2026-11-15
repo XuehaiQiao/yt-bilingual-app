@@ -59,6 +59,9 @@ _EXACT_PATHS = {
 
 _PREFIX_PATHS = (
     ("/api/process-video", Bucket("process_video", "user")),
+    # 后台止血台（M1 ⑥）：登录管理员按用户 30 次/分钟（只读但仍限速，
+    # 避免一页面板把 DB 打满；0 = 关闭，见 RATE_LIMIT_ADMIN_PER_MINUTE）。
+    ("/api/admin", Bucket("admin", "user")),
 )
 
 _LIMIT_ATTRS = {
@@ -68,6 +71,7 @@ _LIMIT_ATTRS = {
     "define": "RATE_LIMIT_DEFINE_PER_MINUTE",
     "discover": "RATE_LIMIT_DISCOVER_PER_MINUTE",
     "reading": "RATE_LIMIT_READING_PER_MINUTE",
+    "admin": "RATE_LIMIT_ADMIN_PER_MINUTE",
 }
 
 # 游客（无会话、只有 ln_guest）用更紧的上限；auth 桶仍按 IP（游客不适用）。
