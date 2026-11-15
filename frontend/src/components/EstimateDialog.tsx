@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useI18n } from '../i18n/I18nProvider';
 import { ModelSelectionModal, type EstimationData } from './ModelSelectionModal';
+import { useModel } from '../lib/model';
 
 export interface EstimateDialogHandle {
     /** Fetch the estimate for `url`; if that fails, start processing anyway. */
@@ -17,15 +18,17 @@ export interface EstimateDialogHandle {
 }
 
 interface EstimateDialogProps {
-    /** Current global model id, mirrored from the home ModelBar. */
-    currentModelId: string;
+    /** Current global model id. Defaults to the shared ModelProvider value. */
+    currentModelId?: string;
     /** Called when the user confirms (or when the estimate request fails). */
     onStart: (url: string) => void;
 }
 
 export const EstimateDialog = forwardRef<EstimateDialogHandle, EstimateDialogProps>(
-    function EstimateDialog({ currentModelId, onStart }, ref) {
+    function EstimateDialog({ currentModelId: currentModelIdProp, onStart }, ref) {
         const { t } = useI18n();
+        const { modelId: providerModelId } = useModel();
+        const currentModelId = currentModelIdProp || providerModelId;
         const [isEstimating, setIsEstimating] = useState(false);
         const [estimationData, setEstimationData] = useState<EstimationData | null>(null);
         const [isModalOpen, setIsModalOpen] = useState(false);

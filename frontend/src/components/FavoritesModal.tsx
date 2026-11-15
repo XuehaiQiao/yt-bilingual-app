@@ -517,7 +517,14 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({
                                         </button>
                                     </>
                                 )}
-                                <button onClick={onClose} className="p-2 rounded-full text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors">
+                                <button
+                                    type="button"
+                                    data-testid="favorites-close"
+                                    onClick={onClose}
+                                    aria-label={t('common.close')}
+                                    title={t('common.close')}
+                                    className="p-2 rounded-full text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
+                                >
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>

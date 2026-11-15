@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Volume2, Star, Eye, EyeOff, CalendarCheck, Check, Share2 } from 'lucide-react';
+import { ArrowLeft, Search, Volume2, Star, Eye, EyeOff, CalendarCheck, Check, Share2 } from 'lucide-react';
 import {
     fetchSentenceLevels, fetchSentenceLevel, segToPlain,
     isDayDone, setDayDone, levelDoneDays, loadZhHidden, saveZhHidden,
@@ -22,6 +22,8 @@ interface SentenceViewProps {
     /** `levelTitle` is the pack name, stored on the favorite as its source. */
     onToggleFavorite: (sentence: Sentence, levelId: number, levelTitle?: string) => void;
     favoriteIds: string[];
+    /** Leave the pack view (P0: sentence packs live under #/content/sentences). */
+    onClose?: () => void;
 }
 
 export const sentenceFavId = (levelId: number, n: number) => `sentence-L${levelId}-${n}`;
@@ -40,7 +42,7 @@ const CAT_I18N: Record<Sentence['cat'], TranslationKey> = {
 };
 
 export const SentenceView: React.FC<SentenceViewProps> = ({
-    levelId, onSelectLevel, onWordLookup, onToggleFavorite, favoriteIds,
+    levelId, onSelectLevel, onWordLookup, onToggleFavorite, favoriteIds, onClose,
 }) => {
     const { t } = useI18n();
     const [levels, setLevels] = useState<SentenceLevelMeta[]>([]);
@@ -94,6 +96,19 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
         <div className="flex-1 min-h-0 flex flex-col bg-transparent">
             {/* 工具栏（chrome 条材质） */}
             <div className="flex-none flex flex-wrap items-center gap-x-3 gap-y-2 px-4 md:px-6 py-2.5 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20">
+                {onClose && (
+                    <button
+                        type="button"
+                        data-testid="sentences-back"
+                        onClick={onClose}
+                        aria-label={t('nav.back')}
+                        title={t('nav.back')}
+                        className="inline-flex items-center gap-1.5 h-7 px-2 -ml-1 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors shrink-0"
+                    >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        {t('nav.back')}
+                    </button>
+                )}
                 {/* 级别分段控件 */}
                 <div className="inline-flex items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5">
                     {levels.map(lv => (

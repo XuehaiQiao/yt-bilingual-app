@@ -1,31 +1,26 @@
-// Account page — the signed-in user's own dashboard (specs/023 frontend).
+// Profile — first-level page (P0 IA §3.4). AccountScreen's body now doubles
+// as the 我的 page: account header + library rows (favorites / weekly report /
+// ability profile) + balance + settings + about + admin console + logout.
 //
-// One full-screen view (like review/report/admin) opened from the top bar:
-//   header   avatar placeholder + display name (inline rename via
-//            PATCH /api/user/profile) + email + member-since date
-//   balance  credits / month AI spend / today's learning minutes
-//            (GET /api/user/summary; no payment system: the balance is
-//            credited by an administrator)
-//   settings interface + translation language (the shared
-//            LanguageSettingsModal), default model (shared ModelBar), PWA
-//            install entry (shared PwaInstallButton)
-//   about    version, official blog (existing BlogScreen), privacy/terms
-//            placeholder — no fabricated links
-//   actions  logout, plus the admin console entry for administrators only
-//
-// Guests never get a summary response (403); the page shows a login prompt
-// instead of an error so the entry stays useful from a guest session.
+// The same component still supports the legacy full-screen "account" shell
+// (back button) for compatibility; `isPage` switches the chrome and hides it.
+// Guests see a login card instead of the balance, but keep favorites,
+// language/model/install settings and about — the IA explicitly keeps them
+// usable without an account.
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertCircle,
   ArrowLeft,
+  BookOpen,
+  CalendarRange,
   Check,
   ChevronDown,
   ChevronRight,
   Clock,
   Coins,
   FileText,
+  Gauge,
   Globe,
   Languages,
   Loader2,
@@ -33,6 +28,7 @@ import {
   Pencil,
   RefreshCw,
   ShieldCheck,
+  Star,
   UserRound,
   Wallet,
   X,
@@ -41,9 +37,11 @@ import { apiFetch } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/I18nProvider';
 import { getLanguageMeta, type LanguageCode } from '../i18n';
+import type { PlacementProfile } from '../lib/placement';
 import { useInstallPrompt, useOnlineStatus } from '../lib/pwa';
 import { toast, describeApiError } from '../lib/toast';
 import { displayUsername, usernameInitial, usernameProblem } from '../lib/username';
+import { loadVocabLevel, VOCAB_LEVELS } from '../lib/settings';
 import { LanguageSettingsModal } from './LanguageSettingsModal';
 import { ModelBar } from './ModelBar';
 import { PwaInstallButton } from './PwaInstallButton';
@@ -66,13 +64,26 @@ interface AccountSummary {
 }
 
 interface AccountScreenProps {
-  onClose: () => void;
+  /** Legacy full-screen close. Optional on the first-level 我的 page. */
+  onClose?: () => void;
+  /** First-level page mode: page title instead of a back button. */
+  isPage?: boolean;
   /** Opens the existing public blog view (the product's official window). */
   onOpenBlog?: () => void;
   /** Opens the admin console view — only rendered for administrators. */
   onOpenAdmin?: () => void;
   /** Guest shell: opens the login overlay. */
   onRequestLogin?: () => void;
+  /** 我的·我的收藏 row (opens the existing favorites panel). */
+  onOpenFavorites?: () => void;
+  favoriteCount?: number;
+  /** 我的·本周报告 row. */
+  onOpenReport?: () => void;
+  /** 我的·能力档案 row. */
+  onOpenPlacement?: () => void;
+  placementProfile?: PlacementProfile | null;
+  /** 我的·设置 vocabulary row: jump to the Content page axis (read-only here). */
+  onOpenVocab?: () => void;
 }
 
 const PRIMARY_BUTTON =
@@ -148,9 +159,16 @@ function SettingRow({
 
 export const AccountScreen: React.FC<AccountScreenProps> = ({
   onClose,
+  isPage = false,
   onOpenBlog,
   onOpenAdmin,
   onRequestLogin,
+  onOpenFavorites,
+  favoriteCount = 0,
+  onOpenReport,
+  onOpenPlacement,
+  placementProfile = null,
+  onOpenVocab,
 }) => {
   const { status, user, isAdmin, logout, updateUsername } = useAuth();
   const { t, language, targetLang, languages, formatNumber, formatDate } = useI18n();
@@ -244,28 +262,263 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
     await logout();
   };
 
-  // Guest / session-expired: the summary endpoint is 403 by contract, so the
-  // page offers a login entry instead of an error banner.
+  const pageChrome = (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      {isPage ? (
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{t('profile.title')}</h1>
+          <p className="mt-1 text-sm text-zinc-500">{t('profile.subtitle')}</p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          data-testid="account-back"
+          onClick={onClose}
+          className="inline-flex items-center gap-1.5 h-9 px-2 -ml-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {t('account.back')}
+        </button>
+      )}
+      {isAuthenticated && (
+        <button
+          type="button"
+          onClick={() => { void loadSummary(); }}
+          disabled={isLoading}
+          data-testid="account-refresh"
+          className={SECONDARY_BUTTON}
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          {t('account.refresh')}
+        </button>
+      )}
+    </div>
+  );
+
+  // Library rows: favorites work for guests too; report/placement row opens
+  // the view (the app routes guests to login when the screen needs an account).
+  const libraryRows = (
+    <section aria-label={t('profile.library')} className="mt-6">
+      <div className="divide-y divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40 overflow-hidden">
+        <button
+          type="button"
+          data-testid="profile-favorites-row"
+          onClick={onOpenFavorites}
+          className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <Star className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-zinc-200">{t('profile.favorites')}</span>
+              <span className="mt-0.5 block text-xs text-zinc-500">{t('profile.favoritesHint')}</span>
+            </span>
+          </span>
+          <span className="flex items-center gap-1.5 shrink-0">
+            <span className="text-xs text-zinc-500 tabular-nums">
+              {t('profile.favoritesCount', { count: formatNumber(favoriteCount) })}
+            </span>
+            <ChevronRight className="w-4 h-4 text-zinc-600" />
+          </span>
+        </button>
+
+        <button
+          type="button"
+          data-testid="profile-report-row"
+          onClick={onOpenReport}
+          className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <CalendarRange className="w-4 h-4 text-blue-400 shrink-0" />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-zinc-200">{t('profile.report')}</span>
+              <span className="mt-0.5 block text-xs text-zinc-500">{t('profile.reportHint')}</span>
+            </span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0" />
+        </button>
+
+        <button
+          type="button"
+          data-testid="profile-level-row"
+          onClick={onOpenPlacement}
+          className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <Gauge className="w-4 h-4 text-blue-400 shrink-0" />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-zinc-200">{t('profile.level')}</span>
+              <span className="mt-0.5 block text-xs text-zinc-500">{t('profile.levelHint')}</span>
+            </span>
+          </span>
+          <span className="flex items-center gap-1.5 shrink-0">
+            <span data-testid="profile-level-value" className="text-xs text-zinc-500">
+              {placementProfile ? placementProfile.cefr : t('profile.levelEmpty')}
+            </span>
+            <ChevronRight className="w-4 h-4 text-zinc-600" />
+          </span>
+        </button>
+      </div>
+    </section>
+  );
+
+  const settingsSection = (
+    <section aria-label={t('account.settings.title')} className="mt-8">
+      <CardTitle icon={<Languages className="w-5 h-5" />}>{t('account.settings.title')}</CardTitle>
+      <div className="mt-3 divide-y divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40">
+        <SettingRow
+          icon={<Languages className="w-4 h-4" />}
+          label={t('account.settings.uiLanguage')}
+          hint={t('account.settings.uiLanguageHint')}
+        >
+          <button
+            type="button"
+            data-testid="account-language"
+            onClick={() => setLanguageOpen(true)}
+            aria-haspopup="dialog"
+            className={ROW_BUTTON}
+            title={t('account.settings.languageAria')}
+          >
+            {languages.find((item) => item.code === language)?.nativeName ?? language}
+            <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+          </button>
+        </SettingRow>
+
+        <SettingRow
+          icon={<Globe className="w-4 h-4" />}
+          label={t('account.settings.targetLanguage')}
+          hint={t('account.settings.targetLanguageHint')}
+        >
+          <button
+            type="button"
+            data-testid="account-target-language"
+            onClick={() => setLanguageOpen(true)}
+            aria-haspopup="dialog"
+            className={ROW_BUTTON}
+            title={t('account.settings.languageAria')}
+          >
+            {languages.find((item) => item.code === targetLang)?.nativeName ?? targetLang}
+            <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+          </button>
+        </SettingRow>
+
+        <SettingRow
+          icon={<span className="block w-4 h-4 rounded-md bg-blue-500/20 border border-blue-500/30" />}
+          label={t('account.settings.model')}
+          hint={t('account.settings.modelHint')}
+          stack
+        >
+          <ModelBar />
+        </SettingRow>
+
+        <SettingRow
+          icon={<BookOpen className="w-4 h-4" />}
+          label={t('profile.vocabLevel')}
+          hint={t('profile.vocabLevelHint')}
+        >
+          <button
+            type="button"
+            data-testid="account-vocab-level"
+            onClick={onOpenVocab}
+            className={ROW_BUTTON}
+            title={t('profile.vocabLevelHint')}
+          >
+            {VOCAB_LEVELS.find((level) => level.id === loadVocabLevel())?.label ?? '—'}
+            <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+          </button>
+        </SettingRow>
+
+        <SettingRow
+          icon={<FileText className="w-4 h-4" />}
+          label={t('account.settings.install')}
+          hint={t('account.settings.installHint')}
+          stack
+        >
+          {isStandalone ? (
+            <span
+              data-testid="account-install-installed"
+              className="text-xs font-medium text-emerald-400"
+            >
+              {t('account.settings.installed')}
+            </span>
+          ) : !online ? (
+            <span data-testid="account-install-hint" className="max-w-[18rem] text-right text-[11px] leading-relaxed text-zinc-500">
+              {t('account.settings.installOffline')}
+            </span>
+          ) : canInstall || isIos ? (
+            <PwaInstallButton />
+          ) : (
+            <span
+              data-testid="account-install-hint"
+              className="max-w-[18rem] text-right text-[11px] leading-relaxed text-zinc-500"
+            >
+              {t('account.settings.installUnavailable')}
+            </span>
+          )}
+        </SettingRow>
+      </div>
+    </section>
+  );
+
+  const aboutSection = (
+    <section aria-label={t('account.about.title')} className="mt-8">
+      <CardTitle icon={<FileText className="w-5 h-5" />}>{t('account.about.title')}</CardTitle>
+      <div className="mt-3 divide-y divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40 overflow-hidden">
+        <SettingRow icon={<FileText className="w-4 h-4" />} label={t('account.about.version')}>
+          <span
+            data-testid="account-version"
+            className="text-sm font-medium text-zinc-300 tabular-nums"
+          >
+            {summary?.version ? `v${summary.version}` : '—'}
+          </span>
+        </SettingRow>
+
+        <button
+          type="button"
+          data-testid="account-blog"
+          onClick={onOpenBlog}
+          disabled={!onOpenBlog}
+          className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors disabled:cursor-default"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
+            <span className="text-sm font-medium text-zinc-200">{t('account.about.blog')}</span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0" />
+        </button>
+
+        {/* Privacy/terms have no page yet: say so instead of inventing a URL. */}
+        <div className="flex items-center justify-between gap-3 p-4">
+          <span className="flex min-w-0 items-center gap-3">
+            <ShieldCheck className="w-4 h-4 text-zinc-500 shrink-0" />
+            <span className="text-sm font-medium text-zinc-200">{t('account.about.legal')}</span>
+          </span>
+          <span
+            data-testid="account-legal-pending"
+            className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/70 border border-white/5 text-zinc-500 shrink-0"
+          >
+            {t('account.about.legalPending')}
+          </span>
+        </div>
+      </div>
+    </section>
+  );
+
+  // Guest / session-expired: the summary endpoint is 403 by contract. The
+  // page still offers favorites, settings and about; the account header offers
+  // login instead of an error banner.
   if (!isAuthenticated || forbidden) {
     return (
       <div
         data-testid="account-screen"
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+        data-page-scroll
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10"
       >
         <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 sm:py-8">
-          <button
-            type="button"
-            data-testid="account-back"
-            onClick={onClose}
-            className="inline-flex items-center gap-1.5 h-9 px-2 -ml-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {t('account.back')}
-          </button>
+          {pageChrome}
 
           <div
             data-testid="account-guest"
-            className="mt-16 flex flex-col items-center justify-center py-16 text-center"
+            className="mt-6 rounded-3xl border border-white/5 bg-zinc-900/40 p-6 sm:p-8 flex flex-col items-center text-center"
           >
             <div className="w-14 h-14 rounded-full bg-zinc-800/80 border border-white/5 flex items-center justify-center">
               <UserRound className="w-6 h-6 text-zinc-500" />
@@ -286,7 +539,17 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
               </button>
             )}
           </div>
+
+          {libraryRows}
+          {settingsSection}
+          {aboutSection}
+
+          <p className="mt-8 text-center text-[11px] leading-relaxed text-zinc-600">
+            {t('account.footerNote')}
+          </p>
         </div>
+
+        <LanguageSettingsModal isOpen={languageOpen} onClose={() => setLanguageOpen(false)} />
       </div>
     );
   }
@@ -294,37 +557,15 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   const credits = summary?.user.credits ?? 0;
   const monthSpend = summary?.monthSpendUsd ?? 0;
   const minutes = summary?.usageToday.minutes ?? 0;
-  const version = summary?.version ?? '';
-  const targetLanguage =
-    languages.find((item) => item.code === targetLang) ?? languages[0];
 
   return (
     <div
       data-testid="account-screen"
-      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+      data-page-scroll
+      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10"
     >
       <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 sm:py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            data-testid="account-back"
-            onClick={onClose}
-            className="inline-flex items-center gap-1.5 h-9 px-2 -ml-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {t('account.back')}
-          </button>
-          <button
-            type="button"
-            onClick={() => { void loadSummary(); }}
-            disabled={isLoading}
-            data-testid="account-refresh"
-            className={SECONDARY_BUTTON}
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {t('account.refresh')}
-          </button>
-        </div>
+        {pageChrome}
 
         {/* ── Header: avatar + display name + email + member since ─────── */}
         <header className="mt-5 flex items-start gap-4">
@@ -403,12 +644,12 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
               </div>
             ) : (
               <div className="mt-1 flex items-center gap-1.5 min-w-0">
-                <h1
+                <h2
                   data-testid="account-username"
                   className="min-w-0 truncate text-2xl font-semibold tracking-tight text-zinc-50"
                 >
                   {currentName}
-                </h1>
+                </h2>
                 <button
                   type="button"
                   data-testid="account-edit-username"
@@ -465,6 +706,8 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
             </div>
           </section>
         )}
+
+        {libraryRows}
 
         {/* ── Balance card: credits / month spend / today's minutes ────── */}
         <motion.section
@@ -537,132 +780,8 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
           </p>
         </motion.section>
 
-        {/* ── Settings ─────────────────────────────────────────────────── */}
-        <section aria-label={t('account.settings.title')} className="mt-8">
-          <CardTitle icon={<Languages className="w-5 h-5" />}>{t('account.settings.title')}</CardTitle>
-          <div className="mt-3 divide-y divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40">
-            <SettingRow
-              icon={<Languages className="w-4 h-4" />}
-              label={t('account.settings.uiLanguage')}
-              hint={t('account.settings.uiLanguageHint')}
-            >
-              <button
-                type="button"
-                data-testid="account-language"
-                onClick={() => setLanguageOpen(true)}
-                aria-haspopup="dialog"
-                className={ROW_BUTTON}
-                title={t('account.settings.languageAria')}
-              >
-                {languages.find((item) => item.code === language)?.nativeName ?? language}
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
-              </button>
-            </SettingRow>
-
-            <SettingRow
-              icon={<Globe className="w-4 h-4" />}
-              label={t('account.settings.targetLanguage')}
-              hint={t('account.settings.targetLanguageHint')}
-            >
-              <button
-                type="button"
-                data-testid="account-target-language"
-                onClick={() => setLanguageOpen(true)}
-                aria-haspopup="dialog"
-                className={ROW_BUTTON}
-                title={t('account.settings.languageAria')}
-              >
-                {targetLanguage?.nativeName ?? targetLang}
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
-              </button>
-            </SettingRow>
-
-            <SettingRow
-              icon={<span className="block w-4 h-4 rounded-md bg-blue-500/20 border border-blue-500/30" />}
-              label={t('account.settings.model')}
-              hint={t('account.settings.modelHint')}
-              stack
-            >
-              <ModelBar />
-            </SettingRow>
-
-            <SettingRow
-              icon={<FileText className="w-4 h-4" />}
-              label={t('account.settings.install')}
-              hint={t('account.settings.installHint')}
-              stack
-            >
-              {isStandalone ? (
-                <span
-                  data-testid="account-install-installed"
-                  className="text-xs font-medium text-emerald-400"
-                >
-                  {t('account.settings.installed')}
-                </span>
-              ) : !online ? (
-                <span data-testid="account-install-hint" className="max-w-[18rem] text-right text-[11px] leading-relaxed text-zinc-500">
-                  {t('account.settings.installOffline')}
-                </span>
-              ) : canInstall || isIos ? (
-                <PwaInstallButton />
-              ) : (
-                <span
-                  data-testid="account-install-hint"
-                  className="max-w-[18rem] text-right text-[11px] leading-relaxed text-zinc-500"
-                >
-                  {t('account.settings.installUnavailable')}
-                </span>
-              )}
-            </SettingRow>
-          </div>
-        </section>
-
-        {/* ── About ────────────────────────────────────────────────────── */}
-        <section aria-label={t('account.about.title')} className="mt-8">
-          <CardTitle icon={<FileText className="w-5 h-5" />}>{t('account.about.title')}</CardTitle>
-          <div className="mt-3 divide-y divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40 overflow-hidden">
-            <SettingRow
-              icon={<FileText className="w-4 h-4" />}
-              label={t('account.about.version')}
-            >
-              <span
-                data-testid="account-version"
-                className="text-sm font-medium text-zinc-300 tabular-nums"
-              >
-                {version ? `v${version}` : '—'}
-              </span>
-            </SettingRow>
-
-            <button
-              type="button"
-              data-testid="account-blog"
-              onClick={onOpenBlog}
-              disabled={!onOpenBlog}
-              className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors disabled:cursor-default"
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
-                <span className="text-sm font-medium text-zinc-200">{t('account.about.blog')}</span>
-              </span>
-              <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0" />
-            </button>
-
-            {/* Privacy/terms have no page yet: say so instead of inventing a
-                URL (spec: "不要造假链接"). */}
-            <div className="flex items-center justify-between gap-3 p-4">
-              <span className="flex min-w-0 items-center gap-3">
-                <ShieldCheck className="w-4 h-4 text-zinc-500 shrink-0" />
-                <span className="text-sm font-medium text-zinc-200">{t('account.about.legal')}</span>
-              </span>
-              <span
-                data-testid="account-legal-pending"
-                className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/70 border border-white/5 text-zinc-500 shrink-0"
-              >
-                {t('account.about.legalPending')}
-              </span>
-            </div>
-          </div>
-        </section>
+        {settingsSection}
+        {aboutSection}
 
         {/* ── Actions ──────────────────────────────────────────────────── */}
         <section className="mt-8 space-y-3">

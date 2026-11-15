@@ -8,7 +8,7 @@ import { TodayWorkbench, type TodayWeekReport } from './TodayWorkbench';
 import { HomeRecommendations } from './HomeRecommendations';
 import { LibrarySection } from './LibrarySection';
 import { ShowBrowser } from './ShowBrowser';
-import { loadModel, loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
+import { loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
 import { VocabAxis } from './VocabAxis';
 import { SentencePacks } from './SentencePacks';
 import { progressPercent, clearProgress } from '../lib/progress';
@@ -38,8 +38,6 @@ interface InputScreenProps {
     onOpenReport?: () => void;
     /** Ability placement / profile entry (M4 / specs/016). */
     onOpenPlacement?: (view: 'intro' | 'profile') => void;
-    /** Exam practice entry (V2 / specs/022). */
-    onOpenExam?: () => void;
     /** Content discovery entry (specs/017): open the discover view. */
     onOpenDiscover?: () => void;
     /** Reading entry (specs/019): open the article list/reader view. */
@@ -82,7 +80,6 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     onOpenReview,
     onOpenReport,
     onOpenPlacement,
-    onOpenExam,
     onOpenDiscover,
     onOpenReader,
     onOpenBlog,
@@ -111,9 +108,6 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     // content discovery; this screen only opens it with the submitted URL.
     const estimateRef = useRef<EstimateDialogHandle>(null);
     const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
-    // Mirrors the model bar's global setting so the pre-flight estimate can
-    // name and price the model that will actually run.
-    const [currentModelId, setCurrentModelId] = useState(loadModel);
 
     const handleDeleteHistory = async (e: React.MouseEvent, item: HistoryItem) => {
         e.stopPropagation();
@@ -269,7 +263,6 @@ export const InputScreen: React.FC<InputScreenProps> = ({
 
             <EstimateDialog
                 ref={estimateRef}
-                currentModelId={currentModelId}
                 onStart={onSubmit}
             />
 
@@ -297,12 +290,10 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                         onOpenReport={onOpenReport}
                         onLoadHistory={onLoadHistory}
                         onStartFirst={focusStartInput}
-                        onModelResolved={setCurrentModelId}
                         placementProfile={placementProfile}
                         placementLoading={placementLoading}
                         placementFailed={placementFailed}
                         onOpenPlacement={onOpenPlacement}
-                        onOpenExam={onOpenExam}
                     />
                 </motion.div>
 

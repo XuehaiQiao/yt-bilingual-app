@@ -1,14 +1,15 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn, GraduationCap, CalendarRange, UserRound } from 'lucide-react';
+import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
-import { LanguageMenu } from './components/LanguageMenu';
 import { AuthProvider, useAuth } from './lib/auth';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
-import { getLanguageMeta, getRuntimeTargetLang, type TranslationKey } from './i18n';
-import { InputScreen } from './components/InputScreen';
+import { getLanguageMeta, getRuntimeTargetLang } from './i18n';
+import { ModelProvider } from './lib/model';
+import { useNav } from './lib/useNav';
+import { parseRoute, tabForSub, toHash, type SubRoute, type TabId } from './lib/nav';
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
 import { TranscriptView } from './components/TranscriptView';
@@ -21,22 +22,25 @@ import { SentenceView, sentenceFavId } from './components/SentenceView';
 import { ReviewScreen } from './components/ReviewScreen';
 import { QuizScreen } from './components/QuizScreen';
 import { ReportScreen, type WeekReportEvidence } from './components/ReportScreen';
-import { PlacementScreen, type PlacementInitialView } from './components/PlacementScreen';
+import { PlacementScreen } from './components/PlacementScreen';
 import { ExamScreen } from './components/ExamScreen';
 import { DiscoverScreen } from './components/DiscoverScreen';
 import { ReaderScreen } from './components/ReaderScreen';
 import { LibraryArticleReader } from './components/LibraryArticleReader';
 import { BlogScreen } from './components/BlogScreen';
 import { AdminConsoleScreen } from './components/AdminConsoleScreen';
-import { AccountScreen } from './components/AccountScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
-import { PwaInstallButton } from './components/PwaInstallButton';
-import { displayUsername, usernameInitial } from './lib/username';
+import { AppShell } from './components/AppShell';
+import { LearningHeader } from './components/LearningHeader';
+import { TodayScreen } from './components/TodayScreen';
+import { ContentScreen } from './components/ContentScreen';
+import { PracticeScreen } from './components/PracticeScreen';
+import { ProfileScreen } from './components/ProfileScreen';
+import { toast, describeApiError } from './lib/toast';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
 import { segToPlain, CHUNK_STYLE, type Sentence, type SegChunk } from './lib/sentences';
-import { toast, describeApiError } from './lib/toast';
 import { consumeSseStream, findActiveIndex, isUntranslated, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from './lib/transcript';
 import {
   clearPendingJob,
@@ -46,6 +50,7 @@ import {
   recordJobMeta,
   recordJobProgress,
   type JobSnapshot,
+  type PendingJob,
 } from './lib/jobs';
 import { loadVocabLevel, loadModel } from './lib/settings';
 import {
@@ -60,6 +65,7 @@ import {
   type TranscriptLayout,
 } from './lib/layout';
 import { getProgress, saveProgress } from './lib/progress';
+import { getProfile, type PlacementProfile } from './lib/placement';
 import { fetchLibraryArticle, fetchLibraryVideo, type LibraryArticle } from './lib/library';
 import ReactMarkdown from 'react-markdown';
 
@@ -74,36 +80,6 @@ interface TranscriptItem {
     zh_word: string;
     color: string;
   }>;
-}
-
-type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences' | 'topbar.feature.review' | 'topbar.feature.quiz' | 'topbar.feature.discover' | 'topbar.feature.reader' | 'topbar.feature.blog' | 'topbar.feature.library'>;
-
-// Single source of truth for the top-bar feature label. Mirrors the view
-// switch below: quiz wins, then reading, then the blog, then discovery, then
-// review, then sentence pack, then local episode, then YouTube; the home screen
-// (no video / empty transcript) has no feature name.
-function getFeatureName(
-  quizOpen: boolean,
-  readerOpen: boolean,
-  blogOpen: boolean,
-  discoverOpen: boolean,
-  reviewOpen: boolean,
-  sentenceLevel: number | null,
-  videoId: string,
-  transcriptCount: number,
-  isLocalSubtitle: boolean,
-  isLibraryVideo: boolean,
-  libraryArticleOpen: boolean,
-): FeatureNameKey | null {
-  if (quizOpen) return 'topbar.feature.quiz';
-  if (libraryArticleOpen || isLibraryVideo) return 'topbar.feature.library';
-  if (readerOpen) return 'topbar.feature.reader';
-  if (blogOpen) return 'topbar.feature.blog';
-  if (discoverOpen) return 'topbar.feature.discover';
-  if (reviewOpen) return 'topbar.feature.review';
-  if (sentenceLevel != null) return 'topbar.feature.sentences';
-  if (!videoId || transcriptCount === 0) return null;
-  return isLocalSubtitle ? 'topbar.feature.local' : 'topbar.feature.video';
 }
 
 function formatClock(seconds: number): string {
@@ -134,8 +110,10 @@ function contentRefMatches(
 }
 
 function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
-  const { user, logout, status, isAdmin, dataRevision } = useAuth();
+  const { user, status, isAdmin, dataRevision } = useAuth();
   const { t, language, targetLang } = useI18n();
+  const { state, go, open, replace, back } = useNav();
+
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
@@ -172,62 +150,24 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [seekCommand, setSeekCommand] = useState<{ time: number, timestamp: number } | null>(null);
 
-  // Sentence Packs — third learning mode (null = not in this mode)
-  const [sentenceLevel, setSentenceLevel] = useState<number | null>(null);
-
-  // Review — fourth view, alongside the three learning modes. The view state
-  // stays local (like sentenceLevel) so returning always lands on the home
-  // screen, per specs/013.
-  const [reviewOpen, setReviewOpen] = useState(false);
-  // Content discovery — full view (specs/017). Its last result is kept in the
-  // screen's session storage, so backing out and re-entering is lossless.
-  const [discoverOpen, setDiscoverOpen] = useState(false);
-  // Reading (specs/019): a full view like discovery. The screen owns its
-  // list/reader internal state; this flag only decides which view is mounted.
-  const [readerOpen, setReaderOpen] = useState(false);
-  // Favorites can jump straight to one article ("出处" link). The nonce forces
-  // a fresh reader mount so re-opening the same article from its list still
-  // lands on it; the ordinary top-bar entry clears both.
-  const [readerInitialArticleId, setReaderInitialArticleId] = useState<string | null>(null);
-  const [readerOpenNonce, setReaderOpenNonce] = useState(0);
-  // Official blog (specs/020): a public read-only view over content/blog/*.md.
-  // Like the reader, the screen owns list/detail state internally.
-  const [blogOpen, setBlogOpen] = useState(false);
-  // Free library article (user request #11): the whole article is already on
-  // the device, so this is a local reader over the fetched payload — no
-  // /api/article request and no "translate" action.
+  // Free library article: rendered by the local reader inside the learn route.
   const [libraryArticle, setLibraryArticle] = useState<LibraryArticle | null>(null);
-  // Admin console (specs/021 + 023): a standalone full-page view that replaces
-  // the whole user shell (top bar included). `adminReturnTo` remembers where
-  // the back button should land: the account page (the only in-app entry) or
-  // a clean home screen (the `#admin` direct link / access-lost fallback).
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [adminReturnTo, setAdminReturnTo] = useState<'home' | 'account'>('home');
-  // Account / user page (specs/023 frontend): a full view opened from the
-  // top-bar avatar. Like the admin view it keeps whatever sits behind it, so
-  // closing the page returns to the same video / home screen.
-  const [accountOpen, setAccountOpen] = useState(false);
-  // Weekly report — its own view (M5). Opening it from a video pauses the
-  // player without discarding it; closing returns to the same content.
-  const [reportOpen, setReportOpen] = useState(false);
-  const reportReturnTimeRef = useRef(0);
-  // Ability placement / profile (M4 / specs/016) — a full view like review.
-  // `intro` is the no-profile landing; `profile` is the saved-profile page.
-  const [placementOpen, setPlacementOpen] = useState(false);
-  const [placementInitialView, setPlacementInitialView] = useState<PlacementInitialView>('intro');
-  // Exam practice (V2 / specs/022) — a full view like placement. The screen
-  // owns its types/quiz/result/history phases and its local draft answers.
-  const [examOpen, setExamOpen] = useState(false);
+
+  // Ability profile (M4): fetched once at app level so Today / Practice /
+  // Profile all read the same value (P0 IA §10.3).
+  const [placementProfile, setPlacementProfile] = useState<PlacementProfile | null>(null);
+  const [placementLoading, setPlacementLoading] = useState(true);
+  const [placementFailed, setPlacementFailed] = useState(false);
+  const [placementNonce, setPlacementNonce] = useState(0);
+
   const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
   const [reviewStatsLoading, setReviewStatsLoading] = useState(false);
   const [reviewStatsFailed, setReviewStatsFailed] = useState(false);
-  // Bumped whenever the review view closes so the home card refetches.
+  // Bumped whenever a review/exam/learning view closes so badges refetch.
   const [reviewStatsNonce, setReviewStatsNonce] = useState(0);
 
-  // Comprehension quiz (M3 / specs/014) — a fifth view over the loaded video.
-  // The lesson is kept here while the quiz is open; `quizCacheReady` mirrors
-  // "this video has a bilingual subtitle cache on disk", which is the only
-  // condition the toolbar entry needs (the start endpoint re-checks it).
+  // Comprehension quiz (M3 / specs/014) — an in-page overlay of the learning
+  // view (P0 IA §7.1: the quiz is not a route; a refresh lands on the video).
   const [quizOpen, setQuizOpen] = useState(false);
   const [quizLesson, setQuizLesson] = useState<LessonQuestions | null>(null);
   const [quizStarting, setQuizStarting] = useState(false);
@@ -275,7 +215,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   // Hover-to-switch: the card stays mounted; only its target word/position
   // changes. Guard against a stale dwell timer firing after the card closed.
-  // The lookup source (e.g. a reading article id) survives the switch.
   const handleSwitchWord = useCallback((target: WordLookupTarget) => {
     setWordLookup(prev => (prev ? {
       ...target,
@@ -399,7 +338,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
   };
 
-
   // Local subtitle playback timer
   const subtitleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isSubtitlePlaying, setIsSubtitlePlaying] = useState(false);
@@ -424,8 +362,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     // Pausing is a natural flush point for the watch-event segment.
     pauseWatch(currentTimeRef.current);
   }, []);
-
-
 
   // Cleanup on unmount
   useEffect(() => {
@@ -504,7 +440,28 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }).catch(() => {});
   }, [subscriptions]);
 
-  // Review stats power the home entry card and the top-bar badge. Guests are
+  // Ability profile for Today's placement strip, Practice's placement row and
+  // Profile's profile row. No profile is a normal state (`profile: null`).
+  useEffect(() => {
+    let cancelled = false;
+    setPlacementLoading(true);
+    setPlacementFailed(false);
+    getProfile()
+      .then(data => {
+        if (!cancelled) setPlacementProfile(data?.profile ?? null);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        console.error('Failed to load placement profile:', err);
+        setPlacementFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) setPlacementLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [placementNonce, dataRevision]);
+
+  // Review stats power the practice badge and the Today review card. Guests are
   // skipped: specs/013 makes every review endpoint 403 without an account.
   // `targetLang` is part of the key because the deck is language-scoped.
   useEffect(() => {
@@ -527,6 +484,66 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       .finally(() => { if (!cancelled) setReviewStatsLoading(false); });
     return () => { cancelled = true; };
   }, [status, targetLang, dataRevision, reviewStatsNonce]);
+
+  // M1 ⑤ interrupted-job recovery, now opt-in (P0 IA R7: a refresh must never
+  // fire processing on its own). The record is offered as a banner; the stream
+  // only reconnects after the user clicks it.
+  const [pendingResume, setPendingResume] = useState<PendingJob | null>(null);
+  const resumeOfferCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!user || resumeOfferCheckedRef.current) return;
+    resumeOfferCheckedRef.current = true;
+    void (async () => {
+      const pending = loadPendingJob();
+      if (!pending) return;
+      // 语言切换后旧任务的译文本就不是当前设置要的，直接丢弃。
+      if (pending.targetLang !== getRuntimeTargetLang()) {
+        clearPendingJob();
+        return;
+      }
+      setPendingResume(pending);
+    })();
+  }, [user]);
+
+  const handleResumePending = async () => {
+    const pending = pendingResume;
+    if (!pending) return;
+    setPendingResume(null);
+    let snapshot: JobSnapshot | null;
+    try {
+      snapshot = await fetchJobSnapshot(pending.jobId);
+      // 刚刷新时服务端可能还没察觉到连接已断（active=true）：等它收尾
+      // 再问一次，避免「刷新后要多刷一次」的竞态。
+      for (let attempt = 0; attempt < 3 && snapshot?.active; attempt += 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        snapshot = await fetchJobSnapshot(pending.jobId);
+      }
+    } catch {
+      toast.error(t('jobs.resumeFailed'));
+      return;
+    }
+    if (!snapshot || snapshot.status === 'done') {
+      clearPendingJob();
+      return;
+    }
+    if (snapshot.status === 'failed') {
+      clearPendingJob();
+      toast.error(t('jobs.failedHint'));
+      return;
+    }
+    if (snapshot.active) {
+      toast.info(t('jobs.busyHint'));
+      return;
+    }
+    if (!snapshot.canResume) {
+      clearPendingJob();
+      return;
+    }
+    await handleUrlSubmit(pending.url, {
+      jobId: pending.jobId,
+      from: snapshot.cursor,
+    });
+  };
 
   const handleToggleSubscription = () => {
     if (status === 'guest') {
@@ -675,6 +692,69 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     });
   };
 
+  // ── Route helpers (P0 IA §7.3) ────────────────────────────────────────────
+  // A tab click never stacks history; a sub-view entry pushes once; jumping
+  // between two sub views replaces the current one (stack depth stays 1).
+  const isLearningView = state.sub?.kind === 'learn';
+  const isSubView = state.sub !== null;
+
+  const requireAccount = (): boolean => {
+    if (status === 'authenticated') return true;
+    onRequestLogin?.();
+    return false;
+  };
+
+  const openSub = useCallback((sub: SubRoute) => {
+    if (state.sub) replace({ tab: tabForSub(sub, state.tab), sub });
+    else open(sub);
+  }, [state.sub, state.tab, replace, open]);
+
+  const enterLearn = useCallback((sub: SubRoute) => {
+    if (state.sub) replace({ tab: tabForSub(sub, state.tab), sub });
+    else open(sub);
+  }, [state.sub, state.tab, replace, open]);
+
+  const navigateTab = (tab: TabId) => {
+    if (state.tab === tab && !state.sub) {
+      const scroller = document.querySelector('[data-page-scroll]');
+      if (scroller instanceof HTMLElement) {
+        scroller.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+    go(tab);
+  };
+
+  const resetLearning = useCallback(() => {
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    setTranslationProgress(null);
+    if (subtitleTimerRef.current) clearInterval(subtitleTimerRef.current);
+    subtitleTimerRef.current = null;
+    setIsSubtitlePlaying(false);
+    setVideoId('');
+    setTranscript([]);
+    setSummary('');
+    setMetadata(null);
+    setCurrentTime(0);
+    setSeekCommand(null);
+    setQuizCacheReady(false);
+    setQuizOpen(false);
+    setQuizLesson(null);
+    setQuizStarting(false);
+    setLibraryArticle(null);
+    setWordLookup(null);
+    setSelectedChannel(null);
+    setReviewStatsNonce(prev => prev + 1);
+  }, []);
+
+  // Cross-sub jumps (favorites → player/reader/pack) replace the favorites
+  // route instead of stacking a second history entry (IA §7.3, depth = 1).
+  const closeFavoritesForJump = () => {
+    setIsFavoritesOpen(false);
+    if (state.sub?.kind === 'favorites') replace({ tab: 'profile', sub: null });
+  };
+
   const handlePlayFavorite = (favVideoId: string, start: number) => {
     if (favVideoId.length > 11) {
       // Local Subtitle: Extract showId, season, episode from string like "house-of-cards_S03E03"
@@ -683,26 +763,25 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         // The target clock (simulated timer vs. mapped YouTube player) is only
         // known once the episode payload is loaded, so hand it to the effect.
         pendingLocalSeekRef.current = start;
-        handleSelectEpisode(match[1], parseInt(match[2]), parseInt(match[3]));
+        void handleSelectEpisode(match[1], parseInt(match[2]), parseInt(match[3]));
       }
     } else {
       if (favVideoId !== videoId) {
         // Seek as soon as the stream's meta event arrives (don't wait for full translation)
         pendingSeekRef.current = start;
-        handleUrlSubmit(`https://youtube.com/watch?v=${favVideoId}`);
+        void handleUrlSubmit(`https://youtube.com/watch?v=${favVideoId}`);
       } else {
         setSeekCommand({ time: start, timestamp: Date.now() });
       }
     }
-    setIsFavoritesOpen(false);
+    closeFavoritesForJump();
   };
 
-  // M1 ⑤：`resume` 只在断线续传时传入（jobId + 服务端游标），普通提交不带。
+  // ── Content loading (YouTube / local episode / free library) ──────────────
   const handleUrlSubmit = async (
     url: string,
     resume?: { jobId?: string; from?: number },
   ) => {
-    setSentenceLevel(null); // leave sentence mode if a video is loaded
     pauseSubtitleTimer();
     // A fresh stream only proves a cache once the backend writes the payload
     // (on `meta` for reused caches, on `done` for new ones).
@@ -787,6 +866,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               pendingSeekRef.current = null;
               setTimeout(() => setSeekCommand({ time: resumeAt, timestamp: Date.now() }), 1000);
             }
+            // The URL now points at the learning view (push once).
+            enterLearn({
+              kind: 'learn',
+              source: 'youtube',
+              videoId: evt.data.videoId || id,
+            });
             break;
           }
           case 'batch': {
@@ -836,62 +921,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
   };
 
-  // M1 ⑤ 断线续传：页面刷新/重新打开后，如果本标签页还留着未完成的任务，
-  // 先问后端状态（GET /api/jobs/{id}），可续才带 jobId + from 重连；
-  // 已完成/失败/不存在的任务直接丢弃，不重复生成。每个标签页只尝试一次。
-  const resumeCheckedRef = useRef(false);
-  useEffect(() => {
-    if (!user || resumeCheckedRef.current) return;
-    resumeCheckedRef.current = true;
-    void (async () => {
-      const pending = loadPendingJob();
-      if (!pending) return;
-      // 语言切换后旧任务的译文本就不是当前设置要的，直接丢弃。
-      if (pending.targetLang !== getRuntimeTargetLang()) {
-        clearPendingJob();
-        return;
-      }
-      let snapshot: JobSnapshot | null;
-      try {
-        snapshot = await fetchJobSnapshot(pending.jobId);
-        // 刚刷新时服务端可能还没察觉到连接已断（active=true）：等它收尾
-        // 再问一次，避免「刷新后要多刷一次」的竞态。
-        for (let attempt = 0; attempt < 3 && snapshot?.active; attempt += 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          snapshot = await fetchJobSnapshot(pending.jobId);
-        }
-      } catch {
-        return; // 网络暂不可用：保留记录，下次刷新再试
-      }
-      if (!snapshot || snapshot.status === 'done') {
-        clearPendingJob();
-        return;
-      }
-      if (snapshot.status === 'failed') {
-        clearPendingJob();
-        toast.error(t('jobs.failedHint'));
-        return;
-      }
-      if (snapshot.active) {
-        toast.info(t('jobs.busyHint'));
-        return; // 另一条流结束后刷新还能续
-      }
-      if (!snapshot.canResume) {
-        // 产物没了 / 状态已不可续：丢掉记录，避免每次刷新都白问一次。
-        clearPendingJob();
-        return;
-      }
-      await handleUrlSubmit(pending.url, {
-        jobId: pending.jobId,
-        from: snapshot.cursor,
-      });
-    })();
-    // 只在登录态首次就绪时尝试一次；handleUrlSubmit 是普通函数，无需重建。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
   const handleSelectEpisode = async (showId: string, season: number, episode: number) => {
-    setSentenceLevel(null);
     pauseSubtitleTimer();
     setQuizCacheReady(false);
     setLoadingState('loading');
@@ -938,6 +968,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         setCurrentTime(0);
         setQuizCacheReady(true);
       }
+      enterLearn({ kind: 'learn', source: 'local', showId, season, episode });
     } catch (error) {
       console.error(error);
       pendingLocalSeekRef.current = null;
@@ -948,7 +979,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleLoadHistory = async (filename: string) => {
-    setSentenceLevel(null);
     pauseSubtitleTimer();
     setQuizCacheReady(false);
     setLoadingState('loading');
@@ -970,6 +1000,20 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       setCurrentTime(0);
       // Loaded straight out of history: the bilingual cache already exists.
       setQuizCacheReady(true);
+      // Local-episode caches share the `SxxEyy` shape; everything else is a
+      // YouTube video id.
+      const localMatch = String(filename).match(/^(.+?)[-_]S(\d+)E(\d+)\.json$/i);
+      if (data.metadata?.is_local_subtitle && localMatch) {
+        enterLearn({
+          kind: 'learn',
+          source: 'local',
+          showId: localMatch[1],
+          season: Number.parseInt(localMatch[2], 10),
+          episode: Number.parseInt(localMatch[3], 10),
+        });
+      } else {
+        enterLearn({ kind: 'learn', source: 'youtube', videoId: data.videoId });
+      }
     } catch (error) {
       console.error(error);
       toast.error(await describeApiError(error));
@@ -982,47 +1026,36 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Both entries leave the normal learning pipeline untouched: the video path
   // only reads pre-built blocks and enters the existing player, the article
   // path only renders a local payload. Neither calls estimate/process/define.
-  const resetToLibrary = () => {
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setReviewOpen(false);
-    setReportOpen(false);
-    setPlacementOpen(false);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    setDiscoverOpen(false);
-    setReaderOpen(false);
-    setReaderInitialArticleId(null);
-    setBlogOpen(false);
-    setSentenceLevel(null);
-    setLibraryArticle(null);
-    pauseSubtitleTimer();
+  const applyLibraryVideo = (data: Awaited<ReturnType<typeof fetchLibraryVideo>>) => {
+    setTranscript(data.blocks);
+    setSummary('');
+    setMetadata({
+      title: data.title,
+      channel: data.channel,
+      duration: data.duration,
+      level: data.level,
+      free: true,
+      source: 'youtube',
+      is_library: true,
+      youtubeId: data.youtubeId,
+      thumbnail: data.thumbnail,
+    });
+    setVideoId(data.youtubeId);
+    setCurrentTime(0);
+    setSeekCommand(null);
+    setLocalVideoError(false);
   };
 
   const handleOpenLibraryVideo = async (id: string) => {
-    resetToLibrary();
+    setWordLookup(null);
+    setSelectedChannel(null);
+    setLibraryArticle(null);
     setQuizCacheReady(false);
     setLoadingState('loading');
     try {
       const data = await fetchLibraryVideo(id);
-      setTranscript(data.blocks);
-      setSummary('');
-      setMetadata({
-        title: data.title,
-        channel: data.channel,
-        duration: data.duration,
-        level: data.level,
-        free: true,
-        source: 'youtube',
-        is_library: true,
-        youtubeId: data.youtubeId,
-        thumbnail: data.thumbnail,
-      });
-      setVideoId(data.youtubeId);
-      setCurrentTime(0);
-      setSeekCommand(null);
-      setLocalVideoError(false);
+      applyLibraryVideo(data);
+      enterLearn({ kind: 'learn', source: 'library', itemId: id });
     } catch (error) {
       console.error('Failed to load free library video:', error);
       toast.error(await describeApiError(error));
@@ -1032,11 +1065,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleOpenLibraryArticle = async (id: string) => {
-    resetToLibrary();
+    setWordLookup(null);
+    setSelectedChannel(null);
     setLoadingState('loading');
     try {
       const data = await fetchLibraryArticle(id);
       setLibraryArticle(data);
+      enterLearn({ kind: 'learn', source: 'library', itemId: id });
     } catch (error) {
       console.error('Failed to load free library article:', error);
       toast.error(await describeApiError(error));
@@ -1046,7 +1081,130 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleCloseLibraryArticle = () => {
-    setLibraryArticle(null);
+    back();
+  };
+
+  // Refresh/direct-link restore of a learn route. Only cache reads — never
+  // process/estimate (P0 IA R7). A miss returns to the content page with a
+  // toast instead of silently re-billing.
+  const restoreLearnRoute = async (sub: Extract<SubRoute, { kind: 'learn' }>) => {
+    if (sub.source === 'library' && sub.itemId) {
+      try {
+        const data = await fetchLibraryVideo(sub.itemId);
+        applyLibraryVideo(data);
+        return;
+      } catch {
+        // Not a library video — try the original article payload.
+      }
+      try {
+        const article = await fetchLibraryArticle(sub.itemId);
+        setLibraryArticle(article);
+        return;
+      } catch (error) {
+        console.error('Failed to restore library item:', error);
+        toast.info(t('nav.cacheMiss'));
+        replace({ tab: 'content', sub: null });
+        return;
+      }
+    }
+
+    if (sub.source === 'local' && sub.showId) {
+      const filename = `${sub.showId}_S${String(sub.season ?? 1).padStart(2, '0')}E${String(sub.episode ?? 1).padStart(2, '0')}.json`;
+      try {
+        const response = await apiFetch(`/api/history/${filename}`);
+        if (!response.ok) throw new Error('cache miss');
+        const data = await response.json();
+        setTranscript(data.transcript);
+        setSummary(data.summary || '');
+        setMetadata({ ...data.metadata, is_local_subtitle: true });
+        setVideoId(data.videoId);
+        setCurrentTime(0);
+        setQuizCacheReady(true);
+      } catch {
+        toast.info(t('nav.cacheMiss'));
+        replace({ tab: 'content', sub: null });
+      }
+      return;
+    }
+
+    // YouTube: only restore when /api/history already has this video's cache.
+    try {
+      const response = await apiFetch('/api/history');
+      const items = response.ok ? await response.json() : [];
+      const item = Array.isArray(items)
+        ? items.find(candidate => candidate?.videoId === sub.videoId)
+        : undefined;
+      if (item?.filename) {
+        await handleLoadHistory(item.filename);
+        return;
+      }
+    } catch {
+      // fall through
+    }
+    toast.info(t('nav.cacheMiss'));
+    replace({ tab: 'content', sub: null });
+  };
+
+  // Route restore runs once per distinct learn href (on mount / refresh only;
+  // in-app entries already have their payload before the hash changes).
+  const restoredLearnRef = useRef('');
+  useEffect(() => {
+    if (!isLearningView) {
+      restoredLearnRef.current = '';
+      return;
+    }
+    const sub = state.sub as Extract<SubRoute, { kind: 'learn' }>;
+    const key = toHash({ tab: state.tab, sub });
+    if (restoredLearnRef.current === key) return;
+    const loadedMatches =
+      transcript.length > 0 && Boolean(videoId) && (
+        (sub.source === 'youtube' && sub.videoId === videoId) ||
+        (sub.source === 'local' && isLocalSubtitle) ||
+        (sub.source === 'library' && (isLibraryVideo || libraryArticle !== null))
+      );
+    restoredLearnRef.current = key;
+    if (loadedMatches) return;
+    void restoreLearnRoute(sub);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.sub, state.tab, transcript.length, videoId, isLocalSubtitle, isLibraryVideo, libraryArticle]);
+
+  // Leaving the learning view ends the segment and clears the payload (no
+  // background translation per B-3; the cache stays on disk).
+  const wasLearningRef = useRef(false);
+  useEffect(() => {
+    if (wasLearningRef.current && !isLearningView) {
+      resetLearning();
+    }
+    wasLearningRef.current = isLearningView;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLearningView]);
+
+  // A quiz is an overlay of the learning view only. Leaving the view (desktop
+  // top-bar tab, browser back) discards it instead of painting it over a tab
+  // page (the URL never carried it, per IA §7.1).
+  useEffect(() => {
+    if (quizOpen && !isLearningView) {
+      setQuizOpen(false);
+      setQuizLesson(null);
+    }
+  }, [quizOpen, isLearningView]);
+
+  // Favorites route ↔ panel sync (#/profile/favorites renders the profile page
+  // with the existing panel on top, per IA §8.2).
+  const favoritesRouteRef = useRef(false);
+  useEffect(() => {
+    if (state.sub?.kind === 'favorites') {
+      favoritesRouteRef.current = true;
+      setIsFavoritesOpen(true);
+    } else if (favoritesRouteRef.current) {
+      favoritesRouteRef.current = false;
+      setIsFavoritesOpen(false);
+    }
+  }, [state.sub]);
+
+  const handleCloseFavorites = () => {
+    setIsFavoritesOpen(false);
+    if (state.sub?.kind === 'favorites') back();
   };
 
   const handleTimeUpdate = useCallback((time: number) => {
@@ -1057,19 +1215,18 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   }, []);
 
   // ── Watch reporting (M5) ─────────────────────────────────────────────────
-  // One segment per open content. Switching video/episode, leaving to the
-  // report/quiz/review views, or unmounting ends the segment: the tracker
-  // emits what was played and flushes the queue. Guests are already covered by
-  // apiFetch's credentials, so no auth check is needed here.
+  // One segment per open content. Switching video/episode, leaving the learning
+  // view, or opening the quiz ends the segment: the tracker emits what was
+  // played and flushes the queue.
   const hasTranscript = transcript.length > 0;
   useEffect(() => {
-    if (!videoId || !hasTranscript || reportOpen || quizOpen || reviewOpen) return;
+    if (!isLearningView || !videoId || !hasTranscript || quizOpen) return;
     startWatch({
       contentRef: videoId,
       kind: metadata?.is_local_subtitle ? 'local_show' : 'video',
     });
     return () => endWatch();
-  }, [videoId, hasTranscript, metadata?.is_local_subtitle, reportOpen, quizOpen, reviewOpen]);
+  }, [isLearningView, videoId, hasTranscript, metadata?.is_local_subtitle, quizOpen]);
 
   // SRT-only local episodes have no player callback; the simulated clock's
   // `currentTime` is the playback position. Only feed it while playing so a
@@ -1166,11 +1323,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
 
-  const featureName = useMemo(
-    () => getFeatureName(quizOpen, readerOpen, blogOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle), isLibraryVideo, libraryArticle !== null),
-    [quizOpen, readerOpen, blogOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle, isLibraryVideo, libraryArticle],
-  );
-
   const handleTranscriptClick = useCallback((time: number) => {
     // Re-pin the loop to the clicked sentence
     if (loopEnabled) {
@@ -1224,7 +1376,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Keyboard shortcuts: Space play/pause, ←→ prev/next sentence, R replay, L loop
   useEffect(() => {
     // The quiz view owns the keyboard while it is open (1–4 / Enter / Esc).
-    if (!videoId || transcript.length === 0 || quizOpen) return;
+    if (!isLearningView || !videoId || transcript.length === 0 || quizOpen) return;
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
@@ -1265,408 +1417,19 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [videoId, transcript, currentTime, useSubtitleTimer, isSubtitlePlaying, seekTo, toggleLoop, pauseSubtitleTimer, startSubtitleTimer, quizOpen]);
+  }, [isLearningView, videoId, transcript, currentTime, useSubtitleTimer, isSubtitlePlaying, seekTo, toggleLoop, pauseSubtitleTimer, startSubtitleTimer, quizOpen]);
 
-  const handleGoHome = () => {
-    cancelTranslationStream();
-    pauseSubtitleTimer();
-    setVideoId('');
-    setTranscript([]);
-    setSummary('');
-    setMetadata(null);
-    setCurrentTime(0);
-    setSeekCommand(null);
-    setSentenceLevel(null);
-    setReviewOpen(false);
-    setDiscoverOpen(false);
-    setReaderOpen(false);
-    setReaderInitialArticleId(null);
-    setBlogOpen(false);
-    setLibraryArticle(null);
-    setAdminOpen(false);
-    setAccountOpen(false);
-    setReportOpen(false);
-    setPlacementOpen(false);
-    setExamOpen(false);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    setQuizStarting(false);
-    setQuizCacheReady(false);
-    // Returning from review can change the due count; refetch on every go-home
-    // (one cheap request) so the badge never shows a stale number.
-    setReviewStatsNonce(prev => prev + 1);
-  };
-
-  // Content discovery (specs/017). It is a full view like review; the selected
-  // candidate goes through the same estimate → processing pipeline as a pasted
-  // link. `onClose` only leaves the view, so the screen's session-stored
-  // results are still there on re-entry.
-  const handleOpenDiscover = () => {
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setReviewOpen(false);
-    setReportOpen(false);
-    setPlacementOpen(false);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    setDiscoverOpen(true);
-  };
-
-  const handleCloseDiscover = () => {
-    setDiscoverOpen(false);
-  };
-
-  // Reading (specs/019). Like discovery it is a full view over the home screen;
-  // the reader screen keeps its own list/reader state so closing and reopening
-  // always lands on the list, where progress is visible.
-  const handleOpenReader = () => {
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setReviewOpen(false);
-    setReportOpen(false);
-    setPlacementOpen(false);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    setDiscoverOpen(false);
-    setReaderInitialArticleId(null);
-    setReaderOpen(true);
-  };
-
-  // Favorites "出处" jump into one article (specs/019 detail view). Unlike the
-  // ordinary entry this opens the reader at that article; the nonce makes even
-  // a same-article re-open mount a fresh, detail-view reader.
-  const handleOpenFavoriteArticle = (articleId: string) => {
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setReviewOpen(false);
-    setReportOpen(false);
-    setPlacementOpen(false);
-    setDiscoverOpen(false);
-    setBlogOpen(false);
-    setExamOpen(false);
-    setAdminOpen(false);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    setReaderInitialArticleId(articleId);
-    setReaderOpenNonce(prev => prev + 1);
-    setReaderOpen(true);
-  };
-
-  const handleCloseReader = () => {
-    setReaderOpen(false);
-    setReaderInitialArticleId(null);
-  };
-
-  // Favorites "出处" jump into a sentence pack (`source_ref` = `L<levelId>`).
-  // The pack view owns its own level state, so opening another view first
-  // keeps the tree single-purpose.
-  const handleOpenFavoriteSentencePack = (levelId: number) => {
-    if (!Number.isInteger(levelId) || levelId <= 0) return;
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setReaderOpen(false);
-    setBlogOpen(false);
-    setReviewOpen(false);
-    setReportOpen(false);
-    setPlacementOpen(false);
-    setDiscoverOpen(false);
-    setExamOpen(false);
-    setAdminOpen(false);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    setSentenceLevel(levelId);
-  };
-
-  // Official blog (specs/020). Public and read-only; opening it closes every
-  // other full view so the tree stays single-purpose.
-  const handleOpenBlog = () => {
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setReviewOpen(false);
-    setReportOpen(false);
-    setPlacementOpen(false);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    setDiscoverOpen(false);
-    setReaderOpen(false);
-    setBlogOpen(true);
-  };
-
-  const handleCloseBlog = () => {
-    setBlogOpen(false);
-  };
-
-  // Admin console (specs/021 + 023). It is a standalone page rather than a
-  // dialog, and its only in-app entry is the administrator section of the
-  // account page. Non-admins get a toast and never reach the view.
-  const openAdminView = (returnTo: 'home' | 'account') => {
-    if (!isAdmin) {
-      toast.error(t('admin.error.forbidden'));
-      return;
-    }
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setAdminReturnTo(returnTo);
-    setAdminOpen(true);
-  };
-
-  const handleCloseAdmin = () => {
-    const returnTo = adminReturnTo;
-    setAdminOpen(false);
-    setAdminReturnTo('home');
-    if (returnTo === 'account') setAccountOpen(true);
-    else handleGoHome();
-  };
-
-  // Access lost while the console is mounted (non-admin direct entry, session
-  // downgraded, admin flag withdrawn): toast comes from the console, then the
-  // app lands on a clean home screen.
-  const handleAdminDenied = () => {
-    setAdminOpen(false);
-    setAdminReturnTo('home');
-    handleGoHome();
-  };
-
-  // Account view (specs/023 frontend). The top-bar avatar always opens it on a
-  // clean surface; whatever view was behind stays mounted, so closing the
-  // account page returns to the same video / home screen. It sits first in the
-  // render chain, so it wins over an already-open admin/blog view.
-  const handleOpenAccount = () => {
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setAccountOpen(true);
-  };
-
-  const handleCloseAccount = () => {
-    setAccountOpen(false);
-  };
-
-  // Cross-links from the account page: leave the page, then open the target
-  // view (the page would otherwise sit on top of it).
-  const handleAccountOpenBlog = () => {
-    setAccountOpen(false);
-    handleOpenBlog();
-  };
-
-  const handleAccountOpenAdmin = () => {
-    setAccountOpen(false);
-    openAdminView('account');
-  };
-
-  // `/admin` (SPA fallback) and `#admin` are direct entries — bookmarks or a
-  // support shortcut — not a router. They are read once: administrators land on
-  // the console, everyone else gets the "需要管理员权限" toast and stays on the
-  // home screen. The decision waits one tick because right after login the
-  // admin flag is fetched separately; denying on the first render would kick a
-  // just-signed-in administrator.
-  const adminDeepLinkRef = useRef(false);
-  useEffect(() => {
-    if (adminDeepLinkRef.current) return;
-    if (status === 'loading') return;
-    const pathname = window.location.pathname;
-    const byPath = /(?:^|\/)admin\/?$/.test(pathname);
-    if (window.location.hash !== '#admin' && !byPath) {
-      adminDeepLinkRef.current = true;
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      if (!byPath && window.location.hash !== '#admin') return;
-      adminDeepLinkRef.current = true;
-      const nextPath = byPath ? pathname.replace(/\/admin\/?$/, '/') : pathname;
-      window.history.replaceState(null, '', `${nextPath}${window.location.search}`);
-      if (!isAdmin) {
-        toast.error(t('admin.error.forbidden'));
-        return;
-      }
-      setWordLookup(null);
-      setIsFavoritesOpen(false);
-      setSelectedChannel(null);
-      setAdminReturnTo('home');
-      setAdminOpen(true);
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [isAdmin, status, t]);
-
-  const handleDiscoverStart = (url: string) => {
-    // Leave the discovery view first; processing renders the learning view.
-    setDiscoverOpen(false);
-    void handleUrlSubmit(url);
-  };
-
-  // Ability placement (M4). Like review/report it is a full view; the home
-  // workbench picks the landing (`intro` without a profile, `profile` with
-  // one). Closing remounts the home screen, which refetches the profile.
-  const handleOpenPlacement = (view: PlacementInitialView) => {
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setReviewOpen(false);
-    setReportOpen(false);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    pauseSubtitleTimer();
-    pauseWatch(currentTimeRef.current);
-    setPlacementInitialView(view);
-    setPlacementOpen(true);
-  };
-
-  const handleClosePlacement = () => {
-    setPlacementOpen(false);
-    // The workbench reads the profile on mount; a completion changes it and
-    // the home branch remounts on the next render anyway.
-    setReviewStatsNonce(prev => prev + 1);
-  };
-
-  // Exam practice (V2 / specs/022). Full view, account-only: guests are routed
-  // to login from the home entry instead of mounting the screen. Closing
-  // remounts the home screen (its history list is static, nothing to refresh).
-  const handleOpenExam = () => {
-    if (status !== 'authenticated') {
-      onRequestLogin?.();
-      return;
-    }
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setReviewOpen(false);
-    setReportOpen(false);
-    setPlacementOpen(false);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    setExamOpen(true);
-  };
-
-  const handleCloseExam = () => {
-    setExamOpen(false);
-    setReviewStatsNonce(prev => prev + 1);
-  };
-
-  // Result page "去学习": home is the learning entry, so close and drop the
-  // cursor into the paste-a-link input once it has mounted.
-  const handlePlacementStartLearning = () => {
-    setPlacementOpen(false);
-    setReviewStatsNonce(prev => prev + 1);
-    window.setTimeout(() => {
-      const input = document.getElementById('video-url') as HTMLInputElement | null;
-      if (!input) return;
-      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      input.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
-      input.focus({ preventScroll: true });
-    }, 350);
-  };
-
-  // ── Weekly report view (M5) ──────────────────────────────────────────────
-  // A report is a view like review: opening it pauses the current segment and
-  // closing it returns to whatever was underneath (home or the same video).
-  const handleOpenReport = () => {
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setReviewOpen(false);
-    reportReturnTimeRef.current = videoId ? currentTimeRef.current : 0;
-    if (isSubtitlePlaying) pauseSubtitleTimer();
-    pauseWatch(currentTimeRef.current);
-    setReportOpen(true);
-  };
-
-  const handleCloseReport = () => {
-    setReportOpen(false);
-    const resumeAt = reportReturnTimeRef.current;
-    if (videoId && transcript.length > 0 && Number.isFinite(resumeAt) && resumeAt > 0) {
-      if (useSubtitleTimer) setCurrentTime(resumeAt);
-      else setSeekCommand({ time: resumeAt, timestamp: Date.now() });
-    }
-  };
-
-  // Evidence "回看": open the referenced content and seek to the evidence
-  // second. Existing opening paths are reused (favorites jump / history load /
-  // local episode loader); the video id is first resolved through the history
-  // index so no re-processing (and no model spend) is triggered when possible.
-  const handleOpenEvidence = async (evidence: WeekReportEvidence) => {
-    const start = Number.isFinite(evidence.start) ? Math.max(0, evidence.start) : 0;
-    setReportOpen(false);
-    setReviewOpen(false);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    setSentenceLevel(null);
-
-    // Already-open content: seek in place (the player remounts after the
-    // report branch unmounts, so `seekCommand` is consumed on ready).
-    if (videoId && transcript.length > 0 && contentRefMatches(evidence, videoId, isLocalSubtitle)) {
-      if (useSubtitleTimer) setCurrentTime(start);
-      else setSeekCommand({ time: start, timestamp: Date.now() });
-      return;
-    }
-
-    if (evidence.kind === 'local_show') {
-      const match = evidence.contentRef.match(/^(.+?)[-_/]S(\d+)E(\d+)$/i);
-      if (match) {
-        pendingEvidenceSeekRef.current = {
-          contentRef: evidence.contentRef,
-          time: start,
-          kind: evidence.kind,
-        };
-        await handleSelectEpisode(
-          match[1],
-          Number.parseInt(match[2], 10),
-          Number.parseInt(match[3], 10),
-        );
-        return;
-      }
-    }
-
-    // YouTube: find the cached history filename for this video id. If there is
-    // no cache, fall back to the normal URL pipeline (which may re-process).
-    try {
-      const response = await apiFetch('/api/history');
-      if (response.ok) {
-        const items = await response.json() as Array<{ filename?: string; videoId?: string }>;
-        const item = Array.isArray(items)
-          ? items.find(candidate => candidate?.videoId === evidence.contentRef)
-          : undefined;
-        if (item?.filename) {
-          pendingEvidenceSeekRef.current = {
-            contentRef: evidence.contentRef,
-            time: start,
-            kind: evidence.kind,
-          };
-          await handleLoadHistory(item.filename);
-          return;
-        }
-      }
-    } catch {
-      // Fall through to the URL pipeline below.
-    }
-    pendingSeekRef.current = start;
-    await handleUrlSubmit(`https://www.youtube.com/watch?v=${encodeURIComponent(evidence.contentRef)}`);
-  };
-
-  // Review is a full view, but only accounts can use it (specs/013: guests get
-  // 403). The home card still renders for guests and routes them to login.
+  // ── Sub-view openers (all entries go through the route model) ────────────
   const handleOpenReview = () => {
-    if (status !== 'authenticated') {
-      onRequestLogin?.();
-      return;
-    }
-    setWordLookup(null);
-    setIsFavoritesOpen(false);
-    setSelectedChannel(null);
-    setQuizOpen(false);
-    setQuizLesson(null);
-    setReportOpen(false);
-    setReviewOpen(true);
+    if (!requireAccount()) return;
+    openSub({ kind: 'review' });
   };
 
-  // Comprehension quiz entry — only once the current video has a bilingual
-  // subtitle cache. `startLesson` re-checks on the server (404 → friendly
-  // toast), and fresh-generating videos stay disabled until their `done`.
+  const handleCloseReview = () => {
+    back();
+    setReviewStatsNonce(prev => prev + 1);
+  };
+
   const handleStartQuiz = async () => {
     if (quizStartBusyRef.current) return;
     if (!quizCacheReady) {
@@ -1733,59 +1496,230 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   // "回看证据": close the quiz, then seek the player to the evidence second.
-  // `seekTo` also starts playback for the simulated local-episode clock; for
-  // the YouTube branch the remounted player seeks on ready and auto-plays.
   const handleQuizEvidence = (start: number) => {
     setQuizOpen(false);
     setQuizLesson(null);
     if (Number.isFinite(start)) seekTo(Math.max(0, start));
   };
 
+  // Quiz "home" leaves the learning view entirely (the IA's learning page has
+  // no route-less exit; this is the one deliberate escape hatch).
   const handleQuizHome = () => {
-    handleGoHome();
+    resetLearning();
+    go('today');
   };
 
-  // Translation target language changed. Cost protection (specs/012 §5.3):
-  // abort the in-flight stream and leave the current video/episode rather than
-  // mixing the old language's batches into the new UI. Nothing is re-translated
-  // here; the next submit/open picks the new targetLang up from `apiFetch`.
-  const previousTargetLangRef = useRef(targetLang);
-  useEffect(() => {
-    if (previousTargetLangRef.current === targetLang) return;
-    previousTargetLangRef.current = targetLang;
+  const handleOpenPlacement = (view: 'intro' | 'profile') => {
+    openSub({ kind: 'placement', view });
+  };
 
-    streamAbortRef.current?.abort();
-    streamAbortRef.current = null;
-    setLoadingState(null);
-    setTranslationProgress(null);
-    setWordLookup(null);
-    pendingSeekRef.current = null;
-    pendingLocalSeekRef.current = null;
+  const handleClosePlacement = () => {
+    back();
+    setPlacementNonce(prev => prev + 1);
+    setReviewStatsNonce(prev => prev + 1);
+  };
 
-    const wasLearning = Boolean(videoId) || transcript.length > 0 || sentenceLevel !== null || reviewOpen || quizOpen;
-    if (wasLearning) {
-      pauseSubtitleTimer();
-      setVideoId('');
-      setTranscript([]);
-      setSummary('');
-      setMetadata(null);
-      setCurrentTime(0);
-      setSeekCommand(null);
-      setSentenceLevel(null);
-      setReviewOpen(false);
-      setReportOpen(false);
-      setQuizOpen(false);
-      setQuizLesson(null);
-      setQuizStarting(false);
-      setQuizCacheReady(false);
+  const handleOpenExam = () => {
+    if (!requireAccount()) return;
+    openSub({ kind: 'exam' });
+  };
+
+  const handleCloseExam = () => {
+    back();
+    setReviewStatsNonce(prev => prev + 1);
+  };
+
+  const handleOpenReport = () => {
+    if (!requireAccount()) return;
+    openSub({ kind: 'report' });
+  };
+
+  const handleCloseReport = () => {
+    back();
+  };
+
+  // Evidence "回看": open the referenced content and seek to the evidence
+  // second. Existing opening paths are reused (favorites jump / history load /
+  // local episode loader); the video id is first resolved through the history
+  // index so no re-processing (and no model spend) is triggered when possible.
+  const handleOpenEvidence = async (evidence: WeekReportEvidence) => {
+    const start = Number.isFinite(evidence.start) ? Math.max(0, evidence.start) : 0;
+    setQuizOpen(false);
+    setQuizLesson(null);
+
+    // Already-open content: seek in place (the player remounts after the
+    // report branch unmounts, so `seekCommand` is consumed on ready).
+    if (videoId && transcript.length > 0 && contentRefMatches(evidence, videoId, isLocalSubtitle)) {
+      if (useSubtitleTimer) setCurrentTime(start);
+      else setSeekCommand({ time: start, timestamp: Date.now() });
+      return;
     }
 
-    toast.info(t('language.targetChangedToast', {
-      language: getLanguageMeta(targetLang).displayNames[language],
-    }));
-  }, [targetLang, language, t, videoId, transcript.length, sentenceLevel, reviewOpen, quizOpen, pauseSubtitleTimer]);
+    if (evidence.kind === 'local_show') {
+      const match = evidence.contentRef.match(/^(.+?)[-_/]S(\d+)E(\d+)$/i);
+      if (match) {
+        pendingEvidenceSeekRef.current = {
+          contentRef: evidence.contentRef,
+          time: start,
+          kind: evidence.kind,
+        };
+        await handleSelectEpisode(
+          match[1],
+          Number.parseInt(match[2], 10),
+          Number.parseInt(match[3], 10),
+        );
+        return;
+      }
+    }
 
-  // Star a sentence into the existing vocabulary book (exportable to Anki)
+    // YouTube: find the cached history filename for this video id. If there is
+    // no cache, fall back to the normal URL pipeline (which may re-process).
+    try {
+      const response = await apiFetch('/api/history');
+      if (response.ok) {
+        const items = await response.json() as Array<{ filename?: string; videoId?: string }>;
+        const item = Array.isArray(items)
+          ? items.find(candidate => candidate?.videoId === evidence.contentRef)
+          : undefined;
+        if (item?.filename) {
+          pendingEvidenceSeekRef.current = {
+            contentRef: evidence.contentRef,
+            time: start,
+            kind: evidence.kind,
+          };
+          await handleLoadHistory(item.filename);
+          return;
+        }
+      }
+    } catch {
+      // Fall through to the URL pipeline below.
+    }
+    pendingSeekRef.current = start;
+    await handleUrlSubmit(`https://www.youtube.com/watch?v=${encodeURIComponent(evidence.contentRef)}`);
+  };
+
+  const handleOpenDiscover = () => {
+    if (status !== 'authenticated') {
+      onRequestLogin?.();
+      return;
+    }
+    openSub({ kind: 'discover' });
+  };
+
+  const handleCloseDiscover = () => {
+    back();
+  };
+
+  const handleDiscoverStart = (url: string) => {
+    // Leave the discovery view first; processing renders the learning view.
+    if (state.sub) replace({ tab: 'content', sub: null });
+    void handleUrlSubmit(url);
+  };
+
+  const handleOpenReader = () => {
+    openSub({ kind: 'reader' });
+  };
+
+  const handleCloseReader = () => {
+    back();
+  };
+
+  // Favorites "出处" jump into one article (specs/019 detail view).
+  const handleOpenFavoriteArticle = (articleId: string) => {
+    setWordLookup(null);
+    closeFavoritesForJump();
+    openSub({ kind: 'reader', articleId });
+  };
+
+  // Favorites "出处" jump into a sentence pack (`source_ref` = `L<levelId>`).
+  const handleOpenFavoriteSentencePack = (levelId: number) => {
+    if (!Number.isInteger(levelId) || levelId <= 0) return;
+    setWordLookup(null);
+    closeFavoritesForJump();
+    openSub({ kind: 'sentences', levelId });
+  };
+
+  const handleOpenSentences = (levelId: number) => {
+    openSub({ kind: 'sentences', levelId });
+  };
+
+  const handleSelectSentenceLevel = (levelId: number) => {
+    // In-screen level switch: replace, never stack 5 history entries.
+    replace({ tab: 'content', sub: { kind: 'sentences', levelId } });
+  };
+
+  const handleOpenBlog = () => {
+    openSub({ kind: 'blog' });
+  };
+
+  const handleCloseBlog = () => {
+    back();
+  };
+
+  // Admin console (specs/021 + 023). Standalone full-page shell; the only
+  // in-app entry is the administrator section of the profile page.
+  const handleOpenAdmin = () => {
+    if (!isAdmin) {
+      toast.error(t('admin.error.forbidden'));
+      return;
+    }
+    openSub({ kind: 'admin' });
+  };
+
+  const handleCloseAdmin = () => {
+    back();
+  };
+
+  const handleAdminDenied = () => {
+    replace({ tab: 'profile', sub: null });
+  };
+
+  // Access guard for a hand-typed #/profile/admin (or a bookmarked /admin):
+  // wait one tick for the auth/admin flag, then either render or bounce.
+  const adminGuardRef = useRef(false);
+  useEffect(() => {
+    if (state.sub?.kind !== 'admin') {
+      adminGuardRef.current = false;
+      return;
+    }
+    if (status === 'loading' || adminGuardRef.current) return;
+    const timer = window.setTimeout(() => {
+      adminGuardRef.current = true;
+      if (!isAdmin) {
+        toast.error(t('admin.error.forbidden'));
+        replace({ tab: 'profile', sub: null });
+      }
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [state.sub, status, isAdmin, replace, t]);
+
+  // Legacy `/admin` path (SPA fallback): rewrite to the canonical hash once and
+  // keep the old "wait a tick for the admin flag" behaviour.
+  const adminPathRef = useRef(false);
+  useEffect(() => {
+    if (adminPathRef.current) return;
+    const pathname = window.location.pathname;
+    if (!/(?:^|\/)admin\/?$/.test(pathname)) {
+      adminPathRef.current = true;
+      return;
+    }
+    if (status === 'loading') return;
+    const timer = window.setTimeout(() => {
+      adminPathRef.current = true;
+      const nextPath = pathname.replace(/\/admin\/?$/, '/');
+      const nextHash = isAdmin ? '#/profile/admin' : '#/profile';
+      window.history.replaceState(null, '', `${nextPath}${window.location.search}${nextHash}`);
+      replace(parseRoute(nextHash));
+      if (!isAdmin) toast.error(t('admin.error.forbidden'));
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [isAdmin, status, replace, t]);
+
+  const handleOpenFavoritesRoute = () => {
+    setIsFavoritesOpen(true);
+    openSub({ kind: 'favorites' });
+  };
+
   const handleToggleSentenceFavorite = useCallback((s: Sentence, levelId: number, levelTitle?: string) => {
     toggleFavorite({
       id: sentenceFavId(levelId, s.n),
@@ -1805,169 +1739,43 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     });
   }, [toggleFavorite]);
 
-  // Top-bar identity: the account page shows the display name; the email is
-  // only the fallback for accounts created before usernames existed.
-  const topbarDisplayName = displayUsername(user?.username, user?.email);
-  const topbarInitial = usernameInitial(topbarDisplayName);
+  // Translation target language changed. Cost protection (specs/012 §5.3):
+  // abort the in-flight stream and leave the current sub view rather than
+  // mixing the old language's batches into the new UI. Nothing is re-translated
+  // here; the next submit/open picks the new targetLang up from `apiFetch`.
+  const previousTargetLangRef = useRef(targetLang);
+  useEffect(() => {
+    if (previousTargetLangRef.current === targetLang) return;
+    previousTargetLangRef.current = targetLang;
 
-  const renderTopBar = () => (
-    <div data-testid="top-bar" className="flex-none h-16 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 flex items-center justify-between gap-2 z-20">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-10 h-10 rounded-[10px] overflow-hidden shadow-md shadow-black/40 ring-1 ring-white/10 cursor-pointer flex-shrink-0" onClick={handleGoHome}>
-            <img src="/hero_icon.png" alt={t('topbar.logoAlt')} className="w-full h-full object-cover" />
-        </div>
-        <div className="flex items-center gap-2 min-w-0">
-          <h1
-            className="text-lg sm:text-xl shrink-0 whitespace-nowrap font-semibold text-zinc-100 cursor-pointer tracking-tight hover:text-white transition-colors"
-            onClick={handleGoHome}
-          >
-            {t('brand.name')}
-          </h1>
-          {featureName && !accountOpen && (
-            <span
-              data-testid="feature-name"
-              className="hidden sm:inline-flex items-center whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/50 border border-white/5 text-zinc-400"
-            >
-              {t(featureName)}
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-        <LanguageMenu />
-        {status === 'authenticated' && !accountOpen && !reviewOpen && !quizOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && !libraryArticle && (
-          <button
-            type="button"
-            data-testid="topbar-review-button"
-            onClick={handleOpenReview}
-            aria-label={reviewStats && reviewStats.dueNow > 0
-              ? t('review.topbarDue', { count: reviewStats.dueNow })
-              : t('review.title')}
-            title={reviewStats && reviewStats.dueNow > 0
-              ? t('review.topbarDue', { count: reviewStats.dueNow })
-              : t('review.title')}
-            className="relative inline-flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 hover:border-white/10 text-zinc-300 hover:text-zinc-100 transition-[background-color,border-color,color] duration-200 ease-apple shrink-0"
-          >
-            <Repeat className="w-4 h-4 text-blue-400 shrink-0" />
-            <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">{t('review.title')}</span>
-            {reviewStats && reviewStats.dueNow > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-[10px] font-semibold text-white tabular-nums flex items-center justify-center">
-                {reviewStats.dueNow > 99 ? '99+' : reviewStats.dueNow}
-              </span>
-            )}
-          </button>
-        )}
-        {!accountOpen && !quizOpen && !reportOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
-          <button
-            type="button"
-            data-testid="topbar-report-button"
-            onClick={handleOpenReport}
-            aria-label={t('report.title')}
-            title={t('report.title')}
-            className="inline-flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 hover:border-white/10 text-zinc-300 hover:text-zinc-100 transition-[background-color,border-color,color] duration-200 ease-apple shrink-0"
-          >
-            <CalendarRange className="w-4 h-4 text-blue-400 shrink-0" />
-            <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">{t('report.title')}</span>
-          </button>
-        )}
-        <button
-          type="button"
-          data-testid="topbar-favorites"
-          onClick={() => setIsFavoritesOpen(true)}
-          aria-label={t('topbar.favorites', { count: favorites.length })}
-          title={t('topbar.favorites', { count: favorites.length })}
-          className="inline-flex items-center gap-2 h-9 px-2.5 sm:px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100 transition-[background-color,color,border-color,transform] duration-200 ease-apple active:scale-[0.97]"
-        >
-          <Star className="w-4 h-4 text-amber-400 fill-amber-400/20" />
-          <span className="hidden sm:inline font-medium text-sm tabular-nums">{t('topbar.favorites', { count: favorites.length })}</span>
-        </button>
-        {videoId && transcript.length > 0 && !quizOpen && !accountOpen && (
-          <button
-            onClick={togglePipMode}
-            aria-label={pipWindow ? t('topbar.closePopOut') : t('topbar.popOut')}
-            title={pipWindow ? t('topbar.closePopOut') : t('topbar.popOut')}
-            className="inline-flex items-center gap-2 h-9 px-2.5 sm:px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-400 transition-[background-color,color,border-color,transform] duration-200 ease-apple active:scale-[0.97]"
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span className="hidden sm:inline font-medium text-sm">{pipWindow ? t('topbar.closePopOut') : t('topbar.popOut')}</span>
-          </button>
-        )}
-        <div className="flex items-center gap-1 sm:gap-2 pl-1 sm:pl-3 border-l border-white/5 min-w-0">
-          {status === 'guest' ? (
-            <>
-              {/* Guests can open the account page too; it shows a login prompt
-                  instead of the summary (the API answers 403 by contract). */}
-              <button
-                type="button"
-                data-testid="topbar-account"
-                onClick={handleOpenAccount}
-                aria-pressed={accountOpen}
-                aria-label={t('topbar.accountAria')}
-                title={t('topbar.accountAria')}
-                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors shrink-0 ${
-                  accountOpen
-                    ? 'bg-zinc-700/60 border-white/10 text-zinc-100'
-                    : 'bg-zinc-800/60 hover:bg-zinc-700/60 border-white/5 text-zinc-400 hover:text-zinc-100'
-                }`}
-              >
-                <UserRound className="w-4 h-4" />
-              </button>
-              <button
-                data-testid="guest-login-button"
-                onClick={onRequestLogin}
-                title={t('topbar.guestLoginAria')}
-                aria-label={t('topbar.guestLoginAria')}
-                className="inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg bg-brand/10 hover:bg-brand/15 border border-brand/20 text-xs font-medium text-brand-300 hover:text-brand-400 transition-colors shrink-0"
-              >
-                <LogIn className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('topbar.guestLogin')}</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                data-testid="topbar-account"
-                onClick={handleOpenAccount}
-                aria-pressed={accountOpen}
-                aria-label={t('topbar.accountAria')}
-                title={user?.email ? `${topbarDisplayName} · ${user.email}` : topbarDisplayName}
-                className={`inline-flex items-center gap-1.5 h-8 pl-1 pr-1 sm:pl-1.5 sm:pr-2.5 rounded-lg border transition-colors shrink-0 ${
-                  accountOpen
-                    ? 'bg-zinc-700/60 border-white/10 text-zinc-100'
-                    : 'bg-zinc-800/60 hover:bg-zinc-700/60 border-white/5 text-zinc-300 hover:text-zinc-100'
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="w-5 h-5 rounded-full bg-zinc-700 border border-white/10 flex items-center justify-center text-[10px] font-semibold text-zinc-200 shrink-0"
-                >
-                  {topbarInitial || <UserRound className="w-3 h-3 text-zinc-400" />}
-                </span>
-                <span
-                  data-testid="topbar-username"
-                  className="hidden lg:inline max-w-[7.5rem] truncate text-xs font-medium"
-                >
-                  {topbarDisplayName}
-                </span>
-              </button>
-              <button
-                data-testid="logout-button"
-                onClick={() => { void logout(); }}
-                title={t('topbar.logoutAria')}
-                aria-label={t('topbar.logoutAria')}
-                className="inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('topbar.logout')}</span>
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    setLoadingState(null);
+    setTranslationProgress(null);
+    setWordLookup(null);
+    pendingSeekRef.current = null;
+    pendingLocalSeekRef.current = null;
 
+    // The admin console and the favorites panel do not depend on the
+    // translation target language; leave those open. Everything else is
+    // closed so stale old-language content is never painted.
+    if (state.sub && state.sub.kind !== 'admin' && state.sub.kind !== 'favorites') {
+      replace({ tab: state.tab, sub: null });
+    }
+    resetLearning();
+
+    toast.info(t('language.targetChangedToast', {
+      language: getLanguageMeta(targetLang).displayNames[language],
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetLang, language, t]);
+
+  // Composing the learning view's feature label from the route/payload.
+  const featureLabel = libraryArticle || isLibraryVideo
+    ? t('topbar.feature.library')
+    : isLocalSubtitle
+      ? t('topbar.feature.local')
+      : t('topbar.feature.video');
   // ── Learning-view building blocks ───────────────────────────────────────
   // Both learning modes (YouTube and local SRT episodes) share one two-column
   // shell: the transcript pane and the summary pane each have two possible
@@ -2393,333 +2201,393 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     </>
   );
 
+  // ── View rendering ──────────────────────────────────────────────────────
+  // Everything below is a pure mapping from `NavState` to a component. No
+  // view-priority `if/else` chain, no hidden booleans (P0 IA §1.2 problem 3).
+  const sub = state.sub;
 
-  // The admin console is its own full-page shell: no consumer top bar, no
-  // overlays from the learning views. Closing it returns to the account page
-  // (where it was opened) or to a clean home screen.
-  if (adminOpen) {
+  const subFrame = (node: React.ReactNode) => (
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{node}</div>
+  );
+
+  // Admin console is its own full-page shell: no consumer top bar / bottom
+  // bar. A non-admin hand-typed URL is bounced by the guard effect above; the
+  // placeholder avoids flashing the console while that tick runs.
+  if (sub?.kind === 'admin') {
     return (
       <div
         data-testid="app-shell"
         className="h-screen w-full flex flex-col bg-[#09090b] overflow-hidden text-zinc-100 selection:bg-purple-500/30"
+        style={{ height: '100dvh' }}
       >
-        <AdminConsoleScreen onClose={handleCloseAdmin} onDenied={handleAdminDenied} />
+        {isAdmin ? (
+          <AdminConsoleScreen onClose={handleCloseAdmin} onDenied={handleAdminDenied} />
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+          </div>
+        )}
       </div>
     );
   }
 
-  return (
-    <div data-testid="app-shell" className="h-screen w-full flex flex-col bg-[#09090b] overflow-hidden text-zinc-100 selection:bg-purple-500/30">
-      {renderTopBar()}
+  const learningView = (
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <LearningHeader
+        title={metadata?.title || t('common.unknownVideo')}
+        featureLabel={featureLabel}
+        onBack={() => back()}
+        favoriteCount={favorites.length}
+        onOpenFavorites={() => setIsFavoritesOpen(true)}
+        showPip={Boolean(videoId) && transcript.length > 0 && !quizOpen}
+        pipActive={Boolean(pipWindow)}
+        onTogglePip={() => { void togglePipMode(); }}
+      />
+      <div
+        ref={fullscreenWrapperRef}
+        className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden max-md:overflow-y-auto relative bg-transparent group/wrapper"
+      >
+        {/* One shell for both learning modes. Left column: media stage +
+            whatever sits beneath it — the transcript by default, the
+            summary/vocabulary when the transcript is expanded to the right. */}
+        <div
+          data-testid="video-column"
+          style={{ '--left-w': `${leftRatio}%` } as React.CSSProperties}
+          className={`w-full max-md:h-auto md:h-full ${
+            pipWindow ? 'md:w-full' : 'md:w-[var(--left-w)]'
+          } flex flex-col min-w-0 shrink-0`}
+        >
+          {mediaStage}
+          {!isLocalSubtitle && channelBar}
 
-      {/* Keyed motion.divs crossfade views on mount; no exit-gating so a
-          backgrounded tab (throttled rAF) can never stall the switch. */}
-      {accountOpen ? (
-        <motion.div
-          key="account"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <AccountScreen
-            onClose={handleCloseAccount}
-            onOpenBlog={handleAccountOpenBlog}
-            onOpenAdmin={handleAccountOpenAdmin}
-            onRequestLogin={onRequestLogin}
-          />
-        </motion.div>
-      ) : placementOpen ? (
-        <motion.div
-          key="placement"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <PlacementScreen
-            initialView={placementInitialView}
+          {pipWindow || isTranscriptExpanded ? (
+            <div
+              data-testid="summary-panel"
+              className="p-6 bg-zinc-900/60 backdrop-blur-xl border-t border-white/5 md:flex-1 md:min-h-0 md:overflow-y-auto custom-scrollbar"
+            >
+              {summaryBody}
+            </div>
+          ) : (
+            <div
+              data-testid="transcript-column"
+              className="max-md:h-[52vh] md:flex-1 md:min-h-0 flex flex-col relative border-t border-white/5 bg-transparent"
+            >
+              {transcriptContent}
+            </div>
+          )}
+        </div>
+
+        {pipWindow ? (
+          createPortal(
+            <div className="w-full h-full flex flex-col relative bg-[#09090b]">
+              {transcriptContent}
+            </div>,
+            pipWindow.document.body
+          )
+        ) : (
+          <>
+            {/* Draggable split: desktop only. Drag changes the left column
+                percentage within [MIN, MAX]; double-click or Home/End restore. */}
+            <div
+              data-testid="split-divider"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={t('transcript.splitDividerAria')}
+              aria-valuemin={MIN_SPLIT_RATIO}
+              aria-valuemax={MAX_SPLIT_RATIO}
+              aria-valuenow={Math.round(leftRatio)}
+              tabIndex={0}
+              title={t('transcript.splitDividerTitle')}
+              onPointerDown={(e) => {
+                if (e.button !== 0) return;
+                e.preventDefault();
+                setIsResizing(true);
+              }}
+              onKeyDown={handleDividerKeyDown}
+              onDoubleClick={() => setLeftRatio(DEFAULT_SPLIT_RATIO)}
+              className="hidden md:flex relative w-2 flex-none cursor-col-resize touch-none select-none items-center justify-center group/divider"
+            >
+              <span className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors duration-200 ${isResizing ? 'bg-blue-500/60' : 'bg-white/5 group-hover/divider:bg-white/10'}`} />
+              <span className={`relative z-10 w-1 h-8 rounded-full transition-[background-color,opacity] duration-200 ${isResizing ? 'bg-blue-400/70' : 'bg-white/10 opacity-0 group-hover/divider:opacity-100 group-focus-visible/divider:opacity-100'}`} />
+            </div>
+
+            {/* Right column: summary sidebar by default, transcript when the
+                transcript is expanded. */}
+            <div
+              data-testid="right-column"
+              className="w-full md:flex-1 min-w-0 max-md:shrink-0 md:h-full flex flex-col relative border-t md:border-t-0 border-white/5 bg-transparent"
+            >
+              {isTranscriptExpanded ? (
+                <div
+                  data-testid="transcript-column"
+                  className="h-[52vh] md:h-full md:flex-1 min-h-0 flex flex-col relative bg-transparent"
+                >
+                  {transcriptContent}
+                </div>
+              ) : (
+                <div
+                  data-testid="summary-panel"
+                  className="p-6 bg-zinc-900/60 backdrop-blur-xl overflow-y-auto custom-scrollbar md:h-full md:min-h-0"
+                >
+                  {summaryBody}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Drag shield: covers the video iframe (which would otherwise swallow
+            pointermove) and suppresses text selection while dragging. */}
+        {isResizing && createPortal(
+          <div
+            data-testid="resize-shield"
+            className="fixed inset-0 z-[60] cursor-col-resize select-none"
+            onPointerMove={handleResizeMove}
+            onContextMenu={(e) => e.preventDefault()}
+          />,
+          document.body
+        )}
+      </div>
+    </div>
+  );
+
+  const handlePlacementStartLearning = () => {
+    go('today');
+    setReviewStatsNonce(prev => prev + 1);
+    window.setTimeout(() => {
+      const input = document.getElementById('video-url') as HTMLInputElement | null;
+      if (!input) return;
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      input.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+      input.focus({ preventScroll: true });
+    }, 350);
+  };
+
+  const profileView = (
+    <ProfileScreen
+      favoriteCount={favorites.length}
+      placementProfile={placementProfile}
+      onOpenFavorites={handleOpenFavoritesRoute}
+      onOpenReport={handleOpenReport}
+      onOpenPlacement={handleOpenPlacement}
+      onOpenBlog={handleOpenBlog}
+      onOpenAdmin={handleOpenAdmin}
+      onRequestLogin={() => onRequestLogin?.()}
+      onOpenVocab={() => go('content')}
+    />
+  );
+
+  const renderView = () => {
+    // The comprehension quiz is an overlay of the learning view, not a route
+    // (IA §7.1). It wins while open; closing it re-renders the video.
+    if (quizOpen && quizLesson) {
+      return subFrame(
+        <QuizScreen
+          lesson={quizLesson}
+          onExit={handleQuizExit}
+          onSeekEvidence={handleQuizEvidence}
+          onHome={handleQuizHome}
+          onRequestLogin={onRequestLogin}
+        />,
+      );
+    }
+
+    if (sub) {
+      switch (sub.kind) {
+        case 'learn':
+          if (libraryArticle) {
+            return subFrame(
+              <LibraryArticleReader article={libraryArticle} onClose={handleCloseLibraryArticle} />,
+            );
+          }
+          if (transcript.length > 0) return learningView;
+          return (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-zinc-500">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <p data-testid="restoring-view" className="text-sm">{t('nav.restoring')}</p>
+            </div>
+          );
+        case 'review':
+          return subFrame(
+            <ReviewScreen onClose={handleCloseReview} onRequestLogin={onRequestLogin} />,
+          );
+        case 'report':
+          return subFrame(
+            <ReportScreen
+              onClose={handleCloseReport}
+              onOpenEvidence={(evidence) => { void handleOpenEvidence(evidence); }}
+              onOpenReview={handleOpenReview}
+            />,
+          );
+        case 'placement':
+          return subFrame(
+            <PlacementScreen
+              initialView={sub.view}
+              isGuest={status === 'guest'}
+              onClose={handleClosePlacement}
+              onStartLearning={handlePlacementStartLearning}
+              onRequestLogin={onRequestLogin}
+            />,
+          );
+        case 'exam':
+          return subFrame(
+            <ExamScreen
+              isGuest={status === 'guest'}
+              onClose={handleCloseExam}
+              onRequestLogin={onRequestLogin}
+            />,
+          );
+        case 'discover':
+          return subFrame(
+            <DiscoverScreen
+              onClose={handleCloseDiscover}
+              onStart={handleDiscoverStart}
+              onRequestLogin={onRequestLogin}
+            />,
+          );
+        case 'reader':
+          return subFrame(
+            <ReaderScreen
+              // Remount on a target-language switch or a different article the
+              // favorites row jumps to (same key the pre-P0 nonce provided).
+              key={`reader:${targetLang}:${sub.articleId ?? ''}`}
+              onClose={handleCloseReader}
+              onRequestLogin={onRequestLogin}
+              isGuest={status === 'guest'}
+              onWordLookup={handleReaderWordLookup}
+              initialArticleId={sub.articleId}
+            />,
+          );
+        case 'sentences':
+          return subFrame(
+            <SentenceView
+              key={`sentences:${sub.levelId}`}
+              levelId={sub.levelId}
+              onSelectLevel={handleSelectSentenceLevel}
+              onWordLookup={handleWordLookup}
+              onToggleFavorite={handleToggleSentenceFavorite}
+              favoriteIds={favoriteIds}
+              onClose={() => back()}
+            />,
+          );
+        case 'blog':
+          return subFrame(<BlogScreen onClose={handleCloseBlog} />);
+        case 'favorites':
+          // The route records "on the favorites screen"; P0 still renders the
+          // existing panel on top of the profile page (IA §7.2).
+          return profileView;
+        default:
+          return profileView;
+      }
+    }
+
+    switch (state.tab) {
+      case 'content':
+        return (
+          <ContentScreen
             isGuest={status === 'guest'}
-            onClose={handleClosePlacement}
-            onStartLearning={handlePlacementStartLearning}
-            onRequestLogin={onRequestLogin}
-          />
-        </motion.div>
-      ) : examOpen ? (
-        <motion.div
-          key="exam"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <ExamScreen
-            isGuest={status === 'guest'}
-            onClose={handleCloseExam}
-            onRequestLogin={onRequestLogin}
-          />
-        </motion.div>
-      ) : quizOpen && quizLesson ? (
-        <motion.div
-          key="quiz"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <QuizScreen
-            lesson={quizLesson}
-            onExit={handleQuizExit}
-            onSeekEvidence={handleQuizEvidence}
-            onHome={handleQuizHome}
-            onRequestLogin={onRequestLogin}
-          />
-        </motion.div>
-      ) : reportOpen ? (
-        <motion.div
-          key="report"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <ReportScreen
-            onClose={handleCloseReport}
-            onOpenEvidence={(evidence) => { void handleOpenEvidence(evidence); }}
-            onOpenReview={handleOpenReview}
-          />
-        </motion.div>
-      ) : reviewOpen ? (
-        <motion.div
-          key="review"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <ReviewScreen onClose={handleGoHome} onRequestLogin={onRequestLogin} />
-        </motion.div>
-      ) : discoverOpen ? (
-        <motion.div
-          key={`discover:${targetLang}`}
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <DiscoverScreen
-            onClose={handleCloseDiscover}
-            onStart={handleDiscoverStart}
-            onRequestLogin={onRequestLogin}
-          />
-        </motion.div>
-      ) : libraryArticle ? (
-        <motion.div
-          key="library-article"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <LibraryArticleReader article={libraryArticle} onClose={handleCloseLibraryArticle} />
-        </motion.div>
-      ) : readerOpen ? (
-        <motion.div
-          // Remount on a target-language switch: the list/detail are scoped by
-          // targetLang, so a stale translation cache must never be shown. The
-          // nonce forces a fresh detail view when favorites jump to an article.
-          key={`reader:${targetLang}:${readerOpenNonce}`}
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <ReaderScreen
-            onClose={handleCloseReader}
-            onRequestLogin={onRequestLogin}
-            isGuest={status === 'guest'}
-            onWordLookup={handleReaderWordLookup}
-            initialArticleId={readerInitialArticleId ?? undefined}
-          />
-        </motion.div>
-      ) : blogOpen ? (
-        <motion.div
-          key="blog"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <BlogScreen onClose={handleCloseBlog} />
-        </motion.div>
-      ) : sentenceLevel != null ? (
-        <motion.div
-          key="sentences"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 min-h-0 flex flex-col overflow-hidden"
-        >
-          <SentenceView
-            levelId={sentenceLevel}
-            onSelectLevel={setSentenceLevel}
-            onWordLookup={handleWordLookup}
-            onToggleFavorite={handleToggleSentenceFavorite}
-            favoriteIds={favoriteIds}
-          />
-        </motion.div>
-      ) : !videoId || transcript.length === 0 ? (
-        <motion.div
-          key="home"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          className="flex-1 overflow-auto custom-scrollbar"
-        >
-          {/* Remount on a target-language switch: history, local-show marks
-              and the per-language model default all become different lists. */}
-          <InputScreen
-            key={`${targetLang}:${dataRevision}`}
-            onSubmit={handleUrlSubmit}
-            onLoadHistory={handleLoadHistory}
-            onSelectEpisode={handleSelectEpisode}
-            onSelectSentenceLevel={setSentenceLevel}
-            isLoading={loadingState !== null}
-            loadingState={loadingState}
+            busy={loadingState !== null}
             subscriptions={subscriptions}
+            onSelectEpisode={(showId, season, episode) => { void handleSelectEpisode(showId, season, episode); }}
             onSelectChannel={setSelectedChannel}
             onUnsubscribe={(channelId) => setSubscriptions(prev => prev.filter(s => s.id !== channelId))}
+            onSubmitUrl={handleUrlSubmit}
+            onOpenLibraryVideo={(id) => { void handleOpenLibraryVideo(id); }}
+            onOpenLibraryArticle={(id) => { void handleOpenLibraryArticle(id); }}
+            onOpenDiscover={handleOpenDiscover}
+            onOpenReader={handleOpenReader}
+            onOpenSentences={handleOpenSentences}
+            onOpenBlog={handleOpenBlog}
+            onRequestLogin={() => onRequestLogin?.()}
+          />
+        );
+      case 'practice':
+        return (
+          <PracticeScreen
             isGuest={status === 'guest'}
-            installEntry={<PwaInstallButton wrapperClassName="max-w-5xl w-full flex justify-end mb-3 shrink-0 z-10" />}
             reviewStats={reviewStats}
             reviewStatsLoading={reviewStatsLoading}
             reviewStatsFailed={reviewStatsFailed}
+            placementProfile={placementProfile}
+            placementLoading={placementLoading}
+            placementFailed={placementFailed}
+            onOpenReview={handleOpenReview}
+            onOpenExam={handleOpenExam}
+            onOpenPlacement={handleOpenPlacement}
+            onGoContinue={() => go('today')}
+          />
+        );
+      case 'profile':
+        return profileView;
+      case 'today':
+      default:
+        return (
+          <TodayScreen
+            isGuest={status === 'guest'}
+            reviewStats={reviewStats}
+            reviewStatsLoading={reviewStatsLoading}
+            reviewStatsFailed={reviewStatsFailed}
+            placementProfile={placementProfile}
+            placementLoading={placementLoading}
+            placementFailed={placementFailed}
+            onSubmitUrl={handleUrlSubmit}
+            onLoadHistory={(filename) => { void handleLoadHistory(filename); }}
             onOpenReview={handleOpenReview}
             onOpenReport={handleOpenReport}
             onOpenPlacement={handleOpenPlacement}
-            onOpenExam={handleOpenExam}
-            onOpenDiscover={handleOpenDiscover}
-            onOpenReader={handleOpenReader}
-            onOpenBlog={handleOpenBlog}
-            onOpenLibraryVideo={(id) => { void handleOpenLibraryVideo(id); }}
-            onOpenLibraryArticle={(id) => { void handleOpenLibraryArticle(id); }}
+            onOpenContent={() => go('content')}
           />
-        </motion.div>
-      ) : (
-        <motion.div
-          key="learning"
-          initial={{ opacity: 0, scale: 0.99, y: 8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-          ref={fullscreenWrapperRef}
-          className="flex-1 flex flex-col md:flex-row overflow-hidden max-md:overflow-y-auto relative bg-transparent group/wrapper">
-          {/* One shell for both learning modes. Left column: media stage +
-              whatever sits beneath it — the transcript by default, the
-              summary/vocabulary when the transcript is expanded to the right. */}
+        );
+    }
+  };
+
+  return (
+    <div
+      data-testid="app-shell"
+      className="h-screen w-full flex flex-col bg-[#09090b] overflow-hidden text-zinc-100 selection:bg-purple-500/30"
+      style={{ height: '100dvh' }}
+    >
+      <AppShell
+        state={state}
+        dueCount={reviewStats?.dueNow ?? 0}
+        isSub={isSubView}
+        onNavigate={navigateTab}
+        onRequestLogin={onRequestLogin}
+      >
+        {pendingResume && (
           <div
-            data-testid="video-column"
-            style={{ '--left-w': `${leftRatio}%` } as React.CSSProperties}
-            className={`w-full max-md:h-auto md:h-full ${
-              pipWindow ? 'md:w-full' : 'md:w-[var(--left-w)]'
-            } flex flex-col min-w-0 shrink-0`}
+            data-testid="resume-banner"
+            className="flex-none flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-xs text-blue-200"
           >
-            {mediaStage}
-            {!isLocalSubtitle && channelBar}
-
-            {pipWindow || isTranscriptExpanded ? (
-              <div
-                data-testid="summary-panel"
-                className="p-6 bg-zinc-900/60 backdrop-blur-xl border-t border-white/5 md:flex-1 md:min-h-0 md:overflow-y-auto custom-scrollbar"
-              >
-                {summaryBody}
-              </div>
-            ) : (
-              <div
-                data-testid="transcript-column"
-                className="max-md:h-[52vh] md:flex-1 md:min-h-0 flex flex-col relative border-t border-white/5 bg-transparent"
-              >
-                {transcriptContent}
-              </div>
-            )}
+            <span className="min-w-0 flex-1 leading-relaxed">{t('jobs.resumeAvailable')}</span>
+            <button
+              type="button"
+              data-testid="resume-banner-continue"
+              onClick={() => { void handleResumePending(); }}
+              className="inline-flex items-center h-7 px-2.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-[11px] font-medium text-blue-100 transition-colors shrink-0"
+            >
+              {t('jobs.resumeAction')}
+            </button>
+            <button
+              type="button"
+              data-testid="resume-banner-dismiss"
+              onClick={() => setPendingResume(null)}
+              aria-label={t('common.close')}
+              title={t('common.close')}
+              className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-blue-300/70 hover:text-blue-100 hover:bg-blue-500/20 transition-colors shrink-0"
+            >
+              ×
+            </button>
           </div>
+        )}
+        {renderView()}
+      </AppShell>
 
-          {pipWindow ? (
-            createPortal(
-              <div className="w-full h-full flex flex-col relative bg-[#09090b]">
-                {transcriptContent}
-              </div>,
-              pipWindow.document.body
-            )
-          ) : (
-            <>
-              {/* Draggable split: desktop only. Drag changes the left
-                  column percentage within [MIN, MAX]; double-click or
-                  Home/End restore/reset it. */}
-              <div
-                data-testid="split-divider"
-                role="separator"
-                aria-orientation="vertical"
-                aria-label={t('transcript.splitDividerAria')}
-                aria-valuemin={MIN_SPLIT_RATIO}
-                aria-valuemax={MAX_SPLIT_RATIO}
-                aria-valuenow={Math.round(leftRatio)}
-                tabIndex={0}
-                title={t('transcript.splitDividerTitle')}
-                onPointerDown={(e) => {
-                  if (e.button !== 0) return;
-                  e.preventDefault();
-                  setIsResizing(true);
-                }}
-                onKeyDown={handleDividerKeyDown}
-                onDoubleClick={() => setLeftRatio(DEFAULT_SPLIT_RATIO)}
-                className="hidden md:flex relative w-2 flex-none cursor-col-resize touch-none select-none items-center justify-center group/divider"
-              >
-                <span className={`absolute inset-y-0 left-1/2 -translate-x-1/2 w-px transition-colors duration-200 ${isResizing ? 'bg-blue-500/60' : 'bg-white/5 group-hover/divider:bg-white/10'}`} />
-                <span className={`relative z-10 w-1 h-8 rounded-full transition-[background-color,opacity] duration-200 ${isResizing ? 'bg-blue-400/70' : 'bg-white/10 opacity-0 group-hover/divider:opacity-100 group-focus-visible/divider:opacity-100'}`} />
-              </div>
-
-              {/* Right column: summary sidebar by default, transcript when
-                  the transcript is expanded. */}
-              <div
-                data-testid="right-column"
-                className="w-full md:flex-1 min-w-0 max-md:shrink-0 md:h-full flex flex-col relative border-t md:border-t-0 border-white/5 bg-transparent"
-              >
-                {isTranscriptExpanded ? (
-                  <div
-                    data-testid="transcript-column"
-                    className="h-[52vh] md:h-full md:flex-1 min-h-0 flex flex-col relative bg-transparent"
-                  >
-                    {transcriptContent}
-                  </div>
-                ) : (
-                  <div
-                    data-testid="summary-panel"
-                    className="p-6 bg-zinc-900/60 backdrop-blur-xl overflow-y-auto custom-scrollbar md:h-full md:min-h-0"
-                  >
-                    {summaryBody}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Drag shield: covers the video iframe (which would otherwise
-              swallow pointermove) and suppresses text selection while dragging. */}
-          {isResizing && createPortal(
-            <div
-              data-testid="resize-shield"
-              className="fixed inset-0 z-[60] cursor-col-resize select-none"
-              onPointerMove={handleResizeMove}
-              onContextMenu={(e) => e.preventDefault()}
-            />,
-            document.body
-          )}
-        </motion.div>
-      )}
+      {loadingState && <ProcessingOverlay loadingState={loadingState} />}
 
       <FavoritesModal
         isOpen={isFavoritesOpen}
-        onClose={() => setIsFavoritesOpen(false)}
+        onClose={handleCloseFavorites}
         favorites={favorites}
         onRemoveFavorite={handleRemoveFavorite}
         onPlayFavorite={handlePlayFavorite}
@@ -2732,7 +2600,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         onClose={() => setSelectedChannel(null)}
         channelName={selectedChannel}
         onLoadHistory={handleLoadHistory}
-        onReprocess={(videoId) => handleUrlSubmit(`https://www.youtube.com/watch?v=${videoId}`)}
+        onReprocess={(reprocessId) => { void handleUrlSubmit(`https://www.youtube.com/watch?v=${reprocessId}`); }}
       />
 
       <AnimatePresence>
@@ -2749,6 +2617,30 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           />
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// Blocking overlay while a link is being estimated/processed/transcribed.
+// Lives at the app root so it also covers the first-level pages that started
+// the job (Today / Content).
+function ProcessingOverlay({ loadingState }: { loadingState: 'processing' | 'loading' | 'asr' }) {
+  const { t } = useI18n();
+  return (
+    <div
+      data-testid="processing-overlay"
+      className="fixed inset-0 z-50 bg-zinc-950/70 backdrop-blur-md flex flex-col items-center justify-center px-6 text-center"
+    >
+      <Loader2 className="w-12 h-12 text-zinc-300 animate-spin mb-6" />
+      <h2 className="text-xl font-semibold tracking-tight text-zinc-100 mb-2">
+        {loadingState === 'asr' ? t('home.loading.asr') : loadingState === 'processing' ? t('home.loading.processing') : t('home.loading.loading')}
+      </h2>
+      {loadingState === 'processing' && (
+        <p className="text-zinc-400">{t('home.loading.processingHint')}</p>
+      )}
+      {loadingState === 'asr' && (
+        <p className="text-zinc-400">{t('home.loading.asrHint')}</p>
+      )}
     </div>
   );
 }
@@ -2801,15 +2693,16 @@ function App() {
   return (
     <I18nProvider>
       <AuthProvider>
-        <AuthGate />
-        {/* The offline marker sits above the auth gate so it survives every
-            screen, not only the signed-in shell. The install entry itself is
-            inline on home/auth (see InputScreen/AuthScreen) to avoid covering
-            page content on a 375px phone. */}
-        <OfflineIndicator />
-        {/* One Toaster for every branch: it survives the auth gate switch, so
-            "session expired" and backend-unreachable toasts are not dropped. */}
-        <Toaster />
+        {/* One model catalog / selection for the whole app (P0 IA §10.3). */}
+        <ModelProvider>
+          <AuthGate />
+          {/* The offline marker sits above the auth gate so it survives every
+              screen, not only the signed-in shell. */}
+          <OfflineIndicator />
+          {/* One Toaster for every branch: it survives the auth gate switch, so
+              "session expired" and backend-unreachable toasts are not dropped. */}
+          <Toaster />
+        </ModelProvider>
       </AuthProvider>
     </I18nProvider>
   );
