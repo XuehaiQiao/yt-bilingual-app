@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, Loader2, Lock, LogIn, Mail, UserPlus } from 'lucide-react';
+import { AlertCircle, Loader2, Lock, LogIn, Mail, UserPlus, UserRound } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
+import { usernameProblem } from '../lib/username';
 import { LanguageMenu } from './LanguageMenu';
 import { PwaInstallButton } from './PwaInstallButton';
 
@@ -27,15 +28,18 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
     const { t } = useI18n();
     const [mode, setMode] = useState<AuthMode>('login');
     const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const [usernameError, setUsernameError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const switchMode = (next: AuthMode) => {
         if (next === mode) return;
         setMode(next);
         setError(null);
+        setUsernameError(null);
         setPassword('');
         setConfirmPassword('');
     };
@@ -49,18 +53,29 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
             setError(t('auth.error.missing'));
             return;
         }
-        if (mode === 'signup' && confirmPassword && confirmPassword !== password) {
-            setError(t('auth.error.mismatch'));
-            return;
+        if (mode === 'signup') {
+            // The display name is required for new accounts (specs/023); the
+            // rule lives here so the error appears under the field instead of
+            // only surfacing as a generic server message.
+            const problem = usernameProblem(username);
+            if (problem) {
+                setUsernameError(t(problem));
+                return;
+            }
+            if (confirmPassword && confirmPassword !== password) {
+                setError(t('auth.error.mismatch'));
+                return;
+            }
         }
 
         setError(null);
+        setUsernameError(null);
         setIsSubmitting(true);
         try {
             if (mode === 'login') {
                 await login(trimmedEmail, password);
             } else {
-                await signup(trimmedEmail, password);
+                await signup(trimmedEmail, password, username);
             }
             // Success: the provider switches the shell away from this screen.
         } catch (err) {
@@ -139,6 +154,46 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
                                 />
                             </div>
                         </label>
+
+                        {mode === 'signup' && (
+                            <label className="block">
+                                <span className="text-xs font-medium text-zinc-400">{t('auth.username')}</span>
+                                <div className="mt-1.5 flex items-center gap-2 h-10 px-3 rounded-xl bg-zinc-800/50 border border-white/5 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/15 transition-[border-color,box-shadow] duration-200 ease-apple">
+                                    <UserRound className="w-4 h-4 text-zinc-500 shrink-0" />
+                                    <input
+                                        data-testid="auth-username"
+                                        name="username"
+                                        type="text"
+                                        autoComplete="nickname"
+                                        required
+                                        aria-invalid={usernameError ? true : undefined}
+                                        aria-describedby={usernameError ? 'auth-username-message' : 'auth-username-hint'}
+                                        value={username}
+                                        onChange={(e) => {
+                                            setUsername(e.target.value);
+                                            if (usernameError) setUsernameError(null);
+                                        }}
+                                        placeholder={t('auth.usernamePlaceholder')}
+                                        className="flex-1 min-w-0 bg-transparent border-none outline-none text-sm text-zinc-100 placeholder:text-zinc-600"
+                                    />
+                                </div>
+                                {usernameError ? (
+                                    <p
+                                        id="auth-username-message"
+                                        data-testid="auth-username-error"
+                                        role="alert"
+                                        className="mt-1.5 flex items-start gap-1.5 text-xs text-red-400 leading-relaxed"
+                                    >
+                                        <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                                        <span>{usernameError}</span>
+                                    </p>
+                                ) : (
+                                    <p id="auth-username-hint" className="mt-1.5 text-[11px] text-zinc-500 leading-relaxed">
+                                        {t('auth.usernameHint')}
+                                    </p>
+                                )}
+                            </label>
+                        )}
 
                         <label className="block">
                             <span className="text-xs font-medium text-zinc-400">{t('auth.password')}</span>

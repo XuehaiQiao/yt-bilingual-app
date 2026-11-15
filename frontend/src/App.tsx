@@ -1,7 +1,7 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn, GraduationCap, CalendarRange, ShieldCheck } from 'lucide-react';
+import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn, GraduationCap, CalendarRange, ShieldCheck, UserRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { LanguageMenu } from './components/LanguageMenu';
@@ -27,8 +27,10 @@ import { DiscoverScreen } from './components/DiscoverScreen';
 import { ReaderScreen } from './components/ReaderScreen';
 import { BlogScreen } from './components/BlogScreen';
 import { AdminScreen } from './components/AdminScreen';
+import { AccountScreen } from './components/AccountScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PwaInstallButton } from './components/PwaInstallButton';
+import { displayUsername, usernameInitial } from './lib/username';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
@@ -185,6 +187,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Admin stop-the-bleed dashboard (specs/021): only rendered for `isAdmin`;
   // opening it does not clear the current view, so closing returns there.
   const [adminOpen, setAdminOpen] = useState(false);
+  // Account / user page (specs/023 frontend): a full view opened from the
+  // top-bar avatar. Like the admin view it keeps whatever sits behind it, so
+  // closing the page returns to the same video / home screen.
+  const [accountOpen, setAccountOpen] = useState(false);
   // Weekly report — its own view (M5). Opening it from a video pauses the
   // player without discarding it; closing returns to the same content.
   const [reportOpen, setReportOpen] = useState(false);
@@ -1190,6 +1196,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setReaderInitialArticleId(null);
     setBlogOpen(false);
     setAdminOpen(false);
+    setAccountOpen(false);
     setReportOpen(false);
     setPlacementOpen(false);
     setExamOpen(false);
@@ -1317,6 +1324,33 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const handleCloseAdmin = () => {
     setAdminOpen(false);
+  };
+
+  // Account view (specs/023 frontend). The top-bar avatar always opens it on a
+  // clean surface; whatever view was behind stays mounted, so closing the
+  // account page returns to the same video / home screen. It sits first in the
+  // render chain, so it wins over an already-open admin/blog view.
+  const handleOpenAccount = () => {
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setAccountOpen(true);
+  };
+
+  const handleCloseAccount = () => {
+    setAccountOpen(false);
+  };
+
+  // Cross-links from the account page: leave the page, then open the target
+  // view (the page would otherwise sit on top of it).
+  const handleAccountOpenBlog = () => {
+    setAccountOpen(false);
+    handleOpenBlog();
+  };
+
+  const handleAccountOpenAdmin = () => {
+    setAccountOpen(false);
+    handleOpenAdmin();
   };
 
   const handleDiscoverStart = (url: string) => {
@@ -1630,6 +1664,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     });
   }, [toggleFavorite]);
 
+  // Top-bar identity: the account page shows the display name; the email is
+  // only the fallback for accounts created before usernames existed.
+  const topbarDisplayName = displayUsername(user?.username, user?.email);
+  const topbarInitial = usernameInitial(topbarDisplayName);
+
   const renderTopBar = () => (
     <div data-testid="top-bar" className="flex-none h-16 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 flex items-center justify-between gap-2 z-20">
       <div className="flex items-center gap-3 min-w-0">
@@ -1643,7 +1682,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           >
             {t('brand.name')}
           </h1>
-          {featureName && !adminOpen && (
+          {featureName && !adminOpen && !accountOpen && (
             <span
               data-testid="feature-name"
               className="hidden sm:inline-flex items-center whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/50 border border-white/5 text-zinc-400"
@@ -1653,9 +1692,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <LanguageMenu />
-        {isAdmin && (
+        {isAdmin && !accountOpen && (
           <button
             type="button"
             data-testid="admin-entry"
@@ -1669,7 +1708,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">{t('admin.entry')}</span>
           </button>
         )}
-        {status === 'authenticated' && !adminOpen && !reviewOpen && !quizOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
+        {status === 'authenticated' && !adminOpen && !accountOpen && !reviewOpen && !quizOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
           <button
             type="button"
             data-testid="topbar-review-button"
@@ -1691,7 +1730,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             )}
           </button>
         )}
-        {!adminOpen && !quizOpen && !reportOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
+        {!adminOpen && !accountOpen && !quizOpen && !reportOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
           <button
             type="button"
             data-testid="topbar-report-button"
@@ -1715,7 +1754,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           <Star className="w-4 h-4 text-amber-400 fill-amber-400/20" />
           <span className="hidden sm:inline font-medium text-sm tabular-nums">{t('topbar.favorites', { count: favorites.length })}</span>
         </button>
-        {videoId && transcript.length > 0 && !quizOpen && (
+        {videoId && transcript.length > 0 && !quizOpen && !accountOpen && (
           <button
             onClick={togglePipMode}
             aria-label={pipWindow ? t('topbar.closePopOut') : t('topbar.popOut')}
@@ -1726,27 +1765,65 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             <span className="hidden sm:inline font-medium text-sm">{pipWindow ? t('topbar.closePopOut') : t('topbar.popOut')}</span>
           </button>
         )}
-        <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-white/5 min-w-0">
+        <div className="flex items-center gap-1 sm:gap-2 pl-1 sm:pl-3 border-l border-white/5 min-w-0">
           {status === 'guest' ? (
-            <button
-              data-testid="guest-login-button"
-              onClick={onRequestLogin}
-              title={t('topbar.guestLoginAria')}
-              aria-label={t('topbar.guestLoginAria')}
-              className="inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg bg-brand/10 hover:bg-brand/15 border border-brand/20 text-xs font-medium text-brand-300 hover:text-brand-400 transition-colors shrink-0"
-            >
-              <LogIn className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('topbar.guestLogin')}</span>
-            </button>
+            <>
+              {/* Guests can open the account page too; it shows a login prompt
+                  instead of the summary (the API answers 403 by contract). */}
+              <button
+                type="button"
+                data-testid="topbar-account"
+                onClick={handleOpenAccount}
+                aria-pressed={accountOpen}
+                aria-label={t('topbar.accountAria')}
+                title={t('topbar.accountAria')}
+                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg border transition-colors shrink-0 ${
+                  accountOpen
+                    ? 'bg-zinc-700/60 border-white/10 text-zinc-100'
+                    : 'bg-zinc-800/60 hover:bg-zinc-700/60 border-white/5 text-zinc-400 hover:text-zinc-100'
+                }`}
+              >
+                <UserRound className="w-4 h-4" />
+              </button>
+              <button
+                data-testid="guest-login-button"
+                onClick={onRequestLogin}
+                title={t('topbar.guestLoginAria')}
+                aria-label={t('topbar.guestLoginAria')}
+                className="inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg bg-brand/10 hover:bg-brand/15 border border-brand/20 text-xs font-medium text-brand-300 hover:text-brand-400 transition-colors shrink-0"
+              >
+                <LogIn className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('topbar.guestLogin')}</span>
+              </button>
+            </>
           ) : (
             <>
-              <span
-                data-testid="topbar-user-email"
-                title={user?.email || ''}
-                className="hidden lg:inline-block max-w-[10rem] truncate text-xs text-zinc-500"
+              <button
+                type="button"
+                data-testid="topbar-account"
+                onClick={handleOpenAccount}
+                aria-pressed={accountOpen}
+                aria-label={t('topbar.accountAria')}
+                title={user?.email ? `${topbarDisplayName} · ${user.email}` : topbarDisplayName}
+                className={`inline-flex items-center gap-1.5 h-8 pl-1 pr-1 sm:pl-1.5 sm:pr-2.5 rounded-lg border transition-colors shrink-0 ${
+                  accountOpen
+                    ? 'bg-zinc-700/60 border-white/10 text-zinc-100'
+                    : 'bg-zinc-800/60 hover:bg-zinc-700/60 border-white/5 text-zinc-300 hover:text-zinc-100'
+                }`}
               >
-                {user?.email}
-              </span>
+                <span
+                  aria-hidden="true"
+                  className="w-5 h-5 rounded-full bg-zinc-700 border border-white/10 flex items-center justify-center text-[10px] font-semibold text-zinc-200 shrink-0"
+                >
+                  {topbarInitial || <UserRound className="w-3 h-3 text-zinc-400" />}
+                </span>
+                <span
+                  data-testid="topbar-username"
+                  className="hidden lg:inline max-w-[7.5rem] truncate text-xs font-medium"
+                >
+                  {topbarDisplayName}
+                </span>
+              </button>
               <button
                 data-testid="logout-button"
                 onClick={() => { void logout(); }}
@@ -2185,7 +2262,22 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
       {/* Keyed motion.divs crossfade views on mount; no exit-gating so a
           backgrounded tab (throttled rAF) can never stall the switch. */}
-      {adminOpen ? (
+      {accountOpen ? (
+        <motion.div
+          key="account"
+          initial={{ opacity: 0, scale: 0.99, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          <AccountScreen
+            onClose={handleCloseAccount}
+            onOpenBlog={handleAccountOpenBlog}
+            onOpenAdmin={handleAccountOpenAdmin}
+            onRequestLogin={onRequestLogin}
+          />
+        </motion.div>
+      ) : adminOpen ? (
         <motion.div
           key="admin"
           initial={{ opacity: 0, scale: 0.99, y: 8 }}

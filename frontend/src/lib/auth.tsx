@@ -21,6 +21,13 @@ import { describeApiError, toast } from './toast';
 export interface AuthUser {
     id: string;
     email: string;
+    // Since the user-profile contract (specs/023) signup/login/me all carry
+    // the display name plus the account's credit balance and state. They are
+    // optional so an old backend (or a 401-less guest payload) can never break
+    // the shell; call sites fall back to the email prefix.
+    username?: string | null;
+    credits?: number;
+    status?: string;
 }
 
 // `guest` is the normal "not logged in" state since M1 ⑧: the backend issues an
@@ -36,8 +43,10 @@ interface AuthContextValue {
     /** Bumped after a successful guest claim so data-loading effects refetch. */
     dataRevision: number;
     login: (email: string, password: string) => Promise<void>;
-    signup: (email: string, password: string) => Promise<void>;
+    signup: (email: string, password: string, username?: string) => Promise<void>;
     logout: () => Promise<void>;
+    /** Rename the signed-in user (`PATCH /api/user/profile`); updates context. */
+    updateUsername: (username: string) => Promise<AuthUser>;
 }
 
 interface UserPayload {
@@ -175,11 +184,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         path: '/api/auth/login' | '/api/auth/signup',
         email: string,
         password: string,
+        username?: string,
     ) => {
         const res = await apiFetch(path, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
+            // Signup carries the display name (specs/023); login does not.
+            body: JSON.stringify(username === undefined
+                ? { email, password }
+                : { email, password, username }),
         });
         if (!res.ok) throw new Error(await describeApiError(res));
         const nextUser = await readUser(res);
@@ -197,9 +210,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     const signup = useCallback(
-        (email: string, password: string) => authenticate('/api/auth/signup', email, password),
+        (email: string, password: string, username?: string) =>
+            authenticate('/api/auth/signup', email, password, username),
         [authenticate],
     );
+
+    // Rename (specs/023): the returned user is the new source of truth for the
+    // top bar and the account page, so it replaces the context state directly.
+    const updateUsername = useCallback(async (username: string) => {
+        const res = await apiFetch('/api/user/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username }),
+        });
+        if (!res.ok) throw new Error(await describeApiError(res));
+        const data = (await res.json().catch(() => null)) as UserPayload | null;
+        const nextUser = data?.user;
+        if (!nextUser?.email) throw new Error(t('errors.missingUser'));
+        applyAuthState('authenticated', nextUser);
+        return nextUser;
+    }, [applyAuthState]);
 
     const logout = useCallback(async () => {
         try {
@@ -217,7 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [applyAuthState]);
 
     return (
-        <AuthContext.Provider value={{ status, user, isAdmin, dataRevision, login, signup, logout }}>
+        <AuthContext.Provider value={{ status, user, isAdmin, dataRevision, login, signup, logout, updateUsername }}>
             {children}
         </AuthContext.Provider>
     );

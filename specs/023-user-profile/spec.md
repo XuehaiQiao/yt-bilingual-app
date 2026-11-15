@@ -1,16 +1,19 @@
 # 规格：用户名 / 用户页数据 / 余额与后台手动设置
 
-**状态：** 已实现（2026-11-16，仅后端）｜
-**对应代码：** `backend/migrations/versions/0013_user_profile.py`、
+**状态：** 已实现（2026-11-16：后端 + 用户页前端；后台控制台前端下一轮）｜
+**对应代码：** 后端 `backend/migrations/versions/0013_user_profile.py`、
 `backend/account.py`、`backend/routes_account.py`、`backend/routes_auth.py`、
 `backend/routes_admin.py`、`backend/main.py`、`backend/tests/test_user_profile.py`、
-`backend/tests/test_migrations.py`。
+`backend/tests/test_migrations.py`；前端 `frontend/src/lib/auth.tsx`、
+`frontend/src/lib/username.ts`、`frontend/src/components/AuthScreen.tsx`、
+`frontend/src/components/AccountScreen.tsx`、`frontend/src/App.tsx`、
+`frontend/src/i18n/{zh-CN,vi-VN}.json`。
 
 > 用户需求 1/2/3：① 注册必须设用户名（可改）；② 独立「用户页」要能拿到用户
 > 信息 / 余额 / 本月花费 / 版本；③ 独立后台可手动调余额、封禁/解封、维护模式
-> 与公告，且普通用户无法访问后台接口。**本轮只做后端**；用户页与后台控制台
-> 前端在下一任务。余额语义暂定 `credits`（默认 0，管理员手动发放）；支付/
-> 充值体系未实现。
+> 与公告，且普通用户无法访问后台接口。后端先落地；用户页前端随后完成（本轮），
+> 独立后台控制台前端仍在下一轮（用户页只提供管理员入口占位）。余额语义暂定
+> `credits`（默认 0，管理员手动发放）；支付/充值体系未实现。
 
 ---
 
@@ -174,6 +177,29 @@
 - 管理员不受影响；封禁检查发生在维护检查之前。
 - 设置表缺失/读取失败按「未开启」处理，不让设置故障把整个 API 拖进维护态。
 
+### 7. 前端（用户需求 1/2，2026-11-16）
+
+- **注册**：`AuthScreen` 注册 tab 新增必填「用户名」（2–24 字，提示可改），
+  提交 body 带 `username`；前端用与后端一致的规则本地校验（缺失/首尾空白/
+  过短/过长/非法字符），错误行内显示在输入框下方；登录 tab 不出现该字段。
+  成功后 `AuthProvider` 的 user 状态即带 `username`。
+- **用户页**：新全屏视图 `'account'`（`AccountScreen.tsx`），从顶栏用户名/头像
+  （`topbar-account`）进入；打开时保留原视图，关闭回到原处。内容：
+  头像占位（显示名首字母）、用户名（内联改名，`PATCH /api/user/profile`，
+  成功后顶栏同步）、邮箱、注册日期；余额卡（`credits` + 本月估算花费
+  `monthSpendUsd`（美元格式，$ 前缀按界面语言本地化小数位）+ 今日学习分钟，
+  标注「额度由管理员发放」；`preliminary` 时附降级提示）；设置（界面语言 /
+  翻译语言复用 `LanguageSettingsModal`，默认模型复用 `ModelBar`，安装到桌面
+  复用 `PwaInstallButton`，离线/无安装入口时给文字提示）；关于（`version`、
+  官方博客入口复用 `BlogScreen`、隐私/协议暂无页面用「即将上线」占位，不造假
+  链接）；退出登录；`isAdmin` 时额外显示「管理控制台」入口，跳到现有
+  `AdminScreen` 视图。游客进入显示「登录后查看用户页」提示并可打开登录浮层。
+- **顶栏**：原邮箱展示区（`topbar-user-email`）改为用户名按钮
+  （`topbar-account` / `topbar-username`，无用户名回落邮箱前缀），附首字母头像，
+  `lg` 以上显示名字、窄屏只留头像；点击进入用户页；退出按钮保留。
+- **i18n**：新增 `auth.username*`、`topbar.accountAria`、`account.*` 文案，
+  zh-CN / vi-VN 各一份，`npm run check:i18n` 通过；375px 无横向溢出。
+
 ## 错误语义汇总
 
 | 场景 | 状态码 |
@@ -191,7 +217,8 @@
 
 ## 非目标
 
-- 不做前端用户页 / 独立后台控制台（下一任务）；不新增前端路由守卫。
+- 不做独立后台控制台前端（下一轮；本轮用户页只放管理入口占位，点击进入现有
+  只读止血台视图）；不新增前端路由守卫（沿用 `App.tsx` 的视图 flag 状态机）。
 - 不做支付/充值/退款/账单；`credits` 只是管理员手动发放的余额（语义暂定）。
 - 不做独立 role 表、2FA、后台操作审计日志；`credit_transactions` 只记录调账
   操作者 id，不覆盖其它后台动作。
@@ -210,6 +237,13 @@
       游客 403；两个用户可同名。
 - [ ] `GET /api/user/summary` 无数据时数字为 0；写入 `ai_usage` 与 `watch_events`
       后本月花费/今日分钟正确，旧月份不计入；`version` 等于 `APP_VERSION`。
+- [x] 前端：注册缺用户名/过短在行内报错且不发请求；合法用户名随 signup 提交。
+- [x] 前端：登录后顶栏显示用户名（无用户名显示邮箱前缀），点击进入用户页。
+- [x] 前端：用户页显示余额、本月花费、今日分钟、版本号；管理员多一个控制台入口，
+      非管理员没有。
+- [x] 前端：内联改用户名成功，页面标题与顶栏同时更新；非法值行内报错。
+- [x] 前端：用户页可切换界面/翻译语言与默认模型，选择立即生效并持久化。
+- [x] 前端：中越双语 + 375px 无横向溢出；游客进入用户页显示登录提示。
 - [ ] 管理员 `+`/`-` 余额成功、余额不足 400、0/越界/原因非法 400、用户不存在 404、
       普通用户 403；每次成功调账留下一条 `credit_transactions`；并发调账不丢更新。
 - [ ] 封禁后登录 403、旧会话下一次 `/api` 请求 403、解封后原 Cookie 恢复；
@@ -229,3 +263,9 @@
 5 秒缓存）、游客 403、旧库降级。
 
 `backend/tests/test_migrations.py` 覆盖 0013 升级/回滚/旧用户回填。
+
+前端（2026-11-16）：`npx tsc -b` 与 `npm run check:i18n` 通过；Playwright
+（系统 Chrome，mock 全部 `/api/**`，5173）覆盖 a–h 共 19 项检查——注册用户名
+必填/过短、顶栏显示用户名并进入用户页、余额/花费/分钟/版本、内联改名同步顶栏、
+界面/翻译语言与模型切换、退出登录、中越双语、375px 溢出与游客登录提示；截图在
+`/tmp/account-shots/`。
