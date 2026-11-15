@@ -24,6 +24,13 @@ SENTENCES_DIR = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "sentences"),
 )
 
+# 能力定位测题库（M4，见 placement.py / specs/016）：vocab.json / reading.json /
+# pseudo.json 只读静态文件，随仓库分发；测试可指向 tmp 副本验证题库校验。
+PLACEMENT_DIR = os.environ.get(
+    "PLACEMENT_DIR",
+    os.path.join(_BACKEND_DIR, "..", "content", "placement"),
+)
+
 # --- 用户体系数据（SQLite + 每用户目录） ---
 # DATA_DIR 默认仓库根的 data/（已 gitignore）。AUTH_DB_PATH 可单独覆盖到别处；
 # USER_DATA_DIR 是每个登录用户的数据根目录（其下再分 history/ 等）。

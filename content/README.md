@@ -5,5 +5,6 @@
 | 目录 | 内容 |
 |---|---|
 | `sentences/` | 句子精背的 500 句精选（5 册 × 100 句），见 [sentences/README](./sentences/README.md) |
+| `placement/` | 能力定位测题库（M4，草稿待教研审校）：30 词汇 + 5 阅读 + 4 伪词，见 [placement/README](./placement/README.md) |
 
 新增内容类型时：在此建子目录 + README，后端在 `routes_content.py` 加只读路由（参考 sentences 的做法），并写对应规格。

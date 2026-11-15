@@ -1,0 +1,259 @@
+{
+  "_meta": {
+    "status": "draft",
+    "notice": "草稿，待教研审校",
+    "version": "placement.v1",
+    "updated": "2026-11-15",
+    "kind": "vocab",
+    "itemCount": 30,
+    "bands": ["A1", "A2", "B1", "B2", "C1"],
+    "reviewNotes": [
+      "每题 4 个中文释义选项，answerIndex 为 0–3 的正确项下标。",
+      "难度带为教研初分，不是 ECDICT 词频的精确映射；审校时请按词频与中文学习者常见度复核。",
+      "同一难度带内正确项位置已打散，避免形成位置规律。",
+      "例句仅供审校与结果页参考，定位测作答时不展示（避免泄题）。"
+    ]
+  },
+  "items": [
+    {
+      "id": "v-001",
+      "word": "apple",
+      "band": "A1",
+      "options": ["香蕉", "苹果", "葡萄", "柠檬"],
+      "answerIndex": 1,
+      "example": "She ate an apple for breakfast."
+    },
+    {
+      "id": "v-002",
+      "word": "water",
+      "band": "A1",
+      "options": ["牛奶", "果汁", "水", "咖啡"],
+      "answerIndex": 2,
+      "example": "Please drink more water after running."
+    },
+    {
+      "id": "v-003",
+      "word": "happy",
+      "band": "A1",
+      "options": ["快乐的", "难过的", "生气的", "害怕的"],
+      "answerIndex": 0,
+      "example": "The children were happy to see the snow."
+    },
+    {
+      "id": "v-004",
+      "word": "book",
+      "band": "A1",
+      "options": ["笔", "尺子", "书包", "书"],
+      "answerIndex": 3,
+      "example": "This book is about life in the ocean."
+    },
+    {
+      "id": "v-005",
+      "word": "run",
+      "band": "A1",
+      "options": ["坐", "跑", "吃", "睡"],
+      "answerIndex": 1,
+      "example": "He runs in the park every morning."
+    },
+    {
+      "id": "v-006",
+      "word": "cold",
+      "band": "A1",
+      "options": ["炎热的", "潮湿的", "寒冷的", "干燥的"],
+      "answerIndex": 2,
+      "example": "It is cold outside, so wear a coat."
+    },
+    {
+      "id": "v-007",
+      "word": "family",
+      "band": "A1",
+      "options": ["朋友", "同事", "邻居", "家庭"],
+      "answerIndex": 3,
+      "example": "My family lives in a small town."
+    },
+    {
+      "id": "v-008",
+      "word": "morning",
+      "band": "A1",
+      "options": ["早晨", "中午", "傍晚", "深夜"],
+      "answerIndex": 0,
+      "example": "I drink tea every morning."
+    },
+    {
+      "id": "v-009",
+      "word": "borrow",
+      "band": "A2",
+      "options": ["借入", "归还", "购买", "出售"],
+      "answerIndex": 0,
+      "example": "Can I borrow your umbrella for an hour?"
+    },
+    {
+      "id": "v-010",
+      "word": "decide",
+      "band": "A2",
+      "options": ["怀疑", "拒绝", "决定", "允许"],
+      "answerIndex": 2,
+      "example": "We need to decide where to eat tonight."
+    },
+    {
+      "id": "v-011",
+      "word": "weather",
+      "band": "A2",
+      "options": ["假期", "天气", "价格", "地址"],
+      "answerIndex": 1,
+      "example": "The weather is perfect for a walk."
+    },
+    {
+      "id": "v-012",
+      "word": "healthy",
+      "band": "A2",
+      "options": ["疲惫的", "富有的", "孤独的", "健康的"],
+      "answerIndex": 3,
+      "example": "Fresh vegetables are part of a healthy diet."
+    },
+    {
+      "id": "v-013",
+      "word": "ticket",
+      "band": "A2",
+      "options": ["票", "钥匙", "地图", "钱包"],
+      "answerIndex": 0,
+      "example": "I bought a train ticket to Shanghai."
+    },
+    {
+      "id": "v-014",
+      "word": "invite",
+      "band": "A2",
+      "options": ["通知", "责备", "邀请", "祝贺"],
+      "answerIndex": 2,
+      "example": "They invited us to dinner on Friday."
+    },
+    {
+      "id": "v-015",
+      "word": "probably",
+      "band": "A2",
+      "options": ["从不", "很可能", "已经", "几乎不"],
+      "answerIndex": 1,
+      "example": "It will probably rain this afternoon."
+    },
+    {
+      "id": "v-016",
+      "word": "achieve",
+      "band": "B1",
+      "options": ["放弃（目标）", "推迟（会议）", "庆祝（生日）", "实现（目标）"],
+      "answerIndex": 3,
+      "example": "She worked hard to achieve her goal."
+    },
+    {
+      "id": "v-017",
+      "word": "environment",
+      "band": "B1",
+      "options": ["环境", "设备", "经验", "证据"],
+      "answerIndex": 0,
+      "example": "The new factory may harm the environment."
+    },
+    {
+      "id": "v-018",
+      "word": "suggest",
+      "band": "B1",
+      "options": ["命令", "否认", "建议", "抱怨"],
+      "answerIndex": 2,
+      "example": "I suggest taking the earlier train."
+    },
+    {
+      "id": "v-019",
+      "word": "comfortable",
+      "band": "B1",
+      "options": ["昂贵的", "舒适的", "拥挤的", "危险的"],
+      "answerIndex": 1,
+      "example": "This chair is comfortable enough to read in."
+    },
+    {
+      "id": "v-020",
+      "word": "experience",
+      "band": "B1",
+      "options": ["经验", "实验", "期望", "解释"],
+      "answerIndex": 0,
+      "example": "He has ten years of experience in teaching."
+    },
+    {
+      "id": "v-021",
+      "word": "prevent",
+      "band": "B1",
+      "options": ["允许", "鼓励", "记录", "阻止"],
+      "answerIndex": 3,
+      "example": "Regular exercise can help prevent heart disease."
+    },
+    {
+      "id": "v-022",
+      "word": "ambiguous",
+      "band": "B2",
+      "options": ["显而易见的", "令人信服的", "模棱两可的", "彻底过时的"],
+      "answerIndex": 2,
+      "example": "The contract's wording is ambiguous and needs revision."
+    },
+    {
+      "id": "v-023",
+      "word": "compensate",
+      "band": "B2",
+      "options": ["补偿", "惩罚", "比较", "竞争"],
+      "answerIndex": 0,
+      "example": "The company agreed to compensate customers for the delay."
+    },
+    {
+      "id": "v-024",
+      "word": "inevitable",
+      "band": "B2",
+      "options": ["难以理解的", "不可避免的", "令人怀疑的", "完全自愿的"],
+      "answerIndex": 1,
+      "example": "Some change is inevitable as a team grows."
+    },
+    {
+      "id": "v-025",
+      "word": "comprehensive",
+      "band": "B2",
+      "options": ["临时的", "昂贵的", "狭窄的", "全面的"],
+      "answerIndex": 3,
+      "example": "The report offers a comprehensive review of the data."
+    },
+    {
+      "id": "v-026",
+      "word": "reluctant",
+      "band": "B2",
+      "options": ["不情愿的", "急切的", "粗心的", "慷慨的"],
+      "answerIndex": 0,
+      "example": "She was reluctant to speak in front of the crowd."
+    },
+    {
+      "id": "v-027",
+      "word": "ubiquitous",
+      "band": "C1",
+      "options": ["转瞬即逝的", "无处不在的", "含糊不清的", "鲜为人知的"],
+      "answerIndex": 1,
+      "example": "Smartphones have become ubiquitous in daily life."
+    },
+    {
+      "id": "v-028",
+      "word": "exacerbate",
+      "band": "C1",
+      "options": ["缓解", "预测", "加剧", "忽略"],
+      "answerIndex": 2,
+      "example": "Cutting the budget would exacerbate the staffing problem."
+    },
+    {
+      "id": "v-029",
+      "word": "pragmatic",
+      "band": "C1",
+      "options": ["务实的", "浪漫的", "武断的", "迂腐的"],
+      "answerIndex": 0,
+      "example": "We need a pragmatic solution, not a perfect one."
+    },
+    {
+      "id": "v-030",
+      "word": "scrutinize",
+      "band": "C1",
+      "options": ["快速浏览", "公开赞扬", "主动回避", "仔细审查"],
+      "answerIndex": 3,
+      "example": "Auditors will scrutinize every invoice before approval."
+    }
+  ]
+}

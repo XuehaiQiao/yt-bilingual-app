@@ -1,0 +1,88 @@
+{
+  "_meta": {
+    "status": "draft",
+    "notice": "草稿，待教研审校",
+    "version": "placement.v1",
+    "updated": "2026-11-15",
+    "kind": "reading",
+    "itemCount": 5,
+    "bands": ["A2", "B1", "B2", "C1"],
+    "reviewNotes": [
+      "每段短文 1 道 4 选 1 理解题，answerIndex 为 0–3 的正确项下标。",
+      "短文体量按 5 题定位测控制（每段 50–90 词），不是计划书里 250–350 词的长阅读；长阅读留到 V1。",
+      "evidence 字段是正确项对应的原文证据句，仅供教研审校与内部核对，不下发给用户。"
+    ]
+  },
+  "items": [
+    {
+      "id": "r-01",
+      "band": "A2",
+      "passage": "Tom started working at a small bike shop on Monday. He had never repaired a bike before, so his boss showed him how to fix a flat tire. By the end of the day, Tom could do it alone. He was tired but proud.",
+      "question": "What could Tom do by the end of his first day?",
+      "options": [
+        "He could open his own shop.",
+        "He could ride a bike without hands.",
+        "He could fix a flat tire by himself.",
+        "He could design a new bike."
+      ],
+      "answerIndex": 2,
+      "evidence": "By the end of the day, Tom could do it alone."
+    },
+    {
+      "id": "r-02",
+      "band": "B1",
+      "passage": "The town library used to close at six, which made it hard for people who worked during the day. Last month it began staying open until nine on weekdays. The library also added more desks near the windows. The librarian says the change has brought in many new readers, especially students.",
+      "question": "Why did the library change its closing time?",
+      "options": [
+        "To attract readers who work during the day.",
+        "To save money on electricity.",
+        "To make room for a new cafe.",
+        "Because students asked for fewer desks."
+      ],
+      "answerIndex": 0,
+      "evidence": "The town library used to close at six, which made it hard for people who worked during the day."
+    },
+    {
+      "id": "r-03",
+      "band": "B1",
+      "passage": "When Maya moved into a new flat, she noticed the kitchen was too dark to cook in. Instead of buying expensive lights, she moved a mirror from the bedroom and placed it opposite the window. The mirror reflects daylight into the room. Now she can chop vegetables without turning on a lamp.",
+      "question": "What did Maya do to solve her problem?",
+      "options": [
+        "She bought several expensive lamps.",
+        "She moved a mirror to reflect daylight.",
+        "She cooked in the bedroom.",
+        "She painted the kitchen white."
+      ],
+      "answerIndex": 1,
+      "evidence": "she moved a mirror from the bedroom and placed it opposite the window."
+    },
+    {
+      "id": "r-04",
+      "band": "B2",
+      "passage": "Repair cafes are gatherings where volunteers help people fix broken household objects, from toasters to bicycles. The idea began in the Netherlands and has spread to many countries. Supporters argue that these events not only reduce waste but also teach practical skills. Critics point out that some repairs take longer than a single afternoon, and that safety rules can be difficult to apply.",
+      "question": "Which statement best reflects the text?",
+      "options": [
+        "Repair cafes were invented in the United States.",
+        "Repair cafes only fix bicycles.",
+        "Critics say repair cafes produce too much waste.",
+        "Repair cafes have both supporters and critics."
+      ],
+      "answerIndex": 3,
+      "evidence": "Supporters argue that these events not only reduce waste but also teach practical skills. Critics point out that some repairs take longer than a single afternoon..."
+    },
+    {
+      "id": "r-05",
+      "band": "C1",
+      "passage": "On-demand delivery services promise to save time, but the convenience is rarely free. Behind each quick delivery stands a network of couriers whose schedules are shaped by algorithms rather than by fixed shifts. Economists debate whether such work offers genuine flexibility or simply shifts risk onto the workers. What is clear is that the price shown to customers covers only part of the arrangement.",
+      "question": "What is the main point of the passage?",
+      "options": [
+        "Delivery apps have made courier work less flexible.",
+        "Economists agree that delivery services are too expensive.",
+        "Convenience involves costs that are not fully visible to customers.",
+        "Algorithms have replaced all delivery couriers."
+      ],
+      "answerIndex": 2,
+      "evidence": "What is clear is that the price shown to customers covers only part of the arrangement."
+    }
+  ]
+}

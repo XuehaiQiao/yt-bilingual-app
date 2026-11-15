@@ -22,14 +22,15 @@ venv/bin/alembic stamp head              # 已是最新的库：只写版本号�
 | `0006_review_engine` | 复习引擎三表：`word_states`（状态/FSRS 参数/到期，`UNIQUE(user_id,lemma,target_lang)` + `(user_id,due_at)` 索引）、`review_logs`（append-only 流水 + `(user_id,reviewed_at)` 索引）、`word_sources`（词来源，FK → `word_states.id` ON DELETE CASCADE + `word_state_id` 索引）；见 [backend/README「复习引擎」](../README.md#复习引擎m2fsrs-6--队列--复习日志) |
 | `0007_quiz` | 理解题三表：`content_items`（用户内容项，`UNIQUE(user_id,content_ref,target_lang)` + 内部列 `prompt_version`）、`questions`（题目/选项/答案/证据 block 与毫秒时间点，状态 CHECK）、`attempts`（append-only 作答流水 + `(user_id,answered_at)` 索引）；见 [backend/README「理解题」](../README.md#理解题m3-后端出题--作答--证据回跳) 与 [specs/014](../../specs/014-quiz/spec.md) |
 | `0008_weekly_report` | 观看事件 `watch_events`（`user_id` 归属键含游客 `guest:<sha256>` + 可空 `guest_hash`、`UNIQUE(user_id,client_event_id)`、`(user_id,occurred_at)` 索引、秒数 CHECK 0–86400）+ 周报快照 `weekly_reports`（`UNIQUE(user_id,week_start)`、`payload` JSON 文本）；见 [backend/README「学习事件上报与周报」](../README.md#学习事件上报与周报m5-后端观看事件--周报快照) 与 [specs/015](../../specs/015-weekly-report/spec.md) |
+| `0009_placement` | 能力定位测三表：`placement_sessions`（`id` TEXT PK、`user_id` 归属键含游客 `guest:<sha256>`、`status` CHECK、`started_at/submitted_at/duration_ms/score/cefr/confidence/breakdown`，`(user_id,started_at)` 索引 + 部分唯一索引 `ux_placement_sessions_active` 保证同一用户最多一个未完成会话）、`placement_answers`（FK → sessions CASCADE、`item_type`/`chosen_index=-1..3`/`correct`/`difficulty_band` CHECK、`UNIQUE(session_id,item_id)`）、`user_profiles`（每归属键一行：区间/词汇量估计/阅读带/置信度/伪词可疑度/来源）；见 [backend/README「能力定位测与能力画像」](../README.md#能力定位测与能力画像m4-后端) 与 [specs/016](../../specs/016-placement/spec.md) |
 
 ## 约定
 
 - **迁移 id 递增**：新迁移用 `--rev-id 0009_xxx`，文件名模板是 `%(rev)s`（Alembic 自动补 `.py`）。
 - **基线幂等**：`0001` / `0002` 都用 inspector 判断表/索引是否已存在，所以对已有
   `users`/`sessions` 的旧库直接 `alembic upgrade head` 也安全（不重建、不动数据）。
-- **不要对旧库直接 `stamp head`**：会把 `0002` / `0003` / `0004` / `0005` / `0006` / `0007` / `0008` 也标记成已应用，`learning_events`、
-  `ai_usage` / `ai_quota` / `target_lang` 列、`jobs` 表、复习三表、理解题三表、观看事件/周报快照永远不会被创建。旧库的正确姿势是 `stamp 0001_baseline` → `upgrade head`。
+- **不要对旧库直接 `stamp head`**：会把 `0002` / `0003` / `0004` / `0005` / `0006` / `0007` / `0008` / `0009` 也标记成已应用，`learning_events`、
+  `ai_usage` / `ai_quota` / `target_lang` 列、`jobs` 表、复习三表、理解题三表、观看事件/周报快照、定位测三表永远不会被创建。旧库的正确姿势是 `stamp 0001_baseline` → `upgrade head`。
 - **`downgrade` 会 DROP 表**（`0001` 的 down 会删 `users`/`sessions`），只用于空库/
   测试回滚，别在真实库上跑。
 - **`learning_events` 是 append-only**：迁移只建表和索引，不建触发器；保留期硬删
@@ -47,4 +48,10 @@ venv/bin/alembic stamp head              # 已是最新的库：只写版本号�
   对游客同样幂等；`weekly_reports` 用 `INSERT OR IGNORE` 保留同周首份快照。运行时不建表；
   表缺失时 `backend/reports.py` 抛 `ReportUnavailable`，路由返回 503。详见
   [specs/015](../../specs/015-weekly-report/spec.md)。
+- **定位测三表**：`placement_sessions` 只保留状态与最终结果（整卷不落库，按 sessionId
+  确定性重算）；`placement_answers` 提交时一次写 32 行、append-only；`user_profiles`
+  每个归属键一行，最新一次定位测覆盖（`source` 预留 `user_edit`）。部分唯一索引
+  `ux_placement_sessions_active` 保证同一用户最多一个未完成会话，重测靠
+  `reset`/提交后新建。运行时不建表；表缺失时 `backend/placement.py` 抛
+  `PlacementUnavailable`，路由返回 503。详见 [specs/016](../../specs/016-placement/spec.md)。
 - 新增表一律写在这里，**不要**再往 `auth_db.py` 的 `_init_schema` 里加 `CREATE TABLE`。

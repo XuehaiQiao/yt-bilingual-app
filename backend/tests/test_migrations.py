@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0008_weekly_report"
+HEAD = "0009_placement"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -70,6 +70,7 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "word_states", "review_logs", "word_sources",
         "content_items", "questions", "attempts",
         "watch_events", "weekly_reports",
+        "placement_sessions", "placement_answers", "user_profiles",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD
@@ -546,6 +547,221 @@ def test_upgrade_head_from_empty_db(tmp_path):
             )
         conn.rollback()
 
+    # 定位测三表（0009_placement）
+    sessions = columns(db, "placement_sessions")
+    assert list(sessions) == [
+        "id",
+        "user_id",
+        "guest_hash",
+        "status",
+        "started_at",
+        "submitted_at",
+        "duration_ms",
+        "score",
+        "cefr",
+        "confidence",
+        "breakdown",
+    ]
+    assert sessions["id"]["pk"] == 1
+    assert sessions["id"]["notnull"] == 1
+    for required in ("user_id", "status", "started_at"):
+        assert sessions[required]["notnull"] == 1, required
+    for optional in (
+        "guest_hash", "submitted_at", "duration_ms", "score", "cefr",
+        "confidence", "breakdown",
+    ):
+        assert sessions[optional]["notnull"] == 0, optional
+    assert "in_progress" in str(sessions["status"]["default"])
+    session_indexes = index_names(db, "placement_sessions")
+    assert "ix_placement_sessions_user_started" in session_indexes
+    assert "ux_placement_sessions_active" in session_indexes
+    with sqlite3.connect(db) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' "
+            "AND name='ux_placement_sessions_active'"
+        ).fetchone()
+    assert row and "UNIQUE" in row[0].upper()
+    assert "WHERE status = 'in_progress'" in row[0]
+
+    answers = columns(db, "placement_answers")
+    assert list(answers) == [
+        "id",
+        "session_id",
+        "item_id",
+        "item_type",
+        "chosen_index",
+        "correct",
+        "difficulty_band",
+        "answered_at",
+    ]
+    assert answers["id"]["pk"] == 1
+    for required in (
+        "session_id", "item_id", "item_type", "chosen_index", "correct",
+        "difficulty_band", "answered_at",
+    ):
+        assert answers[required]["notnull"] == 1, required
+    with sqlite3.connect(db) as conn:
+        fk_rows = conn.execute("PRAGMA foreign_key_list(placement_answers)").fetchall()
+        assert any(
+            row[2] == "placement_sessions"
+            and row[3] == "session_id"
+            and row[4] == "id"
+            and row[6] == "CASCADE"
+            for row in fk_rows
+        ), "placement_answers 应外键引用 placement_sessions(id) ON DELETE CASCADE"
+        unique_sets = []
+        for row in conn.execute("PRAGMA index_list(placement_answers)"):
+            if row[2]:
+                unique_sets.append(
+                    tuple(
+                        col[2]
+                        for col in conn.execute(f"PRAGMA index_info({row[1]})")
+                    )
+                )
+    assert ("session_id", "item_id") in unique_sets
+
+    profiles = columns(db, "user_profiles")
+    assert list(profiles) == [
+        "user_id",
+        "cefr",
+        "level_band_low",
+        "level_band_high",
+        "vocab_estimate",
+        "reading_estimate",
+        "confidence",
+        "pseudo_word_suspicion",
+        "updated_at",
+        "source",
+    ]
+    assert profiles["user_id"]["pk"] == 1
+    assert profiles["user_id"]["notnull"] == 1
+    for required in (
+        "cefr", "level_band_low", "level_band_high", "confidence",
+        "pseudo_word_suspicion", "updated_at", "source",
+    ):
+        assert profiles[required]["notnull"] == 1, required
+    assert profiles["vocab_estimate"]["notnull"] == 0
+    assert profiles["reading_estimate"]["notnull"] == 0
+    assert "placement" in str(profiles["source"]["default"])
+    assert "0" in str(profiles["pseudo_word_suspicion"]["default"])
+
+    # CHECK / UNIQUE / FK 由数据库兜底：未完成会话唯一、跳过记为 -1、非法状态/
+    # 选项/难度带/来源/置信度都写不进去。
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(
+            "INSERT INTO placement_sessions (id, user_id, guest_hash, status, "
+            "started_at) VALUES ('ps1', 'u-plc', NULL, 'in_progress', 1000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO placement_sessions (id, user_id, guest_hash, status, "
+                "started_at) VALUES ('ps2', 'u-plc', NULL, 'in_progress', 1001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError(
+                "ux_placement_sessions_active 应阻止同一用户两个未完成会话"
+            )
+        try:
+            conn.execute("UPDATE placement_sessions SET status='bogus' WHERE id='ps1'")
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("placement_sessions.status CHECK 应拒绝未知状态")
+        conn.execute(
+            "UPDATE placement_sessions SET status='submitted' WHERE id='ps1'"
+        )
+        conn.execute(
+            "INSERT INTO placement_sessions (id, user_id, guest_hash, status, "
+            "started_at) VALUES ('ps2', 'u-plc', NULL, 'in_progress', 1001)"
+        )
+
+        conn.execute(
+            "INSERT INTO placement_answers (session_id, item_id, item_type, "
+            "chosen_index, correct, difficulty_band, answered_at) "
+            "VALUES ('ps2', 'v-001', 'vocab', -1, 0, 'A1', 1000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO placement_answers (session_id, item_id, item_type, "
+                "chosen_index, correct, difficulty_band, answered_at) "
+                "VALUES ('ps2', 'v-001', 'vocab', 0, 0, 'A1', 1001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError(
+                "UNIQUE(session_id, item_id) 应阻止同一会话重复作答"
+            )
+        try:
+            conn.execute(
+                "INSERT INTO placement_answers (session_id, item_id, item_type, "
+                "chosen_index, correct, difficulty_band, answered_at) "
+                "VALUES ('ps2', 'v-002', 'vocab', 4, 0, 'A1', 1002)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("placement_answers.chosen_index CHECK 应拒绝 4")
+        try:
+            conn.execute(
+                "INSERT INTO placement_answers (session_id, item_id, item_type, "
+                "chosen_index, correct, difficulty_band, answered_at) "
+                "VALUES ('ps2', 'v-003', 'audio', 0, 0, 'A1', 1003)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("placement_answers.item_type CHECK 应拒绝 audio")
+        try:
+            conn.execute(
+                "INSERT INTO placement_answers (session_id, item_id, item_type, "
+                "chosen_index, correct, difficulty_band, answered_at) "
+                "VALUES ('missing', 'v-004', 'vocab', 0, 0, 'A1', 1004)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("placement_answers 外键应拒绝不存在的 session_id")
+
+        conn.execute(
+            "INSERT INTO user_profiles (user_id, cefr, level_band_low, "
+            "level_band_high, vocab_estimate, reading_estimate, confidence, "
+            "pseudo_word_suspicion, updated_at, source) "
+            "VALUES ('u-plc', 'A1–A2', 'A1', 'A2', 1500, 'A1', 0.5, 0.0, 1000, "
+            "'placement')"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO user_profiles (user_id, cefr, level_band_low, "
+                "level_band_high, confidence, pseudo_word_suspicion, updated_at, "
+                "source) VALUES ('u-plc', 'A1–A2', 'A1', 'A2', 0.5, 0.0, 1001, "
+                "'placement')"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("user_profiles.user_id PRIMARY KEY 应阻止重复画像")
+        try:
+            conn.execute(
+                "UPDATE user_profiles SET confidence=1.5 WHERE user_id='u-plc'"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("user_profiles.confidence CHECK 应拒绝 1.5")
+        try:
+            conn.execute(
+                "UPDATE user_profiles SET source='imported' WHERE user_id='u-plc'"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("user_profiles.source CHECK 应拒绝未知来源")
+        conn.rollback()
+
     # 理解题三表的 CHECK / UNIQUE / FK 由数据库兜底。
     with sqlite3.connect(db) as conn:
         conn.execute("PRAGMA foreign_keys = ON")
@@ -840,3 +1056,26 @@ def test_weekly_report_downgrade_to_0007_and_back(tmp_path):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
     assert revision(db) == HEAD
     assert {"watch_events", "weekly_reports"} <= table_names(db)
+
+
+def test_placement_downgrade_to_0008_and_back(tmp_path):
+    """0009 单独回滚：只删定位测三表，周报与更早的表保留；再升级可恢复。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    assert {"placement_sessions", "placement_answers", "user_profiles"} <= table_names(db)
+
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0008_weekly_report"),
+        "downgrade 0008_weekly_report",
+    )
+    assert revision(db) == "0008_weekly_report"
+    remaining = table_names(db)
+    assert not ({"placement_sessions", "placement_answers", "user_profiles"} & remaining)
+    assert "watch_events" in remaining
+    assert "weekly_reports" in remaining
+    assert "attempts" in remaining
+    assert "users" in remaining
+
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert revision(db) == HEAD
+    assert {"placement_sessions", "placement_answers", "user_profiles"} <= table_names(db)

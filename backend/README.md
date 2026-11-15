@@ -11,9 +11,9 @@
 
 | 文件 | 职责 |
 |---|---|
-| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载七个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
+| `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载八个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
@@ -38,8 +38,10 @@
 | `routes_quiz.py` | 理解题 HTTP 路由（**需登录，游客 403**）：`POST /api/lesson/start`、`GET /api/lesson/{id}/questions`、`POST /api/lesson/answer`、`GET /api/lesson/{id}/result`；契约与错误语义见下文「理解题」与 [specs/014](../specs/014-quiz/spec.md) |
 | `reports.py` | **观看事件 + 周报聚合（M5）**：`record_watch_events` 批量写 `watch_events`（`UNIQUE(user_id, client_event_id)` 幂等，游客归属 `guest:<sha256>`，0–86400 秒与未来 5 分钟校验）；`week_report` 用 SQL 算 UTC 周「被动学习分钟 / 复习词数 / 理解题正确率」、规则生成事实与下一步、取错题证据或最近观看的 5 秒窗口、算连续学习天数，并把首份结果写 `weekly_reports` 快照（同周不覆盖）；表由 `0008_weekly_report` 创建，运行时不建表；不调用模型 |
 | `routes_events.py` | 学习事件与周报 HTTP 路由（**游客可用**）：`POST /api/events`、`GET /api/report/week`；契约与错误语义见下文「学习事件上报与周报」与 [specs/015](../specs/015-weekly-report/spec.md) |
+| `placement.py` | **能力定位测（M4）**：读 `content/placement/` 三份静态题库（30 词汇 + 5 阅读 + 4 伪词，校验草稿标记/选项/正确项）；按 sessionId 确定性抽 24+3+5 并打乱（银行 id 不外发）；加权评分（A1=0.5…C1=2.5）、CEFR 点估计 ±1 带、置信度（完成度 + 用时 − 伪词过度声称）、强弱项与 1 条规则建议；写 `placement_sessions` / `placement_answers` 并 upsert `user_profiles`；同一会话重复提交幂等；`start` 复用未完成会话；表由 `0009_placement` 创建，运行时不建表；不调用模型 |
+| `routes_placement.py` | 能力定位测 HTTP 路由（**游客可用**）：`GET /api/placement/start`、`POST /api/placement/submit`、`GET /api/placement/profile`、`POST /api/placement/reset`；契约与错误语义见下文「能力定位测与能力画像」与 [specs/016](../specs/016-placement/spec.md) |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -312,7 +314,7 @@ venv/bin/python -m pytest tests -q            # 全量离线（含迁移升级/�
 
 ```bash
 cd backend
-venv/bin/alembic upgrade head                 # 新库迁到 0008；旧库先 stamp 0001 再 upgrade
+venv/bin/alembic upgrade head                 # 新库迁到 0009；旧库先 stamp 0001 再 upgrade
 venv/bin/python -m py_compile *.py
 venv/bin/python -m pytest tests/test_weekly_report.py -q
 venv/bin/python -m pytest tests -q            # 全量离线（含迁移升级/回滚）
@@ -329,6 +331,75 @@ AUTH_DB_PATH=/tmp/yt/app.db DATA_DIR=/tmp/yt/data USER_DATA_DIR=/tmp/yt/data/use
 `dueTomorrow` 相对当前时刻计算（补看历史周时语义需再确认）；不做客户端时长
 反作弊；本轮不切片音频，只给 5 秒时间窗。
 
+
+## 能力定位测与能力画像（M4 后端）
+
+新用户用 12 分钟完成一次定位测（24 词 + 5 阅读 + 3 伪词混入），得到
+**CEFR 区间 + 置信度 + 强弱项 + 1 条建议**，保存为能力画像；老用户可重测。
+结果只给区间，不显示小数等级、不承诺考试分数。前端流程/结果页下一轮。
+规格：[specs/016-placement](../specs/016-placement/spec.md)。
+
+### 表（迁移 `0009_placement`）
+
+| 表 | 内容 |
+|---|---|
+| `placement_sessions` | 一次测试：`id`（uuid4 hex）、`user_id`（**归属键**：登录用户 id / 游客 `guest:<sha256>`）、`guest_hash`、`status`（`in_progress` / `submitted` / `abandoned`）、`started_at` / `submitted_at`、`duration_ms`、`score`（0–100）、`cefr`（如 `A2–B2`）、`confidence`（0–1）、`breakdown`（完整结果 JSON）；`(user_id, started_at)` 索引 + 部分唯一索引 `ux_placement_sessions_active`（同一用户最多一个未完成会话） |
+| `placement_answers` | 逐题作答（提交时一次写 32 行，append-only）：`session_id`（FK → sessions，CASCADE）、`item_id`（题库银行 id）、`item_type`（`vocab` / `reading` / `pseudo`）、`chosen_index`（`-1` = 不认识/跳过，`0–3` = 选项）、`correct`（0/1；伪词恒 0）、`difficulty_band`、`answered_at`；`UNIQUE(session_id, item_id)` |
+| `user_profiles` | 当前画像（每归属键一行，最新一次覆盖）：`cefr`、`level_band_low/high`、`vocab_estimate`（约词汇量）、`reading_estimate`（阅读带）、`confidence`、`pseudo_word_suspicion`、`updated_at`、`source`（`placement` / `user_edit`） |
+
+- 运行时不建表：未跑 `0009` 时四个端点统一 **503** 并提示 `alembic upgrade head`。
+- 游客也写 `user_id = guest:<sha256>`，与 `watch_events` 同一套归属口径；换设备/
+  Cookie 就是新游客，画像不跨设备。
+
+### 端点
+
+| 端点 | 说明 |
+|---|---|
+| `GET /api/placement/start` | 开始/复用未完成会话；下发 24 词 + 3 伪词 + 5 阅读（共 32 题，打乱），**不含答案**；伪词按 `vocab` 外观混入，对外 `itemId` 是会话内编号 `q-01`…`q-32` |
+| `POST /api/placement/submit` | `{sessionId, answers:[{itemId,chosenIndex}], durationMs?}`；服务端加权评分、区间、置信度、强弱项、1 条建议，写 session + 画像；重复提交幂等返回首次结果 |
+| `GET /api/placement/profile` | 当前画像；没有则 `profile: null`；附带 `preliminary` / `sampleSize` |
+| `POST /api/placement/reset` | 允许重测：只把未完成会话标 `abandoned`，已提交历史与画像保留 |
+
+### 抽题与计分
+
+- **题库**：`content/placement/{vocab,reading,pseudo}.json`（30 + 5 + 4，草稿待
+  教研审校；`_meta.notice` 必须含「待教研审校」，否则启动加载直接 503）。
+- **抽题**：按 `seed = placement.serve.v1:<sessionId>` 确定性抽 24 词汇（A1 5 /
+  A2 5 / B1 5 / B2 5 / C1 4）+ 3 伪词 + 5 阅读并打乱；start/submit 用同一
+  sessionId 重算同一份卷，因此不存整卷。同一用户 start 复用 `in_progress` 会话。
+- **计分**：难度带权重 A1=0.5 / A2=1.0 / B1=1.5 / B2=2.0 / C1=2.5；
+  `score = Σ答对权重 / Σ全部权重 × 100`；伪词不参与得分，只统计过度声称
+  （`pseudoWordSuspicion`）。`chosenIndex=-1`（或 `null`）= 不认识/跳过。
+- **区间**：加权正确率 → 点估计带（启发式 `heuristic.v1`，阈值在
+  `placement.py` 顶部）→ **±1 带**（A1/C1 截断），如 A1→`A1–A2`、B1→`A2–B2`、
+  C1→`B2–C1`。`vocab_estimate` 取点带中值（1500–12000，UI 必须带「约」）。
+- **置信度**：完成度 + 用时合理性 − 伪词过度声称惩罚，0.10–0.85；高/中/低三档。
+  伪词可疑度 ≥0.5 时建议优先提醒「不确定就选不认识、可重测」。
+- **样本口径**：完成过定位测的不同用户数 <100 → `preliminary: true`，文案标
+  「初步估计」；达到 100 后自动翻 false。不承诺「准确」/考试分数。
+- **强弱项**：词汇带 / 阅读带 vs 点估计；`notMeasured` 明确列
+  `listening/speaking/writing`（本测不测，不猜）。
+
+### 运行与验证
+
+```bash
+cd backend
+venv/bin/alembic upgrade head                 # 新库迁到 0009；旧库先 stamp 0001 再 upgrade
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_placement.py -q
+venv/bin/python -m pytest tests -q            # 全量离线（含迁移升级/回滚）
+
+# 手工冒烟（临时 /tmp 库，不碰 data/app.db）
+mkdir -p /tmp/yt-plc/data/users /tmp/yt-plc/data/guests
+AUTH_DB_PATH=/tmp/yt-plc/app.db venv/bin/alembic upgrade head
+AUTH_DB_PATH=/tmp/yt-plc/app.db DATA_DIR=/tmp/yt-plc/data \
+  USER_DATA_DIR=/tmp/yt-plc/data/users GUEST_DATA_DIR=/tmp/yt-plc/data/guests \
+  HISTORY_DIR=/tmp/yt-plc/legacy venv/bin/uvicorn main:app --port 8001
+# GET /api/placement/start → POST /api/placement/submit（同一 sessionId 再提交一次验证幂等）
+```
+
+已知边界：题库只有 39 题草稿（计划书首发 200–240 题）、评分阈值是启发式而非
+CAT 标定、题型只有词汇识别 + 短阅读、前端未做、游客认领账号时定位结果不迁移。
 
 
 ## 多语言目标语言（targetLang，P0）
@@ -399,27 +470,27 @@ venv/bin/python -m pytest tests/test_i18n_target_lang.py -q   # 目标语言 P0�
 
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 
 ```bash
-venv/bin/alembic upgrade head            # 新库：从零建到最新（0001 → … → 0008_weekly_report）
+venv/bin/alembic upgrade head            # 新库：从零建到最新（0001 → … → 0009_placement）
 venv/bin/alembic current                 # 看当前版本
 
 # 已有 data/app.db（只有 users/sessions，没有 alembic_version）：先纳管再补建新表
 venv/bin/alembic stamp 0001_baseline     # 只写版本号，不执行 DDL、不动数据
-venv/bin/alembic upgrade head            # 补建 learning_events / 账本 / jobs / 复习三表 / 理解题三表
+venv/bin/alembic upgrade head            # 补建 learning_events / 账本 / jobs / 复习三表 / 理解题三表 / 周报两张 / 定位测三表
 
 venv/bin/alembic stamp head              # 已经是最新版本的库：只标最新，不执行 DDL
 ```
 
 - 数据库路径与运行时同源：默认 `data/app.db`，可用 `AUTH_DB_PATH` 覆盖（迁移命令与 `config.py` 都读它）。
 - 基线迁移**幂等**（用 inspector 判断表/索引是否存在）：旧库直接 `upgrade head` 不会重建 `users`/`sessions`、不会动数据，只补缺的表；仍建议先备份 `data/app.db`。
-- **不要对旧库直接 `stamp head`**：会把 `0002`–`0007` 都标记成已应用，`learning_events` / 账本 / 任务表 / 复习三表 / 理解题三表永远不会被建出来。正确顺序是 `stamp 0001_baseline` → `upgrade head`（或直接 `upgrade head`）。
+- **不要对旧库直接 `stamp head`**：会把 `0002`–`0009` 都标记成已应用，`learning_events` / 账本 / 任务表 / 复习三表 / 理解题三表 / 周报两张 / 定位测三表永远不会被建出来。正确顺序是 `stamp 0001_baseline` → `upgrade head`（或直接 `upgrade head`）。
 - `downgrade` 会 DROP 表（`0001` 的 down 会删 `users`/`sessions`），只用于空库/测试回滚，别在真实库上跑。
 - 启动时 `main.py` 的 lifespan 只读检查一次迁移状态：库存在但没迁移会打 WARNING（启动照常成功）；`emit_event` 在表缺失时跳过写入并记 ERROR，学习主流程不受影响。
-- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0008_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
+- 新迁移：`venv/bin/alembic revision -m "说明" --rev-id 0010_xxx`（id 递增）；**新表一律写迁移，不要再加到 `auth_db.py` 的建表里**。
 
 学习事件（`events.py`）：
 
