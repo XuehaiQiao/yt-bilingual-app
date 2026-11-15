@@ -1,10 +1,9 @@
 import { apiFetch } from '../lib/api';
-import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Trash2, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Trash2, Compass } from 'lucide-react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
-import { ModelSelectionModal } from './ModelSelectionModal';
-import type { EstimationData } from './ModelSelectionModal';
+import { EstimateDialog, type EstimateDialogHandle } from './EstimateDialog';
 import { TodayWorkbench, type TodayWeekReport } from './TodayWorkbench';
 import { ShowBrowser } from './ShowBrowser';
 import { loadModel, loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
@@ -36,6 +35,8 @@ interface InputScreenProps {
     onOpenReport?: () => void;
     /** Ability placement / profile entry (M4 / specs/016). */
     onOpenPlacement?: (view: 'intro' | 'profile') => void;
+    /** Content discovery entry (specs/017): open the discover view. */
+    onOpenDiscover?: () => void;
 }
 
 const containerVariants = {
@@ -67,6 +68,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     onOpenReview,
     onOpenReport,
     onOpenPlacement,
+    onOpenDiscover,
 }) => {
     const { t } = useI18n();
     const [url, setUrl] = useState('');
@@ -85,10 +87,9 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     const [placementProfile, setPlacementProfile] = useState<PlacementProfile | null>(null);
     const [placementLoading, setPlacementLoading] = useState(true);
     const [placementFailed, setPlacementFailed] = useState(false);
-    const [isEstimating, setIsEstimating] = useState(false);
-    const [estimationData, setEstimationData] = useState<EstimationData | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [pendingUrl, setPendingUrl] = useState('');
+    // Estimate (cost preview → model confirm) is a reusable flow shared with
+    // content discovery; this screen only opens it with the submitted URL.
+    const estimateRef = useRef<EstimateDialogHandle>(null);
     const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
     // Mirrors the model bar's global setting so the pre-flight estimate can
     // name and price the model that will actually run.
@@ -203,24 +204,8 @@ export const InputScreen: React.FC<InputScreenProps> = ({
         return () => { cancelled = true; };
     }, []);
 
-    const handleInterceptSubmit = async (targetUrl: string) => {
-        setIsEstimating(true);
-        setPendingUrl(targetUrl);
-        try {
-            const response = await apiFetch(`/api/estimate-cost?url=${encodeURIComponent(targetUrl)}`);
-
-            if (!response.ok) {
-                throw new Error("Failed to estimate cost");
-            }
-            const data = await response.json();
-            setEstimationData(data);
-            setIsModalOpen(true);
-        } catch (err) {
-            console.error("Estimation failed:", err);
-            onSubmit(targetUrl);
-        } finally {
-            setIsEstimating(false);
-        }
+    const handleInterceptSubmit = (targetUrl: string) => {
+        estimateRef.current?.estimate(targetUrl);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -228,11 +213,6 @@ export const InputScreen: React.FC<InputScreenProps> = ({
         if (url.trim()) {
             handleInterceptSubmit(url.trim());
         }
-    };
-
-    const handleConfirmStart = () => {
-        setIsModalOpen(false);
-        onSubmit(pendingUrl);
     };
 
     // Empty "continue" card lands here: scroll the link input into view and
@@ -245,16 +225,10 @@ export const InputScreen: React.FC<InputScreenProps> = ({
         input.focus({ preventScroll: true });
     };
 
-    // Human-curated discovery is a placeholder for now (project plan §1.3 #4).
-    // No fake recommendations: say it is being prepared and point at the link.
-    const handleCuratedClick = () => {
-        toast.info(t('home.today.curatedSoon'));
-    };
-
     return (
         <div className="min-h-screen flex flex-col items-center px-4 sm:px-8 pt-4 sm:pt-10 pb-12 sm:pb-16 overflow-y-auto overflow-x-hidden custom-scrollbar relative bg-[#09090b]">
             <AnimatePresence>
-                {((isLoading || loadingState) && !isEstimating) && (
+                {(isLoading || loadingState) && (
                     <motion.div 
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="fixed inset-0 z-50 bg-zinc-950/70 backdrop-blur-md flex flex-col items-center justify-center"
@@ -271,25 +245,12 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                         )}
                     </motion.div>
                 )}
-
-                {isEstimating && (
-                    <motion.div 
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 bg-zinc-950/70 backdrop-blur-md flex flex-col items-center justify-center"
-                    >
-                        <Loader2 className="w-12 h-12 text-zinc-300 animate-spin mb-6" />
-                        <h2 className="text-xl font-semibold tracking-tight text-zinc-100 mb-2">{t('home.analyzing')}</h2>
-                        <p className="text-zinc-400">{t('home.analyzingHint')}</p>
-                    </motion.div>
-                )}
             </AnimatePresence>
 
-            <ModelSelectionModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onConfirm={handleConfirmStart}
-                estimationData={estimationData}
+            <EstimateDialog
+                ref={estimateRef}
                 currentModelId={currentModelId}
+                onStart={onSubmit}
             />
 
             <motion.div 
@@ -366,15 +327,15 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                     </form>
 
                     <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                        <span>{t('home.today.curatedPrompt')}</span>
+                        <span>{t('home.discover.prompt')}</span>
                         <button
                             type="button"
-                            data-testid="curated-entry"
-                            onClick={handleCuratedClick}
+                            data-testid="discover-entry"
+                            onClick={onOpenDiscover}
                             className="inline-flex items-center gap-1 h-7 px-1.5 -mx-1.5 rounded-lg font-medium text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-colors"
                         >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            {t('home.today.curatedAction')}
+                            <Compass className="w-3.5 h-3.5" />
+                            {t('home.discover.action')}
                             <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                     </div>

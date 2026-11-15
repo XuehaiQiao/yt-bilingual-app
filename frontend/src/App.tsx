@@ -22,6 +22,7 @@ import { ReviewScreen } from './components/ReviewScreen';
 import { QuizScreen } from './components/QuizScreen';
 import { ReportScreen, type WeekReportEvidence } from './components/ReportScreen';
 import { PlacementScreen, type PlacementInitialView } from './components/PlacementScreen';
+import { DiscoverScreen } from './components/DiscoverScreen';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
@@ -65,14 +66,15 @@ interface TranscriptItem {
   }>;
 }
 
-type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences' | 'topbar.feature.review' | 'topbar.feature.quiz'>;
+type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences' | 'topbar.feature.review' | 'topbar.feature.quiz' | 'topbar.feature.discover'>;
 
 // Single source of truth for the top-bar feature label. Mirrors the view
-// switch below: quiz wins, then review, then sentence pack, then local
-// episode, then YouTube; the home screen (no video / empty transcript) has
-// no feature name.
+// switch below: quiz wins, then discovery, then review, then sentence pack,
+// then local episode, then YouTube; the home screen (no video / empty
+// transcript) has no feature name.
 function getFeatureName(
   quizOpen: boolean,
+  discoverOpen: boolean,
   reviewOpen: boolean,
   sentenceLevel: number | null,
   videoId: string,
@@ -80,6 +82,7 @@ function getFeatureName(
   isLocalSubtitle: boolean,
 ): FeatureNameKey | null {
   if (quizOpen) return 'topbar.feature.quiz';
+  if (discoverOpen) return 'topbar.feature.discover';
   if (reviewOpen) return 'topbar.feature.review';
   if (sentenceLevel != null) return 'topbar.feature.sentences';
   if (!videoId || transcriptCount === 0) return null;
@@ -155,6 +158,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // stays local (like sentenceLevel) so returning always lands on the home
   // screen, per specs/013.
   const [reviewOpen, setReviewOpen] = useState(false);
+  // Content discovery — full view (specs/017). Its last result is kept in the
+  // screen's session storage, so backing out and re-entering is lossless.
+  const [discoverOpen, setDiscoverOpen] = useState(false);
   // Weekly report — its own view (M5). Opening it from a video pauses the
   // player without discarding it; closing returns to the same content.
   const [reportOpen, setReportOpen] = useState(false);
@@ -988,8 +994,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
 
   const featureName = useMemo(
-    () => getFeatureName(quizOpen, reviewOpen, sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle)),
-    [quizOpen, reviewOpen, sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle],
+    () => getFeatureName(quizOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle)),
+    [quizOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle],
   );
 
   const handleTranscriptClick = useCallback((time: number) => {
@@ -1099,6 +1105,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setSeekCommand(null);
     setSentenceLevel(null);
     setReviewOpen(false);
+    setDiscoverOpen(false);
     setReportOpen(false);
     setPlacementOpen(false);
     setQuizOpen(false);
@@ -1108,6 +1115,32 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     // Returning from review can change the due count; refetch on every go-home
     // (one cheap request) so the badge never shows a stale number.
     setReviewStatsNonce(prev => prev + 1);
+  };
+
+  // Content discovery (specs/017). It is a full view like review; the selected
+  // candidate goes through the same estimate → processing pipeline as a pasted
+  // link. `onClose` only leaves the view, so the screen's session-stored
+  // results are still there on re-entry.
+  const handleOpenDiscover = () => {
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setReviewOpen(false);
+    setReportOpen(false);
+    setPlacementOpen(false);
+    setQuizOpen(false);
+    setQuizLesson(null);
+    setDiscoverOpen(true);
+  };
+
+  const handleCloseDiscover = () => {
+    setDiscoverOpen(false);
+  };
+
+  const handleDiscoverStart = (url: string) => {
+    // Leave the discovery view first; processing renders the learning view.
+    setDiscoverOpen(false);
+    void handleUrlSubmit(url);
   };
 
   // Ability placement (M4). Like review/report it is a full view; the home
@@ -1413,7 +1446,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       </div>
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <LanguageMenu />
-        {status === 'authenticated' && !reviewOpen && !quizOpen && !placementOpen && (
+        {status === 'authenticated' && !reviewOpen && !quizOpen && !placementOpen && !discoverOpen && (
           <button
             type="button"
             data-testid="topbar-review-button"
@@ -1435,7 +1468,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             )}
           </button>
         )}
-        {!quizOpen && !reportOpen && !placementOpen && (
+        {!quizOpen && !reportOpen && !placementOpen && !discoverOpen && (
           <button
             type="button"
             data-testid="topbar-report-button"
@@ -1983,6 +2016,20 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         >
           <ReviewScreen onClose={handleGoHome} onRequestLogin={onRequestLogin} />
         </motion.div>
+      ) : discoverOpen ? (
+        <motion.div
+          key={`discover:${targetLang}`}
+          initial={{ opacity: 0, scale: 0.99, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          <DiscoverScreen
+            onClose={handleCloseDiscover}
+            onStart={handleDiscoverStart}
+            onRequestLogin={onRequestLogin}
+          />
+        </motion.div>
       ) : sentenceLevel != null ? (
         <motion.div
           key="sentences"
@@ -2027,6 +2074,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenReview={handleOpenReview}
             onOpenReport={handleOpenReport}
             onOpenPlacement={handleOpenPlacement}
+            onOpenDiscover={handleOpenDiscover}
           />
         </motion.div>
       ) : (

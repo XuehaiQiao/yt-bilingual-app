@@ -1,12 +1,16 @@
-# 规格：内容发现（后端）
+# 规格：内容发现（主题 → 候选视频）
 
-**状态：** 已实现（2026-11-15，V1 后端；前端候选面板/输入框双模式下一轮）｜
-**对应代码：** `backend/discover.py`、`backend/routes_discover.py`、
-`backend/migrations/versions/0010_discover.py`、`backend/tests/test_discover.py`
+**状态：** 已实现（2026-11-15，后端契约 + 前端发现页）｜
+**对应代码：** 后端 `backend/discover.py`、`backend/routes_discover.py`、
+`backend/migrations/versions/0010_discover.py`、`backend/tests/test_discover.py`；
+前端 `frontend/src/lib/discover.ts`、`frontend/src/components/DiscoverScreen.tsx`、
+`frontend/src/components/EstimateDialog.tsx`、`frontend/src/App.tsx`、
+`frontend/src/components/InputScreen.tsx`。
 
 > 计划书把「主题搜索」列在 V1（`§13.5` / `§5.3`），本规格按当前实现先行落地
 > **后端 MVP**。设计调查与取舍见 [`docs/计划-内容发现.md`](../../docs/计划-内容发现.md)；
-> 实现与其差异（检索词 2–3 个、候选 3–5 个、总预算 20s、只做后端、未接
+> 实现与其差异（检索词 2–3 个、候选 3–5 个、总预算 20s、前端使用独立的
+> `discover` 视图而不是把首页输入框改成「链接/主题」双模式、未接
 > YouTube Data API）以本规格为准。
 
 ---
@@ -155,8 +159,9 @@
 
 ## 边界与非目标
 
-- **只做后端**：前端主题输入、候选面板、选片接估价、加载/空/错/降级状态在
-  下一轮；本规格只冻结 HTTP 契约。
+- **入口是独立视图**：首页输入框仍只接受链接；主题搜索从「开始学习」区的
+  「搜索你想学的内容」进入 `discover` 视图。这样链接的估价流程不受主题搜索的
+  加载/错误状态影响。
 - **不做 YouTube Data API**：MVP 只用 yt-dlp，零额外 Key；官方 API 作为
   公网/限流时的后续备选，不在本规格。
 - 不自动播放/自动选片、不下载视频/音频/字幕文件、不做字幕全文搜索、不做
@@ -187,6 +192,9 @@
 - [x] 迁移：空库/旧库 upgrade 建表；`downgrade 0009_placement` 只删缓存表且
       可再升级。
 - [x] 全量后端测试通过（378，其中发现 26 + 迁移断言）。
+- [x] 前端：首页入口 / 返回首页；提交 query 显示约 10–20 秒 loading；候选卡
+      展示 3–5 个真实字段；点击候选打开估价弹窗且 URL 正确；「换一批」发送
+      `force:true`；空/失败/降级有提示与重试；中越双语；375px 无横向溢出。
 
 ## 测试与实测
 
@@ -200,10 +208,24 @@
 `cached:true` 且搜索调用次数保持 3；`force:true` 后搜索次数 6；游客 403；
 `discover_queries` 落一行（`result` 为元数据 JSON，无字幕正文）。
 
+## 前端实现（2026-11-15）
+
+- 入口：首页「开始学习」区「或：搜索你想学的内容」→ App 的 `discover` 视图；
+  返回键/顶栏 logo 回首页。
+- 发现页：`DiscoverScreen` + `lib/discover.ts`。提交走 `POST /api/discover`，
+  显示 3–5 个候选（缩略图/标题/频道/时长/A1–C1/一句理由/有英文字幕或未知/
+  已学过）；「换一批」发送 `force:true`；空/失败/degraded 有中文/越文提示与
+  重试。上次成功结果按 `targetLang` 存在 `sessionStorage`，返回再进仍保留。
+- 选片：点击候选 → 与首页共用的 `EstimateDialog` → `GET /api/estimate-cost`
+  → 现有 `ModelSelectionModal` → 确认后 `POST /api/process-video-stream`。
+- 验证：`npx tsc -b`、`npm run check:i18n`（558 keys × 2）；系统 Chrome +
+  Playwright mock 覆盖入口/加载/候选字段/估价 URL/「换一批」force/空错降级/
+  中越/375px；截图 `/tmp/discover-shots/`（14 张）。
+
 ## 已知限制 / 下一步
 
-1. **前端未做**：主题输入检测、候选卡、加载/空/错/降级、选片接估价、已学过
-   秒开都在下一轮；后端已冻结契约。
+1. **候选理由语言**：后端契约固定返回中文理由；越南语界面原样展示，未在前端
+   二次翻译（不伪造内容）。要本地化需后端按 `targetLang` 生成。
 2. **非官方搜索**：yt-dlp 没有 SLA，可能被 403/429；当前靠 24h 缓存、查询并发
    ≤3、失败不重试风暴与中文提示兜底，公网/长期运行需评估 YouTube Data API。
 3. **质量依赖模型**：不确定 LLM 改写/重排对冷门主题的稳定性；规则兜底只能
