@@ -382,6 +382,8 @@ AI_DAILY_QUOTA_DEFINE = _int_env("AI_DAILY_QUOTA_DEFINE", 200)
 AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES = _int_env("AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES", 60)
 # M3 理解题：每用户每日「生成一个 lesson 的题目」次数（缓存命中不占额度）。
 AI_DAILY_QUOTA_QUIZ = _int_env("AI_DAILY_QUOTA_QUIZ", 30)
+# V1 读文章：每用户每日翻译批次数（1 批 = 默认 10 段；已有译文/失败重试只算缺失段）。
+AI_DAILY_QUOTA_READING_BATCHES = _int_env("AI_DAILY_QUOTA_READING_BATCHES", 60)
 
 # 第二、三层预算（美元/日；0 = 不启用该层硬闸）。默认值是保守占位，运营按
 # 实际成本目标调；检查依据是 ai_usage 当日 SUM，不是前端估价。
@@ -412,6 +414,9 @@ RATE_LIMIT_DEFINE_PER_MINUTE = _int_env("RATE_LIMIT_DEFINE_PER_MINUTE", 60)
 # 内容发现（V1）：一次请求会做 2–3 次网络搜索 + 字幕探测 + 2 次 LLM，
 # 按用户限 5 次/分钟，挡住误刷模型额度与 YouTube 反爬。
 RATE_LIMIT_DISCOVER_PER_MINUTE = _int_env("RATE_LIMIT_DISCOVER_PER_MINUTE", 5)
+# 读文章（V1）：导入会真实抓取任意用户 URL（受 SSRF 校验与 2MB 上限约束），
+# 按用户限 10 次/分钟；翻译另受 AI 日配额，不在这里按分钟卡。
+RATE_LIMIT_READING_PER_MINUTE = _int_env("RATE_LIMIT_READING_PER_MINUTE", 10)
 
 # 游客态（M1 ⑧）：同样的桶，游客用更紧的上限（按 ln_guest 的 sha256 计数）。
 # 0 = 关闭该桶。总试译上限 GUEST_MAX_TRANSLATED_VIDEOS 是**累计**口径（不是每分钟）：
@@ -454,6 +459,20 @@ MAX_TRANSCRIPT_BLOCKS = _int_env("MAX_TRANSCRIPT_BLOCKS", 5000)
 MAX_FETCH_BYTES = _int_env("MAX_FETCH_BYTES", 5 * 1024 * 1024)
 # 频道视频列表「单频道」最多返回条数（硬上限）；当前 yt-dlp 仍只取最近 5 条。
 MAX_CHANNEL_VIDEOS = _int_env("MAX_CHANNEL_VIDEOS", 200)
+
+
+# --- 读文章（V1 用户需求 #3，见 reading.py / routes_reading.py / specs/019）---
+# URL 抓取：10 秒超时、最多 2MB、重定向 ≤3；只允许 http/https，解析 IP 后
+# 拒绝私网/回环/链路本地/云元数据地址（SSRF 防护，详见 reading.py 文件头）。
+READING_FETCH_TIMEOUT_SECONDS = _float_env("READING_FETCH_TIMEOUT_SECONDS", 10.0)
+READING_MAX_FETCH_BYTES = _int_env("READING_MAX_FETCH_BYTES", 2 * 1024 * 1024)
+READING_MAX_REDIRECTS = _int_env("READING_MAX_REDIRECTS", 3)
+# 正文上限：最多 200 段、单段 4000 字符；粘贴正文整体上限 2MB 字符。
+READING_MAX_PARAGRAPHS = _int_env("READING_MAX_PARAGRAPHS", 200)
+READING_MAX_PARAGRAPH_CHARS = _int_env("READING_MAX_PARAGRAPH_CHARS", 4000)
+READING_MAX_TEXT_CHARS = _int_env("READING_MAX_TEXT_CHARS", 2_000_000)
+# 每批送模型翻译的段数；1 段 ≈ 1 个输入项，批次太大容易超时/掉段。
+READING_TRANSLATE_BATCH_SIZE = _int_env("READING_TRANSLATE_BATCH_SIZE", 10)
 
 
 # --- 内容发现（V1 主题搜索，见 discover.py / routes_discover.py / specs/017）---

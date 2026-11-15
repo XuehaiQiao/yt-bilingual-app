@@ -44,6 +44,7 @@ _FEATURE_LIMIT_ATTRS = {
     "define": "AI_DAILY_QUOTA_DEFINE",
     "local_show": "AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES",
     "quiz": "AI_DAILY_QUOTA_QUIZ",
+    "reading": "AI_DAILY_QUOTA_READING_BATCHES",
 }
 
 _warned_missing_tables = False

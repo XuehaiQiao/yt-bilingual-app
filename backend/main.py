@@ -58,6 +58,7 @@ import routes_discover
 import routes_events
 import routes_placement
 import routes_quiz
+import routes_reading
 import routes_recommend
 import routes_review
 import routes_user
@@ -177,6 +178,7 @@ app.include_router(routes_quiz.router)
 app.include_router(routes_events.router)
 app.include_router(routes_placement.router)
 app.include_router(routes_discover.router)
+app.include_router(routes_reading.router)
 app.include_router(routes_recommend.router)
 
 # 必须最后注册：Starlette 后注册的中间件在最外层，401 响应才能带上 CORS 头，

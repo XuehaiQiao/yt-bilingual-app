@@ -13,7 +13,7 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速）、结构化访问日志（request_id + 一行 JSON）、挂载八个路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*` / `READING_*` / `AI_DAILY_QUOTA_READING_BATCHES` / `RATE_LIMIT_READING_PER_MINUTE`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
@@ -44,8 +44,10 @@
 | `routes_discover.py` | 内容发现 HTTP 路由：`POST /api/discover`（**需登录，游客 403**；5 次/分钟/用户）；契约/错误语义见下文「内容发现」与 [specs/017](../specs/017-discover/spec.md) |
 | `recommend.py` | **规则推荐（V1）**：读 `content/curated.json`（30 条人工精选）+ 登录用户 `user_profiles` 的 CEFR 区间（无画像默认 A2–B1）+ 当前身份 history 缓存；按 band±1、主题轮转、新鲜度、已看排除排序，生成中文/越语一句理由；不调用 LLM、不联网、不建表；10 分钟进程内缓存 |
 | `routes_recommend.py` | 规则推荐 HTTP 路由：`GET /api/recommendations?limit=6&targetLang=zh-CN&seed=0`（游客可用）；契约/错误语义见下文「规则推荐」与 [specs/018](../specs/018-recommendations/spec.md) |
-| `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`pytest` 用于离线测试/CI；faster-whisper 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `reading.py` | **读文章（V1）**：URL 导入（SSRF 校验 + 10s/2MB/重定向 ≤3）或粘贴正文 → `trafilatura` → readability → 标准库 `<p>` 三级抽取 → 200 段/单段 4000 字符上限 → `articles` / `article_paragraphs`；逐段翻译（`feature=reading` 配额/账本/降级链，只补缺失段，失败写 `[未翻译]`）；进度/列表/删除；表由 `0011_reading` 创建，运行时不建表 |
+| `routes_reading.py` | 读文章 HTTP 路由（**需登录，游客 403**）：`POST /api/article/import`、`POST /api/article/{id}/translate`、`GET /api/article/{id}`、`GET /api/articles`、`DELETE /api/article/{id}`、`PUT /api/article/{id}/progress`；契约/错误语义见下文「读文章」与 [specs/019](../specs/019-reading/spec.md) |
+| `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`trafilatura` 用于文章正文抽取、`pytest` 用于离线测试/CI；faster-whisper、readability-lxml/bs4 为可选，见文件内注释） |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -617,6 +619,97 @@ venv/bin/python -m pytest tests -q                    # 全量 395
 `/api/estimate-cost` 返回同一 videoId（`eXdVDhOGqoE`）。
 
 
+## 读文章（V1 后端：URL/正文导入 + 逐段翻译 + 进度）
+
+用户需求 #3「读文章」的后端 MVP：粘贴英文文章 URL（或正文）→ 抽取标题与段落 →
+按目标语言逐段翻译 → 保存到账号历史、回写阅读进度；读的时候查词复用 `/api/define`。
+规格：[specs/019](../specs/019-reading/spec.md)。**仅后端**，阅读器前端下一轮。
+
+### 端点（全部需登录；游客/未登录 403）
+
+| 端点 | 说明 | 成功 / 失败 |
+|---|---|---|
+| `POST /api/article/import` | body `{url}` 或 `{text,title?}`；同用户同 URL 复用 | 200 `{articleId,title,site,sourceUrl,lang,wordCount,createdAt,paragraphs,reused}`；400/422/429/503 |
+| `POST /api/article/{id}/translate` | body `{targetLang}`（zh-CN 缺省 / vi-VN）；只补缺失段 | 200 `{articleId,targetLang,status,total,translated,failed,failedIndices,model,batches}`；400/404/429/503 |
+| `GET /api/article/{id}?targetLang=` | 标题 + 段落（含 `translation`/`translationFailed`）+ 进度 + stats | 200；400/404/503 |
+| `GET /api/articles` | 当前用户文章列表（最新在前，带 `paragraphCount`/`progress`） | 200；503 |
+| `DELETE /api/article/{id}` | 删文章 + 段落/译文/进度 | 200 `{ok,articleId}`；404/503 |
+| `PUT /api/article/{id}/progress` | body `{paragraphIdx}`（0-based，< 段数） | 200 `{ok,articleId,paragraphIdx,updatedAt}`；400/404/422/503 |
+
+身份选择：**需登录，游客 403**（二选一中的严格版）。文章与进度要「保存回历史」，
+必须归属账号；游客 Cookie 换设备即丢，不做游客文章系统。跨用户读/译/删/进度
+一律 404（不泄露存在性）。
+
+### 表（迁移 `0011_reading`）
+
+| 表 | 内容 |
+|---|---|
+| `articles` | `id` TEXT PK、`user_id`、可空 `source_url`（最终 URL；粘贴正文 NULL）、`title`、`site`、`lang`（en）、`word_count`、`created_at`；`ix_articles_user_created(user_id, created_at)`；部分唯一索引 `ux_articles_user_url(user_id, source_url) WHERE source_url IS NOT NULL` 保证同用户同 URL 一篇 |
+| `article_paragraphs` | `article_id` FK CASCADE、`idx`、`text`；PK(`article_id`, `idx`) |
+| `article_translations` | `article_id` FK CASCADE、`idx`、`target_lang`（zh-CN/vi-VN）、`text`、`model`、`created_at`；PK(`article_id`, `idx`, `target_lang`)；`text='[未翻译]'` 是失败但可重试的标记 |
+| `article_progress` | `user_id` + `article_id` PK、`paragraph_idx`、`updated_at`；文章删除时级联 |
+
+### 正文抽取与抓取边界
+
+- **URL**：只允许 http/https；`socket.getaddrinfo` 解析出**全部 IP**，任一为
+  私网/回环/链路本地/组播/保留/未指定（含云元数据 `169.254.169.254` 等）即拒绝；
+  字面量 IP 直接检查。重定向用 `follow_redirects=False` 手工跟随，**每跳重新校验**、
+  最多 3 跳；超时 10s、响应体 2MB 流式截断；抓取失败统一 **422**。
+- **抽取**：`trafilatura`（`requirements.txt` 已加，XML 输出只取 `<p>`/`<h1>`）
+  → `readability-lxml + bs4`（可选依赖）→ 标准库 `HTMLParser`（跳过 nav/header/
+  footer/aside/script，按 class/id 导航关键词与链接占比过滤，`<p>` 只收正文）。
+  后两级缺失不影响端点；正常安装只装 `trafilatura` 即可。
+- **清洗/上限**：空段过滤、NFC、空白折叠；最多 200 段、单段最多 4000 字符
+  （超出按句/空格截断加 `…`）；粘贴正文整体上限 2,000,000 字符。
+- **去重**：URL 规范化（去 fragment、host 小写、默认端口省略）后先查已有；
+  重定向后按最终 URL 再查一次；并发靠部分唯一索引兜底，命中返回 `reused:true`
+  且不再抓取。
+- **残余风险**：DNS rebinding（校验到连接之间 DNS 可变；不 pin IP 以免破坏 CDN
+  的 TLS/SNI）、系统代理可能用另一套 DNS、JS 渲染页面抽不到正文。新增任意 URL
+  抓取路径时必须同时加 scheme/host/IP 黑名单（本条即第一个这样的路径）。
+
+### 翻译（`feature=reading`）
+
+- 按目标语言读已有译文；**已有且不是 `[未翻译]` 的段不重译**，只把缺失段按
+  10 段/批送模型；每批先扣 1 个 `AI_DAILY_QUOTA_READING_BATCHES`（默认 60/日），
+  成功调用按 `llm.usage_scope("reading", user_id, target_lang=…)` 写 `ai_usage`。
+- 模型选择走统一 `quota.degradation_chain(feature="reading")`；返回 JSON
+  `{"translations":[{"idx":0,"text":"…"}]}`，按 idx 对齐，容忍围栏/乱序/部分返回；
+  vi-VN 输出含 CJK 视为该段失败。
+- 失败段写 `[未翻译]`（`model=NULL`），响应 `status:"partial"` + `failedIndices`；
+  下次调用只补这些段。完全没有可用模型时同样只写标记，不写假译文。
+- 幂等：全部已有译文时 `status:"cached"`、`batches:0`、不调模型。
+
+### 配置（默认值）
+
+| 环境变量 | 默认 | 说明 |
+|---|---:|---|
+| `READING_FETCH_TIMEOUT_SECONDS` | 10 | URL 抓取超时（秒） |
+| `READING_MAX_FETCH_BYTES` | 2097152 | 响应体上限（2MB，流式截断） |
+| `READING_MAX_REDIRECTS` | 3 | 最多跟随重定向次数 |
+| `READING_MAX_PARAGRAPHS` | 200 | 单篇最多段数 |
+| `READING_MAX_PARAGRAPH_CHARS` | 4000 | 单段最多字符 |
+| `READING_MAX_TEXT_CHARS` | 2000000 | 粘贴正文整体上限 |
+| `READING_TRANSLATE_BATCH_SIZE` | 10 | 每批送模型段数 |
+| `AI_DAILY_QUOTA_READING_BATCHES` | 60 | 每用户每日翻译批次数 |
+| `RATE_LIMIT_READING_PER_MINUTE` | 10 | 导入次数/分钟/用户（0=关闭） |
+
+### 测试与手动实测
+
+```bash
+cd backend
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_reading.py -q   # 50 个离线用例（FakeClient + LLM 桩）
+venv/bin/python -m pytest tests -q                    # 全量 445
+```
+
+2026-11-15 8001 临时实例（`/tmp` 数据目录 + 真实 Alembic + mock HTTP/LLM）实测：
+粘贴正文 → 2 段；URL 导入 → 标题/2 段/词数；重复 import 同 URL → 同一
+`articleId`、`reused:true`、只发 1 次 mock HTTP；zh-CN 与 vi-VN 各翻 2 段且
+互不覆盖；再次 zh 翻译 `cached`/0 批；进度与列表正确；`127.0.0.1` / `10.x` /
+`169.254.169.254` / `[::1]` / `metadata.google.internal` / `file://` 全部 422；
+删除后 404；第二个用户读第一用户文章 404。
+
 ## 多语言目标语言（targetLang，P0）
 
 规格：[specs/012-i18n-multilingual](../specs/012-i18n-multilingual/spec.md) §5.3–§5.10、§6。P0 范围 = **目标语言**（翻译/总结/词典/缓存/模型路线），UI 语言与 `/api/settings` 属后续任务。
@@ -914,6 +1007,7 @@ python3 scripts/fetch_dictionary.py
 | `process_video` | `POST /api/process-video`、`POST /api/process-video-stream` | 登录用户 | 6 | `RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE` |
 | `define` | `POST /api/define` | 登录用户 | 60 | `RATE_LIMIT_DEFINE_PER_MINUTE` |
 | `discover` | `POST /api/discover` | 登录用户 | 5 | `RATE_LIMIT_DISCOVER_PER_MINUTE` |
+| `reading` | `POST /api/article/import` | 登录用户 | 10 | `RATE_LIMIT_READING_PER_MINUTE` |
 | `estimate`（游客） | 同上 | `guest:<sha256>` | 10 | `RATE_LIMIT_GUEST_ESTIMATE_COST_PER_MINUTE` |
 | `process_video`（游客） | 同上 | `guest:<sha256>` | 2 | `RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE` |
 | `define`（游客） | 同上 | `guest:<sha256>` | 20 | `RATE_LIMIT_GUEST_DEFINE_PER_MINUTE` |
@@ -939,7 +1033,7 @@ python3 scripts/fetch_dictionary.py
 - `MAX_TRANSCRIPT_BLOCKS=5000`：解析后字幕块数超限 → **400**。
 - 大小/块数用 400 而不是 422：流式路径把 422 当作「无字幕」去走 Whisper 兜底，400 可避免为一份超大字幕再下载一遍音频。所有超时/超限错误都有中文 detail，不会变成 500。
 - `MAX_CHANNEL_VIDEOS=200`：单频道硬上限；当前 yt-dlp 用 `playlistend=5` 只取最近 5 条，上限用于防未来调大提取量或异常返回炸内存。频道并发仍是最多 8 个。
-- **域名解析黑名单（按设计不加）**：所有出站抓取目标都由代码派生或先过白名单——`extract_video_id` 只接受锚定的 YouTube host，yt-dlp 只接收 `canonical_watch_url(video_id)` 重建的 URL；`/api/channel-updates` 的频道 URL 先过 `validate_channel_url`（同一套 YouTube host 白名单 + `@handle`/`channel`/`c`/`user` 形态，可选 `/videos`；拒绝 userinfo/端口/query/`file://`/内网地址），再交给 yt-dlp；youtube-transcript-api 自己构造 youtube.com 请求。不存在「用户提供任意域名/IP」的抓取路径，`file://`、内网地址、`169.254.169.254` 根本进不来。若再加 DNS/IP 黑名单，需要 hook yt-dlp 的解析器并维护 YouTube CDN 大量轮换 IP，收益低、误杀风险高。**前提是以后不要新增任意 URL 抓取**；新增时必须同时加 scheme/host 白名单 + 解析后 IP 黑名单。
+- **域名解析黑名单**：YouTube 相关路径的出站目标都由代码派生或先过白名单——`extract_video_id` 只接受锚定的 YouTube host，yt-dlp 只接收 `canonical_watch_url(video_id)` 重建的 URL；`/api/channel-updates` 的频道 URL 先过 `validate_channel_url`（同一套 YouTube host 白名单 + `@handle`/`channel`/`c`/`user` 形态，可选 `/videos`；拒绝 userinfo/端口/query/`file://`/内网地址），再交给 yt-dlp；youtube-transcript-api 自己构造 youtube.com 请求。**V1 读文章的 `/api/article/import` 是第一个「用户提供任意 URL」的抓取路径**，它单独实现了 scheme 白名单 + 解析后 IP 黑名单 + 每跳重定向校验（见上文「读文章」）；其余路径仍锚定 YouTube。新增任意 URL 抓取路径时必须照此同时加 scheme/host 白名单 + 解析后 IP 黑名单。
 - 已知边界：`requests` 的 timeout 是连接/读取超时，不是严格「整个请求总时限」；`MAX_FETCH_BYTES` 不覆盖 yt-dlp 元数据/频道列表的 HTML（`extract_flat` 响应很小）；多进程部署时锁定/限速各算各的。
 
 ### 全局 LLM 并发闸（`llm.py`）

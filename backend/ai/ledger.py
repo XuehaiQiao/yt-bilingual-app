@@ -42,13 +42,14 @@ logger = logging.getLogger(__name__)
 
 # 与计划书 §7.4 / M1 ② 对齐的功能枚举。写入层严格校验：拼错的功能名会让
 # 「花在哪个功能」失真，宁可丢一条并告警，也不污染账本。
-KNOWN_FEATURES = ("translate", "summary", "define", "local_show", "quiz")
+KNOWN_FEATURES = ("translate", "summary", "define", "local_show", "quiz", "reading")
 FEATURE_LABELS = {
     "translate": "翻译",
     "summary": "总结",
     "define": "词典",
     "local_show": "本地剧集",
     "quiz": "理解题",
+    "reading": "读文章",
 }
 
 # 目录里一个已知价都没有时的保守兜底（非官方报价，只在异常配置下使用）。

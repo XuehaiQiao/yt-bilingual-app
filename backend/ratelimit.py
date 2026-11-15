@@ -10,7 +10,7 @@
 - 只做「请求频率」这一层，不做 WAF / bot 指纹 / IP 信誉库（计划书残余风险）。
 
 桶与键（路径 → 桶 → 键）见 :func:`bucket_for`：注册/登录按 IP；估价/处理/
-查词/内容发现按登录用户；游客（M1 ⑧）用同一组 business 桶但更紧的上限，键为
+查词/内容发现/读文章导入按登录用户；游客（M1 ⑧）用同一组 business 桶但更紧的上限，键为
 ``guest:<sha256>``。超限由 ``main.py`` 的身份中间件返回 **429 + Retry-After**。
 """
 from __future__ import annotations
@@ -52,6 +52,9 @@ _EXACT_PATHS = {
     "/api/define": Bucket("define", "user"),
     # 内容发现（V1）：一次请求含多次搜索/探测/LLM，按登录用户限 5 次/分钟。
     "/api/discover": Bucket("discover", "user"),
+    # 读文章（V1）：导入会抓取用户提供的 URL（SSRF 校验 + 2MB 上限），
+    # 按登录用户限 10 次/分钟；翻译受 AI 日配额约束，不在此桶。
+    "/api/article/import": Bucket("reading", "user"),
 }
 
 _PREFIX_PATHS = (
@@ -64,6 +67,7 @@ _LIMIT_ATTRS = {
     "process_video": "RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE",
     "define": "RATE_LIMIT_DEFINE_PER_MINUTE",
     "discover": "RATE_LIMIT_DISCOVER_PER_MINUTE",
+    "reading": "RATE_LIMIT_READING_PER_MINUTE",
 }
 
 # 游客（无会话、只有 ln_guest）用更紧的上限；auth 桶仍按 IP（游客不适用）。

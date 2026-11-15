@@ -23,6 +23,14 @@ python-dotenv>=1.0.0
 # backend/: venv/bin/alembic upgrade head  (see backend/migrations/README.md).
 alembic==1.20.1
 
+# 读文章（V1，specs/019）：URL 正文抽取首选 trafilatura。代码对未安装做降级
+# （readability-lxml+bs4 → 标准库 HTMLParser `<p>`），所以缺这个包不会让导入
+# 端点挂掉；生产建议安装以获得更好的正文质量。注意 trafilatura 会带入 lxml。
+trafilatura>=2.0.0,<3.0.0
+
+# 可选二级抽取器（不装也能用；装上后 trafilatura 抽不到时再试它）：
+#   pip install readability-lxml beautifulsoup4 lxml
+
 # Offline test suite + CI (backend/tests/); not needed at runtime.
 pytest>=8.0.0
 
