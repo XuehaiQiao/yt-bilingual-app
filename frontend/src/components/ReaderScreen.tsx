@@ -24,13 +24,17 @@ import {
     Languages,
     Loader2,
     LogIn,
+    MoreHorizontal,
     RefreshCw,
+    Share2,
     Trash2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ClickableWords } from './TranscriptBlock';
+import { ShareCardDialog } from './ShareCardDialog';
+import type { ShareCardData } from '../lib/shareCard';
 import { toast } from '../lib/toast';
 import {
     ReadingApiError,
@@ -41,6 +45,7 @@ import {
     saveProgress,
     translateArticle,
     type ArticleDetail,
+    type ArticleParagraph,
     type ArticleSummary,
 } from '../lib/reading';
 
@@ -62,6 +67,13 @@ interface ReaderScreenProps {
 type ImportMode = 'url' | 'text';
 
 const MAX_PASTED_CHARS = 2_000_000;
+
+/** The translation a paragraph can honestly show/share (never "[未翻译]"). */
+function usableTranslation(paragraph: ArticleParagraph): string | undefined {
+    const translation = typeof paragraph.translation === 'string' ? paragraph.translation.trim() : '';
+    if (!translation || translation === '[未翻译]' || paragraph.translationFailed) return undefined;
+    return translation;
+}
 
 function statusOf(error: unknown): number {
     return error instanceof ReadingApiError ? error.status : -2;
@@ -194,6 +206,11 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const [translating, setTranslating] = useState(false);
     const [translateError, setTranslateError] = useState<number | null>(null);
     const [currentIdx, setCurrentIdx] = useState(0);
+    // Share card + paragraph actions. One dialog instance serves both the
+    // paragraph menu and the floating "share selection" chip.
+    const [shareData, setShareData] = useState<ShareCardData | null>(null);
+    const [menuIdx, setMenuIdx] = useState<number | null>(null);
+    const [selection, setSelection] = useState<{ idx: number; text: string; left: number; top: number } | null>(null);
 
     const mountedRef = useRef(true);
     const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -252,6 +269,9 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     }, [flushProgress]);
 
     const handleScroll = useCallback(() => {
+        // A floating "share selection" chip is anchored to viewport
+        // coordinates, so it must disappear as soon as the text moves.
+        setSelection((previous) => (previous ? null : previous));
         if (rafRef.current != null) return;
         rafRef.current = requestAnimationFrame(() => {
             rafRef.current = null;
@@ -282,6 +302,9 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         setArticle(null);
         setArticleError(null);
         setTranslateError(null);
+        setShareData(null);
+        setMenuIdx(null);
+        setSelection(null);
         setArticleLoading(true);
         setShowTranslations(true);
         setCurrentIdx(0);
@@ -322,6 +345,9 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         setArticle(null);
         setArticleError(null);
         setTranslateError(null);
+        setShareData(null);
+        setMenuIdx(null);
+        setSelection(null);
         setCurrentIdx(0);
         currentIdxRef.current = 0;
         lastSavedIdxRef.current = null;
@@ -336,6 +362,65 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         }
         void loadList();
     }, [flushProgress, loadList]);
+
+    // ── Share card (paragraph menu + text selection) ────────────────────────
+    // Full paragraphs keep their stored translation; a selected sub-range has
+    // no honest translation, so its card shows the source text + article title.
+    const shareParagraph = useCallback((paragraph: ArticleParagraph) => {
+        if (!article) return;
+        setShareData({
+            kind: 'article',
+            text: paragraph.text,
+            translation: usableTranslation(paragraph),
+            source: article.title || t('reader.untitled'),
+        });
+        setMenuIdx(null);
+        setSelection(null);
+        window.getSelection()?.removeAllRanges();
+    }, [article, t]);
+
+    const shareSelection = useCallback((target = selection) => {
+        if (!article || !target) return;
+        setShareData({
+            kind: 'selection',
+            text: target.text,
+            source: article.title || t('reader.untitled'),
+        });
+        setMenuIdx(null);
+        setSelection(null);
+        window.getSelection()?.removeAllRanges();
+    }, [article, selection, t]);
+
+    // Turn the browser selection into a small floating action anchored to the
+    // selected text. Called on mouseup inside the scroll container; a collapsed
+    // selection (a plain word click) clears the chip.
+    const captureSelection = useCallback(() => {
+        const browserSelection = window.getSelection();
+        const text = browserSelection?.toString().replace(/\s+/g, ' ').trim() ?? '';
+        if (!browserSelection || browserSelection.rangeCount === 0 || !text) {
+            setSelection(null);
+            return;
+        }
+        const range = browserSelection.getRangeAt(0);
+        const node = range.commonAncestorContainer;
+        const element = node instanceof Element ? node : node.parentElement;
+        const host = element?.closest<HTMLElement>('[data-paragraph-index]');
+        if (!host) {
+            setSelection(null);
+            return;
+        }
+        const idx = Number(host.dataset.paragraphIndex);
+        if (!Number.isInteger(idx) || idx < 0) {
+            setSelection(null);
+            return;
+        }
+        const rect = range.getBoundingClientRect();
+        const maxLeft = Math.max(12, window.innerWidth - 148);
+        const left = Math.min(Math.max(12, rect.left), maxLeft);
+        let top = rect.bottom + 8;
+        if (top > window.innerHeight - 56) top = Math.max(12, rect.top - 44);
+        setSelection({ idx, text, left, top });
+    }, []);
 
     // Restore the saved paragraph once the detail is on screen. Toast names the
     // paragraph number a reader can see (1-based).
@@ -904,6 +989,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
+                onMouseUp={captureSelection}
                 data-testid="reader-scroll"
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar"
             >
@@ -969,17 +1055,55 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                             key={paragraph.idx}
                                             data-paragraph-index={paragraph.idx}
                                             data-testid={`reader-paragraph-${paragraph.idx}`}
-                                            className={`rounded-2xl border px-4 py-4 sm:px-5 transition-colors duration-200 ${
+                                            className={`relative group rounded-2xl border px-4 py-4 sm:px-5 transition-colors duration-200 ${
                                                 currentIdx === paragraph.idx
                                                     ? 'border-white/10 bg-zinc-900/50'
                                                     : 'border-transparent'
                                             }`}
                                         >
+                                            {/* Paragraph actions: hover/focus on desktop,
+                                                always visible for touch pointers. The menu
+                                                is the discoverable path to "share paragraph";
+                                                selecting text also raises a floating chip. */}
+                                            <div className="absolute right-1.5 top-2.5 z-10">
+                                                <button
+                                                    type="button"
+                                                    data-testid={`reader-paragraph-menu-button-${paragraph.idx}`}
+                                                    aria-label={t('share.paragraphMenuAria', { index: paragraph.idx + 1 })}
+                                                    aria-expanded={menuIdx === paragraph.idx}
+                                                    onClick={() => setMenuIdx(menuIdx === paragraph.idx ? null : paragraph.idx)}
+                                                    className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100 [@media(pointer:coarse)]:opacity-100"
+                                                >
+                                                    <MoreHorizontal className="w-4 h-4" />
+                                                </button>
+                                                {menuIdx === paragraph.idx && (
+                                                    <>
+                                                        <div
+                                                            className="fixed inset-0 z-10"
+                                                            onClick={() => setMenuIdx(null)}
+                                                        />
+                                                        <div
+                                                            data-testid={`reader-paragraph-menu-${paragraph.idx}`}
+                                                            className="absolute right-0 top-9 z-20 w-44 p-1 rounded-xl bg-zinc-900/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/60"
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                data-testid={`reader-share-paragraph-${paragraph.idx}`}
+                                                                onClick={() => shareParagraph(paragraph)}
+                                                                className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-left text-sm text-zinc-300 hover:text-zinc-100 hover:bg-white/5 transition-colors"
+                                                            >
+                                                                <Share2 className="w-4 h-4" />
+                                                                {t('share.menu.paragraph')}
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
                                             <p
                                                 data-lookup-context={paragraph.text}
                                                 data-lookup-start={paragraph.idx}
                                                 lang={article.lang || undefined}
-                                                className="text-base sm:text-[17px] leading-relaxed text-zinc-200 break-words"
+                                                className="pr-8 text-base sm:text-[17px] leading-relaxed text-zinc-200 break-words"
                                             >
                                                 <ClickableWords
                                                     text={paragraph.text}
@@ -996,7 +1120,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                                 <p
                                                     data-testid={`reader-translation-${paragraph.idx}`}
                                                     lang={article.targetLang || undefined}
-                                                    className="mt-2 text-[15px] leading-relaxed text-zinc-400 break-words"
+                                                    className="mt-2 pr-8 text-[15px] leading-relaxed text-zinc-400 break-words"
                                                 >
                                                     {paragraph.translation}
                                                 </p>
@@ -1048,6 +1172,23 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                     </div>
                 </div>
             )}
+            {selection && !shareData && (
+                <button
+                    type="button"
+                    data-testid="reader-share-selection-fab"
+                    onClick={() => shareSelection()}
+                    style={{ left: selection.left, top: selection.top }}
+                    className="fixed z-[95] inline-flex items-center gap-1.5 h-8 pl-2.5 pr-3 rounded-lg bg-zinc-100 text-zinc-900 text-xs font-semibold shadow-xl shadow-black/40 active:scale-[0.98] transition-transform duration-150"
+                >
+                    <Share2 className="w-3.5 h-3.5" />
+                    {t('share.action')}
+                </button>
+            )}
+            <ShareCardDialog
+                isOpen={shareData !== null}
+                data={shareData}
+                onClose={() => setShareData(null)}
+            />
         </div>
     );
 };

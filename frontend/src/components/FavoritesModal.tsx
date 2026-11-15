@@ -1,10 +1,12 @@
 import React from 'react';
-import { X, Play, Trash2, Star, Download, FileSpreadsheet } from 'lucide-react';
+import { X, Play, Trash2, Star, Download, FileSpreadsheet, Share2 } from 'lucide-react';
 import { exportAnkiTsv, exportCsv } from '../lib/exporter';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { FavoriteItem } from '../lib/favorites';
+import { ShareCardDialog } from './ShareCardDialog';
+import type { ShareCardData } from '../lib/shareCard';
 
 interface FavoritesModalProps {
     isOpen: boolean;
@@ -49,6 +51,7 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
     const { t, formatMonth } = useI18n();
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
     const [playingFav, setPlayingFav] = useState<{ videoId: string, start: number } | null>(null);
+    const [shareData, setShareData] = useState<ShareCardData | null>(null);
 
     // Group the favorites
     const groups = useMemo(() => {
@@ -77,7 +80,35 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
         }));
     };
 
+    // A favorite only stores the video id and position, so the card names the
+    // platform/time; local episodes are labelled as such instead of pretending
+    // to be YouTube. Text/translation are exactly what the favorite holds.
+    const shareFavorite = (fav: FavoriteItem) => {
+        const time = formatTime(fav.start);
+        const source = fav.videoId.length > 11
+            ? t('share.source.local', { time })
+            : t('share.source.video', { time });
+        if (fav.type === 'vocabulary') {
+            setShareData({
+                kind: 'vocabulary',
+                word: fav.en_text,
+                wordTranslation: fav.zh_text || undefined,
+                text: fav.context_en || '',
+                translation: fav.context_zh || undefined,
+                source,
+            });
+            return;
+        }
+        setShareData({
+            kind: 'sentence',
+            text: fav.en_text,
+            translation: fav.zh_text || undefined,
+            source,
+        });
+    };
+
     return (
+        <>
         <AnimatePresence>
             {isOpen && (
                 <motion.div
@@ -93,22 +124,23 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
                         exit={{ y: 12, scale: 0.99, opacity: 0, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }}
                         transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.9 }}
                         className="w-full flex flex-col h-full mx-auto max-w-5xl bg-zinc-900/80 backdrop-blur-2xl border-x border-white/10"
+                        data-testid="favorites-modal"
                     >
-                        <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0">
-                            <h2 className="text-2xl font-semibold text-zinc-100 tracking-tight">{t('favorites.title')}</h2>
-                            <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 sm:px-6 py-4 sm:py-5 border-b border-white/5 shrink-0">
+                            <h2 className="text-xl sm:text-2xl font-semibold text-zinc-100 tracking-tight">{t('favorites.title')}</h2>
+                            <div className="flex items-center gap-2 ml-auto">
                                 {favorites.length > 0 && (
                                     <>
                                         <button
                                             onClick={() => exportAnkiTsv(favorites)}
-                                            className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors"
+                                            className="inline-flex items-center gap-2 h-9 px-3 sm:px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors"
                                             title={t('favorites.exportAnkiTitle')}
                                         >
                                             <Download className="w-4 h-4" /> {t('favorites.exportAnki')}
                                         </button>
                                         <button
                                             onClick={() => exportCsv(favorites)}
-                                            className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors"
+                                            className="inline-flex items-center gap-2 h-9 px-3 sm:px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors"
                                             title={t('favorites.exportCsvTitle')}
                                         >
                                             <FileSpreadsheet className="w-4 h-4" /> {t('favorites.exportCsv')}
@@ -121,7 +153,7 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
                             </div>
                         </div>
 
-                        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-6">
+                        <div className="p-4 sm:p-6 overflow-y-auto flex-1 custom-scrollbar space-y-6">
                             {favorites.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-16 text-center">
                                     <Star className="w-10 h-10 text-zinc-700 mb-3" />
@@ -205,6 +237,15 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
                                                                         <Play className="w-4 h-4 fill-current" />
                                                                     </button>
                                                                     <button
+                                                                        onClick={() => shareFavorite(fav)}
+                                                                        data-testid={`favorite-share-${fav.id}`}
+                                                                        className="p-3 bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 rounded-xl transition-colors"
+                                                                        title={t('share.action')}
+                                                                        aria-label={t('share.action')}
+                                                                    >
+                                                                        <Share2 className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
                                                                         onClick={() => onRemoveFavorite(fav.id)}
                                                                         className="p-3 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 text-red-400 rounded-xl transition-colors"
                                                                         title={t('favorites.delete')}
@@ -244,5 +285,12 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({ isOpen, onClose,
                 </motion.div>
             )}
         </AnimatePresence>
+
+        <ShareCardDialog
+            isOpen={shareData !== null}
+            data={shareData}
+            onClose={() => setShareData(null)}
+        />
+        </>
     );
 };

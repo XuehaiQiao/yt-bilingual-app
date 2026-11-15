@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Volume2, Star, Eye, EyeOff, CalendarCheck, Check } from 'lucide-react';
+import { Search, Volume2, Star, Eye, EyeOff, CalendarCheck, Check, Share2 } from 'lucide-react';
 import {
     fetchSentenceLevels, fetchSentenceLevel, segToPlain,
     isDayDone, setDayDone, levelDoneDays, loadZhHidden, saveZhHidden,
@@ -11,6 +11,8 @@ import {
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { SentenceText } from './SentenceText';
+import { ShareCardDialog } from './ShareCardDialog';
+import type { ShareCardData } from '../lib/shareCard';
 import { speak } from '../lib/tts';
 
 interface SentenceViewProps {
@@ -45,6 +47,7 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
     const [query, setQuery] = useState('');
     const [zhHidden, setZhHidden] = useState(loadZhHidden);
     const [doneTick, setDoneTick] = useState(0); // 勾选后强制重算进度
+    const [shareData, setShareData] = useState<ShareCardData | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => { fetchSentenceLevels().then(setLevels).catch(() => {}); }, []);
@@ -72,6 +75,14 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
     void doneTick; // 依赖 doneTick 触发重算
 
     const toggleZh = () => { const v = !zhHidden; setZhHidden(v); saveZhHidden(v); };
+    const shareSentence = (s: Sentence) => {
+        setShareData({
+            kind: 'sentence',
+            text: segToPlain(s.seg),
+            translation: s.zh,
+            source: t('share.source.sentencePack', { level: level?.title ?? '', n: s.n }),
+        });
+    };
     const gotoToday = () => {
         if (!level) return;
         const next = days.find(g => !isDayDone(levelId, g.d))?.d ?? days[0]?.d;
@@ -223,6 +234,11 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                                                                     className={`p-1.5 rounded-lg transition-colors hover:bg-white/5 ${fav ? 'text-amber-400' : 'text-zinc-500 hover:text-amber-400'}`}>
                                                                     <Star className="w-4 h-4" fill={fav ? 'currentColor' : 'none'} />
                                                                 </button>
+                                                                <button onClick={() => shareSentence(s)} data-testid={`share-sentence-${levelId}-${s.n}`}
+                                                                    title={t('share.action')} aria-label={t('share.action')}
+                                                                    className="p-1.5 rounded-lg text-zinc-500 hover:text-blue-400 hover:bg-white/5 transition-colors">
+                                                                    <Share2 className="w-4 h-4" />
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -236,6 +252,12 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                     </div>
                 )}
             </div>
+
+            <ShareCardDialog
+                isOpen={shareData !== null}
+                data={shareData}
+                onClose={() => setShareData(null)}
+            />
         </div>
     );
 };

@@ -12,6 +12,7 @@
 | `progress.ts` | 每视频播放进度记忆（续播 + "已学 N%"），上限 200 条 |
 | `events.ts` | 观看事件上报（M5 / specs/015）：只按播放位置增量计 `watchedSeconds`（暂停/拖动不计），内存队列 ≤50 条批量 POST `/api/events`，`clientEventId` 保证重试幂等；每 60s 播放 / 暂停 / 切后台时 flush（keepalive），失败静默重试一次 |
 | `exporter.ts` | 收藏导出：Anki TSV（front/back/tags）与完整 CSV |
+| `shareCard.ts` | 分享卡（计划 D-6）：纯 Canvas 生成 1080×1440 PNG（系统字体栈、深色品牌卡、正文最多 6 行/生词卡 4 行、超出省略、空数据守卫）、`canvasToPngBlob`/`downloadBlob`/`buildShareText`/`copyShareText`；不请求网络、不落服务端 |
 | `favorites.ts` | 收藏按条 API（M1 ④）：`FavoriteItem` 类型、`fetchFavorites/addFavorite/removeFavorite`（后端按条写入、幂等）；`replaceAllFavorites` 仅为旧整文件 PUT 兼容路径，App 不再调用 |
 | `review.ts` | 复习引擎客户端（M2 / specs/013）：队列/统计/作答/暂停的类型与四个 API 函数；走 `apiFetch`，按当前翻译目标语言取词，失败抛带 HTTP 状态的 `ReviewApiError` |
 | `quiz.ts` | 理解题客户端（M3 / specs/014）：lesson/题目/作答/结果类型与 `startLesson/getQuestions/answerQuestion/getResult`；走 `apiFetch`（start 自动带 `targetLang`），失败抛带 HTTP 状态的 `QuizApiError` |
