@@ -1517,7 +1517,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         </div>
         <div className="flex items-center gap-2 min-w-0">
           <h1
-            className="text-lg sm:text-xl min-w-0 truncate font-semibold text-zinc-100 cursor-pointer tracking-tight hover:text-white transition-colors"
+            className="text-lg sm:text-xl shrink-0 whitespace-nowrap font-semibold text-zinc-100 cursor-pointer tracking-tight hover:text-white transition-colors"
             onClick={handleGoHome}
           >
             {t('brand.name')}
@@ -1613,7 +1613,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               className="inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-lg bg-brand/10 hover:bg-brand/15 border border-brand/20 text-xs font-medium text-brand-300 hover:text-brand-400 transition-colors shrink-0"
             >
               <LogIn className="w-4 h-4" />
-              <span>{t('topbar.guestLogin')}</span>
+              <span className="hidden sm:inline">{t('topbar.guestLogin')}</span>
             </button>
           ) : (
             <>
