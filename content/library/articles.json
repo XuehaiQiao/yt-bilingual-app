@@ -1,0 +1,15 @@
+{
+ "_meta": {
+  "version": 1,
+  "updatedAt": "2026-11-16",
+  "count": 3,
+  "author": "LinguaTrek 编辑部",
+  "license": "原创，免费使用",
+  "note": "每篇 250–350 词，逐段英文 + 中文译文；运行时不调用任何大模型。"
+ },
+ "articles": [
+  "ocean-noise",
+  "free-app-hidden-cost",
+  "case-for-doing-nothing"
+ ]
+}

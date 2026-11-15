@@ -1,0 +1,1038 @@
+{
+ "id": "bbc-learning-different-generations",
+ "youtubeId": "h-NZcQF7jgI",
+ "title": "Learning from different generations (6 Minute English)",
+ "channel": "BBC Learning English",
+ "duration": 379,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi_webp/h-NZcQF7jgI/maxresdefault.webp",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.16,
+   "end": 1.02,
+   "en_text": "Hi Georgie.",
+   "zh_text": "嗨，乔治。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 1.02,
+   "end": 1.88,
+   "en_text": "Hi Phil.",
+   "zh_text": "嗨，菲尔。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 1.88,
+   "end": 9.0,
+   "en_text": "So, Georgie, do you often spend time with people who are much older than you or much younger than you?",
+   "zh_text": "那么，乔治，你经常和比你年长很多或比你年轻很多的人相处吗？",
+   "highlights": [
+    {
+     "en_word": "spend time with",
+     "zh_word": "相处",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "start": 9.0,
+   "end": 16.8,
+   "en_text": "I do, actually, because I'm in a choir, so there's quite a wide range of ages – lots of older people, lots of younger people.",
+   "zh_text": "其实是的，因为我参加了一个合唱团，所以年龄跨度相当大——有很多年长的人，也有很多年轻的人。",
+   "highlights": [
+    {
+     "en_word": "wide range of",
+     "zh_word": "跨度相当大",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "start": 16.8,
+   "end": 21.04,
+   "en_text": "We can call an age group of people a generation.",
+   "zh_text": "我们可以把某个年龄段的一群人称为一代人。",
+   "highlights": [
+    {
+     "en_word": "age group",
+     "zh_word": "年龄段",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "start": 21.04,
+   "end": 28.0,
+   "en_text": "And you might feel that it's difficult to understand or agree with people from a different generation.",
+   "zh_text": "你可能会觉得很难理解或认同来自不同代际的人。",
+   "highlights": [
+    {
+     "en_word": "agree with",
+     "zh_word": "认同",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "start": 28.0,
+   "end": 41.12,
+   "en_text": "Today on 6 Minute English, we're going to be finding out about a project that is gathering together the oldest people – that's those that are retired – with the youngest, and that's children who attend nursery.",
+   "zh_text": "今天在《六分钟英语》节目中，我们将了解一个项目，它把最年长的人——也就是那些退休的人——和最年幼的人，也就是上托儿所的孩子们，聚集在一起。",
+   "highlights": [
+    {
+     "en_word": "gathering together",
+     "zh_word": "聚集在一起",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "retired",
+     "zh_word": "退休",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "start": 41.12,
+   "end": 47.58,
+   "en_text": "And we'll be asking the question, What can we learn from different generations?",
+   "zh_text": "我们还会提出这个问题：我们能从不同代际的人身上学到什么？",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 50.32,
+   "end": 53.24,
+   "en_text": "Let's start with our quiz question, Georgie.",
+   "zh_text": "让我们从我们的测验问题开始吧，乔治。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 53.24,
+   "end": 58.76,
+   "en_text": "What generation would someone born in 1982 be in?",
+   "zh_text": "1982年出生的人属于哪一代？",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 58.76,
+   "end": 66.98,
+   "en_text": "Is it: a) Generation X, b) Millennial, or c) Gen Z.",
+   "zh_text": "是：a) X世代，b) 千禧一代，还是c) Z世代。",
+   "highlights": [
+    {
+     "en_word": "Millennial",
+     "zh_word": "千禧一代",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "start": 66.98,
+   "end": 70.74,
+   "en_text": "Phil, I'm going to go with Generation X.",
+   "zh_text": "菲尔，我选X世代。",
+   "highlights": [
+    {
+     "en_word": "go with",
+     "zh_word": "选",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "start": 70.74,
+   "end": 70.92,
+   "en_text": "OK.",
+   "zh_text": "好的。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 70.92,
+   "end": 74.68,
+   "en_text": "Well, we will find out the answer at the end of the programme.",
+   "zh_text": "好吧，我们会在节目结束时揭晓答案。",
+   "highlights": [
+    {
+     "en_word": "find out",
+     "zh_word": "揭晓",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "start": 74.68,
+   "end": 74.85,
+   "en_text": "OK.",
+   "zh_text": "好的。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 74.85,
+   "end": 82.16,
+   "en_text": "Phil, so you said we're going to look at a project which gets small children interacting with older retired people.",
+   "zh_text": "菲尔，你刚才说我们要看一个项目，它让小孩子与年长的退休人士互动。",
+   "highlights": [
+    {
+     "en_word": "interacting with",
+     "zh_word": "互动",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 17,
+   "start": 82.16,
+   "end": 83.8,
+   "en_text": "So, how does it work?",
+   "zh_text": "那么，它是怎么运作的呢？",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 83.8,
+   "end": 91.08,
+   "en_text": "Well, in Chester, in the northwest of England, a nursery has opened up in a retirement village.",
+   "zh_text": "在英格兰西北部的切斯特，一家托儿所在一个退休社区里开办了。",
+   "highlights": [
+    {
+     "en_word": "opened up",
+     "zh_word": "开办",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "start": 91.08,
+   "end": 98.28,
+   "en_text": "There's the usual nursery staff to look after the children, but the older residents can join in for activities as well.",
+   "zh_text": "有普通的托儿所员工照看孩子，但年长的居民也可以一起参加活动。",
+   "highlights": [
+    {
+     "en_word": "look after",
+     "zh_word": "照看",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "join in",
+     "zh_word": "参加",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "start": 98.28,
+   "end": 112.56,
+   "en_text": "There's a library, a cafeteria and a garden for the children and the older people to share, and some of the older people or 'grand-friends', as the children call them, lead some of the activities, like dance or crafts.",
+   "zh_text": "有一个图书馆、一个自助餐厅和一个花园供孩子和老人共享，一些老人——或者孩子们口中的“祖辈朋友”——会带领一些活动，比如舞蹈或手工。",
+   "highlights": [
+    {
+     "en_word": "lead",
+     "zh_word": "带领",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "crafts",
+     "zh_word": "手工",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "start": 112.56,
+   "end": 117.14,
+   "en_text": "And presenter of BBC World Service podcast People Fixing the World,",
+   "zh_text": "以及BBC国际频道播客《改变世界的人们》的主持人，",
+   "highlights": [
+    {
+     "en_word": "presenter",
+     "zh_word": "主持人",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "podcast",
+     "zh_word": "播客",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 22,
+   "start": 117.14,
+   "end": 123.04,
+   "en_text": "Myra Anubi, went to visit the special nursery and spoke to some of the participants.",
+   "zh_text": "迈拉·阿努比，去参观了这家特殊的托儿所，并与一些参与者交谈。",
+   "highlights": [
+    {
+     "en_word": "nursery",
+     "zh_word": "托儿所",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "participants",
+     "zh_word": "参与者",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 23,
+   "start": 123.04,
+   "end": 128.84,
+   "en_text": "Ian was once a fighter pilot, and getting involved in the nursery has helped him fill a void.",
+   "zh_text": "伊恩曾经是一名战斗机飞行员，而参与托儿所的事务帮助他填补了空虚。",
+   "highlights": [
+    {
+     "en_word": "fighter pilot",
+     "zh_word": "战斗机飞行员",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "fill a void",
+     "zh_word": "填补了空虚",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "start": 128.84,
+   "end": 131.44,
+   "en_text": "It was after my wife died last year.",
+   "zh_text": "那是在我妻子去年去世之后。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 131.44,
+   "end": 134.76,
+   "en_text": "It seemed I had a big, big hole to fill.",
+   "zh_text": "似乎我有一个很大很大的空洞需要填补。",
+   "highlights": [
+    {
+     "en_word": "hole to fill",
+     "zh_word": "空洞需要填补",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "start": 134.76,
+   "end": 140.8,
+   "en_text": "And the people down in the nursery, they phoned me up and said,",
+   "zh_text": "托儿所里的人，他们打电话给我说，",
+   "highlights": [
+    {
+     "en_word": "phoned me up",
+     "zh_word": "打电话给我",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 27,
+   "start": 140.8,
+   "end": 142.2,
+   "en_text": "We were doing such and such a thing.",
+   "zh_text": "我们正在做这样那样的事情。",
+   "highlights": [
+    {
+     "en_word": "such and such",
+     "zh_word": "这样那样",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "start": 142.2,
+   "end": 144.64,
+   "en_text": "Why don't you come and join us?",
+   "zh_text": "你为什么不来加入我们呢？",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 144.64,
+   "end": 146.72,
+   "en_text": "And that's what I've been doing.",
+   "zh_text": "而这就是我一直在做的事。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 146.72,
+   "end": 150.04,
+   "en_text": "So, yes, and I've enjoyed it.",
+   "zh_text": "所以，是的，我很享受这件事。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 150.04,
+   "end": 154.6,
+   "en_text": "And I find it very interesting to see how they develop.",
+   "zh_text": "而且我觉得看到他们如何成长非常有趣。",
+   "highlights": [
+    {
+     "en_word": "develop",
+     "zh_word": "成长",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 32,
+   "start": 154.6,
+   "end": 159.62,
+   "en_text": "One of the things I heard from the grapevine is that you help the children make paper planes.",
+   "zh_text": "我从小道消息听说的一件事是，你帮助孩子们制作纸飞机。",
+   "highlights": [
+    {
+     "en_word": "heard from the grapevine",
+     "zh_word": "从小道消息听说",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "paper planes",
+     "zh_word": "纸飞机",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 33,
+   "start": 159.62,
+   "end": 160.38,
+   "en_text": "That's right.",
+   "zh_text": "没错。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 160.38,
+   "end": 165.8,
+   "en_text": "Myra says that the nursery helped Ian fill a void after his wife sadly died.",
+   "zh_text": "迈拉说，在伊恩的妻子不幸去世后，托儿所帮助他填补了空虚。",
+   "highlights": [
+    {
+     "en_word": "fill a void",
+     "zh_word": "填补了空虚",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 35,
+   "start": 165.8,
+   "end": 170.44,
+   "en_text": "If you fill a void, you find something to help you feel better after a loss.",
+   "zh_text": "如果你填补空虚，你就是在失去之后找到某种东西来帮助你感觉好一些。",
+   "highlights": [
+    {
+     "en_word": "fill a void",
+     "zh_word": "填补空虚",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "loss",
+     "zh_word": "失去",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 36,
+   "start": 170.44,
+   "end": 180.72,
+   "en_text": "Ian explains that after his wife died, staff at the nursery would phone him to tell him about the daily activities, which he refers to as such and such.",
+   "zh_text": "伊恩解释说，在他妻子去世后，托儿所的工作人员会打电话告诉他日常活动的情况，他称之为这样那样。",
+   "highlights": [
+    {
+     "en_word": "refers to",
+     "zh_word": "称之为",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "such and such",
+     "zh_word": "这样那样",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 37,
+   "start": 180.72,
+   "end": 186.16,
+   "en_text": "And that's an expression that we use to talk about something without giving a specific example.",
+   "zh_text": "这是一个我们用来谈论某事而不给出具体例子的表达。",
+   "highlights": [
+    {
+     "en_word": "expression",
+     "zh_word": "表达",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 38,
+   "start": 186.16,
+   "end": 196.64,
+   "en_text": "It sounds like Ian has enjoyed spending time with the children at the nursery, and Myra tells him she's heard from the grapevine that he's been teaching the children to make paper planes.",
+   "zh_text": "听起来伊恩很享受在托儿所和孩子们共度的时光，迈拉告诉他，她从小道消息听说他一直在教孩子们制作纸飞机。",
+   "highlights": [
+    {
+     "en_word": "heard from the grapevine",
+     "zh_word": "从小道消息听说",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "paper planes",
+     "zh_word": "纸飞机",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 39,
+   "start": 196.64,
+   "end": 202.18,
+   "en_text": "Yes, 'hear from the grapevine' is an expression, meaning that something is a rumour.",
+   "zh_text": "是的，'hear from the grapevine'是一个表达，意思是某事是一个传闻。",
+   "highlights": [
+    {
+     "en_word": "expression",
+     "zh_word": "表达",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "rumour",
+     "zh_word": "传闻",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 40,
+   "start": 202.18,
+   "end": 204.86,
+   "en_text": "And we also say 'hear on the grapevine'.",
+   "zh_text": "我们也说'hear on the grapevine'。",
+   "highlights": [
+    {
+     "en_word": "hear on the grapevine",
+     "zh_word": "hear on the grapevine",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 41,
+   "start": 204.86,
+   "end": 208.62,
+   "en_text": "Well, this nursery sounds like a really lovely project, Phil.",
+   "zh_text": "嗯，这个托儿所听起来真是个非常美好的项目，菲尔。",
+   "highlights": [
+    {
+     "en_word": "nursery",
+     "zh_word": "托儿所",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 42,
+   "start": 208.62,
+   "end": 212.26,
+   "en_text": "What is the impact it's having on the older and younger people?",
+   "zh_text": "它对老年人和年轻人产生了什么影响？",
+   "highlights": [
+    {
+     "en_word": "impact",
+     "zh_word": "影响",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 43,
+   "start": 212.26,
+   "end": 224.66,
+   "en_text": "Well, the charity Ready Generations, which runs the nursery, says it works with universities to study the effects of mixing generations on health and wellbeing, and they say they've seen positive results.",
+   "zh_text": "嗯，经营这家托儿所的慈善机构“Ready Generations”表示，它与大学合作，研究不同代际混合对健康和福祉的影响，他们说已经看到了积极的结果。",
+   "highlights": [
+    {
+     "en_word": "wellbeing",
+     "zh_word": "福祉",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "mixing generations",
+     "zh_word": "代际混合",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 44,
+   "start": 224.66,
+   "end": 240.58,
+   "en_text": "And there have been studies around the world on projects that encourage different generations to mix, and they found that they can help reduce loneliness, improve how healthy and well people feel, and even boost learning and creativity.",
+   "zh_text": "世界各地都有针对鼓励不同代际交流的项目的研究，他们发现这些项目有助于减少孤独感、改善人们的健康和良好感受，甚至能促进学习和创造力。",
+   "highlights": [
+    {
+     "en_word": "boost",
+     "zh_word": "促进",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "loneliness",
+     "zh_word": "孤独感",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 45,
+   "start": 240.58,
+   "end": 250.38,
+   "en_text": "People Fixing the World host Myra spoke to Liz Ludden, co-founder of the nursery in Chester, about the differences that she's noticed since it opened.",
+   "zh_text": "《改变世界的人们》节目主持人迈拉与切斯特这家托儿所的共同创始人莉兹·卢登交谈，聊了聊她自托儿所开办以来所注意到的变化。",
+   "highlights": [
+    {
+     "en_word": "co-founder",
+     "zh_word": "共同创始人",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 46,
+   "start": 250.38,
+   "end": 255.62,
+   "en_text": "And as I realised, these interactions also seem to be breaking down stereotypes.",
+   "zh_text": "而我意识到，这些互动似乎也在打破刻板印象。",
+   "highlights": [
+    {
+     "en_word": "breaking down",
+     "zh_word": "打破",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "stereotypes",
+     "zh_word": "刻板印象",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 47,
+   "start": 255.62,
+   "end": 264.3,
+   "en_text": "Your first thought would be how lively and energetic young children can be, and what we found is so can older people.",
+   "zh_text": "你首先想到的会是幼儿能有多么活泼好动，而我们发现老年人也是如此。",
+   "highlights": [
+    {
+     "en_word": "lively",
+     "zh_word": "活泼",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "energetic",
+     "zh_word": "好动",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 48,
+   "start": 264.3,
+   "end": 267.9,
+   "en_text": "And so sometimes, you know, it's the older people that we're saying,",
+   "zh_text": "所以有时候，你知道，反而是老年人，我们会说，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 267.9,
+   "end": 270.34,
+   "en_text": "Can we just calm this down a little bit?",
+   "zh_text": "我们能不能稍微安静一点？",
+   "highlights": [
+    {
+     "en_word": "calm this down",
+     "zh_word": "安静一点",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 50,
+   "start": 270.34,
+   "end": 273.46,
+   "en_text": "Myra says the nursery breaks down stereotypes.",
+   "zh_text": "迈拉说这家托儿所打破了刻板印象。",
+   "highlights": [
+    {
+     "en_word": "breaks down",
+     "zh_word": "打破",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "stereotypes",
+     "zh_word": "刻板印象",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 51,
+   "start": 273.46,
+   "end": 278.62,
+   "en_text": "This means it provides evidence that common beliefs about a group of people are not true.",
+   "zh_text": "这意味着它提供了证据，证明关于某一群体的普遍看法并不正确。",
+   "highlights": [
+    {
+     "en_word": "common beliefs",
+     "zh_word": "普遍看法",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 52,
+   "start": 278.62,
+   "end": 290.1,
+   "en_text": "For example, a stereotype about generations is that younger people are lively, meaning they're loud and have lots of energy, whereas older people are not that lively.",
+   "zh_text": "例如，关于代际的一个刻板印象是年轻人很活泼，意思是他们吵闹且精力充沛，而老年人则不那么活泼。",
+   "highlights": [
+    {
+     "en_word": "stereotype",
+     "zh_word": "刻板印象",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "whereas",
+     "zh_word": "而",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 53,
+   "start": 290.1,
+   "end": 290.52,
+   "en_text": "Right.",
+   "zh_text": "对。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 290.52,
+   "end": 298.22,
+   "en_text": "But in the nursery, Liz says it's often the older people who have lots of energy and are being noisy rather than the children.",
+   "zh_text": "但在托儿所里，莉兹说往往是老年人精力充沛、吵吵闹闹，而不是孩子们。",
+   "highlights": [
+    {
+     "en_word": "noisy",
+     "zh_word": "吵吵闹闹",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 55,
+   "start": 298.22,
+   "end": 301.78,
+   "en_text": "The staff even have to tell them to calm down sometimes!",
+   "zh_text": "工作人员有时甚至不得不让他们安静下来！",
+   "highlights": [
+    {
+     "en_word": "calm down",
+     "zh_word": "安静下来",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 56,
+   "start": 301.78,
+   "end": 305.54,
+   "en_text": "So, Georgie, is that something that you found in your choir?",
+   "zh_text": "那么，乔治，这是你在你的合唱团里发现的情况吗？",
+   "highlights": [
+    {
+     "en_word": "choir",
+     "zh_word": "合唱团",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 57,
+   "start": 305.54,
+   "end": 306.54,
+   "en_text": "Actually, yes.",
+   "zh_text": "实际上，是的。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 306.54,
+   "end": 309.26,
+   "en_text": "The older people in my choir are big characters.",
+   "zh_text": "我合唱团里的老年人都是很有个性的人物。",
+   "highlights": [
+    {
+     "en_word": "big characters",
+     "zh_word": "很有个性的人物",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 59,
+   "start": 309.26,
+   "end": 312.82,
+   "en_text": "It's often them who are dragging us all to the pub...!",
+   "zh_text": "往往是他们把我们所有人拖去酒吧……！",
+   "highlights": [
+    {
+     "en_word": "dragging",
+     "zh_word": "拖",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 60,
+   "start": 312.82,
+   "end": 312.98,
+   "en_text": "OK.",
+   "zh_text": "好的。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 312.98,
+   "end": 316.66,
+   "en_text": "Georgie, I think it's time to look at the answer for that question.",
+   "zh_text": "乔治，我想是时候看看那个问题的答案了。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 316.66,
+   "end": 323.06,
+   "en_text": "I asked if someone was born in 1982, which generation would they be from?",
+   "zh_text": "我问过，如果某人出生在1982年，他们属于哪一代人？",
+   "highlights": [
+    {
+     "en_word": "generation",
+     "zh_word": "代",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 63,
+   "start": 323.06,
+   "end": 325.66,
+   "en_text": "I said Generation X.",
+   "zh_text": "我说是X世代。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 325.66,
+   "end": 325.84,
+   "en_text": "OK.",
+   "zh_text": "好的。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 325.84,
+   "end": 331.14,
+   "en_text": "Well, actually, I'm afraid the answer was b) – they're a Millennial, just like you!",
+   "zh_text": "嗯，其实，恐怕答案是b）——他们是千禧一代，就像你一样！",
+   "highlights": [
+    {
+     "en_word": "Millennial",
+     "zh_word": "千禧一代",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 66,
+   "start": 331.14,
+   "end": 332.61,
+   "en_text": "Ah...!",
+   "zh_text": "啊……！",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 332.61,
+   "end": 333.34,
+   "en_text": "OK.",
+   "zh_text": "好的。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 333.34,
+   "end": 341.26,
+   "en_text": "Let's recap the vocabulary we learned in this programme, starting with 'generation', which is a group of people who are of a similar age.",
+   "zh_text": "让我们回顾一下在这个节目中学到的词汇，从“generation（一代人）”开始，它指的是年龄相仿的一群人。",
+   "highlights": [
+    {
+     "en_word": "recap",
+     "zh_word": "回顾",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "generation",
+     "zh_word": "一代人",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 69,
+   "start": 341.26,
+   "end": 347.42,
+   "en_text": "'Fill a void' means find something to help you feel better after experiencing loss.",
+   "zh_text": "“Fill a void（填补空虚）”意思是找到某种东西来帮助你在经历失去后感觉好一些。",
+   "highlights": [
+    {
+     "en_word": "Fill a void",
+     "zh_word": "填补空虚",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 70,
+   "start": 347.42,
+   "end": 352.34,
+   "en_text": "'Such and such' is a way to talk about something without giving a specific example.",
+   "zh_text": "“Such and such（某某）”是一种谈论某事而不给出具体例子的方式。",
+   "highlights": [
+    {
+     "en_word": "Such and such",
+     "zh_word": "某某",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 71,
+   "start": 352.34,
+   "end": 356.9,
+   "en_text": "If you hear something on the grapevine, you hear a rumour.",
+   "zh_text": "如果你“hear something on the grapevine（听到小道消息）”，就是听到了传闻。",
+   "highlights": [
+    {
+     "en_word": "on the grapevine",
+     "zh_word": "听到小道消息",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "rumour",
+     "zh_word": "传闻",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 72,
+   "start": 356.9,
+   "end": 363.66,
+   "en_text": "The expression 'break down stereotypes' means find evidence that common beliefs about a group of people are untrue.",
+   "zh_text": "“break down stereotypes（打破刻板印象）”这个表达的意思是找到证据证明关于某群人的普遍看法是不真实的。",
+   "highlights": [
+    {
+     "en_word": "break down stereotypes",
+     "zh_word": "打破刻板印象",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 73,
+   "start": 363.66,
+   "end": 367.66,
+   "en_text": "And 'lively' means loud and with lots of energy.",
+   "zh_text": "而“lively（活泼的）”意思是喧闹且充满活力。",
+   "highlights": [
+    {
+     "en_word": "lively",
+     "zh_word": "活泼的",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 74,
+   "start": 367.66,
+   "end": 372.62,
+   "en_text": "Once again, our six minutes are up, but you can test what you've learned with the worksheet on our website.",
+   "zh_text": "又一次，我们的六分钟到了，但你可以用我们网站上的练习表来测试你所学到的内容。",
+   "highlights": [
+    {
+     "en_word": "worksheet",
+     "zh_word": "练习表",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 75,
+   "start": 372.62,
+   "end": 375.18,
+   "en_text": "Go to bbclearningenglish.com.",
+   "zh_text": "请访问bbclearningenglish.com。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 375.18,
+   "end": 377.08,
+   "en_text": "Thanks for joining us and goodbye.",
+   "zh_text": "感谢您的收听，再见。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 377.08,
+   "end": 378.64,
+   "en_text": "Goodbye!",
+   "zh_text": "再见！",
+   "highlights": []
+  }
+ ]
+}

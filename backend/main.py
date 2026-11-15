@@ -43,8 +43,9 @@
 - 除认证路由自己要求的登录（如 `claim-guest`）外，`/api/*` 均允许游客访问；
   游客的估价/处理/查词走更紧的进程内限速（见 ratelimit.py），翻译总量也
   有累计上限（见 routes_videos.py / routes_content.py）。
-- `/api/blog/*` 是**公开只读**内容（与 /api/auth、/health 同列）：不需要登录，
-  中间件也不为它创建游客身份、不下发 `ln_guest`；文章只来自仓库内 Markdown。
+- `/api/blog/*`、`/api/library/*` 是**公开只读**内容（与 /api/auth、/health 同列）：
+  不需要登录，中间件也不为它们创建游客身份、不下发 `ln_guest`；
+  博客只来自仓库内 Markdown，免费资源库只来自仓库内 JSON。
 
 Starlette 里后注册的中间件更靠外层，所以 CORS 放在文件最后注册。
 """
@@ -69,6 +70,7 @@ import routes_content
 import routes_discover
 import routes_events
 import routes_exam
+import routes_library
 import routes_placement
 import routes_quiz
 import routes_reading
@@ -99,9 +101,14 @@ def _is_api_path(path: str) -> bool:
     return path == "/api" or path.startswith("/api/")
 
 
+_PUBLIC_API_PREFIXES = ("/api/blog/", "/api/library/")
+
+
 def _is_public_api_path(path: str) -> bool:
-    """公开只读端点：不需要登录，也不创建游客身份（/api/blog/*）。"""
-    return path == "/api/blog" or path.startswith("/api/blog/")
+    """公开只读端点：不需要登录，也不创建游客身份（/api/blog/*、/api/library/*）。"""
+    if path in ("/api/blog", "/api/library"):
+        return True
+    return any(path.startswith(prefix) for prefix in _PUBLIC_API_PREFIXES)
 
 
 # 维护模式白名单：认证（让管理员/用户能登录）、后台（管理员处置）、健康探针
@@ -249,6 +256,7 @@ app.include_router(routes_discover.router)
 app.include_router(routes_reading.router)
 app.include_router(routes_recommend.router)
 app.include_router(routes_blog.router)
+app.include_router(routes_library.router)
 
 # 必须最后注册：Starlette 后注册的中间件在最外层，401 响应才能带上 CORS 头，
 # 浏览器里的前端才看得到真正的错误信息。

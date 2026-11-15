@@ -52,6 +52,13 @@ BLOG_DIR = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "blog"),
 )
 
+# 本地免费资源库（见 routes_library.py）：content/library/ 下的视频字幕与原创文章
+# 只读静态文件，随仓库分发；无数据库、无 LLM。测试可指向 tmp 副本验证 404/503。
+LIBRARY_DIR = os.environ.get(
+    "LIBRARY_DIR",
+    os.path.join(_BACKEND_DIR, "..", "content", "library"),
+)
+
 # --- 用户体系数据（SQLite + 每用户目录） ---
 # DATA_DIR 默认仓库根的 data/（已 gitignore）。AUTH_DB_PATH 可单独覆盖到别处；
 # USER_DATA_DIR 是每个登录用户的数据根目录（其下再分 history/ 等）。

@@ -22,6 +22,7 @@
 | `reading.ts` | 读文章客户端（specs/019）：`importArticle`/`getArticle`/`translateArticle`/`listArticles`/`deleteArticle`/`saveProgress` 与文章/段落/译文/进度类型；读取显式带 `targetLang`，失败抛带 HTTP 状态的 `ReadingApiError`；不补造文章内容，译文失败按后端 `translationFailed` 标记展示 |
 | `recommend.ts` | 规则推荐客户端（specs/018）：`/api/recommendations` 的条目/区间类型与 `fetchRecommendations({limit,seed})`；不补造条目、`reason`/`basis`/`preliminary` 原样交给 UI；时长格式化为 `mm:ss` |
 | `blog.ts` | 官方博客客户端（specs/020）：`/api/blog/posts`、`/api/blog/posts/{slug}`、`/api/blog/feed.xml` 的类型与 `listBlogPosts/getBlogPost/blogFeedUrl`；只读公开接口，失败抛带状态码的 `BlogApiError`；前端用 Markdown 字段配合 `react-markdown`，不注入后端 HTML |
+| `library.ts` | 本地免费资源库客户端（user request #11）：`/api/library`、`/api/library/videos/{id}`、`/api/library/articles/{id}` 的类型与 `fetchLibraryIndex/fetchLibraryVideo/fetchLibraryArticle`；公开只读、不触发估价/处理/翻译；只校验并透传后端字段，失败抛带 HTTP 状态的 `LibraryApiError` |
 | `tts.ts` | 浏览器朗读（speechSynthesis，偏好英语音色） |
 | `admin.ts` | 管理控制台客户端（specs/021 + 023）：`fetchAdminStats/fetchAdminUsers/fetchAdminUsage/fetchAdminHealth`、`fetchAdminSettings/saveAdminSettings`、`adjustAdminUserCredits/updateAdminUserStatus` 与全部响应类型；所有调用走 `apiFetch`（带 credentials），失败抛带 HTTP 状态的 `AdminApiError`；写操作只在用户显式点击后调用 |
 | `toast.ts` | 轻提示总线 + `describeApiError`（把后端/网络错误转成可读中文） |

@@ -1,0 +1,38 @@
+{
+ "id": "free-app-hidden-cost",
+ "title": "The Hidden Cost of a Free App",
+ "level": "B2",
+ "topic": "technology",
+ "wordCount": 323,
+ "author": "LinguaTrek 编辑部",
+ "license": "原创，免费使用",
+ "summary": "A technology read about the attention, data, and choices we trade for \"free\" apps.",
+ "source": "original",
+ "free": true,
+ "paragraphs": [
+  {
+   "en": "Most of us have dozens of apps on our phones, and most of them were free to download. That word, free, feels simple. But when a product costs nothing, it is worth asking what we are paying with instead.",
+   "zh": "我们大多数人的手机里都有几十个应用，其中大部分是免费下载的。\"免费\"这个词听起来很简单。但当一件产品不花钱时，值得问一问：我们究竟在用什么来支付。"
+  },
+  {
+   "en": "The first price is attention. Free apps are often designed to keep us scrolling. Notifications pull us back, streaks make us return, and autoplay removes the moment when we might decide to stop. The longer we stay, the more advertisements we see. In this model, our time becomes the product that is sold to advertisers.",
+   "zh": "第一种代价是注意力。免费应用往往被设计成让我们不断滑动。通知把我们拉回来，连续打卡让我们反复打开，自动播放则抹掉了我们本可以决定停下的那一刻。我们停留得越久，看到的广告就越多。在这种模式里，我们的时间成了卖给广告商的产品。"
+  },
+  {
+   "en": "The second price is data. Many free apps collect information about where we go, who we know, what we search for, and how long we pause on a post. On its own, a single piece of data may seem harmless. Combined with thousands of other signals, however, it can reveal habits, moods, and even things we would rather keep private. We may never see a bill, but we pay in privacy.",
+   "zh": "第二种代价是数据。许多免费应用会收集我们的位置、联系人、搜索内容，以及我们在某条动态上停留了多久。单独一条数据看似无害；但与成千上万个其他信号组合起来，它就能揭示习惯、情绪，甚至是我们宁愿保密的事情。我们也许永远看不到账单，但我们用隐私付了账。"
+  },
+  {
+   "en": "The third price is choice. A free version is usually useful enough to keep, but limited enough to make us consider paying. The upgrade screen appears at carefully chosen moments, when we are tired, curious, or in a hurry. We start with no cost and end up paying monthly for features we did not know we needed.",
+   "zh": "第三种代价是选择权。免费版通常足够好用，让人愿意留下，却又限制得刚好，让人考虑付费。升级页面总在精心挑选的时刻出现——当我们疲惫、好奇或赶时间的时候。我们从不花钱开始，最后却每月为一些自己原本不知道需要的功能付钱。"
+  },
+  {
+   "en": "None of this means that free apps are evil. Many are genuinely useful, and advertising is a fair way to support them. The problem is that the cost is hidden. When we understand the deal, we can decide whether it is a good one.",
+   "zh": "这并不意味着免费应用都是邪恶的。许多应用确实有用，广告也是支持它们的一种公平方式。问题在于，代价被隐藏了起来。当我们理解这笔交易时，才能判断它是否划算。"
+  },
+  {
+   "en": "So the next time you download a free app, take thirty seconds to look at what it asks for. Check the permissions, read the first screen of the privacy policy, and ask why the app needs each piece of information. The app may still be free. But at least you will know what you are giving away.",
+   "zh": "所以，下次下载免费应用时，花三十秒看看它要求什么。检查权限，读一读隐私政策的第一屏，问问自己：这个应用为什么需要每一条信息。应用可能依然免费，但至少你会知道，自己交出去的是什么。"
+  }
+ ]
+}

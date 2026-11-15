@@ -1,0 +1,279 @@
+"""本地免费资源库离线验收（用户需求 #11）。
+
+覆盖：
+
+1. 公开可访问：未登录 GET 清单 / 视频详情 / 文章详情均 200，且不新发游客 Cookie；
+2. 清单形状：3 个视频 + 3 篇文章、字段齐全、时长 3–20 分钟、等级 A1–C2；
+3. 视频详情：真实 youtubeId、free/source 标记、双语 blocks（en/zh 均非空）、高亮数组；
+4. 文章详情：原创作者/许可、逐段 en+zh、词数 250–350 且由后端实算；
+5. 缓存头：清单 300 秒、详情 3600 秒；
+6. 404：未知 id、非法 id、缺失条目文件；503：目录/清单缺失、条目损坏；
+7. 零 LLM/零处理管线：模块源码不 import llm、不连数据库，请求期间 LLM 无调用。
+
+全部离线：只读仓库内 JSON 或 tmp 副本，不碰数据库、不联网。
+"""
+from __future__ import annotations
+
+import json
+import re
+import shutil
+from pathlib import Path
+
+import pytest
+
+import config
+import llm
+import routes_library
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+LIBRARY_DIR = REPO_ROOT / "content" / "library"
+EXPECTED_VIDEO_IDS = {
+    "bbc-learning-different-generations",
+    "teded-better-economy",
+    "kurzgesagt-ai-slop",
+}
+EXPECTED_ARTICLE_IDS = {
+    "ocean-noise",
+    "free-app-hidden-cost",
+    "case-for-doing-nothing",
+}
+WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['\u2019-][A-Za-z0-9]+)*")
+
+
+@pytest.fixture(autouse=True)
+def repo_library(monkeypatch):
+    """默认读仓库内真实资源；单个用例可覆盖 LIBRARY_DIR 验证异常分支。"""
+    monkeypatch.setattr(config, "LIBRARY_DIR", str(LIBRARY_DIR), raising=False)
+
+
+def _copy_library(tmp_path: Path) -> Path:
+    target = tmp_path / "library"
+    shutil.copytree(LIBRARY_DIR, target)
+    return target
+
+
+# ---------------------------------------------------------------------------
+# 1. 公开可访问
+# ---------------------------------------------------------------------------
+
+def test_library_is_public_and_does_not_issue_guest_cookie(make_client):
+    with make_client() as client:
+        for path in (
+            "/api/library",
+            "/api/library/videos/bbc-learning-different-generations",
+            "/api/library/articles/ocean-noise",
+        ):
+            response = client.get(path)
+            assert response.status_code == 200, (path, response.text)
+            assert "ln_guest" not in response.headers.get("set-cookie", "")
+
+
+# ---------------------------------------------------------------------------
+# 2. 清单形状
+# ---------------------------------------------------------------------------
+
+def test_index_lists_three_videos_and_three_articles(make_client):
+    with make_client() as client:
+        response = client.get("/api/library")
+    assert response.status_code == 200
+    payload = response.json()
+    videos = payload["videos"]
+    articles = payload["articles"]
+
+    assert len(videos) == 3
+    assert {video["id"] for video in videos} == EXPECTED_VIDEO_IDS
+    assert all(
+        {"id", "title", "channel", "duration", "level"} <= set(video)
+        for video in videos
+    )
+    assert all(180 <= video["duration"] <= 1200 for video in videos)
+    assert all(video["level"] in routes_library.LEVELS for video in videos)
+
+    assert len(articles) == 3
+    assert {article["id"] for article in articles} == EXPECTED_ARTICLE_IDS
+    assert all(
+        {"id", "title", "level", "wordCount"} <= set(article) for article in articles
+    )
+    assert all(article["level"] in routes_library.LEVELS for article in articles)
+    assert all(250 <= article["wordCount"] <= 350 for article in articles)
+
+
+# ---------------------------------------------------------------------------
+# 3. 视频详情 + 双语字幕
+# ---------------------------------------------------------------------------
+
+def test_video_detail_has_bilingual_blocks(make_client):
+    with make_client() as client:
+        for video_id in EXPECTED_VIDEO_IDS:
+            response = client.get(f"/api/library/videos/{video_id}")
+            assert response.status_code == 200, (video_id, response.text)
+            payload = response.json()
+            assert payload["id"] == video_id
+            assert len(payload["youtubeId"]) == 11
+            assert payload["free"] is True
+            assert payload["source"] == "youtube"
+            assert 180 <= payload["duration"] <= 1200
+            blocks = payload["blocks"]
+            assert len(blocks) >= 20
+            assert all(
+                {"id", "start", "end", "en_text", "zh_text", "highlights"} <= set(block)
+                for block in blocks
+            )
+            assert all(block["en_text"].strip() for block in blocks)
+            assert all(block["zh_text"].strip() for block in blocks)
+            assert all(isinstance(block["highlights"], list) for block in blocks)
+            assert all(block["end"] >= block["start"] >= 0 for block in blocks)
+            # 时间轴单调；TED-Ed 等视频有片头留白，字幕覆盖 80% 以上即视为完整。
+            assert blocks[0]["start"] < 60
+            assert blocks[-1]["end"] >= payload["duration"] * 0.8
+            assert all(
+                blocks[index + 1]["start"] >= blocks[index]["start"]
+                for index in range(len(blocks) - 1)
+            )
+
+
+def test_highlight_shape_is_stable(make_client):
+    with make_client() as client:
+        payload = client.get("/api/library/videos/kurzgesagt-ai-slop").json()
+    highlighted = [block for block in payload["blocks"] if block["highlights"]]
+    assert highlighted, "至少一个视频应保留可点击高亮，证明结构完整"
+    for block in highlighted:
+        for item in block["highlights"]:
+            assert set(item) == {"en_word", "zh_word", "color"}
+            assert item["en_word"] and item["zh_word"] and item["color"]
+
+
+# ---------------------------------------------------------------------------
+# 4. 文章详情（原创 + 译文）
+# ---------------------------------------------------------------------------
+
+def test_article_detail_is_original_bilingual_and_counted(make_client):
+    topics = set()
+    with make_client() as client:
+        for article_id in EXPECTED_ARTICLE_IDS:
+            response = client.get(f"/api/library/articles/{article_id}")
+            assert response.status_code == 200, (article_id, response.text)
+            payload = response.json()
+            assert payload["id"] == article_id
+            assert payload["author"] == "LinguaTrek 编辑部"
+            assert payload["license"] == "原创，免费使用"
+            assert payload["level"] in routes_library.LEVELS
+            paragraphs = payload["paragraphs"]
+            assert len(paragraphs) >= 3
+            assert all(set(paragraph) == {"en", "zh"} for paragraph in paragraphs)
+            assert all(paragraph["en"].strip() for paragraph in paragraphs)
+            assert all(paragraph["zh"].strip() for paragraph in paragraphs)
+            actual = sum(len(WORD_RE.findall(paragraph["en"])) for paragraph in paragraphs)
+            assert payload["wordCount"] == actual
+            assert 250 <= actual <= 350
+            topics.add(payload.get("topic"))
+    assert topics == {"science", "technology", "life"}
+
+
+# ---------------------------------------------------------------------------
+# 5. 缓存头
+# ---------------------------------------------------------------------------
+
+def test_cache_control_headers(make_client):
+    with make_client() as client:
+        index = client.get("/api/library")
+        video = client.get("/api/library/videos/teded-better-economy")
+        article = client.get("/api/library/articles/ocean-noise")
+    assert "max-age=300" in index.headers.get("cache-control", "")
+    assert "max-age=3600" in video.headers.get("cache-control", "")
+    assert "max-age=3600" in article.headers.get("cache-control", "")
+
+
+# ---------------------------------------------------------------------------
+# 6. 404 / 503
+# ---------------------------------------------------------------------------
+
+def test_unknown_and_invalid_ids_are_404(make_client):
+    with make_client() as client:
+        for path in (
+            "/api/library/videos/does-not-exist",
+            "/api/library/videos/UPPER-CASE",
+            "/api/library/videos/../README",
+            "/api/library/articles/does-not-exist",
+            "/api/library/articles/ocean-noise-extra",
+        ):
+            response = client.get(path)
+            assert response.status_code == 404, (path, response.text)
+
+
+def test_missing_entry_file_is_404(monkeypatch, tmp_path, make_client):
+    directory = _copy_library(tmp_path)
+    (directory / "videos" / "teded-better-economy.json").unlink()
+    monkeypatch.setattr(config, "LIBRARY_DIR", str(directory), raising=False)
+    with make_client() as client:
+        assert client.get("/api/library/videos/teded-better-economy").status_code == 404
+        # 清单引用了缺失文件：宁可报错，也不悄悄少一条。
+        assert client.get("/api/library").status_code == 404
+
+
+def test_missing_directory_is_503(tmp_path, monkeypatch, make_client):
+    monkeypatch.setattr(config, "LIBRARY_DIR", str(tmp_path / "nope"), raising=False)
+    with make_client() as client:
+        assert client.get("/api/library").status_code == 503
+        assert (
+            client.get("/api/library/videos/bbc-learning-different-generations").status_code
+            == 404
+        )
+
+
+def test_corrupt_entry_is_503(monkeypatch, tmp_path, make_client):
+    directory = _copy_library(tmp_path)
+    (directory / "videos" / "teded-better-economy.json").write_text(
+        "{ not json", encoding="utf-8"
+    )
+    monkeypatch.setattr(config, "LIBRARY_DIR", str(directory), raising=False)
+    with make_client() as client:
+        assert client.get("/api/library").status_code == 503
+        assert client.get("/api/library/videos/teded-better-economy").status_code == 503
+
+
+def test_bad_fields_are_503(monkeypatch, tmp_path, make_client):
+    directory = _copy_library(tmp_path)
+    path = directory / "videos" / "teded-better-economy.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["blocks"][0]["zh_text"] = ""
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(config, "LIBRARY_DIR", str(directory), raising=False)
+    with make_client() as client:
+        assert client.get("/api/library/videos/teded-better-economy").status_code == 503
+        assert client.get("/api/library").status_code == 503
+
+
+# ---------------------------------------------------------------------------
+# 7. 零 LLM / 零处理管线
+# ---------------------------------------------------------------------------
+
+def test_requests_never_call_llm(monkeypatch, make_client):
+    calls: list[str] = []
+
+    def _record(*args, **kwargs):
+        calls.append("llm")
+        raise AssertionError("免费资源库不允许调用 LLM")
+
+    async def _record_async(*args, **kwargs):
+        calls.append("llm")
+        raise AssertionError("免费资源库不允许调用 LLM")
+
+    monkeypatch.setattr(llm, "generate_text", _record)
+    monkeypatch.setattr(llm, "generate_json", _record)
+    monkeypatch.setattr(llm, "generate_text_async", _record_async)
+    monkeypatch.setattr(llm, "generate_json_async", _record_async)
+
+    with make_client() as client:
+        assert client.get("/api/library").status_code == 200
+        assert client.get(
+            "/api/library/videos/bbc-learning-different-generations"
+        ).status_code == 200
+        assert client.get("/api/library/articles/free-app-hidden-cost").status_code == 200
+    assert calls == []
+
+
+def test_module_has_no_llm_or_database_dependency():
+    source = Path(routes_library.__file__).read_text(encoding="utf-8")
+    for forbidden in ("import llm", "import sqlite3", "auth_db", "routes_videos", "process-video"):
+        assert forbidden not in source

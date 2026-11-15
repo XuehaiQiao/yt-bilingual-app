@@ -1,0 +1,13 @@
+{
+ "_meta": {
+  "version": 1,
+  "updatedAt": "2026-11-16",
+  "count": 3,
+  "note": "视频条目 = 预生成双语字幕块 + 元数据；视频文件不下载，播放走 YouTube 嵌入。"
+ },
+ "videos": [
+  "bbc-learning-different-generations",
+  "teded-better-economy",
+  "kurzgesagt-ai-slop"
+ ]
+}

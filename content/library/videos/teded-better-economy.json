@@ -1,0 +1,720 @@
+{
+ "id": "teded-better-economy",
+ "youtubeId": "6MK6tuZ7Rws",
+ "title": "How do we create a better economy?",
+ "channel": "TED-Ed",
+ "duration": 364,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi_webp/6MK6tuZ7Rws/maxresdefault.webp",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "blocks": [
+  {
+   "id": 1,
+   "start": 6.92,
+   "end": 10.01,
+   "en_text": "What does it mean for a country to have a healthy economy?",
+   "zh_text": "对一个国家来说，拥有健康的经济意味着什么？",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 10.3,
+   "end": 12.72,
+   "en_text": "What does a healthy economy  even look like?",
+   "zh_text": "健康的经济究竟是什么样的？",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 12.72,
+   "end": 14.43,
+   "en_text": "Does it look like this?",
+   "zh_text": "它看起来像这样吗？",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 14.43,
+   "end": 15.97,
+   "en_text": "What about like this?",
+   "zh_text": "那像这样呢？",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 16.22,
+   "end": 21.6,
+   "en_text": "Economist Kate Raworth shared a pretty interesting answer to this question on the TED Interview podcast.",
+   "zh_text": "经济学家凯特·拉沃斯在TED访谈播客中分享了对这个问题一个相当有趣的回答。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 21.6,
+   "end": 24.9,
+   "en_text": "And it challenges an idea that most economists take for granted.",
+   "zh_text": "它挑战了一个大多数经济学家视为理所当然的观念。",
+   "highlights": [
+    {
+     "en_word": "take for granted",
+     "zh_word": "视为理所当然",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "start": 25.48,
+   "end": 38.53,
+   "en_text": "We live— particularly in the West,  particularly in the last 150 years— in a society that has a very strong belief that growth is the sign of progress.",
+   "zh_text": "我们生活在一个坚信增长就是进步标志的社会里——尤其是在西方，尤其是在过去150年间。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 39.03,
+   "end": 41.24,
+   "en_text": "And to a certain extent, it’s true.",
+   "zh_text": "在某种程度上，这是真的。",
+   "highlights": [
+    {
+     "en_word": "to a certain extent",
+     "zh_word": "在某种程度上",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "start": 41.41,
+   "end": 43.29,
+   "en_text": "We love to see our kids grow.",
+   "zh_text": "我们喜欢看到孩子成长。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 43.29,
+   "end": 46.33,
+   "en_text": "We love to see nature growing in spring.",
+   "zh_text": "我们喜欢看到大自然在春天生长。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 46.33,
+   "end": 49.55,
+   "en_text": "Growth is a wonderful, healthy phase of life.",
+   "zh_text": "成长是生命中美好而健康的阶段。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 49.92,
+   "end": 55.59,
+   "en_text": "But in our economies, it’s like we’ve turned to Peter Pan economics— the economy that never wanted to grow up.",
+   "zh_text": "但在我们的经济中，我们似乎转向了彼得潘式经济学——一种永远不想长大的经济。",
+   "highlights": [
+    {
+     "en_word": "Peter Pan economics",
+     "zh_word": "彼得潘式经济学",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "start": 55.59,
+   "end": 57.68,
+   "en_text": "It wanted to grow and grow and grow forever.",
+   "zh_text": "它想永远不断地增长、增长、再增长。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 57.68,
+   "end": 59.89,
+   "en_text": "And it becomes this permanent phase.",
+   "zh_text": "于是它变成了一个永久的阶段。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 61.02,
+   "end": 68.02,
+   "en_text": "But we already know, in our own bodies, in our own lives, that there’s another side to this metaphor of growth that we love so much.",
+   "zh_text": "但我们已经知道，在我们自己的身体里，在我们自己的生活中，这个我们如此喜爱的增长隐喻还有另一面。",
+   "highlights": [
+    {
+     "en_word": "metaphor",
+     "zh_word": "隐喻",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "start": 68.02,
+   "end": 77.66,
+   "en_text": "If I told you, my friend had gone to the doctor, and the doctor told her she had a growth, that already feels completely different.",
+   "zh_text": "如果我告诉你，我的朋友去看了医生，医生告诉她她长了一个肿块，那感觉就完全不同了。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 77.66,
+   "end": 91.17,
+   "en_text": "Because in the space of our own bodies, we know that when something  tries to grow endlessly within this healthy, dynamic living whole, it is a threat to the health of the whole, and we do everything we can to stop it.",
+   "zh_text": "因为在我们自己的身体里，我们知道，当某个东西试图在这个健康、有活力的生命整体中无休止地生长时，它就是对整体健康的威胁，我们会竭尽全力阻止它。",
+   "highlights": [
+    {
+     "en_word": "dynamic",
+     "zh_word": "有活力的",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 18,
+   "start": 92.09,
+   "end": 97.93,
+   "en_text": "But when we step into our economies, for some reason, we think that endless growth is progress.",
+   "zh_text": "但当我们走进经济领域，不知为何，我们认为无休止的增长就是进步。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 98.05,
+   "end": 102.68,
+   "en_text": "And we are now running into severe problems because we are addicted to endless growth.",
+   "zh_text": "而我们现在正遭遇严重的问题，因为我们对无休止的增长上了瘾。",
+   "highlights": [
+    {
+     "en_word": "running into",
+     "zh_word": "遭遇",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "addicted to",
+     "zh_word": "上了瘾",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "start": 103.02,
+   "end": 111.27,
+   "en_text": "Simon Kuznets, he was asked in the 1930s by US Congress to come up, for the first time, with a single number  to measure the output of the economy.",
+   "zh_text": "西蒙·库兹涅茨在20世纪30年代受美国国会之托，首次想出一个单一数字来衡量经济产出。",
+   "highlights": [
+    {
+     "en_word": "come up",
+     "zh_word": "想出",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "start": 111.27,
+   "end": 116.57,
+   "en_text": "America could say we produced so many tons of steel and so many bags of grain— but can we add it all together?",
+   "zh_text": "美国可以说我们生产了这么多吨钢铁和这么多袋粮食——但我们能把它们全部加在一起吗？",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 116.57,
+   "end": 119.48,
+   "en_text": "So they commissioned him  to do this and he said, “Yes, I can.",
+   "zh_text": "于是他们委托他来做这件事，他说：“是的，我可以。",
+   "highlights": [
+    {
+     "en_word": "commissioned",
+     "zh_word": "委托",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 23,
+   "start": 119.48,
+   "end": 125.37,
+   "en_text": "I can add it all together in one number.” National income, what we now know as GDP— but he gave it with a caveat.",
+   "zh_text": "我可以把它们全部加总成一个数字。”国民收入，也就是我们现在所知的GDP——但他给出这个数字时附带了一个告诫。",
+   "highlights": [
+    {
+     "en_word": "caveat",
+     "zh_word": "告诫",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "start": 125.62,
+   "end": 130.88,
+   "en_text": "He said the welfare of a nation can scarcely be known from this number, don’t mix it up with welfare, right?",
+   "zh_text": "他说，一个国家的福祉几乎无法从这个数字中得知，不要把它和福祉混为一谈，对吧？",
+   "highlights": [
+    {
+     "en_word": "scarcely",
+     "zh_word": "几乎无法",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "mix it up",
+     "zh_word": "混为一谈",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 25,
+   "start": 130.88,
+   "end": 141.39,
+   "en_text": "Because it tells us nothing about  the unpaid caring work of parents, tells us nothing about the value that’s created in communities, because that’s not priced, and it’s a measure of the flow  of economic value.",
+   "zh_text": "因为它对父母无酬的照料工作只字未提，对社区中创造的价值也只字未提，因为这些都没有被定价，而它衡量的是经济价值的流动。",
+   "highlights": [
+    {
+     "en_word": "priced",
+     "zh_word": "定价",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "start": 141.39,
+   "end": 147.1,
+   "en_text": "It tells us nothing about the living world, the forests, the mines that get run down in order to create this value.",
+   "zh_text": "它对生命世界只字未提，对森林、对为了创造这种价值而被消耗殆尽的矿藏也只字未提。",
+   "highlights": [
+    {
+     "en_word": "run down",
+     "zh_word": "消耗殆尽",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 27,
+   "start": 148.52,
+   "end": 157.74,
+   "en_text": "But the convenience, the temptation, of this single number was so great that politicians sort of tucked it  in their armpit and carried right on.",
+   "zh_text": "但这单一数字的便利和诱惑如此之大，以至于政客们多少把它夹在腋下，照旧我行我素。",
+   "highlights": [
+    {
+     "en_word": "tucked it",
+     "zh_word": "夹在腋下",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "carried right on",
+     "zh_word": "照旧我行我素",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "start": 157.74,
+   "end": 161.45,
+   "en_text": "And we ended up in a horse race of pursuing GDP growth.",
+   "zh_text": "结果我们陷入了一场追逐GDP增长的赛马。",
+   "highlights": [
+    {
+     "en_word": "horse race",
+     "zh_word": "赛马",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 29,
+   "start": 161.57,
+   "end": 171.42,
+   "en_text": "The dream is that GDP can keep on increasing, we can have increasing financial returns, but that we can decouple from using Earth’s resources.",
+   "zh_text": "梦想是GDP能够持续增长，我们能够获得不断增加的财务回报，但我们能够与使用地球资源脱钩。",
+   "highlights": [
+    {
+     "en_word": "decouple",
+     "zh_word": "脱钩",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 30,
+   "start": 171.42,
+   "end": 183.09,
+   "en_text": "We can use less carbon and less metals, and minerals and plastics, and we can use less  of the Earth’s land surface, and separate these two:  ever rising GDP and falling resource use.",
+   "zh_text": "我们可以少用碳、少用金属、矿物和塑料，我们可以少用地表土地，并把这两者分开：不断上升的GDP和不断下降的资源使用。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 183.43,
+   "end": 186.47,
+   "en_text": "It’s a fabulous dream;  would that it would be true.",
+   "zh_text": "这是个美妙的梦想；但愿它能成真。",
+   "highlights": [
+    {
+     "en_word": "would that",
+     "zh_word": "但愿",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 32,
+   "start": 186.47,
+   "end": 192.27,
+   "en_text": "We are at a time of climate emergency, of ecosystem collapse.",
+   "zh_text": "我们正处于气候紧急状态、生态系统崩溃的时代。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 192.56,
+   "end": 197.65,
+   "en_text": "We need to radically reduce  our use of Earth’s resources, and we're nowhere close to that.",
+   "zh_text": "我们需要大幅减少对地球资源的使用，而我们离这一点还差得远。",
+   "highlights": [
+    {
+     "en_word": "nowhere close",
+     "zh_word": "差得远",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 34,
+   "start": 197.65,
+   "end": 201.4,
+   "en_text": "So I offer it as a compass for 21st century prosperity.",
+   "zh_text": "所以我把它作为21世纪繁荣的指南针提出来。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 201.41,
+   "end": 206.99,
+   "en_text": "And this compass, silly though it sounds, it looks like a doughnut  with the hole in the middle.",
+   "zh_text": "而这个指南针，听起来虽然可笑，看起来却像一个中间有孔的甜甜圈。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 207.08,
+   "end": 214.79,
+   "en_text": "So imagine from the center of it, humanity’s use of Earth’s resources radiating out from the middle of that picture.",
+   "zh_text": "那么想象一下，从它的中心出发，人类对地球资源的使用从这幅图的中央向外辐射。",
+   "highlights": [
+    {
+     "en_word": "radiating out",
+     "zh_word": "向外辐射",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 37,
+   "start": 214.79,
+   "end": 221.93,
+   "en_text": "So in the hole,  in the middle of the doughnut, that is the place where people  don’t have enough resources to meet the essentials of life.",
+   "zh_text": "那么在洞里，在甜甜圈的中央，那里是人们没有足够资源满足生活必需品的地方。",
+   "highlights": [
+    {
+     "en_word": "essentials of life",
+     "zh_word": "生活必需品",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 38,
+   "start": 221.93,
+   "end": 230.02,
+   "en_text": "It’s where people don’t have enough food or health care, or education or housing or gender equality or political voice or access to energy.",
+   "zh_text": "那里是人们没有足够食物、医疗、教育、住房、性别平等、政治话语权或能源获取途径的地方。",
+   "highlights": [
+    {
+     "en_word": "political voice",
+     "zh_word": "政治话语权",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 39,
+   "start": 230.1,
+   "end": 232.06,
+   "en_text": "And we want to leave nobody in that hole.",
+   "zh_text": "我们希望不让任何人留在那个洞里。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 232.77,
+   "end": 241.61,
+   "en_text": "We want to get everybody over a social foundation of well-being, so all people on this planet can lead lives of dignity and opportunity and community.",
+   "zh_text": "我们希望让每个人都越过福祉的社会基础线，让这个星球上的所有人都能过上拥有尊严、机会和社群的生活。",
+   "highlights": [
+    {
+     "en_word": "social foundation",
+     "zh_word": "社会基础线",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 41,
+   "start": 241.61,
+   "end": 249.66,
+   "en_text": "And in low income countries,  it absolutely makes sense, yes, let’s see the economy grow in ways  that invest in health and education and transport for all.",
+   "zh_text": "在低收入国家，这绝对说得通，是的，让我们看到经济以投资于全民健康、教育和交通的方式增长。",
+   "highlights": [
+    {
+     "en_word": "makes sense",
+     "zh_word": "说得通",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 42,
+   "start": 250.0,
+   "end": 251.96,
+   "en_text": "That was a very 20th century project.",
+   "zh_text": "那是一个非常20世纪的工程。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 252.12,
+   "end": 253.46,
+   "en_text": "We're in the 21st century.",
+   "zh_text": "我们身处21世纪。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 253.58,
+   "end": 264.88,
+   "en_text": "We have Earth system scientists who started looking at the impact we were having on the climate, and the loss of soils and acid rain, and the hole in the ozone layer, and the collapse of species.",
+   "zh_text": "我们有地球系统科学家，他们开始研究我们对气候造成的影响，以及土壤流失、酸雨、臭氧层空洞和物种崩溃。",
+   "highlights": [
+    {
+     "en_word": "collapse of species",
+     "zh_word": "物种崩溃",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 45,
+   "start": 264.88,
+   "end": 266.18,
+   "en_text": "And they said, hang on.",
+   "zh_text": "他们说，等等。",
+   "highlights": [
+    {
+     "en_word": "hang on",
+     "zh_word": "等等",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 46,
+   "start": 266.85,
+   "end": 268.56,
+   "en_text": "We’ve been ignoring our planet.",
+   "zh_text": "我们一直在忽视我们的星球。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 268.56,
+   "end": 276.15,
+   "en_text": "In the growing to meet human needs,  we have ignored the fact that we are deeply dependent  on this delicately balanced living planet.",
+   "zh_text": "在为了满足人类需求而增长的过程中，我们忽视了一个事实：我们深深依赖于这个精妙平衡的、有生命的星球。",
+   "highlights": [
+    {
+     "en_word": "delicately balanced",
+     "zh_word": "精妙平衡的",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 48,
+   "start": 276.15,
+   "end": 278.44,
+   "en_text": "It’s the only one we know of out there.",
+   "zh_text": "它是我们在外面所知的唯一一个。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 278.98,
+   "end": 289.91,
+   "en_text": "And when we use Earth’s resources  in such a way that we begin to push ourselves beyond the living capacities of this planet, we are literally undermining the life supporting systems on which we depend.",
+   "zh_text": "当我们以这样的方式使用地球资源，以至于开始把自己推到这个星球承载生命的能力之外时，我们实际上是在破坏我们所依赖的生命支持系统。",
+   "highlights": [
+    {
+     "en_word": "undermining",
+     "zh_word": "破坏",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "living capacities",
+     "zh_word": "承载生命的能力",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 50,
+   "start": 290.08,
+   "end": 298.04,
+   "en_text": "So, hang on, just as there’s  an inner limit of resource use, and we call out poverty and deprivation, there’s an outer limit of humanity’s resource use.",
+   "zh_text": "所以，等等，正如资源使用有一个内边界，我们称之为贫困和匮乏，人类资源使用也有一个外边界。",
+   "highlights": [
+    {
+     "en_word": "deprivation",
+     "zh_word": "匮乏",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 51,
+   "start": 298.04,
+   "end": 300.13,
+   "en_text": "That’s ecological degradation.",
+   "zh_text": "那就是生态退化。",
+   "highlights": [
+    {
+     "en_word": "ecological degradation",
+     "zh_word": "生态退化",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 52,
+   "start": 300.13,
+   "end": 302.92,
+   "en_text": "And we are breaking down this planet on which we depend.",
+   "zh_text": "而我们正在破坏这个我们所依赖的星球。",
+   "highlights": [
+    {
+     "en_word": "breaking down",
+     "zh_word": "破坏",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 53,
+   "start": 302.92,
+   "end": 308.14,
+   "en_text": "So there you get the doughnut, you get the inside, which is leave nobody behind in the hole.",
+   "zh_text": "于是你就得到了这个甜甜圈，你得到了内圈，也就是不让任何人落在洞里被抛下。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 308.14,
+   "end": 310.35,
+   "en_text": "But don’t overshoot the outer ring either.",
+   "zh_text": "但也不要越过外圈。",
+   "highlights": [
+    {
+     "en_word": "overshoot",
+     "zh_word": "越过",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 55,
+   "start": 310.51,
+   "end": 313.6,
+   "en_text": "And so the shape of progress is fundamentally changed.",
+   "zh_text": "因此，进步的形态发生了根本性的改变。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 313.6,
+   "end": 320.98,
+   "en_text": "It’s no longer this ever rising line exponential growth, that we hear about in the financial news  all the time.",
+   "zh_text": "它不再是我们在财经新闻里一直听到的那种不断上升的指数增长曲线。",
+   "highlights": [
+    {
+     "en_word": "exponential growth",
+     "zh_word": "指数增长",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 57,
+   "start": 320.98,
+   "end": 322.65,
+   "en_text": "It’s balance.",
+   "zh_text": "而是平衡。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 323.49,
+   "end": 327.91,
+   "en_text": "To me, a source of real hope is  that we deeply understand this at the level of our body.",
+   "zh_text": "对我来说，一个真正希望的来源是，我们在身体的层面上深刻理解这一点。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 327.91,
+   "end": 335.83,
+   "en_text": "You go to the doctor, the doctor will say, have enough food, but not too much,  enough water, oxygen, exercise, sleep, anything you like—  have enough, but not too much.",
+   "zh_text": "你去看医生，医生会说，吃足够的食物，但不要太多，足够的水、氧气、运动、睡眠，任何你喜欢的东西——要足够，但不要太多。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 335.83,
+   "end": 337.54,
+   "en_text": "Our health lies in balance.",
+   "zh_text": "我们的健康在于平衡。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 337.54,
+   "end": 347.55,
+   "en_text": "And if we can take that metaphor  from the human body to the planetary body, we give ourselves a cracking chance of understanding the deep interdependence of our world.",
+   "zh_text": "如果我们能把那个隐喻从人体延伸到行星体，我们就给自己创造了一个绝佳的机会，去理解我们这个世界深层的相互依存关系。",
+   "highlights": [
+    {
+     "en_word": "cracking chance",
+     "zh_word": "绝佳的机会",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "interdependence",
+     "zh_word": "相互依存",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  }
+ ]
+}

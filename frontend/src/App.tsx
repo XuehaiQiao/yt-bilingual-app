@@ -25,6 +25,7 @@ import { PlacementScreen, type PlacementInitialView } from './components/Placeme
 import { ExamScreen } from './components/ExamScreen';
 import { DiscoverScreen } from './components/DiscoverScreen';
 import { ReaderScreen } from './components/ReaderScreen';
+import { LibraryArticleReader } from './components/LibraryArticleReader';
 import { BlogScreen } from './components/BlogScreen';
 import { AdminConsoleScreen } from './components/AdminConsoleScreen';
 import { AccountScreen } from './components/AccountScreen';
@@ -59,6 +60,7 @@ import {
   type TranscriptLayout,
 } from './lib/layout';
 import { getProgress, saveProgress } from './lib/progress';
+import { fetchLibraryArticle, fetchLibraryVideo, type LibraryArticle } from './lib/library';
 import ReactMarkdown from 'react-markdown';
 
 interface TranscriptItem {
@@ -74,7 +76,7 @@ interface TranscriptItem {
   }>;
 }
 
-type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences' | 'topbar.feature.review' | 'topbar.feature.quiz' | 'topbar.feature.discover' | 'topbar.feature.reader' | 'topbar.feature.blog'>;
+type FeatureNameKey = Extract<TranslationKey, 'topbar.feature.video' | 'topbar.feature.local' | 'topbar.feature.sentences' | 'topbar.feature.review' | 'topbar.feature.quiz' | 'topbar.feature.discover' | 'topbar.feature.reader' | 'topbar.feature.blog' | 'topbar.feature.library'>;
 
 // Single source of truth for the top-bar feature label. Mirrors the view
 // switch below: quiz wins, then reading, then the blog, then discovery, then
@@ -90,8 +92,11 @@ function getFeatureName(
   videoId: string,
   transcriptCount: number,
   isLocalSubtitle: boolean,
+  isLibraryVideo: boolean,
+  libraryArticleOpen: boolean,
 ): FeatureNameKey | null {
   if (quizOpen) return 'topbar.feature.quiz';
+  if (libraryArticleOpen || isLibraryVideo) return 'topbar.feature.library';
   if (readerOpen) return 'topbar.feature.reader';
   if (blogOpen) return 'topbar.feature.blog';
   if (discoverOpen) return 'topbar.feature.discover';
@@ -137,6 +142,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const [summary, setSummary] = useState<string>('');
   const [metadata, setMetadata] = useState<any>(null);
   const isLocalSubtitle = Boolean(metadata?.is_local_subtitle);
+  // Free library videos are pre-built: blocks arrive from /api/library/videos,
+  // the player still embeds YouTube, and nothing in this path calls the
+  // estimate/processing/translation endpoints.
+  const isLibraryVideo = Boolean(metadata?.is_library);
   // Local episodes may be mapped to a real YouTube video (frozen backend
   // contract: payload.metadata.youtube_video_id). When present, the same
   // VideoPlayer as the "看视频" branch drives playback; otherwise the local
@@ -184,6 +193,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Official blog (specs/020): a public read-only view over content/blog/*.md.
   // Like the reader, the screen owns list/detail state internally.
   const [blogOpen, setBlogOpen] = useState(false);
+  // Free library article (user request #11): the whole article is already on
+  // the device, so this is a local reader over the fetched payload — no
+  // /api/article request and no "translate" action.
+  const [libraryArticle, setLibraryArticle] = useState<LibraryArticle | null>(null);
   // Admin console (specs/021 + 023): a standalone full-page view that replaces
   // the whole user shell (top bar included). `adminReturnTo` remembers where
   // the back button should land: the account page (the only in-app entry) or
@@ -965,6 +978,77 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
   };
 
+  // ── Free library (user request #11) ──────────────────────────────────────
+  // Both entries leave the normal learning pipeline untouched: the video path
+  // only reads pre-built blocks and enters the existing player, the article
+  // path only renders a local payload. Neither calls estimate/process/define.
+  const resetToLibrary = () => {
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setReviewOpen(false);
+    setReportOpen(false);
+    setPlacementOpen(false);
+    setQuizOpen(false);
+    setQuizLesson(null);
+    setDiscoverOpen(false);
+    setReaderOpen(false);
+    setReaderInitialArticleId(null);
+    setBlogOpen(false);
+    setSentenceLevel(null);
+    setLibraryArticle(null);
+    pauseSubtitleTimer();
+  };
+
+  const handleOpenLibraryVideo = async (id: string) => {
+    resetToLibrary();
+    setQuizCacheReady(false);
+    setLoadingState('loading');
+    try {
+      const data = await fetchLibraryVideo(id);
+      setTranscript(data.blocks);
+      setSummary('');
+      setMetadata({
+        title: data.title,
+        channel: data.channel,
+        duration: data.duration,
+        level: data.level,
+        free: true,
+        source: 'youtube',
+        is_library: true,
+        youtubeId: data.youtubeId,
+        thumbnail: data.thumbnail,
+      });
+      setVideoId(data.youtubeId);
+      setCurrentTime(0);
+      setSeekCommand(null);
+      setLocalVideoError(false);
+    } catch (error) {
+      console.error('Failed to load free library video:', error);
+      toast.error(await describeApiError(error));
+    } finally {
+      setLoadingState(null);
+    }
+  };
+
+  const handleOpenLibraryArticle = async (id: string) => {
+    resetToLibrary();
+    setLoadingState('loading');
+    try {
+      const data = await fetchLibraryArticle(id);
+      setLibraryArticle(data);
+    } catch (error) {
+      console.error('Failed to load free library article:', error);
+      toast.error(await describeApiError(error));
+    } finally {
+      setLoadingState(null);
+    }
+  };
+
+  const handleCloseLibraryArticle = () => {
+    setLibraryArticle(null);
+  };
+
   const handleTimeUpdate = useCallback((time: number) => {
     setCurrentTime(time);
     // The YouTube player and the simulated local clock both land here (via
@@ -1083,8 +1167,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
 
   const featureName = useMemo(
-    () => getFeatureName(quizOpen, readerOpen, blogOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle)),
-    [quizOpen, readerOpen, blogOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle],
+    () => getFeatureName(quizOpen, readerOpen, blogOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, Boolean(metadata?.is_local_subtitle), isLibraryVideo, libraryArticle !== null),
+    [quizOpen, readerOpen, blogOpen, discoverOpen, reviewOpen, sentenceLevel, videoId, transcript.length, metadata?.is_local_subtitle, isLibraryVideo, libraryArticle],
   );
 
   const handleTranscriptClick = useCallback((time: number) => {
@@ -1198,6 +1282,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setReaderOpen(false);
     setReaderInitialArticleId(null);
     setBlogOpen(false);
+    setLibraryArticle(null);
     setAdminOpen(false);
     setAccountOpen(false);
     setReportOpen(false);
@@ -1750,7 +1835,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       </div>
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <LanguageMenu />
-        {status === 'authenticated' && !accountOpen && !reviewOpen && !quizOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && (
+        {status === 'authenticated' && !accountOpen && !reviewOpen && !quizOpen && !placementOpen && !examOpen && !discoverOpen && !readerOpen && !blogOpen && !libraryArticle && (
           <button
             type="button"
             data-testid="topbar-review-button"
@@ -1923,6 +2008,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           onPlayerError={hasLocalVideo ? () => setLocalVideoError(true) : undefined}
           onPlaybackStateChange={(playing) => { if (!playing) pauseWatch(); }}
         />
+      )}
+
+      {/* Free library banner: makes it obvious the bilingual subtitles are
+          already on disk and no processing/translation request is running. */}
+      {isLibraryVideo && (
+        <div
+          data-testid="library-video-badge"
+          className="absolute left-3 top-3 z-30 pointer-events-none inline-flex items-center rounded-full border border-emerald-500/20 bg-zinc-950/80 backdrop-blur-md px-3 py-1.5 text-[11px] font-semibold text-emerald-300 shadow-lg shadow-black/30"
+        >
+          {t('library.videoBadge')}
+        </div>
       )}
 
       {/* The embedded player failed (offline / embed denied / removed video).
@@ -2417,6 +2513,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onRequestLogin={onRequestLogin}
           />
         </motion.div>
+      ) : libraryArticle ? (
+        <motion.div
+          key="library-article"
+          initial={{ opacity: 0, scale: 0.99, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          <LibraryArticleReader article={libraryArticle} onClose={handleCloseLibraryArticle} />
+        </motion.div>
       ) : readerOpen ? (
         <motion.div
           // Remount on a target-language switch: the list/detail are scoped by
@@ -2495,6 +2601,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenDiscover={handleOpenDiscover}
             onOpenReader={handleOpenReader}
             onOpenBlog={handleOpenBlog}
+            onOpenLibraryVideo={(id) => { void handleOpenLibraryVideo(id); }}
+            onOpenLibraryArticle={(id) => { void handleOpenLibraryArticle(id); }}
           />
         </motion.div>
       ) : (

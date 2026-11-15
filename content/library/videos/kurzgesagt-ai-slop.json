@@ -1,0 +1,1515 @@
+{
+ "id": "kurzgesagt-ai-slop",
+ "youtubeId": "_zfN9wnPvU0",
+ "title": "AI Slop Is Destroying The Internet",
+ "channel": "Kurzgesagt – In a Nutshell",
+ "duration": 592,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi_webp/_zfN9wnPvU0/maxresdefault.webp",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.17,
+   "end": 5.77,
+   "en_text": "AI Slop is saturating the internet and  things are becoming dramatic pretty quickly.",
+   "zh_text": "AI垃圾内容正充斥着互联网，事情正迅速变得紧张起来。",
+   "highlights": [
+    {
+     "en_word": "saturating",
+     "zh_word": "充斥着",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "dramatic",
+     "zh_word": "紧张",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "start": 5.77,
+   "end": 14.73,
+   "en_text": "In an online world where  money is made with attention,   fake users spread their slop in review sections, generate fake traffic or poison discourse.",
+   "zh_text": "在一个以注意力换取金钱的网络世界中，虚假用户在评论区传播他们的垃圾内容，制造虚假流量，或污染讨论氛围。",
+   "highlights": [
+    {
+     "en_word": "poison discourse",
+     "zh_word": "污染讨论氛围",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "start": 14.73,
+   "end": 18.65,
+   "en_text": "AI has supercharged this and  made slop much harder to spot.",
+   "zh_text": "AI已经让这种情况加剧，并使垃圾内容更难被发现。",
+   "highlights": [
+    {
+     "en_word": "supercharged",
+     "zh_word": "加剧",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "start": 18.65,
+   "end": 24.89,
+   "en_text": "Today about half of internet traffic is bots, the majority of them are used  for destructive purposes.",
+   "zh_text": "如今，大约一半的网络流量来自机器人，其中大多数用于破坏性目的。",
+   "highlights": [
+    {
+     "en_word": "destructive purposes",
+     "zh_word": "破坏性目的",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "start": 24.89,
+   "end": 38.49,
+   "en_text": "It's never been easier to make mediocre content –  from the black hole of meaninglessness that is LinkedIN, low effort short videos just engaging enough to  hypnotise kids and fry their attention spans, to endless soullessly rewritten books on amazon.",
+   "zh_text": "制作平庸内容从未如此容易——从毫无意义的领英，到只需少量努力、足以吸引孩子并让他们注意力涣散的短视频，再到亚马逊上无穷无尽地机械重写书籍。",
+   "highlights": [
+    {
+     "en_word": "black hole of meaninglessness",
+     "zh_word": "毫无意义的领英",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "hypnotise",
+     "zh_word": "吸引",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "start": 38.49,
+   "end": 41.45,
+   "en_text": "AI music is invading streaming platforms.",
+   "zh_text": "AI音乐正在入侵流媒体平台。",
+   "highlights": [
+    {
+     "en_word": "invading",
+     "zh_word": "入侵",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "start": 41.45,
+   "end": 46.41,
+   "en_text": "Google AI is summarizing websites  instead of sending traffic to them.",
+   "zh_text": "谷歌AI正在总结网站内容，而不是将流量引导至它们。",
+   "highlights": [
+    {
+     "en_word": "summarizing",
+     "zh_word": "总结",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "start": 46.41,
+   "end": 50.57,
+   "en_text": "On Youtube, new channels publish long  form videos multiple times a week with",
+   "zh_text": "在YouTube上，新频道每周多次发布长视频，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 50.57,
+   "end": 54.33,
+   "en_text": "AI generated thumbnails, voices and scripts.",
+   "zh_text": "由AI生成的缩略图、声音和脚本。",
+   "highlights": [
+    {
+     "en_word": "AI generated",
+     "zh_word": "由AI生成的",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "start": 54.33,
+   "end": 59.05,
+   "en_text": "True crime, video essays,  science, no space is safe.",
+   "zh_text": "真实犯罪、视频随笔、科学领域，没有一处是安全的。",
+   "highlights": [
+    {
+     "en_word": "no space is safe",
+     "zh_word": "没有一处是安全的",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "start": 59.05,
+   "end": 62.41,
+   "en_text": "We’re in the golden era of soulless slop.",
+   "zh_text": "我们正处于毫无灵魂的垃圾内容的黄金时代。",
+   "highlights": [
+    {
+     "en_word": "golden era",
+     "zh_word": "黄金时代",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "start": 62.41,
+   "end": 67.77,
+   "en_text": "And sadly, actual creative human work  is used to train these AI models.",
+   "zh_text": "遗憾的是，真实的创造性人类作品被用来训练这些AI模型。",
+   "highlights": [
+    {
+     "en_word": "creative human work",
+     "zh_word": "创造性人类作品",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "start": 67.77,
+   "end": 74.97,
+   "en_text": "Every reddit comment, original YouTube video or   human drawing on deviant art has  been sold out to the AI companies.",
+   "zh_text": "每一条Reddit评论、每一段原创YouTube视频或在DeviantArt上的真人绘画，都被卖给了AI公司。",
+   "highlights": [
+    {
+     "en_word": "sold out",
+     "zh_word": "卖给了",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 14,
+   "start": 74.97,
+   "end": 77.21,
+   "en_text": "Or straight up stolen by them.",
+   "zh_text": "或者直接被他们偷走。",
+   "highlights": [
+    {
+     "en_word": "straight up",
+     "zh_word": "直接",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "start": 77.21,
+   "end": 81.05,
+   "en_text": "Without attribution or payment  to the actual creators.",
+   "zh_text": "既未署名也未向实际创作者支付报酬。",
+   "highlights": [
+    {
+     "en_word": "attribution",
+     "zh_word": "署名",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "start": 81.05,
+   "end": 90.89,
+   "en_text": "Creative theft on a scale where it  is impossible to protect against it,   already putting loads of creatives’ work  in danger – so AI companies can get rich.",
+   "zh_text": "规模巨大的创意盗窃行为，根本无法防范，已使大量创作者的作品处于危险之中——只为让AI公司致富。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 90.89,
+   "end": 95.13,
+   "en_text": "While this is sad and frustrating,  what’s even worse is that generative",
+   "zh_text": "虽然这令人悲伤又沮丧，但更糟糕的是，生成式",
+   "highlights": [
+    {
+     "en_word": "frustrating",
+     "zh_word": "沮丧",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 18,
+   "start": 95.13,
+   "end": 99.45,
+   "en_text": "AI truly has the potential to  break the internet irreversibly.",
+   "zh_text": "AI真正有潜力不可逆转地破坏互联网。",
+   "highlights": [
+    {
+     "en_word": "irreversibly",
+     "zh_word": "不可逆转地",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "start": 99.45,
+   "end": 102.5,
+   "en_text": "By making it harder and  harder to tell what is true.",
+   "zh_text": "通过让辨别真相变得越来越困难。",
+   "highlights": [
+    {
+     "en_word": "tell what is true",
+     "zh_word": "辨别真相",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "start": 103.29,
+   "end": 105.62,
+   "en_text": "At First AI Looked Great!",
+   "zh_text": "起初，AI看起来很棒！",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 106.17,
+   "end": 114.25,
+   "en_text": "A kurzgesagt script starts with basic  research that is turned into a script and then fact checked in depth by 2-3 people.",
+   "zh_text": "一个kurzgesagt的脚本始于基础研究，这些研究被转化为脚本，然后由两到三个人进行深入的事实核查。",
+   "highlights": [
+    {
+     "en_word": "fact checked",
+     "zh_word": "事实核查",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 22,
+   "start": 114.25,
+   "end": 121.45,
+   "en_text": "We try to confirm our info  with what we deem trustworthy, ideally first hand sources, ideally papers.",
+   "zh_text": "我们努力通过我们认为可信的内容来确认我们的信息，理想情况下是第一手资料，最好是论文。",
+   "highlights": [
+    {
+     "en_word": "deem trustworthy",
+     "zh_word": "认为可信",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "first hand sources",
+     "zh_word": "第一手资料",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 23,
+   "start": 121.45,
+   "end": 124.65,
+   "en_text": "Then we get 1-3 experts for input and critique.",
+   "zh_text": "然后我们邀请一到三位专家提供意见和批评。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 124.65,
+   "end": 130.01,
+   "en_text": "Fact checking and compiling our sources  alone takes around 100 hours per video.",
+   "zh_text": "仅事实核查和整理我们的资料就大约需要每部视频100小时。",
+   "highlights": [
+    {
+     "en_word": "compiling",
+     "zh_word": "整理",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 25,
+   "start": 130.01,
+   "end": 137.37,
+   "en_text": "Of course we make mistakes or oversimplify,  and you can disagree with our conclusions – it’s unavoidable, we are only human after all.",
+   "zh_text": "当然我们会犯错或过度简化，你也可以不同意我们的结论——这是不可避免的，毕竟我们只是普通人而已。",
+   "highlights": [
+    {
+     "en_word": "oversimplify",
+     "zh_word": "过度简化",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "start": 137.37,
+   "end": 142.89,
+   "en_text": "But it is fair to say that our process  is extensive and after a decade,   we know what we are doing.",
+   "zh_text": "但可以说，我们的流程非常全面，经过十年，我们知道自己在做什么。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 142.89,
+   "end": 145.61,
+   "en_text": "When AI appeared we were very excited.",
+   "zh_text": "当人工智能出现时，我们非常兴奋。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 145.61,
+   "end": 149.21,
+   "en_text": "A mechanical brain able to super  quickly collect information!",
+   "zh_text": "一个能超级快速收集信息的机械大脑！",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 149.21,
+   "end": 152.01,
+   "en_text": "So we went to work and it looked amazing!",
+   "zh_text": "于是我们开始工作，看起来太棒了！",
+   "highlights": [
+    {
+     "en_word": "went to work",
+     "zh_word": "开始工作",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 30,
+   "start": 152.01,
+   "end": 154.49,
+   "en_text": "And then we started fact checking.",
+   "zh_text": "然后我们开始进行事实核查。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 154.49,
+   "end": 158.76,
+   "en_text": "We didn’t expect it to be perfect –  but it was way worse than we thought.",
+   "zh_text": "我们没指望它完美——但它比我们想象的糟糕得多。",
+   "highlights": [
+    {
+     "en_word": "way worse",
+     "zh_word": "糟糕得多",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 32,
+   "start": 159.61,
+   "end": 171.13,
+   "en_text": "Confidently Incorrect – AI is SO Bad at This We’ll summarize and generalize our experiences   over multiple projects and months  condensed into one fake project.",
+   "zh_text": "自信地错误——AI在这方面太差了，我们将多个项目和数月的经验总结并概括为一个虚构项目。",
+   "highlights": [
+    {
+     "en_word": "summarize and generalize",
+     "zh_word": "总结并概括",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 33,
+   "start": 171.13,
+   "end": 176.41,
+   "en_text": "A video about why Brown Dwarfs are the  worst and should be ashamed of themselves.",
+   "zh_text": "一部关于为什么褐矮星是最差的、应该为自己感到羞耻的视频。",
+   "highlights": [
+    {
+     "en_word": "should be ashamed of themselves",
+     "zh_word": "应该为自己感到羞耻",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 34,
+   "start": 176.41,
+   "end": 180.57,
+   "en_text": "So we got all the pro accounts of  all the AI models and got to work.",
+   "zh_text": "于是我们获取了所有AI模型的专业账号，开始工作。",
+   "highlights": [
+    {
+     "en_word": "pro accounts",
+     "zh_word": "专业账号",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 35,
+   "start": 180.57,
+   "end": 187.21,
+   "en_text": "Using deep research tools to create  a summary and overview of all the   information about the failed stars, brown dwarfs.",
+   "zh_text": "使用深度研究工具来创建关于失败恒星——褐矮星的所有信息的摘要和概览。",
+   "highlights": [
+    {
+     "en_word": "deep research tools",
+     "zh_word": "深度研究工具",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 36,
+   "start": 187.21,
+   "end": 189.13,
+   "en_text": "And wow it was great!",
+   "zh_text": "哇，真是太棒了！",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 189.13,
+   "end": 193.93,
+   "en_text": "Dozens of pages of outlines with unique  information nuggets and links to sources!",
+   "zh_text": "几十页的提纲，包含独特的信息要点和来源链接！",
+   "highlights": [
+    {
+     "en_word": "information nuggets",
+     "zh_word": "信息要点",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 38,
+   "start": 193.93,
+   "end": 196.65,
+   "en_text": "Then we started to look deeper.",
+   "zh_text": "然后我们开始深入探究。",
+   "highlights": [
+    {
+     "en_word": "look deeper",
+     "zh_word": "深入探究",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 39,
+   "start": 196.65,
+   "end": 203.05,
+   "en_text": "More than 80% of the info and  factoids were pretty solid and we could reconstruct where they were from.",
+   "zh_text": "超过80%的信息和事实细节相当可靠，我们可以还原它们的来源。",
+   "highlights": [
+    {
+     "en_word": "factoids",
+     "zh_word": "事实细节",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "reconstruct",
+     "zh_word": "还原",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 40,
+   "start": 203.05,
+   "end": 206.17,
+   "en_text": "Wikipedia, papers, legit articles.",
+   "zh_text": "维基百科、论文、正规文章。",
+   "highlights": [
+    {
+     "en_word": "legit articles",
+     "zh_word": "正规文章",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 41,
+   "start": 206.17,
+   "end": 207.3,
+   "en_text": "What about the rest?",
+   "zh_text": "剩下的呢？",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 207.3,
+   "end": 214.57,
+   "en_text": "It was great stuff,  like the speed of brown dwarf superstorms,   the nature of their insides or  how disappointed their moms are.",
+   "zh_text": "内容很棒，比如褐矮星超级风暴的速度、它们内部的性质，或是它们妈妈有多失望。",
+   "highlights": [
+    {
+     "en_word": "superstorms",
+     "zh_word": "超级风暴",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "how disappointed their moms are",
+     "zh_word": "它们妈妈有多失望",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 43,
+   "start": 214.57,
+   "end": 217.53,
+   "en_text": "But we could not find where  the AI got this info from.",
+   "zh_text": "但我们找不到AI是从哪里获得这些信息的。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 217.53,
+   "end": 224.17,
+   "en_text": "Which is not automatically a bad sign – after all, the models contain pretty much all  the internet and books ever written.",
+   "zh_text": "但这并不自动意味着是坏事——毕竟，这些模型几乎包含了所有曾经写过的互联网内容和书籍。",
+   "highlights": [
+    {
+     "en_word": "pretty much",
+     "zh_word": "几乎",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 45,
+   "start": 224.17,
+   "end": 230.81,
+   "en_text": "So we asked experts for input – and  they flagged the exact same facts, even asking where we found it.",
+   "zh_text": "于是我们向专家寻求意见——他们也指出了完全相同的事实，甚至问我们是从哪里找到的。",
+   "highlights": [
+    {
+     "en_word": "flagged",
+     "zh_word": "指出了",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 46,
+   "start": 230.81,
+   "end": 239.61,
+   "en_text": "To fulfil its goal, to make us happy,  the AI had invented or extrapolated   information to make brown dwarfs more  interesting than they really are.",
+   "zh_text": "为了实现其目标，让我们感到开心，AI虚构或推断出信息，让褐矮星显得比实际情况更有趣。",
+   "highlights": [
+    {
+     "en_word": "invented",
+     "zh_word": "虚构",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "extrapolated",
+     "zh_word": "推断",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 47,
+   "start": 239.61,
+   "end": 245.77,
+   "en_text": "Like a bad journalist making up details to  make a story hit harder or fit a narrative.",
+   "zh_text": "就像一个糟糕的记者编造细节，让故事更有冲击力或符合某种叙事。",
+   "highlights": [
+    {
+     "en_word": "making up",
+     "zh_word": "编造",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "fit a narrative",
+     "zh_word": "符合某种叙事",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 48,
+   "start": 245.77,
+   "end": 253.21,
+   "en_text": "Now we wanted to know more and dove in deeper,   reading the seemingly more solid  sources the AI had given us in full.",
+   "zh_text": "现在我们想了解更多信息，便深入探究，完整阅读了AI提供的那些看似更可靠的来源。",
+   "highlights": [
+    {
+     "en_word": "dove in deeper",
+     "zh_word": "深入探究",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "seemingly more solid",
+     "zh_word": "看似更可靠",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 49,
+   "start": 253.21,
+   "end": 258.33,
+   "en_text": "One was an article from a news  site written by a human journalist – or was it?",
+   "zh_text": "其中一篇来自新闻网站的文章，据说是人类记者写的——但真的是吗？",
+   "highlights": [
+    {
+     "en_word": "written by a human journalist",
+     "zh_word": "据说是人类记者写的",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 50,
+   "start": 258.33,
+   "end": 266.41,
+   "en_text": "It had a very familiar structure  and surely purely coincidentally,   read like what you get if a human  slightly changes AI wording.",
+   "zh_text": "它的结构非常熟悉，而且肯定只是纯粹巧合地，读起来就像人类稍微修改了AI的用词一样。",
+   "highlights": [
+    {
+     "en_word": "purely coincidentally",
+     "zh_word": "纯粹巧合地",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "slightly changes",
+     "zh_word": "稍微修改",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 51,
+   "start": 266.41,
+   "end": 270.41,
+   "en_text": "An AI essay detection tool gave it a 72% match.",
+   "zh_text": "一款AI论文检测工具显示它与AI生成内容有72%的匹配度。",
+   "highlights": [
+    {
+     "en_word": "AI essay detection tool",
+     "zh_word": "AI论文检测工具",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 52,
+   "start": 270.41,
+   "end": 276.41,
+   "en_text": "So an AI article without sources, used  as a credible source for AI research.",
+   "zh_text": "所以一篇没有来源的AI文章，却被当作可信来源用于AI研究。",
+   "highlights": [
+    {
+     "en_word": "credible source",
+     "zh_word": "可信来源",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 53,
+   "start": 276.41,
+   "end": 282.57,
+   "en_text": "Which makes sense since in 2025 there  were already well over 1200 confirmed AI",
+   "zh_text": "这说得通，因为到2025年，已有超过1200个已确认的AI。",
+   "highlights": [
+    {
+     "en_word": "well over",
+     "zh_word": "超过",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 54,
+   "start": 282.57,
+   "end": 288.57,
+   "en_text": "News Websites publishing massive amounts of AI  generated misinformation and false narratives.",
+   "zh_text": "新闻网站发布了大量由AI生成的错误信息和虚假叙事。",
+   "highlights": [
+    {
+     "en_word": "massive amounts of",
+     "zh_word": "大量",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "false narratives",
+     "zh_word": "虚假叙事",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 55,
+   "start": 288.57,
+   "end": 302.17,
+   "en_text": "This mix of correct, dubiously sourced  and straight up made up information also   leads AI to present really shoddy conclusions that   sound strong or novel but are often  half truths or misrepresentations.",
+   "zh_text": "这种正确、可疑来源和彻头彻尾虚构的信息混合，也会导致AI得出非常粗糙的结论，听起来很有力或新颖，但往往是半真半假或歪曲事实。",
+   "highlights": [
+    {
+     "en_word": "dubiously sourced",
+     "zh_word": "可疑来源",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "shoddy conclusions",
+     "zh_word": "粗糙的结论",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 56,
+   "start": 302.17,
+   "end": 302.67,
+   "en_text": "Oh well.",
+   "zh_text": "算了。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 302.67,
+   "end": 306.57,
+   "en_text": "We salvaged what we could  and went back to the drawing board.",
+   "zh_text": "我们尽可能挽回了能用的部分，然后回到起点重新开始。",
+   "highlights": [
+    {
+     "en_word": "salvaged",
+     "zh_word": "挽回了能用的部分",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "drawing board",
+     "zh_word": "起点",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 58,
+   "start": 306.57,
+   "end": 308.97,
+   "en_text": "And after a few weeks it happened.",
+   "zh_text": "几周后，事情发生了。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 308.97,
+   "end": 314.49,
+   "en_text": "By pure stupid chance, we saw a brown dwarf  video popping up, by a relatively new channel.",
+   "zh_text": "纯属愚蠢的巧合，我们看到一个相对较新的频道发布了褐矮星视频。",
+   "highlights": [
+    {
+     "en_word": "pure stupid chance",
+     "zh_word": "纯属愚蠢的巧合",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "popping up",
+     "zh_word": "发布",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 60,
+   "start": 314.49,
+   "end": 319.69,
+   "en_text": "It had hundreds of thousands of views and  was pretty good, nice footage, great editing!",
+   "zh_text": "它获得了数十万次观看，内容不错，画面很好，剪辑也很棒！",
+   "highlights": [
+    {
+     "en_word": "hundreds of thousands of",
+     "zh_word": "数十万次",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "great editing",
+     "zh_word": "剪辑也很棒",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 61,
+   "start": 319.69,
+   "end": 322.33,
+   "en_text": "But we had seen the structure and rhythm before.",
+   "zh_text": "但我们之前已经见过这种结构和节奏了。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 322.33,
+   "end": 330.73,
+   "en_text": "And would you look at that, it contained all   the brown dwarf facts we had flagged as  unreliable or straight up made up by AI.",
+   "zh_text": "你瞧，它包含了我们标记为不可靠或由AI直接编造的所有棕矮星事实。",
+   "highlights": [
+    {
+     "en_word": "straight up",
+     "zh_word": "直接",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 63,
+   "start": 330.73,
+   "end": 334.33,
+   "en_text": "This is where the death of the internet begins.",
+   "zh_text": "这就是互联网死亡的开始。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 334.33,
+   "end": 338.49,
+   "en_text": "Now there is a proper source of  brown dwarf misinformation online.",
+   "zh_text": "现在网上有了一个关于棕矮星错误信息的正规来源。",
+   "highlights": [
+    {
+     "en_word": "proper source",
+     "zh_word": "正规来源",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 65,
+   "start": 338.49,
+   "end": 343.85,
+   "en_text": "When the next AI repeats the same research,   it will find a transcript from  a video with a lot of views.",
+   "zh_text": "当下一个AI重复同样的研究时，它会找到一段来自观看量很高的视频的字幕。",
+   "highlights": [
+    {
+     "en_word": "a lot of views",
+     "zh_word": "观看量很高",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 66,
+   "start": 343.85,
+   "end": 346.01,
+   "en_text": "The misinformation is now true.",
+   "zh_text": "这些错误信息现在被认为是真实的。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 346.01,
+   "end": 347.45,
+   "en_text": "It will spread.",
+   "zh_text": "它会传播开来。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 347.45,
+   "end": 355.69,
+   "en_text": "Even before AI it was pretty hard to  find the origin of facts that sound   great but are not true – just watch  our video about a 100 year old lie.",
+   "zh_text": "在AI出现之前，要找出听起来很棒但并不真实的信息源头就相当困难——只需看看我们关于一个百年谎言的视频。",
+   "highlights": [
+    {
+     "en_word": "100 year old lie",
+     "zh_word": "百年谎言",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 69,
+   "start": 355.69,
+   "end": 360.56,
+   "en_text": "As AI use goes on it may become  impossible to know what is true or not.",
+   "zh_text": "随着AI的使用越来越多，可能将无法分辨什么是真的，什么不是。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 361.13,
+   "end": 366.41,
+   "en_text": "The Most Corrosive Lie The problem with AI is how trustworthy it  seems.",
+   "zh_text": "最具有腐蚀性的谎言：AI的问题在于它看起来非常可信。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 366.41,
+   "end": 372.17,
+   "en_text": "How it is correct enough to seem   super smart and how incredibly  confidently incorrect it is.",
+   "zh_text": "它正确到足以显得超级聪明，却又极其自信地错误。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 372.17,
+   "end": 375.29,
+   "en_text": "Casually lying to your face, often very subtly.",
+   "zh_text": "随意地当面撒谎，通常非常隐晦。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 375.29,
+   "end": 379.53,
+   "en_text": "When you catch it lying, it immediately  admits it, vows to never do it again.",
+   "zh_text": "当你发现它在说谎时，它会立即承认，并发誓再也不这样做了。",
+   "highlights": [
+    {
+     "en_word": "catch it lying",
+     "zh_word": "发现它在说谎",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 74,
+   "start": 379.53,
+   "end": 381.61,
+   "en_text": "And then it does it again.",
+   "zh_text": "然后它又这样做了。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 381.61,
+   "end": 385.93,
+   "en_text": "As eloquent as current language  models feel, there is nobody home.",
+   "zh_text": "尽管当前的语言模型听起来很雄辩，但其实里面并没有人。",
+   "highlights": [
+    {
+     "en_word": "eloquent",
+     "zh_word": "雄辩",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 76,
+   "start": 385.93,
+   "end": 389.85,
+   "en_text": "No greater intelligence or  consciousness is talking back to you.",
+   "zh_text": "没有更高层次的智能或意识在回应你。",
+   "highlights": [
+    {
+     "en_word": "consciousness",
+     "zh_word": "意识",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 77,
+   "start": 389.85,
+   "end": 395.85,
+   "en_text": "Current AI is a very complex hammer that does not  understand what it is doing or what nails are.",
+   "zh_text": "当前的AI是一把非常复杂的锤子，却不知道自己在做什么，也不知道钉子是什么。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 395.85,
+   "end": 399.69,
+   "en_text": "But we are letting it add new shelves  to the library of human knowledge.",
+   "zh_text": "但我们正允许它向人类知识的图书馆添加新的书架。",
+   "highlights": [
+    {
+     "en_word": "library of human knowledge",
+     "zh_word": "人类知识的图书馆",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 79,
+   "start": 399.69,
+   "end": 406.25,
+   "en_text": "AI is changing quickly, so this may get  better, but right now it's pretty grim.",
+   "zh_text": "AI正在快速变化，所以情况可能会好转，但目前形势相当严峻。",
+   "highlights": [
+    {
+     "en_word": "pretty grim",
+     "zh_word": "相当严峻",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 80,
+   "start": 406.25,
+   "end": 410.09,
+   "en_text": "Way too many people blindly trust AI.",
+   "zh_text": "太多人盲目信任AI。",
+   "highlights": [
+    {
+     "en_word": "blindly trust",
+     "zh_word": "盲目信任",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 81,
+   "start": 410.09,
+   "end": 417.61,
+   "en_text": "Studies looked into the language  of millions of scientific papers   published before and after the rise of LLMs.",
+   "zh_text": "研究考察了数百万篇科学论文的语言，这些论文是在大语言模型（LLMs）兴起前后发表的。",
+   "highlights": [
+    {
+     "en_word": "LLMs",
+     "zh_word": "大语言模型（LLMs）",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 82,
+   "start": 417.61,
+   "end": 423.05,
+   "en_text": "They found an abrupt and sharp increase in  the frequency of words that AIs like to use.",
+   "zh_text": "他们发现，人工智能喜欢使用的词语频率出现了突然且急剧的上升。",
+   "highlights": [
+    {
+     "en_word": "abrupt",
+     "zh_word": "突然",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "sharp increase",
+     "zh_word": "急剧的上升",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 83,
+   "start": 423.05,
+   "end": 431.05,
+   "en_text": "So it seems clear that now a significant portion  of papers have been at least assisted by AI,   usually without acknowledgement.",
+   "zh_text": "因此很明显，现在相当一部分论文至少得到了人工智能的帮助，通常未被注明来源。",
+   "highlights": [
+    {
+     "en_word": "significant portion",
+     "zh_word": "相当一部分",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "without acknowledgement",
+     "zh_word": "未被注明来源",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 84,
+   "start": 431.05,
+   "end": 438.57,
+   "en_text": "And just in July 2025 it was  discovered that a number of   researchers had started to sneak  hidden messages into their papers.",
+   "zh_text": "而且就在2025年7月，人们发现一些研究人员开始悄悄在论文中植入隐藏信息。",
+   "highlights": [
+    {
+     "en_word": "sneak",
+     "zh_word": "悄悄",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "hidden messages",
+     "zh_word": "隐藏信息",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 85,
+   "start": 438.57,
+   "end": 446.17,
+   "en_text": "In white text or too small for  the human eye they prompted AIs   to review them positively and not point out flaws.",
+   "zh_text": "以白色文字或人眼难以察觉的极小字体，他们诱导人工智能积极评价，而不指出缺陷。",
+   "highlights": [
+    {
+     "en_word": "prompted",
+     "zh_word": "诱导",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "point out flaws",
+     "zh_word": "指出缺陷",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 86,
+   "start": 446.17,
+   "end": 452.97,
+   "en_text": "As more and more people are using AI carelessly,   the library of human knowledge is  getting less and less reliable.",
+   "zh_text": "随着越来越多的人随意使用人工智能，人类知识的宝库正变得越来越不可靠。",
+   "highlights": [
+    {
+     "en_word": "carelessly",
+     "zh_word": "随意",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "library of human knowledge",
+     "zh_word": "人类知识的宝库",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 87,
+   "start": 452.97,
+   "end": 456.97,
+   "en_text": "Which brings us the last  part: How are we using AI?",
+   "zh_text": "这引出了最后一部分：我们是如何使用人工智能的？",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 456.97,
+   "end": 460.72,
+   "en_text": "And will kurzgesagt survive the AI slop age?",
+   "zh_text": "而kurzgesagt能否挺过人工智能垃圾内容的时代？",
+   "highlights": [
+    {
+     "en_word": "AI slop age",
+     "zh_word": "人工智能垃圾内容的时代",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 89,
+   "start": 461.45,
+   "end": 465.12,
+   "en_text": "Will AI Slop Kill Kurzgesagt And Artists?",
+   "zh_text": "人工智能垃圾内容会扼杀kurzgesagt和艺术家吗？",
+   "highlights": [
+    {
+     "en_word": "AI Slop",
+     "zh_word": "人工智能垃圾内容",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 90,
+   "start": 465.85,
+   "end": 470.25,
+   "en_text": "On the internet there is only one truly  valuable resource: human attention.",
+   "zh_text": "在互联网上，唯一真正有价值的是人类的关注。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 470.25,
+   "end": 478.57,
+   "en_text": "If current trends continue it is not  that far fetched that cheap slop content,   stuff just good enough, will soak  up the majority of human attention.",
+   "zh_text": "如果当前趋势持续下去，廉价的垃圾内容——仅够用、勉强合格的东西——吸走大部分人类关注，这并不荒谬。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 478.57,
+   "end": 487.21,
+   "en_text": "It could make us dumber, less informed,  our attention spans even worse,   increase political divides and make  us neglect real human interaction.",
+   "zh_text": "它可能让我们变得更笨，信息更少，注意力更差，加剧政治分歧，并使我们忽视真实的人际互动。",
+   "highlights": [
+    {
+     "en_word": "less informed",
+     "zh_word": "信息更少",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "neglect",
+     "zh_word": "忽视",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 93,
+   "start": 487.21,
+   "end": 492.73,
+   "en_text": "If AI eats the majority of the attention pie,  channels like ours will become unfeasible.",
+   "zh_text": "如果人工智能吃掉了大部分注意力蛋糕，像我们这样的频道将变得不可行。",
+   "highlights": [
+    {
+     "en_word": "eats the majority",
+     "zh_word": "吃掉了大部分",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "attention pie",
+     "zh_word": "注意力蛋糕",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 94,
+   "start": 492.73,
+   "end": 497.63,
+   "en_text": "Or forced to downsize or use AI themselves to be  able to compete.",
+   "zh_text": "或者被迫缩小规模，或自己使用人工智能以保持竞争力。",
+   "highlights": [
+    {
+     "en_word": "downsize",
+     "zh_word": "缩小规模",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 95,
+   "start": 497.63,
+   "end": 500.01,
+   "en_text": "We don’t want to play this game.",
+   "zh_text": "我们不想参与这个游戏。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 500.01,
+   "end": 502.33,
+   "en_text": "How will we use AI?",
+   "zh_text": "我们将如何使用人工智能？",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 502.33,
+   "end": 505.45,
+   "en_text": "Like the align tool in adobe illustrator.",
+   "zh_text": "就像Adobe Illustrator中的对齐工具一样。",
+   "highlights": [
+    {
+     "en_word": "align tool",
+     "zh_word": "对齐工具",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 98,
+   "start": 505.45,
+   "end": 510.33,
+   "en_text": "If you have a bunch of boxes and  you want them to line them up,   you can do this manually, one by one.",
+   "zh_text": "如果你有一堆方框，想让它们排成一行，你可以一个一个手动操作。",
+   "highlights": [
+    {
+     "en_word": "bunch of boxes",
+     "zh_word": "一堆方框",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "line them up",
+     "zh_word": "排成一行",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 99,
+   "start": 510.33,
+   "end": 515.53,
+   "en_text": "Or you can just select them, click “align”  and have them perfectly aligned in an instant.",
+   "zh_text": "或者你只需选中它们，点击“对齐”，就能瞬间让它们完全对齐。",
+   "highlights": [
+    {
+     "en_word": "select them",
+     "zh_word": "选中它们",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "in an instant",
+     "zh_word": "瞬间",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 100,
+   "start": 515.53,
+   "end": 521.29,
+   "en_text": "It’s the same with AI programing tools for   animation or using it as a  faster google alternative.",
+   "zh_text": "对于动画的AI编程工具，或将其作为更快的谷歌替代品，情况也是一样。",
+   "highlights": [
+    {
+     "en_word": "faster google alternative",
+     "zh_word": "更快的谷歌替代品",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 101,
+   "start": 521.29,
+   "end": 526.89,
+   "en_text": "AI is a helpful tool, but the  creativity and integrity is still ours.",
+   "zh_text": "人工智能是一个有用的工具，但创造力和诚信仍然属于我们。",
+   "highlights": [
+    {
+     "en_word": "creativity",
+     "zh_word": "创造力",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "integrity",
+     "zh_word": "诚信",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 102,
+   "start": 526.89,
+   "end": 535.37,
+   "en_text": "So dear internet, here is  what we are offering to you:   kurzgesagt is made by humans, for  humans and it will remain that way.",
+   "zh_text": "所以亲爱的互联网朋友们，这是我们提供给你的：kurzgesagt由人类制作，为人类而做，且将一直如此。",
+   "highlights": [
+    {
+     "en_word": "made by humans",
+     "zh_word": "由人类制作",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "it will remain that way",
+     "zh_word": "且将一直如此",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 103,
+   "start": 535.37,
+   "end": 543.85,
+   "en_text": "We will produce well researched content and invest   a lot of time and our human creativity  into our illustrations and animations.",
+   "zh_text": "我们将制作经过深入研究的内容，并投入大量时间和人类的创造力到我们的插图与动画中。",
+   "highlights": [
+    {
+     "en_word": "well researched",
+     "zh_word": "经过深入研究",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 104,
+   "start": 543.85,
+   "end": 547.21,
+   "en_text": "Put in our creative soul into our work.",
+   "zh_text": "把我们的创造灵魂注入到工作中。",
+   "highlights": [
+    {
+     "en_word": "creative soul",
+     "zh_word": "创造灵魂",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 105,
+   "start": 547.21,
+   "end": 554.17,
+   "en_text": "We will continue to fact check  and discuss our research with   human experts, to give you the most  trustworthy information that we can.",
+   "zh_text": "我们将持续进行事实核查，并与人类专家讨论我们的研究，以提供我们所能给予的最可信的信息。",
+   "highlights": [
+    {
+     "en_word": "fact check",
+     "zh_word": "事实核查",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "trustworthy",
+     "zh_word": "可信的",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 106,
+   "start": 554.17,
+   "end": 557.53,
+   "en_text": "When we make mistakes, they will be our mistakes.",
+   "zh_text": "当我们犯错时，那将是我们的错误。",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 557.53,
+   "end": 561.21,
+   "en_text": "We would rather quit than make AI slop.",
+   "zh_text": "我们宁愿退出，也不愿做出低质量的AI作品。",
+   "highlights": [
+    {
+     "en_word": "quit",
+     "zh_word": "退出",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "AI slop",
+     "zh_word": "低质量的AI作品",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 108,
+   "start": 561.21,
+   "end": 563.93,
+   "en_text": "But to go on we need your support.",
+   "zh_text": "但要继续下去，我们需要你们的支持。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 563.93,
+   "end": 569.53,
+   "en_text": "kurzgesagt is almost 70 full time  people and a lot of freelancers on top.",
+   "zh_text": "kurzgesagt几乎有70名全职人员，还有大量兼职人员。",
+   "highlights": [
+    {
+     "en_word": "full time",
+     "zh_word": "全职",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    },
+    {
+     "en_word": "freelancers",
+     "zh_word": "兼职人员",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  },
+  {
+   "id": 110,
+   "start": 569.53,
+   "end": 575.53,
+   "en_text": "This is a lot of salaries, software  licences, laptops, rent and coffee.",
+   "zh_text": "这是一大笔薪资、软件许可、笔记本电脑、租金和咖啡费用。",
+   "highlights": [
+    {
+     "en_word": "coffee",
+     "zh_word": "咖啡",
+     "color": "text-purple-400 border-b border-dashed border-purple-400"
+    }
+   ]
+  }
+ ]
+}

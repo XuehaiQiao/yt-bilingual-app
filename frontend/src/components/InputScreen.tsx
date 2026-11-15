@@ -6,6 +6,7 @@ import type { HistoryItem } from './ChannelVideoList';
 import { EstimateDialog, type EstimateDialogHandle } from './EstimateDialog';
 import { TodayWorkbench, type TodayWeekReport } from './TodayWorkbench';
 import { HomeRecommendations } from './HomeRecommendations';
+import { LibrarySection } from './LibrarySection';
 import { ShowBrowser } from './ShowBrowser';
 import { loadModel, loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
 import { VocabAxis } from './VocabAxis';
@@ -45,6 +46,9 @@ interface InputScreenProps {
     onOpenReader?: () => void;
     /** Official blog entry (specs/020): open the public blog view. */
     onOpenBlog?: () => void;
+    /** Free library (user request #11): open a pre-built video / original article. */
+    onOpenLibraryVideo?: (id: string) => void;
+    onOpenLibraryArticle?: (id: string) => void;
     /** Optional PWA install entry, rendered above the daily workbench. */
     installEntry?: React.ReactNode;
 }
@@ -82,6 +86,8 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     onOpenDiscover,
     onOpenReader,
     onOpenBlog,
+    onOpenLibraryVideo,
+    onOpenLibraryArticle,
     installEntry,
 }) => {
     const { t } = useI18n();
@@ -305,6 +311,17 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                     reuses the exact same estimate flow as the link input. */}
                 <motion.div variants={itemVariants}>
                     <HomeRecommendations onSelect={handleInterceptSubmit} />
+                </motion.div>
+
+                {/* Free library (user request #11): videos with pre-built
+                    bilingual captions + original bilingual articles. Public,
+                    local, zero model calls — clicking never enters the
+                    estimate flow. */}
+                <motion.div variants={itemVariants}>
+                    <LibrarySection
+                        onOpenVideo={onOpenLibraryVideo ?? (() => {})}
+                        onOpenArticle={onOpenLibraryArticle ?? (() => {})}
+                    />
                 </motion.div>
 
                 {/* Start learning: the old hero search, moved below today's
