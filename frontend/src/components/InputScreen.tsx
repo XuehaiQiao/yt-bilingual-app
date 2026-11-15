@@ -1,6 +1,6 @@
 import { apiFetch } from '../lib/api';
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Repeat, Trash2 } from 'lucide-react';
+import { Search, Loader2, Play, Youtube, Clock, Tv, Bell, ArrowRight, Repeat, Trash2, CalendarRange } from 'lucide-react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import { ModelSelectionModal } from './ModelSelectionModal';
@@ -31,6 +31,8 @@ interface InputScreenProps {
     reviewStatsLoading?: boolean;
     reviewStatsFailed?: boolean;
     onOpenReview?: () => void;
+    /** Weekly report entry (M5): same placement as today's review. */
+    onOpenReport?: () => void;
 }
 
 const containerVariants = {
@@ -60,6 +62,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({
     reviewStatsLoading = false,
     reviewStatsFailed = false,
     onOpenReview,
+    onOpenReport,
 }) => {
     const { t } = useI18n();
     const [url, setUrl] = useState('');
@@ -316,6 +319,40 @@ export const InputScreen: React.FC<InputScreenProps> = ({
                                 className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform] duration-200 ease-apple shrink-0"
                             >
                                 {reviewEntryAction}
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* Weekly report — M5 (specs/015). Guests have their own
+                    report, so this entry never routes through login. */}
+                {onOpenReport && (
+                    <motion.div variants={itemVariants}>
+                        <div
+                            data-testid="report-entry-card"
+                            className="rounded-3xl border border-white/5 bg-zinc-900/40 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6"
+                        >
+                            <div className="flex items-center gap-4 min-w-0 flex-1">
+                                <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                                    <CalendarRange className="w-5 h-5 text-blue-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-[17px] font-semibold tracking-tight text-zinc-100">
+                                        {t('report.home.title')}
+                                    </h3>
+                                    <p className="mt-1 text-sm text-zinc-300 leading-relaxed break-words">
+                                        {t('report.home.subtitle')}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                data-testid="report-entry-button"
+                                onClick={onOpenReport}
+                                className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
+                            >
+                                {t('report.home.action')}
                                 <ArrowRight className="w-4 h-4" />
                             </button>
                         </div>

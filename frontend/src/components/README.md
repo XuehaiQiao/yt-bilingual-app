@@ -5,7 +5,7 @@
 | 组件 | 用在哪 | 职责 |
 |---|---|---|
 | `AuthScreen.tsx` | 未登录 | 登录/注册门禁：单页两个 tab、邮箱+密码（注册含可选确认密码）、行内错误；成功后由 `AuthProvider` 切进应用 |
-| `InputScreen.tsx` | 首页 | 搜索框、词汇轴、句子精背整宽入口卡、四张 bento 卡（最近学习/本地剧集/订阅/最新视频） |
+| `InputScreen.tsx` | 首页 | 搜索框、词汇轴、句子精背整宽入口卡、今日复习与本周报告入口、四张 bento 卡（最近学习/本地剧集/订阅/最新视频） |
 | `VocabAxis.tsx` | 首页 | 词汇水平轴（Liftoff→Supernova 六站，见 specs/004） |
 | `SentencePacks.tsx` | 首页 | 句子精背入口卡（5 册 + 进度） |
 | `VideoPlayer.tsx` | 学习页 | YouTube 播放器封装：seek/播放暂停命令、倍速、全屏 |
@@ -16,6 +16,7 @@
 | `SentenceView.tsx` | 句子精背 | 背诵视图：册切换、按天卡片、自测遮中文、复习打卡、搜索 |
 | `ReviewScreen.tsx` | 复习 | 生词复习全屏视图（M2 / specs/013）：今日统计、单卡揭晓释义/例句、Again/Hard/Good/Easy 评分（键盘 1–4、空格揭晓）、暂停词、空态/完成态、错误重试；不排名、不红叉 |
 | `QuizScreen.tsx` | 理解练习 | 视频理解题全屏视图（M3 / specs/014）：3 道 MCQ/判断题逐题作答、提交即判分+解析、答错「回看证据」关闭答题并 seek 原声、结果页正确率/逐题对错/错题回看/回首页；键盘 1–4 选择、Enter 提交/继续 |
+| `ReportScreen.tsx` | 本周报告 | 本周报告全屏视图（M5 / specs/015）：周一到今天日期范围、三个数字（无答题显示「暂无」）、一句事实/下一步/连续天数、证据句子与「回看 mm:ss」、明日到期词入口；加载/错误/空数据态，中越双语、375px 单列 |
 | `SentenceText.tsx` | 句子精背 | seg 渲染：四色语块 + ruby 注音 + 逐词可点 |
 | `FavoritesModal.tsx` | 全局 | 收藏夹：分组、迷你播放器、**Anki/CSV 导出** |
 | `ModelBar.tsx` | 首页 | 全局模型栏：/api/models 列表、当前模型、按已配 Key 置灰、选择持久化 |

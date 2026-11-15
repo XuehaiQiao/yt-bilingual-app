@@ -1,7 +1,7 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn, GraduationCap } from 'lucide-react';
+import { Star, ChevronDown, ExternalLink, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, LogOut, LogIn, GraduationCap, CalendarRange } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { LanguageMenu } from './components/LanguageMenu';
@@ -20,8 +20,10 @@ import { WordPopover, type WordDefinition, type WordLookupTarget } from './compo
 import { SentenceView, sentenceFavId } from './components/SentenceView';
 import { ReviewScreen } from './components/ReviewScreen';
 import { QuizScreen } from './components/QuizScreen';
+import { ReportScreen, type WeekReportEvidence } from './components/ReportScreen';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
+import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
 import { segToPlain, CHUNK_STYLE, type Sentence, type SegChunk } from './lib/sentences';
 import { toast, describeApiError } from './lib/toast';
 import { consumeSseStream, findActiveIndex, isUntranslated, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from './lib/transcript';
@@ -90,6 +92,26 @@ function formatClock(seconds: number): string {
   return `${mm}:${ss}`;
 }
 
+// Local-episode refs can arrive as `<show>_S01E01`, `<show>-S01E01` or
+// `<show>/S01E01` (specs/015 normalizes them server-side). Report evidence
+// uses the canonical form; compare both sides through this shape.
+function normalizeLocalContentRef(ref: string): string {
+  const match = ref.match(/^(.+?)[-_/]S(\d+)E(\d+)$/i);
+  if (!match) return ref;
+  return `${match[1].toLowerCase()}-S${match[2].padStart(2, '0')}E${match[3].padStart(2, '0')}`;
+}
+
+function contentRefMatches(
+  evidence: { contentRef: string; kind: 'video' | 'local_show' },
+  videoId: string,
+  isLocalSubtitle: boolean,
+): boolean {
+  if (evidence.kind === 'local_show' && isLocalSubtitle) {
+    return normalizeLocalContentRef(evidence.contentRef) === normalizeLocalContentRef(videoId);
+  }
+  return evidence.contentRef === videoId;
+}
+
 function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const { user, logout, status, dataRevision } = useAuth();
   const { t, language, targetLang } = useI18n();
@@ -132,6 +154,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // stays local (like sentenceLevel) so returning always lands on the home
   // screen, per specs/013.
   const [reviewOpen, setReviewOpen] = useState(false);
+  // Weekly report — its own view (M5). Opening it from a video pauses the
+  // player without discarding it; closing returns to the same content.
+  const [reportOpen, setReportOpen] = useState(false);
+  const reportReturnTimeRef = useRef(0);
   const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
   const [reviewStatsLoading, setReviewStatsLoading] = useState(false);
   const [reviewStatsFailed, setReviewStatsFailed] = useState(false);
@@ -226,6 +252,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Favorite jump into a local episode: consumed once the episode payload is
   // in state (the target may be a simulated timer or a real YouTube player).
   const pendingLocalSeekRef = useRef<number | null>(null);
+  // Weekly-report evidence jump: contentRef + seconds, consumed by the same
+  // post-load effect. It takes precedence over the resume-from-progress path.
+  const pendingEvidenceSeekRef = useRef<{ contentRef: string; time: number; kind: 'video' | 'local_show' } | null>(null);
 
   const cancelTranslationStream = () => {
     streamAbortRef.current?.abort();
@@ -305,6 +334,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     if (subtitleTimerRef.current) clearInterval(subtitleTimerRef.current);
     subtitleTimerRef.current = null;
     setIsSubtitlePlaying(false);
+    // Pausing is a natural flush point for the watch-event segment.
+    pauseWatch(currentTimeRef.current);
   }, []);
 
 
@@ -836,7 +867,33 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const handleTimeUpdate = useCallback((time: number) => {
     setCurrentTime(time);
+    // The YouTube player and the simulated local clock both land here (via
+    // their own source); watch events count only movement of this position.
+    notePlayback(time);
   }, []);
+
+  // ── Watch reporting (M5) ─────────────────────────────────────────────────
+  // One segment per open content. Switching video/episode, leaving to the
+  // report/quiz/review views, or unmounting ends the segment: the tracker
+  // emits what was played and flushes the queue. Guests are already covered by
+  // apiFetch's credentials, so no auth check is needed here.
+  const hasTranscript = transcript.length > 0;
+  useEffect(() => {
+    if (!videoId || !hasTranscript || reportOpen || quizOpen || reviewOpen) return;
+    startWatch({
+      contentRef: videoId,
+      kind: metadata?.is_local_subtitle ? 'local_show' : 'video',
+    });
+    return () => endWatch();
+  }, [videoId, hasTranscript, metadata?.is_local_subtitle, reportOpen, quizOpen, reviewOpen]);
+
+  // SRT-only local episodes have no player callback; the simulated clock's
+  // `currentTime` is the playback position. Only feed it while playing so a
+  // paused episode keeps its last emitted segment clean.
+  useEffect(() => {
+    if (!useSubtitleTimer || !isSubtitlePlaying) return;
+    notePlayback(currentTime);
+  }, [currentTime, useSubtitleTimer, isSubtitlePlaying]);
 
   // --- Playback progress: save (throttled) and resume ---
   const lastSavedTimeRef = useRef(0);
@@ -851,6 +908,24 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   useEffect(() => {
     if (!videoId || transcript.length === 0) return;
+
+    // Weekly-report evidence wins over every resume path: it was clicked with
+    // an explicit second, so never replace it with local progress.
+    const evidenceSeek = pendingEvidenceSeekRef.current;
+    if (
+      evidenceSeek
+      && contentRefMatches(evidenceSeek, videoId, Boolean(metadata?.is_local_subtitle))
+    ) {
+      pendingEvidenceSeekRef.current = null;
+      resumedVideoRef.current = videoId;
+      lastSavedTimeRef.current = 0;
+      if (useSubtitleTimer) {
+        setCurrentTime(evidenceSeek.time);
+      } else {
+        setSeekCommand({ time: evidenceSeek.time, timestamp: Date.now() });
+      }
+      return;
+    }
 
     // A local-episode favorite jump takes precedence over resume, and works
     // whether the episode uses a mapped player or the simulated clock.
@@ -1019,6 +1094,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setSeekCommand(null);
     setSentenceLevel(null);
     setReviewOpen(false);
+    setReportOpen(false);
     setQuizOpen(false);
     setQuizLesson(null);
     setQuizStarting(false);
@@ -1026,6 +1102,92 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     // Returning from review can change the due count; refetch on every go-home
     // (one cheap request) so the badge never shows a stale number.
     setReviewStatsNonce(prev => prev + 1);
+  };
+
+  // ── Weekly report view (M5) ──────────────────────────────────────────────
+  // A report is a view like review: opening it pauses the current segment and
+  // closing it returns to whatever was underneath (home or the same video).
+  const handleOpenReport = () => {
+    setWordLookup(null);
+    setIsFavoritesOpen(false);
+    setSelectedChannel(null);
+    setReviewOpen(false);
+    reportReturnTimeRef.current = videoId ? currentTimeRef.current : 0;
+    if (isSubtitlePlaying) pauseSubtitleTimer();
+    pauseWatch(currentTimeRef.current);
+    setReportOpen(true);
+  };
+
+  const handleCloseReport = () => {
+    setReportOpen(false);
+    const resumeAt = reportReturnTimeRef.current;
+    if (videoId && transcript.length > 0 && Number.isFinite(resumeAt) && resumeAt > 0) {
+      if (useSubtitleTimer) setCurrentTime(resumeAt);
+      else setSeekCommand({ time: resumeAt, timestamp: Date.now() });
+    }
+  };
+
+  // Evidence "回看": open the referenced content and seek to the evidence
+  // second. Existing opening paths are reused (favorites jump / history load /
+  // local episode loader); the video id is first resolved through the history
+  // index so no re-processing (and no model spend) is triggered when possible.
+  const handleOpenEvidence = async (evidence: WeekReportEvidence) => {
+    const start = Number.isFinite(evidence.start) ? Math.max(0, evidence.start) : 0;
+    setReportOpen(false);
+    setReviewOpen(false);
+    setQuizOpen(false);
+    setQuizLesson(null);
+    setSentenceLevel(null);
+
+    // Already-open content: seek in place (the player remounts after the
+    // report branch unmounts, so `seekCommand` is consumed on ready).
+    if (videoId && transcript.length > 0 && contentRefMatches(evidence, videoId, isLocalSubtitle)) {
+      if (useSubtitleTimer) setCurrentTime(start);
+      else setSeekCommand({ time: start, timestamp: Date.now() });
+      return;
+    }
+
+    if (evidence.kind === 'local_show') {
+      const match = evidence.contentRef.match(/^(.+?)[-_/]S(\d+)E(\d+)$/i);
+      if (match) {
+        pendingEvidenceSeekRef.current = {
+          contentRef: evidence.contentRef,
+          time: start,
+          kind: evidence.kind,
+        };
+        await handleSelectEpisode(
+          match[1],
+          Number.parseInt(match[2], 10),
+          Number.parseInt(match[3], 10),
+        );
+        return;
+      }
+    }
+
+    // YouTube: find the cached history filename for this video id. If there is
+    // no cache, fall back to the normal URL pipeline (which may re-process).
+    try {
+      const response = await apiFetch('/api/history');
+      if (response.ok) {
+        const items = await response.json() as Array<{ filename?: string; videoId?: string }>;
+        const item = Array.isArray(items)
+          ? items.find(candidate => candidate?.videoId === evidence.contentRef)
+          : undefined;
+        if (item?.filename) {
+          pendingEvidenceSeekRef.current = {
+            contentRef: evidence.contentRef,
+            time: start,
+            kind: evidence.kind,
+          };
+          await handleLoadHistory(item.filename);
+          return;
+        }
+      }
+    } catch {
+      // Fall through to the URL pipeline below.
+    }
+    pendingSeekRef.current = start;
+    await handleUrlSubmit(`https://www.youtube.com/watch?v=${encodeURIComponent(evidence.contentRef)}`);
   };
 
   // Review is a full view, but only accounts can use it (specs/013: guests get
@@ -1040,6 +1202,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setSelectedChannel(null);
     setQuizOpen(false);
     setQuizLesson(null);
+    setReportOpen(false);
     setReviewOpen(true);
   };
 
@@ -1152,6 +1315,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       setSeekCommand(null);
       setSentenceLevel(null);
       setReviewOpen(false);
+      setReportOpen(false);
       setQuizOpen(false);
       setQuizLesson(null);
       setQuizStarting(false);
@@ -1225,6 +1389,19 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                 {reviewStats.dueNow > 99 ? '99+' : reviewStats.dueNow}
               </span>
             )}
+          </button>
+        )}
+        {!quizOpen && !reportOpen && (
+          <button
+            type="button"
+            data-testid="topbar-report-button"
+            onClick={handleOpenReport}
+            aria-label={t('report.title')}
+            title={t('report.title')}
+            className="inline-flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 hover:border-white/10 text-zinc-300 hover:text-zinc-100 transition-[background-color,border-color,color] duration-200 ease-apple shrink-0"
+          >
+            <CalendarRange className="w-4 h-4 text-blue-400 shrink-0" />
+            <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">{t('report.title')}</span>
           </button>
         )}
         <button
@@ -1323,6 +1500,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           playToggleCommand={playToggleCommand}
           onPlayerReady={hasLocalVideo ? () => setLocalVideoError(false) : undefined}
           onPlayerError={hasLocalVideo ? () => setLocalVideoError(true) : undefined}
+          onPlaybackStateChange={(playing) => { if (!playing) pauseWatch(); }}
         />
       )}
 
@@ -1721,6 +1899,20 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onRequestLogin={onRequestLogin}
           />
         </motion.div>
+      ) : reportOpen ? (
+        <motion.div
+          key="report"
+          initial={{ opacity: 0, scale: 0.99, y: 8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          className="flex-1 min-h-0 flex flex-col overflow-hidden"
+        >
+          <ReportScreen
+            onClose={handleCloseReport}
+            onOpenEvidence={(evidence) => { void handleOpenEvidence(evidence); }}
+            onOpenReview={handleOpenReview}
+          />
+        </motion.div>
       ) : reviewOpen ? (
         <motion.div
           key="review"
@@ -1773,6 +1965,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             reviewStatsLoading={reviewStatsLoading}
             reviewStatsFailed={reviewStatsFailed}
             onOpenReview={handleOpenReview}
+            onOpenReport={handleOpenReport}
           />
         </motion.div>
       ) : (

@@ -10,6 +10,7 @@
 | `sentences.ts` | 句子精背：类型、拉取、四色语块配色、按册×天的背诵/复习进度持久化 |
 | `settings.ts` | 词汇水平（六站轴）与全局模型（`yt_bilingual_last_model`）的 localStorage 读写，含旧考试制存档迁移 |
 | `progress.ts` | 每视频播放进度记忆（续播 + "已学 N%"），上限 200 条 |
+| `events.ts` | 观看事件上报（M5 / specs/015）：只按播放位置增量计 `watchedSeconds`（暂停/拖动不计），内存队列 ≤50 条批量 POST `/api/events`，`clientEventId` 保证重试幂等；每 60s 播放 / 暂停 / 切后台时 flush（keepalive），失败静默重试一次 |
 | `exporter.ts` | 收藏导出：Anki TSV（front/back/tags）与完整 CSV |
 | `favorites.ts` | 收藏按条 API（M1 ④）：`FavoriteItem` 类型、`fetchFavorites/addFavorite/removeFavorite`（后端按条写入、幂等）；`replaceAllFavorites` 仅为旧整文件 PUT 兼容路径，App 不再调用 |
 | `review.ts` | 复习引擎客户端（M2 / specs/013）：队列/统计/作答/暂停的类型与四个 API 函数；走 `apiFetch`，按当前翻译目标语言取词，失败抛带 HTTP 状态的 `ReviewApiError` |

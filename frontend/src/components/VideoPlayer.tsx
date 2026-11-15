@@ -15,6 +15,8 @@ interface VideoPlayerProps {
     onPlayerReady?: () => void;
     /** Optional: the embed failed (unavailable / embed denied / network). */
     onPlayerError?: (code: number) => void;
+    /** Optional: play/pause transitions, used to flush watch-event segments. */
+    onPlaybackStateChange?: (playing: boolean) => void;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -26,6 +28,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     playToggleCommand,
     onPlayerReady,
     onPlayerError,
+    onPlaybackStateChange,
 }) => {
     const { t } = useI18n();
     const playerRef = useRef<any>(null);
@@ -96,8 +99,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     const onStateChange: YouTubeProps['onStateChange'] = (event) => {
         // PlayerState.PLAYING = 1
-        setIsPlaying(event.data === 1);
-        isPlayingRef.current = event.data === 1;
+        const playing = event.data === 1;
+        setIsPlaying(playing);
+        isPlayingRef.current = playing;
+        onPlaybackStateChange?.(playing);
     };
 
     const onError: YouTubeProps['onError'] = (event) => {
