@@ -1,0 +1,39 @@
+{
+  "id": "pg-the-fox-and-the-crow",
+  "title": "The Fox and the Crow",
+  "level": "B1",
+  "author": "Aesop (adapted by J. H. Stickney)",
+  "license": "Public domain (Project Gutenberg #49010)",
+  "source": "public-domain",
+  "topic": "fable",
+  "summary": "狐狸奉承乌鸦，骗她开口唱歌，奶酪掉了下来。",
+  "gutenbergId": 49010,
+  "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+  "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+  "paragraphs": [
+    {
+      "en": "A CROW stole a piece of cheese one day, and flew with it up into a tree, so as to eat it at her leisure.",
+      "zh": "有一天，一只乌鸦偷了一块奶酪，叼着它飞到树上，好慢慢享用。"
+    },
+    {
+      "en": "As she sat there, holding it in her beak, a Fox chanced to pass by, and looking up saw her. “How good that cheese smells!” thought he; “I’ll have it, sure as I’m a Fox.”",
+      "zh": "她衔着奶酪坐在那里，一只狐狸碰巧经过，抬头看见了她。“那奶酪闻着真香！”他心里想，“我一定能弄到手，我好歹是只狐狸。”"
+    },
+    {
+      "en": "Coming close to the tree, he said, “My dear Madam, what a beautiful creature you are! I was not aware till this moment what rare beauty your family possesses. What eyes! What glossy feathers! What grace of form! Is your voice as charming to hear, as your person is to look upon? If it is, you well deserve to be called the Queen of Birds. Will you not do me the favor to sing to me?”",
+      "zh": "狐狸走近树下，说：“亲爱的夫人，您是多美的人儿啊！我到这一刻才知道，您这一族竟有如此罕见的美貌。多美的眼睛！多光亮的羽毛！多优雅的身姿！您的嗓音是否也像您的外表一样迷人？若是如此，您真该被称为鸟中女王。您不肯赏脸为我唱一曲吗？”"
+    },
+    {
+      "en": "Now it is well known that the Caw! Caw! of the Crow family is not musical. She ought to have been on her guard, but so delighted was she with the flattery of the Fox that she forgot to be wary. She opened her mouth to show the Fox the sweetness of her voice, when—down fell the bit of cheese, which was exactly what was expected.",
+      "zh": "众所周知，乌鸦家族的“呱！呱！”可不好听。她本该提高警惕，可狐狸的奉承让她太得意，竟忘了小心。她张开嘴，想让狐狸见识她嗓音的甜美——奶酪便掉了下去，这正是狐狸所料。"
+    },
+    {
+      "en": "The Fox ate it at one mouthful, then stopped to say, “Thank you, madam. I am quite satisfied. Your voice is well enough, I have no doubt. What a pity it is you are so sadly wanting in wit!”",
+      "zh": "狐狸一口把奶酪吞下，然后停下来道：“谢谢您，夫人。我很满意。您的嗓音一定不差。只可惜您太缺心眼了！”"
+    },
+    {
+      "en": "The Crow learned that we do well to be on our guard when people flatter us.",
+      "zh": "乌鸦由此得知：有人奉承我们时，我们最好提高警惕。"
+    }
+  ]
+}

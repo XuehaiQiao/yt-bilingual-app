@@ -3,7 +3,7 @@
 覆盖：
 
 1. 公开可访问：未登录 GET 清单 / 视频详情 / 文章详情均 200，且不新发游客 Cookie；
-2. 清单形状：3 个视频 + 3 篇原创 + 34 篇 Gutenberg 公版短文、字段齐全、
+2. 清单形状：3 个视频 + 3 篇原创 + 64 篇 Gutenberg 公版短文、字段齐全、
    时长 3–20 分钟、等级 A1–C2；
 3. 视频详情：真实 youtubeId、free/source 标记、双语 blocks（en/zh 均非空）、高亮数组；
 4. 文章详情：原创作者/许可、逐段 en+zh、词数 250–350 且由后端实算；
@@ -42,6 +42,39 @@ EXPECTED_ARTICLE_IDS = {
 GUTENBERG_MANIFEST = LIBRARY_DIR / "gutenberg-manifest.json"
 GUTENBERG_ARTICLE_IDS = {
     item["id"] for item in json.loads(GUTENBERG_MANIFEST.read_text(encoding="utf-8"))["items"]
+}
+# 2026-11-17 第二轮内容供给新增的 30 篇（Aesop / Jataka / 短寓言）。
+NEW_GUTENBERG_ARTICLE_IDS = {
+    "pg-the-mice-in-council",
+    "pg-the-fox-and-the-goat",
+    "pg-the-mouse-the-frog-and-the-hawk",
+    "pg-the-shepherds-boy-and-the-wolf",
+    "pg-the-two-frogs",
+    "pg-the-lion-and-the-mouse",
+    "pg-the-mouse-the-cat-and-the-cock",
+    "pg-the-arab-and-his-camel",
+    "pg-the-fox-who-had-lost-his-tail",
+    "pg-the-man-his-son-and-his-donkey",
+    "pg-the-wolf-and-the-cat",
+    "pg-the-fox-in-the-ice",
+    "pg-the-hares-and-the-frogs",
+    "pg-the-three-fishes",
+    "pg-the-tricky-wolf-and-the-rats",
+    "pg-the-golden-goose",
+    "pg-the-stupid-monkeys",
+    "pg-the-cunning-wolf",
+    "pg-the-red-bud-tree",
+    "pg-the-woodpecker-and-the-lion",
+    "pg-the-otters-and-the-wolf",
+    "pg-beauty-and-brownie",
+    "pg-the-caliph-and-the-poet",
+    "pg-read-and-you-will-know",
+    "pg-which-was-the-king",
+    "pg-the-golden-arm",
+    "pg-the-turtle-who-couldnt-stop-talking",
+    "pg-the-fox-and-the-crow",
+    "pg-news",
+    "pg-the-eagle-and-the-fox",
 }
 WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['\u2019-][A-Za-z0-9]+)*")
 
@@ -95,7 +128,7 @@ def test_index_lists_three_videos_and_all_articles(make_client):
     assert all(180 <= video["duration"] <= 1200 for video in videos)
     assert all(video["level"] in routes_library.LEVELS for video in videos)
 
-    assert len(articles) == 3 + len(GUTENBERG_ARTICLE_IDS) == 37
+    assert len(articles) == 3 + len(GUTENBERG_ARTICLE_IDS) == 67
     ids = {article["id"] for article in articles}
     assert ids == EXPECTED_ARTICLE_IDS | GUTENBERG_ARTICLE_IDS
     assert all(
@@ -184,9 +217,9 @@ def test_article_detail_is_original_bilingual_and_counted(make_client):
 def test_gutenberg_articles_have_provenance_and_own_translation(make_client):
     manifest = json.loads(GUTENBERG_MANIFEST.read_text(encoding="utf-8"))
     items = manifest["items"]
-    assert len(items) == 34
-    assert len({item["id"] for item in items}) == 34
-    assert len({item["gutenbergId"] for item in items}) == 5  # 18442/6168/7439/14241/11339
+    assert len(items) == 64
+    assert len({item["id"] for item in items}) == 64
+    assert len({item["gutenbergId"] for item in items}) == 8  # +49010/7518/62514
 
     with make_client() as client:
         for item in items:
@@ -209,10 +242,38 @@ def test_gutenberg_articles_have_provenance_and_own_translation(make_client):
             assert 250 <= actual <= 400
 
 
+def test_second_wave_adds_thirty_new_gutenberg_articles(make_client):
+    """第二轮 30 篇：清单/文件/来源字段/双语/250–400 词全部到位且不重复旧篇。"""
+    manifest = json.loads(GUTENBERG_MANIFEST.read_text(encoding="utf-8"))
+    items = {item["id"]: item for item in manifest["items"]}
+    assert len(NEW_GUTENBERG_ARTICLE_IDS) == 30
+    assert NEW_GUTENBERG_ARTICLE_IDS <= set(items)
+    assert not (NEW_GUTENBERG_ARTICLE_IDS & EXPECTED_ARTICLE_IDS)
+    # 新增篇目来自本轮补充的三本书 + 既有书中此前未选的短篇。
+    new_books = {6168, 7439, 14241, 49010, 7518, 62514}
+    assert {
+        items[article_id]["gutenbergId"] for article_id in NEW_GUTENBERG_ARTICLE_IDS
+    } <= new_books
+
+    with make_client() as client:
+        for article_id in NEW_GUTENBERG_ARTICLE_IDS:
+            payload = client.get(f"/api/library/articles/{article_id}").json()
+            assert payload["source"] == "public-domain"
+            assert payload["gutenbergId"] in new_books
+            assert payload["publicDomainBasis"].strip()
+            assert payload["license"].startswith("Public domain (Project Gutenberg #")
+            paragraphs = payload["paragraphs"]
+            assert len(paragraphs) >= 2
+            assert all(paragraph["en"].strip() and paragraph["zh"].strip() for paragraph in paragraphs)
+            actual = sum(len(WORD_RE.findall(paragraph["en"])) for paragraph in paragraphs)
+            assert payload["wordCount"] == actual
+            assert 250 <= actual <= 400
+
+
 def test_articles_manifest_matches_files():
     data = json.loads((LIBRARY_DIR / "articles.json").read_text(encoding="utf-8"))
     ids = data["articles"]
-    assert data["_meta"]["count"] == len(ids) == 37
+    assert data["_meta"]["count"] == len(ids) == 67
     assert len(set(ids)) == len(ids)
     for article_id in ids:
         assert (LIBRARY_DIR / "articles" / f"{article_id}.json").is_file(), article_id

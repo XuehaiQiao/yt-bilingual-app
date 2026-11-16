@@ -122,3 +122,18 @@ def test_report_gate_turns_on_at_threshold(supply_env, monkeypatch):
     assert report["shortfall"] == 0
     assert report["gate"]["open"] is True
     assert report["gate"]["mode"] == "match_v0"
+
+
+def test_committed_report_reaches_supply_target():
+    """仓库里交付的供给报告必须与 100 条目标一致，gate 已开。"""
+    path = ROOT / "docs" / "reports" / "content-supply-2026-11-17.json"
+    report = json.loads(path.read_text(encoding="utf-8"))
+    assert report["totalEligible"] >= 100
+    assert report["shortfall"] == 0
+    assert report["gate"]["open"] is True
+    assert report["gate"]["mode"] == "match_v0"
+    assert report["byKind"]["video"]["eligible"] == 3
+    assert report["byKind"]["article"]["eligible"] == 67
+    assert report["byKind"]["curated"]["eligible"] == 30
+    assert report["gutenberg"]["articles"] == 64
+    assert report["failures"] == []

@@ -2,10 +2,10 @@
  "_meta": {
   "version": 1,
   "updatedAt": "2026-11-17",
-  "count": 37,
+  "count": 67,
   "author": "LinguaTrek 编辑部 / Project Gutenberg 公版作者",
   "license": "原创文章：免费使用；公版短文：Public domain（逐篇标注 Gutenberg ID）",
-  "note": "3 篇原创 + 34 篇 Project Gutenberg 公版短文（英文原文 + 本项目中译文）；运行时不调用任何大模型。"
+  "note": "3 篇原创 + 64 篇 Project Gutenberg 公版短文（英文原文 + 本项目中译文）；运行时不调用任何大模型。"
  },
  "articles": [
   "ocean-noise",
@@ -44,6 +44,36 @@
   "pg-the-eagle-the-cat-and-the-wild-sow",
   "pg-the-town-mouse-and-the-country-mouse",
   "pg-the-thief-and-the-innkeeper",
-  "pg-the-goatherd-and-the-wild-goats"
+  "pg-the-goatherd-and-the-wild-goats",
+  "pg-the-mice-in-council",
+  "pg-the-fox-and-the-goat",
+  "pg-the-mouse-the-frog-and-the-hawk",
+  "pg-the-shepherds-boy-and-the-wolf",
+  "pg-the-two-frogs",
+  "pg-the-lion-and-the-mouse",
+  "pg-the-mouse-the-cat-and-the-cock",
+  "pg-the-arab-and-his-camel",
+  "pg-the-fox-who-had-lost-his-tail",
+  "pg-the-man-his-son-and-his-donkey",
+  "pg-the-wolf-and-the-cat",
+  "pg-the-fox-in-the-ice",
+  "pg-the-hares-and-the-frogs",
+  "pg-the-three-fishes",
+  "pg-the-tricky-wolf-and-the-rats",
+  "pg-the-golden-goose",
+  "pg-the-stupid-monkeys",
+  "pg-the-cunning-wolf",
+  "pg-the-red-bud-tree",
+  "pg-the-woodpecker-and-the-lion",
+  "pg-the-otters-and-the-wolf",
+  "pg-beauty-and-brownie",
+  "pg-the-caliph-and-the-poet",
+  "pg-read-and-you-will-know",
+  "pg-which-was-the-king",
+  "pg-the-golden-arm",
+  "pg-the-turtle-who-couldnt-stop-talking",
+  "pg-the-fox-and-the-crow",
+  "pg-news",
+  "pg-the-eagle-and-the-fox"
  ]
 }

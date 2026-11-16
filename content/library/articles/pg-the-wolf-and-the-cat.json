@@ -1,0 +1,67 @@
+{
+  "id": "pg-the-wolf-and-the-cat",
+  "title": "The Wolf and the Cat",
+  "level": "B2",
+  "author": "Aesop (adapted by J. H. Stickney)",
+  "license": "Public domain (Project Gutenberg #49010)",
+  "source": "public-domain",
+  "topic": "fable",
+  "summary": "狼被猎狗追进村子，想找人庇护，可它得罪了全村人。",
+  "gutenbergId": 49010,
+  "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+  "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+  "paragraphs": [
+    {
+      "en": "A WOLF ran out of the forest into a village—not to pay a visit, but to save its life; for it trembled for its skin.",
+      "zh": "一只狼从森林里跑进村子——不是去串门，而是为了保命；它为自己的皮瑟瑟发抖。"
+    },
+    {
+      "en": "The huntsman and a pack of hounds were after it.",
+      "zh": "猎人和一群猎狗正在追它。"
+    },
+    {
+      "en": "It would fain have rushed in through the first gateway, but there was this unfortunate circumstance in the way—all the gateways were closed.",
+      "zh": "它本想从第一家的大门冲进去，可偏偏有个倒霉的情况挡着路——所有大门都关着。"
+    },
+    {
+      "en": "The Wolf saw a Cat on a partition fence and said pleadingly: “Vaska, my friend, tell me quickly, which of the moujiks here is the kindest, so that I may hide myself from my evil foes. Listen to the cry of the dogs and the terrible sound of the horns. All that noise is actually made in chase of me.”",
+      "zh": "狼看见一只猫蹲在隔墙上，便恳求道：“瓦斯卡，我的朋友，快告诉我，这村里哪个庄稼汉最心善，好让我躲开那些凶恶的仇敌。你听那狗的叫声和号角多可怕。那些声音其实都是冲我来的。”"
+    },
+    {
+      "en": "“Go quickly and ask Stefan,” said Vaska, the Cat; “he is a very kind man.”",
+      "zh": "“快去求斯特凡吧，”猫瓦斯卡说，“他是个很善良的人。”"
+    },
+    {
+      "en": "“Quite true; only I have torn the skin off one of his sheep.”",
+      "zh": "“一点不假；只是我扒过他家一只羊的皮。”"
+    },
+    {
+      "en": "“Well, then, try Demian.”",
+      "zh": "“那你去试试杰米扬。”"
+    },
+    {
+      "en": "“I’m afraid he’s angry with me, too; I carried off one of his kids.”",
+      "zh": "“我怕他也生我的气；我叼走过他家一只小羊。”"
+    },
+    {
+      "en": "“Run over there, then; Trofim lives there.”",
+      "zh": "“那就跑到那边去，特罗菲姆住在那儿。”"
+    },
+    {
+      "en": "“Trofim! I should be afraid of even meeting him. Ever since the spring he has been threatening me about a lamb.”",
+      "zh": "“特罗菲姆！我连见他都不敢。从春天起，他就为一只羊羔的事威胁我。”"
+    },
+    {
+      "en": "“Dear me, that’s bad! But perhaps Klim will protect you.”",
+      "zh": "“哎呀，那可糟了！不过也许克利姆会护着你。”"
+    },
+    {
+      "en": "“Oh, Vaska, I have killed one of his calves!”",
+      "zh": "“哦，瓦斯卡，我咬死过他家一头小牛！”"
+    },
+    {
+      "en": "“What do I hear, friend? You’ve quarreled with all the village,” said Vaska to the Wolf. “What sort of protection can you hope for here? No, no; our peasants are not so destitute of sense as to be willing to save you to their own hurt. And, really, you have only yourself to blame. What you have sown, that you must now reap.”",
+      "zh": "“我听到什么了，朋友？你跟全村人都吵翻了，”猫瓦斯卡对狼说，“你还指望这儿有谁护着你？不行，不行；我们的庄稼汉还没糊涂到为了救你而害了自己。再说，这只能怪你自己。种下什么，如今就得收什么。”"
+    }
+  ]
+}

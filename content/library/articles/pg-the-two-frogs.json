@@ -1,0 +1,55 @@
+{
+  "id": "pg-the-two-frogs",
+  "title": "The Two Frogs",
+  "level": "A2",
+  "author": "Aesop (adapted by J. H. Stickney)",
+  "license": "Public domain (Project Gutenberg #49010)",
+  "source": "public-domain",
+  "topic": "fable",
+  "summary": "池塘里的青蛙劝朋友搬家，朋友不肯，最终死于路过的马车。",
+  "gutenbergId": 49010,
+  "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+  "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+  "paragraphs": [
+    {
+      "en": "ONCE there were two Frogs who were dear friends.",
+      "zh": "从前有两只青蛙，是非常要好的朋友。"
+    },
+    {
+      "en": "One lived in a deep pond in the woods, where the trees hung over the water, and where no one came to disturb him.",
+      "zh": "一只住在林中的深池塘里，池边有树木垂在水面上，没有人来打扰他。"
+    },
+    {
+      "en": "The other lived in a small pool. This was not a good place for a Frog, or any one else, to live in, for the country road passed through the pool, and all the horses and wagons had to go that way, so that it was not quiet like the pond, and the horses made the water muddy and foul.",
+      "zh": "另一只住在一个小水坑里。这地方对青蛙或任何生灵来说都不算好，因为乡间大路正好从水坑中穿过，所有马匹和马车都得走那条路，所以这里不像池塘那样安静，马匹把水搅得又浑又脏。"
+    },
+    {
+      "en": "One day the Frog from the pond said to the other, “Do come and live with me; I have plenty of food and water, and nothing to disturb me; and it is so pleasant in my pond. Now here there is very little food, and not much water, and the road passes through your pool, so that you must always be afraid of passers-by.”",
+      "zh": "一天，池塘里的青蛙对另一只说：“搬来和我一起住吧。我有充足的食物和水，没有什么打扰我，我的池塘里多舒服啊。你这里食物很少，水也不多，大路又从你的水坑里穿过，你总得提防过往的行人。”"
+    },
+    {
+      "en": "“Thank you,” said the other Frog; “you are very kind, but I am quite content here. There is water enough; those who pass never trouble me; and as to food, I had a good dinner day before yesterday. I am used to this place, you know, and do not like change. But come and see me as often as you can.”",
+      "zh": "“谢谢你，”另一只青蛙说，“你真好心，可我在这里很满足。水够用了，路过的人从不来烦我；至于吃的，我前天刚吃了一顿好饭。你知道，我习惯了这地方，不喜欢变来变去。不过，你以后常来看我吧。”"
+    },
+    {
+      "en": "The next time the Frog from the pond came to visit his friend, he could not find him.",
+      "zh": "下一次，池塘里的青蛙来看朋友时，却找不到他了。"
+    },
+    {
+      "en": "“Too late!” sang a Bird, who lived in a tree that overhung the pool.",
+      "zh": "“太迟了！”一只住在水坑边树上的鸟唱道。"
+    },
+    {
+      "en": "“What do you mean?” said the Frog.",
+      "zh": "“你什么意思？”青蛙问。"
+    },
+    {
+      "en": "“Dead and gone!” said the Bird. “Run over by a wagon and killed, two days ago, and a big Hawk came and carried him off.”",
+      "zh": "“死了，没了！”鸟说，“两天前被一辆马车碾死了，一只大鹰飞来把他叼走了。”"
+    },
+    {
+      "en": "“Alas! if he had only taken my advice, he might have been well and happy now,” said the Frog, as he turned sadly towards home; “but he would have his way, and I have lost my friend.”",
+      "zh": "“唉！他要是听我的劝，现在本该好好的、快快乐乐的，”青蛙说着，难过地转身回家，“可他偏要照自己的意思来，我失去了我的朋友。”"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 """回填脚本离线验收（M2，计划书 §7.3 / specs/026）。
 
-覆盖：6 条 serving + curated 字幕缓存的枚举、幂等 upsert、报告字段、
+覆盖：serving + curated 字幕缓存的枚举、幂等 upsert、报告字段、
 缺字幕时失败原因（不静默跳过）。全部在 tmp content/ + tmp DB 下跑。
 """
 from __future__ import annotations

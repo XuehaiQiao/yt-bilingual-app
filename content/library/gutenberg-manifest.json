@@ -1,284 +1,524 @@
 {
-  "_meta": {
-    "version": 1,
-    "updatedAt": "2026-11-17",
-    "count": 34,
-    "source": "Project Gutenberg",
-    "license": "Public domain",
-    "note": "34 篇公版短文，英文原文 + 本项目中译文；逐篇记录 Gutenberg ID / 链接 / PD 依据。"
+ "_meta": {
+  "version": 1,
+  "updatedAt": "2026-11-17",
+  "count": 64,
+  "source": "Project Gutenberg",
+  "license": "Public domain",
+  "note": "64 篇公版短文，英文原文 + 本项目中译文；逐篇记录 Gutenberg ID / 链接 / PD 依据。"
+ },
+ "items": [
+  {
+   "id": "pg-bruce-and-the-spider",
+   "title": "Bruce and the Spider",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 377
   },
-  "items": [
-    {
-      "id": "pg-bruce-and-the-spider",
-      "title": "Bruce and the Spider",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 377
-    },
-    {
-      "id": "pg-three-men-of-gotham",
-      "title": "Three Men of Gotham",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 343
-    },
-    {
-      "id": "pg-the-miller-of-the-dee",
-      "title": "The Miller of the Dee",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 391
-    },
-    {
-      "id": "pg-sir-philip-sidney",
-      "title": "Sir Philip Sidney",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 309
-    },
-    {
-      "id": "pg-the-ungrateful-soldier",
-      "title": "The Ungrateful Soldier",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 335
-    },
-    {
-      "id": "pg-sir-humphrey-gilbert",
-      "title": "Sir Humphrey Gilbert",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 268
-    },
-    {
-      "id": "pg-pocahontas",
-      "title": "Pocahontas",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 318
-    },
-    {
-      "id": "pg-julius-caesar",
-      "title": "Julius Caesar",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 357
-    },
-    {
-      "id": "pg-a-laconic-answer",
-      "title": "A Laconic Answer",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 267
-    },
-    {
-      "id": "pg-the-ungrateful-guest",
-      "title": "The Ungrateful Guest",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 358
-    },
-    {
-      "id": "pg-diogenes-the-wise-man",
-      "title": "Diogenes the Wise Man",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 360
-    },
-    {
-      "id": "pg-doctor-goldsmith",
-      "title": "Doctor Goldsmith",
-      "gutenbergId": 18442,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
-      "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 284
-    },
-    {
-      "id": "pg-another-bird-story",
-      "title": "Another Bird Story",
-      "gutenbergId": 6168,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
-      "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 315
-    },
-    {
-      "id": "pg-a-lesson-in-humility",
-      "title": "A Lesson in Humility",
-      "gutenbergId": 6168,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
-      "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 281
-    },
-    {
-      "id": "pg-another-wolf-story",
-      "title": "Another Wolf Story",
-      "gutenbergId": 6168,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
-      "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 287
-    },
-    {
-      "id": "pg-two-great-painters",
-      "title": "Two Great Painters",
-      "gutenbergId": 6168,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
-      "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 253
-    },
-    {
-      "id": "pg-how-a-prince-learned-to-read",
-      "title": "How a Prince Learned to Read",
-      "gutenbergId": 6168,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
-      "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 319
-    },
-    {
-      "id": "pg-the-young-cupbearer",
-      "title": "The Young Cupbearer",
-      "gutenbergId": 6168,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
-      "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 388
-    },
-    {
-      "id": "pg-the-sons-of-the-caliph",
-      "title": "The Sons of the Caliph",
-      "gutenbergId": 6168,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
-      "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 335
-    },
-    {
-      "id": "pg-the-surly-guest",
-      "title": "The Surly Guest",
-      "gutenbergId": 6168,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
-      "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 366
-    },
-    {
-      "id": "pg-mouse-and-mouser",
-      "title": "Mouse and Mouser",
-      "gutenbergId": 7439,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
-      "publicDomainBasis": "Published 1892; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 295
-    },
-    {
-      "id": "pg-teeny-tiny",
-      "title": "Teeny-Tiny",
-      "gutenbergId": 7439,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
-      "publicDomainBasis": "Published 1892; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 330
-    },
-    {
-      "id": "pg-the-cat-and-the-mouse",
-      "title": "The Cat and the Mouse",
-      "gutenbergId": 7439,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
-      "publicDomainBasis": "Published 1892; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 389
-    },
-    {
-      "id": "pg-master-of-all-masters",
-      "title": "Master of All Masters",
-      "gutenbergId": 7439,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
-      "publicDomainBasis": "Published 1892; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 293
-    },
-    {
-      "id": "pg-a-son-of-adam",
-      "title": "A Son of Adam",
-      "gutenbergId": 14241,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/14241",
-      "publicDomainBasis": "Published 1894; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
-      "wordCount": 381
-    },
-    {
-      "id": "pg-mercury-and-the-woodman",
-      "title": "Mercury and the Woodman",
-      "gutenbergId": 11339,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
-      "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
-      "wordCount": 312
-    },
-    {
-      "id": "pg-the-stag-in-the-ox-stall",
-      "title": "The Stag in the Ox-Stall",
-      "gutenbergId": 11339,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
-      "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
-      "wordCount": 258
-    },
-    {
-      "id": "pg-the-ass-and-the-lap-dog",
-      "title": "The Ass and the Lap-Dog",
-      "gutenbergId": 11339,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
-      "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
-      "wordCount": 266
-    },
-    {
-      "id": "pg-the-slave-and-the-lion",
-      "title": "The Slave and the Lion",
-      "gutenbergId": 11339,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
-      "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
-      "wordCount": 345
-    },
-    {
-      "id": "pg-the-clown-and-the-countryman",
-      "title": "The Clown and the Countryman",
-      "gutenbergId": 11339,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
-      "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
-      "wordCount": 291
-    },
-    {
-      "id": "pg-the-eagle-the-cat-and-the-wild-sow",
-      "title": "The Eagle, the Cat, and the Wild Sow",
-      "gutenbergId": 11339,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
-      "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
-      "wordCount": 266
-    },
-    {
-      "id": "pg-the-town-mouse-and-the-country-mouse",
-      "title": "The Town Mouse and the Country Mouse",
-      "gutenbergId": 11339,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
-      "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
-      "wordCount": 261
-    },
-    {
-      "id": "pg-the-thief-and-the-innkeeper",
-      "title": "The Thief and the Innkeeper",
-      "gutenbergId": 11339,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
-      "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
-      "wordCount": 329
-    },
-    {
-      "id": "pg-the-goatherd-and-the-wild-goats",
-      "title": "The Goatherd and the Wild Goats",
-      "gutenbergId": 11339,
-      "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
-      "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
-      "wordCount": 250
-    }
-  ]
+  {
+   "id": "pg-three-men-of-gotham",
+   "title": "Three Men of Gotham",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 343
+  },
+  {
+   "id": "pg-the-miller-of-the-dee",
+   "title": "The Miller of the Dee",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 391
+  },
+  {
+   "id": "pg-sir-philip-sidney",
+   "title": "Sir Philip Sidney",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 309
+  },
+  {
+   "id": "pg-the-ungrateful-soldier",
+   "title": "The Ungrateful Soldier",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 335
+  },
+  {
+   "id": "pg-sir-humphrey-gilbert",
+   "title": "Sir Humphrey Gilbert",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 268
+  },
+  {
+   "id": "pg-pocahontas",
+   "title": "Pocahontas",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 318
+  },
+  {
+   "id": "pg-julius-caesar",
+   "title": "Julius Caesar",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 357
+  },
+  {
+   "id": "pg-a-laconic-answer",
+   "title": "A Laconic Answer",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 267
+  },
+  {
+   "id": "pg-the-ungrateful-guest",
+   "title": "The Ungrateful Guest",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 358
+  },
+  {
+   "id": "pg-diogenes-the-wise-man",
+   "title": "Diogenes the Wise Man",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 360
+  },
+  {
+   "id": "pg-doctor-goldsmith",
+   "title": "Doctor Goldsmith",
+   "gutenbergId": 18442,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+   "publicDomainBasis": "Published 1896 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 284
+  },
+  {
+   "id": "pg-another-bird-story",
+   "title": "Another Bird Story",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 315
+  },
+  {
+   "id": "pg-a-lesson-in-humility",
+   "title": "A Lesson in Humility",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 281
+  },
+  {
+   "id": "pg-another-wolf-story",
+   "title": "Another Wolf Story",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 287
+  },
+  {
+   "id": "pg-two-great-painters",
+   "title": "Two Great Painters",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 253
+  },
+  {
+   "id": "pg-how-a-prince-learned-to-read",
+   "title": "How a Prince Learned to Read",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 319
+  },
+  {
+   "id": "pg-the-young-cupbearer",
+   "title": "The Young Cupbearer",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 388
+  },
+  {
+   "id": "pg-the-sons-of-the-caliph",
+   "title": "The Sons of the Caliph",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 335
+  },
+  {
+   "id": "pg-the-surly-guest",
+   "title": "The Surly Guest",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 366
+  },
+  {
+   "id": "pg-mouse-and-mouser",
+   "title": "Mouse and Mouser",
+   "gutenbergId": 7439,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
+   "publicDomainBasis": "Published 1892; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 295
+  },
+  {
+   "id": "pg-teeny-tiny",
+   "title": "Teeny-Tiny",
+   "gutenbergId": 7439,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
+   "publicDomainBasis": "Published 1892; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 330
+  },
+  {
+   "id": "pg-the-cat-and-the-mouse",
+   "title": "The Cat and the Mouse",
+   "gutenbergId": 7439,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
+   "publicDomainBasis": "Published 1892; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 389
+  },
+  {
+   "id": "pg-master-of-all-masters",
+   "title": "Master of All Masters",
+   "gutenbergId": 7439,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
+   "publicDomainBasis": "Published 1892; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 293
+  },
+  {
+   "id": "pg-a-son-of-adam",
+   "title": "A Son of Adam",
+   "gutenbergId": 14241,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/14241",
+   "publicDomainBasis": "Published 1894; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 381
+  },
+  {
+   "id": "pg-mercury-and-the-woodman",
+   "title": "Mercury and the Woodman",
+   "gutenbergId": 11339,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+   "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
+   "wordCount": 312
+  },
+  {
+   "id": "pg-the-stag-in-the-ox-stall",
+   "title": "The Stag in the Ox-Stall",
+   "gutenbergId": 11339,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+   "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
+   "wordCount": 258
+  },
+  {
+   "id": "pg-the-ass-and-the-lap-dog",
+   "title": "The Ass and the Lap-Dog",
+   "gutenbergId": 11339,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+   "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
+   "wordCount": 266
+  },
+  {
+   "id": "pg-the-slave-and-the-lion",
+   "title": "The Slave and the Lion",
+   "gutenbergId": 11339,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+   "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
+   "wordCount": 345
+  },
+  {
+   "id": "pg-the-clown-and-the-countryman",
+   "title": "The Clown and the Countryman",
+   "gutenbergId": 11339,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+   "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
+   "wordCount": 291
+  },
+  {
+   "id": "pg-the-eagle-the-cat-and-the-wild-sow",
+   "title": "The Eagle, the Cat, and the Wild Sow",
+   "gutenbergId": 11339,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+   "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
+   "wordCount": 266
+  },
+  {
+   "id": "pg-the-town-mouse-and-the-country-mouse",
+   "title": "The Town Mouse and the Country Mouse",
+   "gutenbergId": 11339,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+   "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
+   "wordCount": 261
+  },
+  {
+   "id": "pg-the-thief-and-the-innkeeper",
+   "title": "The Thief and the Innkeeper",
+   "gutenbergId": 11339,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+   "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
+   "wordCount": 329
+  },
+  {
+   "id": "pg-the-goatherd-and-the-wild-goats",
+   "title": "The Goatherd and the Wild Goats",
+   "gutenbergId": 11339,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/11339",
+   "publicDomainBasis": "Aesop's fables are ancient; this translation by V. S. Vernon Jones was published in 1912. Public domain in the United States and in China.",
+   "wordCount": 250
+  },
+  {
+   "id": "pg-the-mice-in-council",
+   "title": "The Mice in Council",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 310
+  },
+  {
+   "id": "pg-the-fox-and-the-goat",
+   "title": "The Fox and the Goat",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 322
+  },
+  {
+   "id": "pg-the-mouse-the-frog-and-the-hawk",
+   "title": "The Mouse, the Frog, and the Hawk",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 342
+  },
+  {
+   "id": "pg-the-shepherds-boy-and-the-wolf",
+   "title": "The Shepherd's Boy and the Wolf",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 328
+  },
+  {
+   "id": "pg-the-two-frogs",
+   "title": "The Two Frogs",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 319
+  },
+  {
+   "id": "pg-the-lion-and-the-mouse",
+   "title": "The Lion and the Mouse",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 252
+  },
+  {
+   "id": "pg-the-mouse-the-cat-and-the-cock",
+   "title": "The Mouse, the Cat, and the Cock",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 250
+  },
+  {
+   "id": "pg-the-arab-and-his-camel",
+   "title": "The Arab and His Camel",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 267
+  },
+  {
+   "id": "pg-the-fox-who-had-lost-his-tail",
+   "title": "The Fox Who Had Lost His Tail",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 260
+  },
+  {
+   "id": "pg-the-man-his-son-and-his-donkey",
+   "title": "The Man, His Son, and His Donkey",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 328
+  },
+  {
+   "id": "pg-the-wolf-and-the-cat",
+   "title": "The Wolf and the Cat",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 276
+  },
+  {
+   "id": "pg-the-fox-in-the-ice",
+   "title": "The Fox in the Ice",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 265
+  },
+  {
+   "id": "pg-the-hares-and-the-frogs",
+   "title": "The Hares and the Frogs",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 279
+  },
+  {
+   "id": "pg-the-three-fishes",
+   "title": "The Three Fishes",
+   "gutenbergId": 7518,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7518",
+   "publicDomainBasis": "Retold by Ellen C. Babbitt and published in 1922 by The Century Co. (pre-1923, public domain in the United States); Project Gutenberg releases it as public domain.",
+   "wordCount": 277
+  },
+  {
+   "id": "pg-the-tricky-wolf-and-the-rats",
+   "title": "The Tricky Wolf and the Rats",
+   "gutenbergId": 7518,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7518",
+   "publicDomainBasis": "Retold by Ellen C. Babbitt and published in 1922 by The Century Co. (pre-1923, public domain in the United States); Project Gutenberg releases it as public domain.",
+   "wordCount": 390
+  },
+  {
+   "id": "pg-the-golden-goose",
+   "title": "The Golden Goose",
+   "gutenbergId": 7518,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7518",
+   "publicDomainBasis": "Retold by Ellen C. Babbitt and published in 1922 by The Century Co. (pre-1923, public domain in the United States); Project Gutenberg releases it as public domain.",
+   "wordCount": 335
+  },
+  {
+   "id": "pg-the-stupid-monkeys",
+   "title": "The Stupid Monkeys",
+   "gutenbergId": 7518,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7518",
+   "publicDomainBasis": "Retold by Ellen C. Babbitt and published in 1922 by The Century Co. (pre-1923, public domain in the United States); Project Gutenberg releases it as public domain.",
+   "wordCount": 357
+  },
+  {
+   "id": "pg-the-cunning-wolf",
+   "title": "The Cunning Wolf",
+   "gutenbergId": 7518,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7518",
+   "publicDomainBasis": "Retold by Ellen C. Babbitt and published in 1922 by The Century Co. (pre-1923, public domain in the United States); Project Gutenberg releases it as public domain.",
+   "wordCount": 305
+  },
+  {
+   "id": "pg-the-red-bud-tree",
+   "title": "The Red-Bud Tree",
+   "gutenbergId": 7518,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7518",
+   "publicDomainBasis": "Retold by Ellen C. Babbitt and published in 1922 by The Century Co. (pre-1923, public domain in the United States); Project Gutenberg releases it as public domain.",
+   "wordCount": 381
+  },
+  {
+   "id": "pg-the-woodpecker-and-the-lion",
+   "title": "The Woodpecker and the Lion",
+   "gutenbergId": 7518,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7518",
+   "publicDomainBasis": "Retold by Ellen C. Babbitt and published in 1922 by The Century Co. (pre-1923, public domain in the United States); Project Gutenberg releases it as public domain.",
+   "wordCount": 365
+  },
+  {
+   "id": "pg-the-otters-and-the-wolf",
+   "title": "The Otters and the Wolf",
+   "gutenbergId": 7518,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7518",
+   "publicDomainBasis": "Retold by Ellen C. Babbitt and published in 1922 by The Century Co. (pre-1923, public domain in the United States); Project Gutenberg releases it as public domain.",
+   "wordCount": 345
+  },
+  {
+   "id": "pg-beauty-and-brownie",
+   "title": "Beauty and Brownie",
+   "gutenbergId": 7518,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7518",
+   "publicDomainBasis": "Retold by Ellen C. Babbitt and published in 1922 by The Century Co. (pre-1923, public domain in the United States); Project Gutenberg releases it as public domain.",
+   "wordCount": 365
+  },
+  {
+   "id": "pg-the-caliph-and-the-poet",
+   "title": "The Caliph and the Poet",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 321
+  },
+  {
+   "id": "pg-read-and-you-will-know",
+   "title": "\"Read, and You Will Know\"",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 324
+  },
+  {
+   "id": "pg-which-was-the-king",
+   "title": "Which Was the King?",
+   "gutenbergId": 6168,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/6168",
+   "publicDomainBasis": "Published 1912 by the American Book Company; author James Baldwin (1841–1925). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 295
+  },
+  {
+   "id": "pg-the-golden-arm",
+   "title": "The Golden Arm",
+   "gutenbergId": 7439,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
+   "publicDomainBasis": "Published 1890 by David Nutt; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 261
+  },
+  {
+   "id": "pg-the-turtle-who-couldnt-stop-talking",
+   "title": "The Turtle Who Couldn't Stop Talking",
+   "gutenbergId": 62514,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/62514",
+   "publicDomainBasis": "Retold by Ellen C. Babbitt and published in 1912 by The Century Co. (pre-1923, public domain in the United States); Project Gutenberg releases it as public domain.",
+   "wordCount": 301
+  },
+  {
+   "id": "pg-the-fox-and-the-crow",
+   "title": "The Fox and the Crow",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 258
+  },
+  {
+   "id": "pg-news",
+   "title": "News!",
+   "gutenbergId": 14241,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/14241",
+   "publicDomainBasis": "Published 1894 by G. P. Putnam's Sons; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
+   "wordCount": 289
+  },
+  {
+   "id": "pg-the-eagle-and-the-fox",
+   "title": "The Eagle and the Fox",
+   "gutenbergId": 49010,
+   "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+   "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+   "wordCount": 261
+  }
+ ]
 }

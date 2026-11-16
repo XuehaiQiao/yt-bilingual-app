@@ -12,7 +12,7 @@ content/library/
 ├── videos.json                 视频清单（只存 id）
 ├── videos/<id>.json            预生成双语字幕块 + 元数据
 ├── articles.json               文章清单（只存 id）
-├── gutenberg-manifest.json     34 篇公版短文的 Gutenberg ID / 链接 / PD 依据
+├── gutenberg-manifest.json     64 篇公版短文的 Gutenberg ID / 链接 / PD 依据
 ├── articles/<id>.json          原创/公版英文全文 + 逐段中文译文
 └── README.md
 ```
@@ -52,7 +52,7 @@ content/library/
 - 每个 block 保留 `en_text` / `zh_text` / `highlights`，与在线视频页的 `TranscriptItem` 同形。
 - 许可：字幕/元数据为本地构建产物；原视频版权归对应频道，播放走 YouTube 官方嵌入。
 
-## 文章资源（37 篇：3 篇原创 + 34 篇公版短文）
+## 文章资源（67 篇：3 篇原创 + 64 篇公版短文）
 
 ### 原创文章（3 篇）
 
@@ -66,10 +66,12 @@ content/library/
 - 许可：**原创，免费使用**
 - 每篇 250–350 词，逐段 `en` + `zh`。
 
-### Project Gutenberg 公版短文（34 篇）
+### Project Gutenberg 公版短文（64 篇）
 
 - 来源：Project Gutenberg（【#18442】Fifty Famous Stories Retold、【#6168】Fifty Famous People、
-  【#7439】English Fairy Tales、【#14241】More English Fairy Tales、【#11339】Aesop's Fables）。
+  【#7439】English Fairy Tales、【#14241】More English Fairy Tales、【#11339】Aesop's Fables、
+  【#49010】Æsop's Fables: A Version for Young Readers、【#7518】More Jataka Tales、
+  【#62514】Jataka Tales）。
 - 每篇 250–400 词，保留**英文原文**并配**本项目中译文**，逐段 `en` + `zh`；
   每篇 JSON 都带 `gutenbergId` / `sourceUrl` / `publicDomainBasis`，总清单见
   `content/library/gutenberg-manifest.json`。

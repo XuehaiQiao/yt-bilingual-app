@@ -1,0 +1,135 @@
+{
+  "id": "pg-news",
+  "title": "News!",
+  "level": "B2",
+  "author": "Joseph Jacobs",
+  "license": "Public domain (Project Gutenberg #14241)",
+  "source": "public-domain",
+  "topic": "folktale",
+  "summary": "管家一件件报出坏消息，主人越听越惊，最后连家产也没了。",
+  "gutenbergId": 14241,
+  "sourceUrl": "https://www.gutenberg.org/ebooks/14241",
+  "publicDomainBasis": "Published 1894 by G. P. Putnam's Sons; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
+  "paragraphs": [
+    {
+      "en": "MR. G. Ha! Steward, how are you, my old boy? How do things go on at home?",
+      "zh": "甲先生：哈！管家，你好啊，老伙计？家里怎么样？"
+    },
+    {
+      "en": "STEWARD. Bad enough, your honour; the magpie's dead!",
+      "zh": "管家：糟透了，老爷；喜鹊死了！"
+    },
+    {
+      "en": "MR. G. Poor mag! so he's gone. How came he to die?",
+      "zh": "甲先生：可怜的喜鹊！它就这么走了。它是怎么死的？"
+    },
+    {
+      "en": "STEWARD. Over-ate himself, Sir.",
+      "zh": "管家：吃撑死的，先生。"
+    },
+    {
+      "en": "MR. G. Did he indeed? a greedy dog. Why, what did he get that he liked so well?",
+      "zh": "甲先生：真的吗？这贪嘴的东西。它吃了什么这么喜欢？"
+    },
+    {
+      "en": "STEWARD. Horseflesh; he died of eating horseflesh.",
+      "zh": "管家：马肉；它吃马肉撑死了。"
+    },
+    {
+      "en": "MR. G. How came he to get so much horseflesh?",
+      "zh": "甲先生：它哪来那么多马肉？"
+    },
+    {
+      "en": "STEWARD. All your father's horses, Sir.",
+      "zh": "管家：都是您父亲的马，先生。"
+    },
+    {
+      "en": "MR. G. What! are they dead too?",
+      "zh": "甲先生：什么！那些马也死了？"
+    },
+    {
+      "en": "STEWARD. Ay, Sir; they died of over-work.",
+      "zh": "管家：是啊，先生；它们是累死的。"
+    },
+    {
+      "en": "MR. G. And why were they over-worked?",
+      "zh": "甲先生：它们为什么会累死？"
+    },
+    {
+      "en": "STEWARD. To carry water, Sir.",
+      "zh": "管家：为了运水，先生。"
+    },
+    {
+      "en": "MR. G. To carry water, and what were they carrying water for?",
+      "zh": "甲先生：运水？运水做什么？"
+    },
+    {
+      "en": "STEWARD. Sure, Sir, to put out the fire.",
+      "zh": "管家：当然是灭火啊，先生。"
+    },
+    {
+      "en": "MR. G. Fire! what fire?",
+      "zh": "甲先生：火！什么火？"
+    },
+    {
+      "en": "STEWARD. Your father's house is burned down to the ground.",
+      "zh": "管家：您父亲的房子烧光了，先生。"
+    },
+    {
+      "en": "MR. G. My father's house burnt down! and how came it to be on fire?",
+      "zh": "甲先生：我父亲的房子烧了！怎么会起火？"
+    },
+    {
+      "en": "STEWARD. I think, Sir, it must have been the torches.",
+      "zh": "管家：我想，先生，一定是火把。"
+    },
+    {
+      "en": "MR G. Torches! what torches?",
+      "zh": "甲先生：火把！什么火把？"
+    },
+    {
+      "en": "STEWARD. At your mother's funeral.",
+      "zh": "管家：在您母亲葬礼上用的。"
+    },
+    {
+      "en": "MR. G. My mother dead?",
+      "zh": "甲先生：我母亲死了？"
+    },
+    {
+      "en": "STEWARD. Ay, poor lady, she never looked up after it.",
+      "zh": "管家：是啊，可怜的夫人，从那以后她就再没缓过来。"
+    },
+    {
+      "en": "MR. G. After what?",
+      "zh": "甲先生：从什么时候起？"
+    },
+    {
+      "en": "STEWARD. The loss of your father.",
+      "zh": "管家：从失去您父亲起。"
+    },
+    {
+      "en": "MR. G. My father gone too?",
+      "zh": "甲先生：我父亲也不在了？"
+    },
+    {
+      "en": "STEWARD. Yes, poor gentleman, he took to his bed as soon as he heard of it.",
+      "zh": "管家：是的，可怜的老爷，一听到那消息就病倒了。"
+    },
+    {
+      "en": "MR. G. Heard of what?",
+      "zh": "甲先生：听到什么？"
+    },
+    {
+      "en": "STEWARD. The bad news, an' it please your honour.",
+      "zh": "管家：坏消息，恕我直言。"
+    },
+    {
+      "en": "MR. G. What? more miseries, more bad news!",
+      "zh": "甲先生：什么？还有更多不幸、更多坏消息！"
+    },
+    {
+      "en": "STEWARD. Yes, Sir, your bank has failed, your credit is lost and you're not worth a shilling in the world. I make bold, Sir, to come and wait on you about it; for I thought you would like to hear the news.",
+      "zh": "管家：是的，先生，您的银行倒闭了，您的信用没了，您在这世上一个先令也不值了。我斗胆来见您，就是为这事；我想您会愿意听听这些消息。"
+    }
+  ]
+}

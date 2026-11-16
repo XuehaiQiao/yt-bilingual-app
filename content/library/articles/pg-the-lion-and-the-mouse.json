@@ -1,0 +1,43 @@
+{
+  "id": "pg-the-lion-and-the-mouse",
+  "title": "The Lion and the Mouse",
+  "level": "B1",
+  "author": "Aesop (adapted by J. H. Stickney)",
+  "license": "Public domain (Project Gutenberg #49010)",
+  "source": "public-domain",
+  "topic": "fable",
+  "summary": "狮子放走老鼠，后来老鼠咬断绳索救了他。",
+  "gutenbergId": 49010,
+  "sourceUrl": "https://www.gutenberg.org/ebooks/49010",
+  "publicDomainBasis": "Aesop's fables are ancient; this retelling by J. H. Stickney was published in 1915. Published before 1923 and therefore public domain in the United States; Project Gutenberg releases it as public domain.",
+  "paragraphs": [
+    {
+      "en": "IT ONCE happened that a hungry Lion woke to find a Mouse just under his paw. He caught the tiny creature, and was about to make a mouthful of him, when the little fellow looked up, and began to beg for his life.",
+      "zh": "有一次，一只饥饿的狮子醒来，发现一只老鼠就在自己爪子底下。他抓住这个小东西，正要一口吞下去，小家伙抬起头，开始求他饶命。"
+    },
+    {
+      "en": "In most piteous tones the Mouse said: “Do not eat me. I meant no harm coming so near you. If you would only spare my life now, O Lion, I would be sure to repay you!”",
+      "zh": "老鼠用最可怜的声音说：“别吃我。我靠近你并无恶意。狮子啊，只要你这次放我一条生路，我一定报答你！”"
+    },
+    {
+      "en": "The Lion laughed scornfully at this, but it amused him so much that he lifted his paw and let his brave little prisoner go free.",
+      "zh": "狮子轻蔑地笑了，可这事太让他觉得好玩，于是他抬起爪子，放了这个大胆的小囚徒。"
+    },
+    {
+      "en": "It befell the great Lion, not long afterward, to be in as evil a case as had been the helpless Mouse. And it came about that his life was to be saved by the keeping of the promise he had ridiculed.",
+      "zh": "不久之后，这头大狮子也陷入了和那只无助老鼠同样糟糕的境地。而他的性命，恰恰因为对方信守了他曾嘲笑过的诺言而得以保全。"
+    },
+    {
+      "en": "He was caught by some hunters, who bound him with a strong rope, while they went away to find means for killing him.",
+      "zh": "他被一些猎人抓住，猎人用结实的绳子把他捆住，然后去找杀他的办法。"
+    },
+    {
+      "en": "Hearing his loud groans, the Mouse came promptly to his rescue, and gnawed the great rope till the royal captive could set himself free.",
+      "zh": "听到他大声呻吟，老鼠立刻赶来救他，啃断了粗绳，直到这位高贵的囚徒重获自由。"
+    },
+    {
+      "en": "“You laughed,” the little Mouse said, “at the idea of my being able to be of service to you. You little thought I should repay you. But you see it has come to pass that you are as grateful to me as I was once to you. The weak have their place in the world as truly as the strong.”",
+      "zh": "“你当初笑我，”小老鼠说，“笑我能帮上你的忙。你没想到我会报答你吧。可你看，如今你对我满怀感激，就像我当初对你一样。弱者在这世上自有其位置，正如强者一样。”"
+    }
+  ]
+}

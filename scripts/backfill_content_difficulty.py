@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""回填 content_difficulty：6 条 serving + 30 条 curated（计划书 §7.3 / §10.2）。
+"""回填 content_difficulty：70 条 serving + 30 条 curated = 100 条（计划书 §7.3 / §10.2）。
 
 用法（仓库根目录）：
 
@@ -11,7 +11,7 @@
 数据来源（全部只读、不联网）：
 
 - serving：``content/library/videos/*.json``（3 条，预生成双语字幕块）+
-  ``content/library/articles/*.json``（3 条，原创正文）；
+  ``content/library/articles/*.json``（67 条，3 篇原创 + 64 篇公版短文）；
 - curated：``content/curated.json`` 30 条 + ``data/curated-subtitles/<videoId>.json``
   字幕缓存（由构建期 ``scripts/fetch_curated_subtitles.py`` 生成；缺缓存的原因
   会写进报告，不会静默跳过）。
@@ -47,7 +47,7 @@ def _read_json(path: Path) -> dict:
 
 
 def serving_items() -> list[tuple[str, str]]:
-    """content/library 清单里的 3 视频 + 3 文章。"""
+    """content/library 清单里的 3 视频 + 67 文章（随清单动态枚举）。"""
     library = Path(config.LIBRARY_DIR)
     items: list[tuple[str, str]] = []
     videos_path = library / "videos.json"

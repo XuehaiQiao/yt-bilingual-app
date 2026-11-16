@@ -815,7 +815,7 @@ wordfreq 3.1.1 数据派生；许可 CC BY-SA 4.0，见 `content/wordlist/NOTICE
 ### 回填 / 重算
 
 ```bash
-# 36 条 = 3 视频 + 3 文章（content/library）+ 30 curated（需字幕缓存）
+# 100 条 = 3 视频 + 67 文章（content/library）+ 30 curated（需字幕缓存）
 backend/venv/bin/python scripts/backfill_content_difficulty.py
 backend/venv/bin/python scripts/backfill_content_difficulty.py --dry-run
 # 报告写 data/reports/content-difficulty-backfill.json（data/ 已 gitignore）

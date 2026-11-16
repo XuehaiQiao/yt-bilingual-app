@@ -1,11 +1,11 @@
 {
   "schema": "content-supply.v1",
   "date": "2026-11-17",
-  "generatedAt": 1794858977743,
+  "generatedAt": 1794860255037,
   "target": 100,
-  "totalContents": 70,
-  "totalEligible": 70,
-  "shortfall": 30,
+  "totalContents": 100,
+  "totalEligible": 100,
+  "shortfall": 0,
   "byKind": {
     "video": {
       "content": 3,
@@ -15,9 +15,9 @@
       "unavailableRows": 0
     },
     "article": {
-      "content": 37,
-      "difficultyRows": 37,
-      "eligible": 37,
+      "content": 67,
+      "difficultyRows": 67,
+      "eligible": 67,
       "missingRows": 0,
       "unavailableRows": 0
     },
@@ -31,13 +31,13 @@
   },
   "gate": {
     "threshold": 100,
-    "eligible": 70,
-    "open": false,
-    "mode": "legacy"
+    "eligible": 100,
+    "open": true,
+    "mode": "match_v0"
   },
   "failures": [],
   "gutenberg": {
-    "articles": 34,
+    "articles": 64,
     "manifest": "content/library/gutenberg-manifest.json"
   },
   "curatedTranscripts": {
@@ -48,8 +48,8 @@
   },
   "notes": [
     "curated 30 条首次经 backend/transcripts.fetch_english_transcript 抓取成功；随后一次强制刷新被 YouTube 429 限流，行由构建期字幕缓存恢复；未落任何字幕原文。",
-    "34 篇 Gutenberg 文本记录 canonical 链接与 PD 依据；Project Gutenberg 维护期间通过其 Wayback 镜像取得原文，正文/译文随仓库分发。",
+    "64 篇 Gutenberg 文本记录 canonical 链接与 PD 依据；Project Gutenberg 维护期间通过其 Wayback 镜像与 Gutenberg 镜像取得原文，正文/译文随仓库分发。",
     "可推荐数只数 content_difficulty 里 cefr_input 非空的 video/article/curated 行；失败条目以 available=false 占位行留在 failures，不伪造等级。"
   ],
-  "countingNote": "简报里的 36 条 = 3 视频 + 3 文章 + 30 curated；这 30 条 curated 已在 36 条内。再加 34 篇公版文章后为 70 条，而不是 36+30+34=100——后者把 curated 计了两次。当前缺口 30 条，未用重复/占位条目凑数。"
+  "countingNote": "可推荐 100 条 = 3 视频 + 67 文章 + 30 curated；简报里的 36 条 = 3 视频 + 3 文章 + 30 curated，这 30 条 curated 已在 36 条内。文章里 64 篇为 Gutenberg 公版短文（含本轮新增 30 篇），不能把 curated 重复计入。当前缺口 0 条，未用重复/占位条目凑数。"
 }

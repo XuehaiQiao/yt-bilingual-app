@@ -224,12 +224,12 @@ def test_score_support_values():
 
 
 def test_gutenberg_articles_are_resolvable_and_banded():
-    """34 篇公版短文：有正文、有译文，全部能算出 difficulty.v1。"""
+    """64 篇公版短文（含第二轮新增 30 篇）：有正文、有译文，全部能算出 difficulty.v1。"""
     import json
 
     manifest_path = Path(__file__).resolve().parents[2] / "content" / "library" / "gutenberg-manifest.json"
     items = json.loads(manifest_path.read_text(encoding="utf-8"))["items"]
-    assert len(items) == 34
+    assert len(items) == 64
     for item in items:
         content = difficulty.resolve_content("article", item["id"])
         assert content is not None, item["id"]
