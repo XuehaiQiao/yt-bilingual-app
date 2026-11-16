@@ -113,25 +113,33 @@ export async function fetchDifficultyBatch(
         if (seen.has(key)) continue;
         seen.add(key);
         unique.push({ kind: item.kind, ref: item.ref });
-        if (unique.length >= 50) break;
     }
     if (unique.length === 0) return {};
 
-    const params = new URLSearchParams();
-    params.set('items', unique.map((item) => `${item.kind}:${item.ref}`).join(','));
-    if (band && /^[A-C][12]$/.test(band)) params.set('band', band);
-    const response = await apiFetch(`/api/content/difficulty/batch?${params.toString()}`);
-    if (!response.ok) {
-        throw new DifficultyApiError('内容难度不可用', response.status);
-    }
-    const data = (await response.json()) as unknown;
-    if (!isRecord(data) || !Array.isArray(data.items)) {
-        throw new DifficultyApiError('内容难度数据格式不正确', 0);
-    }
+    // The public batch endpoint accepts at most 50 refs. The free library can
+    // hold more than that (currently 3 videos + 67 articles), so naive callers
+    // would silently lose the tail and then fall back to editorial levels —
+    // exactly the card/detail mismatch users hit. Chunk here so every caller
+    // gets the complete map.
     const result: Record<string, DifficultyItem> = {};
-    for (const raw of data.items) {
-        const item = normalizeItem(raw);
-        if (item) result[difficultyKey(item.kind, item.ref)] = item;
+    const CHUNK = 50;
+    for (let start = 0; start < unique.length; start += CHUNK) {
+        const chunk = unique.slice(start, start + CHUNK);
+        const params = new URLSearchParams();
+        params.set('items', chunk.map((item) => `${item.kind}:${item.ref}`).join(','));
+        if (band && /^[A-C][12]$/.test(band)) params.set('band', band);
+        const response = await apiFetch(`/api/content/difficulty/batch?${params.toString()}`);
+        if (!response.ok) {
+            throw new DifficultyApiError('内容难度不可用', response.status);
+        }
+        const data = (await response.json()) as unknown;
+        if (!isRecord(data) || !Array.isArray(data.items)) {
+            throw new DifficultyApiError('内容难度数据格式不正确', 0);
+        }
+        for (const raw of data.items) {
+            const item = normalizeItem(raw);
+            if (item) result[difficultyKey(item.kind, item.ref)] = item;
+        }
     }
     return result;
 }
