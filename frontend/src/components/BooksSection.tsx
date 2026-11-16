@@ -10,16 +10,22 @@ import {
     ArrowRight,
     BookMarked,
     BookOpen,
+    BookPlus,
     Globe2,
     Loader2,
     RefreshCw,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { fetchBooksIndex, type BookSeries, type BookSummary, type BooksIndex } from '../lib/books';
+import { BookImportDialog } from './BookImportDialog';
+import { ImportedBooksShelf } from './ImportedBooksShelf';
 
 interface BooksSectionProps {
     onOpenBook: (bookId: string) => void;
     onOpenSeries: (seriesId: string) => void;
+    onOpenImportedBook: (bookId: string) => void;
+    onRequestLogin: () => void;
+    isGuest: boolean;
 }
 
 const CARD =
@@ -181,12 +187,20 @@ function Skeleton() {
     );
 }
 
-export function BooksSection({ onOpenBook, onOpenSeries }: BooksSectionProps) {
+export function BooksSection({
+    onOpenBook,
+    onOpenSeries,
+    onOpenImportedBook,
+    onRequestLogin,
+    isGuest,
+}: BooksSectionProps) {
     const { t, formatNumber } = useI18n();
     const [data, setData] = useState<BooksIndex | null>(null);
     const [loading, setLoading] = useState(true);
     const [failed, setFailed] = useState(false);
     const [retryToken, setRetryToken] = useState(0);
+    const [importOpen, setImportOpen] = useState(false);
+    const [importedToken, setImportedToken] = useState(0);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -229,16 +243,39 @@ export function BooksSection({ onOpenBook, onOpenSeries }: BooksSectionProps) {
                         {t('books.subtitle')}
                     </p>
                 </div>
-                {data && (
-                    <span className="text-[11px] text-zinc-500 tabular-nums">
-                        {t('books.counts', {
-                            series: formatNumber(data.counts.series),
-                            books: formatNumber(data.counts.availableBooks),
-                            translated: formatNumber(data.counts.translatedChapters),
-                        })}
-                    </span>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                    {data && (
+                        <span className="text-[11px] text-zinc-500 tabular-nums">
+                            {t('books.counts', {
+                                series: formatNumber(data.counts.series),
+                                books: formatNumber(data.counts.availableBooks),
+                                translated: formatNumber(data.counts.translatedChapters),
+                            })}
+                        </span>
+                    )}
+                    <button
+                        type="button"
+                        data-testid="book-import-open"
+                        onClick={() => {
+                            if (isGuest) {
+                                onRequestLogin();
+                                return;
+                            }
+                            setImportOpen(true);
+                        }}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-500/15 hover:text-blue-200"
+                    >
+                        <BookPlus className="h-3.5 w-3.5" />
+                        {t('importedBooks.importButton')}
+                    </button>
+                </div>
             </div>
+
+            {isGuest && (
+                <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+                    {t('importedBooks.guestHint')}
+                </p>
+            )}
 
             <div className="mt-3 space-y-6">
                 {loading && <Skeleton />}
@@ -287,7 +324,27 @@ export function BooksSection({ onOpenBook, onOpenSeries }: BooksSectionProps) {
                         <Loader2 className="w-4 h-4" />
                     </span>
                 )}
+
+                {!isGuest && (
+                    <div className="border-t border-white/5 pt-5">
+                        <ImportedBooksShelf
+                            refreshToken={importedToken}
+                            onOpenBook={onOpenImportedBook}
+                        />
+                    </div>
+                )}
             </div>
+
+            <BookImportDialog
+                open={importOpen}
+                onClose={() => setImportOpen(false)}
+                onImported={(bookId) => {
+                    setImportOpen(false);
+                    setImportedToken((value) => value + 1);
+                    onOpenImportedBook(bookId);
+                }}
+                onRequestLogin={onRequestLogin}
+            />
         </section>
     );
 }

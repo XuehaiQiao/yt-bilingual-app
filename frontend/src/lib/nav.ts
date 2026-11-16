@@ -17,6 +17,7 @@
 //   #/content/blog[/<slug>]                              official blog
 //   #/content/book/<bookId>                              public-domain book reader
 //   #/content/book-series/<seriesId>                     public-domain series page
+//   #/content/imported-book/<bookId>                     imported public-domain book reader
 //   #/learn/youtube/<videoId>                            learning view (YouTube)
 //   #/learn/local/<showId>/S<ss>E<ee>                    learning view (local episode)
 //   #/learn/library/<itemId>                             learning view (free library)
@@ -57,6 +58,7 @@ export type SubRoute =
   | { kind: 'blog'; slug?: string }
   | { kind: 'book'; bookId: string }
   | { kind: 'book-series'; seriesId: string }
+  | { kind: 'imported-book'; bookId: string }
   | { kind: 'favorites' }
   | { kind: 'ability' }
   | { kind: 'admin' };
@@ -111,6 +113,7 @@ export function tabOfSub(sub: SubRoute, fallback: TabId = 'today'): TabId {
     case 'blog':
     case 'book':
     case 'book-series':
+    case 'imported-book':
       return 'content';
     case 'favorites':
     case 'ability':
@@ -211,6 +214,9 @@ export function parseRoute(hash: string): NavState {
     if (sub === 'book-series' && tab === 'content' && rest.length === 2 && rest[1]) {
       return { tab, sub: { kind: 'book-series', seriesId: rest[1] } };
     }
+    if (sub === 'imported-book' && tab === 'content' && rest.length === 2 && rest[1]) {
+      return { tab, sub: { kind: 'imported-book', bookId: rest[1] } };
+    }
     // `#/content/library` is accepted as "the content page, free-library
     // section" (the section lives on the page, not in its own route).
     if (sub === 'library' && tab === 'content' && rest.length === 1) {
@@ -290,6 +296,8 @@ export function toHash(state: NavState): string {
       return `#/content/book/${encodeSegment(sub.bookId)}`;
     case 'book-series':
       return `#/content/book-series/${encodeSegment(sub.seriesId)}`;
+    case 'imported-book':
+      return `#/content/imported-book/${encodeSegment(sub.bookId)}`;
     case 'favorites':
       return '#/profile/favorites';
     case 'ability':

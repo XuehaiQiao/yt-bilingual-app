@@ -32,6 +32,7 @@ import { ReaderScreen } from './components/ReaderScreen';
 import { LibraryArticleReader } from './components/LibraryArticleReader';
 import { BookReaderScreen } from './components/BookReaderScreen';
 import { BookSeriesScreen } from './components/BookSeriesScreen';
+import { ImportedBookReaderScreen } from './components/ImportedBookReaderScreen';
 import { BlogScreen } from './components/BlogScreen';
 import { AdminConsoleScreen } from './components/AdminConsoleScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -107,6 +108,7 @@ const TASK_SUB_KINDS: ReadonlySet<SubRoute['kind']> = new Set<SubRoute['kind']>(
   'reader',
   'book',
   'book-series',
+  'imported-book',
   'sentences',
   'review',
   'exam',
@@ -126,6 +128,7 @@ const SUB_LABEL_KEYS: Record<SubRoute['kind'], TranslationKey> = {
   blog: 'topbar.feature.blog',
   book: 'topbar.feature.book',
   'book-series': 'topbar.feature.bookSeries',
+  'imported-book': 'topbar.feature.importedBook',
   favorites: 'topbar.feature.favorites',
   ability: 'topbar.feature.ability',
   admin: 'topbar.feature.admin',
@@ -292,7 +295,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   useEffect(() => {
     if (!wordLookup) return;
     const sub = state.sub;
-    const source = sub?.kind === 'book'
+    const source = sub?.kind === 'book' || sub?.kind === 'imported-book'
       ? 'book'
       : sub?.kind === 'reader'
         ? 'reader'
@@ -301,6 +304,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           : 'transcript';
     const contentRef = wordLookup.sourceId
       || (sub?.kind === 'book' ? sub.bookId : undefined)
+      || (sub?.kind === 'imported-book' ? sub.bookId : undefined)
       || (sub?.kind === 'learn' ? videoId : undefined)
       || undefined;
     noteDictLookup({ word: wordLookup.word, contentRef, source });
@@ -2749,6 +2753,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onOpenBook={(bookId) => openSub({ kind: 'book', bookId })}
             />,
           );
+        case 'imported-book':
+          return subFrame(
+            <ImportedBookReaderScreen
+              key={`imported-book:${targetLang}:${sub.bookId}`}
+              bookId={sub.bookId}
+              onClose={() => back()}
+              onWordLookup={handleReaderWordLookup}
+              onRequestLogin={() => onRequestLogin?.()}
+            />,
+          );
         case 'favorites':
           // The route records "on the favorites screen"; P0 still renders the
           // existing panel on top of the profile page (IA §7.2).
@@ -2775,6 +2789,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenLibraryArticle={(id) => { void handleOpenLibraryArticle(id); }}
             onOpenBook={(id) => openSub({ kind: 'book', bookId: id })}
             onOpenBookSeries={(id) => openSub({ kind: 'book-series', seriesId: id })}
+            onOpenImportedBook={(id) => openSub({ kind: 'imported-book', bookId: id })}
             onOpenDiscover={handleOpenDiscover}
             onOpenReader={handleOpenReader}
             onOpenSentences={handleOpenSentences}

@@ -18,7 +18,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0017_behavior_events"
+HEAD = "0018_imported_books"
 PREVIOUS = "0015_assessment_sessions"
 
 

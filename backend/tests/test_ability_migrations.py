@@ -20,7 +20,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0017_behavior_events"
+HEAD = "0018_imported_books"
 BEFORE = "0013_user_profile"
 
 

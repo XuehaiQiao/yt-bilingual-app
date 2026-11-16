@@ -59,6 +59,7 @@ interface ContentScreenProps {
     onOpenLibraryArticle: (id: string) => void;
     onOpenBook: (id: string) => void;
     onOpenBookSeries: (id: string) => void;
+    onOpenImportedBook: (id: string) => void;
     onOpenDiscover: () => void;
     onOpenReader: () => void;
     onOpenSentences: (levelId: number) => void;
@@ -82,6 +83,7 @@ export function ContentScreen({
     onOpenLibraryArticle,
     onOpenBook,
     onOpenBookSeries,
+    onOpenImportedBook,
     onOpenDiscover,
     onOpenReader,
     onOpenSentences,
@@ -416,6 +418,9 @@ export function ContentScreen({
                     <BooksSection
                         onOpenBook={onOpenBook}
                         onOpenSeries={onOpenBookSeries}
+                        onOpenImportedBook={onOpenImportedBook}
+                        onRequestLogin={onRequestLogin}
+                        isGuest={isGuest}
                     />
                 </section>
 
