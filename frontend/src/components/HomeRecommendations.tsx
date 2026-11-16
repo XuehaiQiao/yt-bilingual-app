@@ -207,6 +207,20 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
                                 <p className="mt-0.5 truncate text-[11px] text-zinc-500">
                                     {item.channel || t('home.recommend.unknownChannel')}
                                 </p>
+                                <span
+                                    data-testid={`recommend-difficulty-${index}`}
+                                    data-cefr-input={item.difficulty?.cefrInput ?? ''}
+                                    data-bucket={item.difficulty?.bucket ?? ''}
+                                    title={t('difficulty.estimateHint')}
+                                    className="mt-1 inline-flex flex-wrap items-center gap-1 rounded-md border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300"
+                                >
+                                    <span>{item.difficulty?.cefrInput ?? t('difficulty.unrated')}</span>
+                                    {item.difficulty?.bucket && (
+                                        <span className="text-blue-200/80">
+                                            {t('difficulty.novelty', { bucket: item.difficulty.bucket })}
+                                        </span>
+                                    )}
+                                </span>
                                 <p className="mt-1 min-h-[2.9em] text-[11px] leading-relaxed text-zinc-500 line-clamp-2 break-words">
                                     {item.reason}
                                 </p>

@@ -68,6 +68,7 @@ import routes_admin
 import routes_auth
 import routes_blog
 import routes_content
+import routes_difficulty
 import routes_discover
 import routes_events
 import routes_exam
@@ -102,13 +103,19 @@ def _is_api_path(path: str) -> bool:
     return path == "/api" or path.startswith("/api/")
 
 
-_PUBLIC_API_PREFIXES = ("/api/blog/", "/api/library/")
+_PUBLIC_API_PREFIXES = (
+    "/api/blog/",
+    "/api/library/",
+    "/api/content/difficulty/",
+)
 _PUBLIC_API_EXACT = frozenset(
     {
         "/api/blog",
         "/api/library",
         # can-do 是仓库内只读内容（A1–C1 × 4 技能），公开且不签发游客 Cookie。
         "/api/ability/can-do",
+        # 内容难度公开只读（M2）：不需要登录，也不签发游客 Cookie。
+        "/api/content/difficulty",
     }
 )
 
@@ -255,6 +262,7 @@ app.include_router(routes_account.router)
 app.include_router(routes_admin.router)
 app.include_router(routes_videos.router)
 app.include_router(routes_content.router)
+app.include_router(routes_difficulty.router)
 app.include_router(routes_user.router)
 app.include_router(routes_review.router)
 app.include_router(routes_quiz.router)

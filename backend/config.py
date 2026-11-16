@@ -66,6 +66,21 @@ LIBRARY_DIR = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "library"),
 )
 
+# 自建英语频表（M2 内容难度，见 difficulty.py / scripts/build_wordlist.py）：
+# content/wordlist/frequency_bands.v1.json 随仓库分发，许可 CC BY-SA 4.0；
+# 运行期只读这一份词→频带映射，不读 CEFR-J/Octanove 等仅研究用途词表。
+WORDLIST_PATH = os.environ.get(
+    "WORDLIST_PATH",
+    os.path.join(_BACKEND_DIR, "..", "content", "wordlist", "frequency_bands.v1.json"),
+)
+
+# curated 视频的英文字幕构建期缓存（见 scripts/backfill_content_difficulty.py）：
+# data/ 已 gitignore，不入库；只存字幕正文供离线难度计算，运行期不联网。
+CURATED_SUBTITLES_DIR = os.environ.get(
+    "CURATED_SUBTITLES_DIR",
+    os.path.join(_BACKEND_DIR, "..", "data", "curated-subtitles"),
+)
+
 # --- 用户体系数据（SQLite + 每用户目录） ---
 # DATA_DIR 默认仓库根的 data/（已 gitignore）。AUTH_DB_PATH 可单独覆盖到别处；
 # USER_DATA_DIR 是每个登录用户的数据根目录（其下再分 history/ 等）。

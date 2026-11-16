@@ -38,3 +38,4 @@
 | [023](./023-user-profile/spec.md) | 用户名 / 用户页数据 / 余额与后台设置 | 注册用户名（可改）+ 用户页（余额/本月花费/版本）+ 后台手动调余额/封禁/维护模式/公告；普通用户不可访问后台 | 已实现（后端 + 用户页前端 + 后台控制台前端） |
 | [024](./024-free-library/spec.md) | 本地免费资源库 | 仓库内 3 个视频（预置双语字幕 + YouTube 嵌入）与 3 篇原创双语短文；首页「免费资源」窗 + 本地阅读器；公开只读、无数据库、运行时零 LLM | 已实现（内容 + 后端 + 前端） |
 | [025](./025-ability/spec.md) | CEFR 能力标定 M1（后端） | 1PL/Rasch + EAP 词汇区间、证据状态机、分技能画像/自评/can-do、旧 profile shim；阅读证据不足、听说写未测 | 已实现（后端） |
+| [026](./026-content-difficulty/spec.md) | CEFR 能力标定 M2：内容难度向量 | 自建频表（wordfreq 派生，CC BY-SA）+ 0 LLM 规则管线 `difficulty.v1` + `content_difficulty` 表/API + 36 条回填 + 推荐 match_score 与生词桶徽章 | 已实现（后端 + 内容 + 最小前端） |

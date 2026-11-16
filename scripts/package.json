@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "description": "Capture README screenshots and GIFs with Playwright",
+  "scripts": {
+    "verify:difficulty": "node verify-difficulty.mjs"
+  },
   "devDependencies": {
     "playwright": "^1.49.0",
     "gifenc": "^1.0.3",

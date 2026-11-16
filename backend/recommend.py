@@ -20,6 +20,9 @@
 - 排除规则只按 videoId：已缓存/已学过的视频不再返回；频道只用于推断「你最近
   在看什么类」，不作为排除条件（否则一个频道只能看一次，太粗暴）；
 - 题目要的 ``preliminary`` 沿用定位测的样本口径：无画像或样本 <100 时为 true。
+- **M2（specs/026）**：优先读 ``content_difficulty`` 的 ``cefrInput`` 做
+  ``match_score``（词汇带接近度 + 支持度）；无难度行时完全回退旧的
+  ``level_distance`` 规则；理由不得出现「个性化」一词。
 
 排序细节见 ``select_items``：先按难度距离分层（精确区间 → 相邻 ±1），层内做
 主题轮转（每轮每个主题最多取 1 条、每主题总上限 2 条），同主题内按发布时间
@@ -39,6 +42,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import config
+import difficulty
 import languages
 import placement
 import storage
@@ -329,15 +333,68 @@ def level_distance(level: str, band: tuple[str, str]) -> int:
     return index - high
 
 
+# C1+ 不在编辑等级枚举里；按「比 C1 高半档」处理成 5（仅用于距离/排序）。
+_CONTENT_INDEX = {**LEVEL_INDEX, "C1+": len(LEVEL_INDEX)}
+
+
+def content_band_distance(content_level: str | None, band: tuple[str, str]) -> int | None:
+    """内容 ``cefrInput`` 与用户区间的距离（c1+ 视为 C1 之上）。"""
+    if not isinstance(content_level, str) or content_level not in _CONTENT_INDEX:
+        return None
+    index = _CONTENT_INDEX[content_level]
+    low = LEVEL_INDEX[band[0]]
+    high = LEVEL_INDEX[band[1]]
+    if low <= index <= high:
+        return 0
+    if index < low:
+        return low - index
+    return index - high
+
+
+def match_score(distance: int | None, support: object = None) -> float:
+    """M2 ``match_v0``：词汇带接近度 0.7 + 支持度 0.3（计划书 §6.4）。
+
+    距离 0/1/2/更远 → 1.0 / 0.75 / 0.45 / 0.2；支持度见
+    ``difficulty.score_support``。无难度数据时调用方回退旧规则，不调用本函数。
+    """
+    if distance is None:
+        return 0.0
+    lexical_fit = {0: 1.0, 1: 0.75, 2: 0.45}.get(distance, 0.2)
+    support_fit = difficulty.score_support(support if isinstance(support, dict) else None)
+    return round(0.7 * lexical_fit + 0.3 * support_fit, 4)
+
+
+def _ability_band(identity: str) -> tuple[tuple[str, str], bool] | None:
+    """M2：优先读 ``user_skill_profiles`` 的词汇带（新表），失败返回 None。"""
+    try:
+        import ability  # 延迟 import：推荐模块不因能力模块缺失而整体不可用
+
+        payload = ability.profile(identity)
+    except Exception as exc:  # noqa: BLE001 - 推荐必须比能力档案更宽容
+        logger.debug("推荐读取新表词汇带失败：%s", exc)
+        return None
+    vocabulary = payload.get("vocabulary") if isinstance(payload, dict) else None
+    if not isinstance(vocabulary, dict):
+        return None
+    band = normalize_band(vocabulary.get("low"), vocabulary.get("high"))
+    if band is None:
+        return None
+    return band, bool(payload.get("preliminary", True))
+
+
 def profile_band(
     identity: str | None, *, is_guest: bool = False
 ) -> tuple[tuple[str, str] | None, bool]:
     """读登录用户的画像区间；游客/无画像/表未迁移一律返回 (None, True)。
 
-    推荐不能因为定位测库没迁移就整体 503：默认区间是有意设计的降级路径。
+    M2 优先读新表 ``user_skill_profiles``（词汇带），再回退定位测旧快照；
+    推荐不能因为库没迁移就整体 503：默认区间是有意设计的降级路径。
     """
     if is_guest or not identity:
         return None, True
+    ability_band = _ability_band(identity)
+    if ability_band is not None:
+        return ability_band
     try:
         payload = placement.get_profile(identity)
     except Exception as exc:  # noqa: BLE001 - 推荐必须比定位测更宽容
@@ -490,6 +547,21 @@ def _rotate(entries: list[Any], seed: int) -> list[Any]:
     return entries[offset:] + entries[:offset]
 
 
+def _load_difficulties(items: list[dict]) -> dict[str, dict]:
+    """批量读 curated 视频的 content_difficulty 行；无行/未迁移返回空。"""
+    refs = [item["videoId"] for item in items if isinstance(item.get("videoId"), str)]
+    rows = difficulty.get_rows([("curated", ref) for ref in refs])
+    return {ref: row for (kind, ref), row in rows.items() if kind == "curated"}
+
+
+def _difficulty_fingerprint(difficulties: dict[str, dict]) -> str:
+    material = "\x1f".join(
+        f"{ref}:{row.get('cefrInput')}:{row.get('confidence')}"
+        for ref, row in sorted(difficulties.items())
+    )
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()[:16]
+
+
 def select_items(
     items: list[dict],
     band: tuple[str, str],
@@ -498,28 +570,40 @@ def select_items(
     favorite_topics: tuple[str, ...] = (),
     limit: int = DEFAULT_LIMIT,
     seed: int = 0,
+    difficulties: dict[str, dict] | None = None,
 ) -> list[dict]:
     """按难度接近度 + 主题多样性 + 新鲜度选 0–limit 条（纯函数，便于测试）。
 
     1. 先排除已缓存 videoId，只保留 band±1 内的候选；
-    2. 按难度距离分两层：精确区间、相邻 ±1；两层都做主题轮转；
-    3. 轮转规则：每轮每个主题最多取 1 条，每主题总数最多 2 条——因此 5 个主题
-       的池子会先给每个主题 1 条，再补第 2 条，避免一屏全是同一主题；
-    4. 同主题内按 ``publishedAt`` 新→旧；``seed`` 做确定性轮转（换一批）。
+    2. **有 content_difficulty**：距离用 ``cefrInput``、层内按 ``match_score``
+       排序（词汇带接近度 0.7 + 支持度 0.3）；无难度行时完全用旧的
+       ``level_distance`` + 发布时间规则；
+    3. 两层都做主题轮转：每轮每个主题最多取 1 条、每主题总数最多 2 条；
+    4. 同层内先按分数、再按 ``publishedAt`` 新→旧；``seed`` 做确定性轮转。
     """
     if limit <= 0:
         return []
-    grouped: dict[tuple[int, str], list[dict]] = {}
-    for order, item in enumerate(items):
+    difficulties = difficulties or {}
+    grouped: dict[tuple[int, str], list[tuple[dict, float]]] = {}
+    for item in items:
         if item.get("videoId") in watched_video_ids:
             continue
-        distance = level_distance(item["level"], band)
+        row = difficulties.get(item.get("videoId"))
+        content_level = (row or {}).get("cefrInput")
+        content_distance = content_band_distance(content_level, band)
+        if content_distance is not None:
+            distance = content_distance
+            score = match_score(content_distance, (row or {}).get("support"))
+        else:
+            distance = level_distance(item["level"], band)
+            score = 1.0 - 0.2 * distance
         if distance > 1:
             continue
-        grouped.setdefault((distance, item["topic"]), []).append(item)
+        grouped.setdefault((distance, item["topic"]), []).append((item, score))
     for candidates in grouped.values():
-        # ISO 日期字符串可直接比较；稳定排序保留文件内顺序作为同日次序。
-        candidates.sort(key=lambda item: item.get("publishedAt") or "", reverse=True)
+        # 先按日期倒序，再按分数稳定排序：同分时新内容在前。
+        candidates.sort(key=lambda pair: pair[0].get("publishedAt") or "", reverse=True)
+        candidates.sort(key=lambda pair: pair[1], reverse=True)
 
     # 主题排序：用户最近看的主题优先，其余按精选池里第一次出现的顺序。
     first_seen: dict[str, int] = {}
@@ -555,7 +639,7 @@ def select_items(
                 position = positions.get(topic, 0)
                 if position >= len(candidates):
                     continue
-                item = candidates[position]
+                item = candidates[position][0]
                 positions[topic] = position + 1
                 selected.append(item)
                 topic_counts[topic] = topic_counts.get(topic, 0) + 1
@@ -578,11 +662,28 @@ def _reason(
     distance: int,
     recent_topic: str | None,
     target_lang: str,
+    difficulty_row: dict | None = None,
 ) -> str:
-    """一句人话理由；中文会把精选池里的编辑推荐语接在后面，越南语只用模板。"""
+    """一句人话理由；有难度数据时用「与你当前词汇区间接近」+ 估算生词桶。"""
     topic = item["topic"]
+    content_level = (difficulty_row or {}).get("cefrInput")
+    bucket = None
+    if difficulty_row:
+        # utr_band = 高于用户整个区间（取高带）的词占比，与 K17 的「带级量」
+        # 和 3.5% 目标口径一致；用低带会把所有真实内容都算成 >8%。
+        rate = difficulty.utr_band_for(
+            (difficulty_row or {}).get("features"), band[1]
+        )
+        bucket = difficulty.novelty_bucket(rate)
+
     if target_lang == "vi-VN":
-        if source == "profile":
+        if content_level:
+            base = f"Gần với khoảng từ vựng hiện tại của bạn"
+            base += f" (nội dung {content_level}"
+            if bucket:
+                base += f"; ước tính khoảng {bucket} từ mới"
+            base += f" theo trình độ {band_label(band)})"
+        elif source == "profile":
             if distance == 0:
                 base = f"Phù hợp với trình độ {item['level']} của bạn"
             elif LEVEL_INDEX[item["level"]] < LEVEL_INDEX[band[0]]:
@@ -601,7 +702,12 @@ def _reason(
             base += f"; gần đây bạn xem chủ đề {TOPIC_LABELS[topic]['vi-VN']}"
         return f"{base}."
 
-    if source == "profile":
+    if content_level:
+        base = f"与你当前词汇区间接近（{content_level} 内容"
+        if bucket:
+            base += f"，按你的 {band_label(band)} 估算，生词约 {bucket}"
+        base += "）"
+    elif source == "profile":
         if distance == 0:
             base = f"适合你的 {item['level']} 水平"
         elif LEVEL_INDEX[item["level"]] < LEVEL_INDEX[band[0]]:
@@ -616,8 +722,10 @@ def _reason(
     return f"{base}。{editorial}" if editorial else f"{base}。"
 
 
-def _public_item(item: dict, reason: str) -> dict:
-    return {
+def _public_item(
+    item: dict, reason: str, *, difficulty_row: dict | None = None, band: tuple[str, str] | None = None
+) -> dict:
+    payload = {
         "videoId": item["videoId"],
         "title": item["title"],
         "channel": item["channel"],
@@ -628,6 +736,23 @@ def _public_item(item: dict, reason: str) -> dict:
         "reason": reason,
         "url": f"https://www.youtube.com/watch?v={item['videoId']}",
     }
+    content_level = (difficulty_row or {}).get("cefrInput")
+    if content_level:
+        rate = (
+            difficulty.utr_band_for((difficulty_row or {}).get("features"), band[1])
+            if band
+            else None
+        )
+        payload["difficulty"] = {
+            "cefrInput": content_level,
+            "level": (difficulty_row or {}).get("level") or item.get("level"),
+            "confidence": (difficulty_row or {}).get("confidence"),
+            "utrBand": rate,
+            "bucket": difficulty.novelty_bucket(rate),
+            "estimated": True,
+            "source": "computed",
+        }
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -655,6 +780,8 @@ def recommend(
     watched = read_watched(lang, items)
     favorite = watched.topics[0] if watched.topics else None
     profile, preliminary_from_profile = profile_band(identity, is_guest=is_guest)
+    difficulties = _load_difficulties(items)
+    difficulty_fingerprint = _difficulty_fingerprint(difficulties)
 
     attempts: list[tuple[tuple[str, str], str, bool]] = []
     if profile is not None:
@@ -672,6 +799,7 @@ def recommend(
                 band_label(band),
                 source,
                 "p" if preliminary else "f",
+                difficulty_fingerprint,
                 watched.fingerprint(),
             ]
         )
@@ -686,6 +814,7 @@ def recommend(
             favorite_topics=watched.topics,
             limit=limit,
             seed=seed,
+            difficulties=difficulties,
         )
         if not chosen and source == "profile":
             continue  # 回退到默认 band
@@ -698,19 +827,38 @@ def recommend(
             _cache_put(cache_key, payload)
             return payload
 
+        def _distance_for(item: dict) -> int:
+            row = difficulties.get(item["videoId"])
+            content_distance = content_band_distance(
+                (row or {}).get("cefrInput"), band
+            )
+            if content_distance is not None:
+                return content_distance
+            return level_distance(item["level"], band)
+
         reasons = [
             _reason(
                 item,
                 band=band,
                 source=source,
-                distance=level_distance(item["level"], band),
+                distance=_distance_for(item),
                 recent_topic=favorite,
                 target_lang=lang,
+                difficulty_row=difficulties.get(item["videoId"]),
             )
             for item in chosen
         ]
+        items_payload = [
+            _public_item(
+                item,
+                reason,
+                difficulty_row=difficulties.get(item["videoId"]),
+                band=band,
+            )
+            for item, reason in zip(chosen, reasons)
+        ]
         payload = {
-            "items": [_public_item(item, reason) for item, reason in zip(chosen, reasons)],
+            "items": items_payload,
             "basis": {"band": band_label(band), "source": source},
             "preliminary": preliminary,
         }

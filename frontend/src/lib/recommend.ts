@@ -11,6 +11,15 @@ import { apiFetch } from './api';
 export type RecommendationLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1';
 export type RecommendationSource = 'profile' | 'default';
 
+export interface RecommendationDifficulty {
+    /** Content input band from `content_difficulty.cefr_input` (`A1`–`C1+`). */
+    cefrInput: string | null;
+    /** Estimate bucket like `3–5%`; null when the server has no difficulty row. */
+    bucket: string | null;
+    estimated: boolean;
+    source: string;
+}
+
 export interface RecommendationItem {
     videoId: string;
     title: string;
@@ -22,6 +31,8 @@ export interface RecommendationItem {
     topic: string;
     reason: string;
     url: string;
+    /** M2 difficulty summary for the card badge; absent for legacy rows. */
+    difficulty?: RecommendationDifficulty;
 }
 
 export interface RecommendationBasis {
@@ -64,6 +75,20 @@ export function formatRecommendationDuration(seconds: number): string {
     return `${minutes}:${String(rest).padStart(2, '0')}`;
 }
 
+function asDifficulty(raw: unknown): RecommendationDifficulty | undefined {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const record = raw as Record<string, unknown>;
+    const cefrInput = asText(record.cefrInput);
+    const bucket = asText(record.bucket);
+    if (!cefrInput) return undefined;
+    return {
+        cefrInput,
+        bucket: bucket || null,
+        estimated: record.estimated === true,
+        source: asText(record.source) || 'computed',
+    };
+}
+
 function normalizeItem(raw: unknown): RecommendationItem | null {
     if (!raw || typeof raw !== 'object') return null;
     const record = raw as Record<string, unknown>;
@@ -83,6 +108,7 @@ function normalizeItem(raw: unknown): RecommendationItem | null {
         topic: asText(record.topic),
         reason: asText(record.reason),
         url,
+        difficulty: asDifficulty(record.difficulty),
     };
 }
 

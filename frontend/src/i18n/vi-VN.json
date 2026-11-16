@@ -1275,5 +1275,8 @@
   "jobs.resumeAction": "Tiếp tục tạo",
   "jobs.resumeFailed": "Không kết nối được tác vụ trước, vui lòng thử lại sau.",
   "profile.vocabLevel": "Trình độ từ vựng",
-  "profile.vocabLevelHint": "Quyết định từ nào được làm nổi trong phụ đề; chỉnh ở trang Nội dung."
+  "profile.vocabLevelHint": "Quyết định từ nào được làm nổi trong phụ đề; chỉnh ở trang Nội dung.",
+  "difficulty.unrated": "Chưa xác định độ khó",
+  "difficulty.novelty": "Từ mới khoảng {{bucket}}",
+  "difficulty.estimateHint": "Ước tính theo trình độ của bạn, chỉ để tham khảo"
 }

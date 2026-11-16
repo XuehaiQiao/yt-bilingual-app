@@ -49,7 +49,9 @@
 | `routes_exam.py` | 考试练习 HTTP 路由（**需登录，游客 403**）：`GET /api/exam/types`、`POST /api/exam/start`、`POST /api/exam/submit`、`GET /api/exam/history`；契约与错误语义见下文「考试练习」与 [specs/022](../specs/022-exam-practice/spec.md) |
 | `discover.py` | **内容发现（V1）**：LLM 意图改写（2–3 个英文检索词，JSON 容错/降级原 query）→ yt-dlp `ytsearchN:` 并发搜索（≤3，单 query 8 条、失败不拖垮整体）→ 跨 query 去重 + 直播/90s–90min 过滤 → `youtube-transcript-api.list()` 并发探测英文字幕（≤4、2s，失败标 unknown 不误杀）→ LLM 重排 3–5 个（A1–C1 + 中文一句理由；失败规则排序 + 模板理由）→ `discover_queries` 24h 缓存。只读公开元数据/轨道列表，不下载、不存字幕正文；总预算 20s |
 | `routes_discover.py` | 内容发现 HTTP 路由：`POST /api/discover`（**需登录，游客 403**；5 次/分钟/用户）；契约/错误语义见下文「内容发现」与 [specs/017](../specs/017-discover/spec.md) |
-| `recommend.py` | **规则推荐（V1）**：读 `content/curated.json`（30 条人工精选）+ 登录用户 `user_profiles` 的 CEFR 区间（无画像默认 A2–B1）+ 当前身份 history 缓存；按 band±1、主题轮转、新鲜度、已看排除排序，生成中文/越语一句理由；不调用 LLM、不联网、不建表；10 分钟进程内缓存 |
+| `recommend.py` | **规则推荐（V1）**：读 `content/curated.json`（30 条人工精选）+ 用户词汇区间（M2 优先 `user_skill_profiles`，回退 `user_profiles`；无画像默认 A2–B1）+ 当前身份 history 缓存；M2 有 `content_difficulty` 时按 `cefrInput` 接近度 + 支持度 `match_score` 排序并附难度摘要，无难度行回退 band±1 旧规则；不调用 LLM、不联网、不建表；10 分钟进程内缓存 |
+| `difficulty.py` | 内容难度规则管线（M2，0 LLM）：自建频表加载/完整性校验、token/lemma/专名/缩略词归一、UTR/cefr_mix/p_level、句长/从句/被动近似、毛/净语速与窗口、习语密度、`difficulty.v1` features、`content_difficulty` 读写、`utr_band`/生词桶、`match_score` 支持度 |
+| `routes_difficulty.py` | 内容难度 HTTP：`GET /api/content/difficulty`、`GET /api/content/difficulty/batch`（公开，≤50，缓存 3600）、`POST /api/admin/content-difficulty/recompute`（管理员，幂等） |
 | `routes_recommend.py` | 规则推荐 HTTP 路由：`GET /api/recommendations?limit=6&targetLang=zh-CN&seed=0`（游客可用）；契约/错误语义见下文「规则推荐」与 [specs/018](../specs/018-recommendations/spec.md) |
 | `reading.py` | **读文章（V1）**：URL 导入（SSRF 校验 + 10s/2MB/重定向 ≤3）或粘贴正文 → `trafilatura` → readability → 标准库 `<p>` 三级抽取 → 200 段/单段 4000 字符上限 → `articles` / `article_paragraphs`；逐段翻译（`feature=reading` 配额/账本/降级链，只补缺失段，失败写 `[未翻译]`）；进度/列表/删除；表由 `0011_reading` 创建，运行时不建表 |
 | `routes_reading.py` | 读文章 HTTP 路由（**需登录，游客 403**）：`POST /api/article/import`、`POST /api/article/{id}/translate`、`GET /api/article/{id}`、`GET /api/articles`、`DELETE /api/article/{id}`、`PUT /api/article/{id}/progress`；契约/错误语义见下文「读文章」与 [specs/019](../specs/019-reading/spec.md) |
@@ -694,7 +696,7 @@ technology/business/psychology/culture/environment 各 6；4–32 分钟）。�
 ```bash
 cd backend
 venv/bin/python -m py_compile *.py
-venv/bin/python -m pytest tests/test_recommend.py -q   # 17 个离线用例
+venv/bin/python -m pytest tests/test_recommend.py -q   # 23 个离线用例（含 M2 难度匹配）
 venv/bin/python -m pytest tests -q                    # 全量 395
 ```
 
@@ -703,6 +705,80 @@ venv/bin/python -m pytest tests -q                    # 全量 395
 视频被排除且理由出现「你最近在看科技类」；游客默认 `A2–B1`；推荐 URL 调真实
 `/api/estimate-cost` 返回同一 videoId（`eXdVDhOGqoE`）。
 
+
+## 内容难度（M2：自建频表 + `difficulty.v1` + i+1 匹配）
+
+对应 [specs/026](../specs/026-content-difficulty/spec.md) 与计划书 §6 / §7.2 /
+§7.4。**0 LLM、离线、可复现**：运行期只读仓库内自建频表
+`content/wordlist/frequency_bands.v1.json`（10,000 lemma × 10 个千词频带，
+wordfreq 3.1.1 数据派生；许可 CC BY-SA 4.0，见 `content/wordlist/NOTICE.md`），
+不读 CEFR-J / Octanove / SUBTLEX 等仅研究用途词表（K18）。
+
+### 表（迁移 `0016_content_difficulty`）
+
+- PK `(content_ref, content_kind, version)`；`content_kind` CHECK
+  `video/local_show/article/curated/sentence_pack/quiz_item/placement_item`；
+- `level` 保留编辑标注（难度行缺失时 API 回退它）；`cefr_input` / `cefr_task`；
+  `lexical_band` / `syntax_band` / `discourse_band`；
+- `features` 是 `difficulty.v1` JSON（`size/utr/utr_content/utr_band/
+  cefr_mix/p_level/proper_noun_rate/speed/syntax/available/lex/pragmatics/
+  support/est_cefr/editorial_level/label_confidence/method/computed_at`）；
+  `support` 是字幕/翻译/词表 JSON；`method` CHECK `manual/rule/hybrid/llm`；
+- **不 seed**：由 `scripts/backfill_content_difficulty.py` 回填（幂等 upsert）。
+
+### 端点
+
+| 方法 | 路径 | 身份 | 说明 |
+|---|---|---|---|
+| GET | `/api/content/difficulty?kind=video&ref=…&band=B1` | 公开 | 单条；`band` 是用户词汇带上界，给了才有 `utrBand`/`bucket` |
+| GET | `/api/content/difficulty/batch?items=video:a,article:b` | 公开 | ≤50；`items` 也可重复传参；任一条缺失整批 404 |
+| POST | `/api/admin/content-difficulty/recompute` | 管理员 | `{items:[{kind,ref}]}` 或 `{kind,ref}`；幂等 upsert |
+
+- 有难度行：`source=computed` + features + `cefrInput`；
+- 行缺失 / 表未迁移：`source=legacy` + 内容编辑 `level`（HTTP 200，不 503）；
+- 内容本身不存在：404；`kind`/`band` 非法：400；
+- 公开响应 `Cache-Control: public, max-age=3600`；`/api/content/difficulty`
+  与 batch 在中间件的公开路径里（不签发游客 Cookie）。
+
+### 算法要点（详见 `difficulty.py` 注释）
+
+- 词表覆盖率：`utr.w1k/w2k/w5k`（全 token 分母）与 `utr_content.*`（实词）；
+  `utr_band` 是按用户带上界截断的带级量（K17，不是逐词画像）；
+- 判带：M2 v1 用 **p90 覆盖率**当读向统计量（纯频率锚点下 p95 对真实内容
+  不具区分度；p90/p95/p98 三档都写入 features 供 §6.7 锚集校准后切换）；
+  `cefr_input` 取文本理解带，听向带（`wpm_net` 与文本取高）单列
+  `est_cefr.listen`；
+- 视频：`wpm`（首末时间戳）、`wpm_net`（扣 >2s 停顿）、`window_p90_wpm`
+  （300s 窗口，末窗 <120s 并入前窗）；
+- 句法：`asl`/`p90_len` 仅在「人工字幕 + 有标点」或文章正文时可用；
+  自动字幕 / 无标点 → `null` & `available=false`（§6.8）；
+- `label_confidence`：tokens<80→0.3、<300→0.55、否则 0.8；自动字幕 ×0.8；
+- 习语密度是自建短语表近似（experimental，只记录不决策）；文化负载先置 0。
+
+### 回填 / 重算
+
+```bash
+# 36 条 = 3 视频 + 3 文章（content/library）+ 30 curated（需字幕缓存）
+backend/venv/bin/python scripts/backfill_content_difficulty.py
+backend/venv/bin/python scripts/backfill_content_difficulty.py --dry-run
+# 报告写 data/reports/content-difficulty-backfill.json（data/ 已 gitignore）
+```
+
+curated 字幕缓存由 `scripts/fetch_curated_subtitles.py` 在构建期一次性抓取后落 `data/curated-subtitles/<videoId>.json`
+（gitignored；`scripts/backfill_content_difficulty.py` 缺缓存时报告失败原因，
+不会静默跳过、不会在运行期联网）。
+
+### 配置
+
+`WORDLIST_PATH`（默认 `content/wordlist/frequency_bands.v1.json`）、
+`CURATED_SUBTITLES_DIR`（默认 `data/curated-subtitles`）；`LIBRARY_DIR` /
+`CURATED_CONTENT_PATH` 沿用既有配置。
+
+### 运行与验证
+
+```bash
+backend/venv/bin/python -m pytest tests/test_wordlist.py tests/test_difficulty.py   tests/test_difficulty_api.py tests/test_difficulty_migrations.py   tests/test_backfill_difficulty.py tests/test_recommend.py -q
+```
 
 ## 读文章（V1 后端：URL/正文导入 + 逐段翻译 + 进度）
 

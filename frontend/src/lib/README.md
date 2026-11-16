@@ -20,7 +20,8 @@
 | `placement.ts` | 能力定位测客户端（M4 / specs/016）：卷面/画像/结果类型与 `startPlacement/submitPlacement/getProfile/resetPlacement`；走 `apiFetch`，失败抛带 HTTP 状态的 `PlacementApiError`；`preliminary`/`sampleSize`/`disclaimer` 原样交给 UI，不做二次推断 |
 | `discover.ts` | 内容发现客户端（specs/017）：/api/discover 的候选/结果类型与 `discoverContent(query,targetLang,force)`；失败抛带 HTTP 状态与 `Retry-After` 的 `DiscoverApiError`；候选不补造、不强行凑足 3–5 个，`hasEnglishSubs` 只接受 true/null |
 | `reading.ts` | 读文章客户端（specs/019）：`importArticle`/`getArticle`/`translateArticle`/`listArticles`/`deleteArticle`/`saveProgress` 与文章/段落/译文/进度类型；读取显式带 `targetLang`，失败抛带 HTTP 状态的 `ReadingApiError`；不补造文章内容，译文失败按后端 `translationFailed` 标记展示 |
-| `recommend.ts` | 规则推荐客户端（specs/018）：`/api/recommendations` 的条目/区间类型与 `fetchRecommendations({limit,seed})`；不补造条目、`reason`/`basis`/`preliminary` 原样交给 UI；时长格式化为 `mm:ss` |
+| `difficulty.ts` | 内容难度客户端（M2 / specs/026）：`/api/content/difficulty/batch` 的 `DifficultyItem` 类型与 `fetchDifficultyBatch(items, band)`；只透传后端的 `cefrInput`/`bucket`/`utrBand`，缺行时回退编辑等级且不补造生词桶；`band` 是用户词汇带上界（无画像由调用方给默认 B1） |
+| `recommend.ts` | 规则推荐客户端（specs/018 + M2）：`/api/recommendations` 的条目/区间/难度摘要类型与 `fetchRecommendations({limit,seed})`；不补造条目、`reason`/`basis`/`preliminary` 原样交给 UI；时长格式化为 `mm:ss` |
 | `blog.ts` | 官方博客客户端（specs/020）：`/api/blog/posts`、`/api/blog/posts/{slug}`、`/api/blog/feed.xml` 的类型与 `listBlogPosts/getBlogPost/blogFeedUrl`；只读公开接口，失败抛带状态码的 `BlogApiError`；前端用 Markdown 字段配合 `react-markdown`，不注入后端 HTML |
 | `library.ts` | 本地免费资源库客户端（user request #11）：`/api/library`、`/api/library/videos/{id}`、`/api/library/articles/{id}` 的类型与 `fetchLibraryIndex/fetchLibraryVideo/fetchLibraryArticle`；公开只读、不触发估价/处理/翻译；只校验并透传后端字段，失败抛带 HTTP 状态的 `LibraryApiError` |
 | `tts.ts` | 浏览器朗读（speechSynthesis，偏好英语音色） |

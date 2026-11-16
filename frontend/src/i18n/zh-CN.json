@@ -1275,5 +1275,8 @@
   "jobs.resumeAction": "继续生成",
   "jobs.resumeFailed": "无法连接上次的任务，请稍后再试。",
   "profile.vocabLevel": "词汇水平",
-  "profile.vocabLevelHint": "决定字幕里高亮哪些词；调整在内容页。"
+  "profile.vocabLevelHint": "决定字幕里高亮哪些词；调整在内容页。",
+  "difficulty.unrated": "未标定难度",
+  "difficulty.novelty": "生词约 {{bucket}}",
+  "difficulty.estimateHint": "按你的等级估算，仅作参考"
 }

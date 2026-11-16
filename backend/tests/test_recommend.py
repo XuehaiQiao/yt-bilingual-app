@@ -28,6 +28,7 @@ from pathlib import Path
 import pytest
 
 import config
+import difficulty
 import placement
 import recommend
 import storage
@@ -421,3 +422,140 @@ def test_cache_ten_minutes_and_invalidates_on_history(client):
     third_data = _get(client, "limit=6").json()
     assert watched_id not in {item["videoId"] for item in third_data["items"]}
     assert third_data != first_data
+
+
+# ---------------------------------------------------------------------------
+# 11. M2：content_difficulty → match_score / 理由 / 徽章数据
+# ---------------------------------------------------------------------------
+
+def _insert_difficulty(
+    video_id: str,
+    *,
+    cefr_input: str = "B1",
+    level: str | None = None,
+    subtitle: str = "human",
+) -> None:
+    features = {
+        "schema": "difficulty.v1",
+        "utr_band": {"A1": 0.2, "A2": 0.1, "B1": 0.05, "B2": 0.02, "C1": 0.005},
+        "support": {"subtitle": subtitle},
+    }
+    difficulty.upsert_payloads(
+        [
+            {
+                "content_ref": video_id,
+                "content_kind": "curated",
+                "version": "v1",
+                "level": level or cefr_input,
+                "cefr_input": cefr_input,
+                "cefr_task": None,
+                "lexical_band": cefr_input,
+                "syntax_band": None,
+                "discourse_band": None,
+                "features": features,
+                "support": {
+                    "subtitle": subtitle,
+                    "translation": False,
+                    "glossary": False,
+                    "text": True,
+                },
+                "method": "rule",
+                "confidence": 0.8,
+            }
+        ]
+    )
+
+
+def test_match_score_rewards_band_closeness_and_support():
+    assert recommend.match_score(None) == 0.0
+    assert recommend.match_score(0, {"subtitle": "human"}) == 1.0
+    assert recommend.match_score(0, {"subtitle": "none"}) < 1.0
+    assert recommend.match_score(1) < recommend.match_score(0)
+    assert recommend.match_score(2) < recommend.match_score(1)
+    assert recommend.match_score(9) >= 0.0
+    assert 0.0 <= recommend.match_score(1, None) <= 1.0
+
+
+def test_difficulty_rows_drive_reason_and_badge(profile_db):
+    _insert_profile(profile_db.user_id, "B1", "B2")
+    catalog = _catalog()
+    targets = [item for item in catalog if item["level"] in {"B1", "B2"}][:6]
+    for item in targets:
+        _insert_difficulty(item["videoId"], cefr_input="B1")
+    recommend.reset_cache()
+
+    data = _get(profile_db, "limit=6").json()
+    assert data["basis"] == {"band": "B1–B2", "source": "profile"}
+    selected = {item["videoId"]: item for item in data["items"]}
+    assert selected
+    for item in data["items"]:
+        assert "个性化" not in item["reason"]
+        if item["videoId"] in {target["videoId"] for target in targets}:
+            assert "difficulty" in item
+            assert item["difficulty"]["cefrInput"]
+            assert item["difficulty"]["bucket"]
+            assert item["difficulty"]["estimated"] is True
+            assert "与你当前词汇区间接近" in item["reason"]
+        else:
+            # 没有难度行的条目照旧回退 band 规则，不伪造难度。
+            assert "difficulty" not in item
+
+
+def test_difficulty_overrides_editorial_level_for_selection(profile_db):
+    _insert_profile(profile_db.user_id, "B1", "B2")
+    catalog = _catalog()
+    editorial_b1 = next(item for item in catalog if item["level"] == "B1")
+    editorial_c1 = next(item for item in catalog if item["level"] == "C1")
+    # 编辑标注 C1，但实际难度 B1 → 应进入 B1–B2 的精确区间；
+    # 编辑标注 B1，但实际难度 C1+ → 超出 band±1 粗筛，不应被推荐。
+    _insert_difficulty(editorial_c1["videoId"], cefr_input="B1", level="C1")
+    _insert_difficulty(editorial_b1["videoId"], cefr_input="C1+", level="B1")
+    recommend.reset_cache()
+
+    data = _get(profile_db, "limit=6").json()
+    ids = {item["videoId"] for item in data["items"]}
+    assert editorial_c1["videoId"] in ids
+    assert editorial_b1["videoId"] not in ids
+    c1_item = next(item for item in data["items"] if item["videoId"] == editorial_c1["videoId"])
+    assert c1_item["level"] == "C1"  # 编辑等级保留
+    assert c1_item["difficulty"]["cefrInput"] == "B1"
+
+
+def test_no_difficulty_rows_keeps_legacy_reason(profile_db):
+    _insert_profile(profile_db.user_id, "B1", "B2")
+    recommend.reset_cache()
+    data = _get(profile_db, "limit=6").json()
+    assert all("difficulty" not in item for item in data["items"])
+    assert any("适合你的" in item["reason"] for item in data["items"])
+
+
+def test_vi_reason_with_difficulty_has_no_chinese_or_individualization(client):
+    _upgrade()
+    catalog = _catalog()
+    for item in catalog:
+        _insert_difficulty(item["videoId"], cefr_input="B1")
+    recommend.reset_cache()
+
+    data = _get(client, "limit=6&targetLang=vi-VN").json()
+    assert data["items"]
+    for item in data["items"]:
+        assert not CJK_RE.search(item["reason"])
+        assert "个性化" not in item["reason"]
+        assert "khoảng từ vựng hiện tại" in item["reason"]
+
+
+def test_difficulty_change_invalidates_result_cache(profile_db):
+    _insert_profile(profile_db.user_id, "B1", "B2")
+    catalog = _catalog()
+    for item in catalog:
+        _insert_difficulty(item["videoId"], cefr_input="B1")
+    recommend.reset_cache()
+    first = _get(profile_db, "limit=6").json()
+    assert first["items"]
+    target = first["items"][0]
+    assert target["difficulty"]["cefrInput"] == "B1"
+
+    # 同一 videoId 的难度改到 C1+（距离 2）→ 缓存键含难度指纹，必须换结果。
+    _insert_difficulty(target["videoId"], cefr_input="C1+")
+    second = _get(profile_db, "limit=6").json()
+    assert target["videoId"] not in {item["videoId"] for item in second["items"]}

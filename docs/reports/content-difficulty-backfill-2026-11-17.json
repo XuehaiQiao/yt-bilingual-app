@@ -1,0 +1,341 @@
+{
+  "schema": "content-difficulty-backfill.v1",
+  "generatedAt": 1794849227639,
+  "durationMs": 256,
+  "dryRun": false,
+  "total": 36,
+  "attempted": 36,
+  "computed": 36,
+  "skipped": 0,
+  "failed": 0,
+  "written": 36,
+  "coverage": 1.0,
+  "byKind": {
+    "video": {
+      "total": 3,
+      "computed": 3,
+      "skipped": 0,
+      "failed": 0
+    },
+    "article": {
+      "total": 3,
+      "computed": 3,
+      "skipped": 0,
+      "failed": 0
+    },
+    "curated": {
+      "total": 30,
+      "computed": 30,
+      "skipped": 0,
+      "failed": 0
+    }
+  },
+  "byBand": {
+    "B1": 9,
+    "B2": 18,
+    "C1": 5,
+    "C1+": 4
+  },
+  "editorialBand": {
+    "A2": 5,
+    "B1": 13,
+    "B2": 12,
+    "C1": 6
+  },
+  "bandDistance": {
+    "0": 7,
+    "1": 19,
+    "2": 10
+  },
+  "failures": [],
+  "items": [
+    {
+      "kind": "video",
+      "ref": "bbc-learning-different-generations",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "video",
+      "ref": "teded-better-economy",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "B1",
+      "error": null
+    },
+    {
+      "kind": "video",
+      "ref": "kurzgesagt-ai-slop",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "C1",
+      "error": null
+    },
+    {
+      "kind": "article",
+      "ref": "ocean-noise",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "B1",
+      "error": null
+    },
+    {
+      "kind": "article",
+      "ref": "free-app-hidden-cost",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "B1",
+      "error": null
+    },
+    {
+      "kind": "article",
+      "ref": "case-for-doing-nothing",
+      "status": "computed",
+      "level": "A2",
+      "cefrInput": "B1",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "StEB_wntlZ0",
+      "status": "computed",
+      "level": "A2",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "er3v4PVNQqE",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "DHyUYg8X31c",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "_zfN9wnPvU0",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "C1+",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "eXdVDhOGqoE",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "KKNCiRWd_j0",
+      "status": "computed",
+      "level": "C1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "TL61VKkme14",
+      "status": "computed",
+      "level": "A2",
+      "cefrInput": "B1",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "6MK6tuZ7Rws",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "B1",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "wCLP3djiKvM",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "3ez10ADR_gM",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "C1",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "XNZN6gYhpLU",
+      "status": "computed",
+      "level": "C1",
+      "cefrInput": "B1",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "DX_HLqz7l2g",
+      "status": "computed",
+      "level": "C1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "4C4wlOAscvY",
+      "status": "computed",
+      "level": "A2",
+      "cefrInput": "B1",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "oTPZWpQ9pbA",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "iWDKsHm6gTA",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "MMmOLN5zBLY",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "C1+",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "fbQ3LGoFaLc",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "RKK7wGAYP6k",
+      "status": "computed",
+      "level": "C1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "yLu_M4yiCho",
+      "status": "computed",
+      "level": "A2",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "WuyPuH9ojCE",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "C1",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "FWTNMzK9vG4",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "C1",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "qYvXk_bqlBk",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "C1+",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "8KkKuTCFvzI",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "arj7oStGLkU",
+      "status": "computed",
+      "level": "C1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "2njn71TqkjA",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "ZCKRjP_DMII",
+      "status": "computed",
+      "level": "B1",
+      "cefrInput": "C1",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "wbR-5mHI6bo",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "B1",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "-IlDkCEvsYw",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "B2",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "LxgMdjyw8uw",
+      "status": "computed",
+      "level": "B2",
+      "cefrInput": "C1+",
+      "error": null
+    },
+    {
+      "kind": "curated",
+      "ref": "Vl6VhCAeEfQ",
+      "status": "computed",
+      "level": "C1",
+      "cefrInput": "B2",
+      "error": null
+    }
+  ]
+}

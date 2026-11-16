@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0015_assessment_sessions"
+HEAD = "0016_content_difficulty"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
