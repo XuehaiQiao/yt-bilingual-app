@@ -67,7 +67,8 @@ except Exception:  # noqa: BLE001
 # ---------------------------------------------------------------------------
 
 RUN_ID = datetime.now().strftime("%Y%m%d-%H%M%S")
-OUT_ROOT = Path("/tmp/lesson-g0")
+# 第二轮（G0 v2）用 G0_OUT_ROOT=/tmp/lesson-g0-v2 隔离产物，不覆盖首轮包。
+OUT_ROOT = Path(os.environ.get("G0_OUT_ROOT", "/tmp/lesson-g0"))
 PACK_DIR = OUT_ROOT / "packs"
 RAW_DIR = OUT_ROOT / "raw"
 REVIEW_DIR = OUT_ROOT / "review"
@@ -96,6 +97,7 @@ BANDS: dict[str, dict[str, Any]] = {
         "coverage_max": 0.03,
         "unique_max": 8.0,
         "main_roles": {"detail": 2, "causal": 1, "vocab": 2, "form": 1},
+        "option_words": (4, 6),
         "scaffold": "双语字幕常显；可回放；4 词全预教",
         "skill": "listening",
     },
@@ -110,6 +112,7 @@ BANDS: dict[str, dict[str, Any]] = {
         "coverage_max": 0.05,
         "unique_max": 12.0,
         "main_roles": {"detail": 2, "vocab": 2, "form": 1, "inference": 1},
+        "option_words": (6, 9),
         "scaffold": "英文字幕；整句中文可点开；4 词全预教",
         "skill": "listening",
     },
@@ -124,6 +127,7 @@ BANDS: dict[str, dict[str, Any]] = {
         "coverage_max": 0.08,
         "unique_max": 18.0,
         "main_roles": {"detail": 1, "vocab": 2, "form": 1, "inference": 2},
+        "option_words": (7, 10),
         "scaffold": "英文字幕；中文只点词；目标词不全预教",
         "skill": "listening",
     },
@@ -402,6 +406,43 @@ SENSITIVE_TERMS = {
     "gun", "weapon", "terror", "terrorist", "racist", "racism", "nazi",
     "porn", "abuse", "violence", "violent",
 }
+
+# ---------------------------------------------------------------------------
+# 第二轮（G0 v2）新增口径：讲解硬约束 / 选项平衡 / 解析覆盖 / 引文质检
+# ---------------------------------------------------------------------------
+EXPLAIN_MAX_CJK = 60          # 讲解 ≤60 字（评审 rubric 的“克制”上限）
+OPTION_LENGTH_RATIO_MAX = 1.5  # 选项按英文词数计，最长/最短 ≤1.5×
+OUTPUT_MIN_WORDS = {"A2": 20, "B1": 40, "B2": 60}  # 范文词数下限（B1≥40/B2≥60）
+OUTPUT_TARGET_WORDS = 2       # 产出必须自然用到的目标词数
+
+# 引文质检：主谓一致 / 指代 / 转写。命中且无法换引文时，必须在 quote_note 标注。
+QUOTE_SVA_PATTERNS = [
+    (
+        re.compile(r"\b([A-Za-z]{3,})\s+and\s+([A-Za-z]{3,})\s+(is|was|has)\b", re.IGNORECASE),
+        "主谓一致：A and B 后用单数谓语",
+    ),
+    (
+        re.compile(r"\b(people|children|students|they|we)\s+(is|was)\b", re.IGNORECASE),
+        "主谓一致：复数主语后用单数谓语",
+    ),
+]
+QUOTE_PRONOUN_START_RE = re.compile(
+    r"^(it|this|that|these|those|they|them|he|she|his|her|their)\b", re.IGNORECASE
+)
+# 只允许与本句理解直接相关的提示；这些“联想法”会被评审判为冗余。
+PITFALL_BLOCKLIST = (
+    "sauce", "confidential", "general", "自动更新", "词源", "拉丁", "古英语",
+    "考试", "雅思", "托福", "反义词", "同义词",
+)
+
+# 证据支撑的最低词面重合：正确项至少要有 1 个实词出现在引文里（防止 Q05/Q09 型空证）。
+EVIDENCE_MIN_OVERLAP = 1
+OVERLAP_STOPWORDS = set(
+    "a an the and or but if because so that this these those i you he she it we they "
+    "me him her us them my your his its our their of to in on at for with from by as "
+    "is are was were be been being do does did have has had not no yes can could will "
+    "would shall should may might must there here what who when where why how".split()
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1142,7 +1183,7 @@ def build_analyze_prompt(content: dict, window: dict, band: str) -> str:
 {fmt_unit_lines(content, window)}
 </TRANSCRIPT>
 
-只输出一个 JSON 对象，不要 markdown，不要解释。字段：
+只输出一个 JSON 对象，不要 markdown，不要解释；用单行紧凑 JSON（不要缩进/换行）。字段：
 {{
   "gist": "中文一句话主旨，<=40字",
   "register": "neutral|informal|formal",
@@ -1190,7 +1231,7 @@ def build_points_prompt(content: dict, window: dict, band: str, analysis: dict, 
 形式库候选（只能选 1 个 form_id，不得新增；若都不匹配就 form 为空）：
 {chr(10).join(form_lines)}
 
-只输出 JSON，不要 markdown。结构：
+只输出 JSON，不要 markdown；用单行紧凑 JSON（不要缩进/换行）。结构：
 {{
   "points": [
     {{
@@ -1199,9 +1240,9 @@ def build_points_prompt(content: dict, window: dict, band: str, analysis: dict, 
       "lemma": "候选词之一",
       "locator": {{"kind": "{'article' if window['modality'] == 'article' else 'video'}", "block_index": 1, "paragraph_index": 1, "quote": "英文精确原文片段"}},
       "depth": "explain|practice|produce",
-      "explain": "中文<=55字，只讲这个词/语块在这句里的意思和用法",
-      "example": "英文例句<=14词",
-      "pitfall": "中文<=35字，可空",
+      "explain": "中文<=60字；必须落在本句：这个词/语块在本句里指什么、为什么；只讲与本句理解相关的信息",
+      "example": "英文例句<=14词，不要照抄原句",
+      "pitfall": "中文<=30字；只在有真实用法陷阱时写，为空就省略该字段",
       "check_id": "q1"
     }},
     {{
@@ -1220,23 +1261,35 @@ def build_points_prompt(content: dict, window: dict, band: str, analysis: dict, 
 2) locator.quote 必须逐字来自窗口原文，<=25词；视频用 block_index，文章用 paragraph_index（两个字段都保留，按模态取一个）。
 3) 不得写词源、百科、宗教/政治断言、编造统计；不得用另一个生词解释生词。
 4) form 点只写 why_here，不写语法解释正文（解释正文由人工模板提供）。
-5) explain/why_here 必须是中文（含 CJK），不要中英混杂整句。"""
+5) explain/why_here 必须是中文（含 CJK），不要中英混杂整句。
+6) explain 必须贴住本句的具体所指，不能只复述通用词义（例如不能写“水下的，指水面以下的环境或位置”就结束，要说明“本句里 underwater noise 指水下噪音”）。
+7) 词汇知识硬约束（必须遵守，不得改写）：
+   - neglect = 忽视/疏于顾及；neglect to do something 合法且常见（也可接名词/动名词）。禁止写“不接 to do”之类错误规则。
+   - extrapolate = 根据已知信息推断/外推；不等于“凭空推演”，不必然含贬义，也不必然产生不实内容。
+   - salvage = 抢救/挽救还能用的部分；引文没有说明对象时，禁止窄化为“研究内容/数据”等具体对象。
+   - boredom = 无聊/厌倦的感受（名词），不是“没事可做的状态”。
+   释义以常用词典义为准；禁止无依据窄化、贬义化、编造引文没有的信息。
+8) 克制：explain <=60 字；禁止词源/百科/考试技巧；禁止 sauce / confidential / general / 自动更新 等与本句理解无关的拼写联想。pitfall 没有真实陷阱就省略字段（不要输出空字符串）。"""
 
 
 def build_items_prompt(content: dict, window: dict, band: str, analysis: dict, points: list[dict]) -> str:
     spec = BANDS[band]
     role_plan = " / ".join(f"{role}×{count}" for role, count in spec["main_roles"].items())
+    option_lo, option_hi = spec["option_words"]
     points_brief = []
     for point in points:
         locator = point.get("locator") or {}
-        points_brief.append(
-            {
-                "point_id": point.get("point_id"),
-                "kind": point.get("kind"),
-                "lemma": point.get("lemma") or point.get("form_id"),
-                "quote": locator.get("quote"),
-            }
-        )
+        brief = {
+            "point_id": point.get("point_id"),
+            "kind": point.get("kind"),
+            "lemma": point.get("lemma") or point.get("form_id"),
+            "quote": locator.get("quote"),
+        }
+        if point.get("kind") == "form":
+            brief["form_id"] = point.get("form_id")
+            brief["form_label"] = point.get("form_label")
+            brief["form_rule"] = point.get("explain")
+        points_brief.append(brief)
     return f"""你是英语教学编辑。目标档 {band}。基于 5 个讲解点和窗口原文出 9 道题。
 窗口原文：
 <TRANSCRIPT>
@@ -1248,11 +1301,19 @@ def build_items_prompt(content: dict, window: dict, band: str, analysis: dict, p
 
 题量：6 道主测（section=main，角色 {role_plan}）+ 2 道离场测（section=exit，vocab×1 + form×1）+ 1 道 gist（section=gist，不计分）。
 题型只用 mcq（4 个选项）或 tf（2 个选项 True/False）。答案下标从 0 开始。
-英文题干/选项不得含中文；解析用中文，<=70字。
-每题 evidence.quote 必须逐字来自窗口原文，<=25词；视频给 block_index，文章给 paragraph_index。
-产出任务：{spec['out_min']}–{spec['out_max']} 词，必须用 2 个目标词（来自 4 个 vocab 点）。
 
-只输出 JSON，不要 markdown：
+出题硬约束（逐条检查，全部满足才输出）：
+1) 答案唯一可证：正确答案必须由 evidence.quote 直接推出，且 4 个选项中只有一个成立。引文推不出就换引文或改题，禁止靠常识补足（如引文只写 a hole to fill，就不能问丧妻背景）。答案选项不得包含引文没有的额外断言；如果答案有两部分，引文必须同时支持两部分，否则删掉一部分或换引文。
+2) 引文：evidence.quote 必须逐字来自窗口原文（<=25词），且能独立读懂；不要以 It/This/That/They 等代词开头；不要含主谓不一致或转写残句。若原文是口语转写、语法确有瑕疵，必须在 quote_note 写“原文口语转写，主谓/指代不完全规范，仅作证据，不作语言示范”。
+3) 干扰项：每个干扰项都必须明确错误；与正确项同词性、同话题、长度相近。mcq 四个选项每个必须 {option_lo}–{option_hi} 词（少于 {option_lo} 或多于 {option_hi} 都算不合格），且最长/最短 <=1.5×；不要出现 1 词 vs 2 词这种失衡，也不要让正确项明显偏长。输出前逐个数字数，不合格就重写整组选项。禁止两个选项都成立（尤其 help + 宾语 + do 与 help + 宾语 + to do 都合法，不能同时放进选项）。
+4) 解析：中文 <=100 字，必须逐项覆盖且简短：正确项写“X 对：<引文依据，<=20字>”，每个错误项写“X 错：<具体错误，<=12字>”；4 个选项一个不漏。tf 也用 A/B 标注。
+5) 题干/选项英文，不得含中文；不得出现 all/none of the above；不得重复考同一事实；每道 vocab/form 点至少被 1 题覆盖。输出前逐一核对 p1–p4：每个 vocab 点的词必须出现在某题的题干/选项/引文里，并在 point_ids 里挂上；漏一个就算不合格。
+6) form 题只考讲解点里的那个 form_id；4 个选项必须是完整英文句子（不要用单字/短语填空），且只能有 1 个符合该形式规则。
+7) 词汇题正确答案的措辞要有引文词面依据（答案实词能在引文里找到），否则换引文。
+
+产出任务：{spec['out_min']}–{spec['out_max']} 词；必须自然用满 2 个目标词（取自 4 个 vocab 点，允许自然词形变化），不能只把词堆进去。prompt 必须写明词数范围和这 2 个目标词。
+
+只输出 JSON，不要 markdown；用单行紧凑 JSON（不要缩进/换行）：
 {{
   "questions": [
     {{
@@ -1263,22 +1324,23 @@ def build_items_prompt(content: dict, window: dict, band: str, analysis: dict, p
       "stem": "English question <=20 words",
       "options": ["...", "...", "...", "..."],
       "answer_index": 0,
-      "explanation": "中文解析<=70字",
+      "explanation": "中文解析<=100字：A 对：<依据>；B 错：<原因>；C 错：<原因>；D 错：<原因>",
+      "quote_note": "仅在有引文瑕疵时输出中文说明；没有就省略该字段",
       "evidence": {{"kind": "...", "block_index": 1, "paragraph_index": 1, "quote": "英文精确原文片段"}},
       "point_ids": ["p1"]
     }}
   ],
   "output_task": {{
-    "prompt": "中文任务说明，含词数要求",
+    "prompt": "中文任务说明，含词数范围与 2 个目标词",
     "min_words": {spec['out_min']},
     "max_words": {spec['out_max']},
-    "must_use": ["候选词1", "候选词2"],
-    "model_answer": "English model answer within the word range",
+    "must_use": ["目标词1", "目标词2"],
+    "model_answer": "English model answer, {spec['out_min']}-{spec['out_max']} words, using both target words naturally",
     "rubric": ["任务完成", "目标词使用", "可读性"]
   }}
 }}
-硬约束：9 题必须齐全；mcq 恰好 4 项、tf 恰好 2 项；选项互异；answer_index 合法；
-不得出现 all/none of the above；不得重复考同一事实；每道 vocab/form 点至少被 1 题覆盖。"""
+硬约束：9 题必须齐全；mcq 恰好 4 项、tf 恰好 2 项；选项互异；answer_index 合法。
+JSON 里为空的字段请直接省略（尤其 quote_note / pitfall），不要输出空字符串。"""
 
 
 # ---------------------------------------------------------------------------
@@ -1421,7 +1483,7 @@ def units_by_id(content: dict, window: dict) -> dict[tuple[str, int], dict]:
 def normalize_locator(locator: dict, content: dict, window: dict) -> dict | None:
     """把 locator 修成窗口内真实 unit；quote 必须是该 unit 的归一化子串。"""
     locator = locator if isinstance(locator, dict) else {}
-    quote = clean_text(locator.get("quote"))
+    quote = re.sub(r"\s+", " ", clean_text(locator.get("quote"))).strip()
     if not quote:
         return None
     units = units_by_id(content, window)
@@ -1460,6 +1522,414 @@ def normalize_locator(locator: dict, content: dict, window: dict) -> dict | None
                 "quote": quote,
             }
     return None
+
+
+# ---------------------------------------------------------------------------
+# 第二轮机械校验：引文质检 / 选项平衡 / 解析覆盖 / 产出约束
+# ---------------------------------------------------------------------------
+
+def trim_explain(text: str) -> str:
+    """超过 60 个中文字时，优先在完整句（。；）处截断，避免硬切半句。"""
+    if char_count_cjk(text) <= EXPLAIN_MAX_CJK:
+        return text
+    cut = -1
+    count = 0
+    for index, char in enumerate(text):
+        if CJK_RE.match(char):
+            count += 1
+        if char in "。；" and count <= EXPLAIN_MAX_CJK:
+            cut = index
+    if cut > 0 and char_count_cjk(text[: cut + 1]) >= 30:
+        return text[: cut + 1]
+    return text
+
+
+def quote_quality_issues(quote: str, *, check_pronoun: bool = True) -> list[str]:
+    """引文语言质检：主谓一致 / 指代 / 转写残句。"""
+    quote = re.sub(r"\s+", " ", clean_text(quote)).strip()
+    issues: list[str] = []
+    if not quote:
+        return issues
+    for pattern, label in QUOTE_SVA_PATTERNS:
+        match = pattern.search(quote)
+        if match:
+            issues.append(f"{label}（{match.group(0)}）")
+    if check_pronoun and QUOTE_PRONOUN_START_RE.match(quote):
+        issues.append("指代：引文以代词开头，缺少先行词")
+    if re.search(r"\s+[,.;:!?]", quote):
+        issues.append("转写：标点前有多余空格")
+    if re.search(r"\.{3,}|…{2,}", quote):
+        issues.append("转写：引文含省略号/截断痕迹")
+    return issues
+
+
+def quote_note_for(quote: str, existing: str = "", *, check_pronoun: bool = True) -> str:
+    """命中引文瑕疵时生成标注；没有瑕疵时保留模型自带的说明。"""
+    issues = quote_quality_issues(quote, check_pronoun=check_pronoun)
+    if not issues:
+        return clean_text(existing)
+    auto = "引文质检：" + "；".join(issues) + "。仅作证据引用，不单独作语言示范。"
+    existing = clean_text(existing)
+    if not existing:
+        return auto
+    if auto in existing:
+        return existing
+    return f"{existing} {auto}"
+
+
+# 词面重合用的轻量派生词归并（只处理常见、无歧义的词形；不做完整词形还原）。
+_DERIVATION_STEMS = {
+    "truth": "true", "truths": "true", "truly": "true",
+    "healthy": "health", "healthier": "health", "healthily": "health",
+    "wealthy": "wealth", "happiness": "happy", "happily": "happy",
+    "happier": "happy", "safety": "safe", "safely": "safe",
+    "belief": "believe", "beliefs": "believe",
+    "death": "die", "dead": "die", "dying": "die", "loss": "lose", "lost": "lose",
+    "choice": "choose", "chose": "choose", "chosen": "choose",
+    "growth": "grow", "grew": "grow", "grown": "grow",
+    "knowledge": "know", "known": "know", "knew": "know",
+    "strength": "strong", "stronger": "strong", "length": "long", "longer": "long",
+    "depth": "deep", "deeper": "deep", "width": "wide", "wider": "wide",
+    "height": "high", "higher": "high", "decision": "decide", "decided": "decide",
+    "conclusion": "conclude", "description": "describe", "explanation": "explain",
+    "difference": "differ", "different": "differ", "importance": "important",
+    "silence": "silent", "silently": "silent",
+    "noisy": "noise", "noisier": "noise", "noisily": "noise",
+    "quietly": "quiet", "quieter": "quiet",
+    "harmless": "harm", "harmful": "harm",
+    "careful": "care", "carefully": "care",
+    "useful": "use", "useless": "use", "usefully": "use",
+}
+
+
+def _stem_word(word: str) -> str:
+    word = (word or "").lower().strip("'-")
+    if word in _DERIVATION_STEMS:
+        return _DERIVATION_STEMS[word]
+    for suffix in ("ing", "ed", "es", "s"):
+        if word.endswith(suffix) and len(word) > len(suffix) + 2:
+            return word[: -len(suffix)]
+    return word
+
+
+def content_word_set(text: str) -> set[str]:
+    words = set()
+    for word in WORD_RE.findall(str(text or "")):
+        low = word.lower()
+        if len(low) < 3 or low in OVERLAP_STOPWORDS:
+            continue
+        words.add(_stem_word(low))
+    return words
+
+
+def option_length_issues(question: dict) -> list[str]:
+    options = question.get("options") or []
+    if question.get("type") != "mcq" or len(options) < 2:
+        return []
+    counts = [word_count(option) for option in options]
+    if min(counts) <= 0:
+        return []
+    ratio = max(counts) / min(counts)
+    if ratio > OPTION_LENGTH_RATIO_MAX:
+        return [
+            f"选项词数比 {max(counts)}/{min(counts)}={ratio:.2f} > "
+            f"{OPTION_LENGTH_RATIO_MAX:g}×"
+        ]
+    return []
+
+
+def explanation_format_issues(question: dict) -> list[str]:
+    """解析必须逐项覆盖：正确项 X 对，每个错误项 Y 错。"""
+    issues: list[str] = []
+    options = question.get("options") or []
+    explanation = question.get("explanation") or ""
+    try:
+        answer = int(question.get("answer_index"))
+    except (TypeError, ValueError):
+        return ["answer_index 非法"]
+    if not (0 <= answer < len(options)):
+        return ["answer_index 越界"]
+    letters = "ABCD"
+    correct = letters[answer]
+    if not re.search(
+        rf"(?:答案\s*)?{correct}\s*(?:项|选项)?\s*(?:对|正确|成立)", explanation
+    ):
+        issues.append(f"解析未写正确项 {correct} 对")
+    for index in range(len(options)):
+        if index == answer:
+            continue
+        letter = letters[index]
+        if not re.search(
+            rf"{letter}\s*(?:项|选项)?\s*(?:错|不对|不成立|不符|无关)", explanation
+        ):
+            issues.append(f"解析未解释干扰项 {letter} 错")
+    return issues
+
+
+# 只有这些形式的 pattern 足以区分“正确/错误用法”，才做“唯一正确项”机械检查；
+# make_it_adj / when / if / because 等 pattern 过宽，强行检查会误伤，交给 prompt + 人工评审。
+FORM_UNIQUENESS_CHECK = {
+    "g.help_someone_verb",
+    "g.worth_gerund",
+    "g.keep_gerund",
+    "g.end_up_gerund",
+    "g.comparative_than",
+    "g.be_going_to",
+    "g.present_perfect",
+    "g.the_more_the_more",
+}
+
+# help 形式校验的屈折词尾启发式：排除 -ing/-ed/-s 与常见不规则过去式；
+# 同时保留以这些字母结尾的原形动词（need/bring/pass 等）。
+_HELP_BASE_S = {
+    "pass", "focus", "discuss", "miss", "guess", "address", "process", "dress",
+    "press", "bless", "cross", "kiss", "assess", "possess",
+}
+_HELP_BASE_ING = {
+    "bring", "sing", "ring", "swing", "spring", "string", "cling", "fling",
+    "sting", "wring",
+}
+_HELP_BASE_ED = {
+    "need", "feed", "speed", "seed", "weed", "bleed", "breed", "proceed",
+    "succeed", "exceed", "embed", "shed",
+}
+_HELP_IRREGULAR_PAST = {
+    "thought", "made", "did", "went", "said", "told", "got", "knew", "took",
+    "saw", "came", "found", "gave", "left", "felt", "kept", "brought", "began",
+    "ran", "paid", "met", "heard", "wrote", "spoke", "broke", "chose", "drove",
+    "ate", "fell", "flew", "forgot", "grew", "hid", "held", "hurt", "lent",
+    "lost", "meant", "sent", "slept", "spent", "stood", "taught", "understood",
+    "won", "wore",
+}
+
+
+def _help_verb_looks_inflected(verb: str) -> bool:
+    verb = verb.lower()
+    if not verb:
+        return True
+    if verb in _HELP_BASE_S or verb in _HELP_BASE_ING or verb in _HELP_BASE_ED:
+        return False
+    if verb in _HELP_IRREGULAR_PAST:
+        return True
+    if verb.endswith("ing") or verb.endswith("ed"):
+        return True
+    if verb.endswith("s") and not verb.endswith(("ss", "us", "is")):
+        return True
+    return False
+
+
+def form_option_valid_count(question: dict, form_id: str) -> int:
+    """统计有多少个选项符合目标形式；用于抓“两个选项都成立”的单选。"""
+    options = [option or "" for option in question.get("options") or []]
+    if form_id == "g.help_someone_verb":
+        # help 的难点是 help + 宾语 + do 与 help + 宾语 + to do 都合法。
+        # 只抓“同一句去掉 to 后与另一选项相同”的双正确变体，避免误伤多词宾语。
+        normalized = [norm_text(option) for option in options if option]
+        for i, first in enumerate(normalized):
+            for second in normalized[i + 1 :]:
+                if "help" not in first or "help" not in second:
+                    continue
+                if first.replace(" to ", " ") == second or second.replace(" to ", " ") == first:
+                    to_option = first if " to " in first else second
+                    match = re.search(r"\bto\s+([a-z]+)\b", to_option)
+                    # 只有 to 后面是动词原形时，“help + do / help + to do”才都成立。
+                    if match and not _help_verb_looks_inflected(match.group(1)):
+                        return 2
+        return 1
+    form = next((item for item in FORMS if item["form_id"] == form_id), None)
+    if not form:
+        return 0
+    pattern = re.compile(form["pattern"], re.IGNORECASE)
+    return sum(1 for option in options if pattern.search(option))
+
+
+def evidence_overlap_count(question: dict) -> int:
+    options = question.get("options") or []
+    try:
+        answer = int(question.get("answer_index"))
+    except (TypeError, ValueError):
+        return 0
+    if not (0 <= answer < len(options)):
+        return 0
+    quote = (question.get("evidence") or {}).get("quote") or ""
+    return len(content_word_set(options[answer]) & content_word_set(quote))
+
+
+def _unit_text_for_evidence(evidence: dict, content: dict, window: dict) -> str:
+    units = units_by_id(content, window)
+    if window["modality"] == "article":
+        unit = units.get(("paragraph", evidence.get("paragraph_index")))
+    else:
+        unit = units.get(("block", evidence.get("block_index")))
+    return unit["text"] if unit else ""
+
+
+def expand_evidence_quote(question: dict, content: dict, window: dict) -> bool:
+    """答案与引文词面零重合时，尝试把引文扩到相邻一句（仍逐字、<=25词）。
+
+    这是机械修复：不编造引文，只在同一 unit 内前后各扩一句；扩完仍无依据就留给闸门报失败。
+    """
+    evidence = question.get("evidence") or {}
+    quote = clean_text(evidence.get("quote"))
+    if not quote or evidence_overlap_count(question) >= EVIDENCE_MIN_OVERLAP:
+        return False
+    unit_text = _unit_text_for_evidence(evidence, content, window)
+    if not unit_text:
+        return False
+    sentences = [sentence.strip() for sentence in SENT_SPLIT_RE.split(unit_text) if sentence.strip()]
+    index = None
+    for idx, sentence in enumerate(sentences):
+        if quote_in(quote, sentence) or quote_in(sentence, quote):
+            index = idx
+            break
+    if index is None:
+        return False
+    candidates: list[str] = []
+    if index + 1 < len(sentences):
+        candidates.append(" ".join(sentences[index : index + 2]))
+    if index - 1 >= 0:
+        candidates.append(" ".join(sentences[index - 1 : index + 1]))
+    if index - 1 >= 0 and index + 1 < len(sentences):
+        candidates.append(" ".join(sentences[index - 1 : index + 2]))
+    for candidate in candidates:
+        if word_count(candidate) > 25 or not quote_in(candidate, unit_text):
+            continue
+        trial = {**question, "evidence": {**evidence, "quote": candidate}}
+        if evidence_overlap_count(trial) >= EVIDENCE_MIN_OVERLAP:
+            question["evidence"] = {
+                **evidence,
+                "quote": candidate,
+                "expanded_from": quote,
+            }
+            return True
+    return False
+
+
+def point_content_issues(point: dict) -> list[str]:
+    """讲解点硬约束：已知错误规则、无依据窄化、无关提示、≤60 字。"""
+    issues: list[str] = []
+    quote = (point.get("locator") or {}).get("quote") or ""
+    if point.get("kind") == "form":
+        why_here = point.get("why_here") or ""
+        if char_count_cjk(why_here) > EXPLAIN_MAX_CJK:
+            issues.append(f"why_here 中文字数 {char_count_cjk(why_here)} > {EXPLAIN_MAX_CJK}")
+        if not why_here_has_fragment(why_here, quote):
+            issues.append("why_here 未包含 quote 的 3 词连续片段")
+        return issues
+    lemma = (point.get("lemma") or "").lower()
+    explain = point.get("explain") or ""
+    pitfall = point.get("pitfall") or ""
+    text = f"{explain} {pitfall}"
+    if not explain:
+        issues.append("explain 为空")
+    if char_count_cjk(explain) > EXPLAIN_MAX_CJK:
+        issues.append(f"explain 中文字数 {char_count_cjk(explain)} > {EXPLAIN_MAX_CJK}")
+    # explain 里的英文只能是本词或引文里的词，防止引入 sauce/confidential 之类联想。
+    allowed = {word.lower() for word in WORD_RE.findall(quote)}
+    allowed.add(lemma)
+    for word in WORD_RE.findall(explain):
+        low = word.lower()
+        if low not in allowed and low not in FUNCTION_WORDS:
+            issues.append(f"explain 引入与本句无关的词：{word}")
+    if lemma == "neglect" and re.search(r"不(?:能|可|可以)?接", text) and (
+        "to" in text.lower() or "不定式" in text
+    ):
+        issues.append("neglect 错误规则：neglect to do 合法，禁止写“不接 to do”")
+    if lemma == "extrapolate":
+        for bad in ("凭空", "编造", "不实", "贬义"):
+            if bad in text and not re.search(
+                rf"(?:不是|不等于|并非|而非|不必然|不)[^。；]{{0,8}}{bad}", text
+            ):
+                issues.append(f"extrapolate 被窄化/贬义化（出现“{bad}”）")
+    if lemma == "salvage" and "研究" in text:
+        if not re.search(r"stud(?:y|ies)|research|experiment", quote, re.IGNORECASE):
+            issues.append("salvage 无依据窄化为“研究内容”")
+    if lemma == "boredom" and ("没事可做" in text or "无事可做" in text):
+        if not re.search(r"(?:不是|并非|不等于)[^。；]{0,6}(?:没|无)事可做", text):
+            issues.append("boredom 被等同于“没事可做的状态”")
+    if "词源" in text or "拉丁" in text:
+        issues.append("讲解出现词源信息")
+    quote_low = quote.lower()
+    low_text = text.lower()
+    for term in PITFALL_BLOCKLIST:
+        if term in low_text and term not in quote_low:
+            issues.append(f"讲解/易错点引入与句无关的提示：{term}")
+    return issues
+
+
+def question_content_issues(question: dict, points: list[dict]) -> list[str]:
+    issues: list[str] = []
+    issues.extend(option_length_issues(question))
+    issues.extend(explanation_format_issues(question))
+    if question.get("role") == "form" and question.get("type") == "mcq":
+        form_ids = [p.get("form_id") for p in points if p.get("kind") == "form"]
+        if form_ids and form_ids[0] in FORM_UNIQUENESS_CHECK:
+            count = form_option_valid_count(question, form_ids[0])
+            if count != 1:
+                issues.append(f"form 选项有 {count} 个符合规则，单选不唯一")
+    # 词面重合只作为理解题（detail/inference/causal/pragmatic）的硬门槛；
+    # 词汇题本来就常以释义/同义改写作答，0 重合时降为 warnings 交人工复核（见 check_content）。
+    if (
+        question.get("type") == "mcq"
+        and question.get("role") in ("detail", "inference", "causal", "pragmatic")
+    ):
+        if evidence_overlap_count(question) < EVIDENCE_MIN_OVERLAP:
+            issues.append("正确答案在引文中没有实词依据（词面重合 0）")
+    quote = (question.get("evidence") or {}).get("quote") or ""
+    if quote_quality_issues(quote) and not clean_text(question.get("quote_note")):
+        issues.append("引文有主谓/指代问题但未写 quote_note")
+    return issues
+
+
+def question_content_warnings(question: dict, points: list[dict]) -> list[str]:
+    """不阻断自动闸、但必须让评审/报告看到的内容提示。"""
+    warnings: list[str] = []
+    if (
+        question.get("type") == "mcq"
+        and question.get("role") == "vocab"
+        and evidence_overlap_count(question) < EVIDENCE_MIN_OVERLAP
+    ):
+        warnings.append("词汇题正确项与引文无词面重合，只能按语境/释义判断，需人工复核")
+    return warnings
+
+
+def output_task_content_issues(task: dict | None, points: list[dict], band: str) -> list[str]:
+    issues: list[str] = []
+    spec = BANDS[band]
+    if not task:
+        return ["output_task 缺失"]
+    try:
+        min_words = int(task.get("min_words") or 0)
+        max_words = int(task.get("max_words") or 0)
+    except (TypeError, ValueError):
+        return ["output_task 词数不是整数"]
+    if (min_words, max_words) != (spec["out_min"], spec["out_max"]):
+        issues.append(
+            f"output_task 词数应为 {spec['out_min']}–{spec['out_max']}，实际 {min_words}–{max_words}"
+        )
+    if min_words < OUTPUT_MIN_WORDS[band]:
+        issues.append(f"范文下限 {min_words} < {band} 要求 {OUTPUT_MIN_WORDS[band]}")
+    model_answer = task.get("model_answer") or ""
+    answer_words = word_count(model_answer)
+    if answer_words < min_words:
+        issues.append(f"范文 {answer_words} 词 < 下限 {min_words}")
+    if answer_words > max_words:
+        issues.append(f"范文 {answer_words} 词 > 上限 {max_words}")
+    must_use = task.get("must_use") or []
+    if len(must_use) < OUTPUT_TARGET_WORDS:
+        issues.append(f"must_use 只有 {len(must_use)} 个目标词")
+    answer_norm = norm_text(model_answer)
+    for word in must_use[:OUTPUT_TARGET_WORDS]:
+        target = norm_text(word)
+        if target and not re.search(rf"\b{re.escape(target)}\w*\b", answer_norm):
+            issues.append(f"范文未自然使用目标词：{word}")
+    prompt = task.get("prompt") or ""
+    if str(min_words) not in prompt or str(max_words) not in prompt:
+        issues.append("任务说明未写词数范围")
+    for word in must_use[:OUTPUT_TARGET_WORDS]:
+        if word and word.lower() not in prompt.lower():
+            issues.append(f"任务说明未写目标词：{word}")
+    return issues
 
 
 def normalize_points(raw_points: list[dict], content: dict, window: dict, candidates: list[dict], forms: list[dict]) -> tuple[list[dict], list[str]]:
@@ -1508,6 +1978,9 @@ def normalize_points(raw_points: list[dict], content: dict, window: dict, candid
                     "explain_from": f"grammar/forms.json#{form_id}",
                     "form_label": form["label"],
                     "why_here_source": "llm_or_template",
+                    "quote_note": quote_note_for(
+                        locator.get("quote") or "", raw.get("quote_note"), check_pronoun=False
+                    ),
                 }
             )
         else:
@@ -1515,26 +1988,33 @@ def normalize_points(raw_points: list[dict], content: dict, window: dict, candid
             if lemma not in allowed_lemmas:
                 issues.append(f"{point_id}: lemma 不在候选池")
                 continue
-            explain = clean_text(raw.get("explain"))
+            explain = trim_explain(clean_text(raw.get("explain")))
             if not explain or not has_cjk(explain):
                 issues.append(f"{point_id}: explain 缺失或不是中文")
                 continue
-            if len(explain) > 80:
-                issues.append(f"{point_id}: explain 过长")
-                continue
-            points.append(
-                {
-                    "point_id": point_id,
-                    "kind": "vocab",
-                    "lemma": lemma,
-                    "locator": locator,
-                    "depth": clean_text(raw.get("depth")) or "practice",
-                    "explain": explain,
-                    "example": clean_text(raw.get("example")),
-                    "pitfall": clean_text(raw.get("pitfall")),
-                    "check_id": clean_text(raw.get("check_id")) or "",
-                }
-            )
+            if char_count_cjk(explain) > EXPLAIN_MAX_CJK:
+                issues.append(
+                    f"{point_id}: explain 中文 {char_count_cjk(explain)} 字 > {EXPLAIN_MAX_CJK}"
+                )
+            point_quote = locator.get("quote") or ""
+            pitfall = clean_text(raw.get("pitfall"))
+            candidate_point = {
+                "point_id": point_id,
+                "kind": "vocab",
+                "lemma": lemma,
+                "locator": locator,
+                "depth": clean_text(raw.get("depth")) or "practice",
+                "explain": explain,
+                "example": clean_text(raw.get("example")),
+                "pitfall": pitfall,
+                "check_id": clean_text(raw.get("check_id")) or "",
+                "quote_note": quote_note_for(
+                    point_quote, raw.get("quote_note"), check_pronoun=False
+                ),
+            }
+            for item in point_content_issues(candidate_point):
+                issues.append(f"{point_id}: {item}")
+            points.append(candidate_point)
     # 去重：同一 lemma / form 只留第一条。
     deduped = []
     seen_keys = set()
@@ -1655,27 +2135,33 @@ def normalize_questions(raw_questions: list[dict], content: dict, window: dict, 
                 linked = [p["point_id"] for p in points if p["kind"] == "vocab"][:1]
             if linked:
                 issues.append(f"{question_id}: 原 point_ids 缺失，已按 role 补 {linked}")
-        questions.append(
-            {
-                "question_id": question_id,
-                "section": section,
-                "role": role,
-                "type": qtype,
-                "stem": stem,
-                "options": options,
-                "answer_index": answer_index,
-                "explanation": explanation,
-                "evidence": evidence,
-                "point_ids": linked,
-            }
-        )
+        question = {
+            "question_id": question_id,
+            "section": section,
+            "role": role,
+            "type": qtype,
+            "stem": stem,
+            "options": options,
+            "answer_index": answer_index,
+            "explanation": explanation,
+            "evidence": evidence,
+            "point_ids": linked,
+            "quote_note": quote_note_for(
+                evidence.get("quote") or "", raw.get("quote_note"), check_pronoun=True
+            ),
+        }
+        if qtype == "mcq" and role not in ("form", "gist"):
+            expand_evidence_quote(question, content, window)
+        questions.append(question)
     # 重复题干去重。
     deduped = []
     seen_stems = set()
     for question in questions:
-        key = norm_text(question["stem"])
+        # main 与 exit 可以复考同一形式/同一题干（间隔复现是设计的一部分），
+        # 只有同一 section 内重复才算错误。
+        key = (question.get("section"), norm_text(question["stem"]))
         if key in seen_stems:
-            issues.append(f"{question['question_id']}: 重复题干")
+            issues.append(f"{question['question_id']}: 同 section 重复题干")
             continue
         seen_stems.add(key)
         deduped.append(question)
@@ -1699,26 +2185,76 @@ def normalize_output_task(raw: dict, points: list[dict], band: str) -> tuple[dic
         min_words, max_words = spec["out_min"], spec["out_max"]
     if (min_words, max_words) != (spec["out_min"], spec["out_max"]):
         issues.append(f"output_task 词数应为 {spec['out_min']}–{spec['out_max']}，实际 {min_words}–{max_words}")
-    must_use = raw.get("must_use")
-    if not isinstance(must_use, list):
-        must_use = []
-    must_use = [clean_text(item).lower() for item in must_use if clean_text(item)]
+    raw_must_use = raw.get("must_use")
+    if not isinstance(raw_must_use, list):
+        raw_must_use = []
+    raw_must_use = [
+        clean_text(item).lower() for item in raw_must_use if clean_text(item)
+    ]
     vocab = [p["lemma"] for p in points if p["kind"] == "vocab"]
-    must_use = [item for item in must_use if item in vocab]
-    if len(must_use) < 2:
-        must_use = vocab[:2]
-        issues.append("output_task.must_use 不足 2 个目标词，已用前 2 个 vocab 补齐")
-    must_use = must_use[:3]
     model_answer = clean_text(raw.get("model_answer"))
     if not model_answer:
         issues.append("output_task.model_answer 为空")
+    answer_norm = norm_text(model_answer)
+    prompt_norm = norm_text(prompt)
+
+    def appears(text_norm: str, word: str) -> bool:
+        target = norm_text(word)
+        return bool(target) and bool(
+            re.search(rf"\b{re.escape(target)}\w*\b", text_norm)
+        )
+
+    candidates: list[str] = []
+    for item in raw_must_use + vocab:
+        if item in vocab and item not in candidates:
+            candidates.append(item)
+    present_answer = [item for item in candidates if appears(answer_norm, item)]
+    present_prompt = [item for item in candidates if appears(prompt_norm, item)]
+    chosen: list[str] = []
+    for item in candidates:
+        if item in present_answer and item in present_prompt and item not in chosen:
+            chosen.append(item)
+    for pool in (present_answer, present_prompt, candidates):
+        for item in pool:
+            if len(chosen) >= OUTPUT_TARGET_WORDS:
+                break
+            if item not in chosen:
+                chosen.append(item)
+    must_use = chosen[:OUTPUT_TARGET_WORDS]
+    if len(must_use) < OUTPUT_TARGET_WORDS:
+        issues.append(
+            f"output_task.must_use 不足 {OUTPUT_TARGET_WORDS} 个目标词，已用前 {OUTPUT_TARGET_WORDS} 个 vocab 补齐"
+        )
+        must_use = vocab[:OUTPUT_TARGET_WORDS]
     answer_words = word_count(model_answer)
-    if not (min_words <= answer_words <= max_words):
-        issues.append(f"model_answer 词数 {answer_words} 不在 {min_words}–{max_words}")
-    answer_low = model_answer.lower()
-    missing = [item for item in must_use if item not in answer_low]
+    if answer_words < spec["out_min"]:
+        issues.append(
+            f"model_answer 词数 {answer_words} < {band} 下限 {spec['out_min']}"
+        )
+    if answer_words > spec["out_max"]:
+        issues.append(
+            f"model_answer 词数 {answer_words} > {band} 上限 {spec['out_max']}"
+        )
+    missing = [
+        item
+        for item in must_use
+        if item and not appears(answer_norm, item)
+    ]
     if missing:
-        issues.append(f"model_answer 未使用 must_use: {missing}")
+        issues.append(f"model_answer 未自然使用 must_use: {missing}")
+
+    # 任务说明与 must_use 对齐：缺词数范围/目标词就机械补在末尾（不改原意）。
+    additions: list[str] = []
+    if str(min_words) not in prompt or str(max_words) not in prompt:
+        additions.append(f"词数 {min_words}–{max_words}。")
+    missing_prompt = [
+        item for item in must_use if item and item.lower() not in prompt.lower()
+    ]
+    if missing_prompt:
+        additions.append("必须使用目标词：" + "、".join(missing_prompt) + "。")
+    if additions and prompt:
+        prompt = prompt.rstrip("。；; ") + "。" + "".join(additions)
+        issues.append("output_task.prompt 已机械补全词数/目标词")
     rubric = raw.get("rubric")
     if not isinstance(rubric, list) or len(rubric) < 3:
         rubric = ["任务完成", "目标词使用", "可读性"]
@@ -1751,8 +2287,8 @@ def points_quality(points: list[dict], issues: list[str]) -> float:
     return vocab * 10 + forms * 5 - len(issues) * 2
 
 
-def items_feedback(questions: list[dict], points: list[dict], band: str) -> list[str]:
-    """出题阶段的结构/对齐反馈；用于决定是否重试 items 调用。"""
+def items_structure_issues(questions: list[dict], points: list[dict], band: str) -> list[str]:
+    """结构/对齐反馈：题量、角色、每点覆盖。"""
     issues: list[str] = []
     main = [q for q in questions if q.get("section") == "main"]
     exits = [q for q in questions if q.get("section") == "exit"]
@@ -1782,6 +2318,29 @@ def items_feedback(questions: list[dict], points: list[dict], band: str) -> list
         if point.get("kind") == "form" and len(linked) < 2:
             issues.append(f"{point['point_id']} 少于 2 题覆盖")
     return issues
+
+
+def items_content_issues(
+    questions: list[dict], points: list[dict], band: str, task: dict | None = None
+) -> list[str]:
+    """内容反馈：选项长度、解析逐项覆盖、form 唯一性、证据词面依据、产出词数/目标词。"""
+    issues: list[str] = []
+    for question in questions:
+        for item in question_content_issues(question, points):
+            issues.append(f"{question.get('question_id')}: {item}")
+    if task is not None:
+        for item in output_task_content_issues(task, points, band):
+            issues.append(f"output_task: {item}")
+    return issues
+
+
+def items_feedback(
+    questions: list[dict], points: list[dict], band: str, task: dict | None = None
+) -> list[str]:
+    """出题阶段的结构/对齐/内容反馈；用于决定是否重试 items 调用。"""
+    return items_structure_issues(questions, points, band) + items_content_issues(
+        questions, points, band, task
+    )
 
 
 def _question_text(question: dict) -> str:
@@ -1829,11 +2388,12 @@ def relink_questions(questions: list[dict], points: list[dict]) -> None:
 
 
 def items_quality(questions: list[dict], task: dict | None, points: list[dict], band: str) -> float:
-    feedback = items_feedback(questions, points, band)
-    score = len(questions) * 10 - len(feedback) * 3
-    if task and task.get("prompt"):
-        score += 3
-    return score
+    """结构优先：题量/角色齐全的版本必须先胜出，再比内容问题多少。"""
+    structure = items_structure_issues(questions, points, band)
+    content = items_content_issues(questions, points, band, task)
+    structure_score = 100.0 if not structure else max(0.0, 60.0 - 8.0 * len(structure))
+    task_bonus = 2.0 if task and task.get("prompt") else 0.0
+    return structure_score - 3.0 * len(content) + task_bonus
 
 
 # ---------------------------------------------------------------------------
@@ -2048,6 +2608,32 @@ def check_language(pack: dict) -> dict:
     return gate_result(not issues, issues)
 
 
+def check_content(pack: dict, band: str) -> dict:
+    """第二轮的讲解/题目/产出内容闸：硬错误、选项平衡、解析覆盖、范文约束。"""
+    issues: list[str] = []
+    annotations: list[str] = []
+    warnings: list[str] = []
+    points = pack.get("points") or []
+    for point in points:
+        for item in point_content_issues(point):
+            issues.append(f"{point.get('point_id')}: {item}")
+        if clean_text(point.get("quote_note")):
+            annotations.append(f"{point.get('point_id')}: {point['quote_note']}")
+    for question in pack.get("questions") or []:
+        for item in question_content_issues(question, points):
+            issues.append(f"{question.get('question_id')}: {item}")
+        for item in question_content_warnings(question, points):
+            warnings.append(f"{question.get('question_id')}: {item}")
+        if clean_text(question.get("quote_note")):
+            annotations.append(f"{question.get('question_id')}: {question['quote_note']}")
+    for item in output_task_content_issues(pack.get("output_task"), points, band):
+        issues.append(f"output_task: {item}")
+    result = gate_result(not issues, issues)
+    result["quote_annotations"] = annotations
+    result["content_warnings"] = warnings
+    return result
+
+
 def check_safety_license(pack: dict, content: dict) -> dict:
     issues: list[str] = []
     text = " ".join(
@@ -2090,9 +2676,11 @@ def check_cross(pack: dict) -> dict:
     qids = [q.get("question_id") for q in pack.get("questions") or []]
     if len(qids) != len(set(qids)):
         issues.append("question_id 重复")
-    stems = [norm_text(q.get("stem")) for q in pack.get("questions") or []]
+    stems = [
+        (q.get("section"), norm_text(q.get("stem"))) for q in pack.get("questions") or []
+    ]
     if len(stems) != len(set(stems)):
-        issues.append("题干重复")
+        issues.append("同 section 题干重复")
     # 时间顺序：视频证据 block 不要求升序，但要求都在窗口内（citation 已查）。
     if not pack.get("output_task"):
         issues.append("缺 output_task")
@@ -2195,6 +2783,34 @@ def empty_pack(content: dict, window: dict, band: str) -> dict:
     }
 
 
+def can_afford_retry(pack: dict, model: str, cap: float = 0.0162) -> tuple[bool, dict]:
+    """重试前的预算闸：用本 pack 单次最贵调用做保守估算，超上限就不重试。
+
+    只看平均会低估 items 这类长输出调用（实测一次 items 重试约 $0.005），
+    所以用账本里的 max(est_cost_usd) + 小余量，宁可不重试也不超单包成本上限。
+    """
+    usage = collect_usage(pack["pack_id"], model, pack.get("raw_calls") or [])
+    current = float(usage.get("cost_usd") or 0.0)
+    calls = max(1, int(usage.get("calls") or 1))
+    max_call = current / calls
+    db = Path(config.AUTH_DB_PATH)
+    if db.exists():
+        try:
+            conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            row = conn.execute(
+                "SELECT MAX(est_cost_usd) FROM ai_usage "
+                "WHERE user_id = ? AND feature = 'quiz'",
+                (ledger_user(pack["pack_id"]),),
+            ).fetchone()
+            conn.close()
+            if row and row[0] is not None:
+                max_call = max(max_call, float(row[0]))
+        except sqlite3.Error:
+            pass
+    projected = current + max_call + 0.0003
+    return projected <= cap, usage
+
+
 async def generate_pack(
     content: dict,
     window: dict,
@@ -2261,14 +2877,31 @@ async def generate_pack(
         points_data = parse_json_object(points_text)
         raw_points = points_data.get("points") if isinstance(points_data, dict) else points_data
         points, point_issues = normalize_points(raw_points or [], content, window, candidates, forms)
-        if not points_ok(points):
-            # 结构失败重试一次：只重跑 points，保留原结果中更好的一版。
+        points_flags = [
+            f"{point.get('point_id')}: {item}"
+            for point in points
+            for item in point_content_issues(point)
+        ]
+        points_retry_needed = not points_ok(points) or bool(points_flags)
+        affordable = False
+        if points_retry_needed:
+            affordable, usage_before = can_afford_retry(pack, model)
+            if not affordable:
+                point_issues.append(
+                    f"预算闸：跳过 points 重试（已用 ${usage_before.get('cost_usd', 0):.4f}，"
+                    "预计超 $0.0162 上限）"
+                )
+        if points_retry_needed and affordable:
+            # 结构或内容失败重试一次：只重跑 points，保留原结果中更好的一版。
             retry_prompt = (
                 points_prompt
                 + "\n\nPrevious JSON failed validation:\n"
-                + "\n".join(f"- {item}" for item in point_issues[:10])
+                + "\n".join(f"- {item}" for item in (point_issues + points_flags)[:12])
                 + "\nRegenerate the complete JSON with exactly 4 vocab points and 1 form point. "
-                "Every locator.quote must be copied from the transcript."
+                "Every locator.quote must be copied from the transcript. "
+                "explain must be <=60 Chinese characters, anchored to this sentence, and only cover "
+                "what is relevant here. neglect to do is valid; extrapolate means infer from known "
+                "information (not fabrication); salvage means rescue the usable parts; boredom is a feeling."
             )
             try:
                 retry_text, retry_meta = await call_json(
@@ -2280,8 +2913,18 @@ async def generate_pack(
                 retry_points, retry_issues = normalize_points(
                     retry_raw or [], content, window, candidates, forms
                 )
-                if points_quality(retry_points, retry_issues) >= points_quality(points, point_issues):
-                    points, point_issues = retry_points, point_issues + ["retry: " + "; ".join(retry_issues[:6])]
+                retry_flags = [
+                    f"{point.get('point_id')}: {item}"
+                    for point in retry_points
+                    for item in point_content_issues(point)
+                ]
+                if points_quality(
+                    retry_points, retry_issues + retry_flags
+                ) >= points_quality(points, point_issues + points_flags):
+                    points = retry_points
+                    point_issues = point_issues + [
+                        "retry: " + "; ".join(retry_issues[:6])
+                    ] + retry_flags
             except Exception as exc:  # noqa: BLE001
                 point_issues.append(f"points 重试失败：{type(exc).__name__}: {exc}")
         if not points_ok(points):
@@ -2302,15 +2945,28 @@ async def generate_pack(
         output_task, task_issues = normalize_output_task(
             items_data.get("output_task") if isinstance(items_data, dict) else {}, points, band
         )
-        feedback = items_feedback(questions, points, band)
+        feedback = items_feedback(questions, points, band, output_task)
+        affordable = False
         if feedback:
+            affordable, usage_before = can_afford_retry(pack, model)
+            if not affordable:
+                question_issues.append(
+                    f"预算闸：跳过 items 重试（已用 ${usage_before.get('cost_usd', 0):.4f}，"
+                    "预计超 $0.0162 上限）"
+                )
+        if feedback and affordable:
             retry_prompt = (
                 items_prompt
                 + "\n\nPrevious JSON failed validation:\n"
-                + "\n".join(f"- {item}" for item in feedback[:10])
+                + "\n".join(f"- {item}" for item in feedback[:12])
                 + "\nRegenerate the complete JSON with exactly 9 questions "
                 "(6 main + 2 exit + 1 gist) and the required role counts. "
-                "Keep every evidence.quote copied from the transcript."
+                "Keep every evidence.quote copied from the transcript. "
+                "Every explanation must cover all four options as 'X 对：…；Y 错：…'. "
+                "Form questions must use complete-sentence options, not single-word fill-ins. "
+                f"Every mcq option MUST be {BANDS[band]['option_words'][0]}-{BANDS[band]['option_words'][1]} words "
+                "(count them before answering) and max/min word count must be <=1.5x; "
+                "make only one option correct, and never include both help + do and help + to do variants."
             )
             try:
                 retry_text, retry_meta = await call_json(
@@ -2365,6 +3021,7 @@ async def generate_pack(
         "7_safety_license": check_safety_license(pack, content),
         "8_cross": check_cross(pack),
         "9_coverage": check_coverage(pack, content, window, lexicon, band),
+        "10_content": check_content(pack, band),
         "token": check_token(pack),
         "cost": check_cost(pack),
         "latency": check_latency(pack),
@@ -2374,7 +3031,7 @@ async def generate_pack(
         pack["status"] = "mock"
     elif not failures:
         pack["status"] = "passed"
-    elif any(name in failures for name in ("2_citation", "9_coverage", "1_structure")):
+    elif any(name in failures for name in ("2_citation", "9_coverage", "1_structure", "10_content")):
         pack["status"] = "rejected"
     elif "token" in failures or "4_form" in failures:
         pack["status"] = "partial"
@@ -3256,7 +3913,7 @@ def summarize(packs: list[dict], negative: dict, lexicon: Lexicon, total_elapsed
     failed = [p for p in packs if p.get("status") != "passed"]
     gate_names = [
         "1_structure", "2_citation", "3_lexical", "4_form", "5_alignment",
-        "6_language", "7_safety_license", "8_cross", "9_coverage",
+        "6_language", "7_safety_license", "8_cross", "9_coverage", "10_content",
         "token", "cost", "latency",
     ]
     gate_pass_counts = {
@@ -3293,79 +3950,260 @@ def summarize(packs: list[dict], negative: dict, lexicon: Lexicon, total_elapsed
 # ---------------------------------------------------------------------------
 
 def build_review_package(summary: dict) -> dict:
-    packs = [p for p in summary["packs"] if p.get("status") == "passed" and not p.get("mock")]
-    if len(packs) < 10:
-        # 如果真实通过的 pack 不足 10，用 available 的 passed + partial 兜底，但标注。
-        extra = [p for p in summary["packs"] if p not in packs and p.get("points")]
-        packs = (packs + extra)[:10]
-    rng = random.Random(20261117)
-    point_items = []
-    for pack in packs:
-        points = [p for p in pack.get("points") or []]
-        # 每包随机抽 2 个点（不强制 form），让 20 点的构成接近 4 词:1 形式的真实比例。
-        chosen = rng.sample(points, min(2, len(points))) if points else []
-        for point in chosen:
-            point_items.append({"pack": pack, "point": point})
-    # form 点太少时补 form，太多时换成 vocab（保持代表性，且不伪造）。
-    form_count = sum(1 for item in point_items if item["point"]["kind"] == "form")
+    """第二轮盲评包：20 讲解点 / 10 题 / 5 产出，匿名 ID + 独立 mapping。
+
+    选择口径：
+    - 优先选内容闸（10_content）通过的 pack；覆盖率失败但内容合格的 pack 仍可用
+      （覆盖率失败只在报告里保留失败标记，不污染讲解/题目质量）。
+    - 逐条再过滤：讲解点/题目本身有内容问题的，不进入盲评包（避免让评审重复踩已修问题）。
+    - 已知返修词（neglect/extrapolate/salvage/boredom）若出现在合格池里，优先纳入做回归。
+    """
+    rng = random.Random(20261118)  # 第二轮独立种子
+    hard_fix_lemmas = ("neglect", "extrapolate", "salvage", "boredom")
+    packs = [
+        pack
+        for pack in summary.get("packs") or []
+        if not pack.get("mock") and pack.get("status") != "error" and pack.get("points")
+    ]
+    mock_mode = not packs
+    if mock_mode:
+        # --mock 自检：允许用 mock pack 生成结构完整的盲评材料，但不当作真实评审材料。
+        packs = [
+            pack
+            for pack in summary.get("packs") or []
+            if pack.get("status") != "error" and pack.get("points")
+        ]
+
+    hard_gate_names = (
+        "1_structure",
+        "2_citation",
+        "3_lexical",
+        "4_form",
+        "5_alignment",
+        "6_language",
+        "7_safety_license",
+        "8_cross",
+        "10_content",
+    )
+
+    def pack_safe(pack: dict) -> bool:
+        """覆盖率失败可保留（只影响选材），但结构/引文/词表/形式/对齐/内容硬伤不能进盲评。"""
+        gates = pack.get("gates") or {}
+        if not gates:
+            return True
+        return all(gates.get(name, {}).get("pass", True) for name in hard_gate_names)
+
+    preferred = [pack for pack in packs if pack_safe(pack)] or packs
+
+    def point_ok(pack: dict, point: dict) -> bool:
+        if point_content_issues(point):
+            return False
+        if point.get("kind") == "vocab":
+            lemma = norm_text(point.get("lemma") or "")
+            window_text = norm_text((pack.get("window") or {}).get("text") or "")
+            if lemma and not re.search(rf"\b{re.escape(lemma)}\w*\b", window_text):
+                return False
+        return True
+
+    def points_of(pack: dict) -> list[dict]:
+        return [point for point in pack.get("points") or [] if point_ok(pack, point)]
+
+    def add_point(items: list[dict], used: set, pack: dict, point: dict) -> bool:
+        key = (pack["pack_id"], point["point_id"])
+        if key in used:
+            return False
+        used.add(key)
+        items.append({"pack": pack, "point": point})
+        return True
+
+    point_items: list[dict] = []
+    used: set[tuple[str, str]] = set()
+    for pack in preferred:
+        points = points_of(pack)
+        selected = rng.sample(points, min(2, len(points))) if points else []
+        for point in selected:
+            add_point(point_items, used, pack, point)
+
+    # 保持约 4 个 form 点（真实比例 4:1），不足时用 form 替换 vocab。
+    form_count = sum(1 for item in point_items if item["point"].get("kind") == "form")
     if form_count < 4:
-        for pack in packs:
-            for point in pack.get("points") or []:
-                if form_count >= 4:
-                    break
-                if point["kind"] != "form":
-                    continue
-                if any(item["pack"]["pack_id"] == pack["pack_id"] and item["point"]["point_id"] == point["point_id"] for item in point_items):
-                    continue
-                # 替换一条同类（vocab）且不造成重复的条目。
-                for index, item in enumerate(point_items):
-                    if item["point"]["kind"] == "vocab" and not any(
-                        other["pack"]["pack_id"] == pack["pack_id"] and other["point"]["point_id"] == point["point_id"]
-                        for other in point_items
-                    ):
-                        point_items[index] = {"pack": pack, "point": point}
-                        form_count += 1
-                        break
+        for pack in preferred:
             if form_count >= 4:
                 break
-    # 20 点；不足时从所有点补齐（仍然不重复）。
-    all_points = [(pack, point) for pack in packs for point in pack.get("points") or []]
-    used = {(item["pack"]["pack_id"], item["point"]["point_id"]) for item in point_items}
-    for pack, point in all_points:
-        if len(point_items) >= 20:
+            for point in points_of(pack):
+                if form_count >= 4:
+                    break
+                if point.get("kind") != "form":
+                    continue
+                key = (pack["pack_id"], point["point_id"])
+                if key in used:
+                    continue
+                for index, item in enumerate(point_items):
+                    if item["point"].get("kind") != "vocab":
+                        continue
+                    used.discard((item["pack"]["pack_id"], item["point"]["point_id"]))
+                    point_items[index] = {"pack": pack, "point": point}
+                    used.add(key)
+                    form_count += 1
+                    break
+
+    def fill_points(pool: list[dict]) -> None:
+        for pack in pool:
+            for point in points_of(pack):
+                if len(point_items) >= 20:
+                    return
+                add_point(point_items, used, pack, point)
+
+    fill_points(preferred)
+    if len(point_items) < 20:
+        fill_points([pack for pack in packs if pack not in preferred])
+    if len(point_items) < 20:
+        # 极端兜底：把逐条问题的点也纳入，保证盲评包完整；在 review_flags 里标注。
+        for pack in packs:
+            for point in pack.get("points") or []:
+                if len(point_items) >= 20:
+                    break
+                add_point(point_items, used, pack, point)
+
+    # 回归优先：已知返修词只要在合格池里，就替换一个普通 vocab 点。
+    # 候选词的 lemma 可能是屈折形式（extrapolated / salvaged），用前缀匹配。
+    selected_lemmas = {str(item["point"].get("lemma") or "") for item in point_items}
+
+    def matches_hard_fix(lemma_value: str, lemma: str) -> bool:
+        value = (lemma_value or "").lower()
+        return bool(value) and (
+            value == lemma or value.startswith(lemma) or lemma.startswith(value)
+        )
+
+    def already_selected(lemma: str) -> bool:
+        return any(matches_hard_fix(value, lemma) for value in selected_lemmas)
+
+    for lemma in hard_fix_lemmas:
+        if already_selected(lemma):
+            continue
+        candidate = next(
+            (
+                (pack, point)
+                for pack in packs
+                for point in points_of(pack)
+                if matches_hard_fix(point.get("lemma") or "", lemma)
+                and (pack["pack_id"], point["point_id"]) not in used
+            ),
+            None,
+        )
+        if not candidate:
+            continue
+        replaceable = [
+            index
+            for index, item in enumerate(point_items)
+            if item["point"].get("kind") == "vocab"
+            and not any(
+                matches_hard_fix(item["point"].get("lemma") or "", hard)
+                for hard in hard_fix_lemmas
+            )
+        ]
+        if not replaceable:
             break
-        key = (pack["pack_id"], point["point_id"])
-        if key not in used:
-            point_items.append({"pack": pack, "point": point})
-            used.add(key)
+        index = rng.choice(replaceable)
+        old = point_items[index]
+        used.discard((old["pack"]["pack_id"], old["point"]["point_id"]))
+        point_items[index] = {"pack": candidate[0], "point": candidate[1]}
+        used.add((candidate[0]["pack_id"], candidate[1]["point_id"]))
+        selected_lemmas.add(str(candidate[1].get("lemma") or ""))
     point_items = point_items[:20]
     rng.shuffle(point_items)
-    question_items = []
-    for pack in packs:
-        main = [q for q in pack.get("questions") or [] if q.get("section") == "main"]
+
+    # 10 题：每个 pack 先选 1 道主测；不足时从其余主测补齐。
+    def question_ok(pack: dict, question: dict) -> bool:
+        return not question_content_issues(question, pack.get("points") or [])
+
+    question_items: list[dict] = []
+    used_questions: set[tuple[str, str]] = set()
+    used_stems: set[str] = set()
+
+    def add_question(pack: dict, question: dict, *, allow_duplicate_stem: bool = False) -> bool:
+        key = (pack["pack_id"], question["question_id"])
+        if key in used_questions:
+            return False
+        stem_key = norm_text(question.get("stem") or "")
+        if stem_key and stem_key in used_stems and not allow_duplicate_stem:
+            return False
+        used_questions.add(key)
+        if stem_key:
+            used_stems.add(stem_key)
+        question_items.append({"pack": pack, "question": question})
+        return True
+
+    for pack in preferred:
+        main = [
+            question
+            for question in pack.get("questions") or []
+            if question.get("section") == "main" and question_ok(pack, question)
+        ]
         if main:
-            question_items.append({"pack": pack, "question": rng.choice(main)})
+            add_question(pack, rng.choice(main))
+    for pool in (preferred, [pack for pack in packs if pack not in preferred]):
+        for pack in pool:
+            for question in pack.get("questions") or []:
+                if len(question_items) >= 10:
+                    break
+                if question.get("section") != "main":
+                    continue
+                if question_ok(pack, question):
+                    add_question(pack, question)
+    if len(question_items) < 10:
+        for pack in packs:
+            for question in pack.get("questions") or []:
+                if len(question_items) >= 10:
+                    break
+                if question.get("section") == "main":
+                    add_question(pack, question, allow_duplicate_stem=True)
     question_items = question_items[:10]
     rng.shuffle(question_items)
-    # 5 个产出任务：每条内容一个，优先 B1 档，其次 B2/A2。
-    task_items = []
-    seen_contents = set()
+
+    # 5 个产出任务：每条内容一个，优先 B1，其次 B2/A2；不够时允许同内容相邻档补足。
+    def task_ok(pack: dict, task: dict) -> bool:
+        if output_task_content_issues(task, pack.get("points") or [], pack["band_group"]):
+            return False
+        window_text = norm_text((pack.get("window") or {}).get("text") or "")
+        for word in task.get("must_use") or []:
+            target = norm_text(word)
+            if target and not re.search(rf"\b{re.escape(target)}\w*\b", window_text):
+                return False
+        return True
+
+    task_items: list[dict] = []
+    seen_contents: set[str] = set()
+
+    def add_task(pack: dict, *, allow_duplicate_content: bool = False) -> bool:
+        task = pack.get("output_task") or {}
+        if not task_ok(pack, task):
+            return False
+        content_id = pack["content"]["id"]
+        if content_id in seen_contents and not allow_duplicate_content:
+            return False
+        task_items.append({"pack": pack, "task": task})
+        seen_contents.add(content_id)
+        return True
+
     for preferred_band in ("B1", "B2", "A2"):
+        for pack in preferred:
+            if len(task_items) >= 5:
+                break
+            if pack["band_group"] != preferred_band:
+                continue
+            add_task(pack)
+    if len(task_items) < 5:
         for pack in packs:
             if len(task_items) >= 5:
                 break
-            if pack["content"]["id"] in seen_contents:
-                continue
-            if pack["band_group"] != preferred_band:
-                continue
-            task_items.append({"pack": pack, "task": pack.get("output_task")})
-            seen_contents.add(pack["content"]["id"])
-    for pack in packs:
-        if len(task_items) >= 5:
-            break
-        if pack["content"]["id"] not in seen_contents:
-            task_items.append({"pack": pack, "task": pack.get("output_task")})
-            seen_contents.add(pack["content"]["id"])
+            add_task(pack)
+    if len(task_items) < 5:
+        for pack in packs:
+            if len(task_items) >= 5:
+                break
+            add_task(pack, allow_duplicate_content=True)
+    task_items = task_items[:5]
     rng.shuffle(task_items)
 
     def blind_id(prefix: str, index: int) -> str:
@@ -3391,6 +4229,7 @@ def build_review_package(summary: dict) -> dict:
                 "why_here": point.get("why_here"),
                 "example": point.get("example"),
                 "pitfall": point.get("pitfall"),
+                "quote_note": point.get("quote_note"),
                 "band_hidden": pack["band_group"],
             }
         )
@@ -3401,6 +4240,7 @@ def build_review_package(summary: dict) -> dict:
         question_mapping[blind_id("Q", index)] = {
             "pack_id": item["pack"]["pack_id"],
             "question_id": question["question_id"],
+            "role": question.get("role"),
         }
         blind_questions.append(
             {
@@ -3411,13 +4251,17 @@ def build_review_package(summary: dict) -> dict:
                 "answer_index": question.get("answer_index"),
                 "explanation": question.get("explanation"),
                 "evidence_quote": (question.get("evidence") or {}).get("quote"),
+                "quote_note": question.get("quote_note"),
             }
         )
     blind_tasks = []
     task_mapping = {}
     for index, item in enumerate(task_items, start=1):
         task = item["task"] or {}
-        task_mapping[blind_id("O", index)] = {"pack_id": item["pack"]["pack_id"]}
+        task_mapping[blind_id("O", index)] = {
+            "pack_id": item["pack"]["pack_id"],
+            "content_id": item["pack"]["content"]["id"],
+        }
         blind_tasks.append(
             {
                 "blind_id": blind_id("O", index),
@@ -3429,17 +4273,31 @@ def build_review_package(summary: dict) -> dict:
                 "rubric": task.get("rubric"),
             }
         )
+    if not mock_mode and (
+        len(blind_points) != 20 or len(blind_questions) != 10 or len(blind_tasks) != 5
+    ):
+        raise RuntimeError(
+            "盲评包不完整："
+            f"{len(blind_points)} 讲解点 / {len(blind_questions)} 题 / {len(blind_tasks)} 产出"
+        )
     mapping = {
+        "round": "g0-v2",
+        "seed": 20261118,
         "points": point_mapping,
         "questions": question_mapping,
         "tasks": task_mapping,
     }
     return {
+        "round": "g0-v2",
         "points": blind_points,
         "questions": blind_questions,
         "tasks": blind_tasks,
         "mapping": mapping,
         "mapping_private": True,
+        "selection": {
+            "pack_count": len(packs),
+            "content_gate_pass_packs": len(preferred),
+        },
     }
 
 
@@ -3467,7 +4325,7 @@ def render_report(summary: dict, review: dict) -> str:
     lines.append("## 0. 结论（先看这里）")
     lines.append("")
     lines.append(f"- 真实生成：**{summary['pack_count']} 个 pack**（{summary['pass_count']} 通过 / {summary['fail_count']} 未通过；负例另计）。")
-    lines.append(f"- 自动闸通过率（本次近似词表口径）：**{summary['pass_count']}/{summary['pack_count']} = {summary['pass_count']/max(1,summary['pack_count'])*100:.1f}%**（12 项机械闸全过才算通过）。")
+    lines.append(f"- 自动闸通过率（第二轮 M2 口径）：**{summary['pass_count']}/{summary['pack_count']} = {summary['pass_count']/max(1,summary['pack_count'])*100:.1f}%**（13 项机械闸全过才算通过）。")
     m2 = summary.get("m2_posthoc") or {}
     if m2.get("available"):
         lines.append(f"- **M2 post-hoc 复核**：M2 频表产物在本次运行前后才出现（并行、未提交）；用 M2 口径复核时，`band_pass` {m2.get('band_pass_count')}/{m2.get('total')}、`utr_pass` {m2.get('utr_pass_count')}/{m2.get('total')}。**因此 10/10 只能当“近似口径”结果，不能当 M2 校准后的 100%**（见 §7）。")
@@ -3477,7 +4335,7 @@ def render_report(summary: dict, review: dict) -> str:
     lines.append(f"- 端到端：p50 **{summary['elapsed_p50']:.1f}s** / p95 **{summary['elapsed_p95']:.1f}s**（上限 120s）。")
     lines.append("- **人工评审未完成：20 个讲解点 / 10 道题 / 5 个产出任务已抽取并做盲化，但没有任何人工评分。按 G0 定义，G0 未通过。**")
     lines.append("")
-    lines.append("> 重要：自动闸（本次近似词表口径）只证明“引文真、结构全、覆盖率达标、成本/耗时受控”，**不证明讲解讲得对、题目答案可证**。M2 post-hoc 复核显示覆盖率并非 10/10（见 §7）；人工盲评和 T1 仍未完成。")
+    lines.append("> 重要：自动闸（第二轮 M2 口径）只证明“引文真、结构全、覆盖率达标、成本/耗时受控”，**不证明讲解讲得对、题目答案可证**。M2 post-hoc 复核显示覆盖率并非 10/10（见 §7）；人工盲评和 T1 仍未完成。")
     lines.append("")
     lines.append("## 1. 自动闸总表")
     lines.append("")
@@ -3485,7 +4343,7 @@ def render_report(summary: dict, review: dict) -> str:
         ("1_structure", "① 结构"), ("2_citation", "② 引文"), ("3_lexical", "③ 词表"),
         ("4_form", "④ 形式"), ("5_alignment", "⑤ 对齐"), ("6_language", "⑥ 语言"),
         ("7_safety_license", "⑦ 安全/许可"), ("8_cross", "⑧ 交叉"), ("9_coverage", "⑨ 覆盖率"),
-        ("token", "token闸"), ("cost", "成本闸"), ("latency", "耗时闸"),
+        ("10_content", "⑩ 内容"), ("token", "token闸"), ("cost", "成本闸"), ("latency", "耗时闸"),
     ]
     lines.append("| pack | 内容 | 档 | 状态 | " + " | ".join(label for _, label in gate_names) + " | unknown/uniq | 成本 $ | 输出 tok | 耗时 s |")
     lines.append("|---|---|---|---|" + "|".join("---" for _ in gate_names) + "|---|---|---|---|---|")
@@ -3545,7 +4403,7 @@ def render_report(summary: dict, review: dict) -> str:
         if pack.get("question_issues"):
             lines.append(f"- questions 修复记录：{'；'.join(pack['question_issues'][:6])}")
     if not any_failure:
-        lines.append("本次 10 个真实 pack 的 12 项机械闸全部通过；负例按预期被覆盖率闸拒绝。")
+        lines.append("本次 10 个真实 pack 的 13 项机械闸全部通过；负例按预期被覆盖率闸拒绝。")
     lines.append("")
     lines.append("### 3.1 内容风险提示（不改变自动闸结论）")
     lines.append("")
@@ -3577,11 +4435,11 @@ def render_report(summary: dict, review: dict) -> str:
     lines.append(f"- 讲解点：**{len(review['points'])} 个**（目标 20）")
     lines.append(f"- 题目：**{len(review['questions'])} 道**（目标 10）")
     lines.append(f"- 产出任务：**{len(review['tasks'])} 个**（目标 5）")
-    lines.append(f"- 盲评材料：`/tmp/lesson-g0/review/blind_items.md`（不含 pack/档位/内容映射；映射在 `/tmp/lesson-g0/review/mapping.json`，评审结束前不给评审看）")
+    lines.append(f"- 盲评材料：`{REVIEW_DIR / 'blind_items.md'}`（不含 pack/档位/内容映射；映射在 `{REVIEW_DIR / 'mapping.json'}`，评审结束前不给评审看）")
     lines.append("")
     lines.append("### 5.2 操作说明")
     lines.append("")
-    lines.append("1. 把 `/tmp/lesson-g0/review/blind_items.md` 发给两位评审（教研 + 负责人），两人独立打分，不互相看结果。")
+    lines.append(f"1. 把 `{REVIEW_DIR / 'blind_items.md'}` 发给两位评审（教研 + 负责人），两人独立打分，不互相看结果。")
     lines.append("2. 使用 `docs/课程引擎G0-评审说明.md` 的 rubric 与记录表模板。")
     lines.append("3. 评审只填自己的记录表；不要改 `blind_items.md`，不要看 `mapping.json`。")
     lines.append("4. 收齐后由非评审人汇总：≥16/20 个讲解点“可以原样给用户看”、≥8/10 道题“答案可证且无歧义”、至少 1 位评审说“愿意让我的学生上这堂课”，G0 才通过。")
@@ -3594,7 +4452,7 @@ def render_report(summary: dict, review: dict) -> str:
     lines.append("")
     lines.append(f"- **M2 频表在运行前/后才出现（并行任务，未提交）**：本次生成使用 {summary['lexicon']['source']} 近似；CEFR-J 表 + wordfreq top-N 并集 + 缩写展开/专名排除，**不是 M2 校准值**。M2 产物出现后做了 post-hoc 对照（§7）；正式 G0 必须用 M2 口径重跑一次覆盖率闸。")
     lines.append("- **实现缺口**：`scripts/lesson_g0.py` 本次没有自动探测 `content/wordlist/frequency_bands.v1.json`；M2 频表在 final run 启动前已落盘（约 3 秒），但生成仍走了近似。按任务要求“M2 可用时优先用 M2”，这是下一次必须修掉的。")
-    lines.append("- **T1 交叉复核未跑**：本次只跑 9 道机械闸 + token/cost/latency；T1（第二模型逐卡复核）与人工 T2 都不在自动闸内。")
+    lines.append("- **T1 交叉复核未跑**：本次跑 10 道机械闸 + token/cost/latency；T1（第二模型逐卡复核）与人工 T2 都不在自动闸内。")
     lines.append("- **形式库是 G0 替身**：`scripts/lesson_g0.py` 内置 19 条最小形式库；正式 60–100 条人工形式库尚未落地。form 点的 `explain` 来自模板，LLM 只写 `why_here`。")
     lines.append("- **第三方视频**：pack 只写 `/tmp/lesson-g0/packs/`，不入库、不提交；本报告只写 block id/时间点与短引文，不写整段字幕。视频 pack 标 `private_only=true`，不能作为公课发布。")
     lines.append(f"- **Ro_MScTDfU4 不存在于仓库**：任务示例中的第二个视频没有缓存；本次用 `h-NZcQF7jgI`（BBC）+ `_zfN9wnPvU0`（Kurzgesagt）。")
@@ -3642,18 +4500,26 @@ def render_report(summary: dict, review: dict) -> str:
 
 def render_review_doc(summary: dict, review: dict) -> str:
     lines: list[str] = []
-    lines.append("# 课程引擎 G0 人工盲评说明")
+    lines.append("# 课程引擎 G0 人工盲评说明（第二轮）")
     lines.append("")
     lines.append("> 目的：验证“生成出来的课是否值得给用户看”。本文件只给流程、rubric 与记录表模板；**不包含任何评审结论**。")
-    lines.append(f"> 审阅包：`/tmp/lesson-g0/review/blind_items.md`（{len(review['points'])} 个讲解点 / {len(review['questions'])} 道题 / {len(review['tasks'])} 个产出任务）  ")
-    lines.append("> 评审必须在看不到 pack 来源/难度档/内容 id 的情况下独立完成；映射文件 `/tmp/lesson-g0/review/mapping.json` 由组织者保管。")
+    lines.append(f"> 审阅包：`{REVIEW_DIR / 'blind_items.md'}`（{len(review['points'])} 个讲解点 / {len(review['questions'])} 道题 / {len(review['tasks'])} 个产出任务）  ")
+    lines.append(f"> 评审必须在看不到 pack 来源/难度档/内容 id 的情况下独立完成；映射文件 `{REVIEW_DIR / 'mapping.json'}` 由组织者保管。")
+    lines.append("")
+    lines.append("## 0. 本轮修复点（与首轮相比；评审不必看，仅供组织者核对）")
+    lines.append("")
+    lines.append("- 讲解模板加入硬约束：neglect to do 合法；extrapolate=根据已知推断；salvage=抢救可用部分；boredom=感受；禁止无依据窄化/编造；≤60 字；只讲与本句相关的信息。")
+    lines.append("- 题目要求答案由引文直接推出且唯一；每个干扰项必须写“为什么错”；解析逐项覆盖 A–D；干扰项同词性/同话题，词数比 ≤1.5×；禁止两个选项都成立（含 help + do / to do 变体）。")
+    lines.append("- 产出：范文 B1≥40 词、B2≥60 词，且必须自然用满 2 个目标词；任务说明写明词数范围与目标词。")
+    lines.append("- 引文质检：主谓/指代/转写问题优先换引文；确需保留时在条目下附“引文说明”（quote_note），评审可据此判断是否作为语言示范。")
+    lines.append("- 新增自动内容闸（10_content）：选项长度比、范文词数、目标词出现、解析覆盖每个干扰项；不通过则记录为失败，盲评包再按条目过滤（有内容问题的条目不进入；覆盖率失败但条目合格的 pack 仍可进入）。")
     lines.append("")
     lines.append("## 1. 盲评流程")
     lines.append("")
     lines.append("1. **组织者**把 `blind_items.md` 打印或发给两位评审：一位教研、一位负责人/产品。")
     lines.append("2. 两位评审**独立**打分，不讨论、不互相看表；每人一份记录表。")
     lines.append("3. 评审按 §2 的 rubric 打分；每题/每点/每任务只给 0/1/2，另写一句理由（必填）。")
-    lines.append("4. 评审结束后，组织者用 `/tmp/lesson-g0/review/mapping.json` 解盲并汇总；评审本人不看 mapping。")
+    lines.append(f"4. 评审结束后，组织者用 `{REVIEW_DIR / 'mapping.json'}` 解盲并汇总；评审本人不看 mapping。")
     lines.append("5. 汇总人检查：≥16/20 个讲解点“可以原样给用户看”；≥8/10 道题“答案可证且无歧义”；至少 1 位评审说“愿意让我的学生上这堂课”。三条同时满足，G0 才算通过。")
     lines.append("")
     lines.append("## 2. Rubric")
@@ -3679,6 +4545,8 @@ def render_review_doc(summary: dict, review: dict) -> str:
     lines.append("| 解析 | 无解析/解析错 | 只给答案 | 解释了为什么对、为什么错 |")
     lines.append("")
     lines.append("“答案可证且无歧义”= 答案可证 2 且无歧义 2。")
+    lines.append("")
+    lines.append("> 本轮解析要求逐项写出“X 对 / Y 错”；若条目附“引文说明”，表示该引文是口语转写或存在主谓/指代瑕疵，只作证据，不作为语言示范评分依据。")
     lines.append("")
     lines.append("### 2.3 产出任务（每个 0–2 分）")
     lines.append("")
@@ -3755,10 +4623,11 @@ def write_review_files(review: dict) -> None:
         ),
         encoding="utf-8",
     )
-    lines = ["# G0 人工盲评材料（不含来源/档位映射）", ""]
-    lines.append("> 评审只看本文件；不要看 mapping.json。每题/每点/每任务按 `docs/课程引擎G0-评审说明.md` 的 rubric 打分。")
+    lines = ["# G0 人工盲评材料（第二轮；不含来源/档位映射）", ""]
+    lines.append("> 评审只看本文件；不要看 mapping.json。每题/每点/每任务按同目录 `评审说明.md` 的 rubric 打分。")
+    lines.append("> 本轮重点复核：讲解是否只讲本句、题目是否唯一可证、解析是否逐项释错、干扰项是否等长。")
     lines.append("")
-    lines.append("## A. 讲解点（20）")
+    lines.append(f"## A. 讲解点（{len(review['points'])}）")
     lines.append("")
     for item in review["points"]:
         lines.append(f"### {item['blind_id']}（{item['kind']}）")
@@ -3768,6 +4637,8 @@ def write_review_files(review: dict) -> None:
         if item.get("form_label"):
             lines.append(f"- 形式标签：{item['form_label']}")
         lines.append(f"- 原文引文：`{item.get('quote') or ''}`")
+        if item.get("quote_note"):
+            lines.append(f"- 引文说明：{item['quote_note']}")
         lines.append(f"- 讲解：{item.get('explain') or ''}")
         if item.get("why_here"):
             lines.append(f"- why_here：{item['why_here']}")
@@ -3776,7 +4647,7 @@ def write_review_files(review: dict) -> None:
         if item.get("pitfall"):
             lines.append(f"- 易错点：{item['pitfall']}")
         lines.append("")
-    lines.append("## B. 题目（10）")
+    lines.append(f"## B. 题目（{len(review['questions'])}）")
     lines.append("")
     for item in review["questions"]:
         lines.append(f"### {item['blind_id']}（{item['type']}）")
@@ -3787,8 +4658,10 @@ def write_review_files(review: dict) -> None:
         lines.append(f"- 答案：{chr(65 + int(item.get('answer_index') or 0))}")
         lines.append(f"- 解析：{item.get('explanation') or ''}")
         lines.append(f"- 证据引文：`{item.get('evidence_quote') or ''}`")
+        if item.get("quote_note"):
+            lines.append(f"- 引文说明：{item['quote_note']}")
         lines.append("")
-    lines.append("## C. 产出任务（5）")
+    lines.append(f"## C. 产出任务（{len(review['tasks'])}）")
     lines.append("")
     for item in review["tasks"]:
         lines.append(f"### {item['blind_id']}")
