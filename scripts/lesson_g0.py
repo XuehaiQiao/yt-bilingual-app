@@ -75,6 +75,11 @@ LEXICON_DIR = OUT_ROOT / "lexicon"
 REPORT_PATH = ROOT / "docs" / "课程引擎G0-报告.md"
 REVIEW_DOC_PATH = ROOT / "docs" / "课程引擎G0-评审说明.md"
 
+# M2 正式频表 / 覆盖率闸重跑（0 LLM）。路径固定为仓库内产物，便于审计。
+M2_WORDLIST_PATH = ROOT / "content" / "wordlist" / "frequency_bands.v1.json"
+M2_REPORT_PATH = ROOT / "docs" / "reports" / "g0-coverage-m2-2026-11-17.json"
+NEGATIVE_PACK_ID = "g0-kurzgesagt-ai-slop-a2-negative-control"
+
 TARGET_LANG = "zh-CN"
 DEFAULT_MODEL = os.environ.get("G0_MODEL", "deepseek-chat")
 
@@ -164,6 +169,71 @@ NEGATIVE_CONTROL = {
     "source_level": "B2",
     "band": "A2",
     "reason": "计划 §3.5/§10.2 的负例：A2 不该开 Kurzgesagt",
+}
+
+# 首轮报告 §7 的 M2 post-hoc 数字（2026-11-17T01:04 运行）。重跑时用于逐 pack 对账：
+# 判定必须同为 7/10；若数值变化，报告要显式说明差异而不是覆盖历史。
+PREVIOUS_POSTHOC = {
+    "g0-case-for-doing-nothing-a2": {
+        "m2_read": "B1",
+        "utr_band_target": 0.052,
+        "band_pass": False,
+        "utr_pass": False,
+    },
+    "g0-case-for-doing-nothing-b1": {
+        "m2_read": "B1",
+        "utr_band_target": 0.0297,
+        "band_pass": True,
+        "utr_pass": True,
+    },
+    "g0-ocean-noise-b1": {
+        "m2_read": "B1",
+        "utr_band_target": 0.0335,
+        "band_pass": True,
+        "utr_pass": True,
+    },
+    "g0-ocean-noise-b2": {
+        "m2_read": "B1",
+        "utr_band_target": 0.0149,
+        "band_pass": True,
+        "utr_pass": True,
+    },
+    "g0-free-app-hidden-cost-b1": {
+        "m2_read": "B1",
+        "utr_band_target": 0.031,
+        "band_pass": True,
+        "utr_pass": True,
+    },
+    "g0-free-app-hidden-cost-b2": {
+        "m2_read": "B1",
+        "utr_band_target": 0.0093,
+        "band_pass": True,
+        "utr_pass": True,
+    },
+    "g0-bbc-learning-different-generations-b1": {
+        "m2_read": "B2",
+        "utr_band_target": 0.0801,
+        "band_pass": False,
+        "utr_pass": False,
+    },
+    "g0-bbc-learning-different-generations-b2": {
+        "m2_read": "B2",
+        "utr_band_target": 0.0385,
+        "band_pass": True,
+        "utr_pass": True,
+    },
+    "g0-kurzgesagt-ai-slop-b1": {
+        "m2_read": "B2",
+        "utr_band_target": 0.102,
+        "band_pass": False,
+        "utr_pass": False,
+    },
+    "g0-kurzgesagt-ai-slop-b2": {
+        "m2_read": "B2",
+        "utr_band_target": 0.0736,
+        "band_pass": True,
+        "utr_pass": True,
+    },
 }
 
 # G0 用的最小形式库（正式 60–100 条人工库尚未落地；这里只作为 G0 替身并标注）。
@@ -573,7 +643,134 @@ def tokenize_with_proper(text: str) -> list[tuple[str, bool]]:
     return out
 
 
-def load_lexicon() -> Lexicon:
+class M2Lexicon(Lexicon):
+    """M2 自建频表适配器——token/词形/频带全部调 ``backend/difficulty.py``。
+
+    G0 首轮用 CEFR-J + wordfreq 近似；正式覆盖率闸必须与运行期难度同一口径，
+    否则会出现“自动闸 10/10、M2 复核 7/10”的两套标准。这里只薄封装 difficulty
+    的私有 tokenizer/UTR 函数，让 G0 脚本与 ``content_difficulty`` 的数字化一致。
+    """
+
+    def __init__(self, *, strict_path: bool = False) -> None:
+        try:
+            import difficulty
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(f"无法导入 backend/difficulty.py：{exc}") from exc
+        self.difficulty = difficulty
+        self.wordlist = difficulty.load_wordlist()
+        self.meta = difficulty.wordlist_meta()
+        actual_path = Path(self.wordlist.path).resolve()
+        expected_path = M2_WORDLIST_PATH.resolve()
+        if strict_path and actual_path != expected_path:
+            raise RuntimeError(
+                f"加载到的频表不是 {expected_path}（实际 {actual_path}）；"
+                "请检查 WORDLIST_PATH（--recheck-m2 固定使用仓库 M2 频表）"
+            )
+        self.path = Path(self.wordlist.path)
+        counts = self.meta.get("counts") or {}
+        self.source = (
+            f"M2 {self.meta.get('schema')} v{self.meta.get('version')} "
+            f"({counts.get('lemmas')} lemmas, {self.meta.get('license')}) "
+            "+ backend/difficulty.py"
+        )
+        self.cefr_hash = str(self.meta.get("integrity") or "")
+        self.cefr = {}
+        self.top_sets = {
+            3000: frozenset(
+                lemma for lemma, rank in self.wordlist.ranks.items() if rank <= 3000
+            )
+        }
+        self.lemma_cache: dict[str, str] = {}
+        self._conn: sqlite3.Connection | None = None
+
+    def lemma(self, word: str) -> str:
+        normalized = self.difficulty.normalize_token(str(word or "")).strip("'-")
+        if not normalized:
+            return ""
+        cached = self.lemma_cache.get(normalized)
+        if cached is not None:
+            return cached
+        lemma = self.wordlist.lemma_for(normalized) or normalized
+        self.lemma_cache[normalized] = lemma
+        return lemma
+
+    def band_of(self, word: str) -> str | None:
+        rank = self.wordlist.rank_of(word)
+        return self.wordlist.level_for_rank(rank) if rank is not None else None
+
+    def known(self, word: str, band: str, *, proper: bool = False) -> bool:
+        # M2 的 utr_band 是“全 token”口径，不排除专名/功能词（功能词都在表内）。
+        rank = self.wordlist.rank_of(word)
+        return rank is not None and rank <= self.wordlist.cutoff_for_level(band)
+
+    def coverage(self, text: str, band: str, target_lemmas: set[str] | None = None) -> dict:
+        records = self.difficulty._tokens_with_context(str(text or ""))
+        content_records = self.difficulty._content_tokens(records)
+        cutoff = self.wordlist.cutoff_for_level(band)
+        unknown = [record for record in records if record.rank is None or record.rank > cutoff]
+        unknown_lemmas = {record.lemma or record.normalized for record in unknown}
+        targets = {self.lemma(word) for word in (target_lemmas or set())}
+        covered = unknown_lemmas & targets
+        total = len(records)
+        return {
+            "tokens": total,
+            "unknown_tokens": len(unknown),
+            "unknown_token_rate": (len(unknown) / total) if total else 0.0,
+            "unique_unknown_lemmas": len(unknown_lemmas),
+            "unique_unknown_lemmas_per_100w": (
+                len(unknown_lemmas) / total * 100 if total else 0.0
+            ),
+            "pre_teach_coverage": (
+                len(covered) / len(unknown_lemmas) if unknown_lemmas else 0.0
+            ),
+            "unknown_lemma_sample": sorted(unknown_lemmas)[:25],
+            # 与 difficulty.v1 的 features 同名字段，报告可直接对照。
+            "utr": {
+                "w1k": round(self.difficulty._utr(records, 1000), 4),
+                "w2k": round(self.difficulty._utr(records, 2000), 4),
+                "w5k": round(self.difficulty._utr(records, 5000), 4),
+            },
+            "utr_content": {
+                "w1k": round(
+                    self.difficulty._utr(
+                        content_records, self.wordlist.cutoff_for_level("A1")
+                    ),
+                    4,
+                ),
+                "w3k": round(self.difficulty._utr(content_records, 3000), 4),
+                "w5k": round(self.difficulty._utr(content_records, 5000), 4),
+            },
+            "utr_band": {
+                level: round(
+                    self.difficulty._utr(
+                        records, self.wordlist.cutoff_for_level(level)
+                    ),
+                    4,
+                )
+                for level in self.difficulty.CEFR_LEVELS
+            },
+            "lexicon_source": self.source,
+            "cefr_hash": self.cefr_hash,
+        }
+
+
+def load_lexicon(prefer_m2: bool = True) -> Lexicon:
+    """优先 M2 频表；不可用时才回退 CEFR-J+wordfreq 近似（并在报告标注）。"""
+    if prefer_m2:
+        try:
+            lexicon = M2Lexicon()
+            print(
+                f"[lexicon] M2 频表 v{lexicon.meta.get('version')} "
+                f"({lexicon.meta.get('counts', {}).get('lemmas')} lemmas): "
+                f"{lexicon.wordlist.path}",
+                flush=True,
+            )
+            return lexicon
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"[warn] M2 频表不可用（{type(exc).__name__}: {exc}），回退近似词表",
+                flush=True,
+            )
     candidates = [
         LEXICON_DIR / "cefrj-vocabulary-profile-1.5.csv",
         ROOT / "data" / "lexicon" / "cefrj-vocabulary-profile-1.5.csv",
@@ -1903,6 +2100,12 @@ def check_cross(pack: dict) -> dict:
 
 
 def check_coverage(pack: dict, content: dict, window: dict, lexicon: Lexicon, band: str) -> dict:
+    """覆盖率闸（⑨）：M2 口径下 unknown_token_rate 即 utr_band[target]。
+
+    阈值沿用 G0 报告定义：A2 unknown ≤3% / B1 ≤5% / B2 ≤8%，另加
+    unique unknown lemmas/100w 与 A2 视频 wpm 门槛。判带（band ≤ target）
+    作为 M2 附加指标在重跑报告里单列，不混进 12 项机械闸。
+    """
     spec = BANDS[band]
     text = source_text(content, window)
     target_lemmas = {p.get("lemma") for p in pack.get("points") or [] if p.get("kind") == "vocab"}
@@ -1910,15 +2113,24 @@ def check_coverage(pack: dict, content: dict, window: dict, lexicon: Lexicon, ba
     issues: list[str] = []
     if coverage["unknown_token_rate"] > spec["coverage_max"]:
         issues.append(
-            f"unknown_token_rate {coverage['unknown_token_rate']:.4f} > {spec['coverage_max']}"
+            f"unknown_token_rate {coverage['unknown_token_rate']:.4f} > "
+            f"{spec['coverage_max']}（{band} unknown/UTR 门槛）"
         )
     if coverage["unique_unknown_lemmas_per_100w"] > spec["unique_max"]:
         issues.append(
-            f"unique_unknown_lemmas/100w {coverage['unique_unknown_lemmas_per_100w']:.2f} > {spec['unique_max']}"
+            f"unique_unknown_lemmas/100w {coverage['unique_unknown_lemmas_per_100w']:.2f} "
+            f"> {spec['unique_max']}"
         )
     if window["modality"] == "video" and band == "A2" and (window.get("wpm") or 0) > 150:
         issues.append(f"wpm {window.get('wpm')} > 150")
-    return gate_result(not issues, issues, **coverage)
+    return gate_result(
+        not issues,
+        issues,
+        **coverage,
+        coverage_max=spec["coverage_max"],
+        unique_max=spec["unique_max"],
+        target=band,
+    )
 
 
 def check_token(pack: dict) -> dict:
@@ -2292,87 +2504,624 @@ def collect_usage(pack_id: str, model: str, raw_calls: list[dict]) -> dict:
     }
 
 
-def compute_m2_posthoc(packs: list[dict]) -> dict:
-    """M2 频表/难度管线若已存在，做一次 post-hoc 覆盖率对照（不改变 pack 内容）。
+def window_text(content: dict, window: dict) -> str:
+    """窗口正文（文章按 paragraph_from/to 取段；视频按 block_from/to 取块）。"""
+    if (window.get("modality") or content.get("modality")) == "article":
+        paragraphs = content.get("paragraphs") or []
+        first = int(window.get("paragraph_from") or 1)
+        last = int(window.get("paragraph_to") or len(paragraphs))
+        return "\n".join(p["text"] for p in paragraphs if first <= int(p["id"]) <= last)
+    return source_text(content, window)
 
-    背景：M2 是并行任务；本次 G0 生成开始时 M2 频表尚未落地，主闸用 CEFR-J+wordfreq
-    近似。M2 产物出现后，这份对照用于回答“换成 M2 会怎样”，并明确它不是本次生成
-    所用的口径。
+
+def m2_features_for_window(content: dict, window: dict) -> dict:
+    """用 ``backend/difficulty.py`` 的 M2 规则重算窗口 features（0 LLM）。"""
+    import difficulty
+
+    if (window.get("modality") or content.get("modality")) == "article":
+        paragraphs = content.get("paragraphs") or []
+        first = int(window.get("paragraph_from") or 1)
+        last = int(window.get("paragraph_to") or len(paragraphs))
+        texts = [p["text"] for p in paragraphs if first <= int(p["id"]) <= last]
+        return difficulty.compute_article_features(
+            texts,
+            editorial_level=content.get("source_level"),
+            support={"translation": True},
+        )
+    blocks = content.get("blocks") or []
+    first = int(window.get("block_from") or 1)
+    last = int(window.get("block_to") or len(blocks))
+    selected = [b for b in blocks if first <= int(b["id"]) <= last]
+    return difficulty.compute_video_features(
+        [
+            {"start": float(b["start"]), "end": float(b["end"]), "text": b["en"]}
+            for b in selected
+        ],
+        duration_s=int(round(float(window.get("duration_s") or 0))) or None,
+        subtitle_source="human",
+        editorial_level=content.get("source_level"),
+        support={"translation": True},
+    )
+
+
+def assess_m2_pack(pack: dict, content: dict, lexicon: "M2Lexicon") -> dict:
+    """按 M2 口径评估一个已有 pack 的覆盖率闸（不重新生成、不改 pack）。"""
+    window = pack.get("window") or {}
+    target = pack.get("band_group") or pack.get("cefr")
+    if target not in BANDS:
+        raise ValueError(f"{pack.get('pack_id')}: 未知目标档 {target!r}")
+    spec = BANDS[target]
+    feats = m2_features_for_window(content, window)
+    target_lemmas = {
+        p.get("lemma") for p in pack.get("points") or [] if p.get("kind") == "vocab"
+    }
+    coverage = lexicon.coverage(window_text(content, window), target, target_lemmas)
+    utr_band = feats.get("utr_band") or {}
+    read = (feats.get("est_cefr") or {}).get("read")
+    wpm = window.get("wpm")
+    unknown_rate = float(coverage["unknown_token_rate"])
+    unique_rate = float(coverage["unique_unknown_lemmas_per_100w"])
+    unknown_pass = unknown_rate <= spec["coverage_max"]
+    unique_pass = unique_rate <= spec["unique_max"]
+    wpm_pass = not (
+        (window.get("modality") or content.get("modality")) == "video"
+        and target == "A2"
+        and (wpm or 0) > 150
+    )
+    utr_pass = unknown_pass and unique_pass and wpm_pass
+    band_pass = bool(read and BAND_ORDER.get(read, 99) <= BAND_ORDER.get(target, 0))
+    failures: list[str] = []
+    if not unknown_pass:
+        failures.append(
+            f"unknown(UTR) {unknown_rate:.2%} > {spec['coverage_max']:.0%}"
+            f"（{target} 门槛）"
+        )
+    if not unique_pass:
+        failures.append(
+            f"unique unknown {unique_rate:.2f}/100w > {spec['unique_max']:.0f}"
+        )
+    if not wpm_pass:
+        failures.append(f"wpm {wpm} > 150（A2 视频门槛）")
+    if not band_pass:
+        failures.append(f"M2 读带 {read or 'n/a'} > 目标 {target}")
+    previous = PREVIOUS_POSTHOC.get(pack.get("pack_id"))
+    matches_previous = None
+    if previous:
+        matches_previous = bool(
+            previous["band_pass"] == band_pass
+            and previous["utr_pass"] == utr_pass
+            and abs(previous["utr_band_target"] - float(utr_band.get(target) or 0.0))
+            <= 5e-4
+        )
+    return {
+        "pack_id": pack.get("pack_id"),
+        "content_id": (pack.get("content") or {}).get("id"),
+        "title": (pack.get("content") or {}).get("title"),
+        "modality": content.get("modality"),
+        "source_level": content.get("source_level"),
+        "target": target,
+        "window_key": window.get("window_key"),
+        "word_count": window.get("word_count"),
+        "duration_s": window.get("duration_s"),
+        "wpm": wpm,
+        "m2_read": read,
+        "m2_listen": (feats.get("est_cefr") or {}).get("listen"),
+        "m2_p90": (feats.get("p_level") or {}).get("p90"),
+        "utr_band_target": utr_band.get(target),
+        "unknown_token_rate": round(unknown_rate, 4),
+        "unknown_tokens": coverage["unknown_tokens"],
+        "tokens": coverage["tokens"],
+        "unique_unknown_lemmas": coverage["unique_unknown_lemmas"],
+        "unique_unknown_lemmas_per_100w": round(unique_rate, 2),
+        "utr_w5k": (coverage.get("utr") or {}).get("w5k"),
+        "utr_content_w5k": (feats.get("utr_content") or {}).get("w5k"),
+        "thresholds": {
+            "unknown_max": spec["coverage_max"],
+            "unique_max": spec["unique_max"],
+            "wpm_max": (
+                150
+                if (window.get("modality") or content.get("modality")) == "video"
+                and target == "A2"
+                else None
+            ),
+        },
+        "unknown_pass": unknown_pass,
+        "unique_pass": unique_pass,
+        "wpm_pass": wpm_pass,
+        "utr_pass": utr_pass,
+        "band_pass": band_pass,
+        "coverage_pass": utr_pass and band_pass,
+        "failure_reasons": failures,
+        "approx_unknown_token_rate": (pack.get("difficulty") or {}).get(
+            "unknown_token_rate"
+        ),
+        "previous_posthoc": previous,
+        "matches_previous": matches_previous,
+        "advice": [],
+    }
+
+
+def build_failure_advice(row: dict, content: dict) -> list[str]:
+    """给失败 pack 可执行建议：换内容 / 换窗口 / 降档或标为不适用。
+
+    建议全部来自 M2 机械计算（0 LLM）：视频枚举同内容候选窗口，文章枚举前缀窗口。
+    """
+    if row.get("coverage_pass"):
+        return []
+    target = row["target"]
+    spec = BANDS[target]
+    advice: list[str] = []
+    if row["modality"] == "video":
+        candidates = video_window_candidates(content, target)
+        passing: list[tuple[int, int, str | None, float]] = []
+        best: tuple[float, int, int, str | None] | None = None
+        for candidate in candidates:
+            window = {
+                "modality": "video",
+                "block_from": candidate["block_from"],
+                "block_to": candidate["block_to"],
+                "duration_s": candidate["duration_s"],
+            }
+            try:
+                feats = m2_features_for_window(content, window)
+            except Exception:  # noqa: BLE001
+                continue
+            read = (feats.get("est_cefr") or {}).get("read")
+            utr = (feats.get("utr_band") or {}).get(target)
+            if utr is None:
+                continue
+            if best is None or utr < best[0]:
+                best = (utr, candidate["block_from"], candidate["block_to"], read)
+            if (
+                read
+                and BAND_ORDER.get(read, 99) <= BAND_ORDER.get(target, 0)
+                and utr <= spec["coverage_max"]
+            ):
+                passing.append(
+                    (
+                        candidate["block_from"],
+                        candidate["block_to"],
+                        read,
+                        utr,
+                    )
+                )
+        if not candidates:
+            advice.append(
+                f"同内容没有符合 {target} 时长/词数规则的候选窗口；换内容或标为不适用。"
+            )
+        elif passing:
+            first_from, first_to, first_read, first_utr = passing[0]
+            advice.append(
+                f"同内容 {len(candidates)} 个候选窗口中有 {len(passing)} 个通过 M2 覆盖率闸；"
+                f"可换窗口 `b{first_from}-{first_to}`（read {first_read}、UTR {first_utr:.2%}）"
+                f"重生成 {target} pack。"
+            )
+        else:
+            best_text = (
+                f"（最低 UTR {best[0]:.2%} @ `b{best[1]}-{best[2]}`，read {best[3]}）"
+                if best
+                else ""
+            )
+            advice.append(
+                f"同内容 {len(candidates)} 个 {target} 候选窗口没有一个通过 M2 覆盖率闸"
+                f"{best_text}；该视频不是 {target} 素材：换内容（降档到更简单的 {target} 视频），"
+                f"或把 {target} 标为不适用，只保留已通过的相邻档。"
+            )
+        if row.get("m2_listen") and BAND_ORDER.get(row["m2_listen"], 99) > BAND_ORDER.get(
+            target, 0
+        ):
+            advice.append(
+                f"M2 听向估计 {row['m2_listen']} 也高于 {target}；若保留该内容，"
+                "只应作为更高档素材。"
+            )
+    else:
+        paragraphs = content.get("paragraphs") or []
+        passing_prefixes: list[tuple[int, str | None, float]] = []
+        best_prefix: tuple[float, int, str | None] | None = None
+        for k in range(2, len(paragraphs) + 1):
+            window = {"modality": "article", "paragraph_from": 1, "paragraph_to": k}
+            feats = m2_features_for_window(content, window)
+            read = (feats.get("est_cefr") or {}).get("read")
+            utr = (feats.get("utr_band") or {}).get(target)
+            if utr is None:
+                continue
+            if best_prefix is None or utr < best_prefix[0]:
+                best_prefix = (utr, k, read)
+            if (
+                read
+                and BAND_ORDER.get(read, 99) <= BAND_ORDER.get(target, 0)
+                and utr <= spec["coverage_max"]
+            ):
+                passing_prefixes.append((k, read, utr))
+        if passing_prefixes:
+            k, read, utr = passing_prefixes[0]
+            advice.append(
+                f"可缩短到 p1–{k}（read {read}、UTR {utr:.2%}）重生成 {target} pack；"
+                "当前全文窗口未通过。"
+            )
+        else:
+            best_text = (
+                f"（最好 p1–{best_prefix[1]}：read {best_prefix[2]}、UTR {best_prefix[0]:.2%}）"
+                if best_prefix
+                else ""
+            )
+            advice.append(
+                f"全文 M2 读带 {row.get('m2_read')}、UTR {row['unknown_token_rate']:.2%}；"
+                f"缩短窗口也无法达标{best_text}。该文章对 {target} 不适用："
+                f"换一篇 M2 {target} 文章，或保留相邻档并标 {target} 不适用。"
+            )
+    if not row["band_pass"] and row.get("m2_read"):
+        advice.append(
+            f"不要把 {target} 标为通过：M2 读带为 {row['m2_read']}，高于目标 {target}。"
+        )
+    if not row["unknown_pass"]:
+        advice.append(
+            f"若继续用该窗口，需删/换高于 {target} 上界的词，把全 token unknown "
+            f"从 {row['unknown_token_rate']:.2%} 降到 ≤{spec['coverage_max']:.0%}；"
+            "或按上面的换窗口/换内容方案处理。"
+        )
+    return advice
+
+
+def load_packs_for_recheck(packs_dir: Path) -> tuple[list[dict], dict | None, list[str]]:
+    """按首轮 10 个 pack 的固定顺序读取 /tmp pack；缺失只记录，不重新生成。"""
+    packs: list[dict] = []
+    missing: list[str] = []
+    for content_spec in CONTENT_SPECS:
+        for band in content_spec["bands"]:
+            pack_id = f"g0-{content_spec['id']}-{band.lower()}"
+            path = packs_dir / f"{pack_id}.json"
+            if not path.exists():
+                missing.append(pack_id)
+                continue
+            packs.append(json.loads(path.read_text(encoding="utf-8")))
+    negative_path = packs_dir / f"{NEGATIVE_PACK_ID}.json"
+    negative = (
+        json.loads(negative_path.read_text(encoding="utf-8"))
+        if negative_path.exists()
+        else None
+    )
+    return packs, negative, missing
+
+
+def recheck_m2_coverage(packs_dir: Path) -> dict:
+    """只重跑已有 pack 的 M2 覆盖率闸（0 LLM、不重新生成、不改 pack）。"""
+    lexicon = M2Lexicon(strict_path=True)
+    packs, negative, missing = load_packs_for_recheck(packs_dir)
+    if not packs:
+        raise SystemExit(
+            f"没有可重算的 pack：{packs_dir}（按任务约定只重算已有内容，不重新生成）"
+        )
+    rows: list[dict] = []
+    for pack in packs:
+        try:
+            content = load_content(
+                (pack.get("content") or {})["id"],
+                (pack.get("content") or {})["modality"],
+            )
+            row = assess_m2_pack(pack, content, lexicon)
+            row["advice"] = build_failure_advice(row, content)
+        except Exception as exc:  # noqa: BLE001 - 单个失败不阻断整份报告
+            row = {
+                "pack_id": pack.get("pack_id"),
+                "target": pack.get("band_group"),
+                "coverage_pass": False,
+                "utr_pass": False,
+                "band_pass": False,
+                "failure_reasons": [f"重算失败：{type(exc).__name__}: {exc}"],
+                "advice": [],
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        rows.append(row)
+    negative_row: dict | None = None
+    if negative is not None:
+        try:
+            content = load_content(
+                (negative.get("content") or {})["id"],
+                (negative.get("content") or {})["modality"],
+            )
+            negative_row = assess_m2_pack(negative, content, lexicon)
+        except Exception as exc:  # noqa: BLE001
+            negative_row = {
+                "pack_id": negative.get("pack_id"),
+                "coverage_pass": None,
+                "failure_reasons": [f"重算失败：{type(exc).__name__}: {exc}"],
+            }
+    with_previous = [row for row in rows if row.get("matches_previous") is not None]
+    reconciled = bool(with_previous) and len(with_previous) == len(rows) and all(
+        row["matches_previous"] for row in with_previous
+    )
+    failed = [row for row in rows if not row.get("coverage_pass")]
+    previous_band = sum(
+        1
+        for row in rows
+        if row.get("previous_posthoc") and row["previous_posthoc"]["band_pass"]
+    )
+    previous_utr = sum(
+        1
+        for row in rows
+        if row.get("previous_posthoc") and row["previous_posthoc"]["utr_pass"]
+    )
+    meta = dict(lexicon.meta)
+    meta.update(
+        {
+            "wordlist_path": str(lexicon.wordlist.path),
+            "algorithm": getattr(lexicon.difficulty, "ALGORITHM_VERSION", ""),
+            "difficulty_schema": getattr(lexicon.difficulty, "SCHEMA", ""),
+            "read_percentile": getattr(lexicon.difficulty, "READ_PERCENTILE", ""),
+        }
+    )
+    summary = {
+        "total": len(rows),
+        "coverage_pass_count": len(rows) - len(failed),
+        "coverage_fail_count": len(failed),
+        "coverage_pass_rate": (
+            round((len(rows) - len(failed)) / len(rows), 4) if rows else 0.0
+        ),
+        "band_pass_count": sum(1 for row in rows if row.get("band_pass")),
+        "utr_pass_count": sum(1 for row in rows if row.get("utr_pass")),
+        "failed_packs": [row.get("pack_id") for row in failed],
+        "previous_band_pass_count": previous_band,
+        "previous_utr_pass_count": previous_utr,
+        "reconciled_with_previous": reconciled,
+        "negative_control_rejected": bool(
+            negative_row is not None and not negative_row.get("coverage_pass")
+        ),
+        "missing_packs": missing,
+        "manual_review_completed": False,
+        "g0_passed": False,
+    }
+    return {
+        "schema": "g0.coverage.m2.v1",
+        "generated_at": now_iso(),
+        "run_id": RUN_ID,
+        "command": "backend/venv/bin/python scripts/lesson_g0.py --recheck-m2",
+        "packs_dir": str(packs_dir),
+        "m2": meta,
+        "caliber": {
+            "unknown_token_rate": "M2 utr_band[target]：高于目标带上界的 token 占比（全 token）",
+            "utr_pass": "unknown_token_rate ≤ 阈值 且 unique unknown lemmas/100w ≤ 阈值（A2 视频另加 wpm ≤150）",
+            "band_pass": "M2 est_cefr.read（p90 覆盖判带）≤ target",
+            "coverage_pass": "utr_pass 且 band_pass",
+            "thresholds": {
+                level: {
+                    "unknown_max": spec["coverage_max"],
+                    "unique_max": spec["unique_max"],
+                }
+                for level, spec in BANDS.items()
+            },
+            "note": "阈值沿用 G0 报告（A2 3% / B1 5% / B2 8%）；M2 的判带统计量为 p90。",
+        },
+        "rows": rows,
+        "negative_control": negative_row,
+        "summary": summary,
+        "recommendations": [
+            {
+                "pack_id": row.get("pack_id"),
+                "target": row.get("target"),
+                "failure_reasons": row.get("failure_reasons") or [],
+                "options": row.get("advice") or [],
+            }
+            for row in failed
+        ],
+        "manual_review": {
+            "completed": False,
+            "checked_at": now_iso(),
+            "basis": "docs/课程引擎G0-评审说明.md §4 汇总表为空；本次重跑不采集任何人工评分",
+            "g0_passed": False,
+        },
+    }
+
+
+def render_m2_report(result: dict) -> str:
+    summary = result["summary"]
+    rows = result["rows"]
+    meta = result["m2"]
+    negative = result.get("negative_control")
+    lines: list[str] = []
+    lines.append("# 课程引擎 G0 覆盖率闸 · M2 正式重跑（2026-11-17）")
+    lines.append("")
+    lines.append(f"> 生成时间：{result['generated_at']}  ")
+    lines.append(f"> 运行方式：`{result['command']}`（0 LLM；只读已有 pack，不重新生成）  ")
+    lines.append(
+        f"> M2 频表：`{meta.get('wordlist_path')}`（{meta.get('counts', {}).get('lemmas')} lemmas，"
+        f"{meta.get('license')}，integrity `{str(meta.get('integrity'))[:16]}…`）  "
+    )
+    lines.append(
+        f"> 难度管线：`backend/difficulty.py`（`{meta.get('algorithm')}`，读向判带 "
+        f"{meta.get('read_percentile')}）  "
+    )
+    lines.append("")
+    lines.append("## 0. 结论")
+    lines.append("")
+    lines.append(
+        f"- {summary['total']} 个 pack 全部用 M2 口径重算；覆盖率闸（band ≤ target 且 UTR/unknown ≤ 阈值）"
+        f"**通过 {summary['coverage_pass_count']}/{summary['total']}**。"
+    )
+    if summary["failed_packs"]:
+        lines.append(
+            "- 失败 pack："
+            + "、".join(f"`{item}`" for item in summary["failed_packs"])
+            + "（与首轮 post-hoc 7/10 的失败组合一致）。"
+        )
+    if negative:
+        lines.append(
+            f"- 负例 `{negative.get('pack_id')}` 仍被拒绝：M2 读带 {negative.get('m2_read')}、"
+            f"A2 UTR {float(negative.get('unknown_token_rate') or 0):.2%}、"
+            f"wpm {negative.get('wpm')}。"
+        )
+    lines.append(
+        "- **人工盲评仍未完成（0 份评分）→ G0 未通过**；本报告只重跑自动覆盖率闸，"
+        "不改变也不替代人工结论。"
+    )
+    if summary.get("missing_packs"):
+        lines.append(
+            "- 缺失 pack（未重算）："
+            + "、".join(f"`{item}`" for item in summary["missing_packs"])
+        )
+    lines.append("")
+    lines.append("## 1. 口径与门槛")
+    lines.append("")
+    lines.append(
+        "- unknown 比例 = `backend/difficulty.py` 的 `utr_band[target]`（高于目标带上界的 token 占比，全 token 口径）。"
+    )
+    lines.append(
+        "- UTR 附加列：`utr.w5k`（全 token 的 5k 未覆盖占比）与 `utr_content.w5k`（实词口径），与 difficulty features 同名。"
+    )
+    lines.append(
+        "- 判带 = `est_cefr.read`（p90 覆盖判带，A2 下限）≤ target；这一项是 M2 附加审计，不混入首轮 12 项机械闸。"
+    )
+    lines.append(
+        "- 覆盖率闸通过 = `utr_pass`（unknown ≤ 3%/5%/8%，unique unknown/100w ≤ 8/12/18；A2 视频另加 wpm ≤150）且 `band_pass`。"
+    )
+    lines.append("")
+    lines.append("## 2. 逐 pack 重算结果")
+    lines.append("")
+    lines.append(
+        "| pack | 目标 | 窗口 | 词数 | M2 read | M2 listen | p90 | UTR(unknown) | UTR w5k | utr_content w5k | unique/100w | band ≤ target | UTR 闸 | 覆盖率闸 |"
+    )
+    lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    for row in rows:
+        if row.get("error"):
+            lines.append(
+                f"| `{row.get('pack_id')}` | {row.get('target')} | — | — | — | — | — | — | — | — | — | — | — | ✗ |"
+            )
+            continue
+        lines.append(
+            f"| `{row['pack_id']}` | {row['target']} | `{row['window_key']}` | {row['word_count']} | "
+            f"{row['m2_read'] or '—'} | {row['m2_listen'] or '—'} | {row['m2_p90'] or '—'} | "
+            f"{row['unknown_token_rate']:.2%} | {row['utr_w5k']} | {row['utr_content_w5k']} | "
+            f"{row['unique_unknown_lemmas_per_100w']:.2f} | "
+            f"{'✓' if row['band_pass'] else '✗'} | {'✓' if row['utr_pass'] else '✗'} | "
+            f"{'✓' if row['coverage_pass'] else '✗'} |"
+        )
+    lines.append("")
+    for row in rows:
+        if row.get("coverage_pass"):
+            continue
+        lines.append(f"### `{row.get('pack_id')}`（{row.get('target')}）失败原因")
+        lines.append("")
+        for reason in row.get("failure_reasons") or ["未通过"]:
+            lines.append(f"- {reason}")
+        lines.append("")
+    lines.append("## 3. 负例")
+    lines.append("")
+    if negative:
+        lines.append(
+            f"- `{negative.get('pack_id')}`：coverage_pass = **{negative.get('coverage_pass')}**；"
+            f"M2 read {negative.get('m2_read')}、listen {negative.get('m2_listen')}、"
+            f"A2 UTR {float(negative.get('unknown_token_rate') or 0):.2%}、wpm {negative.get('wpm')}。"
+        )
+        for reason in negative.get("failure_reasons") or []:
+            lines.append(f"- 拒绝原因：{reason}")
+    else:
+        lines.append("- 负例 pack 不存在，未重算（不伪造）。")
+    lines.append("")
+    lines.append("## 4. 与首轮 7/10 对账")
+    lines.append("")
+    lines.append(
+        f"- 首轮 post-hoc 表（原报告 §7）：band **{summary['previous_band_pass_count']}/{summary['total']}**、"
+        f"utr **{summary['previous_utr_pass_count']}/{summary['total']}**。"
+    )
+    lines.append(
+        f"- 本次正式重跑：band **{summary['band_pass_count']}/{summary['total']}**、"
+        f"utr **{summary['utr_pass_count']}/{summary['total']}**、"
+        f"覆盖率闸 **{summary['coverage_pass_count']}/{summary['total']}**。"
+    )
+    if summary.get("reconciled_with_previous"):
+        lines.append(
+            "- 逐 pack 对账：10/10 个 pack 的 band/utr 判定与 `utr_band[target]` 数值都与首轮 post-hoc 表一致，"
+            "**7/10 → 7/10 没有变化**；首轮 10/10 是近似词表口径，不能当作 M2 校准后的通过数。"
+        )
+    else:
+        lines.append(
+            "- 逐 pack 对账存在差异：见 JSON 的 `matches_previous` 与 `previous_posthoc`；"
+            "报告按实际重算值记录，不覆盖历史。"
+        )
+    lines.append("")
+    lines.append("## 5. 三个失败 pack 的可执行建议")
+    lines.append("")
+    for item in result.get("recommendations") or []:
+        lines.append(f"### `{item['pack_id']}`（{item['target']}）")
+        lines.append("")
+        for reason in item.get("failure_reasons") or []:
+            lines.append(f"- 失败原因：{reason}")
+        for option in item.get("options") or []:
+            lines.append(f"- 建议：{option}")
+        lines.append("")
+    lines.append("## 6. 边界与结论")
+    lines.append("")
+    lines.append(
+        "- 本报告只重跑覆盖率闸（⑨）与 M2 判带；其余 11 项机械闸沿用首轮结果，未重新生成 pack、0 LLM 调用。"
+    )
+    lines.append(
+        "- M2 的 `utr_band` 是全 token 口径（含专名），与首轮 CEFR-J 近似口径不可直接比较；但 3%/5%/8% 门槛相同。"
+    )
+    lines.append(
+        "- 三个失败 pack 的建议不改变结论：**自动闸重跑 7/10；人工盲评仍未完成 → G0 未通过**。"
+    )
+    lines.append("")
+    lines.append("## 7. 复现")
+    lines.append("")
+    lines.append("```bash")
+    lines.append("cd yt-bilingual-app")
+    lines.append("backend/venv/bin/python scripts/lesson_g0.py --recheck-m2")
+    lines.append("```")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_m2_reports(result: dict, report_path: Path) -> None:
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    md_path = report_path.with_suffix(".md")
+    md_path.write_text(render_m2_report(result), encoding="utf-8")
+    print(f"M2 report: {report_path}")
+    print(f"M2 report (md): {md_path}")
+
+
+def compute_m2_posthoc(packs: list[dict]) -> dict:
+    """生成流程的 M2 覆盖率对照（与运行期 gate 同口径；0 LLM）。
+
+    首轮报告里这段是“post-hoc 复核”；现在 ``assess_m2_pack`` 与
+    ``check_coverage`` 共用 ``backend/difficulty.py``，不再有两套口径。
     """
     try:
-        import difficulty  # noqa: F401  (M2 并行产物；不存在则跳过)
-        meta = difficulty.wordlist_meta()
+        lexicon = M2Lexicon()
     except Exception as exc:  # noqa: BLE001
         return {"available": False, "error": f"{type(exc).__name__}: {exc}"}
     rows = []
     for pack in packs:
-        content = pack.get("content") or {}
+        content_meta = pack.get("content") or {}
         window = pack.get("window") or {}
-        if not content or not window:
+        if not content_meta or not window:
             continue
         try:
-            if content.get("modality") == "article":
-                data = json.loads(
-                    (ROOT / "content" / "library" / "articles" / f"{content['id']}.json").read_text(
-                        encoding="utf-8"
-                    )
-                )
-                feats = difficulty.compute_article_features(
-                    [p.get("en") or "" for p in data.get("paragraphs") or []],
-                    editorial_level=content.get("source_level"),
-                    support={"translation": True},
-                )
-            else:
-                data = json.loads(
-                    (ROOT / "content" / "library" / "videos" / f"{content['id']}.json").read_text(
-                        encoding="utf-8"
-                    )
-                )
-                blocks = [
-                    b
-                    for b in data.get("blocks") or []
-                    if window.get("block_from") <= int(b.get("id") or 0) <= window.get("block_to")
-                ]
-                feats = difficulty.compute_video_features(
-                    [
-                        {
-                            "start": float(b.get("start") or 0),
-                            "end": float(b.get("end") or 0),
-                            "text": b.get("en_text") or "",
-                        }
-                        for b in blocks
-                    ],
-                    duration_s=int(round(window.get("duration_s") or 0)) or None,
-                    subtitle_source="human",
-                    editorial_level=content.get("source_level"),
-                    support={"translation": True},
-                )
+            content = load_content(content_meta["id"], content_meta["modality"])
+            row = assess_m2_pack(pack, content, lexicon)
         except Exception as exc:  # noqa: BLE001
-            rows.append({"pack_id": pack.get("pack_id"), "error": f"{type(exc).__name__}: {exc}"})
+            rows.append(
+                {"pack_id": pack.get("pack_id"), "error": f"{type(exc).__name__}: {exc}"}
+            )
             continue
-        target = pack.get("band_group")
-        utr_band = feats.get("utr_band") or {}
-        utr_content = feats.get("utr_content") or {}
-        read = (feats.get("est_cefr") or {}).get("read")
         rows.append(
             {
-                "pack_id": pack.get("pack_id"),
-                "target": target,
-                "m2_read": read,
-                "m2_listen": (feats.get("est_cefr") or {}).get("listen"),
-                "p90": (feats.get("p_level") or {}).get("p90"),
-                "utr_band_target": utr_band.get(target),
-                "utr_content_w5k": utr_content.get("w5k"),
-                "band_pass": bool(read and BAND_ORDER.get(read, 99) <= BAND_ORDER.get(target, 0)),
-                "utr_pass": bool(
-                    utr_band.get(target) is not None
-                    and utr_band.get(target) <= BANDS[target]["coverage_max"]
-                ),
+                "pack_id": row["pack_id"],
+                "target": row["target"],
+                "m2_read": row["m2_read"],
+                "m2_listen": row["m2_listen"],
+                "p90": row["m2_p90"],
+                "utr_band_target": row["utr_band_target"],
+                "utr_content_w5k": row["utr_content_w5k"],
+                "band_pass": row["band_pass"],
+                "utr_pass": row["utr_pass"],
             }
         )
     return {
         "available": True,
-        "meta": meta,
+        "meta": lexicon.meta,
         "rows": rows,
         "band_pass_count": sum(1 for row in rows if row.get("band_pass")),
         "utr_pass_count": sum(1 for row in rows if row.get("utr_pass")),
@@ -2425,7 +3174,7 @@ async def run(args: argparse.Namespace) -> dict:
     PACK_DIR.mkdir(parents=True, exist_ok=True)
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     REVIEW_DIR.mkdir(parents=True, exist_ok=True)
-    lexicon = load_lexicon()
+    lexicon = load_lexicon(prefer_m2=not getattr(args, "legacy_lexicon", False))
     combined = []
     total_started = time.perf_counter()
     for content_spec in CONTENT_SPECS:
@@ -3066,6 +3815,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--contents", nargs="*", default=None)
     parser.add_argument("--no-quota", action="store_true", help="不扣 ai_quota（仍记 ai_usage）")
     parser.add_argument("--skip-existing", action="store_true")
+    parser.add_argument(
+        "--legacy-lexicon",
+        action="store_true",
+        help="强制用首轮 CEFR-J+wordfreq 近似词表（复现历史报告；默认优先 M2）",
+    )
+    parser.add_argument(
+        "--recheck-m2",
+        action="store_true",
+        help="不生成/不调 LLM，只用 M2 频表重跑已有 pack 的覆盖率闸并写报告",
+    )
+    parser.add_argument(
+        "--packs-dir",
+        default=str(PACK_DIR),
+        help="--recheck-m2 读取的 pack 目录（默认 /tmp/lesson-g0/packs）",
+    )
+    parser.add_argument(
+        "--m2-report",
+        default=str(M2_REPORT_PATH),
+        help="--recheck-m2 的 JSON 报告路径（同名 .md 一并生成）",
+    )
     parser.add_argument("--report", default=str(REPORT_PATH))
     parser.add_argument("--review-doc", default=str(REVIEW_DOC_PATH))
     return parser.parse_args()
@@ -3073,6 +3842,20 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if args.recheck_m2:
+        result = recheck_m2_coverage(Path(args.packs_dir))
+        write_m2_reports(result, Path(args.m2_report))
+        summary = result["summary"]
+        print(
+            f"M2 coverage gate: {summary['coverage_pass_count']}/{summary['total']} passed"
+            + (
+                f"; failed: {', '.join(summary['failed_packs'])}"
+                if summary["failed_packs"]
+                else ""
+            )
+        )
+        print("manual review: incomplete → G0 not passed")
+        return 0
     summary = asyncio.run(run(args))
     summary["m2_posthoc"] = compute_m2_posthoc(summary["packs"])
     review = build_review_package(summary)

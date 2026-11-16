@@ -1,0 +1,641 @@
+{
+  "schema": "g0.coverage.m2.v1",
+  "generated_at": "2026-11-17T03:33:24+08:00",
+  "run_id": "20261117-033322",
+  "command": "backend/venv/bin/python scripts/lesson_g0.py --recheck-m2",
+  "packs_dir": "/tmp/lesson-g0/packs",
+  "m2": {
+    "schema": "linguatrek.wordlist.v1",
+    "version": "2026.11.17",
+    "license": "CC-BY-SA-4.0",
+    "counts": {
+      "lemmas": 10000,
+      "forms": 10848,
+      "bands": 10,
+      "candidates": 56567,
+      "by_cefr": {
+        "A1": 1000,
+        "A2": 1000,
+        "B1": 2000,
+        "B2": 3000,
+        "C1": 3000
+      },
+      "by_band": {
+        "1": 1000,
+        "2": 1000,
+        "3": 1000,
+        "4": 1000,
+        "5": 1000,
+        "6": 1000,
+        "7": 1000,
+        "8": 1000,
+        "9": 1000,
+        "10": 1000
+      }
+    },
+    "integrity": "5ca1f0c8b5ba112d6e818444e574baa8988d6c8a2fc36ee85bee96075f3fb498",
+    "wordlist_path": "/Users/piece/Desktop/Me/EnglishLearning/yt-bilingual-app/content/wordlist/frequency_bands.v1.json",
+    "algorithm": "rule.v1+freq.p90.v1",
+    "difficulty_schema": "difficulty.v1",
+    "read_percentile": "p90"
+  },
+  "caliber": {
+    "unknown_token_rate": "M2 utr_band[target]：高于目标带上界的 token 占比（全 token）",
+    "utr_pass": "unknown_token_rate ≤ 阈值 且 unique unknown lemmas/100w ≤ 阈值（A2 视频另加 wpm ≤150）",
+    "band_pass": "M2 est_cefr.read（p90 覆盖判带）≤ target",
+    "coverage_pass": "utr_pass 且 band_pass",
+    "thresholds": {
+      "A2": {
+        "unknown_max": 0.03,
+        "unique_max": 8.0
+      },
+      "B1": {
+        "unknown_max": 0.05,
+        "unique_max": 12.0
+      },
+      "B2": {
+        "unknown_max": 0.08,
+        "unique_max": 18.0
+      }
+    },
+    "note": "阈值沿用 G0 报告（A2 3% / B1 5% / B2 8%）；M2 的判带统计量为 p90。"
+  },
+  "rows": [
+    {
+      "pack_id": "g0-case-for-doing-nothing-a2",
+      "content_id": "case-for-doing-nothing",
+      "title": "The Case for Doing Nothing",
+      "modality": "article",
+      "source_level": "A2",
+      "target": "A2",
+      "window_key": "p1-8",
+      "word_count": 269,
+      "duration_s": null,
+      "wpm": null,
+      "m2_read": "B1",
+      "m2_listen": null,
+      "m2_p90": "B1",
+      "utr_band_target": 0.052,
+      "unknown_token_rate": 0.052,
+      "unknown_tokens": 14,
+      "tokens": 269,
+      "unique_unknown_lemmas": 13,
+      "unique_unknown_lemmas_per_100w": 4.83,
+      "utr_w5k": 0.0149,
+      "utr_content_w5k": 0.0296,
+      "thresholds": {
+        "unknown_max": 0.03,
+        "unique_max": 8.0,
+        "wpm_max": null
+      },
+      "unknown_pass": false,
+      "unique_pass": true,
+      "wpm_pass": true,
+      "utr_pass": false,
+      "band_pass": false,
+      "coverage_pass": false,
+      "failure_reasons": [
+        "unknown(UTR) 5.20% > 3%（A2 门槛）",
+        "M2 读带 B1 > 目标 A2"
+      ],
+      "approx_unknown_token_rate": 0.01858736059479554,
+      "previous_posthoc": {
+        "m2_read": "B1",
+        "utr_band_target": 0.052,
+        "band_pass": false,
+        "utr_pass": false
+      },
+      "matches_previous": true,
+      "advice": [
+        "全文 M2 读带 B1、UTR 5.20%；缩短窗口也无法达标（最好 p1–3：read A2、UTR 3.74%）。该文章对 A2 不适用：换一篇 M2 A2 文章，或保留相邻档并标 A2 不适用。",
+        "不要把 A2 标为通过：M2 读带为 B1，高于目标 A2。",
+        "若继续用该窗口，需删/换高于 A2 上界的词，把全 token unknown 从 5.20% 降到 ≤3%；或按上面的换窗口/换内容方案处理。"
+      ]
+    },
+    {
+      "pack_id": "g0-case-for-doing-nothing-b1",
+      "content_id": "case-for-doing-nothing",
+      "title": "The Case for Doing Nothing",
+      "modality": "article",
+      "source_level": "A2",
+      "target": "B1",
+      "window_key": "p1-8",
+      "word_count": 269,
+      "duration_s": null,
+      "wpm": null,
+      "m2_read": "B1",
+      "m2_listen": null,
+      "m2_p90": "B1",
+      "utr_band_target": 0.0297,
+      "unknown_token_rate": 0.0297,
+      "unknown_tokens": 8,
+      "tokens": 269,
+      "unique_unknown_lemmas": 7,
+      "unique_unknown_lemmas_per_100w": 2.6,
+      "utr_w5k": 0.0149,
+      "utr_content_w5k": 0.0296,
+      "thresholds": {
+        "unknown_max": 0.05,
+        "unique_max": 12.0,
+        "wpm_max": null
+      },
+      "unknown_pass": true,
+      "unique_pass": true,
+      "wpm_pass": true,
+      "utr_pass": true,
+      "band_pass": true,
+      "coverage_pass": true,
+      "failure_reasons": [],
+      "approx_unknown_token_rate": 0.0037174721189591076,
+      "previous_posthoc": {
+        "m2_read": "B1",
+        "utr_band_target": 0.0297,
+        "band_pass": true,
+        "utr_pass": true
+      },
+      "matches_previous": true,
+      "advice": []
+    },
+    {
+      "pack_id": "g0-ocean-noise-b1",
+      "content_id": "ocean-noise",
+      "title": "Why the Ocean Is Getting Louder",
+      "modality": "article",
+      "source_level": "B1",
+      "target": "B1",
+      "window_key": "p1-6",
+      "word_count": 269,
+      "duration_s": null,
+      "wpm": null,
+      "m2_read": "B1",
+      "m2_listen": null,
+      "m2_p90": "B1",
+      "utr_band_target": 0.0335,
+      "unknown_token_rate": 0.0335,
+      "unknown_tokens": 9,
+      "tokens": 269,
+      "unique_unknown_lemmas": 6,
+      "unique_unknown_lemmas_per_100w": 2.23,
+      "utr_w5k": 0.0223,
+      "utr_content_w5k": 0.0417,
+      "thresholds": {
+        "unknown_max": 0.05,
+        "unique_max": 12.0,
+        "wpm_max": null
+      },
+      "unknown_pass": true,
+      "unique_pass": true,
+      "wpm_pass": true,
+      "utr_pass": true,
+      "band_pass": true,
+      "coverage_pass": true,
+      "failure_reasons": [],
+      "approx_unknown_token_rate": 0.0037174721189591076,
+      "previous_posthoc": {
+        "m2_read": "B1",
+        "utr_band_target": 0.0335,
+        "band_pass": true,
+        "utr_pass": true
+      },
+      "matches_previous": true,
+      "advice": []
+    },
+    {
+      "pack_id": "g0-ocean-noise-b2",
+      "content_id": "ocean-noise",
+      "title": "Why the Ocean Is Getting Louder",
+      "modality": "article",
+      "source_level": "B1",
+      "target": "B2",
+      "window_key": "p1-6",
+      "word_count": 269,
+      "duration_s": null,
+      "wpm": null,
+      "m2_read": "B1",
+      "m2_listen": null,
+      "m2_p90": "B1",
+      "utr_band_target": 0.0149,
+      "unknown_token_rate": 0.0149,
+      "unknown_tokens": 4,
+      "tokens": 269,
+      "unique_unknown_lemmas": 3,
+      "unique_unknown_lemmas_per_100w": 1.12,
+      "utr_w5k": 0.0223,
+      "utr_content_w5k": 0.0417,
+      "thresholds": {
+        "unknown_max": 0.08,
+        "unique_max": 18.0,
+        "wpm_max": null
+      },
+      "unknown_pass": true,
+      "unique_pass": true,
+      "wpm_pass": true,
+      "utr_pass": true,
+      "band_pass": true,
+      "coverage_pass": true,
+      "failure_reasons": [],
+      "approx_unknown_token_rate": 0.0037174721189591076,
+      "previous_posthoc": {
+        "m2_read": "B1",
+        "utr_band_target": 0.0149,
+        "band_pass": true,
+        "utr_pass": true
+      },
+      "matches_previous": true,
+      "advice": []
+    },
+    {
+      "pack_id": "g0-free-app-hidden-cost-b1",
+      "content_id": "free-app-hidden-cost",
+      "title": "The Hidden Cost of a Free App",
+      "modality": "article",
+      "source_level": "B2",
+      "target": "B1",
+      "window_key": "p1-6",
+      "word_count": 323,
+      "duration_s": null,
+      "wpm": null,
+      "m2_read": "B1",
+      "m2_listen": null,
+      "m2_p90": "B1",
+      "utr_band_target": 0.031,
+      "unknown_token_rate": 0.031,
+      "unknown_tokens": 10,
+      "tokens": 323,
+      "unique_unknown_lemmas": 10,
+      "unique_unknown_lemmas_per_100w": 3.1,
+      "utr_w5k": 0.0093,
+      "utr_content_w5k": 0.0189,
+      "thresholds": {
+        "unknown_max": 0.05,
+        "unique_max": 12.0,
+        "wpm_max": null
+      },
+      "unknown_pass": true,
+      "unique_pass": true,
+      "wpm_pass": true,
+      "utr_pass": true,
+      "band_pass": true,
+      "coverage_pass": true,
+      "failure_reasons": [],
+      "approx_unknown_token_rate": 0.021671826625386997,
+      "previous_posthoc": {
+        "m2_read": "B1",
+        "utr_band_target": 0.031,
+        "band_pass": true,
+        "utr_pass": true
+      },
+      "matches_previous": true,
+      "advice": []
+    },
+    {
+      "pack_id": "g0-free-app-hidden-cost-b2",
+      "content_id": "free-app-hidden-cost",
+      "title": "The Hidden Cost of a Free App",
+      "modality": "article",
+      "source_level": "B2",
+      "target": "B2",
+      "window_key": "p1-6",
+      "word_count": 323,
+      "duration_s": null,
+      "wpm": null,
+      "m2_read": "B1",
+      "m2_listen": null,
+      "m2_p90": "B1",
+      "utr_band_target": 0.0093,
+      "unknown_token_rate": 0.0093,
+      "unknown_tokens": 3,
+      "tokens": 323,
+      "unique_unknown_lemmas": 3,
+      "unique_unknown_lemmas_per_100w": 0.93,
+      "utr_w5k": 0.0093,
+      "utr_content_w5k": 0.0189,
+      "thresholds": {
+        "unknown_max": 0.08,
+        "unique_max": 18.0,
+        "wpm_max": null
+      },
+      "unknown_pass": true,
+      "unique_pass": true,
+      "wpm_pass": true,
+      "utr_pass": true,
+      "band_pass": true,
+      "coverage_pass": true,
+      "failure_reasons": [],
+      "approx_unknown_token_rate": 0.01238390092879257,
+      "previous_posthoc": {
+        "m2_read": "B1",
+        "utr_band_target": 0.0093,
+        "band_pass": true,
+        "utr_pass": true
+      },
+      "matches_previous": true,
+      "advice": []
+    },
+    {
+      "pack_id": "g0-bbc-learning-different-generations-b1",
+      "content_id": "bbc-learning-different-generations",
+      "title": "Learning from different generations (6 Minute English)",
+      "modality": "video",
+      "source_level": "B1",
+      "target": "B1",
+      "window_key": "b28-70",
+      "word_count": 574,
+      "duration_s": 210.14,
+      "wpm": 163.89,
+      "m2_read": "B2",
+      "m2_listen": "B2",
+      "m2_p90": "B2",
+      "utr_band_target": 0.0801,
+      "unknown_token_rate": 0.0801,
+      "unknown_tokens": 46,
+      "tokens": 574,
+      "unique_unknown_lemmas": 25,
+      "unique_unknown_lemmas_per_100w": 4.36,
+      "utr_w5k": 0.0784,
+      "utr_content_w5k": 0.1385,
+      "thresholds": {
+        "unknown_max": 0.05,
+        "unique_max": 12.0,
+        "wpm_max": null
+      },
+      "unknown_pass": false,
+      "unique_pass": true,
+      "wpm_pass": true,
+      "utr_pass": false,
+      "band_pass": false,
+      "coverage_pass": false,
+      "failure_reasons": [
+        "unknown(UTR) 8.01% > 5%（B1 门槛）",
+        "M2 读带 B2 > 目标 B1"
+      ],
+      "approx_unknown_token_rate": 0.04377104377104377,
+      "previous_posthoc": {
+        "m2_read": "B2",
+        "utr_band_target": 0.0801,
+        "band_pass": false,
+        "utr_pass": false
+      },
+      "matches_previous": true,
+      "advice": [
+        "同内容 219 个 B1 候选窗口没有一个通过 M2 覆盖率闸（最低 UTR 7.18% @ `b12-51`，read B2）；该视频不是 B1 素材：换内容（降档到更简单的 B1 视频），或把 B1 标为不适用，只保留已通过的相邻档。",
+        "M2 听向估计 B2 也高于 B1；若保留该内容，只应作为更高档素材。",
+        "不要把 B1 标为通过：M2 读带为 B2，高于目标 B1。",
+        "若继续用该窗口，需删/换高于 B1 上界的词，把全 token unknown 从 8.01% 降到 ≤5%；或按上面的换窗口/换内容方案处理。"
+      ]
+    },
+    {
+      "pack_id": "g0-bbc-learning-different-generations-b2",
+      "content_id": "bbc-learning-different-generations",
+      "title": "Learning from different generations (6 Minute English)",
+      "modality": "video",
+      "source_level": "B1",
+      "target": "B2",
+      "window_key": "b10-60",
+      "word_count": 701,
+      "duration_s": 259.74,
+      "wpm": 161.93,
+      "m2_read": "B2",
+      "m2_listen": "B2",
+      "m2_p90": "B2",
+      "utr_band_target": 0.0385,
+      "unknown_token_rate": 0.0385,
+      "unknown_tokens": 27,
+      "tokens": 701,
+      "unique_unknown_lemmas": 18,
+      "unique_unknown_lemmas_per_100w": 2.57,
+      "utr_w5k": 0.077,
+      "utr_content_w5k": 0.1307,
+      "thresholds": {
+        "unknown_max": 0.08,
+        "unique_max": 18.0,
+        "wpm_max": null
+      },
+      "unknown_pass": true,
+      "unique_pass": true,
+      "wpm_pass": true,
+      "utr_pass": true,
+      "band_pass": true,
+      "coverage_pass": true,
+      "failure_reasons": [],
+      "approx_unknown_token_rate": 0.013869625520110958,
+      "previous_posthoc": {
+        "m2_read": "B2",
+        "utr_band_target": 0.0385,
+        "band_pass": true,
+        "utr_pass": true
+      },
+      "matches_previous": true,
+      "advice": []
+    },
+    {
+      "pack_id": "g0-kurzgesagt-ai-slop-b1",
+      "content_id": "kurzgesagt-ai-slop",
+      "title": "AI Slop Is Destroying The Internet",
+      "modality": "video",
+      "source_level": "B2",
+      "target": "B1",
+      "window_key": "b67-106",
+      "word_count": 590,
+      "duration_s": 211.52,
+      "wpm": 167.36,
+      "m2_read": "B2",
+      "m2_listen": "C1+",
+      "m2_p90": "B2",
+      "utr_band_target": 0.102,
+      "unknown_token_rate": 0.102,
+      "unknown_tokens": 60,
+      "tokens": 588,
+      "unique_unknown_lemmas": 36,
+      "unique_unknown_lemmas_per_100w": 6.12,
+      "utr_w5k": 0.085,
+      "utr_content_w5k": 0.1132,
+      "thresholds": {
+        "unknown_max": 0.05,
+        "unique_max": 12.0,
+        "wpm_max": null
+      },
+      "unknown_pass": false,
+      "unique_pass": true,
+      "wpm_pass": true,
+      "utr_pass": false,
+      "band_pass": false,
+      "coverage_pass": false,
+      "failure_reasons": [
+        "unknown(UTR) 10.20% > 5%（B1 门槛）",
+        "M2 读带 B2 > 目标 B1"
+      ],
+      "approx_unknown_token_rate": 0.049069373942470386,
+      "previous_posthoc": {
+        "m2_read": "B2",
+        "utr_band_target": 0.102,
+        "band_pass": false,
+        "utr_pass": false
+      },
+      "matches_previous": true,
+      "advice": [
+        "同内容 496 个 B1 候选窗口没有一个通过 M2 覆盖率闸（最低 UTR 9.20% @ `b24-69`，read B2）；该视频不是 B1 素材：换内容（降档到更简单的 B1 视频），或把 B1 标为不适用，只保留已通过的相邻档。",
+        "M2 听向估计 C1+ 也高于 B1；若保留该内容，只应作为更高档素材。",
+        "不要把 B1 标为通过：M2 读带为 B2，高于目标 B1。",
+        "若继续用该窗口，需删/换高于 B1 上界的词，把全 token unknown 从 10.20% 降到 ≤5%；或按上面的换窗口/换内容方案处理。"
+      ]
+    },
+    {
+      "pack_id": "g0-kurzgesagt-ai-slop-b2",
+      "content_id": "kurzgesagt-ai-slop",
+      "title": "AI Slop Is Destroying The Internet",
+      "modality": "video",
+      "source_level": "B2",
+      "target": "B2",
+      "window_key": "b43-87",
+      "word_count": 679,
+      "duration_s": 242.4,
+      "wpm": 168.07,
+      "m2_read": "B2",
+      "m2_listen": "C1+",
+      "m2_p90": "B2",
+      "utr_band_target": 0.0736,
+      "unknown_token_rate": 0.0736,
+      "unknown_tokens": 50,
+      "tokens": 679,
+      "unique_unknown_lemmas": 26,
+      "unique_unknown_lemmas_per_100w": 3.83,
+      "utr_w5k": 0.0884,
+      "utr_content_w5k": 0.1132,
+      "thresholds": {
+        "unknown_max": 0.08,
+        "unique_max": 18.0,
+        "wpm_max": null
+      },
+      "unknown_pass": true,
+      "unique_pass": true,
+      "wpm_pass": true,
+      "utr_pass": true,
+      "band_pass": true,
+      "coverage_pass": true,
+      "failure_reasons": [],
+      "approx_unknown_token_rate": 0.023529411764705882,
+      "previous_posthoc": {
+        "m2_read": "B2",
+        "utr_band_target": 0.0736,
+        "band_pass": true,
+        "utr_pass": true
+      },
+      "matches_previous": true,
+      "advice": []
+    }
+  ],
+  "negative_control": {
+    "pack_id": "g0-kurzgesagt-ai-slop-a2-negative-control",
+    "content_id": "kurzgesagt-ai-slop",
+    "title": "AI Slop Is Destroying The Internet",
+    "modality": "video",
+    "source_level": "B2",
+    "target": "A2",
+    "window_key": "b43-69",
+    "word_count": 415,
+    "duration_s": 145.99,
+    "wpm": 170.56,
+    "m2_read": "B2",
+    "m2_listen": "C1+",
+    "m2_p90": "B2",
+    "utr_band_target": 0.1373,
+    "unknown_token_rate": 0.1373,
+    "unknown_tokens": 57,
+    "tokens": 415,
+    "unique_unknown_lemmas": 36,
+    "unique_unknown_lemmas_per_100w": 8.67,
+    "utr_w5k": 0.0867,
+    "utr_content_w5k": 0.1106,
+    "thresholds": {
+      "unknown_max": 0.03,
+      "unique_max": 8.0,
+      "wpm_max": 150
+    },
+    "unknown_pass": false,
+    "unique_pass": false,
+    "wpm_pass": false,
+    "utr_pass": false,
+    "band_pass": false,
+    "coverage_pass": false,
+    "failure_reasons": [
+      "unknown(UTR) 13.73% > 3%（A2 门槛）",
+      "unique unknown 8.67/100w > 8",
+      "wpm 170.56 > 150（A2 视频门槛）",
+      "M2 读带 B2 > 目标 A2"
+    ],
+    "approx_unknown_token_rate": 0.0819277108433735,
+    "previous_posthoc": null,
+    "matches_previous": null,
+    "advice": []
+  },
+  "summary": {
+    "total": 10,
+    "coverage_pass_count": 7,
+    "coverage_fail_count": 3,
+    "coverage_pass_rate": 0.7,
+    "band_pass_count": 7,
+    "utr_pass_count": 7,
+    "failed_packs": [
+      "g0-case-for-doing-nothing-a2",
+      "g0-bbc-learning-different-generations-b1",
+      "g0-kurzgesagt-ai-slop-b1"
+    ],
+    "previous_band_pass_count": 7,
+    "previous_utr_pass_count": 7,
+    "reconciled_with_previous": true,
+    "negative_control_rejected": true,
+    "missing_packs": [],
+    "manual_review_completed": false,
+    "g0_passed": false
+  },
+  "recommendations": [
+    {
+      "pack_id": "g0-case-for-doing-nothing-a2",
+      "target": "A2",
+      "failure_reasons": [
+        "unknown(UTR) 5.20% > 3%（A2 门槛）",
+        "M2 读带 B1 > 目标 A2"
+      ],
+      "options": [
+        "全文 M2 读带 B1、UTR 5.20%；缩短窗口也无法达标（最好 p1–3：read A2、UTR 3.74%）。该文章对 A2 不适用：换一篇 M2 A2 文章，或保留相邻档并标 A2 不适用。",
+        "不要把 A2 标为通过：M2 读带为 B1，高于目标 A2。",
+        "若继续用该窗口，需删/换高于 A2 上界的词，把全 token unknown 从 5.20% 降到 ≤3%；或按上面的换窗口/换内容方案处理。"
+      ]
+    },
+    {
+      "pack_id": "g0-bbc-learning-different-generations-b1",
+      "target": "B1",
+      "failure_reasons": [
+        "unknown(UTR) 8.01% > 5%（B1 门槛）",
+        "M2 读带 B2 > 目标 B1"
+      ],
+      "options": [
+        "同内容 219 个 B1 候选窗口没有一个通过 M2 覆盖率闸（最低 UTR 7.18% @ `b12-51`，read B2）；该视频不是 B1 素材：换内容（降档到更简单的 B1 视频），或把 B1 标为不适用，只保留已通过的相邻档。",
+        "M2 听向估计 B2 也高于 B1；若保留该内容，只应作为更高档素材。",
+        "不要把 B1 标为通过：M2 读带为 B2，高于目标 B1。",
+        "若继续用该窗口，需删/换高于 B1 上界的词，把全 token unknown 从 8.01% 降到 ≤5%；或按上面的换窗口/换内容方案处理。"
+      ]
+    },
+    {
+      "pack_id": "g0-kurzgesagt-ai-slop-b1",
+      "target": "B1",
+      "failure_reasons": [
+        "unknown(UTR) 10.20% > 5%（B1 门槛）",
+        "M2 读带 B2 > 目标 B1"
+      ],
+      "options": [
+        "同内容 496 个 B1 候选窗口没有一个通过 M2 覆盖率闸（最低 UTR 9.20% @ `b24-69`，read B2）；该视频不是 B1 素材：换内容（降档到更简单的 B1 视频），或把 B1 标为不适用，只保留已通过的相邻档。",
+        "M2 听向估计 C1+ 也高于 B1；若保留该内容，只应作为更高档素材。",
+        "不要把 B1 标为通过：M2 读带为 B2，高于目标 B1。",
+        "若继续用该窗口，需删/换高于 B1 上界的词，把全 token unknown 从 10.20% 降到 ≤5%；或按上面的换窗口/换内容方案处理。"
+      ]
+    }
+  ],
+  "manual_review": {
+    "completed": false,
+    "checked_at": "2026-11-17T03:33:24+08:00",
+    "basis": "docs/课程引擎G0-评审说明.md §4 汇总表为空；本次重跑不采集任何人工评分",
+    "g0_passed": false
+  }
+}
