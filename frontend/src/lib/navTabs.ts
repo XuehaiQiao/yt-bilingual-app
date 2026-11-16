@@ -13,10 +13,12 @@ export interface NavTabDef {
 }
 
 /** Fixed at four: a new first-level page must replace one, never append (§2.1). */
+// Owner order (2026-11-17): Content first, Today third. The default landing
+// route is unchanged (today); this array only controls the visible tab order.
 export const NAV_TABS: readonly NavTabDef[] = [
-  { id: 'today', icon: Sun, labelKey: 'nav.today' },
   { id: 'content', icon: Library, labelKey: 'nav.content' },
   { id: 'practice', icon: Dumbbell, labelKey: 'nav.practice' },
+  { id: 'today', icon: Sun, labelKey: 'nav.today' },
   { id: 'profile', icon: UserRound, labelKey: 'nav.profile' },
 ];
 

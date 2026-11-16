@@ -29,7 +29,7 @@
 
 export type TabId = 'today' | 'content' | 'practice' | 'profile';
 
-export const TAB_IDS: readonly TabId[] = ['today', 'content', 'practice', 'profile'];
+export const TAB_IDS: readonly TabId[] = ['content', 'practice', 'today', 'profile'];
 
 export function isTabId(value: unknown): value is TabId {
   return typeof value === 'string' && (TAB_IDS as readonly string[]).includes(value);
