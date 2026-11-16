@@ -230,6 +230,11 @@
   "library.failed": "免费资源暂时不可用",
   "library.retry": "重试",
   "library.empty": "暂时没有免费资源",
+  "library.filter.all": "全部",
+  "library.filter.groupAria": "按等级筛选视频",
+  "library.filter.chipAria": "{{level}} 级，{{count}} 个视频",
+  "library.filter.allChipAria": "全部等级，{{count}} 个视频",
+  "library.levelTagAria": "等级 {{level}}",
   "library.videoBadge": "免费资源 · 预置双语字幕",
   "library.article.badge": "免费资源 · 原创双语短文",
   "library.article.back": "返回首页",
@@ -1457,5 +1462,7 @@
   "importedBooks.reader.sourceLink": "查看原书",
   "importedBooks.reader.originalHint": "原文实时抓取，不保存在服务器",
   "importedBooks.reader.translatedChapters": "已译 {{translated}}/{{total}} 章",
-  "topbar.feature.importedBook": "导入的书"
+  "topbar.feature.importedBook": "导入的书",
+  "reader.import.publicDomainHint": "这是公版书链接。请使用「导入公版书」按章阅读；「读文章」只处理普通网页文章。",
+  "reader.import.publicDomainCta": "去导入公版书"
 }

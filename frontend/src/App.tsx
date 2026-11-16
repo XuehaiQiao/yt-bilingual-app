@@ -249,6 +249,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const [readerInitialImport, setReaderInitialImport] = useState<
     { mode: 'url' | 'text'; value: string; title?: string } | null
   >(null);
+  // Handover from the article reader: a public-domain book link is not an
+  // article, so switch to the content page and open the book-import dialog with
+  // the URL prefilled.
+  const [bookImportSeed, setBookImportSeed] = useState<
+    { url: string; nonce: number } | null
+  >(null);
 
   // Click-to-define dictionary popover
   const [wordLookup, setWordLookup] = useState<WordLookupTarget | null>(null);
@@ -277,6 +283,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       ...(sourceId ? { sourceId, sourceTitle, sourceKind: 'article' as const } : {}),
     });
   }, []);
+
+  // The article reader recognises public-domain book links and hands them here:
+  // switch to the content page and open the book-import dialog prefilled.
+  const handleImportPublicDomainBook = useCallback((url: string) => {
+    setBookImportSeed({ url, nonce: Date.now() });
+    go('content');
+  }, [go]);
 
   // Hover-to-switch: the card stays mounted; only its target word/position
   // changes. Guard against a stale dwell timer firing after the card closed.
@@ -2715,6 +2728,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onRequestLogin={onRequestLogin}
               isGuest={status === 'guest'}
               onWordLookup={handleReaderWordLookup}
+              onImportPublicDomainBook={handleImportPublicDomainBook}
               initialArticleId={sub.articleId}
               initialImport={readerInitialImport ?? undefined}
               onInitialImportConsumed={() => setReaderInitialImport(null)}
@@ -2790,6 +2804,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenBook={(id) => openSub({ kind: 'book', bookId: id })}
             onOpenBookSeries={(id) => openSub({ kind: 'book-series', seriesId: id })}
             onOpenImportedBook={(id) => openSub({ kind: 'imported-book', bookId: id })}
+            bookImportSeed={bookImportSeed}
+            onBookImportSeedConsumed={() => setBookImportSeed(null)}
             onOpenDiscover={handleOpenDiscover}
             onOpenReader={handleOpenReader}
             onOpenSentences={handleOpenSentences}

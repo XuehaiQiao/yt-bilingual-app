@@ -1025,6 +1025,26 @@ def test_no_english_source_is_persisted_to_db_or_disk(book_client, web):
     assert imported_files == []
 
 
+def test_article_importer_redirects_public_domain_book_links(book_client):
+    """读文章入口收到公版书链接时给出可执行提示，而不是误导性的抓取失败。"""
+    for url in (GUTENBERG_URL, SE_BOOK_URL, GUTENBERG_TEXT_URL):
+        response = book_client.post("/api/article/import", json={"url": url})
+        assert response.status_code == 422, (url, response.text)
+        assert "导入公版书" in response.json()["detail"]
+
+
+def test_public_domain_book_url_detection():
+    import reading
+
+    assert reading.is_public_domain_book_url(GUTENBERG_URL)
+    assert reading.is_public_domain_book_url(GUTENBERG_TEXT_URL)
+    assert reading.is_public_domain_book_url(SE_BOOK_URL)
+    assert not reading.is_public_domain_book_url("https://example.com/article")
+    assert not reading.is_public_domain_book_url(
+        "https://standardebooks.org/ebooks/jane-austen/pride-and-prejudice/text/chapter-1"
+    )
+
+
 def test_public_books_series_still_works(make_client):
     """公开只读公版书系列不受导入路由影响。"""
     with make_client() as client:

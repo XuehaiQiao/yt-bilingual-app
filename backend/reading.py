@@ -40,7 +40,7 @@ import uuid
 import xml.etree.ElementTree as ET
 from html.parser import HTMLParser
 from typing import Iterable, Sequence
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import unquote, urljoin, urlsplit, urlunsplit
 
 import httpx
 
@@ -74,6 +74,27 @@ _WHITESPACE_RE = re.compile(r"\s+")
 
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 _SAFE_SCHEMES = frozenset({"http", "https"})
+# 公版书链接不是文章：读文章入口只给普通网页文章，公版书走
+# ``book_import.py`` / ``/api/books/import*``。这里只做便宜的 host/path 识别，
+# 让读文章入口给出可执行的提示，而不是误导性的「内网/非网页/没有正文」。
+_PUBLIC_DOMAIN_BOOK_HOSTS = frozenset(
+    {
+        "www.gutenberg.org",
+        "gutenberg.org",
+        "standardebooks.org",
+        "www.standardebooks.org",
+    }
+)
+_PUBLIC_DOMAIN_BOOK_HINT = (
+    "这是公版书链接，请使用「导入公版书」功能（内容页 → 公版书 → 导入公版书）；"
+    "「读文章」只处理普通网页文章。"
+)
+_PUBLIC_DOMAIN_BOOK_PATHS = (
+    re.compile(r"^/ebooks/[0-9]{1,8}$"),
+    re.compile(r"^/cache/epub/([0-9]{1,8})/pg([0-9]{1,8})\.txt$"),
+    re.compile(r"^/files/[0-9]{1,8}/[A-Za-z0-9._\-/]+\.txt$"),
+    re.compile(r"^/ebooks/[a-z0-9-]+/[a-z0-9-]+$"),
+)
 _METADATA_HOSTS = frozenset(
     {
         "metadata",
@@ -315,6 +336,19 @@ def _clean_title(raw: str | None) -> str:
 # ---------------------------------------------------------------------------
 # URL 校验 + SSRF 防护
 # ---------------------------------------------------------------------------
+
+def is_public_domain_book_url(url: str) -> bool:
+    """URL 是否指向白名单公版书（Gutenberg / Standard Ebooks）。"""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    host = (parts.hostname or "").lower().rstrip(".")
+    if host not in _PUBLIC_DOMAIN_BOOK_HOSTS:
+        return False
+    path = unquote(parts.path or "").rstrip("/") or "/"
+    return any(pattern.fullmatch(path) for pattern in _PUBLIC_DOMAIN_BOOK_PATHS)
+
 
 def canonicalize_url(raw: str) -> str:
     """校验并规范化用户提供的 URL（不解析 DNS）。
@@ -1036,6 +1070,8 @@ async def import_article(
 
     if url_text:
         canonical = canonicalize_url(url_text)
+        if is_public_domain_book_url(canonical):
+            raise FetchError(_PUBLIC_DOMAIN_BOOK_HINT)
         existing = await asyncio.to_thread(_find_article_by_url, user_id, canonical)
         if existing is not None:
             return await asyncio.to_thread(_load_import_payload, existing, True)
@@ -1626,6 +1662,7 @@ __all__ = [
     "fetch_url",
     "get_article_detail",
     "import_article",
+    "is_public_domain_book_url",
     "list_articles",
     "normalize_pasted_text",
     "save_progress",

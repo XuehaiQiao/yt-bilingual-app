@@ -230,6 +230,11 @@
   "library.failed": "Tài nguyên miễn phí tạm thời không khả dụng",
   "library.retry": "Thử lại",
   "library.empty": "Tạm thời chưa có tài nguyên miễn phí",
+  "library.filter.all": "Tất cả",
+  "library.filter.groupAria": "Lọc video theo trình độ",
+  "library.filter.chipAria": "Trình độ {{level}}, {{count}} video",
+  "library.filter.allChipAria": "Tất cả trình độ, {{count}} video",
+  "library.levelTagAria": "Trình độ {{level}}",
   "library.videoBadge": "Tài nguyên miễn phí · Phụ đề song ngữ có sẵn",
   "library.article.badge": "Tài nguyên miễn phí · Bài đọc song ngữ nguyên bản",
   "library.article.back": "Về trang chủ",
@@ -1457,5 +1462,7 @@
   "importedBooks.reader.sourceLink": "Xem sách gốc",
   "importedBooks.reader.originalHint": "Nguyên văn lấy trực tiếp, không lưu trên máy chủ",
   "importedBooks.reader.translatedChapters": "Đã dịch {{translated}}/{{total}} chương",
-  "topbar.feature.importedBook": "Sách đã nhập"
+  "topbar.feature.importedBook": "Sách đã nhập",
+  "reader.import.publicDomainHint": "Đây là liên kết sách công cộng. Hãy dùng «Nhập sách công cộng» để đọc theo chương; mục Đọc bài viết chỉ xử lý trang bài viết thông thường.",
+  "reader.import.publicDomainCta": "Đi tới nhập sách công cộng"
 }

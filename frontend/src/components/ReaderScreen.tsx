@@ -19,6 +19,7 @@ import {
     AlertCircle,
     ArrowLeft,
     BookOpen,
+    BookPlus,
     ExternalLink,
     FileText,
     Languages,
@@ -34,6 +35,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ClickableWords } from './TranscriptBlock';
 import { ShareCardDialog } from './ShareCardDialog';
+import { classifyPublicDomainBookUrl } from '../lib/publicDomain';
 import type { ShareCardData } from '../lib/shareCard';
 import { toast } from '../lib/toast';
 import {
@@ -67,6 +69,8 @@ interface ReaderScreenProps {
     initialImport?: { mode: ImportMode; value: string; title?: string };
     /** Called once the handed-over import has been dispatched. */
     onInitialImportConsumed?: () => void;
+    /** Public-domain book link pasted here → hand off to the book importer. */
+    onImportPublicDomainBook?: (url: string) => void;
     /** Reuse the app-wide dictionary card (App owns its state/favorites). */
     onWordLookup: (
         word: string,
@@ -199,6 +203,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     initialArticleId,
     initialImport,
     onInitialImportConsumed,
+    onImportPublicDomainBook,
     onWordLookup,
 }) => {
     const { t, targetLang, formatNumber } = useI18n();
@@ -219,6 +224,9 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const [titleValue, setTitleValue] = useState(initialImport?.title ?? '');
     const [importing, setImporting] = useState(false);
     const [importError, setImportError] = useState<TranslationKey | null>(null);
+    // A public-domain book link is not an article; remember it so the form can
+    // offer the one-click handoff to "导入公版书".
+    const [publicDomainUrl, setPublicDomainUrl] = useState<string | null>(null);
     const importingRef = useRef(false);
 
     // ── Reader ─────────────────────────────────────────────────────────────
@@ -560,9 +568,19 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
             }
         }
 
+        if (mode === 'url') {
+            const bookLink = classifyPublicDomainBookUrl(rawValue);
+            if (bookLink) {
+                setImportError(null);
+                setPublicDomainUrl(bookLink.url);
+                return;
+            }
+        }
+
         importingRef.current = true;
         setImporting(true);
         setImportError(null);
+        setPublicDomainUrl(null);
         try {
             const result = await importArticle(
                 mode === 'url'
@@ -723,6 +741,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                 onClick={() => {
                                     setImportMode(tab.key);
                                     setImportError(null);
+                                    setPublicDomainUrl(null);
                                 }}
                                 className={`relative px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
                                     active ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-200'
@@ -750,7 +769,10 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                         type="url"
                         inputMode="url"
                         value={urlValue}
-                        onChange={(e) => setUrlValue(e.target.value)}
+                        onChange={(e) => {
+                            setUrlValue(e.target.value);
+                            setPublicDomainUrl(null);
+                        }}
                         disabled={importing}
                         aria-label={t('reader.import.tab.url')}
                         data-testid="reader-import-url"
@@ -787,6 +809,27 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                     >
                         {t(importError)}
                     </p>
+                )}
+                {publicDomainUrl && (
+                    <div
+                        data-testid="reader-import-public-domain"
+                        className="rounded-xl border border-blue-500/20 bg-blue-500/[0.06] px-3 py-2.5"
+                    >
+                        <p className="text-xs leading-relaxed text-blue-200">
+                            {t('reader.import.publicDomainHint')}
+                        </p>
+                        {onImportPublicDomainBook && (
+                            <button
+                                type="button"
+                                data-testid="reader-import-public-domain-cta"
+                                onClick={() => onImportPublicDomainBook(publicDomainUrl)}
+                                className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-500 px-3 text-xs font-semibold text-white transition-colors hover:bg-blue-400"
+                            >
+                                <BookPlus className="h-3.5 w-3.5" />
+                                {t('reader.import.publicDomainCta')}
+                            </button>
+                        )}
+                    </div>
                 )}
                 {importing && (
                     <p
