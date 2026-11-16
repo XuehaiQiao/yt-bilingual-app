@@ -1,0 +1,61 @@
+﻿anon_id,order,split,source_set,kind,editorial_band,auto_band,auto_distance,within_1,rater_a_band,rater_a_confidence,rater_b_band,rater_b_confidence,adjudicated_band,notes
+M2-001,1,holdout,content_difficulty_36,video,C1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-002,2,calibration,content_difficulty_36,video,B2,C1+,2,no,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-003,3,holdout,placement_11,article,C1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-004,4,holdout,content_difficulty_36,video,A2,B2,2,no,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-005,5,holdout,content_difficulty_36,video,B2,C1+,2,no,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-006,6,calibration,content_difficulty_36,video,A2,B1,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-007,7,calibration,content_difficulty_36,video,B1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-008,8,calibration,content_difficulty_36,video,C1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-009,9,calibration,placement_11,article,A2,B2,2,no,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-010,10,calibration,placement_11,article,B2,B1,1,yes,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-011,11,calibration,content_difficulty_36,article,B2,B1,1,yes,,,,,,内容级 difficulty.v1 预测（对全文计算）；包内为 ≤120 词节选，二者不完全同构。
+M2-012,12,calibration,content_difficulty_36,video,B2,B1,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-013,13,calibration,content_difficulty_36,video,B1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-014,14,calibration,content_difficulty_36,video,A2,B1,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-015,15,holdout,content_difficulty_36,video,B1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-016,16,holdout,content_difficulty_36,video,B1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-017,17,calibration,content_difficulty_36,video,B1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-018,18,calibration,public_domain_book_13,article,A2,C1,3,no,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-019,19,holdout,content_difficulty_36,video,B2,B2,0,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-020,20,calibration,content_difficulty_36,video,B1,B1,0,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-021,21,holdout,public_domain_book_13,article,B1,B1,0,yes,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-022,22,calibration,placement_11,article,B2,B1,1,yes,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-023,23,calibration,placement_11,article,A2,B1,1,yes,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-024,24,calibration,public_domain_book_13,article,B2,C1+,2,no,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-025,25,calibration,placement_11,article,B1,B1,0,yes,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-026,26,calibration,public_domain_book_13,article,C1,C1+,1,yes,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-027,27,holdout,content_difficulty_36,video,B2,B2,0,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-028,28,calibration,content_difficulty_36,video,C1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-029,29,holdout,placement_11,article,A2,B1,1,yes,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-030,30,calibration,placement_11,article,C1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-031,31,calibration,content_difficulty_36,video,B1,C1,2,no,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-032,32,calibration,content_difficulty_36,video,B1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-033,33,calibration,content_difficulty_36,article,B1,B1,0,yes,,,,,,内容级 difficulty.v1 预测（对全文计算）；包内为 ≤120 词节选，二者不完全同构。
+M2-034,34,calibration,content_difficulty_36,video,B2,C1+,2,no,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-035,35,holdout,content_difficulty_36,video,B1,C1,2,no,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-036,36,calibration,content_difficulty_36,video,B1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-037,37,holdout,content_difficulty_36,video,C1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-038,38,holdout,public_domain_book_13,article,A2,C1,3,no,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-039,39,calibration,public_domain_book_13,article,B2,B2,0,yes,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-040,40,calibration,content_difficulty_36,video,A2,B2,2,no,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-041,41,calibration,content_difficulty_36,video,C1,B1,2,no,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-042,42,calibration,public_domain_book_13,article,B1,C1,2,no,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-043,43,calibration,content_difficulty_36,video,B2,C1,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-044,44,holdout,content_difficulty_36,article,A2,B1,1,yes,,,,,,内容级 difficulty.v1 预测（对全文计算）；包内为 ≤120 词节选，二者不完全同构。
+M2-045,45,calibration,public_domain_book_13,article,A2,C1+,4,no,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-046,46,calibration,placement_11,article,B1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-047,47,calibration,content_difficulty_36,video,B2,B2,0,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-048,48,holdout,placement_11,article,B2,B2,0,yes,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-049,49,holdout,placement_11,article,B1,B1,0,yes,,,,,,内容级 difficulty.v1 预测；短文仅 44–99 词，p90 不稳定。
+M2-050,50,calibration,content_difficulty_36,video,B2,C1,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-051,51,calibration,public_domain_book_13,article,B1,A2,1,yes,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-052,52,calibration,public_domain_book_13,article,A2,B2,2,no,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-053,53,holdout,content_difficulty_36,video,B1,B1,0,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-054,54,holdout,content_difficulty_36,video,B2,B2,0,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-055,55,holdout,public_domain_book_13,article,B2,C1+,2,no,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-056,56,calibration,content_difficulty_36,video,C1,B2,1,yes,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-057,57,calibration,public_domain_book_13,article,C1,B2,1,yes,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-058,58,calibration,content_difficulty_36,video,B1,C1,2,no,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
+M2-059,59,holdout,public_domain_book_13,article,A2,C1+,4,no,,,,,,编辑标注意义是「书级」而非节选级；预测是对节选文本计算。
+M2-060,60,calibration,content_difficulty_36,video,B2,C1+,2,no,,,,,,内容级 difficulty.v1 预测；包内只给链接 + 时间窗，不给字幕全文。
