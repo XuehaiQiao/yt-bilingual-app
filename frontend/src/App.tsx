@@ -23,6 +23,7 @@ import { ReviewScreen } from './components/ReviewScreen';
 import { QuizScreen } from './components/QuizScreen';
 import { ReportScreen, type WeekReportEvidence } from './components/ReportScreen';
 import { PlacementScreen } from './components/PlacementScreen';
+import { AbilityScreen } from './components/AbilityScreen';
 import { ExamScreen } from './components/ExamScreen';
 import { DiscoverScreen } from './components/DiscoverScreen';
 import { ReaderScreen } from './components/ReaderScreen';
@@ -1513,6 +1514,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     openSub({ kind: 'placement', view });
   };
 
+  // The ability profile is the entry point for "what do we know about you";
+  // the placement test/profile page stays as the retest detail page.
+  const handleOpenAbility = () => {
+    openSub({ kind: 'ability' });
+  };
+
+  const handleCloseAbility = () => {
+    back();
+  };
+
   const handleClosePlacement = () => {
     back();
     setPlacementNonce(prev => prev + 1);
@@ -2369,7 +2380,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       placementProfile={placementProfile}
       onOpenFavorites={handleOpenFavoritesRoute}
       onOpenReport={handleOpenReport}
-      onOpenPlacement={handleOpenPlacement}
+      onOpenAbility={handleOpenAbility}
       onOpenBlog={handleOpenBlog}
       onOpenAdmin={handleOpenAdmin}
       onRequestLogin={() => onRequestLogin?.()}
@@ -2427,6 +2438,14 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onClose={handleClosePlacement}
               onStartLearning={handlePlacementStartLearning}
               onRequestLogin={onRequestLogin}
+              onOpenAbility={handleOpenAbility}
+            />,
+          );
+        case 'ability':
+          return subFrame(
+            <AbilityScreen
+              onClose={handleCloseAbility}
+              onOpenPlacement={() => handleOpenPlacement('intro')}
             />,
           );
         case 'exam':

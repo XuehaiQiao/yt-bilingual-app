@@ -79,8 +79,8 @@ interface AccountScreenProps {
   favoriteCount?: number;
   /** 我的·本周报告 row. */
   onOpenReport?: () => void;
-  /** 我的·能力档案 row. */
-  onOpenPlacement?: () => void;
+  /** 我的·能力档案 row: opens the full ability profile. */
+  onOpenAbility?: () => void;
   placementProfile?: PlacementProfile | null;
   /** 我的·设置 vocabulary row: jump to the Content page axis (read-only here). */
   onOpenVocab?: () => void;
@@ -166,7 +166,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   onOpenFavorites,
   favoriteCount = 0,
   onOpenReport,
-  onOpenPlacement,
+  onOpenAbility,
   placementProfile = null,
   onOpenVocab,
 }) => {
@@ -340,7 +340,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
         <button
           type="button"
           data-testid="profile-level-row"
-          onClick={onOpenPlacement}
+          onClick={onOpenAbility}
           className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors"
         >
           <span className="flex min-w-0 items-center gap-3">

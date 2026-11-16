@@ -56,6 +56,8 @@ interface PlacementScreenProps {
     onStartLearning?: () => void;
     /** Guest "log in to keep it longer" entry. */
     onRequestLogin?: () => void;
+    /** Open the full M1 ability profile (interval + evidence status + can-do). */
+    onOpenAbility?: () => void;
 }
 
 type Phase = 'intro' | 'quiz' | 'result' | 'profile';
@@ -88,6 +90,13 @@ const DOMAIN_KEYS: Record<string, TranslationKey> = {
     writing: 'placement.domain.writing',
 };
 
+const SKILL_STATUS_KEYS: Record<'reading' | 'listening' | 'speaking' | 'writing', TranslationKey> = {
+    reading: 'placement.result.skill.reading',
+    listening: 'placement.result.skill.listening',
+    speaking: 'placement.result.skill.speaking',
+    writing: 'placement.result.skill.writing',
+};
+
 const SOURCE_KEYS: Record<string, TranslationKey> = {
     placement: 'placement.profile.source.placement',
     user_edit: 'placement.profile.source.user_edit',
@@ -111,6 +120,7 @@ export function PlacementScreen({
     onClose,
     onStartLearning,
     onRequestLogin,
+    onOpenAbility,
 }: PlacementScreenProps) {
     const { t, formatNumber, formatDate } = useI18n();
     const reduceMotion = useReducedMotion();
@@ -405,6 +415,11 @@ export function PlacementScreen({
         const key = DOMAIN_KEYS[domain];
         return key ? t(key) : domain;
     };
+    // The M1 shim removes the reading band from the payload; an older backend
+    // can still put reading into these generated lists, so keep it out of the
+    // result page instead of rendering a claim the evidence cannot support.
+    const withoutReading = (items: string[]): string[] =>
+        items.filter((item) => !/阅读|reading|đọc/i.test(item));
 
     const headerTitle =
         phase === 'quiz'
@@ -799,14 +814,19 @@ export function PlacementScreen({
 
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                     <span
-                        data-testid="placement-result-confidence"
+                        data-testid="placement-result-uncalibrated"
                         className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300"
                     >
-                        <span>
-                            {t('placement.result.confidenceLabel')}{' '}
-                            {confidenceText(result.confidenceLabel, result.confidenceLabelZh)}
-                        </span>
-                        <span className="tabular-nums text-blue-300/70">{result.confidence.toFixed(2)}</span>
+                        <Gauge className="w-3 h-3" />
+                        {t('placement.result.badgeUncalibrated')}
+                    </span>
+                    <span
+                        data-testid="placement-result-evidence-strength"
+                        className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-zinc-400"
+                    >
+                        {t('placement.result.evidenceStrength', {
+                            strength: confidenceText(result.confidenceLabel, result.confidenceLabelZh),
+                        })}
                     </span>
                     {result.preliminary && (
                         <span
@@ -843,10 +863,32 @@ export function PlacementScreen({
                     </div>
                     <div className="rounded-xl border border-white/5 bg-zinc-800/30 px-3 py-2.5 min-w-0">
                         <p className="text-[11px] text-zinc-500">{t('placement.result.readingLabel')}</p>
-                        <p className="mt-0.5 text-sm font-semibold text-zinc-200 break-words">
-                            {result.breakdown.reading.band}
+                        <p
+                            data-testid="placement-result-reading-status"
+                            className="mt-0.5 text-sm font-semibold text-zinc-200 break-words"
+                        >
+                            {t('placement.result.readingStatus')}
+                        </p>
+                        <p className="mt-0.5 text-[10px] leading-relaxed text-zinc-500">
+                            {t('placement.result.readingStatusHint', {
+                                count: formatNumber(result.breakdown.reading.total),
+                            })}
                         </p>
                     </div>
+                </div>
+
+                <div
+                    data-testid="placement-result-skill-status"
+                    className="mx-auto mt-3 flex max-w-md flex-wrap justify-center gap-1.5"
+                >
+                    {(['reading', 'listening', 'speaking', 'writing'] as const).map((skill) => (
+                        <span
+                            key={skill}
+                            className="rounded-full border border-white/5 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-400"
+                        >
+                            {t(SKILL_STATUS_KEYS[skill])}
+                        </span>
+                    ))}
                 </div>
             </section>
 
@@ -855,7 +897,7 @@ export function PlacementScreen({
                     {t('placement.result.strengths')}
                 </h3>
                 <div className="mt-2 flex flex-wrap gap-2">
-                    {result.breakdown.strengths.map((item, strengthIndex) => (
+                    {withoutReading(result.breakdown.strengths).map((item, strengthIndex) => (
                         <span
                             key={`strength-${strengthIndex}`}
                             className="text-xs font-medium px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 break-words"
@@ -867,9 +909,9 @@ export function PlacementScreen({
                 <h3 className="mt-4 text-[17px] font-semibold tracking-tight text-zinc-100">
                     {t('placement.result.weaknesses')}
                 </h3>
-                {result.breakdown.weaknesses.length > 0 ? (
+                {withoutReading(result.breakdown.weaknesses).length > 0 ? (
                     <div className="mt-2 flex flex-wrap gap-2">
-                        {result.breakdown.weaknesses.map((item, weaknessIndex) => (
+                        {withoutReading(result.breakdown.weaknesses).map((item, weaknessIndex) => (
                             <span
                                 key={`weakness-${weaknessIndex}`}
                                 className="text-xs font-medium px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 break-words"
@@ -884,7 +926,10 @@ export function PlacementScreen({
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <p className="text-[11px] leading-relaxed text-zinc-500">
                         <span className="text-zinc-400">{t('placement.result.measured')}: </span>
-                        {result.breakdown.measuredDomains.map(domainLabel).join(' · ')}
+                        {result.breakdown.measuredDomains
+                            .filter((domain) => domain !== 'reading')
+                            .map(domainLabel)
+                            .join(' · ')}
                     </p>
                     <p className="text-[11px] leading-relaxed text-zinc-500">
                         <span className="text-zinc-400">{t('placement.result.notMeasured')}: </span>
@@ -950,6 +995,17 @@ export function PlacementScreen({
                     {t('placement.result.learn')}
                     <ArrowRight className="w-4 h-4" />
                 </button>
+                {onOpenAbility && (
+                    <button
+                        type="button"
+                        data-testid="placement-result-ability"
+                        onClick={onOpenAbility}
+                        className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
+                    >
+                        {t('placement.result.viewAbility')}
+                        <ArrowRight className="w-4 h-4" />
+                    </button>
+                )}
                 <button
                     type="button"
                     data-testid="placement-result-home"
@@ -1035,7 +1091,7 @@ export function PlacementScreen({
             {profileState.phase === 'ready' && profile && (
                 <>
                     <section className={`${CARD} p-5 sm:p-8 text-center`}>
-                        <p className="text-xs font-medium text-zinc-500">{t('placement.profile.current')}</p>
+                        <p className="text-xs font-medium text-zinc-500">{t('placement.profile.vocabOnly')}</p>
                         <p
                             data-testid="placement-profile-cefr"
                             className="mt-1 text-5xl sm:text-6xl font-semibold tracking-tight text-zinc-50 tabular-nums break-words"
@@ -1044,15 +1100,20 @@ export function PlacementScreen({
                         </p>
                         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                             <p
-                                data-testid="placement-profile-confidence"
+                                data-testid="placement-profile-uncalibrated"
                                 className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300"
                             >
-                                <span>
-                                    {t('placement.result.confidenceLabel')}{' '}
-                                    {confidenceText(profile.confidenceLabel, profile.confidenceLabelZh)}
-                                </span>
-                                <span className="tabular-nums text-blue-300/70">{profile.confidence.toFixed(2)}</span>
+                                <Gauge className="w-3 h-3" />
+                                {t('placement.result.badgeUncalibrated')}
                             </p>
+                            <span
+                                data-testid="placement-profile-evidence-strength"
+                                className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-zinc-400"
+                            >
+                                {t('placement.result.evidenceStrength', {
+                                    strength: confidenceText(profile.confidenceLabel, profile.confidenceLabelZh),
+                                })}
+                            </span>
                             <span
                                 data-testid="placement-profile-sample"
                                 className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-zinc-400"
@@ -1101,8 +1162,11 @@ export function PlacementScreen({
                             </div>
                             <div className="min-w-0">
                                 <dt className="text-[11px] text-zinc-500">{t('placement.profile.reading')}</dt>
-                                <dd className="mt-0.5 text-sm text-zinc-200">
-                                    {profile.readingEstimate || t('placement.profile.unknownValue')}
+                                <dd
+                                    data-testid="placement-profile-reading"
+                                    className="mt-0.5 text-sm text-zinc-200"
+                                >
+                                    {t('placement.profile.readingInsufficient')}
                                 </dd>
                             </div>
                         </dl>
@@ -1114,7 +1178,7 @@ export function PlacementScreen({
                                 {t('placement.result.strengths')}
                             </h3>
                             <div className="mt-2 flex flex-wrap gap-2">
-                                {profile.strengths.map((item, strengthIndex) => (
+                                {withoutReading(profile.strengths).map((item, strengthIndex) => (
                                     <span
                                         key={`profile-strength-${strengthIndex}`}
                                         className="text-xs font-medium px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 break-words"
@@ -1126,9 +1190,9 @@ export function PlacementScreen({
                             <h3 className="mt-4 text-[17px] font-semibold tracking-tight text-zinc-100">
                                 {t('placement.result.weaknesses')}
                             </h3>
-                            {profile.weaknesses.length > 0 ? (
+                            {withoutReading(profile.weaknesses).length > 0 ? (
                                 <div className="mt-2 flex flex-wrap gap-2">
-                                    {profile.weaknesses.map((item, weaknessIndex) => (
+                                    {withoutReading(profile.weaknesses).map((item, weaknessIndex) => (
                                         <span
                                             key={`profile-weakness-${weaknessIndex}`}
                                             className="text-xs font-medium px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 break-words"
@@ -1207,6 +1271,17 @@ export function PlacementScreen({
                             {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
                             {t('placement.profile.retest')}
                         </button>
+                        {onOpenAbility && (
+                            <button
+                                type="button"
+                                data-testid="placement-profile-ability"
+                                onClick={onOpenAbility}
+                                className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
+                            >
+                                {t('placement.profile.viewAbility')}
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
+                        )}
                         <button
                             type="button"
                             data-testid="placement-profile-home"

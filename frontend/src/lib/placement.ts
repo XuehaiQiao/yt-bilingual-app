@@ -71,7 +71,8 @@ export interface PlacementBreakdown {
     version: string;
     calibration: string;
     vocab: PlacementDomainStats & { band: string; estimate: number };
-    reading: PlacementDomainStats & { band: string };
+    /** M1 shim: the reading band is removed; only counts/scores remain. */
+    reading: Omit<PlacementDomainStats, 'band'>;
     pseudo: { total: number; claimed: number; skipped: number; suspicion: number };
     overall: PlacementDomainStats;
     answered: number;

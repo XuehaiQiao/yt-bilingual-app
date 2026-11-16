@@ -9,7 +9,7 @@ interface ProfileScreenProps {
   placementProfile: PlacementProfile | null;
   onOpenFavorites: () => void;
   onOpenReport: () => void;
-  onOpenPlacement: (view: 'intro' | 'profile') => void;
+  onOpenAbility: () => void;
   onOpenBlog: () => void;
   onOpenAdmin: () => void;
   onRequestLogin: () => void;
@@ -21,7 +21,7 @@ export function ProfileScreen({
   placementProfile,
   onOpenFavorites,
   onOpenReport,
-  onOpenPlacement,
+  onOpenAbility,
   onOpenBlog,
   onOpenAdmin,
   onRequestLogin,
@@ -34,7 +34,7 @@ export function ProfileScreen({
       placementProfile={placementProfile}
       onOpenFavorites={onOpenFavorites}
       onOpenReport={onOpenReport}
-      onOpenPlacement={() => onOpenPlacement(placementProfile ? 'profile' : 'intro')}
+      onOpenAbility={onOpenAbility}
       onOpenBlog={onOpenBlog}
       onOpenAdmin={onOpenAdmin}
       onRequestLogin={onRequestLogin}

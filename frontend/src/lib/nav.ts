@@ -19,6 +19,7 @@
 //   #/learn/local/<showId>/S<ss>E<ee>                    learning view (local episode)
 //   #/learn/library/<itemId>                             learning view (free library)
 //   #/profile/favorites                                  favorites
+//   #/profile/ability                                    ability profile
 //   #/profile/admin                                      admin console
 //
 // Invalid hashes fall back to `#/today` (requirement: 非法 hash 回落 today).
@@ -53,6 +54,7 @@ export type SubRoute =
   | { kind: 'sentences'; levelId: number }
   | { kind: 'blog'; slug?: string }
   | { kind: 'favorites' }
+  | { kind: 'ability' }
   | { kind: 'admin' };
 
 export interface NavState {
@@ -105,6 +107,7 @@ export function tabOfSub(sub: SubRoute, fallback: TabId = 'today'): TabId {
     case 'blog':
       return 'content';
     case 'favorites':
+    case 'ability':
     case 'admin':
       return 'profile';
     default:
@@ -168,6 +171,9 @@ export function parseRoute(hash: string): NavState {
     }
     if (sub === 'favorites' && rest.length === 1 && tab === 'profile') {
       return { tab, sub: { kind: 'favorites' } };
+    }
+    if (sub === 'ability' && rest.length === 1 && tab === 'profile') {
+      return { tab, sub: { kind: 'ability' } };
     }
     if (sub === 'admin' && rest.length === 1 && tab === 'profile') {
       return { tab, sub: { kind: 'admin' } };
@@ -270,6 +276,8 @@ export function toHash(state: NavState): string {
       return sub.slug ? `#/content/blog/${encodeSegment(sub.slug)}` : '#/content/blog';
     case 'favorites':
       return '#/profile/favorites';
+    case 'ability':
+      return '#/profile/ability';
     case 'admin':
       return '#/profile/admin';
     default:
