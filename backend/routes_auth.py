@@ -36,6 +36,7 @@ import auth_db
 import auth_lockout
 import config
 import guest
+import ability
 import placement
 
 logger = logging.getLogger("linguatrek.auth")
@@ -277,8 +278,18 @@ def claim_guest(request: Request, response: Response):
         # 定位测会话存在数据库里（不在游客目录），与文件合并分开迁移；
         # 中途登录后仍能接着提交，不会因「归属不同」整卷作废。
         moved_placement = placement.claim_guest_sessions(guest_hash, user["id"])
+        try:
+            moved_ability = sum(
+                max(0, int(value or 0))
+                for value in ability.claim_guest(guest_hash, user["id"]).values()
+            )
+        except ability.AbilityError:
+            # 能力表未迁移（老库）不应阻断游客目录认领；下次迁移后可再认领。
+            moved_ability = 0
         result = guest.claim_guest_data(guest_hash, user["id"])
         result.setdefault("merged", {})["placement"] = moved_placement
+        # 能力新表的认领是兼容扩展，不改变旧响应字段（merged 仍只列旧四类）。
+        _ = moved_ability
     except guest.GuestClaimError:
         # 游客目录保留（合并是幂等的，下次登录可重试）；不删 Cookie。
         logger.exception("游客数据认领失败：guest=%s user=%s", guest_hash[:12], user["id"])

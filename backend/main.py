@@ -62,6 +62,7 @@ import events
 import guest
 import observability
 import ratelimit
+import routes_ability
 import routes_account
 import routes_admin
 import routes_auth
@@ -102,11 +103,19 @@ def _is_api_path(path: str) -> bool:
 
 
 _PUBLIC_API_PREFIXES = ("/api/blog/", "/api/library/")
+_PUBLIC_API_EXACT = frozenset(
+    {
+        "/api/blog",
+        "/api/library",
+        # can-do 是仓库内只读内容（A1–C1 × 4 技能），公开且不签发游客 Cookie。
+        "/api/ability/can-do",
+    }
+)
 
 
 def _is_public_api_path(path: str) -> bool:
-    """公开只读端点：不需要登录，也不创建游客身份（/api/blog/*、/api/library/*）。"""
-    if path in ("/api/blog", "/api/library"):
+    """公开只读端点：不需要登录，也不创建游客身份（博客/资源库/can-do）。"""
+    if path in _PUBLIC_API_EXACT:
         return True
     return any(path.startswith(prefix) for prefix in _PUBLIC_API_PREFIXES)
 
@@ -251,6 +260,7 @@ app.include_router(routes_review.router)
 app.include_router(routes_quiz.router)
 app.include_router(routes_events.router)
 app.include_router(routes_placement.router)
+app.include_router(routes_ability.router)
 app.include_router(routes_exam.router)
 app.include_router(routes_discover.router)
 app.include_router(routes_reading.router)

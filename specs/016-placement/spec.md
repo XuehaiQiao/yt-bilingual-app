@@ -2,6 +2,16 @@
 
 **状态：** 已实现（2026-11-15，M4 后端；前端 12 分钟流程/结果页下一轮）｜ **对应代码：** `backend/placement.py`、`backend/routes_placement.py`、`backend/migrations/versions/0009_placement.py`、`content/placement/`、`backend/tests/test_placement.py`
 
+> **M1 修订（2026-11-17，已签收；实现见 [specs/025](../025-ability/spec.md)）**：
+> 评分从 `heuristic.v1` 的手调加权阈值升级为 **1PL/Rasch + EAP**
+> （`calibration_version='rasch.eap.v1'`）；只交付**词汇识别区间**。
+> **阅读是有意的破坏性降级**：`POST /submit` 不再返回
+> `breakdown.reading.band`，强弱项/建议不再含阅读维度；旧
+> `GET /profile` 的 `reading_estimate` 置 `null` + `readingStatus:
+> 'insufficient'`，并返回 `deprecated/replacedBy`。定位测 `answers[]`
+> 新增可选 `elapsedMs`，落 `placement_answers.elapsed_ms`。本条修订与
+> 契约 A1–A3、A6 一起构成发版闸门。
+
 > 计划书 §13.2 M4 / §4.3 的第一块后端：新用户用 12 分钟完成一次定位测，
 > 得到 **CEFR 区间 + 置信度 + 强弱项 + 1 条建议**，保存为能力画像；老用户可
 > 重测。本规格只冻结**后端契约**：题库结构、抽题、评分、区间、伪词检测、
@@ -16,8 +26,9 @@
   客户端计时上限 12 分钟（服务端记录用时，不强制中断）。
 - **G2 只给区间**：输出 CEFR 点估计 ±1 带（A1/C1 处截断）+ 置信度，
   **不显示小数等级、不显示考试分数**。
-- **G3 有强弱项与建议**：词汇识别 / 阅读理解两个维度分别估带，给出
-  `strengths`、`weaknesses` 与**恰好 1 条**规则建议（不调用模型）。
+- **G3 有强弱项与建议**：~~词汇识别 / 阅读理解两个维度分别估带~~
+  **M1 修订**：只由词汇识别给带；阅读 5 题证据不足，不参与强弱项，
+  `strengths/weaknesses/advice` 不再含阅读维度（下一版 20 题阅读小测）。
 - **G4 能识破猜测**：10% 伪词（不存在的词，选项全是编造释义）混入词汇题；
   选任一选项 = 过度声称，压低置信度；选「不认识/跳过」= 诚实。
 - **G5 保存画像**：`user_profiles` 每个归属键一行，保存区间、置信度、词汇量
@@ -301,3 +312,36 @@ confidence   = clamp(0.10, 0.85, base - penalty)
    字段预留。
 5. **游客认领**：登录后游客定位结果不会自动迁到账号（`guest_hash` 已预留）。
 6. **反作弊有限**：只做伪词过度声称检测与用时合理性折减，不做切屏/复制检测。
+
+
+---
+
+## M1 修订记录（2026-11-17，阅读降级签收）
+
+本文件前半部分描述 M4 的**历史实现**（`heuristic.v1` 加权评分）；M1 之后以
+[specs/025](../025-ability/spec.md) 与下列修订为准。
+
+### 变更清单
+
+| # | 变更 | 旧行为 | M1 行为 | 验收 |
+|---|---|---|---|---|
+| 1 | 估计器 | 加权正确率 → 手调阈值 | 1PL/Rasch + EAP（先验 N(0,1.2)、网格 −4…+4、c=0.15） | 估计器 6 测；全对/全错不发散 |
+| 2 | CEFR 来源 | `overall`（词汇+阅读加权） | **仅词汇识别**；输出带限制 A1–C1 | `submit.cefr` 与词汇带一致 |
+| 3 | 阅读带 | `breakdown.reading.band` | 字段不存在；`status='insufficient'`、`items=5` | A1 |
+| 4 | 强弱项/建议 | 含 reading 维度 | 只由词汇生成；阅读只提「下一版 20 题小测」 | A2 |
+| 5 | 旧 profile | `readingEstimate` 有值 + `confidence` | `readingEstimate=null`、`readingStatus='insufficient'`、`cefr` 取词汇带、`deprecated/replacedBy` | A3/A6 |
+| 6 | 用时 | 只有会话总时长 | 每题可选 `elapsedMs` → `placement_answers.elapsed_ms`（旧行 NULL） | 迁移 8；隐私 2 |
+| 7 | 新表 | 只有 `user_profiles` 快照 | `user_skill_profiles` + `skill_evidence` + `assessment_sessions`；`user_profiles` 保留为 legacy | 迁移 0014/0015 |
+| 8 | 状态 | `confidence` 混精度与可信度 | vocabulary=`uncalibrated`；reading=`insufficient`；写作=`self_report`（`cefr=null`）；`measured` 不可达 | A4/A5/A8 |
+
+### 签收
+
+- **产品签收**：接受上述第 3/5 项的破坏性降级——用户不再看到「阅读 B1」
+  这类无证据的带；这是 M1 的预期行为，不是回归。
+- **旧前端兼容**：`/api/placement/*` 字段名不变；`PlacementScreen.tsx`
+  对 `breakdown.reading.band` 的读取会得到 `undefined`，需在后续前端轮次
+  改为灰卡「阅读：证据不足（5 题）」。本修订只负责后端契约。
+- **回滚**：`alembic downgrade 0013_user_profile` 删除 0014/0015 新表与
+  `elapsed_ms`，旧 `user_profiles` 数据保留；旧端点行为回到 M4。
+- **测试**：`tests/test_placement.py` 21、`tests/test_ability_contract.py` 8、
+  `tests/test_ability_migrations.py` 12，以及全量 608 绿。

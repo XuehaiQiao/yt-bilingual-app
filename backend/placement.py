@@ -44,6 +44,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import Mapping, Sequence
 
+import ability
+import assessment
 import config
 
 logger = logging.getLogger(__name__)
@@ -96,7 +98,9 @@ VOCAB_ESTIMATES: dict[str, int] = {
 # 高一带约 40%、更高带接近随机」的离线估计定，**不是 IRT/CAT 标定结果**；
 # 计划书要求的 CAT 离线模拟（1 人日）与教研审校后再调。改阈值请同时改
 # specs/016 与 tests/test_placement.py 的区间断言。
-CALIBRATION = "heuristic.v1"
+CALIBRATION = assessment.CALIBRATION_VERSION
+# 固定 24 题卷只出 A1–C1 题目；输出带也限制在 A1–C1，避免全对被报成 C2。
+OUTPUT_BANDS: tuple[str, ...] = ("A1", "A2", "B1", "B2", "C1")
 OVERALL_THRESHOLDS: dict[str, float] = {
     "A1": 0.00,
     "A2": 0.27,
@@ -111,16 +115,8 @@ VOCAB_THRESHOLDS: dict[str, float] = {
     "B2": 0.60,
     "C1": 0.79,
 }
-# 阅读只有 5 题（A2/B1/B1/B2/C1 各 0–2 题），加权总分与词汇不同，单独校准。
-READING_THRESHOLDS: dict[str, float] = {
-    "A1": 0.00,
-    "A2": 0.26,
-    "B1": 0.50,
-    "B2": 0.72,
-    "C1": 0.90,
-}
 
-MEASURED_DOMAINS: tuple[str, ...] = ("vocab", "reading")
+MEASURED_DOMAINS: tuple[str, ...] = ("vocab",)
 # 本测不测听/说/写：听力是行为弱测（不在这 12 分钟里），说/写明确「未测」。
 NOT_MEASURED_DOMAINS: tuple[str, ...] = ("listening", "speaking", "writing")
 
@@ -447,52 +443,42 @@ def _confidence_label(value: float) -> tuple[str, str]:
     return "low", "低"
 
 
-def _advice(
-    point: str,
-    weak_domains: Sequence[str],
-    *,
-    suspicion: float,
-    vocab_band: str,
-    reading_band: str,
-) -> str:
-    """规则生成 1 条建议（不调用模型；计划书要求「1 条具体建议」）。"""
-    if suspicion >= 0.5:
-        return (
-            "伪词题答得偏多，可能高估了自己的词汇量：不确定就选「不认识」，"
-            "休息一下再测一次会比这次更可信。"
-        )
+def _advice(band: str | None, *, suspicion: float) -> str:
+    """规则生成 1 条建议（与能力档案 shim 共用同一段文案，保证两页一致）。"""
+    return ability.advice_for_vocabulary(band, suspicion=suspicion)
 
-    target = CEFR_BANDS[min(len(CEFR_BANDS) - 1, BAND_INDEX[point] + 1)]
-    if "reading" in weak_domains:
-        reading_target = CEFR_BANDS[
-            min(len(CEFR_BANDS) - 1, BAND_INDEX[reading_band] + 1)
-        ]
-        return (
-            f"阅读是当前短板：每天精读一段 {reading_target} 难度的短文，"
-            "先用自己的话概括主旨，再查生词。"
-        )
-    if "vocab" in weak_domains:
-        vocab_target = CEFR_BANDS[
-            min(len(CEFR_BANDS) - 1, BAND_INDEX[vocab_band] + 1)
-        ]
-        return (
-            f"词汇是当前短板：每天复习 20 张生词卡，优先掌握 {vocab_target} "
-            "高频词在真实句子里的用法。"
-        )
-    if BAND_INDEX[point] <= 1:
-        return (
-            "先从 A1–A2 的慢速短视频起步：每天 8 分钟，开英文字幕跟读，"
-            "把反复出现的词加进复习队列。"
-        )
-    if BAND_INDEX[point] <= 3:
-        return (
-            f"词汇与阅读都在 {point}–{target} 附近，暂无明显短板：挑 10 分钟以上的"
-            "真实视频精看，每周围绕一个主题做 3 次精读。"
-        )
-    return (
-        "区间已到 C1：尝试无字幕或纯音频材料，每周做一次 2 分钟复述，"
-        "用「能不能讲清楚」检验理解而不是靠选择题。"
+
+def _validity_flags(
+    real_items: Sequence[Item],
+    chosen: Mapping[str, int],
+    *,
+    duration_ms: int,
+    suspicion: float,
+    elapsed_ms: Mapping[str, int | None],
+) -> list[str]:
+    """作答可信度标记（只影响 validity，不进 θ；计划书 §5.8/§5.10）。"""
+    flags: list[str] = []
+    flags.append("pseudo_overclaim" if suspicion > 1.0 / 3.0 else "pseudo_ok")
+    if duration_ms < 60_000:
+        flags.append("duration_short")
+    elif duration_ms > 20 * 60 * 1000:
+        flags.append("duration_long")
+    else:
+        flags.append("duration_ok")
+    answered_real = sum(
+        1 for item in real_items if int(chosen.get(item.id, UNKNOWN_INDEX)) >= 0
     )
+    ratio = answered_real / len(real_items) if real_items else 0.0
+    flags.append("completion_ok" if ratio >= 0.6 else "completion_low")
+    timed = [
+        value
+        for item in real_items
+        for value in [elapsed_ms.get(item.id)]
+        if isinstance(value, int) and value >= 0
+    ]
+    if timed and sum(1 for value in timed if value < 2_000) > len(timed) / 2:
+        flags.append("answers_too_fast")
+    return flags
 
 
 def score_session(
@@ -501,12 +487,17 @@ def score_session(
     *,
     duration_ms: int,
     sample_size: int,
+    elapsed_ms: Mapping[str, int | None] | None = None,
 ) -> dict:
     """给一份卷面与选择打分，返回可直接落库/返回的结果。
 
     ``chosen`` 以 **Item.id（银行 id）** 为键，值 -1 表示不认识/跳过。
     伪词不参与得分，只统计 claimed（选任一选项 = 过度声称）。
+
+    M1 起 CEFR 只从**词汇识别**用 Rasch/EAP 估计（计划书 §5.1）：阅读 5 题
+    证据不足，不给带；强弱项/建议也不再含 reading 维度。
     """
+    elapsed_by_item = elapsed_ms or {}
     vocab_items = [item for item in served if item.type == "vocab"]
     reading_items = [item for item in served if item.type == "reading"]
     pseudo_items = [item for item in served if item.type == "pseudo"]
@@ -522,70 +513,75 @@ def score_session(
     pseudo_total = len(pseudo_items)
     suspicion = round(claimed / pseudo_total, 4) if pseudo_total else 0.0
 
-    vocab_band = _band_from_score(vocab["weightedScore"], VOCAB_THRESHOLDS)
-    reading_band = _band_from_score(reading["weightedScore"], READING_THRESHOLDS)
-    point = _band_from_score(overall["weightedScore"], OVERALL_THRESHOLDS)
-    point_index = BAND_INDEX[point]
-    low = CEFR_BANDS[max(0, point_index - 1)]
-    high = CEFR_BANDS[min(len(CEFR_BANDS) - 1, point_index + 1)]
+    # 词汇识别 → Rasch/EAP；输出带限制在 A1–C1（本题库只有这 5 个带）。
+    vocab_pairs = [
+        (item.band, int(chosen.get(item.id, UNKNOWN_INDEX)) == item.answer_index)
+        for item in vocab_items
+        if item.answer_index is not None
+    ]
+    calibration = assessment.estimate(
+        vocab_pairs, bands=OUTPUT_BANDS, compute_vocabulary=True
+    )
+    band = calibration["band"]
+    interval = calibration["interval"]
+    vocab_estimate = calibration["vocabulary"]
+    precision = calibration["precision"]
     cefr = {
-        "point": point,
-        "low": low,
-        "high": high,
-        "label": f"{low}–{high}",
+        "point": band,
+        "low": interval["low"],
+        "high": interval["high"],
+        "label": interval["label"],
     }
 
-    domain_bands = {"vocab": vocab_band, "reading": reading_band}
-    domain_labels = {"vocab": "词汇识别", "reading": "阅读理解"}
-    strengths: list[str] = []
-    weaknesses: list[str] = []
-    weak_domains: list[str] = []
-    for domain in MEASURED_DOMAINS:
-        band = domain_bands[domain]
-        label = domain_labels[domain]
-        if BAND_INDEX[band] >= point_index:
-            strengths.append(f"{label}（{band}）")
-        else:
-            weaknesses.append(f"{label}（{band}）")
-            weak_domains.append(domain)
-    if not strengths:
-        # 两个维度都低于点估计时，把相对较高的那个算「相对强项」，并从弱项里
-        # 移除，避免同一个维度同时出现在 strengths 和 weaknesses。
-        strongest = max(MEASURED_DOMAINS, key=lambda d: BAND_INDEX[domain_bands[d]])
-        strongest_label = domain_labels[strongest]
-        strengths.append(f"相对较强：{strongest_label}（{domain_bands[strongest]}）")
-        weaknesses = [
-            item for item in weaknesses if not item.startswith(strongest_label)
-        ]
-        weak_domains = [domain for domain in weak_domains if domain != strongest]
-
-    advice = _advice(
-        point,
-        weak_domains,
+    flags = _validity_flags(
+        real_items,
+        chosen,
+        duration_ms=duration_ms,
         suspicion=suspicion,
-        vocab_band=vocab_band,
-        reading_band=reading_band,
+        elapsed_ms=elapsed_by_item,
     )
-
-    answered_real = sum(1 for item in real_items if int(chosen.get(item.id, -1)) >= 0)
-    answered_all = sum(1 for item in served if int(chosen.get(item.id, -1)) >= 0)
-    completion = answered_real / len(real_items) if real_items else 0.0
-    base = 0.30 + 0.40 * completion + 0.15 * _duration_factor(duration_ms)
-    # 伪词过度声称惩罚：1/3 以内不罚，100% 声称罚 0.45。
-    penalty = 0.45 * max(0.0, suspicion - 1.0 / 3.0) / (2.0 / 3.0)
-    confidence = round(min(0.85, max(0.10, base - penalty)), 2)
+    validity = {"label": assessment.validity_label(flags), "flags": flags}
+    confidence = round(
+        min(
+            float(precision["value"]),
+            assessment.validity_value(validity["label"]),
+        ),
+        4,
+    )
     confidence_label, confidence_label_zh = _confidence_label(confidence)
     preliminary = sample_size < PRELIMINARY_SAMPLE_THRESHOLD
 
+    strengths = [f"词汇识别（{band}）"] if band else []
+    weaknesses: list[str] = []
+    advice = _advice(band, suspicion=suspicion)
+    answered_real = sum(1 for item in real_items if int(chosen.get(item.id, -1)) >= 0)
+    answered_all = sum(1 for item in served if int(chosen.get(item.id, -1)) >= 0)
+    completion = round(answered_real / len(real_items), 4) if real_items else 0.0
+
     breakdown = {
-        "version": "placement.v1",
+        "version": "placement.v2",
         "calibration": CALIBRATION,
+        "calibrationVersion": CALIBRATION,
         "vocab": {
             **vocab,
-            "band": vocab_band,
-            "estimate": VOCAB_ESTIMATES[vocab_band],
+            "band": band,
+            "theta": calibration["theta"],
+            "se": calibration["se"],
+            "ci95": calibration["ci95"],
+            "ci80": calibration["ci80"],
+            "interval": interval,
+            "bandPosterior": calibration["bandPosterior"],
+            "estimate": vocab_estimate,
+            "precision": precision,
         },
-        "reading": {**reading, "band": reading_band},
+        # 阅读：只留原始统计与「证据不足」状态，**不出现 band**（契约 A1）。
+        "reading": {
+            **reading,
+            "status": "insufficient",
+            "items": len(reading_items),
+            "method": "reading.5item.v1",
+            "note": "题量少，不足以单独评级；下一版 20 题小测。",
+        },
         "pseudo": {
             "total": pseudo_total,
             "claimed": claimed,
@@ -595,7 +591,10 @@ def score_session(
         "overall": overall,
         "answered": answered_all,
         "skipped": len(served) - answered_all,
+        "completionRatio": completion,
         "durationMs": int(duration_ms),
+        "precision": precision,
+        "validity": validity,
         "strengths": strengths,
         "weaknesses": weaknesses,
         "advice": advice,
@@ -616,6 +615,20 @@ def score_session(
         "preliminary": preliminary,
         "sampleSize": int(sample_size),
         "durationMs": int(duration_ms),
+        "calibration": {
+            "version": CALIBRATION,
+            "theta": calibration["theta"],
+            "se": calibration["se"],
+            "ci95": calibration["ci95"],
+            "ci80": calibration["ci80"],
+            "band": band,
+            "bandPosterior": calibration["bandPosterior"],
+            "interval": interval,
+            "precision": precision,
+            "validity": validity,
+            "confidence": confidence,
+            "vocabulary": vocab_estimate,
+        },
         "breakdown": breakdown,
         "disclaimer": DISCLAIMER,
     }
@@ -780,6 +793,10 @@ def start(identity: str, guest_hash: str | None = None, *, now: int | None = Non
     conn = _connect()
     try:
         _require_tables(conn)
+        try:
+            ability.require_tables(conn)
+        except ability.AbilityUnavailable as exc:
+            raise PlacementUnavailable(str(exc)) from exc
         row = _find_active(conn, identity)
         resumed = row is not None
         if row is None:
@@ -845,14 +862,18 @@ def start(identity: str, guest_hash: str | None = None, *, now: int | None = Non
         conn.close()
 
 
-def _normalize_answers(answers) -> dict[str, int]:
-    """校验并规范化 ``[{itemId, chosenIndex}]`` → {servedId: -1..3}。"""
+def _normalize_answers(answers) -> dict[str, dict]:
+    """校验并规范化 ``[{itemId, chosenIndex, elapsedMs?}]``。
+
+    返回 ``{servedId: {"chosenIndex": -1..3, "elapsedMs": int|None}}``。
+    ``elapsedMs`` 缺省为 None（旧客户端/批量写），不因此惩罚该题。
+    """
     if not isinstance(answers, (list, tuple)):
         raise PlacementInvalid("answers 必须是数组。")
     if len(answers) > SERVED_TOTAL:
         raise PlacementInvalid(f"answers 最多 {SERVED_TOTAL} 条。")
 
-    chosen: dict[str, int] = {}
+    normalized: dict[str, dict] = {}
     for index, raw in enumerate(answers):
         if not isinstance(raw, dict):
             raise PlacementInvalid(f"answers[{index}] 必须是对象。")
@@ -860,7 +881,7 @@ def _normalize_answers(answers) -> dict[str, int]:
         if not isinstance(item_id, str) or not item_id.strip():
             raise PlacementInvalid(f"answers[{index}] 缺少 itemId。")
         item_id = item_id.strip()
-        if item_id in chosen:
+        if item_id in normalized:
             raise PlacementInvalid(f"answers[{index}]：itemId 重复（{item_id}）。")
 
         value = raw.get("chosenIndex", raw.get("chosen_index"))
@@ -874,8 +895,20 @@ def _normalize_answers(answers) -> dict[str, int]:
             raise PlacementInvalid(
                 f"answers[{index}]：chosenIndex 必须在 -1–3（-1 = 不认识）。"
             )
-        chosen[item_id] = value
-    return chosen
+
+        elapsed = raw.get("elapsedMs", raw.get("elapsed_ms"))
+        if elapsed is None:
+            elapsed = None
+        elif isinstance(elapsed, bool) or not isinstance(elapsed, int):
+            raise PlacementInvalid(
+                f"answers[{index}]：elapsedMs 必须是整数毫秒或省略。"
+            )
+        elif elapsed < 0 or elapsed > MAX_DURATION_MS:
+            raise PlacementInvalid(
+                f"answers[{index}]：elapsedMs 超出合理范围。"
+            )
+        normalized[item_id] = {"chosenIndex": value, "elapsedMs": elapsed}
+    return normalized
 
 
 def _normalize_duration(
@@ -916,6 +949,10 @@ def submit(
     conn = _connect()
     try:
         _require_tables(conn)
+        try:
+            ability.require_tables(conn)
+        except ability.AbilityUnavailable as exc:
+            raise PlacementUnavailable(str(exc)) from exc
         row = _load_row(conn, session_id, identity)
         if row is None:
             raise PlacementNotFound("定位测会话不存在或不属于当前用户。")
@@ -933,7 +970,12 @@ def submit(
             raise PlacementInvalid(f"未知 itemId：{unknown[0]}（不在本次卷面中）。")
 
         chosen_by_bank = {
-            served_by_id[item_id].id: value for item_id, value in provided.items()
+            served_by_id[item_id].id: value["chosenIndex"]
+            for item_id, value in provided.items()
+        }
+        elapsed_by_bank = {
+            served_by_id[item_id].id: value["elapsedMs"]
+            for item_id, value in provided.items()
         }
         items = list(served_by_id.values())
         sample_size = _predicted_sample_size(conn, identity)
@@ -942,6 +984,7 @@ def submit(
             chosen_by_bank,
             duration_ms=duration,
             sample_size=sample_size,
+            elapsed_ms=elapsed_by_bank,
         )
         submitted_at = stamp
         stored = json.dumps(result, ensure_ascii=False, sort_keys=True)
@@ -958,8 +1001,8 @@ def submit(
                     conn.execute(
                         "INSERT INTO placement_answers "
                         "(session_id, item_id, item_type, chosen_index, correct, "
-                        "difficulty_band, answered_at) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        "difficulty_band, answered_at, elapsed_ms) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                         (
                             session_id,
                             item.id,
@@ -968,6 +1011,7 @@ def submit(
                             correct,
                             item.band,
                             submitted_at,
+                            elapsed_by_bank.get(item.id),
                         ),
                     )
                 cursor = conn.execute(
@@ -990,6 +1034,16 @@ def submit(
                         "定位测会话状态已变化（可能已在另一处提交），请刷新结果。"
                     )
                 _upsert_profile(conn, identity, result, submitted_at)
+                ability.record_placement_result(
+                    conn,
+                    identity,
+                    session_id,
+                    items,
+                    chosen_by_bank,
+                    elapsed_by_bank,
+                    result,
+                    stamp=submitted_at,
+                )
         except sqlite3.IntegrityError:
             # 并发重复提交：另一个请求已写入，回滚本次事务并返回首次结果。
             row = _load_row(conn, session_id, identity)
@@ -1033,8 +1087,8 @@ def _upsert_profile(
             cefr["label"],
             cefr["low"],
             cefr["high"],
-            int(breakdown["vocab"]["estimate"]),
-            breakdown["reading"]["band"],
+            int(breakdown["vocab"]["estimate"]["point"]),
+            None,
             float(result["confidence"]),
             float(result["pseudoWordSuspicion"]),
             updated_at,
@@ -1042,58 +1096,66 @@ def _upsert_profile(
     )
 
 
-def _latest_breakdown(conn: sqlite3.Connection, identity: str) -> dict:
-    """最近一次已完成会话的 breakdown（给画像补强弱项/建议）。"""
-    row = conn.execute(
-        "SELECT breakdown FROM placement_sessions "
-        "WHERE user_id = ? AND status = 'submitted' "
-        "ORDER BY submitted_at DESC, rowid DESC LIMIT 1",
-        (identity,),
-    ).fetchone()
-    if row is None or not row["breakdown"]:
-        return {}
-    try:
-        stored = json.loads(row["breakdown"])
-    except (TypeError, ValueError):
-        return {}
+def _sanitize_stored_result(
+    stored: dict, row: sqlite3.Row
+) -> dict:
+    """把旧版（或新旧混合）结果修成 M1 契约：阅读无带、建议不含阅读判断。
+
+    用户可能重放一个 M1 之前提交的旧会话；数据库里的 JSON 仍带
+    ``breakdown.reading.band`` 与「阅读短板」建议。这里在响应层做一次
+    有意的破坏性降级，保证任何用户可见 payload 都不再出现阅读带（A1/A2）。
+    """
     if not isinstance(stored, dict):
-        return {}
+        stored = {}
     breakdown = stored.get("breakdown")
-    return breakdown if isinstance(breakdown, dict) else {}
+    if not isinstance(breakdown, dict):
+        breakdown = {}
+        stored["breakdown"] = breakdown
 
+    reading = breakdown.get("reading")
+    if isinstance(reading, dict) and "band" in reading:
+        reading.pop("band", None)
+    if not isinstance(reading, dict):
+        breakdown["reading"] = {
+            "total": SERVED_READING,
+            "answered": 0,
+            "correct": 0,
+            "accuracy": 0.0,
+            "weightedScore": 0.0,
+            "bands": {},
+        }
+        reading = breakdown["reading"]
+    reading["status"] = "insufficient"
+    reading["items"] = int(reading.get("total") or SERVED_READING)
+    reading["method"] = "reading.5item.v1"
+    reading["note"] = "题量少，不足以单独评级；下一版 20 题小测。"
 
-def _profile_payload(conn: sqlite3.Connection, identity: str) -> dict | None:
-    row = conn.execute(
-        "SELECT * FROM user_profiles WHERE user_id = ?", (identity,)
-    ).fetchone()
-    if row is None:
-        return None
+    vocab = breakdown.get("vocab")
+    band = vocab.get("band") if isinstance(vocab, dict) else None
+    if band not in BAND_INDEX:
+        label = row["cefr"] or "A1–A2"
+        low, _, high = label.partition("–")
+        band = high if high in BAND_INDEX else (low if low in BAND_INDEX else "A1")
+        if isinstance(vocab, dict):
+            vocab.setdefault("band", band)
+    interval = assessment.band_interval(band, bands=OUTPUT_BANDS)
+    stored["cefr"] = {"point": band, **interval}
 
-    sample_size = _sample_size(conn)
-    latest = _latest_breakdown(conn, identity)
-    confidence = float(row["confidence"])
-    confidence_label, confidence_label_zh = _confidence_label(confidence)
-    return {
-        "cefr": row["cefr"],
-        "levelBandLow": row["level_band_low"],
-        "levelBandHigh": row["level_band_high"],
-        "vocabEstimate": row["vocab_estimate"],
-        "readingEstimate": row["reading_estimate"],
-        "confidence": confidence,
-        "confidenceLabel": confidence_label,
-        "confidenceLabelZh": confidence_label_zh,
-        "pseudoWordSuspicion": float(row["pseudo_word_suspicion"]),
-        "updatedAt": int(row["updated_at"]),
-        "source": row["source"],
-        "strengths": latest.get("strengths", []),
-        "weaknesses": latest.get("weaknesses", []),
-        "advice": latest.get("advice"),
-        "measuredDomains": list(MEASURED_DOMAINS),
-        "notMeasured": list(NOT_MEASURED_DOMAINS),
-        "preliminary": sample_size < PRELIMINARY_SAMPLE_THRESHOLD,
-        "sampleSize": sample_size,
-        "disclaimer": DISCLAIMER,
-    }
+    breakdown["measuredDomains"] = list(MEASURED_DOMAINS)
+    breakdown["notMeasured"] = list(NOT_MEASURED_DOMAINS)
+    breakdown["strengths"] = [
+        item for item in breakdown.get("strengths", []) if "阅读" not in str(item)
+    ]
+    breakdown["weaknesses"] = [
+        item for item in breakdown.get("weaknesses", []) if "阅读" not in str(item)
+    ]
+    suspicion = stored.get("pseudoWordSuspicion")
+    try:
+        suspicion = float(suspicion or 0.0)
+    except (TypeError, ValueError):
+        suspicion = 0.0
+    breakdown["advice"] = _advice(band, suspicion=suspicion)
+    return stored
 
 
 def _result_from_row(
@@ -1106,26 +1168,18 @@ def _result_from_row(
         stored = {}
     if not isinstance(stored, dict):
         stored = {}
+    stored = _sanitize_stored_result(stored, row)
 
     payload = {
         "sessionId": row["id"],
         "status": row["status"],
         "reused": reused,
-        "profile": _profile_payload(conn, identity),
+        "profile": ability.legacy_profile(identity).get("profile"),
     }
     payload.update(stored)
     # 兼容极端情况：breakdown 损坏时至少给出库里已有的列，不让接口 500。
     payload.setdefault("score", row["score"])
     payload.setdefault("confidence", row["confidence"])
-    if "cefr" not in payload:
-        label = row["cefr"] or "A1–A2"
-        low, _, high = label.partition("–")
-        payload["cefr"] = {
-            "point": high or low,
-            "low": low,
-            "high": high or low,
-            "label": label,
-        }
     payload.setdefault("preliminary", True)
     payload.setdefault("sampleSize", _sample_size(conn))
     payload.setdefault("disclaimer", DISCLAIMER)
@@ -1133,26 +1187,15 @@ def _result_from_row(
 
 
 def get_profile(identity: str) -> dict:
-    """当前能力画像；没有画像是 ``profile: null``。"""
+    """旧 ``GET /api/placement/profile``；现为 ability 的兼容 shim。"""
     if not identity:
         raise PlacementInvalid("缺少定位测身份。")
-    conn = _connect()
     try:
-        _require_tables(conn)
-        profile = _profile_payload(conn, identity)
-        sample_size = _sample_size(conn)
-        return {
-            "profile": profile,
-            "preliminary": sample_size < PRELIMINARY_SAMPLE_THRESHOLD,
-            "sampleSize": sample_size,
-            "disclaimer": DISCLAIMER,
-        }
-    except sqlite3.OperationalError as exc:
-        raise PlacementUnavailable(
-            f"定位测暂时不可用：{exc}（先运行 alembic upgrade head）"
-        ) from exc
-    finally:
-        conn.close()
+        return ability.legacy_profile(identity)
+    except ability.AbilityInvalid as exc:
+        raise PlacementInvalid(str(exc)) from exc
+    except ability.AbilityUnavailable as exc:
+        raise PlacementUnavailable(str(exc)) from exc
 
 
 def reset(identity: str) -> dict:

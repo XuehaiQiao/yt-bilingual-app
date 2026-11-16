@@ -33,7 +33,7 @@ venv/bin/alembic stamp head              # 已是最新的库：只写版本号�
 - **基线幂等**：`0001` / `0002` 都用 inspector 判断表/索引是否已存在，所以对已有
   `users`/`sessions` 的旧库直接 `alembic upgrade head` 也安全（不重建、不动数据）。
 - **不要对旧库直接 `stamp head`**：会把 `0002`–`0012` 也标记成已应用，`learning_events`、
-  `ai_usage` / `ai_quota` / `target_lang` 列、`jobs` 表、复习三表、理解题三表、观看事件/周报快照、定位测三表、发现缓存表、读文章四表、考试练习两表永远不会被创建。旧库的正确姿势是 `stamp 0001_baseline` → `upgrade head`。
+  `ai_usage` / `ai_quota` / `target_lang` 列、`jobs` 表、复习三表、理解题三表、观看事件/周报快照、定位测三表、发现缓存表、读文章四表、考试练习两表、能力标定三表永远不会被创建。旧库的正确姿势是 `stamp 0001_baseline` → `upgrade head`。
 - **`downgrade` 会 DROP 表**（`0001` 的 down 会删 `users`/`sessions`），只用于空库/
   测试回滚，别在真实库上跑。
 - **`learning_events` 是 append-only**：迁移只建表和索引，不建触发器；保留期硬删
@@ -62,4 +62,12 @@ venv/bin/alembic stamp head              # 已是最新的库：只写版本号�
   `alreadyProcessed` 每次按当前用户重算）。不存字幕正文/视频文件。运行时不建表；
   表缺失时 `backend/discover.py` 的缓存读写降级为未命中/不写（只告警一次），发现
   请求仍可用；上线前需 `alembic upgrade head`。详见 [specs/017](../../specs/017-discover/spec.md)。
+- **能力标定 M1**：`0014_ability` 建 `user_skill_profiles`（每用户每技能当前值，
+  PK `(user_id, skill)`；`self_report` 行 CEFR 三列必须为 NULL）与 `skill_evidence`
+  （append-only，`UNIQUE(user_id, evidence_type, source_key)` 幂等），并加
+  `placement_answers.elapsed_ms`；同时把旧 `user_profiles.vocab_estimate` seed 成
+  vocabulary 行（`status='uncalibrated'`、confidence cap 0.85），`reading_estimate`
+  不建行。`0015_assessment_sessions` 建自评/后续测试会话（`client_request_id` 幂等、
+  同用户同类最多一个 `in_progress`）。M1 代码断言 `status='measured'` 不可达。
+  详见 [specs/025](../../specs/025-ability/spec.md)。
 - 新增表一律写在这里，**不要**再往 `auth_db.py` 的 `_init_schema` 里加 `CREATE TABLE`。

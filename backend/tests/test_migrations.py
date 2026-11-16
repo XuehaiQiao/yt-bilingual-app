@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0013_user_profile"
+HEAD = "0015_assessment_sessions"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -611,8 +611,11 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "correct",
         "difficulty_band",
         "answered_at",
+        "elapsed_ms",
     ]
     assert answers["id"]["pk"] == 1
+    # K21/F7：M1 才加的单题用时；旧行保持 NULL。
+    assert answers["elapsed_ms"]["notnull"] == 0
     for required in (
         "session_id", "item_id", "item_type", "chosen_index", "correct",
         "difficulty_band", "answered_at",

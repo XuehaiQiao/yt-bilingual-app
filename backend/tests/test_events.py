@@ -217,7 +217,7 @@ def test_schema_status_tracks_migration_state(tmp_path, monkeypatch):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
     migrated = events.schema_status()
     assert migrated["events_table"] is True
-    assert migrated["alembic_revision"] == "0013_user_profile"
+    assert migrated["alembic_revision"] == "0015_assessment_sessions"
     assert migrated["ready"] is True
 
 

@@ -1,0 +1,584 @@
+{
+  "version": "can_do.v1",
+  "copyright": "自写改写；参考 CEFR 描述框架与可观察条件，不复制 CoE 原文。",
+  "note": "通用描述，不是对当前用户的能力判定；阅读在 M1–M2 无用户特定判定。",
+  "levels": [
+    "A1",
+    "A2",
+    "B1",
+    "B2",
+    "C1"
+  ],
+  "skills": [
+    "listening",
+    "speaking",
+    "reading",
+    "writing"
+  ],
+  "basis": {
+    "cefr-aligned": "对齐 CEFR 能力描述的通用改写",
+    "product-operational": "产品化可观察条件（未校准）"
+  },
+  "items": [
+    {
+      "id": "listening-a1-1",
+      "level": "A1",
+      "skill": "listening",
+      "statement": {
+        "zh": "能听懂语速很慢、发音清晰的问候、数字与时间，并借助画面抓住关键词。",
+        "vi": "Có thể hiểu lời chào, con số và giờ nói rất chậm, rõ ràng, dựa vào hình ảnh để nắm từ khóa."
+      },
+      "observable": {
+        "zh": "听 30–60 秒、约 110 词/分钟的短音频，能说出至少 2 个关键信息（人物、时间或地点）。",
+        "vi": "Nghe đoạn âm thanh 30–60 giây, khoảng 110 từ/phút, nêu được ít nhất 2 thông tin chính (ai, khi nào hoặc ở đâu)."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "listening-a1-2",
+      "level": "A1",
+      "skill": "listening",
+      "statement": {
+        "zh": "能听出问候、道别、感谢等固定表达，不要求听懂每个词。",
+        "vi": "Có thể nhận ra các câu chào, tạm biệt, cảm ơn quen thuộc, không cần hiểu từng từ."
+      },
+      "observable": {
+        "zh": "听 6 句日常用语，能正确配对至少 4 句的场景图片。",
+        "vi": "Nghe 6 câu thường ngày, ghép đúng tranh tình huống cho ít nhất 4 câu."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "speaking-a1-1",
+      "level": "A1",
+      "skill": "speaking",
+      "statement": {
+        "zh": "能用简单句介绍姓名、来自哪里和喜好。",
+        "vi": "Có thể dùng câu đơn giới thiệu tên, quê quán và sở thích."
+      },
+      "observable": {
+        "zh": "30 秒自我介绍能说出 3 个要点，听者基本不需要重复。",
+        "vi": "Bài tự giới thiệu 30 giây nêu được 3 ý, người nghe hầu như không cần nhắc lại."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "speaking-a1-2",
+      "level": "A1",
+      "skill": "speaking",
+      "statement": {
+        "zh": "能就熟悉的话题回答一个简单问题，并用 yes/no 或短句补充。",
+        "vi": "Có thể trả lời một câu hỏi đơn giản về chủ đề quen thuộc, bổ sung bằng yes/no hoặc câu ngắn."
+      },
+      "observable": {
+        "zh": "回答 5 个日常问题，至少 4 个能被听者一次听懂。",
+        "vi": "Trả lời 5 câu hỏi thường ngày, ít nhất 4 câu người nghe hiểu ngay."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "reading-a1-1",
+      "level": "A1",
+      "skill": "reading",
+      "statement": {
+        "zh": "能读懂菜单、路标、表格和短消息里的姓名、价格、时间等具体信息。",
+        "vi": "Có thể đọc tên, giá, giờ trong thực đơn, biển chỉ dẫn, bảng biểu và tin nhắn ngắn."
+      },
+      "observable": {
+        "zh": "读 100–300 词、句子不超过 10 个词的短文，能找对 3 个具体信息。",
+        "vi": "Đọc đoạn 100–300 từ, câu không quá 10 từ, tìm đúng 3 thông tin cụ thể."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "reading-a1-2",
+      "level": "A1",
+      "skill": "reading",
+      "statement": {
+        "zh": "能借助图片和格式猜出通知或表格里最重要的一条信息。",
+        "vi": "Có thể dựa vào hình ảnh và bố cục để đoán thông tin quan trọng nhất trong thông báo hoặc bảng."
+      },
+      "observable": {
+        "zh": "看 1 张带文字的通知，能选出主旨对应的 1 句话。",
+        "vi": "Xem 1 thông báo có chữ, chọn được 1 câu ứng với ý chính."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "writing-a1-1",
+      "level": "A1",
+      "skill": "writing",
+      "statement": {
+        "zh": "能写 20–40 词的自我介绍或明信片，使用基本句型和 and/but 连接。",
+        "vi": "Có thể viết 20–40 từ tự giới thiệu hoặc bưu thiếp, dùng câu cơ bản và and/but."
+      },
+      "observable": {
+        "zh": "写 30 词左右，读者能一次读懂；基本句型错误不超过 2 处。",
+        "vi": "Viết khoảng 30 từ, người đọc hiểu ngay; không quá 2 lỗi cấu trúc cơ bản."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "writing-a1-2",
+      "level": "A1",
+      "skill": "writing",
+      "statement": {
+        "zh": "能填写姓名、地址、日期等个人信息，拼写大体正确。",
+        "vi": "Có thể điền tên, địa chỉ, ngày tháng và thông tin cá nhân, chính tả tương đối đúng."
+      },
+      "observable": {
+        "zh": "填 5 项表单信息，至少 4 项无需重写。",
+        "vi": "Điền 5 mục trong biểu mẫu, ít nhất 4 mục không cần viết lại."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "listening-a2-1",
+      "level": "A2",
+      "skill": "listening",
+      "statement": {
+        "zh": "能听懂购物、出行、天气等日常对话的大意，并抓住数字和地点。",
+        "vi": "Có thể hiểu ý chính hội thoại mua sắm, đi lại, thời tiết và nắm được con số, địa điểm."
+      },
+      "observable": {
+        "zh": "听 1–2 分钟、约 125 词/分钟的对话，能答对 3 个主要信息。",
+        "vi": "Nghe hội thoại 1–2 phút, khoảng 125 từ/phút, trả lời đúng 3 thông tin chính."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "listening-a2-2",
+      "level": "A2",
+      "skill": "listening",
+      "statement": {
+        "zh": "能听出一段通知里要做什么、什么时候做。",
+        "vi": "Có thể nghe ra trong thông báo cần làm gì và khi nào làm."
+      },
+      "observable": {
+        "zh": "听 3 条通知，至少 2 条能说出动作与时间。",
+        "vi": "Nghe 3 thông báo, ít nhất 2 thông báo nêu được hành động và thời gian."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "speaking-a2-1",
+      "level": "A2",
+      "skill": "speaking",
+      "statement": {
+        "zh": "能用 2–3 句完成点单、预约或问路。",
+        "vi": "Có thể nói 2–3 câu để gọi món, đặt lịch hoặc hỏi đường."
+      },
+      "observable": {
+        "zh": "在模拟场景中完成 1 个任务，关键信息没有遗漏。",
+        "vi": "Hoàn thành 1 nhiệm vụ trong tình huống mô phỏng, không thiếu thông tin chính."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "speaking-a2-2",
+      "level": "A2",
+      "skill": "speaking",
+      "statement": {
+        "zh": "能就日常生活做简短回答，允许停顿但能说下去。",
+        "vi": "Có thể trả lời ngắn về sinh hoạt hằng ngày, có thể ngừng nhưng vẫn nói tiếp được."
+      },
+      "observable": {
+        "zh": "回答 5 个熟悉问题，至少 3 个能连续说 2 句以上。",
+        "vi": "Trả lời 5 câu hỏi quen thuộc, ít nhất 3 câu nói được hơn 2 câu liên tiếp."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "reading-a2-1",
+      "level": "A2",
+      "skill": "reading",
+      "statement": {
+        "zh": "能读懂通知、行程和简单说明的主旨与关键细节。",
+        "vi": "Có thể hiểu ý chính và chi tiết quan trọng của thông báo, lịch trình và hướng dẫn đơn giản."
+      },
+      "observable": {
+        "zh": "读 150–400 词、句子不超过 12 个词的短文，主旨题与细节题各答对 1 题。",
+        "vi": "Đọc đoạn 150–400 từ, câu không quá 12 từ, trả lời đúng 1 câu ý chính và 1 câu chi tiết."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "reading-a2-2",
+      "level": "A2",
+      "skill": "reading",
+      "statement": {
+        "zh": "能按时间顺序理解一段行程安排，找出先后关系。",
+        "vi": "Có thể hiểu lịch trình theo trình tự thời gian và tìm ra quan hệ trước sau."
+      },
+      "observable": {
+        "zh": "读 1 份 5 步行程，能排出正确顺序。",
+        "vi": "Đọc lịch trình 5 bước, sắp xếp đúng thứ tự."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "writing-a2-1",
+      "level": "A2",
+      "skill": "writing",
+      "statement": {
+        "zh": "能写 50–80 词的留言或邮件，描述日常安排。",
+        "vi": "Có thể viết tin nhắn hoặc email 50–80 từ mô tả kế hoạch hằng ngày."
+      },
+      "observable": {
+        "zh": "读者能一次读懂时间、地点和请求；语法错误不影响理解。",
+        "vi": "Người đọc hiểu ngay thời gian, địa điểm và yêu cầu; lỗi ngữ pháp không cản trở hiểu."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "writing-a2-2",
+      "level": "A2",
+      "skill": "writing",
+      "statement": {
+        "zh": "能用连接词把原因和结果写清楚。",
+        "vi": "Có thể dùng từ nối để viết rõ nguyên nhân và kết quả."
+      },
+      "observable": {
+        "zh": "写 3 组因果句，至少 2 组使用 because/so 等连接词。",
+        "vi": "Viết 3 cặp câu nhân quả, ít nhất 2 cặp dùng because/so."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "listening-b1-1",
+      "level": "B1",
+      "skill": "listening",
+      "statement": {
+        "zh": "能听懂熟悉话题的对话或短视频，抓住主要观点和 2–3 个细节。",
+        "vi": "Có thể hiểu hội thoại hoặc video ngắn về chủ đề quen thuộc, nắm ý chính và 2–3 chi tiết."
+      },
+      "observable": {
+        "zh": "听 3–5 分钟、约 145 词/分钟的材料，能复述主旨并说出 2 个细节。",
+        "vi": "Nghe 3–5 phút, khoảng 145 từ/phút, kể lại ý chính và 2 chi tiết."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "listening-b1-2",
+      "level": "B1",
+      "skill": "listening",
+      "statement": {
+        "zh": "能听出说话人的态度是赞成、反对还是不确定。",
+        "vi": "Có thể nghe ra thái độ đồng ý, phản đối hay không chắc chắn của người nói."
+      },
+      "observable": {
+        "zh": "听 3 段短对话，至少 2 段能判断态度。",
+        "vi": "Nghe 3 đoạn hội thoại ngắn, ít nhất 2 đoạn xác định được thái độ."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "speaking-b1-1",
+      "level": "B1",
+      "skill": "speaking",
+      "statement": {
+        "zh": "能就熟悉话题连续说 1–2 分钟，用简单衔接词组织观点。",
+        "vi": "Có thể nói liên tục 1–2 phút về chủ đề quen thuộc, dùng từ nối đơn giản để tổ chức ý."
+      },
+      "observable": {
+        "zh": "1 分钟独白包含观点、2 个理由和 1 个例子。",
+        "vi": "Bài nói 1 phút gồm quan điểm, 2 lý do và 1 ví dụ."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "speaking-b1-2",
+      "level": "B1",
+      "skill": "speaking",
+      "statement": {
+        "zh": "能在对话中请求澄清或换一种说法。",
+        "vi": "Có thể yêu cầu làm rõ hoặc diễn đạt lại trong hội thoại."
+      },
+      "observable": {
+        "zh": "3 轮对话中至少使用 1 次澄清表达。",
+        "vi": "Trong 3 lượt hội thoại dùng ít nhất 1 lần cách nói yêu cầu làm rõ."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "reading-b1-1",
+      "level": "B1",
+      "skill": "reading",
+      "statement": {
+        "zh": "能读懂熟悉话题的 300–600 词文章，区分事实与观点。",
+        "vi": "Có thể đọc bài 300–600 từ về chủ đề quen thuộc, phân biệt sự thật và quan điểm."
+      },
+      "observable": {
+        "zh": "读 1 篇 B1 文章，事实题与观点题各答对 1 题。",
+        "vi": "Đọc 1 bài B1, trả lời đúng 1 câu sự thật và 1 câu quan điểm."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "reading-b1-2",
+      "level": "B1",
+      "skill": "reading",
+      "statement": {
+        "zh": "能根据上下文猜出生词的大致意思，不依赖逐词翻译。",
+        "vi": "Có thể đoán nghĩa từ mới theo ngữ cảnh, không dựa vào dịch từng từ."
+      },
+      "observable": {
+        "zh": "读 1 段含 3 个生词的文字，能选对 2 个词义。",
+        "vi": "Đọc 1 đoạn có 3 từ mới, chọn đúng nghĩa 2 từ."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "writing-b1-1",
+      "level": "B1",
+      "skill": "writing",
+      "statement": {
+        "zh": "能写 80–120 词的短文或邮件，结构基本完整并能说明理由。",
+        "vi": "Có thể viết đoạn 80–120 từ hoặc email, bố cục tương đối đầy đủ và nêu lý do."
+      },
+      "observable": {
+        "zh": "包含开头、主体、结尾；至少 2 个理由有展开。",
+        "vi": "Có mở đầu, thân, kết; ít nhất 2 lý do được triển khai."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "writing-b1-2",
+      "level": "B1",
+      "skill": "writing",
+      "statement": {
+        "zh": "能就一次经历写清楚时间线和感受。",
+        "vi": "Có thể viết rõ dòng thời gian và cảm nhận về một trải nghiệm."
+      },
+      "observable": {
+        "zh": "写 100 词左右，时间线清楚，读者能复述发生了什么。",
+        "vi": "Viết khoảng 100 từ, dòng thời gian rõ, người đọc kể lại được sự việc."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "listening-b2-1",
+      "level": "B2",
+      "skill": "listening",
+      "statement": {
+        "zh": "能听懂讲座、访谈等内容，理解论证结构和说话者态度。",
+        "vi": "Có thể hiểu bài giảng, phỏng vấn, nắm cấu trúc lập luận và thái độ người nói."
+      },
+      "observable": {
+        "zh": "听 5–10 分钟、约 165 词/分钟的材料，能指出主旨、2 个论据和态度。",
+        "vi": "Nghe 5–10 phút, khoảng 165 từ/phút, nêu được ý chính, 2 luận cứ và thái độ."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "listening-b2-2",
+      "level": "B2",
+      "skill": "listening",
+      "statement": {
+        "zh": "能区分同一话题下两种相反观点各自的关键理由。",
+        "vi": "Có thể phân biệt lý do chính của hai quan điểm trái ngược trong cùng chủ đề."
+      },
+      "observable": {
+        "zh": "听 1 段双方争论，能各写出 1 条理由。",
+        "vi": "Nghe 1 đoạn tranh luận, viết được 1 lý do cho mỗi bên."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "speaking-b2-1",
+      "level": "B2",
+      "skill": "speaking",
+      "statement": {
+        "zh": "能就广泛话题做 2–3 分钟表达，并较流利地参与讨论。",
+        "vi": "Có thể trình bày 2–3 phút về chủ đề rộng và tham gia thảo luận khá trôi chảy."
+      },
+      "observable": {
+        "zh": "2 分钟发言包含立场、2 个论据和 1 次让步。",
+        "vi": "Bài nói 2 phút gồm lập trường, 2 luận cứ và 1 lần nhượng bộ."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "speaking-b2-2",
+      "level": "B2",
+      "skill": "speaking",
+      "statement": {
+        "zh": "能在讨论中回应对方观点，而不是只背自己的稿子。",
+        "vi": "Có thể phản hồi ý kiến đối phương trong thảo luận, không chỉ đọc bài chuẩn bị."
+      },
+      "observable": {
+        "zh": "3 轮讨论中至少 2 轮回应了对方的具体观点。",
+        "vi": "Trong 3 lượt thảo luận, ít nhất 2 lượt phản hồi ý cụ thể của đối phương."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "reading-b2-1",
+      "level": "B2",
+      "skill": "reading",
+      "statement": {
+        "zh": "能读懂 600–1,000 词的评论、报告或新闻，理解论证与立场。",
+        "vi": "Có thể đọc bình luận, báo cáo hoặc tin tức 600–1,000 từ, hiểu lập luận và lập trường."
+      },
+      "observable": {
+        "zh": "读 1 篇 B2 文章，能概括作者立场并找出 2 条支撑。",
+        "vi": "Đọc 1 bài B2, tóm tắt lập trường tác giả và tìm 2 dẫn chứng."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "reading-b2-2",
+      "level": "B2",
+      "skill": "reading",
+      "statement": {
+        "zh": "能理解隐含态度、讽刺或委婉表达。",
+        "vi": "Có thể hiểu thái độ hàm ẩn, châm biếm hoặc cách nói giảm."
+      },
+      "observable": {
+        "zh": "读 3 句含言外之意的句子，至少答对 2 句。",
+        "vi": "Đọc 3 câu có ý hàm ẩn, trả lời đúng ít nhất 2 câu."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "writing-b2-1",
+      "level": "B2",
+      "skill": "writing",
+      "statement": {
+        "zh": "能写 120–180 词的议论文或报告，段落清晰、论证有支撑。",
+        "vi": "Có thể viết bài nghị luận hoặc báo cáo 120–180 từ, đoạn rõ ràng, lập luận có dẫn chứng."
+      },
+      "observable": {
+        "zh": "3 段结构完整，至少 2 段有例子或数据支撑。",
+        "vi": "3 đoạn đầy đủ, ít nhất 2 đoạn có ví dụ hoặc số liệu."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "writing-b2-2",
+      "level": "B2",
+      "skill": "writing",
+      "statement": {
+        "zh": "能根据读者调整语气，区分正式邮件与日常留言。",
+        "vi": "Có thể điều chỉnh giọng điệu theo người đọc, phân biệt email trang trọng và tin nhắn thường ngày."
+      },
+      "observable": {
+        "zh": "同一件事写 2 个版本，正式版与随意版各用对至少 2 个表达。",
+        "vi": "Viết 2 phiên bản cùng một việc, mỗi bản dùng đúng ít nhất 2 cách diễn đạt."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "listening-c1-1",
+      "level": "C1",
+      "skill": "listening",
+      "statement": {
+        "zh": "能听懂学术或专业内容，理解隐含态度与复杂论证。",
+        "vi": "Có thể hiểu nội dung học thuật hoặc chuyên môn, nắm thái độ hàm ẩn và lập luận phức tạp."
+      },
+      "observable": {
+        "zh": "听 10–20 分钟、约 185 词/分钟的材料，能梳理论证链并指出 1 处隐含态度。",
+        "vi": "Nghe 10–20 phút, khoảng 185 từ/phút, sắp xếp chuỗi lập luận và chỉ ra 1 thái độ hàm ẩn."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "listening-c1-2",
+      "level": "C1",
+      "skill": "listening",
+      "statement": {
+        "zh": "能在有口音、语速较快或背景噪声时仍抓住关键信息。",
+        "vi": "Có thể vẫn nắm thông tin chính khi có giọng địa phương, nói nhanh hoặc có tạp âm."
+      },
+      "observable": {
+        "zh": "听 1 段带口音的材料，关键信息答对率不低于 4/5。",
+        "vi": "Nghe 1 đoạn có giọng địa phương, trả lời đúng ít nhất 4/5 thông tin chính."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "speaking-c1-1",
+      "level": "C1",
+      "skill": "speaking",
+      "statement": {
+        "zh": "能就复杂话题做 3–5 分钟连贯表达，并调整语气与措辞。",
+        "vi": "Có thể trình bày liên tục 3–5 phút về chủ đề phức tạp, điều chỉnh giọng điệu và cách diễn đạt."
+      },
+      "observable": {
+        "zh": "3 分钟发言包含清晰结构、反方观点回应和恰当语气。",
+        "vi": "Bài nói 3 phút gồm cấu trúc rõ, phản hồi ý kiến trái chiều và giọng điệu phù hợp."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "speaking-c1-2",
+      "level": "C1",
+      "skill": "speaking",
+      "statement": {
+        "zh": "能在没有准备的情况下参与专业讨论并澄清细节。",
+        "vi": "Có thể tham gia thảo luận chuyên môn không chuẩn bị trước và làm rõ chi tiết."
+      },
+      "observable": {
+        "zh": "即兴讨论 3 轮，能提出 1 个澄清问题和 1 个有依据的反驳。",
+        "vi": "Thảo luận ngẫu hứng 3 lượt, nêu 1 câu hỏi làm rõ và 1 phản biện có căn cứ."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "reading-c1-1",
+      "level": "C1",
+      "skill": "reading",
+      "statement": {
+        "zh": "能读懂 900–1,500 词的学术或专业文章，理解复杂论证。",
+        "vi": "Có thể đọc bài học thuật hoặc chuyên môn 900–1,500 từ, hiểu lập luận phức tạp."
+      },
+      "observable": {
+        "zh": "读 1 篇 C1 文章，能概括论证结构并找出 3 处关键支撑。",
+        "vi": "Đọc 1 bài C1, tóm tắt cấu trúc lập luận và tìm 3 dẫn chứng chính."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "reading-c1-2",
+      "level": "C1",
+      "skill": "reading",
+      "statement": {
+        "zh": "能理解隐含态度、讽刺和作者未明说的前提。",
+        "vi": "Có thể hiểu thái độ hàm ẩn, châm biếm và tiền đề tác giả không nói rõ."
+      },
+      "observable": {
+        "zh": "读 1 段含讽刺的评论，能说出作者真实立场。",
+        "vi": "Đọc 1 đoạn bình luận châm biếm, nêu được lập trường thật của tác giả."
+      },
+      "basis": "cefr-aligned"
+    },
+    {
+      "id": "writing-c1-1",
+      "level": "C1",
+      "skill": "writing",
+      "statement": {
+        "zh": "能写 180–250 词的结构化文章，复杂句式与衔接手段得当。",
+        "vi": "Có thể viết bài có cấu trúc 180–250 từ, dùng câu phức và phương tiện liên kết phù hợp."
+      },
+      "observable": {
+        "zh": "4 段结构，至少 3 处使用复杂句或明确衔接。",
+        "vi": "Cấu trúc 4 đoạn, ít nhất 3 chỗ dùng câu phức hoặc liên kết rõ."
+      },
+      "basis": "product-operational"
+    },
+    {
+      "id": "writing-c1-2",
+      "level": "C1",
+      "skill": "writing",
+      "statement": {
+        "zh": "能改写同一观点以适配不同读者和用途。",
+        "vi": "Có thể viết lại cùng một quan điểm cho người đọc và mục đích khác nhau."
+      },
+      "observable": {
+        "zh": "同一观点写 2 个版本，论点不丢失且措辞明显不同。",
+        "vi": "Viết 2 phiên bản cùng quan điểm, không mất luận điểm và cách diễn đạt khác rõ."
+      },
+      "basis": "cefr-aligned"
+    }
+  ]
+}

@@ -31,6 +31,13 @@ PLACEMENT_DIR = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "placement"),
 )
 
+# 能力档案内容（M1 CEFR 标定，见 ability.py / specs/025）：can_do.json 与
+# self_assess.json 只读静态文件，随仓库分发；测试可指向 tmp 副本验证校验/503。
+ABILITY_DIR = os.environ.get(
+    "ABILITY_DIR",
+    os.path.join(_BACKEND_DIR, "..", "content", "ability"),
+)
+
 # 考试练习题库（V2，见 exam.py / specs/022）：content/exam/cet4.json 只读静态
 # 文件，随仓库分发；测试可指向 tmp 副本验证题库校验/503。
 EXAM_DIR = os.environ.get(

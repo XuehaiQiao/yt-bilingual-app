@@ -1,0 +1,208 @@
+{
+  "version": "self_assess.v1",
+  "scale": {
+    "0": {
+      "zh": "做不到",
+      "vi": "Không làm được"
+    },
+    "1": {
+      "zh": "很勉强",
+      "vi": "Rất gắng sức"
+    },
+    "2": {
+      "zh": "基本可以",
+      "vi": "Cơ bản được"
+    },
+    "3": {
+      "zh": "轻松",
+      "vi": "Dễ dàng"
+    },
+    "-1": {
+      "zh": "跳过",
+      "vi": "Bỏ qua"
+    }
+  },
+  "note": "自评只作先验，不改变能力带，也不进入任何合成。",
+  "items": [
+    {
+      "id": "self-listening-a1",
+      "level": "A1",
+      "skill": "listening",
+      "statement": {
+        "zh": "我能听懂很慢、很清楚的问候和数字。",
+        "vi": "Tôi có thể hiểu lời chào và con số nói rất chậm, rõ ràng."
+      }
+    },
+    {
+      "id": "self-listening-a2",
+      "level": "A2",
+      "skill": "listening",
+      "statement": {
+        "zh": "我能听懂日常购物或出行对话的大意。",
+        "vi": "Tôi có thể hiểu ý chính hội thoại mua sắm hoặc đi lại thường ngày."
+      }
+    },
+    {
+      "id": "self-listening-b1",
+      "level": "B1",
+      "skill": "listening",
+      "statement": {
+        "zh": "我能听懂熟悉话题的视频，抓住主要观点和几个细节。",
+        "vi": "Tôi có thể hiểu video về chủ đề quen thuộc, nắm ý chính và vài chi tiết."
+      }
+    },
+    {
+      "id": "self-listening-b2",
+      "level": "B2",
+      "skill": "listening",
+      "statement": {
+        "zh": "我能听懂访谈或讲座的论证和态度。",
+        "vi": "Tôi có thể hiểu lập luận và thái độ trong phỏng vấn hoặc bài giảng."
+      }
+    },
+    {
+      "id": "self-listening-c1",
+      "level": "C1",
+      "skill": "listening",
+      "statement": {
+        "zh": "我能听懂学术或专业内容里的隐含态度。",
+        "vi": "Tôi có thể hiểu thái độ hàm ẩn trong nội dung học thuật hoặc chuyên môn."
+      }
+    },
+    {
+      "id": "self-speaking-a1",
+      "level": "A1",
+      "skill": "speaking",
+      "statement": {
+        "zh": "我能用简单句介绍自己。",
+        "vi": "Tôi có thể giới thiệu bản thân bằng câu đơn."
+      }
+    },
+    {
+      "id": "self-speaking-a2",
+      "level": "A2",
+      "skill": "speaking",
+      "statement": {
+        "zh": "我能完成点单、预约或问路。",
+        "vi": "Tôi có thể gọi món, đặt lịch hoặc hỏi đường."
+      }
+    },
+    {
+      "id": "self-speaking-b1",
+      "level": "B1",
+      "skill": "speaking",
+      "statement": {
+        "zh": "我能就熟悉话题连续说 1 分钟。",
+        "vi": "Tôi có thể nói liên tục 1 phút về chủ đề quen thuộc."
+      }
+    },
+    {
+      "id": "self-speaking-b2",
+      "level": "B2",
+      "skill": "speaking",
+      "statement": {
+        "zh": "我能参与讨论并回应对方观点。",
+        "vi": "Tôi có thể tham gia thảo luận và phản hồi ý kiến đối phương."
+      }
+    },
+    {
+      "id": "self-speaking-c1",
+      "level": "C1",
+      "skill": "speaking",
+      "statement": {
+        "zh": "我能就复杂话题做 3 分钟连贯表达。",
+        "vi": "Tôi có thể trình bày liên tục 3 phút về chủ đề phức tạp."
+      }
+    },
+    {
+      "id": "self-reading-a1",
+      "level": "A1",
+      "skill": "reading",
+      "statement": {
+        "zh": "我能读懂菜单、路标和短消息里的具体信息。",
+        "vi": "Tôi có thể đọc thông tin cụ thể trong thực đơn, biển chỉ dẫn và tin nhắn ngắn."
+      }
+    },
+    {
+      "id": "self-reading-a2",
+      "level": "A2",
+      "skill": "reading",
+      "statement": {
+        "zh": "我能读懂通知和行程的主旨。",
+        "vi": "Tôi có thể hiểu ý chính của thông báo và lịch trình."
+      }
+    },
+    {
+      "id": "self-reading-b1",
+      "level": "B1",
+      "skill": "reading",
+      "statement": {
+        "zh": "我能读懂熟悉话题的短文并区分事实与观点。",
+        "vi": "Tôi có thể đọc bài ngắn về chủ đề quen thuộc và phân biệt sự thật với quan điểm."
+      }
+    },
+    {
+      "id": "self-reading-b2",
+      "level": "B2",
+      "skill": "reading",
+      "statement": {
+        "zh": "我能读懂评论或新闻里的论证与立场。",
+        "vi": "Tôi có thể hiểu lập luận và lập trường trong bình luận hoặc tin tức."
+      }
+    },
+    {
+      "id": "self-reading-c1",
+      "level": "C1",
+      "skill": "reading",
+      "statement": {
+        "zh": "我能读懂学术文章里的复杂论证和隐含态度。",
+        "vi": "Tôi có thể hiểu lập luận phức tạp và thái độ hàm ẩn trong bài học thuật."
+      }
+    },
+    {
+      "id": "self-writing-a1",
+      "level": "A1",
+      "skill": "writing",
+      "statement": {
+        "zh": "我能写 20–40 词的自我介绍。",
+        "vi": "Tôi có thể viết 20–40 từ tự giới thiệu."
+      }
+    },
+    {
+      "id": "self-writing-a2",
+      "level": "A2",
+      "skill": "writing",
+      "statement": {
+        "zh": "我能写留言或邮件说明日常安排。",
+        "vi": "Tôi có thể viết tin nhắn hoặc email nêu kế hoạch hằng ngày."
+      }
+    },
+    {
+      "id": "self-writing-b1",
+      "level": "B1",
+      "skill": "writing",
+      "statement": {
+        "zh": "我能写 80–120 词的短文并说明理由。",
+        "vi": "Tôi có thể viết đoạn 80–120 từ và nêu lý do."
+      }
+    },
+    {
+      "id": "self-writing-b2",
+      "level": "B2",
+      "skill": "writing",
+      "statement": {
+        "zh": "我能写段落清晰的议论文或报告。",
+        "vi": "Tôi có thể viết bài nghị luận hoặc báo cáo có đoạn rõ ràng."
+      }
+    },
+    {
+      "id": "self-writing-c1",
+      "level": "C1",
+      "skill": "writing",
+      "statement": {
+        "zh": "我能写 180–250 词的结构化文章。",
+        "vi": "Tôi có thể viết bài có cấu trúc 180–250 từ."
+      }
+    }
+  ]
+}

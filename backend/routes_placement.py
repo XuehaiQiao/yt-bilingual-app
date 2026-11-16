@@ -27,6 +27,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import AliasChoices, BaseModel, Field
 
+import ability
 import guest
 import placement
 
@@ -42,6 +43,10 @@ class AnswerIn(BaseModel):
     chosen_index: int | None = Field(
         default=None,
         validation_alias=AliasChoices("chosenIndex", "chosen_index"),
+    )
+    elapsed_ms: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("elapsedMs", "elapsed_ms"),
     )
 
 
@@ -83,6 +88,24 @@ def _guest_hash_any(request: Request) -> str | None:
     return None
 
 
+def _claim_ability_data(request: Request) -> None:
+    """登录用户带着游客 Cookie 时，把游客的能力新表数据幂等迁移过来。
+
+    迁移未跑/表缺失不应阻断定位测读取（老库仍可按旧表工作）；真正的写入
+    路径会在 submit 前显式要求 0014/0015。
+    """
+    user = getattr(request.state, "user", None)
+    if not user:
+        return
+    guest_hash = _guest_hash_any(request)
+    if not guest_hash:
+        return
+    try:
+        ability.claim_guest(guest_hash, user["id"])
+    except ability.AbilityError:
+        pass
+
+
 def _raise_placement_error(exc: Exception) -> None:
     """把 placement 的领域异常映射成 HTTP 错误。"""
     if isinstance(exc, placement.PlacementUnavailable):
@@ -105,6 +128,7 @@ def start_placement(request: Request):
         state_guest = _guest_hash_any(request)
         if user and state_guest:
             placement.claim_guest_sessions(state_guest, user["id"])
+        _claim_ability_data(request)
         return placement.start(identity, guest_hash)
     except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
         _raise_placement_error(exc)
@@ -116,7 +140,11 @@ def submit_placement(payload: SubmitRequest, request: Request):
     """提交作答；服务端评分并保存会话与画像。"""
     identity, guest_hash = _identity(request)
     answers = [
-        {"itemId": answer.item_id, "chosenIndex": answer.chosen_index}
+        {
+            "itemId": answer.item_id,
+            "chosenIndex": answer.chosen_index,
+            "elapsedMs": answer.elapsed_ms,
+        }
         for answer in payload.answers
     ]
     try:
@@ -147,6 +175,7 @@ def placement_profile(request: Request):
         state_guest = _guest_hash_any(request)
         if user and state_guest:
             placement.claim_guest_sessions(state_guest, user["id"])
+        _claim_ability_data(request)
         return placement.get_profile(identity)
     except Exception as exc:  # noqa: BLE001
         _raise_placement_error(exc)

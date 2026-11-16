@@ -227,7 +227,49 @@ def rate_limited_response(retry_after: int) -> JSONResponse:
     )
 
 
+# 日限窗口：自评 10 次/天（计划书 §7.4）。与分钟桶分开存，进程重启即清空。
+DAY_SECONDS = 86_400.0
+_DailyHits = deque[float]
+_daily_hits: dict[str, _DailyHits] = {}
+
+
+def consume_daily(
+    bucket_name: str, identity: str, limit: int, *, now: float | None = None
+) -> int | None:
+    """记一次「/天」配额；未超限返回 None，超限返回建议 ``Retry-After``（秒）。
+
+    与分钟限速同一套进程内语义（单进程有效、重启清零）。窗口是滑动 24 小时，
+    不按自然日切，避免用户卡在午夜前后被重复计数。
+    """
+    if limit <= 0:
+        return None
+    moment = time.monotonic() if now is None else now
+    horizon = moment - DAY_SECONDS
+    key = f"{bucket_name}:{identity}"
+    with _lock:
+        hits = _daily_hits.get(key)
+        if hits is None:
+            hits = deque()
+            _daily_hits[key] = hits
+        while hits and hits[0] <= horizon:
+            hits.popleft()
+        if len(hits) >= limit:
+            retry_after = max(1, math.ceil(hits[0] + DAY_SECONDS - moment))
+            return retry_after
+        hits.append(moment)
+        if len(_daily_hits) > _MAX_TRACKED_KEYS:
+            stale = [
+                day_key
+                for day_key, day_hits in _daily_hits.items()
+                if not day_hits or day_hits[-1] <= horizon
+            ]
+            for day_key in stale:
+                _daily_hits.pop(day_key, None)
+    return None
+
+
 def reset_rate_limits() -> None:
     """清空所有计数（测试用；运维排查误封时也可调用）。"""
     with _lock:
         _hits.clear()
+        _daily_hits.clear()
