@@ -1,0 +1,75 @@
+{
+  "schema": "cefr-anchor-recalibration.v1",
+  "date": "2026-11-17",
+  "status": "pending",
+  "reason": "仲裁表为空（0/15 已填）→ 校准仍未通过；不计算任何数字",
+  "filled": {
+    "adjudicated": 0,
+    "expected": 15,
+    "missing": [
+      "M2-001",
+      "M2-004",
+      "M2-009",
+      "M2-011",
+      "M2-013",
+      "M2-014",
+      "M2-018",
+      "M2-027",
+      "M2-028",
+      "M2-036",
+      "M2-038",
+      "M2-052",
+      "M2-056",
+      "M2-057",
+      "M2-059"
+    ]
+  },
+  "metrics": null,
+  "gates": null,
+  "verdict": {
+    "passed": false,
+    "label": "未完成（pending）",
+    "failed": [],
+    "pending": [
+      "仲裁表为空（0/15 已填）→ 校准仍未通过；不计算任何数字"
+    ]
+  },
+  "thresholdChangeAllowed": false,
+  "gateDefinition": {
+    "raterKappaUnweighted": {
+      "threshold": 0.7,
+      "comparison": ">=",
+      "source": "复核计划 §5 步骤 2：未加权 Cohen's κ（A1–C1），κ ≥ 0.70",
+      "required": true
+    },
+    "raterQwk": {
+      "threshold": 0.7,
+      "comparison": ">=",
+      "source": "报告 §5.2 实际采用的口径：二次加权 κ（QWK）0.879",
+      "required": false,
+      "note": "加权与未加权不是同一个统计量；计划的原文是未加权 κ。口径需要人类确认，本脚本两者都报。"
+    },
+    "calibrationWithin1": {
+      "threshold": 0.8,
+      "comparison": ">=",
+      "source": "复核计划 §5 步骤 4：只允许在 40 条 calibration 上调阈值，调参集 ±1 ≥ 80%",
+      "required": true
+    },
+    "holdoutWithin1": {
+      "threshold": 0.8,
+      "comparison": ">=",
+      "source": "复核计划 §5 步骤 5：holdout ±1 ≥ 80%",
+      "required": true
+    },
+    "holdoutWilsonLower": {
+      "threshold": 0.8,
+      "comparison": ">=",
+      "source": "复核计划 §5 步骤 5 的严格口径：同时报告 Wilson 95% CI，且不能用点估计确认门槛",
+      "required": true,
+      "note": "n=20 时只有 20/20 能让下限 ≥0.80（83.9%）；19/20 = 76.4%、16/20 = 58.4%。"
+    }
+  },
+  "notice": "仲裁表为空/不完整 → 只输出 pending，不计算任何一致性、κ 或 CI 数字。不伪造、不用 A/B 之一冒充 consensus。",
+  "adjudicationPath": "/Users/piece/Desktop/Me/EnglishLearning/yt-bilingual-app/docs/reports/cefr-anchor-adjudication-sheet-2026-11-17.csv",
+  "output": "/Users/piece/Desktop/Me/EnglishLearning/yt-bilingual-app/docs/reports/cefr-anchor-recalibration-2026-11-17.json"
+}

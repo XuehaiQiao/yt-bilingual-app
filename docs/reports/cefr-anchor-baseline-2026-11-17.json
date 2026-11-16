@@ -1,0 +1,286 @@
+{
+  "schema": "cefr-anchor-baseline.v1",
+  "version": "2026-11-17",
+  "generatedAt": "2026-11-17T03:39:03+08:00",
+  "status": "human_labels_pending",
+  "notice": "自动基线 = difficulty.v1 预测 vs 现有编辑标注（不是人工真值，不是效度证据）。人工标签 0/120，κ/一致率未计算；holdout 人类验收未完成。",
+  "method": {
+    "prediction": "difficulty.v1 的 cefr_input（p90 实词覆盖判带；视频以词法带为内容级主输出）",
+    "editorial": "content_difficulty.level / 定位测 band / books.json level",
+    "distance": "A1 折叠为 A2 后，按 A1<A2<B1<B2<C1<C1+ 的序号取绝对差",
+    "unit": "每条锚 1 个 band；不按题目/字数加权"
+  },
+  "counts": {
+    "total": 60,
+    "calibration": 40,
+    "holdout": 20,
+    "video": 33,
+    "article": 27,
+    "sourceSets": {
+      "content_difficulty_36": 36,
+      "placement_11": 11,
+      "public_domain_book_13": 13
+    },
+    "strata": [
+      {
+        "kind": "article",
+        "band": "A2",
+        "n": 9,
+        "calibration": 5,
+        "holdout": 4
+      },
+      {
+        "kind": "article",
+        "band": "B1",
+        "n": 7,
+        "calibration": 5,
+        "holdout": 2
+      },
+      {
+        "kind": "article",
+        "band": "B2",
+        "n": 7,
+        "calibration": 5,
+        "holdout": 2
+      },
+      {
+        "kind": "article",
+        "band": "C1",
+        "n": 4,
+        "calibration": 3,
+        "holdout": 1
+      },
+      {
+        "kind": "video",
+        "band": "A2",
+        "n": 4,
+        "calibration": 3,
+        "holdout": 1
+      },
+      {
+        "kind": "video",
+        "band": "B1",
+        "n": 12,
+        "calibration": 8,
+        "holdout": 4
+      },
+      {
+        "kind": "video",
+        "band": "B2",
+        "n": 11,
+        "calibration": 7,
+        "holdout": 4
+      },
+      {
+        "kind": "video",
+        "band": "C1",
+        "n": 6,
+        "calibration": 4,
+        "holdout": 2
+      }
+    ],
+    "wordlistSha256": "67614c18f096cd7981da686c4c02f93447fb5d1dd3eceb76f5dfcbc2cbfd5927"
+  },
+  "agreement": {
+    "overall": {
+      "n": 60,
+      "exact": 12,
+      "exactRate": 0.2,
+      "within1": 41,
+      "within1Rate": 0.6833,
+      "distance": {
+        "0": 12,
+        "1": 29,
+        "2": 15,
+        "3": 2,
+        "4": 2
+      }
+    },
+    "bySplit": {
+      "calibration": {
+        "n": 40,
+        "exact": 5,
+        "exactRate": 0.125,
+        "within1": 27,
+        "within1Rate": 0.675,
+        "distance": {
+          "0": 5,
+          "1": 22,
+          "2": 11,
+          "3": 1,
+          "4": 1
+        }
+      },
+      "holdout": {
+        "n": 20,
+        "exact": 7,
+        "exactRate": 0.35,
+        "within1": 14,
+        "within1Rate": 0.7,
+        "distance": {
+          "0": 7,
+          "1": 7,
+          "2": 4,
+          "3": 1,
+          "4": 1
+        }
+      }
+    },
+    "bySourceSet": {
+      "content_difficulty_36": {
+        "n": 36,
+        "exact": 7,
+        "exactRate": 0.1944,
+        "within1": 26,
+        "within1Rate": 0.7222,
+        "distance": {
+          "0": 7,
+          "1": 19,
+          "2": 10
+        }
+      },
+      "placement_11": {
+        "n": 11,
+        "exact": 3,
+        "exactRate": 0.2727,
+        "within1": 10,
+        "within1Rate": 0.9091,
+        "distance": {
+          "0": 3,
+          "1": 7,
+          "2": 1
+        }
+      },
+      "public_domain_book_13": {
+        "n": 13,
+        "exact": 2,
+        "exactRate": 0.1538,
+        "within1": 5,
+        "within1Rate": 0.3846,
+        "distance": {
+          "0": 2,
+          "1": 3,
+          "2": 4,
+          "3": 2,
+          "4": 2
+        }
+      }
+    },
+    "byKind": {
+      "article": {
+        "n": 27,
+        "exact": 6,
+        "exactRate": 0.2222,
+        "within1": 18,
+        "within1Rate": 0.6667,
+        "distance": {
+          "0": 6,
+          "1": 12,
+          "2": 5,
+          "3": 2,
+          "4": 2
+        }
+      },
+      "video": {
+        "n": 33,
+        "exact": 6,
+        "exactRate": 0.1818,
+        "within1": 23,
+        "within1Rate": 0.697,
+        "distance": {
+          "0": 6,
+          "1": 17,
+          "2": 10
+        }
+      }
+    },
+    "byEditorialBand": {
+      "A2": {
+        "n": 13,
+        "exact": 0,
+        "exactRate": 0.0,
+        "within1": 5,
+        "within1Rate": 0.3846,
+        "distance": {
+          "1": 5,
+          "2": 4,
+          "3": 2,
+          "4": 2
+        }
+      },
+      "B1": {
+        "n": 19,
+        "exact": 6,
+        "exactRate": 0.3158,
+        "within1": 15,
+        "within1Rate": 0.7895,
+        "distance": {
+          "0": 6,
+          "1": 9,
+          "2": 4
+        }
+      },
+      "B2": {
+        "n": 18,
+        "exact": 6,
+        "exactRate": 0.3333,
+        "within1": 12,
+        "within1Rate": 0.6667,
+        "distance": {
+          "0": 6,
+          "1": 6,
+          "2": 6
+        }
+      },
+      "C1": {
+        "n": 10,
+        "exact": 0,
+        "exactRate": 0.0,
+        "within1": 9,
+        "within1Rate": 0.9,
+        "distance": {
+          "1": 9,
+          "2": 1
+        }
+      }
+    },
+    "confusion": {
+      "C1": {
+        "B2": 8,
+        "C1+": 1,
+        "B1": 1
+      },
+      "B2": {
+        "C1+": 6,
+        "B1": 4,
+        "B2": 6,
+        "C1": 2
+      },
+      "A2": {
+        "B2": 4,
+        "B1": 5,
+        "C1": 2,
+        "C1+": 2
+      },
+      "B1": {
+        "B2": 8,
+        "B1": 6,
+        "C1": 4,
+        "A2": 1
+      }
+    }
+  },
+  "humanLabels": {
+    "filled": 0,
+    "total": 120,
+    "status": "pending"
+  },
+  "caveats": [
+    "编辑标注不是独立人工真值；36 条来自已有的编辑等级回填，11 条来自定位测草稿，13 条来自 books.json 的书级等级。",
+    "13 条公版书条目的编辑标注是「书级」，预测是对 ≤120 词节选计算；二者不完全同构。",
+    "3 条原创文章条目的预测对全文计算，包内是 94–107 词节选；二者不完全同构。",
+    "短文本（44–120 词）的 p90 不稳定，label_confidence 仅 0.3–0.55。",
+    "视频条目的 cefr_input 是词法/文本带，不是听力带（est_cefr.listen）；人工评审若按整体难度评，二者不完全同轴。",
+    "n=60 很小，且视频锚只给时间窗；不得把本表当 holdout 验收或对外准确率。"
+  ]
+}

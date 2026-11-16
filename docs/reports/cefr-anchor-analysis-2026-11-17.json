@@ -1,12 +1,15 @@
 {
   "schema": "cefr-anchor-analysis.v1",
   "date": "2026-11-17",
-  "status": "human_review_complete",
+  "status": "ai_review_complete_human_pending",
   "n": 60,
+  "consensus_status": "pending_human_adjudication",
   "rater_agreement": {
     "exact": 0.75,
     "within1": 1.0,
     "qwk": 0.879,
+    "unweighted_kappa": 0.6583,
+    "note": "两个独立 AI subagent（模拟评审），非人类；QWK 0.879 达标，未加权 κ 0.6583 未达 0.70；只能作预筛。",
     "disagreements": [
       {
         "anonId": "M2-001",
@@ -85,54 +88,73 @@
       }
     ]
   },
-  "consensus_vs_editorial": {
-    "exact": 0.317,
-    "within1": 0.917,
-    "qwk": 0.578
-  },
-  "consensus_vs_auto": {
-    "exact": 0.433,
-    "within1": 0.817,
-    "qwk": 0.395
-  },
-  "holdout": {
-    "editorial": {
-      "k": 19,
-      "n": 20,
-      "within1": 0.95,
-      "wilson95": [
-        0.764,
-        0.991
-      ]
+  "bounds": {
+    "low_assignment": {
+      "vs_editorial": {
+        "n": 60,
+        "exact": 0.45,
+        "within1": 0.933,
+        "qwk": 0.621
+      },
+      "vs_auto": {
+        "n": 60,
+        "exact": 0.533,
+        "within1": 0.817,
+        "qwk": 0.305
+      },
+      "holdout_vs_auto": {
+        "n": 20,
+        "exact": 0.6,
+        "within1": 0.8,
+        "qwk": 0.118
+      },
+      "calibration_vs_auto": {
+        "n": 40,
+        "exact": 0.5,
+        "within1": 0.825,
+        "qwk": 0.39
+      }
     },
-    "auto": {
-      "k": 16,
-      "n": 20,
-      "within1": 0.8,
-      "wilson95": [
-        0.584,
-        0.919
-      ]
-    }
-  },
-  "calibration": {
-    "editorial": {
-      "k": 36,
-      "n": 40,
-      "within1": 0.9,
-      "wilson95": [
-        0.769,
-        0.96
-      ]
+    "high_assignment": {
+      "vs_editorial": {
+        "n": 60,
+        "exact": 0.417,
+        "within1": 0.917,
+        "qwk": 0.578
+      },
+      "vs_auto": {
+        "n": 60,
+        "exact": 0.483,
+        "within1": 0.867,
+        "qwk": 0.395
+      },
+      "holdout_vs_auto": {
+        "n": 20,
+        "exact": 0.6,
+        "within1": 0.85,
+        "qwk": 0.32
+      },
+      "calibration_vs_auto": {
+        "n": 40,
+        "exact": 0.425,
+        "within1": 0.875,
+        "qwk": 0.424
+      }
     },
-    "auto": {
-      "k": 33,
-      "n": 40,
-      "within1": 0.825,
-      "wilson95": [
-        0.68,
-        0.913
-      ]
+    "agreed_subset": {
+      "n": 45,
+      "vs_editorial": {
+        "n": 45,
+        "exact": 0.422,
+        "within1": 0.911,
+        "qwk": 0.505
+      },
+      "vs_auto": {
+        "n": 45,
+        "exact": 0.578,
+        "within1": 0.889,
+        "qwk": 0.539
+      }
     }
   },
   "distributions": {
@@ -148,18 +170,19 @@
       "B1": 16,
       "A2": 1
     },
-    "humanA": {
+    "aiA": {
       "B2": 19,
       "C1": 20,
       "B1": 17,
       "A2": 4
     },
-    "humanB": {
+    "aiB": {
       "C1": 17,
       "B2": 19,
       "A2": 11,
       "B1": 13
     }
   },
-  "verdict": "not_passed_ci_too_wide_needs_adjudication"
+  "verdict": "not_passed_ai_only_human_pending",
+  "reviewers": "AI subagents (simulated)"
 }
