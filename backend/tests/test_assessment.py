@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import math
 
+import pytest
+
 import assessment
 
 BANDS = ("A1", "A2", "B1", "B2", "C1")
@@ -95,3 +97,108 @@ def test_band_interval_helpers_and_precision_validity_labels():
         {"label": "medium", "se": 0.53},
         {"label": "high", "flags": []},
     ) == 0.75
+
+
+# ---------------------------------------------------------------------------
+# M2：rasch.eap.v2（题级 b + 锚题 + form offset）
+# ---------------------------------------------------------------------------
+
+def _v2_responses(correct: bool = True) -> list[dict]:
+    return [
+        {
+            "band": band,
+            "correct": 1 if correct else 0,
+            "b": assessment.BAND_CENTERS[band],
+            "anchor": band in ("A1", "B2"),
+        }
+        for band in BANDS
+        for _ in range(5)
+    ]
+
+
+def test_v2_uses_item_difficulty_and_keeps_v1_reader():
+    easy = [{"band": "B1", "correct": 1, "b": -1.5, "anchor": True} for _ in range(6)]
+    hard = [{"band": "B1", "correct": 1, "b": 1.5, "anchor": True} for _ in range(6)]
+    easy_result = assessment.estimate_v2(easy, bands=BANDS, form="A")
+    hard_result = assessment.estimate_v2(hard, bands=BANDS, form="B")
+    assert easy_result["calibrationVersion"] == "rasch.eap.v2"
+    assert hard_result["calibrationVersion"] == "rasch.eap.v2"
+    # 同样答对「更难的题」→ θ 更高；v1 只用带中心，两套输入读数相同。
+    assert hard_result["theta"] > easy_result["theta"]
+    v1_easy = assessment.estimate([(item["band"], item["correct"]) for item in easy], bands=BANDS)
+    v1_hard = assessment.estimate([(item["band"], item["correct"]) for item in hard], bands=BANDS)
+    assert v1_easy["theta"] == v1_hard["theta"]
+    assert v1_easy["calibrationVersion"] == "rasch.eap.v1"
+
+
+def test_v2_forms_share_theta_scale_via_common_anchors():
+    responses = _v2_responses()
+    form_a = assessment.estimate_v2(responses, bands=BANDS, form="A")
+    form_b = assessment.estimate_v2(responses, bands=BANDS, form="B")
+    assert form_a["theta"] == form_b["theta"]
+    assert form_a["se"] == form_b["se"]
+    assert form_a["band"] == form_b["band"]
+    assert form_a["anchorCount"] == form_b["anchorCount"] == 10
+    assert form_a["scale"]["method"] == "common_anchor"
+    assert form_a["scale"]["status"] == "uncalibrated"
+    assert form_a["formOffset"] == 0.0
+
+
+def test_v2_form_offset_direction_and_validation():
+    responses = _v2_responses()
+    base = assessment.estimate_v2(responses, bands=BANDS)
+    easier = assessment.estimate_v2(responses, bands=BANDS, form_offset=-0.5)
+    harder = assessment.estimate_v2(responses, bands=BANDS, form_offset=0.5)
+    # 正 offset = 卷面更难（offset 与 item b 同向）→ 同样答对时 θ 读数更高。
+    assert easier["theta"] < base["theta"] < harder["theta"]
+    assert harder["formOffset"] == 0.5
+    with pytest.raises(assessment.AssessmentError):
+        assessment.estimate_v2(responses, bands=BANDS, form_offset=10.0)
+
+
+def test_v2_all_correct_and_all_wrong_do_not_diverge():
+    all_correct = assessment.estimate_v2(_v2_responses(True), bands=BANDS, form="A")
+    all_wrong = assessment.estimate_v2(_v2_responses(False), bands=BANDS, form="B")
+    for result in (all_correct, all_wrong):
+        assert math.isfinite(result["theta"])
+        assert math.isfinite(result["se"])
+        assert result["se"] > 0
+        assert result["ci95"]["low"] < result["theta"] < result["ci95"]["high"]
+        assert result["interval"]["low"] <= result["band"] <= result["interval"]["high"]
+        assert abs(sum(result["bandPosterior"].values()) - 1.0) < 1e-6
+    assert all_correct["band"] == "C1"
+    assert all_wrong["band"] == "A1"
+
+
+def test_v2_response_validation():
+    with pytest.raises(assessment.AssessmentError):
+        assessment.estimate_v2([( "A1", 1)], bands=BANDS)  # v2 必须是对象
+    with pytest.raises(assessment.AssessmentError):
+        assessment.estimate_v2([{"band": "Z9", "correct": 1}], bands=BANDS)
+    with pytest.raises(assessment.AssessmentError):
+        assessment.estimate_v2([{"band": "A1", "correct": 1, "b": True}], bands=BANDS)
+    with pytest.raises(assessment.AssessmentError):
+        assessment.estimate_v2([{"band": "A1", "correct": 1, "b": 99}], bands=BANDS)
+    with pytest.raises(assessment.AssessmentError):
+        assessment.estimate_v2([{"band": "A1", "correct": 2}], bands=BANDS)
+
+
+def test_v1_and_v2_have_same_result_shape():
+    v1 = assessment.estimate(_v2_responses(), bands=BANDS)
+    v2 = assessment.estimate_v2(_v2_responses(), bands=BANDS, form="A")
+    for key in (
+        "n",
+        "correct",
+        "theta",
+        "se",
+        "ci95",
+        "ci80",
+        "band",
+        "bandPosterior",
+        "interval",
+        "precision",
+        "vocabulary",
+    ):
+        assert key in v1 and key in v2
+    assert v1["n"] == v2["n"] == 25
+    assert v1["correct"] == v2["correct"] == 25

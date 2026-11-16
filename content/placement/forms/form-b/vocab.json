@@ -1,0 +1,674 @@
+{
+  "_meta": {
+    "status": "draft",
+    "notice": "草稿，待教研审校；题目未经 pilot 校准，b 为题带中心占位，p 值未测定。",
+    "version": "placement.form-b.v1",
+    "updated": "2026-11-17",
+    "kind": "vocab",
+    "form": "B",
+    "itemCount": 40,
+    "parameterVersion": "editorial.band-center.v1",
+    "parameterStatus": "uncalibrated",
+    "reviewNotes": [
+      "4 个选项互不重复，answerIndex 为 0–3 的唯一正确项下标。",
+      "b 为题带中心（A1 -2.0 / A2 -1.2 / B1 -0.4 / B2 +0.4 / C1 +1.2）的编辑占位，不是 IRT 标定结果。",
+      "未做 30–50 人 pilot；p 值与真实难度待 pilot 后回填，禁止把占位参数当效度证据。",
+      "阅读短文均为自写文本，不使用受版权保护的材料。"
+    ],
+    "anchorIds": [
+      "an-v-01",
+      "an-v-02",
+      "an-v-03",
+      "an-v-04",
+      "an-v-05",
+      "an-v-06",
+      "an-v-07",
+      "an-v-08",
+      "an-v-09",
+      "an-v-10"
+    ],
+    "anchorCount": 10
+  },
+  "items": [
+    {
+      "id": "an-v-01",
+      "type": "vocab",
+      "word": "dog",
+      "band": "A1",
+      "options": [
+        "狗",
+        "猫",
+        "鸟",
+        "鱼"
+      ],
+      "answerIndex": 0,
+      "example": "The dog is sleeping near the door.",
+      "b": -2.0,
+      "anchor": true
+    },
+    {
+      "id": "an-v-02",
+      "type": "vocab",
+      "word": "chair",
+      "band": "A1",
+      "options": [
+        "桌子",
+        "床",
+        "椅子",
+        "窗户"
+      ],
+      "answerIndex": 2,
+      "example": "Please put the chair next to the desk.",
+      "b": -2.0,
+      "anchor": true
+    },
+    {
+      "id": "fb-v-001",
+      "type": "vocab",
+      "word": "milk",
+      "band": "A1",
+      "options": [
+        "果汁",
+        "咖啡",
+        "牛奶",
+        "茶"
+      ],
+      "answerIndex": 2,
+      "example": "He drinks a glass of milk every morning.",
+      "b": -2.0,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-002",
+      "type": "vocab",
+      "word": "door",
+      "band": "A1",
+      "options": [
+        "门",
+        "窗户",
+        "墙",
+        "地板"
+      ],
+      "answerIndex": 0,
+      "example": "Please close the door when you leave.",
+      "b": -2.0,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-003",
+      "type": "vocab",
+      "word": "sleep",
+      "band": "A1",
+      "options": [
+        "吃饭",
+        "工作",
+        "走路",
+        "睡觉"
+      ],
+      "answerIndex": 3,
+      "example": "Children need more sleep than adults.",
+      "b": -2.0,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-004",
+      "type": "vocab",
+      "word": "black",
+      "band": "A1",
+      "options": [
+        "白色的",
+        "黑色的",
+        "绿色的",
+        "棕色的"
+      ],
+      "answerIndex": 1,
+      "example": "She wore a black coat to the funeral.",
+      "b": -2.0,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-005",
+      "type": "vocab",
+      "word": "doctor",
+      "band": "A1",
+      "options": [
+        "医生",
+        "护士",
+        "老师",
+        "警察"
+      ],
+      "answerIndex": 0,
+      "example": "The doctor asked him to rest for a week.",
+      "b": -2.0,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-006",
+      "type": "vocab",
+      "word": "rain",
+      "band": "A1",
+      "options": [
+        "雪",
+        "风",
+        "雨",
+        "云"
+      ],
+      "answerIndex": 2,
+      "example": "The rain stopped just before noon.",
+      "b": -2.0,
+      "anchor": false
+    },
+    {
+      "id": "an-v-03",
+      "type": "vocab",
+      "word": "journey",
+      "band": "A2",
+      "options": [
+        "价格",
+        "旅程",
+        "天气",
+        "消息"
+      ],
+      "answerIndex": 1,
+      "example": "The journey took almost four hours.",
+      "b": -1.2,
+      "anchor": true
+    },
+    {
+      "id": "an-v-04",
+      "type": "vocab",
+      "word": "repair",
+      "band": "A2",
+      "options": [
+        "清洗",
+        "购买",
+        "设计",
+        "修理"
+      ],
+      "answerIndex": 3,
+      "example": "He repaired the old radio in an hour.",
+      "b": -1.2,
+      "anchor": true
+    },
+    {
+      "id": "fb-v-007",
+      "type": "vocab",
+      "word": "advice",
+      "band": "A2",
+      "options": [
+        "命令",
+        "建议",
+        "礼物",
+        "道歉"
+      ],
+      "answerIndex": 1,
+      "example": "She gave me useful advice about the course.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-008",
+      "type": "vocab",
+      "word": "foreign",
+      "band": "A2",
+      "options": [
+        "当地的",
+        "古老的",
+        "现代的",
+        "外国的"
+      ],
+      "answerIndex": 3,
+      "example": "He enjoys learning foreign languages.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-009",
+      "type": "vocab",
+      "word": "deliver",
+      "band": "A2",
+      "options": [
+        "递送",
+        "接收",
+        "购买",
+        "隐藏"
+      ],
+      "answerIndex": 0,
+      "example": "The shop will deliver the table on Friday.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-010",
+      "type": "vocab",
+      "word": "polite",
+      "band": "A2",
+      "options": [
+        "粗鲁的",
+        "懒惰的",
+        "有礼貌的",
+        "吝啬的"
+      ],
+      "answerIndex": 2,
+      "example": "It is polite to say thank you.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-011",
+      "type": "vocab",
+      "word": "umbrella",
+      "band": "A2",
+      "options": [
+        "手套",
+        "雨伞",
+        "帽子",
+        "围巾"
+      ],
+      "answerIndex": 1,
+      "example": "Take an umbrella in case it rains.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-012",
+      "type": "vocab",
+      "word": "quiet",
+      "band": "A2",
+      "options": [
+        "吵闹的",
+        "拥挤的",
+        "危险的",
+        "安静的"
+      ],
+      "answerIndex": 3,
+      "example": "The library is a quiet place to study.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "an-v-05",
+      "type": "vocab",
+      "word": "opportunity",
+      "band": "B1",
+      "options": [
+        "危险",
+        "责任",
+        "机会",
+        "问题"
+      ],
+      "answerIndex": 2,
+      "example": "The course gave her an opportunity to practise speaking.",
+      "b": -0.4,
+      "anchor": true
+    },
+    {
+      "id": "an-v-06",
+      "type": "vocab",
+      "word": "reduce",
+      "band": "B1",
+      "options": [
+        "减少",
+        "增加",
+        "保持",
+        "比较"
+      ],
+      "answerIndex": 0,
+      "example": "We should reduce the amount of plastic we use.",
+      "b": -0.4,
+      "anchor": true
+    },
+    {
+      "id": "fb-v-013",
+      "type": "vocab",
+      "word": "avoid",
+      "band": "B1",
+      "options": [
+        "避免",
+        "接受",
+        "邀请",
+        "记录"
+      ],
+      "answerIndex": 0,
+      "example": "Try to avoid eating too late.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-014",
+      "type": "vocab",
+      "word": "benefit",
+      "band": "B1",
+      "options": [
+        "损失",
+        "危险",
+        "好处",
+        "错误"
+      ],
+      "answerIndex": 2,
+      "example": "Regular exercise has many benefits.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-015",
+      "type": "vocab",
+      "word": "communicate",
+      "band": "B1",
+      "options": [
+        "隐藏",
+        "交流",
+        "拒绝",
+        "模仿"
+      ],
+      "answerIndex": 1,
+      "example": "They communicate mainly by email.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-016",
+      "type": "vocab",
+      "word": "develop",
+      "band": "B1",
+      "options": [
+        "停止",
+        "破坏",
+        "遗忘",
+        "发展"
+      ],
+      "answerIndex": 3,
+      "example": "The company plans to develop a new product.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-017",
+      "type": "vocab",
+      "word": "encourage",
+      "band": "B1",
+      "options": [
+        "鼓励",
+        "阻止",
+        "批评",
+        "忽视"
+      ],
+      "answerIndex": 0,
+      "example": "Teachers should encourage students to ask questions.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-018",
+      "type": "vocab",
+      "word": "solution",
+      "band": "B1",
+      "options": [
+        "问题",
+        "原因",
+        "解决办法",
+        "结果"
+      ],
+      "answerIndex": 2,
+      "example": "We need a practical solution to this problem.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "an-v-07",
+      "type": "vocab",
+      "word": "adequate",
+      "band": "B2",
+      "options": [
+        "缺乏的",
+        "多余的",
+        "昂贵的",
+        "足够的"
+      ],
+      "answerIndex": 3,
+      "example": "The room was adequate for a short stay.",
+      "b": 0.4,
+      "anchor": true
+    },
+    {
+      "id": "an-v-08",
+      "type": "vocab",
+      "word": "consequence",
+      "band": "B2",
+      "options": [
+        "原因",
+        "后果",
+        "建议",
+        "证据"
+      ],
+      "answerIndex": 1,
+      "example": "He accepted the consequences of his decision.",
+      "b": 0.4,
+      "anchor": true
+    },
+    {
+      "id": "fb-v-019",
+      "type": "vocab",
+      "word": "assess",
+      "band": "B2",
+      "options": [
+        "忽略",
+        "评估",
+        "赞扬",
+        "模仿"
+      ],
+      "answerIndex": 1,
+      "example": "The team will assess the risks before starting.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-020",
+      "type": "vocab",
+      "word": "controversial",
+      "band": "B2",
+      "options": [
+        "普遍接受的",
+        "无关紧要的",
+        "古老的",
+        "有争议的"
+      ],
+      "answerIndex": 3,
+      "example": "The new policy remains controversial.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-021",
+      "type": "vocab",
+      "word": "diminish",
+      "band": "B2",
+      "options": [
+        "减少",
+        "增加",
+        "忽略",
+        "重复"
+      ],
+      "answerIndex": 0,
+      "example": "The pain will gradually diminish.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-022",
+      "type": "vocab",
+      "word": "elaborate",
+      "band": "B2",
+      "options": [
+        "简短的",
+        "错误的",
+        "详尽的",
+        "过时的"
+      ],
+      "answerIndex": 2,
+      "example": "She gave an elaborate explanation of the process.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-023",
+      "type": "vocab",
+      "word": "fundamental",
+      "band": "B2",
+      "options": [
+        "表面的",
+        "根本的",
+        "临时的",
+        "昂贵的"
+      ],
+      "answerIndex": 1,
+      "example": "Trust is fundamental to any partnership.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-024",
+      "type": "vocab",
+      "word": "implement",
+      "band": "B2",
+      "options": [
+        "计划",
+        "禁止",
+        "讨论",
+        "实施"
+      ],
+      "answerIndex": 3,
+      "example": "The school will implement the new rules in September.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "an-v-09",
+      "type": "vocab",
+      "word": "coherent",
+      "band": "C1",
+      "options": [
+        "矛盾的",
+        "冗长的",
+        "连贯的",
+        "模糊的"
+      ],
+      "answerIndex": 2,
+      "example": "The essay presents a coherent argument from start to finish.",
+      "b": 1.2,
+      "anchor": true
+    },
+    {
+      "id": "an-v-10",
+      "type": "vocab",
+      "word": "undermine",
+      "band": "C1",
+      "options": [
+        "削弱",
+        "支持",
+        "证明",
+        "忽视"
+      ],
+      "answerIndex": 0,
+      "example": "Constant criticism can undermine a child's confidence.",
+      "b": 1.2,
+      "anchor": true
+    },
+    {
+      "id": "fb-v-025",
+      "type": "vocab",
+      "word": "arbitrary",
+      "band": "C1",
+      "options": [
+        "武断的",
+        "客观的",
+        "谨慎的",
+        "公平的"
+      ],
+      "answerIndex": 0,
+      "example": "The decision seemed arbitrary and unfair.",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-026",
+      "type": "vocab",
+      "word": "concise",
+      "band": "C1",
+      "options": [
+        "冗长的",
+        "含糊的",
+        "简洁的",
+        "华丽的"
+      ],
+      "answerIndex": 2,
+      "example": "Please write a concise summary of the report.",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-027",
+      "type": "vocab",
+      "word": "deter",
+      "band": "C1",
+      "options": [
+        "鼓励",
+        "阻止",
+        "允许",
+        "忽视"
+      ],
+      "answerIndex": 1,
+      "example": "Higher fines may deter drivers from speeding.",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-028",
+      "type": "vocab",
+      "word": "empirical",
+      "band": "C1",
+      "options": [
+        "理论的",
+        "虚构的",
+        "宗教的",
+        "实证的"
+      ],
+      "answerIndex": 3,
+      "example": "The claim is based on empirical evidence.",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-029",
+      "type": "vocab",
+      "word": "notorious",
+      "band": "C1",
+      "options": [
+        "臭名昭著的",
+        "默默无闻的",
+        "受人尊敬的",
+        "天真无邪的"
+      ],
+      "answerIndex": 0,
+      "example": "The area is notorious for its traffic.",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-v-030",
+      "type": "vocab",
+      "word": "viable",
+      "band": "C1",
+      "options": [
+        "昂贵的",
+        "危险的",
+        "可行的",
+        "过时的"
+      ],
+      "answerIndex": 2,
+      "example": "Solar power is now a viable option for many homes.",
+      "b": 1.2,
+      "anchor": false
+    }
+  ]
+}

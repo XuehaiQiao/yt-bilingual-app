@@ -1,0 +1,388 @@
+{
+  "_meta": {
+    "status": "draft",
+    "notice": "草稿，待教研审校；题目未经 pilot 校准，b 为题带中心占位，p 值未测定。",
+    "version": "placement.form-b.v1",
+    "updated": "2026-11-17",
+    "kind": "reading",
+    "form": "B",
+    "itemCount": 20,
+    "parameterVersion": "editorial.band-center.v1",
+    "parameterStatus": "uncalibrated",
+    "reviewNotes": [
+      "4 个选项互不重复，answerIndex 为 0–3 的唯一正确项下标。",
+      "b 为题带中心（A1 -2.0 / A2 -1.2 / B1 -0.4 / B2 +0.4 / C1 +1.2）的编辑占位，不是 IRT 标定结果。",
+      "未做 30–50 人 pilot；p 值与真实难度待 pilot 后回填，禁止把占位参数当效度证据。",
+      "阅读短文均为自写文本，不使用受版权保护的材料。"
+    ],
+    "passageIds": [
+      "fb-p1",
+      "fb-p2",
+      "fb-p3",
+      "fb-p4"
+    ],
+    "passageCount": 4
+  },
+  "items": [
+    {
+      "id": "fb-r-01",
+      "type": "reading",
+      "passageId": "fb-p1",
+      "band": "A2",
+      "passage": "When Daniel moved into his new flat, he did not know anyone in the building. On his first evening, he tried to cook dinner but discovered that he had no salt. He knocked on the door opposite and asked his neighbour, an older woman named Rosa, if she could help. Rosa smiled and gave him a small bag of salt. The next day, Daniel baked some bread and took half of it to her. They now meet in the hallway almost every morning and talk about the weather, the garden or the local shops.",
+      "question": "What did Daniel need?",
+      "options": [
+        "A new flat.",
+        "Some salt.",
+        "A cooking class.",
+        "A bag of bread."
+      ],
+      "answerIndex": 1,
+      "evidence": "he tried to cook dinner but discovered that he had no salt.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-02",
+      "type": "reading",
+      "passageId": "fb-p1",
+      "band": "A2",
+      "passage": "When Daniel moved into his new flat, he did not know anyone in the building. On his first evening, he tried to cook dinner but discovered that he had no salt. He knocked on the door opposite and asked his neighbour, an older woman named Rosa, if she could help. Rosa smiled and gave him a small bag of salt. The next day, Daniel baked some bread and took half of it to her. They now meet in the hallway almost every morning and talk about the weather, the garden or the local shops.",
+      "question": "Who did he ask?",
+      "options": [
+        "His brother.",
+        "A shopkeeper.",
+        "The building manager.",
+        "His neighbour."
+      ],
+      "answerIndex": 3,
+      "evidence": "He knocked on the door opposite and asked his neighbour",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-03",
+      "type": "reading",
+      "passageId": "fb-p1",
+      "band": "A2",
+      "passage": "When Daniel moved into his new flat, he did not know anyone in the building. On his first evening, he tried to cook dinner but discovered that he had no salt. He knocked on the door opposite and asked his neighbour, an older woman named Rosa, if she could help. Rosa smiled and gave him a small bag of salt. The next day, Daniel baked some bread and took half of it to her. They now meet in the hallway almost every morning and talk about the weather, the garden or the local shops.",
+      "question": "What did Daniel give Rosa the next day?",
+      "options": [
+        "Some bread.",
+        "A bag of salt.",
+        "A garden plant.",
+        "A cookbook."
+      ],
+      "answerIndex": 0,
+      "evidence": "Daniel baked some bread and took half of it to her.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-04",
+      "type": "reading",
+      "passageId": "fb-p1",
+      "band": "A2",
+      "passage": "When Daniel moved into his new flat, he did not know anyone in the building. On his first evening, he tried to cook dinner but discovered that he had no salt. He knocked on the door opposite and asked his neighbour, an older woman named Rosa, if she could help. Rosa smiled and gave him a small bag of salt. The next day, Daniel baked some bread and took half of it to her. They now meet in the hallway almost every morning and talk about the weather, the garden or the local shops.",
+      "question": "What do they talk about now?",
+      "options": [
+        "Only money.",
+        "Their jobs abroad.",
+        "Everyday things.",
+        "Politics."
+      ],
+      "answerIndex": 2,
+      "evidence": "talk about the weather, the garden or the local shops.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-05",
+      "type": "reading",
+      "passageId": "fb-p1",
+      "band": "A2",
+      "passage": "When Daniel moved into his new flat, he did not know anyone in the building. On his first evening, he tried to cook dinner but discovered that he had no salt. He knocked on the door opposite and asked his neighbour, an older woman named Rosa, if she could help. Rosa smiled and gave him a small bag of salt. The next day, Daniel baked some bread and took half of it to her. They now meet in the hallway almost every morning and talk about the weather, the garden or the local shops.",
+      "question": "What does \"opposite\" mean in the text?",
+      "options": [
+        "On the top floor.",
+        "Across the hallway.",
+        "Outside the building.",
+        "Next to the kitchen."
+      ],
+      "answerIndex": 1,
+      "evidence": "He knocked on the door opposite",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-06",
+      "type": "reading",
+      "passageId": "fb-p2",
+      "band": "B1",
+      "passage": "The town library used to close at six, which made it hard for people who worked during the day. Last month it began staying open until nine on weekdays. The library also added more desks near the windows and a small area where visitors can make tea. The librarian says the change has brought in many new readers, especially students preparing for exams. Not everyone is happy: a few residents have complained about noise in the evenings. The library is now testing a rule that asks visitors to keep phone calls outside the reading rooms.",
+      "question": "Why did the library change its closing time?",
+      "options": [
+        "To save electricity.",
+        "To make room for a cafe.",
+        "To attract readers who work during the day.",
+        "Because students asked for fewer desks."
+      ],
+      "answerIndex": 2,
+      "evidence": "The town library used to close at six, which made it hard for people who worked during the day.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-07",
+      "type": "reading",
+      "passageId": "fb-p2",
+      "band": "B1",
+      "passage": "The town library used to close at six, which made it hard for people who worked during the day. Last month it began staying open until nine on weekdays. The library also added more desks near the windows and a small area where visitors can make tea. The librarian says the change has brought in many new readers, especially students preparing for exams. Not everyone is happy: a few residents have complained about noise in the evenings. The library is now testing a rule that asks visitors to keep phone calls outside the reading rooms.",
+      "question": "What else did the library add?",
+      "options": [
+        "More desks and a tea area.",
+        "A new entrance.",
+        "A children's playground.",
+        "A second floor."
+      ],
+      "answerIndex": 0,
+      "evidence": "The library also added more desks near the windows and a small area where visitors can make tea.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-08",
+      "type": "reading",
+      "passageId": "fb-p2",
+      "band": "B1",
+      "passage": "The town library used to close at six, which made it hard for people who worked during the day. Last month it began staying open until nine on weekdays. The library also added more desks near the windows and a small area where visitors can make tea. The librarian says the change has brought in many new readers, especially students preparing for exams. Not everyone is happy: a few residents have complained about noise in the evenings. The library is now testing a rule that asks visitors to keep phone calls outside the reading rooms.",
+      "question": "Who are the new readers?",
+      "options": [
+        "Local shop owners.",
+        "Retired teachers.",
+        "Tourists.",
+        "Students preparing for exams."
+      ],
+      "answerIndex": 3,
+      "evidence": "especially students preparing for exams.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-09",
+      "type": "reading",
+      "passageId": "fb-p2",
+      "band": "B1",
+      "passage": "The town library used to close at six, which made it hard for people who worked during the day. Last month it began staying open until nine on weekdays. The library also added more desks near the windows and a small area where visitors can make tea. The librarian says the change has brought in many new readers, especially students preparing for exams. Not everyone is happy: a few residents have complained about noise in the evenings. The library is now testing a rule that asks visitors to keep phone calls outside the reading rooms.",
+      "question": "Why are some residents unhappy?",
+      "options": [
+        "The library is too small.",
+        "There is noise in the evenings.",
+        "The books are old.",
+        "The staff are unfriendly."
+      ],
+      "answerIndex": 1,
+      "evidence": "a few residents have complained about noise in the evenings.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-10",
+      "type": "reading",
+      "passageId": "fb-p2",
+      "band": "B1",
+      "passage": "The town library used to close at six, which made it hard for people who worked during the day. Last month it began staying open until nine on weekdays. The library also added more desks near the windows and a small area where visitors can make tea. The librarian says the change has brought in many new readers, especially students preparing for exams. Not everyone is happy: a few residents have complained about noise in the evenings. The library is now testing a rule that asks visitors to keep phone calls outside the reading rooms.",
+      "question": "What is the library testing?",
+      "options": [
+        "A rule about phone calls.",
+        "A rule about borrowed books.",
+        "A rule about opening hours.",
+        "A rule about tea prices."
+      ],
+      "answerIndex": 0,
+      "evidence": "The library is now testing a rule that asks visitors to keep phone calls outside the reading rooms.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-11",
+      "type": "reading",
+      "passageId": "fb-p3",
+      "band": "B2",
+      "passage": "For years, manufacturers have designed products that are difficult to repair: batteries are sealed, spare parts are scarce, and software locks out independent workshops. The \"right to repair\" movement argues that this wastes resources and limits consumer choice. Some governments now require companies to publish repair manuals and supply parts for a minimum number of years. Manufacturers warn that such rules could raise prices and slow innovation. Yet the debate is shifting. As electronic waste grows, the question is less about whether repair should be allowed than about who controls the knowledge required to do it.",
+      "question": "What is the main issue?",
+      "options": [
+        "Why new phones are too cheap.",
+        "How to design faster batteries.",
+        "Why workshops are disappearing.",
+        "Who controls the knowledge needed to repair products."
+      ],
+      "answerIndex": 3,
+      "evidence": "the question is less about whether repair should be allowed than about who controls the knowledge required to do it.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-12",
+      "type": "reading",
+      "passageId": "fb-p3",
+      "band": "B2",
+      "passage": "For years, manufacturers have designed products that are difficult to repair: batteries are sealed, spare parts are scarce, and software locks out independent workshops. The \"right to repair\" movement argues that this wastes resources and limits consumer choice. Some governments now require companies to publish repair manuals and supply parts for a minimum number of years. Manufacturers warn that such rules could raise prices and slow innovation. Yet the debate is shifting. As electronic waste grows, the question is less about whether repair should be allowed than about who controls the knowledge required to do it.",
+      "question": "What do manufacturers do that makes repair difficult?",
+      "options": [
+        "Give away repair manuals.",
+        "Seal batteries and limit spare parts.",
+        "Lower product prices.",
+        "Train independent workshops."
+      ],
+      "answerIndex": 1,
+      "evidence": "batteries are sealed, spare parts are scarce, and software locks out independent workshops.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-13",
+      "type": "reading",
+      "passageId": "fb-p3",
+      "band": "B2",
+      "passage": "For years, manufacturers have designed products that are difficult to repair: batteries are sealed, spare parts are scarce, and software locks out independent workshops. The \"right to repair\" movement argues that this wastes resources and limits consumer choice. Some governments now require companies to publish repair manuals and supply parts for a minimum number of years. Manufacturers warn that such rules could raise prices and slow innovation. Yet the debate is shifting. As electronic waste grows, the question is less about whether repair should be allowed than about who controls the knowledge required to do it.",
+      "question": "What does the \"right to repair\" movement argue?",
+      "options": [
+        "Current design wastes resources.",
+        "Products should be replaced yearly.",
+        "Repair should be banned.",
+        "Manufacturers should stop innovating."
+      ],
+      "answerIndex": 0,
+      "evidence": "The \"right to repair\" movement argues that this wastes resources and limits consumer choice.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-14",
+      "type": "reading",
+      "passageId": "fb-p3",
+      "band": "B2",
+      "passage": "For years, manufacturers have designed products that are difficult to repair: batteries are sealed, spare parts are scarce, and software locks out independent workshops. The \"right to repair\" movement argues that this wastes resources and limits consumer choice. Some governments now require companies to publish repair manuals and supply parts for a minimum number of years. Manufacturers warn that such rules could raise prices and slow innovation. Yet the debate is shifting. As electronic waste grows, the question is less about whether repair should be allowed than about who controls the knowledge required to do it.",
+      "question": "What do manufacturers warn?",
+      "options": [
+        "Repair will become too easy.",
+        "Parts will become free.",
+        "Rules could raise prices and slow innovation.",
+        "Workshops will disappear."
+      ],
+      "answerIndex": 2,
+      "evidence": "Manufacturers warn that such rules could raise prices and slow innovation.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-15",
+      "type": "reading",
+      "passageId": "fb-p3",
+      "band": "B2",
+      "passage": "For years, manufacturers have designed products that are difficult to repair: batteries are sealed, spare parts are scarce, and software locks out independent workshops. The \"right to repair\" movement argues that this wastes resources and limits consumer choice. Some governments now require companies to publish repair manuals and supply parts for a minimum number of years. Manufacturers warn that such rules could raise prices and slow innovation. Yet the debate is shifting. As electronic waste grows, the question is less about whether repair should be allowed than about who controls the knowledge required to do it.",
+      "question": "What is growing?",
+      "options": [
+        "The number of manufacturers.",
+        "The price of manuals.",
+        "Public interest in buying new phones.",
+        "Electronic waste."
+      ],
+      "answerIndex": 3,
+      "evidence": "As electronic waste grows",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-16",
+      "type": "reading",
+      "passageId": "fb-p4",
+      "band": "C1",
+      "passage": "A notification is a small interruption, but its effects are cumulative. Each alert competes for attention, and even when ignored it leaves a trace: a decision postponed, a train of thought broken. Designers defend alerts as a service to users who want to stay informed. Critics reply that many alerts serve the platform's need for engagement rather than the user's need for information. The disagreement is not really about technology. It concerns who has the right to decide what deserves our attention, and whether convenience is worth the cost of being constantly available.",
+      "question": "What is the main argument?",
+      "options": [
+        "Notifications are always useful.",
+        "Technology has no social effects.",
+        "Notifications raise questions about who controls attention.",
+        "Users should never check their phones."
+      ],
+      "answerIndex": 2,
+      "evidence": "It concerns who has the right to decide what deserves our attention",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-17",
+      "type": "reading",
+      "passageId": "fb-p4",
+      "band": "C1",
+      "passage": "A notification is a small interruption, but its effects are cumulative. Each alert competes for attention, and even when ignored it leaves a trace: a decision postponed, a train of thought broken. Designers defend alerts as a service to users who want to stay informed. Critics reply that many alerts serve the platform's need for engagement rather than the user's need for information. The disagreement is not really about technology. It concerns who has the right to decide what deserves our attention, and whether convenience is worth the cost of being constantly available.",
+      "question": "What does the text say about ignored alerts?",
+      "options": [
+        "They still leave a trace.",
+        "They disappear completely.",
+        "They improve concentration.",
+        "They reduce engagement."
+      ],
+      "answerIndex": 0,
+      "evidence": "even when ignored it leaves a trace",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-18",
+      "type": "reading",
+      "passageId": "fb-p4",
+      "band": "C1",
+      "passage": "A notification is a small interruption, but its effects are cumulative. Each alert competes for attention, and even when ignored it leaves a trace: a decision postponed, a train of thought broken. Designers defend alerts as a service to users who want to stay informed. Critics reply that many alerts serve the platform's need for engagement rather than the user's need for information. The disagreement is not really about technology. It concerns who has the right to decide what deserves our attention, and whether convenience is worth the cost of being constantly available.",
+      "question": "How do designers defend alerts?",
+      "options": [
+        "As a way to reduce prices.",
+        "As a form of entertainment.",
+        "As a security measure.",
+        "As a service that keeps users informed."
+      ],
+      "answerIndex": 3,
+      "evidence": "Designers defend alerts as a service to users who want to stay informed.",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-19",
+      "type": "reading",
+      "passageId": "fb-p4",
+      "band": "C1",
+      "passage": "A notification is a small interruption, but its effects are cumulative. Each alert competes for attention, and even when ignored it leaves a trace: a decision postponed, a train of thought broken. Designers defend alerts as a service to users who want to stay informed. Critics reply that many alerts serve the platform's need for engagement rather than the user's need for information. The disagreement is not really about technology. It concerns who has the right to decide what deserves our attention, and whether convenience is worth the cost of being constantly available.",
+      "question": "What do critics say about many alerts?",
+      "options": [
+        "They are too quiet.",
+        "They serve the platform's engagement needs.",
+        "They are too expensive.",
+        "They help users focus."
+      ],
+      "answerIndex": 1,
+      "evidence": "Critics reply that many alerts serve the platform's need for engagement",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fb-r-20",
+      "type": "reading",
+      "passageId": "fb-p4",
+      "band": "C1",
+      "passage": "A notification is a small interruption, but its effects are cumulative. Each alert competes for attention, and even when ignored it leaves a trace: a decision postponed, a train of thought broken. Designers defend alerts as a service to users who want to stay informed. Critics reply that many alerts serve the platform's need for engagement rather than the user's need for information. The disagreement is not really about technology. It concerns who has the right to decide what deserves our attention, and whether convenience is worth the cost of being constantly available.",
+      "question": "What is the disagreement really about?",
+      "options": [
+        "Which phone is best.",
+        "How to build faster apps.",
+        "Who decides what deserves attention.",
+        "Whether technology is new."
+      ],
+      "answerIndex": 2,
+      "evidence": "It concerns who has the right to decide what deserves our attention",
+      "b": 1.2,
+      "anchor": false
+    }
+  ]
+}

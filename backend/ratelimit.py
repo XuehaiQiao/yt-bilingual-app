@@ -55,6 +55,9 @@ _EXACT_PATHS = {
     # 读文章（V1）：导入会抓取用户提供的 URL（SSRF 校验 + 2MB 上限），
     # 按登录用户限 10 次/分钟；翻译受 AI 日配额约束，不在此桶。
     "/api/article/import": Bucket("reading", "user"),
+    # 学习事件上报（M5 watch + M2 #7 行为埋点）：批量但高频，按用户限
+    # 120 次/分钟；游客 60 次/分钟（见 config.RATE_LIMIT_*_EVENTS_PER_MINUTE）。
+    "/api/events": Bucket("events", "user"),
     # 公版书（公开只读）：每章都实时抓取公版源；公开路径没有游客身份，
     # 按 IP 计数。列表/详情也过桶，口径简单且保守。
     "/api/books": Bucket("books", "ip"),
@@ -77,6 +80,7 @@ _LIMIT_ATTRS = {
     "reading": "RATE_LIMIT_READING_PER_MINUTE",
     "admin": "RATE_LIMIT_ADMIN_PER_MINUTE",
     "books": "RATE_LIMIT_BOOKS_PER_MINUTE",
+    "events": "RATE_LIMIT_EVENTS_PER_MINUTE",
 }
 
 # 游客（无会话、只有 ln_guest）用更紧的上限；auth 桶仍按 IP（游客不适用）。
@@ -86,6 +90,7 @@ _GUEST_LIMIT_ATTRS = {
     "estimate": "RATE_LIMIT_GUEST_ESTIMATE_COST_PER_MINUTE",
     "process_video": "RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE",
     "define": "RATE_LIMIT_GUEST_DEFINE_PER_MINUTE",
+    "events": "RATE_LIMIT_GUEST_EVENTS_PER_MINUTE",
 }
 
 # key = "<bucket>:<identity>"；value = 当前窗口内的请求时间（monotonic，递增）。

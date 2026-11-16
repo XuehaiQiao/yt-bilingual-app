@@ -39,3 +39,4 @@
 | [024](./024-free-library/spec.md) | 本地免费资源库 | 仓库内 3 个视频（预置双语字幕 + YouTube 嵌入）与 3 篇原创双语短文；首页「免费资源」窗 + 本地阅读器；公开只读、无数据库、运行时零 LLM | 已实现（内容 + 后端 + 前端） |
 | [025](./025-ability/spec.md) | CEFR 能力标定 M1（后端） | 1PL/Rasch + EAP 词汇区间、证据状态机、分技能画像/自评/can-do、旧 profile shim；阅读证据不足、听说写未测 | 已实现（后端） |
 | [026](./026-content-difficulty/spec.md) | CEFR 能力标定 M2：内容难度向量 | 自建频表（wordfreq 派生，CC BY-SA）+ 0 LLM 规则管线 `difficulty.v1` + `content_difficulty` 表/API + 36 条回填 + 推荐 match_score 与生词桶徽章 | 已实现（后端 + 内容 + 最小前端） |
+| [027](./027-behavior-events/spec.md) | CEFR 能力标定 M2：学习行为埋点 | lookup / replay / rate / visibility 四类事件复用 `learning_events`；eventId 幂等、同词 60s 去重、批量 ≤20、限流、管理员只读；前端静默上报 | 已实现（后端 + 前端） |

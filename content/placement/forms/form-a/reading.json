@@ -1,0 +1,388 @@
+{
+  "_meta": {
+    "status": "draft",
+    "notice": "草稿，待教研审校；题目未经 pilot 校准，b 为题带中心占位，p 值未测定。",
+    "version": "placement.form-a.v1",
+    "updated": "2026-11-17",
+    "kind": "reading",
+    "form": "A",
+    "itemCount": 20,
+    "parameterVersion": "editorial.band-center.v1",
+    "parameterStatus": "uncalibrated",
+    "reviewNotes": [
+      "4 个选项互不重复，answerIndex 为 0–3 的唯一正确项下标。",
+      "b 为题带中心（A1 -2.0 / A2 -1.2 / B1 -0.4 / B2 +0.4 / C1 +1.2）的编辑占位，不是 IRT 标定结果。",
+      "未做 30–50 人 pilot；p 值与真实难度待 pilot 后回填，禁止把占位参数当效度证据。",
+      "阅读短文均为自写文本，不使用受版权保护的材料。"
+    ],
+    "passageIds": [
+      "fa-p1",
+      "fa-p2",
+      "fa-p3",
+      "fa-p4"
+    ],
+    "passageCount": 4
+  },
+  "items": [
+    {
+      "id": "fa-r-01",
+      "type": "reading",
+      "passageId": "fa-p1",
+      "band": "A2",
+      "passage": "Last Tuesday, Mina left her umbrella on the bus. It was a blue umbrella with a wooden handle, and it had been a birthday present from her sister. At first she thought it was gone forever. The next morning, however, the bus company called. A driver had found the umbrella and kept it in the office. Mina walked to the station after work and collected it. She was so happy that she brought the driver a box of tea.",
+      "question": "What did Mina lose?",
+      "options": [
+        "Her wallet.",
+        "Her phone.",
+        "Her umbrella.",
+        "Her keys."
+      ],
+      "answerIndex": 2,
+      "evidence": "Mina left her umbrella on the bus.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-02",
+      "type": "reading",
+      "passageId": "fa-p1",
+      "band": "A2",
+      "passage": "Last Tuesday, Mina left her umbrella on the bus. It was a blue umbrella with a wooden handle, and it had been a birthday present from her sister. At first she thought it was gone forever. The next morning, however, the bus company called. A driver had found the umbrella and kept it in the office. Mina walked to the station after work and collected it. She was so happy that she brought the driver a box of tea.",
+      "question": "Where did she leave it?",
+      "options": [
+        "On a bus.",
+        "At a train station.",
+        "In a library.",
+        "At her office."
+      ],
+      "answerIndex": 0,
+      "evidence": "Mina left her umbrella on the bus.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-03",
+      "type": "reading",
+      "passageId": "fa-p1",
+      "band": "A2",
+      "passage": "Last Tuesday, Mina left her umbrella on the bus. It was a blue umbrella with a wooden handle, and it had been a birthday present from her sister. At first she thought it was gone forever. The next morning, however, the bus company called. A driver had found the umbrella and kept it in the office. Mina walked to the station after work and collected it. She was so happy that she brought the driver a box of tea.",
+      "question": "Who found it?",
+      "options": [
+        "Her sister.",
+        "A bus driver.",
+        "A teacher.",
+        "Her neighbour."
+      ],
+      "answerIndex": 1,
+      "evidence": "A driver had found the umbrella and kept it in the office.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-04",
+      "type": "reading",
+      "passageId": "fa-p1",
+      "band": "A2",
+      "passage": "Last Tuesday, Mina left her umbrella on the bus. It was a blue umbrella with a wooden handle, and it had been a birthday present from her sister. At first she thought it was gone forever. The next morning, however, the bus company called. A driver had found the umbrella and kept it in the office. Mina walked to the station after work and collected it. She was so happy that she brought the driver a box of tea.",
+      "question": "Why did she bring the driver a gift?",
+      "options": [
+        "To celebrate her birthday.",
+        "To apologise for a mistake.",
+        "To ask for directions.",
+        "To thank him."
+      ],
+      "answerIndex": 3,
+      "evidence": "She was so happy that she brought the driver a box of tea.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-05",
+      "type": "reading",
+      "passageId": "fa-p1",
+      "band": "A2",
+      "passage": "Last Tuesday, Mina left her umbrella on the bus. It was a blue umbrella with a wooden handle, and it had been a birthday present from her sister. At first she thought it was gone forever. The next morning, however, the bus company called. A driver had found the umbrella and kept it in the office. Mina walked to the station after work and collected it. She was so happy that she brought the driver a box of tea.",
+      "question": "What does \"collected\" mean in the text?",
+      "options": [
+        "Picked it up.",
+        "Bought it.",
+        "Lent it to someone.",
+        "Lost it again."
+      ],
+      "answerIndex": 0,
+      "evidence": "Mina walked to the station after work and collected it.",
+      "b": -1.2,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-06",
+      "type": "reading",
+      "passageId": "fa-p2",
+      "band": "B1",
+      "passage": "Every Saturday morning, a community centre in Leeds opens its doors to broken things. At the Repair Cafe, volunteers with practical skills try to fix lamps, radios, chairs and clothes that visitors bring in. The service is free, but visitors are encouraged to stay and watch. \"We want people to learn how things work,\" says the organiser. Since the cafe opened two years ago, it has repaired more than six hundred objects. Not everything can be saved, and some repairs take several visits. Still, the volunteers say the most valuable result is the conversations that happen around the tables.",
+      "question": "What is the main idea of the text?",
+      "options": [
+        "A shop sells second-hand furniture.",
+        "Volunteers fix things and teach visitors.",
+        "A school teaches cooking classes.",
+        "A company recycles old phones."
+      ],
+      "answerIndex": 1,
+      "evidence": "volunteers with practical skills try to fix ... visitors are encouraged to stay and watch.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-07",
+      "type": "reading",
+      "passageId": "fa-p2",
+      "band": "B1",
+      "passage": "Every Saturday morning, a community centre in Leeds opens its doors to broken things. At the Repair Cafe, volunteers with practical skills try to fix lamps, radios, chairs and clothes that visitors bring in. The service is free, but visitors are encouraged to stay and watch. \"We want people to learn how things work,\" says the organiser. Since the cafe opened two years ago, it has repaired more than six hundred objects. Not everything can be saved, and some repairs take several visits. Still, the volunteers say the most valuable result is the conversations that happen around the tables.",
+      "question": "When is the Repair Cafe open?",
+      "options": [
+        "On Saturday mornings.",
+        "On weekday evenings.",
+        "Every Sunday afternoon.",
+        "Once a month."
+      ],
+      "answerIndex": 0,
+      "evidence": "Every Saturday morning, a community centre in Leeds opens its doors",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-08",
+      "type": "reading",
+      "passageId": "fa-p2",
+      "band": "B1",
+      "passage": "Every Saturday morning, a community centre in Leeds opens its doors to broken things. At the Repair Cafe, volunteers with practical skills try to fix lamps, radios, chairs and clothes that visitors bring in. The service is free, but visitors are encouraged to stay and watch. \"We want people to learn how things work,\" says the organiser. Since the cafe opened two years ago, it has repaired more than six hundred objects. Not everything can be saved, and some repairs take several visits. Still, the volunteers say the most valuable result is the conversations that happen around the tables.",
+      "question": "What are visitors encouraged to do?",
+      "options": [
+        "Pay for the repairs.",
+        "Bring only clothes.",
+        "Stay and watch the repairs.",
+        "Leave their objects overnight."
+      ],
+      "answerIndex": 2,
+      "evidence": "visitors are encouraged to stay and watch.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-09",
+      "type": "reading",
+      "passageId": "fa-p2",
+      "band": "B1",
+      "passage": "Every Saturday morning, a community centre in Leeds opens its doors to broken things. At the Repair Cafe, volunteers with practical skills try to fix lamps, radios, chairs and clothes that visitors bring in. The service is free, but visitors are encouraged to stay and watch. \"We want people to learn how things work,\" says the organiser. Since the cafe opened two years ago, it has repaired more than six hundred objects. Not everything can be saved, and some repairs take several visits. Still, the volunteers say the most valuable result is the conversations that happen around the tables.",
+      "question": "What does the organiser say about some repairs?",
+      "options": [
+        "They always fail.",
+        "They are too expensive.",
+        "They are done by machines.",
+        "They may take more than one visit."
+      ],
+      "answerIndex": 3,
+      "evidence": "some repairs take several visits.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-10",
+      "type": "reading",
+      "passageId": "fa-p2",
+      "band": "B1",
+      "passage": "Every Saturday morning, a community centre in Leeds opens its doors to broken things. At the Repair Cafe, volunteers with practical skills try to fix lamps, radios, chairs and clothes that visitors bring in. The service is free, but visitors are encouraged to stay and watch. \"We want people to learn how things work,\" says the organiser. Since the cafe opened two years ago, it has repaired more than six hundred objects. Not everything can be saved, and some repairs take several visits. Still, the volunteers say the most valuable result is the conversations that happen around the tables.",
+      "question": "What do the volunteers value most?",
+      "options": [
+        "The money they earn.",
+        "The conversations around the tables.",
+        "The number of objects sold.",
+        "The new tools they receive."
+      ],
+      "answerIndex": 1,
+      "evidence": "the most valuable result is the conversations that happen around the tables.",
+      "b": -0.4,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-11",
+      "type": "reading",
+      "passageId": "fa-p3",
+      "band": "B2",
+      "passage": "On-demand delivery services promise to save time, but the convenience is rarely free. Behind each quick delivery stands a network of couriers whose schedules are shaped by algorithms rather than fixed shifts. Economists debate whether such work offers genuine flexibility or simply shifts risk onto the workers. What is clear is that the price shown to customers covers only part of the arrangement. When a delivery is late, the courier may bear the cost; when demand falls, hours disappear. Regulators are now asking who should be responsible for the gaps that the app does not show.",
+      "question": "What is the main point of the passage?",
+      "options": [
+        "Delivery apps have made work less flexible.",
+        "Couriers earn too much money.",
+        "Convenience involves costs that customers do not fully see.",
+        "Algorithms have replaced all couriers."
+      ],
+      "answerIndex": 2,
+      "evidence": "the price shown to customers covers only part of the arrangement.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-12",
+      "type": "reading",
+      "passageId": "fa-p3",
+      "band": "B2",
+      "passage": "On-demand delivery services promise to save time, but the convenience is rarely free. Behind each quick delivery stands a network of couriers whose schedules are shaped by algorithms rather than fixed shifts. Economists debate whether such work offers genuine flexibility or simply shifts risk onto the workers. What is clear is that the price shown to customers covers only part of the arrangement. When a delivery is late, the courier may bear the cost; when demand falls, hours disappear. Regulators are now asking who should be responsible for the gaps that the app does not show.",
+      "question": "What shapes couriers' schedules?",
+      "options": [
+        "Algorithms.",
+        "Fixed shifts.",
+        "Customer votes.",
+        "Government timetables."
+      ],
+      "answerIndex": 0,
+      "evidence": "schedules are shaped by algorithms rather than fixed shifts.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-13",
+      "type": "reading",
+      "passageId": "fa-p3",
+      "band": "B2",
+      "passage": "On-demand delivery services promise to save time, but the convenience is rarely free. Behind each quick delivery stands a network of couriers whose schedules are shaped by algorithms rather than fixed shifts. Economists debate whether such work offers genuine flexibility or simply shifts risk onto the workers. What is clear is that the price shown to customers covers only part of the arrangement. When a delivery is late, the courier may bear the cost; when demand falls, hours disappear. Regulators are now asking who should be responsible for the gaps that the app does not show.",
+      "question": "What do economists disagree about?",
+      "options": [
+        "Whether apps are popular.",
+        "Whether customers like fast delivery.",
+        "Whether couriers use bicycles.",
+        "Whether the work offers genuine flexibility."
+      ],
+      "answerIndex": 3,
+      "evidence": "Economists debate whether such work offers genuine flexibility or simply shifts risk onto the workers.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-14",
+      "type": "reading",
+      "passageId": "fa-p3",
+      "band": "B2",
+      "passage": "On-demand delivery services promise to save time, but the convenience is rarely free. Behind each quick delivery stands a network of couriers whose schedules are shaped by algorithms rather than fixed shifts. Economists debate whether such work offers genuine flexibility or simply shifts risk onto the workers. What is clear is that the price shown to customers covers only part of the arrangement. When a delivery is late, the courier may bear the cost; when demand falls, hours disappear. Regulators are now asking who should be responsible for the gaps that the app does not show.",
+      "question": "What happens when demand falls?",
+      "options": [
+        "Prices always rise.",
+        "Couriers lose hours.",
+        "Customers receive refunds.",
+        "The apps close down."
+      ],
+      "answerIndex": 1,
+      "evidence": "when demand falls, hours disappear.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-15",
+      "type": "reading",
+      "passageId": "fa-p3",
+      "band": "B2",
+      "passage": "On-demand delivery services promise to save time, but the convenience is rarely free. Behind each quick delivery stands a network of couriers whose schedules are shaped by algorithms rather than fixed shifts. Economists debate whether such work offers genuine flexibility or simply shifts risk onto the workers. What is clear is that the price shown to customers covers only part of the arrangement. When a delivery is late, the courier may bear the cost; when demand falls, hours disappear. Regulators are now asking who should be responsible for the gaps that the app does not show.",
+      "question": "What are regulators asking?",
+      "options": [
+        "Who should be responsible for hidden gaps.",
+        "How to make delivery slower.",
+        "Why customers order food.",
+        "Where couriers buy bicycles."
+      ],
+      "answerIndex": 0,
+      "evidence": "Regulators are now asking who should be responsible for the gaps that the app does not show.",
+      "b": 0.4,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-16",
+      "type": "reading",
+      "passageId": "fa-p4",
+      "band": "C1",
+      "passage": "Urban trees are often discussed as decoration, yet their value is increasingly measured in degrees and dollars. A mature tree can lower street temperatures, absorb storm water and improve air quality; in dense neighbourhoods, the difference can be a matter of health rather than comfort. The benefits are also unevenly distributed. Wealthier districts tend to have older, larger trees, while poorer areas often have fewer and younger ones. Planting programmes that ignore this pattern may widen the gap they claim to close. The difficult question is therefore not whether trees help, but who gets to benefit from them.",
+      "question": "What is the main argument?",
+      "options": [
+        "Trees are mainly decorative.",
+        "Tree planting must consider who benefits.",
+        "Cities should cut down old trees.",
+        "Air quality is unrelated to trees."
+      ],
+      "answerIndex": 1,
+      "evidence": "The difficult question is therefore not whether trees help, but who gets to benefit from them.",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-17",
+      "type": "reading",
+      "passageId": "fa-p4",
+      "band": "C1",
+      "passage": "Urban trees are often discussed as decoration, yet their value is increasingly measured in degrees and dollars. A mature tree can lower street temperatures, absorb storm water and improve air quality; in dense neighbourhoods, the difference can be a matter of health rather than comfort. The benefits are also unevenly distributed. Wealthier districts tend to have older, larger trees, while poorer areas often have fewer and younger ones. Planting programmes that ignore this pattern may widen the gap they claim to close. The difficult question is therefore not whether trees help, but who gets to benefit from them.",
+      "question": "What can a mature tree do?",
+      "options": [
+        "Increase traffic.",
+        "Replace public transport.",
+        "Reduce the number of parks.",
+        "Lower street temperatures."
+      ],
+      "answerIndex": 3,
+      "evidence": "A mature tree can lower street temperatures, absorb storm water and improve air quality",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-18",
+      "type": "reading",
+      "passageId": "fa-p4",
+      "band": "C1",
+      "passage": "Urban trees are often discussed as decoration, yet their value is increasingly measured in degrees and dollars. A mature tree can lower street temperatures, absorb storm water and improve air quality; in dense neighbourhoods, the difference can be a matter of health rather than comfort. The benefits are also unevenly distributed. Wealthier districts tend to have older, larger trees, while poorer areas often have fewer and younger ones. Planting programmes that ignore this pattern may widen the gap they claim to close. The difficult question is therefore not whether trees help, but who gets to benefit from them.",
+      "question": "How are the benefits distributed?",
+      "options": [
+        "Unevenly across neighbourhoods.",
+        "Equally in every district.",
+        "Only to wealthy districts.",
+        "Only to rural areas."
+      ],
+      "answerIndex": 0,
+      "evidence": "The benefits are also unevenly distributed.",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-19",
+      "type": "reading",
+      "passageId": "fa-p4",
+      "band": "C1",
+      "passage": "Urban trees are often discussed as decoration, yet their value is increasingly measured in degrees and dollars. A mature tree can lower street temperatures, absorb storm water and improve air quality; in dense neighbourhoods, the difference can be a matter of health rather than comfort. The benefits are also unevenly distributed. Wealthier districts tend to have older, larger trees, while poorer areas often have fewer and younger ones. Planting programmes that ignore this pattern may widen the gap they claim to close. The difficult question is therefore not whether trees help, but who gets to benefit from them.",
+      "question": "What may programmes that ignore this pattern do?",
+      "options": [
+        "Reduce all costs.",
+        "Plant only young trees.",
+        "Widen the gap they claim to close.",
+        "Improve every district equally."
+      ],
+      "answerIndex": 2,
+      "evidence": "Planting programmes that ignore this pattern may widen the gap they claim to close.",
+      "b": 1.2,
+      "anchor": false
+    },
+    {
+      "id": "fa-r-20",
+      "type": "reading",
+      "passageId": "fa-p4",
+      "band": "C1",
+      "passage": "Urban trees are often discussed as decoration, yet their value is increasingly measured in degrees and dollars. A mature tree can lower street temperatures, absorb storm water and improve air quality; in dense neighbourhoods, the difference can be a matter of health rather than comfort. The benefits are also unevenly distributed. Wealthier districts tend to have older, larger trees, while poorer areas often have fewer and younger ones. Planting programmes that ignore this pattern may widen the gap they claim to close. The difficult question is therefore not whether trees help, but who gets to benefit from them.",
+      "question": "What is the difficult question?",
+      "options": [
+        "Whether trees are beautiful.",
+        "Who gets to benefit from trees.",
+        "How to cut planting costs.",
+        "Which tree species is oldest."
+      ],
+      "answerIndex": 1,
+      "evidence": "The difficult question is therefore not whether trees help, but who gets to benefit from them.",
+      "b": 1.2,
+      "anchor": false
+    }
+  ]
+}

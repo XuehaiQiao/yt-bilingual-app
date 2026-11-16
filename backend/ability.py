@@ -238,6 +238,12 @@ def record_placement_result(
     - payload 只存 ``elapsedMs`` 这类小字段，不存题干/选项/原文。
     """
     calibration = result.get("calibration") or {}
+    # M2：v2 卷面的估计器版本必须原样记录；旧 v1 结果保持默认。
+    calibration_version = str(
+        calibration.get("calibrationVersion")
+        or calibration.get("version")
+        or CALIBRATION_VERSION
+    )
     breakdown = result.get("breakdown") or {}
     validity = breakdown.get("validity") if isinstance(breakdown, Mapping) else None
     if not isinstance(validity, dict):
@@ -309,7 +315,7 @@ def record_placement_result(
         },
         "validity": validity,
         "confidence": round(confidence, 4),
-        "calibrationVersion": CALIBRATION_VERSION,
+        "calibrationVersion": calibration_version,
         "note": VOCABULARY_NOTE.format(count=len(vocab_items)),
     }
     interval = calibration.get("interval")
@@ -342,7 +348,7 @@ def record_placement_result(
             float(evidence_total or 0),
             stamp,
             json.dumps(details, ensure_ascii=False, sort_keys=True),
-            CALIBRATION_VERSION,
+            calibration_version,
             SCHEMA_VERSION,
             stamp,
         ),

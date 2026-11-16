@@ -44,6 +44,13 @@ import { toast, describeApiError } from './lib/toast';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
+import {
+  installLearningTelemetry,
+  noteDictLookup,
+  notePlaybackRate,
+  noteVideoReplay,
+  type ReplayMethod,
+} from './lib/learningTelemetry';
 import { segToPlain, CHUNK_STYLE, type Sentence, type SegChunk } from './lib/sentences';
 import { consumeSseStream, findActiveIndex, isUntranslated, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from './lib/transcript';
 import {
@@ -85,6 +92,10 @@ interface TranscriptItem {
     color: string;
   }>;
 }
+
+// How long an app-issued seek may take to reach the player before a backwards
+// tick is treated as a user drag (CEFR M2 #7 video_replay).
+const SEEK_SETTLE_MS = 2500;
 
 function formatClock(seconds: number): string {
   const safe = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
@@ -185,6 +196,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // `currentTime` can keep advancing while `/api/lesson/start` is in flight;
   // a ref lets the handler read the latest value after the await.
   const currentTimeRef = useRef(0);
+  // CEFR M2 #7 replay baseline: the last position the learner actually saw.
+  // Kept separate from `currentTime` so a click-seek can be classified as
+  // backwards even before the YouTube player reports its new position.
+  const playbackPositionRef = useRef(0);
+  const lastSeekTargetRef = useRef<{ time: number; at: number } | null>(null);
 
   // Dictation (blind listening) mode: English blurred until revealed per sentence
   const [dictationMode, setDictationMode] = useState(false);
@@ -236,6 +252,27 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     } : prev));
   }, []);
 
+  // CEFR M2 #7 `dict_lookup`: one event per opened/switched dictionary card.
+  // The context sentence is deliberately not passed — only the word, its
+  // content id and a coarse source are sent.
+  useEffect(() => {
+    if (!wordLookup) return;
+    const sub = state.sub;
+    const source = sub?.kind === 'book'
+      ? 'book'
+      : sub?.kind === 'reader'
+        ? 'reader'
+        : sub?.kind === 'sentences'
+          ? 'sentence'
+          : 'transcript';
+    const contentRef = wordLookup.sourceId
+      || (sub?.kind === 'book' ? sub.bookId : undefined)
+      || (sub?.kind === 'learn' ? videoId : undefined)
+      || undefined;
+    noteDictLookup({ word: wordLookup.word, contentRef, source });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wordLookup]);
+
   // Playback controls: speed, play/pause command, single-sentence loop
   const [playbackRate, setPlaybackRate] = useState(1);
   const [playToggleCommand, setPlayToggleCommand] = useState<number | null>(null);
@@ -251,6 +288,19 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   useEffect(() => {
     currentTimeRef.current = currentTime;
   }, [currentTime]);
+
+  // CEFR M2 #7 tab_visibility: page-load listeners; the tracker only records
+  // hidden/visible transitions plus the seconds the tab was visible.
+  useEffect(() => {
+    installLearningTelemetry();
+  }, []);
+
+  // New content starts a new replay baseline; otherwise a backwards jump on
+  // video B would be measured against video A's position.
+  useEffect(() => {
+    playbackPositionRef.current = 0;
+    lastSeekTargetRef.current = null;
+  }, [videoId]);
 
   // Layout preferences: write the transcript placement immediately, and the
   // split ratio once a drag settles (no localStorage churn on every frame).
@@ -1221,10 +1271,37 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const handleTimeUpdate = useCallback((time: number) => {
     setCurrentTime(time);
+    // A seek issued moments ago may be followed by a stale tick from the old
+    // position (the YouTube embed is not instant); don't misread that as a
+    // user replay. Once the player reports near the target, tracking resumes.
+    const pendingSeek = lastSeekTargetRef.current;
+    const seekRecent = Boolean(
+      pendingSeek && Date.now() - pendingSeek.at < SEEK_SETTLE_MS
+    );
+    const staleAfterSeek = Boolean(
+      seekRecent
+      && pendingSeek
+      && Math.abs(time - pendingSeek.time) > 1.5
+    );
+    if (!staleAfterSeek) {
+      // Native YouTube scrubbing is not routed through `seekTo`, so a
+      // backwards position jump seen only in the poll is the "drag back"
+      // replay signal. Our own seeks were already reported by `seekTo` and
+      // are ignored during the settle window.
+      if (!seekRecent && time < playbackPositionRef.current - 1.5) {
+        noteVideoReplay({
+          contentRef: videoId,
+          fromSeconds: playbackPositionRef.current,
+          toSeconds: time,
+          method: 'seek',
+        });
+      }
+      playbackPositionRef.current = time;
+    }
     // The YouTube player and the simulated local clock both land here (via
     // their own source); watch events count only movement of this position.
     notePlayback(time);
-  }, []);
+  }, [videoId]);
 
   // ── Watch reporting (M5) ─────────────────────────────────────────────────
   // One segment per open content. Switching video/episode, leaving the learning
@@ -1245,6 +1322,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // paused episode keeps its last emitted segment clean.
   useEffect(() => {
     if (!useSubtitleTimer || !isSubtitlePlaying) return;
+    // The simulated clock owns the position for SRT-only episodes, so it is
+    // also the authoritative replay baseline there.
+    playbackPositionRef.current = currentTime;
     notePlayback(currentTime);
   }, [currentTime, useSubtitleTimer, isSubtitlePlaying]);
 
@@ -1317,13 +1397,28 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   // Unified seek: the simulated clock for SRT-only local episodes, a player
   // command for YouTube and for local episodes mapped to a real video.
-  const seekTo = useCallback((time: number) => {
-    if (useSubtitleTimer) {
-      startSubtitleTimer(time);
-    } else {
-      setSeekCommand({ time, timestamp: Date.now() });
+  // CEFR M2 #7: backwards seeks are the `video_replay` signal; forward jumps
+  // (normal sentence navigation) are not replay. The method records how the
+  // seek happened (click / keyboard / loop / other seek).
+  const seekTo = useCallback((time: number, method: ReplayMethod = 'seek') => {
+    const target = Number.isFinite(time) ? Math.max(0, time) : 0;
+    const from = playbackPositionRef.current;
+    if (Number.isFinite(time) && from - target > 1.5) {
+      noteVideoReplay({
+        contentRef: videoId,
+        fromSeconds: from,
+        toSeconds: target,
+        method,
+      });
     }
-  }, [useSubtitleTimer, startSubtitleTimer]);
+    playbackPositionRef.current = target;
+    lastSeekTargetRef.current = { time: target, at: Date.now() };
+    if (useSubtitleTimer) {
+      startSubtitleTimer(target);
+    } else {
+      setSeekCommand({ time: target, timestamp: Date.now() });
+    }
+  }, [useSubtitleTimer, startSubtitleTimer, videoId]);
 
   // Active sentence index — TranscriptView depends on this, not on raw
   // 100ms time ticks, so the 400+ sentence list re-renders only when the
@@ -1341,7 +1436,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       const block = transcript.find(b => b.start === time);
       if (block) loopBlockRef.current = { start: block.start, end: block.end };
     }
-    seekTo(time);
+    seekTo(time, 'click');
   }, [loopEnabled, transcript, seekTo]);
 
   const toggleLoop = useCallback(() => {
@@ -1381,7 +1476,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   useEffect(() => {
     if (!loopEnabled || !loopBlockRef.current) return;
     if (currentTime > loopBlockRef.current.end + 0.05) {
-      seekTo(loopBlockRef.current.start);
+      seekTo(loopBlockRef.current.start, 'loop');
     }
   }, [currentTime, loopEnabled, seekTo]);
 
@@ -1407,19 +1502,19 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           e.preventDefault();
           const idx = findActiveIndex(transcript, currentTime);
           const prev = transcript[Math.max(0, idx - 1)];
-          if (prev) seekTo(prev.start);
+          if (prev) seekTo(prev.start, 'keyboard');
           break;
         }
         case 'ArrowRight': {
           e.preventDefault();
           const idx = findActiveIndex(transcript, currentTime);
           const next = transcript[Math.min(transcript.length - 1, idx + 1)];
-          if (next) seekTo(next.start);
+          if (next) seekTo(next.start, 'keyboard');
           break;
         }
         case 'r': case 'R': {
           const idx = findActiveIndex(transcript, currentTime);
-          if (idx >= 0) seekTo(transcript[idx].start);
+          if (idx >= 0) seekTo(transcript[idx].start, 'keyboard');
           break;
         }
         case 'l': case 'L':
@@ -2136,8 +2231,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
         {(!isLocalSubtitle || hasLocalVideo) && (
           <select
+            data-testid="playback-rate-select"
             value={playbackRate}
-            onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+            onChange={(e) => {
+              const next = parseFloat(e.target.value);
+              notePlaybackRate({ contentRef: videoId, fromRate: playbackRate, toRate: next });
+              setPlaybackRate(next);
+            }}
             className="appearance-none bg-zinc-800/80 text-zinc-300 text-xs font-medium rounded-lg border border-white/5 h-7 pl-2.5 pr-6 outline-none cursor-pointer hover:text-zinc-100 shrink-0 bg-no-repeat bg-[right_0.5rem_center] bg-[length:10px] bg-[url('data:image/svg+xml;utf8,<svg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2010%206%22><path%20d=%22M1%201l4%204%204-4%22%20stroke=%22%2371717a%22%20stroke-width=%221.5%22%20fill=%22none%22%20stroke-linecap=%22round%22/></svg>')]"
             title={t('transcript.speedTitle')}
           >

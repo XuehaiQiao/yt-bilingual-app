@@ -31,8 +31,9 @@ import config
 
 logger = logging.getLogger(__name__)
 
-# 事件类型目前不设 CHECK 约束（事件字典 v1 还没定稿）。这里只是文档用的示例集合，
-# 写入层不校验——新增类型不需要改表，也不该因为拼错就丢事件。
+# 事件类型不设表级 CHECK 约束：写入层不校验，新增类型不需要改表，也不该因为
+# 拼错就丢事件。这里是文档/管理端用的「已知类型」集合；M2 #7 的四类行为事件
+# 由 behavior_events.py 校验后复用本表的 append-only 写入。
 KNOWN_EVENT_TYPES = (
     "video_open",
     "block_visible",
@@ -40,6 +41,10 @@ KNOWN_EVENT_TYPES = (
     "word_review",
     "exam_start",
     "exam_submit",
+    "dict_lookup",
+    "video_replay",
+    "playback_rate",
+    "tab_visibility",
 )
 
 # 未配置 EVENTS_PSEUDONYM_SALT 时的开发默认盐：能让本地与测试跑起来，

@@ -217,7 +217,7 @@ def test_schema_status_tracks_migration_state(tmp_path, monkeypatch):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
     migrated = events.schema_status()
     assert migrated["events_table"] is True
-    assert migrated["alembic_revision"] == "0016_content_difficulty"
+    assert migrated["alembic_revision"] == "0017_behavior_events"
     assert migrated["ready"] is True
 
 
@@ -226,7 +226,8 @@ def test_only_batch_event_endpoint_is_public():
     paths = {getattr(route, "path", "") for route in main.app.routes}
     assert "/api/events" in paths
     event_paths = {path for path in paths if "event" in path.lower()}
-    assert event_paths == {"/api/events"}
+    # 批量上报是唯一写的公开入口；/api/admin/events 是管理员只读查询（M2 #7）。
+    assert event_paths == {"/api/events", "/api/admin/events"}
 
 
 def _non_docstring_strings(source: str) -> list[str]:

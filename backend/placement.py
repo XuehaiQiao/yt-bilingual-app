@@ -5,20 +5,23 @@
 
 设计要点（规格见 ``specs/016-placement/spec.md``）：
 
-- **题库只读**：``content/placement/{vocab,reading,pseudo}.json``，启动后懒加载并
-  做结构校验；文件缺失/损坏抛 :class:`PlacementUnavailable`（路由 503），不静默
-  降级成空题。
-- **只存会话，不存整卷**：每次会话按 ``seed = "placement.serve.v1:<sessionId>"``
-  确定性地抽题（词频带分层：A1 5 / A2 5 / B1 5 / B2 5 / C1 4，再从 3–5 个伪词里
-  抽 3 个，5 篇阅读全出）并打乱。开始和提交用同一个 sessionId 重算，得到同一份
-  题面；接口只下发卷面，不下发答案。
+- **题库只读**：v1 为 ``content/placement/{vocab,reading,pseudo}.json``；
+  v2 为 ``content/placement/forms/form-{a,b}/{vocab,pseudo,reading}.json``
+  （`PLACEMENT_BANK_VERSION=v2`）。启动后懒加载并做结构校验；文件缺失/损坏
+  抛 :class:`PlacementUnavailable`（路由 503），不静默降级成空题。
+- **只存会话，不存整卷**：每次会话按 ``seed = "placement.serve.v1|v2:<sessionId>"``
+  确定性地抽题（v1：24 词 + 3 伪词 + 5 阅读；v2：24 词含 10 锚题 + 3 伪词 +
+  5 阅读并覆盖 4 篇短文）并打乱。开始和提交用同一个 sessionId 重算，得到同一份
+  题面；接口只下发卷面，不下发答案。会话 id 前缀记录 v1/v2 与 Form A/B，开关
+  切换不会改变进行中的会话。
 - **不下发银行 id**：对外的 ``itemId`` 是会话内编号 ``q-01``…``q-32``，伪词和
   真词外观完全一致（都是 vocab 题面、4 个选项），避免从 id 看出真假。
 - **不认识就跳过**：``chosenIndex = -1``（或省略）表示「不认识」。真词跳过 = 答错；
   伪词跳过 = 诚实作答。伪词选任一选项 = 声称认识（overclaiming），用于猜测检测。
   计划书 §4.3 的「4 选 1 + 1 个不认识选项」在接口里由 ``-1`` 承载。
 - **加权计分**：按难度带 A1=0.5 / A2=1.0 / B1=1.5 / B2=2.0 / C1=2.5 加权，伪词
-  不参与得分。加权正确率 → 点估计带 → 区间 = 点估计 ±1 带（A1/C1 处截断）。
+  不参与得分。CEFR 带由词汇题的 Rasch/EAP 给出（v1 带中心 b；v2 题级 b +
+  共享锚题 + form offset 占位 0），区间 = 点带 ±1 带（A1/C1 处截断）。
 - **置信度**：完成度 + 用时合理性 - 伪词过度声称惩罚；低于阈值显示「低」。
 - **样本口径**：完成过定位测的**不同用户数 < 100** 时 ``preliminary=True``，文案
   明确「初步估计」。门槛常量见 :data:`PRELIMINARY_SAMPLE_THRESHOLD`。
@@ -33,8 +36,10 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import math
 import os
 import random
 import sqlite3
@@ -99,8 +104,29 @@ VOCAB_ESTIMATES: dict[str, int] = {
 # 计划书要求的 CAT 离线模拟（1 人日）与教研审校后再调。改阈值请同时改
 # specs/016 与 tests/test_placement.py 的区间断言。
 CALIBRATION = assessment.CALIBRATION_VERSION
+CALIBRATION_V2 = assessment.CALIBRATION_VERSION_V2
 # 固定 24 题卷只出 A1–C1 题目；输出带也限制在 A1–C1，避免全对被报成 C2。
 OUTPUT_BANDS: tuple[str, ...] = ("A1", "A2", "B1", "B2", "C1")
+
+# 题库版本（M2）：v1 = 仓库原有 39 题（vocab 30 + reading 5 + pseudo 4）；
+# v2 = content/placement/forms/form-{a,b}/ 两套 64 题（40 真词 + 4 伪词 +
+# 20 阅读，其中 10 道词汇锚题在 A/B 两套完全相同）。默认 v1，旧流程不变；
+# 环境变量 PLACEMENT_BANK_VERSION=v2 启用新题库（不改 .env）。
+LEGACY_BANK_VERSION = "v1"
+FORMS_BANK_VERSION = "v2"
+BANK_VERSIONS: tuple[str, ...] = (LEGACY_BANK_VERSION, FORMS_BANK_VERSION)
+BANK_VERSION_LABELS: dict[str, str] = {
+    LEGACY_BANK_VERSION: "placement.bank.v1",
+    FORMS_BANK_VERSION: "placement.bank.v2",
+}
+FORM_LABELS: tuple[str, ...] = ("A", "B")
+ANCHOR_MIN = 8
+ANCHOR_MAX = 10
+# 卷面偏移（logit）：pilot 前固定 0，表示「两套卷假定等难」。**不是标定值**；
+# 30–50 人 pilot 后按锚题法重估，届时只改这里并升 calibration_version。
+FORM_OFFSETS: dict[str, float] = {"A": 0.0, "B": 0.0}
+SESSION_ID_PREFIX_V1 = "p1-"
+SESSION_ID_PREFIX_V2 = "p2"
 OVERALL_THRESHOLDS: dict[str, float] = {
     "A1": 0.00,
     "A2": 0.27,
@@ -169,7 +195,12 @@ class PlacementConflict(PlacementError):
 
 @dataclass(frozen=True)
 class Item:
-    """一道题（内部模型；正确项只留在服务端）。"""
+    """一道题（内部模型；正确项只留在服务端）。
+
+    ``b`` / ``anchor`` / ``form`` 仅新题库（M2）使用：``b`` 为题级难度
+    （编辑占位或 pilot 标定值），``anchor`` 标记 A/B 共享锚题，``form`` 为
+    ``"A"`` / ``"B"``（旧 39 题为 ``None``）。
+    """
 
     id: str
     type: str  # vocab / reading / pseudo
@@ -179,15 +210,24 @@ class Item:
     answer_index: int | None  # 伪词为 None（没有正确答案）
     passage: str | None = None
     example: str | None = None
+    b: float | None = None
+    anchor: bool = False
+    form: str | None = None
+    passage_id: str | None = None
+    evidence: str | None = None
 
 
 @dataclass(frozen=True)
 class Bank:
-    """三份题库文件合并后的只读视图。"""
+    """题库只读视图；v2 时 ``form`` / ``anchor_ids`` 非空。"""
 
     vocab: tuple[Item, ...]
     reading: tuple[Item, ...]
     pseudo: tuple[Item, ...]
+    version: str = BANK_VERSION_LABELS[LEGACY_BANK_VERSION]
+    form: str | None = None
+    anchor_ids: tuple[str, ...] = ()
+    parameter_status: str = "uncalibrated"
 
     @property
     def all_items(self) -> tuple[Item, ...]:
@@ -195,13 +235,13 @@ class Bank:
 
 
 def load_bank() -> Bank:
-    """加载并缓存 ``config.PLACEMENT_DIR`` 下的题库（按绝对路径缓存）。"""
+    """加载并缓存旧 39 题题库（``config.PLACEMENT_DIR``）。"""
     return _load_bank(os.path.abspath(config.PLACEMENT_DIR))
 
 
 @lru_cache(maxsize=4)
 def _load_bank(directory: str) -> Bank:
-    """从目录读三份 JSON，校验结构与题目契约；失败抛 PlacementUnavailable。"""
+    """从目录读三份旧题库 JSON；失败抛 PlacementUnavailable。"""
     vocab = _read_items(os.path.join(directory, "vocab.json"), "vocab", expected=30)
     reading = _read_items(
         os.path.join(directory, "reading.json"), "reading", expected=5
@@ -216,10 +256,177 @@ def _load_bank(directory: str) -> Bank:
             raise PlacementUnavailable(f"定位测题库 id 重复：{item.id}")
         seen.add(item.id)
 
-    return Bank(vocab=vocab, reading=reading, pseudo=pseudo)
+    return Bank(
+        vocab=vocab,
+        reading=reading,
+        pseudo=pseudo,
+        version=BANK_VERSION_LABELS[LEGACY_BANK_VERSION],
+    )
 
 
-def _read_items(path: str, kind: str, *, expected) -> tuple[Item, ...]:
+# ------------------------------- M2 两套题库 -------------------------------
+
+def load_forms_bank() -> tuple[Bank, Bank]:
+    """加载并校验 Form A/B 两套新题库；失败抛 PlacementUnavailable（503）。
+
+    两套同时加载，是为了在服务端入口就做锚题一致性闸门：只要 A/B 的
+    共享锚题内容或参数不一致，整个 v2 题库都拒绝加载。
+    """
+    return _load_forms_bank(os.path.abspath(config.PLACEMENT_DIR))
+
+
+def load_form_bank(form: str) -> Bank:
+    """按 ``"A"`` / ``"B"`` 取一套新题库（已做锚题交叉校验）。"""
+    if form not in FORM_LABELS:
+        raise PlacementUnavailable(f"定位测卷面非法：{form!r}（只支持 A/B）。")
+    return load_forms_bank()[FORM_LABELS.index(form)]
+
+
+@lru_cache(maxsize=4)
+def _load_forms_bank(directory: str) -> tuple[Bank, Bank]:
+    banks = tuple(_read_form_bank(directory, form) for form in FORM_LABELS)
+    _validate_anchor_equivalence(banks[0], banks[1])
+    return banks  # type: ignore[return-value]
+
+
+def _read_form_bank(directory: str, form: str) -> Bank:
+    """读一套新题库并校验：数量/带覆盖/锚题/阅读短文/参数完整性。"""
+    base = os.path.join(directory, "forms", f"form-{form.lower()}")
+    vocab_path = os.path.join(base, "vocab.json")
+    reading_path = os.path.join(base, "reading.json")
+    pseudo_path = os.path.join(base, "pseudo.json")
+    vocab = _read_items(vocab_path, "vocab", expected=40, form=form)
+    reading = _read_items(reading_path, "reading", expected=20, form=form)
+    pseudo = _read_items(pseudo_path, "pseudo", expected=4, form=form)
+
+    meta = _read_meta(vocab_path)
+    if str(meta.get("form") or "").upper() != form:
+        raise PlacementUnavailable(
+            f"定位测 Form {form} 的 vocab.json _meta.form 不一致：{meta.get('form')!r}"
+        )
+    anchor_ids = meta.get("anchorIds")
+    if not isinstance(anchor_ids, list) or not all(
+        isinstance(value, str) and value.strip() for value in anchor_ids
+    ):
+        raise PlacementUnavailable(f"定位测 Form {form} 缺少合法的 _meta.anchorIds")
+    if not ANCHOR_MIN <= len(anchor_ids) <= ANCHOR_MAX:
+        raise PlacementUnavailable(
+            f"定位测 Form {form} 锚题数应为 {ANCHOR_MIN}–{ANCHOR_MAX}，"
+            f"实际 {len(anchor_ids)}"
+        )
+    if len(set(anchor_ids)) != len(anchor_ids):
+        raise PlacementUnavailable(f"定位测 Form {form} 锚题 id 重复")
+
+    all_items = vocab + reading + pseudo
+    seen: set[str] = set()
+    for item in all_items:
+        if item.id in seen:
+            raise PlacementUnavailable(f"定位测 Form {form} 题库 id 重复：{item.id}")
+        seen.add(item.id)
+        if item.b is None:
+            raise PlacementUnavailable(
+                f"定位测 Form {form} 的 {item.id} 缺少题级参数 b（v2 必须显式给出）"
+            )
+
+    actual_anchor_ids = [item.id for item in vocab if item.anchor]
+    if sorted(actual_anchor_ids) != sorted(str(value) for value in anchor_ids):
+        raise PlacementUnavailable(
+            f"定位测 Form {form} 的 anchorIds 与实际锚题不一致："
+            f"{sorted(actual_anchor_ids)} != {sorted(anchor_ids)}"
+        )
+
+    bands = {item.band for item in vocab}
+    if bands != set(CEFR_BANDS):
+        raise PlacementUnavailable(
+            f"定位测 Form {form} 词汇难度带未覆盖 A1–C1：{sorted(bands)}"
+        )
+    anchor_bands: dict[str, int] = {}
+    for item in vocab:
+        if item.anchor:
+            anchor_bands[item.band] = anchor_bands.get(item.band, 0) + 1
+    if set(anchor_bands) != set(CEFR_BANDS):
+        raise PlacementUnavailable(
+            f"定位测 Form {form} 锚题未覆盖 A1–C1：{sorted(anchor_bands)}"
+        )
+    for band, count in anchor_bands.items():
+        if count > _VOCAB_QUOTAS[band]:
+            raise PlacementUnavailable(
+                f"定位测 Form {form} 的 {band} 锚题 {count} 道，"
+                f"超过该带抽题配额 {_VOCAB_QUOTAS[band]}"
+            )
+    words = [item.prompt.strip().lower() for item in vocab]
+    if len(words) != len(set(words)):
+        raise PlacementUnavailable(f"定位测 Form {form} 词汇题出现重复单词")
+
+    passages: dict[str, list[Item]] = {}
+    for item in reading:
+        if not item.passage_id:
+            raise PlacementUnavailable(
+                f"定位测 Form {form} 阅读题 {item.id} 缺少 passageId"
+            )
+        if not item.evidence:
+            raise PlacementUnavailable(
+                f"定位测 Form {form} 阅读题 {item.id} 缺少 evidence"
+            )
+        passages.setdefault(item.passage_id, []).append(item)
+    if len(passages) != 4 or any(len(group) != 5 for group in passages.values()):
+        raise PlacementUnavailable(
+            f"定位测 Form {form} 阅读应为 4 篇 × 5 题，实际 "
+            f"{ {key: len(value) for key, value in passages.items()} }"
+        )
+    meta_passages = meta.get("passageIds")
+    if isinstance(meta_passages, list) and set(meta_passages) != set(passages):
+        raise PlacementUnavailable(
+            f"定位测 Form {form} 的 _meta.passageIds 与实际短文不一致"
+        )
+
+    return Bank(
+        vocab=vocab,
+        reading=reading,
+        pseudo=pseudo,
+        version=BANK_VERSION_LABELS[FORMS_BANK_VERSION],
+        form=form,
+        anchor_ids=tuple(str(value) for value in anchor_ids),
+        parameter_status=str(meta.get("parameterStatus") or "uncalibrated"),
+    )
+
+
+def _read_meta(path: str) -> dict:
+    """只读题库 _meta（_read_items 已做过文件/结构校验，这里宽松重复读取）。"""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, ValueError) as exc:
+        raise PlacementUnavailable(f"定位测题库读取失败：{path}：{exc}") from exc
+    meta = payload.get("_meta") if isinstance(payload, dict) else None
+    if not isinstance(meta, dict):
+        raise PlacementUnavailable(f"定位测题库缺少 _meta：{path}")
+    return meta
+
+
+def _validate_anchor_equivalence(bank_a: Bank, bank_b: Bank) -> None:
+    """锚题闸门：A/B 的共享题必须同题、同带、同选项、同答案、同 b。"""
+    if bank_a.anchor_ids != bank_b.anchor_ids:
+        raise PlacementUnavailable(
+            "定位测 Form A/B 锚题 id 不一致："
+            f"{list(bank_a.anchor_ids)} != {list(bank_b.anchor_ids)}"
+        )
+    by_a = {item.id: item for item in bank_a.vocab if item.anchor}
+    by_b = {item.id: item for item in bank_b.vocab if item.anchor}
+    fields = ("type", "band", "prompt", "options", "answer_index", "b", "anchor")
+    for anchor_id in bank_a.anchor_ids:
+        left = by_a.get(anchor_id)
+        right = by_b.get(anchor_id)
+        if left is None or right is None:
+            raise PlacementUnavailable(f"定位测锚题 {anchor_id} 未同时出现在 A/B")
+        for field in fields:
+            if getattr(left, field) != getattr(right, field):
+                raise PlacementUnavailable(
+                    f"定位测锚题 {anchor_id} 的 {field} 在 Form A/B 不一致"
+                )
+
+
+def _read_items(path: str, kind: str, *, expected, form: str | None = None) -> tuple[Item, ...]:
     """读一份题库文件；``expected`` 为精确数量或 (min, max) 区间。"""
     try:
         with open(path, encoding="utf-8") as handle:
@@ -256,11 +463,14 @@ def _read_items(path: str, kind: str, *, expected) -> tuple[Item, ...]:
             f"定位测题库 {kind} 数量应为 {expected}，实际 {len(raw_items)}：{path}"
         )
 
-    items = tuple(_parse_item(raw, kind, path, index) for index, raw in enumerate(raw_items))
+    items = tuple(
+        _parse_item(raw, kind, path, index, form=form)
+        for index, raw in enumerate(raw_items)
+    )
     return items
 
 
-def _parse_item(raw, kind: str, path: str, index: int) -> Item:
+def _parse_item(raw, kind: str, path: str, index: int, *, form: str | None = None) -> Item:
     """校验单题字段并转成 Item；任何问题都视为题库损坏（503）。"""
     where = f"{path} items[{index}]"
     if not isinstance(raw, dict):
@@ -278,7 +488,7 @@ def _parse_item(raw, kind: str, path: str, index: int) -> Item:
         or len(options) != 4
         or not all(isinstance(option, str) and option.strip() for option in options)
     ):
-        raise PlacementUnavailable(f"{where} 需要 4 个非空中文选项")
+        raise PlacementUnavailable(f"{where} 需要 4 个非空选项")
     if len(set(options)) != 4:
         raise PlacementUnavailable(f"{where} 选项重复")
 
@@ -311,6 +521,28 @@ def _parse_item(raw, kind: str, path: str, index: int) -> Item:
         ):
             raise PlacementUnavailable(f"{where} answerIndex 必须是 0–3 的整数")
 
+    b = raw.get("b")
+    if b is not None:
+        if isinstance(b, bool) or not isinstance(b, (int, float)):
+            raise PlacementUnavailable(f"{where} b 必须是数值或省略")
+        b = float(b)
+        if not math.isfinite(b) or not -6.0 <= b <= 6.0:
+            raise PlacementUnavailable(f"{where} b 超出合理范围")
+    anchor = raw.get("anchor", False)
+    if not isinstance(anchor, bool):
+        raise PlacementUnavailable(f"{where} anchor 必须是布尔值")
+    if kind == "pseudo" and anchor:
+        raise PlacementUnavailable(f"{where} 伪词不能是锚题")
+
+    passage_id = raw.get("passageId")
+    if passage_id is not None and (
+        not isinstance(passage_id, str) or not passage_id.strip()
+    ):
+        raise PlacementUnavailable(f"{where} passageId 必须是非空字符串")
+    evidence = raw.get("evidence")
+    if evidence is not None and not isinstance(evidence, str):
+        raise PlacementUnavailable(f"{where} evidence 必须是字符串")
+
     return Item(
         id=item_id.strip(),
         type=kind,
@@ -318,6 +550,11 @@ def _parse_item(raw, kind: str, path: str, index: int) -> Item:
         prompt=prompt,
         options=tuple(option.strip() for option in options),
         answer_index=answer_index,
+        b=b,
+        anchor=anchor,
+        form=form,
+        passage_id=passage_id.strip() if isinstance(passage_id, str) else None,
+        evidence=evidence,
         **extra,
     )
 
@@ -326,8 +563,92 @@ def _parse_item(raw, kind: str, path: str, index: int) -> Item:
 # 会话内抽题（确定性：begin/submit 用同一 sessionId 重算同一份卷）
 # ---------------------------------------------------------------------------
 
-def sample_items(session_id: str) -> list[Item]:
-    """按 sessionId 确定性抽题并打乱；同一 sessionId 永远得到同一份卷。"""
+def configured_bank_version() -> str:
+    """读 ``PLACEMENT_BANK_VERSION``：默认 v1；v2/forms 启用两套新题库。"""
+    raw = str(
+        getattr(config, "PLACEMENT_BANK_VERSION", LEGACY_BANK_VERSION)
+        or LEGACY_BANK_VERSION
+    ).strip().lower()
+    aliases = {
+        "v1": LEGACY_BANK_VERSION,
+        "legacy": LEGACY_BANK_VERSION,
+        "1": LEGACY_BANK_VERSION,
+        "v2": FORMS_BANK_VERSION,
+        "forms": FORMS_BANK_VERSION,
+        "2": FORMS_BANK_VERSION,
+    }
+    version = aliases.get(raw)
+    if version is None:
+        raise PlacementUnavailable(
+            f"PLACEMENT_BANK_VERSION 非法：{raw!r}（只支持 v1 / v2）。"
+        )
+    return version
+
+
+def session_bank_version(session_id: str) -> str:
+    """会话 id 前缀决定题库版本；旧会话（无前缀）永远按 v1 重算。
+
+    这样把 ``PLACEMENT_BANK_VERSION`` 从 v1 切到 v2 时，升级前开始的
+    in-progress 旧会话仍能用旧 39 题提交，不会被新题库「换卷」。
+    """
+    if session_id.startswith(("p2a-", "p2b-")):
+        return FORMS_BANK_VERSION
+    return LEGACY_BANK_VERSION
+
+
+def session_form(session_id: str, *, version: str | None = None) -> str | None:
+    """会话的 Form A/B；旧会话为 None，无前缀的 v2 id 用哈希确定性分卷。
+
+    ``version`` 供测试/脚本显式指定；正常请求从会话 id 前缀推导。
+    """
+    if session_id.startswith("p2a-"):
+        return "A"
+    if session_id.startswith("p2b-"):
+        return "B"
+    resolved_version = version or session_bank_version(session_id)
+    if resolved_version == FORMS_BANK_VERSION:
+        digest = hashlib.sha256(session_id.encode("utf-8")).digest()
+        return "A" if digest[0] % 2 == 0 else "B"
+    return None
+
+
+def new_session_id(version: str, form: str | None = None) -> tuple[str, str | None]:
+    """生成带题库标记的会话 id（对外不透明，只用于 start/submit 重算）。"""
+    token = uuid.uuid4().hex
+    if version == FORMS_BANK_VERSION:
+        if form not in FORM_LABELS:
+            form = "A" if int(token[:8], 16) % 2 == 0 else "B"
+        return f"{SESSION_ID_PREFIX_V2}{form.lower()}-{token}", form
+    return f"{SESSION_ID_PREFIX_V1}{token}", None
+
+
+def sample_items(
+    session_id: str,
+    *,
+    version: str | None = None,
+    form: str | None = None,
+) -> list[Item]:
+    """按 sessionId 确定性抽题并打乱；同一 sessionId 永远得到同一份卷。
+
+    v1（默认）沿用旧 39 题与 ``placement.serve.v1`` 种子；v2 从 Form A/B
+    抽 24 词汇（含该套 10 道锚题）+ 3 伪词 + 5 阅读。显式 ``version``/``form``
+    参数供测试与脚本使用；正常请求由会话 id 前缀决定。
+    """
+    resolved_version = version or session_bank_version(session_id)
+    if resolved_version not in BANK_VERSIONS:
+        raise PlacementUnavailable(f"未知定位测题库版本：{resolved_version!r}")
+    if resolved_version == FORMS_BANK_VERSION:
+        resolved_form = form or session_form(
+            session_id, version=resolved_version
+        )
+        if resolved_form not in FORM_LABELS:
+            raise PlacementUnavailable(f"未知定位测卷面：{resolved_form!r}")
+        return _sample_form_items(session_id, load_form_bank(resolved_form))
+    return _sample_legacy_items(session_id)
+
+
+def _sample_legacy_items(session_id: str) -> list[Item]:
+    """旧 39 题：24 词汇分层 + 3 伪词 + 5 阅读。"""
     bank = load_bank()
     rng = random.Random(f"placement.serve.v1:{session_id}")
 
@@ -348,6 +669,68 @@ def sample_items(session_id: str) -> list[Item]:
     items = vocab + pseudo + list(bank.reading)
     rng.shuffle(items)
     return items[:SERVED_TOTAL]
+
+
+def _sample_form_items(session_id: str, bank: Bank) -> list[Item]:
+    """v2 卷面：全出锚题 + 按带配额补非锚题 + 3 伪词 + 5 阅读（4 篇都覆盖）。"""
+    rng = random.Random(f"placement.serve.v2:{session_id}")
+
+    anchors = [item for item in bank.vocab if item.anchor]
+    vocab: list[Item] = list(anchors)
+    for band in CEFR_BANDS:
+        quota = _VOCAB_QUOTAS[band]
+        have = sum(1 for item in vocab if item.band == band)
+        need = max(0, quota - have)
+        pool = [
+            item
+            for item in bank.vocab
+            if item.band == band and not item.anchor and item not in vocab
+        ]
+        if len(pool) < need:
+            raise PlacementUnavailable(
+                f"定位测 Form {bank.form} 的 {band} 非锚题不足："
+                f"需要 {need}，只有 {len(pool)}"
+            )
+        vocab.extend(rng.sample(pool, need))
+
+    if len(vocab) < SERVED_VOCAB:
+        remaining = [item for item in bank.vocab if item not in vocab]
+        rng.shuffle(remaining)
+        vocab.extend(remaining[: SERVED_VOCAB - len(vocab)])
+    vocab = vocab[:SERVED_VOCAB]
+
+    pseudo = list(rng.sample(bank.pseudo, min(SERVED_PSEUDO, len(bank.pseudo))))
+    reading = _sample_form_reading(rng, bank.reading, SERVED_READING)
+    if len(reading) != SERVED_READING:
+        raise PlacementUnavailable(
+            f"定位测 Form {bank.form} 阅读题不足：需要 {SERVED_READING}，"
+            f"实际 {len(reading)}"
+        )
+    items = vocab + pseudo + reading
+    rng.shuffle(items)
+    return items[:SERVED_TOTAL]
+
+
+def _sample_form_reading(
+    rng: random.Random, reading: Sequence[Item], count: int
+) -> list[Item]:
+    """抽 5 题并尽量覆盖 4 篇短文：每篇先取 1 题，再补 1 题。"""
+    groups: dict[str, list[Item]] = {}
+    for item in reading:
+        key = item.passage_id or item.id
+        groups.setdefault(key, []).append(item)
+    if len(groups) < 2:
+        return list(rng.sample(list(reading), min(count, len(reading))))
+
+    keys = rng.sample(sorted(groups), min(count, len(groups)))
+    chosen = [rng.choice(groups[key]) for key in keys]
+    while len(chosen) < count:
+        remaining = [item for item in reading if item not in chosen]
+        if not remaining:
+            break
+        chosen.append(rng.choice(remaining))
+    rng.shuffle(chosen)
+    return chosen[:count]
 
 
 def served_item_id(index: int) -> str:
@@ -514,13 +897,43 @@ def score_session(
     suspicion = round(claimed / pseudo_total, 4) if pseudo_total else 0.0
 
     # 词汇识别 → Rasch/EAP；输出带限制在 A1–C1（本题库只有这 5 个带）。
-    vocab_pairs = [
-        (item.band, int(chosen.get(item.id, UNKNOWN_INDEX)) == item.answer_index)
-        for item in vocab_items
-        if item.answer_index is not None
-    ]
-    calibration = assessment.estimate(
-        vocab_pairs, bands=OUTPUT_BANDS, compute_vocabulary=True
+    # M2：新题库卷面（item.form 非空）走 v2，锚题共享 b；旧 39 题继续 v1。
+    form = next((item.form for item in vocab_items if item.form), None)
+    anchor_count = sum(1 for item in vocab_items if item.anchor)
+    if form:
+        responses_v2 = [
+            {
+                "band": item.band,
+                "correct": int(
+                    int(chosen.get(item.id, UNKNOWN_INDEX)) == item.answer_index
+                ),
+                "b": item.b,
+                "anchor": item.anchor,
+            }
+            for item in vocab_items
+            if item.answer_index is not None
+        ]
+        calibration = assessment.estimate_v2(
+            responses_v2,
+            bands=OUTPUT_BANDS,
+            form=form,
+            form_offset=FORM_OFFSETS.get(form, 0.0),
+            compute_vocabulary=True,
+        )
+    else:
+        vocab_pairs = [
+            (item.band, int(chosen.get(item.id, UNKNOWN_INDEX)) == item.answer_index)
+            for item in vocab_items
+            if item.answer_index is not None
+        ]
+        calibration = assessment.estimate(
+            vocab_pairs, bands=OUTPUT_BANDS, compute_vocabulary=True
+        )
+    calibration_version = calibration["calibrationVersion"]
+    bank_version = (
+        BANK_VERSION_LABELS[FORMS_BANK_VERSION]
+        if form
+        else BANK_VERSION_LABELS[LEGACY_BANK_VERSION]
     )
     band = calibration["band"]
     interval = calibration["interval"]
@@ -560,8 +973,11 @@ def score_session(
 
     breakdown = {
         "version": "placement.v2",
-        "calibration": CALIBRATION,
-        "calibrationVersion": CALIBRATION,
+        "bankVersion": bank_version,
+        "form": form,
+        "anchorCount": anchor_count,
+        "calibration": calibration_version,
+        "calibrationVersion": calibration_version,
         "vocab": {
             **vocab,
             "band": band,
@@ -573,6 +989,9 @@ def score_session(
             "bandPosterior": calibration["bandPosterior"],
             "estimate": vocab_estimate,
             "precision": precision,
+            "form": form,
+            "anchorCount": anchor_count,
+            "scale": calibration.get("scale"),
         },
         # 阅读：只留原始统计与「证据不足」状态，**不出现 band**（契约 A1）。
         "reading": {
@@ -615,8 +1034,15 @@ def score_session(
         "preliminary": preliminary,
         "sampleSize": int(sample_size),
         "durationMs": int(duration_ms),
+        "bankVersion": bank_version,
+        "form": form,
+        "anchorCount": anchor_count,
         "calibration": {
-            "version": CALIBRATION,
+            "version": calibration_version,
+            "calibrationVersion": calibration_version,
+            "form": form,
+            "anchorCount": anchor_count,
+            "scale": calibration.get("scale"),
             "theta": calibration["theta"],
             "se": calibration["se"],
             "ci95": calibration["ci95"],
@@ -787,8 +1213,6 @@ def start(identity: str, guest_hash: str | None = None, *, now: int | None = Non
     """开始（或复用）一次定位测；返回卷面，不含答案。"""
     if not identity:
         raise PlacementInvalid("缺少定位测身份。")
-    # 先验证题库：题库坏了就不该落一条永远无法提交的 in_progress 会话。
-    load_bank()
     stamp = int(now) if now is not None else now_ms()
     conn = _connect()
     try:
@@ -800,7 +1224,13 @@ def start(identity: str, guest_hash: str | None = None, *, now: int | None = Non
         row = _find_active(conn, identity)
         resumed = row is not None
         if row is None:
-            session_id = uuid.uuid4().hex
+            version = configured_bank_version()
+            session_id, _form = new_session_id(version)
+            # 先验证题库：题库坏了就不该落一条永远无法提交的 in_progress 会话。
+            if version == FORMS_BANK_VERSION:
+                load_forms_bank()
+            else:
+                load_bank()
             try:
                 with conn:
                     conn.execute(
@@ -820,6 +1250,9 @@ def start(identity: str, guest_hash: str | None = None, *, now: int | None = Non
                 if row is None:  # pragma: no cover - 插后即查，理论不可达
                     raise PlacementConflict("定位测会话创建失败，请重试。")
 
+        # 会话 id 前缀决定卷面：旧会话继续 v1，新会话按 start 时的开关走。
+        session_version = session_bank_version(row["id"])
+        session_form_letter = session_form(row["id"])
         attempt = int(
             conn.execute(
                 "SELECT COUNT(*) AS total FROM placement_sessions WHERE user_id = ?",
@@ -840,6 +1273,14 @@ def start(identity: str, guest_hash: str | None = None, *, now: int | None = Non
             "startedAt": int(row["started_at"]),
             "durationLimitMs": DURATION_LIMIT_MS,
             "itemCount": len(served),
+            "bankVersion": BANK_VERSION_LABELS[session_version],
+            "form": session_form_letter,
+            "calibrationVersion": (
+                CALIBRATION_V2
+                if session_version == FORMS_BANK_VERSION
+                else CALIBRATION
+            ),
+            "anchorCount": sum(1 for item in items if item.anchor),
             "totals": {
                 "vocab": SERVED_VOCAB + SERVED_PSEUDO,
                 "reading": SERVED_READING,

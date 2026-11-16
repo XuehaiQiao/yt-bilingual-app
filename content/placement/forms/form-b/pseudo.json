@@ -1,0 +1,82 @@
+{
+  "_meta": {
+    "status": "draft",
+    "notice": "草稿，待教研审校；题目未经 pilot 校准，b 为题带中心占位，p 值未测定。",
+    "version": "placement.form-b.v1",
+    "updated": "2026-11-17",
+    "kind": "pseudo",
+    "form": "B",
+    "itemCount": 4,
+    "parameterVersion": "editorial.band-center.v1",
+    "parameterStatus": "uncalibrated",
+    "reviewNotes": [
+      "4 个选项互不重复，answerIndex 为 0–3 的唯一正确项下标。",
+      "b 为题带中心（A1 -2.0 / A2 -1.2 / B1 -0.4 / B2 +0.4 / C1 +1.2）的编辑占位，不是 IRT 标定结果。",
+      "未做 30–50 人 pilot；p 值与真实难度待 pilot 后回填，禁止把占位参数当效度证据。",
+      "阅读短文均为自写文本，不使用受版权保护的材料。",
+      "伪词题没有 answerIndex；选任一选项只用于过度声称检测。"
+    ]
+  },
+  "items": [
+    {
+      "id": "fb-p-01",
+      "type": "pseudo",
+      "word": "dravellate",
+      "band": "B1",
+      "options": [
+        "用旧布缝成的地毯",
+        "山谷里常见的野花",
+        "一种带甜味的根茎",
+        "冬天结冰的浅塘"
+      ],
+      "b": -0.4,
+      "anchor": false,
+      "note": "编造词；审校时确认词典与仓库词表均无收录"
+    },
+    {
+      "id": "fb-p-02",
+      "type": "pseudo",
+      "word": "morvindle",
+      "band": "B2",
+      "options": [
+        "夜间巡逻的马车",
+        "书页边缘的烫金花纹",
+        "一种罕见的蓝色矿石",
+        "用来压纸的铜块"
+      ],
+      "b": 0.4,
+      "anchor": false,
+      "note": "编造词；审校时确认词典与仓库词表均无收录"
+    },
+    {
+      "id": "fb-p-03",
+      "type": "pseudo",
+      "word": "sorvantine",
+      "band": "B2",
+      "options": [
+        "按月相酿造的果酒",
+        "旧式水手的罗盘",
+        "河岸边的白色沙丘",
+        "一种带刺的灌木"
+      ],
+      "b": 0.4,
+      "anchor": false,
+      "note": "编造词；审校时确认词典与仓库词表均无收录"
+    },
+    {
+      "id": "fb-p-04",
+      "type": "pseudo",
+      "word": "thalyriom",
+      "band": "C1",
+      "options": [
+        "微光闪烁的状态",
+        "极度饥饿的感觉",
+        "持续不断的低音",
+        "金属表面的细密划痕"
+      ],
+      "b": 1.2,
+      "anchor": false,
+      "note": "编造词；审校时确认词典与仓库词表均无收录"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "_meta": {
+    "status": "draft",
+    "notice": "草稿，待教研审校；题目未经 pilot 校准，b 为题带中心占位，p 值未测定。",
+    "version": "placement.form-a.v1",
+    "updated": "2026-11-17",
+    "kind": "pseudo",
+    "form": "A",
+    "itemCount": 4,
+    "parameterVersion": "editorial.band-center.v1",
+    "parameterStatus": "uncalibrated",
+    "reviewNotes": [
+      "4 个选项互不重复，answerIndex 为 0–3 的唯一正确项下标。",
+      "b 为题带中心（A1 -2.0 / A2 -1.2 / B1 -0.4 / B2 +0.4 / C1 +1.2）的编辑占位，不是 IRT 标定结果。",
+      "未做 30–50 人 pilot；p 值与真实难度待 pilot 后回填，禁止把占位参数当效度证据。",
+      "阅读短文均为自写文本，不使用受版权保护的材料。",
+      "伪词题没有 answerIndex；选任一选项只用于过度声称检测。"
+    ]
+  },
+  "items": [
+    {
+      "id": "fa-p-01",
+      "type": "pseudo",
+      "word": "quennivate",
+      "band": "B1",
+      "options": [
+        "雨后林间的一种蘑菇",
+        "旧式帆船用的缆绳",
+        "一种不常见的矿石",
+        "夜间放飞的风筝"
+      ],
+      "b": -0.4,
+      "anchor": false,
+      "note": "编造词；审校时确认词典与仓库词表均无收录"
+    },
+    {
+      "id": "fa-p-02",
+      "type": "pseudo",
+      "word": "florimund",
+      "band": "B2",
+      "options": [
+        "用花瓣酿造的甜酒",
+        "钟表内部的齿轮",
+        "河边堆积的沙丘",
+        "旧地图上的装饰符号"
+      ],
+      "b": 0.4,
+      "anchor": false,
+      "note": "编造词；审校时确认词典与仓库词表均无收录"
+    },
+    {
+      "id": "fa-p-03",
+      "type": "pseudo",
+      "word": "vantrish",
+      "band": "B2",
+      "options": [
+        "在风中摇晃的芦苇",
+        "一种双人纸牌游戏",
+        "修补陶器用的胶",
+        "清晨海面的薄雾"
+      ],
+      "b": 0.4,
+      "anchor": false,
+      "note": "编造词；审校时确认词典与仓库词表均无收录"
+    },
+    {
+      "id": "fa-p-04",
+      "type": "pseudo",
+      "word": "zepharion",
+      "band": "C1",
+      "options": [
+        "持续整夜的细雨",
+        "一种已经失传的舞蹈",
+        "金属表面形成的锈斑",
+        "用来测量风速的仪器"
+      ],
+      "b": 1.2,
+      "anchor": false,
+      "note": "编造词；审校时确认词典与仓库词表均无收录"
+    }
+  ]
+}

@@ -39,10 +39,11 @@
 | `quiz.py` | **理解题生成与作答（M3）**：读当前用户已有双语字幕缓存（video / local_show，≥8 句）→ 按 `(content_hash, prompt_version)` 缓存出 3 道题 → 两道闸（结构：mcq 4 选 1 / tf 判断；内容：英文题面不混中文、题目与证据句相关）→ 写 `content_items` / `questions` / `attempts` → 返回证据 block 与秒/毫秒时间点；失败重试 1 次，仍失败该题 `rejected`；表由 `0007_quiz` 创建，运行时不建表；作答写 `learning_events(quiz_answer)` |
 | `routes_quiz.py` | 理解题 HTTP 路由（**需登录，游客 403**）：`POST /api/lesson/start`、`GET /api/lesson/{id}/questions`、`POST /api/lesson/answer`、`GET /api/lesson/{id}/result`；契约与错误语义见下文「理解题」与 [specs/014](../specs/014-quiz/spec.md) |
 | `reports.py` | **观看事件 + 周报聚合（M5）**：`record_watch_events` 批量写 `watch_events`（`UNIQUE(user_id, client_event_id)` 幂等，游客归属 `guest:<sha256>`，0–86400 秒与未来 5 分钟校验）；`week_report` 用 SQL 算 UTC 周「被动学习分钟 / 复习词数 / 理解题正确率」、规则生成事实与下一步、取错题证据或最近观看的 5 秒窗口、算连续学习天数，并把首份结果写 `weekly_reports` 快照（同周不覆盖）；表由 `0008_weekly_report` 创建，运行时不建表；不调用模型 |
-| `routes_events.py` | 学习事件与周报 HTTP 路由（**游客可用**）：`POST /api/events`、`GET /api/report/week`；契约与错误语义见下文「学习事件上报与周报」与 [specs/015](../specs/015-weekly-report/spec.md) |
-| `placement.py` | **能力定位测（M4 + M1 修订）**：读 `content/placement/` 三份静态题库；按 sessionId 确定性抽 24+3+5（银行 id 不外发）；M1 起词汇识别走 **1PL/Rasch + EAP**（`assessment.py`），只给词汇带 ±1 区间；阅读 5 题标 `insufficient`、**不返回 band**；逐题 `elapsedMs` 落 `placement_answers.elapsed_ms`；写 `placement_sessions` / `placement_answers` / `user_profiles`（legacy）并同步 `user_skill_profiles` / `skill_evidence`；重复提交幂等；`GET /profile` 转为 `ability.legacy_profile` shim；表由 `0009` + `0014` 创建；不调用模型 |
+| `behavior_events.py` | **行为埋点写入层（CEFR M2 #7 / specs/027）**：`dict_lookup` / `video_replay` / `playback_rate` / `tab_visibility` 四类事件的批量校验（type/长度/数值范围/批量 ≤20）、`eventId` 幂等（迁移 0017 部分唯一索引）、`dict_lookup` 同词 60s 去重、payload 白名单（不落 context/原文）；复用 append-only 的 `learning_events`，不建新表 |
+| `routes_events.py` | 学习事件与周报 HTTP 路由（**游客可用**）：`POST /api/events`（`watch` → `watch_events`；M2 四类行为事件 → `learning_events`）、`GET /api/report/week`；契约与错误语义见下文「学习事件上报与周报」与 [specs/015](../specs/015-weekly-report/spec.md) / [specs/027](../specs/027-behavior-events/spec.md) |
+| `placement.py` | **能力定位测（M4 + M1 + M2 修订）**：读 `content/placement/` 三份旧题库（默认 v1）或 `content/placement/forms/form-{a,b}/` 两套新题库（v2，`PLACEMENT_BANK_VERSION=v2` 启用）；按 sessionId 确定性抽 24+3+5（银行 id/锚题不外发）；词汇识别走 **1PL/Rasch + EAP**（v1 `rasch.eap.v1`；v2 用 `rasch.eap.v2` 的题级 b + 10 道共享锚题 + form offset 占位 0），只给词汇带 ±1 区间；阅读 5 题标 `insufficient`、**不返回 band**；逐题 `elapsedMs` 落 `placement_answers.elapsed_ms`；写 `placement_sessions` / `placement_answers` / `user_profiles`（legacy）并同步 `user_skill_profiles` / `skill_evidence`；重复提交幂等；`GET /profile` 转为 `ability.legacy_profile` shim；表由 `0009` + `0014` 创建；不调用模型 |
 | `routes_placement.py` | 能力定位测 HTTP 路由（**游客可用**）：`GET /api/placement/start`、`POST /api/placement/submit`、`GET /api/placement/profile`、`POST /api/placement/reset`；契约与错误语义见下文「能力定位测与能力画像」与 [specs/016](../specs/016-placement/spec.md) |
-| `assessment.py` | **测量底座（M1 CEFR）**：纯函数 1PL/Rasch + EAP（先验 N(0,1.2)、网格 −4…+4、c=0.15）；输出 θ/SE/95% CI/80% HPD/后验带/±1 带/词汇量 lemma 区间；全对/全错不发散；`calibration_version='rasch.eap.v1'`；不连库、不联网 |
+| `assessment.py` | **测量底座（M1/M2 CEFR）**：纯函数 1PL/Rasch + EAP（先验 N(0,1.2)、网格 −4…+4、c=0.15）；输出 θ/SE/95% CI/80% HPD/后验带/±1 带/词汇量 lemma 区间；全对/全错不发散；`estimate()` = `rasch.eap.v1`（带中心 b），`estimate_v2()` = `rasch.eap.v2`（题级 b + 锚题 + form offset，同一 θ 尺度）；不连库、不联网 |
 | `ability.py` | **能力档案聚合（M1 CEFR）**：读 `user_skill_profiles` / `skill_evidence` / `assessment_sessions` / `placement_sessions`；合成 vocabulary（uncalibrated）、reading（insufficient）、listening/speaking/grammar（not_measured）、writing（self_report，`cefr=null`）；`composite.cefr=null`、无 `overall`；M1 断言 `measured` 不可达；自评 12–20 条/幂等/10 次一天；can-do 读取与校验；旧 profile shim；游客数据认领与删除钩子 |
 | `routes_ability.py` | 能力档案 HTTP 路由：`GET /api/ability/profile`（登录/游客，`private, max-age=60`）、`POST /api/ability/self-assess`（幂等 + 429）、`GET /api/ability/can-do`（公开只读，`public, max-age=3600`）；错误语义 400/403/404/409/429/503；见 [specs/025](../specs/025-ability/spec.md) |
 | `exam.py` | **考试练习（V2）**：读 `content/exam/cet4.json`（30 道自编题：15 词汇 + 5 语法 + 10 阅读；校验草稿标记/选项/正确项/短文归属）；每次按 sessionId 确定性抽 10 题（词汇 5 + 语法 2 + 阅读 3）并打乱，卷面不含答案；`start` 复用未提交会话；`submit` 只存已答题并对错/答案/解析/未答标记，重复提交幂等；`history` 只给日期/题型/正确数/总数；写 `exam_start` / `exam_submit` 事件；表由 `0012_exam` 创建，运行时不建表；不调用模型、不报分 |
@@ -60,7 +61,7 @@
 | `routes_library.py` | 本地免费资源库 HTTP 路由（**公开只读，无需登录**）：`GET /api/library`、`GET /api/library/videos/{id}`、`GET /api/library/articles/{id}`；只读 `content/library/*.json`（预生成双语字幕块 + 原创双语短文），不连数据库、不 import `llm`、不写状态；未知/缺失 404、内容损坏 503；见 [specs/024](../specs/024-free-library/spec.md) 与 `content/library/README.md` |
 | `routes_admin.py` | 后台管理 HTTP 路由（**需登录 + 管理员**）：只读止血台（M1 ⑥：`GET /api/admin/stats`、`/users`、`/usage`、`/health`，连接 `PRAGMA query_only=ON`）+ 运营写操作（specs/023：`POST /users/{id}/credits`、`PATCH /users/{id}`、`GET/PUT /settings`）；管理员由 `config.ADMIN_EMAILS` 决定；限速 30 次/分钟 |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`trafilatura` 用于文章正文抽取、`pytest` 用于离线测试/CI；faster-whisper、readability-lxml/bs4 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）、`0012_exam.py`（`exam_sessions` / `exam_answers` + 未提交会话部分唯一索引）、`0013_user_profile.py`（`users.username/credits/status` + 旧用户 username 回填 + `credit_transactions` + `app_settings`）、`0014_ability.py`（`user_skill_profiles` / `skill_evidence` + `placement_answers.elapsed_ms` + 旧画像 seed）、`0015_assessment_sessions.py`（自评/后续测试会话 + 幂等键 + 部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）、`0012_exam.py`（`exam_sessions` / `exam_answers` + 未提交会话部分唯一索引）、`0013_user_profile.py`（`users.username/credits/status` + 旧用户 username 回填 + `credit_transactions` + `app_settings`）、`0014_ability.py`（`user_skill_profiles` / `skill_evidence` + `placement_answers.elapsed_ms` + 旧画像 seed）、`0015_assessment_sessions.py`（自评/后续测试会话 + 幂等键 + 部分唯一索引）、`0016_content_difficulty.py`（内容难度向量 `content_difficulty`）、`0017_behavior_events.py`（`learning_events` 加 `client_event_id` + 部分唯一索引，行为埋点幂等）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -195,6 +196,33 @@ data/                                  # DATA_DIR（gitignore）
 
 `word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, sources}`。
 数据库未迁移 → **503**；参数错误 → **400**；游客 → **403**。
+
+### 行为埋点事件（M2 #7 / specs/027）
+
+同一 `POST /api/events` 接口接收四类行为事件，写入 append-only 的
+`learning_events`（不新建表；`watch` 仍写 `watch_events`）：
+
+| type | 触发 | payload（白名单） | 去重 |
+|---|---|---|---|
+| `dict_lookup` | 打开词查卡/点词/悬停换词 | `word`、可选 `lemma`、`source`（transcript/reader/book/sentence/other） | 同词 60s，**不存 context/原文** |
+| `video_replay` | 字幕点击/键盘/循环/回退 seek | `fromSeconds`、`toSeconds`、`method`（click/keyboard/loop/seek） | 只接受 `to < from`；前端按内容 1s / loop 10s 节流 |
+| `playback_rate` | 倍速变化 | `fromRate`、`toRate`（0.25–4） | 无 |
+| `tab_visibility` | `visibilitychange` | `state`（hidden/visible）、`visibleSeconds` | 只记切换；不记页面内容 |
+
+- 公共字段：`eventId`（≤128，幂等键）、`sessionId`（页面级匿名 id，
+  `tab_visibility` 必填）、`occurredAt`、`contentRef`（可选，≤200）。
+- 批量：整个请求 ≤50（沿用 M5），行为事件 ≤20；任一条非法整批 400，先全量
+  校验再写（混合批也不会只写一半）。
+- 幂等：迁移 `0017_behavior_events` 加 `learning_events.client_event_id` +
+  `UNIQUE(user_id, event_type, client_event_id) WHERE client_event_id IS NOT NULL`；
+  重复上报计 `duplicated`，同词 60s 去重计 `deduplicated`（响应仅在批次含行为
+  事件时带该字段）。
+- 限流：`/api/events` 登录 120 次/分钟、游客 60 次/分钟（`RATE_LIMIT_EVENTS_*`）。
+- 管理员只读：`GET /api/admin/events?type=&limit=&since=`，返回脱敏字段
+  （不含 `user_id`/`device_id`）；未知 type 400。
+- 前端 `frontend/src/lib/learningTelemetry.ts`：队列 ≤100、批量 ≤20、1.5s
+  合并、失败静默重试一次（保持 eventId）；hidden/pagehide 用 keepalive flush；
+  游客同样上报。M2 **不**用这些事件改对外 band。
 
 ### 运行与验证
 
@@ -355,12 +383,15 @@ AUTH_DB_PATH=/tmp/yt/app.db DATA_DIR=/tmp/yt/data USER_DATA_DIR=/tmp/yt/data/use
 反作弊；本轮不切片音频，只给 5 秒时间窗。
 
 
-## 能力定位测与能力画像（M4 后端 + M1 修订）
+## 能力定位测与能力画像（M4 后端 + M1/M2 修订）
 
 新用户用 12 分钟完成一次定位测（24 词 + 5 阅读 + 3 伪词混入）。M1 起结果由
 **1PL/Rasch + EAP** 给出**词汇识别区间**；阅读 5 题证据不足、不给带；听/说/
-写未测（写作只显示自评、`cefr=null`）。老用户可重测。不显示小数等级、不承诺
-考试分数。前端流程/结果页下一轮。
+写未测（写作只显示自评、`cefr=null`）。M2 加了两套 64 题（Form A/B）与
+`rasch.eap.v2` **等值结构**（10 道共享锚题 + 共享 b + form offset 占位 0）；
+默认仍是旧 39 题，`PLACEMENT_BANK_VERSION=v2` 才启用新题库。题库是**草稿、
+未经 pilot**，p 值/题参未标定，不能对外说「已等值/已校准」。老用户可重测。
+不显示小数等级、不承诺考试分数。前端流程/结果页下一轮。
 规格：[specs/016-placement](../specs/016-placement/spec.md)、
 [specs/025-ability](../specs/025-ability/spec.md)。
 
@@ -385,19 +416,39 @@ AUTH_DB_PATH=/tmp/yt/app.db DATA_DIR=/tmp/yt/data USER_DATA_DIR=/tmp/yt/data/use
 | `GET /api/placement/profile` | **shim**：`cefr` 取词汇带、`readingEstimate=null`、`readingStatus='insufficient'`、`deprecated:true` + `replacedBy:'/api/ability/profile'`；没有画像则 `profile: null` |
 | `POST /api/placement/reset` | 允许重测：只把未完成会话标 `abandoned`，已提交历史与画像保留 |
 
+### 题库（v1 旧 39 题 / v2 两套 64 题）
+
+| 版本 | 位置 | 数量 | 启用 |
+|---|---|---|---|
+| v1（默认） | `content/placement/{vocab,reading,pseudo}.json` | 30 词 + 5 阅读 + 4 伪词 = 39 | 不设开关 |
+| v2 | `content/placement/forms/form-{a,b}/{vocab,pseudo,reading}.json` | 每套 40 真词 + 4 伪词（44 词汇槽）+ 20 阅读（4 篇 × 5 题）= 64；A/B 共享 10 锚题 | `PLACEMENT_BANK_VERSION=v2` |
+
+- 两套题库都要求 `_meta.notice` 含「待教研审校」，否则加载 503；v2 加载还会
+  交叉校验 10 道锚题（同 id/题干/选项/答案/带/`b`），不一致直接 503。
+- 会话 id 前缀 `p1-` / `p2a-` / `p2b-` 记录题库版本与卷面；**只影响新会话**，
+  升级前开始的旧会话仍按 v1 提交，切换开关不会「换卷」。
+- 报告：`docs/reports/placement-items-2026-11-17.json`，由
+  `scripts/check_placement_bank.py` 生成；`pValues` 全为 `null`（pending pilot）。
+
 ### 抽题与计分
 
-- **题库**：`content/placement/{vocab,reading,pseudo}.json`（30 + 5 + 4，草稿待
-  教研审校；`_meta.notice` 必须含「待教研审校」，否则启动加载直接 503）。
-- **抽题**：按 `seed = placement.serve.v1:<sessionId>` 确定性抽 24 词汇（A1 5 /
-  A2 5 / B1 5 / B2 5 / C1 4）+ 3 伪词 + 5 阅读并打乱；start/submit 用同一
-  sessionId 重算同一份卷，因此不存整卷。同一用户 start 复用 `in_progress` 会话。
+- **v1 抽题**：`seed = placement.serve.v1:<sessionId>` 确定性抽 24 词汇
+  （A1 5 / A2 5 / B1 5 / B2 5 / C1 4）+ 3 伪词 + 5 阅读并打乱。
+- **v2 抽题**：`seed = placement.serve.v2:<sessionId>` 同样 24+3+5；24 词汇
+  含 **10 道锚题** + 14 非锚；5 阅读覆盖 4 篇短文（1 篇出 2 题）。
+- start/submit 用同一 sessionId 重算同一份卷，因此不存整卷；同一用户 start
+  复用 `in_progress` 会话。
 - **计分**：难度带权重 A1=0.5 / A2=1.0 / B1=1.5 / B2=2.0 / C1=2.5；
   `score = Σ答对权重 / Σ全部权重 × 100`；伪词不参与得分，只统计过度声称
   （`pseudoWordSuspicion`）。`chosenIndex=-1`（或 `null`）= 不认识/跳过。
-- **区间（M1）**：24 道词汇题 → 1PL/Rasch + EAP（先验 N(0,1.2)、网格
+- **v1 区间**：24 道词汇题 → 1PL/Rasch + EAP（先验 N(0,1.2)、网格
   −4…+4、c=0.15）→ θ/SE/95% CI/后验点带/±1 带；输出带限制 A1–C1。
-  词汇量按 lemma 锚点外推，给 ±2,000–2,500 的区间（UI 必须带「约」）。
+- **v2 区间**：`rasch.eap.v2` 在同一 EAP 口径上使用题级 `b`（锚题共享）+
+  `form_offset`（pilot 前 0）；A/B 的 θ 在同一尺度。`scale.status` 固定
+  `uncalibrated`，报告 `equating.status=structure_ready_uncalibrated`。
+- 词汇量按 lemma 锚点外推，给 ±2,000–2,500 的区间（UI 必须带「约」）。
+- `start` 额外返回 `bankVersion/form/anchorCount/calibrationVersion`；
+  `submit` 的 `calibration` 对象额外含 `form/anchorCount/scale`。
 - **精度 vs 可信度**：`precision{label,se}` 由题目信息量决定；
   `validity{label,flags}` 由伪词过度声称/用时/完成度/秒答决定；旧
   `confidence = min(precision, validity)`，标 deprecated。伪词可疑度 ≥0.5 时
@@ -413,20 +464,25 @@ AUTH_DB_PATH=/tmp/yt/app.db DATA_DIR=/tmp/yt/data USER_DATA_DIR=/tmp/yt/data/use
 cd backend
 venv/bin/alembic upgrade head                 # 新库迁到 0009；旧库先 stamp 0001 再 upgrade
 venv/bin/python -m py_compile *.py
-venv/bin/python -m pytest tests/test_placement.py -q
+venv/bin/python -m pytest tests/test_placement.py tests/test_placement_forms.py -q
 venv/bin/python -m pytest tests -q            # 全量离线（含迁移升级/回滚）
+venv/bin/python ../scripts/check_placement_bank.py   # 题库/锚题质量报告
 
 # 手工冒烟（临时 /tmp 库，不碰 data/app.db）
 mkdir -p /tmp/yt-plc/data/users /tmp/yt-plc/data/guests
 AUTH_DB_PATH=/tmp/yt-plc/app.db venv/bin/alembic upgrade head
+# 旧流程（默认 v1）
 AUTH_DB_PATH=/tmp/yt-plc/app.db DATA_DIR=/tmp/yt-plc/data \
   USER_DATA_DIR=/tmp/yt-plc/data/users GUEST_DATA_DIR=/tmp/yt-plc/data/guests \
   HISTORY_DIR=/tmp/yt-plc/legacy venv/bin/uvicorn main:app --port 8001
-# GET /api/placement/start → POST /api/placement/submit（同一 sessionId 再提交一次验证幂等）
+# 新题库（v2）：同一命令加 PLACEMENT_BANK_VERSION=v2
+# GET /api/placement/start → POST /api/placement/submit（检查 bankVersion/form/
+# calibrationVersion；同一 sessionId 再提交一次验证幂等）
 ```
 
-已知边界：题库只有 39 题草稿（计划书首发 200–240 题）、题带中心是编辑值而非
-题目拟合、阅读 5 题在 M1–M2 只标证据不足、前端未做、30–50 人 pilot 未做。
+已知边界：v1 只有 39 题、v2 每套 64 题，都是**草稿**（计划书首发 200–240 题）；
+题带中心/题级 b 是编辑占位而非题目拟合；p 值与锚题等值参数等 30–50 人 pilot；
+阅读 5 题在 M1–M2 只标证据不足；前端未做；M2 行为埋点已落地（specs/027），60 条锚集校准未做。
 
 
 ## 考试练习（V2 后端）

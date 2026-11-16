@@ -31,10 +31,11 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import AliasChoices, BaseModel, Field
 
 import account
+import behavior_events
 import config
 import guest
 import observability
@@ -691,6 +692,33 @@ def admin_usage(days: int = 7, _user: dict = Depends(require_admin)):
 def admin_health(_user: dict = Depends(require_admin)):
     """聚合 /healthz + data/ 磁盘占用 + 最近 10 条 failed jobs。"""
     return build_health()
+
+
+@router.get("/events")
+def admin_events(
+    event_type: str | None = Query(default=None, alias="type"),
+    limit: int = Query(default=50, ge=1, le=200),
+    since: int | None = Query(default=None, ge=0),
+    _user: dict = Depends(require_admin),
+):
+    """只读事件流：``?type=dict_lookup&limit=50``（M2 #7 行为事件可查）。
+
+    返回已脱敏的字段（不返回 user_id / device_id）；未传 type 时取最近所有
+    已知事件。表未迁移 503，未知 type 400。
+    """
+    try:
+        return behavior_events.list_recent_events(
+            event_type=event_type, limit=limit, since_ms=since
+        )
+    except behavior_events.InvalidBehaviorEvents as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except behavior_events.BehaviorUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except sqlite3.Error as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"事件表暂不可用：{exc}（先运行 alembic upgrade head）",
+        ) from exc
 
 
 @router.post("/users/{user_id}/credits")

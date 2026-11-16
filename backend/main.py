@@ -4,6 +4,7 @@
 - config.py          环境、路径、安全、模型目录、词汇水平
 - auth_db.py         用户/会话 SQLite 存储 + Argon2 密码哈希
 - events.py          学习事件日志（append-only；表由 Alembic 迁移创建）
+- behavior_events.py CEFR M2 #7 行为埋点校验/幂等/去重（写 learning_events）
 - routes_auth.py     注册 / 登录 / 登出 / 当前用户
 - account.py         用户名 / 余额调账 / 用户页摘要 / app_settings + 维护模式
 - routes_account.py  PATCH /api/user/profile、GET /api/user/summary（需登录）

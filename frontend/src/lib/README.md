@@ -12,6 +12,7 @@
 | `settings.ts` | 词汇水平（六站轴）与全局模型（`yt_bilingual_last_model`）的 localStorage 读写，含旧考试制存档迁移 |
 | `progress.ts` | 每视频播放进度记忆（续播 + "已学 N%"），上限 200 条 |
 | `events.ts` | 观看事件上报（M5 / specs/015）：只按播放位置增量计 `watchedSeconds`（暂停/拖动不计），内存队列 ≤50 条批量 POST `/api/events`，`clientEventId` 保证重试幂等；每 60s 播放 / 暂停 / 切后台时 flush（keepalive），失败静默重试一次 |
+| `learningTelemetry.ts` | 学习行为埋点（CEFR M2 #7 / specs/027）：`dict_lookup` / `video_replay` / `playback_rate` / `tab_visibility` 四类事件；只发白名单字段（不含 context/原文），同词 60s、replay 1s（loop 10s）节流，队列 ≤100、批量 ≤20，`eventId` 幂等；失败静默，hidden/pagehide 用 keepalive flush |
 | `exporter.ts` | 收藏导出：Anki TSV（front/back/tags）与完整 CSV |
 | `shareCard.ts` | 分享卡（计划 D-6）：纯 Canvas 生成 1080×1440 PNG（系统字体栈、深色品牌卡、正文最多 6 行/生词卡 4 行、超出省略、空数据守卫）、`canvasToPngBlob`/`downloadBlob`/`buildShareText`/`copyShareText`；不请求网络、不落服务端 |
 | `favorites.ts` | 收藏按条 API（M1 ④）：`FavoriteItem` 类型、`fetchFavorites/addFavorite/removeFavorite`（后端按条写入、幂等）；`replaceAllFavorites` 仅为旧整文件 PUT 兼容路径，App 不再调用 |

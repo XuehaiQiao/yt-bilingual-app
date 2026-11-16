@@ -289,7 +289,7 @@ def test_migration_0011_schema_and_downgrade(tmp_path):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
 
     # head 已推进到 0013_user_profile；0011 的四张表仍应齐全。
-    assert revision(db) == "0016_content_difficulty"
+    assert revision(db) == "0017_behavior_events"
     assert {
         "articles",
         "article_paragraphs",

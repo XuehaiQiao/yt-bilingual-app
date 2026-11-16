@@ -1,0 +1,1820 @@
+{
+  "schema": "placement-items-report.v1",
+  "generatedAt": "2026-11-16T19:05:29+00:00",
+  "reportDate": "2026-11-17",
+  "status": "draft_uncalibrated",
+  "notice": "草稿，未经 pilot 校准：题级 b 为题带中心/编辑占位，p 值全部 pending；本报告不构成效度证据，不对外宣称准确率或等级。",
+  "bankVersion": "placement.bank.v2",
+  "calibrationVersion": "rasch.eap.v2",
+  "forms": {
+    "A": {
+      "items": {
+        "total": 64,
+        "vocab": {
+          "total": 40,
+          "real": 40,
+          "nonAnchor": 30,
+          "pseudo": 4,
+          "slots": 44,
+          "bands": {
+            "A1": 8,
+            "A2": 8,
+            "B1": 8,
+            "B2": 8,
+            "C1": 8
+          },
+          "nonAnchorBands": {
+            "A1": 6,
+            "A2": 6,
+            "B1": 6,
+            "B2": 6,
+            "C1": 6
+          }
+        },
+        "reading": {
+          "total": 20,
+          "passages": 4,
+          "questionsPerPassage": {
+            "fa-p1": 5,
+            "fa-p2": 5,
+            "fa-p3": 5,
+            "fa-p4": 5
+          },
+          "bands": {
+            "A2": 5,
+            "B1": 5,
+            "B2": 5,
+            "C1": 5
+          }
+        },
+        "pseudoBands": {
+          "B1": 1,
+          "B2": 2,
+          "C1": 1
+        }
+      },
+      "anchors": {
+        "count": 10,
+        "ids": [
+          "an-v-01",
+          "an-v-02",
+          "an-v-03",
+          "an-v-04",
+          "an-v-05",
+          "an-v-06",
+          "an-v-07",
+          "an-v-08",
+          "an-v-09",
+          "an-v-10"
+        ],
+        "bands": {
+          "A1": 2,
+          "A2": 2,
+          "B1": 2,
+          "B2": 2,
+          "C1": 2
+        }
+      },
+      "answerIndexDistribution": {
+        "0": 17,
+        "1": 16,
+        "2": 14,
+        "3": 13
+      },
+      "pseudoWordsNotInWordlist": true,
+      "parameterStatus": "uncalibrated",
+      "readingCopyright": "自写短文（无第三方版权内容）"
+    },
+    "B": {
+      "items": {
+        "total": 64,
+        "vocab": {
+          "total": 40,
+          "real": 40,
+          "nonAnchor": 30,
+          "pseudo": 4,
+          "slots": 44,
+          "bands": {
+            "A1": 8,
+            "A2": 8,
+            "B1": 8,
+            "B2": 8,
+            "C1": 8
+          },
+          "nonAnchorBands": {
+            "A1": 6,
+            "A2": 6,
+            "B1": 6,
+            "B2": 6,
+            "C1": 6
+          }
+        },
+        "reading": {
+          "total": 20,
+          "passages": 4,
+          "questionsPerPassage": {
+            "fb-p1": 5,
+            "fb-p2": 5,
+            "fb-p3": 5,
+            "fb-p4": 5
+          },
+          "bands": {
+            "A2": 5,
+            "B1": 5,
+            "B2": 5,
+            "C1": 5
+          }
+        },
+        "pseudoBands": {
+          "B1": 1,
+          "B2": 2,
+          "C1": 1
+        }
+      },
+      "anchors": {
+        "count": 10,
+        "ids": [
+          "an-v-01",
+          "an-v-02",
+          "an-v-03",
+          "an-v-04",
+          "an-v-05",
+          "an-v-06",
+          "an-v-07",
+          "an-v-08",
+          "an-v-09",
+          "an-v-10"
+        ],
+        "bands": {
+          "A1": 2,
+          "A2": 2,
+          "B1": 2,
+          "B2": 2,
+          "C1": 2
+        }
+      },
+      "answerIndexDistribution": {
+        "0": 16,
+        "1": 14,
+        "2": 16,
+        "3": 14
+      },
+      "pseudoWordsNotInWordlist": true,
+      "parameterStatus": "uncalibrated",
+      "readingCopyright": "自写短文（无第三方版权内容）"
+    }
+  },
+  "anchors": {
+    "count": 10,
+    "min": 8,
+    "max": 10,
+    "ids": [
+      "an-v-01",
+      "an-v-02",
+      "an-v-03",
+      "an-v-04",
+      "an-v-05",
+      "an-v-06",
+      "an-v-07",
+      "an-v-08",
+      "an-v-09",
+      "an-v-10"
+    ],
+    "bands": {
+      "A1": 2,
+      "A2": 2,
+      "B1": 2,
+      "B2": 2,
+      "C1": 2
+    },
+    "identicalAcrossForms": true,
+    "items": [
+      {
+        "id": "an-v-01",
+        "band": "A1",
+        "prompt": "dog",
+        "answerIndex": 0,
+        "b": -2.0,
+        "identicalAcrossForms": true
+      },
+      {
+        "id": "an-v-02",
+        "band": "A1",
+        "prompt": "chair",
+        "answerIndex": 2,
+        "b": -2.0,
+        "identicalAcrossForms": true
+      },
+      {
+        "id": "an-v-03",
+        "band": "A2",
+        "prompt": "journey",
+        "answerIndex": 1,
+        "b": -1.2,
+        "identicalAcrossForms": true
+      },
+      {
+        "id": "an-v-04",
+        "band": "A2",
+        "prompt": "repair",
+        "answerIndex": 3,
+        "b": -1.2,
+        "identicalAcrossForms": true
+      },
+      {
+        "id": "an-v-05",
+        "band": "B1",
+        "prompt": "opportunity",
+        "answerIndex": 2,
+        "b": -0.4,
+        "identicalAcrossForms": true
+      },
+      {
+        "id": "an-v-06",
+        "band": "B1",
+        "prompt": "reduce",
+        "answerIndex": 0,
+        "b": -0.4,
+        "identicalAcrossForms": true
+      },
+      {
+        "id": "an-v-07",
+        "band": "B2",
+        "prompt": "adequate",
+        "answerIndex": 3,
+        "b": 0.4,
+        "identicalAcrossForms": true
+      },
+      {
+        "id": "an-v-08",
+        "band": "B2",
+        "prompt": "consequence",
+        "answerIndex": 1,
+        "b": 0.4,
+        "identicalAcrossForms": true
+      },
+      {
+        "id": "an-v-09",
+        "band": "C1",
+        "prompt": "coherent",
+        "answerIndex": 2,
+        "b": 1.2,
+        "identicalAcrossForms": true
+      },
+      {
+        "id": "an-v-10",
+        "band": "C1",
+        "prompt": "undermine",
+        "answerIndex": 0,
+        "b": 1.2,
+        "identicalAcrossForms": true
+      }
+    ],
+    "parameterStatus": "editorial_uncalibrated",
+    "method": "common_anchor（共享题 + 共享 b；pilot 前 form offset = 0）"
+  },
+  "servedPaper": {
+    "design": {
+      "vocab": 24,
+      "reading": 5,
+      "pseudo": 3,
+      "total": 32,
+      "durationLimitMs": 720000
+    },
+    "samples": [
+      {
+        "form": "A",
+        "sample": 1,
+        "items": 32,
+        "counts": {
+          "pseudo": 3,
+          "reading": 5,
+          "vocab": 24
+        },
+        "anchors": 10,
+        "readingPassages": [
+          "fa-p1",
+          "fa-p2",
+          "fa-p3",
+          "fa-p4"
+        ]
+      },
+      {
+        "form": "A",
+        "sample": 2,
+        "items": 32,
+        "counts": {
+          "pseudo": 3,
+          "reading": 5,
+          "vocab": 24
+        },
+        "anchors": 10,
+        "readingPassages": [
+          "fa-p1",
+          "fa-p2",
+          "fa-p3",
+          "fa-p4"
+        ]
+      },
+      {
+        "form": "A",
+        "sample": 3,
+        "items": 32,
+        "counts": {
+          "pseudo": 3,
+          "reading": 5,
+          "vocab": 24
+        },
+        "anchors": 10,
+        "readingPassages": [
+          "fa-p1",
+          "fa-p2",
+          "fa-p3",
+          "fa-p4"
+        ]
+      },
+      {
+        "form": "B",
+        "sample": 1,
+        "items": 32,
+        "counts": {
+          "pseudo": 3,
+          "reading": 5,
+          "vocab": 24
+        },
+        "anchors": 10,
+        "readingPassages": [
+          "fb-p1",
+          "fb-p2",
+          "fb-p3",
+          "fb-p4"
+        ]
+      },
+      {
+        "form": "B",
+        "sample": 2,
+        "items": 32,
+        "counts": {
+          "pseudo": 3,
+          "reading": 5,
+          "vocab": 24
+        },
+        "anchors": 10,
+        "readingPassages": [
+          "fb-p1",
+          "fb-p2",
+          "fb-p3",
+          "fb-p4"
+        ]
+      },
+      {
+        "form": "B",
+        "sample": 3,
+        "items": 32,
+        "counts": {
+          "pseudo": 3,
+          "reading": 5,
+          "vocab": 24
+        },
+        "anchors": 10,
+        "readingPassages": [
+          "fb-p1",
+          "fb-p2",
+          "fb-p3",
+          "fb-p4"
+        ]
+      }
+    ],
+    "allFormsServed": true
+  },
+  "pValues": {
+    "status": "pending_pilot",
+    "reason": "真实 p 值需要 30–50 人 pilot 的逐题作答；本期不生成任何统计值，items 里全部为 null。",
+    "items": [
+      {
+        "form": "A",
+        "id": "an-v-01",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": true,
+        "answerIndex": 0,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "an-v-02",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": true,
+        "answerIndex": 2,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-001",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-002",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-003",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-004",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-005",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-006",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "an-v-03",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": true,
+        "answerIndex": 1,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "an-v-04",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": true,
+        "answerIndex": 3,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-007",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-008",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-009",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-010",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-011",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-012",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "an-v-05",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": true,
+        "answerIndex": 2,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "an-v-06",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": true,
+        "answerIndex": 0,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-013",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-014",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-015",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-016",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-017",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-018",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "an-v-07",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": true,
+        "answerIndex": 3,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "an-v-08",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": true,
+        "answerIndex": 1,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-019",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-020",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-021",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-022",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-023",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-024",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "an-v-09",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": true,
+        "answerIndex": 2,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "an-v-10",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": true,
+        "answerIndex": 0,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-025",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-026",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-027",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-028",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-029",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-v-030",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-01",
+        "type": "reading",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-02",
+        "type": "reading",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-03",
+        "type": "reading",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-04",
+        "type": "reading",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-05",
+        "type": "reading",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-06",
+        "type": "reading",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-07",
+        "type": "reading",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-08",
+        "type": "reading",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-09",
+        "type": "reading",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-10",
+        "type": "reading",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-11",
+        "type": "reading",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-12",
+        "type": "reading",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-13",
+        "type": "reading",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-14",
+        "type": "reading",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-15",
+        "type": "reading",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-16",
+        "type": "reading",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-17",
+        "type": "reading",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-18",
+        "type": "reading",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-19",
+        "type": "reading",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-r-20",
+        "type": "reading",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-p-01",
+        "type": "pseudo",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": null,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-p-02",
+        "type": "pseudo",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": null,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-p-03",
+        "type": "pseudo",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": null,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "A",
+        "id": "fa-p-04",
+        "type": "pseudo",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": null,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "an-v-01",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": true,
+        "answerIndex": 0,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "an-v-02",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": true,
+        "answerIndex": 2,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-001",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-002",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-003",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-004",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-005",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-006",
+        "type": "vocab",
+        "band": "A1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -2.0,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "an-v-03",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": true,
+        "answerIndex": 1,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "an-v-04",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": true,
+        "answerIndex": 3,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-007",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-008",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-009",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-010",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-011",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-012",
+        "type": "vocab",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "an-v-05",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": true,
+        "answerIndex": 2,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "an-v-06",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": true,
+        "answerIndex": 0,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-013",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-014",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-015",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-016",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-017",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-018",
+        "type": "vocab",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "an-v-07",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": true,
+        "answerIndex": 3,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "an-v-08",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": true,
+        "answerIndex": 1,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-019",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-020",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-021",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-022",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-023",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-024",
+        "type": "vocab",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "an-v-09",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": true,
+        "answerIndex": 2,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "an-v-10",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": true,
+        "answerIndex": 0,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-025",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-026",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-027",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-028",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-029",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-v-030",
+        "type": "vocab",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-01",
+        "type": "reading",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-02",
+        "type": "reading",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-03",
+        "type": "reading",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-04",
+        "type": "reading",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-05",
+        "type": "reading",
+        "band": "A2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-06",
+        "type": "reading",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-07",
+        "type": "reading",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-08",
+        "type": "reading",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-09",
+        "type": "reading",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-10",
+        "type": "reading",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-11",
+        "type": "reading",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-12",
+        "type": "reading",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-13",
+        "type": "reading",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-14",
+        "type": "reading",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-15",
+        "type": "reading",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-16",
+        "type": "reading",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-17",
+        "type": "reading",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 0,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-18",
+        "type": "reading",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 3,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-19",
+        "type": "reading",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 1,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-r-20",
+        "type": "reading",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": 2,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-p-01",
+        "type": "pseudo",
+        "band": "B1",
+        "anchor": false,
+        "answerIndex": null,
+        "b": -0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-p-02",
+        "type": "pseudo",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": null,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-p-03",
+        "type": "pseudo",
+        "band": "B2",
+        "anchor": false,
+        "answerIndex": null,
+        "b": 0.4,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      },
+      {
+        "form": "B",
+        "id": "fb-p-04",
+        "type": "pseudo",
+        "band": "C1",
+        "anchor": false,
+        "answerIndex": null,
+        "b": 1.2,
+        "pValue": null,
+        "parameterStatus": "editorial_uncalibrated"
+      }
+    ]
+  },
+  "equating": {
+    "method": "common_anchor",
+    "status": "structure_ready_uncalibrated",
+    "formOffsets": {
+      "A": 0.0,
+      "B": 0.0
+    },
+    "note": "Form A/B 共享 10 道锚题（同题/同 b）；form offset 暂固定 0，pilot 后按锚题法重估。当前只能说「结构已就位」，不能说「已等值」。"
+  },
+  "checks": {
+    "passed": true,
+    "issueCount": 0,
+    "warningCount": 0
+  },
+  "issues": [],
+  "warnings": []
+}

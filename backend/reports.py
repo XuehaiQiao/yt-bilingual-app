@@ -312,17 +312,27 @@ def _normalize_event(raw, index: int, now_value: int) -> dict:
 # 事件写入
 # ---------------------------------------------------------------------------
 
-def record_watch_events(
+def normalize_watch_events(events, *, now=None) -> list[dict]:
+    """校验 watch 批次但不写库（路由用于"先全量校验、再开事务"）。"""
+    now_value = _coerce_ms(now)
+    if not isinstance(events, list):
+        raise InvalidEvents("events 必须是数组。")
+    if len(events) > MAX_EVENTS_PER_BATCH:
+        raise InvalidEvents(
+            f"单次最多上报 {MAX_EVENTS_PER_BATCH} 条事件（收到 {len(events)} 条）。"
+        )
+    return [
+        _normalize_event(event, index, now_value) for index, event in enumerate(events)
+    ]
+
+
+def write_watch_events(
     identity: str,
     guest_hash: str | None,
-    events,
-    *,
-    now=None,
+    normalized: list[dict],
 ) -> dict:
-    """批量写入 watch 事件；返回 ``{received, accepted, duplicated}``。
+    """写入已校验的 watch 事件；返回 ``{received, accepted, duplicated}``。
 
-    - 最多 ``MAX_EVENTS_PER_BATCH`` 条；超限/任一条非法 → :class:`InvalidEvents`
-      （整批不写）；
     - 幂等：``UNIQUE(user_id, client_event_id)`` + ``INSERT OR IGNORE``，重复
       上报计入 ``duplicated``，不重复计数；
     - 表缺失 → :class:`ReportUnavailable`（路由 503）。
@@ -330,18 +340,6 @@ def record_watch_events(
     if not isinstance(identity, str) or not identity.strip():
         raise InvalidEvents("缺少上报身份。")
     identity = identity.strip()
-    now_value = _coerce_ms(now)
-
-    if not isinstance(events, list):
-        raise InvalidEvents("events 必须是数组。")
-    if len(events) > MAX_EVENTS_PER_BATCH:
-        raise InvalidEvents(
-            f"单次最多上报 {MAX_EVENTS_PER_BATCH} 条事件（收到 {len(events)} 条）。"
-        )
-
-    normalized = [
-        _normalize_event(event, index, now_value) for index, event in enumerate(events)
-    ]
 
     conn = _connect()
     try:
@@ -379,10 +377,31 @@ def record_watch_events(
         conn.close()
 
     return {
-        "received": len(events),
+        "received": len(normalized),
         "accepted": accepted,
         "duplicated": duplicated,
     }
+
+
+def record_watch_events(
+    identity: str,
+    guest_hash: str | None,
+    events,
+    *,
+    now=None,
+) -> dict:
+    """批量写入 watch 事件；返回 ``{received, accepted, duplicated}``。
+
+    - 最多 ``MAX_EVENTS_PER_BATCH`` 条；超限/任一条非法 → :class:`InvalidEvents`
+      （整批不写）；
+    - 幂等：``UNIQUE(user_id, client_event_id)`` + ``INSERT OR IGNORE``，重复
+      上报计入 ``duplicated``，不重复计数；
+    - 表缺失 → :class:`ReportUnavailable`（路由 503）。
+    """
+    if not isinstance(identity, str) or not identity.strip():
+        raise InvalidEvents("缺少上报身份。")
+    normalized = normalize_watch_events(events, now=now)
+    return write_watch_events(identity.strip(), guest_hash, normalized)
 
 
 # ---------------------------------------------------------------------------

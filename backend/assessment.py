@@ -1,9 +1,14 @@
 """能力标定的测量底座：1PL/Rasch + EAP 区间估计（计划书 §5，specs/025）。
 
 本模块**只有纯函数**：不连库、不读文件、不联网。输入是一组
-``(难度带, 是否答对)``，输出是固定网格上的 EAP 点估计、标准误、后验区间、
-CEFR 带与词汇量区间。所有数字都可由同一份输入确定性地复现——这是
-``calibration_version='rasch.eap.v1'`` 的含义。
+``(难度带, 是否答对)``（v1）或 ``(难度带, 是否答对, b, 是否锚题)``（v2），
+输出是固定网格上的 EAP 点估计、标准误、后验区间、CEFR 带与词汇量区间。
+所有数字都可由同一份输入确定性地复现——这是
+``calibration_version='rasch.eap.v1'`` / ``'rasch.eap.v2'`` 的含义。
+
+v2 是 M2 两套等值的测量底座：题级 ``b`` 可覆盖带中心（锚题共享同一个 b），
+``form_offset`` 是卷面偏移占位（pilot 前固定 0）。v2 仍只改变似然，不改变
+EAP 先验/网格/区间口径，因此 v1 与 v2 的 θ 读数在同一把尺子上。
 
 模型（与计划书 §5.1 逐项对齐）：
 
@@ -28,7 +33,14 @@ from typing import Iterable, Mapping, Sequence
 # 公开常量（版本号改动必须同步迁移、specs/025 与测试）
 # ---------------------------------------------------------------------------
 
-CALIBRATION_VERSION = "rasch.eap.v1"
+CALIBRATION_VERSION_V1 = "rasch.eap.v1"
+# 兼容旧调用方：默认估计器仍是 v1；M2 新题库显式走 v2。
+CALIBRATION_VERSION = CALIBRATION_VERSION_V1
+CALIBRATION_VERSION_V2 = "rasch.eap.v2"
+SUPPORTED_CALIBRATIONS: tuple[str, ...] = (
+    CALIBRATION_VERSION_V1,
+    CALIBRATION_VERSION_V2,
+)
 SCHEMA_VERSION = "ability.v1"
 
 CEFR_BANDS: tuple[str, ...] = ("A1", "A2", "B1", "B2", "C1", "C2")
@@ -132,6 +144,51 @@ def _normalize_responses(
     return pairs
 
 
+def _normalize_item_responses(
+    responses: Iterable[object],
+) -> list[tuple[str, int, float | None, bool]]:
+    """v2 响应：``(band, correct, b, anchor)``，b 可省略（回退带中心）。
+
+    形状：``[{'band': 'A2', 'correct': 1, 'b': -1.2, 'anchor': True}]``。
+    ``b`` 是题级难度（logit）；锚题在 Form A/B 必须给同一个 b。参数是
+    **编辑占位**还是 pilot 标定值由调用方在报告里标注，本函数只做数学。
+    """
+    pairs: list[tuple[str, int, float | None, bool]] = []
+    for index, raw in enumerate(responses):
+        if not isinstance(raw, Mapping):
+            raise AssessmentError(
+                f"responses[{index}] 必须是对象（v2 需要 band/correct/b?/anchor?）。"
+            )
+        band = raw.get("band")
+        correct = raw.get("correct")
+        if not isinstance(band, str) or band not in BAND_CENTERS:
+            raise AssessmentError(f"responses[{index}] 的 band 非法：{band!r}")
+        if isinstance(correct, bool):
+            correct = int(correct)
+        if correct not in (0, 1):
+            raise AssessmentError(f"responses[{index}] 的 correct 必须是 0/1。")
+        b = raw.get("b", raw.get("difficulty"))
+        if b is not None:
+            if isinstance(b, bool) or not isinstance(b, (int, float)):
+                raise AssessmentError(f"responses[{index}] 的 b 必须是数值或省略。")
+            b = float(b)
+            if not math.isfinite(b) or not -6.0 <= b <= 6.0:
+                raise AssessmentError(f"responses[{index}] 的 b 超出合理范围。")
+        anchor = raw.get("anchor", False)
+        if not isinstance(anchor, bool):
+            raise AssessmentError(f"responses[{index}] 的 anchor 必须是布尔值。")
+        pairs.append((band, int(correct), b, anchor))
+    return pairs
+
+
+def _item_probability_v2(
+    theta: float, band: str, b: float | None, form_offset: float = 0.0
+) -> float:
+    """v2 的答对概率：题级 b 优先，否则用带中心；form_offset 为卷面偏移。"""
+    difficulty = band_center(band) if b is None else b
+    return GUESS + (1.0 - GUESS) * sigmoid(theta - difficulty - form_offset)
+
+
 def _item_probability(theta: float, band: str) -> float:
     """该带题目在 θ 处答对的概率（含猜测）。"""
     return GUESS + (1.0 - GUESS) * sigmoid(theta - band_center(band))
@@ -166,6 +223,44 @@ def posterior(
         log_density = -0.5 * ((theta - prior_mean) / prior_sd) ** 2
         for band, correct in pairs:
             probability = _item_probability(theta, band)
+            log_density += math.log(probability if correct else 1.0 - probability)
+        log_post.append(log_density)
+    peak = max(log_post)
+    weights = [math.exp(value - peak) for value in log_post]
+    total = sum(weights)
+    if not math.isfinite(total) or total <= 0:  # pragma: no cover - 数学上不可达
+        raise AssessmentError("后验归一化失败。")
+    return [value / total for value in weights]
+
+
+def posterior_v2(
+    responses: Sequence[object],
+    *,
+    grid: Sequence[float] = GRID,
+    prior_mean: float = 0.0,
+    prior_sd: float = PRIOR_SD,
+    form_offset: float = 0.0,
+) -> list[float]:
+    """v2 后验：题级 b + 卷面偏移；先验/网格与 v1 相同（同一把 θ 尺子）。
+
+    ``form_offset`` 是「这份卷相对基准卷更难/更易」的 logit 偏移；pilot
+    前调用方应传 0。正偏移 = 该卷更难 = 同样答对时 θ 读数更高。
+    """
+    pairs = _normalize_item_responses(responses)
+    if prior_sd <= 0:
+        raise AssessmentError("prior_sd 必须为正。")
+    if (
+        isinstance(form_offset, bool)
+        or not isinstance(form_offset, (int, float))
+        or not math.isfinite(float(form_offset))
+        or not -4.0 <= float(form_offset) <= 4.0
+    ):
+        raise AssessmentError("form_offset 必须是 −4…+4 的有限数。")
+    log_post: list[float] = []
+    for theta in grid:
+        log_density = -0.5 * ((theta - prior_mean) / prior_sd) ** 2
+        for band, correct, b, _anchor in pairs:
+            probability = _item_probability_v2(theta, band, b, form_offset)
             log_density += math.log(probability if correct else 1.0 - probability)
         log_post.append(log_density)
     peak = max(log_post)
@@ -334,29 +429,23 @@ def vocab_interval(
 # 对外的两个入口
 # ---------------------------------------------------------------------------
 
-def estimate(
-    responses: Sequence[object],
+def _build_estimate(
+    grid: Sequence[float],
+    density: Sequence[float],
     *,
-    bands: Sequence[str] = CEFR_BANDS,
-    compute_vocabulary: bool = True,
-    grid: Sequence[float] = GRID,
+    n: int,
+    correct: int,
+    bands: Sequence[str],
+    compute_vocabulary: bool,
+    calibration_version: str,
 ) -> dict:
-    """给定作答，返回 EAP θ/SE/区间/CEFR 带/词汇量区间。
-
-    ``bands`` 限定**输出**带：固定 24 题卷只有 A1–C1 题目，调用方传
-    ``bands=('A1','A2','B1','B2','C1')`` 就不会把「全对」报成 C2。
-
-    空响应也能跑：后验退化为先验（θ=0、SE=1.2、B1），调用方用
-    ``n == 0`` 判断「没有证据」，不要展示成测量结果。
-    """
-    pairs = _normalize_responses(responses)
+    """把后验密度收成对外结果；v1/v2 共用同一套 θ/SE/区间口径。"""
     output_bands = tuple(bands)
     if not output_bands:
         raise AssessmentError("bands 不能为空。")
     for band in output_bands:
         band_center(band)
 
-    density = posterior(pairs, grid=grid)
     theta, se = _posterior_moments(grid, density)
     ci_low = max(GRID_MIN, theta - CI95_Z * se)
     ci_high = min(GRID_MAX, theta + CI95_Z * se)
@@ -366,9 +455,9 @@ def estimate(
     interval = band_interval(point, bands=output_bands)
 
     result = {
-        "calibrationVersion": CALIBRATION_VERSION,
-        "n": len(pairs),
-        "correct": sum(correct for _band, correct in pairs),
+        "calibrationVersion": calibration_version,
+        "n": int(n),
+        "correct": int(correct),
         "theta": round(theta, 4),
         "se": round(se, 4),
         "ci95": {"low": round(ci_low, 4), "high": round(ci_high, 4)},
@@ -386,6 +475,84 @@ def estimate(
     }
     if compute_vocabulary:
         result["vocabulary"] = vocab_interval(theta, grid, density)
+    return result
+
+
+def estimate(
+    responses: Sequence[object],
+    *,
+    bands: Sequence[str] = CEFR_BANDS,
+    compute_vocabulary: bool = True,
+    grid: Sequence[float] = GRID,
+) -> dict:
+    """给定作答，返回 EAP θ/SE/区间/CEFR 带/词汇量区间（v1，带中心 b）。
+
+    ``bands`` 限定**输出**带：固定 24 题卷只有 A1–C1 题目，调用方传
+    ``bands=('A1','A2','B1','B2','C1')`` 就不会把「全对」报成 C2。
+
+    空响应也能跑：后验退化为先验（θ=0、SE=1.2、B1），调用方用
+    ``n == 0`` 判断「没有证据」，不要展示成测量结果。
+    """
+    pairs = _normalize_responses(responses)
+    density = posterior(pairs, grid=grid)
+    return _build_estimate(
+        grid,
+        density,
+        n=len(pairs),
+        correct=sum(correct for _band, correct in pairs),
+        bands=bands,
+        compute_vocabulary=compute_vocabulary,
+        calibration_version=CALIBRATION_VERSION,
+    )
+
+
+def estimate_v2(
+    responses: Sequence[object],
+    *,
+    bands: Sequence[str] = CEFR_BANDS,
+    form: str | None = None,
+    form_offset: float = 0.0,
+    compute_vocabulary: bool = True,
+    grid: Sequence[float] = GRID,
+) -> dict:
+    """M2 两套等值的 EAP 估计：题级 b（锚题共享）+ 卷面偏移。
+
+    与 :func:`estimate` 的唯一差别是似然里的题目难度：``b`` 给了就用 ``b``，
+    省略才回退带中心。Form A/B 的锚题给同一个 ``b``，因此两套卷的 θ 读数
+    落在同一尺度上；``form_offset`` 留给 pilot 标定卷面难易差，未标定前
+    必须传 0（默认）。
+
+    ``form_offset`` 的方向与题目难度一致：正偏移 = 该卷更难（同样答对时
+    θ 读数更高）。输出在 v1 字段之外增加 ``form`` / ``formOffset`` /
+    ``anchorCount`` / ``scale``；θ/SE/CI/带/词汇量的口径与 v1 完全一致。
+    """
+    pairs = _normalize_item_responses(responses)
+    density = posterior_v2(responses, grid=grid, form_offset=form_offset)
+    result = _build_estimate(
+        grid,
+        density,
+        n=len(pairs),
+        correct=sum(correct for _band, correct, _b, _anchor in pairs),
+        bands=bands,
+        compute_vocabulary=compute_vocabulary,
+        calibration_version=CALIBRATION_VERSION_V2,
+    )
+    anchor_count = sum(1 for _band, _correct, _b, anchor in pairs if anchor)
+    result.update(
+        {
+            "form": form,
+            "formOffset": round(float(form_offset), 4),
+            "anchorCount": anchor_count,
+            "scale": {
+                "method": "common_anchor",
+                "status": "uncalibrated",
+                "note": (
+                    "锚题共享 b，Form A/B 在同一 θ 尺度；"
+                    "b 为题带中心/编辑占位，form offset 待 30–50 人 pilot 标定。"
+                ),
+            },
+        }
+    )
     return result
 
 

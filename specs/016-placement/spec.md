@@ -150,8 +150,8 @@
 
 | 端点 | 身份 | 成功 | 失败 |
 |---|---|---|---|
-| `GET /api/placement/start` | 登录/游客 | `200 {sessionId,status:"in_progress",resumed,attempt,startedAt,durationLimitMs,itemCount,totals,instructions,items,preliminary,sampleSize,disclaimer}` | `403` 无身份；`503` 未迁移/题库损坏 |
-| `POST /api/placement/submit` | 登录/游客 | `200 {sessionId,status:"submitted",reused,score,cefr:{point,low,high,label},confidence,confidenceLabel,confidenceLabelZh,pseudoWordSuspicion,preliminary,sampleSize,durationMs,breakdown,profile,disclaimer}` | `400` 参数非法；`403`；`404` 会话不存在/别人的；`409` 会话已作废/并发冲突；`422` 请求体结构错；`503` |
+| `GET /api/placement/start` | 登录/游客 | `200 {sessionId,status:"in_progress",resumed,attempt,startedAt,durationLimitMs,itemCount,bankVersion,form,calibrationVersion,anchorCount,totals,instructions,items,preliminary,sampleSize,disclaimer}` | `403` 无身份；`503` 未迁移/题库损坏 |
+| `POST /api/placement/submit` | 登录/游客 | `200 {sessionId,status:"submitted",reused,score,cefr:{point,low,high,label},confidence,confidenceLabel,confidenceLabelZh,pseudoWordSuspicion,preliminary,sampleSize,durationMs,bankVersion,form,anchorCount,calibration,breakdown,profile,disclaimer}` | `400` 参数非法；`403`；`404` 会话不存在/别人的；`409` 会话已作废/并发冲突；`422` 请求体结构错；`503` |
 | `GET /api/placement/profile` | 登录/游客 | `200 {profile: {...} \| null,preliminary,sampleSize,disclaimer}` | `403`；`503` |
 | `POST /api/placement/reset` | 登录/游客 | `200 {reset:true,abandonedSessions,profileKept:true,message}` | `403`；`503` |
 
@@ -345,3 +345,93 @@ confidence   = clamp(0.10, 0.85, base - penalty)
   `elapsed_ms`，旧 `user_profiles` 数据保留；旧端点行为回到 M4。
 - **测试**：`tests/test_placement.py` 21、`tests/test_ability_contract.py` 8、
   `tests/test_ability_migrations.py` 12，以及全量 608 绿。
+
+---
+
+## M2 修订记录（2026-11-17，题池扩建 + 两套等值结构）
+
+> 状态：**已实现（草稿题库，未经 pilot 校准）**。本条只覆盖 M2 #2/#3：
+> 两套 64 题、锚题等值结构、`rasch.eap.v2`。M2 #7 行为埋点、#4 的 60 条
+> 锚集校准与 30–50 人 pilot 仍未做；在 pilot 完成前，不得对外宣称「已等值」
+> 「已校准」「有效度」或任何准确率数字。
+
+### 1. 题库（`content/placement/forms/`）
+
+| 文件 | Form A | Form B | 说明 |
+|---|---:|---:|---|
+| `vocab.json` | 40 | 40 | 40 真词（含 10 锚题）；A1–C1 每带 8（2 锚 + 6 非锚） |
+| `pseudo.json` | 4 | 4 | 编造词；无 `answerIndex` |
+| `reading.json` | 20 | 20 | 4 篇自写短文 × 5 题；A2/B1/B2/C1 各 1 篇 |
+| **合计** | **64** | **64** | 44 词汇槽（40 真词 + 4 伪词）+ 20 阅读 |
+
+- **10 道共享锚题**（`an-v-01`…`an-v-10`）：A1–C1 每带 2 道；Form A/B 的
+  id、题干、选项、答案、难度带与 `b` 必须完全相同。`placement.py` 加载时会
+  对 A/B 做交叉校验，不一致 → `PlacementUnavailable` → 503。
+- 每套 `_meta` 带 `form`、`anchorIds`、`parameterVersion`、
+  `parameterStatus="uncalibrated"`；`b` 为题带中心占位（不是 IRT 标定值）。
+- 阅读为自写文本，不使用受版权保护的材料；`evidence` 仅供教研审校，不下发。
+- 伪词检查：质量脚本确认其不在 `content/wordlist/frequency_bands.v1.json`
+  的 entries/forms 中；这只是一项最低检查，仍需词典人工复核。
+
+### 2. 题库开关与旧流程回退
+
+- `config.PLACEMENT_BANK_VERSION`（环境变量同名）：`v1`（默认）/ `v2`
+  （别名 `legacy` / `1` / `forms` / `2`）。非法值 → 503，不静默回退。
+- **只影响新开始的会话**：`start` 新会话 id 带前缀 `p1-` / `p2a-` / `p2b-`，
+  `submit` 用前缀重算同一份卷。升级前开始、无前缀的旧会话按 v1 处理；
+  `v1 → v2` 或 `v2 → v1` 切换后，进行中的会话仍按原版本提交。
+- 未启用 v2（默认）时，旧 39 题流程、24+3+5 抽题、v1 评分、既有测试全部
+  不变；`start` 响应额外给 `bankVersion/form/anchorCount/calibrationVersion`。
+
+### 3. 抽题（仍为 12 分钟 32 题）
+
+- v2：24 词汇 = 10 锚题 + 14 非锚题（A1 5 / A2 5 / B1 5 / B2 5 / C1 4）；
+  3 伪词；5 阅读（4 篇短文全部覆盖，其中 1 篇出 2 题）。
+- 同一 `sessionId` 确定性；`start/submit` 不落整卷，仍只存答案与结果。
+- 对外 `itemId` 仍是会话内编号 `q-01`…`q-32`，不暴露银行 id/真假/锚题。
+
+### 4. `rasch.eap.v2`
+
+- 似然：`p = c + (1−c)·σ(θ − b_j − form_offset)`，`c=0.15`；
+  `b_j` 优先题级 `b`，省略时回退题带中心；锚题在 A/B 共享同一个 `b_j`。
+- 先验/网格/区间与 v1 **完全相同**（N(0,1.2)、−4…+4 step 0.05、EAP、
+  95% CI、80% HPD、点带 ±1 带），因此 v1/v2 的 θ 在同一把尺子上。
+- `form_offset`：pilot 前固定 `0.0`；正偏移 = 该卷更难（与 `b_j` 同向）。
+  等值状态在响应与报告中固定标 `uncalibrated` / `structure_ready_uncalibrated`。
+- v1 兼容：`assessment.estimate(...)` 与 `CALIBRATION_VERSION='rasch.eap.v1'`
+  不变；旧题库继续走 v1。全对/全错在 v2 同样不发散。
+- `submit` 的 `calibration` 对象额外含 `version/calibrationVersion/form/
+  anchorCount/scale`；`breakdown.vocab` 含 `form/anchorCount/scale`；
+  `user_skill_profiles.calibration_version` 记录本次实际估计器版本（v1 或 v2）。
+
+### 5. 质量门与报告
+
+- 脚本：`scripts/check_placement_bank.py`（可 `--check` 只校验）。
+- 报告：`docs/reports/placement-items-2026-11-17.json`。
+- 校验内容：每套 64 题、44 词汇槽、4 篇 × 5 题、选项/答案合法、A1–C1 覆盖、
+  10 锚题跨套同题同参数、伪词未入词表、样卷 24/3/5 且含 10 锚题。
+- **p 值全部 `null`**，`pValues.status="pending_pilot"`；不生成任何伪造
+  统计量。题级 `b` 若是编辑占位，报告标 `editorial_uncalibrated`。
+
+### 6. 测试与验收
+
+- 新增 `backend/tests/test_placement_forms.py`（20 例）与
+  `backend/tests/test_assessment.py` 的 6 个 v2 用例；覆盖题库结构、锚题闸门、
+  v2 抽题/评分/同一 θ 尺度、开关与双向回退、503、幂等、质量脚本与报告。
+- 本任务新增 **26 例**；全量后端 **743 绿**（基线 688 + 本任务 26 + 并行的
+  M2 行为埋点 29；当前 head `0017_behavior_events`）。`py_compile` 绿。
+- 临时 8001 冒烟：`PLACEMENT_BANK_VERSION=v2` 起服务 → start 返回
+  `bankVersion=placement.bank.v2` + form A/B + 10 锚题 → submit 返回
+  `calibrationVersion=rasch.eap.v2`；切回 v1 起服务 → 旧 39 题流程不变。
+
+### 7. 已知限制（必须与结论一起出现）
+
+1. **题库是草稿**：未经 30–50 人 pilot；p 值、题级 b、form offset 均未校准。
+2. **结构等值 ≠ 统计等值**：当前只有「共享锚题 + 共享 b + offset=0」的结构；
+   没有锚题漂移/ICC/平行卷同档率证据，不能对外说「已等值」。
+3. **阅读仍证据不足**：5 题只做 `insufficient`，不进 θ；M3 的 20 题阅读卷
+   仍未做。
+4. **44 词汇槽口径**：40 真词 + 4 伪词 = 44；若改为 44 真词，总题数会变成
+   68，超出 M2 的 64–66 目标，故本期不这么做。
+5. **行为埋点不在本条**：M2 #7（lookup/replay/rate/visibility）与 M2 #4
+   （60 条锚集）仍是后续工作。

@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0016_content_difficulty"
+HEAD = "0017_behavior_events"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -108,11 +108,18 @@ def test_upgrade_head_from_empty_db(tmp_path):
     assert sessions["token_hash"]["notnull"] == 0
     assert sessions["user_id"]["notnull"] == 1
 
-    # 索引：sessions 的过期清理索引 + 事件表的两个查询索引
+    # 索引：sessions 的过期清理索引 + 事件表的两个查询索引 + 幂等部分唯一索引
     assert "idx_sessions_expires" in index_names(db, "sessions")
     events_indexes = index_names(db, "learning_events")
     assert "ix_learning_events_user_occurred" in events_indexes
     assert "ix_learning_events_type_occurred" in events_indexes
+    assert "ux_learning_events_user_type_client" in events_indexes
+    with sqlite3.connect(db) as conn:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' "
+            "AND name='ux_learning_events_user_type_client'"
+        ).fetchone()
+    assert row and "UNIQUE" in row[0].upper() and "WHERE client_event_id IS NOT NULL" in row[0]
 
     # email UNIQUE 约束（SQLite 用自动索引表达）
     with sqlite3.connect(db) as conn:
@@ -136,6 +143,7 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "occurred_at",
         "created_at",
         "pseudonym_id",
+        "client_event_id",
     ]
     assert events["event_type"]["notnull"] == 1
     assert events["occurred_at"]["notnull"] == 1

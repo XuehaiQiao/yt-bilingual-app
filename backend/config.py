@@ -31,6 +31,12 @@ PLACEMENT_DIR = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "placement"),
 )
 
+# 定位测题库版本（M2）：v1 = 仓库原有 39 题（默认，旧流程不变）；v2 =
+# content/placement/forms/form-{a,b}/ 两套 64 题（锚题等值 + rasch.eap.v2）。
+# 只影响**新开始**的会话；会话 id 前缀记录版本，升级前开始的旧会话仍按 v1
+# 提交。可选值：v1 / legacy / 1 / v2 / forms / 2（大小写不敏感）。
+PLACEMENT_BANK_VERSION = os.environ.get("PLACEMENT_BANK_VERSION", "v1")
+
 # 能力档案内容（M1 CEFR 标定，见 ability.py / specs/025）：can_do.json 与
 # self_assess.json 只读静态文件，随仓库分发；测试可指向 tmp 副本验证校验/503。
 ABILITY_DIR = os.environ.get(
@@ -501,6 +507,9 @@ RATE_LIMIT_READING_PER_MINUTE = _int_env("RATE_LIMIT_READING_PER_MINUTE", 10)
 # 公版书（公开只读）：每章都要真实抓取公版源，按 IP 限 30 次/分钟，避免把
 # 源站当成免费 CDN。列表/详情不触发抓取，但同桶计数（实现简单、口径保守）。
 RATE_LIMIT_BOOKS_PER_MINUTE = _int_env("RATE_LIMIT_BOOKS_PER_MINUTE", 30)
+# 学习事件上报（M5 watch + M2 #7 行为埋点）：前端批量/节流上报，一次请求
+# 最多 50 条；120 次/分钟足够正常播放节奏，同时挡住脚本刷事件表。
+RATE_LIMIT_EVENTS_PER_MINUTE = _int_env("RATE_LIMIT_EVENTS_PER_MINUTE", 120)
 
 # 游客态（M1 ⑧）：同样的桶，游客用更紧的上限（按 ln_guest 的 sha256 计数）。
 # 0 = 关闭该桶。总试译上限 GUEST_MAX_TRANSLATED_VIDEOS 是**累计**口径（不是每分钟）：
@@ -513,6 +522,10 @@ RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE = _int_env(
     "RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE", 2
 )
 RATE_LIMIT_GUEST_DEFINE_PER_MINUTE = _int_env("RATE_LIMIT_GUEST_DEFINE_PER_MINUTE", 20)
+# 游客事件上报用更紧的桶（按 ln_guest sha256 计数）。
+RATE_LIMIT_GUEST_EVENTS_PER_MINUTE = _int_env(
+    "RATE_LIMIT_GUEST_EVENTS_PER_MINUTE", 60
+)
 GUEST_MAX_TRANSLATED_VIDEOS = _int_env("GUEST_MAX_TRANSLATED_VIDEOS", 1)
 
 # 全局 LLM 并发闸：同一时刻最多允许多少个 provider 调用（0 = 不限）。
