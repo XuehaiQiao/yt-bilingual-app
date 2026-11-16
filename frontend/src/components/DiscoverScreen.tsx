@@ -40,6 +40,14 @@ interface DiscoverScreenProps {
     /** Existing App processing pipeline (same one the home input uses). */
     onStart: (url: string) => void;
     onRequestLogin?: () => void;
+    /**
+     * Query handed over by the Start-learning "search" mode. When present the
+     * view prefills the field and immediately runs the search once, so the
+     * user never has to type the topic a second time.
+     */
+    initialQuery?: string;
+    /** Called once the handed-over query has been dispatched. */
+    onInitialQueryConsumed?: () => void;
 }
 
 interface StoredDiscoverState {
@@ -109,13 +117,21 @@ function errorKeyForStatus(status: number): TranslationKey {
     }
 }
 
-export function DiscoverScreen({ onClose, onStart, onRequestLogin }: DiscoverScreenProps) {
+export function DiscoverScreen({
+    onClose,
+    onStart,
+    onRequestLogin,
+    initialQuery,
+    onInitialQueryConsumed,
+}: DiscoverScreenProps) {
     const { t, language, targetLang } = useI18n();
+    const handedOverQuery = initialQuery?.trim() ?? '';
 
-    // Lazy initial state so re-entering the view shows the previous result.
+    // Lazy initial state so re-entering the view shows the previous result;
+    // a query handed over by the Start-learning input wins over that cache.
     const [initial] = useState(() => readStoredState(targetLang));
-    const [query, setQuery] = useState(initial?.query ?? '');
-    const [submittedQuery, setSubmittedQuery] = useState(initial?.submittedQuery ?? '');
+    const [query, setQuery] = useState(handedOverQuery || initial?.query || '');
+    const [submittedQuery, setSubmittedQuery] = useState(handedOverQuery || initial?.submittedQuery || '');
     const [result, setResult] = useState<DiscoverResult | null>(initial?.result ?? null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorStatus, setErrorStatus] = useState<number | null>(null);
@@ -196,6 +212,20 @@ export function DiscoverScreen({ onClose, onStart, onRequestLogin }: DiscoverScr
         event.preventDefault();
         void runSearch(query, false);
     };
+
+    // Handover from the Start-learning "search" mode: prefill already happened
+    // in state, and this runs the search once on mount. The zero-delay timer
+    // (cleared by the effect cleanup) keeps React StrictMode's double effect
+    // from firing the request twice.
+    useEffect(() => {
+        if (!handedOverQuery) return;
+        const timer = window.setTimeout(() => {
+            onInitialQueryConsumed?.();
+            void runSearch(handedOverQuery, false);
+        }, 0);
+        return () => window.clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleRetry = () => {
         void runSearch(submittedQuery || query, false);

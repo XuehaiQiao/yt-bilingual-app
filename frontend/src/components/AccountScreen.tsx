@@ -21,7 +21,6 @@ import {
   Coins,
   FileText,
   Gauge,
-  Globe,
   Languages,
   Loader2,
   LogOut,
@@ -171,7 +170,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   onOpenVocab,
 }) => {
   const { status, user, isAdmin, logout, updateUsername } = useAuth();
-  const { t, language, targetLang, languages, formatNumber, formatDate } = useI18n();
+  const { t, language, languages, formatNumber, formatDate } = useI18n();
   const online = useOnlineStatus();
   const { canInstall, isIos, isStandalone } = useInstallPrompt();
 
@@ -367,8 +366,8 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
       <div className="mt-3 divide-y divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40">
         <SettingRow
           icon={<Languages className="w-4 h-4" />}
-          label={t('account.settings.uiLanguage')}
-          hint={t('account.settings.uiLanguageHint')}
+          label={t('account.settings.yourLanguage')}
+          hint={t('account.settings.yourLanguageHint')}
         >
           <button
             type="button"
@@ -379,24 +378,6 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
             title={t('account.settings.languageAria')}
           >
             {languages.find((item) => item.code === language)?.nativeName ?? language}
-            <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
-          </button>
-        </SettingRow>
-
-        <SettingRow
-          icon={<Globe className="w-4 h-4" />}
-          label={t('account.settings.targetLanguage')}
-          hint={t('account.settings.targetLanguageHint')}
-        >
-          <button
-            type="button"
-            data-testid="account-target-language"
-            onClick={() => setLanguageOpen(true)}
-            aria-haspopup="dialog"
-            className={ROW_BUTTON}
-            title={t('account.settings.languageAria')}
-          >
-            {languages.find((item) => item.code === targetLang)?.nativeName ?? targetLang}
             <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
           </button>
         </SettingRow>

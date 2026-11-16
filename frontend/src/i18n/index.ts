@@ -37,10 +37,16 @@ export interface LanguageMeta {
 
 export const DEFAULT_LANGUAGE: LanguageCode = 'zh-CN';
 
-/** localStorage key for the UI language (never the translation target). */
+/**
+ * localStorage key for the one user-facing language preference.
+ *
+ * Since the "one language" change this is the single source of truth: the UI
+ * language and the translation target are the same choice. The old
+ * `yt_bilingual_target_lang` key is kept in sync for migration/rollback only.
+ */
 export const UI_LANGUAGE_STORAGE_KEY = 'yt_bilingual_ui_lang';
 
-/** localStorage key for the translation target language. */
+/** Legacy translation-target key; mirrored from the UI language (migration). */
 export const TARGET_LANGUAGE_STORAGE_KEY = 'yt_bilingual_target_lang';
 
 /** Translation target language defaults to Simplified Chinese. */
@@ -113,9 +119,47 @@ export function storeLanguage(code: LanguageCode): void {
 }
 
 /**
- * Read the translation target language. Invalid or missing values fall back to
- * `zh-CN`; this setting is deliberately separate from the UI language, so
- * switching the interface never changes the translation target.
+ * One-time migration for the old two-setting model (UI language + translation
+ * target language stored separately).
+ *
+ * The product now has a single "your language" choice, so the UI language is
+ * the source of truth: when the two legacy keys disagree, keep the UI language
+ * and overwrite the target key with it. When no UI value exists yet, fall back
+ * to Chinese (the default) and still normalise the target key. The React
+ * provider keeps both keys written from then on, so a rollback to an older
+ * build finds a consistent pair.
+ */
+export function loadStoredLanguagePreference(): {
+  language: LanguageCode;
+  migratedFrom: LanguageCode | null;
+} {
+  try {
+    const rawUi = localStorage.getItem(UI_LANGUAGE_STORAGE_KEY);
+    const rawTarget = localStorage.getItem(TARGET_LANGUAGE_STORAGE_KEY);
+    // `normalizeLanguage(null)` = zh-CN, matching the old default; a invalid
+    // stored UI value therefore behaves exactly like a missing one.
+    const language = normalizeLanguage(rawUi);
+    const target = rawTarget ? normalizeLanguage(rawTarget) : null;
+    if (target && target !== language) {
+      localStorage.setItem(TARGET_LANGUAGE_STORAGE_KEY, language);
+      if (!rawUi) localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, language);
+      return { language, migratedFrom: target };
+    }
+    // Make the single preference observable from the first paint, including
+    // upgrade installs that only ever had the target key (or no key at all).
+    if (rawTarget !== language) localStorage.setItem(TARGET_LANGUAGE_STORAGE_KEY, language);
+    if (!rawUi) localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, language);
+    return { language, migratedFrom: null };
+  } catch {
+    // Private mode / storage disabled: defaults are still fully functional.
+    return { language: DEFAULT_LANGUAGE, migratedFrom: null };
+  }
+}
+
+/**
+ * Read the (legacy) translation target language. Invalid or missing values
+ * fall back to `zh-CN`. New code should read `targetLang` from `useI18n()`,
+ * which is derived from the single language preference.
  */
 export function loadTargetLang(): LanguageCode {
   try {
@@ -126,6 +170,10 @@ export function loadTargetLang(): LanguageCode {
   }
 }
 
+/**
+ * Mirror the language into the legacy target key. Kept because `apiFetch` and
+ * older builds still read it; UI code never calls this directly.
+ */
 export function saveTargetLang(code: LanguageCode): void {
   try {
     // Normalize on write too: a bad/legacy value must never persist and then

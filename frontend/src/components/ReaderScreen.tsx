@@ -59,6 +59,14 @@ interface ReaderScreenProps {
      * App remounts the screen for a new target; ordinary entries omit it.
      */
     initialArticleId?: string;
+    /**
+     * Handover from the Start-learning "read article" mode: prefill the import
+     * form and start the existing import flow once. `mode` is decided by the
+     * caller (http(s) URL = url import, anything else = pasted body).
+     */
+    initialImport?: { mode: ImportMode; value: string; title?: string };
+    /** Called once the handed-over import has been dispatched. */
+    onInitialImportConsumed?: () => void;
     /** Reuse the app-wide dictionary card (App owns its state/favorites). */
     onWordLookup: (
         word: string,
@@ -189,6 +197,8 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     onRequestLogin,
     isGuest = false,
     initialArticleId,
+    initialImport,
+    onInitialImportConsumed,
     onWordLookup,
 }) => {
     const { t, targetLang, formatNumber } = useI18n();
@@ -197,12 +207,19 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const [articles, setArticles] = useState<ArticleSummary[]>([]);
     const [listLoading, setListLoading] = useState(!isGuest);
     const [listError, setListError] = useState<number | null>(null);
-    const [importMode, setImportMode] = useState<ImportMode>('url');
-    const [urlValue, setUrlValue] = useState('');
-    const [textValue, setTextValue] = useState('');
-    const [titleValue, setTitleValue] = useState('');
+    // The handed-over value is visible in the form immediately (the import
+    // itself starts from the effect below, after the screen has mounted).
+    const [importMode, setImportMode] = useState<ImportMode>(initialImport?.mode ?? 'url');
+    const [urlValue, setUrlValue] = useState(
+        initialImport?.mode === 'url' ? initialImport.value : '',
+    );
+    const [textValue, setTextValue] = useState(
+        initialImport?.mode === 'text' ? initialImport.value : '',
+    );
+    const [titleValue, setTitleValue] = useState(initialImport?.title ?? '');
     const [importing, setImporting] = useState(false);
     const [importError, setImportError] = useState<TranslationKey | null>(null);
+    const importingRef = useRef(false);
 
     // ── Reader ─────────────────────────────────────────────────────────────
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -520,34 +537,37 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         }
     }, [article, translating, refreshTranslations, targetLang, t]);
 
-    const handleImport = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (importing) return;
+    // One import pipeline shared by the form and the Start-learning handover
+    // (`initialImport`). Values are passed explicitly so the automatic path
+    // never has to wait for React state to settle.
+    const runImport = useCallback(async (mode: ImportMode, rawValue: string, rawTitle: string) => {
+        if (importingRef.current) return;
 
-        const title = titleValue.trim();
-        if (importMode === 'url') {
-            if (!urlValue.trim()) {
+        const title = rawTitle.trim();
+        if (mode === 'url') {
+            if (!rawValue.trim()) {
                 setImportError('reader.import.urlRequired');
                 return;
             }
         } else {
-            if (!textValue.trim()) {
+            if (!rawValue.trim()) {
                 setImportError('reader.import.textRequired');
                 return;
             }
-            if (textValue.length > MAX_PASTED_CHARS) {
+            if (rawValue.length > MAX_PASTED_CHARS) {
                 setImportError('reader.import.tooLong');
                 return;
             }
         }
 
+        importingRef.current = true;
         setImporting(true);
         setImportError(null);
         try {
             const result = await importArticle(
-                importMode === 'url'
-                    ? { url: urlValue.trim(), title: title || undefined }
-                    : { text: textValue, title: title || undefined },
+                mode === 'url'
+                    ? { url: rawValue.trim(), title: title || undefined }
+                    : { text: rawValue, title: title || undefined },
             );
             if (!mountedRef.current) return;
             setUrlValue('');
@@ -561,9 +581,37 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         } catch (err) {
             if (mountedRef.current) setImportError(errorKeyForStatus(statusOf(err)));
         } finally {
+            importingRef.current = false;
             if (mountedRef.current) setImporting(false);
         }
+    }, [loadList, openArticle, t]);
+
+    const handleImport = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        void runImport(importMode, importMode === 'url' ? urlValue : textValue, titleValue);
     };
+
+    // Start-learning "read article" handover: prefill already happened in the
+    // state initialisers; dispatch the existing import once after mount. The
+    // zero-delay timer is cleared by the cleanup, so StrictMode's double
+    // effect does not import twice.
+    useEffect(() => {
+        if (!initialImport) return;
+        if (isGuest) {
+            onInitialImportConsumed?.();
+            return;
+        }
+        if (!initialImport.value.trim()) {
+            onInitialImportConsumed?.();
+            return;
+        }
+        const timer = window.setTimeout(() => {
+            onInitialImportConsumed?.();
+            void runImport(initialImport.mode, initialImport.value, initialImport.title ?? '');
+        }, 0);
+        return () => window.clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleDelete = async (e: React.MouseEvent, summary: ArticleSummary) => {
         e.stopPropagation();

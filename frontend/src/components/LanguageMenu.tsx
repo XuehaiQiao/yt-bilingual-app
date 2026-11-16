@@ -5,8 +5,8 @@ import { LanguageSettingsModal } from './LanguageSettingsModal';
 
 /**
  * Language entry point (top bar and login page). A single globe button opens
- * the shared settings dialog, where the interface language and the
- * translation target language are edited independently.
+ * the shared settings dialog, where the user picks "your language" — one
+ * choice that drives both the interface and the translation target.
  *
  * Icon-only below `sm` so the top bar still fits at 320–375px; the
  * `aria-label`/`title` carry the full "language settings" name.

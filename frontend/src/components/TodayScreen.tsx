@@ -32,6 +32,10 @@ interface TodayScreenProps {
     placementFailed: boolean;
     /** Same callback ContentScreen uses — one estimate/process pipeline. */
     onSubmitUrl: (url: string) => void;
+    /** Start-input "search topics" mode: discover view auto-runs the query. */
+    onSearch: (query: string) => void;
+    /** Start-input "read article" mode: reader prefills/imports the value. */
+    onRead: (value: string) => void;
     onLoadHistory: (filename: string) => void;
     onOpenReview: () => void;
     onOpenReport: () => void;
@@ -49,6 +53,8 @@ export function TodayScreen({
     placementLoading,
     placementFailed,
     onSubmitUrl,
+    onSearch,
+    onRead,
     onLoadHistory,
     onOpenReview,
     onOpenReport,
@@ -148,6 +154,8 @@ export function TodayScreen({
             <StartLearning
                 variant="primary"
                 onEstimate={(url) => estimateRef.current?.estimate(url)}
+                onSearch={onSearch}
+                onRead={onRead}
             />
         </div>
     ) : null;
@@ -256,6 +264,8 @@ export function TodayScreen({
                             variant="compact"
                             hint={t('today.newContent')}
                             onEstimate={(url) => estimateRef.current?.estimate(url)}
+                            onSearch={onSearch}
+                            onRead={onRead}
                         />
                     </div>
                 )}

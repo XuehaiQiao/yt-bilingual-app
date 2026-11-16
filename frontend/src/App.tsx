@@ -187,6 +187,14 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Dictation (blind listening) mode: English blurred until revealed per sentence
   const [dictationMode, setDictationMode] = useState(false);
 
+  // Handover state for the Start-learning input's non-YouTube modes. The
+  // screens consume and clear these once, so a normal nav-menu entry never
+  // replays an old topic/import.
+  const [discoverInitialQuery, setDiscoverInitialQuery] = useState<string | null>(null);
+  const [readerInitialImport, setReaderInitialImport] = useState<
+    { mode: 'url' | 'text'; value: string; title?: string } | null
+  >(null);
+
   // Click-to-define dictionary popover
   const [wordLookup, setWordLookup] = useState<WordLookupTarget | null>(null);
 
@@ -1611,14 +1619,24 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleOpenDiscover = () => {
-    if (status !== 'authenticated') {
-      onRequestLogin?.();
-      return;
-    }
+    if (!requireAccount()) return;
+    // A normal entry must not replay a topic handed over earlier.
+    setDiscoverInitialQuery(null);
+    openSub({ kind: 'discover' });
+  };
+
+  // Start-learning "search" mode: same account gate as the discover entry,
+  // then let the view prefill + auto-run the query.
+  const handleStartSearch = (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    if (!requireAccount()) return;
+    setDiscoverInitialQuery(trimmed);
     openSub({ kind: 'discover' });
   };
 
   const handleCloseDiscover = () => {
+    setDiscoverInitialQuery(null);
     back();
   };
 
@@ -1629,16 +1647,32 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleOpenReader = () => {
+    setReaderInitialImport(null);
+    openSub({ kind: 'reader' });
+  };
+
+  // Start-learning "read article" mode: a bare http(s) URL goes through the
+  // existing URL import; anything else is treated as pasted body. No other
+  // URL-shape probing happens anywhere.
+  const handleStartRead = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    if (!requireAccount()) return;
+    const isUrl = /^https?:\/\/\S+$/i.test(trimmed) && trimmed.length <= 4096;
+    const mode: 'url' | 'text' = isUrl ? 'url' : 'text';
+    setReaderInitialImport({ mode, value: trimmed });
     openSub({ kind: 'reader' });
   };
 
   const handleCloseReader = () => {
+    setReaderInitialImport(null);
     back();
   };
 
   // Favorites "出处" jump into one article (specs/019 detail view).
   const handleOpenFavoriteArticle = (articleId: string) => {
     setWordLookup(null);
+    setReaderInitialImport(null);
     closeFavoritesForJump();
     openSub({ kind: 'reader', articleId });
   };
@@ -2463,6 +2497,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onClose={handleCloseDiscover}
               onStart={handleDiscoverStart}
               onRequestLogin={onRequestLogin}
+              initialQuery={discoverInitialQuery ?? undefined}
+              onInitialQueryConsumed={() => setDiscoverInitialQuery(null)}
             />,
           );
         case 'reader':
@@ -2476,6 +2512,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               isGuest={status === 'guest'}
               onWordLookup={handleReaderWordLookup}
               initialArticleId={sub.articleId}
+              initialImport={readerInitialImport ?? undefined}
+              onInitialImportConsumed={() => setReaderInitialImport(null)}
             />,
           );
         case 'sentences':
@@ -2512,6 +2550,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onSelectChannel={setSelectedChannel}
             onUnsubscribe={(channelId) => setSubscriptions(prev => prev.filter(s => s.id !== channelId))}
             onSubmitUrl={handleUrlSubmit}
+            onSearch={handleStartSearch}
+            onRead={handleStartRead}
             onOpenLibraryVideo={(id) => { void handleOpenLibraryVideo(id); }}
             onOpenLibraryArticle={(id) => { void handleOpenLibraryArticle(id); }}
             onOpenDiscover={handleOpenDiscover}
@@ -2551,6 +2591,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             placementLoading={placementLoading}
             placementFailed={placementFailed}
             onSubmitUrl={handleUrlSubmit}
+            onSearch={handleStartSearch}
+            onRead={handleStartRead}
             onLoadHistory={(filename) => { void handleLoadHistory(filename); }}
             onOpenReview={handleOpenReview}
             onOpenReport={handleOpenReport}

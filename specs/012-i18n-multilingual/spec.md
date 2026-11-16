@@ -1,6 +1,14 @@
-# 规格：多语言（UI 语言 + 翻译目标语言）
+# 规格：多语言（单一「你的语言」）
 
-**状态：** 草稿（2026-11-15，待负责人/计划评审）｜ **对应代码：** 待实现（规划路径见「分阶段与任务拆分」）
+**状态：** 已实现（前端；2026-11-17 合并界面语言与翻译语言）｜ **对应代码：** `frontend/src/i18n/`、`LanguageSettingsModal.tsx`、`AccountScreen.tsx`（后端契约见 §6）
+
+> **负责人变更（2026-11-17）**
+> 原方案让用户分别设置「界面语言」和「翻译目标语言」，两者互相独立。现合并为**一个「你的语言 / Ngôn ngữ của bạn」**：
+> 1. 只选中文或 Tiếng Việt；选中文 = 中文界面 + 中文译文，选越南语 = 越南语界面 + 越南语译文。
+> 2. 前端 `I18nProvider` 以单一 `language` 为真源，`targetLang` 派生自 `language`；不再允许 UI 语言 ≠ 翻译语言。新代码不暴露 `setTargetLang`。
+> 3. 旧 `yt_bilingual_ui_lang` / `yt_bilingual_target_lang` 不一致时，**以界面语言为准**并把另一个同步为相同值；新代码持续写两个 key 以便回滚旧版本。
+> 4. 切换语言立即更新界面；不自动重译当前视频（中止翻译流、回首页、toast 提示），toast 使用新语言；所有 API 的 `targetLang` 仍随语言发送。
+> 5. 下文涉及「两个独立设置 / 任意组合」的旧描述均为历史记录，按本变更执行。
 
 > **负责人决定（2026-11-15）**
 > 1. 学习语言固定英语；翻译目标语言首批 = **中文（默认）+ 越南语**，用户在设置里可切换。
@@ -78,7 +86,7 @@
 
 - 作为**中文用户**，我升级后打开应用，界面、翻译、词典、精背都和以前一样，不需要重新设置，旧缓存也不会失效。
 - 作为**越南语用户**，我在登录页就能把界面切成 Tiếng Việt；登录后，我看新视频时英文字幕先出，越南语译文边看边补，总结和生词注释也是越南语；查词看到越南语释义与例句译文。
-- 作为**同时接触中越两条线**的用户/测试者，我在设置里分别切换「界面语言」和「翻译语言」，切回中文时看到的是原来的中文缓存，不串、不重新扣费。
+- 作为**同时接触中越两条线**的用户/测试者，我在设置里只选一次「你的语言」：切到越南语后界面和后续译文都是越南语；切回中文看到原来的中文缓存，不串、不重新扣费。
 - 作为**游客/未登录用户**，我在登录页选的界面语言在登录后仍然生效（账号没有设置时），不用再选一次。
 - 作为**开发者**，我新增第三种目标语言时只改语言注册表、文案字典、prompt 语言档案和模型路线，缓存目录与 API 自动按新语言隔离。
 - 作为**内容/运营**，我能按目标语言抽样评估翻译与词典质量，并在越南语质量不达标时先隐藏该语言而不影响中文主线。
@@ -136,10 +144,10 @@
 
 | 键 | 值 | 说明 |
 |---|---|---|
-| `yt_bilingual_ui_lang` | `zh-CN` / `vi-VN` | 界面语言 |
-| `yt_bilingual_target_lang` | `zh-CN` / `vi-VN` | 翻译目标语言 |
+| `yt_bilingual_ui_lang` | `zh-CN` / `vi-VN` | **唯一真源**：界面语言 = 翻译语言 = 你的语言 |
+| `yt_bilingual_target_lang` | `zh-CN` / `vi-VN` | 兼容镜像：始终与 `yt_bilingual_ui_lang` 相同；保留给旧版本/旧代码回滚读取 |
 
-两个设置**互相独立**，默认都是 `zh-CN`。切换 UI 语言不会自动改翻译语言（避免意外重译/扣费）；设置弹窗里给一句提示即可。任意组合都允许（中文界面 + 越南语翻译等），见 [Q6](#待确认项q1q14)。
+单一设置，默认 `zh-CN`。**不再允许两个值不同**：启动时若旧数据里两个 key 不一致，以 `yt_bilingual_ui_lang`（界面语言）为准，写入相同值到 `yt_bilingual_target_lang` 并记注释/迁移日志；缺失 UI key 时按默认中文归一化。前端 Provider 每次切换都会同时写两个 key，所以回滚到旧版本也不会读到分叉的一对值。切换语言会同时改变界面与后续翻译目标（见 §5.3 的中止/回首页保护），不做「只换界面不换译文」的组合。
 
 **未登录/游客**：
 
@@ -177,8 +185,8 @@ CREATE TABLE user_settings (
 **设置入口（UI）**：
 
 - 登录后顶栏新增「语言」图标按钮（lucide `Languages` 或 `Globe`），打开 `LanguageSettingsModal`；登录页右上角同样入口。
-- 弹窗复用设计语言的对话框/分段控件配方，含两组：「界面语言」「翻译语言」，选项显示本地名 + 代码（如 `Tiếng Việt · vi-VN`）。
-- 立即生效、无需「保存」；关闭后保持。目标语言变更的副作用见 §5.3；弹窗里提示「只影响之后打开/处理的视频，已缓存的内容不会自动重译」。
+- 弹窗复用设计语言的对话框/分段控件配方，只含一组：**「你的语言 / Ngôn ngữ của bạn」**（中文 / Tiếng Việt），说明「界面与译文都会使用这个语言」。不再有「翻译语言」第二组选项。
+- 立即生效、无需「保存」；关闭后保持。语言变更的副作用见 §5.3；弹窗里提示「切换后界面立即更新；当前视频不会自动重译，重新打开会按新语言生成译文」。
 - 移动端顶栏空间有限：图标按钮 + `aria-label`，文案可隐藏；不做独立设置页（仓库当前也没有设置页，先用弹窗，后续可升级为设置页）。
 
 ### 5.3 翻译目标语言贯通（`target_lang` / `targetLang`）
@@ -242,8 +250,8 @@ CREATE TABLE user_settings (
 
 - `POST /api/process-video`、`/api/process-video-stream`、`/api/process-subtitle` 的 body 增加可选 `targetLang`；省略时按 §5.1 优先级解析。
 - SSE 事件全部带 `targetLang`（至少 `meta`、`batch`、`summary`、`done`、`error` 带）；`meta` 另带 `sourceLang`、`promptVersion`。前端若发现事件的 `targetLang` 与当前设置不一致，**丢弃该事件**，不去更新界面。
-- **必须**：目标语言切换时，若当前有翻译流在跑，前端中止流（`AbortController`），后端已落盘的批次保留；不把旧语言译文中途拼进新语言界面。
-- **必须（P0 行为）**：目标语言切换时若正在看视频/本地剧集，**先中止流并回到首页**，toast 说明「已切换为越南语；重新打开视频会生成越南语译文」。P1 可做「就地重译」；P0 不做，避免半中半越和误扣费。切换本身**不发起任何 LLM 调用**。
+- **必须**：语言切换（界面与目标同时变化）时，若当前有翻译流在跑，前端中止流（`AbortController`），后端已落盘的批次保留；不把旧语言译文中途拼进新语言界面。
+- **必须（P0 行为）**：切换语言时若正在看视频/本地剧集，**先中止流并回到首页**，toast 用新语言说明「已切换为越南语；重新打开视频会生成越南语译文」。P1 可做「就地重译」；P0 不做，避免半中半越和误扣费。切换本身**不发起任何 LLM 调用**。
 - **必须**：词典弹窗在目标语言切换时关闭；历史列表按新目标语言重新拉取；句子精背入口按新目标语言显示/隐藏；模型栏按新目标语言重新解析默认模型（§5.5）。
 
 **自愈与总结**：
@@ -436,7 +444,7 @@ TARGET_LANG_MODEL_ROUTES = {
 ```
 frontend/src/i18n/
   languages.ts        # 语言注册表：code / nativeName / englishName / dir / 字典加载器
-  I18nProvider.tsx    # Context：uiLang、targetLang、setUiLang、setTargetLang、t、格式化 helper
+  I18nProvider.tsx    # Context：language（唯一设置）、targetLang（=language）、setLanguage、t、格式化 helper
   runtime.ts          # 当前语言单例 + tGlobal()，供 toast/api/非组件代码使用
   format.ts           # Intl 数字/日期/相对时间封装
   zh-CN.json
@@ -464,16 +472,16 @@ frontend/src/i18n/
   },
   "settings": {
     "languageTitle": "语言设置",
-    "uiLanguage": "界面语言",
-    "targetLanguage": "翻译语言",
-    "targetHint": "只影响之后打开的视频；已缓存的内容不会自动重新翻译。"
+    "yourLanguage": "你的语言",
+    "yourLanguageHint": "按钮、标题等界面文字，以及字幕、文章和词典的译文，都使用这个语言。",
+    "noRetranslateHint": "切换后界面立即更新；当前视频不会自动重译，重新打开会按新语言生成译文。"
   }
 }
 ```
 
 - `zh-CN` 的值**逐字保留现状**（包括首页既有英文品牌文案），不顺手改中文措辞；`vi-VN` 除品牌名/模型名外全部越南语。
 - **必须**：`t(key, vars?)` 支持 `{{var}}` 插值；`{{count}}` 类文案在中文/越南语都无复数变化，但接口预留 `Intl.PluralRules`（未来语言）。未知 key：dev 模式 console.warn，运行时回落 `zh-CN`，再回落 key，不渲染空白。
-- **必须**：`runtime.ts` 保存当前 `uiLang` 单例；`apiFetch` 加 `X-UI-Lang` 头；`toast.ts`、`exporter.ts` 等非组件代码用 `tGlobal()`。Provider 挂载/切换时更新单例。
+- **必须**：`runtime.ts` 保存当前 `language` 单例；`apiFetch` 加 `X-UI-Lang` 头并用同一个值作为 `targetLang`；`toast.ts`、`exporter.ts` 等非组件代码用 `tGlobal()`。Provider 挂载/切换时更新单例。
 
 **Provider 挂载与 API**：
 
@@ -487,12 +495,13 @@ frontend/src/i18n/
 ```
 
 ```ts
-const { uiLang, targetLang, setUiLang, setTargetLang, t, formatNumber, formatDate } = useI18n();
+const { language, targetLang, setLanguage, t, formatNumber, formatDate } = useI18n();
+// language：唯一语言设置；targetLang === language（兼容字段，不可独立设置）
 ```
 
-- 挂载时：读 localStorage → 应用 `<html lang>`/`dir` → 若已登录则按 §5.2 同步。
-- 每次切换：更新 state + localStorage + `<html lang>` + `runtime` 单例；已登录时 `PUT /api/settings`（乐观更新，失败回滚提示）。
-- **必须**：`document.documentElement.lang = uiLang`；`dir` 从注册表取（当前均 `ltr`）。`frontend/index.html` 的静态 `lang` 改为 `zh-CN`，运行时由 Provider 覆盖。浏览器标签标题也随 UI 语言：中文「语途（LinguaTrek）」、越南语「LinguaTrek」（产品名不翻译）。React 根节点不强制 `key` 重挂，避免整页闪烁。
+- 挂载时：读 localStorage → 迁移旧的两个 key（界面语言为准）→ 应用 `<html lang>`/`dir` → 若已登录则按 §5.2 同步。
+- 每次切换：更新 state + 两个 localStorage key + `<html lang>` + `runtime` 单例；已登录时 `PUT /api/settings` 同时提交同一个值（乐观更新，失败回滚提示）。
+- **必须**：`document.documentElement.lang = language`；`dir` 从注册表取（当前均 `ltr`）。`frontend/index.html` 的静态 `lang` 改为 `zh-CN`，运行时由 Provider 覆盖。浏览器标签标题也随语言：中文「语途（LinguaTrek）」、越南语「LinguaTrek」（产品名不翻译）。React 根节点不强制 `key` 重挂，避免整页闪烁。
 
 **文案盘点与迁移范围（P0 全量）**：
 
@@ -517,8 +526,7 @@ const { uiLang, targetLang, setUiLang, setTargetLang, t, formatNumber, formatDat
 **切换入口与行为**：
 
 - 登录页右上角 + 登录后顶栏各一个语言按钮，打开同一个 `LanguageSettingsModal`；弹窗复用既有弹窗/分段控件配方，不发明新样式。
-- UI 语言切换：立即生效，不发起 API 学习请求，不中止正在播放的视频；字幕/词典内容语言不变（那是目标语言的事）。
-- 翻译语言切换：按 §5.3 —— 中止翻译流、回到首页、刷新历史、重解析模型、关闭词典卡；**不自动重译已有内容**。
+- 语言切换：立即生效；按 §5.3 中止翻译流、回到首页、刷新历史、重解析模型、关闭词典卡；**不自动重译已有内容**。界面文案与后续译文同时使用新语言。
 - 句子精背：`targetLang != zh-CN` 时入口隐藏；若切换时正在精背视图内，退出到首页并提示。
 - 语言按钮在 320–375px 宽度下保持可点（图标 + `aria-label`，文字可隐藏）。
 
@@ -801,7 +809,9 @@ event: summary
 - [ ] 登录页可切到 Tiếng Việt；刷新后仍是越南语（localStorage）。
 - [ ] 新用户登录前选越南语、登录后账号无设置 → 服务端写入 `vi-VN`，刷新/换设备登录仍为越南语。
 - [ ] 已有账号设置（如 `zh-CN`）的设备本地是 `vi-VN` → 登录后以账号为准并提示；不再被本地覆盖。
-- [ ] 设置弹窗分别切换 UI 语言与翻译语言，二者互不联动；任意组合可保存并恢复。
+- [ ] 设置弹窗只有一组「你的语言」，选中文 = 中文界面 + 中文译文，选越南语 = 越南语界面 + 越南语译文；不再有第二组翻译语言选择器。
+- [ ] 切换语言后 `targetLang` 与界面语言始终相同；API 请求的 `targetLang` 随选择变化。
+- [ ] 旧 localStorage 两 key 不一致时，以界面语言为准并同步目标 key；刷新后仍为同一个语言。
 - [ ] 登出再登录，本机语言偏好保留；`GET /api/settings` 失败时应用不白屏，语言仍可用。
 - [ ] 非法语言代码：`PUT /api/settings {"uiLang":"xx"}` 返回 400；`GET /api/settings` 在未迁移库上返回默认值且不 500。
 
@@ -950,7 +960,7 @@ event: summary
 | Q3 | Qwen 接入：用 DashScope 国际站还是大陆站/OpenRouter？Key 变量名、端点、模型 id 是否本轮加？ | 目录先加 `qwen-plus`，端点走 `QWEN_BASE_URL`，不硬编码；具体供应商待确认 | 模型可用性/合规 | 架构 + 负责人 |
 | Q4 | 词典例句：保留英文原句 + `example_translation`，还是整句改为目标语例句？ | 按「英文 + 译文」设计，保证 TTS 英文与英文学习价值；若要整句目标语，需同时决定朗读行为 | 词典字段/前端/TTS | 负责人 + 教研 |
 | Q5 | 句子精背越南语版是否做、何时做、谁审校、预算多少？ | P0 隐藏不删；P1 离线翻译 + ≥20% 抽检后再开放；**不预判砍掉** | 越南语功能完整度/成本 | 负责人 + 计划 |
-| Q6 | UI 语言与翻译目标语言是否允许任意组合（如 vi UI + zh 翻译）？ | 允许，默认均为 zh；切换不联动 | 测试矩阵/UX | 负责人 |
+| Q6 | UI 语言与翻译目标语言是否允许任意组合（如 vi UI + zh 翻译）？ | **2026-11-17 已决定不允许**：合并为单一「你的语言」，`targetLang` 派生自语言；旧数据以界面语言为准迁移 | 测试矩阵/UX | 负责人 |
 | Q7 | 缓存布局 P0 用「zh 根 + 其他语言子目录」；P1 是否统一迁移到全语言子目录？ | 建议不迁移，根目录长期作为 zh 兼容位；减少用户数据移动风险 | 迁移/兼容 | 架构 |
 | Q8 | 旧缓存/收藏是否批量回填 `target_lang`？ | 建议只读兼容、按需回填；不做批量改写；可选 dry-run 脚本 P1 | 数据风险/工时 | 架构 |
 | Q9 | 后端错误文案 P0 本地化范围：只主流程，还是全量？ | 建议 P0 主流程全量（登录/视频/词典/设置/精背/内部错误），其余随迭代补齐 | 越南语无中文残留 | 负责人 + 前端/后端 |

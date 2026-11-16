@@ -48,6 +48,8 @@ interface ContentScreenProps {
     onSelectChannel: (name: string) => void;
     onUnsubscribe: (id: string) => void;
     onSubmitUrl: (url: string) => void;
+    onSearch: (query: string) => void;
+    onRead: (value: string) => void;
     onOpenLibraryVideo: (id: string) => void;
     onOpenLibraryArticle: (id: string) => void;
     onOpenDiscover: () => void;
@@ -65,6 +67,8 @@ export function ContentScreen({
     onSelectChannel,
     onUnsubscribe,
     onSubmitUrl,
+    onSearch,
+    onRead,
     onOpenLibraryVideo,
     onOpenLibraryArticle,
     onOpenDiscover,
@@ -151,6 +155,8 @@ export function ContentScreen({
                         variant="primary"
                         disabled={busy}
                         onEstimate={estimate}
+                        onSearch={onSearch}
+                        onRead={onRead}
                     >
                         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
                             <div className="flex items-center gap-x-2">
