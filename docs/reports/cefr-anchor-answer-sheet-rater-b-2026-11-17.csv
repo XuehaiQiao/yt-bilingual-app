@@ -1,61 +1,61 @@
 ﻿anon_id,order,rater,band,confidence,utr_bucket,notes
-M2-001,1,B,,,,
-M2-002,2,B,,,,
-M2-003,3,B,,,,
-M2-004,4,B,,,,
-M2-005,5,B,,,,
-M2-006,6,B,,,,
-M2-007,7,B,,,,
-M2-008,8,B,,,,
-M2-009,9,B,,,,
-M2-010,10,B,,,,
-M2-011,11,B,,,,
-M2-012,12,B,,,,
-M2-013,13,B,,,,
-M2-014,14,B,,,,
-M2-015,15,B,,,,
-M2-016,16,B,,,,
-M2-017,17,B,,,,
-M2-018,18,B,,,,
-M2-019,19,B,,,,
-M2-020,20,B,,,,
-M2-021,21,B,,,,
-M2-022,22,B,,,,
-M2-023,23,B,,,,
-M2-024,24,B,,,,
-M2-025,25,B,,,,
-M2-026,26,B,,,,
-M2-027,27,B,,,,
-M2-028,28,B,,,,
-M2-029,29,B,,,,
-M2-030,30,B,,,,
-M2-031,31,B,,,,
-M2-032,32,B,,,,
-M2-033,33,B,,,,
-M2-034,34,B,,,,
-M2-035,35,B,,,,
-M2-036,36,B,,,,
-M2-037,37,B,,,,
-M2-038,38,B,,,,
-M2-039,39,B,,,,
-M2-040,40,B,,,,
-M2-041,41,B,,,,
-M2-042,42,B,,,,
-M2-043,43,B,,,,
-M2-044,44,B,,,,
-M2-045,45,B,,,,
-M2-046,46,B,,,,
-M2-047,47,B,,,,
-M2-048,48,B,,,,
-M2-049,49,B,,,,
-M2-050,50,B,,,,
-M2-051,51,B,,,,
-M2-052,52,B,,,,
-M2-053,53,B,,,,
-M2-054,54,B,,,,
-M2-055,55,B,,,,
-M2-056,56,B,,,,
-M2-057,57,B,,,,
-M2-058,58,B,,,,
-M2-059,59,B,,,,
-M2-060,60,B,,,,
+M2-001,1,B,C1,2,,两窗字幕可定位；约169/197 wpm，递归自我改进、自主性阈值等术语密集，长句与风险推演要求高。
+M2-002,2,B,C1,2,,两窗字幕可定位；约198/206 wpm，extrapolate、corrosive、misinformation 等抽象词，因果链与隐喻密集。
+M2-003,3,B,B2,3,,cumulative、engagement、convenience 等抽象词；even when、whether 等复合句，围绕注意力权利展开论证。
+M2-004,4,B,A2,3,,两窗字幕可定位；约162/157 wpm，日常梦境词汇，过去时短句和问答为主，信息直接。
+M2-005,5,B,C1,2,,两窗字幕可定位；约198/211 wpm，binding bills、subsidies、decarbonizing 等术语，让步与数据因果论证密集。
+M2-006,6,B,A2,3,,两窗字幕可定位；约158/153 wpm，饮食频率日常词，一般现在时短句和频率副词，信息直接。
+M2-007,7,B,C1,2,,两窗字幕可定位；约171/167 wpm，exceptionalism、sentient、coerce 等抽象词，多重假设句与伦理论证密集。
+M2-008,8,B,B2,1,,B2/C1 边界；两窗字幕可定位，约198/193 wpm，procrastination、entrepreneurial 等词，隐喻与长句较多但例证和结构清楚。
+M2-009,9,B,A2,2,,日常叙事词汇；一般过去时为主，含少量过去完成时和 so...that，情节直接。
+M2-010,10,B,B1,2,,volunteers、reduce waste、practical skills 等常见词；where、not only...but also 与宾语从句，说明结构清楚。
+M2-011,11,B,B1,1,,B1/B2 边界；attention、autoplay、advertisers 等词和反问构成抽象论证，但句子多短且关系直接。
+M2-012,12,B,B2,2,,两窗字幕可定位；约171/174 wpm，emissions、infrastructure、ideology 等抽象词，复合句与条件论证较密。
+M2-013,13,B,B2,2,,两窗字幕可定位；约153/152 wpm，refraction、fiber optics、integrated photonics 等术语，条件句和因果说明密集但语速中等。
+M2-014,14,B,A2,3,,两窗字幕可定位；约154/145 wpm，会议与情绪日常词，短问答和基础状语从句，信息直接。
+M2-015,15,B,B2,2,,两窗字幕可定位；约177/164 wpm，respiratory、thermal expansion、mitigate 等词，多重因果句与气候数据密度较高。
+M2-016,16,B,B2,2,,两窗字幕可定位；约181/184 wpm，protolanguage、speculative、linguistic features 等术语，多从句说明语言关系，篇章抽象。
+M2-017,17,B,B2,2,,两窗字幕可定位；约177/169 wpm，tax revenue、counterproductive、definitive 等经济词，连续 whether 从句与政策推理较密。
+M2-018,18,B,A2,1,,A2/B1 边界；sand-bank、mischief、currant buns 等具体词稍难，过去时叙事和顺序关系简单。
+M2-019,19,B,B2,2,,两窗字幕可定位；约198/192 wpm，consent、data sets、gender bias 等抽象词，长句配合具体案例，论证清楚但语速较快。
+M2-020,20,B,C1,2,,两窗字幕可定位；约210/197 wpm，caveat、welfare、ecological degradation 等词，隐喻、名词化与多层因果句密集。
+M2-021,21,B,B1,1,,B1/B2 边界；overhead、whiskers 等具体词，含倒装 away went、被动与多层修饰，但情节直接。
+M2-022,22,B,B2,3,,manufacturers、scarce、innovation 等抽象词；被动、非谓语及 less...than 对比，论证需综合。
+M2-023,23,B,A2,3,,邻里交往高频词；过去时、if 宾语从句和并列句为主，日常情节直接。
+M2-024,24,B,C1,3,,save upon、bulbous、engraved、practitioner 等古旧低频词；插入语和多层定语密集。
+M2-025,25,B,B1,2,,图书馆与居民高频词；used to、现在完成时和定语从句，变化及不同意见层次清楚。
+M2-026,26,B,C1,3,,nom-de-plume、evasive、formidable、sinister、purview 等低频词；隐喻和复杂修辞密集。
+M2-027,27,B,B1,2,,两窗字幕可定位；约150/166 wpm，研究和关系词汇常见，句子层次清楚，以实例和直接结论为主。
+M2-028,28,B,B2,2,,两窗字幕可定位；约210/184 wpm，egocentric、coordinate frames、cognitive 等抽象词，例证反复支撑概念，句法中等复杂。
+M2-029,29,B,A2,3,,修车日常词；so 引导原因、过去完成时和简短叙事，单一直接情节。
+M2-030,30,B,B2,3,,unevenly distributed、wealthier、widen the gap 等抽象词；分号、非谓语和让步推进社会论证。
+M2-031,31,B,B2,2,,两窗字幕可定位；约150/142 wpm，irrational、susceptible、self-esteem、apathy 等心理词，定义与因果复合句较多。
+M2-032,32,B,B1,2,,两窗字幕可定位；约203/171 wpm，grapevine、fill a void、stereotype 等短语有释义，访谈加说明，主旨细节清楚。
+M2-033,33,B,B1,2,,pollution、shipping、sonar、drilling 等少量专业词；定语从句与比较结构，说明直接。
+M2-034,34,B,C1,2,,两窗字幕可定位；约166/169 wpm，neurolinguists、synapses、dorsolateral prefrontal cortex 等术语密集，多层从句与科研对比抽象。
+M2-035,35,B,B2,2,,两窗字幕可定位；约156/148 wpm，nonheritable、physiology、plumage、biodiversity 等生物词，因果说明配具体物种例证。
+M2-036,36,B,B1,1,,B1/B2 边界；两窗字幕可定位，约190/190 wpm，faux pas、gesticulate 等习语有释义，访谈叙事较长但信息直接。
+M2-037,37,B,C1,3,,两窗字幕可定位；约170/173 wpm，basin of attraction、Holocene、AMOC、cascades 等术语，数据与地球系统因果链高度密集。
+M2-038,38,B,A2,1,,A2/B1 边界；muslin、shavings 等具体词稍难，基本过去时与并列句叙事，情节直观。
+M2-039,39,B,B2,2,,hinging upon、suspected、linen、reliable 等词；被动、分裂式问句及 many an expert，推理较抽象。
+M2-040,40,B,B1,1,,B1/B2 边界；两窗字幕可定位，约174/158 wpm，smoking gun、savvy、digital native 等有释义，访谈含抽象议题但结构直接。
+M2-041,41,B,C1,3,,两窗字幕可定位；约215/221 wpm，hedge funds、CFTC、regulate、sportsbook 等金融法律词，多人快速问答与监管辨析密集。
+M2-042,42,B,B1,2,,gravel-pits、dreadfully、wandered 等词；长并列句含分词修饰，但叙事顺序清楚。
+M2-043,43,B,C1,2,,两窗字幕可定位；约192/186 wpm，extrapolated、misrepresentations、corrosive 等词，信息核验因果链与隐喻较密。
+M2-044,44,B,B1,2,,guilty、rest、pauses 等常见抽象词；短句和基础从句为主，观点与解释直接。
+M2-045,45,B,C1,3,,C1+；periwigs、paduasoy、taffeta、lutestring 等历史服饰词极密集，长句描写负担高。
+M2-046,46,B,A2,3,,厨房、镜子、日光等高频具体词；too...to、instead of 和 without 结构，情节简短直接。
+M2-047,47,B,C1,2,,两窗字幕可定位；约188/190 wpm，ascetic、existential、systemic、antidote 等抽象词，隐喻和立场推演密集。
+M2-048,48,B,B2,3,,couriers、algorithms、flexibility、regulators 等抽象词；多重从句、被动与风险归属论证。
+M2-049,49,B,B1,2,,社区修理高频词；被动、现在完成时和定语从句，报道结构及细节清楚。
+M2-050,50,B,C1,3,,两窗字幕可定位；约261/242 wpm，opportunity cost、scarcity、monetary policy 等术语，快速类比、插话和概念切换密集。
+M2-051,51,B,B1,2,,sixpence、Cat’s-meat-Man 等旧式具体词；含过去完成时虚拟句，但叙事因果直接。
+M2-052,52,B,A2,1,,A2/B1 边界；hollow、hazel、ripe 等具体词稍难，基本叙事句与定语从句，情节直观。
+M2-053,53,B,C1,2,,两窗字幕可定位；约222/208 wpm，caveat、deprivation、ecological degradation 等词，隐喻、名词化与抽象因果句密集。
+M2-054,54,B,B2,2,,两窗字幕可定位；约141/165 wpm，connotation、standoffish、contemplation、hospitality 等词，复合句与文化隐含意义需推断。
+M2-055,55,B,C1,3,,C1+；undefinable、presages、undertow、belaying pin、glowering 等文学航海词，名词化与长句密集。
+M2-056,56,B,B2,2,,两窗字幕可定位；约187/201 wpm，多人自然对话含大量填充语与短轮次，bankruptcy、chapter 11 等词，后半信息较个人化。
+M2-057,57,B,B2,1,,B2/C1 边界；penetrating、dapper、gaiters 等描写词较难，多重同位语但句意直接。
+M2-058,58,B,B2,2,,两窗字幕可定位；约157/161 wpm，HPA axis、cortisol、receptors、epigenetic 等术语，生理因果链和实验说明较密。
+M2-059,59,B,A2,1,,A2/B1 边界；pricked、gig、bonnet 等旧式具体词，as soon as 与定语从句服务于简单叙事。
+M2-060,60,B,C1,2,,两窗字幕可定位；约147/152 wpm，misconstrual、administrative torpor、protractedly 等低频词，抽象人格概念与语域转换较多。

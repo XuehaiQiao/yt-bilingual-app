@@ -1,0 +1,165 @@
+{
+  "schema": "cefr-anchor-analysis.v1",
+  "date": "2026-11-17",
+  "status": "human_review_complete",
+  "n": 60,
+  "rater_agreement": {
+    "exact": 0.75,
+    "within1": 1.0,
+    "qwk": 0.879,
+    "disagreements": [
+      {
+        "anonId": "M2-001",
+        "A": "B2",
+        "B": "C1"
+      },
+      {
+        "anonId": "M2-004",
+        "A": "B1",
+        "B": "A2"
+      },
+      {
+        "anonId": "M2-009",
+        "A": "B1",
+        "B": "A2"
+      },
+      {
+        "anonId": "M2-011",
+        "A": "B2",
+        "B": "B1"
+      },
+      {
+        "anonId": "M2-013",
+        "A": "C1",
+        "B": "B2"
+      },
+      {
+        "anonId": "M2-014",
+        "A": "B1",
+        "B": "A2"
+      },
+      {
+        "anonId": "M2-018",
+        "A": "B1",
+        "B": "A2"
+      },
+      {
+        "anonId": "M2-027",
+        "A": "B2",
+        "B": "B1"
+      },
+      {
+        "anonId": "M2-028",
+        "A": "C1",
+        "B": "B2"
+      },
+      {
+        "anonId": "M2-036",
+        "A": "B2",
+        "B": "B1"
+      },
+      {
+        "anonId": "M2-038",
+        "A": "B1",
+        "B": "A2"
+      },
+      {
+        "anonId": "M2-052",
+        "A": "B1",
+        "B": "A2"
+      },
+      {
+        "anonId": "M2-056",
+        "A": "C1",
+        "B": "B2"
+      },
+      {
+        "anonId": "M2-057",
+        "A": "C1",
+        "B": "B2"
+      },
+      {
+        "anonId": "M2-059",
+        "A": "B1",
+        "B": "A2"
+      }
+    ]
+  },
+  "consensus_vs_editorial": {
+    "exact": 0.317,
+    "within1": 0.917,
+    "qwk": 0.578
+  },
+  "consensus_vs_auto": {
+    "exact": 0.433,
+    "within1": 0.817,
+    "qwk": 0.395
+  },
+  "holdout": {
+    "editorial": {
+      "k": 19,
+      "n": 20,
+      "within1": 0.95,
+      "wilson95": [
+        0.764,
+        0.991
+      ]
+    },
+    "auto": {
+      "k": 16,
+      "n": 20,
+      "within1": 0.8,
+      "wilson95": [
+        0.584,
+        0.919
+      ]
+    }
+  },
+  "calibration": {
+    "editorial": {
+      "k": 36,
+      "n": 40,
+      "within1": 0.9,
+      "wilson95": [
+        0.769,
+        0.96
+      ]
+    },
+    "auto": {
+      "k": 33,
+      "n": 40,
+      "within1": 0.825,
+      "wilson95": [
+        0.68,
+        0.913
+      ]
+    }
+  },
+  "distributions": {
+    "editorial": {
+      "C1": 10,
+      "B2": 18,
+      "A2": 13,
+      "B1": 19
+    },
+    "auto": {
+      "B2": 26,
+      "C1": 17,
+      "B1": 16,
+      "A2": 1
+    },
+    "humanA": {
+      "B2": 19,
+      "C1": 20,
+      "B1": 17,
+      "A2": 4
+    },
+    "humanB": {
+      "C1": 17,
+      "B2": 19,
+      "A2": 11,
+      "B1": 13
+    }
+  },
+  "verdict": "not_passed_ci_too_wide_needs_adjudication"
+}

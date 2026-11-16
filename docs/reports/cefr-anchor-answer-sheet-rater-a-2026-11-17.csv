@@ -1,61 +1,61 @@
 ﻿anon_id,order,rater,band,confidence,utr_bucket,notes
-M2-001,1,A,,,,
-M2-002,2,A,,,,
-M2-003,3,A,,,,
-M2-004,4,A,,,,
-M2-005,5,A,,,,
-M2-006,6,A,,,,
-M2-007,7,A,,,,
-M2-008,8,A,,,,
-M2-009,9,A,,,,
-M2-010,10,A,,,,
-M2-011,11,A,,,,
-M2-012,12,A,,,,
-M2-013,13,A,,,,
-M2-014,14,A,,,,
-M2-015,15,A,,,,
-M2-016,16,A,,,,
-M2-017,17,A,,,,
-M2-018,18,A,,,,
-M2-019,19,A,,,,
-M2-020,20,A,,,,
-M2-021,21,A,,,,
-M2-022,22,A,,,,
-M2-023,23,A,,,,
-M2-024,24,A,,,,
-M2-025,25,A,,,,
-M2-026,26,A,,,,
-M2-027,27,A,,,,
-M2-028,28,A,,,,
-M2-029,29,A,,,,
-M2-030,30,A,,,,
-M2-031,31,A,,,,
-M2-032,32,A,,,,
-M2-033,33,A,,,,
-M2-034,34,A,,,,
-M2-035,35,A,,,,
-M2-036,36,A,,,,
-M2-037,37,A,,,,
-M2-038,38,A,,,,
-M2-039,39,A,,,,
-M2-040,40,A,,,,
-M2-041,41,A,,,,
-M2-042,42,A,,,,
-M2-043,43,A,,,,
-M2-044,44,A,,,,
-M2-045,45,A,,,,
-M2-046,46,A,,,,
-M2-047,47,A,,,,
-M2-048,48,A,,,,
-M2-049,49,A,,,,
-M2-050,50,A,,,,
-M2-051,51,A,,,,
-M2-052,52,A,,,,
-M2-053,53,A,,,,
-M2-054,54,A,,,,
-M2-055,55,A,,,,
-M2-056,56,A,,,,
-M2-057,57,A,,,,
-M2-058,58,A,,,,
-M2-059,59,A,,,,
-M2-060,60,A,,,,
+M2-001,1,A,B2,1,,"两窗词速约169/197 wpm；autonomy、recursive self-improvement、oversight 等抽象术语搭配多重从句，风险论证信息密度较高；整体在 B2/C1 边界，按规则取 B2。依据两窗英文字幕。"
+M2-002,2,A,C1,2,,"两窗词速约198/206 wpm；factoids、extrapolated、corrosive、consciousness 等词汇及隐喻句密集，关于错误信息循环的抽象论证信息密度高。依据两窗英文字幕。"
+M2-003,3,A,B2,3,,"cumulative、engagement、convenience 等抽象词；含省略从句 even when ignored、同位补足和嵌入式疑问，围绕注意力权利展开对照论证。"
+M2-004,4,A,B1,2,,"两窗词速约162/157 wpm；nightmare、robbers 等日常叙事词，过去简单时与过去进行时为主，教学对话重复解释，信息密度中低。依据两窗英文字幕。"
+M2-005,5,A,C1,2,,"两窗词速约198/211 wpm；binding bills、emissions、lobbying、decarbonizing 等专业词与被动/复杂从句并用，气候政策及技术成本论证信息密度高。依据两窗英文字幕。"
+M2-006,6,A,A2,1,,"两窗词速约158/153 wpm；seafood、generally 等日常词，短句、频率副词和基础时态为主，信息密度低；语速接近 B1 而语言偏 A2，属 A2/B1 边界。依据两窗英文字幕。"
+M2-007,7,A,C1,2,,"两窗词速约171/167 wpm；infringements、exceptionalism、morally repugnant、sentient 等抽象词密集，连续反问与复杂句构成机器人权利的伦理历史论证，信息密度高。依据两窗英文字幕。"
+M2-008,8,A,B2,1,,"两窗词速约198/193 wpm；procrastination、entrepreneurial、momentum 等词与多重从句并用，借 Monkey/Panic Monster 隐喻区分类别，信息密度较高；语速和隐喻接近 C1，属 B2/C1 边界。依据两窗英文字幕。"
+M2-009,9,A,B1,2,,"umbrella、wooden handle、collected 等日常词；过去时叙事中含过去完成时和 so...that 结构，事件顺序清楚并带少量情绪细节。"
+M2-010,10,A,B1,2,,"volunteers、household objects、reduce waste 等常见说明词；where 定语从句、not only...but also 与宾语从句构成支持和质疑两层信息。"
+M2-011,11,A,B2,2,,"attention、streaks、autoplay、advertisers 等数字产品词；设问、被动和定语从句解释免费应用如何把用户时间商品化，需理解隐含商业模式。"
+M2-012,12,A,B2,2,,"两窗词速约171/174 wpm；emissions、dominant mantra、ideology、net-zero 等抽象专业词，因果和让步句说明增长与减排的张力，信息密度较高。依据两窗英文字幕。"
+M2-013,13,A,C1,2,,"两窗词速约153/152 wpm；refracts、wavelengths、integrated photonics、ultrathin silicon 等术语密集，复杂句连续解释光学机制和芯片转换，信息密度高。依据两窗英文字幕。"
+M2-014,14,A,B1,2,,"两窗词速约154/145 wpm；colleagues、facial expressions、time zones 等常见工作词，条件句和偏好表达不难，教学对话信息密度中低。依据两窗英文字幕。"
+M2-015,15,A,B2,2,,"两窗词速约177/164 wpm；premature、thermal expansion、mitigate、pledges 等专业词与因果句并用，气候后果和政策评估的信息密度较高。依据两窗英文字幕。"
+M2-016,16,A,B2,2,,"两窗词速约181/184 wpm；migration、dialects、protolanguage、speculative 等词配合非谓语和被动句，解释语言谱系及证据限制，信息密度较高。依据两窗英文字幕。"
+M2-017,17,A,B2,2,,"两窗词速约177/169 wpm；tax revenue、counterproductive、definitive rulings、trickle-down 等经济词，多重 whether 从句和条件句呈现政策因果及证据局限，信息密度较高。依据两窗英文字幕。"
+M2-018,18,A,B1,2,,"fir-tree、lane、mischief、currant buns 等少量旧式具体词；以过去时和直接引语推进故事，含过去完成时与被动但情节直接。"
+M2-019,19,A,B2,2,,"两窗词速约198/192 wpm；sustainable、consent、data sets、gender bias、legislation 等词与实例说明结合，句式较长但论证直接，信息密度较高。依据两窗英文字幕。"
+M2-020,20,A,C1,2,,"两窗词速约210/197 wpm；GDP caveat、welfare、social foundation、undermining 等抽象词与 doughnut/horse race 隐喻并用，长句密集论证经济生态边界。依据两窗英文字幕。"
+M2-021,21,A,B1,1,,"overhead、passage、whiskers 等叙事词；含 away went Alice 倒装、非谓语和被动描写，句法高于一般 A2，但情节线仍直接，属 B1/B2 边界。"
+M2-022,22,A,B2,3,,"manufacturers、scarce、consumer choice、innovation 等抽象词；被动、多重从句及 less about whether...than about who 结构呈现多方立场与控制权问题。"
+M2-023,23,A,A2,3,,"flat、salt、neighbour、bread 等日常高频词；以过去简单时和 and/but 连接生活事件，间接问句基础，叙事直接可预测。"
+M2-024,24,A,C1,2,,"save upon、not infrequent、bulbous-headed、practitioner 等旧式低频词；多层定语、省略关系结构和名词化描写形成密集文学细节。"
+M2-025,25,A,B1,2,,"residents、complained、reading rooms 等常见公共生活词；used to、定语从句、现在完成时与动名词结构说明变化及不同反应，结构清楚。"
+M2-026,26,A,C1,3,,"nom-de-plume、shifty、evasive、teeming、formidable、sinister、purview 等正式低频词密集；复杂关系从句与动物比喻共同塑造隐含威胁。"
+M2-027,27,A,B2,2,,"两窗词速约150/166 wpm；questionnaires、committed relationship、affection、octogenarian、cholesterol 等词配合多层主从句，报告研究发现并解释关系质量，信息密度中等。依据两窗英文字幕。"
+M2-028,28,A,C1,2,,"两窗词速约210/184 wpm；egocentric、coordinate frames、cognitive realm、perceptual、grammatical gender 等抽象术语密集，综合语言与认知关系，信息密度高。依据两窗英文字幕。"
+M2-029,29,A,A2,3,,"bike shop、repaired、flat tire、tired but proud 等日常词；过去时和 so 因果连接构成简短完整叙事，仅少量过去完成时。"
+M2-030,30,A,B2,3,,"mature、absorb storm water、unevenly distributed、districts 等抽象说明词；被动、让步和复杂定语从句论证树木收益分配及政策反效果。"
+M2-031,31,A,B2,2,,"两窗词速约150/142 wpm；irrational、susceptible、regulating emotions、misconception、apathy 等心理词与定义/对照句并用，信息密度中等偏高。依据两窗英文字幕。"
+M2-032,32,A,B1,1,,"两窗词速约203/171 wpm；grapevine、fill a void、stereotypes 等习语随后有释义，复合句适中且教学重复较多，信息密度中等；首窗接近 B2，整体属 B1/B2 边界。依据两窗英文字幕。"
+M2-033,33,A,B1,2,,"pollution、shipping、sonar、drilling 等少量专业词；以定语从句和比较结构列举水下噪声来源，主旨与细节直接清晰。"
+M2-034,34,A,C1,2,,"两窗词速约166/169 wpm；coordinate/subordinate bilinguals、neurolinguists、synapses、dorsolateral prefrontal cortex 等术语密集，复杂句解释脑机制，信息密度高。依据两窗英文字幕。"
+M2-035,35,A,B2,2,,"两窗词速约156/148 wpm；nonheritable、physiology、plumage、biodiversity、ecosystems 等科学词与被动和复杂从句并用，以案例解释适应及保护，信息密度较高。依据两窗英文字幕。"
+M2-036,36,A,B2,2,,"两窗词速均约190 wpm；faux pas、gesticulate、no hard feelings、fall out with 等习语词组较多，虽有教学释义但自然叙事和复习节奏较快，信息密度中等。依据两窗英文字幕。"
+M2-037,37,A,C1,2,,"两窗词速约170/173 wpm；Holocene、self-amplifying、tipping elements、AMOC、biophysical 等术语与数据句密集，需综合级联风险和科学不确定性。依据两窗英文字幕。"
+M2-038,38,A,B1,2,,"muslin curtains、ready-made、shavings、lobsters 等旧式具体词；过去时、被动和原因从句构成直接叙事，物品描写细节较多但句法负荷有限。"
+M2-039,39,A,B2,2,,"hinging upon、suspected、committed、linen、reliable 等正式词；连续被动、完成时和定语从句解释刑侦检验问题，逻辑直接但语言较正式。"
+M2-040,40,A,B1,1,,"两窗词速约174/158 wpm；smoking gun、savvy、digital natives 等习语均有释义，访谈长句与教学重述交替，信息密度中等；语言在 B1/B2 边界。依据两窗英文字幕。"
+M2-041,41,A,C1,3,,"两窗词速约215/221 wpm；hedge funds、offset risk、CFTC、sportsbook、incentive 等金融法律词及 skin in the game 等口语习语密集，快速自然访谈含监管反驳，信息密度很高。依据两窗英文字幕。"
+M2-042,42,A,B1,1,,"gravel-pits、dreadfully、spades 等旧式具体词；长并列句含多个分词/补足结构，但家庭背景与出门挖沙的情节直接，属 B1/B2 边界。"
+M2-043,43,A,C1,2,,"两窗词速约192/186 wpm；factoids、extrapolated、misinformation、corrosive 等词与复杂句并用，分析 AI 生成错误信息的循环，抽象论证信息密度高。依据两窗英文字幕。"
+M2-044,44,A,B1,2,,"guilty、waste、rest must be earned、pauses 等常见抽象词；短句与基础定语从句交替，围绕休息必要性作直接解释和反驳。"
+M2-045,45,A,C1,3,,"C1+：periwigs、lappets、paduasoy、taffeta、snippeted、lutestring 等古旧服饰词极密集；长并列句和分词结构进一步增加文学描写负荷。"
+M2-046,46,A,A2,3,,"flat、mirror、daylight、chop vegetables 等日常词；instead of/without 结构和简单过去时说明解决问题，四句话信息直接。"
+M2-047,47,A,C1,2,,"两窗词速约188/190 wpm；ascetic、existential、apocalyptic、systemic、antidote 等抽象词和修辞问句密集，结合生育伦理与心理 grief 展开立场论证，信息密度高。依据两窗英文字幕。"
+M2-048,48,A,B2,3,,"couriers、algorithms、genuine flexibility、regulators 等抽象劳动经济词；被动、whether 从句和排比对照揭示风险转移及平台责任。"
+M2-049,49,A,B1,3,,"community centre、volunteers、practical skills、repaired 等常见词；定语从句、被动和现在完成时用于直接报道，主旨与数字细节清楚。"
+M2-050,50,A,C1,3,,"两窗词速约261/242 wpm；opportunity cost、scarcity、microeconomics、monetary policy 等概念高速连续出现，并夹杂类比和文化俏皮话，信息密度很高。依据两窗英文字幕。"
+M2-051,51,A,B1,1,,"sixpence、live on、saved up 等旧式词和短语；含过去完成时及 if...hadn't had...would have happened 反事实结构，但故事因果仍直接，属 B1/B2 边界。"
+M2-052,52,A,B1,2,,"hollow oak-tree、owl、ripe、hazel bushes 等自然描写词；长句含多个定语和并列成分，童话场景与角色关系仍直接。"
+M2-053,53,A,C1,2,,"两窗词速约222/208 wpm；caveat、welfare、ecological degradation、overshoot、exponential growth 等词与身体/doughnut 隐喻并用，快速密集重构经济增长概念。依据两窗英文字幕。"
+M2-054,54,A,B2,2,,"两窗词速约141/165 wpm；connotation、nonverbal、standoffish、contemplation、customary 等词与复杂从句并用，需依据 tarof 语境推断言外之意，信息密度中等。依据两窗英文字幕。"
+M2-055,55,A,C1,3,,"undefinable、presages、undertow、belaying pin、glowering、sullen 等文学及航海低频词密集；多层分词、被动和长名词短语营造隐含不祥感。"
+M2-056,56,A,C1,2,,"两窗词速约187/201 wpm；chapter 11、bidding process、resilient 等词夹杂大量 like/you know、重叠话语和即兴玩笑，个人叙事隐含情绪且信息密度高。依据两窗英文字幕。"
+M2-057,57,A,C1,2,,"boss of a shield、penetrating、dapper、frock-coat、gaiters、the latter 等旧式描写词；长名词短语、明喻和分号并列形成高密度人物刻画。"
+M2-058,58,A,B2,2,,"两窗词速约157/161 wpm；hypothalamus pituitary adrenal axis、endocrine、cortisol、epigenetic 等生理术语与因果复杂句并用，实验解释信息密度较高。依据两窗英文字幕。"
+M2-059,59,A,B1,2,,"pricked、gig、bonnet、call upon his relations 等旧式具体词和短语；以过去时、定语从句及并列动作推进直接叙事。"
+M2-060,60,A,C1,2,,"两窗词速约147/152 wpm；misconstrual、free traits、enact a script、administrative torpor、protractedly 等抽象低频词密集，人格理论概念区分和修辞幽默的信息密度高。依据两窗英文字幕。"
