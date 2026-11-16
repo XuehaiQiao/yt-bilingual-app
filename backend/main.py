@@ -43,9 +43,10 @@
 - 除认证路由自己要求的登录（如 `claim-guest`）外，`/api/*` 均允许游客访问；
   游客的估价/处理/查词走更紧的进程内限速（见 ratelimit.py），翻译总量也
   有累计上限（见 routes_videos.py / routes_content.py）。
-- `/api/blog/*`、`/api/library/*` 是**公开只读**内容（与 /api/auth、/health 同列）：
-  不需要登录，中间件也不为它们创建游客身份、不下发 `ln_guest`；
-  博客只来自仓库内 Markdown，免费资源库只来自仓库内 JSON。
+- `/api/blog/*`、`/api/library/*`、`/api/books*` 是**公开只读**内容（与
+  /api/auth、/health 同列）：不需要登录，中间件也不为它们创建游客身份、
+  不下发 `ln_guest`；博客只来自仓库内 Markdown，免费资源库只来自仓库内 JSON，
+  公版书只存书目与中译文，英文原文按请求从公版源实时抓取。
 
 Starlette 里后注册的中间件更靠外层，所以 CORS 放在文件最后注册。
 """
@@ -67,6 +68,7 @@ import routes_account
 import routes_admin
 import routes_auth
 import routes_blog
+import routes_books
 import routes_content
 import routes_difficulty
 import routes_discover
@@ -106,12 +108,14 @@ def _is_api_path(path: str) -> bool:
 _PUBLIC_API_PREFIXES = (
     "/api/blog/",
     "/api/library/",
+    "/api/books/",
     "/api/content/difficulty/",
 )
 _PUBLIC_API_EXACT = frozenset(
     {
         "/api/blog",
         "/api/library",
+        "/api/books",
         # can-do 是仓库内只读内容（A1–C1 × 4 技能），公开且不签发游客 Cookie。
         "/api/ability/can-do",
         # 内容难度公开只读（M2）：不需要登录，也不签发游客 Cookie。
@@ -275,6 +279,7 @@ app.include_router(routes_reading.router)
 app.include_router(routes_recommend.router)
 app.include_router(routes_blog.router)
 app.include_router(routes_library.router)
+app.include_router(routes_books.router)
 
 # 必须最后注册：Starlette 后注册的中间件在最外层，401 响应才能带上 CORS 头，
 # 浏览器里的前端才看得到真正的错误信息。

@@ -29,6 +29,8 @@ import { ExamScreen } from './components/ExamScreen';
 import { DiscoverScreen } from './components/DiscoverScreen';
 import { ReaderScreen } from './components/ReaderScreen';
 import { LibraryArticleReader } from './components/LibraryArticleReader';
+import { BookReaderScreen } from './components/BookReaderScreen';
+import { BookSeriesScreen } from './components/BookSeriesScreen';
 import { BlogScreen } from './components/BlogScreen';
 import { AdminConsoleScreen } from './components/AdminConsoleScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -2530,6 +2532,25 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           );
         case 'blog':
           return subFrame(<BlogScreen onClose={handleCloseBlog} />);
+        case 'book':
+          return subFrame(
+            <BookReaderScreen
+              key={`book:${sub.bookId}`}
+              bookId={sub.bookId}
+              onClose={() => back()}
+              onOpenSeries={(seriesId) => openSub({ kind: 'book-series', seriesId })}
+              onWordLookup={handleReaderWordLookup}
+            />,
+          );
+        case 'book-series':
+          return subFrame(
+            <BookSeriesScreen
+              key={`book-series:${sub.seriesId}`}
+              seriesId={sub.seriesId}
+              onClose={() => back()}
+              onOpenBook={(bookId) => openSub({ kind: 'book', bookId })}
+            />,
+          );
         case 'favorites':
           // The route records "on the favorites screen"; P0 still renders the
           // existing panel on top of the profile page (IA §7.2).
@@ -2554,6 +2575,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onRead={handleStartRead}
             onOpenLibraryVideo={(id) => { void handleOpenLibraryVideo(id); }}
             onOpenLibraryArticle={(id) => { void handleOpenLibraryArticle(id); }}
+            onOpenBook={(id) => openSub({ kind: 'book', bookId: id })}
+            onOpenBookSeries={(id) => openSub({ kind: 'book-series', seriesId: id })}
             onOpenDiscover={handleOpenDiscover}
             onOpenReader={handleOpenReader}
             onOpenSentences={handleOpenSentences}

@@ -27,6 +27,7 @@ import { VocabAxis } from './VocabAxis';
 import { ShowBrowser } from './ShowBrowser';
 import { SentencePacks } from './SentencePacks';
 import { LibrarySection } from './LibrarySection';
+import { BooksSection } from './BooksSection';
 import { HomeRecommendations } from './HomeRecommendations';
 import { useI18n } from '../i18n/I18nProvider';
 
@@ -52,6 +53,8 @@ interface ContentScreenProps {
     onRead: (value: string) => void;
     onOpenLibraryVideo: (id: string) => void;
     onOpenLibraryArticle: (id: string) => void;
+    onOpenBook: (id: string) => void;
+    onOpenBookSeries: (id: string) => void;
     onOpenDiscover: () => void;
     onOpenReader: () => void;
     onOpenSentences: (levelId: number) => void;
@@ -71,6 +74,8 @@ export function ContentScreen({
     onRead,
     onOpenLibraryVideo,
     onOpenLibraryArticle,
+    onOpenBook,
+    onOpenBookSeries,
     onOpenDiscover,
     onOpenReader,
     onOpenSentences,
@@ -227,6 +232,14 @@ export function ContentScreen({
                     <LibrarySection
                         onOpenVideo={onOpenLibraryVideo}
                         onOpenArticle={onOpenLibraryArticle}
+                    />
+                </section>
+
+                {/* Public-domain books: 3 launch series, source fetched on demand. */}
+                <section data-testid="content-books">
+                    <BooksSection
+                        onOpenBook={onOpenBook}
+                        onOpenSeries={onOpenBookSeries}
                     />
                 </section>
 

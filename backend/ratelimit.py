@@ -55,10 +55,14 @@ _EXACT_PATHS = {
     # 读文章（V1）：导入会抓取用户提供的 URL（SSRF 校验 + 2MB 上限），
     # 按登录用户限 10 次/分钟；翻译受 AI 日配额约束，不在此桶。
     "/api/article/import": Bucket("reading", "user"),
+    # 公版书（公开只读）：每章都实时抓取公版源；公开路径没有游客身份，
+    # 按 IP 计数。列表/详情也过桶，口径简单且保守。
+    "/api/books": Bucket("books", "ip"),
 }
 
 _PREFIX_PATHS = (
     ("/api/process-video", Bucket("process_video", "user")),
+    ("/api/books/", Bucket("books", "ip")),
     # 后台止血台（M1 ⑥）：登录管理员按用户 30 次/分钟（只读但仍限速，
     # 避免一页面板把 DB 打满；0 = 关闭，见 RATE_LIMIT_ADMIN_PER_MINUTE）。
     ("/api/admin", Bucket("admin", "user")),
@@ -72,6 +76,7 @@ _LIMIT_ATTRS = {
     "discover": "RATE_LIMIT_DISCOVER_PER_MINUTE",
     "reading": "RATE_LIMIT_READING_PER_MINUTE",
     "admin": "RATE_LIMIT_ADMIN_PER_MINUTE",
+    "books": "RATE_LIMIT_BOOKS_PER_MINUTE",
 }
 
 # 游客（无会话、只有 ln_guest）用更紧的上限；auth 桶仍按 IP（游客不适用）。

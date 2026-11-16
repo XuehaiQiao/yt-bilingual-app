@@ -1,0 +1,672 @@
+{
+  "_meta": {
+    "schema": "books.v1",
+    "updatedAt": "2026-11-17",
+    "note": "只存书目/章节索引与中译文；英文原文每次按 sourceUrl 从公版源实时抓取，不入库不落盘。",
+    "translator": "LinguaTrek build pipeline",
+    "translationPromptVersion": "books-zh.v1",
+    "licenseNote": "所有收录文本均为美国公版（Public domain in the US）；逐本在 source/license/sourceUrl 标注。"
+  },
+  "series": [
+    {
+      "id": "oz",
+      "title": "Oz 系列",
+      "author": "L. Frank Baum",
+      "description": "1900–1920 年的 14 本奥兹国故事。多萝西与稻草人、铁皮樵夫、胆小的狮子反复出现；同一角色与同一套叙事词汇的复现，适合用系列阅读把生词从“见过”变成“记住”。",
+      "books": [
+        {
+          "id": "oz-the-wonderful-wizard-of-oz",
+          "title": "The Wonderful Wizard of Oz",
+          "titleZh": "绿野仙踪",
+          "author": "L. Frank Baum",
+          "year": 1900,
+          "level": "B1",
+          "status": "available",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/55/pg55.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/55",
+          "gutenbergId": 55,
+          "totalChapters": 24,
+          "parser": {
+            "mode": "chapters"
+          },
+          "chapters": [
+            {
+              "n": 1,
+              "title": "旋风来了"
+            },
+            {
+              "n": 2,
+              "title": "与芒奇金人的会面"
+            },
+            {
+              "n": 3,
+              "title": "多萝西如何救下稻草人"
+            },
+            {
+              "n": 4,
+              "title": "穿过森林的路"
+            },
+            {
+              "n": 5,
+              "title": "铁皮樵夫获救"
+            },
+            {
+              "n": 6,
+              "title": "胆小的狮子"
+            }
+          ]
+        },
+        {
+          "id": "oz-the-marvelous-land-of-oz",
+          "title": "The Marvelous Land of Oz",
+          "titleZh": "奥兹国的奇妙土地",
+          "author": "L. Frank Baum",
+          "year": 1904,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/54/pg54.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/54",
+          "gutenbergId": 54
+        },
+        {
+          "id": "oz-ozma-of-oz",
+          "title": "Ozma of Oz",
+          "titleZh": "奥兹国的奥兹玛",
+          "author": "L. Frank Baum",
+          "year": 1907,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/33361/pg33361.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/33361",
+          "gutenbergId": 33361
+        },
+        {
+          "id": "oz-dorothy-and-the-wizard-in-oz",
+          "title": "Dorothy and the Wizard in Oz",
+          "titleZh": "多萝西与奥兹国的巫师",
+          "author": "L. Frank Baum",
+          "year": 1908,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/420/pg420.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/420",
+          "gutenbergId": 420
+        },
+        {
+          "id": "oz-the-road-to-oz",
+          "title": "The Road to Oz",
+          "titleZh": "通往奥兹国之路",
+          "author": "L. Frank Baum",
+          "year": 1909,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/485/pg485.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/485",
+          "gutenbergId": 485
+        },
+        {
+          "id": "oz-the-emerald-city-of-oz",
+          "title": "The Emerald City of Oz",
+          "titleZh": "奥兹国的翡翠城",
+          "author": "L. Frank Baum",
+          "year": 1910,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/517/pg517.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/517",
+          "gutenbergId": 517
+        },
+        {
+          "id": "oz-the-patchwork-girl-of-oz",
+          "title": "The Patchwork Girl of Oz",
+          "titleZh": "奥兹国的拼布女孩",
+          "author": "L. Frank Baum",
+          "year": 1913,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/955/pg955.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/955",
+          "gutenbergId": 955
+        },
+        {
+          "id": "oz-tik-tok-of-oz",
+          "title": "Tik-Tok of Oz",
+          "titleZh": "奥兹国的滴答人",
+          "author": "L. Frank Baum",
+          "year": 1914,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/956/pg956.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/956",
+          "gutenbergId": 956
+        },
+        {
+          "id": "oz-the-scarecrow-of-oz",
+          "title": "The Scarecrow of Oz",
+          "titleZh": "奥兹国的稻草人",
+          "author": "L. Frank Baum",
+          "year": 1915,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/957/pg957.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/957",
+          "gutenbergId": 957
+        },
+        {
+          "id": "oz-rinkitink-in-oz",
+          "title": "Rinkitink in Oz",
+          "titleZh": "奥兹国的林基廷克",
+          "author": "L. Frank Baum",
+          "year": 1916,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/958/pg958.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/958",
+          "gutenbergId": 958
+        },
+        {
+          "id": "oz-the-lost-princess-of-oz",
+          "title": "The Lost Princess of Oz",
+          "titleZh": "奥兹国失踪的公主",
+          "author": "L. Frank Baum",
+          "year": 1917,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/959/pg959.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/959",
+          "gutenbergId": 959
+        },
+        {
+          "id": "oz-the-tin-woodman-of-oz",
+          "title": "The Tin Woodman of Oz",
+          "titleZh": "奥兹国的铁皮樵夫",
+          "author": "L. Frank Baum",
+          "year": 1918,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/960/pg960.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/960",
+          "gutenbergId": 960
+        },
+        {
+          "id": "oz-the-magic-of-oz",
+          "title": "The Magic of Oz",
+          "titleZh": "奥兹国的魔法",
+          "author": "L. Frank Baum",
+          "year": 1919,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/419/pg419.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/419",
+          "gutenbergId": 419
+        },
+        {
+          "id": "oz-glinda-of-oz",
+          "title": "Glinda of Oz",
+          "titleZh": "奥兹国的格林达",
+          "author": "L. Frank Baum",
+          "year": 1920,
+          "level": "B1",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/961/pg961.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/961",
+          "gutenbergId": 961
+        }
+      ]
+    },
+    {
+      "id": "peter-rabbit",
+      "title": "Peter Rabbit 系列",
+      "author": "Beatrix Potter",
+      "description": "1902–1930 年的 23 个英国乡村小故事。篇幅短、句子简单，兔子、鸭子、猫与老鼠在同一片田野里反复登场，是 A2–B1 泛读与词汇复现的好材料。",
+      "books": [
+        {
+          "id": "pr-the-tale-of-peter-rabbit",
+          "title": "The Tale of Peter Rabbit",
+          "titleZh": "彼得兔的故事",
+          "author": "Beatrix Potter",
+          "year": 1902,
+          "level": "A2",
+          "status": "available",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/14838/pg14838.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/14838",
+          "gutenbergId": 14838,
+          "totalChapters": 1,
+          "chapters": [
+            {
+              "n": 1,
+              "title": "彼得兔的故事"
+            }
+          ],
+          "parser": {
+            "mode": "single",
+            "bodyStart": "Once upon a time there were four little Rabbits"
+          }
+        },
+        {
+          "id": "pr-the-tale-of-squirrel-nutkin",
+          "title": "The Tale of Squirrel Nutkin",
+          "titleZh": "松鼠纳特金的故事",
+          "author": "Beatrix Potter",
+          "year": 1903,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/14872/pg14872.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/14872",
+          "gutenbergId": 14872
+        },
+        {
+          "id": "pr-the-tailor-of-gloucester",
+          "title": "The Tailor of Gloucester",
+          "titleZh": "格洛斯特的裁缝",
+          "author": "Beatrix Potter",
+          "year": 1903,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/14868/pg14868.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/14868",
+          "gutenbergId": 14868
+        },
+        {
+          "id": "pr-the-tale-of-benjamin-bunny",
+          "title": "The Tale of Benjamin Bunny",
+          "titleZh": "本杰明兔子的故事",
+          "author": "Beatrix Potter",
+          "year": 1904,
+          "level": "A2",
+          "status": "available",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/14407/pg14407.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/14407",
+          "gutenbergId": 14407,
+          "totalChapters": 1,
+          "chapters": [
+            {
+              "n": 1,
+              "title": "本杰明兔子的故事"
+            }
+          ],
+          "parser": {
+            "mode": "single",
+            "bodyStart": "One morning a little rabbit sat on a bank."
+          }
+        },
+        {
+          "id": "pr-the-tale-of-two-bad-mice",
+          "title": "The Tale of Two Bad Mice",
+          "titleZh": "两只坏老鼠的故事",
+          "author": "Beatrix Potter",
+          "year": 1904,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/45264/pg45264.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/45264",
+          "gutenbergId": 45264
+        },
+        {
+          "id": "pr-the-tale-of-mrs-tiggy-winkle",
+          "title": "The Tale of Mrs. Tiggy-Winkle",
+          "titleZh": "蒂吉·温克尔夫人的故事",
+          "author": "Beatrix Potter",
+          "year": 1905,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/15137/pg15137.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/15137",
+          "gutenbergId": 15137
+        },
+        {
+          "id": "pr-the-tale-of-the-pie-and-the-patty-pan",
+          "title": "The Tale of the Pie and the Patty-Pan",
+          "titleZh": "馅饼与烤盘的故事",
+          "author": "Beatrix Potter",
+          "year": 1905,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/15234/pg15234.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/15234",
+          "gutenbergId": 15234
+        },
+        {
+          "id": "pr-the-tale-of-mr-jeremy-fisher",
+          "title": "The Tale of Mr. Jeremy Fisher",
+          "titleZh": "杰里米·费舍尔先生的故事",
+          "author": "Beatrix Potter",
+          "year": 1906,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/15077/pg15077.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/15077",
+          "gutenbergId": 15077
+        },
+        {
+          "id": "pr-the-story-of-a-fierce-bad-rabbit",
+          "title": "The Story of a Fierce Bad Rabbit",
+          "titleZh": "一只凶恶坏兔子的故事",
+          "author": "Beatrix Potter",
+          "year": 1906,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/45265/pg45265.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/45265",
+          "gutenbergId": 45265
+        },
+        {
+          "id": "pr-the-story-of-miss-moppet",
+          "title": "The Story of Miss Moppet",
+          "titleZh": "莫佩特小姐的故事",
+          "author": "Beatrix Potter",
+          "year": 1906,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/14848/pg14848.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/14848",
+          "gutenbergId": 14848
+        },
+        {
+          "id": "pr-the-tale-of-tom-kitten",
+          "title": "The Tale of Tom Kitten",
+          "titleZh": "汤姆小猫的故事",
+          "author": "Beatrix Potter",
+          "year": 1907,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/14837/pg14837.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/14837",
+          "gutenbergId": 14837
+        },
+        {
+          "id": "pr-the-tale-of-jemima-puddle-duck",
+          "title": "The Tale of Jemima Puddle-Duck",
+          "titleZh": "杰迈玛·帕德尔鸭的故事",
+          "author": "Beatrix Potter",
+          "year": 1908,
+          "level": "A2",
+          "status": "available",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/14814/pg14814.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/14814",
+          "gutenbergId": 14814,
+          "totalChapters": 1,
+          "chapters": [
+            {
+              "n": 1,
+              "title": "杰迈玛·帕德尔鸭的故事"
+            }
+          ],
+          "parser": {
+            "mode": "single",
+            "bodyStart": "What a funny sight it is to see a brood of ducklings"
+          }
+        },
+        {
+          "id": "pr-the-tale-of-samuel-whiskers",
+          "title": "The Tale of Samuel Whiskers",
+          "titleZh": "塞缪尔·威斯克的故事",
+          "author": "Beatrix Potter",
+          "year": 1908,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/15575/pg15575.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/15575",
+          "gutenbergId": 15575
+        },
+        {
+          "id": "pr-the-tale-of-the-flopsy-bunnies",
+          "title": "The Tale of the Flopsy Bunnies",
+          "titleZh": "弗洛普西小兔子的故事",
+          "author": "Beatrix Potter",
+          "year": 1909,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/14220/pg14220.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/14220",
+          "gutenbergId": 14220
+        },
+        {
+          "id": "pr-the-tale-of-ginger-and-pickles",
+          "title": "The Tale of Ginger and Pickles",
+          "titleZh": "金格与皮克尔斯的故事",
+          "author": "Beatrix Potter",
+          "year": 1909,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/14877/pg14877.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/14877",
+          "gutenbergId": 14877
+        },
+        {
+          "id": "pr-the-tale-of-mrs-tittlemouse",
+          "title": "The Tale of Mrs. Tittlemouse",
+          "titleZh": "蒂特尔鼠夫人的故事",
+          "author": "Beatrix Potter",
+          "year": 1910,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/17089/pg17089.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/17089",
+          "gutenbergId": 17089
+        },
+        {
+          "id": "pr-the-tale-of-timmy-tiptoes",
+          "title": "The Tale of Timmy Tiptoes",
+          "titleZh": "蒂米·蒂普托斯的故事",
+          "author": "Beatrix Potter",
+          "year": 1911,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/14797/pg14797.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/14797",
+          "gutenbergId": 14797
+        },
+        {
+          "id": "pr-the-tale-of-mr-tod",
+          "title": "The Tale of Mr. Tod",
+          "titleZh": "托德先生的故事",
+          "author": "Beatrix Potter",
+          "year": 1912,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/19805/pg19805.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/19805",
+          "gutenbergId": 19805
+        },
+        {
+          "id": "pr-the-tale-of-pigling-bland",
+          "title": "The Tale of Pigling Bland",
+          "titleZh": "小猪布兰德的故事",
+          "author": "Beatrix Potter",
+          "year": 1913,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/ebooks/author/1796",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/author/1796"
+        },
+        {
+          "id": "pr-appley-dapplys-nursery-rhymes",
+          "title": "Appley Dapply's Nursery Rhymes",
+          "titleZh": "阿普利·达普利的童谣",
+          "author": "Beatrix Potter",
+          "year": 1917,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/ebooks/author/1796",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/author/1796"
+        },
+        {
+          "id": "pr-the-tale-of-johnny-town-mouse",
+          "title": "The Tale of Johnny Town-Mouse",
+          "titleZh": "城鼠约翰尼的故事",
+          "author": "Beatrix Potter",
+          "year": 1918,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/15284/pg15284.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/15284",
+          "gutenbergId": 15284
+        },
+        {
+          "id": "pr-cecily-parsleys-nursery-rhymes",
+          "title": "Cecily Parsley's Nursery Rhymes",
+          "titleZh": "塞西莉·帕斯利的童谣",
+          "author": "Beatrix Potter",
+          "year": 1922,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/23350/pg23350.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/23350",
+          "gutenbergId": 23350
+        },
+        {
+          "id": "pr-the-tale-of-little-pig-robinson",
+          "title": "The Tale of Little Pig Robinson",
+          "titleZh": "小猪鲁滨逊的故事",
+          "author": "Beatrix Potter",
+          "year": 1930,
+          "level": "A2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/ebooks/author/1796",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/author/1796"
+        }
+      ]
+    },
+    {
+      "id": "alice",
+      "title": "Alice 系列",
+      "author": "Lewis Carroll",
+      "description": "1865/1871 年的两本爱丽丝故事。对话密集、文字游戏多，适合 B1–B2 精读；先读《梦游仙境》，再读《镜中奇遇记》。",
+      "books": [
+        {
+          "id": "alice-alices-adventures-in-wonderland",
+          "title": "Alice's Adventures in Wonderland",
+          "titleZh": "爱丽丝梦游仙境",
+          "author": "Lewis Carroll",
+          "year": 1865,
+          "level": "B1",
+          "status": "available",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/11/pg11.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/11",
+          "gutenbergId": 11,
+          "totalChapters": 12,
+          "parser": {
+            "mode": "chapters"
+          },
+          "chapters": [
+            {
+              "n": 1,
+              "title": "掉进兔子洞"
+            },
+            {
+              "n": 2,
+              "title": "眼泪池"
+            },
+            {
+              "n": 3,
+              "title": "一场会议式赛跑和一个长故事"
+            },
+            {
+              "n": 4,
+              "title": "兔子派来小比尔"
+            },
+            {
+              "n": 5,
+              "title": "毛毛虫的忠告"
+            },
+            {
+              "n": 6,
+              "title": "猪与胡椒"
+            }
+          ]
+        },
+        {
+          "id": "alice-through-the-looking-glass",
+          "title": "Through the Looking-Glass",
+          "titleZh": "爱丽丝镜中奇遇记",
+          "author": "Lewis Carroll",
+          "year": 1871,
+          "level": "B2",
+          "status": "coming_soon",
+          "source": "Project Gutenberg",
+          "license": "Public domain in the US",
+          "sourceUrl": "https://www.gutenberg.org/cache/epub/12/pg12.txt",
+          "catalogUrl": "https://www.gutenberg.org/ebooks/12",
+          "gutenbergId": 12
+        }
+      ]
+    }
+  ]
+}

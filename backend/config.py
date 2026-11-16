@@ -66,6 +66,13 @@ LIBRARY_DIR = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "library"),
 )
 
+# 公版书系列阅读库（见 books.py / routes_books.py）：只读 books.json 与本地
+# 中译文 JSON；英文原文每次请求从公版源抓取，**不落库、不落盘**。测试可指向
+# tmp 副本验证 404/503/对齐。
+BOOKS_DIR = os.environ.get(
+    "BOOKS_DIR",
+    os.path.join(_BACKEND_DIR, "..", "content", "books"),
+)
 # 自建英语频表（M2 内容难度，见 difficulty.py / scripts/build_wordlist.py）：
 # content/wordlist/frequency_bands.v1.json 随仓库分发，许可 CC BY-SA 4.0；
 # 运行期只读这一份词→频带映射，不读 CEFR-J/Octanove 等仅研究用途词表。
@@ -473,6 +480,12 @@ if AI_MODEL_REGION not in ("auto", "cn", "global"):
 #   define        /api/define，按登录用户
 #   discover      /api/discover，按登录用户
 #   admin         /api/admin/*，按登录用户（后台止血台，30 次/分钟）
+# 公版书源站抓取：响应体上限、超时与进程内缓存 TTL（秒）。正常请求**每次都
+# 抓取**；缓存只在源站故障时用于降级，**绝不落盘**；见 books.py。
+MAX_BOOK_SOURCE_BYTES = _int_env("MAX_BOOK_SOURCE_BYTES", 2 * 1024 * 1024)
+BOOKS_SOURCE_TIMEOUT_SECONDS = _int_env("BOOKS_SOURCE_TIMEOUT_SECONDS", 20)
+BOOKS_SOURCE_CACHE_SECONDS = _int_env("BOOKS_SOURCE_CACHE_SECONDS", 300)
+
 RATE_LIMIT_AUTH_PER_MINUTE = _int_env("RATE_LIMIT_AUTH_PER_MINUTE", 10)
 RATE_LIMIT_ESTIMATE_COST_PER_MINUTE = _int_env("RATE_LIMIT_ESTIMATE_COST_PER_MINUTE", 20)
 RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE = _int_env("RATE_LIMIT_PROCESS_VIDEO_PER_MINUTE", 6)
@@ -485,6 +498,9 @@ RATE_LIMIT_DISCOVER_PER_MINUTE = _int_env("RATE_LIMIT_DISCOVER_PER_MINUTE", 5)
 # 读文章（V1）：导入会真实抓取任意用户 URL（受 SSRF 校验与 2MB 上限约束），
 # 按用户限 10 次/分钟；翻译另受 AI 日配额，不在这里按分钟卡。
 RATE_LIMIT_READING_PER_MINUTE = _int_env("RATE_LIMIT_READING_PER_MINUTE", 10)
+# 公版书（公开只读）：每章都要真实抓取公版源，按 IP 限 30 次/分钟，避免把
+# 源站当成免费 CDN。列表/详情不触发抓取，但同桶计数（实现简单、口径保守）。
+RATE_LIMIT_BOOKS_PER_MINUTE = _int_env("RATE_LIMIT_BOOKS_PER_MINUTE", 30)
 
 # 游客态（M1 ⑧）：同样的桶，游客用更紧的上限（按 ln_guest 的 sha256 计数）。
 # 0 = 关闭该桶。总试译上限 GUEST_MAX_TRANSLATED_VIDEOS 是**累计**口径（不是每分钟）：

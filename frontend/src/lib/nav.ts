@@ -15,6 +15,8 @@
 //   #/content/reader[/<articleId>]                       reading
 //   #/content/sentences/<levelId>                        sentence packs
 //   #/content/blog[/<slug>]                              official blog
+//   #/content/book/<bookId>                              public-domain book reader
+//   #/content/book-series/<seriesId>                     public-domain series page
 //   #/learn/youtube/<videoId>                            learning view (YouTube)
 //   #/learn/local/<showId>/S<ss>E<ee>                    learning view (local episode)
 //   #/learn/library/<itemId>                             learning view (free library)
@@ -53,6 +55,8 @@ export type SubRoute =
   | { kind: 'reader'; articleId?: string }
   | { kind: 'sentences'; levelId: number }
   | { kind: 'blog'; slug?: string }
+  | { kind: 'book'; bookId: string }
+  | { kind: 'book-series'; seriesId: string }
   | { kind: 'favorites' }
   | { kind: 'ability' }
   | { kind: 'admin' };
@@ -105,6 +109,8 @@ export function tabOfSub(sub: SubRoute, fallback: TabId = 'today'): TabId {
     case 'reader':
     case 'sentences':
     case 'blog':
+    case 'book':
+    case 'book-series':
       return 'content';
     case 'favorites':
     case 'ability':
@@ -199,6 +205,12 @@ export function parseRoute(hash: string): NavState {
     if (sub === 'blog' && tab === 'content' && rest.length <= 2) {
       return { tab, sub: { kind: 'blog', slug: rest[1] || undefined } };
     }
+    if (sub === 'book' && tab === 'content' && rest.length === 2 && rest[1]) {
+      return { tab, sub: { kind: 'book', bookId: rest[1] } };
+    }
+    if (sub === 'book-series' && tab === 'content' && rest.length === 2 && rest[1]) {
+      return { tab, sub: { kind: 'book-series', seriesId: rest[1] } };
+    }
     // `#/content/library` is accepted as "the content page, free-library
     // section" (the section lives on the page, not in its own route).
     if (sub === 'library' && tab === 'content' && rest.length === 1) {
@@ -274,6 +286,10 @@ export function toHash(state: NavState): string {
       return `#/content/sentences/${sub.levelId}`;
     case 'blog':
       return sub.slug ? `#/content/blog/${encodeSegment(sub.slug)}` : '#/content/blog';
+    case 'book':
+      return `#/content/book/${encodeSegment(sub.bookId)}`;
+    case 'book-series':
+      return `#/content/book-series/${encodeSegment(sub.seriesId)}`;
     case 'favorites':
       return '#/profile/favorites';
     case 'ability':
