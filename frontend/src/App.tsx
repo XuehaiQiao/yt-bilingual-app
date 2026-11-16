@@ -1,9 +1,10 @@
 import { apiFetch } from './lib/api';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap } from 'lucide-react';
+import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
+import { WelcomeScreen } from './components/WelcomeScreen';
 import { AuthProvider, useAuth } from './lib/auth';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import { getLanguageMeta, getRuntimeTargetLang } from './i18n';
@@ -2678,8 +2679,70 @@ function AuthLoadingScreen() {
   );
 }
 
-// The only switch between the auth screen and the existing app. Session state
-// lives in AuthProvider, so login/signup/logout and global 401s all land here.
+// ── Public pages (pre-login) ────────────────────────────────────────────────
+// `#/welcome` is the marketing front door for visitors and `#/login` reuses the
+// existing AuthScreen. Both sit outside the `{tab, sub}` nav model: the app's
+// four-tab routes never see them, and a signed-in user keeps landing on Today.
+// A visitor who opens the bare origin is sent to `#/welcome` with replaceState
+// so the marketing page does not leave a phantom history entry behind.
+type PublicView = 'welcome' | 'login';
+
+function readPublicView(hash: string): PublicView | null {
+  const raw = String(hash || '').trim().replace(/^#/, '').replace(/\/+$/, '').toLowerCase();
+  if (raw === 'welcome' || raw === '/welcome') return 'welcome';
+  if (raw === 'login' || raw === '/login') return 'login';
+  return null;
+}
+
+function readPublicLocation(): { view: PublicView | null; blank: boolean } {
+  const hash = window.location.hash;
+  return { view: readPublicView(hash), blank: !hash || hash === '#' };
+}
+
+function usePublicView() {
+  const [publicLocation, setPublicLocation] = useState(readPublicLocation);
+  const sync = useCallback(() => setPublicLocation(readPublicLocation()), []);
+  useEffect(() => {
+    window.addEventListener('hashchange', sync);
+    window.addEventListener('popstate', sync);
+    return () => {
+      window.removeEventListener('hashchange', sync);
+      window.removeEventListener('popstate', sync);
+    };
+  }, [sync]);
+  return { ...publicLocation, sync };
+}
+
+// The login view keeps a way back to the marketing page; without it the only
+// exit from #/login would be a successful sign-in or the browser back button.
+function LoginView() {
+  const { t } = useI18n();
+  const { status } = useAuth();
+  return (
+    <div className="relative">
+      <a
+        href="#/welcome"
+        data-testid="login-back"
+        className="fixed left-4 top-5 z-30 inline-flex h-9 items-center gap-1.5 rounded-xl border border-white/5 bg-zinc-800/60 px-3 text-xs font-medium text-zinc-300 transition-colors hover:border-white/10 hover:bg-zinc-700/60 hover:text-zinc-100 sm:left-6 sm:top-6"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        {t('welcome.login.back')}
+      </a>
+      <AuthScreen
+        onGuestContinue={() => {
+          // `guest` can use the app right away; `anonymous` (backend session
+          // unavailable) would just bounce back to the auth gate, so return to
+          // the public page instead.
+          window.location.hash = status === 'anonymous' ? '#/welcome' : '#/today';
+        }}
+      />
+    </div>
+  );
+}
+
+// The only switch between the public pages, the auth screen and the app.
+// Session state lives in AuthProvider, so login/signup/logout and global 401s
+// all land here.
 //
 // M1 ⑧: `guest` is the normal pre-signup state — the app stays usable and the
 // top bar offers "游客 · 登录保存". Clicking it overlays the auth screen instead
@@ -2687,8 +2750,29 @@ function AuthLoadingScreen() {
 function AuthGate() {
   const { status } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
+  const { view: publicView, blank: blankHash, sync: syncPublicView } = usePublicView();
+
+  // A visitor who opens the bare origin lands on the public welcome page.
+  const defaultWelcome =
+    !publicView && blankHash && (status === 'anonymous' || status === 'guest');
+
+  useEffect(() => {
+    if (!defaultWelcome) return;
+    window.history.replaceState(null, '', '#/welcome');
+    syncPublicView();
+  }, [defaultWelcome, syncPublicView]);
+
+  // Signing in from #/login lands on Today, not back on the login URL.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (readPublicView(window.location.hash) !== 'login') return;
+    window.history.replaceState(null, '', '#/today');
+    syncPublicView();
+  }, [status, syncPublicView]);
 
   if (status === 'loading') return <AuthLoadingScreen />;
+  if (publicView === 'welcome' || defaultWelcome) return <WelcomeScreen />;
+  if (publicView === 'login' && status !== 'authenticated') return <LoginView />;
   if (status === 'anonymous') return <AuthScreen />;
   if (status === 'guest') {
     return (
