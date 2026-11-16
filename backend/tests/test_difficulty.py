@@ -221,3 +221,41 @@ def test_score_support_values():
     assert difficulty.score_support({"subtitle": "auto"}) == 0.8
     assert difficulty.score_support({"subtitle": "none", "text": True}) == 0.9
     assert difficulty.score_support(None) == 0.3
+
+
+def test_gutenberg_articles_are_resolvable_and_banded():
+    """34 篇公版短文：有正文、有译文，全部能算出 difficulty.v1。"""
+    import json
+
+    manifest_path = Path(__file__).resolve().parents[2] / "content" / "library" / "gutenberg-manifest.json"
+    items = json.loads(manifest_path.read_text(encoding="utf-8"))["items"]
+    assert len(items) == 34
+    for item in items:
+        content = difficulty.resolve_content("article", item["id"])
+        assert content is not None, item["id"]
+        assert content["support"]["translation"] is True
+        features = difficulty.compute_for_content(content)
+        payload = difficulty.payload_from_features(
+            "article", item["id"], features, editorial_level=content.get("editorial_level")
+        )
+        assert payload["cefr_input"] in difficulty.LEVEL_OUTPUTS, item["id"]
+        assert payload["confidence"] and payload["confidence"] > 0, item["id"]
+        assert features["size"]["tokens"] > 0
+        assert 250 <= features["size"]["tokens"] <= 400
+
+
+def test_unavailable_video_payload_is_not_estimated():
+    """无字幕占位行：available=false、cefrInput 为空、estimated=false。"""
+    features = difficulty.compute_video_features(
+        [],
+        subtitle_source="none",
+        support={"subtitle": "none", "translation": False, "glossary": False, "text": False},
+    )
+    assert features["available"]["asl"] is False
+    assert features["available"]["wpm"] is False
+    assert features["support"]["text"] is False
+    payload = difficulty.payload_from_features("curated", "missing", features, editorial_level="B1")
+    public = difficulty.payload_to_public(payload)
+    assert public["cefrInput"] is None
+    assert public["estimated"] is False
+    assert public["bucket"] is None

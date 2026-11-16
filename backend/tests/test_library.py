@@ -3,9 +3,11 @@
 覆盖：
 
 1. 公开可访问：未登录 GET 清单 / 视频详情 / 文章详情均 200，且不新发游客 Cookie；
-2. 清单形状：3 个视频 + 3 篇文章、字段齐全、时长 3–20 分钟、等级 A1–C2；
+2. 清单形状：3 个视频 + 3 篇原创 + 34 篇 Gutenberg 公版短文、字段齐全、
+   时长 3–20 分钟、等级 A1–C2；
 3. 视频详情：真实 youtubeId、free/source 标记、双语 blocks（en/zh 均非空）、高亮数组；
 4. 文章详情：原创作者/许可、逐段 en+zh、词数 250–350 且由后端实算；
+   Gutenberg 文章另验来源/链接/PD 依据、250–400 词、自译中文；
 5. 缓存头：清单 300 秒、详情 3600 秒；
 6. 404：未知 id、非法 id、缺失条目文件；503：目录/清单缺失、条目损坏；
 7. 零 LLM/零处理管线：模块源码不 import llm、不连数据库，请求期间 LLM 无调用。
@@ -36,6 +38,10 @@ EXPECTED_ARTICLE_IDS = {
     "ocean-noise",
     "free-app-hidden-cost",
     "case-for-doing-nothing",
+}
+GUTENBERG_MANIFEST = LIBRARY_DIR / "gutenberg-manifest.json"
+GUTENBERG_ARTICLE_IDS = {
+    item["id"] for item in json.loads(GUTENBERG_MANIFEST.read_text(encoding="utf-8"))["items"]
 }
 WORD_RE = re.compile(r"[A-Za-z0-9]+(?:['\u2019-][A-Za-z0-9]+)*")
 
@@ -72,7 +78,7 @@ def test_library_is_public_and_does_not_issue_guest_cookie(make_client):
 # 2. 清单形状
 # ---------------------------------------------------------------------------
 
-def test_index_lists_three_videos_and_three_articles(make_client):
+def test_index_lists_three_videos_and_all_articles(make_client):
     with make_client() as client:
         response = client.get("/api/library")
     assert response.status_code == 200
@@ -89,13 +95,18 @@ def test_index_lists_three_videos_and_three_articles(make_client):
     assert all(180 <= video["duration"] <= 1200 for video in videos)
     assert all(video["level"] in routes_library.LEVELS for video in videos)
 
-    assert len(articles) == 3
-    assert {article["id"] for article in articles} == EXPECTED_ARTICLE_IDS
+    assert len(articles) == 3 + len(GUTENBERG_ARTICLE_IDS) == 37
+    ids = {article["id"] for article in articles}
+    assert ids == EXPECTED_ARTICLE_IDS | GUTENBERG_ARTICLE_IDS
     assert all(
         {"id", "title", "level", "wordCount"} <= set(article) for article in articles
     )
     assert all(article["level"] in routes_library.LEVELS for article in articles)
-    assert all(250 <= article["wordCount"] <= 350 for article in articles)
+    for article in articles:
+        if article["id"] in EXPECTED_ARTICLE_IDS:
+            assert 250 <= article["wordCount"] <= 350
+        else:
+            assert 250 <= article["wordCount"] <= 400
 
 
 # ---------------------------------------------------------------------------
@@ -168,6 +179,43 @@ def test_article_detail_is_original_bilingual_and_counted(make_client):
             assert 250 <= actual <= 350
             topics.add(payload.get("topic"))
     assert topics == {"science", "technology", "life"}
+
+
+def test_gutenberg_articles_have_provenance_and_own_translation(make_client):
+    manifest = json.loads(GUTENBERG_MANIFEST.read_text(encoding="utf-8"))
+    items = manifest["items"]
+    assert len(items) == 34
+    assert len({item["id"] for item in items}) == 34
+    assert len({item["gutenbergId"] for item in items}) == 5  # 18442/6168/7439/14241/11339
+
+    with make_client() as client:
+        for item in items:
+            response = client.get(f"/api/library/articles/{item['id']}")
+            assert response.status_code == 200, (item["id"], response.text)
+            payload = response.json()
+            assert payload["source"] == "public-domain"
+            assert payload["gutenbergId"] == item["gutenbergId"]
+            assert payload["sourceUrl"] == item["sourceUrl"]
+            assert payload["sourceUrl"].startswith("https://www.gutenberg.org/ebooks/")
+            assert payload["publicDomainBasis"]
+            assert payload["author"]
+            assert "Project Gutenberg" in payload["license"]
+            assert payload["level"] in routes_library.LEVELS
+            paragraphs = payload["paragraphs"]
+            assert len(paragraphs) >= 2
+            assert all(p["en"].strip() and p["zh"].strip() for p in paragraphs)
+            actual = sum(len(WORD_RE.findall(p["en"])) for p in paragraphs)
+            assert payload["wordCount"] == actual
+            assert 250 <= actual <= 400
+
+
+def test_articles_manifest_matches_files():
+    data = json.loads((LIBRARY_DIR / "articles.json").read_text(encoding="utf-8"))
+    ids = data["articles"]
+    assert data["_meta"]["count"] == len(ids) == 37
+    assert len(set(ids)) == len(ids)
+    for article_id in ids:
+        assert (LIBRARY_DIR / "articles" / f"{article_id}.json").is_file(), article_id
 
 
 # ---------------------------------------------------------------------------

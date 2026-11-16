@@ -1,0 +1,87 @@
+{
+  "id": "pg-mouse-and-mouser",
+  "title": "Mouse and Mouser",
+  "level": "A2",
+  "author": "Joseph Jacobs",
+  "license": "Public domain (Project Gutenberg #7439)",
+  "source": "public-domain",
+  "topic": "folktale",
+  "summary": "老鼠与猫的一问一答，唱出猫步步逼近、最终扑向老鼠的过程。",
+  "gutenbergId": 7439,
+  "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
+  "publicDomainBasis": "Published 1892; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
+  "paragraphs": [
+    {
+      "en": "The Mouse went to visit the Cat, and found her sitting behind the hall door, spinning.",
+      "zh": "老鼠去拜访猫，看见她正坐在大厅门后纺线。"
+    },
+    {
+      "en": "MOUSE. What are you doing, my lady, my lady, What are you doing, my lady?",
+      "zh": "老鼠：您在做什么呀，我的夫人，我的夫人，您在做什么呀，我的夫人？"
+    },
+    {
+      "en": "CAT (sharply). I'm spinning old breeches, good body, good body I'm spinning old breeches, good body.",
+      "zh": "猫（尖声地）：我在纺旧裤子呢，好家伙，好家伙，我在纺旧裤子呢，好家伙。"
+    },
+    {
+      "en": "MOUSE. Long may you wear them, my lady, my lady, Long may you wear them, my lady.",
+      "zh": "老鼠：愿您穿得长久，我的夫人，我的夫人，愿您穿得长久，我的夫人。"
+    },
+    {
+      "en": "CAT (gruffly). I'll wear' em and tear 'em, good body, good body. I'll wear 'em and tear 'em, good body.",
+      "zh": "猫（粗声粗气地）：我要把它们穿破、撕烂，好家伙，好家伙。我要把它们穿破、撕烂，好家伙。"
+    },
+    {
+      "en": "MOUSE. I was sweeping my room, my lady, my lady, I was sweeping my room, my lady.",
+      "zh": "老鼠：我在打扫房间呢，我的夫人，我的夫人，我在打扫房间呢，我的夫人。"
+    },
+    {
+      "en": "CAT. The cleaner you'd be, good body, good body, The cleaner you'd be, good body.",
+      "zh": "猫：那你会更干净，好家伙，好家伙，那你会更干净，好家伙。"
+    },
+    {
+      "en": "MOUSE. I found a silver sixpence, my lady, my lady, I found a silver sixpence, my lady.",
+      "zh": "老鼠：我捡到一枚银六便士，我的夫人，我的夫人，我捡到一枚银六便士，我的夫人。"
+    },
+    {
+      "en": "CAT. The richer you were, good body, good body, The richer you were, good body.",
+      "zh": "猫：那你会更富有，好家伙，好家伙，那你会更富有，好家伙。"
+    },
+    {
+      "en": "MOUSE. I went to the market, my lady, my lady, I went to the market, my lady.",
+      "zh": "老鼠：我去了一趟集市，我的夫人，我的夫人，我去了一趟集市，我的夫人。"
+    },
+    {
+      "en": "CAT. The further you went, good body, good body The further you went, good body.",
+      "zh": "猫：那你走得更远，好家伙，好家伙，那你走得更远，好家伙。"
+    },
+    {
+      "en": "MOUSE. I bought me a pudding, my lady, my lady, I bought me a pudding, my lady.",
+      "zh": "老鼠：我给自己买了一个布丁，我的夫人，我的夫人，我给自己买了一个布丁，我的夫人。"
+    },
+    {
+      "en": "CAT (snarling). The more meat you had, good body, good body, The more meat you had, good body.",
+      "zh": "猫（咆哮着）：那你肉吃得更多，好家伙，好家伙，那你肉吃得更多，好家伙。"
+    },
+    {
+      "en": "MOUSE. I put it in the window to cool, my lady, I put it in the window to cool.",
+      "zh": "老鼠：我把它放在窗台上晾凉，我的夫人，我把它放在窗台上晾凉。"
+    },
+    {
+      "en": "CAT. (sharply). The faster you'd eat it, good body, good body, The faster you'd eat it, good body.",
+      "zh": "猫（尖声地）：那你会吃得更快，好家伙，好家伙，那你会吃得更快，好家伙。"
+    },
+    {
+      "en": "MOUSE (timidly). The cat came and ate it, my lady, my lady, The cat came and ate it, my lady.",
+      "zh": "老鼠（怯生生地）：猫过来把它吃掉了，我的夫人，我的夫人，猫过来把它吃掉了，我的夫人。"
+    },
+    {
+      "en": "CAT (pouncingly). And I'll eat you, good body, good body, And I'll eat you, good body.",
+      "zh": "猫（扑上去）：那我还要吃掉你，好家伙，好家伙，那我还要吃掉你，好家伙。"
+    },
+    {
+      "en": "(Springs upon the mouse and kills it.)",
+      "zh": "（猫扑向老鼠，把它咬死了。）"
+    }
+  ]
+}

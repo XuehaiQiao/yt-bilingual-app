@@ -1,0 +1,63 @@
+{
+  "id": "pg-the-cat-and-the-mouse",
+  "title": "The Cat and the Mouse",
+  "level": "A2",
+  "author": "Joseph Jacobs",
+  "license": "Public domain (Project Gutenberg #7439)",
+  "source": "public-domain",
+  "topic": "folktale",
+  "summary": "猫咬掉老鼠尾巴，老鼠一路求奶牛、农夫、屠夫和面包师，终于换回尾巴。",
+  "gutenbergId": 7439,
+  "sourceUrl": "https://www.gutenberg.org/ebooks/7439",
+  "publicDomainBasis": "Published 1892; collected by Joseph Jacobs (1854–1916). Public domain in the United States and in China (author's life plus 70 years).",
+  "paragraphs": [
+    {
+      "en": "The cat and the mouse Play'd in the malthouse:",
+      "zh": "猫和老鼠，在麦芽坊里玩耍："
+    },
+    {
+      "en": "The cat bit the mouse's tail off. \"Pray, puss, give me my tail.\" \"No,\" says the cat, \"I'll not give you your tail, till you go to the cow, and fetch me some milk.\"",
+      "zh": "猫咬掉了老鼠的尾巴。“求求你，猫咪，把尾巴还给我。”“不，”猫说，“除非你去找奶牛，给我弄些奶来，我才把尾巴还给你。”"
+    },
+    {
+      "en": "First she leapt and then she ran, Till she came to the cow, and thus began:",
+      "zh": "她先是一跳，然后一路奔跑，来到奶牛跟前，开口说道："
+    },
+    {
+      "en": "\"Pray, Cow, give me milk, that I may give cat milk, that cat may give me my own tail again.\" \"No,\" said the cow, \"I will give you no milk, till you go to the farmer, and get me some hay.\"",
+      "zh": "“求求你，奶牛，给我一些奶，我好把奶给猫，猫就会把我的尾巴还给我。”“不，”奶牛说，“除非你去找农夫，给我弄些干草来，我才给你奶。”"
+    },
+    {
+      "en": "First she leapt, and then she ran, Till she came to the farmer and thus began:",
+      "zh": "她先是一跳，然后一路奔跑，来到农夫跟前，开口说道："
+    },
+    {
+      "en": "\"Pray, Farmer, give me hay, that I may give cow hay, that cow may give me milk, that I may give cat milk, that cat may give me my own tail again.\" \"No,\" says the farmer, \"I'll give you no hay, till you go to the butcher and fetch me some meat.\"",
+      "zh": "“求求你，农夫，给我一些干草，我好把干草给奶牛，奶牛就会给我奶，我好把奶给猫，猫就会把我的尾巴还给我。”“不，”农夫说，“除非你去找屠夫，给我弄些肉来，我才给你干草。”"
+    },
+    {
+      "en": "First she leapt, and then she ran, Till she came to the butcher, and thus began:",
+      "zh": "她先是一跳，然后一路奔跑，来到屠夫跟前，开口说道："
+    },
+    {
+      "en": "\"Pray, Butcher, give me meat, that I may give farmer meat, that farmer may give me hay, that I may give cow hay, that cow may give me milk, that I may give cat milk, that cat may give me my own tail again.\" \"No,\" says the butcher, \"I'll give you no meat, till you go to the baker and fetch me some bread.\"",
+      "zh": "“求求你，屠夫，给我一些肉，我好把肉给农夫，农夫就会给我干草，我好把干草给奶牛，奶牛就会给我奶，我好把奶给猫，猫就会把我的尾巴还给我。”“不，”屠夫说，“除非你去找面包师，给我弄些面包来，我才给你肉。”"
+    },
+    {
+      "en": "First she leapt and then she ran, Till she came to the baker, and thus began:",
+      "zh": "她先是一跳，然后一路奔跑，来到面包师跟前，开口说道："
+    },
+    {
+      "en": "\"Pray, Baker, give me bread, that I may give butcher bread, that butcher may give me meat, that I may give farmer meat, that farmer may give me hay, that I may give cow hay, that cow may give me milk, that I may give cat milk, that cat may give me my own tail again.\"",
+      "zh": "“求求你，面包师，给我一些面包，我好把面包给屠夫，屠夫就会给我肉，我好把肉给农夫，农夫就会给我干草，我好把干草给奶牛，奶牛就会给我奶，我好把奶给猫，猫就会把我的尾巴还给我。”"
+    },
+    {
+      "en": "\"Yes,\" says the baker, \"I'll give you some bread, But if you eat my meal, I'll cut off your head.\"",
+      "zh": "“好吧，”面包师说，“我给你一些面包，但你要是偷吃我的面粉，我就砍掉你的脑袋。”"
+    },
+    {
+      "en": "Then the baker gave mouse bread, and mouse gave butcher bread, and butcher gave mouse meat, and mouse gave farmer meat, and farmer gave mouse hay, and mouse gave cow hay, and cow gave mouse milk, and mouse gave cat milk, and cat gave mouse her own tail again!",
+      "zh": "于是面包师给了老鼠面包，老鼠把面包给了屠夫，屠夫给了老鼠肉，老鼠把肉给了农夫，农夫给了老鼠干草，老鼠把干草给了奶牛，奶牛给了老鼠奶，老鼠把奶给了猫，猫终于把尾巴还给了老鼠！"
+    }
+  ]
+}

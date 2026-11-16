@@ -61,6 +61,12 @@ export interface LibraryArticle extends LibraryArticleSummary {
     license: string;
     topic?: string;
     summary?: string;
+    /** `original` (in-house) or `public-domain` (Project Gutenberg). */
+    source?: 'original' | 'public-domain';
+    /** Gutenberg ebook number + canonical link for public-domain articles. */
+    gutenbergId?: number;
+    sourceUrl?: string;
+    publicDomainBasis?: string;
     paragraphs: LibraryArticleParagraph[];
 }
 
@@ -219,6 +225,15 @@ export async function fetchLibraryArticle(id: string): Promise<LibraryArticle> {
         license: typeof data.license === 'string' ? data.license : '',
         topic: typeof data.topic === 'string' ? data.topic : undefined,
         summary: typeof data.summary === 'string' ? data.summary : undefined,
+        source:
+            data.source === 'public-domain'
+                ? 'public-domain'
+                : data.source === 'original'
+                  ? 'original'
+                  : undefined,
+        gutenbergId: typeof data.gutenbergId === 'number' ? data.gutenbergId : undefined,
+        sourceUrl: typeof data.sourceUrl === 'string' ? data.sourceUrl : undefined,
+        publicDomainBasis: typeof data.publicDomainBasis === 'string' ? data.publicDomainBasis : undefined,
         paragraphs: paragraphs as LibraryArticleParagraph[],
     };
 }

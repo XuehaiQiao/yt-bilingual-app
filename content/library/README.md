@@ -12,7 +12,8 @@ content/library/
 ├── videos.json                 视频清单（只存 id）
 ├── videos/<id>.json            预生成双语字幕块 + 元数据
 ├── articles.json               文章清单（只存 id）
-├── articles/<id>.json          原创英文全文 + 逐段中文译文
+├── gutenberg-manifest.json     34 篇公版短文的 Gutenberg ID / 链接 / PD 依据
+├── articles/<id>.json          原创/公版英文全文 + 逐段中文译文
 └── README.md
 ```
 
@@ -51,7 +52,9 @@ content/library/
 - 每个 block 保留 `en_text` / `zh_text` / `highlights`，与在线视频页的 `TranscriptItem` 同形。
 - 许可：字幕/元数据为本地构建产物；原视频版权归对应频道，播放走 YouTube 官方嵌入。
 
-## 文章资源（3 篇，原创）
+## 文章资源（37 篇：3 篇原创 + 34 篇公版短文）
+
+### 原创文章（3 篇）
 
 | id | 标题 | 主题 | 等级 | 词数 |
 |---|---|---|---|---|
@@ -61,7 +64,18 @@ content/library/
 
 - 作者：**LinguaTrek 编辑部**
 - 许可：**原创，免费使用**
-- 每篇 250–350 词，逐段 `en` + `zh`；没有任何版权文章被复制。
+- 每篇 250–350 词，逐段 `en` + `zh`。
+
+### Project Gutenberg 公版短文（34 篇）
+
+- 来源：Project Gutenberg（【#18442】Fifty Famous Stories Retold、【#6168】Fifty Famous People、
+  【#7439】English Fairy Tales、【#14241】More English Fairy Tales、【#11339】Aesop's Fables）。
+- 每篇 250–400 词，保留**英文原文**并配**本项目中译文**，逐段 `en` + `zh`；
+  每篇 JSON 都带 `gutenbergId` / `sourceUrl` / `publicDomainBasis`，总清单见
+  `content/library/gutenberg-manifest.json`。
+- 选文只取公有领域文本（作者逝世逾 70 年 / 1923 年前出版）；译文为本项目自有译文，
+  未复制任何受版权保护的译本或注释。
+- 等级为编辑初标，卡片/阅读器优先显示 `content_difficulty` 的计算结果。
 
 ## 数据结构
 
@@ -103,6 +117,23 @@ content/library/
 }
 ```
 
+公版短文额外带来源字段（`wordCount` 由后端按正文实算，不写进文件）：
+
+```json
+{
+  "id": "pg-bruce-and-the-spider",
+  "title": "Bruce and the Spider",
+  "level": "B1",
+  "author": "James Baldwin",
+  "license": "Public domain (Project Gutenberg #18442)",
+  "source": "public-domain",
+  "gutenbergId": 18442,
+  "sourceUrl": "https://www.gutenberg.org/ebooks/18442",
+  "publicDomainBasis": "Published 1896; author James Baldwin (1841–1925)…",
+  "paragraphs": [{ "en": "There was once a king of Scotland…", "zh": "从前有一位苏格兰国王……" }]
+}
+```
+
 ## 如何新增资源
 
 ### 新增视频
@@ -123,6 +154,13 @@ content/library/
 2. 填好 `author`/`license`（默认「LinguaTrek 编辑部」「原创，免费使用」）与 `level`；
 3. 放进 `content/library/articles/<id>.json`，再加进 `articles.json`；
 4. 后端会按英文正文重新计算 `wordCount`，列表接口返回的就是实际词数。
+
+公版短文另需（250–400 词）：
+
+1. 只选公有领域文本，保留原文（可做换行/连字符清理，不改写正文）；
+2. 每篇配本项目自有中译文，逐段 `en` + `zh`；
+3. JSON 写入 `source: "public-domain"`、`gutenbergId`、`sourceUrl`、`publicDomainBasis`；
+4. 更新 `articles.json` 与 `gutenberg-manifest.json`。
 
 ## 运行时为什么不会调用模型
 

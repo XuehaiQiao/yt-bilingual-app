@@ -51,6 +51,8 @@ CEFR_LEVELS = ("A1", "A2", "B1", "B2", "C1")
 LEVEL_OUTPUTS = ("A1", "A2", "B1", "B2", "C1", "C1+")
 LEVEL_INDEX = {level: index for index, level in enumerate(LEVEL_OUTPUTS)}
 CONTENT_KINDS = ("video", "article", "curated", "local_show")
+# 「可推荐」内容：视频页 / 免费文章 / 精选视频。local_show 与题库不在推荐池。
+RECOMMENDABLE_KINDS = ("video", "article", "curated")
 FEATURE_KIND = {
     "video": "video",
     "curated": "video",
@@ -1009,7 +1011,8 @@ def compute_video_features(
         "subtitle": source,
         "translation": bool((support or {}).get("translation", False)),
         "glossary": bool((support or {}).get("glossary", True)),
-        "text": True,
+        # 无字幕的条目会走「不可用」占位行：text=False 才不会被当成有正文。
+        "text": bool(text),
     }
     speed = _video_speed(normalized_blocks)
     features = _features_document(
@@ -1359,6 +1362,48 @@ def get_rows(
         conn.close()
 
 
+def count_eligible_by_kind(
+    kinds: Sequence[str] = RECOMMENDABLE_KINDS,
+    *,
+    version: str = ROW_VERSION,
+) -> dict[str, int]:
+    """按 kind 统计「可推荐且有可算难度」的内容条数（cefr_input 非空）。
+
+    只数 ``RECOMMENDABLE_KINDS`` 与 ``version=v1``：无字幕/无正文的占位行
+    （``cefr_input IS NULL``）不计入，避免供给 gate 被占位行灌水。
+    表缺失/库不可用返回空 dict，调用方按 0 处理（gate 关闭）。
+    """
+    allowed = tuple(kind for kind in kinds if kind in CONTENT_KINDS)
+    if not allowed:
+        return {}
+    levels = tuple(LEVEL_OUTPUTS)
+    placeholders = ",".join("?" for _ in allowed)
+    level_placeholders = ",".join("?" for _ in levels)
+    try:
+        conn = _connect()
+    except DifficultyUnavailable:
+        return {}
+    try:
+        if DIFFICULTY_TABLE not in _table_names(conn):
+            return {}
+        rows = conn.execute(
+            "SELECT content_kind, COUNT(*) AS total FROM content_difficulty "
+            f"WHERE version = ? AND cefr_input IN ({level_placeholders}) "
+            f"AND content_kind IN ({placeholders}) "
+            "GROUP BY content_kind",
+            (version, *levels, *allowed),
+        ).fetchall()
+        counts = {kind: 0 for kind in allowed}
+        for row in rows:
+            counts[str(row["content_kind"])] = int(row["total"])
+        return counts
+    except sqlite3.Error as exc:
+        logger.info("统计内容供给失败，按 gate 关闭处理：%s", exc)
+        return {}
+    finally:
+        conn.close()
+
+
 def _upsert_row(conn: sqlite3.Connection, payload: Mapping[str, Any]) -> None:
     now = int(time.time() * 1000)
     row = (
@@ -1532,7 +1577,8 @@ def payload_to_public(payload: Mapping[str, Any], *, band: str | None = None) ->
         "features": features,
         "utrBand": rate,
         "bucket": novelty_bucket(rate),
-        "estimated": True,
+        # 占位行（无字幕/无正文）没有 cefrInput，不能标成「已估算」。
+        "estimated": bool(pick("cefr_input", "cefrInput")),
         "source": "computed",
     }
 

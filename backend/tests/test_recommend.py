@@ -50,6 +50,15 @@ def _clear_recommend_cache():
     recommend.reset_cache()
 
 
+@pytest.fixture()
+def supply_gate_open(monkeypatch):
+    """M2 match_v0 用例：把供给阈值临时降到 0（等价于已满 100 条）。"""
+    monkeypatch.setattr(recommend, "SUPPLY_GATE_MIN", 0, raising=False)
+    recommend.reset_cache()
+    yield
+    recommend.reset_cache()
+
+
 def _upgrade() -> None:
     assert_alembic_ok(
         run_alembic(config.AUTH_DB_PATH, "upgrade", "head"), "upgrade head (recommend)"
@@ -431,9 +440,10 @@ def test_cache_ten_minutes_and_invalidates_on_history(client):
 def _insert_difficulty(
     video_id: str,
     *,
-    cefr_input: str = "B1",
+    cefr_input: str | None = "B1",
     level: str | None = None,
     subtitle: str = "human",
+    kind: str = "curated",
 ) -> None:
     features = {
         "schema": "difficulty.v1",
@@ -444,7 +454,7 @@ def _insert_difficulty(
         [
             {
                 "content_ref": video_id,
-                "content_kind": "curated",
+                "content_kind": kind,
                 "version": "v1",
                 "level": level or cefr_input,
                 "cefr_input": cefr_input,
@@ -476,7 +486,7 @@ def test_match_score_rewards_band_closeness_and_support():
     assert 0.0 <= recommend.match_score(1, None) <= 1.0
 
 
-def test_difficulty_rows_drive_reason_and_badge(profile_db):
+def test_difficulty_rows_drive_reason_and_badge(profile_db, supply_gate_open):
     _insert_profile(profile_db.user_id, "B1", "B2")
     catalog = _catalog()
     targets = [item for item in catalog if item["level"] in {"B1", "B2"}][:6]
@@ -501,7 +511,7 @@ def test_difficulty_rows_drive_reason_and_badge(profile_db):
             assert "difficulty" not in item
 
 
-def test_difficulty_overrides_editorial_level_for_selection(profile_db):
+def test_difficulty_overrides_editorial_level_for_selection(profile_db, supply_gate_open):
     _insert_profile(profile_db.user_id, "B1", "B2")
     catalog = _catalog()
     editorial_b1 = next(item for item in catalog if item["level"] == "B1")
@@ -529,7 +539,7 @@ def test_no_difficulty_rows_keeps_legacy_reason(profile_db):
     assert any("适合你的" in item["reason"] for item in data["items"])
 
 
-def test_vi_reason_with_difficulty_has_no_chinese_or_individualization(client):
+def test_vi_reason_with_difficulty_has_no_chinese_or_individualization(client, supply_gate_open):
     _upgrade()
     catalog = _catalog()
     for item in catalog:
@@ -544,7 +554,7 @@ def test_vi_reason_with_difficulty_has_no_chinese_or_individualization(client):
         assert "khoảng từ vựng hiện tại" in item["reason"]
 
 
-def test_difficulty_change_invalidates_result_cache(profile_db):
+def test_difficulty_change_invalidates_result_cache(profile_db, supply_gate_open):
     _insert_profile(profile_db.user_id, "B1", "B2")
     catalog = _catalog()
     for item in catalog:
@@ -559,3 +569,73 @@ def test_difficulty_change_invalidates_result_cache(profile_db):
     _insert_difficulty(target["videoId"], cefr_input="C1+")
     second = _get(profile_db, "limit=6").json()
     assert target["videoId"] not in {item["videoId"] for item in second["items"]}
+
+
+# ---------------------------------------------------------------------------
+# 12. 内容供给 gate：eligible ≥100 才启用 match_v0，否则完全回退旧规则
+# ---------------------------------------------------------------------------
+
+def test_supply_gate_closed_falls_back_to_legacy(client):
+    _upgrade()
+    for item in _catalog():
+        _insert_difficulty(item["videoId"], cefr_input="B1")
+    recommend.reset_cache()
+
+    state = recommend.supply_gate_state()
+    assert state["threshold"] == 100
+    assert state["eligible"] == 30
+    assert state["open"] is False
+
+    data = _get(client).json()
+    assert data["items"]
+    assert all("difficulty" not in item for item in data["items"])
+    assert all("与你当前词汇区间接近" not in item["reason"] for item in data["items"])
+    assert any("入门区间" in item["reason"] for item in data["items"])
+
+
+def test_supply_gate_counts_only_computed_recommendable_rows(client):
+    _upgrade()
+    for index in range(99):
+        _insert_difficulty(f"vid{index:08d}", cefr_input="B1")
+    # 占位行（cefr_input=None）不计入；local_show 不在推荐池，也不计入。
+    _insert_difficulty("vid-placeholder", cefr_input=None)
+    _insert_difficulty("show-1", cefr_input="B1", kind="local_show")
+
+    state = recommend.supply_gate_state()
+    assert state["byKind"] == {"video": 0, "article": 0, "curated": 99}
+    assert state["eligible"] == 99
+    assert state["open"] is False
+
+    # 第 100 条可算内容（article，C1+ 也算）才把 gate 打开。
+    _insert_difficulty("article-100", cefr_input="C1+", kind="article")
+    state = recommend.supply_gate_state()
+    assert state["byKind"] == {"video": 0, "article": 1, "curated": 99}
+    assert state["eligible"] == 100
+    assert state["open"] is True
+
+
+def test_supply_gate_threshold_is_exactly_one_hundred():
+    assert recommend.SUPPLY_GATE_MIN == 100
+
+
+def test_supply_gate_opening_invalidates_cached_legacy_result(client, monkeypatch):
+    _upgrade()
+    for item in _catalog():
+        _insert_difficulty(item["videoId"], cefr_input="B1")
+    recommend.reset_cache()
+
+    legacy = _get(client).json()
+    assert all("difficulty" not in item for item in legacy["items"])
+
+    # 供给达到阈值：缓存键里的 gate 标志变化，必须重新走 match_v0。
+    monkeypatch.setattr(recommend, "SUPPLY_GATE_MIN", 30, raising=False)
+    matched = _get(client).json()
+    assert recommend.supply_gate_state()["open"] is True
+    assert any("difficulty" in item for item in matched["items"])
+
+
+def test_supply_gate_without_difficulty_table_is_closed(client):
+    # 没有迁移 content_difficulty 时按 0 处理，不能把推荐接口打挂。
+    state = recommend.supply_gate_state()
+    assert state["eligible"] == 0
+    assert state["open"] is False

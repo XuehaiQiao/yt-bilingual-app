@@ -287,8 +287,18 @@ def _article(data: dict, entry_id: str) -> dict:
         value = data.get(optional_key)
         if isinstance(value, str) and value.strip():
             payload[optional_key] = value.strip()
-    if data.get("source") == "original":
-        payload["source"] = "original"
+    # 来源与公版出处：原创文章 = original；Gutenberg 短篇 = public-domain。
+    # 只回传白名单里的字段，避免把任意 JSON 原样透出给前端。
+    source = data.get("source")
+    if source in ("original", "public-domain"):
+        payload["source"] = source
+    gutenberg_id = data.get("gutenbergId")
+    if isinstance(gutenberg_id, int) and not isinstance(gutenberg_id, bool) and gutenberg_id > 0:
+        payload["gutenbergId"] = gutenberg_id
+    for optional_key in ("sourceUrl", "publicDomainBasis"):
+        value = data.get(optional_key)
+        if isinstance(value, str) and value.strip():
+            payload[optional_key] = value.strip()
     if data.get("free") is True:
         payload["free"] = True
     return payload

@@ -58,6 +58,9 @@ MAX_PER_TOPIC = 2
 RESULT_CACHE_TTL_SECONDS = 10 * 60
 RESULT_CACHE_MAX = 256
 CONTENT_NOTICE_MARKER = "待运营复核"
+# 内容供给 gate（计划书 §4.8 / §6.4）：可推荐内容 <100 条时不开 match_v0 评分，
+# 回退旧的 level_distance + 发布时间规则；不报匹配指标、不写「个性化」。
+SUPPLY_GATE_MIN = 100
 
 # history 根目录里的元数据文件（与 routes_videos.HISTORY_META_FILES 同口径；
 # 这里不 import 路由模块，避免领域模块反向依赖 HTTP 层）。
@@ -547,6 +550,23 @@ def _rotate(entries: list[Any], seed: int) -> list[Any]:
     return entries[offset:] + entries[:offset]
 
 
+def supply_gate_state() -> dict[str, Any]:
+    """当前内容供给 gate：只统计 video/article/curated 里 cefr_input 非空的行。
+
+    返回 ``{"eligible": int, "byKind": {...}, "threshold": 100, "open": bool}``。
+    查询失败/表未迁移 → eligible=0、gate 关闭（回退旧规则）。
+    """
+    counts = difficulty.count_eligible_by_kind(difficulty.RECOMMENDABLE_KINDS)
+    by_kind = {kind: int(counts.get(kind, 0)) for kind in difficulty.RECOMMENDABLE_KINDS}
+    eligible = sum(by_kind.values())
+    return {
+        "eligible": eligible,
+        "byKind": by_kind,
+        "threshold": SUPPLY_GATE_MIN,
+        "open": eligible >= SUPPLY_GATE_MIN,
+    }
+
+
 def _load_difficulties(items: list[dict]) -> dict[str, dict]:
     """批量读 curated 视频的 content_difficulty 行；无行/未迁移返回空。"""
     refs = [item["videoId"] for item in items if isinstance(item.get("videoId"), str)]
@@ -780,8 +800,20 @@ def recommend(
     watched = read_watched(lang, items)
     favorite = watched.topics[0] if watched.topics else None
     profile, preliminary_from_profile = profile_band(identity, is_guest=is_guest)
-    difficulties = _load_difficulties(items)
+    supply = supply_gate_state()
+    # 供给不足：完全回退旧的 level_distance 规则；也不返回 difficulty 徽章，
+    # 避免在没有 100 条供给时展示「匹配」类信号。
+    if supply["open"]:
+        difficulties = _load_difficulties(items)
+    else:
+        difficulties = {}
+        logger.info(
+            "内容供给不足（%s/%s），回退旧推荐规则",
+            supply["eligible"],
+            supply["threshold"],
+        )
     difficulty_fingerprint = _difficulty_fingerprint(difficulties)
+    gate_key = "match" if supply["open"] else "legacy"
 
     attempts: list[tuple[tuple[str, str], str, bool]] = []
     if profile is not None:
@@ -799,6 +831,7 @@ def recommend(
                 band_label(band),
                 source,
                 "p" if preliminary else "f",
+                gate_key,
                 difficulty_fingerprint,
                 watched.fingerprint(),
             ]

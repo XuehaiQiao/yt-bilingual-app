@@ -3,7 +3,7 @@
 > 规格只讲**做什么**和**为什么**，不讲怎么实现。总依据：
 > `docs/项目计划-CEFR能力标定.md` §6 / §7.2 / §7.4 / §10.2。
 
-**状态：** 已实现（后端 + 内容 + 最小前端） ｜ **对应代码：** `backend/difficulty.py`、`backend/routes_difficulty.py`、`scripts/build_wordlist.py`、`scripts/backfill_content_difficulty.py`、`content/wordlist/`、`backend/migrations/versions/0016_content_difficulty.py`、`frontend/src/lib/difficulty.ts`
+**状态：** 已实现（后端 + 内容 + 最小前端） ｜ **对应代码：** `backend/difficulty.py`、`backend/routes_difficulty.py`、`scripts/build_wordlist.py`、`scripts/backfill_content_difficulty.py`、`scripts/backfill_curated_transcripts.py`、`scripts/content_supply_report.py`、`content/wordlist/`、`content/library/gutenberg-manifest.json`、`backend/migrations/versions/0016_content_difficulty.py`、`frontend/src/lib/difficulty.ts`
 
 ---
 
@@ -64,26 +64,34 @@
       自动字幕句法字段为 null、超长文本仍可算且 UTR 单调。
 - [ ] 给定迁移 0016，当 upgrade/downgrade/re-upgrade，则表/索引/约束正确，
       重复 upgrade 幂等，downgrade 只删本表。
-- [ ] 给定 6 条 serving + 30 条 curated 字幕缓存，当跑回填脚本，则写入 36 条、
-      覆盖率 100%、报告含按 kind/band 分布与失败原因；第二次跑全部 skipped。
+- [ ] 给定 40 条 serving（3 视频 + 37 文章）+ 30 条 curated，当跑回填，则写入
+      70 条、覆盖率 100%、报告含按 kind/band 分布与失败原因；第二次跑全部 skipped。
+- [ ] 给定 curated 视频无英文字幕/超时，当跑 `backfill_curated_transcripts.py`，
+      则写一条 `available=false` 占位行（`cefrInput=null`、features.available 全
+      false），报告保留原因，不伪造等级；不落任何字幕原文。
+- [ ] 给定 34 篇 Gutenberg 公版短文，当跑回填，则逐篇算出 `cefrInput`；内容侧
+      有 `gutenbergId/sourceUrl/publicDomainBasis`，正文 250–400 词且逐段 en+zh。
 - [ ] 给定有难度行，当 `GET /api/content/difficulty`，则 `source=computed`、
       features 完整、`cefrInput` 非空；给 `band=B1` 时带 `utrBand`/`bucket`。
 - [ ] 给定没有难度行/库未迁移，当 GET，则 200 + `source=legacy` + 编辑 level。
 - [ ] 给定 content 不存在，当 GET/batch，则 404；batch >50 → 400。
 - [ ] 给定管理员身份，当 POST recompute，则 upsert 成功且幂等；非管理员 403、
       未登录 401。
-- [ ] 给定有难度行且用户画像 B1–B2，当 `GET /api/recommendations`，则条目带
-      `difficulty`，理由含「与你当前词汇区间接近」，无「个性化」；无难度行时
-      理由回退旧规则。
+- [ ] 给定可推荐内容 ≥100 条且有难度行，当 `GET /api/recommendations`，则
+      条目带 `difficulty`，理由含「与你当前词汇区间接近」，无「个性化」。
+- [ ] 给定可推荐内容 <100 条（供给 gate 关闭），当 `GET /api/recommendations`，
+      则完全回退旧的 `level_distance` 规则、不返回 `difficulty`；gate 状态写进
+      `docs/reports/content-supply-2026-11-17.json`。
 - [ ] 前端 `npx tsc -b` / `npm run check:i18n` 通过；mock Playwright 断言
-      推荐/免费资源卡片出现难度徽章与生词桶。
+      免费资源卡片出现难度徽章与生词桶；推荐卡在 gate 开时才出现。
 
 ## 边界与非目标
 
 - **不做** C2 定级；`C1+` 合并展示（K15）。
 - **不做** 用户侧 `utr_user`（M3 需要 `word_states ≥100–200`）；M2 只有
   带级量 `utr_band`，文案统一「按你的等级估算」，**禁止「个性化」**（K17）。
-- **不做** 80/10/10 探索位：内容 <100 条，供给 gate 不满足（§6.4 增 5）。
+- **不做** 80/10/10 探索位：当前可推荐 70 条（3 视频 + 37 文章 + 30 curated），
+  供给 gate 未满 100（§6.4 增 5）；gate 已实现为「eligible ≥100 自动开」。
 - **不做** 60–100 条锚集与 holdout（M2 教研工作，本规格只交工程管线）；
   当前用 36 条编辑标注做对照：36 条中 ±1 带 26 条（约 72%，完全一致 7 条），**不对外宣称准确率**。
 - **不做** 文化负载自动识别（先置 0 / 人工）；`idiom_density` 是自建短语表

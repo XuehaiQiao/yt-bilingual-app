@@ -1,0 +1,55 @@
+{
+  "schema": "content-supply.v1",
+  "date": "2026-11-17",
+  "generatedAt": 1794858977743,
+  "target": 100,
+  "totalContents": 70,
+  "totalEligible": 70,
+  "shortfall": 30,
+  "byKind": {
+    "video": {
+      "content": 3,
+      "difficultyRows": 3,
+      "eligible": 3,
+      "missingRows": 0,
+      "unavailableRows": 0
+    },
+    "article": {
+      "content": 37,
+      "difficultyRows": 37,
+      "eligible": 37,
+      "missingRows": 0,
+      "unavailableRows": 0
+    },
+    "curated": {
+      "content": 30,
+      "difficultyRows": 30,
+      "eligible": 30,
+      "missingRows": 0,
+      "unavailableRows": 0
+    }
+  },
+  "gate": {
+    "threshold": 100,
+    "eligible": 70,
+    "open": false,
+    "mode": "legacy"
+  },
+  "failures": [],
+  "gutenberg": {
+    "articles": 34,
+    "manifest": "content/library/gutenberg-manifest.json"
+  },
+  "curatedTranscripts": {
+    "total": 30,
+    "available": 30,
+    "unavailable": 0,
+    "note": "可推荐数以 content_difficulty 行为准；抓不到字幕的条目会以 available=false 占位行计入 failures（不伪造等级）。"
+  },
+  "notes": [
+    "curated 30 条首次经 backend/transcripts.fetch_english_transcript 抓取成功；随后一次强制刷新被 YouTube 429 限流，行由构建期字幕缓存恢复；未落任何字幕原文。",
+    "34 篇 Gutenberg 文本记录 canonical 链接与 PD 依据；Project Gutenberg 维护期间通过其 Wayback 镜像取得原文，正文/译文随仓库分发。",
+    "可推荐数只数 content_difficulty 里 cefr_input 非空的 video/article/curated 行；失败条目以 available=false 占位行留在 failures，不伪造等级。"
+  ],
+  "countingNote": "简报里的 36 条 = 3 视频 + 3 文章 + 30 curated；这 30 条 curated 已在 36 条内。再加 34 篇公版文章后为 70 条，而不是 36+30+34=100——后者把 curated 计了两次。当前缺口 30 条，未用重复/占位条目凑数。"
+}

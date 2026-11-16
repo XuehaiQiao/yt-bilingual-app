@@ -1344,6 +1344,8 @@ PK `(user_id, skill)`；索引 `(user_id, updated_at)`。**不建 `not_measured`
 
 > **M2 工程进度（2026-11-17）**：已落地 #1 词表构建（自建 wordfreq 派生频表 10,000 lemma / CC BY-SA 4.0、`content/wordlist/` 含 NOTICE/hash）、#2/#3 两套 64 题与等值结构（Form A/B：各 40 真词 + 4 伪词 = 44 词汇槽 + 20 阅读 = 4 篇 × 5 题；A/B 共享 10 道锚题；默认仍走旧 39 题，`PLACEMENT_BANK_VERSION=v2` 启用；`rasch.eap.v2` 题级 b + 锚题 + form offset 占位 0；质量报告 `docs/reports/placement-items-2026-11-17.json`）、#4 难度管线（`difficulty.v1`、迁移 0016、36 条回填：3 视频 + 3 文章 + 30 curated）、#5 `utr_band` 与文案去「个性化」、#6 推荐接入（`match_score` + 难度徽章/生词桶，无数据回退旧规则）、#7 行为埋点（lookup/replay/rate/visibility 四类事件 + 事件字典 + 幂等/去重/限流 + 管理员只读，specs/027）。#2 的题库是**草稿、未经 30–50 人 pilot**，p 值全部 pending、form offset=0，**不能对外宣称已等值/已校准**；#4 的 60 条锚集校准（§6.7）也未做，当前 36 条编辑标注仅作对照（±1 带 26/36，完全一致 7/36）。
 
+> **内容供给（2026-11-17 补充）**：新增 34 篇 Project Gutenberg 公版短文（250–400 词，英文原文 + 本项目自译中文，逐篇记 Gutenberg ID / 链接 / PD 依据），curated 30 条改用 `transcripts.py` 直抓字幕（首次 30/30 成功；后续强制刷新被 YouTube 429 限流，行由构建期缓存恢复）、不落原文；`content_difficulty` 可推荐 70 条（3 视频 + 37 文章 + 30 curated）。按 §6.4 供给 gate，70 < 100，推荐回退旧规则、不展示 `match_v0`；缺口 30 条源于 `36+30+34` 把已在 36 条内的 30 条 curated 重复计入。报告见 `docs/reports/content-supply-2026-11-17.json`。
+
 ### 10.2b 漏项补齐与人日重算（审稿 F10 / 自欺 3）
 
 | # | 漏项 | 依据 | 人日 | 落入 |
