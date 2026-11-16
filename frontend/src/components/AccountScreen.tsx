@@ -264,7 +264,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   const pageChrome = (
     <div className="flex flex-wrap items-center justify-between gap-3">
       {isPage ? (
-        <div className="min-w-0">
+        <div className="min-w-0 lg:hidden">
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{t('profile.title')}</h1>
           <p className="mt-1 text-sm text-zinc-500">{t('profile.subtitle')}</p>
         </div>
@@ -298,7 +298,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   // the view (the app routes guests to login when the screen needs an account).
   const libraryRows = (
     <section aria-label={t('profile.library')} className="mt-6">
-      <div className="divide-y divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40 overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40 overflow-hidden">
         <button
           type="button"
           data-testid="profile-favorites-row"
@@ -494,7 +494,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
         data-page-scroll
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10"
       >
-        <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 sm:py-8">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {pageChrome}
 
           <div
@@ -545,7 +545,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
       data-page-scroll
       className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10"
     >
-      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 sm:py-8">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {pageChrome}
 
         {/* ── Header: avatar + display name + email + member since ─────── */}

@@ -10,15 +10,19 @@ import {
     ArrowRight,
     Bell,
     BookOpen,
+    CalendarRange,
     Compass,
     Loader2,
     Newspaper,
+    Play,
     Rss,
     Tv,
     Youtube,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { blogFeedUrl } from '../lib/blog';
+import { progressPercent } from '../lib/progress';
+import type { HistoryItem } from './ChannelVideoList';
 import { loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
 import type { EstimateDialogHandle } from './EstimateDialog';
 import { EstimateDialog } from './EstimateDialog';
@@ -59,6 +63,8 @@ interface ContentScreenProps {
     onOpenReader: () => void;
     onOpenSentences: (levelId: number) => void;
     onOpenBlog: () => void;
+    onOpenReport: () => void;
+    onLoadHistory: (filename: string) => void;
     onRequestLogin: () => void;
 }
 
@@ -80,11 +86,24 @@ export function ContentScreen({
     onOpenReader,
     onOpenSentences,
     onOpenBlog,
+    onOpenReport,
+    onLoadHistory,
     onRequestLogin,
 }: ContentScreenProps) {
-    const { t } = useI18n();
+    const { t, formatNumber } = useI18n();
     const estimateRef = useRef<EstimateDialogHandle>(null);
     const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
+    // Right rail: the last opened item and this week's three facts. Both are
+    // optional reads — a failure leaves the rail in its quiet empty state.
+    const [history, setHistory] = useState<HistoryItem[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
+    const [weekReport, setWeekReport] = useState<{
+        passiveMinutes: number;
+        reviewedWords: number;
+        quizAccuracy: number | null;
+    } | null>(null);
+    const [weekReportLoading, setWeekReportLoading] = useState(true);
+    const [weekReportFailed, setWeekReportFailed] = useState(false);
     const [channelUpdates, setChannelUpdates] = useState<ChannelUpdate[]>([]);
     const [updatesLoading, setUpdatesLoading] = useState(false);
     // Unsubscribing hides the list immediately; no effect-level reset needed.
@@ -96,6 +115,55 @@ export function ContentScreen({
         setVocabLevel(level);
         saveVocabLevel(level);
     };
+
+    useEffect(() => {
+        let cancelled = false;
+        apiFetch('/api/history')
+            .then(res => (res.ok ? res.json() : []))
+            .then(data => {
+                if (!cancelled) setHistory(Array.isArray(data) ? data : []);
+            })
+            .catch(err => console.error('Failed to fetch history for content rail:', err))
+            .finally(() => {
+                if (!cancelled) setHistoryLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        apiFetch('/api/report/week')
+            .then(async response => {
+                if (!response.ok) return null;
+                return response.json();
+            })
+            .then(data => {
+                if (cancelled) return;
+                const numbers = data?.numbers;
+                if (!numbers || typeof numbers.passiveMinutes !== 'number') {
+                    setWeekReport(null);
+                    setWeekReportFailed(true);
+                    return;
+                }
+                setWeekReport({
+                    passiveMinutes: numbers.passiveMinutes,
+                    reviewedWords: typeof numbers.reviewedWords === 'number' ? numbers.reviewedWords : 0,
+                    quizAccuracy: typeof numbers.quizAccuracy === 'number' ? numbers.quizAccuracy : null,
+                });
+            })
+            .catch(err => {
+                if (cancelled) return;
+                console.error('Failed to load weekly report for content rail:', err);
+                setWeekReportFailed(true);
+            })
+            .finally(() => {
+                if (!cancelled) setWeekReportLoading(false);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
+    const latestHistory = history[0] ?? null;
+    const latestProgress = latestHistory?.videoId ? progressPercent(latestHistory.videoId) : null;
 
     useEffect(() => {
         let cancelled = false;
@@ -144,18 +212,19 @@ export function ContentScreen({
             data-page-scroll
             className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] ${PAGE_PAD}`}
         >
-            <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 pt-5 sm:pt-8 space-y-6 sm:space-y-8">
+            <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 pt-5 sm:pt-8">
                 <EstimateDialog ref={estimateRef} onStart={onSubmitUrl} />
 
-                <header>
+                <header className="lg:hidden">
                     <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-50">
                         {t('content.title')}
                     </h1>
                     <p className="mt-1 text-sm text-zinc-500">{t('content.subtitle')}</p>
                 </header>
 
+                <div className="mt-5 sm:mt-6 lg:mt-6 flex flex-col gap-6 sm:gap-8 xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-8 xl:items-start">
                 {/* Main action: paste a link (same estimate pipeline as Today). */}
-                <div data-testid="content-start-input">
+                <div data-testid="content-start-input" className="min-w-0 xl:col-start-1 xl:row-start-1">
                     <StartLearning
                         variant="primary"
                         disabled={busy}
@@ -195,15 +264,127 @@ export function ContentScreen({
                     </StartLearning>
                 </div>
 
-                {/* Learner level: calibrates which words get highlighted. */}
-                <section>
-                    <VocabAxis value={vocabLevel} onChange={handleVocabLevelChange} />
-                </section>
+                {/* Right rail (≥xl): level axis, last opened item, week facts.
+                    Below xl it stacks between the main action and the shelf. */}
+                <aside
+                    data-testid="content-rail"
+                    className="min-w-0 grid grid-cols-1 sm:grid-cols-2 xl:flex xl:flex-col gap-4 sm:gap-5 xl:col-start-2 xl:row-start-1 xl:row-span-2"
+                >
+                    {/* Learner level: calibrates which words get highlighted. */}
+                    <section className="sm:col-span-2 rounded-2xl border border-white/5 bg-zinc-900/40 p-4">
+                        <VocabAxis value={vocabLevel} onChange={handleVocabLevelChange} />
+                    </section>
 
+                    {/* Continue: the most recent item, one tap back into it. */}
+                    <section
+                        data-testid="content-rail-continue"
+                        className="rounded-2xl border border-white/5 bg-zinc-900/40 p-4"
+                    >
+                        <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100">
+                            <Play className="w-4 h-4 text-blue-400 fill-current" />
+                            {t('content.rail.continueTitle')}
+                        </h2>
+                        {historyLoading && !latestHistory ? (
+                            <p className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                {t('common.loading')}
+                            </p>
+                        ) : latestHistory ? (
+                            <button
+                                type="button"
+                                onClick={() => onLoadHistory(latestHistory.filename)}
+                                className="mt-3 w-full flex gap-3 p-2.5 rounded-xl bg-zinc-800/30 hover:bg-zinc-800/60 border border-white/5 hover:border-white/10 transition-colors text-left"
+                            >
+                                <span className="relative w-20 aspect-video rounded-lg overflow-hidden bg-zinc-800 shrink-0">
+                                    {latestHistory.metadata?.thumbnail && (
+                                        <img src={latestHistory.metadata.thumbnail} alt="" className="w-full h-full object-cover" />
+                                    )}
+                                    {latestProgress !== null && (
+                                        <span className="absolute bottom-0 inset-x-0 h-1 bg-black/60">
+                                            <span className="block h-full bg-emerald-500" style={{ width: `${latestProgress}%` }} />
+                                        </span>
+                                    )}
+                                </span>
+                                <span className="min-w-0 flex flex-col justify-center">
+                                    <span className="text-[13px] font-medium leading-snug text-zinc-200 line-clamp-2 break-words">
+                                        {latestHistory.metadata?.title || t('common.unknownVideo')}
+                                    </span>
+                                    <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-blue-300">
+                                        {t('content.rail.continueAction')}
+                                        <ArrowRight className="w-3.5 h-3.5" />
+                                    </span>
+                                </span>
+                            </button>
+                        ) : (
+                            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                                {t('content.rail.continueEmpty')}
+                            </p>
+                        )}
+                    </section>
+
+                    {/* This week: same three numbers as 我的·本周报告. */}
+                    <section
+                        data-testid="content-rail-week"
+                        className="rounded-2xl border border-white/5 bg-zinc-900/40 p-4"
+                    >
+                        <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100">
+                            <CalendarRange className="w-4 h-4 text-blue-400" />
+                            {t('content.rail.weekTitle')}
+                        </h2>
+                        {weekReportLoading && !weekReport ? (
+                            <p className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                {t('common.loading')}
+                            </p>
+                        ) : weekReport ? (
+                            <div className="mt-3 grid grid-cols-3 gap-1.5">
+                                <div className="min-w-0 rounded-xl border border-white/5 bg-zinc-800/30 px-2 py-1.5">
+                                    <p className="truncate text-[10px] font-medium text-zinc-500">{t('content.rail.weekMinutes')}</p>
+                                    <p className="mt-0.5 truncate text-sm font-semibold text-zinc-100 tabular-nums">
+                                        {formatNumber(weekReport.passiveMinutes)}
+                                        <span className="ml-0.5 text-[10px] font-medium text-zinc-500">{t('home.today.minutesUnit')}</span>
+                                    </p>
+                                </div>
+                                <div className="min-w-0 rounded-xl border border-white/5 bg-zinc-800/30 px-2 py-1.5">
+                                    <p className="truncate text-[10px] font-medium text-zinc-500">{t('content.rail.weekReviewed')}</p>
+                                    <p className="mt-0.5 truncate text-sm font-semibold text-zinc-100 tabular-nums">
+                                        {formatNumber(weekReport.reviewedWords)}
+                                        <span className="ml-0.5 text-[10px] font-medium text-zinc-500">{t('home.today.wordsUnit')}</span>
+                                    </p>
+                                </div>
+                                <div className="min-w-0 rounded-xl border border-white/5 bg-zinc-800/30 px-2 py-1.5">
+                                    <p className="truncate text-[10px] font-medium text-zinc-500">{t('content.rail.weekAccuracy')}</p>
+                                    <p className="mt-0.5 truncate text-sm font-semibold text-zinc-100 tabular-nums">
+                                        {weekReport.quizAccuracy === null ? '—' : `${Math.round(weekReport.quizAccuracy * 100)}%`}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                                {weekReportFailed ? t('content.rail.weekEmpty') : t('common.loading')}
+                            </p>
+                        )}
+                        <button
+                            type="button"
+                            data-testid="content-rail-report-link"
+                            onClick={onOpenReport}
+                            className="mt-3 inline-flex items-center gap-1 h-7 px-1.5 -mx-1.5 rounded-lg text-[11px] font-medium text-blue-300 hover:text-blue-200 hover:bg-white/5 transition-colors"
+                        >
+                            {t('content.rail.weekReport')}
+                            <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                    </section>
+                </aside>
+
+                {/* Main column (≥xl) / the rest of the single column below. */}
+                <div
+                    data-testid="content-main"
+                    className="min-w-0 flex flex-col gap-6 sm:gap-8 xl:col-start-1 xl:row-start-2"
+                >
                 {/* Materials shelf: local shows + sentence packs. */}
                 <section data-testid="content-materials">
                     <h2 className={SECTION_TITLE}>{t('content.materials')}</h2>
-                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-6">
                         <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-4 sm:p-5 min-w-0">
                             <div className="flex items-center justify-between gap-2 mb-3">
                                 <h3 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100">
@@ -214,14 +395,9 @@ export function ContentScreen({
                             </div>
                             <ShowBrowser onSelectEpisode={onSelectEpisode} isLoading={busy} />
                         </div>
-                        <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-4 sm:p-5 min-w-0">
-                            <div className="flex items-center justify-between gap-2 mb-3">
-                                <h3 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100">
-                                    <BookOpen className="w-4 h-4 text-blue-400" />
-                                    {t('content.sentencesTitle')}
-                                </h3>
-                                <span className="text-[11px] text-zinc-500">{t('content.sentencesHint')}</span>
-                            </div>
+                        {/* SentencePacks is already a card with its own heading;
+                            keep it as the grid cell to avoid nesting two cards. */}
+                        <div className="min-w-0">
                             <SentencePacks onSelectLevel={onOpenSentences} />
                         </div>
                     </div>
@@ -318,9 +494,11 @@ export function ContentScreen({
                         )}
                     </div>
                 </section>
+                </div>
+                </div>
 
                 {/* Footer: public blog + RSS. */}
-                <footer className="mt-2 pt-6 border-t border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <footer className="mt-6 pt-6 border-t border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <p className="text-xs leading-relaxed text-zinc-500">{t('blog.footerNote')}</p>
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                         <button

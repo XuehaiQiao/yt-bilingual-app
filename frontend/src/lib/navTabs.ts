@@ -20,6 +20,14 @@ export const NAV_TABS: readonly NavTabDef[] = [
   { id: 'profile', icon: UserRound, labelKey: 'nav.profile' },
 ];
 
+/** One-line subtitle under the page title in the desktop top bar (≥lg). */
+export const TAB_SUBTITLE_KEYS: Record<TabId, TranslationKey> = {
+  today: 'topbar.subtitle.today',
+  content: 'content.subtitle',
+  practice: 'practice.subtitle',
+  profile: 'profile.subtitle',
+};
+
 export function formatDueBadge(count: number): string {
   return count > 99 ? '99+' : String(count);
 }

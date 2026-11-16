@@ -83,8 +83,8 @@ export function PracticeScreen({
             data-page-scroll
             className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] ${PAGE_PAD}`}
         >
-            <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 pt-5 sm:pt-8 space-y-4 sm:space-y-5">
-                <header>
+            <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 pt-5 sm:pt-8 space-y-4 sm:space-y-5">
+                <header className="lg:hidden">
                     <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-50">
                         {t('practice.title')}
                     </h1>
@@ -128,7 +128,7 @@ export function PracticeScreen({
                 </motion.section>
 
                 {/* Quiz explainer + exam card (md: two columns). */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
                     <section data-testid="practice-quiz-card" className={`${CARD} flex flex-col`}>
                         <div className="flex items-start gap-3">
                             <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
@@ -185,12 +185,10 @@ export function PracticeScreen({
                             <ArrowRight className="w-4 h-4" />
                         </button>
                     </section>
-                </div>
-
                 {/* Placement: one quiet row. */}
                 <section
                     data-testid="practice-placement-card"
-                    className="rounded-2xl border border-white/5 bg-zinc-900/40 px-4 py-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3"
+                    className="rounded-2xl border border-white/5 bg-zinc-900/40 px-4 py-3.5 sm:px-5 flex flex-col md:flex-row md:items-center xl:flex-col xl:items-stretch gap-3 md:col-span-2 xl:col-span-1"
                 >
                     <div className="flex items-start gap-3 min-w-0 flex-1">
                         <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
@@ -225,12 +223,13 @@ export function PracticeScreen({
                         type="button"
                         data-testid="practice-placement-button"
                         onClick={() => onOpenPlacement(placementProfile ? 'profile' : 'intro')}
-                        className={`${ACTION} shrink-0 w-full sm:w-auto bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100`}
+                        className={`${ACTION} shrink-0 w-full md:w-auto xl:w-full bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100`}
                     >
                         {placementProfile ? t('placement.home.viewProfile') : t('practice.placement.short')}
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </section>
+                </div>
 
                 <p className="pt-1 text-[11px] leading-relaxed text-zinc-600">{t('practice.footnote')}</p>
             </div>

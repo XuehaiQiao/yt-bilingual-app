@@ -23,7 +23,7 @@ export const SentencePacks: React.FC<SentencePacksProps> = ({ onSelectLevel }) =
                 <h3 className="text-[17px] font-semibold tracking-tight">{t('sentences.title')}</h3>
                 <span className="text-xs text-zinc-500 ml-1">{t('sentences.subtitle')}</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {levels.map(lv => {
                     const pct = levelPercent(lv.id, lv.days);
                     return (

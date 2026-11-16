@@ -44,3 +44,24 @@ export function loadTranscriptLayout(): TranscriptLayout {
 export function saveTranscriptLayout(layout: TranscriptLayout): void {
     localStorage.setItem(TRANSCRIPT_LAYOUT_KEY, layout);
 }
+
+// ── Desktop sidebar ────────────────────────────────────────────────────────
+// The ≥lg navigation rail is 240px expanded and 72px collapsed (icon-only).
+// The preference survives reloads; the shell itself stays stateless.
+export const SIDEBAR_COLLAPSED_KEY = 'yt_bilingual_sidebar_collapsed';
+
+export function loadSidebarCollapsed(): boolean {
+    try {
+        return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
+export function saveSidebarCollapsed(collapsed: boolean): void {
+    try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
+    } catch {
+        // Private-mode storage failures must never break the shell.
+    }
+}

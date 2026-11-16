@@ -11,7 +11,12 @@ import { LanguageSettingsModal } from './LanguageSettingsModal';
  * Icon-only below `sm` so the top bar still fits at 320–375px; the
  * `aria-label`/`title` carry the full "language settings" name.
  */
-export const LanguageMenu: React.FC = () => {
+interface LanguageMenuProps {
+    /** Sidebar collapsed rail: globe only, same dialog and aria name. */
+    iconOnly?: boolean;
+}
+
+export const LanguageMenu: React.FC<LanguageMenuProps> = ({ iconOnly = false }) => {
     const { language, languages, t } = useI18n();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -27,18 +32,24 @@ export const LanguageMenu: React.FC = () => {
                 aria-label={t('language.buttonAria')}
                 title={t('language.buttonAria')}
                 onClick={() => setIsOpen(true)}
-                className="inline-flex items-center gap-2 h-9 px-2.5 sm:px-3 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 hover:border-white/10 text-zinc-300 hover:text-zinc-100 transition-[background-color,border-color,color] duration-200 ease-apple shrink-0"
+                className={`inline-flex items-center h-9 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 hover:border-white/10 text-zinc-300 hover:text-zinc-100 transition-[background-color,border-color,color] duration-200 ease-apple shrink-0 ${
+                    iconOnly ? 'w-9 justify-center px-0' : 'gap-2 px-2.5 sm:px-3'
+                }`}
             >
                 <Globe className="w-4 h-4 shrink-0" />
-                <span
-                    data-testid="language-menu-current"
-                    className="hidden sm:inline text-sm font-medium whitespace-nowrap"
-                >
-                    {current.nativeName}
-                </span>
-                <ChevronDown
-                    className={`hidden sm:block w-3.5 h-3.5 text-zinc-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                />
+                {!iconOnly && (
+                    <span
+                        data-testid="language-menu-current"
+                        className="hidden sm:inline text-sm font-medium whitespace-nowrap"
+                    >
+                        {current.nativeName}
+                    </span>
+                )}
+                {!iconOnly && (
+                    <ChevronDown
+                        className={`hidden sm:block w-3.5 h-3.5 text-zinc-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                    />
+                )}
             </button>
 
             <LanguageSettingsModal isOpen={isOpen} onClose={() => setIsOpen(false)} />

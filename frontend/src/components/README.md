@@ -5,6 +5,10 @@
 | 组件 | 用在哪 | 职责 |
 |---|---|---|
 | `AuthScreen.tsx` | 未登录 | 登录/注册门禁：单页两个 tab、邮箱+密码（注册含必填用户名 2–24 字与可选确认密码）、用户名/表单行内错误；成功后由 `AuthProvider` 切进应用 |
+| `AppShell.tsx` | 全局 | 应用外壳：≥lg 为 `[Sidebar 240/72][TopBar + Main]` 三栏，md–lg 保留 top tabs，<md 仅精简顶栏 + bottom bar；沉浸式任务子视图（视频/阅读/句子精背/复习/考试/定位）隐藏侧栏与主导航，内容占满宽度 |
+| `Sidebar.tsx` | 桌面（≥lg） | 左侧导航栏：品牌、四个一级页（图标+文字+练习到期徽章）、分组快捷入口（学习/内容/管理）、底部账号卡片 + 语言/设置；可折叠为 72px 图标栏（aria-label/title 提示），状态持久化在 `localStorage`；空白页签不在此出现，快捷入口全部复用 App 既有路由 |
+| `TopBarTabs.tsx` | md–lg | 四个一级页文字 tab（桌面 ≥lg 由 Sidebar 承担，二者不重复） |
+| `BottomBar.tsx` | <md | 手机底栏：四个一级页图标+文字、安全区、练习到期徽章 |
 | `InputScreen.tsx` | 首页 | 今日工作台容器：今日头部、能力定位引导条与三张行动卡（继续学习/今日复习/本周报告）、「为你推荐」横排、开始学习输入区（含「搜索你想学的内容」发现入口）、词汇轴、句子精背整宽入口卡、四张 bento 卡（最近学习/本地剧集/订阅/最新视频） |
 | `TodayWorkbench.tsx` | 首页 | 今日头部（日期/今日状态/模型栏）、能力定位引导条（无画像：12 分钟定位；有画像：水平区间 + 重测）与三张行动卡（继续学习/今日复习/本周报告），复用设计语言卡片配方；继续卡无记录时引导到下方输入框 |
 | `HomeRecommendations.tsx` | 首页 | 「为你推荐」横排卡片（user request #10）：区间副标题/初步推荐徽章、缩略图+难度徽章+时长+标题+理由、水平滚动、「换一批」seed 轮转、加载/失败/空态；点击整卡复用 `EstimateDialog` 估价流程 |
@@ -33,7 +37,7 @@
 | `ShareCardDialog.tsx` | 全局 | 分享卡弹窗（计划 D-6）：1080×1440 Canvas 预览、下载 PNG、复制文案、生成失败可读错误；本机生成、不请求后端，中越双语与 375px |
 | `ModelBar.tsx` | 首页 | 全局模型栏：/api/models 列表、当前模型、按已配 Key 置灰、选择持久化 |
 | `ModelSelectionModal.tsx` | 首页流程 | 处理前确认：展示当前全局模型与整片费用预估（不再选模型） |
-| `LanguageMenu.tsx` | 顶栏 / 登录页 | 语言入口按钮：打开 `LanguageSettingsModal`，窄屏只留图标 |
+| `LanguageMenu.tsx` | 顶栏 / 侧栏 / 登录页 | 语言入口按钮：打开 `LanguageSettingsModal`；窄屏或侧栏折叠态只留图标（`iconOnly`） |
 | `LanguageSettingsModal.tsx` | 全局 | 语言设置弹窗：界面语言与翻译目标语言两组独立分段控件，立即生效 |
 | `ChannelVideoList.tsx` | 全局 | 某频道的本地历史视频列表 |
 | `ShowBrowser.tsx` | 首页 | 本地剧集浏览：剧→季→集 |

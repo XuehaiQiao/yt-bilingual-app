@@ -166,7 +166,7 @@ export function TodayScreen({
             data-page-scroll
             className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] ${PAGE_PAD}`}
         >
-            <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 pt-4 sm:pt-8">
+            <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8">
                 <EstimateDialog
                     ref={estimateRef}
                     onStart={onSubmitUrl}

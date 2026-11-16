@@ -8,6 +8,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { AuthProvider, useAuth } from './lib/auth';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import { getLanguageMeta, getRuntimeTargetLang } from './i18n';
+import type { TranslationKey } from './i18n';
 import { ModelProvider } from './lib/model';
 import { useNav } from './lib/useNav';
 import { parseRoute, tabForSub, toHash, type SubRoute, type TabId } from './lib/nav';
@@ -63,7 +64,7 @@ import {
   type JobSnapshot,
   type PendingJob,
 } from './lib/jobs';
-import { loadVocabLevel, loadModel } from './lib/settings';
+import { loadVocabLevel, loadModel, VOCAB_LEVELS } from './lib/settings';
 import {
   clampSplitRatio,
   DEFAULT_SPLIT_RATIO,
@@ -96,6 +97,39 @@ interface TranscriptItem {
 // How long an app-issued seek may take to reach the player before a backwards
 // tick is treated as a user drag (CEFR M2 #7 video_replay).
 const SEEK_SETTLE_MS = 2500;
+
+// Desktop chrome (docs/信息架构-导航重构.md §4.1): immersive task views own the
+// whole width, so the Sidebar and the primary tabs step aside. Panel-style sub
+// views (blog / discover / report / favorites) keep the shell so their
+// shortcut entry shows an active state.
+const TASK_SUB_KINDS: ReadonlySet<SubRoute['kind']> = new Set<SubRoute['kind']>([
+  'learn',
+  'reader',
+  'book',
+  'book-series',
+  'sentences',
+  'review',
+  'exam',
+  'placement',
+]);
+
+// Breadcrumb fragment shown in the desktop top bar for each sub view.
+const SUB_LABEL_KEYS: Record<SubRoute['kind'], TranslationKey> = {
+  learn: 'topbar.feature.video',
+  review: 'topbar.feature.review',
+  report: 'topbar.feature.report',
+  placement: 'topbar.feature.placement',
+  exam: 'topbar.feature.exam',
+  discover: 'topbar.feature.discover',
+  reader: 'topbar.feature.reader',
+  sentences: 'topbar.feature.sentences',
+  blog: 'topbar.feature.blog',
+  book: 'topbar.feature.book',
+  'book-series': 'topbar.feature.bookSeries',
+  favorites: 'topbar.feature.favorites',
+  ability: 'topbar.feature.ability',
+  admin: 'topbar.feature.admin',
+};
 
 function formatClock(seconds: number): string {
   const safe = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
@@ -759,6 +793,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // between two sub views replaces the current one (stack depth stays 1).
   const isLearningView = state.sub?.kind === 'learn';
   const isSubView = state.sub !== null;
+  const isTaskView = state.sub !== null && TASK_SUB_KINDS.has(state.sub.kind);
 
   const requireAccount = (): boolean => {
     if (status === 'authenticated') return true;
@@ -1799,6 +1834,69 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     back();
   };
 
+  // ── Sidebar shortcuts (desktop ≥lg) ──────────────────────────────────────
+  // Anchor entries reuse the pages that already own the content: library and
+  // public books scroll to their Content sections, "history" goes to Today's
+  // history list. The retry loop tolerates the async section mounts.
+  const quickAnchorRef = useRef<string | null>(null);
+  const scrollToPageAnchor = useCallback((testId: string, attempts = 0) => {
+    const element = document.querySelector(`[data-page-scroll] [data-testid="${testId}"]`);
+    if (element instanceof HTMLElement) {
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      element.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      quickAnchorRef.current = null;
+      return;
+    }
+    if (attempts < 12) {
+      window.setTimeout(() => scrollToPageAnchor(testId, attempts + 1), 100);
+    } else {
+      quickAnchorRef.current = null;
+    }
+  }, []);
+
+  const openPageAnchor = (testId: string, tab: TabId) => {
+    if (state.tab === tab && !state.sub) {
+      scrollToPageAnchor(testId);
+      return;
+    }
+    quickAnchorRef.current = testId;
+    go(tab);
+    window.setTimeout(() => {
+      if (quickAnchorRef.current === testId) scrollToPageAnchor(testId);
+    }, 100);
+  };
+
+  const handleOpenHistoryShortcut = () => openPageAnchor('today-history-list', 'today');
+  const handleOpenLibraryShortcut = () => openPageAnchor('content-library', 'content');
+  const handleOpenBooksShortcut = () => openPageAnchor('content-books', 'content');
+
+  // Sentence packs start at the learner's current vocabulary band (the six
+  // CEFR stops map onto the five packs; C2 shares the last one).
+  const handleOpenSentencesShortcut = () => {
+    const index = VOCAB_LEVELS.findIndex(level => level.id === loadVocabLevel());
+    const levelId = Math.min(5, Math.max(1, (index < 0 ? 0 : index) + 1));
+    handleOpenSentences(levelId);
+  };
+
+  // Desktop top-bar shortcut: Content page, paste input focused.
+  const focusContentComposer = useCallback(() => {
+    const focusInput = (attempts = 0) => {
+      const input = document.getElementById('video-url') as
+        | HTMLInputElement
+        | HTMLTextAreaElement
+        | null;
+      if (input) {
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        input.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+        input.focus({ preventScroll: true });
+        return;
+      }
+      if (attempts < 8) window.setTimeout(() => focusInput(attempts + 1), 80);
+    };
+    go('content');
+    window.setTimeout(() => focusInput(), 80);
+  }, [go]);
+
   // Admin console (specs/021 + 023). Standalone full-page shell; the only
   // in-app entry is the administrator section of the profile page.
   const handleOpenAdmin = () => {
@@ -2681,6 +2779,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenReader={handleOpenReader}
             onOpenSentences={handleOpenSentences}
             onOpenBlog={handleOpenBlog}
+            onOpenReport={handleOpenReport}
+            onLoadHistory={(filename) => { void handleLoadHistory(filename); }}
             onRequestLogin={() => onRequestLogin?.()}
           />
         );
@@ -2726,6 +2826,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
   };
 
+  const subLabel = state.sub
+    ? (state.sub.kind === 'learn' ? featureLabel : t(SUB_LABEL_KEYS[state.sub.kind]))
+    : undefined;
+
   return (
     <div
       data-testid="app-shell"
@@ -2736,8 +2840,20 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         state={state}
         dueCount={reviewStats?.dueNow ?? 0}
         isSub={isSubView}
+        isTask={isTaskView}
+        subLabel={subLabel}
         onNavigate={navigateTab}
         onRequestLogin={onRequestLogin}
+        onStartLearning={focusContentComposer}
+        onOpenFavorites={handleOpenFavoritesRoute}
+        onOpenReport={handleOpenReport}
+        onOpenHistory={handleOpenHistoryShortcut}
+        onOpenSentences={handleOpenSentencesShortcut}
+        onOpenLibrary={handleOpenLibraryShortcut}
+        onOpenBooks={handleOpenBooksShortcut}
+        onOpenDiscover={handleOpenDiscover}
+        onOpenBlog={handleOpenBlog}
+        onOpenAdmin={handleOpenAdmin}
       >
         {pendingResume && (
           <div
