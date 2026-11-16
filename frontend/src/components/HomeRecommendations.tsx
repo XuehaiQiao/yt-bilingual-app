@@ -162,13 +162,17 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
                     {items.map((item, index) => {
                         const duration = formatRecommendationDuration(item.duration);
                         const title = item.title || t('home.recommend.untitled');
+                        // One visible CEFR per card: the computed input band when
+                        // available, otherwise the editorial level. The novelty
+                        // chip below never repeats a second band.
+                        const displayLevel = item.difficulty?.cefrInput ?? item.level;
                         return (
                             <button
                                 key={`${item.videoId}-${index}`}
                                 type="button"
                                 data-testid={`recommend-card-${index}`}
                                 data-video-id={item.videoId}
-                                data-level={item.level}
+                                data-level={displayLevel}
                                 aria-label={t('home.recommend.cardAria', { title })}
                                 onClick={() => onSelect(item.url)}
                                 className={CARD}
@@ -190,9 +194,9 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
                                     )}
                                     <span
                                         className="absolute top-1.5 left-1.5 inline-flex items-center rounded-md border border-white/10 bg-zinc-950/80 px-1.5 py-0.5 text-[11px] font-medium text-zinc-200 tabular-nums backdrop-blur-sm"
-                                        title={t('home.recommend.levelAria', { level: item.level })}
+                                        title={t('home.recommend.levelAria', { level: displayLevel })}
                                     >
-                                        {item.level}
+                                        {displayLevel}
                                     </span>
                                     {duration && (
                                         <span className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-md bg-zinc-950/80 px-1.5 py-0.5 text-[11px] font-medium text-zinc-300 tabular-nums backdrop-blur-sm">
@@ -207,20 +211,19 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
                                 <p className="mt-0.5 truncate text-[11px] text-zinc-500">
                                     {item.channel || t('home.recommend.unknownChannel')}
                                 </p>
-                                <span
-                                    data-testid={`recommend-difficulty-${index}`}
-                                    data-cefr-input={item.difficulty?.cefrInput ?? ''}
-                                    data-bucket={item.difficulty?.bucket ?? ''}
-                                    title={t('difficulty.estimateHint')}
-                                    className="mt-1 inline-flex flex-wrap items-center gap-1 rounded-md border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300"
-                                >
-                                    <span>{item.difficulty?.cefrInput ?? t('difficulty.unrated')}</span>
-                                    {item.difficulty?.bucket && (
+                                {item.difficulty?.bucket && (
+                                    <span
+                                        data-testid={`recommend-difficulty-${index}`}
+                                        data-cefr-input={item.difficulty?.cefrInput ?? ''}
+                                        data-bucket={item.difficulty.bucket}
+                                        title={t('difficulty.estimateHint')}
+                                        className="mt-1 inline-flex flex-wrap items-center gap-1 rounded-md border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300"
+                                    >
                                         <span className="text-blue-200/80">
                                             {t('difficulty.novelty', { bucket: item.difficulty.bucket })}
                                         </span>
-                                    )}
-                                </span>
+                                    </span>
+                                )}
                                 <p className="mt-1 min-h-[2.9em] text-[11px] leading-relaxed text-zinc-500 line-clamp-2 break-words">
                                     {item.reason}
                                 </p>

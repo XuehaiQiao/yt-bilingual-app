@@ -4,10 +4,11 @@
 // are already on disk, so this screen never imports the reading API client.
 // The translation toggle is local state only — there is no "translate this"
 // button, no polling, and no /api/article request.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, BookOpen, Languages } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { LibraryArticle } from '../lib/library';
+import { difficultyBadge, fetchDifficultyBatch, type DifficultyItem } from '../lib/difficulty';
 
 interface LibraryArticleReaderProps {
     article: LibraryArticle;
@@ -17,6 +18,25 @@ interface LibraryArticleReaderProps {
 export function LibraryArticleReader({ article, onClose }: LibraryArticleReaderProps) {
     const { t, formatNumber } = useI18n();
     const [showTranslations, setShowTranslations] = useState(true);
+    // The card shows the computed CEFR input band (M2). Fetch the same row so
+    // the detail header cannot disagree with the card.
+    const [difficulty, setDifficulty] = useState<DifficultyItem | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        fetchDifficultyBatch([{ kind: 'article', ref: article.id }])
+            .then((map) => {
+                if (!cancelled) setDifficulty(map[`article:${article.id}`] ?? null);
+            })
+            .catch(() => {
+                // Keep the editorial level as a fallback; never invent a band.
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [article.id]);
+
+    const displayLevel = difficultyBadge(difficulty, article.level);
 
     return (
         <div data-testid="library-reader" className="h-full min-h-0 flex flex-col bg-[#09090b]">
@@ -46,8 +66,13 @@ export function LibraryArticleReader({ article, onClose }: LibraryArticleReaderP
                             {article.title}
                         </h1>
                         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
-                            <span className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-300">
-                                {article.level}
+                            <span
+                                data-testid="library-article-detail-difficulty"
+                                data-cefr-input={difficulty?.cefrInput ?? ''}
+                                title={t('difficulty.estimateHint')}
+                                className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-300"
+                            >
+                                {displayLevel ?? t('difficulty.unrated')}
                             </span>
                             <span className="tabular-nums">
                                 {t('library.words', { count: formatNumber(article.wordCount) })}
