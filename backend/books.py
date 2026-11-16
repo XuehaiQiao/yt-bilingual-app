@@ -45,6 +45,7 @@ MAX_AUTHOR_CHARS = 160
 MAX_DESCRIPTION_CHARS = 600
 MAX_URL_CHARS = 2048
 MAX_CHAPTERS = 200
+MAX_ANCHOR_CHARS = 300
 MAX_PARAGRAPHS = 500
 MAX_PARAGRAPH_CHARS = 12000
 MAX_SERIES = 50
@@ -157,6 +158,14 @@ def _ensure(condition: bool, message: str) -> None:
         raise BooksUnavailable(message)
 
 
+def _year(value: Any, where: str) -> int:
+    _ensure(
+        isinstance(value, int) and not isinstance(value, bool) and 1000 <= value <= 2100,
+        f"{where} 非法",
+    )
+    return value
+
+
 def _text(data: dict, key: str, *, limit: int, where: str, default: str | None = None) -> str:
     raw = data.get(key, default)
     _ensure(isinstance(raw, str) and bool(raw.strip()), f"{where} 缺少 {key}")
@@ -219,12 +228,36 @@ def _chapter_list(book: dict, where: str) -> list[dict]:
         )
         _ensure(number not in seen, f"{item_where} 的 n 重复")
         seen.add(number)
-        result.append(
-            {
-                "n": number,
-                "title": _text(item, "title", limit=MAX_TITLE_CHARS, where=item_where),
-            }
-        )
+        chapter = {
+            "n": number,
+            "title": _text(item, "title", limit=MAX_TITLE_CHARS, where=item_where),
+        }
+        anchor = item.get("anchor")
+        if anchor is not None:
+            _ensure(
+                isinstance(anchor, str) and bool(anchor.strip()),
+                f"{item_where} 的 anchor 非法",
+            )
+            anchor = " ".join(anchor.replace("_", " ").split())
+            _ensure(
+                len(anchor) <= MAX_ANCHOR_CHARS,
+                f"{item_where} 的 anchor 过长",
+            )
+            chapter["anchor"] = anchor
+        skip_title = item.get("skipTitle")
+        if skip_title is not None:
+            _ensure(isinstance(skip_title, bool), f"{item_where} 的 skipTitle 非法")
+            chapter["skipTitle"] = skip_title
+        occurrence = item.get("occurrence")
+        if occurrence is not None:
+            _ensure(
+                isinstance(occurrence, int)
+                and not isinstance(occurrence, bool)
+                and 1 <= occurrence <= 50,
+                f"{item_where} 的 occurrence 非法",
+            )
+            chapter["occurrence"] = occurrence
+        result.append(chapter)
     result.sort(key=lambda chapter: chapter["n"])
     return result
 
@@ -248,6 +281,9 @@ def _book(data: dict, series_id: str, where: str) -> dict:
         license_ == LICENSE,
         f"{where} 的 license 必须是 “{LICENSE}”（逐本核对公版状态）",
     )
+    public_domain_basis = _text(
+        data, "publicDomainBasis", limit=600, where=f"{where} 的公版依据"
+    )
     source_url = validate_source_url(data.get("sourceUrl"), where=where)
     catalog_url = _optional_url(data, "catalogUrl", where=where)
 
@@ -266,6 +302,10 @@ def _book(data: dict, series_id: str, where: str) -> dict:
             all(chapter["n"] <= total_chapters for chapter in chapters),
             f"{where} 的章节号超过 totalChapters",
         )
+        _ensure(
+            len(chapters) == total_chapters,
+            f"{where} 的章节索引不完整（{len(chapters)}/{total_chapters}）",
+        )
     else:
         total_chapters = total_raw if isinstance(total_raw, int) and not isinstance(total_raw, bool) else 0
         _ensure(total_chapters >= 0, f"{where} 的 totalChapters 非法")
@@ -282,11 +322,19 @@ def _book(data: dict, series_id: str, where: str) -> dict:
         "status": status,
         "source": source,
         "license": license_,
+        "publicDomainBasis": public_domain_basis,
         "sourceUrl": source_url,
         "totalChapters": total_chapters,
         "chapters": chapters,
         "readableChapters": len(chapters),
     }
+    words = data.get("words")
+    if words is not None:
+        _ensure(
+            isinstance(words, int) and not isinstance(words, bool) and 0 <= words <= 20_000_000,
+            f"{where} 的 words 非法",
+        )
+        book["words"] = words
     if catalog_url:
         book["catalogUrl"] = catalog_url
     for optional in ("gutenbergId",):
@@ -304,7 +352,7 @@ def _book(data: dict, series_id: str, where: str) -> dict:
     if parser_config is not None:
         _ensure(isinstance(parser_config, dict), f"{where} 的 parser 必须是对象")
         mode = parser_config.get("mode")
-        _ensure(mode in ("chapters", "single"), f"{where} 的 parser.mode 非法")
+        _ensure(mode in ("anchors", "chapters", "single"), f"{where} 的 parser.mode 非法")
         clean_parser: dict[str, Any] = {"mode": mode}
         body_start = parser_config.get("bodyStart")
         if body_start is not None:
@@ -313,11 +361,28 @@ def _book(data: dict, series_id: str, where: str) -> dict:
                 f"{where} 的 parser.bodyStart 非法",
             )
             clean_parser["bodyStart"] = body_start.strip()
+        body_end = parser_config.get("bodyEnd")
+        if body_end is not None:
+            _ensure(
+                isinstance(body_end, str) and 0 < len(body_end.strip()) <= 200,
+                f"{where} 的 parser.bodyEnd 非法",
+            )
+            clean_parser["bodyEnd"] = body_end.strip()
         if mode == "single":
             _ensure(
                 "bodyStart" in clean_parser,
                 f"{where} 的 parser.mode=single 必须给 bodyStart",
             )
+        if mode == "anchors":
+            _ensure(
+                bool(chapters)
+                and all("anchor" in chapter for chapter in chapters),
+                f"{where} 的 parser.mode=anchors 要求每章都有 anchor",
+            )
+        drop_captions = parser_config.get("dropCaptions")
+        if drop_captions is not None:
+            _ensure(isinstance(drop_captions, bool), f"{where} 的 parser.dropCaptions 非法")
+            clean_parser["dropCaptions"] = drop_captions
         book["parser"] = clean_parser
     return book
 
@@ -334,6 +399,22 @@ def _series(data: dict, where: str) -> dict:
         books.append(_book(item, series_id, f"{where} 第 {index + 1} 本"))
     ids = [book["id"] for book in books]
     _ensure(len(ids) == len(set(ids)), f"{where} 含重复的书籍 id")
+    excluded_raw = data.get("excluded", [])
+    _ensure(isinstance(excluded_raw, list), f"{where} 的 excluded 必须是数组")
+    _ensure(len(excluded_raw) <= 80, f"{where} 的 excluded 条目过多")
+    excluded: list[dict] = []
+    for index, item in enumerate(excluded_raw):
+        item_where = f"{where} 排除清单第 {index + 1} 项"
+        _ensure(isinstance(item, dict), f"{item_where} 必须是对象")
+        excluded.append(
+            {
+                "title": _text(item, "title", limit=MAX_TITLE_CHARS, where=item_where),
+                "year": _year(item.get("year"), f"{item_where} 的 year"),
+                "reason": _text(
+                    item, "reason", limit=MAX_DESCRIPTION_CHARS, where=item_where
+                ),
+            }
+        )
     series = {
         "id": series_id,
         "title": _text(data, "title", limit=MAX_TITLE_CHARS, where=where),
@@ -341,6 +422,7 @@ def _series(data: dict, where: str) -> dict:
         "description": _text(
             data, "description", limit=MAX_DESCRIPTION_CHARS, where=where
         ),
+        "excluded": excluded,
         "books": books,
     }
     try:
@@ -382,9 +464,36 @@ def load_manifest() -> dict:
     for item in series:
         for book in item["books"]:
             _ensure(book["id"] not in book_index, f"书籍 id 重复：{book['id']}")
+            _enrich_translations(book)
             book_index[book["id"]] = book
 
     return {"series": series, "_bookIndex": book_index}
+
+
+def _scan_chapter_translation(book: dict, number: int) -> tuple[bool, str | None]:
+    """只做“存在 + 可读标题”检查，不把整章译文读进内存。"""
+    path = _chapter_path(book["id"], number)
+    if not path.is_file():
+        return False, None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        logger.warning("章节译文损坏，按未翻译处理：%s", path)
+        return False, None
+    if not isinstance(data, dict) or data.get("schema") != "books.chapter.zh.v1":
+        return False, None
+    title = data.get("title")
+    return True, title.strip() if isinstance(title, str) and title.strip() else None
+
+
+def _enrich_translations(book: dict) -> None:
+    translated = 0
+    for chapter in book["chapters"]:
+        exists, title = _scan_chapter_translation(book, chapter["n"])
+        chapter["translated"] = exists
+        chapter["titleZh"] = title
+        translated += 1 if exists else 0
+    book["translatedChapters"] = translated
 
 
 def series_summary(series: dict) -> dict:
@@ -398,6 +507,8 @@ def series_summary(series: dict) -> dict:
         "totalBooks": len(books),
         "availableBooks": len(available),
         "readableChapters": sum(book["readableChapters"] for book in available),
+        "translatedChapters": sum(book["translatedChapters"] for book in available),
+        "excluded": series["excluded"],
     }
 
 
@@ -413,11 +524,13 @@ def book_summary(book: dict) -> dict:
         "status": book["status"],
         "source": book["source"],
         "license": book["license"],
+        "publicDomainBasis": book["publicDomainBasis"],
         "sourceUrl": book["sourceUrl"],
         "totalChapters": book["totalChapters"],
         "readableChapters": book["readableChapters"],
+        "translatedChapters": book["translatedChapters"],
     }
-    for key in ("catalogUrl", "contentNote", "gutenbergId"):
+    for key in ("catalogUrl", "contentNote", "gutenbergId", "words"):
         if key in book:
             payload[key] = book[key]
     return payload
@@ -428,6 +541,7 @@ def manifest_summary(manifest: dict) -> dict:
     book_total = 0
     available_total = 0
     readable_total = 0
+    translated_total = 0
     for series in manifest["series"]:
         summary = series_summary(series)
         series_payload.append(
@@ -439,6 +553,7 @@ def manifest_summary(manifest: dict) -> dict:
         book_total += summary["totalBooks"]
         available_total += summary["availableBooks"]
         readable_total += summary["readableChapters"]
+        translated_total += summary["translatedChapters"]
     return {
         "series": series_payload,
         "counts": {
@@ -446,6 +561,7 @@ def manifest_summary(manifest: dict) -> dict:
             "books": book_total,
             "availableBooks": available_total,
             "readableChapters": readable_total,
+            "translatedChapters": translated_total,
         },
     }
 
@@ -683,7 +799,7 @@ def _gutenberg_body(text: str) -> str:
     return text[start.end() : end.start()]
 
 
-def split_paragraphs(text: str) -> list[str]:
+def split_paragraphs(text: str, *, drop_captions: bool = False) -> list[str]:
     """把 Gutenberg 硬换行纯文本切成自然段。
 
     - 空行分段，段内硬换行合并为一个空格；
@@ -702,6 +818,8 @@ def split_paragraphs(text: str) -> list[str]:
             continue
         value = re.sub(r"\s+", " ", " ".join(lines)).strip()
         if not value or _ILLUSTRATION_RE.fullmatch(value):
+            continue
+        if drop_captions and re.match(r"^\[illustration", value, re.IGNORECASE):
             continue
         if value.upper() == "THE END" or value.startswith("End of Project Gutenberg"):
             break
@@ -745,7 +863,9 @@ def _parse_single(text: str, parser: dict, fallback_title: str) -> list[ParsedCh
     body_start = parser.get("bodyStart")
     if not body_start:
         raise BookSourceUnavailable("单章公版书缺少 bodyStart 锚点")
-    paragraphs = split_paragraphs(_gutenberg_body(text))
+    paragraphs = split_paragraphs(
+        _gutenberg_body(text), drop_captions=bool(parser.get("dropCaptions"))
+    )
     anchor = next(
         (index for index, paragraph in enumerate(paragraphs) if paragraph.startswith(body_start)),
         None,
@@ -753,14 +873,109 @@ def _parse_single(text: str, parser: dict, fallback_title: str) -> list[ParsedCh
     if anchor is None:
         raise BookSourceUnavailable("公版源正文锚点未命中（源文本可能已更新）")
     paragraphs = paragraphs[anchor:]
+    body_end = parser.get("bodyEnd")
+    if body_end:
+        end = next(
+            (
+                index
+                for index, paragraph in enumerate(paragraphs)
+                if paragraph.endswith(body_end)
+            ),
+            None,
+        )
+        if end is None:
+            raise BookSourceUnavailable("公版源结尾锚点未命中（源文本可能已更新）")
+        paragraphs = paragraphs[: end + 1]
     if not paragraphs:
         raise BookSourceUnavailable("公版源正文为空")
     return [ParsedChapter(number=1, title=fallback_title, paragraphs=paragraphs)]
 
 
+def _anchor_line(line: str) -> str:
+    return " ".join(line.replace("_", " ").split())
+
+
+def _fold(value: str) -> str:
+    value = value.casefold().replace("’", "'").replace("‘", "'")
+    value = " ".join(re.sub(r"[^a-z0-9]+", " ", value).split())
+    return " ".join(
+        token for token in value.split() if token not in {"a", "an", "the"}
+    )
+
+
+_HEADING_TRAILER_RE = re.compile(
+    r"^(?:(?:CHAPTER|Chapter)\s+(?:\d+|[IVXLCDM]+|[A-Za-z-]+)[.:]?|"
+    r"[IVXLCDM]+\.?|\d+\.?)$"
+)
+
+
+def _parse_anchors(text: str, book: dict) -> list[ParsedChapter]:
+    """按 books.json 里的 anchor/occurrence 切章。
+
+    公版源每次实时抓取；anchor 是构建期从同一版本源文本里取出的标题/首行，
+    occurrence 处理目录与正文重复。源站若更新文本导致锚点找不到，返回 503。
+    """
+    parser = book.get("parser") or {}
+    drop_captions = bool(parser.get("dropCaptions"))
+    body = _gutenberg_body(text)
+    lines = body.splitlines()
+    positions: list[int] = []
+    for chapter in book["chapters"]:
+        target = _anchor_line(chapter.get("anchor", ""))
+        matches = [
+            index
+            for index, line in enumerate(lines)
+            if _anchor_line(line) == target
+        ]
+        occurrence = chapter.get("occurrence", 1)
+        if len(matches) < occurrence:
+            if matches:
+                logger.warning(
+                    "章节锚点只出现 %s 次（期望第 %s 次），退回最后一次：%s 第 %s 章",
+                    len(matches),
+                    occurrence,
+                    book["id"],
+                    chapter["n"],
+                )
+                positions.append(matches[-1])
+                continue
+            raise BookSourceUnavailable(
+                f"公版源里找不到第 {chapter['n']} 章的锚点（源文本可能已更新）"
+            )
+        positions.append(matches[occurrence - 1])
+    if positions != sorted(positions) or len(set(positions)) != len(positions):
+        raise BookSourceUnavailable("公版源章节锚点顺序异常（源文本可能已更新）")
+
+    chapters: list[ParsedChapter] = []
+    for index, chapter in enumerate(book["chapters"]):
+        start = positions[index] + 1
+        end = positions[index + 1] if index + 1 < len(positions) else len(lines)
+        paragraphs = split_paragraphs(
+            "\n".join(lines[start:end]), drop_captions=drop_captions
+        )
+        title = chapter["title"]
+        if paragraphs and (
+            chapter.get("skipTitle") or _fold(paragraphs[0]) == _fold(title)
+        ):
+            paragraphs = paragraphs[1:]
+        while paragraphs and (
+            _HEADING_TRAILER_RE.match(" ".join(paragraphs[-1].split()))
+            or _fold(paragraphs[-1]) == _fold(title)
+        ):
+            paragraphs = paragraphs[:-1]
+        if not paragraphs:
+            raise BookSourceUnavailable(f"公版源第 {chapter['n']} 章正文为空")
+        chapters.append(
+            ParsedChapter(number=chapter["n"], title=title, paragraphs=paragraphs)
+        )
+    return chapters
+
+
 def parse_book(text: str, book: dict) -> list[ParsedChapter]:
     parser = book.get("parser") or {"mode": "chapters"}
     mode = parser.get("mode", "chapters")
+    if mode == "anchors":
+        return _parse_anchors(text, book)
     if mode == "single":
         return _parse_single(text, parser, book["title"])
     return _parse_chaptered(text)
@@ -834,13 +1049,14 @@ def build_chapter_payload(manifest: dict, book_id: str, number: int) -> dict:
     if chapter_meta is None:
         raise BookNotFound(f"{book_id}/{number}")
 
-    translation = load_translation(book, number)
+    translation_path = _chapter_path(book["id"], number)
+    translation = load_translation(book, number) if translation_path.is_file() else None
     source = get_chapter_source(book, number)
     parsed = next((item for item in source.chapters if item.number == number), None)
     if parsed is None:
         raise BookSourceUnavailable(f"公版源没有第 {number} 章")
 
-    zh_list = translation["paragraphs"]
+    zh_list = translation["paragraphs"] if translation else []
     if len(zh_list) > len(parsed.paragraphs):
         logger.warning(
             "章节译文比英文原文多（源文本可能已更新）：%s 第 %s 章 zh=%s en=%s",
@@ -867,14 +1083,16 @@ def build_chapter_payload(manifest: dict, book_id: str, number: int) -> dict:
         "level": book["level"],
         "license": book["license"],
         "chapter": number,
-        "chapterTitle": translation["title"],
-        "sourceTitle": parsed.title,
+        "chapterTitle": translation["title"] if translation else chapter_meta["title"],
+        "sourceTitle": chapter_meta["title"],
+        "translated": translation is not None,
+        "translatedChapters": book["translatedChapters"],
         "totalChapters": book["totalChapters"],
         "importedChapters": book["readableChapters"],
         "seriesId": book["seriesId"],
         "seriesTitle": series["title"],
         "contentNote": book.get("contentNote"),
-        "translationMeta": translation["meta"],
+        "translationMeta": translation["meta"] if translation else {},
         "source": {
             "provider": book["source"],
             "url": book.get("catalogUrl") or book["sourceUrl"],

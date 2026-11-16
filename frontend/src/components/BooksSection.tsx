@@ -68,10 +68,12 @@ function BookCard({
             <p className="mt-1 truncate text-[11px] text-zinc-500">{book.author}</p>
             <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-zinc-500">
                 <span className="tabular-nums">
-                    {t('books.chapters', {
-                        readable: formatNumber(book.readableChapters),
-                        total: formatNumber(book.totalChapters),
-                    })}
+                    {book.translatedChapters > 0
+                        ? t('books.translatedChapters', {
+                              translated: formatNumber(book.translatedChapters),
+                              total: formatNumber(book.totalChapters),
+                          })
+                        : t('books.originalReadable')}
                 </span>
                 <LevelBadge level={book.level} />
             </div>
@@ -104,6 +106,9 @@ function SeriesGroup({
                     <p className="mt-0.5 text-[11px] text-zinc-500">
                         {series.author} · {t('books.seriesTotal', { count: formatNumber(series.totalBooks) })} ·{' '}
                         {t('books.availableCount', { count: formatNumber(available.length) })}
+                        {series.translatedChapters > 0
+                            ? ` · ${t('books.translatedCount', { count: formatNumber(series.translatedChapters) })}`
+                            : ''}
                     </p>
                 </div>
                 <button
@@ -229,6 +234,7 @@ export function BooksSection({ onOpenBook, onOpenSeries }: BooksSectionProps) {
                         {t('books.counts', {
                             series: formatNumber(data.counts.series),
                             books: formatNumber(data.counts.availableBooks),
+                            translated: formatNumber(data.counts.translatedChapters),
                         })}
                     </span>
                 )}

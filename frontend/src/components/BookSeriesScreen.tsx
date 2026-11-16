@@ -14,6 +14,7 @@ import {
     CheckCircle2,
     Globe2,
     Layers,
+    Lock,
     RefreshCw,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
@@ -163,6 +164,12 @@ export function BookSeriesScreen({ seriesId, onClose, onOpenBook }: BookSeriesSc
                                             count: formatNumber(series.readableChapters),
                                         })}
                                     </span>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <BookOpen className="w-3.5 h-3.5" />
+                                        {t('books.series.translatedChapters', {
+                                            count: formatNumber(series.translatedChapters),
+                                        })}
+                                    </span>
                                 </div>
                                 <p className="mt-3 text-sm leading-relaxed text-zinc-400 break-words">
                                     {series.description}
@@ -177,7 +184,7 @@ export function BookSeriesScreen({ seriesId, onClose, onOpenBook }: BookSeriesSc
                             {available.length > 0 && (
                                 <section className="mt-7" data-testid="book-series-available">
                                     <h2 className="text-[13px] font-semibold text-zinc-300">
-                                        {t('books.series.availableNow')}
+                                        {t('books.series.availableNow')} · {formatNumber(available.length)}
                                     </h2>
                                     <div className="mt-2 space-y-2">
                                         {available.map((book) => (
@@ -196,16 +203,24 @@ export function BookSeriesScreen({ seriesId, onClose, onOpenBook }: BookSeriesSc
                                                         {book.titleZh}
                                                     </span>
                                                     <span className="block truncate text-[11px] text-zinc-500">
-                                                        {book.title} · {formatNumber(book.year)}
+                                                        {book.title} · {book.year}
                                                     </span>
                                                     <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
                                                         <LevelBadge level={book.level} />
                                                         <span className="tabular-nums">
-                                                            {t('books.chapters', {
-                                                                readable: formatNumber(book.readableChapters),
-                                                                total: formatNumber(book.totalChapters),
-                                                            })}
+                                                            {book.translatedChapters > 0
+                                                                ? t('books.translatedChapters', {
+                                                                      translated: formatNumber(book.translatedChapters),
+                                                                      total: formatNumber(book.totalChapters),
+                                                                  })
+                                                                : t('books.originalReadable')}
                                                         </span>
+                                                        {book.translatedChapters > 0 && (
+                                                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
+                                                                <CheckCircle2 className="w-3 h-3" />
+                                                                {t('books.badgeTranslated')}
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 </span>
                                                 <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-400 shrink-0">
@@ -238,12 +253,61 @@ export function BookSeriesScreen({ seriesId, onClose, onOpenBook }: BookSeriesSc
                                                         {book.titleZh}
                                                     </p>
                                                     <p className="truncate text-[11px] text-zinc-500">
-                                                        {book.title} · {formatNumber(book.year)}
+                                                        {book.title} · {book.year}
                                                     </p>
+                                                    {book.contentNote && (
+                                                        <p className="mt-1 text-[11px] leading-relaxed text-zinc-600">
+                                                            {book.contentNote}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <span className="shrink-0 rounded-full border border-white/5 bg-zinc-800/60 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
                                                     {t('books.comingSoon')}
                                                 </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {series.excluded.length > 0 && (
+                                <section className="mt-8" data-testid="book-series-excluded">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Lock className="w-3.5 h-3.5 text-amber-400/80" />
+                                        <h2 className="text-[13px] font-semibold text-zinc-300">
+                                            {t('books.series.excludedTitle')} · {formatNumber(series.excluded.length)}
+                                        </h2>
+                                    </div>
+                                    <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+                                        {t('books.series.excludedHint')}
+                                    </p>
+                                    <div className="mt-2 divide-y divide-white/5 rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] px-4">
+                                        {series.excluded.map((item) => (
+                                            <div key={`${item.title}-${item.year}`} className="py-3">
+                                                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                                    <p className="text-[13px] font-medium text-zinc-300">
+                                                        {item.title}
+                                                    </p>
+                                                    <span className="flex items-center gap-2">
+                                                        <span
+                                                            className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${
+                                                                item.reason.includes('版权未到期') || item.reason.includes('保护期')
+                                                                    ? 'border-amber-500/25 bg-amber-500/10 text-amber-300'
+                                                                    : 'border-white/10 bg-zinc-800/60 text-zinc-400'
+                                                            }`}
+                                                        >
+                                                            {item.reason.includes('版权未到期') || item.reason.includes('保护期')
+                                                                ? t('books.copyrightNotExpired')
+                                                                : t('books.outOfScope')}
+                                                        </span>
+                                                        <span className="text-[11px] tabular-nums text-zinc-500">
+                                                            {item.year}
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                                <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
+                                                    {item.reason}
+                                                </p>
                                             </div>
                                         ))}
                                     </div>

@@ -1,0 +1,32 @@
+{
+  "schema": "books.chapter.zh.v1",
+  "bookId": "pr-the-story-of-miss-moppet",
+  "chapter": 1,
+  "title": "莫佩特小姐的故事",
+  "paragraphs": [
+    "这是一只名叫莫佩特小姐的小猫，她觉得自己听见了一只老鼠的声音！",
+    "这是那只老鼠，正从碗柜后面探出头来，取笑莫佩特小姐。他可不怕一只小猫。",
+    "这是莫佩特小姐扑过去，却扑得太迟了；她没抓住老鼠，反倒撞到了自己的脑袋。",
+    "她觉得这碗柜可真硬啊！",
+    "老鼠从碗柜顶上看着莫佩特小姐。",
+    "莫佩特小姐用一块抹布把头包起来，坐在炉火前。",
+    "老鼠觉得她看上去病得很重。他顺着铃绳滑了下来。",
+    "莫佩特小姐看上去越来越糟。老鼠又靠近了一点。",
+    "莫佩特小姐用爪子抱着自己可怜的脑袋，透过抹布上的一个洞看着他。老鼠凑得非常近。",
+    "然后突然间——莫佩特小姐猛地扑向老鼠！",
+    "因为老鼠捉弄过莫佩特小姐——莫佩特小姐觉得她也要捉弄捉弄老鼠；这对莫佩特小姐来说可一点儿也不厚道。",
+    "她用抹布把他裹起来，像抛球一样把他抛来抛去。",
+    "可她忘了抹布上那个洞；等她解开抹布——老鼠不见了！",
+    "他扭动着钻了出来，逃走了；这会儿正在碗柜顶上跳着吉格舞呢！"
+  ],
+  "meta": {
+    "promptVersion": "books-zh.v1",
+    "model": "deepseek-chat",
+    "generatedAt": "2026-11-16T19:16:30Z",
+    "source": "Project Gutenberg #14848",
+    "sourceUrl": "https://www.gutenberg.org/cache/epub/14848/pg14848.txt",
+    "sourceTitle": "The Story of Miss Moppet",
+    "paragraphCount": 14,
+    "translator": "LinguaTrek build pipeline (offline)"
+  }
+}

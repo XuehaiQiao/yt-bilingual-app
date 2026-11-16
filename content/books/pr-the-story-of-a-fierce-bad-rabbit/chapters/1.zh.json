@@ -1,0 +1,33 @@
+{
+  "schema": "books.chapter.zh.v1",
+  "bookId": "pr-the-story-of-a-fierce-bad-rabbit",
+  "chapter": 1,
+  "title": "凶恶坏兔子的故事",
+  "paragraphs": [
+    "这是一只凶恶的坏兔子；瞧瞧他那野蛮的胡须，还有他的爪子和翘起来的尾巴。",
+    "这是一只善良温和的兔子。他妈妈给了他一根胡萝卜。",
+    "坏兔子想要一些胡萝卜。",
+    "他不说“请”。他直接抢走了！",
+    "他还把好兔子抓得很厉害。",
+    "好兔子悄悄溜走，躲进一个洞里。他心里很难过。",
+    "这是一个拿着枪的男人。",
+    "他看见有什么东西坐在长凳上。他觉得那是一只非常奇怪的鸟！",
+    "他从树后悄悄靠近。",
+    "然后他开枪了——砰！",
+    "事情就是这样发生的——",
+    "但当他端着枪冲上前去，在长凳上找到的只有这个。",
+    "好兔子从洞里探出头来，",
+    "它看见坏兔子飞奔而过——尾巴和胡须都没了！",
+    "由 R. J. SKINNER 有限公司为出版者印制，伦敦卡梅利特街4号，E.C.4。"
+  ],
+  "meta": {
+    "promptVersion": "books-zh.v1",
+    "model": "deepseek-chat",
+    "generatedAt": "2026-11-16T19:16:26Z",
+    "source": "Project Gutenberg #45265",
+    "sourceUrl": "https://www.gutenberg.org/cache/epub/45265/pg45265.txt",
+    "sourceTitle": "The Story of a Fierce Bad Rabbit",
+    "paragraphCount": 15,
+    "translator": "LinguaTrek build pipeline (offline)"
+  }
+}

@@ -312,7 +312,7 @@ export function BookReaderScreen({
                     </p>
                     {detail && (
                         <p className="truncate text-[11px] text-zinc-500">
-                            {detail.author} · {formatNumber(detail.year)}
+                            {detail.author} · {detail.year}
                         </p>
                     )}
                 </div>
@@ -369,8 +369,8 @@ export function BookReaderScreen({
                                         {detail.level}
                                     </span>
                                     <span className="text-[11px] text-zinc-500 tabular-nums">
-                                        {t('books.chapters', {
-                                            readable: formatNumber(detail.readableChapters),
+                                        {t('books.translatedChapters', {
+                                            translated: formatNumber(detail.translatedChapters),
                                             total: formatNumber(detail.totalChapters),
                                         })}
                                     </span>
@@ -384,14 +384,14 @@ export function BookReaderScreen({
                                 <p className="mt-1 text-sm text-zinc-400 break-words">{detail.title}</p>
                                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
                                     <span>{detail.author}</span>
-                                    <span className="tabular-nums">{formatNumber(detail.year)}</span>
+                                    <span className="tabular-nums">{detail.year}</span>
                                     <span>{t('books.source', { source: detail.source })}</span>
                                     <span>{t('books.license', { license: detail.license })}</span>
                                 </div>
 
                                 <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-3.5 py-3">
                                     <p className="text-[12px] leading-relaxed text-amber-200/90">
-                                        {t('books.contentNote', { year: formatNumber(detail.year) })}
+                                        {t('books.contentNote', { year: detail.year })}
                                     </p>
                                 </div>
 
@@ -475,11 +475,22 @@ export function BookReaderScreen({
                                                                 : 'border-white/5 bg-zinc-900/40 text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100'
                                                         }`}
                                                     >
-                                                        <span className="block text-[10px] tabular-nums opacity-70">
+                                                        <span className="flex items-center gap-1 text-[10px] tabular-nums opacity-70">
                                                             {t('books.reader.chapter', { n: formatNumber(item.n) })}
+                                                            {item.translated ? (
+                                                                <span
+                                                                    data-testid={`book-chapter-translated-${item.n}`}
+                                                                    className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400"
+                                                                />
+                                                            ) : (
+                                                                <span
+                                                                    data-testid={`book-chapter-pending-${item.n}`}
+                                                                    className="inline-flex h-1.5 w-1.5 rounded-full bg-zinc-600"
+                                                                />
+                                                            )}
                                                         </span>
                                                         <span className="block max-w-[150px] truncate text-[12px] font-medium">
-                                                            {item.title}
+                                                            {item.titleZh || item.title}
                                                         </span>
                                                     </button>
                                                 ))}
@@ -494,7 +505,9 @@ export function BookReaderScreen({
                                         </span>
                                         <SegmentedToggle show={showTranslations} onChange={setShowTranslations} />
                                         <span className="text-[11px] text-zinc-600">
-                                            {t('books.translationHint')}
+                                            {chapter && !chapter.translated
+                                                ? t('books.reader.noTranslationHint')
+                                                : t('books.translationHint')}
                                         </span>
                                     </div>
 
@@ -521,6 +534,24 @@ export function BookReaderScreen({
                                                 onRetry={retryChapter}
                                                 retryLabel={t('books.reader.retry')}
                                             />
+                                        </div>
+                                    )}
+
+                                    {!chapterLoading && !chapterError && chapter && !chapter.translated && (
+                                        <div
+                                            data-testid="book-chapter-translation-pending"
+                                            className="mt-5 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-3.5 py-3"
+                                        >
+                                            <p className="flex items-center gap-2 text-[12px] font-medium text-amber-200">
+                                                <AlertCircle className="w-3.5 h-3.5" />
+                                                {t('books.reader.translationPending')}
+                                            </p>
+                                            <p className="mt-1 text-[11px] leading-relaxed text-amber-200/70">
+                                                {t('books.reader.translationPendingHint', {
+                                                    translated: formatNumber(chapter.translatedChapters),
+                                                    total: formatNumber(chapter.totalChapters),
+                                                })}
+                                            </p>
                                         </div>
                                     )}
 
@@ -558,7 +589,7 @@ export function BookReaderScreen({
                                                             }
                                                         />
                                                     </p>
-                                                    {showTranslations && (
+                                                    {showTranslations && chapter.translated && (
                                                         paragraph.zh ? (
                                                             <p
                                                                 data-testid={`book-translation-${paragraph.index}`}

@@ -68,19 +68,6 @@ def get_book(book_id: str):
     except books.BookNotFound:
         raise HTTPException(status_code=404, detail="书籍不存在。") from None
 
-    if book["status"] == "coming_soon":
-        missing_chapter = None
-    else:
-        missing_chapter = None
-        for chapter in book["chapters"]:
-            path = books.books_dir() / book["id"] / "chapters" / f"{chapter['n']}.zh.json"
-            if not path.is_file():
-                missing_chapter = chapter["n"]
-                break
-    if missing_chapter is not None:
-        logger.warning("公版书章节译文缺失：%s 第 %s 章", book["id"], missing_chapter)
-        raise HTTPException(status_code=503, detail="这本书的本地译文不完整，暂时无法打开。")
-
     series = next(item for item in manifest["series"] if item["id"] == book["seriesId"])
     payload = {
         **books.book_summary(book),
@@ -89,12 +76,17 @@ def get_book(book_id: str):
             "books": [books.book_summary(item) for item in series["books"]],
         },
         "chapters": [
-            {"n": chapter["n"], "title": chapter["title"]}
+            {
+                "n": chapter["n"],
+                "title": chapter["title"],
+                "titleZh": chapter.get("titleZh"),
+                "translated": chapter.get("translated", False),
+            }
             for chapter in book["chapters"]
         ],
     }
     if book["status"] == "coming_soon":
-        payload["message"] = "这本书已列入系列计划，译文尚未生成，敬请期待。"
+        payload["message"] = book.get("contentNote") or "这本书已列入系列计划，暂不提供正文。"
     return _json(payload, max_age=300)
 
 

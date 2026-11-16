@@ -24,9 +24,18 @@ export interface BookSummary {
     sourceUrl: string;
     totalChapters: number;
     readableChapters: number;
+    translatedChapters: number;
+    publicDomainBasis: string;
+    words?: number;
     catalogUrl?: string;
     contentNote?: string;
     gutenbergId?: number;
+}
+
+export interface BookExcluded {
+    title: string;
+    year: number;
+    reason: string;
 }
 
 export interface BookSeries {
@@ -37,6 +46,8 @@ export interface BookSeries {
     totalBooks: number;
     availableBooks: number;
     readableChapters: number;
+    translatedChapters: number;
+    excluded: BookExcluded[];
     books: BookSummary[];
 }
 
@@ -47,12 +58,15 @@ export interface BooksIndex {
         books: number;
         availableBooks: number;
         readableChapters: number;
+        translatedChapters: number;
     };
 }
 
 export interface BookChapterIndexEntry {
     n: number;
     title: string;
+    titleZh?: string | null;
+    translated: boolean;
 }
 
 export interface BookDetail extends BookSummary {
@@ -93,6 +107,8 @@ export interface BookChapter {
     source: BookChapterSource;
     paragraphs: BookChapterParagraph[];
     missingTranslations: number;
+    translated: boolean;
+    translatedChapters: number;
 }
 
 export class BooksApiError extends Error {
@@ -142,9 +158,12 @@ function asBookSummary(value: unknown): BookSummary | null {
     const year = asNumber(value.year);
     const totalChapters = asNumber(value.totalChapters);
     const readableChapters = asNumber(value.readableChapters);
+    const translatedChapters = asNumber(value.translatedChapters);
+    const publicDomainBasis = asString(value.publicDomainBasis);
     if (
         !id || !seriesId || !title || !titleZh || !author || !level || !source || !license ||
-        !sourceUrl || year === null || totalChapters === null || readableChapters === null ||
+        !sourceUrl || !publicDomainBasis || year === null || totalChapters === null ||
+        readableChapters === null || translatedChapters === null ||
         (status !== 'available' && status !== 'coming_soon')
     ) {
         return null;
@@ -163,6 +182,9 @@ function asBookSummary(value: unknown): BookSummary | null {
         sourceUrl,
         totalChapters,
         readableChapters,
+        translatedChapters,
+        publicDomainBasis,
+        words: asNumber(value.words) ?? undefined,
         catalogUrl: asString(value.catalogUrl) ?? undefined,
         contentNote: asString(value.contentNote) ?? undefined,
         gutenbergId: asNumber(value.gutenbergId) ?? undefined,
@@ -178,14 +200,25 @@ function asSeries(value: unknown): BookSeries | null {
     const totalBooks = asNumber(value.totalBooks);
     const availableBooks = asNumber(value.availableBooks);
     const readableChapters = asNumber(value.readableChapters);
+    const translatedChapters = asNumber(value.translatedChapters);
     if (
         !id || !title || !author || !description || totalBooks === null ||
-        availableBooks === null || readableChapters === null
+        availableBooks === null || readableChapters === null || translatedChapters === null
     ) {
         return null;
     }
     const books = value.books.map(asBookSummary);
     if (books.some((book): book is null => book === null)) return null;
+    const excludedRaw = Array.isArray(value.excluded) ? value.excluded : [];
+    const excluded: BookExcluded[] = [];
+    for (const entry of excludedRaw) {
+        if (!isRecord(entry)) return null;
+        const entryTitle = asString(entry.title);
+        const entryYear = asNumber(entry.year);
+        const reason = asString(entry.reason);
+        if (!entryTitle || entryYear === null || !reason) return null;
+        excluded.push({ title: entryTitle, year: entryYear, reason });
+    }
     return {
         id,
         title,
@@ -194,6 +227,8 @@ function asSeries(value: unknown): BookSeries | null {
         totalBooks,
         availableBooks,
         readableChapters,
+        translatedChapters,
+        excluded,
         books: books as BookSummary[],
     };
 }
@@ -207,7 +242,11 @@ function asIndex(value: unknown): BooksIndex | null {
     const books = asNumber(counts.books);
     const availableBooks = asNumber(counts.availableBooks);
     const readableChapters = asNumber(counts.readableChapters);
-    if (countSeries === null || books === null || availableBooks === null || readableChapters === null) {
+    const translatedChapters = asNumber(counts.translatedChapters);
+    if (
+        countSeries === null || books === null || availableBooks === null ||
+        readableChapters === null || translatedChapters === null
+    ) {
         return null;
     }
     return {
@@ -217,6 +256,7 @@ function asIndex(value: unknown): BooksIndex | null {
             books,
             availableBooks,
             readableChapters,
+            translatedChapters,
         },
     };
 }
@@ -244,7 +284,11 @@ export async function fetchBook(bookId: string): Promise<BookDetail> {
             if (!isRecord(entry)) return null;
             const n = asNumber(entry.n);
             const title = asString(entry.title);
-            return n === null || !title ? null : { n, title };
+            const titleZh = entry.titleZh === null || entry.titleZh === undefined
+                ? null
+                : asString(entry.titleZh);
+            const translated = entry.translated === true;
+            return n === null || !title ? null : { n, title, titleZh, translated };
         });
     if (chapters.some((entry): entry is null => entry === null)) {
         throw new BooksApiError('公版书章节数据格式不正确', 0);
@@ -302,6 +346,8 @@ export async function fetchBookChapter(bookId: string, n: number): Promise<BookC
         },
         paragraphs: paragraphs as BookChapterParagraph[],
         missingTranslations: asNumber(data.missingTranslations) ?? 0,
+        translated: data.translated === true,
+        translatedChapters: asNumber(data.translatedChapters) ?? 0,
     };
 }
 
