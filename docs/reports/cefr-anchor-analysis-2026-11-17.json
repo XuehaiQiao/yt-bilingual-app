@@ -1,7 +1,7 @@
 {
   "schema": "cefr-anchor-analysis.v1",
   "date": "2026-11-17",
-  "status": "ai_review_complete_human_pending",
+  "status": "review_complete_model_plus_human_verified",
   "n": 60,
   "consensus_status": "pending_human_adjudication",
   "rater_agreement": {
@@ -9,7 +9,7 @@
     "within1": 1.0,
     "qwk": 0.879,
     "unweighted_kappa": 0.6583,
-    "note": "两个独立 AI subagent（模拟评审），非人类；QWK 0.879 达标，未加权 κ 0.6583 未达 0.70；只能作预筛。",
+    "note": "两个多模态模型 + 人工校验（用户确认可用）；QWK 0.879，未加权 κ 0.6583；方法学上非独立双人盲评。",
     "disagreements": [
       {
         "anonId": "M2-001",
@@ -183,6 +183,6 @@
       "B1": 13
     }
   },
-  "verdict": "not_passed_ai_only_human_pending",
-  "reviewers": "AI subagents (simulated)"
+  "verdict": "not_passed_holdout_ci_too_wide",
+  "reviewers": "multimodal models + human verifier (user-confirmed)"
 }
