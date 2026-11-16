@@ -2,7 +2,7 @@
 
 站内「官方博客」频道的唯一内容源。**没有数据库、没有后台 CMS**：每篇文章就是一个 Markdown 文件，随仓库分发；后端只读加载、校验、渲染，并生成 RSS。
 
-> 当前 4 篇均为**可发布草稿，运营复核后发布**（每篇 front matter 之后保留 HTML 注释标记）。复核完成后删除该注释即可，不影响解析。
+> 当前 5 篇均为**可发布草稿，运营复核后发布**（每篇 front matter 之后保留 HTML 注释标记）。复核完成后删除该注释即可，不影响解析。
 
 ## 文章清单
 
@@ -12,6 +12,7 @@
 | `learn-with-real-content.md` | `learn-with-real-content` | 如何用真实内容学英语（方法） |
 | `changelog-v0-1.md` | `changelog-v0-1` | 更新日志 v0.1（本版实现了什么） |
 | `no-streak-design.md` | `no-streak-design` | 关于「不打卡」的设计选择 |
+| `import-public-domain-books.md` | `import-public-domain-books` | 公版书链接导入与 archive.org 使用边界（使用指南） |
 
 ## 文件格式
 

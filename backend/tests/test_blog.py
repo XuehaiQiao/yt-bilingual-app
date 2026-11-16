@@ -3,11 +3,11 @@
 覆盖：
 
 1. 公开可访问：未登录 GET 列表/详情/RSS 均 200，且不新发游客 Cookie；
-2. 列表：4 篇真实文章、字段齐全、日期倒序、README 不计入；
+2. 列表：5 篇真实文章、字段齐全、日期倒序、README 不计入；
 3. 详情：metadata + Markdown 原文 + 安全 HTML（`<script>` 转义、危险链接降级）；
 4. RSS 2.0：可被 XML 解析、channel/item 字段与 pubDate 格式正确、XML 转义；
 5. 404：未知 slug、非法 slug、`published: false`；503：目录缺失/坏 front matter/slug 重复；
-6. 内容闸门：四篇文章都带「可发布草稿，运营复核后发布」标记。
+6. 内容闸门：五篇文章都带「可发布草稿，运营复核后发布」标记。
 
 全部离线：只读仓库内 Markdown 或 tmp 副本，不碰数据库、不联网。
 """
@@ -29,7 +29,9 @@ EXPECTED_SLUGS = {
     "learn-with-real-content",
     "changelog-v0-1",
     "no-streak-design",
+    "import-public-domain-books",
 }
+NEW_POST_SLUG = "import-public-domain-books"
 DRAFT_NOTICE = "可发布草稿，运营复核后发布"
 PUB_DATE_RE = re.compile(
     r"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} "
@@ -99,14 +101,15 @@ def test_blog_is_public_and_does_not_issue_guest_cookie(make_client):
             assert "ln_guest" not in response.headers.get("set-cookie", "")
 
 
-def test_list_returns_four_posts_in_date_order(make_client):
+def test_list_returns_five_posts_in_date_order(make_client):
     with make_client() as client:
         response = client.get("/api/blog/posts")
     assert response.status_code == 200
     payload = response.json()
-    assert payload["count"] == 4
+    assert payload["count"] == 5
     posts = payload["posts"]
     assert {post["slug"] for post in posts} == EXPECTED_SLUGS
+    assert posts[0]["slug"] == NEW_POST_SLUG
     assert all(
         {"slug", "title", "date", "excerpt", "tags", "lang", "readingMinutes"}
         <= set(post)
@@ -200,6 +203,34 @@ def test_markdown_renders_lists_quotes_and_code(make_client):
     assert '<pre><code class="language-python">' in sample
 
 
+def test_import_post_documents_archive_boundary_with_https_links(make_client):
+    """新增的公版书导入文章：字段正确、外链只用 http(s)、RSS 可见、合规边界在。"""
+    with make_client() as client:
+        response = client.get(f"/api/blog/posts/{NEW_POST_SLUG}")
+        feed = client.get("/api/blog/feed.xml")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["title"] == "从 Gutenberg 到 archive.org：如何合法找到并导入一本公版书"
+    assert payload["date"] == "2026-11-17"
+    assert payload["tags"] == ["使用指南", "公版书", "阅读"]
+
+    markdown = payload["markdown"]
+    targets = re.findall(r"\]\(([^)\s]+)\)", markdown)
+    assert targets
+    assert all(target.startswith(("https://", "http://")) for target in targets)
+    assert "_djvu.txt" in markdown and "OCR" in markdown
+    assert "_djvu.txt](" not in markdown
+    assert "magic tree house" not in markdown.lower()
+    assert "白名单暂不包含 archive.org" in markdown
+    assert 'href="https://archive.org/advancedsearch.php"' in payload["html"]
+
+    items = _rss_items(feed.text)
+    assert any(
+        item.findtext("link", "").endswith(f"/blog/{NEW_POST_SLUG}")
+        for item in items
+    )
+
+
 # ---------------------------------------------------------------------------
 # 3. RSS
 # ---------------------------------------------------------------------------
@@ -220,7 +251,7 @@ def test_feed_is_well_formed_rss_2(make_client):
     assert channel.findtext("link", "").endswith("/blog")
 
     items = channel.findall("item")
-    assert len(items) == 4
+    assert len(items) == 5
     for item in items:
         title = item.findtext("title")
         link = item.findtext("link")
@@ -303,7 +334,7 @@ def test_bad_front_matter_and_duplicate_slug_are_503(
 def test_repo_posts_carry_draft_notice_and_required_fields():
     files = sorted(BLOG_DIR.glob("*.md"))
     article_files = [path for path in files if path.name.lower() != "readme.md"]
-    assert len(article_files) == 4
+    assert len(article_files) == 5
     for path in article_files:
         text = path.read_text(encoding="utf-8")
         assert DRAFT_NOTICE in text, path.name
