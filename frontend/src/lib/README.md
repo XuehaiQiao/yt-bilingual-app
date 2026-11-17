@@ -19,7 +19,7 @@
 | `favorites.ts` | 收藏按条 API（M1 ④）：`FavoriteItem` 类型、`fetchFavorites/addFavorite/removeFavorite`（后端按条写入、幂等）；`replaceAllFavorites` 仅为旧整文件 PUT 兼容路径，App 不再调用 |
 | `favoriteSource.ts` | 单词本「来源」解析：新收藏用 `source_kind/source_ref/source_title`，旧记录按 `videoId` 形状推断（11 位→视频、`sentence-pack-L*`→句子精背、其他→文章），标题未知时显示来源未知且不可点；IPA/释义拆分与 `L<levelId>` 解析 |
 | `useReadingHighlights.ts` | 阅读标亮（user request 2026-11-17 #3）：按当前 `loadVocabLevel()` 得到阈值，收集段落英文词后调用 `fetchVocabularyLevels`（≤100/批，模块级同词缓存），返回 `wordLevels` Map 与 `isHighlighted`；A1<A2<B1<B2<C1<C1+<C2，C2 不额外标亮；API 失败静默无高亮并保留 `yt_bilingual_reading_highlight` 开关 |
-| `vocabulary.ts` | 单词本词表客户端（specs/005）：`fetchVocabularyLists`（目录，C2 `available:false` 原样透传）、`fetchVocabularyPage`（服务端 `q` 搜索 + 分页，默认 50/页）、`fetchVocabularyLevels`（按 100 词分批查词级 CEFR，保留后端 `null`/`C1+` 不做本地推断） |
+| `vocabulary.ts` | 单词本词表客户端（specs/005）：`fetchVocabularyLists`（目录，C2 `available:false` 原样透传）、`fetchVocabularyPage`（服务端 `q` 搜索 + 分页，默认 50/页）、`fetchPhrasePage`（短语服务端 `q` + level/type 筛选 + 分页，默认 50/页）、`fetchPhraseDetail`（展开时懒加载 `notes/license`）、`fetchVocabularyLevels`（按 100 词分批查词级 CEFR，保留后端 `null`/`C1+` 不做本地推断） |
 | `review.ts` | 复习引擎客户端（M2 / specs/013）：队列/统计/作答/暂停的类型与四个 API 函数；走 `apiFetch`，按当前翻译目标语言取词，失败抛带 HTTP 状态的 `ReviewApiError` |
 | `quiz.ts` | 理解题客户端（M3 / specs/014）：lesson/题目/作答/结果类型与 `startLesson/getQuestions/answerQuestion/getResult`；走 `apiFetch`（start 自动带 `targetLang`），失败抛带 HTTP 状态的 `QuizApiError` |
 | `placement.ts` | 能力定位测客户端（M4 / specs/016）：卷面/画像/结果类型与 `startPlacement/submitPlacement/getProfile/resetPlacement`；走 `apiFetch`，失败抛带 HTTP 状态的 `PlacementApiError`；`preliminary`/`sampleSize`/`disclaimer` 原样交给 UI，不做二次推断 |

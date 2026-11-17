@@ -3,7 +3,14 @@
 // Public read-only endpoints, no login required:
 //   GET /api/vocabulary/lists                     → catalog (+ C2 available:false)
 //   GET /api/vocabulary/lists/{id}?page&pageSize&q → paged/searchable entries
+//   GET /api/vocabulary/phrases?page&pageSize&q&level&type → paged phrases
+//   GET /api/vocabulary/phrases/{id}               → one phrase (+ notes/license)
 //   GET /api/vocabulary/level?words=a,b,c          → word → A1–C1 / C1+ / null
+//
+// Phrases are a separate product surface: the catalog advertises them as an
+// extra list (`id: "phrases"`), but their items have a different shape and the
+// generic `/lists/{id}` endpoint deliberately 404s for them. Never route a
+// phrase list through `fetchVocabularyPage`.
 //
 // This module only transports and normalizes what the backend returns. It must
 // not invent levels: a word the API does not know is rendered as "C1+" by the
@@ -40,7 +47,39 @@ export interface VocabularyPage {
     hasMore: boolean;
 }
 
+/** Phrase type ids from `backend/vocabulary.py:PHRASE_TYPES`. */
+export type PhraseType = 'phrasal_verb' | 'idiom' | 'collocation';
+/** Approximate teaching bands shipped by the curated data (no C2; C1+ empty). */
+export type PhraseLevel = 'A2' | 'B1' | 'B2' | 'C1' | 'C1+';
+
+export interface PhraseEntry {
+    id: string;
+    headword: string;
+    type: PhraseType | '';
+    cefr: PhraseLevel | '';
+    translation: string;
+    example: string;
+    source: string;
+}
+
+export interface PhraseDetail extends PhraseEntry {
+    license: string | null;
+    notes: string | null;
+}
+
+export interface PhrasePage {
+    items: PhraseEntry[];
+    total: number;
+    page: number;
+    pageSize: number;
+    hasMore: boolean;
+}
+
 export const VOCABULARY_PAGE_SIZE = 50;
+export const PHRASE_PAGE_SIZE = 50;
+/** Level filter chips: the curated set has no C1+ rows, and C2 is not modelled. */
+export const PHRASE_LEVELS: readonly PhraseLevel[] = ['A2', 'B1', 'B2', 'C1'];
+export const PHRASE_TYPES: readonly PhraseType[] = ['phrasal_verb', 'idiom', 'collocation'];
 /** The `/level` endpoint accepts at most 100 words per request. */
 export const VOCABULARY_LEVEL_BATCH_SIZE = 100;
 
@@ -116,6 +155,93 @@ export async function fetchVocabularyPage(
         page: Number.isFinite(record.page) ? Number(record.page) : page,
         pageSize: Number.isFinite(record.pageSize) ? Number(record.pageSize) : pageSize,
         hasMore: record.hasMore === true,
+    };
+}
+
+/** Normalize one phrase list item; malformed rows are dropped by the caller. */
+function phraseEntry(value: Record<string, unknown>): PhraseEntry | null {
+    const id = String(value.id ?? '').trim();
+    const headword = String(value.headword ?? '').trim();
+    if (!id || !headword) return null;
+    const rawType = String(value.type ?? '').trim();
+    const rawLevel = String(value.cefr ?? '').trim().toUpperCase();
+    return {
+        id,
+        headword,
+        type: (PHRASE_TYPES as readonly string[]).includes(rawType) ? rawType as PhraseType : '',
+        cefr: (['A2', 'B1', 'B2', 'C1', 'C1+'] as readonly string[]).includes(rawLevel)
+            ? rawLevel as PhraseLevel
+            : '',
+        translation: String(value.translation ?? ''),
+        example: String(value.example ?? ''),
+        source: String(value.source ?? ''),
+    };
+}
+
+/**
+ * One page of the curated phrase list. `q` matches headword first and then the
+ * Chinese translation (server-side); `level`/`type` are exact filters. Sending
+ * `C1+` is supported by the API but the UI does not offer it because the
+ * shipped data has no C1+ rows.
+ */
+export async function fetchPhrasePage(
+    options: {
+        page?: number;
+        pageSize?: number;
+        q?: string;
+        level?: PhraseLevel | '';
+        type?: PhraseType | '';
+        signal?: AbortSignal;
+    } = {},
+): Promise<PhrasePage> {
+    const page = Math.max(1, Math.trunc(options.page ?? 1));
+    const pageSize = Math.min(200, Math.max(1, Math.trunc(options.pageSize ?? PHRASE_PAGE_SIZE)));
+    const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+    });
+    const query = (options.q ?? '').trim();
+    if (query) params.set('q', query);
+    if (options.level) params.set('level', options.level);
+    if (options.type) params.set('type', options.type);
+
+    const response = await apiFetch(
+        `/api/vocabulary/phrases?${params.toString()}`,
+        options.signal ? { signal: options.signal } : undefined,
+    );
+    if (!response.ok) throw new Error(await errorDetail(response));
+    const data = await response.json().catch(() => null);
+    const record = isRecord(data) ? data : {};
+    const items = Array.isArray(record.items)
+        ? record.items.filter(isRecord).map(phraseEntry).filter((item): item is PhraseEntry => item !== null)
+        : [];
+    return {
+        items,
+        total: Number.isFinite(record.total) ? Number(record.total) : items.length,
+        page: Number.isFinite(record.page) ? Number(record.page) : page,
+        pageSize: Number.isFinite(record.pageSize) ? Number(record.pageSize) : pageSize,
+        hasMore: record.hasMore === true,
+    };
+}
+
+/** Full phrase detail; the list omits `notes`/`license`, so expansion lazy-loads this. */
+export async function fetchPhraseDetail(
+    id: string,
+    options: { signal?: AbortSignal } = {},
+): Promise<PhraseDetail> {
+    const response = await apiFetch(
+        `/api/vocabulary/phrases/${encodeURIComponent(id)}`,
+        options.signal ? { signal: options.signal } : undefined,
+    );
+    if (!response.ok) throw new Error(await errorDetail(response));
+    const data = await response.json().catch(() => null);
+    if (!isRecord(data)) throw new Error('Invalid phrase detail');
+    const entry = phraseEntry(data);
+    if (!entry) throw new Error('Invalid phrase detail');
+    return {
+        ...entry,
+        license: typeof data.license === 'string' ? data.license : null,
+        notes: typeof data.notes === 'string' && data.notes.trim() ? data.notes : null,
     };
 }
 

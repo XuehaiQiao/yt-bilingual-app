@@ -10,7 +10,7 @@
 //
 // C2 is intentionally not modelled by the backend (`available:false`): its tab
 // is disabled and explains itself instead of rendering an empty table.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     AlertTriangle,
     ArrowLeft,
@@ -46,10 +46,20 @@ import {
     type ResolvedFavoriteSource,
 } from '../lib/favoriteSource';
 import {
+    fetchPhraseDetail,
+    fetchPhrasePage,
     fetchVocabularyLevels,
     fetchVocabularyLists,
     fetchVocabularyPage,
+    PHRASE_LEVELS,
+    PHRASE_PAGE_SIZE,
+    PHRASE_TYPES,
     VOCABULARY_PAGE_SIZE,
+    type PhraseDetail,
+    type PhraseEntry,
+    type PhraseLevel,
+    type PhrasePage,
+    type PhraseType,
     type VocabularyList,
     type VocabularyPage,
 } from '../lib/vocabulary';
@@ -75,6 +85,7 @@ interface VocabularyBookScreenProps {
 type Phase = 'idle' | 'loading' | 'ready' | 'error';
 
 const MINE_TAB = 'mine';
+const PHRASES_TAB = 'phrases';
 /** Backend product order: A1…C1, C2 (unavailable), GRE, CET4, CET6. */
 const LIST_TAB_IDS = ['cefr-a1', 'cefr-a2', 'cefr-b1', 'cefr-b2', 'cefr-c1', 'cefr-c2', 'gre', 'cet4', 'cet6'] as const;
 const C2_TAB_ID = 'cefr-c2';
@@ -88,6 +99,20 @@ const FALLBACK_LABELS: Record<string, string> = {
     gre: 'GRE',
     cet4: 'CET4',
     cet6: 'CET6',
+};
+const PHRASE_TYPE_LABEL_KEYS: Record<PhraseType, TranslationKey> = {
+    phrasal_verb: 'vocab.phrases.type.phrasal_verb',
+    idiom: 'vocab.phrases.type.idiom',
+    collocation: 'vocab.phrases.type.collocation',
+};
+const PHRASE_TYPE_DESC_KEYS: Record<PhraseType, TranslationKey> = {
+    phrasal_verb: 'vocab.phrases.typeDesc.phrasal_verb',
+    idiom: 'vocab.phrases.typeDesc.idiom',
+    collocation: 'vocab.phrases.typeDesc.collocation',
+};
+const PHRASE_SOURCE_KEYS: Record<string, TranslationKey> = {
+    curated: 'vocab.phrases.source.curated',
+    ECDICT: 'vocab.phrases.source.ecdict',
 };
 /** Hidden for the whole word-book; persisted across reloads by design. */
 const HIDE_CHINESE_KEY = 'yt_bilingual_vocab_hide_zh';
@@ -134,6 +159,19 @@ function LevelBadge({ level, testId, title }: { level: string; testId?: string; 
             {level}
         </span>
     );
+}
+
+/** 1 … 4 5 6 … 12 page strip; compact enough for 375px with icon-only arrows. */
+function paginationTokens(current: number, total: number): Array<number | 'ellipsis'> {
+    if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+    const start = Math.max(2, Math.min(current - 1, total - 4));
+    const end = Math.min(total - 1, Math.max(current + 1, 5));
+    const tokens: Array<number | 'ellipsis'> = [1];
+    if (start > 2) tokens.push('ellipsis');
+    for (let page = start; page <= end; page += 1) tokens.push(page);
+    if (end < total - 1) tokens.push('ellipsis');
+    tokens.push(total);
+    return tokens;
 }
 
 export function VocabularyBookScreen({
@@ -268,14 +306,41 @@ export function VocabularyBookScreen({
         }
     });
 
+    // ── Phrases: independent paging/search/filter state ───────────────────
+    // Deliberately separate from the word-list state above: switching tabs (or
+    // searching a phrase) must never rewrite what the A1/GRE list is showing.
+    const [phraseQuery, setPhraseQuery] = useState('');
+    const [phraseDebouncedQuery, setPhraseDebouncedQuery] = useState('');
+    const [phrasePage, setPhrasePage] = useState(1);
+    const [phraseLevel, setPhraseLevel] = useState<PhraseLevel | ''>('');
+    const [phraseType, setPhraseType] = useState<PhraseType | ''>('');
+    const [phrasePhase, setPhrasePhase] = useState<Phase>('idle');
+    const [phraseData, setPhraseData] = useState<PhrasePage | null>(null);
+    const [phraseError, setPhraseError] = useState('');
+    const [phraseNonce, setPhraseNonce] = useState(0);
+    const [phraseRevealed, setPhraseRevealed] = useState<Set<string>>(new Set());
+    const [phraseExpanded, setPhraseExpanded] = useState<Set<string>>(new Set());
+    const [phraseDetails, setPhraseDetails] = useState<Record<string, PhraseDetail>>({});
+    const [phraseDetailPhase, setPhraseDetailPhase] = useState<Record<string, Phase>>({});
+    const [phraseDetailError, setPhraseDetailError] = useState<Record<string, string>>({});
+    const phraseDetailControllers = useRef<Map<string, AbortController>>(new Map());
+
     const selectTab = useCallback((id: string) => {
         if (id === C2_TAB_ID) return;
         if (id !== MINE_TAB && catalogById.get(id)?.available === false) return;
         setActiveTab(id);
+        // Both surfaces restart from page 1 with a clean query/reveal state.
         setQuery('');
         setDebouncedQuery('');
         setPage(1);
         setRevealed(new Set());
+        setPhraseQuery('');
+        setPhraseDebouncedQuery('');
+        setPhrasePage(1);
+        setPhraseLevel('');
+        setPhraseType('');
+        setPhraseRevealed(new Set());
+        setPhraseExpanded(new Set());
     }, [catalogById]);
 
 
@@ -303,7 +368,7 @@ export function VocabularyBookScreen({
     }, [activeTab, page, debouncedQuery]);
 
     useEffect(() => {
-        if (activeIsMine || activeUnavailable) {
+        if (activeIsMine || activeUnavailable || activeTab === PHRASES_TAB) {
             setListData(null);
             setListPhase('idle');
             return;
@@ -330,9 +395,118 @@ export function VocabularyBookScreen({
         return () => controller.abort();
     }, [activeIsMine, activeUnavailable, activeTab, page, debouncedQuery, listNonce]);
 
+    // 300ms phrase search debounce; a changed query restarts from page 1.
+    // Compare with the committed query first: the initial mount (and a tab
+    // reset) must not schedule a page-1 jump after the user already paged.
+    useEffect(() => {
+        const trimmed = phraseQuery.trim();
+        const timer = window.setTimeout(() => {
+            if (trimmed === phraseDebouncedQuery) return;
+            setPhraseDebouncedQuery(trimmed);
+            setPhrasePage(1);
+        }, 300);
+        return () => window.clearTimeout(timer);
+    }, [phraseQuery, phraseDebouncedQuery]);
+
+    // New page/search/filter: drop temporary Chinese reveals and open details
+    // so a stale row never stays expanded across a different result set.
+    useEffect(() => {
+        setPhraseRevealed(new Set());
+        setPhraseExpanded(new Set());
+    }, [phrasePage, phraseDebouncedQuery, phraseLevel, phraseType]);
+
+    useEffect(() => {
+        if (activeTab !== PHRASES_TAB) {
+            setPhrasePhase('idle');
+            return;
+        }
+        const controller = new AbortController();
+        setPhrasePhase('loading');
+        setPhraseError('');
+        fetchPhrasePage({
+            page: phrasePage,
+            pageSize: PHRASE_PAGE_SIZE,
+            q: phraseDebouncedQuery,
+            level: phraseLevel,
+            type: phraseType,
+            signal: controller.signal,
+        })
+            .then((data) => {
+                if (controller.signal.aborted) return;
+                setPhraseData(data);
+                setPhrasePhase('ready');
+            })
+            .catch(async (error) => {
+                if (controller.signal.aborted || (error as Error)?.name === 'AbortError') return;
+                setPhraseError(await describeApiError(error));
+                setPhrasePhase('error');
+            });
+        return () => controller.abort();
+    }, [activeTab, phrasePage, phraseDebouncedQuery, phraseLevel, phraseType, phraseNonce]);
+
+    // Abort pending detail requests on unmount.
+    useEffect(() => () => {
+        phraseDetailControllers.current.forEach((controller) => controller.abort());
+        phraseDetailControllers.current.clear();
+    }, []);
+
+    const loadPhraseDetail = useCallback((id: string, force = false) => {
+        if (!id) return;
+        if (!force && (phraseDetails[id] || phraseDetailPhase[id] === 'loading')) return;
+        phraseDetailControllers.current.get(id)?.abort();
+        const controller = new AbortController();
+        phraseDetailControllers.current.set(id, controller);
+        setPhraseDetailPhase((prev) => ({ ...prev, [id]: 'loading' }));
+        setPhraseDetailError((prev) => ({ ...prev, [id]: '' }));
+        fetchPhraseDetail(id, { signal: controller.signal })
+            .then((detail) => {
+                if (controller.signal.aborted) return;
+                setPhraseDetails((prev) => ({ ...prev, [id]: detail }));
+                setPhraseDetailPhase((prev) => ({ ...prev, [id]: 'ready' }));
+            })
+            .catch(async (error) => {
+                if (controller.signal.aborted || (error as Error)?.name === 'AbortError') return;
+                const message = await describeApiError(error);
+                setPhraseDetailError((prev) => ({ ...prev, [id]: message }));
+                setPhraseDetailPhase((prev) => ({ ...prev, [id]: 'error' }));
+            })
+            .finally(() => {
+                if (phraseDetailControllers.current.get(id) === controller) {
+                    phraseDetailControllers.current.delete(id);
+                }
+            });
+    }, [phraseDetails, phraseDetailPhase]);
+
+    const togglePhraseExpand = useCallback((id: string) => {
+        const willExpand = !phraseExpanded.has(id);
+        setPhraseExpanded((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+        if (willExpand) loadPhraseDetail(id);
+    }, [phraseExpanded, loadPhraseDetail]);
+
+    const togglePhraseReveal = useCallback((id: string) => {
+        setPhraseRevealed((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
+
+    /** Row click: expand normally, but reveal Chinese first when it is hidden. */
+    const activatePhraseRow = useCallback((id: string) => {
+        if (hideChinese) togglePhraseReveal(id);
+        else togglePhraseExpand(id);
+    }, [hideChinese, togglePhraseExpand, togglePhraseReveal]);
+
     const toggleHideChinese = () => {
         setHideChinese((prev) => !prev);
         setRevealed(new Set());
+        setPhraseRevealed(new Set());
     };
 
     const toggleReveal = (word: string) => {
@@ -349,6 +523,13 @@ export function VocabularyBookScreen({
     const totalLabel = debouncedQuery
         ? t('vocab.search.results', { count: formatNumber(total) })
         : t('vocab.total', { count: formatNumber(total) });
+
+    const phraseTotal = phraseData?.total ?? 0;
+    const phrasePages = Math.max(1, Math.ceil(phraseTotal / PHRASE_PAGE_SIZE));
+    const phraseHasFilter = Boolean(phraseDebouncedQuery || phraseLevel || phraseType);
+    const phraseTotalLabel = phraseHasFilter
+        ? t('vocab.phrases.results', { count: formatNumber(phraseTotal) })
+        : t('vocab.phrases.total', { count: formatNumber(phraseTotal) });
 
     const sourceText = useCallback((fav: FavoriteItem): { source: ResolvedFavoriteSource; text: string; canOpen: boolean } => {
         const source = resolveFavoriteSource(fav);
@@ -391,22 +572,24 @@ export function VocabularyBookScreen({
     );
 
     const renderTabs = () => {
-        const tabs: string[] = [MINE_TAB, ...LIST_TAB_IDS];
+        const tabs: string[] = [MINE_TAB, PHRASES_TAB, ...LIST_TAB_IDS];
         return (
             <div
                 data-testid="vocab-tabs"
                 role="tablist"
                 aria-label={t('vocab.title')}
-                className="-mx-4 overflow-x-auto overflow-y-hidden px-4 sm:mx-0 sm:px-0 custom-scrollbar"
+                className="-mx-4 overflow-x-auto overflow-y-hidden px-4 sm:mx-0 sm:overflow-visible sm:px-0 custom-scrollbar"
             >
-                <div className="flex w-max min-w-full items-center gap-1 border-b border-white/5 pb-2">
+                <div className="flex w-max min-w-full items-center gap-0.5 border-b border-white/5 pb-2 sm:w-full sm:flex-wrap">
                     {tabs.map((id) => {
                         const entry = catalogById.get(id);
                         const unavailable = id === C2_TAB_ID || entry?.available === false;
                         const active = activeTab === id;
                         const label = id === MINE_TAB
                             ? t('vocab.tab.mine')
-                            : (entry?.label || FALLBACK_LABELS[id] || id).replace(/^CEFR\s+/i, '');
+                            : id === PHRASES_TAB
+                                ? t('vocab.tab.phrases')
+                                : (entry?.label || FALLBACK_LABELS[id] || id).replace(/^CEFR\s+/i, '');
                         const count = id === MINE_TAB
                             ? mineTabCount
                             : typeof entry?.count === 'number' && !unavailable
@@ -421,9 +604,9 @@ export function VocabularyBookScreen({
                                 aria-selected={active}
                                 aria-disabled={unavailable || undefined}
                                 disabled={unavailable}
-                                title={unavailable ? t('vocab.c2.note') : undefined}
+                                title={unavailable ? (id === C2_TAB_ID ? t('vocab.c2.note') : entry?.note ?? undefined) : undefined}
                                 onClick={() => selectTab(id)}
-                                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium transition-colors ${
+                                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium transition-colors ${
                                     active
                                         ? 'bg-white/[0.07] text-zinc-50'
                                         : unavailable
@@ -677,6 +860,429 @@ export function VocabularyBookScreen({
         </div>
     );
 
+    const renderPhrases = () => {
+        const phraseTypeLabel = (type: string): string => (
+            type in PHRASE_TYPE_LABEL_KEYS
+                ? t(PHRASE_TYPE_LABEL_KEYS[type as PhraseType])
+                : t('vocab.phrases.type.unknown')
+        );
+        const phraseTypeDescription = (type: string): string => (
+            type in PHRASE_TYPE_DESC_KEYS
+                ? t(PHRASE_TYPE_DESC_KEYS[type as PhraseType])
+                : ''
+        );
+        const phraseSourceLabel = (source: string): string => (
+            PHRASE_SOURCE_KEYS[source]
+                ? t(PHRASE_SOURCE_KEYS[source])
+                : (source || t('vocab.phrases.source.unknown'))
+        );
+        const typeBadge = (type: string) => (
+            <span
+                data-testid="phrase-type"
+                className="order-1 inline-flex shrink-0 items-center rounded-full border border-white/5 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium text-zinc-400 sm:order-2"
+            >
+                {phraseTypeLabel(type)}
+            </span>
+        );
+        const filterChip = (
+            selected: boolean,
+            label: string,
+            testId: string,
+            onClick: () => void,
+        ) => (
+            <button
+                key={testId}
+                type="button"
+                data-testid={testId}
+                aria-pressed={selected}
+                onClick={onClick}
+                className={`inline-flex h-8 shrink-0 items-center rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+                    selected
+                        ? 'border-blue-500/20 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'
+                        : 'border-white/5 bg-zinc-800/60 text-zinc-400 hover:bg-zinc-700/60 hover:text-zinc-100'
+                }`}
+            >
+                {label}
+            </button>
+        );
+
+        return (
+            <div data-testid="phrase-panel" className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="relative min-w-0 flex-1">
+                        <Search
+                            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+                            aria-hidden="true"
+                        />
+                        <input
+                            type="text"
+                            data-testid="phrase-search"
+                            value={phraseQuery}
+                            onChange={(event) => setPhraseQuery(event.target.value)}
+                            placeholder={t('vocab.phrases.search.placeholder')}
+                            aria-label={t('vocab.phrases.search.placeholder')}
+                            className="h-10 w-full min-w-0 rounded-xl border border-white/5 bg-zinc-800/60 pl-9 pr-9 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
+                        />
+                        {phraseQuery && (
+                            <button
+                                type="button"
+                                data-testid="phrase-search-clear"
+                                onClick={() => setPhraseQuery('')}
+                                aria-label={t('vocab.phrases.search.clear')}
+                                title={t('vocab.phrases.search.clear')}
+                                className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-300"
+                            >
+                                <X className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        data-testid="vocab-hide-toggle"
+                        data-scope="phrases"
+                        aria-pressed={hideChinese}
+                        onClick={toggleHideChinese}
+                        title={hideChinese ? t('vocab.show') : t('vocab.hide')}
+                        className={`inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors ${
+                            hideChinese
+                                ? 'border-blue-500/20 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'
+                                : 'border-white/5 bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 hover:text-zinc-100'
+                        }`}
+                    >
+                        {hideChinese ? <Eye className="h-4 w-4" aria-hidden="true" /> : <EyeOff className="h-4 w-4" aria-hidden="true" />}
+                        {hideChinese ? t('vocab.show') : t('vocab.hide')}
+                    </button>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="mr-1 text-[11px] text-zinc-500">{t('vocab.phrases.filter.level')}</span>
+                        {filterChip(
+                            phraseLevel === '',
+                            t('vocab.phrases.filter.all'),
+                            'phrase-level-all',
+                            () => setPhraseLevel(''),
+                        )}
+                        {PHRASE_LEVELS.map((level) => filterChip(
+                            phraseLevel === level,
+                            level,
+                            `phrase-level-${level}`,
+                            () => setPhraseLevel(level),
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="mr-1 text-[11px] text-zinc-500">{t('vocab.phrases.filter.type')}</span>
+                        {filterChip(
+                            phraseType === '',
+                            t('vocab.phrases.filter.all'),
+                            'phrase-type-all',
+                            () => setPhraseType(''),
+                        )}
+                        {PHRASE_TYPES.map((type) => filterChip(
+                            phraseType === type,
+                            t(PHRASE_TYPE_LABEL_KEYS[type]),
+                            `phrase-type-${type}`,
+                            () => setPhraseType(type),
+                        ))}
+                    </div>
+                </div>
+
+                <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-zinc-500">
+                    <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span data-testid="phrase-approx-note">{t('vocab.phrases.approxNote')}</span>
+                </p>
+
+                {(phraseData || phrasePhase === 'ready') && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+                        <span data-testid="phrase-total" className="tabular-nums">{phraseTotalLabel}</span>
+                        {phraseHasFilter && (
+                            <button
+                                type="button"
+                                data-testid="phrase-clear-filters"
+                                onClick={() => {
+                                    setPhraseQuery('');
+                                    setPhraseLevel('');
+                                    setPhraseType('');
+                                    setPhrasePage(1);
+                                }}
+                                className="font-medium text-blue-300 transition-colors hover:text-blue-200"
+                            >
+                                {t('vocab.phrases.clearFilters')}
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {phrasePhase === 'loading' && (
+                    <div data-testid="phrase-loading" className={`${CARD} flex items-center justify-center gap-2 py-16 text-sm text-zinc-500`}>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        {t('common.loading')}
+                    </div>
+                )}
+
+                {phrasePhase === 'error' && (
+                    <div data-testid="phrase-error" className={`${CARD} flex flex-col items-center justify-center px-6 py-16 text-center`}>
+                        <AlertTriangle className="mb-3 h-10 w-10 text-amber-400/70" aria-hidden="true" />
+                        <p className="text-sm font-medium text-zinc-300">{t('vocab.phrases.error.title')}</p>
+                        <p className="mt-1 max-w-md break-words text-xs text-zinc-500">{phraseError || t('vocab.phrases.error.hint')}</p>
+                        <button
+                            type="button"
+                            data-testid="phrase-retry"
+                            onClick={() => setPhraseNonce((value) => value + 1)}
+                            className={`${SECONDARY_BUTTON} mt-5`}
+                        >
+                            {t('common.retry')}
+                        </button>
+                    </div>
+                )}
+
+                {phrasePhase === 'ready' && phraseData && (
+                    phraseData.items.length === 0 ? (
+                        emptyState(
+                            phraseHasFilter ? t('vocab.phrases.empty.title') : t('vocab.phrases.empty.list'),
+                            phraseHasFilter ? t('vocab.phrases.empty.hint') : t('vocab.phrases.empty.listHint'),
+                            Search,
+                            'phrase-empty',
+                        )
+                    ) : (
+                        <>
+                            <p className="text-[11px] leading-relaxed text-zinc-500">
+                                {hideChinese ? t('vocab.phrases.hint.hide') : t('vocab.phrases.hint')}
+                            </p>
+                            <div data-testid="phrase-list" className={`${CARD} overflow-hidden`}>
+                                <div className="divide-y divide-white/5">
+                                    {phraseData.items.map((item: PhraseEntry) => {
+                                        const isExpanded = phraseExpanded.has(item.id);
+                                        const isRevealed = phraseRevealed.has(item.id);
+                                        const chineseHidden = hideChinese && !isRevealed;
+                                        const detail = phraseDetails[item.id];
+                                        const detailState = phraseDetailPhase[item.id] ?? 'idle';
+                                        const detailError = phraseDetailError[item.id] ?? '';
+                                        const typeDescription = phraseTypeDescription(item.type);
+                                        const sourceLabel = phraseSourceLabel(item.source);
+                                        const example = item.example || detail?.example || '';
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                data-testid={`phrase-item-${item.id}`}
+                                                className={isExpanded ? 'bg-white/[0.02]' : undefined}
+                                            >
+                                                <div className="flex items-stretch">
+                                                    <button
+                                                        type="button"
+                                                        data-testid="phrase-row"
+                                                        data-phrase-id={item.id}
+                                                        aria-expanded={hideChinese ? undefined : isExpanded}
+                                                        aria-pressed={hideChinese ? isRevealed : undefined}
+                                                        title={hideChinese ? (isRevealed ? t('vocab.tapHide') : t('vocab.tapReveal')) : undefined}
+                                                        onClick={() => activatePhraseRow(item.id)}
+                                                        className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
+                                                    >
+                                                        <span
+                                                            data-testid="phrase-headword"
+                                                            className="order-1 min-w-0 flex-1 break-words text-[15px] font-semibold leading-snug text-zinc-100 sm:order-1"
+                                                        >
+                                                            {item.headword}
+                                                        </span>
+                                                        <span className="order-3 flex w-full min-w-0 flex-wrap items-center gap-2 sm:contents">
+                                                            {typeBadge(item.type)}
+                                                            <span className="order-2 min-w-0 flex-1 break-words text-sm text-zinc-400 sm:order-3">
+                                                                {chineseHidden ? null : (
+                                                                    <span data-testid="phrase-translation">{item.translation || '—'}</span>
+                                                                )}
+                                                            </span>
+                                                        </span>
+                                                        <span className="order-2 flex shrink-0 items-center gap-2 self-start sm:order-4 sm:self-auto">
+                                                            {hideChinese && (
+                                                                isRevealed
+                                                                    ? <Eye className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
+                                                                    : <EyeOff className="h-3.5 w-3.5 text-zinc-600" aria-hidden="true" />
+                                                            )}
+                                                            <LevelBadge
+                                                                testId="phrase-level"
+                                                                level={item.cefr || '—'}
+                                                                title={t('vocab.phrases.approxTitle')}
+                                                            />
+                                                        </span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        data-testid="phrase-expand"
+                                                        aria-expanded={isExpanded}
+                                                        aria-controls={`phrase-detail-${item.id}`}
+                                                        aria-label={isExpanded ? t('vocab.phrases.collapse') : t('vocab.phrases.expand')}
+                                                        title={isExpanded ? t('vocab.phrases.collapse') : t('vocab.phrases.expand')}
+                                                        onClick={() => togglePhraseExpand(item.id)}
+                                                        className="flex w-10 shrink-0 items-center justify-center text-zinc-500 transition-colors hover:bg-white/[0.03] hover:text-zinc-300"
+                                                    >
+                                                        <ChevronDown
+                                                            className={`h-4 w-4 transition-transform duration-200 ease-apple motion-reduce:transition-none ${
+                                                                isExpanded ? 'rotate-180' : ''
+                                                            }`}
+                                                            aria-hidden="true"
+                                                        />
+                                                    </button>
+                                                </div>
+
+                                                <AnimatePresence initial={false}>
+                                                    {isExpanded && (
+                                                        <motion.div
+                                                            key="body"
+                                                            id={`phrase-detail-${item.id}`}
+                                                            data-testid="phrase-detail"
+                                                            initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+                                                            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.25, 1, 0.5, 1] }}
+                                                            className="overflow-hidden"
+                                                        >
+                                                            <div className="grid grid-cols-1 gap-3 border-t border-white/5 px-4 pb-4 pt-3 sm:grid-cols-2">
+                                                                <div className="min-w-0 space-y-1 sm:col-span-2">
+                                                                    <p className="text-[11px] text-zinc-500">{t('vocab.phrases.detail.example')}</p>
+                                                                    <p
+                                                                        data-testid="phrase-example"
+                                                                        className="break-words text-[13px] leading-relaxed text-zinc-200"
+                                                                    >
+                                                                        {example || '—'}
+                                                                    </p>
+                                                                </div>
+
+                                                                {!chineseHidden && (
+                                                                    <div className="min-w-0 space-y-1">
+                                                                        <p className="text-[11px] text-zinc-500">{t('vocab.phrases.detail.type')}</p>
+                                                                        <p
+                                                                            data-testid="phrase-type-desc"
+                                                                            className="break-words text-[13px] leading-relaxed text-zinc-300"
+                                                                        >
+                                                                            {typeDescription || '—'}
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="min-w-0 space-y-1">
+                                                                    <p className="text-[11px] text-zinc-500">{t('vocab.phrases.detail.source')}</p>
+                                                                    <p
+                                                                        data-testid="phrase-source"
+                                                                        title={detail?.license ?? undefined}
+                                                                        className="break-words text-xs text-zinc-300"
+                                                                    >
+                                                                        {sourceLabel}
+                                                                    </p>
+                                                                    {detail?.license && (
+                                                                        <p className="break-words text-[11px] text-zinc-600">{detail.license}</p>
+                                                                    )}
+                                                                </div>
+
+                                                                {chineseHidden ? (
+                                                                    <div
+                                                                        data-testid="phrase-zh-hidden"
+                                                                        className="min-w-0 rounded-xl border border-white/5 bg-zinc-950/30 px-3 py-2 text-[11px] leading-relaxed text-zinc-500 sm:col-span-2"
+                                                                    >
+                                                                        {t('vocab.phrases.detail.zhHidden')}
+                                                                    </div>
+                                                                ) : (
+                                                                    <>
+                                                                        {detailState === 'loading' && (
+                                                                            <p data-testid="phrase-detail-loading" className="flex items-center gap-1.5 text-xs text-zinc-500">
+                                                                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                                                                                {t('vocab.phrases.detail.loading')}
+                                                                            </p>
+                                                                        )}
+                                                                        {detailState === 'error' && (
+                                                                            <div className="flex flex-wrap items-center gap-2 text-xs text-amber-300">
+                                                                                <span data-testid="phrase-detail-error">
+                                                                                    {t('vocab.phrases.detail.error')}
+                                                                                    {detailError ? ` · ${detailError}` : ''}
+                                                                                </span>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    data-testid="phrase-detail-retry"
+                                                                                    onClick={() => loadPhraseDetail(item.id, true)}
+                                                                                    className="font-medium text-amber-100 underline-offset-2 hover:underline"
+                                                                                >
+                                                                                    {t('common.retry')}
+                                                                                </button>
+                                                                            </div>
+                                                                        )}
+                                                                        {detail?.notes && (
+                                                                            <div className="min-w-0 space-y-1 sm:col-span-2">
+                                                                                <p className="text-[11px] text-zinc-500">{t('vocab.phrases.detail.notes')}</p>
+                                                                                <p
+                                                                                    data-testid="phrase-notes"
+                                                                                    className="break-words text-[13px] leading-relaxed text-zinc-400"
+                                                                                >
+                                                                                    {detail.notes}
+                                                                                </p>
+                                                                            </div>
+                                                                        )}
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div data-testid="phrase-pagination" className="flex flex-wrap items-center justify-between gap-2">
+                                <span data-testid="phrase-page-status" className="text-xs text-zinc-500 tabular-nums">
+                                    {t('vocab.page.status', { page: formatNumber(phrasePage), pages: formatNumber(phrasePages) })}
+                                </span>
+                                <div className="flex min-w-0 items-center gap-1 overflow-x-auto custom-scrollbar">
+                                    <button
+                                        type="button"
+                                        data-testid="phrase-page-prev"
+                                        disabled={phrasePage <= 1}
+                                        onClick={() => setPhrasePage((value) => Math.max(1, value - 1))}
+                                        aria-label={t('vocab.page.prev')}
+                                        title={t('vocab.page.prev')}
+                                        className="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-800/60 text-zinc-300 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100 disabled:opacity-40 disabled:pointer-events-none"
+                                    >
+                                        <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                                    </button>
+                                    {paginationTokens(phrasePage, phrasePages).map((token, index) => (
+                                        token === 'ellipsis' ? (
+                                            <span key={`ellipsis-${index}`} className="px-1 text-xs text-zinc-600">…</span>
+                                        ) : (
+                                            <button
+                                                key={token}
+                                                type="button"
+                                                data-testid={`phrase-page-${token}`}
+                                                aria-current={token === phrasePage ? 'page' : undefined}
+                                                onClick={() => setPhrasePage(token)}
+                                                className={`inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg px-2 text-xs font-medium tabular-nums transition-colors ${
+                                                    token === phrasePage
+                                                        ? 'bg-white/10 text-zinc-100'
+                                                        : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
+                                                }`}
+                                            >
+                                                {formatNumber(token)}
+                                            </button>
+                                        )
+                                    ))}
+                                    <button
+                                        type="button"
+                                        data-testid="phrase-page-next"
+                                        disabled={!phraseData.hasMore}
+                                        onClick={() => setPhrasePage((value) => value + 1)}
+                                        aria-label={t('vocab.page.next')}
+                                        title={t('vocab.page.next')}
+                                        className="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-800/60 text-zinc-300 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100 disabled:opacity-40 disabled:pointer-events-none"
+                                    >
+                                        <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    )
+                )}
+            </div>
+        );
+    };
+
     const renderList = () => {
         const label = activeList?.label || FALLBACK_LABELS[activeTab] || activeTab;
         return (
@@ -898,7 +1504,7 @@ export function VocabularyBookScreen({
                 )}
                 {renderTabs()}
                 {renderC2Note()}
-                {activeIsMine ? renderMine() : renderList()}
+                {activeIsMine ? renderMine() : activeTab === PHRASES_TAB ? renderPhrases() : renderList()}
             </div>
         </div>
     );
