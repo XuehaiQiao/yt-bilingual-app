@@ -23,6 +23,8 @@ import {
 
 interface BookImportDialogProps {
     open: boolean;
+    /** Prefilled link (handover from the article reader or another entry). */
+    initialUrl?: string;
     onClose: () => void;
     onImported: (bookId: string) => void;
     onRequestLogin: () => void;
@@ -30,6 +32,7 @@ interface BookImportDialogProps {
 
 export function BookImportDialog({
     open,
+    initialUrl,
     onClose,
     onImported,
     onRequestLogin,
@@ -44,14 +47,14 @@ export function BookImportDialog({
 
     useEffect(() => {
         if (!open) return;
-        setUrl('');
+        setUrl(initialUrl ?? '');
         setPreview(null);
         setPreviewing(false);
         setImporting(false);
         setError(null);
         const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
         return () => window.cancelAnimationFrame(frame);
-    }, [open]);
+    }, [open, initialUrl]);
 
     useEffect(() => {
         if (!open) return;

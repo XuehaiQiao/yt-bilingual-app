@@ -60,6 +60,9 @@ interface ContentScreenProps {
     onOpenBook: (id: string) => void;
     onOpenBookSeries: (id: string) => void;
     onOpenImportedBook: (id: string) => void;
+    /** A public-domain book link handed over from the article reader. */
+    bookImportSeed?: { url: string; nonce: number } | null;
+    onBookImportSeedConsumed?: () => void;
     onOpenDiscover: () => void;
     onOpenReader: () => void;
     onOpenSentences: (levelId: number) => void;
@@ -84,6 +87,8 @@ export function ContentScreen({
     onOpenBook,
     onOpenBookSeries,
     onOpenImportedBook,
+    bookImportSeed,
+    onBookImportSeedConsumed,
     onOpenDiscover,
     onOpenReader,
     onOpenSentences,
@@ -421,6 +426,8 @@ export function ContentScreen({
                         onOpenImportedBook={onOpenImportedBook}
                         onRequestLogin={onRequestLogin}
                         isGuest={isGuest}
+                        importSeed={bookImportSeed}
+                        onImportSeedConsumed={onBookImportSeedConsumed}
                     />
                 </section>
 

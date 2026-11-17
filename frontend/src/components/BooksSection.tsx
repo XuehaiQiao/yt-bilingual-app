@@ -26,6 +26,9 @@ interface BooksSectionProps {
     onOpenImportedBook: (bookId: string) => void;
     onRequestLogin: () => void;
     isGuest: boolean;
+    /** A public-domain book link handed over from the article reader. */
+    importSeed?: { url: string; nonce: number } | null;
+    onImportSeedConsumed?: () => void;
 }
 
 const CARD =
@@ -193,14 +196,24 @@ export function BooksSection({
     onOpenImportedBook,
     onRequestLogin,
     isGuest,
+    importSeed,
+    onImportSeedConsumed,
 }: BooksSectionProps) {
     const { t, formatNumber } = useI18n();
     const [data, setData] = useState<BooksIndex | null>(null);
     const [loading, setLoading] = useState(true);
     const [failed, setFailed] = useState(false);
     const [retryToken, setRetryToken] = useState(0);
-    const [importOpen, setImportOpen] = useState(false);
+    // The article reader hands the link over by navigating to this page, so the
+    // section remounts with the seed already present (no effect-setState loop).
+    const [importOpen, setImportOpen] = useState(() => Boolean(importSeed));
+    const [initialImportUrl, setInitialImportUrl] = useState(() => importSeed?.url ?? '');
     const [importedToken, setImportedToken] = useState(0);
+
+    useEffect(() => {
+        if (!importSeed) return;
+        onImportSeedConsumed?.();
+    }, [importSeed, onImportSeedConsumed]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -337,9 +350,14 @@ export function BooksSection({
 
             <BookImportDialog
                 open={importOpen}
-                onClose={() => setImportOpen(false)}
+                initialUrl={initialImportUrl}
+                onClose={() => {
+                    setImportOpen(false);
+                    setInitialImportUrl('');
+                }}
                 onImported={(bookId) => {
                     setImportOpen(false);
+                    setInitialImportUrl('');
                     setImportedToken((value) => value + 1);
                     onOpenImportedBook(bookId);
                 }}
