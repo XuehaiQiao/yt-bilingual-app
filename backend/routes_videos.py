@@ -30,6 +30,7 @@ import languages
 import llm
 import local_shows
 import storage
+import teaching_analysis
 from transcripts import (
     canonical_watch_url,
     extract_video_id,
@@ -309,6 +310,16 @@ async def process_video(request: VideoRequest):
                 # 只有真正用这次选的模型重跑过，才更新缓存里的模型标记。
                 if not cached_data.get("model") and (repaired or refreshed):
                     cached_data["model"] = model
+                # 教学分析：按内容+等级+语言补高亮/习语/文化点（缓存命中零调用），
+                # 再随 _bump_study 一起写回缓存文件。
+                await teaching_analysis.attach_to_payload(
+                    cached_data,
+                    level=request.vocab_level,
+                    target_lang=lang,
+                    content_ref=video_id,
+                    model=model,
+                    user_id=storage.active_identity(),
+                )
                 _bump_study(cached_data, cached_path)
                 return cached_data
         except (json.JSONDecodeError, KeyError) as e:
@@ -403,6 +414,15 @@ async def process_video(request: VideoRequest):
         "model": model,
         "studyCount": 1,
     }, lang)
+    # 教学分析：翻译只负责译文，高亮/习语/文化点在这里按等级单独生成并合并。
+    await teaching_analysis.attach_to_payload(
+        result_payload,
+        level=request.vocab_level,
+        target_lang=lang,
+        content_ref=video_id,
+        model=model,
+        user_id=storage.active_identity(),
+    )
 
     file_path = os.path.join(storage.history_dir(lang), filename)
     with open(file_path, "w", encoding="utf-8") as f:
@@ -722,6 +742,18 @@ async def _cached_stream_gen(
         if needs_retranslation(block.get("zh_text", ""))
     ]
 
+    # 纯缓存打开：先把该等级的教学分析补齐/合并，meta 里就能带上正确的高亮。
+    # 有未翻译句时等翻译完成后再分析，并用 batch 事件回传（见下方）。
+    if not pending:
+        await teaching_analysis.attach_to_payload(
+            cached,
+            level=vocab_level,
+            target_lang=lang,
+            content_ref=cached.get("videoId") or "",
+            model=model,
+            user_id=storage.active_identity(),
+        )
+
     yield _event("meta", {
         "videoId": cached.get("videoId"),
         "metadata": cached.get("metadata", {}),
@@ -752,6 +784,27 @@ async def _cached_stream_gen(
                 # 续传/补译的进度按「全量已翻句数」报，前端进度条不会从中途归零。
                 "progress": {"done": cursor, "total": total},
                 "cursor": cursor,
+                "total": total,
+                "jobId": job_id,
+            })
+
+    # 有未翻译句时上面才翻译；翻译完成后再做教学分析（一次模型调用/按等级缓存），
+    # 用既有 batch 事件回传更新后的 blocks，前端按 id 合并即可显示高亮。
+    if pending:
+        analysis = await teaching_analysis.attach_to_payload(
+            cached,
+            level=vocab_level,
+            target_lang=lang,
+            content_ref=cached.get("videoId") or "",
+            model=model,
+            user_id=storage.active_identity(),
+        )
+        if analysis is not None:
+            updated_cursor = _translated_cursor(transcript)
+            yield _event("batch", {
+                "blocks": transcript,
+                "progress": {"done": updated_cursor, "total": total},
+                "cursor": updated_cursor,
                 "total": total,
                 "jobId": job_id,
             })
@@ -942,6 +995,26 @@ async def _fresh_stream_gen(
             **update,
             "progress": {"done": cursor, "total": total},
             "cursor": cursor,
+            "total": total,
+            "jobId": job_id,
+        })
+
+    # 翻译只负责译文；教学分析在翻译完成后单独生成/命中缓存，并按 block id
+    # 合并进 payload。用 batch 事件把带高亮的 blocks 回传给前端（沿用既有事件）。
+    analysis = await teaching_analysis.attach_to_payload(
+        payload,
+        level=vocab_level,
+        target_lang=lang,
+        content_ref=video_id,
+        model=model,
+        user_id=storage.active_identity(),
+    )
+    if analysis is not None:
+        updated_cursor = _translated_cursor(transcript)
+        yield _event("batch", {
+            "blocks": transcript,
+            "progress": {"done": updated_cursor, "total": total},
+            "cursor": updated_cursor,
             "total": total,
             "jobId": job_id,
         })
@@ -1259,8 +1332,13 @@ async def get_history(
     filename: str,
     model: str | None = None,
     targetLang: str | None = None,
+    level: str | None = None,
 ):
-    """在**当前目标语言**目录里解析裸文件名；语言不一致视为未命中。"""
+    """在**当前目标语言**目录里解析裸文件名；语言不一致视为未命中。
+
+    ``level`` 可选：传了才按该 CEFR 高亮档 ensure/合并教学分析（命中缓存零
+    模型调用）；不传保持旧行为，不在普通打开历史时产生 AI 成本。
+    """
     lang = _target_lang_or_400(targetLang)
     # Guard against path traversal — only bare filenames inside the language dir
     if os.path.basename(filename) != filename:
@@ -1292,6 +1370,19 @@ async def get_history(
             )
         if not data.get("model") and (repaired or refreshed):
             data["model"] = chosen_model
+        if level:
+            try:
+                teaching_analysis.normalize_level(level)
+            except teaching_analysis.AnalysisInvalidRequest as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            await teaching_analysis.attach_to_payload(
+                data,
+                level=level,
+                target_lang=lang,
+                content_ref=str(data.get("videoId") or filename),
+                model=chosen_model,
+                user_id=storage.active_identity(),
+            )
         _bump_study(data, file_path)
     # 本地剧集缓存：从 episodes.json 现取 YouTube 映射补进返回的 metadata，
     # 与 process-subtitle 缓存命中的行为一致；不写回缓存文件，避免映射更新后

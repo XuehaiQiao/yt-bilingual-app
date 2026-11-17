@@ -4,7 +4,8 @@
 
 - ``POST /api/article/import``               URL 抓取或粘贴正文 → 标题/段落
 - ``POST /api/article/{id}/translate``       逐段翻译（幂等，只补缺失段）
-- ``GET  /api/article/{id}?targetLang=``     标题/段落/已有译文/进度
+- ``GET  /api/article/{id}?targetLang=&level=`` 标题/段落/已有译文/进度；传
+  ``level`` 时额外附带按该高亮档生成的教学分析（高亮/习语/文化点，缓存命中零模型）
 - ``GET  /api/articles``                     当前用户的文章列表
 - ``DELETE /api/article/{id}``               删除文章（段落/译文/进度级联）
 - ``PUT  /api/article/{id}/progress``        保存阅读进度
@@ -32,6 +33,7 @@ from pydantic import AliasChoices, BaseModel, Field
 
 import languages
 import reading
+import teaching_analysis
 from ai import quota
 
 router = APIRouter(tags=["reading"])
@@ -128,18 +130,55 @@ async def translate_article(
 # 读 / 列表 / 删除 / 进度
 # ---------------------------------------------------------------------------
 
+async def _attach_article_analysis(
+    payload: dict, user_id: str, lang: str, level: str | None
+) -> dict:
+    """可选：给文章段落合并教学分析（specs/028）。
+
+    只有显式传 ``level`` 才调用（普通打开文章不产生额外 AI 成本）；分析失败
+    静默跳过，阅读本身不受影响。命中缓存时零模型调用。
+    """
+    if not level:
+        return payload
+    try:
+        teaching_analysis.normalize_level(level)
+    except teaching_analysis.AnalysisInvalidRequest as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    wrapper = {"transcript": payload.get("paragraphs") or []}
+    analysis = await teaching_analysis.attach_to_payload(
+        wrapper,
+        level=level,
+        target_lang=lang,
+        content_ref=f"article:{payload.get('articleId') or ''}",
+        user_id=user_id,
+    )
+    if analysis is not None:
+        payload["paragraphs"] = wrapper["transcript"]
+        payload["idioms"] = wrapper.get("idioms") or []
+        payload["culture"] = wrapper.get("culture") or []
+        payload["analysisVersion"] = (
+            wrapper.get("analysisVersion") or teaching_analysis.ANALYSIS_VERSION
+        )
+        payload["analysisLevel"] = analysis.get("level") or level
+    return payload
+
+
 @router.get("/api/article/{article_id}")
-def get_article(
-    article_id: str, request: Request, targetLang: str | None = None
+async def get_article(
+    article_id: str,
+    request: Request,
+    targetLang: str | None = None,
+    level: str | None = None,
 ):
-    """标题 + 段落（含已有译文）+ 当前用户进度。"""
+    """标题 + 段落（含已有译文）+ 当前用户进度；可选教学分析。"""
     user = _require_login(request)
     lang = _target_lang_or_400(targetLang)
     try:
-        return reading.get_article_detail(user["id"], article_id, lang)
+        payload = reading.get_article_detail(user["id"], article_id, lang)
     except Exception as exc:  # noqa: BLE001
         _raise_reading_error(exc)
         raise  # pragma: no cover
+    return await _attach_article_analysis(payload, user["id"], lang, level)
 
 
 @router.get("/api/articles")

@@ -51,6 +51,8 @@ KNOWN_FEATURES = (
     "reading",
     # 内置公版书库按需翻译（book_translation.py；全局缓存、无按用户配额）。
     "books",
+    # AI 教学分析（teaching_analysis.py；高亮/习语/文化点，specs/028）。
+    "analysis",
 )
 FEATURE_LABELS = {
     "translate": "翻译",
@@ -60,6 +62,7 @@ FEATURE_LABELS = {
     "quiz": "理解题",
     "reading": "读文章",
     "books": "公版书",
+    "analysis": "教学分析",
 }
 
 # 目录里一个已知价都没有时的保守兜底（非官方报价，只在异常配置下使用）。

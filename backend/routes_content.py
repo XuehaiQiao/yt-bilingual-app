@@ -15,6 +15,7 @@ import languages
 import llm
 import local_shows
 import storage
+import teaching_analysis
 from config import SENTENCES_DIR, SUBTITLES_DIR
 from transcripts import group_srt_blocks, parse_srt
 from translate import (
@@ -156,6 +157,11 @@ class SubtitleRequest(BaseModel):
         default=None,
         validation_alias=AliasChoices("targetLang", "target_lang"),
     )
+    # specs/028：可选高亮等级；缺省按默认档（旧前端不传，不改变既有行为）。
+    vocab_level: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("vocabLevel", "vocab_level"),
+    )
 
 
 def _target_lang_or_400(raw: str | None) -> str:
@@ -215,6 +221,15 @@ async def process_subtitle(request: SubtitleRequest):
             cached_data = await retranslate_marked_blocks(
                 cached_data, cache_path, model=model, feature="local_show",
                 target_lang=lang,
+            )
+            # 教学分析：按内容+等级+语言合并高亮/习语/文化点（命中缓存零模型）。
+            await teaching_analysis.attach_to_payload(
+                cached_data,
+                level=request.vocab_level,
+                target_lang=lang,
+                content_ref=cached_data.get("videoId") or "",
+                model=model,
+                user_id=storage.active_identity(),
             )
             # 缓存里可能没有 YouTube 映射（老缓存，或 episodes.json 后来才补上）：
             # 每次命中都从映射现取，只改返回的 payload，不重写缓存文件。
@@ -334,6 +349,18 @@ async def process_subtitle(request: SubtitleRequest):
         # 随 payload 一起落盘，缓存命中时原样返回。
         "model": model,
     }, lang)
+
+    # 翻译只负责译文；全部批次成功时再补教学分析（有 mock 兜底说明译文不完整，
+    # 等下次自愈补译后再生成，避免把 zh_word 校验成空的半成品缓存下来）。
+    if not has_mock_fallback:
+        await teaching_analysis.attach_to_payload(
+            result_payload,
+            level=request.vocab_level,
+            target_lang=lang,
+            content_ref=result_payload.get("videoId") or "",
+            model=model,
+            user_id=storage.active_identity(),
+        )
 
     # Only cache if all batches succeeded (no mock fallback)
     if not has_mock_fallback:

@@ -7,7 +7,8 @@
 - ``GET /api/books/{book_id}/chapters/{n}``  **实时抓取**公版源原文，按段落与本地
   中译文/全局译文缓存对齐返回 ``paragraphs: [{index, en, zh}]``；译文缺失段落
   ``zh: null``，并用 ``translationStatus`` 标记 ``cached`` / ``partial`` /
-  ``missing``（无译文的默认状态，保持兼容）；
+  ``missing``（无译文的默认状态，保持兼容）。可选 ``?level=``：登录用户额外
+  生成/缓存该高亮档的教学分析（highlights/idioms/culture，缓存命中零模型）；
 - ``POST /api/books/{book_id}/chapters/{n}/translate``  公开/游客可用的**按需
   翻译**：只翻缺失段落，写全局缓存 ``book_chapter_translations``，返回完整章节
   （``cached: false``）；再次调用命中缓存返回 ``cached: true``，不调模型、不扣费。
@@ -46,6 +47,7 @@ from pydantic import AliasChoices, BaseModel, Field
 import book_translation
 import books
 import languages
+import teaching_analysis
 
 logger = logging.getLogger("linguatrek.books.routes")
 
@@ -135,12 +137,50 @@ def get_book(book_id: str):
     return _json(payload, max_age=300)
 
 
+async def _attach_chapter_analysis(
+    payload: dict, request: Request, lang: str, level: str | None
+) -> dict:
+    """可选：给章节段落合并教学分析（specs/028）。
+
+    分析有 AI 成本，因此只有显式传 ``level`` 且已登录时才执行；失败静默
+    跳过（读书链路不能因为增强功能挂掉）。缓存命中零模型调用。
+    """
+    if not level:
+        return payload
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=403, detail="教学分析需要登录后使用。")
+    try:
+        teaching_analysis.normalize_level(level)
+    except teaching_analysis.AnalysisInvalidRequest as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    wrapper = {"transcript": payload.get("paragraphs") or []}
+    analysis = await teaching_analysis.attach_to_payload(
+        wrapper,
+        level=level,
+        target_lang=lang,
+        content_ref=f"book:{payload.get('bookId') or ''}:{payload.get('chapter')}",
+        user_id=user["id"],
+    )
+    if analysis is not None:
+        payload["paragraphs"] = wrapper["transcript"]
+        payload["idioms"] = wrapper.get("idioms") or []
+        payload["culture"] = wrapper.get("culture") or []
+        payload["analysisVersion"] = (
+            wrapper.get("analysisVersion") or teaching_analysis.ANALYSIS_VERSION
+        )
+        payload["analysisLevel"] = analysis.get("level") or level
+    return payload
+
+
 @router.get("/api/books/{book_id}/chapters/{number}")
-def get_book_chapter(
+async def get_book_chapter(
     book_id: str,
     number: int,
+    request: Request,
     lang: str | None = None,
     targetLang: str | None = None,
+    level: str | None = None,
 ):
     """实时抓取公版源章节，并与本地中译文/全局译文缓存按段落对齐；不缓存原文。"""
     resolved = _query_lang(lang, targetLang)
@@ -172,6 +212,7 @@ def get_book_chapter(
             model=cached.get("model"),
             updated_at=cached.get("updated_at"),
         )
+    payload = await _attach_chapter_analysis(payload, request, resolved, level)
     return _json(payload, max_age=None)
 
 

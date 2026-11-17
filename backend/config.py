@@ -471,6 +471,9 @@ AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES = _int_env("AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES"
 AI_DAILY_QUOTA_QUIZ = _int_env("AI_DAILY_QUOTA_QUIZ", 30)
 # V1 读文章：每用户每日翻译批次数（1 批 = 默认 10 段；已有译文/失败重试只算缺失段）。
 AI_DAILY_QUOTA_READING_BATCHES = _int_env("AI_DAILY_QUOTA_READING_BATCHES", 60)
+# AI 教学分析（高亮/习语/文化点，specs/028）：每用户每日「生成一份内容分析」
+# 次数。缓存命中（同 content_hash + level + target_lang）不占额度、零模型调用。
+AI_DAILY_QUOTA_ANALYSIS = _int_env("AI_DAILY_QUOTA_ANALYSIS", 30)
 
 # 第二、三层预算（美元/日；0 = 不启用该层硬闸）。默认值是保守占位，运营按
 # 实际成本目标调；检查依据是 ai_usage 当日 SUM，不是前端估价。
