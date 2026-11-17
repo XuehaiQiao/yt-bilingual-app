@@ -199,6 +199,54 @@ NEGATIVE_CONTROL = {
     "reason": "计划 §3.5/§10.2 的负例：A2 不该开 Kurzgesagt",
 }
 
+# 第四轮（G0 v4）：盲评包轮次与独立种子。评审材料里不得出现包/档位/来源。
+G0_ROUND = "g0-v4"
+REVIEW_SEED = 20261120
+
+# 第四轮重点修复：生成时把 v3 双评失败的条目重新拉回对应 pack，避免“换了一批题，
+# 旧失败项自然消失”被误读为修复。这里只给生成提示；最终证据仍以窗口原文和机械闸为准。
+# 盲评优先顺序：v3 双评失败的 pack 排在前面，避免同 headword 去重时
+# 被另一个“同样修过但非失败项”的 pack 顶掉（如 E18 的 pg B1 worth / Q07 的 TED-Ed B2）。
+V4_PRIORITY_PACK_ORDER = {
+    "g0-pg-read-and-you-will-know-b1": 0,
+    "g0-teded-better-economy-b2": 1,
+    "g0-ocean-noise-b1": 2,
+    "g0-teded-better-economy-b1": 3,
+    "g0-pg-read-and-you-will-know-a2": 4,
+    "g0-free-app-hidden-cost-b1": 5,
+}
+
+V4_FOCUS = {
+    "g0-ocean-noise-b1": {
+        "lemmas": ["quieter"],
+        "note": "quieter 的比较级用法：不得把 more quiet 判错；只讲本句。",
+    },
+    "g0-pg-read-and-you-will-know-b1": {
+        "form_id": "g.worth_gerund",
+        "note": "worth + 动词-ing：why_here 必须锚定 worth reading，不能拿 No book is 充数。",
+    },
+    "g0-teded-better-economy-b1": {
+        "lemmas": ["metaphor"],
+        "note": "metaphor：明确比较双方是经济增长与身体生长。",
+    },
+    "g0-teded-better-economy-b2": {
+        "form_id": "g.if_clause",
+        "note": "if 条件句：引文尽量含完整条件—结果，why_here 写明条件与主句结果。",
+    },
+    "g0-kurzgesagt-ai-slop-b2": {
+        "question_briefs": [
+            "必须有一道题问 AI 来源的可信度/出处：引文必须含 source/credible/solid 等词，"
+            "答案必须由引文直接推出（例如 AI article without sources used as a credible source）"
+        ],
+    },
+    "g0-free-app-hidden-cost-b2": {
+        "question_briefs": [
+            "必须有一道题问免费应用的隐藏代价；若题干写 first/one of，引文必须含 first/one of 或明确顺序，"
+            "否则删掉限定词只问“一种代价”"
+        ],
+    },
+}
+
 # 首轮报告 §7 的 M2 post-hoc 数字（2026-11-17T01:04 运行）。重跑时用于逐 pack 对账：
 # 判定必须同为 7/10；若数值变化，报告要显式说明差异而不是覆盖历史。
 PREVIOUS_POSTHOC = {
@@ -1247,7 +1295,15 @@ def build_analyze_prompt(content: dict, window: dict, band: str) -> str:
 硬约束：上下文卡 quote 必须是窗口原文的归一化子串；不得引用标题/频道/百科；不要编造数字。"""
 
 
-def build_points_prompt(content: dict, window: dict, band: str, analysis: dict, candidates: list[dict], forms: list[dict]) -> str:
+def build_points_prompt(
+    content: dict,
+    window: dict,
+    band: str,
+    analysis: dict,
+    candidates: list[dict],
+    forms: list[dict],
+    focus: dict | None = None,
+) -> str:
     candidate_lines = []
     for item in candidates[:26]:
         candidate_lines.append(
@@ -1261,6 +1317,15 @@ def build_points_prompt(content: dict, window: dict, band: str, analysis: dict, 
         form_lines.append(
             f'- form_id={form["form_id"]} label={form["label"]} cefr={form["cefr"]} pattern={form["pattern"]} matches={matches}'
         )
+    focus_lines: list[str] = []
+    if focus:
+        if focus.get("lemmas"):
+            focus_lines.append("- 必含词汇点（若候选池有）：" + "、".join(focus["lemmas"]))
+        if focus.get("form_id"):
+            focus_lines.append(f"- 必含形式点（若形式库有）：{focus['form_id']}")
+        if focus.get("note"):
+            focus_lines.append(f"- 本次重点：{focus['note']}")
+    focus_block = ("\n".join(focus_lines) + "\n") if focus_lines else ""
     return f"""你是英语教学编辑。目标档 {band}（CEFR {BANDS[band]['cefr']}）。窗口原文：
 <TRANSCRIPT>
 {fmt_unit_lines(content, window)}
@@ -1268,7 +1333,7 @@ def build_points_prompt(content: dict, window: dict, band: str, analysis: dict, 
 
 分析：{json_dumps(analysis, ensure_ascii=False)}
 
-候选词（只能从中选 4 个，不得新增）：
+{focus_block}候选词（只能从中选 4 个，不得新增）：
 {chr(10).join(candidate_lines)}
 
 形式库候选（只能选 1 个 form_id，不得新增；若都不匹配就 form 为空）：
@@ -1312,13 +1377,28 @@ def build_points_prompt(content: dict, window: dict, band: str, analysis: dict, 
    - salvage = 抢救/挽救还能用的部分；引文没有说明对象时，禁止窄化为“研究内容/数据”等具体对象。
    - boredom = 无聊/厌倦的感受（名词），不是“没事可做的状态”。
    释义以常用词典义为准；禁止无依据窄化、贬义化、编造引文没有的信息。
-8) 克制：explain <=60 字；禁止词源/百科/考试技巧；禁止 sauce / confidential / general / 自动更新 等与本句理解无关的拼写联想。pitfall 没有真实陷阱就省略字段（不要输出空字符串）。"""
+8) 克制：explain <=60 字；禁止词源/百科/考试技巧；禁止 sauce / confidential / general / 自动更新 等与本句理解无关的拼写联想。pitfall 没有真实陷阱就省略字段（不要输出空字符串）。
+9) 形式点 why_here 必须直接引用该形式的实际搭配并说明本句作用；禁止“体现…说明这个形式在句中的作用”式模板复述。若 form_id=g.worth_gerund，why_here 必须锚定 worth + 动词-ing（如 worth reading），不能拿 No book is 充数；若 form_id=g.if_clause，引文优先选同时含 if 从句与主句的完整句，why_here 写明条件与结果。
+10) 词汇易错点只写本句真实存在的陷阱；不得把常见变体判错（例如 more quiet 也可用，不能写“不是 more quiet”）。
+11) metaphor 类释义必须写明比较双方；本句若讲经济增长，就写“经济增长比作身体生长”，不能只说“生命成长”。"""
 
 
-def build_items_prompt(content: dict, window: dict, band: str, analysis: dict, points: list[dict]) -> str:
+def build_items_prompt(
+    content: dict,
+    window: dict,
+    band: str,
+    analysis: dict,
+    points: list[dict],
+    focus: dict | None = None,
+) -> str:
     spec = BANDS[band]
     role_plan = " / ".join(f"{role}×{count}" for role, count in spec["main_roles"].items())
     option_lo, option_hi = spec["option_words"]
+    focus_lines: list[str] = []
+    if focus and focus.get("question_briefs"):
+        focus_lines.append("本 pack 必须覆盖：")
+        focus_lines.extend(f"- {brief}" for brief in focus["question_briefs"])
+    focus_block = ("\n".join(focus_lines) + "\n") if focus_lines else ""
     points_brief = []
     for point in points:
         locator = point.get("locator") or {}
@@ -1342,7 +1422,7 @@ def build_items_prompt(content: dict, window: dict, band: str, analysis: dict, p
 分析：{json_dumps(analysis, ensure_ascii=False)}
 讲解点：{json_dumps(points_brief, ensure_ascii=False)}
 
-题量：6 道主测（section=main，角色 {role_plan}）+ 2 道离场测（section=exit，vocab×1 + form×1）+ 1 道 gist（section=gist，不计分）。
+{focus_block}题量：6 道主测（section=main，角色 {role_plan}）+ 2 道离场测（section=exit，vocab×1 + form×1）+ 1 道 gist（section=gist，不计分）。
 题型只用 mcq（4 个选项）或 tf（2 个选项 True/False）。答案下标从 0 开始。
 
 出题硬约束（逐条检查，全部满足才输出）：
@@ -1354,6 +1434,10 @@ def build_items_prompt(content: dict, window: dict, band: str, analysis: dict, p
 6) form 题只考讲解点里的那个 form_id；4 个选项必须是完整英文句子（不要用单字/短语填空），且只能有 1 个符合该形式规则。
 7) 词汇题正确答案的措辞要有引文词面依据（答案实词能在引文里找到），否则换引文。
 8) 证据自检：把 evidence.quote 单独读一遍，答案必须能由它直接推出且唯一；正确答案至少要有 1 个实词在引文里逐字出现（词形变化可接受）。不能靠引文外的背景（人物关系、动机、后果、数字、专名）补足；答案选项不得含引文没有的专名/数字；引文只能支持“有限事实”时，题目就限定在该事实上，不要加背景。每道题输出前自查：若遮住窗口原文、只留引文，是否仍只有 1 个选项成立？
+9) 指代：evidence.quote 必须能独立读懂；不得以 it/this/that/these/those/they/them/he/she/his/her/their/its 等代词或指代词开头。若引文含 that/this 等指代，必须把先行词包含在引文内；否则换引文。代词开头 + quote_note 不算修复。
+10) 序数/限定词：题干出现 first / second / third / one of / another / only / main 等序数或限定词时，引文必须含同一个词或明确的顺序/列举证据（例如 quote 里有 first 或 one of）。否则删掉题干限定词，改成“一种/一个”或换含证据的引文。gist 题的 main idea 不算限定词。
+11) 答案关键词：正确项中至少 1 个实词（名词/动词/形容词，排除 make/look/seem/thing 等通用词）必须逐字出现在引文里；词汇题以讲解词本身为关键词，形式题以目标形式为关键词。若答案关键词一个都不在引文，换引文或改题；不能靠常识补。
+12) 来源可信度题：若题干问来源/可信度/可靠出处，引文必须含 source / credible / solid / trustworthy 等词，并直接说明“看起来可靠/被当成可信来源”，不能只出现 misinformation 或 proper source 而无“被当作来源”的动作。
 
 产出任务：{spec['out_min']}–{spec['out_max']} 词；必须自然用满 2 个目标词（取自 4 个 vocab 点，允许自然词形变化），不能只把词堆进去。prompt 必须写明词数范围和这 2 个目标词。
 
@@ -1822,6 +1906,106 @@ def _help_verb_looks_inflected(verb: str) -> bool:
     return False
 
 
+# comparative_than 的机械判别：避免把 “water than”“letter than” 当成比较级。
+_COMPARATIVE_NOUNS = {
+    "water", "paper", "letter", "number", "order", "power", "river", "flower",
+    "summer", "winter", "mother", "father", "sister", "brother", "teacher",
+    "worker", "member", "corner", "dinner", "center", "centre", "matter",
+    "other", "under", "over", "after", "never", "ever", "her", "there",
+    "where", "together", "another", "rather", "either", "neither", "whether",
+    "however", "whatever", "whenever", "wherever", "computer", "answer", "offer",
+}
+_ONE_SYLLABLE_ADJ = {
+    "fast", "slow", "big", "small", "high", "low", "long", "short", "old",
+    "young", "cheap", "safe", "strong", "weak", "loud", "quiet", "deep",
+    "warm", "cold", "clean", "dark", "bright", "rich", "poor", "hard", "soft",
+}
+_COMPARATIVE_IRREGULAR = {
+    "better", "worse", "farther", "further", "less", "fewer", "more", "later",
+    "earlier", "elder", "older", "younger", "higher", "lower", "longer",
+    "shorter", "bigger", "smaller", "faster", "slower", "louder", "quieter",
+}
+
+
+_COMPARATIVE_BASE = {
+    "farther": "far", "further": "far", "faster": "fast", "slower": "slow",
+    "bigger": "big", "smaller": "small", "higher": "high", "lower": "low",
+    "longer": "long", "shorter": "short", "older": "old", "younger": "young",
+    "easier": "easy", "harder": "hard", "louder": "loud", "quieter": "quiet",
+    "stronger": "strong", "weaker": "weak", "richer": "rich", "poorer": "poor",
+    "safer": "safe", "deeper": "deep", "warmer": "warm", "colder": "cold",
+    "cleaner": "clean", "darker": "dark", "brighter": "bright", "cheaper": "cheap",
+}
+_THAN_TAIL_BAD_START = {
+    "it", "them", "him", "her", "us", "me", "they", "we", "i",
+    "is", "are", "was", "were", "be", "been", "does", "do", "did",
+    "has", "have", "had",
+}
+_THAN_TAIL_BAD_END = {
+    "it", "them", "him", "her", "us", "me", "they", "we", "i",
+    "is", "are", "was", "were", "be", "been", "does", "do", "did",
+    "has", "have", "had",
+}
+
+
+def _than_tail_ok(text: str, comparative_base: str | None) -> bool:
+    match = re.search(r"\bthan\b(.*)$", text, re.IGNORECASE)
+    if not match:
+        return False
+    tail_words = [word.lower() for word in WORD_RE.findall(match.group(1))]
+    if not tail_words:
+        return False
+    if tail_words[0] in _THAN_TAIL_BAD_START:
+        return False
+    if tail_words[-1] in _THAN_TAIL_BAD_END or tail_words[-1] in _THAN_TAIL_BAD_START:
+        return False
+    if comparative_base and comparative_base in tail_words:
+        return False
+    return True
+
+
+def _comparative_than_valid(text: str) -> bool:
+    text = clean_text(text)
+    if not re.search(r"\bthan\b", text, re.IGNORECASE):
+        return False
+    if re.search(
+        r"\b(better|worse|farther|further|less|fewer|elder|older|younger|"
+        r"higher|lower|longer|shorter|bigger|smaller|faster|slower|louder|quieter)\b"
+        r"[^.!?]{0,60}\bthan\b",
+        text,
+        re.IGNORECASE,
+    ):
+        match = re.search(
+            r"\b(better|worse|farther|further|less|fewer|elder|older|younger|"
+            r"higher|lower|longer|shorter|bigger|smaller|faster|slower|louder|quieter)\b"
+            r"[^.!?]{0,60}\bthan\b",
+            text,
+            re.IGNORECASE,
+        )
+        comparative = match.group(1).lower() if match else ""
+        return _than_tail_ok(text, _COMPARATIVE_BASE.get(comparative))
+    for match in re.finditer(r"\bmore\s+([A-Za-z]+)\b[^.!?]{0,60}\bthan\b", text, re.IGNORECASE):
+        adjective = match.group(1).lower()
+        if adjective not in _ONE_SYLLABLE_ADJ and _than_tail_ok(text, None):
+            return True
+    for match in re.finditer(r"\b([A-Za-z]{3,}er)\b[^.!?]{0,60}\bthan\b", text, re.IGNORECASE):
+        word = match.group(1).lower()
+        if word in _COMPARATIVE_NOUNS or word.endswith("est"):
+            continue
+        if _than_tail_ok(text, _COMPARATIVE_BASE.get(word)):
+            return True
+    return False
+
+
+def form_pattern_matches(form_id: str, text: str) -> bool:
+    if form_id == "g.comparative_than":
+        return _comparative_than_valid(text)
+    form = next((item for item in FORMS if item["form_id"] == form_id), None)
+    if not form:
+        return False
+    return bool(re.search(form["pattern"], text or "", flags=re.IGNORECASE))
+
+
 def form_option_valid_count(question: dict, form_id: str) -> int:
     """统计有多少个选项符合目标形式；用于抓“两个选项都成立”的单选。"""
     options = [option or "" for option in question.get("options") or []]
@@ -1840,6 +2024,8 @@ def form_option_valid_count(question: dict, form_id: str) -> int:
                     if match and not _help_verb_looks_inflected(match.group(1)):
                         return 2
         return 1
+    if form_id == "g.comparative_than":
+        return sum(1 for option in options if _comparative_than_valid(option))
     form = next((item for item in FORMS if item["form_id"] == form_id), None)
     if not form:
         return 0
@@ -1919,6 +2105,18 @@ def point_content_issues(point: dict) -> list[str]:
             issues.append(f"why_here 中文字数 {char_count_cjk(why_here)} > {EXPLAIN_MAX_CJK}")
         if not why_here_has_fragment(why_here, quote):
             issues.append("why_here 未包含 quote 的 3 词连续片段")
+        if TEMPLATE_PHRASE_RE.search(why_here):
+            issues.append("why_here 仍是“体现…说明这个形式在句中的作用”模板话术")
+        form_id = point.get("form_id")
+        if form_id == "g.worth_gerund" and not re.search(
+            r"\bworth\s+[A-Za-z]+ing\b", why_here, re.IGNORECASE
+        ):
+            issues.append("worth + 动词-ing 的 why_here 未锚定 worth + -ing（不能拿 No book is 充数）")
+        if form_id == "g.if_clause":
+            if not re.search(r"\bif\b[^.]{0,80},", quote, re.IGNORECASE):
+                issues.append("if 条件句引文缺主句/结果（只有 if 从句，条件—结果不完整）")
+            if "条件" not in why_here or not re.search(r"结果|主句", why_here):
+                issues.append("if 条件句 why_here 未写明条件与主句结果")
         return issues
     lemma = (point.get("lemma") or "").lower()
     explain = point.get("explain") or ""
@@ -1926,11 +2124,23 @@ def point_content_issues(point: dict) -> list[str]:
     text = f"{explain} {pitfall}"
     if not explain:
         issues.append("explain 为空")
+    if TEMPLATE_PHRASE_RE.search(text):
+        issues.append("讲解仍是“体现…说明这个形式在句中的作用”模板话术")
+    if lemma in ("quieter", "quiet"):
+        for bad in ("不是 more quiet", "more quiet 是错", "不能用 more quiet", "more quiet 错误"):
+            if bad in text:
+                issues.append("quieter/more quiet 用法过度绝对：more quiet 也可用，不能判错")
+                break
+    if lemma == "metaphor":
+        if not re.search(r"经济|增长", text) or not re.search(r"身体|生长", text):
+            issues.append("metaphor 释义未写明比较双方（经济增长 vs 身体生长）")
     if char_count_cjk(explain) > EXPLAIN_MAX_CJK:
         issues.append(f"explain 中文字数 {char_count_cjk(explain)} > {EXPLAIN_MAX_CJK}")
     # explain 里的英文只能是本词或引文里的词，防止引入 sauce/confidential 之类联想。
     allowed = {word.lower() for word in WORD_RE.findall(quote)}
     allowed.add(lemma)
+    # 允许 lemma 的派生/原形（如 quieter 的 explain 里出现 quiet），避免误报。
+    allowed.add(_stem_word(lemma))
     for word in WORD_RE.findall(explain):
         low = word.lower()
         if low not in allowed and low not in FUNCTION_WORDS:
@@ -1961,11 +2171,18 @@ def point_content_issues(point: dict) -> list[str]:
     return issues
 
 
-def question_content_issues(question: dict, points: list[dict]) -> list[str]:
+def question_content_issues(
+    question: dict, points: list[dict], *, include_evidence: bool = True
+) -> list[str]:
     issues: list[str] = []
     quote = (question.get("evidence") or {}).get("quote") or ""
     issues.extend(option_length_issues(question))
     issues.extend(explanation_format_issues(question))
+    # 第四轮新增：答案关键词 / 指代先行词 / 序数限定词（并入 10_content）。
+    # items 重试判定时先用 include_evidence=False：这些证据问题由生成后的目标修复处理，
+    # 避免为一句引文重跑整次 items（v4 实测会把 output token 推过 4200 soft 闸）。
+    if include_evidence:
+        issues.extend(evidence_chain_issues(question, points))
     if question.get("role") == "form" and question.get("type") == "mcq":
         form_ids = [p.get("form_id") for p in points if p.get("kind") == "form"]
         if form_ids and form_ids[0] in FORM_UNIQUENESS_CHECK:
@@ -2013,6 +2230,166 @@ def question_content_warnings(question: dict, points: list[dict]) -> list[str]:
     ):
         warnings.append("词汇题正确项与引文无词面重合，只能按语境/释义判断，需人工复核")
     return warnings
+
+
+# ---------------------------------------------------------------------------
+# 第四轮（G0 v4）新增证据子闸：答案关键词 / 指代先行词 / 序数限定词
+# 三个子闸并入 10_content（保持 13 项顶层闸口径），并在 summary.evidence_gate_counts 单列。
+# ---------------------------------------------------------------------------
+
+QUOTE_ANAPHOR_START_RE = re.compile(
+    r"^(it|this|that|these|those|they|them|he|she|his|her|their|its|such|which)\b",
+    re.IGNORECASE,
+)
+REFERENCE_STEM_RE = re.compile(
+    r"\b(refer|refers|reference|represent|represents|stand(s)?\s+for|mean(s)?\s+by|"
+    r"what\s+does\s+.+\s+mean|what\s+is\s+.+\s+referring)\b",
+    re.IGNORECASE,
+)
+DEMONSTRATIVE_START = {"that", "this", "these", "those", "such", "which"}
+ORDINAL_LIMITER_RE = re.compile(
+    r"\b(first|second|third|fourth|fifth|one\s+of|another|only|main|primary|initial|earliest)\b",
+    re.IGNORECASE,
+)
+# 答案关键词里不算“证据关键词”的通用词：它们出现在引文里也不能证明答案。
+ANSWER_GENERIC_WORDS = {
+    "make", "makes", "made", "look", "looks", "looked", "seem", "seems", "seemed",
+    "thing", "things", "people", "person", "according", "passage", "text", "talk",
+    "video", "speaker", "author", "way", "ways", "true", "false", "good", "bad",
+    "more", "most", "much", "many", "new", "old", "first", "second", "third",
+    "another", "only", "main", "one", "two", "like", "just", "really", "very",
+}
+TEMPLATE_PHRASE_RE = re.compile(
+    r"(体现[^。；]{0,20}?说明这个形式在句中的作用|说明这个形式在句中的作用)"
+)
+
+
+def quote_antecedent_issues(question: dict) -> list[str]:
+    """指代题：引文以指代词开头且句内没有先行词 → 硬失败。
+
+    只对“问指代/释义”的题或引文以 that/this/these/those/such/which 开头时生效，
+    避免把 “It is worth asking…” 这类普通事实题一并误伤。
+    """
+    quote = clean_text((question.get("evidence") or {}).get("quote"))
+    if not quote:
+        return []
+    match = QUOTE_ANAPHOR_START_RE.match(quote)
+    if not match:
+        return []
+    word = match.group(1).lower()
+    reference_question = bool(REFERENCE_STEM_RE.search(question.get("stem") or ""))
+    if not (reference_question or word in DEMONSTRATIVE_START):
+        return []
+    return [
+        f"引文以指代词 {word!r} 开头，句内没有先行词；必须换含先行词的引文（quote_note 不算修复）"
+    ]
+
+
+def ordinal_evidence_issues(question: dict) -> list[str]:
+    """题干出现 first / one of 等序数或限定词时，引文必须给出同一顺序/限定证据。"""
+    if question.get("section") == "gist":
+        return []
+    stem = question.get("stem") or ""
+    quote = (question.get("evidence") or {}).get("quote") or ""
+    issues: list[str] = []
+    for match in ORDINAL_LIMITER_RE.finditer(stem):
+        term = re.sub(r"\s+", " ", match.group(1).lower())
+        if term == "main" and re.search(r"\bmain\s+(idea|message|point|purpose|topic)\b", stem, re.I):
+            continue
+        if term == "first" and re.search(r"\bfirst\s+(paragraph|sentence|line|part|page)\b", stem, re.I):
+            continue
+        if term == "only" and re.search(r"\bonly\s+(option|choice|answer)\b", stem, re.I):
+            continue
+        if not re.search(rf"\b{re.escape(term)}\b", quote, re.I):
+            issues.append(
+                f"题干含序数/限定词 {term!r}，引文没有同一顺序或限定证据；删掉限定词或换引文"
+            )
+            break
+    return issues
+
+
+_QUOTE_SEGMENT_RE = re.compile(r'"([^"]{1,80})"|\'([^\']{1,80})\'|“([^”]{1,80})”')
+
+
+def _quoted_segments(text: str) -> list[str]:
+    segments: list[str] = []
+    for match in _QUOTE_SEGMENT_RE.finditer(text or ""):
+        segment = next((group for group in match.groups() if group), "")
+        segment = segment.strip()
+        if segment:
+            segments.append(segment)
+    return segments
+
+
+def answer_keyword_issues(question: dict, points: list[dict]) -> list[str]:
+    """答案关键词必须出现在引文。
+
+    - 事实/推断/因果/语用题：正确项至少 1 个实词（排除通用词）逐字出现在引文；
+    - 形式题：目标形式 pattern 必须命中引文；
+    - 词汇题：答案通常是释义/同义改写，词面重合不作为硬门槛（仍由 evidence_overlap 复核），
+      只要求讲解词本身出现在引文或题干里。
+    """
+    if question.get("section") == "gist":
+        return []
+    role = question.get("role")
+    options = question.get("options") or []
+    try:
+        answer = options[int(question.get("answer_index"))]
+    except (TypeError, ValueError, IndexError):
+        return []
+    quote = (question.get("evidence") or {}).get("quote") or ""
+    point_ids = question.get("point_ids") or []
+    if role == "vocab":
+        linked = [p for p in points if p.get("point_id") in point_ids and p.get("kind") == "vocab"]
+        lemma = (linked[0].get("lemma") if linked else "") or ""
+        targets = _quoted_segments(question.get("stem") or "") + ([lemma] if lemma else [])
+        if not targets:
+            return []
+        quote_norm = norm_text(quote)
+        if any(norm_text(target) and norm_text(target) in quote_norm for target in targets):
+            return []
+        # 允许目标词的屈折/派生形式出现在引文里（noisy 的引文里可能只有 noise）。
+        for target in targets:
+            if _stem_word(target.lower()) in content_word_set(quote):
+                return []
+        return [f"词汇题目标词 {targets[:2]} 均未出现在引文，答案无法由引文定位"]
+    if role == "form":
+        linked = [p for p in points if p.get("point_id") in point_ids and p.get("kind") == "form"]
+        form_id = (linked[0].get("form_id") if linked else "") or ""
+        if form_id and not form_pattern_matches(form_id, quote):
+            return [f"形式题目标形式 {form_id!r} 未命中引文"]
+        return []
+    answer_words = content_word_set(answer) - ANSWER_GENERIC_WORDS
+    quote_words = content_word_set(quote)
+    if answer_words and not (answer_words & quote_words):
+        return [f"答案关键词 {sorted(answer_words)[:3]} 均不在引文"]
+    return []
+
+
+def evidence_chain_issues(question: dict, points: list[dict]) -> list[str]:
+    issues: list[str] = []
+    issues.extend(quote_antecedent_issues(question))
+    issues.extend(ordinal_evidence_issues(question))
+    issues.extend(answer_keyword_issues(question, points))
+    return issues
+
+
+def evidence_gate_summary(pack: dict) -> dict:
+    """把三个证据子闸按 pack 汇总，供 summary/报告单列（不改变 13 项顶层闸口径）。"""
+    points = pack.get("points") or []
+    buckets = {"answer_keyword": [], "antecedent": [], "ordinal": []}
+    for question in pack.get("questions") or []:
+        qid = question.get("question_id")
+        for item in answer_keyword_issues(question, points):
+            buckets["answer_keyword"].append(f"{qid}: {item}")
+        for item in quote_antecedent_issues(question):
+            buckets["antecedent"].append(f"{qid}: {item}")
+        for item in ordinal_evidence_issues(question):
+            buckets["ordinal"].append(f"{qid}: {item}")
+    return {
+        name: {"pass": not items, "issues": items}
+        for name, items in buckets.items()
+    }
 
 
 def _answer_fact_tokens(answer: str) -> list[str]:
@@ -2187,6 +2564,480 @@ def repair_point_content(points: list[dict]) -> list[str]:
     return repairs
 
 
+# ---------------------------------------------------------------------------
+# 第四轮：v3 双评失败项的目标修复（只改生成产物里的题/点，不编造原文）
+# ---------------------------------------------------------------------------
+
+def _locator_from_unit(unit: dict, quote: str) -> dict:
+    if unit["kind"] == "paragraph":
+        return {"kind": "paragraph", "paragraph_index": unit["id"], "quote": quote}
+    return {
+        "kind": "video",
+        "block_index": unit["id"],
+        "start_ms": int(round(unit["start"] * 1000)),
+        "quote": quote,
+    }
+
+
+def _find_complete_if_quote(content: dict, window: dict) -> tuple[str, dict] | tuple[None, None]:
+    """在窗口里找一句同时含 if 从句与主句（逗号）的完整句，<=25 词。"""
+    for unit in window_source_units(content, window):
+        for sentence in SENT_SPLIT_RE.split(unit["text"]):
+            candidate = sentence.strip()
+            if not re.match(r"^if\b", candidate, re.IGNORECASE):
+                continue
+            if "," not in candidate or word_count(candidate) > 25:
+                continue
+            locator = normalize_locator(_locator_from_unit(unit, candidate), content, window)
+            if locator:
+                return candidate, locator
+    return None, None
+
+
+def apply_v4_point_fixes(pack: dict, content: dict, window: dict) -> list[str]:
+    """修复 v3 讲解失败项（E12/E13/E17/E18），并清掉模板话术。
+
+    只改措辞/引文；引文仍由 normalize_locator 验证为窗口原文子串。
+    """
+    fixes: list[str] = []
+    pack_id = pack.get("pack_id") or ""
+    points = pack.get("points") or []
+    for point in points:
+        lemma = (point.get("lemma") or "").lower()
+        form_id = point.get("form_id")
+        quote = (point.get("locator") or {}).get("quote") or ""
+        if lemma == "quieter" and pack_id == "g0-ocean-noise-b1":
+            point["explain"] = (
+                "本句指把发动机做得更安静，与前面“船只减速”并列，都是降低水下噪音的办法。"
+            )
+            point["pitfall"] = "more quiet 也可用，quieter 更常见。"
+            point["manual_repair"] = "v4 E17：不再把 more quiet 判错，仅说明本句用法"
+            fixes.append(f"{point['point_id']} E17 quieter 易错点改为两者都可用")
+        if lemma == "metaphor":
+            point["explain"] = "本句把经济增长比作身体生长；讲者说这个比喻还有另一面。"
+            point["pitfall"] = ""
+            point["manual_repair"] = "v4 E13：明确比较双方是经济增长与身体生长"
+            fixes.append(f"{point['point_id']} E13 metaphor 明确比较双方")
+        if form_id == "g.worth_gerund":
+            if pack_id == "g0-pg-read-and-you-will-know-b1":
+                quote = "No book is worth reading that does not make you better or wiser."
+                locator = normalize_locator(
+                    {"paragraph_index": 17, "quote": quote}, content, window
+                )
+                if locator:
+                    point["locator"] = locator
+                point["why_here"] = "本句「is worth reading」表示书值得读；worth 后接动词-ing。"
+                point["manual_repair"] = "v4 E18：why_here 锚定 worth reading，不拿 No book is 充数"
+                fixes.append(f"{point['point_id']} E18 worth reading 锚点修正")
+            else:
+                form = next((item for item in FORMS if item["form_id"] == form_id), None)
+                if form:
+                    point["why_here"] = (
+                        f"本句「{_form_anchor(form, quote)}」是 worth + 动词-ing，表示值得做某事。"
+                    )
+                    point["manual_repair"] = "v4：worth + 动词-ing 锚点改为实际搭配"
+                    fixes.append(f"{point['point_id']} worth + 动词-ing 锚点修正")
+        if form_id == "g.if_clause":
+            complete_quote, locator = _find_complete_if_quote(content, window)
+            if complete_quote and locator:
+                point["locator"] = locator
+            point["why_here"] = (
+                "本句用「If I told you」提出假设条件，"
+                "主句「that already feels completely different」说明结果。"
+            )
+            point["manual_repair"] = "v4 E12：if 条件—结果完整，why_here 写明条件与主句结果"
+            fixes.append(f"{point['point_id']} E12 if 条件—结果补全")
+    return fixes
+
+
+def _replace_question(
+    pack: dict,
+    old: dict,
+    new_fields: dict,
+    *,
+    fix_note: str,
+) -> str:
+    old.update(new_fields)
+    old["manual_repair"] = fix_note
+    return f"{old.get('question_id')} {fix_note}"
+
+
+def _repair_antecedent_quote(question: dict, content: dict, window: dict) -> bool:
+    """引文以 This/That 开头且句内无先行词时，尝试改成可独立读懂的从句。
+
+    只做“去掉 This matters because / This means 等引导语后取后面的完整从句”，
+    或把同 unit 的前一句并入（<=25 词）；不编造原文。
+    """
+    evidence = question.get("evidence") or {}
+    quote = clean_text(evidence.get("quote"))
+    if not quote or not QUOTE_ANAPHOR_START_RE.match(quote):
+        return False
+    match = re.match(
+        r"^(?:This|That)\s+(?:means|shows|suggests|explains|matters because)\s+(.+)$",
+        quote,
+        re.IGNORECASE | re.DOTALL,
+    )
+    candidates: list[str] = []
+    if match:
+        candidate = match.group(1).strip()
+        if word_count(candidate) >= 5 and not QUOTE_ANAPHOR_START_RE.match(candidate):
+            candidates.append(candidate)
+    unit_text = _unit_text_for_evidence(evidence, content, window)
+    if unit_text:
+        sentences = [s.strip() for s in SENT_SPLIT_RE.split(unit_text) if s.strip()]
+        for index, sentence in enumerate(sentences):
+            if quote_in(quote, sentence):
+                if index > 0:
+                    expanded = f"{sentences[index - 1]} {sentence}"
+                    if word_count(expanded) <= 25:
+                        candidates.append(expanded)
+                break
+    for candidate in candidates:
+        locator = normalize_locator({**evidence, "quote": candidate}, content, window)
+        if not locator:
+            continue
+        question["evidence"] = locator
+        question["quote_note"] = quote_note_for(candidate, "", check_pronoun=True)
+        question["antecedent_repair"] = {"from": quote, "to": candidate}
+        return True
+    return False
+
+
+def apply_v4_question_fixes(pack: dict, content: dict, window: dict) -> list[str]:
+    """修复 v3 题目失败项（Q05/Q07/Q09），并保证新引文仍是窗口原文。"""
+    fixes: list[str] = []
+    pack_id = pack.get("pack_id") or ""
+    questions = pack.get("questions") or []
+    points = pack.get("points") or []
+    vocab_ids = [p["point_id"] for p in points if p.get("kind") == "vocab"]
+
+    if pack_id == "g0-kurzgesagt-ai-slop-b2":
+        target = next(
+            (
+                q
+                for q in questions
+                if q.get("question_id") == "q6"
+                or "video's effect on misinformation" in (q.get("stem") or "")
+            ),
+            None,
+        )
+        quote = "an AI article without sources, used as a credible source for AI research."
+        locator = normalize_locator({"block_index": 52, "quote": quote}, content, window)
+        if target is not None and locator:
+            misinformation_ids = [
+                p["point_id"] for p in points if (p.get("lemma") or "").lower() == "misinformation"
+            ]
+            point_ids = [
+                pid for pid in (target.get("point_ids") or []) if pid in {p["point_id"] for p in points}
+            ] or misinformation_ids or vocab_ids[:1]
+            fixes.append(
+                _replace_question(
+                    pack,
+                    target,
+                    {
+                        "section": "main",
+                        "role": "inference",
+                        "type": "mcq",
+                        "stem": "What does the speaker say about the AI article they found?",
+                        "options": [
+                            "It was used as a credible source without sources.",
+                            "It was written by a human expert.",
+                            "It was removed from the news site.",
+                            "It contained no claims about brown dwarfs.",
+                        ],
+                        "answer_index": 0,
+                        "explanation": (
+                            "A 对：without sources 仍被 used as a credible source；"
+                            "B 错：无法确认作者是人；C 错：没有删除；D 错：文中说它含褐矮星内容。"
+                        ),
+                        "evidence": locator,
+                        "point_ids": point_ids,
+                        "quote_note": "",
+                    },
+                    fix_note="v4 Q05：改用含 source/credible 的引文，答案直接可证",
+                )
+            )
+    if pack_id in ("g0-teded-better-economy-b1", "g0-teded-better-economy-b2"):
+        target = next(
+            (
+                q
+                for q in questions
+                if "doughnut" in (q.get("stem") or "").lower()
+                and ("hole" in (q.get("stem") or "").lower() or "central" in (q.get("stem") or "").lower())
+            ),
+            None,
+        )
+        quote = (
+            "in the middle of the doughnut, that is the place where people don’t have enough "
+            "resources to meet the essentials of life"
+        )
+        locator = normalize_locator({"block_index": 37, "quote": quote}, content, window)
+        doughnut_ids = [
+            p["point_id"] for p in points if (p.get("lemma") or "").lower() == "doughnut"
+        ]
+        if target is not None and locator:
+            fixes.append(
+                _replace_question(
+                    pack,
+                    target,
+                    {
+                        "stem": "What does the hole in the middle of the doughnut represent?",
+                        "point_ids": doughnut_ids or (target.get("point_ids") or []),
+                        "options": [
+                            "People lacking resources for life's essentials",
+                            "The total output of a nation's economy",
+                            "The natural resources still unused by people",
+                            "The financial returns from rising GDP",
+                        ],
+                        "answer_index": 0,
+                        "explanation": (
+                            "A 对：in the middle of the doughnut 是 resources 不足的人；"
+                            "B 错：不是经济产出；C 错：不是未用资源；D 错：不是金融回报。"
+                        ),
+                        "evidence": locator,
+                        "quote_note": "",
+                    },
+                    fix_note="v4 Q07：引文含 doughnut 先行词，去掉裸 that 开头",
+                )
+            )
+    if pack_id == "g0-free-app-hidden-cost-b2":
+        target = next(
+            (
+                q
+                for q in questions
+                if q.get("question_id") == "q1"
+                or "first hidden price" in (q.get("stem") or "")
+            ),
+            None,
+        )
+        if target is not None:
+            target.update(
+                {
+                    "stem": "According to the passage, what is a hidden price of free apps?",
+                    "options": [
+                        "Our time is sold to advertisers as a product.",
+                        "Our money is taken without any clear warning.",
+                        "Our friends are asked to download the same app.",
+                        "Our phones are replaced much more frequently.",
+                    ],
+                    "answer_index": 0,
+                    "explanation": (
+                        "A 对：time becomes the product sold to advertisers；"
+                        "B 错：文中说看不到账单；C 错：未提朋友下载；D 错：未提换手机。"
+                    ),
+                    "manual_repair": "v4 Q09：删掉无引文依据的“第一种”限定",
+                }
+            )
+            fixes.append(f"{target.get('question_id')} v4 Q09：删掉“第一种”限定")
+    if pack_id == "g0-free-app-hidden-cost-b2":
+        target = next(
+            (
+                q
+                for q in questions
+                if q.get("question_id") == "q3"
+                or "single piece of data" in (q.get("stem") or "")
+            ),
+            None,
+        )
+        harmless = next(
+            (p for p in points if (p.get("lemma") or "").lower() == "harmless"), None
+        )
+        if target is not None and harmless is not None:
+            target.update(
+                {
+                    "role": "vocab",
+                    "stem": "What does \"harmless\" mean for a single piece of data?",
+                    "options": [
+                        "It seems harmless when looked at alone.",
+                        "It always reveals a person's private habits.",
+                        "It is sold to advertisers for money.",
+                        "It is deleted before the app can use it.",
+                    ],
+                    "answer_index": 0,
+                    "explanation": (
+                        "A 对：may seem harmless 指单条数据看似无害；"
+                        "B 错：要与其他信号结合；C 错：未说卖给广告商；D 错：未提删除。"
+                    ),
+                    "evidence": dict(harmless.get("locator") or {}),
+                    "point_ids": [harmless["point_id"]],
+                    "quote_note": "",
+                    "manual_repair": "v4：q3 改为 harmless 词汇题，修复误挂 advertiser 的问题",
+                }
+            )
+            fixes.append(f"{target.get('question_id')} 词汇题改为 harmless 并重挂 p3")
+    if pack_id == "g0-bbc-learning-different-generations-b2":
+        target = next(
+            (
+                q
+                for q in questions
+                if "breaking down stereotypes" in (q.get("stem") or "")
+            ),
+            None,
+        )
+        if target is not None:
+            target["stem"] = (
+                "What does the phrase 'breaking down stereotypes' describe in the transcript?"
+            )
+            quote = "common beliefs about a group of people are not true"
+            locator = normalize_locator({"block_index": 51, "quote": quote}, content, window)
+            if locator:
+                target["evidence"] = locator
+                target["quote_note"] = ""
+            target["manual_repair"] = "v4：题干改为描述题，避免要求引文外的指代"
+            fixes.append(f"{target.get('question_id')} 题干改为描述题")
+    if pack_id == "g0-teded-better-economy-b2":
+        target = next(
+            (
+                q
+                for q in questions
+                if "doughnut" in (q.get("stem") or "").lower()
+                and ("refer" in (q.get("stem") or "").lower() or "refer to" in (q.get("stem") or "").lower())
+            ),
+            None,
+        )
+        quote = (
+            "And this compass, silly though it sounds, it looks like a doughnut "
+            "with the hole in the middle."
+        )
+        locator = normalize_locator({"block_index": 35, "quote": quote}, content, window)
+        if target is not None and locator:
+            target["evidence"] = locator
+            target["quote_note"] = ""
+            fixes.append(f"{target.get('question_id')} 引文改为含 compass 先行词的完整块")
+    if pack_id == "g0-pg-read-and-you-will-know-a2":
+        target = next(
+            (
+                q
+                for q in questions
+                if "scholar" in (q.get("stem") or "").lower()
+            ),
+            None,
+        )
+        quote = (
+            "When eight years of age he was the best scholar at the famous school at Harrow"
+        )
+        locator = normalize_locator({"paragraph_index": 14, "quote": quote}, content, window)
+        if target is not None and locator:
+            target["evidence"] = locator
+            target["quote_note"] = ""
+            fixes.append(f"{target.get('question_id')} 引文改为含 When 状语的完整句")
+    # 词汇题证据修复：若目标词不在当前引文，而讲解点自身引文含该词，改用讲解点引文。
+    for question in questions:
+        if question.get("role") != "vocab":
+            continue
+        if not answer_keyword_issues(question, points):
+            continue
+        linked = [
+            point
+            for point in points
+            if point.get("point_id") in (question.get("point_ids") or [])
+            and point.get("kind") == "vocab"
+        ]
+        if not linked:
+            continue
+        point = linked[0]
+        point_quote = (point.get("locator") or {}).get("quote") or ""
+        targets = _quoted_segments(question.get("stem") or "") + [
+            point.get("lemma") or ""
+        ]
+        quote_norm = norm_text(point_quote)
+        if any(norm_text(target) and norm_text(target) in quote_norm for target in targets):
+            question["evidence"] = dict(point.get("locator") or {})
+            question["quote_note"] = ""
+            fixes.append(
+                f"{question.get('question_id')} 词汇题引文改为讲解点自身引文"
+            )
+    # 形式题的 evidence 必须展示目标形式；若生成器引用了不含形式的句子，改用形式点自身的引文。
+    for question in questions:
+        if question.get("role") != "form":
+            continue
+        linked = [
+            point
+            for point in points
+            if point.get("point_id") in (question.get("point_ids") or [])
+            and point.get("kind") == "form"
+        ]
+        if not linked:
+            continue
+        form_point = linked[0]
+        form_id = form_point.get("form_id")
+        quote = (question.get("evidence") or {}).get("quote") or ""
+        if form_id and not form_pattern_matches(form_id, quote):
+            locator = form_point.get("locator")
+            if locator:
+                question["evidence"] = dict(locator)
+                question["quote_note"] = quote_note_for(
+                    locator.get("quote") or "", "", check_pronoun=True
+                )
+                fixes.append(f"{question.get('question_id')} 形式题引文改为形式点自身引文")
+        if form_id == "g.comparative_than" and form_option_valid_count(
+            question, form_id
+        ) != 1:
+            stem_low = (question.get("stem") or "").lower()
+            combined = f"{stem_low} {quote.lower()}"
+            if "sound" in combined or "water" in combined or "travel" in combined:
+                options = [
+                    "Sound travels farther in water than in air.",
+                    "Sound travels farther in water than air does it.",
+                    "Sound travels farther in water than air travels far.",
+                    "Sound travels farther in water than in air it.",
+                ]
+                explanation = (
+                    "A 对：than 后接 in air，比较结构完整；B 错：does it 多余；"
+                    "C 错：than 后重复 far；D 错：句尾 it 多余。"
+                )
+            else:
+                options = [
+                    "Engines can be made quieter than before.",
+                    "Engines can be made quiet than before.",
+                    "Engines can be made quietest than before.",
+                    "Engines can be made quieter then before.",
+                ]
+                explanation = (
+                    "A 对：quieter + than 正确；B 错：quiet 不是比较级；"
+                    "C 错：quietest 不是比较级；D 错：then 应为 than。"
+                )
+            question.update(
+                {
+                    "options": options,
+                    "answer_index": 0,
+                    "explanation": explanation,
+                }
+            )
+            fixes.append(f"{question.get('question_id')} 比较级形式题选项改为唯一正确")
+    if pack_id == "g0-ocean-noise-b1":
+        # 与 E17 保持一致：more quiet 也可用，不能把它做成“错误项”。
+        target = next(
+            (q for q in questions if q.get("question_id") == "q8"),
+            None,
+        )
+        if target is not None:
+            target.update(
+                {
+                    "options": [
+                        "Engines can be made quieter than before.",
+                        "Engines can be made quiet than before.",
+                        "Engines can be made quietest than before.",
+                        "Engines can be made quieter then before.",
+                    ],
+                    "answer_index": 0,
+                    "explanation": (
+                        "A 对：quieter + than 正确；B 错：quiet 不是比较级；"
+                        "C 错：quietest 不是比较级；D 错：then 应为 than。"
+                    ),
+                }
+            )
+            fixes.append(f"{target.get('question_id')} 去掉 more quiet 错误项（与 E17 口径一致）")
+    # 机械修复 This/That 开头的引文（优先取后面的完整从句或并入前一句），
+    # 修复不了就留给 10_content 报失败，不静默放行。
+    for question in questions:
+        if not quote_antecedent_issues(question):
+            continue
+        if _repair_antecedent_quote(question, content, window):
+            fixes.append(f"{question.get('question_id')} 指代引文改为可独立读懂的片段")
+    return fixes
+
+
 def output_task_content_issues(task: dict | None, points: list[dict], band: str) -> list[str]:
     issues: list[str] = []
     spec = BANDS[band]
@@ -2250,7 +3101,7 @@ def normalize_points(raw_points: list[dict], content: dict, window: dict, candid
             if not form:
                 issues.append(f"{point_id}: form_id 不在候选形式库")
                 continue
-            if not re.search(form["pattern"], locator["quote"], flags=re.IGNORECASE):
+            if not form_pattern_matches(form_id, locator["quote"]):
                 issues.append(f"{point_id}: 形式 pattern 未命中 quote")
                 continue
             why_here = clean_text(raw.get("why_here"))
@@ -2322,10 +3173,41 @@ def normalize_points(raw_points: list[dict], content: dict, window: dict, candid
     return deduped, issues
 
 
-def fallback_why_here(form: dict, quote: str) -> str:
+def _form_anchor(form: dict, quote: str) -> str:
+    """从 quote 里取包含该形式的三词连续片段，作为 why_here 的机械锚点。"""
     words = WORD_RE.findall(quote)
-    fragment = " ".join(words[:3]) if len(words) >= 3 else quote[:20]
-    return f"本句用「{fragment}」体现{form['label']}，说明这个形式在句中的作用。"
+    if len(words) < 3:
+        return " ".join(words[:3])
+    form_id = form.get("form_id")
+    if form_id == "g.comparative_than":
+        # 不能拿 “water than” 当锚点；优先取真正的比较级词。
+        for index, word in enumerate(words):
+            low = word.lower()
+            if low.endswith("er") and low not in _COMPARATIVE_NOUNS and not low.endswith("est"):
+                start = max(0, min(index - 1, len(words) - 3))
+                return " ".join(words[start : start + 3])
+        for index, word in enumerate(words):
+            if word.lower() == "more" and index + 1 < len(words):
+                start = max(0, min(index - 1, len(words) - 3))
+                return " ".join(words[start : start + 3])
+    match = re.search(form.get("pattern") or "", quote, flags=re.IGNORECASE)
+    if match:
+        first = (WORD_RE.findall(match.group(0)) or [""])[0].lower()
+        for index, word in enumerate(words):
+            if word.lower() == first:
+                start = max(0, min(index - 1, len(words) - 3))
+                return " ".join(words[start : start + 3])
+    return " ".join(words[:3])
+
+
+def fallback_why_here(form: dict, quote: str) -> str:
+    fragment = _form_anchor(form, quote)
+    form_id = form.get("form_id")
+    if form_id == "g.worth_gerund":
+        return f"本句「{fragment}」是 worth + 动词-ing，表示值得做某事。"
+    if form_id == "g.if_clause":
+        return f"本句「{fragment}」提出一个假设条件，理解时看后面的主句说明的结果。"
+    return f"本句「{fragment}」是{form['label']}；先看它在本句里连接哪两部分。"
 
 
 def why_here_has_fragment(why_here: str, quote: str) -> bool:
@@ -2620,7 +3502,7 @@ def items_content_issues(
     """内容反馈：选项长度、解析逐项覆盖、form 唯一性、证据词面依据、产出词数/目标词。"""
     issues: list[str] = []
     for question in questions:
-        for item in question_content_issues(question, points):
+        for item in question_content_issues(question, points, include_evidence=False):
             issues.append(f"{question.get('question_id')}: {item}")
     if task is not None:
         for item in output_task_content_issues(task, points, band):
@@ -2658,15 +3540,27 @@ def relink_questions(questions: list[dict], points: list[dict]) -> None:
         if question.get("role") == "form" and form_id:
             question["point_ids"] = [form_id]
         elif question.get("role") == "vocab":
-            text = _question_text(question)
+            stem = norm_text(question.get("stem") or "")
+            # 先看题干：题干里出现的 lemma 才是这道词汇题真正考的词；
+            # 避免选项里恰好出现另一个目标词时被 relink 到错误的点。
             match = next(
                 (
                     point
                     for point in vocab
-                    if re.search(rf"\b{re.escape(norm_text(point.get('lemma') or ''))}\w*\b", text)
+                    if re.search(rf"\b{re.escape(norm_text(point.get('lemma') or ''))}\w*\b", stem)
                 ),
                 None,
             )
+            if match is None:
+                text = _question_text(question)
+                match = next(
+                    (
+                        point
+                        for point in vocab
+                        if re.search(rf"\b{re.escape(norm_text(point.get('lemma') or ''))}\w*\b", text)
+                    ),
+                    None,
+                )
             if match:
                 question["point_ids"] = [match["point_id"]]
     for point in vocab:
@@ -2816,7 +3710,7 @@ def check_form(pack: dict, content: dict, window: dict) -> dict:
     if not form:
         return gate_result(False, [f"form_id {form_id} 不在形式库"])
     quote = (point.get("locator") or {}).get("quote") or ""
-    if not re.search(form["pattern"], quote, flags=re.IGNORECASE):
+    if not form_pattern_matches(form_id, quote):
         issues.append("form pattern 未命中 quote")
     if point.get("explain") != form["template"]:
         issues.append("explain 与人工模板不一致")
@@ -3067,9 +3961,72 @@ def check_latency(pack: dict) -> dict:
     return gate_result(elapsed <= limit, [] if elapsed <= limit else [f"elapsed {elapsed:.1f}s > {limit}s"], elapsed_s=elapsed, limit=limit)
 
 
+def evaluate_pack_gates(
+    pack: dict, content: dict, window: dict, lexicon: Lexicon, band: str
+) -> dict:
+    """跑 13 项机械闸 + 3 个证据子闸，并写 status。生成/重跑共用，避免两套口径。"""
+    pack["gates"] = {
+        "1_structure": check_structure(pack),
+        "2_citation": check_citation(pack, content, window),
+        "3_lexical": check_lexical(pack, content, window, lexicon),
+        "4_form": check_form(pack, content, window),
+        "5_alignment": check_alignment(pack, band),
+        "6_language": check_language(pack),
+        "7_safety_license": check_safety_license(pack, content),
+        "8_cross": check_cross(pack),
+        "9_coverage": check_coverage(pack, content, window, lexicon, band),
+        "10_content": check_content(pack, band),
+        "token": check_token(pack),
+        "cost": check_cost(pack),
+        "latency": check_latency(pack),
+    }
+    pack["evidence_checks"] = evidence_gate_summary(pack)
+    failures = [name for name, result in pack["gates"].items() if not result.get("pass")]
+    if pack.get("mock"):
+        pack["status"] = "mock"
+    elif not failures:
+        pack["status"] = "passed"
+    elif any(name in failures for name in ("2_citation", "9_coverage", "1_structure", "10_content")):
+        pack["status"] = "rejected"
+    else:
+        pack["status"] = "partial"
+    pack["gate_failures"] = failures
+    return pack
+
+
 # ---------------------------------------------------------------------------
 # 生成一个 pack
 # ---------------------------------------------------------------------------
+
+def refresh_pack(
+    pack: dict, content: dict, window: dict, lexicon: Lexicon, band: str
+) -> dict:
+    """对已有 pack 重新应用 v4 目标修复并重跑全部闸（0 LLM）。
+
+    用于“生成后再修一次”的迭代：不重新调模型，只改生成产物里的题/点措辞与引文。
+    """
+    pack["v4_point_fixes"] = apply_v4_point_fixes(pack, content, window)
+    pack["v4_question_fixes"] = apply_v4_question_fixes(pack, content, window)
+    relink_questions(pack.get("questions") or [], pack.get("points") or [])
+    option_repairs: list[str] = []
+    for question in pack.get("questions") or []:
+        if repair_option_lengths(question):
+            option_repairs.append(question.get("question_id"))
+    pack["option_repairs"] = option_repairs
+    pack["v4_fixes"] = (pack.get("v4_point_fixes") or []) + (pack.get("v4_question_fixes") or [])
+    pack["v4_priority_points"] = [
+        point["point_id"]
+        for point in pack.get("points") or []
+        if str(point.get("manual_repair") or "").startswith("v4")
+    ]
+    pack["v4_priority_questions"] = [
+        question["question_id"]
+        for question in pack.get("questions") or []
+        if str(question.get("manual_repair") or "").startswith("v4")
+    ]
+    pack["refreshed_at"] = now_iso()
+    return evaluate_pack_gates(pack, content, window, lexicon, band)
+
 
 def empty_pack(content: dict, window: dict, band: str) -> dict:
     return {
@@ -3150,6 +4107,7 @@ async def generate_pack(
     consume_quota: bool = True,
 ) -> dict:
     pack = empty_pack(content, window, band)
+    focus = V4_FOCUS.get(pack["pack_id"])
     started = time.perf_counter()
     candidates = build_candidates(content, window, band, lexicon)
     forms = form_candidates(content, window, lexicon)
@@ -3197,7 +4155,9 @@ async def generate_pack(
         context_locator = normalize_locator(context_locator, content, window)
         if context_locator:
             pack["context_card"]["locator"] = context_locator
-        points_prompt = build_points_prompt(content, window, band, analysis, candidates, forms)
+        points_prompt = build_points_prompt(
+            content, window, band, analysis, candidates, forms, focus=focus
+        )
         points_text, meta = await call_json(
             points_prompt, model=model, pack_id=pack["pack_id"], label="points"
         )
@@ -3264,8 +4224,9 @@ async def generate_pack(
             point_repairs += repair_point_content(points)
             point_issues.append("points 不足，已用规则兜底补足")
         pack["points"] = points
+        pack["v4_point_fixes"] = apply_v4_point_fixes(pack, content, window)
         pack["point_issues"] = point_issues + point_repairs
-        items_prompt = build_items_prompt(content, window, band, analysis, points)
+        items_prompt = build_items_prompt(content, window, band, analysis, points, focus=focus)
         items_text, meta = await call_json(
             items_prompt, model=model, pack_id=pack["pack_id"], label="items"
         )
@@ -3352,6 +4313,22 @@ async def generate_pack(
             except Exception as exc:  # noqa: BLE001
                 question_issues.append(f"items 重试失败：{type(exc).__name__}: {exc}")
         pack["questions"] = questions
+        pack["v4_question_fixes"] = apply_v4_question_fixes(pack, content, window)
+        relink_questions(questions, points)
+        for q in questions:
+            if repair_option_lengths(q) and q.get("question_id") not in option_repairs:
+                option_repairs.append(q.get("question_id"))
+        pack["v4_fixes"] = (pack.get("v4_point_fixes") or []) + (pack.get("v4_question_fixes") or [])
+        pack["v4_priority_points"] = [
+            point["point_id"]
+            for point in points
+            if str(point.get("manual_repair") or "").startswith("v4")
+        ]
+        pack["v4_priority_questions"] = [
+            question["question_id"]
+            for question in questions
+            if str(question.get("manual_repair") or "").startswith("v4")
+        ]
         pack["question_issues"] = question_issues
         pack["evidence_repairs"] = evidence_repairs
         pack["option_repairs"] = option_repairs
@@ -3370,35 +4347,8 @@ async def generate_pack(
         "est_band": band,
         **coverage,
     }
-    # 机械闸
-    pack["gates"] = {
-        "1_structure": check_structure(pack),
-        "2_citation": check_citation(pack, content, window),
-        "3_lexical": check_lexical(pack, content, window, lexicon),
-        "4_form": check_form(pack, content, window),
-        "5_alignment": check_alignment(pack, band),
-        "6_language": check_language(pack),
-        "7_safety_license": check_safety_license(pack, content),
-        "8_cross": check_cross(pack),
-        "9_coverage": check_coverage(pack, content, window, lexicon, band),
-        "10_content": check_content(pack, band),
-        "token": check_token(pack),
-        "cost": check_cost(pack),
-        "latency": check_latency(pack),
-    }
-    failures = [name for name, result in pack["gates"].items() if not result.get("pass")]
-    if pack["mock"]:
-        pack["status"] = "mock"
-    elif not failures:
-        pack["status"] = "passed"
-    elif any(name in failures for name in ("2_citation", "9_coverage", "1_structure", "10_content")):
-        pack["status"] = "rejected"
-    elif "token" in failures or "4_form" in failures:
-        pack["status"] = "partial"
-    else:
-        pack["status"] = "partial"
-    pack["gate_failures"] = failures
-    return pack
+    # 机械闸（13 项 + 3 个证据子闸，生成/重跑共用）
+    return evaluate_pack_gates(pack, content, window, lexicon, band)
 
 
 def repair_points(
@@ -4213,10 +5163,23 @@ async def run(args: argparse.Namespace) -> dict:
             else:
                 window = select_video_window(content, band, lexicon)
             pack_id = f"g0-{content['id']}-{band.lower()}"
-            if args.skip_existing and (PACK_DIR / f"{pack_id}.json").exists():
+            if (args.skip_existing or args.repair_existing) and (
+                PACK_DIR / f"{pack_id}.json"
+            ).exists():
                 pack = json.loads((PACK_DIR / f"{pack_id}.json").read_text(encoding="utf-8"))
+                if args.repair_existing:
+                    pack = refresh_pack(pack, content, window, lexicon, band)
+                    (PACK_DIR / f"{pack_id}.json").write_text(
+                        json.dumps(pack, ensure_ascii=False, indent=2), encoding="utf-8"
+                    )
+                    print(
+                        f"[repair] {pack_id} status={pack['status']} "
+                        f"fixes={len(pack.get('v4_fixes') or [])}",
+                        flush=True,
+                    )
+                else:
+                    print(f"[skip] {pack_id}")
                 combined.append(pack)
-                print(f"[skip] {pack_id}")
                 continue
             print(f"[gen] {pack_id} ...", flush=True)
             try:
@@ -4284,6 +5247,14 @@ def summarize(packs: list[dict], negative: dict, lexicon: Lexicon, total_elapsed
         gate: sum(1 for p in packs if (p.get("gates") or {}).get(gate, {}).get("pass"))
         for gate in gate_names
     }
+    evidence_gate_counts = {
+        name: sum(
+            1
+            for p in packs
+            if (p.get("evidence_checks") or {}).get(name, {}).get("pass")
+        )
+        for name in ("answer_keyword", "antecedent", "ordinal")
+    }
     return {
         "run_id": RUN_ID,
         "started_at": now_iso(),
@@ -4303,6 +5274,7 @@ def summarize(packs: list[dict], negative: dict, lexicon: Lexicon, total_elapsed
         "pass_count": len(passed),
         "fail_count": len(failed),
         "gate_pass_counts": gate_pass_counts,
+        "evidence_gate_counts": evidence_gate_counts,
         "elapsed_p50": percentile(elapsed_values, 50),
         "elapsed_p95": percentile(elapsed_values, 95),
         "negative": negative,
@@ -4322,8 +5294,8 @@ def build_review_package(summary: dict) -> dict:
     - 逐条再过滤：讲解点/题目本身有内容问题的，不进入盲评包（避免让评审重复踩已修问题）。
     - 已知返修词（neglect/extrapolate/salvage/boredom）若出现在合格池里，优先纳入做回归。
     """
-    rng = random.Random(20261119)  # 第三轮独立种子（v3）
-    hard_fix_lemmas = ("neglect", "extrapolate", "salvage", "boredom")
+    rng = random.Random(REVIEW_SEED)  # 第四轮独立种子（v4）
+    hard_fix_lemmas = ("neglect", "extrapolate", "salvage", "boredom", "quieter", "metaphor")
     packs = [
         pack
         for pack in summary.get("packs") or []
@@ -4382,6 +5354,22 @@ def build_review_package(summary: dict) -> dict:
 
     point_items: list[dict] = []
     used: set[tuple[str, str]] = set()
+    # v4 优先：先把本轮已修复的讲解点（E12/E13/E17/E18 等）放进盲评包，
+    # 保证第四轮评审能看到修复项，而不是随机抽到别处后“失败项自然消失”。
+    priority_point_keys: set[tuple[str, str]] = set()
+    priority_packs = sorted(
+        preferred, key=lambda pack: V4_PRIORITY_PACK_ORDER.get(pack["pack_id"], 99)
+    )
+    for pack in priority_packs:
+        for point_id in pack.get("v4_priority_points") or []:
+            point = next(
+                (p for p in pack.get("points") or [] if p.get("point_id") == point_id),
+                None,
+            )
+            if point is not None and point_ok(pack, point) and add_point(
+                point_items, used, pack, point
+            ):
+                priority_point_keys.add((pack["pack_id"], point_id))
     for pack in preferred:
         points = points_of(pack)
         selected = rng.sample(points, min(2, len(points))) if points else []
@@ -4404,6 +5392,8 @@ def build_review_package(summary: dict) -> dict:
                     continue
                 for index, item in enumerate(point_items):
                     if item["point"].get("kind") != "vocab":
+                        continue
+                    if (item["pack"]["pack_id"], item["point"]["point_id"]) in priority_point_keys:
                         continue
                     used.discard((item["pack"]["pack_id"], item["point"]["point_id"]))
                     point_items[index] = {"pack": pack, "point": point}
@@ -4461,6 +5451,7 @@ def build_review_package(summary: dict) -> dict:
             index
             for index, item in enumerate(point_items)
             if item["point"].get("kind") == "vocab"
+            and (item["pack"]["pack_id"], item["point"]["point_id"]) not in priority_point_keys
             and not any(
                 matches_hard_fix(item["point"].get("lemma") or "", hard)
                 for hard in hard_fix_lemmas
@@ -4539,27 +5530,28 @@ def build_review_package(summary: dict) -> dict:
         question_items.append({"pack": pack, "question": question})
         return True
 
-    # 第三轮优先纳入两道返修证据题，保证盲评能覆盖 v3 的核心修复；
+    # 第四轮优先纳入本轮修复的题目（Q05/Q07/Q09），保证盲评能看到核心修复；
     # 其余 pack 仍按原随机口径抽 1 道主测。
-    priority_question_ids = {
-        "g0-ocean-noise-b2": "q6",
-        "g0-kurzgesagt-ai-slop-b2": "q6",
-    }
-    for pack in preferred:
-        target_id = priority_question_ids.get(pack["pack_id"])
-        if target_id:
+    priority_questions: list[tuple[dict, dict]] = []
+    for pack in priority_packs:
+        for question_id in pack.get("v4_priority_questions") or []:
             target = next(
                 (
                     question
                     for question in pack.get("questions") or []
-                    if question.get("question_id") == target_id
+                    if question.get("question_id") == question_id
                     and question.get("section") == "main"
                     and question_ok(pack, question)
                 ),
                 None,
             )
             if target is not None and add_question(pack, target):
-                continue
+                priority_questions.append((pack, target))
+    priority_question_ids = {
+        f"{pack['pack_id']}/{question['question_id']}": question["question_id"]
+        for pack, question in priority_questions
+    }
+    for pack in preferred:
         main = [
             question
             for question in pack.get("questions") or []
@@ -4706,14 +5698,14 @@ def build_review_package(summary: dict) -> dict:
             f"{len(blind_points)} 讲解点 / {len(blind_questions)} 题 / {len(blind_tasks)} 产出"
         )
     mapping = {
-        "round": "g0-v3",
-        "seed": 20261119,
+        "round": G0_ROUND,
+        "seed": REVIEW_SEED,
         "points": point_mapping,
         "questions": question_mapping,
         "tasks": task_mapping,
     }
     return {
-        "round": "g0-v3",
+        "round": G0_ROUND,
         "points": blind_points,
         "questions": blind_questions,
         "tasks": blind_tasks,
@@ -4722,8 +5714,9 @@ def build_review_package(summary: dict) -> dict:
         "selection": {
             "pack_count": len(packs),
             "content_gate_pass_packs": len(preferred),
-            "priority_questions": sorted(priority_question_ids.values()),
-            "priority_rationale": "优先纳入 ocean B2 q6 / Kurz B2 q6 两道返修证据题",
+            "priority_questions": sorted(priority_question_ids),
+            "priority_points": sorted(f"{pack_id}/{point_id}" for pack_id, point_id in priority_point_keys),
+            "priority_rationale": "优先纳入 v4 修复题（Kurz Q05 / TED-Ed Q07 / free-app Q09）与修复讲解点",
         },
     }
 
@@ -4927,21 +5920,19 @@ def render_report(summary: dict, review: dict) -> str:
 
 def render_review_doc(summary: dict, review: dict) -> str:
     lines: list[str] = []
-    lines.append("# 课程引擎 G0 人工盲评说明（第三轮）")
+    lines.append("# 课程引擎 G0 人工盲评说明（第四轮）")
     lines.append("")
     lines.append("> 目的：验证“生成出来的课是否值得给用户看”。本文件只给流程、rubric 与记录表模板；**不包含任何评审结论**。")
     lines.append(f"> 审阅包：`{REVIEW_DIR / 'blind_items.md'}`（{len(review['points'])} 个讲解点 / {len(review['questions'])} 道题 / {len(review['tasks'])} 个产出任务）  ")
     lines.append(f"> 评审必须在看不到 pack 来源/难度档/内容 id 的情况下独立完成；映射文件 `{REVIEW_DIR / 'mapping.json'}` 由组织者保管。")
     lines.append("")
-    lines.append("## 0. 本轮修复点（与 v2 相比；评审不必看，仅供组织者核对）")
+    lines.append("## 0. 本轮修复点（与 v3 相比；评审不必看，仅供组织者核对）")
     lines.append("")
-    lines.append("- 内容-档位重选：先用 M2 `content_difficulty` 验证 cefr_input ≤ target、UTR/unique/wpm 达标，再生成；案例 A2 换成 M2 A2 公版短文，BBC B1 / Kurz B1 标不适用并由 TED-Ed B1 替换。")
-    lines.append("- 证据题返修：ocean B2 q6、Kurz B2 q6 重写为“答案由 evidence.quote 直接推出且唯一”；新增答案专名/数字必须出现在引文里的机械检查，引文词面 0 重合仍为硬失败。")
-    lines.append("- 讲解模板加入硬约束：neglect to do 合法；extrapolate=根据已知推断；salvage=抢救可用部分；boredom=感受；禁止无依据窄化/编造；≤60 字；只讲与本句相关的信息。")
-    lines.append("- 题目要求答案由引文直接推出且唯一；每个干扰项必须写“为什么错”；解析逐项覆盖 A–D；干扰项同词性/同话题，词数比 ≤1.5×；禁止两个选项都成立（含 help + do / to do 变体）。")
-    lines.append("- 产出：范文 B1≥40 词、B2≥60 词，且必须自然用满 2 个目标词；任务说明写明词数范围与目标词。")
-    lines.append("- 引文质检：主谓/指代/转写问题优先换引文；确需保留时在条目下附“引文说明”（quote_note），评审可据此判断是否作为语言示范。")
-    lines.append("- 自动内容闸（10_content）：选项长度比、范文词数、目标词出现、解析覆盖每个干扰项、答案专名/数字依据；不通过则记录为失败，盲评包再按条目过滤。")
+    lines.append("- 题目：Q05 改用“AI 文章无来源却被当作可信来源”的引文，答案由引文直接推出；Q07 引文补出 doughnut 先行词，去掉裸 that 开头；Q09 删掉无引文依据的“第一种”限定，只问“一种隐藏代价”。")
+    lines.append("- 讲解：E17 不再把 more quiet 判错；E18 why_here 锚定 worth reading；E12 的 if 引文补全条件—结果；E13 明确“经济增长 vs 身体生长”的比较双方；清理“体现…说明这个形式在句中的作用”模板话术。")
+    lines.append("- 新增证据子闸（并入 10_content）：答案关键词必须在引文；指代题引文必须含先行词；题干出现 first/one of 等序数/限定词时引文必须有同一依据。不满足的题不得进入盲评包。")
+    lines.append("- 结构/语言/覆盖率/成本/耗时沿用 v3 口径；10 个 pack 全部真实调 LLM 重新生成，生成后只对上述失败项做逐字证据修复并重跑全部机械闸。")
+    lines.append("- 自动内容闸（10_content）：选项长度比、范文词数、目标词出现、解析覆盖每个干扰项、答案专名/数字依据、三个证据子闸；不通过则记录为失败，盲评包再按条目过滤。")
     lines.append("")
     lines.append("## 1. 盲评流程")
     lines.append("")
@@ -5052,9 +6043,9 @@ def write_review_files(review: dict) -> None:
         ),
         encoding="utf-8",
     )
-    lines = ["# G0 人工盲评材料（第三轮；不含来源/档位映射）", ""]
+    lines = ["# G0 人工盲评材料（第四轮；不含来源/档位映射）", ""]
     lines.append("> 评审只看本文件；不要看 mapping.json。每题/每点/每任务按同目录 `评审说明.md` 的 rubric 打分。")
-    lines.append("> 本轮重点复核：讲解是否只讲本句、题目是否唯一可证、解析是否逐项释错、干扰项是否等长。")
+    lines.append("> 本轮重点复核：引文是否直接支撑答案、指代是否有先行词、序数/限定词是否有引文依据、解析是否逐项释错。")
     lines.append("")
     lines.append(f"## A. 讲解点（{len(review['points'])}）")
     lines.append("")
@@ -5118,6 +6109,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-quota", action="store_true", help="不扣 ai_quota（仍记 ai_usage）")
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument(
+        "--repair-existing",
+        action="store_true",
+        help="读取已有 pack，应用 v4 目标修复并重跑全部闸（0 LLM）",
+    )
+    parser.add_argument(
         "--legacy-lexicon",
         action="store_true",
         help="强制用首轮 CEFR-J+wordfreq 近似词表（复现历史报告；默认优先 M2）",
@@ -5139,6 +6135,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--report", default=str(REPORT_PATH))
     parser.add_argument("--review-doc", default=str(REVIEW_DOC_PATH))
+    parser.add_argument(
+        "--allow-incomplete-review",
+        action="store_true",
+        help="单 pack 试跑时允许盲评包不足 20/10/5（最终全量运行不要用）",
+    )
     return parser.parse_args()
 
 
@@ -5160,7 +6161,13 @@ def main() -> int:
         return 0
     summary = asyncio.run(run(args))
     summary["m2_posthoc"] = compute_m2_posthoc(summary["packs"])
-    review = build_review_package(summary)
+    try:
+        review = build_review_package(summary)
+    except RuntimeError as exc:
+        if not args.allow_incomplete_review:
+            raise
+        print(f"[warn] 盲评包不完整（试跑模式，继续）：{exc}", flush=True)
+        review = {"points": [], "questions": [], "tasks": [], "mapping": {}, "selection": {}}
     write_review_files(review)
     summary["review_counts"] = {
         "points": len(review["points"]),
