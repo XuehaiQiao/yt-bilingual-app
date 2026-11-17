@@ -1,16 +1,16 @@
 // Learning view header (P0 IA §3.5 / §5.4). The old top bar carried the
-// favorites and picture-in-picture controls; both move here so the learning
+// word-book and picture-in-picture controls; both move here so the learning
 // page stays usable on mobile (where sub views hide the app chrome) and the
-// favorites entry is still one click away while watching (§R9).
-import { ArrowLeft, ExternalLink, Star } from 'lucide-react';
+// word-book entry is still one click away while watching (§R9).
+import { ArrowLeft, BookMarked, ExternalLink } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 
 interface LearningHeaderProps {
   title: string;
   featureLabel: string;
   onBack: () => void;
-  favoriteCount: number;
-  onOpenFavorites: () => void;
+  wordbookCount: number;
+  onOpenWordbook: () => void;
   /** PiP is offered whenever a player is live (the handler explains failures). */
   showPip: boolean;
   pipActive: boolean;
@@ -21,8 +21,8 @@ export function LearningHeader({
   title,
   featureLabel,
   onBack,
-  favoriteCount,
-  onOpenFavorites,
+  wordbookCount,
+  onOpenWordbook,
   showPip,
   pipActive,
   onTogglePip,
@@ -60,14 +60,15 @@ export function LearningHeader({
 
       <button
         type="button"
-        data-testid="learning-favorites"
-        onClick={onOpenFavorites}
-        aria-label={t('topbar.favorites', { count: favoriteCount })}
-        title={t('topbar.favorites', { count: favoriteCount })}
+        data-testid="learning-wordbook"
+        onClick={onOpenWordbook}
+        aria-label={t('topbar.wordbook', { count: wordbookCount })}
+        title={t('topbar.wordbook', { count: wordbookCount })}
         className="inline-flex items-center gap-1.5 h-9 px-2 sm:px-3 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
       >
-        <Star className="w-4 h-4 text-amber-400 fill-amber-400/20" />
-        <span className="text-xs font-medium tabular-nums">{favoriteCount}</span>
+        <BookMarked className="w-4 h-4 text-amber-400/90" />
+        <span className="hidden sm:inline text-xs font-medium whitespace-nowrap">{t('vocab.title')}</span>
+        <span className="text-xs font-medium tabular-nums">{wordbookCount}</span>
       </button>
 
       {showPip && (

@@ -44,6 +44,7 @@ interface ImportedBookReaderScreenProps {
         context: string,
         start: number,
         e: React.MouseEvent,
+        source?: { id: string; title?: string },
     ) => void;
     onRequestLogin: () => void;
 }
@@ -771,6 +772,7 @@ export function ImportedBookReaderScreen({
                                                                     paragraph.en,
                                                                     paragraph.index,
                                                                     event,
+                                                                    { id: bookId, title: detail?.title },
                                                                 )
                                                             }
                                                         />

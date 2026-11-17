@@ -517,7 +517,8 @@ const { language, targetLang, setLanguage, t, formatNumber, formatDate } = useI1
 | `model` | `ModelBar.tsx`、`ModelSelectionModal.tsx` | 模型选择、默认/推荐、估价、配额描述 |
 | `learning` / `transcript` | `App.tsx`、`TranscriptBlock.tsx`、`VideoPlayer.tsx`、`LocalEpisodeStage.tsx` | 译文模式、听写、循环、播放、集名标签、翻译进度 |
 | `dictionary` | `WordPopover.tsx` | 查询中、词性、义项、例句、原形、收藏 |
-| `favorites` | `FavoritesModal.tsx` | 分组（今天/昨天/过去 7 天/年月）、导出、空状态 |
+| `vocab` | `VocabularyBookScreen.tsx` | 单词本：我的单词/展开字段、词表 tabs/搜索/分页、隐藏中文、C2 不可用、空/错误态 |
+| `favorites` | `lib/exporter.ts` + 各处星标 | 导出按钮、来源类型、删除文案 |
 | `sentences` | `SentencePacks.tsx`、`SentenceView.tsx`、`lib/sentences.ts` | 精背入口/级别/自测/复习/搜索占位；P0 仅中文目标时可见 |
 | `settings` / `language` | 新增 | 语言设置弹窗、语言名 |
 | `export` | `lib/exporter.ts` | CSV 头、日期、类型标签、语言标记 |

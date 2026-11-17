@@ -13,12 +13,19 @@ export interface FavoriteHighlight {
 }
 
 /** Where a favorite came from (`video` = YouTube). */
-export type FavoriteSourceKind = 'video' | 'local_show' | 'article' | 'sentence_pack' | 'library_article';
+export type FavoriteSourceKind =
+    | 'video'
+    | 'local_show'
+    | 'article'
+    | 'sentence_pack'
+    | 'library_article'
+    | 'book'
+    | 'imported_book';
 
 /**
  * Provenance of a favorite. Optional because records created before this
- * existed have no source_* fields; `FavoritesModal` falls back to the videoId
- * heuristic for those. The backend flattens `meta` into the stored record and
+ * existed have no source_* fields; `lib/favoriteSource` falls back to the
+ * videoId heuristic for those. The backend flattens `meta` into the stored record and
  * keeps unknown keys, so these arrive at the top level on GET.
  */
 export interface FavoriteSourceFields {

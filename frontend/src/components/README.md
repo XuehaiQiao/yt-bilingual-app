@@ -35,7 +35,7 @@
 | `EstimateDialog.tsx` | 首页 / 内容发现 | 共用的处理前估价流程：`/api/estimate-cost` loading 覆盖层 → `ModelSelectionModal` → 确认后交给调用方开始处理；首页链接输入与发现页候选点击都走它 |
 | `ReportScreen.tsx` | 本周报告 | 本周报告全屏视图（M5 / specs/015）：周一到今天日期范围、三个数字（无答题显示「暂无」）、一句事实/下一步/连续天数、证据句子与「回看 mm:ss」、明日到期词入口；加载/错误/空数据态，中越双语、375px 单列 |
 | `SentenceText.tsx` | 句子精背 | seg 渲染：四色语块 + ruby 注音 + 逐词可点 |
-| `FavoritesModal.tsx` | 全局 | 收藏夹：分组、迷你播放器、**Anki/CSV 导出**、每条句子/生词的分享卡入口 |
+| `VocabularyBookScreen.tsx` | 单词本（整页） | 收藏的生词（句子不列入）+ CEFR/GRE/CET4/CET6 词表：我的单词单行/展开（批量 `/level` 显示 CEFR，不在词表 C1+、来源跳转、收藏时间、取消收藏）；词表服务端搜索/每页 50/分页、全局隐藏中文（localStorage，点行临时显示）；C2 禁用并说明；空/加载/错误重试；中越双语、桌面表格、375px 单列 |
 | `ShareCardDialog.tsx` | 全局 | 分享卡弹窗（计划 D-6）：1080×1440 Canvas 预览、下载 PNG、复制文案、生成失败可读错误；本机生成、不请求后端，中越双语与 375px |
 | `ModelBar.tsx` | 首页 | 全局模型栏：/api/models 列表、当前模型、按已配 Key 置灰、选择持久化 |
 | `ModelSelectionModal.tsx` | 首页流程 | 处理前确认：展示当前全局模型与整片费用预估（不再选模型） |

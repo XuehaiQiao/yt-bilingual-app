@@ -18,7 +18,7 @@
 | [002](./002-dictionary/spec.md) | 点查词典 | 点任意单词查释义、音标、发音、入生词本 | 已实现 |
 | [003](./003-listening-drills/spec.md) | 精听训练 | 听写模式、单句循环、倍速、键盘操作 | 已实现 |
 | [004](./004-vocab-level/spec.md) | 生词水平轴 | 按词汇量高亮，CEFR A1–C2 六级轴 | 已实现 |
-| [005](./005-favorites-export/spec.md) | 收藏与导出 | 收藏句子/生词，导出 Anki / CSV | 已实现 |
+| [005](./005-favorites-export/spec.md) | 单词本与导出 | 收藏生词 + CEFR/考试词表浏览、隐藏中文、导出 Anki / CSV | 已实现 |
 | [006](./006-local-shows/spec.md) | 本地剧集 | 导入 SRT，双语看自己的剧 | 已实现 |
 | [007](./007-subscriptions-resume/spec.md) | 订阅与续播 | 关注频道、记忆进度、自动续播 | 已实现 |
 | [008](./008-asr-fallback/spec.md) | 无字幕转写回退 | 没字幕时本地 Whisper 转写 | 已实现（可选依赖） |

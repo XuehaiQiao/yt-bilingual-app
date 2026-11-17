@@ -15,7 +15,6 @@ import { parseRoute, tabForSub, toHash, type SubRoute, type TabId } from './lib/
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
 import { TranscriptView } from './components/TranscriptView';
-import { FavoritesModal } from './components/FavoritesModal';
 import { addFavorite, fetchFavorites, removeFavorite, type FavoriteDraft, type FavoriteItem } from './lib/favorites';
 import { ChannelVideoList } from './components/ChannelVideoList';
 import { Toaster } from './components/Toaster';
@@ -42,6 +41,7 @@ import { TodayScreen } from './components/TodayScreen';
 import { ContentScreen } from './components/ContentScreen';
 import { PracticeScreen } from './components/PracticeScreen';
 import { ProfileScreen } from './components/ProfileScreen';
+import { VocabularyBookScreen } from './components/VocabularyBookScreen';
 import { toast, describeApiError } from './lib/toast';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
@@ -101,7 +101,7 @@ const SEEK_SETTLE_MS = 2500;
 
 // Desktop chrome (docs/信息架构-导航重构.md §4.1): immersive task views own the
 // whole width, so the Sidebar and the primary tabs step aside. Panel-style sub
-// views (blog / discover / report / favorites) keep the shell so their
+// views (blog / discover / report / word book) keep the shell so their
 // shortcut entry shows an active state.
 const TASK_SUB_KINDS: ReadonlySet<SubRoute['kind']> = new Set<SubRoute['kind']>([
   'learn',
@@ -129,7 +129,7 @@ const SUB_LABEL_KEYS: Record<SubRoute['kind'], TranslationKey> = {
   book: 'topbar.feature.book',
   'book-series': 'topbar.feature.bookSeries',
   'imported-book': 'topbar.feature.importedBook',
-  favorites: 'topbar.feature.favorites',
+  vocabulary: 'topbar.feature.vocabulary',
   ability: 'topbar.feature.ability',
   admin: 'topbar.feature.admin',
 };
@@ -302,6 +302,42 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       x: e.clientX,
       y: e.clientY,
       ...(sourceId ? { sourceId, sourceTitle, sourceKind: 'library_article' as const } : {}),
+    });
+  }, []);
+
+  // Public-domain books and imported books pass their id/title through the
+  // reader, so a saved word can jump back to the exact book (书籍 source).
+  const handleBookWordLookup = useCallback((
+    word: string,
+    sentence: string,
+    start: number,
+    e: React.MouseEvent,
+    source?: { id: string; title?: string },
+  ) => {
+    setWordLookup({
+      word,
+      context: sentence,
+      start,
+      x: e.clientX,
+      y: e.clientY,
+      ...(source?.id ? { sourceId: source.id, sourceTitle: source.title, sourceKind: 'book' as const } : {}),
+    });
+  }, []);
+
+  const handleImportedBookWordLookup = useCallback((
+    word: string,
+    sentence: string,
+    start: number,
+    e: React.MouseEvent,
+    source?: { id: string; title?: string },
+  ) => {
+    setWordLookup({
+      word,
+      context: sentence,
+      start,
+      x: e.clientX,
+      y: e.clientY,
+      ...(source?.id ? { sourceId: source.id, sourceTitle: source.title, sourceKind: 'imported_book' as const } : {}),
     });
   }, []);
 
@@ -518,7 +554,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Favorites logic — per-item API (M1 ④). The backend serializes file writes;
   // each mutation is optimistic here and rolls back with a toast on failure.
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
-  const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const favoritesLoaded = useRef(false);
 
   // Channel History Logic
@@ -805,7 +840,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     if (!wordLookup) return;
     // A lookup can point at a reading-API article or a free-library article;
     // both keep their own id/title, but the "出处" row routes them differently.
-    const lookupSourceKind = wordLookup.sourceKind === 'article' || wordLookup.sourceKind === 'library_article'
+    const lookupSourceKind = wordLookup.sourceKind === 'article'
+      || wordLookup.sourceKind === 'library_article'
+      || wordLookup.sourceKind === 'book'
+      || wordLookup.sourceKind === 'imported_book'
       ? wordLookup.sourceKind
       : wordLookup.sourceId
         ? 'article'
@@ -889,11 +927,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setReviewStatsNonce(prev => prev + 1);
   }, []);
 
-  // Cross-sub jumps (favorites → player/reader/pack) replace the favorites
+  // Cross-sub jumps (word book → player/reader/pack) replace the word-book
   // route instead of stacking a second history entry (IA §7.3, depth = 1).
-  const closeFavoritesForJump = () => {
-    setIsFavoritesOpen(false);
-    if (state.sub?.kind === 'favorites') replace({ tab: 'profile', sub: null });
+  const closeWordbookForJump = () => {
+    if (state.sub?.kind === 'vocabulary') replace({ tab: 'profile', sub: null });
   };
 
   const handlePlayFavorite = (favVideoId: string, start: number) => {
@@ -915,7 +952,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         setSeekCommand({ time: start, timestamp: Date.now() });
       }
     }
-    closeFavoritesForJump();
+    closeWordbookForJump();
   };
 
   // ── Content loading (YouTube / local episode / free library) ──────────────
@@ -1330,24 +1367,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
   }, [quizOpen, isLearningView]);
 
-  // Favorites route ↔ panel sync (#/profile/favorites renders the profile page
-  // with the existing panel on top, per IA §8.2).
-  const favoritesRouteRef = useRef(false);
-  useEffect(() => {
-    if (state.sub?.kind === 'favorites') {
-      favoritesRouteRef.current = true;
-      setIsFavoritesOpen(true);
-    } else if (favoritesRouteRef.current) {
-      favoritesRouteRef.current = false;
-      setIsFavoritesOpen(false);
-    }
-  }, [state.sub]);
-
-  const handleCloseFavorites = () => {
-    setIsFavoritesOpen(false);
-    if (state.sub?.kind === 'favorites') back();
-  };
-
   const handleTimeUpdate = useCallback((time: number) => {
     setCurrentTime(time);
     // A seek issued moments ago may be followed by a stale tick from the old
@@ -1508,6 +1527,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   );
 
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
+  // The 单词本 badge counts saved words only. Sentence favorites stay in the
+  // store for the by-item API, but the word book neither lists nor exports them.
+  const vocabularyFavoriteCount = useMemo(
+    () => favorites.filter(f => f.type === 'vocabulary').length,
+    [favorites],
+  );
 
   const handleTranscriptClick = useCallback((time: number) => {
     // Re-pin the loop to the clicked sentence
@@ -1845,26 +1870,26 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     back();
   };
 
-  // Favorites "出处" jump into one article (specs/019 detail view).
+  // Saved-word source jump into one article (specs/019 detail view).
   const handleOpenFavoriteArticle = (articleId: string) => {
     setWordLookup(null);
     setReaderInitialImport(null);
-    closeFavoritesForJump();
+    closeWordbookForJump();
     openSub({ kind: 'reader', articleId });
   };
 
   // Free library articles live under the learn route, not the reading API.
   const handleOpenFavoriteLibraryArticle = (articleId: string) => {
     setWordLookup(null);
-    closeFavoritesForJump();
+    closeWordbookForJump();
     void handleOpenLibraryArticle(articleId);
   };
 
-  // Favorites "出处" jump into a sentence pack (`source_ref` = `L<levelId>`).
+  // Saved-word source jump into a sentence pack (`source_ref` = `L<levelId>`).
   const handleOpenFavoriteSentencePack = (levelId: number) => {
     if (!Number.isInteger(levelId) || levelId <= 0) return;
     setWordLookup(null);
-    closeFavoritesForJump();
+    closeWordbookForJump();
     openSub({ kind: 'sentences', levelId });
   };
 
@@ -2007,15 +2032,21 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     return () => window.clearTimeout(timer);
   }, [isAdmin, status, replace, t]);
 
-  const handleOpenFavoritesRoute = () => {
-    setIsFavoritesOpen(true);
-    openSub({ kind: 'favorites' });
+  const handleOpenWordbookRoute = () => {
+    // From another sub view (an open video/reader) push the word book on top so
+    // its back arrow returns to that exact context; from a tab page `openSub`
+    // pushes as usual. Staying on the word book never stacks a duplicate.
+    if (state.sub && state.sub.kind !== 'vocabulary') {
+      open({ kind: 'vocabulary' });
+      return;
+    }
+    openSub({ kind: 'vocabulary' });
   };
 
   const handleToggleSentenceFavorite = useCallback((s: Sentence, levelId: number, levelTitle?: string) => {
     toggleFavorite({
       id: sentenceFavId(levelId, s.n),
-      // >11 chars so the favorites modal never mistakes it for a YouTube id
+      // >11 chars so a saved word is never mistaken for a YouTube id
       videoId: `sentence-pack-L${levelId}`,
       start: 0,
       en_text: segToPlain(s.seg),
@@ -2048,10 +2079,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     pendingSeekRef.current = null;
     pendingLocalSeekRef.current = null;
 
-    // The admin console and the favorites panel do not depend on the
+    // The admin console and the word book do not depend on the
     // translation target language; leave those open. Everything else is
     // closed so stale old-language content is never painted.
-    if (state.sub && state.sub.kind !== 'admin' && state.sub.kind !== 'favorites') {
+    if (state.sub && state.sub.kind !== 'admin' && state.sub.kind !== 'vocabulary') {
       replace({ tab: state.tab, sub: null });
     }
     resetLearning();
@@ -2534,8 +2565,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         title={metadata?.title || t('common.unknownVideo')}
         featureLabel={featureLabel}
         onBack={() => back()}
-        favoriteCount={favorites.length}
-        onOpenFavorites={() => setIsFavoritesOpen(true)}
+        wordbookCount={vocabularyFavoriteCount}
+        onOpenWordbook={handleOpenWordbookRoute}
         showPip={Boolean(videoId) && transcript.length > 0 && !quizOpen}
         pipActive={Boolean(pipWindow)}
         onTogglePip={() => { void togglePipMode(); }}
@@ -2662,9 +2693,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const profileView = (
     <ProfileScreen
-      favoriteCount={favorites.length}
+      wordbookCount={vocabularyFavoriteCount}
       placementProfile={placementProfile}
-      onOpenFavorites={handleOpenFavoritesRoute}
+      onOpenWordbook={handleOpenWordbookRoute}
       onOpenReport={handleOpenReport}
       onOpenAbility={handleOpenAbility}
       onOpenBlog={handleOpenBlog}
@@ -2792,7 +2823,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               bookId={sub.bookId}
               onClose={() => back()}
               onOpenSeries={(seriesId) => openSub({ kind: 'book-series', seriesId })}
-              onWordLookup={handleReaderWordLookup}
+              onWordLookup={handleBookWordLookup}
             />,
           );
         case 'book-series':
@@ -2810,14 +2841,24 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               key={`imported-book:${targetLang}:${sub.bookId}`}
               bookId={sub.bookId}
               onClose={() => back()}
-              onWordLookup={handleReaderWordLookup}
+              onWordLookup={handleImportedBookWordLookup}
               onRequestLogin={() => onRequestLogin?.()}
             />,
           );
-        case 'favorites':
-          // The route records "on the favorites screen"; P0 still renders the
-          // existing panel on top of the profile page (IA §7.2).
-          return profileView;
+        case 'vocabulary':
+          return subFrame(
+            <VocabularyBookScreen
+              favorites={favorites}
+              onBack={back}
+              onRemoveFavorite={handleRemoveFavorite}
+              onPlayFavorite={handlePlayFavorite}
+              onOpenArticle={handleOpenFavoriteArticle}
+              onOpenLibraryArticle={handleOpenFavoriteLibraryArticle}
+              onOpenSentencePack={handleOpenFavoriteSentencePack}
+              onOpenBook={(bookId) => { setWordLookup(null); closeWordbookForJump(); openSub({ kind: 'book', bookId }); }}
+              onOpenImportedBook={(bookId) => { setWordLookup(null); closeWordbookForJump(); openSub({ kind: 'imported-book', bookId }); }}
+            />,
+          );
         default:
           return profileView;
       }
@@ -2916,7 +2957,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         onNavigate={navigateTab}
         onRequestLogin={onRequestLogin}
         onStartLearning={focusContentComposer}
-        onOpenFavorites={handleOpenFavoritesRoute}
+        onOpenWordbook={handleOpenWordbookRoute}
+        wordbookCount={vocabularyFavoriteCount}
         onOpenReport={handleOpenReport}
         onOpenHistory={handleOpenHistoryShortcut}
         onOpenSentences={handleOpenSentencesShortcut}
@@ -2957,16 +2999,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
       {loadingState && <ProcessingOverlay loadingState={loadingState} />}
 
-      <FavoritesModal
-        isOpen={isFavoritesOpen}
-        onClose={handleCloseFavorites}
-        favorites={favorites}
-        onRemoveFavorite={handleRemoveFavorite}
-        onPlayFavorite={handlePlayFavorite}
-        onOpenArticle={handleOpenFavoriteArticle}
-        onOpenLibraryArticle={handleOpenFavoriteLibraryArticle}
-        onOpenSentencePack={handleOpenFavoriteSentencePack}
-      />
 
       <ChannelVideoList
         isOpen={!!selectedChannel}

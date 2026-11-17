@@ -7,9 +7,9 @@
 //
 // Immersive task views (video / reader / sentence pack / review / exam …) hide
 // the Sidebar and the primary tabs on desktop so the workspace owns the full
-// width. Non-task sub views (blog / discover / report / favorites) keep the
+// width. Non-task sub views (blog / discover / report / word book) keep the
 // shell, which gives their shortcut entry a visible active state.
-import { LogIn, Play, UserRound } from 'lucide-react';
+import { BookMarked, LogIn, Play, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { NavState, TabId } from '../lib/nav';
 import { useAuth } from '../lib/auth';
@@ -43,7 +43,9 @@ interface AppShellProps {
   onRequestLogin?: () => void;
   /** Desktop shortcut: jump to Content and focus the paste input. */
   onStartLearning: () => void;
-  onOpenFavorites: () => void;
+  /** Word-book entry + saved-word count, shown in the top bar and Sidebar. */
+  onOpenWordbook: () => void;
+  wordbookCount: number;
   onOpenReport: () => void;
   onOpenHistory: () => void;
   onOpenSentences: () => void;
@@ -64,7 +66,8 @@ export function AppShell({
   onNavigate,
   onRequestLogin,
   onStartLearning,
-  onOpenFavorites,
+  onOpenWordbook,
+  wordbookCount,
   onOpenReport,
   onOpenHistory,
   onOpenSentences,
@@ -92,7 +95,8 @@ export function AppShell({
           state={state}
           dueCount={dueCount}
           onNavigate={onNavigate}
-          onOpenFavorites={onOpenFavorites}
+          onOpenWordbook={onOpenWordbook}
+          wordbookCount={wordbookCount}
           onOpenReport={onOpenReport}
           onOpenHistory={onOpenHistory}
           onOpenSentences={onOpenSentences}
@@ -170,6 +174,20 @@ export function AppShell({
             >
               <Play className="w-3.5 h-3.5 fill-current" />
               <span className="whitespace-nowrap">{t('topbar.startLearning')}</span>
+            </button>
+            <button
+              type="button"
+              data-testid="topbar-wordbook"
+              onClick={onOpenWordbook}
+              aria-label={t('topbar.wordbook', { count: wordbookCount })}
+              title={t('topbar.wordbook', { count: wordbookCount })}
+              className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
+            >
+              <BookMarked className="w-4 h-4 text-amber-400/90" aria-hidden="true" />
+              <span className="hidden lg:inline text-xs font-medium whitespace-nowrap">{t('vocab.title')}</span>
+              <span className="text-[11px] font-medium tabular-nums text-zinc-400">
+                {wordbookCount > 99 ? '99+' : wordbookCount}
+              </span>
             </button>
             <div className="hidden md:block">
               <ModelBar compact />

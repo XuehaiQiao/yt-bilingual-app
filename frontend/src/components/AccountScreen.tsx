@@ -27,7 +27,7 @@ import {
   Pencil,
   RefreshCw,
   ShieldCheck,
-  Star,
+  BookMarked,
   UserRound,
   Wallet,
   X,
@@ -74,9 +74,9 @@ interface AccountScreenProps {
   onOpenAdmin?: () => void;
   /** Guest shell: opens the login overlay. */
   onRequestLogin?: () => void;
-  /** 我的·我的收藏 row (opens the existing favorites panel). */
-  onOpenFavorites?: () => void;
-  favoriteCount?: number;
+  /** 我的·单词本 row (opens the standalone word-book page). */
+  onOpenWordbook?: () => void;
+  wordbookCount?: number;
   /** 我的·本周报告 row. */
   onOpenReport?: () => void;
   /** 我的·能力档案 row: opens the full ability profile. */
@@ -161,8 +161,8 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   onOpenBlog,
   onOpenAdmin,
   onRequestLogin,
-  onOpenFavorites,
-  favoriteCount = 0,
+  onOpenWordbook,
+  wordbookCount = 0,
   onOpenReport,
   onOpenAbility,
   placementProfile = null,
@@ -303,27 +303,27 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
     </div>
   );
 
-  // Library rows: favorites work for guests too; report/placement row opens
+  // Library rows: the word book works for guests too; report/placement row opens
   // the view (the app routes guests to login when the screen needs an account).
   const libraryRows = (
     <section aria-label={t('profile.library')} className="mt-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40 overflow-hidden">
         <button
           type="button"
-          data-testid="profile-favorites-row"
-          onClick={onOpenFavorites}
+          data-testid="profile-wordbook-row"
+          onClick={onOpenWordbook}
           className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors"
         >
           <span className="flex min-w-0 items-center gap-3">
-            <Star className="w-4 h-4 text-amber-400 shrink-0" />
+            <BookMarked className="w-4 h-4 text-amber-400/90 shrink-0" />
             <span className="min-w-0">
-              <span className="block text-sm font-medium text-zinc-200">{t('profile.favorites')}</span>
-              <span className="mt-0.5 block text-xs text-zinc-500">{t('profile.favoritesHint')}</span>
+              <span className="block text-sm font-medium text-zinc-200">{t('profile.wordbook')}</span>
+              <span className="mt-0.5 block text-xs text-zinc-500">{t('profile.wordbookHint')}</span>
             </span>
           </span>
           <span className="flex items-center gap-1.5 shrink-0">
             <span className="text-xs text-zinc-500 tabular-nums">
-              {t('profile.favoritesCount', { count: formatNumber(favoriteCount) })}
+              {t('profile.wordbookCount', { count: formatNumber(wordbookCount) })}
             </span>
             <ChevronRight className="w-4 h-4 text-zinc-600" />
           </span>
@@ -507,7 +507,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   );
 
   // Guest / session-expired: the summary endpoint is 403 by contract. The
-  // page still offers favorites, settings and about; the account header offers
+  // page still offers the word book, settings and about; the account header offers
   // login instead of an error banner.
   if (!isAuthenticated || forbidden) {
     return (

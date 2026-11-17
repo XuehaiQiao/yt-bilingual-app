@@ -46,6 +46,7 @@ interface BookReaderScreenProps {
         context: string,
         start: number,
         e: React.MouseEvent,
+        source?: { id: string; title?: string },
     ) => void;
 }
 
@@ -796,7 +797,10 @@ export function BookReaderScreen({
                                                                 <ClickableWords
                                                                     text={paragraph.en}
                                                                     onWordClick={(word, event) =>
-                                                                        onWordLookup(word, paragraph.en, paragraph.index, event)
+                                                                        onWordLookup(word, paragraph.en, paragraph.index, event, {
+                                                                            id: bookId,
+                                                                            title: detail?.title,
+                                                                        })
                                                                     }
                                                                 />
                                                             </p>

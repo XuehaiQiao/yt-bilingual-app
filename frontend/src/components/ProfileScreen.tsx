@@ -5,9 +5,9 @@ import type { PlacementProfile } from '../lib/placement';
 import { AccountScreen } from './AccountScreen';
 
 interface ProfileScreenProps {
-  favoriteCount: number;
+  wordbookCount: number;
   placementProfile: PlacementProfile | null;
-  onOpenFavorites: () => void;
+  onOpenWordbook: () => void;
   onOpenReport: () => void;
   onOpenAbility: () => void;
   onOpenBlog: () => void;
@@ -16,9 +16,9 @@ interface ProfileScreenProps {
 }
 
 export function ProfileScreen({
-  favoriteCount,
+  wordbookCount,
   placementProfile,
-  onOpenFavorites,
+  onOpenWordbook,
   onOpenReport,
   onOpenAbility,
   onOpenBlog,
@@ -28,9 +28,9 @@ export function ProfileScreen({
   return (
     <AccountScreen
       isPage
-      favoriteCount={favoriteCount}
+      wordbookCount={wordbookCount}
       placementProfile={placementProfile}
-      onOpenFavorites={onOpenFavorites}
+      onOpenWordbook={onOpenWordbook}
       onOpenReport={onOpenReport}
       onOpenAbility={onOpenAbility}
       onOpenBlog={onOpenBlog}

@@ -1,34 +1,44 @@
-# 规格：收藏与导出
+# 规格：单词本与导出
 
-**状态：** 已实现（M1 ④ 按条 API：2026-11-15；生词折叠与出处：2026-11-16）｜ **对应代码：** `backend/routes_user.py`（`/api/favorites`）、`backend/storage.py`（路径 + 墓碑文件）、`frontend/src/lib/favorites.ts`、`frontend/src/App.tsx`、`frontend/src/components/FavoritesModal.tsx`、`frontend/src/components/ReaderScreen.tsx`、`frontend/src/components/SentenceView.tsx`、`frontend/src/lib/exporter.ts`
+**状态：** 已实现（M1 ④ 按条 API：2026-11-15；生词折叠与出处：2026-11-16；独立「单词本」页面：2026-11-17）｜ **对应代码：** `backend/routes_user.py`（`/api/favorites`）、`backend/routes_vocabulary.py`（词表目录/分页/等级）、`backend/storage.py`（路径 + 墓碑文件）、`backend/vocabulary.py`、`frontend/src/lib/favorites.ts`、`frontend/src/lib/vocabulary.ts`、`frontend/src/lib/favoriteSource.ts`、`frontend/src/components/VocabularyBookScreen.tsx`、`frontend/src/App.tsx`、`frontend/src/lib/exporter.ts`
 
 ---
 
 ## 目标
-打通学习闭环的最后一环——把"看过/查过"沉淀成"可复习"。收藏不能是死胡同，必须能导出到真正的复习工具。
+打通学习闭环的最后一环——把"看过/查过"沉淀成"可复习"。单词不能只是躺在收藏里：要能按 CEFR 与考试词表浏览、按中文遮挡自测、再一键导出到真正的复习工具。
 
 ## 用户故事
-- 作为用户，我想**星标**重要的句子和生词，连同它们的来源语境一起存下来。
-- 作为用户，我想把收藏**导出到 Anki** 做间隔重复，或导成表格自己整理。
+- 作为用户，我想**星标**重要的生词，连同它们的来源语境一起存下来。
+- 作为用户，我想在独立的「单词本」里看到**我的单词**，并展开查看它的 CEFR 等级、出处与收藏时间；不在词表里的词诚实显示 `C1+`。
+- 作为用户，我想按 **CEFR A1–C2 + GRE + CET4 + CET6** 浏览词表，搜索单词并看到音标、中文释义与等级。
+- 作为用户，我想**隐藏中文**背词；点某一行临时显示释义，再点收起；这个偏好下次打开仍然记得。
+- 作为用户，我想把收藏的单词**导出到 Anki** 做间隔重复，或导成 CSV 自己整理。
 - 作为同时开两个标签页/两台设备的用户，我在一边加/删收藏，另一边不会把整份收藏覆盖掉。
 
 ## 功能需求
-- **必须**：可收藏两类——整句、单词（生词）；都带来源句、视频、时间点。
+### 收藏数据（不变）
+- **必须**：可收藏两类——整句、单词（生词）；都带来源句、视频/文章、时间点。
 - **必须**：收藏持久化到后端（每用户 `favorites.json`），后端不可用时退回 localStorage。
 - **必须**：按条写入（`POST /api/favorites`、`DELETE /api/favorites/{id}`），不再由前端发整文件 PUT；旧 `PUT /api/favorites` 只作兼容保留。
-- **必须**：同一条收藏有稳定 `id`；重复 POST 幂等（按 id 或内容指纹去重）。
-- **必须**：删除不存在的收藏返回 `404`；缺少 `text` 或非法 `type` 返回 `400`；未登录仍是 `401`（由会话中间件统一处理）。
+- **必须**：同一条收藏有稳定 `id`；重复 POST 幂等（按 id 或内容指纹去重）；删除不存在的收藏返回 `404`。
 - **必须**：旧 `favorites.json` 里没有 `id` 的记录读取时补稳定 `id`，不丢数据、不在 GET 时改写文件。
-- **必须**：并发安全——同一用户的读-改-写用文件锁串行化，并用 tmp + `os.replace` 原子落盘；两个请求同时加收藏不能丢一条。
-- **必须**：导出 **Anki 可导入的 TSV**（正面英文 / 背面中文+例句 / 标签）。
-- **必须**：导出**完整 CSV**（含类型、英文、中文、语境、视频 id、时间点、日期）。
-- **应当**：收藏夹按时间分组（今天 / 昨天 / 更早）。
-- **应当**：`GET /api/favorites?since=<ms>` 返回增量（含删除墓碑），供未来多设备同步使用。
-- **必须**（2026-11-16）：收藏写入时带出处 `meta.source_kind`（`video` / `local_show` / `article` / `sentence_pack`）、`source_ref`（videoId / showId / articleId / `L<level>`）、`source_title`；后端按“未知字段原样保留”落盘，GET 顶层返回。
+- **必须**：并发安全——同一用户的读-改-写用文件锁串行化，并用 tmp + `os.replace` 原子落盘。
+- **必须**（2026-11-16 起）：收藏写入时带出处 `meta.source_kind`（`video` / `local_show` / `article` / `library_article` / `sentence_pack` / `book` / `imported_book`）、`source_ref`、`source_title`；后端按“未知字段原样保留”落盘，GET 顶层返回。
 - **应当**：没有 `source_*` 的旧收藏按 `videoId` 启发式推断（11 位 → 视频；`sentence-pack-L*` → 句子精背；其他长 id → 文章），标题未知时显示「来源未知」且不可点。
-- **必须**：收藏夹里的生词默认收起为**一行**（单词 + IPA + 释义）；展开后显示出处（带确认框的跳转）、原句（英文 + 译文）与回看/删除/分享。句子收藏保持原卡片样式。
 
-## API 契约（M1 ④）
+### 单词本页面（2026-11-17）
+- **必须**：独立整页路由 `#/profile/vocabulary`（旧 `#/profile/favorites` 作为兼容别名，自动改写为新路由）；顶栏标题「单词本」+ 返回。
+- **必须**：侧边栏快捷入口「收藏」改「单词本」；顶栏/学习页头部旧 Favorites 按钮与数字改「单词本」入口；个人页「我的收藏」行改「单词本」。这些入口都打开页面，**不再弹 FavoritesModal**（组件已删除）。
+- **必须**：Tabs 顺序 `我的单词 / A1 / A2 / B1 / B2 / C1 / C2 / GRE / CET4 / CET6`；词表 tab 数量来自 `GET /api/vocabulary/lists`；收藏数量在顶栏/侧边栏显示（只数生词）。
+- **必须**：**我的单词**只列 `favorites` 中 `type=vocabulary`（句子/分享卡不列入），默认一行（单词 + IPA + 中文释义）；展开显示 CEFR 徽章、来源（可跳回视频/本地剧集/文章/免费文章/句子精背/公版书/导入书）、收藏时间、取消收藏。等级走 `GET /api/vocabulary/level`（每批 ≤100），不在词表或非法 token 显示 `C1+`。
+- **必须**：**词表**支持服务端搜索（`q`，300ms 防抖）、每页 50、分页；每行 word / phonetic / translation / CEFR 徽章。
+- **必须**：「隐藏中文」全局开关：隐藏后只显示单词（+ 音标与等级），点击行临时显示中文，再点收起；偏好写 localStorage（`yt_bilingual_vocab_hide_zh`）并跨刷新记忆。
+- **必须**：C2 `available:false` 时 tab 禁用并显示「C2 词表暂未建模」；**不请求** C2 词表、不拿空表冒充数据、不用 GRE 冒充 C2。
+- **必须**：加载/空态/错误重试；导出 Anki TSV / CSV 只导出「我的单词」（生词），不再混入句子。
+- **必须**：中越 i18n 文案与 placeholder 对齐；桌面表格化、375px 单列不横向溢出。
+
+## API 契约
+### 收藏（M1 ④）
 
 | 端点 | 请求 | 成功 | 失败 |
 |---|---|---|---|
@@ -39,23 +49,36 @@
 | `PUT /api/favorites`（兼容） | `{favorites:[…]}` | `200 {"status":"ok","count":N}` | `400` `favorites` 非数组 |
 
 - `favorite` 存储形状保持旧前端字段：`id/type/videoId/start/en_text/zh_text/added_at/highlights/context_en/context_zh`；未知字段原样保留。
-- 删除写旁路墓碑 `favorites_tombstones.json`（`{id: deleted_at_ms}`，保留 30 天），不改变主文件数组格式；旧代码回滚后仍能读 `favorites.json`。
-- 旧 PUT 是**整份快照**语义：不在快照里的已有 id 记墓碑；非收藏的任意 JSON 记录原样保留（旧测试/旧客户端兼容）。
+- 删除写旁路墓碑 `favorites_tombstones.json`（`{id: deleted_at_ms}`，保留 30 天）。
 - 前端使用 `lib/favorites.ts` 的 `fetchFavorites/addFavorite/removeFavorite`；`App.tsx` 先乐观更新本地状态，失败回滚并 toast。`replaceAllFavorites` 只保留为兼容路径，App 不再调用。
 
+### 词表（公开只读，2026-11-17）
+
+| 端点 | 请求 | 成功 | 失败 |
+|---|---|---|---|
+| `GET /api/vocabulary/lists` | — | `200` 数组：`id/label/count/source/license/notice/approximate/available/version/note`；C2 `available:false` | `503` 数据缺失 |
+| `GET /api/vocabulary/lists/{id}?page=1&pageSize=50&q=` | `page≥1`、`pageSize 1–200`、`q` 服务端包含搜索 | `200 {items:[{word,phonetic,translation,cefrLevel}],total,page,pageSize,hasMore}` | `404` 词表不存在/C2；`422` 参数非法；`503` 数据缺失 |
+| `GET /api/vocabulary/level?words=a,b,c` | ≤100 个词/批 | `200 {word: 'A1'..'C1' \| 'C1+' \| null}`（保留输入大小写） | `422` 空/超量 |
+
+- C2 未建模：`available:false`，请求 `/lists/cefr-c2` 返回 `404`；前端不请求。
+- 词表数据来自仓库只读 JSON（`content/wordlist/`、`content/wordlists/`），无数据库迁移、无 LLM 调用。
+
 ## 验收标准
-- [x] 看视频时点句子旁星标，该句进入收藏夹，带时间点。
-- [x] 查词卡里点星标，该词进入收藏夹（生词类型，带来源句）。
+- [x] 看视频时点句子旁星标，该句进入收藏；查词卡星标把词按生词类型存下（带来源句）。
 - [x] 句子精背的星标同样走按条 API。
-- [x] 收藏夹点"导出 Anki"，下载的 TSV 能被 Anki 正常导入成卡片。
-- [x] 点"导出 CSV"，下载的表格含完整上下文列。
-- [x] 两个并发 POST 都落盘；删除一条只影响这一条；旧无 id 数据 GET 可读、可删。
-- [x] `backend/tests/test_favorites_api.py` 全离线覆盖新增/删除/幂等/400/404/排序/旧数据/墓碑/并发。
-- [x] 生词收藏默认一行收起（单词/IPA/释义），展开显示出处与原句；出处点击先弹自定义确认框。
-- [x] 出处跳转：视频/本地剧集复用回看、文章打开阅读器对应文章（`ReaderScreen.initialArticleId`）、句子精背打开对应册；旧收藏无标题时禁用。
-- [x] 375px 无横向溢出；zh-CN / vi-VN 文案与 placeholder 对齐（`npm run check:i18n`）。
+- [x] 旧 `#/profile/favorites` 自动改写为 `#/profile/vocabulary`，任何入口都不再挂载 `FavoritesModal`。
+- [x] 顶栏 / 侧边栏 / 个人页 / 学习页头部都显示「单词本」与生词数量，点击进入独立页面。
+- [x] 我的单词默认一行；展开显示 CEFR（批量 `/level`；不在词表 `C1+`）、来源、收藏时间；取消收藏乐观删除、失败回滚 + toast。
+- [x] 来源可跳回：视频/本地剧集、文章、免费文章、句子精背、公版书、导入书；无来源时显示「来源未知」且不可点。
+- [x] 词表 tabs 与数量来自 `/lists`；C2 tab 禁用并显示「C2 词表暂未建模」，不发起 C2 请求、不显示空表。
+- [x] 词表搜索走服务端 `q`（防抖）、每页 50、分页到最后一页；加载/空/错误重试态可读。
+- [x] 隐藏中文后只显示单词行，点击行临时显示、再点收起；`localStorage` 记住偏好，刷新后仍生效。
+- [x] 导出 Anki/CSV 仍可用，导出的范围是「我的单词」。
+- [x] 375px 单列与 1440px 桌面无横向溢出；zh-CN / vi-VN 文案与 placeholder 对齐（`npm run check:i18n`）。
 
 ## 边界与非目标
-- 不内置复习/间隔重复（导出到 Anki 承担复习；应用内复习属未来路线）。
+- C2 词表尚未建模：不拿 GRE 或频表冒充 C2，也不展示空表当数据。
+- 单词本只列生词；句子收藏仍保存在后端（按条 API），当前没有独立列表 UI，也不混入单词本。
+- 不内置复习/间隔重复（导出到 Anki 承担复习；应用内复习属 specs/013）。
 - 导出是一次性文件下载，不做云同步。
-- M1 仍用每用户 JSON 文件（不建 `favorites` 表、不改 Alembic）；按条 API + 墓碑已为 M2 的 `favorites` 表迁移预留语义。
+- 仍用每用户 JSON 文件存收藏（不建 `favorites` 表、不改 Alembic）。

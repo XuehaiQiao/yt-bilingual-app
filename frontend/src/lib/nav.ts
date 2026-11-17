@@ -21,7 +21,9 @@
 //   #/learn/youtube/<videoId>                            learning view (YouTube)
 //   #/learn/local/<showId>/S<ss>E<ee>                    learning view (local episode)
 //   #/learn/library/<itemId>                             learning view (free library)
-//   #/profile/favorites                                  favorites
+//   #/profile/vocabulary                                 word book (单词本);
+//                                                          #/profile/favorites is
+//                                                          a legacy alias.
 //   #/profile/ability                                    ability profile
 //   #/profile/admin                                      admin console
 //
@@ -59,7 +61,7 @@ export type SubRoute =
   | { kind: 'book'; bookId: string }
   | { kind: 'book-series'; seriesId: string }
   | { kind: 'imported-book'; bookId: string }
-  | { kind: 'favorites' }
+  | { kind: 'vocabulary' }
   | { kind: 'ability' }
   | { kind: 'admin' };
 
@@ -115,7 +117,7 @@ export function tabOfSub(sub: SubRoute, fallback: TabId = 'today'): TabId {
     case 'book-series':
     case 'imported-book':
       return 'content';
-    case 'favorites':
+    case 'vocabulary':
     case 'ability':
     case 'admin':
       return 'profile';
@@ -178,8 +180,10 @@ export function parseRoute(hash: string): NavState {
       if (tab === 'today' || tab === 'profile') return { tab, sub: { kind: 'report' } };
       return { ...FALLBACK };
     }
-    if (sub === 'favorites' && rest.length === 1 && tab === 'profile') {
-      return { tab, sub: { kind: 'favorites' } };
+    if ((sub === 'vocabulary' || sub === 'favorites') && rest.length === 1 && tab === 'profile') {
+      // `favorites` is the pre-word-book URL; both canonicalise to the same
+      // screen (useNav rewrites the address to `#/profile/vocabulary`).
+      return { tab, sub: { kind: 'vocabulary' } };
     }
     if (sub === 'ability' && rest.length === 1 && tab === 'profile') {
       return { tab, sub: { kind: 'ability' } };
@@ -298,8 +302,8 @@ export function toHash(state: NavState): string {
       return `#/content/book-series/${encodeSegment(sub.seriesId)}`;
     case 'imported-book':
       return `#/content/imported-book/${encodeSegment(sub.bookId)}`;
-    case 'favorites':
-      return '#/profile/favorites';
+    case 'vocabulary':
+      return '#/profile/vocabulary';
     case 'ability':
       return '#/profile/ability';
     case 'admin':
