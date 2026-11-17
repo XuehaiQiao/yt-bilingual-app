@@ -1,0 +1,53 @@
+{
+  "id": "g1-ocean-noise-2026-11-17",
+  "status": "draft_needs_human_spot_check",
+  "source": {
+    "articleId": "ocean-noise",
+    "title": "Why the Ocean Is Getting Louder",
+    "level": "B1",
+    "wordCount": 269,
+    "license": "LinguaTrek 编辑部原创，免费使用",
+    "path": "content/library/articles/ocean-noise.json"
+  },
+  "targetLevel": "B1",
+  "durationMinutes": 12,
+  "learningGoal": "能说明海洋噪音是什么、为什么影响海洋动物，并用 make it + adj + for sb + to do 表达影响。",
+  "stages": [
+    {"id": "S0", "name": "暖场", "minutes": 0.5, "task": "问：你最近看过关于海洋的视频/文章吗？"}, 
+    {"id": "S1", "name": "词汇预教", "minutes": 1.75, "task": "4 个词先 3 选 1 猜义 → 揭示 → 读本段例句"}, 
+    {"id": "S2-S4", "name": "分段阅读+讲解+检查", "minutes": 6.5, "task": "3 段：每段读 60s → 讲解 30s → 2 题 40s"},
+    {"id": "S5", "name": "产出+收束", "minutes": 3.0, "task": "写 2–5 句 → 自评 → 2 道离场测 → 4 词进复习"}
+  ],
+  "points": [
+    {"id": "W1", "type": "word", "word": "pollution", "ipa": "/pəˈluːʃn/", "meaning": "污染", "cefr": "B1", "evidence": "another kind of pollution that we cannot see: noise", "example": "Noise is a kind of pollution."},
+    {"id": "W2", "type": "word", "word": "underwater", "ipa": "/ˌʌndəˈwɔːtə(r)/", "meaning": "水下的；在水下", "cefr": "A2", "evidence": "The main source of underwater noise is shipping.", "example": "Underwater noise comes from ships."},
+    {"id": "W3", "type": "word", "word": "shipping", "ipa": "/ˈʃɪpɪŋ/", "meaning": "航运；船舶运输", "cefr": "B1", "evidence": "The main source of underwater noise is shipping.", "example": "Shipping carries most of the world's goods."},
+    {"id": "W4", "type": "word", "word": "constant", "ipa": "/ˈkɒnstənt/", "meaning": "持续不断的", "cefr": "B2", "evidence": "For whales, constant noise may even affect how they feed and travel.", "example": "Constant noise is hard to escape."},
+    {"id": "F1", "type": "form", "form": "make it + adj. + for sb. + to do", "meaning": "使某人做某事变得更……", "cefr": "B1", "evidence": "make it harder for them to rest", "why": "it 是形式宾语，真正宾语是 for them to rest；形容词 harder 说明难度。"}
+  ],
+  "questions": [
+    {"id": "Q1", "segment": 1, "type": "detail", "prompt": "When people talk about ocean pollution, what do they usually think of?", "options": ["Plastic bags or oil", "Loud music", "Too many fish", "Cold water"], "answer": "A", "evidence": "they usually think of plastic bags or oil", "explain": "第一段直接说人们通常想到塑料袋或石油；噪音是另一种看不见的污染。"},
+    {"id": "Q2", "segment": 1, "type": "detail", "prompt": "What is the main source of underwater noise?", "options": ["Shipping", "Whales", "Rain", "Fish"], "answer": "A", "evidence": "The main source of underwater noise is shipping.", "explain": "第二段第一句直接给出 main source 是 shipping。"},
+    {"id": "Q3", "segment": 2, "type": "vocabulary", "prompt": "In this article, what does 'pollution' mean?", "options": ["Harmful things in the environment", "A kind of fish", "A way of travelling", "A loud song"], "answer": "A", "evidence": "another kind of pollution that we cannot see: noise", "explain": "文章把噪音称为一种 pollution，说明它指对环境有害的东西，不只是垃圾。"},
+    {"id": "Q4", "segment": 2, "type": "inference", "prompt": "Why do whales and dolphins call to each other?", "options": ["To communicate across long distances", "To find plastic", "To make ships stop", "To sleep"], "answer": "A", "evidence": "Whales and dolphins call to each other across great distances.", "explain": "第三段说它们用声音跨越很远距离交流，因此噪音会干扰交流。"},
+    {"id": "Q5", "segment": 3, "type": "form", "prompt": "What does 'make it harder for them to rest' mean?", "options": ["Noise makes resting more difficult for them", "They find it hard to make noise", "They rest harder than before", "Noise helps them rest"], "answer": "A", "evidence": "make it harder for them to rest", "explain": "make it + adj + for sb + to do：噪音使它们休息变得更难。"},
+    {"id": "Q6", "segment": 3, "type": "vocabulary", "prompt": "What does 'constant' mean in 'constant noise'?", "options": ["Continuing without stopping", "Very quiet", "Only at night", "Made by fish"], "answer": "A", "evidence": "constant noise may even affect how they feed and travel", "explain": "constant 表示持续不断；文章说持续噪音会影响鲸鱼进食和迁徙。"}
+  ],
+  "gist": {"id": "G1", "prompt": "What is the article mainly about?", "options": ["Ocean noise as a hidden pollution that harms sea animals", "How to build a large ship", "Why plastic is the only ocean problem", "How fish find food"], "answer": "A", "explain": "文章从看不见的噪音污染讲到航运、声呐和海洋动物受到的影响。"},
+  "exitTicket": [
+    {"id": "E1", "prompt": "Which is an example of ocean noise pollution?", "options": ["Shipping engines", "Plastic bags", "Oil spills", "Sunlight"], "answer": "A", "explain": "航运引擎是文章列出的主要水下噪音来源。"},
+    {"id": "E2", "prompt": "What does 'underwater' mean?", "options": ["Below the surface of the water", "On a ship", "In the sky", "Next to the beach"], "answer": "A", "explain": "underwater = 在水下。"}
+  ],
+  "output": {
+    "prompt": "Write 2–5 sentences (A2 20–40 / B1 40–60 / B2 60–90 words): explain one way noise harms sea animals, and one thing people could do. Use at least two target words.",
+    "targetWords": ["pollution", "underwater", "shipping", "constant"],
+    "rubric": ["任务完成：说明一个危害 + 一个办法", "目标词：至少 2 个自然使用", "可读性：句子连贯、语法错误不影响理解"],
+    "sample": "Underwater noise from shipping is a kind of pollution. It is constant, so whales and dolphins have trouble communicating. People could make ships quieter or slow them down in important areas."
+  },
+  "facilitatorNotes": [
+    "不提示答案；用户卡住时只问“你现在在想什么？”",
+    "S3 讲解只讲本段证据，不扩展百科。",
+    "S5 不替用户写，不纠错到完美；记录字数与是否提交。",
+    "结束后问“明天还有一节，你会打开吗”，并给真实可选时间。"
+  ]
+}
