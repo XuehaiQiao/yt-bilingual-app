@@ -13,7 +13,6 @@ interface ProfileScreenProps {
   onOpenBlog: () => void;
   onOpenAdmin: () => void;
   onRequestLogin: () => void;
-  onOpenVocab: () => void;
 }
 
 export function ProfileScreen({
@@ -25,7 +24,6 @@ export function ProfileScreen({
   onOpenBlog,
   onOpenAdmin,
   onRequestLogin,
-  onOpenVocab,
 }: ProfileScreenProps) {
   return (
     <AccountScreen
@@ -38,7 +36,6 @@ export function ProfileScreen({
       onOpenBlog={onOpenBlog}
       onOpenAdmin={onOpenAdmin}
       onRequestLogin={onRequestLogin}
-      onOpenVocab={onOpenVocab}
     />
   );
 }

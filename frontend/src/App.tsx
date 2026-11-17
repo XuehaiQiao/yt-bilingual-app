@@ -2670,7 +2670,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       onOpenBlog={handleOpenBlog}
       onOpenAdmin={handleOpenAdmin}
       onRequestLogin={() => onRequestLogin?.()}
-      onOpenVocab={() => go('content')}
     />
   );
 

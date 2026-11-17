@@ -6,9 +6,12 @@
 // means the translation for that paragraph is still pending). Everything here
 // is public and needs no login.
 import { apiFetch } from './api';
+import { getRuntimeTargetLang, type LanguageCode } from '../i18n';
 
 export type BookLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 export type BookStatus = 'available' | 'coming_soon';
+/** Paragraph completeness of one chapter translation (`missing` is the old default). */
+export type BookTranslationStatus = 'cached' | 'partial' | 'missing';
 
 export interface BookSummary {
     id: string;
@@ -104,11 +107,26 @@ export interface BookChapter {
     seriesTitle: string;
     contentNote?: string;
     translationMeta?: Record<string, unknown>;
+    /** `cached` = every paragraph translated, `partial` = some, `missing` = none. */
+    translationStatus: BookTranslationStatus;
+    translationSource?: string;
+    translationModel?: string | null;
+    translationUpdatedAt?: string | null;
     source: BookChapterSource;
     paragraphs: BookChapterParagraph[];
     missingTranslations: number;
     translated: boolean;
     translatedChapters: number;
+}
+
+/** POST translate response: the full chapter plus the cost/cache metadata. */
+export interface BookChapterTranslation extends BookChapter {
+    /** True when the chapter already had complete cached translations (no model call). */
+    cached: boolean;
+    outcome: 'cached' | 'done' | 'partial';
+    translatedParagraphs: number;
+    failedParagraphs: number;
+    failedIndices: number[];
 }
 
 export class BooksApiError extends Error {
@@ -301,12 +319,16 @@ export async function fetchBook(bookId: string): Promise<BookDetail> {
     };
 }
 
-export async function fetchBookChapter(bookId: string, n: number): Promise<BookChapter> {
-    const response = await apiFetch(`/api/books/${encodeURIComponent(bookId)}/chapters/${n}`, {
-        cache: 'no-store',
-    });
-    if (!response.ok) throw new BooksApiError(await readError(response), response.status);
-    const data = (await response.json()) as unknown;
+function asTranslationStatus(value: unknown): BookTranslationStatus | null {
+    return value === 'cached' || value === 'partial' || value === 'missing' ? value : null;
+}
+
+/**
+ * Parse one chapter payload. The GET and POST translate endpoints return the
+ * same shape, so both go through here; `translationStatus` falls back to a
+ * count-derived value when an older backend omits it.
+ */
+function asBookChapter(data: unknown, fallbackChapter: number): BookChapter {
     if (!isRecord(data) || !Array.isArray(data.paragraphs) || !isRecord(data.source)) {
         throw new BooksApiError('章节数据格式不正确', 0);
     }
@@ -321,7 +343,16 @@ export async function fetchBookChapter(bookId: string, n: number): Promise<BookC
     if (paragraphs.some((entry): entry is null => entry === null)) {
         throw new BooksApiError('章节段落数据格式不正确', 0);
     }
+    const parsed = paragraphs as BookChapterParagraph[];
     const source = data.source;
+    const translatedCount = parsed.filter((paragraph) => Boolean(paragraph.zh?.trim())).length;
+    const missingTranslations = asNumber(data.missingTranslations)
+        ?? parsed.length - translatedCount;
+    const derivedStatus: BookTranslationStatus = missingTranslations <= 0
+        ? 'cached'
+        : translatedCount === 0
+            ? 'missing'
+            : 'partial';
     return {
         bookId: String(data.bookId ?? ''),
         bookTitle: String(data.bookTitle ?? ''),
@@ -329,7 +360,7 @@ export async function fetchBookChapter(bookId: string, n: number): Promise<BookC
         author: String(data.author ?? ''),
         level: String(data.level ?? ''),
         license: String(data.license ?? ''),
-        chapter: asNumber(data.chapter) ?? n,
+        chapter: asNumber(data.chapter) ?? fallbackChapter,
         chapterTitle: String(data.chapterTitle ?? ''),
         sourceTitle: String(data.sourceTitle ?? ''),
         totalChapters: asNumber(data.totalChapters) ?? 0,
@@ -338,16 +369,81 @@ export async function fetchBookChapter(bookId: string, n: number): Promise<BookC
         seriesTitle: String(data.seriesTitle ?? ''),
         contentNote: asString(data.contentNote) ?? undefined,
         translationMeta: isRecord(data.translationMeta) ? data.translationMeta : undefined,
+        translationStatus: asTranslationStatus(data.translationStatus) ?? derivedStatus,
+        translationSource: asString(data.translationSource) ?? undefined,
+        translationModel: asString(data.translationModel),
+        translationUpdatedAt: asString(data.translationUpdatedAt),
         source: {
             provider: String(source.provider ?? ''),
             url: String(source.url ?? ''),
             fetchedAt: String(source.fetchedAt ?? ''),
             degraded: source.degraded === true,
         },
-        paragraphs: paragraphs as BookChapterParagraph[],
-        missingTranslations: asNumber(data.missingTranslations) ?? 0,
+        paragraphs: parsed,
+        missingTranslations,
         translated: data.translated === true,
         translatedChapters: asNumber(data.translatedChapters) ?? 0,
+    };
+}
+
+export async function fetchBookChapter(
+    bookId: string,
+    n: number,
+    targetLang: LanguageCode = getRuntimeTargetLang(),
+): Promise<BookChapter> {
+    const query = `?targetLang=${encodeURIComponent(targetLang)}`;
+    const response = await apiFetch(`/api/books/${encodeURIComponent(bookId)}/chapters/${n}${query}`, {
+        cache: 'no-store',
+    });
+    if (!response.ok) throw new BooksApiError(await readError(response), response.status);
+    return asBookChapter(await response.json(), n);
+}
+
+/**
+ * Translate the missing paragraphs of one public-domain chapter on demand.
+ *
+ * Public (guests included); the backend rate-limits per IP and caches globally,
+ * so a second call for an already-translated chapter returns `cached: true`
+ * without calling a model. The response is the full chapter, ready to render.
+ */
+export async function translateBookChapter(
+    bookId: string,
+    n: number,
+    targetLang: LanguageCode = getRuntimeTargetLang(),
+): Promise<BookChapterTranslation> {
+    const response = await apiFetch(
+        `/api/books/${encodeURIComponent(bookId)}/chapters/${n}/translate`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetLang }),
+            cache: 'no-store',
+        },
+    );
+    if (!response.ok) throw new BooksApiError(await readError(response), response.status);
+    const data = (await response.json()) as unknown;
+    const chapter = asBookChapter(data, n);
+    const record = isRecord(data) ? data : {};
+    const rawOutcome = record.status;
+    const outcome: BookChapterTranslation['outcome'] =
+        rawOutcome === 'done' || rawOutcome === 'partial'
+            ? rawOutcome
+            : rawOutcome === 'cached' || record.cached === true
+                ? 'cached'
+                : chapter.translationStatus === 'cached'
+                    ? 'cached'
+                    : 'done';
+    const failedIndices = Array.isArray(record.failedIndices)
+        ? record.failedIndices.filter((value): value is number => typeof value === 'number')
+        : [];
+    return {
+        ...chapter,
+        cached: record.cached === true,
+        outcome,
+        translatedParagraphs: asNumber(record.translatedParagraphs)
+            ?? chapter.paragraphs.filter((paragraph) => Boolean(paragraph.zh?.trim())).length,
+        failedParagraphs: asNumber(record.failedParagraphs) ?? failedIndices.length,
+        failedIndices,
     };
 }
 

@@ -1,10 +1,11 @@
 // Content — first-level page (P0 IA §3.2).
 //
 // "What do I learn?" — paste a link (main action), discover/read secondary
-// entries, the CEFR vocabulary axis, the materials shelf (local shows +
-// sentence packs), the free library, rule recommendations, subscription
-// updates and the public blog footer. Every block reuses the existing
-// component: this page only arranges them and routes the callbacks.
+// entries, the materials shelf (local shows + sentence packs), the free
+// library, rule recommendations, subscription updates and the public blog
+// footer. Every block reuses the existing component: this page only arranges
+// them and routes the callbacks. The CEFR vocabulary axis now lives in 我的 ·
+// 设置 (AccountScreen), not here.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ArrowRight,
@@ -23,11 +24,9 @@ import { apiFetch } from '../lib/api';
 import { blogFeedUrl } from '../lib/blog';
 import { progressPercent } from '../lib/progress';
 import type { HistoryItem } from './ChannelVideoList';
-import { loadVocabLevel, saveVocabLevel, type VocabLevelId } from '../lib/settings';
 import type { EstimateDialogHandle } from './EstimateDialog';
 import { EstimateDialog } from './EstimateDialog';
 import { StartLearning } from './StartLearning';
-import { VocabAxis } from './VocabAxis';
 import { ShowBrowser } from './ShowBrowser';
 import { SentencePacks } from './SentencePacks';
 import { LibrarySection } from './LibrarySection';
@@ -99,7 +98,6 @@ export function ContentScreen({
 }: ContentScreenProps) {
     const { t, formatNumber } = useI18n();
     const estimateRef = useRef<EstimateDialogHandle>(null);
-    const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
     // Right rail: the last opened item and this week's three facts. Both are
     // optional reads — a failure leaves the rail in its quiet empty state.
     const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -117,11 +115,6 @@ export function ContentScreen({
     const hasSubscriptions = subscriptions.length > 0;
     const visibleUpdates = hasSubscriptions ? channelUpdates : [];
     const showUpdatesLoading = hasSubscriptions && updatesLoading;
-
-    const handleVocabLevelChange = (level: VocabLevelId) => {
-        setVocabLevel(level);
-        saveVocabLevel(level);
-    };
 
     useEffect(() => {
         let cancelled = false;
@@ -271,17 +264,13 @@ export function ContentScreen({
                     </StartLearning>
                 </div>
 
-                {/* Right rail (≥xl): level axis, last opened item, week facts.
-                    Below xl it stacks between the main action and the shelf. */}
+                {/* Right rail (≥xl): last opened item, week facts.
+                    Below xl it stacks between the main action and the shelf.
+                    (The CEFR axis moved to 我的 · 设置.) */}
                 <aside
                     data-testid="content-rail"
                     className="min-w-0 grid grid-cols-1 sm:grid-cols-2 xl:flex xl:flex-col gap-4 sm:gap-5 xl:col-start-2 xl:row-start-1 xl:row-span-2"
                 >
-                    {/* Learner level: calibrates which words get highlighted. */}
-                    <section className="sm:col-span-2 rounded-2xl border border-white/5 bg-zinc-900/40 p-4">
-                        <VocabAxis value={vocabLevel} onChange={handleVocabLevelChange} />
-                    </section>
-
                     {/* Continue: the most recent item, one tap back into it. */}
                     <section
                         data-testid="content-rail-continue"

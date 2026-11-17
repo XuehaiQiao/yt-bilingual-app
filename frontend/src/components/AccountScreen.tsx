@@ -40,10 +40,11 @@ import type { PlacementProfile } from '../lib/placement';
 import { useInstallPrompt, useOnlineStatus } from '../lib/pwa';
 import { toast, describeApiError } from '../lib/toast';
 import { displayUsername, usernameInitial, usernameProblem } from '../lib/username';
-import { loadVocabLevel, VOCAB_LEVELS } from '../lib/settings';
+import { loadVocabLevel, saveVocabLevel, VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
 import { LanguageSettingsModal } from './LanguageSettingsModal';
 import { ModelBar } from './ModelBar';
 import { PwaInstallButton } from './PwaInstallButton';
+import { VocabAxis } from './VocabAxis';
 
 export interface AccountUser {
   id: string;
@@ -81,8 +82,6 @@ interface AccountScreenProps {
   /** 我的·能力档案 row: opens the full ability profile. */
   onOpenAbility?: () => void;
   placementProfile?: PlacementProfile | null;
-  /** 我的·设置 vocabulary row: jump to the Content page axis (read-only here). */
-  onOpenVocab?: () => void;
 }
 
 const PRIMARY_BUTTON =
@@ -167,7 +166,6 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   onOpenReport,
   onOpenAbility,
   placementProfile = null,
-  onOpenVocab,
 }) => {
   const { status, user, isAdmin, logout, updateUsername } = useAuth();
   const { t, language, languages, formatNumber, formatDate } = useI18n();
@@ -179,6 +177,17 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
+  // The CEFR axis now lives here (moved out of the content page); the choice
+  // is stored immediately and drives word highlighting in later content.
+  const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
+  const vocabLevelMeta = VOCAB_LEVELS.find((level) => level.id === vocabLevel) ?? VOCAB_LEVELS[0];
+
+  const handleVocabLevelChange = (level: VocabLevelId) => {
+    if (level === vocabLevel) return;
+    setVocabLevel(level);
+    saveVocabLevel(level);
+    toast.success(t('profile.vocabLevelSaved'));
+  };
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
@@ -391,22 +400,35 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
           <ModelBar />
         </SettingRow>
 
-        <SettingRow
-          icon={<BookOpen className="w-4 h-4" />}
-          label={t('profile.vocabLevel')}
-          hint={t('profile.vocabLevelHint')}
-        >
-          <button
-            type="button"
-            data-testid="account-vocab-level"
-            onClick={onOpenVocab}
-            className={ROW_BUTTON}
-            title={t('profile.vocabLevelHint')}
-          >
-            {VOCAB_LEVELS.find((level) => level.id === loadVocabLevel())?.label ?? '—'}
-            <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
-          </button>
-        </SettingRow>
+        {/* CEFR axis (moved from the content page): inline, saved on pick. */}
+        <div data-testid="account-vocab-level" className="p-4">
+          <div className="flex items-start gap-3">
+            <BookOpen className="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-zinc-200">{t('home.vocabAxisTitle')}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
+                    {t('profile.vocabLevelHint')}
+                  </p>
+                </div>
+                <span
+                  data-testid="account-vocab-current"
+                  className="inline-flex shrink-0 items-center rounded-full border border-zinc-700/60 bg-zinc-800/60 px-2.5 py-0.5 text-[11px] font-medium text-zinc-300 tabular-nums"
+                >
+                  {vocabLevelMeta.label}
+                </span>
+              </div>
+              <div className="mt-3 max-w-xl">
+                <VocabAxis
+                  value={vocabLevel}
+                  onChange={handleVocabLevelChange}
+                  showTitle={false}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
         <SettingRow
           icon={<FileText className="w-4 h-4" />}

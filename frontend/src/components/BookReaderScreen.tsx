@@ -20,6 +20,7 @@ import {
     Layers,
     Loader2,
     RefreshCw,
+    Sparkles,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
@@ -31,6 +32,7 @@ import {
     fetchBookChapter,
     getBookProgress,
     saveBookProgress,
+    translateBookChapter,
     type BookChapter,
     type BookDetail,
 } from '../lib/books';
@@ -51,6 +53,31 @@ const errorKey = (status: number, fallback: TranslationKey): TranslationKey => {
     if (status === 0) return 'books.reader.network';
     if (status === 404) return 'books.reader.notFound';
     return fallback;
+};
+
+// The backend's on-demand translation has documented failure semantics; map
+// them onto localized reasons instead of leaking the server's Chinese detail.
+const translateErrorKey = (status: number): TranslationKey => {
+    switch (status) {
+        case 400:
+            return 'books.reader.translateUnsupported';
+        case 404:
+            return 'books.reader.notFound';
+        case 413:
+            return 'books.reader.translateTooLarge';
+        case 429:
+            return 'books.reader.translateLimit';
+        case 502:
+            return 'books.reader.translateFailed';
+        case 503:
+            return 'books.reader.translateUnavailable';
+        case 504:
+            return 'books.reader.translateTimeout';
+        case 0:
+            return 'books.reader.network';
+        default:
+            return 'books.reader.translateFailed';
+    }
 };
 
 const SegmentedToggle = ({
@@ -99,11 +126,13 @@ const ErrorPanel = ({
     onRetry,
     retryLabel,
     testId,
+    retryTestId,
 }: {
     message: string;
     onRetry: () => void;
     retryLabel: string;
     testId: string;
+    retryTestId?: string;
 }) => (
     <div
         data-testid={testId}
@@ -116,6 +145,7 @@ const ErrorPanel = ({
                 <p className="text-sm font-medium text-amber-200">{message}</p>
                 <button
                     type="button"
+                    data-testid={retryTestId}
                     onClick={onRetry}
                     className="mt-3 inline-flex items-center gap-2 h-8 px-3 rounded-lg bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 text-xs font-medium text-amber-200 transition-colors"
                 >
@@ -133,7 +163,7 @@ export function BookReaderScreen({
     onOpenSeries,
     onWordLookup,
 }: BookReaderScreenProps) {
-    const { t, formatNumber } = useI18n();
+    const { t, language, formatNumber } = useI18n();
     const [detail, setDetail] = useState<BookDetail | null>(null);
     const [detailLoading, setDetailLoading] = useState(true);
     const [detailError, setDetailError] = useState<TranslationKey | null>(null);
@@ -144,11 +174,22 @@ export function BookReaderScreen({
     const [chapterError, setChapterError] = useState<TranslationKey | null>(null);
     const [chapterRetry, setChapterRetry] = useState(0);
     const [showTranslations, setShowTranslations] = useState(true);
+    const [translating, setTranslating] = useState(false);
+    const [translateError, setTranslateError] = useState<TranslationKey | null>(null);
+    const [translateNotice, setTranslateNotice] = useState<'done' | 'partial' | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const saveTimerRef = useRef<number | null>(null);
     const pendingScrollRef = useRef<number | null>(null);
     const chapterNumberRef = useRef<number | null>(null);
     const detailRef = useRef<BookDetail | null>(null);
+    // Auto translation runs at most once per (book, chapter, language): the
+    // ref survives StrictMode's double effect setup and ordinary re-renders.
+    const autoTranslateRef = useRef<string | null>(null);
+    const translateTokenRef = useRef(0);
+    const translatingRef = useRef(false);
+    // Language of the currently painted chapter: guards the auto trigger from
+    // firing on a stale chapter while a language switch is refetching.
+    const chapterLanguageRef = useRef(language);
 
     useEffect(() => {
         chapterNumberRef.current = chapterNumber;
@@ -156,6 +197,62 @@ export function BookReaderScreen({
     useEffect(() => {
         detailRef.current = detail;
     }, [detail]);
+
+    /**
+     * Translate the current chapter's missing paragraphs (public, no login).
+     *
+     * Used both by the automatic first-open trigger and by the manual button
+     * (failure retry / partial backfill). The response is the full chapter, so
+     * the reader renders the new translation immediately without a refetch.
+     */
+    const runTranslation = useCallback(async () => {
+        const target = chapterNumberRef.current;
+        if (target === null || translatingRef.current) return;
+        const token = ++translateTokenRef.current;
+        translatingRef.current = true;
+        setTranslating(true);
+        setTranslateError(null);
+        setTranslateNotice(null);
+        try {
+            const result = await translateBookChapter(bookId, target, language);
+            // A chapter/language switch while the request was in flight: the
+            // reset effect bumped the token, so this result is stale.
+            if (token !== translateTokenRef.current) return;
+            chapterLanguageRef.current = language;
+            setChapter(result);
+            setTranslateNotice(result.outcome === 'partial' ? 'partial' : 'done');
+        } catch (error) {
+            if (token !== translateTokenRef.current) return;
+            console.error('Failed to translate book chapter:', error);
+            setTranslateError(
+                translateErrorKey(error instanceof BooksApiError ? error.status : -1),
+            );
+        } finally {
+            if (token === translateTokenRef.current) {
+                translatingRef.current = false;
+                setTranslating(false);
+            }
+        }
+    }, [bookId, language]);
+
+    // Switching chapter (or target language) invalidates the in-flight
+    // translation and clears its transient status.
+    useEffect(() => {
+        translateTokenRef.current += 1;
+        translatingRef.current = false;
+        setTranslating(false);
+        setTranslateError(null);
+        setTranslateNotice(null);
+    }, [bookId, chapterNumber, language]);
+
+    // A language switch drops the old-language chapter before the refetch so
+    // stale translations never flash under the new language.
+    useEffect(() => {
+        if (chapterNumber === null) return;
+        setChapter(null);
+        setChapterError(null);
+        setChapterLoading(true);
+    }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Book metadata + chapter index.
     useEffect(() => {
@@ -185,13 +282,16 @@ export function BookReaderScreen({
         return () => controller.abort();
     }, [bookId, detailRetry]);
 
-    // Chapter text: refetched from the public-domain source each time.
+    // Chapter text: refetched from the public-domain source each time. The
+    // target language picks the translation column (local bundled copy or the
+    // shared on-demand cache) for the current UI language.
     useEffect(() => {
         if (chapterNumber === null) return;
         const controller = new AbortController();
-        fetchBookChapter(bookId, chapterNumber)
+        fetchBookChapter(bookId, chapterNumber, language)
             .then((payload) => {
                 if (controller.signal.aborted) return;
+                chapterLanguageRef.current = language;
                 setChapter(payload);
                 saveBookProgress(bookId, chapterNumber, pendingScrollRef.current ?? 0);
             })
@@ -207,7 +307,22 @@ export function BookReaderScreen({
                 if (!controller.signal.aborted) setChapterLoading(false);
             });
         return () => controller.abort();
-    }, [bookId, chapterNumber, chapterRetry]);
+    }, [bookId, chapterNumber, chapterRetry, language]);
+
+    // First open of an untranslated chapter: translate it automatically. Only
+    // one automatic call per (book, chapter, language); switching chapter and
+    // coming back re-evaluates, and a `cached` chapter never calls the model.
+    useEffect(() => {
+        if (!chapter || chapterLoading) return;
+        if (chapterLanguageRef.current !== language) return;
+        const needsTranslation = chapter.translationStatus !== 'cached'
+            || chapter.missingTranslations > 0;
+        if (!needsTranslation) return;
+        const key = `${bookId}:${chapter.chapter}:${language}`;
+        if (autoTranslateRef.current === key) return;
+        autoTranslateRef.current = key;
+        void runTranslation();
+    }, [bookId, chapter, chapterLoading, language, runTranslation]);
 
     // Restore the paragraph from localStorage once the chapter is painted.
     useEffect(() => {
@@ -268,9 +383,16 @@ export function BookReaderScreen({
         : null;
     const sourceUrl = detail?.catalogUrl || detail?.sourceUrl || '';
     const seriesNote = useMemo(() => t('books.series.vocabNote'), [t]);
-    // Two columns only when translated Chinese is actually displayed; a
-    // chapter without a translation keeps the full-width English source.
-    const bilingualColumns = showTranslations && Boolean(chapter?.translated);
+    const translatedParagraphs = chapter?.paragraphs
+        .filter((paragraph) => Boolean(paragraph.zh?.trim())).length ?? 0;
+    const hasAnyTranslation = translatedParagraphs > 0;
+    // `translated` only means "a bundled local translation exists"; partial
+    // on-demand cache fills still need the same automatic/manual treatment.
+    const needsTranslation = Boolean(chapter
+        && (chapter.translationStatus !== 'cached' || chapter.missingTranslations > 0));
+    // Two columns only when translated copy is actually displayed; a chapter
+    // without any translation keeps the full-width English source.
+    const bilingualColumns = showTranslations && hasAnyTranslation;
 
     const goChapter = (n: number) => {
         if (n === chapterNumber) return;
@@ -508,11 +630,33 @@ export function BookReaderScreen({
                                             {t('books.reader.translation')}
                                         </span>
                                         <SegmentedToggle show={showTranslations} onChange={setShowTranslations} />
-                                        <span className="text-[11px] text-zinc-600">
-                                            {chapter && !chapter.translated
-                                                ? t('books.reader.noTranslationHint')
-                                                : t('books.translationHint')}
+                                        <span className={`min-w-0 text-[11px] ${
+                                            translateNotice === 'done' ? 'text-emerald-400/90' : 'text-zinc-600'
+                                        }`}>
+                                            {translateNotice === 'done'
+                                                ? t('books.reader.translateDone')
+                                                : chapter && !hasAnyTranslation
+                                                    ? t('books.reader.noTranslationHint')
+                                                    : chapter && chapter.missingTranslations > 0
+                                                        ? t('books.reader.translationPartial')
+                                                        : t('books.translationHint')}
                                         </span>
+                                        {chapter && needsTranslation && (
+                                            <button
+                                                type="button"
+                                                data-testid="book-translate-chapter"
+                                                onClick={() => { void runTranslation(); }}
+                                                disabled={translating}
+                                                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-[11px] font-medium text-blue-300 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                                            >
+                                                {translating
+                                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    : <Sparkles className="w-3.5 h-3.5" />}
+                                                {translating
+                                                    ? t('books.reader.translating')
+                                                    : t('books.reader.translateChapter')}
+                                            </button>
+                                        )}
                                     </div>
 
                                     {chapterLoading && (
@@ -541,20 +685,76 @@ export function BookReaderScreen({
                                         </div>
                                     )}
 
-                                    {!chapterLoading && !chapterError && chapter && !chapter.translated && (
+                                    {!chapterLoading && !chapterError && chapter && translating && (
+                                        <div
+                                            data-testid="book-auto-translate-progress"
+                                            role="status"
+                                            aria-live="polite"
+                                            className="mt-5 rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] px-3.5 py-3"
+                                        >
+                                            <p className="flex items-center gap-2 text-[12px] font-medium text-blue-200">
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                {t('books.reader.autoTranslating')}
+                                            </p>
+                                            <p className="mt-1 text-[11px] leading-relaxed text-blue-200/70">
+                                                {t('books.reader.autoTranslatingHint')}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {!chapterLoading && !chapterError && chapter && !translating && translateError && (
+                                        <div className="mt-5">
+                                            <ErrorPanel
+                                                testId="book-translate-error"
+                                                message={t(translateError)}
+                                                onRetry={() => { void runTranslation(); }}
+                                                retryLabel={t('books.reader.translateRetry')}
+                                                retryTestId="book-translate-retry"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {!chapterLoading && !chapterError && chapter && !translating
+                                        && !translateError && translateNotice === 'partial' && (
+                                        <div
+                                            data-testid="book-translate-notice"
+                                            className="mt-5 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-3.5 py-3"
+                                        >
+                                            <p className="flex items-center gap-2 text-[12px] font-medium text-amber-200">
+                                                <AlertCircle className="w-3.5 h-3.5" />
+                                                {t('books.reader.translatePartial')}
+                                            </p>
+                                            <p className="mt-1 text-[11px] leading-relaxed text-amber-200/70">
+                                                {t('books.reader.translatePartialHint', {
+                                                    done: formatNumber(translatedParagraphs),
+                                                    total: formatNumber(chapter.paragraphs.length),
+                                                })}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {!chapterLoading && !chapterError && chapter && needsTranslation
+                                        && !translating && !translateError && translateNotice !== 'partial' && (
                                         <div
                                             data-testid="book-chapter-translation-pending"
                                             className="mt-5 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-3.5 py-3"
                                         >
                                             <p className="flex items-center gap-2 text-[12px] font-medium text-amber-200">
                                                 <AlertCircle className="w-3.5 h-3.5" />
-                                                {t('books.reader.translationPending')}
+                                                {hasAnyTranslation
+                                                    ? t('books.reader.translationPartial')
+                                                    : t('books.reader.translationPending')}
                                             </p>
                                             <p className="mt-1 text-[11px] leading-relaxed text-amber-200/70">
-                                                {t('books.reader.translationPendingHint', {
-                                                    translated: formatNumber(chapter.translatedChapters),
-                                                    total: formatNumber(chapter.totalChapters),
-                                                })}
+                                                {hasAnyTranslation
+                                                    ? t('books.reader.translatePartialHint', {
+                                                        done: formatNumber(translatedParagraphs),
+                                                        total: formatNumber(chapter.paragraphs.length),
+                                                    })
+                                                    : t('books.reader.translationPendingHint', {
+                                                        translated: formatNumber(chapter.translatedChapters),
+                                                        total: formatNumber(chapter.totalChapters),
+                                                    })}
                                             </p>
                                         </div>
                                     )}
@@ -602,12 +802,12 @@ export function BookReaderScreen({
                                                             </p>
                                                         )}
                                                         translation={
-                                                            showTranslations && chapter.translated
+                                                            showTranslations && hasAnyTranslation
                                                                 ? paragraph.zh
                                                                     ? (
                                                                         <p
                                                                             data-testid={`book-translation-${paragraph.index}`}
-                                                                            lang="zh-CN"
+                                                                            lang={language}
                                                                             className="text-[15px] leading-relaxed text-zinc-400 break-words"
                                                                         >
                                                                             {paragraph.zh}

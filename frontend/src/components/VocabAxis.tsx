@@ -16,23 +16,27 @@ const LEVEL_I18N: Record<VocabLevelId, { label: TranslationKey; tagline: Transla
 interface VocabAxisProps {
     value: VocabLevelId;
     onChange: (level: VocabLevelId) => void;
+    /** The content page used to own the title; settings renders its own row label. */
+    showTitle?: boolean;
 }
 
 /**
  * Vocabulary level as six CEFR stops A1 → C2. The gradient fills toward the
  * higher band as the learner's vocabulary grows.
  */
-export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange }) => {
+export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange, showTitle = true }) => {
     const { t } = useI18n();
     const index = Math.max(0, VOCAB_LEVELS.findIndex(l => l.id === value));
     const pct = (index / (VOCAB_LEVELS.length - 1)) * 100;
     const selected = VOCAB_LEVELS[index];
 
     return (
-        <div className="max-w-2xl mx-auto w-full select-none">
-            <p className="text-center text-xs font-medium text-zinc-500 mb-3">
-                {t('home.vocabAxisTitle')}
-            </p>
+        <div data-testid="vocab-axis" className="max-w-2xl mx-auto w-full select-none">
+            {showTitle && (
+                <p className="text-center text-xs font-medium text-zinc-500 mb-3">
+                    {t('home.vocabAxisTitle')}
+                </p>
+            )}
 
             {/* Track */}
             <div className="relative h-6 mx-3">
@@ -53,6 +57,7 @@ export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange }) => {
                         <button
                             key={level.id}
                             type="button"
+                            data-testid={`vocab-axis-dot-${level.label}`}
                             onClick={() => onChange(level.id)}
                             className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 p-2 group"
                             style={{ left }}
@@ -80,6 +85,7 @@ export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange }) => {
                     <button
                         key={level.id}
                         type="button"
+                        data-testid={`vocab-axis-stop-${level.label}`}
                         onClick={() => onChange(level.id)}
                         className={`absolute -translate-x-1/2 text-[11px] font-medium whitespace-nowrap transition-colors duration-200 ${
                             i === index ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'
@@ -98,6 +104,7 @@ export const VocabAxis: React.FC<VocabAxisProps> = ({ value, onChange }) => {
                 <AnimatePresence mode="wait">
                     <motion.p
                         key={selected.id}
+                        data-testid="vocab-axis-tagline"
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
