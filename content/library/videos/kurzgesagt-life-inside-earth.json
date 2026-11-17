@@ -1,0 +1,1053 @@
+{
+ "id": "kurzgesagt-life-inside-earth",
+ "youtubeId": "VD6xJq8NguY",
+ "title": "There Is Life Hiding Inside Earth",
+ "channel": "Kurzgesagt – In a Nutshell",
+ "duration": 687,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/VD6xJq8NguY/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:21+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.52,
+   "end": 5.64,
+   "en_text": "We’ve found a new planet, home to octillions&nbsp; of the most extreme beings living in the&nbsp;&nbsp;",
+   "zh_text": "我们发现了一颗新行星，上面住着数以亿亿计的最极端生物，它们生活在",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 5.64,
+   "end": 11.68,
+   "en_text": "most absurd and deadly hellscape. In absolute&nbsp; darkness, crushed by the weight of mountains,&nbsp;&nbsp;",
+   "zh_text": "最荒诞、最致命的炼狱里。在绝对的黑暗中，被山峦的重量压着，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 11.68,
+   "end": 18.4,
+   "en_text": "starved of oxygen, cooked alive, bathed&nbsp; in acid, salt or radiation. And yet,&nbsp;&nbsp;",
+   "zh_text": "缺氧、被活活烤着，泡在酸、盐或辐射里。可即便如此，",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 18.4,
+   "end": 22.96,
+   "en_text": "they live for thousands, perhaps&nbsp; millions of years! It turns out,&nbsp;&nbsp;",
+   "zh_text": "它们能活上几千年，甚至几百万年！原来，",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 22.96,
+   "end": 28.0,
+   "en_text": "this planet is not in space –––&nbsp; it is inside the crust of Earth!",
+   "zh_text": "这颗行星不在太空里——它就在地球的地壳内部！",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 28.0,
+   "end": 32.04,
+   "en_text": "This is the deep biosphere and&nbsp; we basically learned that it&nbsp;&nbsp;",
+   "zh_text": "这就是深层生物圈，而我们基本上昨天才刚知道",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 32.04,
+   "end": 37.64,
+   "en_text": "exists yesterday. Its volume is at least&nbsp; twice as large as all the Earth’s oceans,&nbsp;&nbsp;",
+   "zh_text": "它的存在。它的体积至少是地球所有海洋的两倍，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 37.64,
+   "end": 42.96,
+   "en_text": "home to more microbes than the rest of&nbsp; the entire planet.Their total biomass&nbsp;&nbsp;",
+   "zh_text": "里面的微生物比整个星球其他地方加起来还多。它们的总生物量",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 42.96,
+   "end": 48.44,
+   "en_text": "is more than 20 times greater than all&nbsp; humans, livestock, and animal wildlife.",
+   "zh_text": "是所有人类、牲畜和野生动物总和的二十多倍。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 48.44,
+   "end": 50.36,
+   "en_text": "Let’s descend into this mad,&nbsp;&nbsp;",
+   "zh_text": "让我们下潜进入这个疯狂、",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 50.36,
+   "end": 55.56,
+   "en_text": "deadly world where none of the rules we&nbsp; thought are mandatory for life apply.",
+   "zh_text": "致命的世界，在那里，我们以为生命必需的所有规则都不适用。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 55.56,
+   "end": 58.72,
+   "en_text": "Going Deeper and Deeper",
+   "zh_text": "越挖越深",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 58.72,
+   "end": 63.96,
+   "en_text": "Deep life seems to be everywhere we&nbsp; look: below the oceans, near volcanoes,&nbsp;&nbsp;",
+   "zh_text": "深层生命似乎无处不在：海洋之下、火山附近、",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 63.96,
+   "end": 70.24,
+   "en_text": "beneath the glaciers of Antarctica, under any&nbsp; landscape we can imagine and anywhere we live.",
+   "zh_text": "南极洲的冰川之下，任何我们能想象到的地貌之下，以及我们居住的任何地方。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 70.24,
+   "end": 74.84,
+   "en_text": "We’ll use a special duck science drill and&nbsp; start our journey in familiar territory:&nbsp;&nbsp;",
+   "zh_text": "我们要用一台特别的鸭子科学钻机，从熟悉的领域开始我们的旅程：",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 74.84,
+   "end": 80.76,
+   "en_text": "on land, in the soil, where plants grow&nbsp; and animals roam. If earth were an onion,&nbsp;&nbsp;",
+   "zh_text": "陆地上，土壤里，植物生长、动物漫步的地方。如果地球是一颗洋葱，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 80.76,
+   "end": 87.16,
+   "en_text": "this is the very top of the very top layer.&nbsp; Soil is a lavish four-way partnership of air,&nbsp;&nbsp;",
+   "zh_text": "这里就是最顶层的最上面。土壤是空气、",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 87.16,
+   "end": 94.16,
+   "en_text": "water, minerals and organic matter, bathed&nbsp; in endless energy. Life lives in luxury here.",
+   "zh_text": "水、矿物质和有机物奢华的四方合作，沐浴在无尽的能量中。这里的生命过得养尊处优。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 94.16,
+   "end": 98.72,
+   "en_text": "Plants exploit this paradise and produce more&nbsp; than 30 times the biomass of all of Earth’s&nbsp;&nbsp;",
+   "zh_text": "植物利用这片天堂，每年产生的生物量超过地球所有",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 98.72,
+   "end": 105.0,
+   "en_text": "animals each year, in a constant cycle of growth&nbsp; and decay. Only a tiny fraction of the biomass is&nbsp;&nbsp;",
+   "zh_text": "动物的三十倍，处于不断生长和腐烂的循环中。只有极小一部分生物量",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 105.0,
+   "end": 110.84,
+   "en_text": "buried deeper in the ground, supplying juicy&nbsp; resources for almost half a billion years.",
+   "zh_text": "被埋进更深的地下，为近五亿年提供丰富的资源。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 110.84,
+   "end": 113.96,
+   "en_text": "As we dig deeper, most of the&nbsp; air has been squeezed out and&nbsp;&nbsp;",
+   "zh_text": "随着我们越挖越深，大部分空气都被挤了出去，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 113.96,
+   "end": 117.68,
+   "en_text": "we cross the water table into a&nbsp; zone saturated with groundwater,&nbsp;&nbsp;",
+   "zh_text": "我们穿过地下水位，进入一个充满地下水的区域，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 117.68,
+   "end": 123.96,
+   "en_text": "rich in minerals and some organic matter. Roots&nbsp; from the most ambitious plants reach down here,&nbsp;&nbsp;",
+   "zh_text": "富含矿物质和一些有机物。最有野心的植物的根会伸到这里，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 123.96,
+   "end": 127.68,
+   "en_text": "and the most common inhabitants are&nbsp; scavengers living off decay. This&nbsp;&nbsp;",
+   "zh_text": "而最常见的居民是以腐败物为生的食腐生物。这",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 127.68,
+   "end": 132.5,
+   "en_text": "layer can be pretty cold because it is still&nbsp; slowly warming up from the most recent ice age.",
+   "zh_text": "一层可能相当冷，因为它还在从最近的冰期缓慢升温。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 132.5,
+   "end": 133.08,
+   "en_text": "Klunk",
+   "zh_text": "克朗克",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 133.08,
+   "end": 139.32,
+   "en_text": "We reach bedrock. A foundation of solid rock for&nbsp; all the less solid stuff above, home to fractures&nbsp;&nbsp;",
+   "zh_text": "我们到达了基岩。它是上方所有不那么坚固的东西的坚实岩石基础，也是裂缝的家园",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 139.32,
+   "end": 145.8,
+   "en_text": "filled with water . It can be exposed to the&nbsp; surface, or buried hundreds of meters below stuff.",
+   "zh_text": "裂缝里充满了水。它可能暴露在地表，也可能被埋在下方数百米深的地方。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 145.8,
+   "end": 150.88,
+   "en_text": "Here, in the dense bedrock, we’re in a weird&nbsp; planet inside the planet. The most thrilling&nbsp;&nbsp;",
+   "zh_text": "在这里，在致密的基岩中，我们身处一个星球内部的奇异世界。这是最令人兴奋的",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 150.88,
+   "end": 156.56,
+   "en_text": "zone of the deep biosphere. As we drill further&nbsp; down, temperatures gradually begin to rise,&nbsp;&nbsp;",
+   "zh_text": "深层生物圈区域。随着我们继续向下钻探，温度逐渐开始上升，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 156.56,
+   "end": 162.08,
+   "en_text": "and soon it gets really hot and the pressure&nbsp; rises. Underneath 400 meters of rock,&nbsp;&nbsp;",
+   "zh_text": "很快就会变得非常热，压力也随之升高。在400米厚的岩石之下，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 162.08,
+   "end": 168.44,
+   "en_text": "the pressure is similar to the surface of&nbsp; Venus. We drill faster now, down to 1000 meters,&nbsp;&nbsp;",
+   "zh_text": "压力与金星表面相似。现在我们钻得更快了，一直下到1000米，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 168.44,
+   "end": 176.92,
+   "en_text": "deeper than the Burj Khalifa is tall. It is about&nbsp; 30°C , and there is almost no free oxygen left.",
+   "zh_text": "比哈利法塔的高度还深。温度大约是30°C，而且几乎没有游离氧了。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 176.92,
+   "end": 181.64,
+   "en_text": "We continue and finally stop almost&nbsp; 4 kilometers down. Above us pressing&nbsp;&nbsp;",
+   "zh_text": "我们继续前进，最终在将近4公里深处停下。在我们上方，压着",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 181.64,
+   "end": 186.52,
+   "en_text": "solid rock weighing tens of thousands of&nbsp; tons with pressures as intense as at the&nbsp;&nbsp;",
+   "zh_text": "重达数万吨的坚硬岩石，压力之强堪比",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 186.52,
+   "end": 193.8,
+   "en_text": "bottom of the Mariana Trench. Down here it is on&nbsp; average 120 degrees C , even hotter if a magma&nbsp;&nbsp;",
+   "zh_text": "马里亚纳海沟底部。这里平均温度是120摄氏度，如果附近有岩浆",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 193.8,
+   "end": 198.92,
+   "en_text": "plume is nearby. The heat is a leftover from&nbsp; Earth's formation and from from the decay of&nbsp;&nbsp;",
+   "zh_text": "柱的话还会更热。这些热量是地球形成时留下的余热，也来自",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 198.92,
+   "end": 203.72,
+   "en_text": "radioactive elements like thorium and uranium&nbsp; that shower the crust with a constant wave of&nbsp;&nbsp;",
+   "zh_text": "钍和铀等放射性元素的衰变，它们向地壳持续释放一波波",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 203.72,
+   "end": 211.28,
+   "en_text": "radioactivity. To make things worse some rocks&nbsp; are mixed with extreme amounts of salt. Hell.",
+   "zh_text": "放射性。更糟的是，有些岩石混有极大量的盐。简直是地狱。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 211.28,
+   "end": 219.36,
+   "en_text": "And yet. Life is thriving. Inside rock! If we zoom&nbsp; in, we see that solid rock is not actually solid!&nbsp;&nbsp;",
+   "zh_text": "然而。生命却在这里繁盛。就在岩石里面！如果我们放大来看，会发现坚固的岩石其实并不坚固！",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 219.36,
+   "end": 225.56,
+   "en_text": "It’s traversed by cracks, voids and tiny pores.&nbsp; Sandstone, limestone or basalt are so porous that&nbsp;&nbsp;",
+   "zh_text": "它布满了裂缝、空洞和微小的孔隙。砂岩、石灰岩或玄武岩孔隙极多，以至于",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 225.56,
+   "end": 230.92,
+   "en_text": "up to 40 percent of their volume is actually empty&nbsp; space. But even much denser rocks like granite,&nbsp;&nbsp;",
+   "zh_text": "其体积中多达40%其实是空的。但即便是花岗岩这样致密得多的岩石，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 230.92,
+   "end": 236.28,
+   "en_text": "can be split open by cracks and fractures.&nbsp; We’ve found a gigantic planet spanning&nbsp;&nbsp;",
+   "zh_text": "也能被裂缝和断裂劈开。我们发现了一个横跨整个星球的巨大",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 236.28,
+   "end": 242.12,
+   "en_text": "system of micro-caves, free real estate&nbsp; filled with water and hardcore microbes!",
+   "zh_text": "微型洞穴系统，这是充满水和硬核微生物的免费房地产！",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 242.12,
+   "end": 244.48,
+   "en_text": "And these caves are moving.",
+   "zh_text": "而这些洞穴还在移动。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 244.48,
+   "end": 249.2,
+   "en_text": "Just like the atmosphere is constantly mixing&nbsp; air to create weather, down here rocks are&nbsp;&nbsp;",
+   "zh_text": "就像大气层不断混合空气、形成天气一样，这里的岩石也在不断混合，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 249.2,
+   "end": 254.44,
+   "en_text": "mixing to create rock weather. Submerged&nbsp; mountain ranges are shifting and ripping,&nbsp;&nbsp;",
+   "zh_text": "形成“岩石天气”。水下的山脉在移动、撕裂、碰撞、合并。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 254.44,
+   "end": 257.88,
+   "en_text": "crashing and merging. Continents&nbsp; smash into each other with the&nbsp;&nbsp;",
+   "zh_text": "大陆彼此撞击，能量相当于数百万枚核武器，",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 257.88,
+   "end": 262.8,
+   "en_text": "energy of millions of nuclear weapons&nbsp; but as slow as your fingernails grow.",
+   "zh_text": "但速度却和你指甲生长的速度一样慢。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 262.8,
+   "end": 268.32,
+   "en_text": "Countless tiny and not so tiny earthquakes&nbsp; rip open tiny new fissures and passageways,&nbsp;&nbsp;",
+   "zh_text": "无数大大小小的地震撕开新的细小裂缝和通道，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 268.32,
+   "end": 274.4,
+   "en_text": "creating new spaces for life and closing others&nbsp; off forever. In this hot, moving pressure cooker,&nbsp;&nbsp;",
+   "zh_text": "为生命创造新的空间，也把另一些空间永远封死。在这个炽热、不断运动的压力锅里，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 274.4,
+   "end": 278.44,
+   "en_text": "minerals are forged and baked, and&nbsp; organic molecules are created and&nbsp;&nbsp;",
+   "zh_text": "矿物被锻造、烘烤，有机分子被创造出来，",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 278.44,
+   "end": 282.96,
+   "en_text": "destroyed. An insane menu for anyone&nbsp; brave enough to try to survive down&nbsp;&nbsp;",
+   "zh_text": "又被摧毁。对于任何敢于在这里生存的生命来说，这是一份疯狂的菜单。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 282.96,
+   "end": 288.16,
+   "en_text": "here. Let us venture into the system&nbsp; of tiny caves and meet some of them.",
+   "zh_text": "让我们走进这个由微小洞穴组成的系统，去认识其中的一些居民。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 288.16,
+   "end": 290.88,
+   "en_text": "The Most Extreme Living Things",
+   "zh_text": "最极端的生物",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 290.88,
+   "end": 293.92,
+   "en_text": "We think that octillions&nbsp; of microbes live down here,&nbsp;&nbsp;",
+   "zh_text": "我们认为这里有数以亿亿计的微生物，",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 293.92,
+   "end": 299.0,
+   "en_text": "and naturally they are pretty hardcore.&nbsp; The doomsday preppers of the underworld.",
+   "zh_text": "它们自然都相当硬核，堪称地下世界的末日准备者。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 299.0,
+   "end": 305.36,
+   "en_text": "Some have big, bulky genomes, living entirely on&nbsp; their own, basically forming their own ecosystem.",
+   "zh_text": "有些拥有庞大笨重的基因组，完全靠自己生活，基本上自成一个生态系统。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 305.36,
+   "end": 311.88,
+   "en_text": "Like the bacterium Desulforudis audaxviator.&nbsp; It synthesises its own food by nibbling carbon&nbsp;&nbsp;",
+   "zh_text": "比如细菌 Desulforudis audaxviator。它靠啃食岩石中的碳或硫来合成自己的食物，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 311.88,
+   "end": 316.84,
+   "en_text": "or sulfur from the rock and turning it into&nbsp; organic substances. If the conditions get&nbsp;&nbsp;",
+   "zh_text": "把它们转化成有机物质。如果环境变得过于极端，或者周围没有食物，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 316.84,
+   "end": 321.4,
+   "en_text": "too extreme or if there is no food around,&nbsp; it kills itself to survive, by forming an&nbsp;&nbsp;",
+   "zh_text": "它就会为了生存而杀死自己，方式是形成一个内生孢子。它分裂成一大一小两部分，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 321.4,
+   "end": 327.96,
+   "en_text": "endospore. It divides into a big and a small part,&nbsp; and swallows the small part again, forming a cell,&nbsp;&nbsp;",
+   "zh_text": "再把小的那部分吞回去，形成一个细胞中的细胞。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 327.96,
+   "end": 333.44,
+   "en_text": "within a cell. The outer cell then sheds its&nbsp; water and kills itself, leaving the spore to&nbsp;&nbsp;",
+   "zh_text": "外层细胞随后脱去水分并自我消亡，留下孢子",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 333.44,
+   "end": 339.24,
+   "en_text": "float around, maybe for thousands of years until&nbsp; it finds a good place to spring to life again. &nbsp;",
+   "zh_text": "四处漂浮，也许漂浮几千年，直到找到合适的地方重新焕发生机。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 339.24,
+   "end": 344.72,
+   "en_text": "Others like some company, like the archaea&nbsp; with the clunky name Altiarchaeum hamiconexum,&nbsp;&nbsp;",
+   "zh_text": "另一些则喜欢结伴，比如名字拗口的古菌 Altiarchaeum hamiconexum，",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 344.72,
+   "end": 348.48,
+   "en_text": "that have a rare double membrane covered in&nbsp; weird materials that protect them against&nbsp;&nbsp;",
+   "zh_text": "它们有一层罕见的双层膜，上面覆盖着奇怪的物质，保护它们抵御",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 348.48,
+   "end": 353.16,
+   "en_text": "the extremes. They shoot out nano-sized&nbsp; grappling hooks to tether themselves and&nbsp;&nbsp;",
+   "zh_text": "极端环境。它们射出纳米级的抓钩把自己固定住，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 353.16,
+   "end": 357.48,
+   "en_text": "seem to live in cracks and fissures filled&nbsp; with water completely devoid of oxygen,&nbsp;&nbsp;",
+   "zh_text": "似乎生活在充满水、完全没有氧气的裂缝和裂隙中，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 357.48,
+   "end": 362.68,
+   "en_text": "harvest carbon dioxide to create&nbsp; biomass, and may sort of eat hydrogen.",
+   "zh_text": "吸收二氧化碳来制造生物质，还可能以某种方式吃氢气。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 362.68,
+   "end": 367.44,
+   "en_text": "The conditions in the deep biosphere are so&nbsp; harsh that other microbes share the hard work&nbsp;&nbsp;",
+   "zh_text": "深部生物圈的条件极其恶劣，所以其他微生物会分担这份苦活，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 367.44,
+   "end": 372.68,
+   "en_text": "by forming consortia. They knit themselves&nbsp; together in a biofilm – a very thin, sticky&nbsp;&nbsp;",
+   "zh_text": "办法就是结成共生体。它们彼此编织在一起形成生物膜——一张非常薄、黏糊糊的",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 372.68,
+   "end": 378.2,
+   "en_text": "net that shields them against the extremes. They&nbsp; are miniature cells, often with a small genome,&nbsp;&nbsp;",
+   "zh_text": "网，保护它们抵御极端环境。它们是微小的细胞，通常基因组也很小，",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 378.2,
+   "end": 384.04,
+   "en_text": "but each good at one thing. One type of microbe&nbsp; eats methane and excretes its electrons. A second&nbsp;&nbsp;",
+   "zh_text": "但各自擅长一件事。一种微生物吃甲烷，排出电子。第二种",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 384.04,
+   "end": 389.64,
+   "en_text": "type eats these electrons and converts sulphate&nbsp; into sulfite that is then eaten by a third microbe&nbsp;&nbsp;",
+   "zh_text": "吃这些电子，把硫酸盐转化成亚硫酸盐，然后亚硫酸盐又被第三种微生物吃掉，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 389.64,
+   "end": 396.48,
+   "en_text": "and so on. Some eat iron, others use electrons&nbsp; to turn nitrogen or carbon dioxide into biomass.",
+   "zh_text": "如此循环。有的吃铁，有的用电子把氮或二氧化碳转化成生物质。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 396.48,
+   "end": 401.2,
+   "en_text": "Life down here found ways to use stuff that&nbsp; is poisonous to most animals to make food and&nbsp;&nbsp;",
+   "zh_text": "这里的生命找到了办法，把对大多数动物有毒的东西变成食物和",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 401.2,
+   "end": 407.68,
+   "en_text": "energy. But still, life is incredibly hard and&nbsp; resources and energy are super hard to come by.&nbsp;&nbsp;",
+   "zh_text": "能量。但即便如此，生存依然极其艰难，资源和能量都极难获得。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 407.68,
+   "end": 413.4,
+   "en_text": "So the most intense strategy for survival&nbsp; down here is to live forever. Like monks&nbsp;&nbsp;",
+   "zh_text": "所以在这里，最极致的生存策略就是永远活下去。就像",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 413.4,
+   "end": 419.24,
+   "en_text": "who’ve taken a vow of poverty, deep microbes&nbsp; consume very little and conserve their energy.",
+   "zh_text": "立下清贫誓言的修士，深部微生物消耗极少，并节省自己的能量。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 419.24,
+   "end": 423.84,
+   "en_text": "Their metabolism is up to a million times&nbsp; slower than microbes at the surface. They&nbsp;&nbsp;",
+   "zh_text": "它们的新陈代谢比地表微生物慢上百万倍。它们",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 423.84,
+   "end": 429.04,
+   "en_text": "had a meal when you were born and are still&nbsp; digesting it. For most of their life they exist&nbsp;&nbsp;",
+   "zh_text": "在你出生时吃了一顿饭，到现在还在消化。它们一生大部分时间都",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 429.04,
+   "end": 435.24,
+   "en_text": "in a slow limbo – some even slowly cannibalise&nbsp; themselves. Until a sudden influx of resources&nbsp;&nbsp;",
+   "zh_text": "处在缓慢的停滞状态——有些甚至慢慢吞噬自己。直到资源突然",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 435.24,
+   "end": 440.44,
+   "en_text": "arrives by pure chance – and then they spring&nbsp; into action and reproduce. With this lifestyle&nbsp;&nbsp;",
+   "zh_text": "纯靠运气涌来——它们便立刻行动起来，开始繁殖。靠着这种生活方式，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 440.44,
+   "end": 445.72,
+   "en_text": "it seems that extreme microbes can live for&nbsp; centuries, maybe even for millions of years!",
+   "zh_text": "极端微生物似乎能活上几百年，甚至可能活上几百万年！",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 445.72,
+   "end": 450.8,
+   "en_text": "If they are not hunted to death, of course.&nbsp; Because kilometers deep in limestone habitats,&nbsp;&nbsp;",
+   "zh_text": "当然，前提是它们没被猎杀至死。因为在几千米深的石灰岩栖息地里，",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 450.8,
+   "end": 456.52,
+   "en_text": "there seem to be spaces big enough for&nbsp; multicellular predators. We found asexual worms,&nbsp;&nbsp;",
+   "zh_text": "似乎有足够大的空间容纳多细胞捕食者。我们发现了无性繁殖的蠕虫，",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 456.52,
+   "end": 461.0,
+   "en_text": "100 times longer than microbes, hunting&nbsp; and devouring bacteria. It's not clear&nbsp;&nbsp;",
+   "zh_text": "比微生物长100倍，正在捕猎并吞食细菌。目前还不清楚",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 461.0,
+   "end": 464.92,
+   "en_text": "if they originated down here or if&nbsp; mini earthquakes opened up fractures&nbsp;&nbsp;",
+   "zh_text": "它们是本来就起源于这里，还是小地震打开了裂缝，",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 464.92,
+   "end": 468.6,
+   "en_text": "for water to carry them into the deep.&nbsp; But there are other fierce predators&nbsp;&nbsp;",
+   "zh_text": "让水流把它们带到了深处。但还有其他凶猛的捕食者",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 468.6,
+   "end": 473.2,
+   "en_text": "like rotifers or arthropods in the&nbsp; depths, hunting immortal microbes.",
+   "zh_text": "比如深处的轮虫或节肢动物，正在捕食永生的微生物。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 473.2,
+   "end": 477.56,
+   "en_text": "We wish we could tell you more insane things&nbsp; about life in the deep biosphere but there is&nbsp;&nbsp;",
+   "zh_text": "我们很想再多告诉你一些关于深层生物圈生命的疯狂事实，但是",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 477.56,
+   "end": 483.24,
+   "en_text": "a problem. We don’t know that much yet. For one,&nbsp; we can not really get a good look under kilometers&nbsp;&nbsp;",
+   "zh_text": "有个问题。我们目前知道的还不太多。首先，我们没法真正好好看清几公里厚的岩石下面",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 483.24,
+   "end": 488.52,
+   "en_text": "of rock. Drilling down could contaminate&nbsp; the samples with microbes from the surface.",
+   "zh_text": "是什么样子。往下钻探可能会让样本被地表的微生物污染。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 488.52,
+   "end": 492.24,
+   "en_text": "We found living ones in deep mines&nbsp; and brought them into the lab. But&nbsp;&nbsp;",
+   "zh_text": "我们在深矿井里找到了活着的微生物，并把它们带进了实验室。但是",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 492.24,
+   "end": 496.6,
+   "en_text": "it is pretty hard to simulate the conditions&nbsp; they feel comfy in – in boiling hot water,&nbsp;&nbsp;",
+   "zh_text": "要模拟出它们觉得舒服的环境相当困难——在滚烫的热水里，",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 496.6,
+   "end": 501.0,
+   "en_text": "squeezed under mountains, submerged in&nbsp; deadly chemicals – and still see them&nbsp;&nbsp;",
+   "zh_text": "被压在山脉之下，浸泡在致命的化学物质中——而且还要能透过显微镜",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 501.0,
+   "end": 507.08,
+   "en_text": "through a microscope. And the microbes live so&nbsp; slowly, for so long that nothing might happen.",
+   "zh_text": "看到它们。而且这些微生物活得那么慢、那么久，可能什么都不会发生。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 507.08,
+   "end": 510.52,
+   "en_text": "A lot of what we know about them we&nbsp; got from turning them into a slurry&nbsp;&nbsp;",
+   "zh_text": "我们对它们的很多了解，都是通过把它们打成浆",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 510.52,
+   "end": 516.08,
+   "en_text": "and looking at what their genes could do.&nbsp; Like “breathing” nitrogen or eating methane.",
+   "zh_text": "再研究它们的基因能做什么得来的。比如“呼吸”氮气或者吃甲烷。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 516.08,
+   "end": 521.04,
+   "en_text": "We know that the diversity of life in the deep&nbsp; biosphere must be staggering and that some of&nbsp;&nbsp;",
+   "zh_text": "我们知道深层生物圈里生命的多样性一定惊人，而且一些",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 521.04,
+   "end": 527.0,
+   "en_text": "the most hardcore and extreme beings live down&nbsp; there. This is a proper frontier of science,&nbsp;&nbsp;",
+   "zh_text": "最硬核、最极端的生物就生活在下面。这是科学真正的边疆，",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 527.0,
+   "end": 530.32,
+   "en_text": "super hard to study and most of&nbsp; what we know we learned in just&nbsp;&nbsp;",
+   "zh_text": "极难研究，我们所知的大部分都只是在",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 530.32,
+   "end": 535.36,
+   "en_text": "the last 20 years. There is so much&nbsp; more undiscovered mystery for us,&nbsp;&nbsp;",
+   "zh_text": "过去20年里学到的。还有太多未被发现的奥秘等着我们，",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 535.36,
+   "end": 539.44,
+   "en_text": "that could bring us progress in&nbsp; medicine, energy, the climate, and more.",
+   "zh_text": "它们可能为我们在医学、能源、气候等方面带来进步。",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 540.16,
+   "end": 545.32,
+   "en_text": "Let’s end by moving our gaze from the inside&nbsp; to the outside again. Since we now know how&nbsp;&nbsp;",
+   "zh_text": "最后，让我们把目光从内部再移回外部。既然我们现在知道",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 545.32,
+   "end": 550.8,
+   "en_text": "extremely large the deep biosphere is and how&nbsp; life down there survives without light, oxygen,&nbsp;&nbsp;",
+   "zh_text": "深层生物圈有多么巨大，也知道那里的生命如何在没有光、没有氧气、",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 550.8,
+   "end": 555.48,
+   "en_text": "sane temperatures or not being covered&nbsp; in poison… could there be deep biospheres&nbsp;&nbsp;",
+   "zh_text": "没有正常温度、还浑身是毒的环境下存活……那会不会有深层生物圈",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 555.48,
+   "end": 561.16,
+   "en_text": "all over the universe? Maybe all you need is a&nbsp; planet or moon with internal heat or radiation.",
+   "zh_text": "遍布整个宇宙呢？也许你只需要一颗有内部热量或辐射的行星或卫星。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 561.16,
+   "end": 566.04,
+   "en_text": "And a chemical composition that allows&nbsp; microbes to build the parts they need.&nbsp;&nbsp;",
+   "zh_text": "再加上一种化学成分，让微生物能构建它们所需的部件。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 566.04,
+   "end": 569.68,
+   "en_text": "Some scientists suggest that there could&nbsp; be ten of them in the solar system,&nbsp;&nbsp;",
+   "zh_text": "一些科学家认为，太阳系里可能就有十个这样的地方，",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 569.68,
+   "end": 574.64,
+   "en_text": "hiding beneath a seemingly dead and&nbsp; frozen surface. So as we learn more&nbsp;&nbsp;",
+   "zh_text": "藏在看似死寂、冰封的表面之下。所以随着我们了解更多",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 574.64,
+   "end": 582.72,
+   "en_text": "and more about the life below our feet, we may&nbsp; accidentally learn about life in the universe.",
+   "zh_text": "还能了解更多关于我们脚下生命的知识，说不定还会顺便了解到宇宙中的生命。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 582.72,
+   "end": 587.84,
+   "en_text": "You're lucky. YOU dont need to drill dozens&nbsp; of kilometers through solid rock to discover&nbsp;&nbsp;",
+   "zh_text": "你很幸运。你不需要钻穿几十公里的坚硬岩石，去发现",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 587.84,
+   "end": 593.56,
+   "en_text": "something mindblowing. You can just order&nbsp; some inspiration right to your doorstep.&nbsp;&nbsp;",
+   "zh_text": "什么令人惊叹的东西。你只要订购一些灵感，直接送到家门口就行。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 593.56,
+   "end": 599.68,
+   "en_text": "This is a science project crate from our sponsor&nbsp; KiwiCo who deliver little adventures in a box.",
+   "zh_text": "这是我们的赞助商 KiwiCo 提供的科学项目盒子，他们把小小的探险装进盒子里送到你手上。",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 599.68,
+   "end": 607.72,
+   "en_text": "Let’s explore: there’s wooden components..&nbsp; and bolts and wheels... and –transmitters?&nbsp;",
+   "zh_text": "咱们来探索一下：有木质零件……还有螺栓和轮子……还有——发射器？",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 607.72,
+   "end": 614.04,
+   "en_text": "It’s the Delivery Bot Kit, that teaches the basics&nbsp; of radio control in a playful and intuitive way.",
+   "zh_text": "这是送货机器人套装，用好玩又直观的方式教无线电控制的基础知识。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 614.04,
+   "end": 619.0,
+   "en_text": "This crate is part of the new KiwiCo Labs learning&nbsp; club – a subscription that takes you along on a&nbsp;&nbsp;",
+   "zh_text": "这个盒子是全新 KiwiCo Labs 学习俱乐部的一部分——这是一项订阅服务，带你踏上",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 619.0,
+   "end": 623.84,
+   "en_text": "learning journey for young scientists to be.&nbsp; Consecutive hands-on projects help develop&nbsp;&nbsp;",
+   "zh_text": "一段面向未来小科学家的学习之旅。连续不断的动手项目能帮助培养",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 623.84,
+   "end": 629.56,
+   "en_text": "and strengthen problem-solving skills on things&nbsp; like science, engineering and robots over time.&nbsp;&nbsp;",
+   "zh_text": "并随着时间不断增强解决问题的能力，涉及科学、工程和机器人等内容。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 629.56,
+   "end": 634.88,
+   "en_text": "There are also different programs available on&nbsp; topics like world geography, or art & design,&nbsp;&nbsp;",
+   "zh_text": "还有不同的课程可选，主题包括世界地理、艺术与设计等，",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 634.88,
+   "end": 640.04,
+   "en_text": "all with their own high-quality crates&nbsp; and exclusive online content to unlock.",
+   "zh_text": "每个都配有高质量的盒子和专属的在线内容等你解锁。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 640.04,
+   "end": 645.48,
+   "en_text": "We’re not gonna pretend this time that we got it&nbsp; for our own kids, we just ordered it for fun – but&nbsp;&nbsp;",
+   "zh_text": "这次我们不会假装是给自己孩子买的，我们就是买来玩的——不过",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 645.48,
+   "end": 650.72,
+   "en_text": "we can attest that it makes a great gift for any&nbsp; niece, nephew, godchild or other little one in&nbsp;&nbsp;",
+   "zh_text": "我们可以保证，它是送给任何侄女、侄子、教子或你生活中其他小朋友的绝佳礼物。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 650.72,
+   "end": 655.72,
+   "en_text": "your life. We like KiwiCo because with their&nbsp; new learning club program they are fostering&nbsp;&nbsp;",
+   "zh_text": "我们喜欢 KiwiCo，因为通过他们全新的学习俱乐部项目，他们正在培养",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 655.72,
+   "end": 661.08,
+   "en_text": "a mindset of making learning something that is&nbsp; an ongoing exploration, just like we want to.",
+   "zh_text": "一种把学习当作持续探索的心态，这正是我们想要的。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 661.08,
+   "end": 665.92,
+   "en_text": "If you want to try out the new KiwiCo clubs,&nbsp; click on the link in the infobox or use the&nbsp;&nbsp;",
+   "zh_text": "如果你想试试全新的 KiwiCo 俱乐部，点击信息框里的链接，或者使用",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 665.92,
+   "end": 671.916,
+   "en_text": "code KURZGESAGT to get 50% off your first&nbsp; month of a monthly subscription to KiwiCo.",
+   "zh_text": "优惠码 KURZGESAGT，订阅 KiwiCo 月度服务首月可享五折优惠。",
+   "highlights": []
+  }
+ ]
+}

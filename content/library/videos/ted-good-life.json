@@ -1,0 +1,1685 @@
+{
+ "id": "ted-good-life",
+ "youtubeId": "8KkKuTCFvzI",
+ "title": "What Makes a Good Life? Lessons from the Longest Study on Happiness | Robert Waldinger | TED",
+ "channel": "TED",
+ "duration": 767,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/8KkKuTCFvzI/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:14+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 12.756,
+   "end": 15.756,
+   "en_text": "What keeps us healthy and happy",
+   "zh_text": "是什么让我们在人生中保持健康和快乐",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 15.756,
+   "end": 17.339,
+   "en_text": "as we go through life?",
+   "zh_text": "在我们走过一生的时候？",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 18.506,
+   "end": 21.006,
+   "en_text": "If you were going to invest now",
+   "zh_text": "如果你现在要投资",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 21.048,
+   "end": 23.089,
+   "en_text": "in your future best self,",
+   "zh_text": "在未来最好的自己身上，",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 23.131,
+   "end": 26.089,
+   "en_text": "where would you put your time and your energy?",
+   "zh_text": "你会把时间和精力花在哪里？",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 27.131,
+   "end": 29.548,
+   "en_text": "There was a recent survey of millennials",
+   "zh_text": "最近有一项针对千禧一代的调查",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 29.548,
+   "end": 34.756,
+   "en_text": "asking them what their most important life goals were,",
+   "zh_text": "问他们最重要的人生目标是什么，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 34.756,
+   "end": 36.798,
+   "en_text": "and over 80 percent said",
+   "zh_text": "超过80%的人说",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 36.798,
+   "end": 40.923,
+   "en_text": "that a major life goal for them was to get rich.",
+   "zh_text": "他们的一个重要人生目标就是变得富有。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 40.964,
+   "end": 45.297,
+   "en_text": "And another 50 percent of those same young adults",
+   "zh_text": "而这些同样的年轻人中还有50%",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 45.339,
+   "end": 47.881,
+   "en_text": "said that another major life goal",
+   "zh_text": "说另一个重要的人生目标",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 47.881,
+   "end": 49.714,
+   "en_text": "was to become famous.",
+   "zh_text": "是出名。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 52.214,
+   "end": 58.881,
+   "en_text": "And we're constantly told to lean in to work, to push harder",
+   "zh_text": "我们不断被告知要投入工作，要更加努力",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 58.881,
+   "end": 60.922,
+   "en_text": "and achieve more.",
+   "zh_text": "取得更多成就。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 60.964,
+   "end": 64.631,
+   "en_text": "We're given the impression that these are the things that we need to go after",
+   "zh_text": "我们得到的印象是，这些就是我们必须要追求的东西",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 64.631,
+   "end": 66.464,
+   "en_text": "in order to have a good life.",
+   "zh_text": "为了拥有美好的生活。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 66.506,
+   "end": 68.714,
+   "en_text": "Pictures of entire lives,",
+   "zh_text": "完整人生的画面，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 68.714,
+   "end": 73.922,
+   "en_text": "of the choices that people make and how those choices work out for them,",
+   "zh_text": "人们所做的选择以及这些选择给他们带来的结果，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 73.964,
+   "end": 76.839,
+   "en_text": "those pictures are almost impossible to get.",
+   "zh_text": "这些画面几乎是不可能得到的。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 78.089,
+   "end": 81.131,
+   "en_text": "Most of what we know about human life",
+   "zh_text": "我们对人类生活的大部分了解",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 81.173,
+   "end": 84.631,
+   "en_text": "we know from asking people to remember the past,",
+   "zh_text": "都来自让人们回忆过去，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 84.631,
+   "end": 89.423,
+   "en_text": "and as we know, hindsight is anything but 20/20.",
+   "zh_text": "而众所周知，事后诸葛亮可一点都不靠谱。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 89.464,
+   "end": 93.131,
+   "en_text": "We forget vast amounts of what happens to us in life,",
+   "zh_text": "我们会忘记生活中发生的大量事情，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 93.173,
+   "end": 96.048,
+   "en_text": "and sometimes memory is downright creative.",
+   "zh_text": "有时候记忆还相当有创造性。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 96.798,
+   "end": 101.173,
+   "en_text": "But what if we could watch entire lives",
+   "zh_text": "但如果我们能观察完整的人生",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 101.214,
+   "end": 104.048,
+   "en_text": "as they unfold through time?",
+   "zh_text": "随着时间展开呢？",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 104.089,
+   "end": 108.048,
+   "en_text": "What if we could study people from the time that they were teenagers",
+   "zh_text": "如果我们能从人们还是青少年的时候就开始研究他们",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 108.089,
+   "end": 110.839,
+   "en_text": "all the way into old age",
+   "zh_text": "一直追踪到老年",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 110.839,
+   "end": 114.214,
+   "en_text": "to see what really keeps people happy and healthy?",
+   "zh_text": "看看究竟是什么让人们真正保持快乐和健康呢？",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 115.548,
+   "end": 116.756,
+   "en_text": "We did that.",
+   "zh_text": "我们做到了。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 117.631,
+   "end": 119.881,
+   "en_text": "The Harvard Study of Adult Development",
+   "zh_text": "哈佛成人发展研究",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 119.881,
+   "end": 124.631,
+   "en_text": "may be the longest study of adult life that's ever been done.",
+   "zh_text": "可能是有史以来进行过的最长的成人生活研究。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 125.714,
+   "end": 131.839,
+   "en_text": "For 75 years, we've tracked the lives of 724 men,",
+   "zh_text": "75年来，我们追踪了724名男性的生活，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 133.381,
+   "end": 137.881,
+   "en_text": "year after year, asking about their work, their home lives, their health,",
+   "zh_text": "年复一年，询问他们的工作、家庭生活、健康状况，",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 137.881,
+   "end": 142.256,
+   "en_text": "and of course asking all along the way without knowing how their life stories",
+   "zh_text": "当然一路上都在问，却不知道他们的人生故事",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 142.298,
+   "end": 143.714,
+   "en_text": "were going to turn out.",
+   "zh_text": "最终会怎样发展。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 145.298,
+   "end": 148.923,
+   "en_text": "Studies like this are exceedingly rare.",
+   "zh_text": "像这样的研究极其罕见。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 148.923,
+   "end": 152.964,
+   "en_text": "Almost all projects of this kind fall apart within a decade",
+   "zh_text": "几乎所有这类项目都在十年内瓦解",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 153.006,
+   "end": 156.173,
+   "en_text": "because too many people drop out of the study,",
+   "zh_text": "因为太多人退出研究，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 156.214,
+   "end": 159.089,
+   "en_text": "or funding for the research dries up,",
+   "zh_text": "或者研究经费枯竭，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 159.131,
+   "end": 161.381,
+   "en_text": "or the researchers get distracted,",
+   "zh_text": "或者研究人员分心了，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 161.423,
+   "end": 165.506,
+   "en_text": "or they die, and nobody moves the ball further down the field.",
+   "zh_text": "或者他们去世了，没有人再把这件事往前推进。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 166.298,
+   "end": 168.548,
+   "en_text": "But through a combination of luck",
+   "zh_text": "但靠着运气的结合",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 168.548,
+   "end": 172.256,
+   "en_text": "and the persistence of several generations of researchers,",
+   "zh_text": "以及几代研究人员的坚持，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 172.298,
+   "end": 173.839,
+   "en_text": "this study has survived.",
+   "zh_text": "这项研究存活了下来。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 174.506,
+   "end": 179.006,
+   "en_text": "About 60 of our original 724 men",
+   "zh_text": "我们最初724名男性中大约有60人",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 179.048,
+   "end": 180.339,
+   "en_text": "are still alive,",
+   "zh_text": "仍然在世，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 180.381,
+   "end": 182.548,
+   "en_text": "still participating in the study,",
+   "zh_text": "仍在参与这项研究，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 182.548,
+   "end": 184.589,
+   "en_text": "most of them in their 90s.",
+   "zh_text": "他们大多已经九十多岁了。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 185.548,
+   "end": 187.464,
+   "en_text": "And we are now beginning to study",
+   "zh_text": "而我们现在开始研究",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 187.506,
+   "end": 190.839,
+   "en_text": "the more than 2,000 children of these men.",
+   "zh_text": "这些人的两千多名子女。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 191.673,
+   "end": 194.006,
+   "en_text": "And I'm the fourth director of the study.",
+   "zh_text": "我是这项研究的第四任负责人。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 195.423,
+   "end": 200.131,
+   "en_text": "Since 1938, we've tracked the lives of two groups of men.",
+   "zh_text": "从1938年起，我们追踪了两组男性的生活。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 200.173,
+   "end": 202.298,
+   "en_text": "The first group started in the study",
+   "zh_text": "第一组人在研究开始时",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 202.339,
+   "end": 205.006,
+   "en_text": "when they were sophomores at Harvard College.",
+   "zh_text": "还是哈佛学院的大二学生。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 205.048,
+   "end": 207.881,
+   "en_text": "They all finished college during World War II,",
+   "zh_text": "他们都在二战期间读完了大学，",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 207.881,
+   "end": 210.339,
+   "en_text": "and then most went off to serve in the war.",
+   "zh_text": "之后大多数人去参了战。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 211.298,
+   "end": 213.423,
+   "en_text": "And the second group that we've followed",
+   "zh_text": "我们追踪的第二组人",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 213.464,
+   "end": 217.631,
+   "en_text": "was a group of boys from Boston's poorest neighborhoods,",
+   "zh_text": "是一群来自波士顿最贫困街区的男孩，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 217.631,
+   "end": 219.673,
+   "en_text": "boys who were chosen for the study",
+   "zh_text": "这些男孩之所以被选入研究，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 219.673,
+   "end": 223.006,
+   "en_text": "specifically because they were from some of the most troubled",
+   "zh_text": "正是因为他们来自一些最麻烦",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 223.048,
+   "end": 224.923,
+   "en_text": "and disadvantaged families",
+   "zh_text": "、最弱势的家庭，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 224.923,
+   "end": 227.673,
+   "en_text": "in the Boston of the 1930s.",
+   "zh_text": "那是20世纪30年代的波士顿。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 227.673,
+   "end": 232.298,
+   "en_text": "Most lived in tenements, many without hot and cold running water.",
+   "zh_text": "他们大多住在廉租房里，很多人家里连冷热水都没有。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 234.506,
+   "end": 236.423,
+   "en_text": "When they entered the study,",
+   "zh_text": "他们刚加入研究时，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 236.464,
+   "end": 239.381,
+   "en_text": "all of these teenagers were interviewed.",
+   "zh_text": "所有这些青少年都接受了访谈。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 239.423,
+   "end": 241.631,
+   "en_text": "They were given medical exams.",
+   "zh_text": "他们做了体检。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 241.631,
+   "end": 245.173,
+   "en_text": "We went to their homes and we interviewed their parents.",
+   "zh_text": "我们去他们家，采访了他们的父母。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 245.214,
+   "end": 247.589,
+   "en_text": "And then these teenagers grew up into adults",
+   "zh_text": "后来这些青少年长大成人，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 247.589,
+   "end": 250.006,
+   "en_text": "who entered all walks of life.",
+   "zh_text": "进入了各行各业。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 250.048,
+   "end": 256.131,
+   "en_text": "They became factory workers and lawyers and bricklayers and doctors,",
+   "zh_text": "他们成了工厂工人、律师、砖瓦匠和医生，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 256.173,
+   "end": 258.506,
+   "en_text": "one President of the United States.",
+   "zh_text": "其中一位还当上了美国总统。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 260.173,
+   "end": 264.423,
+   "en_text": "Some developed alcoholism. A few developed schizophrenia.",
+   "zh_text": "有些人患上了酗酒。有几个人得了精神分裂症。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 265.339,
+   "end": 267.631,
+   "en_text": "Some climbed the social ladder",
+   "zh_text": "有些人沿着社会阶梯往上爬，",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 267.631,
+   "end": 270.881,
+   "en_text": "from the bottom all the way to the very top,",
+   "zh_text": "从最底层一路爬到最顶层，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 270.881,
+   "end": 274.173,
+   "en_text": "and some made that journey in the opposite direction.",
+   "zh_text": "也有些人走的是相反的方向。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 275.506,
+   "end": 278.464,
+   "en_text": "The founders of this study",
+   "zh_text": "这项研究的创始人",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 278.506,
+   "end": 280.506,
+   "en_text": "would never in their wildest dreams",
+   "zh_text": "做梦也想不到",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 280.506,
+   "end": 285.048,
+   "en_text": "have imagined that I would be standing here today, 75 years later,",
+   "zh_text": "75年后的今天，我会站在这里，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 285.089,
+   "end": 288.173,
+   "en_text": "telling you that the study still continues.",
+   "zh_text": "告诉你们这项研究仍在继续。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 289.298,
+   "end": 292.923,
+   "en_text": "Every two years, our patient and dedicated research staff",
+   "zh_text": "每两年，我们耐心而敬业的研究人员",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 292.923,
+   "end": 295.964,
+   "en_text": "calls up our men and asks them if we can send them",
+   "zh_text": "就会给我们的研究对象打电话，问能不能再给他们寄",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 296.006,
+   "end": 299.131,
+   "en_text": "yet one more set of questions about their lives.",
+   "zh_text": "一套关于他们生活的问题。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 300.048,
+   "end": 303.631,
+   "en_text": "Many of the inner city Boston men ask us,",
+   "zh_text": "波士顿市中心的很多男性会问我们：",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 303.631,
+   "end": 307.506,
+   "en_text": "\"Why do you keep wanting to study me? My life just isn't that interesting.\"",
+   "zh_text": "“你们为什么老想研究我？我的生活真没那么有意思。”",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 308.589,
+   "end": 310.964,
+   "en_text": "The Harvard men never ask that question.",
+   "zh_text": "哈佛那组人从来不问这个问题。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 320.923,
+   "end": 323.798,
+   "en_text": "To get the clearest picture of these lives,",
+   "zh_text": "为了最清楚地了解这些人的生活，",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 323.798,
+   "end": 326.756,
+   "en_text": "we don't just send them questionnaires.",
+   "zh_text": "我们不只是给他们寄问卷。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 326.756,
+   "end": 329.214,
+   "en_text": "We interview them in their living rooms.",
+   "zh_text": "我们在他们的客厅里采访他们。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 329.256,
+   "end": 332.173,
+   "en_text": "We get their medical records from their doctors.",
+   "zh_text": "我们从他们的医生那里获取病历。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 332.214,
+   "end": 334.714,
+   "en_text": "We draw their blood, we scan their brains,",
+   "zh_text": "我们给他们抽血，扫描他们的大脑，",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 334.714,
+   "end": 336.423,
+   "en_text": "we talk to their children.",
+   "zh_text": "我们和他们的孩子交谈。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 336.464,
+   "end": 341.714,
+   "en_text": "We videotape them talking with their wives about their deepest concerns.",
+   "zh_text": "我们录下他们和妻子谈论内心最深处的担忧。",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 341.714,
+   "end": 345.256,
+   "en_text": "And when, about a decade ago, we finally asked the wives",
+   "zh_text": "大约十年前，我们终于问这些妻子",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 345.298,
+   "end": 347.673,
+   "en_text": "if they would join us as members of the study,",
+   "zh_text": "是否愿意作为研究成员加入我们。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 347.673,
+   "end": 350.381,
+   "en_text": "many of the women said, \"You know, it's about time.\"",
+   "zh_text": "很多女性都说：“你知道，早就该这样了。”",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 351.506,
+   "end": 353.173,
+   "en_text": "So what have we learned?",
+   "zh_text": "那么，我们学到了什么？",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 353.214,
+   "end": 358.423,
+   "en_text": "What are the lessons that come from the tens of thousands of pages",
+   "zh_text": "从成千上万页的资料中，我们能得到什么启示？",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 358.464,
+   "end": 361.506,
+   "en_text": "of information that we've generated",
+   "zh_text": "这些资料都是我们积累下来的，",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 361.506,
+   "end": 362.714,
+   "en_text": "on these lives?",
+   "zh_text": "关于这些人的一生。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 363.714,
+   "end": 369.339,
+   "en_text": "Well, the lessons aren't about wealth or fame or working harder and harder.",
+   "zh_text": "这些启示与财富、名声，或者拼命工作无关。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 370.506,
+   "end": 376.839,
+   "en_text": "The clearest message that we get from this 75-year study is this:",
+   "zh_text": "这项长达75年的研究给我们最明确的结论是：",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 376.839,
+   "end": 382.048,
+   "en_text": "Good relationships keep us happier and healthier. Period.",
+   "zh_text": "良好的人际关系让我们更快乐、更健康。就是这样。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 383.006,
+   "end": 386.839,
+   "en_text": "We've learned three big lessons about relationships.",
+   "zh_text": "关于人际关系，我们学到了三大启示。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 386.839,
+   "end": 390.923,
+   "en_text": "The first is that social connections are really good for us,",
+   "zh_text": "第一，社会联系对我们真的很有好处，",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 390.964,
+   "end": 393.464,
+   "en_text": "and that loneliness kills.",
+   "zh_text": "而孤独会致命。",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 393.506,
+   "end": 397.131,
+   "en_text": "It turns out that people who are more socially connected",
+   "zh_text": "事实证明，与家人、朋友、社区联系更紧密的人，",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 397.173,
+   "end": 400.256,
+   "en_text": "to family, to friends, to community,",
+   "zh_text": "与家人、朋友、社区联系更紧密的人，",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 400.298,
+   "end": 404.964,
+   "en_text": "are happier, they're physically healthier, and they live longer",
+   "zh_text": "更快乐，身体更健康，也活得更长，",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 405.006,
+   "end": 408.381,
+   "en_text": "than people who are less well connected.",
+   "zh_text": "比那些联系较少的人活得更长。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 408.423,
+   "end": 411.839,
+   "en_text": "And the experience of loneliness turns out to be toxic.",
+   "zh_text": "而孤独的体验，事实证明是有害的。",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 411.839,
+   "end": 416.964,
+   "en_text": "People who are more isolated than they want to be from others",
+   "zh_text": "那些比自己所希望的更孤立于他人的人",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 417.006,
+   "end": 420.214,
+   "en_text": "find that they are less happy,",
+   "zh_text": "会发现自己没那么快乐，",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 420.256,
+   "end": 423.173,
+   "en_text": "their health declines earlier in midlife,",
+   "zh_text": "健康在中年时更早衰退，",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 423.214,
+   "end": 425.423,
+   "en_text": "their brain functioning declines sooner",
+   "zh_text": "大脑功能更早衰退，",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 425.464,
+   "end": 429.006,
+   "en_text": "and they live shorter lives than people who are not lonely.",
+   "zh_text": "而且比不孤独的人活得更短。",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 430.048,
+   "end": 433.256,
+   "en_text": "And the sad fact is that at any given time,",
+   "zh_text": "而令人难过的是，在任何时候，",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 433.298,
+   "end": 437.881,
+   "en_text": "more than one in five Americans will report that they're lonely.",
+   "zh_text": "超过五分之一的美国人会说自己感到孤独。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 439.048,
+   "end": 441.714,
+   "en_text": "And we know that you can be lonely in a crowd",
+   "zh_text": "我们知道，你可以在人群中感到孤独，",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 441.714,
+   "end": 444.381,
+   "en_text": "and you can be lonely in a marriage,",
+   "zh_text": "也可以在婚姻中感到孤独，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 444.423,
+   "end": 446.548,
+   "en_text": "so the second big lesson that we learned",
+   "zh_text": "所以我们学到的第二大启示",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 446.548,
+   "end": 449.673,
+   "en_text": "is that it's not just the number of friends you have,",
+   "zh_text": "是，重要的不只是你有多少朋友，",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 449.673,
+   "end": 453.173,
+   "en_text": "and it's not whether or not you're in a committed relationship,",
+   "zh_text": "也不在于你是否处于一段稳定的感情关系中，",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 453.214,
+   "end": 457.839,
+   "en_text": "but it's the quality of your close relationships that matters.",
+   "zh_text": "而是你亲密关系的质量才重要。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 458.548,
+   "end": 463.339,
+   "en_text": "It turns out that living in the midst of conflict is really bad for our health.",
+   "zh_text": "事实证明，生活在冲突之中对我们的健康非常有害。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 463.381,
+   "end": 467.339,
+   "en_text": "High-conflict marriages, for example, without much affection,",
+   "zh_text": "比如，缺乏温情的、冲突激烈的婚姻，",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 467.381,
+   "end": 473.131,
+   "en_text": "turn out to be very bad for our health, perhaps worse than getting divorced.",
+   "zh_text": "对我们的健康非常有害，也许比离婚还糟。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 473.173,
+   "end": 477.923,
+   "en_text": "And living in the midst of good, warm relationships is protective.",
+   "zh_text": "而生活在良好、温暖的关系中则具有保护作用。",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 477.964,
+   "end": 481.048,
+   "en_text": "Once we had followed our men all the way into their 80s,",
+   "zh_text": "当我们一直追踪这些人到他们80多岁时，",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 481.089,
+   "end": 484.089,
+   "en_text": "we wanted to look back at them at midlife",
+   "zh_text": "我们想回头看看他们中年时的状况",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 484.131,
+   "end": 485.714,
+   "en_text": "and to see if we could predict",
+   "zh_text": "看看我们能否预测",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 485.714,
+   "end": 489.714,
+   "en_text": "who was going to grow into a happy, healthy octogenarian",
+   "zh_text": "谁会成长为快乐、健康的八旬老人",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 489.714,
+   "end": 490.923,
+   "en_text": "and who wasn't.",
+   "zh_text": "谁不会。",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 491.673,
+   "end": 495.923,
+   "en_text": "And when we gathered together everything we knew about them",
+   "zh_text": "当我们把他们50岁时",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 495.923,
+   "end": 497.298,
+   "en_text": "at age 50,",
+   "zh_text": "我们所知道的一切汇总起来时，",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 498.089,
+   "end": 500.631,
+   "en_text": "it wasn't their middle age cholesterol levels",
+   "zh_text": "并不是他们中年的胆固醇水平",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 500.631,
+   "end": 503.548,
+   "en_text": "that predicted how they were going to grow old.",
+   "zh_text": "预测了他们将如何变老。",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 503.548,
+   "end": 507.006,
+   "en_text": "It was how satisfied they were in their relationships.",
+   "zh_text": "而是他们对自己关系的满意程度。",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 507.048,
+   "end": 511.923,
+   "en_text": "The people who were the most satisfied in their relationships at age 50",
+   "zh_text": "那些在50岁时对人际关系最满意的人",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 511.964,
+   "end": 514.381,
+   "en_text": "were the healthiest at age 80.",
+   "zh_text": "在80岁时是最健康的。",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 515.673,
+   "end": 518.881,
+   "en_text": "And good, close relationships seem to buffer us",
+   "zh_text": "而良好、亲密的关系似乎能帮我们缓冲",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 518.881,
+   "end": 521.631,
+   "en_text": "from some of the slings and arrows of getting old.",
+   "zh_text": "衰老带来的种种打击和伤害。",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 522.506,
+   "end": 526.464,
+   "en_text": "Our most happily partnered men and women",
+   "zh_text": "我们那些伴侣关系最幸福的男男女女",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 526.506,
+   "end": 528.547,
+   "en_text": "reported, in their 80s,",
+   "zh_text": "在80多岁时表示，",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 528.547,
+   "end": 531.506,
+   "en_text": "that on the days when they had more physical pain,",
+   "zh_text": "在身体疼痛较多的那些日子里，",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 531.506,
+   "end": 533.506,
+   "en_text": "their mood stayed just as happy.",
+   "zh_text": "他们的心情依然一样快乐。",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 534.422,
+   "end": 537.672,
+   "en_text": "But the people who were in unhappy relationships,",
+   "zh_text": "但那些处在不幸福关系中的人，",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 537.672,
+   "end": 540.631,
+   "en_text": "on the days when they reported more physical pain,",
+   "zh_text": "在报告身体疼痛较多的那些日子里，",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 540.631,
+   "end": 543.672,
+   "en_text": "it was magnified by more emotional pain.",
+   "zh_text": "这种疼痛还会被更多的情绪痛苦放大。",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 544.381,
+   "end": 548.756,
+   "en_text": "And the third big lesson that we learned about relationships and our health",
+   "zh_text": "而我们关于人际关系与健康学到的第三个重要道理",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 548.756,
+   "end": 552.006,
+   "en_text": "is that good relationships don't just protect our bodies,",
+   "zh_text": "就是良好的人际关系不仅保护我们的身体，",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 552.047,
+   "end": 553.506,
+   "en_text": "they protect our brains.",
+   "zh_text": "也保护我们的大脑。",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 554.464,
+   "end": 559.089,
+   "en_text": "It turns out that being in a securely attached relationship",
+   "zh_text": "事实证明，在80多岁时拥有一段",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 559.131,
+   "end": 563.006,
+   "en_text": "to another person in your 80s is protective,",
+   "zh_text": "与他人安全依恋的关系是有保护作用的，",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 563.047,
+   "end": 565.006,
+   "en_text": "that the people who are in relationships",
+   "zh_text": "那些处在这样的关系中的人，",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 565.047,
+   "end": 569.172,
+   "en_text": "where they really feel they can count on the other person in times of need,",
+   "zh_text": "也就是真正觉得在需要时可以依靠对方的人，",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 569.214,
+   "end": 572.922,
+   "en_text": "those people's memories stay sharper longer.",
+   "zh_text": "这些人的记忆力保持得更敏锐、更长久。",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 572.922,
+   "end": 574.422,
+   "en_text": "And the people in relationships",
+   "zh_text": "而那些处在这样的关系中的人，",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 574.464,
+   "end": 577.589,
+   "en_text": "where they feel they really can't count on the other one,",
+   "zh_text": "也就是觉得自己真的无法依靠对方的人，",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 577.589,
+   "end": 581.506,
+   "en_text": "those are the people who experience earlier memory decline.",
+   "zh_text": "这些人会更早出现记忆力衰退。",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 582.506,
+   "end": 585.964,
+   "en_text": "And those good relationships, they don't have to be smooth all the time.",
+   "zh_text": "而那些良好的关系，也不必时时刻刻都一帆风顺。",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 586.006,
+   "end": 589.589,
+   "en_text": "Some of our octogenarian couples could bicker with each other",
+   "zh_text": "我们有些八十多岁的夫妻会互相拌嘴，",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 589.589,
+   "end": 591.339,
+   "en_text": "day in and day out,",
+   "zh_text": "天天如此，",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 591.381,
+   "end": 594.547,
+   "en_text": "but as long as they felt that they could really count on the other",
+   "zh_text": "但只要他们觉得在困难的时候",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 594.547,
+   "end": 596.381,
+   "en_text": "when the going got tough,",
+   "zh_text": "真的可以依靠对方，",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 596.422,
+   "end": 600.006,
+   "en_text": "those arguments didn't take a toll on their memories.",
+   "zh_text": "那些争吵就不会损害他们的记忆力。",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 601.589,
+   "end": 604.339,
+   "en_text": "So this message,",
+   "zh_text": "所以这个道理，",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 604.381,
+   "end": 610.047,
+   "en_text": "that good, close relationships are good for our health and well-being,",
+   "zh_text": "也就是良好、亲密的关系有益于我们的健康和幸福，",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 610.089,
+   "end": 613.006,
+   "en_text": "this is wisdom that's as old as the hills.",
+   "zh_text": "这是古老得不能再古老的智慧。",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 613.047,
+   "end": 616.881,
+   "en_text": "Why is this so hard to get and so easy to ignore?",
+   "zh_text": "为什么它这么难以领会，又这么容易被忽视呢？",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 617.547,
+   "end": 619.006,
+   "en_text": "Well, we're human.",
+   "zh_text": "嗯，因为我们是人。",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 619.047,
+   "end": 621.881,
+   "en_text": "What we'd really like is a quick fix,",
+   "zh_text": "我们真正想要的是一劳永逸的解决办法，",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 621.881,
+   "end": 623.589,
+   "en_text": "something we can get",
+   "zh_text": "是某种我们能得到的东西，",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 623.589,
+   "end": 626.381,
+   "en_text": "that'll make our lives good and keep them that way.",
+   "zh_text": "能让我们的生活变好，并一直保持下去。",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 627.339,
+   "end": 630.672,
+   "en_text": "Relationships are messy and they're complicated",
+   "zh_text": "人际关系是凌乱的，也是复杂的，",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 630.672,
+   "end": 634.506,
+   "en_text": "and the hard work of tending to family and friends,",
+   "zh_text": "而用心经营家人和朋友关系的辛苦付出，",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 634.506,
+   "end": 637.172,
+   "en_text": "it's not sexy or glamorous.",
+   "zh_text": "既不性感，也不光鲜。",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 637.214,
+   "end": 640.547,
+   "en_text": "It's also lifelong. It never ends.",
+   "zh_text": "它还是一辈子的事，永远没有尽头。",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 640.547,
+   "end": 645.631,
+   "en_text": "The people in our 75-year study who were the happiest in retirement",
+   "zh_text": "在我们这项长达75年的研究中，退休后最幸福的人",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 645.631,
+   "end": 651.464,
+   "en_text": "were the people who had actively worked to replace workmates with new playmates.",
+   "zh_text": "是那些主动努力用新玩伴取代工作伙伴的人。",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 651.506,
+   "end": 654.464,
+   "en_text": "Just like the millennials in that recent survey,",
+   "zh_text": "就像最近那项调查中的千禧一代一样，",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 654.506,
+   "end": 658.089,
+   "en_text": "many of our men when they were starting out as young adults",
+   "zh_text": "我们的许多男性在刚步入成年时",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 658.131,
+   "end": 662.131,
+   "en_text": "really believed that fame and wealth and high achievement",
+   "zh_text": "真的相信名望、财富和很高的成就",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 662.172,
+   "end": 666.089,
+   "en_text": "were what they needed to go after to have a good life.",
+   "zh_text": "才是他们为了过上好日子必须去追求的东西。",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 666.131,
+   "end": 670.297,
+   "en_text": "But over and over, over these 75 years, our study has shown",
+   "zh_text": "但在这75年里，我们的研究一次又一次地表明",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 670.339,
+   "end": 675.964,
+   "en_text": "that the people who fared the best were the people who leaned in to relationships,",
+   "zh_text": "过得最好的人，是那些用心投入人际关系的人，",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 676.006,
+   "end": 679.256,
+   "en_text": "with family, with friends, with community.",
+   "zh_text": "和家人、和朋友、和社区的关系。",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 681.089,
+   "end": 683.047,
+   "en_text": "So what about you?",
+   "zh_text": "那么你呢？",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 683.089,
+   "end": 686.839,
+   "en_text": "Let's say you're 25, or you're 40, or you're 60.",
+   "zh_text": "假设你25岁，或者40岁，或者60岁。",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 687.797,
+   "end": 690.756,
+   "en_text": "What might leaning in to relationships even look like?",
+   "zh_text": "用心投入人际关系，到底可以是什么样子呢？",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 691.756,
+   "end": 694.881,
+   "en_text": "Well, the possibilities are practically endless.",
+   "zh_text": "其实，可能性几乎无穷无尽。",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 695.589,
+   "end": 701.714,
+   "en_text": "It might be something as simple as replacing screen time with people time",
+   "zh_text": "它可能简单到只是把盯着屏幕的时间换成陪伴别人的时间，",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 701.714,
+   "end": 706.172,
+   "en_text": "or livening up a stale relationship by doing something new together,",
+   "zh_text": "或者一起做点新鲜事，让一段变得乏味的关系重新有活力，",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 706.214,
+   "end": 708.422,
+   "en_text": "long walks or date nights,",
+   "zh_text": "比如长时间散步，或者安排约会之夜，",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 709.381,
+   "end": 714.214,
+   "en_text": "or reaching out to that family member who you haven't spoken to in years,",
+   "zh_text": "或者主动联系那位你好多年没说过话的家人，",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 714.256,
+   "end": 717.756,
+   "en_text": "because those all-too-common family feuds",
+   "zh_text": "因为那些太常见的家庭不和",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 717.756,
+   "end": 719.964,
+   "en_text": "take a terrible toll",
+   "zh_text": "会带来可怕的代价，",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 720.006,
+   "end": 722.089,
+   "en_text": "on the people who hold the grudges.",
+   "zh_text": "代价落在那些心怀怨恨的人身上。",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 724.006,
+   "end": 727.922,
+   "en_text": "I'd like to close with a quote from Mark Twain.",
+   "zh_text": "我想用马克·吐温的一句话来结尾。",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 729.297,
+   "end": 731.672,
+   "en_text": "More than a century ago,",
+   "zh_text": "一个多世纪以前，",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 731.672,
+   "end": 734.297,
+   "en_text": "he was looking back on his life,",
+   "zh_text": "他回顾自己的一生，",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 734.339,
+   "end": 735.589,
+   "en_text": "and he wrote this:",
+   "zh_text": "写下了这段话：",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 736.839,
+   "end": 740.547,
+   "en_text": "\"There isn't time, so brief is life,",
+   "zh_text": "“人生如此短暂，没有时间",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 740.547,
+   "end": 745.714,
+   "en_text": "for bickerings, apologies, heartburnings, callings to account.",
+   "zh_text": "去争吵、去道歉、去伤心、去计较。",
+   "highlights": []
+  },
+  {
+   "id": 205,
+   "start": 746.714,
+   "end": 749.547,
+   "en_text": "There is only time for loving,",
+   "zh_text": "只有时间去爱，",
+   "highlights": []
+  },
+  {
+   "id": 206,
+   "start": 749.547,
+   "end": 753.297,
+   "en_text": "and but an instant, so to speak, for that.\"",
+   "zh_text": "而且可以说，去爱也只是一瞬间的事。”",
+   "highlights": []
+  },
+  {
+   "id": 207,
+   "start": 754.756,
+   "end": 759.131,
+   "en_text": "The good life is built with good relationships.",
+   "zh_text": "美好的人生建立在良好的人际关系之上。",
+   "highlights": []
+  },
+  {
+   "id": 208,
+   "start": 759.172,
+   "end": 760.381,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢大家。",
+   "highlights": []
+  }
+ ]
+}

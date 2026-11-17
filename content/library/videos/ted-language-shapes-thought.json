@@ -1,0 +1,2397 @@
+{
+ "id": "ted-language-shapes-thought",
+ "youtubeId": "RKK7wGAYP6k",
+ "title": "How Language Shapes the Way We Think | Lera Boroditsky | TED",
+ "channel": "TED",
+ "duration": 853,
+ "level": "C1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/RKK7wGAYP6k/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:46+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 12.94,
+   "end": 15.515,
+   "en_text": "So, I'll be speaking to you using language ...",
+   "zh_text": "所以，我将用语言来跟你们交流……",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 16.09,
+   "end": 17.61,
+   "en_text": "because I can.",
+   "zh_text": "因为我会说话。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 17.634,
+   "end": 20.787,
+   "en_text": "This is one these magical abilities that we humans have.",
+   "zh_text": "这是我们人类拥有的一种神奇能力。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 21.114,
+   "end": 25.066,
+   "en_text": "We can transmit really complicated thoughts to one another.",
+   "zh_text": "我们可以把非常复杂的想法传递给彼此。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 25.479,
+   "end": 29.074,
+   "en_text": "So what I'm doing right now is, I'm making sounds with my mouth",
+   "zh_text": "所以我现在在做的事情，就是用嘴巴发出声音",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 29.098,
+   "end": 30.313,
+   "en_text": "as I'm exhaling.",
+   "zh_text": "一边呼气一边发声。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 30.337,
+   "end": 32.685,
+   "en_text": "I'm making tones and hisses and puffs,",
+   "zh_text": "我在发出各种音调、嘶嘶声和喷气声，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 32.709,
+   "end": 35.719,
+   "en_text": "and those are creating air vibrations in the air.",
+   "zh_text": "这些声音在空气中产生了振动。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 35.743,
+   "end": 38.189,
+   "en_text": "Those air vibrations are traveling to you,",
+   "zh_text": "这些空气振动传到你那里，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 38.213,
+   "end": 39.998,
+   "en_text": "they're hitting your eardrums,",
+   "zh_text": "它们敲击着你的耳膜，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 40.022,
+   "end": 44.602,
+   "en_text": "and then your brain takes those vibrations from your eardrums",
+   "zh_text": "然后你的大脑把耳膜传来的这些振动",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 44.626,
+   "end": 47.379,
+   "en_text": "and transforms them into thoughts.",
+   "zh_text": "转化成思想。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 48.031,
+   "end": 49.182,
+   "en_text": "I hope.",
+   "zh_text": "希望如此。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 50.233,
+   "end": 51.39,
+   "en_text": "I hope that's happening.",
+   "zh_text": "希望这真的在发生。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 51.414,
+   "end": 55.99,
+   "en_text": "So because of this ability, we humans are able to transmit our ideas",
+   "zh_text": "正因为有这种能力，我们人类才能把想法传递出去",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 56.014,
+   "end": 58.706,
+   "en_text": "across vast reaches of space and time.",
+   "zh_text": "跨越广阔的空间和时间。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 58.73,
+   "end": 63.266,
+   "en_text": "We're able to transmit knowledge across minds.",
+   "zh_text": "我们能够把知识从一个头脑传到另一个头脑。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 63.29,
+   "end": 66.451,
+   "en_text": "I can put a bizarre new idea in your mind right now.",
+   "zh_text": "我现在就能把一个稀奇古怪的新想法放进你脑子里。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 66.475,
+   "end": 67.63,
+   "en_text": "I could say,",
+   "zh_text": "我可以说，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 68.367,
+   "end": 71.575,
+   "en_text": "\"Imagine a jellyfish waltzing in a library",
+   "zh_text": "“想象一只水母在图书馆里跳华尔兹，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 71.599,
+   "end": 73.775,
+   "en_text": "while thinking about quantum mechanics.\"",
+   "zh_text": "一边还想着量子力学。”",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 75.221,
+   "end": 78.249,
+   "en_text": "Now, if everything has gone relatively well in your life so far,",
+   "zh_text": "如果你到目前为止的人生还算比较正常，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 78.273,
+   "end": 80.385,
+   "en_text": "you probably haven't had that thought before.",
+   "zh_text": "你以前大概没想过这个画面。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 81.435,
+   "end": 83.167,
+   "en_text": "But now I've just made you think it,",
+   "zh_text": "但现在我刚刚让你想到了它，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 83.191,
+   "end": 84.346,
+   "en_text": "through language.",
+   "zh_text": "通过语言。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 84.654,
+   "end": 87.378,
+   "en_text": "Now of course, there isn't just one language in the world,",
+   "zh_text": "当然，世界上不只有一种语言，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 87.402,
+   "end": 90.047,
+   "en_text": "there are about 7,000 languages spoken around the world.",
+   "zh_text": "全世界大约有七千种语言在使用。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 90.071,
+   "end": 93.231,
+   "en_text": "And all the languages differ from one another in all kinds of ways.",
+   "zh_text": "而所有语言在方方面面都彼此不同。",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 93.255,
+   "end": 96.346,
+   "en_text": "Some languages have different sounds,",
+   "zh_text": "有些语言发音不同，",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 96.37,
+   "end": 98.089,
+   "en_text": "they have different vocabularies,",
+   "zh_text": "词汇不同，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 98.113,
+   "end": 100.152,
+   "en_text": "and they also have different structures --",
+   "zh_text": "结构也不同——",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 100.176,
+   "end": 102.063,
+   "en_text": "very importantly, different structures.",
+   "zh_text": "非常重要的是，结构不同。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 102.896,
+   "end": 104.088,
+   "en_text": "That begs the question:",
+   "zh_text": "这就引出了一个问题：",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 104.112,
+   "end": 106.724,
+   "en_text": "Does the language we speak shape the way we think?",
+   "zh_text": "我们所说的语言会塑造我们的思维方式吗？",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 106.748,
+   "end": 108.32,
+   "en_text": "Now, this is an ancient question.",
+   "zh_text": "这是一个古老的问题。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 108.344,
+   "end": 111.515,
+   "en_text": "People have been speculating about this question forever.",
+   "zh_text": "人们一直在思考这个问题。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 111.539,
+   "end": 113.856,
+   "en_text": "Charlemagne, Holy Roman emperor, said,",
+   "zh_text": "神圣罗马帝国皇帝查理曼说过，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 113.88,
+   "end": 116.916,
+   "en_text": "\"To have a second language is to have a second soul\" --",
+   "zh_text": "“掌握第二种语言，就是拥有第二个灵魂”——",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 116.94,
+   "end": 119.443,
+   "en_text": "strong statement that language crafts reality.",
+   "zh_text": "这是个强有力的说法，认为语言塑造了现实。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 119.992,
+   "end": 122.982,
+   "en_text": "But on the other hand, Shakespeare has Juliet say,",
+   "zh_text": "但另一方面，莎士比亚让朱丽叶说，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 123.006,
+   "end": 124.157,
+   "en_text": "\"What's in a name?",
+   "zh_text": "“名字算什么？",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 124.181,
+   "end": 126.515,
+   "en_text": "A rose by any other name would smell as sweet.\"",
+   "zh_text": "玫瑰换个名字，照样芬芳。”",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 127.504,
+   "end": 130.557,
+   "en_text": "Well, that suggests that maybe language doesn't craft reality.",
+   "zh_text": "这似乎说明，语言也许并不塑造现实。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 130.926,
+   "end": 134.932,
+   "en_text": "These arguments have gone back and forth for thousands of years.",
+   "zh_text": "这些争论已经来回持续了几千年。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 135.4,
+   "end": 138.131,
+   "en_text": "But until recently, there hasn't been any data",
+   "zh_text": "但直到最近，都还没有任何数据",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 138.155,
+   "end": 139.711,
+   "en_text": "to help us decide either way.",
+   "zh_text": "能帮我们做出判断。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 140.23,
+   "end": 142.682,
+   "en_text": "Recently, in my lab and other labs around the world,",
+   "zh_text": "最近，在我的实验室和世界各地其他实验室里，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 142.706,
+   "end": 144.098,
+   "en_text": "we've started doing research,",
+   "zh_text": "我们开始做研究，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 144.122,
+   "end": 148.559,
+   "en_text": "and now we have actual scientific data to weigh in on this question.",
+   "zh_text": "现在我们有真正的科学数据来探讨这个问题了。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 148.918,
+   "end": 151.459,
+   "en_text": "So let me tell you about some of my favorite examples.",
+   "zh_text": "那么，让我给你们讲几个我最喜欢的例子。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 151.846,
+   "end": 155.26,
+   "en_text": "I'll start with an example from an Aboriginal community in Australia",
+   "zh_text": "我先举一个澳大利亚原住民社区的例子",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 155.284,
+   "end": 157.012,
+   "en_text": "that I had the chance to work with.",
+   "zh_text": "我曾有机会和他们合作。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 157.036,
+   "end": 158.779,
+   "en_text": "These are the Kuuk Thaayorre people.",
+   "zh_text": "他们就是库克萨约尔人。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 158.803,
+   "end": 162.597,
+   "en_text": "They live in Pormpuraaw at the very west edge of Cape York.",
+   "zh_text": "他们住在约克角最西边的波姆普拉瓦。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 163.351,
+   "end": 165.587,
+   "en_text": "What's cool about Kuuk Thaayorre is,",
+   "zh_text": "库克萨约尔语有意思的地方在于，",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 165.611,
+   "end": 168.669,
+   "en_text": "in Kuuk Thaayorre, they don't use words like \"left\" and \"right,\"",
+   "zh_text": "在库克萨约尔语里，他们不用“左”和“右”这样的词，",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 168.693,
+   "end": 171.377,
+   "en_text": "and instead, everything is in cardinal directions:",
+   "zh_text": "而是所有东西都用基本方位来表示：",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 171.401,
+   "end": 172.825,
+   "en_text": "north, south, east and west.",
+   "zh_text": "北、南、东、西。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 173.425,
+   "end": 175.96,
+   "en_text": "And when I say everything, I really mean everything.",
+   "zh_text": "我说所有东西，真的是指所有东西。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 175.984,
+   "end": 177.535,
+   "en_text": "You would say something like,",
+   "zh_text": "你会说这样的话，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 177.559,
+   "end": 180.071,
+   "en_text": "\"Oh, there's an ant on your southwest leg.\"",
+   "zh_text": "“哦，你西南方向的腿上有一只蚂蚁。”",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 181.178,
+   "end": 183.834,
+   "en_text": "Or, \"Move your cup to the north-northeast a little bit.\"",
+   "zh_text": "或者，“把你的杯子往北偏东北挪一点。”",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 184.404,
+   "end": 187.884,
+   "en_text": "In fact, the way that you say \"hello\" in Kuuk Thaayorre is you say,",
+   "zh_text": "其实，在库克萨约尔语里，你说“你好”的方式是说，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 187.908,
+   "end": 189.174,
+   "en_text": "\"Which way are you going?\"",
+   "zh_text": "“你要往哪边走？”",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 189.198,
+   "end": 190.53,
+   "en_text": "And the answer should be,",
+   "zh_text": "而回答应该是，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 191.014,
+   "end": 192.786,
+   "en_text": "\"North-northeast in the far distance.",
+   "zh_text": "“往北偏东北，很远的地方。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 192.81,
+   "end": 194.131,
+   "en_text": "How about you?\"",
+   "zh_text": "你呢？”",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 194.155,
+   "end": 197.287,
+   "en_text": "So imagine as you're walking around your day,",
+   "zh_text": "所以想象一下，你一天里走来走去，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 197.311,
+   "end": 198.86,
+   "en_text": "every person you greet,",
+   "zh_text": "你问候的每一个人，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 198.884,
+   "end": 200.955,
+   "en_text": "you have to report your heading direction.",
+   "zh_text": "你都得报告自己的行进方向。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 202.182,
+   "end": 205.513,
+   "en_text": "But that would actually get you oriented pretty fast, right?",
+   "zh_text": "但这其实会让你很快就能辨清方向，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 205.537,
+   "end": 208.497,
+   "en_text": "Because you literally couldn't get past \"hello,\"",
+   "zh_text": "因为你要是不知道自己在往哪边走，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 208.521,
+   "end": 210.596,
+   "en_text": "if you didn't know which way you were going.",
+   "zh_text": "就根本连“你好”这一关都过不去。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 211.969,
+   "end": 215.461,
+   "en_text": "In fact, people who speak languages like this stay oriented really well.",
+   "zh_text": "事实上，说这类语言的人方向感特别好。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 215.485,
+   "end": 218.41,
+   "en_text": "They stay oriented better than we used to think humans could.",
+   "zh_text": "他们的方向感比我们过去以为人类能做到的还要好。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 218.84,
+   "end": 221.692,
+   "en_text": "We used to think that humans were worse than other creatures",
+   "zh_text": "我们过去以为人类比其他生物差",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 221.716,
+   "end": 223.432,
+   "en_text": "because of some biological excuse:",
+   "zh_text": "还找了些生物学上的借口：",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 223.456,
+   "end": 226.781,
+   "en_text": "\"Oh, we don't have magnets in our beaks or in our scales.\"",
+   "zh_text": "“哦，我们的喙里或者鳞片里没有磁铁嘛。”",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 226.805,
+   "end": 229.747,
+   "en_text": "No; if your language and your culture trains you to do it,",
+   "zh_text": "不对；如果你的语言和文化训练你这么做，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 229.771,
+   "end": 231.02,
+   "en_text": "actually, you can do it.",
+   "zh_text": "其实你是能做到的。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 231.044,
+   "end": 234.084,
+   "en_text": "There are humans around the world who stay oriented really well.",
+   "zh_text": "世界上有些人的方向感特别好。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 234.108,
+   "end": 236.236,
+   "en_text": "And just to get us in agreement",
+   "zh_text": "为了让大家达成共识，",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 236.26,
+   "end": 238.855,
+   "en_text": "about how different this is from the way we do it,",
+   "zh_text": "明白这和我们做事的方式有多不同，",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 238.879,
+   "end": 241.643,
+   "en_text": "I want you all to close your eyes for a second",
+   "zh_text": "我想请大家先闭上眼睛，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 242.887,
+   "end": 244.24,
+   "en_text": "and point southeast.",
+   "zh_text": "指一下东南方向。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 245.998,
+   "end": 247.576,
+   "en_text": "Keep your eyes closed. Point.",
+   "zh_text": "闭上眼睛，指。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 250.095,
+   "end": 252.112,
+   "en_text": "OK, so you can open your eyes.",
+   "zh_text": "好，可以睁开眼睛了。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 252.136,
+   "end": 255.915,
+   "en_text": "I see you guys pointing there, there, there, there, there ...",
+   "zh_text": "我看到你们指那边、那边、那边、那边、那边……",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 256.529,
+   "end": 258.407,
+   "en_text": "I don't know which way it is myself --",
+   "zh_text": "我自己都不知道东南是哪边——",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 260.119,
+   "end": 261.777,
+   "en_text": "You have not been a lot of help.",
+   "zh_text": "你们也没帮上什么忙。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 263.142,
+   "end": 266.062,
+   "en_text": "So let's just say the accuracy in this room was not very high.",
+   "zh_text": "所以说，这个房间里的准确率不太高。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 266.086,
+   "end": 269.446,
+   "en_text": "This is a big difference in cognitive ability across languages, right?",
+   "zh_text": "这是不同语言之间认知能力的巨大差异，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 269.47,
+   "end": 272.865,
+   "en_text": "Where one group -- very distinguished group like you guys --",
+   "zh_text": "其中一组——像你们这样非常出色的一组——",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 272.889,
+   "end": 274.452,
+   "en_text": "doesn't know which way is which,",
+   "zh_text": "不知道哪边是哪边，",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 274.476,
+   "end": 275.812,
+   "en_text": "but in another group,",
+   "zh_text": "但在另一组里，",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 275.836,
+   "end": 278.126,
+   "en_text": "I could ask a five-year-old and they would know.",
+   "zh_text": "我随便问一个五岁小孩，他们都知道。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 279.258,
+   "end": 282.678,
+   "en_text": "There are also really big differences in how people think about time.",
+   "zh_text": "人们思考时间的方式也有很大的差异。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 282.702,
+   "end": 286.719,
+   "en_text": "So here I have pictures of my grandfather at different ages.",
+   "zh_text": "这里有几张我祖父不同年龄的照片。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 286.743,
+   "end": 289.97,
+   "en_text": "And if I ask an English speaker to organize time,",
+   "zh_text": "如果我让一个说英语的人来排列时间，",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 289.994,
+   "end": 291.479,
+   "en_text": "they might lay it out this way,",
+   "zh_text": "他们可能会这样摆，",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 291.503,
+   "end": 292.654,
+   "en_text": "from left to right.",
+   "zh_text": "从左到右。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 292.678,
+   "end": 294.509,
+   "en_text": "This has to do with writing direction.",
+   "zh_text": "这和书写方向有关。",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 294.533,
+   "end": 296.559,
+   "en_text": "If you were a speaker of Hebrew or Arabic,",
+   "zh_text": "如果你说的是希伯来语或阿拉伯语，",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 296.583,
+   "end": 298.873,
+   "en_text": "you might do it going in the opposite direction,",
+   "zh_text": "你可能会反过来排，",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 298.897,
+   "end": 300.047,
+   "en_text": "from right to left.",
+   "zh_text": "从右到左。",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 301.578,
+   "end": 303.163,
+   "en_text": "But how would the Kuuk Thaayorre,",
+   "zh_text": "但库克萨约雷人——",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 303.187,
+   "end": 305.581,
+   "en_text": "this Aboriginal group I just told you about, do it?",
+   "zh_text": "就是我刚跟你们提到的这个原住民群体——会怎么排呢？",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 305.605,
+   "end": 307.723,
+   "en_text": "They don't use words like \"left\" and \"right.\"",
+   "zh_text": "他们不用“左”和“右”这样的词。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 307.747,
+   "end": 309.239,
+   "en_text": "Let me give you hint.",
+   "zh_text": "我给你们个提示。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 309.263,
+   "end": 311.814,
+   "en_text": "When we sat people facing south,",
+   "zh_text": "当我们让人面朝南坐时，",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 311.838,
+   "end": 313.696,
+   "en_text": "they organized time from left to right.",
+   "zh_text": "他们把时间从左排到右。",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 314.391,
+   "end": 316.574,
+   "en_text": "When we sat them facing north,",
+   "zh_text": "当我们让他们面朝北坐时，",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 316.598,
+   "end": 318.573,
+   "en_text": "they organized time from right to left.",
+   "zh_text": "他们把时间从右排到左。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 319.026,
+   "end": 321.081,
+   "en_text": "When we sat them facing east,",
+   "zh_text": "当我们让他们面朝东坐时，",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 321.105,
+   "end": 322.845,
+   "en_text": "time came towards the body.",
+   "zh_text": "时间是从前往身体这边来的。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 323.608,
+   "end": 324.919,
+   "en_text": "What's the pattern?",
+   "zh_text": "规律是什么？",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 326.056,
+   "end": 327.755,
+   "en_text": "East to west, right?",
+   "zh_text": "从东到西，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 327.779,
+   "end": 331.281,
+   "en_text": "So for them, time doesn't actually get locked on the body at all,",
+   "zh_text": "所以对他们来说，时间根本不是固定在身体上的，",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 331.305,
+   "end": 332.845,
+   "en_text": "it gets locked on the landscape.",
+   "zh_text": "而是固定在地形上的。",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 332.869,
+   "end": 334.587,
+   "en_text": "So for me, if I'm facing this way,",
+   "zh_text": "所以对我来说，如果我朝这边，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 334.611,
+   "end": 335.768,
+   "en_text": "then time goes this way,",
+   "zh_text": "那时间就往这边走，",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 335.792,
+   "end": 338.265,
+   "en_text": "and if I'm facing this way, then time goes this way.",
+   "zh_text": "如果我朝这边，那时间就往这边走。",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 338.289,
+   "end": 340.289,
+   "en_text": "I'm facing this way, time goes this way --",
+   "zh_text": "我朝这边，时间就往这边走——",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 340.313,
+   "end": 344.28,
+   "en_text": "very egocentric of me to have the direction of time chase me around",
+   "zh_text": "我真是太以自我为中心了，每次转身都让时间的方向跟着我转。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 344.304,
+   "end": 345.944,
+   "en_text": "every time I turn my body.",
+   "zh_text": "每次我转动身体的时候。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 346.598,
+   "end": 349.245,
+   "en_text": "For the Kuuk Thaayorre, time is locked on the landscape.",
+   "zh_text": "对库克萨约雷人来说，时间是固定在地形上的。",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 349.269,
+   "end": 352.088,
+   "en_text": "It's a dramatically different way of thinking about time.",
+   "zh_text": "这是一种截然不同的时间思维方式。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 352.112,
+   "end": 354.023,
+   "en_text": "Here's another really smart human trick.",
+   "zh_text": "还有一个非常聪明的人类小技巧。",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 354.047,
+   "end": 356.26,
+   "en_text": "Suppose I ask you how many penguins are there.",
+   "zh_text": "假设我问你那儿有多少只企鹅。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 356.958,
+   "end": 360.112,
+   "en_text": "Well, I bet I know how you'd solve that problem if you solved it.",
+   "zh_text": "我敢打赌，如果你真去数，我知道你会怎么解决这个问题。",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 360.136,
+   "end": 362.963,
+   "en_text": "You went, \"One, two, three, four, five, six, seven, eight.\"",
+   "zh_text": "你会说：“一、二、三、四、五、六、七、八。”",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 362.987,
+   "end": 364.151,
+   "en_text": "You counted them.",
+   "zh_text": "你把它们数了一遍。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 364.175,
+   "end": 365.784,
+   "en_text": "You named each one with a number,",
+   "zh_text": "你给每一只都配上一个数字，",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 365.808,
+   "end": 368.444,
+   "en_text": "and the last number you said was the number of penguins.",
+   "zh_text": "你最后说的那个数字就是企鹅的数量。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 368.468,
+   "end": 371.33,
+   "en_text": "This is a little trick that you're taught to use as kids.",
+   "zh_text": "这是你小时候被教着用的小技巧。",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 371.354,
+   "end": 374.405,
+   "en_text": "You learn the number list and you learn how to apply it.",
+   "zh_text": "你学会了数字序列，也学会了怎么用它。",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 374.787,
+   "end": 376.233,
+   "en_text": "A little linguistic trick.",
+   "zh_text": "一个小小的语言技巧。",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 376.804,
+   "end": 378.481,
+   "en_text": "Well, some languages don't do this,",
+   "zh_text": "有些语言不这么做，",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 378.505,
+   "end": 381.654,
+   "en_text": "because some languages don't have exact number words.",
+   "zh_text": "因为有些语言没有精确的数字词。",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 382.039,
+   "end": 384.936,
+   "en_text": "They're languages that don't have a word like \"seven\"",
+   "zh_text": "这些语言里没有像“七”这样的词，",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 384.96,
+   "end": 386.361,
+   "en_text": "or a word like \"eight.\"",
+   "zh_text": "也没有像“八”这样的词。",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 387.033,
+   "end": 389.691,
+   "en_text": "In fact, people who speak these languages don't count,",
+   "zh_text": "事实上，说这些语言的人不数数，",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 389.715,
+   "end": 392.712,
+   "en_text": "and they have trouble keeping track of exact quantities.",
+   "zh_text": "他们也很难记住精确的数量。",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 392.736,
+   "end": 396.665,
+   "en_text": "So, for example, if I ask you to match this number of penguins",
+   "zh_text": "所以，举个例子，如果我让你把这些数量的企鹅",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 396.689,
+   "end": 398.953,
+   "en_text": "to the same number of ducks,",
+   "zh_text": "和同样数量的鸭子配对，",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 398.977,
+   "end": 401.121,
+   "en_text": "you would be able to do that by counting.",
+   "zh_text": "你可以通过数数来做到。",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 401.145,
+   "end": 405.0,
+   "en_text": "But folks who don't have that linguistic trick can't do that.",
+   "zh_text": "但没有这种语言技巧的人就做不到。",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 407.653,
+   "end": 410.807,
+   "en_text": "Languages also differ in how they divide up the color spectrum --",
+   "zh_text": "语言在如何划分色谱方面也有差异——",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 410.831,
+   "end": 411.981,
+   "en_text": "the visual world.",
+   "zh_text": "也就是视觉世界。",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 412.348,
+   "end": 414.5,
+   "en_text": "Some languages have lots of words for colors,",
+   "zh_text": "有些语言有很多表示颜色的词，",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 414.524,
+   "end": 416.888,
+   "en_text": "some have only a couple words, \"light\" and \"dark.\"",
+   "zh_text": "有些只有几个词，比如“浅色”和“深色”。",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 416.912,
+   "end": 420.535,
+   "en_text": "And languages differ in where they put boundaries between colors.",
+   "zh_text": "而且语言在颜色之间界限的划分上也有差异。",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 420.559,
+   "end": 423.774,
+   "en_text": "So, for example, in English, there's a word for blue",
+   "zh_text": "所以，举个例子，在英语里有一个词表示蓝色",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 423.798,
+   "end": 426.933,
+   "en_text": "that covers all of the colors that you can see on the screen,",
+   "zh_text": "它涵盖了你在屏幕上能看到的所有那些颜色，",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 426.957,
+   "end": 428.963,
+   "en_text": "but in Russian, there isn't a single word.",
+   "zh_text": "但在俄语里，没有单独一个词。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 428.987,
+   "end": 431.193,
+   "en_text": "Instead, Russian speakers have to differentiate",
+   "zh_text": "相反，说俄语的人必须区分",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 431.217,
+   "end": 432.688,
+   "en_text": "between light blue, \"goluboy,\"",
+   "zh_text": "浅蓝色“goluboy”",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 432.712,
+   "end": 434.288,
+   "en_text": "and dark blue, \"siniy.\"",
+   "zh_text": "和深蓝色“siniy”。",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 435.138,
+   "end": 439.121,
+   "en_text": "So Russians have this lifetime of experience of, in language,",
+   "zh_text": "所以俄罗斯人一辈子都有这样的经验，在语言上",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 439.145,
+   "end": 441.014,
+   "en_text": "distinguishing these two colors.",
+   "zh_text": "区分这两种颜色。",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 441.038,
+   "end": 445.001,
+   "en_text": "When we test people's ability to perceptually discriminate these colors,",
+   "zh_text": "当我们测试人们在感知上区分这些颜色的能力时，",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 445.025,
+   "end": 447.546,
+   "en_text": "what we find is that Russian speakers are faster",
+   "zh_text": "我们发现说俄语的人反应更快",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 447.57,
+   "end": 449.128,
+   "en_text": "across this linguistic boundary.",
+   "zh_text": "跨越这条语言界限。",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 449.152,
+   "end": 451.434,
+   "en_text": "They're faster to be able to tell the difference",
+   "zh_text": "他们能更快地分辨出区别",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 451.458,
+   "end": 452.916,
+   "en_text": "between a light and dark blue.",
+   "zh_text": "在浅蓝色和深蓝色之间。",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 453.299,
+   "end": 456.563,
+   "en_text": "And when you look at people's brains as they're looking at colors --",
+   "zh_text": "而当你观察人们看颜色时的大脑活动——",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 456.587,
+   "end": 459.922,
+   "en_text": "say you have colors shifting slowly from light to dark blue --",
+   "zh_text": "假设颜色从浅蓝慢慢变到深蓝——",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 460.798,
+   "end": 465.25,
+   "en_text": "the brains of people who use different words for light and dark blue",
+   "zh_text": "那些用不同词表示浅蓝和深蓝的人，他们的大脑",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 465.274,
+   "end": 468.784,
+   "en_text": "will give a surprised reaction as the colors shift from light to dark,",
+   "zh_text": "会在颜色从浅变深时产生惊讶的反应，",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 468.808,
+   "end": 471.99,
+   "en_text": "as if, \"Ooh, something has categorically changed,\"",
+   "zh_text": "就好像“哦，有什么东西发生了类别上的变化”，",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 472.014,
+   "end": 474.46,
+   "en_text": "whereas the brains of English speakers, for example,",
+   "zh_text": "而比如说，说英语的人的大脑，",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 474.484,
+   "end": 476.624,
+   "en_text": "that don't make this categorical distinction,",
+   "zh_text": "他们不做这种类别区分，",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 476.648,
+   "end": 477.844,
+   "en_text": "don't give that surprise,",
+   "zh_text": "就不会产生那种惊讶，",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 477.868,
+   "end": 479.951,
+   "en_text": "because nothing is categorically changing.",
+   "zh_text": "因为没有任何东西发生类别上的变化。",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 482.054,
+   "end": 484.558,
+   "en_text": "Languages have all kinds of structural quirks.",
+   "zh_text": "语言有各种各样的结构特点。",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 484.582,
+   "end": 485.919,
+   "en_text": "This is one of my favorites.",
+   "zh_text": "这是我最喜欢的一个。",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 485.943,
+   "end": 488.375,
+   "en_text": "Lots of languages have grammatical gender;",
+   "zh_text": "很多语言都有语法性别；",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 488.399,
+   "end": 493.029,
+   "en_text": "every noun gets assigned a gender, often masculine or feminine.",
+   "zh_text": "每个名词都被赋予一个性别，通常是阳性或阴性。",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 493.053,
+   "end": 495.11,
+   "en_text": "And these genders differ across languages.",
+   "zh_text": "而这些性别在不同语言中也不一样。",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 495.134,
+   "end": 499.675,
+   "en_text": "So, for example, the sun is feminine in German but masculine in Spanish,",
+   "zh_text": "所以，举个例子，太阳在德语里是阴性，但在西班牙语里是阳性，",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 499.699,
+   "end": 501.047,
+   "en_text": "and the moon, the reverse.",
+   "zh_text": "而月亮正好相反。",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 501.634,
+   "end": 505.096,
+   "en_text": "Could this actually have any consequence for how people think?",
+   "zh_text": "这真的会对人们的思维方式产生影响吗？",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 505.12,
+   "end": 509.114,
+   "en_text": "Do German speakers think of the sun as somehow more female-like,",
+   "zh_text": "说德语的人会不会觉得太阳在某种程度上更像女性，",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 509.138,
+   "end": 511.044,
+   "en_text": "and the moon somehow more male-like?",
+   "zh_text": "而月亮在某种程度上更像男性？",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 511.767,
+   "end": 513.673,
+   "en_text": "Actually, it turns out that's the case.",
+   "zh_text": "实际上，结果证明确实如此。",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 513.697,
+   "end": 519.12,
+   "en_text": "So if you ask German and Spanish speakers to, say, describe a bridge,",
+   "zh_text": "所以如果你让说德语和说西班牙语的人，比如说，描述一座桥，",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 519.144,
+   "end": 520.58,
+   "en_text": "like the one here --",
+   "zh_text": "就像这里的这座——",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 520.604,
+   "end": 523.953,
+   "en_text": "\"bridge\" happens to be grammatically feminine in German,",
+   "zh_text": "“桥”在德语里恰好是语法阴性，",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 523.977,
+   "end": 526.133,
+   "en_text": "grammatically masculine in Spanish --",
+   "zh_text": "在西班牙语里是语法阳性——",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 526.157,
+   "end": 530.475,
+   "en_text": "German speakers are more likely to say bridges are \"beautiful,\" \"elegant\"",
+   "zh_text": "说德语的人更可能说桥是“美丽的”“优雅的”",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 530.499,
+   "end": 532.626,
+   "en_text": "and stereotypically feminine words.",
+   "zh_text": "以及那些刻板印象中偏女性化的词。",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 532.65,
+   "end": 535.159,
+   "en_text": "Whereas Spanish speakers will be more likely to say",
+   "zh_text": "而说西班牙语的人则更可能说",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 535.183,
+   "end": 536.729,
+   "en_text": "they're \"strong\" or \"long,\"",
+   "zh_text": "桥是“坚固的”或“长的”，",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 536.753,
+   "end": 538.139,
+   "en_text": "these masculine words.",
+   "zh_text": "用的是这些偏男性化的词。",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 543.396,
+   "end": 547.518,
+   "en_text": "Languages also differ in how they describe events, right?",
+   "zh_text": "各种语言在描述事件的方式上也不一样，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 548.06,
+   "end": 550.406,
+   "en_text": "You take an event like this, an accident.",
+   "zh_text": "拿这样一个事件来说，一场意外。",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 550.43,
+   "end": 553.218,
+   "en_text": "In English, it's fine to say, \"He broke the vase.\"",
+   "zh_text": "在英语里，说“他打碎了花瓶”是没问题的。",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 553.869,
+   "end": 556.413,
+   "en_text": "In a language like Spanish,",
+   "zh_text": "而在像西班牙语这样的语言里，",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 556.437,
+   "end": 559.284,
+   "en_text": "you might be more likely to say, \"The vase broke,\"",
+   "zh_text": "你可能更倾向于说“花瓶碎了”，",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 559.308,
+   "end": 560.869,
+   "en_text": "or, \"The vase broke itself.\"",
+   "zh_text": "或者说“花瓶自己碎了”。",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 561.332,
+   "end": 564.554,
+   "en_text": "If it's an accident, you wouldn't say that someone did it.",
+   "zh_text": "如果是意外，你就不会说是某个人干的。",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 564.578,
+   "end": 567.984,
+   "en_text": "In English, quite weirdly, we can even say things like,",
+   "zh_text": "在英语里，挺奇怪的，我们甚至能这样说：",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 568.008,
+   "end": 569.255,
+   "en_text": "\"I broke my arm.\"",
+   "zh_text": "“我摔断了我的胳膊。”",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 569.953,
+   "end": 571.787,
+   "en_text": "Now, in lots of languages,",
+   "zh_text": "而在很多语言里，",
+   "highlights": []
+  },
+  {
+   "id": 205,
+   "start": 571.811,
+   "end": 574.982,
+   "en_text": "you couldn't use that construction unless you are a lunatic",
+   "zh_text": "你不能用这种说法，除非你是个疯子",
+   "highlights": []
+  },
+  {
+   "id": 206,
+   "start": 575.006,
+   "end": 577.135,
+   "en_text": "and you went out looking to break your arm --",
+   "zh_text": "跑出去专门想把自己的胳膊弄断——",
+   "highlights": []
+  },
+  {
+   "id": 207,
+   "start": 578.185,
+   "end": 579.336,
+   "en_text": "and you succeeded.",
+   "zh_text": "而且你还真做到了。",
+   "highlights": []
+  },
+  {
+   "id": 208,
+   "start": 579.36,
+   "end": 582.624,
+   "en_text": "If it was an accident, you would use a different construction.",
+   "zh_text": "如果是意外，你会用另一种说法。",
+   "highlights": []
+  },
+  {
+   "id": 209,
+   "start": 582.648,
+   "end": 584.453,
+   "en_text": "Now, this has consequences.",
+   "zh_text": "这就会带来后果。",
+   "highlights": []
+  },
+  {
+   "id": 210,
+   "start": 584.477,
+   "end": 588.665,
+   "en_text": "So, people who speak different languages will pay attention to different things,",
+   "zh_text": "所以，说不同语言的人会关注不同的事情，",
+   "highlights": []
+  },
+  {
+   "id": 211,
+   "start": 588.689,
+   "end": 592.095,
+   "en_text": "depending on what their language usually requires them to do.",
+   "zh_text": "取决于他们的语言通常要求他们怎么做。",
+   "highlights": []
+  },
+  {
+   "id": 212,
+   "start": 592.119,
+   "end": 596.291,
+   "en_text": "So we show the same accident to English speakers and Spanish speakers,",
+   "zh_text": "我们把同一个意外放给说英语的人和说西班牙语的人看，",
+   "highlights": []
+  },
+  {
+   "id": 213,
+   "start": 596.315,
+   "end": 599.6,
+   "en_text": "English speakers will remember who did it,",
+   "zh_text": "说英语的人会记住是谁干的，",
+   "highlights": []
+  },
+  {
+   "id": 214,
+   "start": 600.525,
+   "end": 603.939,
+   "en_text": "because English requires you to say, \"He did it; he broke the vase.\"",
+   "zh_text": "因为英语要求你说“是他干的；他打碎了花瓶。”",
+   "highlights": []
+  },
+  {
+   "id": 215,
+   "start": 603.963,
+   "end": 607.166,
+   "en_text": "Whereas Spanish speakers might be less likely to remember who did it",
+   "zh_text": "而说西班牙语的人可能不太会记住是谁干的，",
+   "highlights": []
+  },
+  {
+   "id": 216,
+   "start": 607.19,
+   "end": 608.341,
+   "en_text": "if it's an accident,",
+   "zh_text": "如果那是个意外的话，",
+   "highlights": []
+  },
+  {
+   "id": 217,
+   "start": 608.365,
+   "end": 611.194,
+   "en_text": "but they're more likely to remember that it was an accident.",
+   "zh_text": "但他们更可能记住那是个意外。",
+   "highlights": []
+  },
+  {
+   "id": 218,
+   "start": 611.218,
+   "end": 613.654,
+   "en_text": "They're more likely to remember the intention.",
+   "zh_text": "他们更可能记住意图。",
+   "highlights": []
+  },
+  {
+   "id": 219,
+   "start": 613.678,
+   "end": 616.761,
+   "en_text": "So, two people watch the same event,",
+   "zh_text": "所以，两个人看同一个事件，",
+   "highlights": []
+  },
+  {
+   "id": 220,
+   "start": 616.785,
+   "end": 618.866,
+   "en_text": "witness the same crime,",
+   "zh_text": "目睹同一桩罪行，",
+   "highlights": []
+  },
+  {
+   "id": 221,
+   "start": 618.89,
+   "end": 621.936,
+   "en_text": "but end up remembering different things about that event.",
+   "zh_text": "但最终记住的关于那个事件的内容却不一样。",
+   "highlights": []
+  },
+  {
+   "id": 222,
+   "start": 622.564,
+   "end": 625.823,
+   "en_text": "This has implications, of course, for eyewitness testimony.",
+   "zh_text": "当然，这对目击者证词是有影响的。",
+   "highlights": []
+  },
+  {
+   "id": 223,
+   "start": 626.59,
+   "end": 628.952,
+   "en_text": "It also has implications for blame and punishment.",
+   "zh_text": "这对责任认定和惩罚也有影响。",
+   "highlights": []
+  },
+  {
+   "id": 224,
+   "start": 628.976,
+   "end": 630.783,
+   "en_text": "So if you take English speakers",
+   "zh_text": "所以如果你找来说英语的人，",
+   "highlights": []
+  },
+  {
+   "id": 225,
+   "start": 630.807,
+   "end": 632.971,
+   "en_text": "and I just show you someone breaking a vase,",
+   "zh_text": "我就给你看有人打碎花瓶的画面，",
+   "highlights": []
+  },
+  {
+   "id": 226,
+   "start": 632.995,
+   "end": 636.85,
+   "en_text": "and I say, \"He broke the vase,\" as opposed to \"The vase broke,\"",
+   "zh_text": "然后我说“他打碎了花瓶”，而不是“花瓶碎了”，",
+   "highlights": []
+  },
+  {
+   "id": 227,
+   "start": 637.504,
+   "end": 639.417,
+   "en_text": "even though you can witness it yourself,",
+   "zh_text": "即使你可以亲眼看到，",
+   "highlights": []
+  },
+  {
+   "id": 228,
+   "start": 639.441,
+   "end": 640.709,
+   "en_text": "you can watch the video,",
+   "zh_text": "你可以看视频，",
+   "highlights": []
+  },
+  {
+   "id": 229,
+   "start": 640.733,
+   "end": 642.895,
+   "en_text": "you can watch the crime against the vase,",
+   "zh_text": "你可以看到对花瓶犯下的这桩“罪行”，",
+   "highlights": []
+  },
+  {
+   "id": 230,
+   "start": 644.157,
+   "end": 645.924,
+   "en_text": "you will punish someone more,",
+   "zh_text": "你也会更多地惩罚某个人，",
+   "highlights": []
+  },
+  {
+   "id": 231,
+   "start": 645.948,
+   "end": 648.801,
+   "en_text": "you will blame someone more if I just said, \"He broke it,\"",
+   "zh_text": "如果我刚才说的是“他打碎了它”，你会更多地责怪某个人，",
+   "highlights": []
+  },
+  {
+   "id": 232,
+   "start": 648.825,
+   "end": 650.318,
+   "en_text": "as opposed to, \"It broke.\"",
+   "zh_text": "而不是说“它碎了”。",
+   "highlights": []
+  },
+  {
+   "id": 233,
+   "start": 650.931,
+   "end": 654.254,
+   "en_text": "The language guides our reasoning about events.",
+   "zh_text": "语言引导着我们对事件的推理。",
+   "highlights": []
+  },
+  {
+   "id": 234,
+   "start": 655.996,
+   "end": 658.882,
+   "en_text": "Now, I've given you a few examples",
+   "zh_text": "好了，我已经给你们举了几个例子，",
+   "highlights": []
+  },
+  {
+   "id": 235,
+   "start": 658.906,
+   "end": 662.633,
+   "en_text": "of how language can profoundly shape the way we think,",
+   "zh_text": "说明语言如何能深刻地塑造我们的思维方式，",
+   "highlights": []
+  },
+  {
+   "id": 236,
+   "start": 662.657,
+   "end": 664.832,
+   "en_text": "and it does so in a variety of ways.",
+   "zh_text": "而且它是以各种不同的方式做到这一点的。",
+   "highlights": []
+  },
+  {
+   "id": 237,
+   "start": 664.856,
+   "end": 666.787,
+   "en_text": "So language can have big effects,",
+   "zh_text": "所以语言能产生很大的影响，",
+   "highlights": []
+  },
+  {
+   "id": 238,
+   "start": 666.811,
+   "end": 668.553,
+   "en_text": "like we saw with space and time,",
+   "zh_text": "就像我们在空间和时间上看到的那样，",
+   "highlights": []
+  },
+  {
+   "id": 239,
+   "start": 668.577,
+   "end": 670.483,
+   "en_text": "where people can lay out space and time",
+   "zh_text": "人们可以用完全不同的坐标框架",
+   "highlights": []
+  },
+  {
+   "id": 240,
+   "start": 670.507,
+   "end": 673.748,
+   "en_text": "in completely different coordinate frames from each other.",
+   "zh_text": "来铺展空间和时间。",
+   "highlights": []
+  },
+  {
+   "id": 241,
+   "start": 674.781,
+   "end": 677.015,
+   "en_text": "Language can also have really deep effects --",
+   "zh_text": "语言也能产生非常深远的影响——",
+   "highlights": []
+  },
+  {
+   "id": 242,
+   "start": 677.039,
+   "end": 679.223,
+   "en_text": "that's what we saw with the case of number.",
+   "zh_text": "这就是我们在数字这个例子里看到的。",
+   "highlights": []
+  },
+  {
+   "id": 243,
+   "start": 679.572,
+   "end": 681.615,
+   "en_text": "Having count words in your language,",
+   "zh_text": "你的语言里有计数词，",
+   "highlights": []
+  },
+  {
+   "id": 244,
+   "start": 681.639,
+   "end": 682.859,
+   "en_text": "having number words,",
+   "zh_text": "有数字词，",
+   "highlights": []
+  },
+  {
+   "id": 245,
+   "start": 682.883,
+   "end": 685.444,
+   "en_text": "opens up the whole world of mathematics.",
+   "zh_text": "就打开了整个数学世界的大门。",
+   "highlights": []
+  },
+  {
+   "id": 246,
+   "start": 685.468,
+   "end": 687.971,
+   "en_text": "Of course, if you don't count, you can't do algebra,",
+   "zh_text": "当然，如果你不会数数，你就做不了代数，",
+   "highlights": []
+  },
+  {
+   "id": 247,
+   "start": 687.995,
+   "end": 689.559,
+   "en_text": "you can't do any of the things",
+   "zh_text": "你也就做不了任何",
+   "highlights": []
+  },
+  {
+   "id": 248,
+   "start": 689.583,
+   "end": 692.326,
+   "en_text": "that would be required to build a room like this",
+   "zh_text": "建造这样一个房间所必需的事情，",
+   "highlights": []
+  },
+  {
+   "id": 249,
+   "start": 692.35,
+   "end": 694.354,
+   "en_text": "or make this broadcast, right?",
+   "zh_text": "或者做这场直播，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 250,
+   "start": 694.836,
+   "end": 697.699,
+   "en_text": "This little trick of number words gives you a stepping stone",
+   "zh_text": "数字词这个小把戏给了你一块垫脚石，",
+   "highlights": []
+  },
+  {
+   "id": 251,
+   "start": 697.723,
+   "end": 699.204,
+   "en_text": "into a whole cognitive realm.",
+   "zh_text": "让你进入一个全新的认知领域。",
+   "highlights": []
+  },
+  {
+   "id": 252,
+   "start": 700.42,
+   "end": 702.715,
+   "en_text": "Language can also have really early effects,",
+   "zh_text": "语言也能产生非常早期的影响，",
+   "highlights": []
+  },
+  {
+   "id": 253,
+   "start": 702.739,
+   "end": 705.609,
+   "en_text": "what we saw in the case of color.",
+   "zh_text": "这就是我们在颜色这个例子里看到的。",
+   "highlights": []
+  },
+  {
+   "id": 254,
+   "start": 706.205,
+   "end": 708.699,
+   "en_text": "These are really simple, basic, perceptual decisions.",
+   "zh_text": "这些都是非常简单的、基本的知觉判断。",
+   "highlights": []
+  },
+  {
+   "id": 255,
+   "start": 708.723,
+   "end": 711.083,
+   "en_text": "We make thousands of them all the time,",
+   "zh_text": "我们每时每刻都在做成千上万个这样的判断，",
+   "highlights": []
+  },
+  {
+   "id": 256,
+   "start": 711.107,
+   "end": 712.924,
+   "en_text": "and yet, language is getting in there",
+   "zh_text": "然而，语言却会介入其中，",
+   "highlights": []
+  },
+  {
+   "id": 257,
+   "start": 712.948,
+   "end": 717.279,
+   "en_text": "and fussing even with these tiny little perceptual decisions that we make.",
+   "zh_text": "甚至对我们做出的这些微小的知觉判断也要插上一手。",
+   "highlights": []
+  },
+  {
+   "id": 258,
+   "start": 718.787,
+   "end": 720.646,
+   "en_text": "Language can have really broad effects.",
+   "zh_text": "语言能产生非常广泛的影响。",
+   "highlights": []
+  },
+  {
+   "id": 259,
+   "start": 720.67,
+   "end": 723.898,
+   "en_text": "So the case of grammatical gender may be a little silly,",
+   "zh_text": "所以语法性别这个例子可能有点好笑，",
+   "highlights": []
+  },
+  {
+   "id": 260,
+   "start": 723.922,
+   "end": 727.755,
+   "en_text": "but at the same time, grammatical gender applies to all nouns.",
+   "zh_text": "但与此同时，语法性别适用于所有名词。",
+   "highlights": []
+  },
+  {
+   "id": 261,
+   "start": 728.061,
+   "end": 730.35,
+   "en_text": "That means language can shape how you're thinking",
+   "zh_text": "这意味着语言能塑造你思考的方式，",
+   "highlights": []
+  },
+  {
+   "id": 262,
+   "start": 730.374,
+   "end": 733.261,
+   "en_text": "about anything that can be named by a noun.",
+   "zh_text": "影响你对任何可以用名词来命名的事物的看法。",
+   "highlights": []
+  },
+  {
+   "id": 263,
+   "start": 734.185,
+   "end": 735.514,
+   "en_text": "That's a lot of stuff.",
+   "zh_text": "那可是很多东西。",
+   "highlights": []
+  },
+  {
+   "id": 264,
+   "start": 736.449,
+   "end": 739.706,
+   "en_text": "And finally, I gave you an example of how language can shape things",
+   "zh_text": "最后，我给你们举了一个例子，说明语言如何塑造",
+   "highlights": []
+  },
+  {
+   "id": 265,
+   "start": 739.73,
+   "end": 741.366,
+   "en_text": "that have personal weight to us --",
+   "zh_text": "对我们个人有分量的事物——",
+   "highlights": []
+  },
+  {
+   "id": 266,
+   "start": 741.39,
+   "end": 743.966,
+   "en_text": "ideas like blame and punishment or eyewitness memory.",
+   "zh_text": "比如责备和惩罚，或者目击者记忆这样的观念。",
+   "highlights": []
+  },
+  {
+   "id": 267,
+   "start": 743.99,
+   "end": 746.154,
+   "en_text": "These are important things in our daily lives.",
+   "zh_text": "这些都是我们日常生活中重要的事情。",
+   "highlights": []
+  },
+  {
+   "id": 268,
+   "start": 748.153,
+   "end": 753.154,
+   "en_text": "Now, the beauty of linguistic diversity is that it reveals to us",
+   "zh_text": "语言多样性的美妙之处在于，它向我们揭示了",
+   "highlights": []
+  },
+  {
+   "id": 269,
+   "start": 753.178,
+   "end": 757.125,
+   "en_text": "just how ingenious and how flexible the human mind is.",
+   "zh_text": "人类心智是多么巧妙、多么灵活。",
+   "highlights": []
+  },
+  {
+   "id": 270,
+   "start": 757.775,
+   "end": 762.306,
+   "en_text": "Human minds have invented not one cognitive universe, but 7,000 --",
+   "zh_text": "人类心智不只发明了一个认知宇宙，而是七千个——",
+   "highlights": []
+  },
+  {
+   "id": 271,
+   "start": 762.33,
+   "end": 764.688,
+   "en_text": "there are 7,000 languages spoken around the world.",
+   "zh_text": "全世界有七千种语言在被使用。",
+   "highlights": []
+  },
+  {
+   "id": 272,
+   "start": 766.01,
+   "end": 767.687,
+   "en_text": "And we can create many more --",
+   "zh_text": "而且我们还能创造更多——",
+   "highlights": []
+  },
+  {
+   "id": 273,
+   "start": 767.711,
+   "end": 770.794,
+   "en_text": "languages, of course, are living things,",
+   "zh_text": "语言当然是活的东西，",
+   "highlights": []
+  },
+  {
+   "id": 274,
+   "start": 770.818,
+   "end": 774.584,
+   "en_text": "things that we can hone and change to suit our needs.",
+   "zh_text": "是我们可以打磨、改变以适合自身需要的东西。",
+   "highlights": []
+  },
+  {
+   "id": 275,
+   "start": 775.786,
+   "end": 779.269,
+   "en_text": "The tragic thing is that we're losing so much of this linguistic diversity",
+   "zh_text": "可悲的是，我们正在不断失去这么多语言多样性，",
+   "highlights": []
+  },
+  {
+   "id": 276,
+   "start": 779.293,
+   "end": 780.444,
+   "en_text": "all the time.",
+   "zh_text": "一直在失去。",
+   "highlights": []
+  },
+  {
+   "id": 277,
+   "start": 780.468,
+   "end": 782.36,
+   "en_text": "We're losing about one language a week,",
+   "zh_text": "我们大约每周失去一种语言，",
+   "highlights": []
+  },
+  {
+   "id": 278,
+   "start": 782.384,
+   "end": 783.85,
+   "en_text": "and by some estimates,",
+   "zh_text": "而根据一些估计，",
+   "highlights": []
+  },
+  {
+   "id": 279,
+   "start": 783.874,
+   "end": 787.141,
+   "en_text": "half of the world's languages will be gone in the next hundred years.",
+   "zh_text": "世界上半数语言将在未来一百年内消失。",
+   "highlights": []
+  },
+  {
+   "id": 280,
+   "start": 787.966,
+   "end": 790.788,
+   "en_text": "And the even worse news is that right now,",
+   "zh_text": "更糟的消息是，现在，",
+   "highlights": []
+  },
+  {
+   "id": 281,
+   "start": 790.812,
+   "end": 794.52,
+   "en_text": "almost everything we know about the human mind and human brain",
+   "zh_text": "我们所知道的关于人类心智和人类大脑的几乎一切，",
+   "highlights": []
+  },
+  {
+   "id": 282,
+   "start": 794.544,
+   "end": 799.572,
+   "en_text": "is based on studies of usually American English-speaking undergraduates",
+   "zh_text": "都基于对通常说美式英语的本科生",
+   "highlights": []
+  },
+  {
+   "id": 283,
+   "start": 799.596,
+   "end": 800.92,
+   "en_text": "at universities.",
+   "zh_text": "在大学里的研究。",
+   "highlights": []
+  },
+  {
+   "id": 284,
+   "start": 802.742,
+   "end": 806.275,
+   "en_text": "That excludes almost all humans. Right?",
+   "zh_text": "这就几乎排除了全人类。对吧？",
+   "highlights": []
+  },
+  {
+   "id": 285,
+   "start": 806.299,
+   "end": 811.27,
+   "en_text": "So what we know about the human mind is actually incredibly narrow and biased,",
+   "zh_text": "所以，我们对人类心智的了解其实非常狭窄，而且带有偏见，",
+   "highlights": []
+  },
+  {
+   "id": 286,
+   "start": 811.294,
+   "end": 814.53,
+   "en_text": "and our science has to do better.",
+   "zh_text": "我们的科学必须做得更好。",
+   "highlights": []
+  },
+  {
+   "id": 287,
+   "start": 817.987,
+   "end": 820.246,
+   "en_text": "I want to leave you with this final thought.",
+   "zh_text": "我想用最后一个想法来结束今天的演讲。",
+   "highlights": []
+  },
+  {
+   "id": 288,
+   "start": 820.27,
+   "end": 823.783,
+   "en_text": "I've told you about how speakers of different languages think differently,",
+   "zh_text": "我跟你们讲了讲不同语言的使用者思维方式有多么不同，",
+   "highlights": []
+  },
+  {
+   "id": 289,
+   "start": 823.807,
+   "end": 827.091,
+   "en_text": "but of course, that's not about how people elsewhere think.",
+   "zh_text": "但当然，这并不是说其他地方的人是怎么想的。",
+   "highlights": []
+  },
+  {
+   "id": 290,
+   "start": 827.115,
+   "end": 828.534,
+   "en_text": "It's about how you think.",
+   "zh_text": "这说的是你自己是怎么想的。",
+   "highlights": []
+  },
+  {
+   "id": 291,
+   "start": 828.558,
+   "end": 832.164,
+   "en_text": "It's how the language that you speak shapes the way that you think.",
+   "zh_text": "是你所说的语言塑造了你思考的方式。",
+   "highlights": []
+  },
+  {
+   "id": 292,
+   "start": 833.07,
+   "end": 835.646,
+   "en_text": "And that gives you the opportunity to ask,",
+   "zh_text": "这就给了你一个机会去问：",
+   "highlights": []
+  },
+  {
+   "id": 293,
+   "start": 835.67,
+   "end": 837.741,
+   "en_text": "\"Why do I think the way that I do?\"",
+   "zh_text": "“我为什么会这样思考？”",
+   "highlights": []
+  },
+  {
+   "id": 294,
+   "start": 837.765,
+   "end": 839.361,
+   "en_text": "\"How could I think differently?\"",
+   "zh_text": "“我怎样才能换一种方式思考？”",
+   "highlights": []
+  },
+  {
+   "id": 295,
+   "start": 839.908,
+   "end": 841.273,
+   "en_text": "And also,",
+   "zh_text": "还有，",
+   "highlights": []
+  },
+  {
+   "id": 296,
+   "start": 841.297,
+   "end": 843.024,
+   "en_text": "\"What thoughts do I wish to create?\"",
+   "zh_text": "“我希望创造出什么样的想法？”",
+   "highlights": []
+  },
+  {
+   "id": 297,
+   "start": 843.842,
+   "end": 845.001,
+   "en_text": "Thank you very much.",
+   "zh_text": "非常感谢。",
+   "highlights": []
+  }
+ ]
+}

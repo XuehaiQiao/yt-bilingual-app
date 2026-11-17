@@ -1,0 +1,717 @@
+{
+ "id": "teded-earth-2050",
+ "youtubeId": "2njn71TqkjA",
+ "title": "What Earth in 2050 could look like - Shannon Odell",
+ "channel": "TED-Ed",
+ "duration": 299,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/2njn71TqkjA/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:45+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 7.003,
+   "end": 9.422,
+   "en_text": "While we’re already feeling the devastating effects",
+   "zh_text": "虽然我们已经感受到毁灭性的影响",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 9.422,
+   "end": 11.299,
+   "en_text": "of human-caused climate change,",
+   "zh_text": "来自人类造成的气候变化，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 11.382,
+   "end": 15.803,
+   "en_text": "governments continue to fall short on making and executing emissions pledges",
+   "zh_text": "但各国政府在制定和执行减排承诺上仍然做得不够",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 15.803,
+   "end": 17.722,
+   "en_text": "that would help thwart further warming.",
+   "zh_text": "而这些承诺本可以帮助阻止进一步变暖。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 17.764,
+   "end": 21.851,
+   "en_text": "So, what will our world look like in the next 30 to 80 years,",
+   "zh_text": "那么，我们的世界在未来30到80年会是什么样子，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 21.851,
+   "end": 23.77,
+   "en_text": "if we continue on the current path?",
+   "zh_text": "如果我们继续沿着现在的路走下去？",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 23.978,
+   "end": 27.523,
+   "en_text": "While it’s impossible to know exactly how the next decade will unfold,",
+   "zh_text": "虽然我们无法确切知道下一个十年会如何发展，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 27.523,
+   "end": 30.902,
+   "en_text": "scientists and climate experts have made projections,",
+   "zh_text": "但科学家和气候专家已经做出了预测，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 30.902,
+   "end": 32.987,
+   "en_text": "factoring in the current state of affairs.",
+   "zh_text": "把当前的状况考虑了进去。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 33.112,
+   "end": 35.573,
+   "en_text": "This future we’re about to describe is bleak,",
+   "zh_text": "我们即将描述的这个未来是黯淡的，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 35.573,
+   "end": 39.911,
+   "en_text": "but remember there’s still time to ensure it doesn’t become our reality.",
+   "zh_text": "但请记住，我们仍有时间确保它不会成为现实。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 40.119,
+   "end": 41.329,
+   "en_text": "It’s 2050.",
+   "zh_text": "现在是2050年。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 41.329,
+   "end": 45.875,
+   "en_text": "We’ve blown past the 1.5 degree target that world leaders promised to stick to.",
+   "zh_text": "我们已经远远超过了各国领导人承诺坚守的1.5度目标。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 45.875,
+   "end": 49.045,
+   "en_text": "The Earth has warmed 2 degrees since the 1800s,",
+   "zh_text": "自19世纪以来，地球已经变暖了2度，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 49.045,
+   "end": 52.465,
+   "en_text": "when the world first started burning fossil fuels in mass scale.",
+   "zh_text": "那时世界首次开始大规模燃烧化石燃料。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 52.715,
+   "end": 57.053,
+   "en_text": "Reports on heatwaves and wildfires regularly fill the evening news.",
+   "zh_text": "关于热浪和野火的报道经常占据晚间新闻。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 57.345,
+   "end": 61.557,
+   "en_text": "Summer days exceed 40 degrees in London and 45 degrees in Delhi,",
+   "zh_text": "伦敦的夏日气温超过40度，德里超过45度，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 61.557,
+   "end": 64.977,
+   "en_text": "as extreme heat waves are now 8 to 9 times more common.",
+   "zh_text": "因为极端热浪现在出现的频率是过去的8到9倍。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 65.269,
+   "end": 68.022,
+   "en_text": "These high temperatures prompt widespread blackouts,",
+   "zh_text": "这些高温引发了大面积停电，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 68.022,
+   "end": 70.942,
+   "en_text": "as power grids struggle to keep up with the energy demands",
+   "zh_text": "因为电网难以跟上能源需求",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 70.942,
+   "end": 72.902,
+   "en_text": "needed to properly cool homes.",
+   "zh_text": "而这些能源是给住宅适当降温所必需的。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 73.069,
+   "end": 75.196,
+   "en_text": "Ambulance sirens blare through the night,",
+   "zh_text": "救护车的警笛声彻夜鸣响，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 75.196,
+   "end": 79.283,
+   "en_text": "carrying patients suffering from heatstroke, dehydration, and exhaustion.",
+   "zh_text": "运送着中暑、脱水和虚脱的病人。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 79.534,
+   "end": 83.83,
+   "en_text": "The southwestern United States, southern Africa, and eastern Australia",
+   "zh_text": "美国西南部、非洲南部和澳大利亚东部",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 83.83,
+   "end": 87.166,
+   "en_text": "experience longer, more frequent, and more severe droughts.",
+   "zh_text": "经历着更长、更频繁、更严重的干旱。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 87.208,
+   "end": 90.294,
+   "en_text": "Meanwhile, the Philippines, Indonesia, and Japan",
+   "zh_text": "与此同时，菲律宾、印度尼西亚和日本",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 90.294,
+   "end": 92.088,
+   "en_text": "face more frequent heavy rainfall",
+   "zh_text": "面临更频繁的强降雨",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 92.13,
+   "end": 95.341,
+   "en_text": "as rising temperatures cause water to evaporate faster,",
+   "zh_text": "因为气温上升使水蒸发得更快，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 95.341,
+   "end": 97.76,
+   "en_text": "and trap more water in the atmosphere.",
+   "zh_text": "并把更多的水困在大气中。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 97.885,
+   "end": 99.679,
+   "en_text": "As the weather becomes more erratic,",
+   "zh_text": "随着天气变得越来越反复无常，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 99.804,
+   "end": 102.598,
+   "en_text": "some communities are unable to keep pace with rebuilding",
+   "zh_text": "一些社区无法跟上重建的步伐",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 102.598,
+   "end": 104.267,
+   "en_text": "what’s constantly destroyed.",
+   "zh_text": "去修复不断被摧毁的东西。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 104.35,
+   "end": 105.56,
+   "en_text": "Many move to cities,",
+   "zh_text": "许多人搬到了城市，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 105.56,
+   "end": 108.312,
+   "en_text": "where they face housing shortages and a lack of jobs.",
+   "zh_text": "在那里他们面临住房短缺和缺少工作的问题。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 108.437,
+   "end": 111.816,
+   "en_text": "A resource squeeze is felt in newborn intensive care wards,",
+   "zh_text": "新生儿重症监护病房也感受到了资源紧张，",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 111.816,
+   "end": 113.943,
+   "en_text": "as the rising temperature and air pollution",
+   "zh_text": "因为气温上升和空气污染",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 113.943,
+   "end": 116.946,
+   "en_text": "cause higher rates of premature and underweight births.",
+   "zh_text": "导致早产和低体重婴儿的比例更高。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 117.029,
+   "end": 119.991,
+   "en_text": "More children develop asthma and respiratory disease,",
+   "zh_text": "更多儿童患上哮喘和呼吸道疾病，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 119.991,
+   "end": 123.828,
+   "en_text": "and rates balloon in communities regularly exposed to forest fire smoke.",
+   "zh_text": "而在经常暴露于森林火灾烟雾的社区，患病率更是激增。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 124.036,
+   "end": 126.956,
+   "en_text": "The global emissions added to the atmosphere each year",
+   "zh_text": "每年进入大气层的全球排放量",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 126.956,
+   "end": 129.876,
+   "en_text": "finally start to level off, thanks to government action,",
+   "zh_text": "终于开始趋于平稳，这要归功于政府的行动，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 129.876,
+   "end": 131.419,
+   "en_text": "but it’s decades too late.",
+   "zh_text": "但这已经晚了几十年。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 131.419,
+   "end": 133.504,
+   "en_text": "We fail to reach net zero in time.",
+   "zh_text": "我们没能及时实现净零排放。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 133.713,
+   "end": 139.51,
+   "en_text": "As a result, by 2100 the Earth has warmed another 0.5 to 1.5 degrees.",
+   "zh_text": "结果，到2100年地球又变暖了0.5到1.5度。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 139.677,
+   "end": 142.263,
+   "en_text": "Over half of our remaining glaciers have melted.",
+   "zh_text": "我们剩余冰川的一半以上已经融化。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 142.263,
+   "end": 146.1,
+   "en_text": "As the sea heats up, its volume increases due to thermal expansion.",
+   "zh_text": "随着海水变暖，它的体积会因为热膨胀而增大。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 146.184,
+   "end": 149.353,
+   "en_text": "Together, this elevates sea level by well over a meter.",
+   "zh_text": "两者加在一起，使海平面上升了远超一米。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 149.395,
+   "end": 153.691,
+   "en_text": "Entire nations, like the Marshall Islands and Tuvalu, are uninhabitable",
+   "zh_text": "像马绍尔群岛和图瓦卢这样的整个国家都变得无法居住，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 153.691,
+   "end": 156.527,
+   "en_text": "as large swaths of their islands are submerged.",
+   "zh_text": "因为它们岛屿的大片区域被海水淹没了。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 156.819,
+   "end": 158.738,
+   "en_text": "Some islands, like the Maldives,",
+   "zh_text": "有些岛屿，比如马尔代夫，",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 158.738,
+   "end": 161.032,
+   "en_text": "spend billions building interconnected rafts",
+   "zh_text": "花了几十亿美元建造相互连接的浮筏，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 161.032,
+   "end": 163.784,
+   "en_text": "that house apartments, schools, and restaurants",
+   "zh_text": "上面有公寓、学校和餐馆，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 163.826,
+   "end": 165.828,
+   "en_text": "that float above its drowned cities.",
+   "zh_text": "漂浮在被淹没的城市之上。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 165.912,
+   "end": 169.79,
+   "en_text": "Resettled climate migrants in Jakarta, Mumbai, and Lagos",
+   "zh_text": "在雅加达、孟买和拉各斯重新安置的气候移民",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 169.79,
+   "end": 172.168,
+   "en_text": "are forced to abandon their homes once again,",
+   "zh_text": "被迫再一次放弃他们的家园，",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 172.168,
+   "end": 176.631,
+   "en_text": "as rising tides and extreme storms flood buildings and crumble infrastructure.",
+   "zh_text": "因为上涨的潮水和极端风暴淹没了建筑、摧毁了基础设施。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 176.672,
+   "end": 180.259,
+   "en_text": "Overall, 250 million people are displaced.",
+   "zh_text": "总体而言，有2.5亿人流离失所。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 180.509,
+   "end": 184.68,
+   "en_text": "Some affluent cities like New York and Shanghai attempt to adapt,",
+   "zh_text": "一些富裕城市，比如纽约和上海，试图做出调整，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 184.68,
+   "end": 186.599,
+   "en_text": "elevating buildings and roadways.",
+   "zh_text": "把建筑和道路抬高。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 186.891,
+   "end": 189.894,
+   "en_text": "Ten-meter-tall seawalls line the cities’ coasts.",
+   "zh_text": "十米高的海堤沿着这些城市的海岸线排开。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 190.019,
+   "end": 193.898,
+   "en_text": "Children learn about extinct sea life which once inhabited the ocean’s reefs,",
+   "zh_text": "孩子们学习那些曾经栖息在海洋礁石中的已灭绝海洋生物，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 193.898,
+   "end": 197.777,
+   "en_text": "all of which have vanished thanks to rising surface water temperatures.",
+   "zh_text": "它们全都因为表层水温上升而消失了。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 198.361,
+   "end": 200.154,
+   "en_text": "Grocery prices skyrocket,",
+   "zh_text": "食品杂货价格飞涨，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 200.154,
+   "end": 203.407,
+   "en_text": "as food and water scarcity touch all communities.",
+   "zh_text": "因为食物和水资源的短缺波及了所有社区。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 203.658,
+   "end": 206.994,
+   "en_text": "Fruits and products long grown in the tropics and subtropics",
+   "zh_text": "长期在热带和亚热带种植的水果和产品",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 206.994,
+   "end": 208.621,
+   "en_text": "rarely show up on shelves,",
+   "zh_text": "很少出现在货架上，",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 208.621,
+   "end": 211.457,
+   "en_text": "as intense heat waves paired with increasing humidity",
+   "zh_text": "因为强烈的热浪加上不断增加的湿度",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 211.457,
+   "end": 213.751,
+   "en_text": "make it deadly for farmers to work outdoors.",
+   "zh_text": "让农民在户外劳作变得致命。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 213.96,
+   "end": 216.462,
+   "en_text": "Unpredictable heatwaves, droughts, and floods",
+   "zh_text": "难以预测的热浪、干旱和洪水",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 216.462,
+   "end": 220.549,
+   "en_text": "cripple small-scale farmers in Africa, Asia, and South America,",
+   "zh_text": "重创了非洲、亚洲和南美洲的小农户，",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 220.591,
+   "end": 223.594,
+   "en_text": "who previously produced one-third of the world’s food.",
+   "zh_text": "他们以前生产了全世界三分之一的粮食。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 223.719,
+   "end": 227.431,
+   "en_text": "Hundreds of millions of people are pushed into hunger and famine.",
+   "zh_text": "数亿人陷入饥饿和饥荒。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 227.932,
+   "end": 231.06,
+   "en_text": "Climate predictions can feel overwhelming and terrifying.",
+   "zh_text": "气候预测可能会让人觉得不堪重负、十分可怕。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 231.185,
+   "end": 235.356,
+   "en_text": "Yet many of the experts responsible for these assessments remain optimistic.",
+   "zh_text": "然而，许多负责这些评估的专家仍然保持乐观。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 235.398,
+   "end": 238.734,
+   "en_text": "Since countries have first begun taking steps to lower their emissions,",
+   "zh_text": "自从各国首次开始采取措施降低排放以来，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 238.734,
+   "end": 241.279,
+   "en_text": "warming projections have shifted downwards.",
+   "zh_text": "升温预测已经向下调整。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 241.32,
+   "end": 244.949,
+   "en_text": "In less than a decade, we’ve reduced our projected emission rates",
+   "zh_text": "在不到十年的时间里，我们降低了预计的排放率，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 244.949,
+   "end": 248.327,
+   "en_text": "so that we’re no longer on track to hit nearly 4 degrees of warming.",
+   "zh_text": "以至于我们不再朝着接近4摄氏度升温的轨道前进。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 248.452,
+   "end": 251.247,
+   "en_text": "Policies that invest in renewable energy sources,",
+   "zh_text": "投资可再生能源、",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 251.247,
+   "end": 254.709,
+   "en_text": "cut fossil fuel production, support electric transportation,",
+   "zh_text": "削减化石燃料生产、支持电动交通、",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 254.709,
+   "end": 257.545,
+   "en_text": "protect our forests, and regulate industry",
+   "zh_text": "保护森林以及监管工业的政策",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 257.628,
+   "end": 260.756,
+   "en_text": "can help mitigate the worst effects of climate change.",
+   "zh_text": "可以帮助减轻气候变化最严重的影响。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 260.965,
+   "end": 265.094,
+   "en_text": "But climate experts have also stressed that current policies and pledges",
+   "zh_text": "但气候专家也强调，目前的政策和承诺",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 265.094,
+   "end": 268.055,
+   "en_text": "don’t go far enough— in speed or scale.",
+   "zh_text": "在速度或规模上都还不够。",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 268.055,
+   "end": 271.017,
+   "en_text": "Enacting real change will require bold solutions,",
+   "zh_text": "要实现真正的改变，需要大胆的解决方案、",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 271.017,
+   "end": 273.144,
+   "en_text": "innovations, and collective action.",
+   "zh_text": "创新和集体行动。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 273.185,
+   "end": 277.732,
+   "en_text": "There’s still time to rewrite our future, and every tenth of a degree counts.",
+   "zh_text": "我们仍有时间改写未来，而每十分之一度都很重要。",
+   "highlights": []
+  }
+ ]
+}

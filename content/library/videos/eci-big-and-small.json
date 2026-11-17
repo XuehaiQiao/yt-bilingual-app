@@ -1,0 +1,813 @@
+{
+ "id": "eci-big-and-small",
+ "youtubeId": "Ir-hBvo1Z2A",
+ "title": "Big and Small 🐟🏀🎾 Learn English Basic Vocabulary | Simple Easy Beginner English Comprehensible Input",
+ "channel": "English Comprehensible Input for ESL Beginners",
+ "duration": 378,
+ "level": "A1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/Ir-hBvo1Z2A/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:57:34+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.399,
+   "end": 1.76,
+   "en_text": "Hi everyone!",
+   "zh_text": "大家好！",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 1.76,
+   "end": 4.0,
+   "en_text": "Here are two pictures.",
+   "zh_text": "这里有两张图片。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 4.0,
+   "end": 9.36,
+   "en_text": "Here's one picture on the left, and here's the other picture on the right.",
+   "zh_text": "这张图片在左边，另一张图片在右边。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 9.36,
+   "end": 12.579,
+   "en_text": "So these are two pictures.",
+   "zh_text": "所以这是两张图片。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 12.579,
+   "end": 17.439,
+   "en_text": "And first, let's look at this picture on the left.",
+   "zh_text": "首先，我们来看看左边这张图片。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 17.439,
+   "end": 19.73,
+   "en_text": "What is in this picture?",
+   "zh_text": "这张图片里有什么？",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 19.73,
+   "end": 27.039,
+   "en_text": "Well, in this picture, there are two fish: one fish, two fish.",
+   "zh_text": "嗯，这张图片里有两条鱼：一条鱼，两条鱼。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 27.039,
+   "end": 29.2,
+   "en_text": "So here are two fish.",
+   "zh_text": "所以这里有两条鱼。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 29.2,
+   "end": 34.84,
+   "en_text": "And this fish is big, and this fish is small.",
+   "zh_text": "这条鱼很大，这条鱼很小。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 34.84,
+   "end": 37.18,
+   "en_text": "And what color is the big fish?",
+   "zh_text": "那条大鱼是什么颜色的？",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 37.18,
+   "end": 38.48,
+   "en_text": "What color is it?",
+   "zh_text": "它是什么颜色的？",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 38.48,
+   "end": 41.2,
+   "en_text": "Well, the big fish is gray.",
+   "zh_text": "嗯，那条大鱼是灰色的。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 41.2,
+   "end": 42.61,
+   "en_text": "It is gray.",
+   "zh_text": "它是灰色的。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 42.61,
+   "end": 45.19,
+   "en_text": "The big fish is gray.",
+   "zh_text": "那条大鱼是灰色的。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 45.19,
+   "end": 47.54,
+   "en_text": "And what color is the small fish?",
+   "zh_text": "那条小鱼是什么颜色的？",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 47.54,
+   "end": 50.71,
+   "en_text": "Well, the small fish is blue.",
+   "zh_text": "嗯，那条小鱼是蓝色的。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 50.71,
+   "end": 52.48,
+   "en_text": "The small fish is blue.",
+   "zh_text": "那条小鱼是蓝色的。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 52.48,
+   "end": 57.98,
+   "en_text": "So there is a big fish, and the big fish is gray,",
+   "zh_text": "所以有一条大鱼，大鱼是灰色的，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 57.98,
+   "end": 62.64,
+   "en_text": "and there is a small fish, and the small fish is blue.",
+   "zh_text": "还有一条小鱼，小鱼是蓝色的。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 62.64,
+   "end": 66.711,
+   "en_text": "So the gray fish is bigger than the blue fish,",
+   "zh_text": "所以那条灰鱼比那条蓝鱼大，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 66.711,
+   "end": 71.61,
+   "en_text": "and the blue fish is smaller than the gray fish.",
+   "zh_text": "而那条蓝鱼比那条灰鱼小。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 71.61,
+   "end": 77.47,
+   "en_text": "So in this picture, there is one big gray fish,",
+   "zh_text": "所以在这张图片里，有一条灰色的大鱼，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 77.47,
+   "end": 80.85,
+   "en_text": "and there is one small blue fish.",
+   "zh_text": "还有一条蓝色的小鱼。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 80.85,
+   "end": 89.83,
+   "en_text": "So there are two fish in this picture: one big gray fish, and one small blue fish.",
+   "zh_text": "所以这张图片里有两条鱼：一条灰色的大鱼，和一条蓝色的小鱼。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 89.83,
+   "end": 93.47,
+   "en_text": "And then what is in this picture on the right?",
+   "zh_text": "那右边这张图片里有什么呢？",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 93.47,
+   "end": 101.659,
+   "en_text": "Well, in this picture, there are six balls: one ball, two balls, three balls, four balls,",
+   "zh_text": "嗯，这张图片里有六个球：一个球，两个球，三个球，四个球，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 101.659,
+   "end": 104.11,
+   "en_text": "five balls, six balls.",
+   "zh_text": "五个球，六个球。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 104.11,
+   "end": 108.29,
+   "en_text": "So in this picture, there are six balls.",
+   "zh_text": "所以这张图片里有六个球。",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 108.29,
+   "end": 111.74,
+   "en_text": "And three of the balls are big.",
+   "zh_text": "其中三个球很大。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 111.74,
+   "end": 118.049,
+   "en_text": "So these three balls are big, and these three balls are small.",
+   "zh_text": "所以这三个球很大，这三个球很小。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 118.049,
+   "end": 120.51,
+   "en_text": "And what color are the big balls?",
+   "zh_text": "那些大球是什么颜色的？",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 120.51,
+   "end": 122.909,
+   "en_text": "What color are these three big balls?",
+   "zh_text": "这三个大球是什么颜色的？",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 122.909,
+   "end": 126.78,
+   "en_text": "Well, these three big balls are orange.",
+   "zh_text": "嗯，这三个大球是橙色的。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 126.78,
+   "end": 129.769,
+   "en_text": "And what color are these small balls?",
+   "zh_text": "这些小球的什么颜色的？",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 129.769,
+   "end": 132.62,
+   "en_text": "What color are these three small balls?",
+   "zh_text": "这三个小球是什么颜色的？",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 132.62,
+   "end": 136.59,
+   "en_text": "Well, these three small balls are green.",
+   "zh_text": "嗯，这三个小球是绿色的。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 136.59,
+   "end": 139.31,
+   "en_text": "These three small balls are green.",
+   "zh_text": "这三个小球是绿色的。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 139.31,
+   "end": 144.04,
+   "en_text": "So in this picture, there are three orange balls,",
+   "zh_text": "所以在这张图片里，有三个橙色的球，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 144.04,
+   "end": 146.989,
+   "en_text": "and there are three green balls.",
+   "zh_text": "还有三个绿色的球。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 146.989,
+   "end": 152.04,
+   "en_text": "The orange balls are big and the green balls are small.",
+   "zh_text": "橙色的球很大，绿色的球很小。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 152.04,
+   "end": 158.849,
+   "en_text": "So there are three big orange balls and three small green balls.",
+   "zh_text": "所以有三个橙色的大球和三个绿色的小球。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 158.849,
+   "end": 160.799,
+   "en_text": "And what kind of balls are these?",
+   "zh_text": "这些是什么球？",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 160.799,
+   "end": 162.519,
+   "en_text": "What kind of balls are these?",
+   "zh_text": "这些是什么球？",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 162.519,
+   "end": 165.609,
+   "en_text": "Well, these balls are sports balls.",
+   "zh_text": "嗯，这些球是运动球。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 165.609,
+   "end": 168.499,
+   "en_text": "These are balls for playing sports.",
+   "zh_text": "这些是用来做运动的球。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 168.499,
+   "end": 172.989,
+   "en_text": "What kind of balls are these three big orange balls?",
+   "zh_text": "这三个橙色的大球是什么球？",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 172.989,
+   "end": 174.79,
+   "en_text": "What sport are they for?",
+   "zh_text": "它们是用来做什么运动的？",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 174.79,
+   "end": 177.89,
+   "en_text": "Well, these are basketballs.",
+   "zh_text": "嗯，这些是篮球。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 177.89,
+   "end": 179.419,
+   "en_text": "These are basketballs.",
+   "zh_text": "这些是篮球。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 179.419,
+   "end": 181.879,
+   "en_text": "There are three basketballs here.",
+   "zh_text": "这里有三个篮球。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 181.879,
+   "end": 185.93,
+   "en_text": "So these are basketballs for playing basketball.",
+   "zh_text": "所以这些是打篮球用的篮球。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 185.93,
+   "end": 189.419,
+   "en_text": "You can bounce the basketball, bounce, bounce, bounce,",
+   "zh_text": "你可以拍篮球，拍、拍、拍，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 189.419,
+   "end": 191.25,
+   "en_text": "and you can throw the basketball.",
+   "zh_text": "你还可以把篮球扔出去。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 191.25,
+   "end": 194.419,
+   "en_text": "You can throw the basketball into a net.",
+   "zh_text": "你可以把篮球投进篮网里。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 194.419,
+   "end": 196.879,
+   "en_text": "So these are basketballs.",
+   "zh_text": "所以这些是篮球。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 196.879,
+   "end": 200.42,
+   "en_text": "They are used for playing basketball.",
+   "zh_text": "它们是用来打篮球的。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 200.42,
+   "end": 204.029,
+   "en_text": "And what are these small balls for?",
+   "zh_text": "那这些小球的用途是什么呢？",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 204.029,
+   "end": 207.409,
+   "en_text": "What are these three small green balls for?",
+   "zh_text": "这三个绿色的小球是干什么用的呢？",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 207.409,
+   "end": 209.109,
+   "en_text": "what sport are they for?",
+   "zh_text": "它们是用来做什么运动的？",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 209.109,
+   "end": 213.98,
+   "en_text": "Well, these balls, these small green balls, are tennis balls.",
+   "zh_text": "嗯，这些球，这些绿色的小球，是网球。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 213.98,
+   "end": 215.569,
+   "en_text": "They are tennis balls.",
+   "zh_text": "它们是网球。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 215.569,
+   "end": 217.87,
+   "en_text": "So they are for playing tennis.",
+   "zh_text": "所以它们是用来打网球的。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 217.87,
+   "end": 221.65,
+   "en_text": "You can toss the tennis ball and hit it with a tennis racket.",
+   "zh_text": "你可以把网球抛起来，然后用网球拍击打它。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 221.65,
+   "end": 224.2,
+   "en_text": "So these are tennis balls.",
+   "zh_text": "所以这些是网球。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 224.2,
+   "end": 227.56,
+   "en_text": "So these three balls are basketballs.",
+   "zh_text": "所以这三个球是篮球。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 227.56,
+   "end": 231.079,
+   "en_text": "These three big orange balls are basketballs.",
+   "zh_text": "这三个橙色的大球是篮球。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 231.079,
+   "end": 234.879,
+   "en_text": "And these three small green balls are tennis balls.",
+   "zh_text": "而这三个绿色的小球是网球。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 234.879,
+   "end": 237.839,
+   "en_text": "So there are six balls here.",
+   "zh_text": "所以这里有六个球。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 237.839,
+   "end": 242.659,
+   "en_text": "And three of them, the three big orange balls, are basketballs,",
+   "zh_text": "其中三个，也就是三个橙色的大球，是篮球，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 242.659,
+   "end": 246.769,
+   "en_text": "and the three small green balls are tennis balls.",
+   "zh_text": "而三个绿色的小球是网球。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 246.769,
+   "end": 253.099,
+   "en_text": "So there are six sports balls here: three basketballs for playing basketball,",
+   "zh_text": "所以这里有六个运动球：三个打篮球用的篮球，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 253.099,
+   "end": 256.34,
+   "en_text": "and three tennis balls for playing tennis.",
+   "zh_text": "还有三个打网球用的网球。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 256.34,
+   "end": 259.53,
+   "en_text": "And in this picture, let's look at the fish here.",
+   "zh_text": "在这张图片里，我们来看看这里的鱼。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 259.53,
+   "end": 266.82,
+   "en_text": "So this is the mouth of the big fish, and this is the mouth of the small fish.",
+   "zh_text": "这是大鱼的嘴，这是小鱼的嘴。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 266.82,
+   "end": 275.85,
+   "en_text": "And this is one of the eyes of the small fish, and this is one of the eyes of the big fish.",
+   "zh_text": "这是小鱼的一只眼睛，这是大鱼的一只眼睛。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 275.85,
+   "end": 280.71,
+   "en_text": "And these are two of the fins of the big fish.",
+   "zh_text": "这是大鱼的两个鱼鳍。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 280.71,
+   "end": 285.139,
+   "en_text": "And these are two of the fins of the small fish.",
+   "zh_text": "这是小鱼的两个鱼鳍。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 285.139,
+   "end": 290.07,
+   "en_text": "And this is the tail fin of the big gray fish.",
+   "zh_text": "这是那条灰色大鱼的尾鳍。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 290.07,
+   "end": 294.979,
+   "en_text": "And this is the tail fin of the small blue fish.",
+   "zh_text": "这是那条蓝色小鱼的尾鳍。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 294.979,
+   "end": 301.91,
+   "en_text": "So these are the fish's mouths, and these are eyes of the fish.",
+   "zh_text": "所以这些是鱼的嘴，而这些是鱼的眼睛。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 301.91,
+   "end": 308.229,
+   "en_text": "And these are fins of the fish and these are the fish's tail fins.",
+   "zh_text": "这些是鱼的鱼鳍，而这些是鱼的尾鳍。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 308.229,
+   "end": 313.21,
+   "en_text": "So now I will ask you some questions about these pictures.",
+   "zh_text": "那么现在我要问你们一些关于这些图片的问题。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 313.21,
+   "end": 317.12,
+   "en_text": "In this picture, which fish is bigger?",
+   "zh_text": "在这张图片里，哪条鱼更大？",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 317.12,
+   "end": 319.0,
+   "en_text": "Which fish is bigger?",
+   "zh_text": "哪条鱼更大？",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 319.0,
+   "end": 323.552,
+   "en_text": "The gray fish or the blue fish?",
+   "zh_text": "灰色的鱼还是蓝色的鱼？",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 323.552,
+   "end": 324.8,
+   "en_text": "Well, the gray fish is bigger.",
+   "zh_text": "嗯，灰色的鱼更大。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 324.8,
+   "end": 330.09,
+   "en_text": "The gray fish is bigger than the blue fish.",
+   "zh_text": "灰色的鱼比蓝色的鱼大。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 330.09,
+   "end": 334.81,
+   "en_text": "Which fish is smaller?",
+   "zh_text": "哪条鱼更小？",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 334.81,
+   "end": 338.319,
+   "en_text": "The gray fish or the blue fish?",
+   "zh_text": "灰色的鱼还是蓝色的鱼？",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 338.319,
+   "end": 340.46,
+   "en_text": "The blue fish is smaller.",
+   "zh_text": "蓝色的鱼更小。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 340.46,
+   "end": 344.43,
+   "en_text": "The blue fish is smaller than the gray fish.",
+   "zh_text": "蓝色的鱼比灰色的鱼小。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 344.43,
+   "end": 348.759,
+   "en_text": "And in this picture, which balls are bigger?",
+   "zh_text": "在这张图片里，哪些球更大？",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 348.759,
+   "end": 352.66,
+   "en_text": "The orange balls or the green balls?",
+   "zh_text": "橙色的球还是绿色的球？",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 352.66,
+   "end": 356.09,
+   "en_text": "Well, the orange balls are bigger.",
+   "zh_text": "嗯，橙色的球更大。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 356.09,
+   "end": 359.97,
+   "en_text": "The orange balls are bigger than the green balls.",
+   "zh_text": "这些橙色的球比绿色的球大。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 359.97,
+   "end": 362.0,
+   "en_text": "And which balls are smaller?",
+   "zh_text": "那哪些球更小呢？",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 362.0,
+   "end": 365.43,
+   "en_text": "The green balls or the orange balls?",
+   "zh_text": "是绿色的球还是橙色的球？",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 365.43,
+   "end": 368.639,
+   "en_text": "Well, the green balls are smaller.",
+   "zh_text": "嗯，绿色的球更小。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 368.639,
+   "end": 372.209,
+   "en_text": "The green balls are smaller than the orange balls.",
+   "zh_text": "绿色的球比橙色的球小。",
+   "highlights": []
+  }
+ ]
+}

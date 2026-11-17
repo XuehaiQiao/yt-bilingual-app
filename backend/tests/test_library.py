@@ -29,11 +29,9 @@ import routes_library
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LIBRARY_DIR = REPO_ROOT / "content" / "library"
-EXPECTED_VIDEO_IDS = {
-    "bbc-learning-different-generations",
-    "teded-better-economy",
-    "kurzgesagt-ai-slop",
-}
+VIDEO_MANIFEST = json.loads((LIBRARY_DIR / "videos.json").read_text(encoding="utf-8"))
+EXPECTED_VIDEO_IDS = set(VIDEO_MANIFEST["videos"])
+EXPECTED_VIDEO_LEVELS = {"A1": 6, "A2": 10, "B1": 14, "B2": 12, "C1": 8, "C2": 5}
 EXPECTED_ARTICLE_IDS = {
     "ocean-noise",
     "free-app-hidden-cost",
@@ -111,7 +109,7 @@ def test_library_is_public_and_does_not_issue_guest_cookie(make_client):
 # 2. 清单形状
 # ---------------------------------------------------------------------------
 
-def test_index_lists_three_videos_and_all_articles(make_client):
+def test_index_lists_expanded_video_catalog_and_all_articles(make_client):
     with make_client() as client:
         response = client.get("/api/library")
     assert response.status_code == 200
@@ -119,14 +117,23 @@ def test_index_lists_three_videos_and_all_articles(make_client):
     videos = payload["videos"]
     articles = payload["articles"]
 
-    assert len(videos) == 3
+    # 扩容后：55 条视频（A1–C2），清单与文件一一对应。
+    assert len(videos) == 55
+    assert VIDEO_MANIFEST["_meta"]["count"] == len(videos)
     assert {video["id"] for video in videos} == EXPECTED_VIDEO_IDS
     assert all(
         {"id", "title", "channel", "duration", "level"} <= set(video)
         for video in videos
     )
-    assert all(180 <= video["duration"] <= 1200 for video in videos)
+    assert all(180 <= video["duration"] <= 900 for video in videos)
     assert all(video["level"] in routes_library.LEVELS for video in videos)
+    level_counts = {level: 0 for level in routes_library.LEVEL_ORDER}
+    for video in videos:
+        level_counts[video["level"]] += 1
+    assert level_counts == EXPECTED_VIDEO_LEVELS
+    # 服务端同时返回数量与等级分布（前端 chips 直接显示）。
+    assert payload["counts"] == {"videos": 55, "articles": 67}
+    assert payload["videoLevels"] == EXPECTED_VIDEO_LEVELS
 
     assert len(articles) == 3 + len(GUTENBERG_ARTICLE_IDS) == 67
     ids = {article["id"] for article in articles}

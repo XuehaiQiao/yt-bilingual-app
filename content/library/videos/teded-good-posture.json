@@ -1,0 +1,645 @@
+{
+ "id": "teded-good-posture",
+ "youtubeId": "OyK0oE5rwFY",
+ "title": "The benefits of good posture - Murat Dalkilinç",
+ "channel": "TED-Ed",
+ "duration": 267,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/OyK0oE5rwFY/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:46:55+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 7.993,
+   "end": 11.142,
+   "en_text": "Has anyone ever told you, \"Stand up straight!\"",
+   "zh_text": "有没有人曾对你说过：“站直了！”",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 11.142,
+   "end": 14.762,
+   "en_text": "or scolded you for slouching at a family dinner?",
+   "zh_text": "或者因为你在家庭聚餐时弯腰驼背而数落过你？",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 14.762,
+   "end": 18.644,
+   "en_text": "Comments like that might be annoying, but they're not wrong.",
+   "zh_text": "这样的话也许很烦人，但并没有说错。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 18.644,
+   "end": 22.883,
+   "en_text": "Your posture, the way you hold your body when you're sitting or standing,",
+   "zh_text": "你的姿势，也就是你坐着或站着时身体的样子，",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 22.883,
+   "end": 26.126,
+   "en_text": "is the foundation for every movement your body makes,",
+   "zh_text": "是你身体每一个动作的基础，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 26.126,
+   "end": 30.597,
+   "en_text": "and can determine how well your body adapts to the stresses on it.",
+   "zh_text": "也决定了你的身体能多好地适应所承受的压力。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 30.597,
+   "end": 33.589,
+   "en_text": "These stresses can be things like carrying weight,",
+   "zh_text": "这些压力可能是负重之类的事情，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 33.589,
+   "end": 35.766,
+   "en_text": "or sitting in an awkward position.",
+   "zh_text": "或者是坐在别扭的姿势里。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 35.766,
+   "end": 41.292,
+   "en_text": "And the big one we all experience all day every day: gravity.",
+   "zh_text": "还有一个我们每天每时每刻都在承受的大压力：重力。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 41.292,
+   "end": 42.926,
+   "en_text": "If your posture isn't optimal,",
+   "zh_text": "如果你的姿势不够理想，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 42.926,
+   "end": 46.916,
+   "en_text": "your muscles have to work harder to keep you upright and balanced.",
+   "zh_text": "你的肌肉就得更费力地让你保持直立和平衡。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 46.916,
+   "end": 49.651,
+   "en_text": "Some muscles will become tight and inflexbile.",
+   "zh_text": "有些肌肉会变得紧绷而僵硬。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 49.651,
+   "end": 51.691,
+   "en_text": "Others will be inhibited.",
+   "zh_text": "另一些则会受到抑制。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 51.691,
+   "end": 54.487,
+   "en_text": "Over time, these dysfunctional adaptations",
+   "zh_text": "久而久之，这些失调的适应变化",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 54.487,
+   "end": 58.882,
+   "en_text": "impair your body's ability to deal with the forces on it.",
+   "zh_text": "会损害你身体应对各种外力的能力。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 58.882,
+   "end": 62.967,
+   "en_text": "Poor posture inflicts extra wear and tear on your joints and ligaments,",
+   "zh_text": "不良姿势会给你的关节和韧带带来额外的磨损，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 62.967,
+   "end": 65.441,
+   "en_text": "increases the likelihood of accidents,",
+   "zh_text": "增加发生意外的可能性，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 65.441,
+   "end": 69.582,
+   "en_text": "and makes some organs, like your lungs, less efficient.",
+   "zh_text": "还会让肺等一些器官的效率降低。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 69.582,
+   "end": 72.277,
+   "en_text": "Researchers have linked poor posture to scoliosis,",
+   "zh_text": "研究人员把不良姿势与脊柱侧弯、",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 72.277,
+   "end": 73.877,
+   "en_text": "tension headaches,",
+   "zh_text": "紧张性头痛",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 73.877,
+   "end": 75.164,
+   "en_text": "and back pain,",
+   "zh_text": "以及背痛联系了起来，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 75.164,
+   "end": 78.66,
+   "en_text": "though it isn't the exclusive cause of any of them.",
+   "zh_text": "不过它并不是其中任何一种问题的唯一原因。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 78.66,
+   "end": 81.679,
+   "en_text": "Posture can even influence your emotional state",
+   "zh_text": "姿势甚至会影响你的情绪状态",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 81.679,
+   "end": 83.997,
+   "en_text": "and your sensitivity to pain.",
+   "zh_text": "以及你对疼痛的敏感程度。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 83.997,
+   "end": 87.781,
+   "en_text": "So there are a lot of reasons to aim for good posture.",
+   "zh_text": "所以，追求良好姿势的理由有很多。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 87.781,
+   "end": 89.643,
+   "en_text": "But it's getting harder these days.",
+   "zh_text": "但如今这变得越来越难了。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 89.643,
+   "end": 93.889,
+   "en_text": "Sitting in an awkward position for a long time can promote poor posture,",
+   "zh_text": "长时间保持别扭的姿势会助长不良体态，",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 93.889,
+   "end": 97.004,
+   "en_text": "and so can using computers or mobile devices,",
+   "zh_text": "使用电脑或移动设备也会这样，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 97.004,
+   "end": 99.279,
+   "en_text": "which encourage you to look downward.",
+   "zh_text": "因为它们会让你低头往下看。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 99.279,
+   "end": 103.873,
+   "en_text": "Many studies suggest that, on average, posture is getting worse.",
+   "zh_text": "许多研究表明，平均而言，人们的姿势正变得越来越差。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 103.873,
+   "end": 106.247,
+   "en_text": "So what does good posture look like?",
+   "zh_text": "那么，良好的姿势是什么样子呢？",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 106.247,
+   "end": 108.877,
+   "en_text": "When you look at the spine from the front or the back,",
+   "zh_text": "当你从正面或背面看脊柱时，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 108.877,
+   "end": 113.429,
+   "en_text": "all 33 vertebrae should appear stacked in a straight line.",
+   "zh_text": "全部33块椎骨应该看起来叠成一条直线。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 113.429,
+   "end": 116.226,
+   "en_text": "From the side, the spine should have three curves:",
+   "zh_text": "从侧面看，脊柱应该有三个弯曲：",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 116.226,
+   "end": 121.17,
+   "en_text": "one at your neck, one at your shoulders, and one at the small of your back.",
+   "zh_text": "一个在颈部，一个在肩部，一个在腰部。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 121.17,
+   "end": 123.483,
+   "en_text": "You aren't born with this s-shaped spine.",
+   "zh_text": "你并不是生来就有这种S形脊柱的。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 123.483,
+   "end": 126.789,
+   "en_text": "Babies' spines just have one curve like a \"c.\"",
+   "zh_text": "婴儿的脊柱只有一个弯曲，像个“C”字。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 126.789,
+   "end": 130.398,
+   "en_text": "The other curves usually develop by 12-18 months",
+   "zh_text": "其他的弯曲通常在12到18个月大时形成，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 130.398,
+   "end": 132.827,
+   "en_text": "as the muscles strengthen.",
+   "zh_text": "随着肌肉变得更强壮。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 132.827,
+   "end": 136.323,
+   "en_text": "These curves help us stay upright and absorb some of the stress",
+   "zh_text": "这些弯曲帮助我们保持直立，并吸收一部分压力，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 136.323,
+   "end": 139.406,
+   "en_text": "from activities like walking and jumping.",
+   "zh_text": "这些压力来自走路和跳跃之类的活动。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 139.406,
+   "end": 140.95,
+   "en_text": "If they are aligned properly,",
+   "zh_text": "如果它们排列得当，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 140.95,
+   "end": 142.097,
+   "en_text": "when you're standing up,",
+   "zh_text": "当你站立时，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 142.097,
+   "end": 144.301,
+   "en_text": "you should be able to draw a straight line",
+   "zh_text": "你应该能画出一条直线，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 144.301,
+   "end": 146.453,
+   "en_text": "from a point just in front of your shoulders,",
+   "zh_text": "从你肩膀正前方的一点，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 146.453,
+   "end": 147.813,
+   "en_text": "to behind your hip,",
+   "zh_text": "一直连到你髋部后方。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 147.813,
+   "end": 149.449,
+   "en_text": "to the front of your knee,",
+   "zh_text": "到膝盖前方，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 149.449,
+   "end": 152.344,
+   "en_text": "to a few inches in front of your ankle.",
+   "zh_text": "到脚踝前方几英寸的位置。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 152.344,
+   "end": 156.098,
+   "en_text": "This keeps your center of gravity directly over your base of support,",
+   "zh_text": "这样能让你的重心正好落在支撑面之上，",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 156.098,
+   "end": 158.209,
+   "en_text": "which allows you to move efficiently",
+   "zh_text": "让你高效地活动，",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 158.209,
+   "end": 161.006,
+   "en_text": "with the least amount of fatigue and muscle strain.",
+   "zh_text": "同时把疲劳和肌肉拉伤降到最低。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 161.006,
+   "end": 163.735,
+   "en_text": "If you're sitting, your neck should be vertical,",
+   "zh_text": "如果你是坐着，脖子应该保持竖直，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 163.735,
+   "end": 165.444,
+   "en_text": "not tilted forward.",
+   "zh_text": "不要往前倾。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 165.444,
+   "end": 169.295,
+   "en_text": "Your shoulders should be relaxed with your arms close to your trunk.",
+   "zh_text": "肩膀要放松，手臂贴近躯干。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 169.295,
+   "end": 173.663,
+   "en_text": "Your knees should be at a right angle with your feet flat on the floor.",
+   "zh_text": "膝盖应该呈直角，双脚平放在地上。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 173.663,
+   "end": 176.449,
+   "en_text": "But what if your posture isn't that great?",
+   "zh_text": "但要是你的姿势没那么好呢？",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 176.449,
+   "end": 179.279,
+   "en_text": "Try redesigning your environment.",
+   "zh_text": "试着重新布置一下你的环境。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 179.279,
+   "end": 183.744,
+   "en_text": "Adjust your screen so it's at or slightly below eyelevel.",
+   "zh_text": "调整屏幕，让它与视线齐平或略低于视线。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 183.744,
+   "end": 185.54,
+   "en_text": "Make sure all parts of your body,",
+   "zh_text": "确保身体的各个部位，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 185.54,
+   "end": 188.815,
+   "en_text": "like your elbows and wrists, are supported,",
+   "zh_text": "比如手肘和手腕，都有支撑，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 188.815,
+   "end": 191.512,
+   "en_text": "using ergonomic aids if you need to.",
+   "zh_text": "需要的话可以用人体工学辅助工具。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 191.512,
+   "end": 194.009,
+   "en_text": "Try sleeping on your side with your neck supported",
+   "zh_text": "试着侧睡，让脖子有支撑，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 194.009,
+   "end": 196.584,
+   "en_text": "and with a pillow between your legs.",
+   "zh_text": "并在两腿之间夹个枕头。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 196.584,
+   "end": 200.079,
+   "en_text": "Wear shoes with low heels and good arch support,",
+   "zh_text": "穿低跟、足弓支撑好的鞋子，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 200.079,
+   "end": 202.332,
+   "en_text": "and use a headset for phone calls.",
+   "zh_text": "打电话时用耳机。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 202.332,
+   "end": 205.761,
+   "en_text": "It's also not enough to just have good posture.",
+   "zh_text": "光有好的姿势还不够。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 205.761,
+   "end": 210.197,
+   "en_text": "Keeping your muscles and joints moving is extremely important.",
+   "zh_text": "让肌肉和关节保持活动极其重要。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 210.197,
+   "end": 214.44,
+   "en_text": "In fact, being stationary for long periods with good posture",
+   "zh_text": "事实上，长时间保持好姿势不动，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 214.44,
+   "end": 218.773,
+   "en_text": "can be worse than regular movement with bad posture.",
+   "zh_text": "可能比姿势不好但经常活动还要糟糕。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 218.773,
+   "end": 221.084,
+   "en_text": "When you do move, move smartly.",
+   "zh_text": "活动的时候，要聪明地活动。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 221.084,
+   "end": 223.93,
+   "en_text": "Keep anything you're carrying close to your body.",
+   "zh_text": "拿东西时，把它贴近身体。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 223.93,
+   "end": 228.653,
+   "en_text": "Backpacks should be in contact with your back carried symetrically.",
+   "zh_text": "背包要贴着背部，两边对称地背。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 228.653,
+   "end": 232.384,
+   "en_text": "If you sit a lot, get up and move around on occassion,",
+   "zh_text": "如果你经常坐着，偶尔起来走动走动，",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 232.384,
+   "end": 234.559,
+   "en_text": "and be sure to exercise.",
+   "zh_text": "并且一定要锻炼。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 234.559,
+   "end": 238.384,
+   "en_text": "Using your muscles will keep them strong enough to support you effectively,",
+   "zh_text": "用你的肌肉，它们才能保持强壮，有效地支撑你，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 238.384,
+   "end": 243.97,
+   "en_text": "on top of all the other benefits to your joints, bones, brain and heart.",
+   "zh_text": "此外还能给你的关节、骨骼、大脑和心脏带来种种好处。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 243.97,
+   "end": 247.178,
+   "en_text": "And if you're really worried, check with a physical therapist,",
+   "zh_text": "如果你真的很担心，就去找物理治疗师看看，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 247.178,
+   "end": 250.552,
+   "en_text": "because yes, you really should stand up straight.",
+   "zh_text": "因为没错，你真的应该站直了。",
+   "highlights": []
+  }
+ ]
+}

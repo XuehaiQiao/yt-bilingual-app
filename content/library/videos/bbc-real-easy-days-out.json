@@ -1,0 +1,909 @@
+{
+ "id": "bbc-real-easy-days-out",
+ "youtubeId": "S7mfygW40Cs",
+ "title": "Talking about days out 🏞️🌞🧺  Real Easy English",
+ "channel": "BBC Learning English",
+ "duration": 362,
+ "level": "A2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/S7mfygW40Cs/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:27+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.08,
+   "end": 3.88,
+   "en_text": "Hello and welcome to Real Easy English.",
+   "zh_text": "大家好，欢迎来到《真实简单英语》。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 3.88,
+   "end": 4.96,
+   "en_text": "In this podcast,",
+   "zh_text": "在这档播客里，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 4.96,
+   "end": 9.36,
+   "en_text": "we have real conversations in easy English to help you learn.",
+   "zh_text": "我们用简单的英语进行真实对话，帮助大家学习。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 9.36,
+   "end": 10.48,
+   "en_text": "I'm Beth.",
+   "zh_text": "我是Beth。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 10.48,
+   "end": 11.48,
+   "en_text": "And I'm Neil,",
+   "zh_text": "我是Neil，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 11.48,
+   "end": 17.32,
+   "en_text": "and you can find a video version of this podcast on our website, bbclearningenglish.com.",
+   "zh_text": "你可以在我们的网站bbclearningenglish.com上找到这档播客的视频版，",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 17.32,
+   "end": 20.4,
+   "en_text": "where you can also find a free worksheet.",
+   "zh_text": "在那里你还能找到一份免费的学习单。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 26.0,
+   "end": 27.76,
+   "en_text": "How was your weekend, Neil?",
+   "zh_text": "Neil，你周末过得怎么样？",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 27.76,
+   "end": 29.32,
+   "en_text": "My weekend was very good.",
+   "zh_text": "我周末过得非常好。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 29.32,
+   "end": 31.16,
+   "en_text": "I did lots of fun things.",
+   "zh_text": "我做了很多有趣的事。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 31.16,
+   "end": 33.04,
+   "en_text": "Oh, good. What about you?",
+   "zh_text": "哦，不错。你呢？",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 33.04,
+   "end": 37.48,
+   "en_text": "Yeah, I went to a museum that was not that interesting.",
+   "zh_text": "嗯，我去了一家博物馆，不过没那么有意思。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 37.48,
+   "end": 40.48,
+   "en_text": "And I did some other interesting things too.",
+   "zh_text": "我也做了一些其他有意思的事。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 40.48,
+   "end": 43.6,
+   "en_text": "Well, today, Beth, we are talking about days out",
+   "zh_text": "那好，Beth，今天我们要聊的是外出游玩，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 43.6,
+   "end": 47.24,
+   "en_text": "and places that are good to visit for a day trip.",
+   "zh_text": "还有适合一日游的好去处。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 47.24,
+   "end": 50.48,
+   "en_text": "Very nice. Let's get started then.",
+   "zh_text": "很不错。那我们就开始吧。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 50.48,
+   "end": 55.76,
+   "en_text": "So tell us about your boring day, by the sound of it.",
+   "zh_text": "那跟我们说说你那无聊的一天吧，听上去是这样。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 55.76,
+   "end": 58.6,
+   "en_text": "So it was a prison museum",
+   "zh_text": "那是一家监狱博物馆，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 58.6,
+   "end": 61.8,
+   "en_text": "about, like, medieval England.",
+   "zh_text": "讲的是中世纪英格兰之类的。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 61.8,
+   "end": 64.68,
+   "en_text": "So I feel like it could have been a bit more exciting,",
+   "zh_text": "我本来觉得它可能会更有意思一点，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 64.68,
+   "end": 71.28,
+   "en_text": "but instead I was reading a lot about religion and kings and stuff.",
+   "zh_text": "结果我一直在读很多关于宗教、国王之类的东西。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 71.28,
+   "end": 76.72,
+   "en_text": "OK, so you spent your weekend learning about prisoners from the Middle Ages?",
+   "zh_text": "好吧，所以你周末花时间了解了中世纪的囚犯？",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 76.72,
+   "end": 77.8,
+   "en_text": "Yeah.",
+   "zh_text": "对。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 77.8,
+   "end": 78.8,
+   "en_text": "Yeah, OK.",
+   "zh_text": "嗯，好吧。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 78.8,
+   "end": 83.44,
+   "en_text": "I wouldn't recommend it too much, but museums can be a good...",
+   "zh_text": "我不太推荐去，不过博物馆也可以是个不错的……",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 83.44,
+   "end": 84.6,
+   "en_text": "Yeah.",
+   "zh_text": "对。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 84.6,
+   "end": 85.6,
+   "en_text": "...thing.",
+   "zh_text": "……去处。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 85.6,
+   "end": 88.0,
+   "en_text": "What about a day trip that you've enjoyed?",
+   "zh_text": "那你有没有喜欢过的一日游？",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 88.0,
+   "end": 90.12,
+   "en_text": "I used to go on lots of day trips with my kids.",
+   "zh_text": "我以前经常和孩子们一起去一日游。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 90.12,
+   "end": 91.52,
+   "en_text": "&nbsp;Mm, yeah.",
+   "zh_text": "嗯，对。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 91.52,
+   "end": 93.6,
+   "en_text": "So, fun things to do,",
+   "zh_text": "好玩的事情嘛，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 93.6,
+   "end": 96.92,
+   "en_text": "we'd go to the seaside in the summer.",
+   "zh_text": "夏天我们会去海边。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 96.92,
+   "end": 100.4,
+   "en_text": "But they don't really want to hang around with me anymore.",
+   "zh_text": "但他们现在不太愿意跟我待在一起了。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 100.4,
+   "end": 101.96,
+   "en_text": "So. You're not cool.",
+   "zh_text": "所以，你不够酷。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 101.96,
+   "end": 104.76,
+   "en_text": "I'm on my own. Yeah, so",
+   "zh_text": "我就自己一个人了。对，所以",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 104.76,
+   "end": 108.68,
+   "en_text": "I like watching sport.",
+   "zh_text": "我喜欢看体育比赛。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 108.68,
+   "end": 111.76,
+   "en_text": "So I might meet friends and go and watch sport.",
+   "zh_text": "所以我可能会约上朋友去看比赛。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 111.76,
+   "end": 115.6,
+   "en_text": "On Friday, I spent most of the day watching a cricket match.",
+   "zh_text": "周五我大部分时间都在看一场板球比赛。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 115.6,
+   "end": 117.68,
+   "en_text": "Nice. That sounds like a good day out.",
+   "zh_text": "不错。听起来是挺好的一日游。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 117.68,
+   "end": 121.88,
+   "en_text": "Yeah. Well, actually, I did go to a museum, but, I also went",
+   "zh_text": "对。其实我确实去了一家博物馆，不过我也去了",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 121.88,
+   "end": 126.32,
+   "en_text": "to the theatre this weekend and that was a really enjoyable day trip.",
+   "zh_text": "剧院，这个周末去的，那真是一次很愉快的一日游。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 126.32,
+   "end": 128.72,
+   "en_text": "Did you do any sightseeing?",
+   "zh_text": "你们去观光了吗？",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 128.72,
+   "end": 133.88,
+   "en_text": "Well, yeah, we walked past quite a lot of famous sights,",
+   "zh_text": "嗯，去了，我们路过不少著名景点，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 133.88,
+   "end": 135.36,
+   "en_text": "so we went past Big Ben.",
+   "zh_text": "我们路过了大本钟。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 135.36,
+   "end": 138.64,
+   "en_text": "We walked past the London Eye, Trafalgar Square.",
+   "zh_text": "我们路过了伦敦眼、特拉法加广场。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 138.64,
+   "end": 140.6,
+   "en_text": "Yeah, we did a lot of walking.",
+   "zh_text": "对，我们走了很多路。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 140.6,
+   "end": 142.4,
+   "en_text": "I'm quite tired, actually.",
+   "zh_text": "其实我现在挺累的。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 142.4,
+   "end": 145.48,
+   "en_text": "And are you a thrill seeker?",
+   "zh_text": "你是个追求刺激的人吗？",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 145.48,
+   "end": 151.08,
+   "en_text": "So do you like really adventurous day trips?",
+   "zh_text": "你喜欢那种特别有冒险性的一日游吗？",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 151.08,
+   "end": 157.08,
+   "en_text": "Like, do you like parachuting or bungee jumping or any of those things",
+   "zh_text": "比如，你喜欢跳伞、蹦极之类的活动吗？",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 157.08,
+   "end": 158.96,
+   "en_text": "or roller coasters?",
+   "zh_text": "或者过山车？",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 158.96,
+   "end": 160.36,
+   "en_text": "Theme parks?",
+   "zh_text": "主题公园？",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 160.36,
+   "end": 165.04,
+   "en_text": "I would say no, not really.",
+   "zh_text": "我会说不会，不太喜欢。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 165.04,
+   "end": 168.72,
+   "en_text": "I think if I'm on holiday, I'm a bit more adventurous.",
+   "zh_text": "我觉得如果我在度假，我会更爱冒险一点。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 168.72,
+   "end": 174.12,
+   "en_text": "So I've done things like, you know, been in speedboats",
+   "zh_text": "所以我做过一些事，比如，你知道，坐过快艇",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 174.12,
+   "end": 177.44,
+   "en_text": "and that kind of stuff, which I find quite enjoyable.",
+   "zh_text": "还有那类东西，我觉得挺享受的。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 177.44,
+   "end": 179.84,
+   "en_text": "If I'm, if I'm abroad it tends to be.",
+   "zh_text": "如果我在，如果我在国外，那通常就会这样。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 179.84,
+   "end": 183.8,
+   "en_text": "But I don't really like roller coasters and that sort of thing",
+   "zh_text": "但我其实不太喜欢过山车之类的东西",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 183.8,
+   "end": 188.24,
+   "en_text": "because they, they scare me and make me feel a bit sick.",
+   "zh_text": "因为它们让我害怕，还让我有点想吐。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 188.24,
+   "end": 192.28,
+   "en_text": "OK. So I wouldn't go to a theme park for a day out.",
+   "zh_text": "好。所以我不会去主题公园玩一天。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 192.28,
+   "end": 195.12,
+   "en_text": "What about you? Are you a thrill seeker?",
+   "zh_text": "你呢？你是喜欢寻求刺激的人吗？",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 195.12,
+   "end": 200.2,
+   "en_text": "Not anymore. I used to like theme parks when I was younger,",
+   "zh_text": "不再是了。我年轻的时候喜欢主题公园，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 200.2,
+   "end": 202.88,
+   "en_text": "but I don't really like them anymore. OK, Beth.",
+   "zh_text": "但我现在不太喜欢了。好，Beth。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 202.88,
+   "end": 208.16,
+   "en_text": "So is there anywhere that you have always wanted to visit for a day trip,",
+   "zh_text": "那有没有什么地方是你一直想去一日游的，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 208.16,
+   "end": 209.4,
+   "en_text": "but you haven't?",
+   "zh_text": "但还没去过的？",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 209.4,
+   "end": 213.48,
+   "en_text": "There is actually. So, Brighton.",
+   "zh_text": "其实有的。就是Brighton。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 213.48,
+   "end": 215.96,
+   "en_text": "I went to Brighton when I was a child,",
+   "zh_text": "我小时候去过Brighton，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 215.96,
+   "end": 218.84,
+   "en_text": "but I can't remember it at all, to be honest.",
+   "zh_text": "但说实话，我完全不记得了。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 218.84,
+   "end": 222.6,
+   "en_text": "So I'd really like to go there on a day trip because it's not too far.",
+   "zh_text": "所以我真的很想一日游去那儿，因为不太远。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 222.6,
+   "end": 226.4,
+   "en_text": "And I like the beach and I want to have an ice cream.",
+   "zh_text": "而且我喜欢海滩，我想吃个冰淇淋。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 226.4,
+   "end": 227.88,
+   "en_text": "Maybe some fish and chips.",
+   "zh_text": "也许再来点炸鱼薯条。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 227.88,
+   "end": 229.08,
+   "en_text": "I used to live in Brighton.",
+   "zh_text": "我以前住在Brighton。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 229.08,
+   "end": 230.08,
+   "en_text": "Did you?",
+   "zh_text": "真的吗？",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 230.08,
+   "end": 230.76,
+   "en_text": "Yeah.",
+   "zh_text": "是啊。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 230.76,
+   "end": 232.92,
+   "en_text": "You can take me on a day trip and show me around.",
+   "zh_text": "你可以带我去一日游，带我逛逛。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 232.92,
+   "end": 234.6,
+   "en_text": "I definitely think you should visit.",
+   "zh_text": "我绝对觉得你应该去看看。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 234.6,
+   "end": 235.76,
+   "en_text": "How about you, Neil?",
+   "zh_text": "你呢，Neil？",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 235.76,
+   "end": 239.6,
+   "en_text": "Is there anywhere that you've always wanted to go on a day trip?",
+   "zh_text": "有没有什么地方是你一直想去一日游的？",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 239.6,
+   "end": 243.72,
+   "en_text": "Yeah. I really like train travel,",
+   "zh_text": "有。我很喜欢坐火车旅行，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 243.72,
+   "end": 247.64,
+   "en_text": "and London is actually really close to the rest of Europe,",
+   "zh_text": "而且伦敦其实离欧洲其他地方很近，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 247.64,
+   "end": 250.16,
+   "en_text": "but we have the sea in the way.",
+   "zh_text": "但中间隔着海。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 250.16,
+   "end": 255.88,
+   "en_text": "But we have the tunnel, so we can, we can go to Paris, just for the day.",
+   "zh_text": "不过我们有隧道，所以我们可以，我们可以去巴黎，就玩一天。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 255.88,
+   "end": 261.04,
+   "en_text": "And I, it seems like maybe, like it's not long enough",
+   "zh_text": "而我，感觉好像也许，好像时间不够长",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 261.04,
+   "end": 263.88,
+   "en_text": "to just to go somewhere like Paris for a day, but you can do it.",
+   "zh_text": "只去巴黎这样的地方玩一天，但你是可以做到的。",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 263.88,
+   "end": 268.4,
+   "en_text": "And I kind of like that idea of just going from London to Paris",
+   "zh_text": "我还挺喜欢这个想法的，就是从伦敦去巴黎",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 268.4,
+   "end": 270.76,
+   "en_text": "for the day and back on the train.",
+   "zh_text": "玩一天，再坐火车回来。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 270.76,
+   "end": 272.04,
+   "en_text": "Sounds a bit crazy.",
+   "zh_text": "听起来有点疯狂。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 272.04,
+   "end": 274.08,
+   "en_text": "You'd need a really early train.",
+   "zh_text": "你得坐很早的火车。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 274.08,
+   "end": 278.68,
+   "en_text": "Really early train, really late train back and lots of energy.",
+   "zh_text": "很早的火车去，很晚的火车回，还得有很多精力。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 278.68,
+   "end": 280.0,
+   "en_text": "Yeah.",
+   "zh_text": "是啊。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 280.0,
+   "end": 281.88,
+   "en_text": "You wouldn't need to pay for your accommodation.",
+   "zh_text": "你就不用付住宿费了。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 281.88,
+   "end": 282.68,
+   "en_text": "Exactly.",
+   "zh_text": "没错。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 282.68,
+   "end": 286.2,
+   "en_text": "Go up the Eiffel Tower, come back down, go home.",
+   "zh_text": "上埃菲尔铁塔，下来，回家。",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 286.2,
+   "end": 286.9,
+   "en_text": "Perfect.",
+   "zh_text": "完美。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 292.32,
+   "end": 296.44,
+   "en_text": "Let's recap the vocabulary we heard during the conversation.",
+   "zh_text": "我们来回顾一下对话中听到的词汇。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 296.44,
+   "end": 300.76,
+   "en_text": "We had 'day trip', which means visiting a place for just the day.",
+   "zh_text": "我们学了“day trip”，意思就是只去一个地方玩一天。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 300.76,
+   "end": 304.32,
+   "en_text": "We heard 'thrill seeker', which describes someone who takes part",
+   "zh_text": "我们听到了“thrill seeker”，它形容的是参加",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 304.32,
+   "end": 307.16,
+   "en_text": "in risky and exciting activities.",
+   "zh_text": "冒险又刺激的活动的人。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 307.16,
+   "end": 310.48,
+   "en_text": "'Adventurous' means 'unusual and exciting'.",
+   "zh_text": "“Adventurous”的意思是“不寻常又刺激的”。",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 310.48,
+   "end": 315.04,
+   "en_text": "A person can be adventurous, or an experience or a day trip",
+   "zh_text": "一个人可以是爱冒险的，一段经历或者一次一日游",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 315.04,
+   "end": 319.28,
+   "en_text": "can be adventurous, like Neil's trip to Paris.",
+   "zh_text": "也可以是充满冒险的，就像Neil的巴黎之行。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 319.28,
+   "end": 323.28,
+   "en_text": "We used the word 'sightseeing', which describes the activity",
+   "zh_text": "我们用到了“sightseeing”这个词，它描述的是",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 323.28,
+   "end": 328.6,
+   "en_text": "where you walk around looking at famous buildings and monuments.",
+   "zh_text": "四处走走看看著名建筑和纪念碑的活动。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 328.6,
+   "end": 332.56,
+   "en_text": "And that's it for this episode of Real Easy English.",
+   "zh_text": "这期Real Easy English就到这里了。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 332.56,
+   "end": 339.16,
+   "en_text": "You can test what you've learnt with the worksheet on our website, bbclearningenglish.com.",
+   "zh_text": "你可以用我们网站bbclearningenglish.com上的练习表来测试你学到的东西。",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 339.16,
+   "end": 341.96,
+   "en_text": "And we'll be back with more easy conversations soon.",
+   "zh_text": "我们很快就会带着更多轻松的对话回来。",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 341.96,
+   "end": 346.84,
+   "en_text": "And we want to hear from you to tell us what you want to hear us talking about.",
+   "zh_text": "我们想听听你的想法，告诉我们你想听我们聊些什么。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 346.84,
+   "end": 351.8,
+   "en_text": "Send an email to learningenglish@bbc.co.uk",
+   "zh_text": "请发邮件到learningenglish@bbc.co.uk",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 351.8,
+   "end": 353.16,
+   "en_text": "We'd love to hear from you.",
+   "zh_text": "我们很期待收到你的来信。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 353.16,
+   "end": 355.88,
+   "en_text": "Thanks for joining us and see you soon.",
+   "zh_text": "感谢你的收听，我们很快再见。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 355.88,
+   "end": 356.619,
+   "en_text": "Goodbye.",
+   "zh_text": "再见。",
+   "highlights": []
+  }
+ ]
+}

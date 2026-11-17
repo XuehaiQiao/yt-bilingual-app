@@ -1,0 +1,1325 @@
+{
+ "id": "kurzgesagt-trees-weird",
+ "youtubeId": "ZSch_NgZpQs",
+ "title": "Trees Are So Weird",
+ "channel": "Kurzgesagt – In a Nutshell",
+ "duration": 687,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/ZSch_NgZpQs/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:29+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 2.0,
+   "end": 5.36,
+   "en_text": "Every tree you have ever seen is dead.",
+   "zh_text": "你见过的每一棵树，其实都是死的。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 5.36,
+   "end": 10.24,
+   "en_text": "It turns out the alive part of a tree is&nbsp; just a tiny, paper thin strip of cells,",
+   "zh_text": "原来，一棵树活着的部分，只是一小条薄如纸的细胞层，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 10.24,
+   "end": 13.84,
+   "en_text": "trapped between a dead skeleton and dead outsides.",
+   "zh_text": "夹在死掉的骨架和死掉的外层之间。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 13.84,
+   "end": 19.12,
+   "en_text": "Trees are some of the most extreme beings on&nbsp; earth with one of the most unique strategies in",
+   "zh_text": "树木是地球上最极端的生物之一，拥有自然界最独特的生存策略之一——",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 19.12,
+   "end": 25.12,
+   "en_text": "nature – on top of being mostly dead stuff, they&nbsp; forge their body out of thin air, they mercilessly",
+   "zh_text": "除了大部分都是死掉的东西之外，它们还能凭空造出自己的身躯，它们会毫不留情地",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 25.12,
+   "end": 30.88,
+   "en_text": "crush rocks with acid, and they have an internal&nbsp; negative pressure that would kill you instantly.",
+   "zh_text": "用酸腐蚀岩石，而且它们体内有一种负压，能瞬间要了你的命。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 30.88,
+   "end": 33.52,
+   "en_text": "So, how do trees actually work?",
+   "zh_text": "那么，树木到底是怎么运作的呢？",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 33.52,
+   "end": 35.731,
+   "en_text": "Let’s go back…to the beginning.",
+   "zh_text": "让我们回到……最初的时候。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 36.4,
+   "end": 38.341,
+   "en_text": "The Ancient Battle for the Sky",
+   "zh_text": "远古的天空争夺战",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 39.04,
+   "end": 41.2,
+   "en_text": "For over a billion years the ancestors",
+   "zh_text": "在超过十亿年的时间里，植物的祖先",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 41.2,
+   "end": 45.12,
+   "en_text": "of plants only inhabited the sun&nbsp; drenched surfaces of the oceans.",
+   "zh_text": "只生活在阳光充足的海洋表面。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 45.12,
+   "end": 49.04,
+   "en_text": "Their bodies were thin and delicate&nbsp; and absorbed water straight through",
+   "zh_text": "它们的身体又薄又脆弱，直接通过",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 49.04,
+   "end": 52.32,
+   "en_text": "their surfaces, getting their&nbsp; energy through photosynthesis.",
+   "zh_text": "表面吸收水分，靠光合作用获取能量。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 52.32,
+   "end": 56.72,
+   "en_text": "Forging sunlight, carbon&nbsp; dioxide and water into sugar.",
+   "zh_text": "把阳光、二氧化碳和水转化成糖。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 56.72,
+   "end": 63.92,
+   "en_text": "But about 470 million years ago they decided&nbsp; to conquer a hostile alien planet: the land.",
+   "zh_text": "但大约4.7亿年前，它们决定征服一个充满敌意的外星世界：陆地。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 63.92,
+   "end": 68.4,
+   "en_text": "Like green rugs with ambition these&nbsp; plant ancestors began clinging to",
+   "zh_text": "这些植物祖先就像野心勃勃的绿色地毯，开始紧紧贴附在",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 68.4,
+   "end": 70.72,
+   "en_text": "the ground wherever it was wet and damp.",
+   "zh_text": "任何潮湿的地方。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 70.72,
+   "end": 74.96,
+   "en_text": "But now, with solid ground beneath&nbsp; and no ability to float around a new",
+   "zh_text": "但现在，脚下有了坚实的地面，又没法四处漂浮，一个新的",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 74.96,
+   "end": 79.04,
+   "en_text": "dimension became a place of intense warfare: up.",
+   "zh_text": "维度变成了激烈厮杀的战场：向上。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 79.04,
+   "end": 84.32,
+   "en_text": "The higher they grew, the more sun they would&nbsp; get, while starving their competition below.",
+   "zh_text": "它们长得越高，得到的阳光就越多，同时让下面的竞争对手挨饿。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 84.32,
+   "end": 89.52,
+   "en_text": "Height became a deadly weapon.&nbsp; The battle for the sky had begun.",
+   "zh_text": "高度成了一种致命武器。天空争夺战就此打响。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 89.52,
+   "end": 94.08,
+   "en_text": "Until now, plants were built mostly from&nbsp; cellulose, which was great for shape,",
+   "zh_text": "在此之前，植物主要由纤维素构成，这对塑造形状很有利，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 94.08,
+   "end": 97.28,
+   "en_text": "but not for strength, which&nbsp; limited how tall they could grow.",
+   "zh_text": "但对强度没什么帮助，这就限制了它们能长多高。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 97.28,
+   "end": 100.4,
+   "en_text": "Over dozens of millions of&nbsp; years of evolutionary warfare,",
+   "zh_text": "经过数千万年的进化战争，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 100.4,
+   "end": 104.88,
+   "en_text": "a group of plants developed one of&nbsp; life's greatest breakthroughs: lignin.",
+   "zh_text": "有一类植物发展出了生命最伟大的突破之一：木质素。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 104.88,
+   "end": 108.24,
+   "en_text": "Lignin is a macromolecule made&nbsp; of ring-shaped structures.",
+   "zh_text": "木质素是一种由环状结构构成的大分子。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 108.24,
+   "end": 112.32,
+   "en_text": "It is rigid, tough, waterproof,&nbsp; and incredibly hard to break down.",
+   "zh_text": "它坚硬、强韧、防水，而且极难分解。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 112.32,
+   "end": 114.56,
+   "en_text": "Concrete in a world made of jelly.",
+   "zh_text": "就像果冻世界里的混凝土。",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 114.56,
+   "end": 119.44,
+   "en_text": "It filled gaps between cellulose threads,&nbsp; stiffening and locking everything into place.",
+   "zh_text": "它填满纤维素丝之间的空隙，把一切加固并锁定到位。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 119.44,
+   "end": 124.08,
+   "en_text": "Lignin gave plants the strength to grow&nbsp; taller and claim the sun for themselves.",
+   "zh_text": "木质素赋予了植物长高的力量，让它们把阳光据为己有。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 124.08,
+   "end": 126.8,
+   "en_text": "But of course now they were&nbsp; competing with each other,",
+   "zh_text": "但当然，现在它们开始互相竞争了，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 126.8,
+   "end": 129.44,
+   "en_text": "which must have been really annoying for them.",
+   "zh_text": "这对它们来说肯定特别烦人。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 129.44,
+   "end": 133.92,
+   "en_text": "So as more millions of years passed,&nbsp; some plants just went all in on lignin",
+   "zh_text": "所以又过了数百万年，有些植物干脆全力投入木质素",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 133.92,
+   "end": 138.72,
+   "en_text": "and produced more and more of it,&nbsp; becoming stiffer, harder and stronger.",
+   "zh_text": "并制造出越来越多的木质素，变得越来越坚硬、结实、强壮。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 138.72,
+   "end": 142.72,
+   "en_text": "Until one day, around 385 million years ago they",
+   "zh_text": "直到有一天，大约3.85亿年前，它们",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 142.72,
+   "end": 147.36,
+   "en_text": "got the biological equivalent of&nbsp; steel reinforced concrete: wood.",
+   "zh_text": "获得了生物学上相当于钢筋混凝土的东西：木材。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 147.36,
+   "end": 152.0,
+   "en_text": "More on it later, but with this magic&nbsp; material the first trees emerged.",
+   "zh_text": "这个稍后再细说，但凭借这种神奇的材料，最早的树木出现了。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 152.0,
+   "end": 155.68,
+   "en_text": "Almost immediately they became&nbsp; the largest living beings alive,",
+   "zh_text": "几乎立刻，它们就成了当时最大的生物，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 155.68,
+   "end": 160.72,
+   "en_text": "shooting up to 20 meters high into the&nbsp; sky – and they only got bigger from here.",
+   "zh_text": "蹿升到20米高，直插天空——而且从此以后它们只会越来越大。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 160.72,
+   "end": 165.04,
+   "en_text": "But this enormous size created&nbsp; extremely hard problems:",
+   "zh_text": "但这种巨大的体型带来了极其棘手的难题：",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 165.04,
+   "end": 169.92,
+   "en_text": "How do you get water from the ground up to the&nbsp; green parts that do the actual photosynthesis?",
+   "zh_text": "你怎么把水从地面运到上面那些真正进行光合作用的绿色部分？",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 169.92,
+   "end": 174.4,
+   "en_text": "And how do you get the sugar they produce&nbsp; down to the cells that keep you up there?",
+   "zh_text": "又怎么把它们制造的糖分往下运到那些支撑你高高在上的细胞？",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 174.4,
+   "end": 178.48,
+   "en_text": "On the scale of a cell a distance of&nbsp; a few meters is like you’re working",
+   "zh_text": "在细胞的尺度上，几米的距离就像你在",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 178.48,
+   "end": 183.36,
+   "en_text": "in Britain while your lunch box is&nbsp; in Egypt and your drink in New York.",
+   "zh_text": "英国工作，而你的饭盒在埃及，你的饮料在纽约。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 183.36,
+   "end": 185.28,
+   "en_text": "How do you not die?",
+   "zh_text": "你怎么才能不死？",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 185.28,
+   "end": 189.6,
+   "en_text": "So trees came up with one of the&nbsp; most amazing ways any organism grows,",
+   "zh_text": "于是树木想出了任何生物生长方式中最了不起的一种，",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 189.6,
+   "end": 192.543,
+   "en_text": "and became nearly immortal by accident.",
+   "zh_text": "并且意外地变得几乎永生不死。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 193.12,
+   "end": 194.775,
+   "en_text": "A Conveyor Belt of Death",
+   "zh_text": "一条死亡传送带",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 195.52,
+   "end": 199.92,
+   "en_text": "Let us slice an ancient tree in half&nbsp; and get to the heart running it all:&nbsp;&nbsp;",
+   "zh_text": "让我们把一棵古树切成两半，深入它的核心，看看是什么在运转这一切：",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 199.92,
+   "end": 205.68,
+   "en_text": "the cambium, a razor-thin, circular&nbsp; zone, just a few stem cells wide.",
+   "zh_text": "形成层，一个薄如刀片的环状区域，只有几个干细胞那么宽。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 205.68,
+   "end": 210.64,
+   "en_text": "These stem cells grow inward and outwards,&nbsp; turning into two groups of specialists.",
+   "zh_text": "这些干细胞向内和向外生长，变成两组专职细胞。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 210.64,
+   "end": 214.56,
+   "en_text": "The inward specialists are on a&nbsp; conveyor belt of death, the xylem.",
+   "zh_text": "向内的专职细胞处在一条死亡传送带上，那就是木质部。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 214.56,
+   "end": 217.6,
+   "en_text": "With each new division it is&nbsp; pushing the cambium outwards,",
+   "zh_text": "每分裂一次，它就把形成层往外推，",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 217.6,
+   "end": 220.08,
+   "en_text": "making the tree thicker the older it gets.",
+   "zh_text": "让树越老越粗。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 220.08,
+   "end": 224.64,
+   "en_text": "As the xylem cells mature their&nbsp; lignin production goes into overdrive,",
+   "zh_text": "随着木质部细胞成熟，它们的木质素生产进入超速状态，",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 224.64,
+   "end": 229.12,
+   "en_text": "and they become hard and stuffy, like&nbsp; a muscle slowly transforming into bone.",
+   "zh_text": "变得又硬又密实，就像一块肌肉慢慢变成骨头。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 229.12,
+   "end": 233.52,
+   "en_text": "They begin to hollow themselves out, shedding&nbsp; everything that once made them alive.",
+   "zh_text": "它们开始把自己掏空，褪去一切曾经让它们活着的东西。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 233.52,
+   "end": 234.88,
+   "en_text": "And then they die.",
+   "zh_text": "然后它们就死了。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 234.88,
+   "end": 238.88,
+   "en_text": "What’s left is a corpse, a hard, empty tube.",
+   "zh_text": "剩下的是尸体，一根坚硬、空心的管子。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 238.88,
+   "end": 243.52,
+   "en_text": "As the tree grows year after year, new&nbsp; corpses are layered on old corpses,",
+   "zh_text": "随着树木年复一年地生长，新的尸体一层层叠在旧尸体上，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 243.52,
+   "end": 246.16,
+   "en_text": "forming rings of hardened, dead tissue.",
+   "zh_text": "形成一圈圈硬化、死亡的组织。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 246.16,
+   "end": 249.6,
+   "en_text": "A graveyard of trillions of plant bones.",
+   "zh_text": "一座埋葬着数万亿植物骨头的墓地。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 249.6,
+   "end": 251.6,
+   "en_text": "This is what we call wood.",
+   "zh_text": "这就是我们所说的木材。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 251.6,
+   "end": 257.52,
+   "en_text": "Stacked together they form a giant network of&nbsp; pipes that stretches the whole length of the tree.",
+   "zh_text": "它们层层叠叠地连在一起，构成一个贯穿整棵树的大型管道网络。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 257.52,
+   "end": 260.16,
+   "en_text": "This network uses the chemical properties of water",
+   "zh_text": "这个网络利用水的化学特性",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 260.16,
+   "end": 264.08,
+   "en_text": "and a few other tricks to move&nbsp; it with incredible efficiency.",
+   "zh_text": "再加上一些其他窍门，以惊人的效率把水往上运。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 264.08,
+   "end": 268.96,
+   "en_text": "Water molecules are, for a lack of a&nbsp; better word, sticky, like tiny magnets,",
+   "zh_text": "水分子怎么说呢，很黏，就像小磁铁一样，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 268.96,
+   "end": 271.52,
+   "en_text": "and naturally cling tightly to each other.",
+   "zh_text": "天然就会紧紧地吸附在一起。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 271.52,
+   "end": 275.6,
+   "en_text": "When one moves, it pulls the next&nbsp; along with it, like pulling on a rope.",
+   "zh_text": "一个分子移动时，会拉着下一个一起走，就像拉绳子一样。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 275.6,
+   "end": 281.92,
+   "en_text": "In trees this rope starts in the roots and ends in&nbsp; the leaves that bathe in the warmth from the sun.",
+   "zh_text": "在树里，这根绳子从根部开始，一直延伸到沐浴着阳光温暖的叶子里。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 281.92,
+   "end": 285.12,
+   "en_text": "Here the heat from the sun evaporates 95% of",
+   "zh_text": "在这里，太阳的热量把95%的水蒸发掉，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 285.12,
+   "end": 288.88,
+   "en_text": "the water that got sucked into the&nbsp; roots, from billions of tiny pores,",
+   "zh_text": "这些水是被吸进根部的，从数十亿个微小的气孔中蒸发出去，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 288.88,
+   "end": 293.68,
+   "en_text": "releasing a constant invisible mist of water&nbsp; molecules around the crown of the tree.",
+   "zh_text": "在树冠周围不断释放出看不见的水分子雾气。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 293.68,
+   "end": 299.12,
+   "en_text": "This process, called transpiration in plants,&nbsp; creates tension on the rope of water molecules,",
+   "zh_text": "这个过程在植物中叫作蒸腾作用，它会在水分子组成的绳子上产生拉力，",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 299.12,
+   "end": 304.56,
+   "en_text": "stretching and lifting the entire column upwards,&nbsp; all the way from the roots to the leaves.",
+   "zh_text": "把整根水柱往上拉、往上提，一路从根部送到叶子。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 304.56,
+   "end": 309.76,
+   "en_text": "This pull is so insanely strong that&nbsp; it can lift water over 100 meters,",
+   "zh_text": "这股拉力强得离谱，能把水提升到100多米高，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 309.76,
+   "end": 312.96,
+   "en_text": "which requires sucking forces&nbsp; equivalent to the pressure of",
+   "zh_text": "这需要的吸力相当于",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 312.96,
+   "end": 318.8,
+   "en_text": "dozens of atmospheres – as much as the crushing&nbsp; pressure hundreds of meters deep in the ocean.",
+   "zh_text": "几十个大气压——跟海洋深处几百米处的巨大压力差不多。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 318.8,
+   "end": 322.4,
+   "en_text": "Nothing humans have ever built&nbsp; comes even close to this power.",
+   "zh_text": "人类造过的任何东西都远远比不上这种力量。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 322.4,
+   "end": 326.16,
+   "en_text": "Even our best machines can’t pull&nbsp; water higher than about 10 meters,",
+   "zh_text": "就连我们最好的机器，也只能把水抽到大约10米高，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 326.16,
+   "end": 330.4,
+   "en_text": "because the negative pressure required&nbsp; to pull hard enough makes it boil.",
+   "zh_text": "因为要抽得够用力所需的负压会让水沸腾。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 330.4,
+   "end": 335.6,
+   "en_text": "But the water pipes of trees are so tiny&nbsp; and narrow, almost perfectly airtight that",
+   "zh_text": "但树的水管又细又窄，几乎完全密封，所以",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 335.6,
+   "end": 341.84,
+   "en_text": "despite the insane suction pressure inside a&nbsp; tree, water stays liquid and reaches the top.",
+   "zh_text": "尽管树内部的吸力大得惊人，水依然保持液态，一路到达顶端。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 341.84,
+   "end": 346.32,
+   "en_text": "As the tree ages old xylem cells&nbsp; eventually stop working and fill",
+   "zh_text": "随着树变老，老的木质部细胞最终会停止工作，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 346.32,
+   "end": 349.44,
+   "en_text": "up with resins and other protective substances.",
+   "zh_text": "并被树脂和其他保护性物质填满。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 349.44,
+   "end": 352.56,
+   "en_text": "Slowly they turn into heartwood, a dense,",
+   "zh_text": "它们慢慢变成心材，一个致密、",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 352.56,
+   "end": 357.2,
+   "en_text": "chemically fortified core that&nbsp; is extremely resistant to decay.",
+   "zh_text": "经过化学加固的核心，极其耐腐。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 357.2,
+   "end": 360.08,
+   "en_text": "The core of a mighty tree.",
+   "zh_text": "一棵参天大树的芯。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 360.08,
+   "end": 362.88,
+   "en_text": "But water is only one half of the story.",
+   "zh_text": "但水只是故事的一半。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 362.88,
+   "end": 367.68,
+   "en_text": "The sugar produced in the sky needs to be&nbsp; transported to nourish cells down below.",
+   "zh_text": "在天空（叶子）中产生的糖分需要被运送下去，滋养下面的细胞。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 367.68,
+   "end": 370.56,
+   "en_text": "And cells from the roots to&nbsp; the leaves need to coordinate",
+   "zh_text": "而从根到叶的细胞需要相互协调，",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 370.56,
+   "end": 373.84,
+   "en_text": "and exchange information about damage and growth.",
+   "zh_text": "交换关于损伤和生长的信息。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 373.84,
+   "end": 378.49,
+   "en_text": "This is the job of the cambium stem&nbsp; cells that grow outwards: the phloem.",
+   "zh_text": "这是向外生长的形成层干细胞的工作：韧皮部。",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 379.28,
+   "end": 381.628,
+   "en_text": "The Tiny Living Part of the Tree",
+   "zh_text": "树中微小却活着的部分",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 382.175,
+   "end": 385.44,
+   "en_text": "As the Cells of the phloem&nbsp; grow outwards they separate",
+   "zh_text": "随着韧皮部的细胞向外生长，它们分离开来",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 385.44,
+   "end": 389.12,
+   "en_text": "into three teams and make a brutal compromise.",
+   "zh_text": "分成三组，并达成一个残酷的妥协。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 389.12,
+   "end": 395.12,
+   "en_text": "The first group are Sieve cells and their grim&nbsp; fate is to become a living transport system.",
+   "zh_text": "第一组是筛胞，它们残酷的命运就是成为一套活着的运输系统。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 395.12,
+   "end": 398.08,
+   "en_text": "Although “living” is not exactly right.",
+   "zh_text": "不过说“活着”其实不太准确。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 398.08,
+   "end": 401.12,
+   "en_text": "As they mature they start to destroy themselves,",
+   "zh_text": "随着它们成熟，它们开始摧毁自己，",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 401.12,
+   "end": 406.16,
+   "en_text": "digest their organelles and even their&nbsp; nuclei that houses their genetic code.",
+   "zh_text": "消化掉自己的细胞器，甚至消化掉装着遗传密码的细胞核。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 406.16,
+   "end": 408.64,
+   "en_text": "At the same time they hollow themselves out,",
+   "zh_text": "与此同时，它们把自己掏空，",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 408.64,
+   "end": 411.68,
+   "en_text": "connecting to the sieve&nbsp; cells above and below them.",
+   "zh_text": "与上下方的筛胞连接起来。",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 411.68,
+   "end": 415.12,
+   "en_text": "This goes on until they are a&nbsp; sad shadow of living beings.",
+   "zh_text": "这一过程一直持续，直到它们沦为生命体可悲的影子。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 415.12,
+   "end": 420.8,
+   "en_text": "A drooling, living tool without a brain&nbsp; or arms, unable to support themselves.",
+   "zh_text": "一个流着口水的活工具，没有大脑也没有手臂，无法养活自己。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 420.8,
+   "end": 425.52,
+   "en_text": "Only the second group, their&nbsp; companion cells, keeps them alive.",
+   "zh_text": "只有第二组，也就是它们的伴胞，让它们活下去。",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 425.52,
+   "end": 430.56,
+   "en_text": "They connect with the crippled Sieve cells&nbsp; via tiny channels and start maintaining them.",
+   "zh_text": "伴胞通过微小的通道与这些残缺的筛胞相连，开始维护它们，",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 430.56,
+   "end": 434.24,
+   "en_text": "Sending over energy, instructions&nbsp; or repairing them if needed.",
+   "zh_text": "输送能量、指令，必要时还帮它们修复。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 434.24,
+   "end": 439.04,
+   "en_text": "Running along the entire tree, these&nbsp; two teams form a tiny and very thin",
+   "zh_text": "这两组细胞贯穿整棵树，形成一层微小而极薄的",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 439.04,
+   "end": 445.04,
+   "en_text": "layer of living sugar pipelines and signal&nbsp; cables that stretch throughout the entire body.",
+   "zh_text": "活着的糖分管道和信号电缆，延伸至整个树身。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 445.04,
+   "end": 449.12,
+   "en_text": "Providing food and information&nbsp; wherever it is needed in the tree.",
+   "zh_text": "在树中任何需要的地方提供食物和信息。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 449.12,
+   "end": 451.92,
+   "en_text": "The third team are Parenchyma cells, the silent",
+   "zh_text": "第三组是薄壁细胞，它们是树中沉默的",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 451.92,
+   "end": 455.76,
+   "en_text": "workers of the tree that are carrying&nbsp; out essential labor in the background.",
+   "zh_text": "工人，在幕后承担着必不可少的工作。",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 455.76,
+   "end": 458.48,
+   "en_text": "Some are like mini pantries that store nutrients,",
+   "zh_text": "有些像小储藏室，储存养分、",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 458.48,
+   "end": 463.76,
+   "en_text": "sugars or water that the tree uses to survive&nbsp; the winter, when it is unable to produce food.",
+   "zh_text": "糖分或水分，供树在冬天无法制造食物时维持生存。",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 463.76,
+   "end": 467.52,
+   "en_text": "Others are like mini healers that can&nbsp; repair damage, while some go onto the",
+   "zh_text": "有些像小医生，能修复损伤，还有一些则转入",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 467.52,
+   "end": 472.56,
+   "en_text": "offensive and create toxins and anti&nbsp; fungal bio weapons to kill intruders.",
+   "zh_text": "攻势，制造毒素和抗真菌生物武器来杀死入侵者。",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 472.56,
+   "end": 476.08,
+   "en_text": "On top of the phloem sits&nbsp; another layer of stem cells.",
+   "zh_text": "在韧皮部之上还有另一层干细胞。",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 476.08,
+   "end": 480.32,
+   "en_text": "They are producing a second conveyor&nbsp; belt of death, moving outside.",
+   "zh_text": "它们制造出第二条死亡传送带，向外延伸。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 480.32,
+   "end": 485.12,
+   "en_text": "Special cells grow from this layer and as they&nbsp; mature, just like the xylem cells in the center,",
+   "zh_text": "特殊的细胞从这一层长出来，当它们成熟时，就像中心的木质部细胞一样，",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 485.12,
+   "end": 490.64,
+   "en_text": "they kill themselves for the team,&nbsp; turning into a hard guard wall – the bark.",
+   "zh_text": "它们为团队牺牲自己，变成一堵坚硬的防护墙——树皮。",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 490.64,
+   "end": 497.2,
+   "en_text": "Just like your skin, it protects the tiny living&nbsp; layer from damage, parasites and invaders.",
+   "zh_text": "就像你的皮肤一样，它保护那层微小的活细胞免受损伤、寄生虫和入侵者的侵害。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 497.2,
+   "end": 499.6,
+   "en_text": "So what is a tree?",
+   "zh_text": "那么，树到底是什么？",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 499.6,
+   "end": 504.16,
+   "en_text": "The living part of the stem is really&nbsp; just this extremely thin and tiny layer,",
+   "zh_text": "茎的活体部分其实只是这极薄极小的一层，",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 504.16,
+   "end": 508.08,
+   "en_text": "a few millimeters thick, sitting on&nbsp; a thick mountain of cell corpses,",
+   "zh_text": "只有几毫米厚，坐落在厚厚一堆细胞尸体之上，",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 508.08,
+   "end": 511.04,
+   "en_text": "surrounded by another layer of cell corpses.",
+   "zh_text": "外面又被另一层细胞尸体包围着。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 511.04,
+   "end": 515.28,
+   "en_text": "The vast majority of the&nbsp; biomass of a tree is dead.",
+   "zh_text": "一棵树绝大部分的生物量都是死的。",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 515.28,
+   "end": 518.96,
+   "en_text": "This is also why you really should not&nbsp; damage the bark of trees because while",
+   "zh_text": "这也是为什么你真的不该去损伤树皮，因为虽然",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 518.96,
+   "end": 524.48,
+   "en_text": "it seems you are only doing a little damage, you&nbsp; are actually killing the living part of the tree.",
+   "zh_text": "看起来你只是造成了一点小损伤，实际上你是在杀死树的活体部分。",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 524.48,
+   "end": 529.04,
+   "en_text": "But unless a tree is stopped by droughts,&nbsp; diseases, storms or a human axe,",
+   "zh_text": "但除非一棵树被干旱、疾病、风暴或人类的斧头终结，",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 529.04,
+   "end": 534.24,
+   "en_text": "this system of being mostly dead kind&nbsp; of makes trees potentially immortal.",
+   "zh_text": "这种大部分都是死的构造，反倒让树有可能长生不老。",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 534.24,
+   "end": 538.96,
+   "en_text": "They don’t age like we do, in principle&nbsp; they could grow this way nearly forever.",
+   "zh_text": "它们不像我们那样衰老，原则上它们可以这样几乎永远生长下去。",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 538.96,
+   "end": 541.52,
+   "en_text": "Which is why we still have trees&nbsp; around that were born when the",
+   "zh_text": "所以我们身边至今还有那些在",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 541.52,
+   "end": 546.08,
+   "en_text": "Egyptians started building their&nbsp; first pyramid, 5000 years ago.",
+   "zh_text": "埃及人开始建造第一座金字塔时、也就是5000年前出生的树。",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 546.08,
+   "end": 549.68,
+   "en_text": "Really what kills a tree is the world around it.",
+   "zh_text": "真正杀死一棵树的，其实是它周围的世界。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 549.68,
+   "end": 555.76,
+   "en_text": "Trees are not a real biological category but one&nbsp; of the most successful ideas life has ever had,",
+   "zh_text": "树并不是一个真正的生物学分类，而是生命有过的最成功的点子之一，",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 555.76,
+   "end": 558.56,
+   "en_text": "and many different species developed on their own.",
+   "zh_text": "许多不同的物种各自独立演化出了这种形态。",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 558.56,
+   "end": 562.96,
+   "en_text": "These plants won the battle for the sky,&nbsp; solved every challenge that had kept",
+   "zh_text": "这些植物赢得了争夺天空的战斗，解决了所有曾让",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 562.96,
+   "end": 568.16,
+   "en_text": "plants small and fragile and they took&nbsp; over the planet in a few million years.",
+   "zh_text": "植物矮小脆弱的难题，并在几百万年里占领了整个星球。",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 568.16,
+   "end": 573.04,
+   "en_text": "Even today three trillion of&nbsp; them cast their majestic shadows.",
+   "zh_text": "即使在今天，也有三万亿棵树投下它们雄伟的影子。",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 573.04,
+   "end": 576.88,
+   "en_text": "But we’ve barely covered half of it:&nbsp; on top and below there are the crown",
+   "zh_text": "但我们才只讲了一半：上面和下面还有树冠",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 576.88,
+   "end": 580.56,
+   "en_text": "and the root system – one building&nbsp; the tree from air, another mining",
+   "zh_text": "和根系——一个用空气建造树身，另一个用酸",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 580.56,
+   "end": 586.08,
+   "en_text": "minerals with acid and involved in complex&nbsp; communications with fungi and other trees.",
+   "zh_text": "开采矿物质，还参与和真菌及其他树木的复杂交流。",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 586.08,
+   "end": 592.202,
+   "en_text": "There’s so much more to talk about, so we’re&nbsp; already working on the next part - stay tuned!",
+   "zh_text": "还有太多可讲的，所以我们已经在做下一部分了——敬请期待！",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 593.04,
+   "end": 596.96,
+   "en_text": "Trees are truly incredible – but many&nbsp; of our most beautiful forests are",
+   "zh_text": "树真的不可思议——但我们许多最美的森林正在",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 596.96,
+   "end": 600.8,
+   "en_text": "disappearing fast and we’re running&nbsp; out of time to protect what’s left.",
+   "zh_text": "迅速消失，我们保护仅存森林的时间不多了。",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 600.8,
+   "end": 603.84,
+   "en_text": "That’s why we have partnered up with Planet Wild.",
+   "zh_text": "所以我们和Planet Wild合作了。",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 603.84,
+   "end": 607.2,
+   "en_text": "Planet Wild is a community-based&nbsp; nature protection organization",
+   "zh_text": "Planet Wild是一个社区型的自然保护组织，",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 607.2,
+   "end": 610.4,
+   "en_text": "that supports conservation&nbsp; projects around the globe.",
+   "zh_text": "支持全球各地的保护项目。",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 610.4,
+   "end": 616.32,
+   "en_text": "Every month, their community of over 15,000&nbsp; members funds a new mission to restore nature.",
+   "zh_text": "每个月，他们超过15000名成员的社区都会资助一项恢复自然的新任务。",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 616.32,
+   "end": 619.92,
+   "en_text": "We at kurzgesagt really value transparency.",
+   "zh_text": "我们kurzgesagt非常看重透明度。",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 619.92,
+   "end": 623.76,
+   "en_text": "That’s why we love that Planet Wild&nbsp; documents all their missions in video",
+   "zh_text": "这就是我们喜欢 Planet Wild 的原因，他们把所有任务都拍成视频",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 623.76,
+   "end": 628.64,
+   "en_text": "reports right here on YouTube so you can&nbsp; see what your contribution helped achieve.",
+   "zh_text": "报告，就发布在 YouTube 上，让你能看到自己的捐助促成了什么成果。",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 628.64,
+   "end": 632.0,
+   "en_text": "Take their underground forest mission in Tanzania:&nbsp;&nbsp;",
+   "zh_text": "看看他们在坦桑尼亚的地下森林任务：",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 632.0,
+   "end": 636.08,
+   "en_text": "While you think this desert is dead,&nbsp; there’s actually life still here.",
+   "zh_text": "你可能以为这片沙漠毫无生机，其实这里依然有生命存在。",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 636.08,
+   "end": 640.08,
+   "en_text": "Beneath the surface, underground&nbsp; forests are just waiting to grow.",
+   "zh_text": "在地表之下，地下森林正等着生长出来。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 640.08,
+   "end": 643.92,
+   "en_text": "And with an ancient technique,&nbsp; Planet Wild helped make that happen.",
+   "zh_text": "Planet Wild 用一项古老的技术帮助实现了这一点。",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 643.92,
+   "end": 648.4,
+   "en_text": "If you would like to help our planet’s&nbsp; ecosystems, consider joining Planet Wild.",
+   "zh_text": "如果你想帮助地球的生态系统，不妨考虑加入 Planet Wild。",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 648.4,
+   "end": 652.32,
+   "en_text": "You can give any amount that feels&nbsp; right to you – every dollar counts.",
+   "zh_text": "你可以捐任何你觉得合适的金额——每一美元都很重要。",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 652.32,
+   "end": 654.72,
+   "en_text": "The first 100 people to sign up using our code",
+   "zh_text": "前100位用我们的优惠码注册的人",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 654.72,
+   "end": 658.96,
+   "en_text": "KURZGESAGT11 will get their&nbsp; first month paid for by us!",
+   "zh_text": "KURZGESAGT11，首月费用由我们来付！",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 658.96,
+   "end": 662.48,
+   "en_text": "Just scan the QR code or click&nbsp; the link in the description.",
+   "zh_text": "只要扫描二维码，或点击简介里的链接就行。",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 662.48,
+   "end": 666.56,
+   "en_text": "Make a tree friend, and join the&nbsp; Planet Wild community – today.",
+   "zh_text": "交一棵树做朋友，今天就加入 Planet Wild 社区吧。",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 666.56,
+   "end": 671.226,
+   "en_text": "If you want to see them in action first, check&nbsp; out their underground forest mission here.",
+   "zh_text": "如果你想先看看他们的实际行动，可以点这里查看他们的地下森林任务。",
+   "highlights": []
+  }
+ ]
+}

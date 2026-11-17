@@ -1,0 +1,1293 @@
+{
+ "id": "kurzgesagt-largest-star",
+ "youtubeId": "3mnSDifDSxQ",
+ "title": "The Largest Star in the Universe – Size Comparison",
+ "channel": "Kurzgesagt – In a Nutshell",
+ "duration": 719,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/3mnSDifDSxQ/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:24+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 1.16,
+   "end": 3.66,
+   "en_text": "What is the largest star in the universe?",
+   "zh_text": "宇宙中最大的恒星是什么？",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 3.84,
+   "end": 5.22,
+   "en_text": "And why is it that large?",
+   "zh_text": "它为什么那么大？",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 5.5,
+   "end": 7.24,
+   "en_text": "And what are stars anyway?",
+   "zh_text": "恒星到底是什么？",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 8.94,
+   "end": 10.96,
+   "en_text": "Things that would like to be stars",
+   "zh_text": "那些想成为恒星的天体",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 11.74,
+   "end": 13.44,
+   "en_text": "We begin our journey with Earth.",
+   "zh_text": "我们从地球开始这段旅程。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 13.44,
+   "end": 15.22,
+   "en_text": "Not to learn anything,",
+   "zh_text": "不是为了学到什么，",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 15.22,
+   "end": 16.94,
+   "en_text": "Just to get a vague sense of scale.",
+   "zh_text": "只是为了对尺度有个模糊的感觉。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 17.84,
+   "end": 20.28,
+   "en_text": "The smallest things that have some star like properties",
+   "zh_text": "那些具有某些类似恒星特性的最小天体",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 20.28,
+   "end": 23.64,
+   "en_text": "are large gas giants or sub-brown dwarfs.",
+   "zh_text": "是巨大的气态巨行星或亚褐矮星。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 23.64,
+   "end": 25.22,
+   "en_text": "Like Jupiter,",
+   "zh_text": "比如木星，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 25.26,
+   "end": 27.56,
+   "en_text": "the most massive planet in the solar system.",
+   "zh_text": "太阳系中质量最大的行星。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 27.56,
+   "end": 32.14,
+   "en_text": "11 times larger and 317 times more massive than Earth,",
+   "zh_text": "体积是地球的11倍，质量是地球的317倍，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 32.14,
+   "end": 35.14,
+   "en_text": "and more or less made of the same stuff as our sun.",
+   "zh_text": "而且构成它的物质跟我们太阳的差不多。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 35.14,
+   "end": 37.28,
+   "en_text": "Just much, much less of it.",
+   "zh_text": "只是量少得多得多。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 37.76,
+   "end": 41.64,
+   "en_text": "The transition toward stars begins with been dwarfs,",
+   "zh_text": "向恒星的过渡始于褐矮星，",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 41.68,
+   "end": 45.3,
+   "en_text": "failed stars that are a huge disappointment to their mums.",
+   "zh_text": "这些失败的恒星让它们的妈妈大失所望。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 45.3,
+   "end": 49.52,
+   "en_text": "They have between 13 and 90 times the mass of Jupiter.",
+   "zh_text": "它们的质量是木星的13到90倍。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 49.52,
+   "end": 53.38,
+   "en_text": "So even if we took 90 Jupiters, and threw them at each other,",
+   "zh_text": "所以即使我们拿90个木星，把它们互相扔在一起，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 53.38,
+   "end": 56.94,
+   "en_text": "although fun to watch, it wouldn't be enough to create a star.",
+   "zh_text": "虽然看着挺好玩，但也不足以创造出一颗恒星。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 57.92,
+   "end": 62.66,
+   "en_text": "Interestingly, adding lots of mass to a brown dwarf doesn't make it much bigger,",
+   "zh_text": "有趣的是，给褐矮星增加大量质量并不会让它大多少，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 62.66,
+   "end": 64.74,
+   "en_text": "just it's insides denser.",
+   "zh_text": "只会让它的内部更致密。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 65.62,
+   "end": 71.36,
+   "en_text": "This increases the pressure in the core enough, to make certain nuclear reactions happen slowly,",
+   "zh_text": "这会让核心的压力增大到足以让某些核反应缓慢发生，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 71.36,
+   "end": 73.16,
+   "en_text": "and the object glow a little.",
+   "zh_text": "并让这个天体微微发光。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 73.9,
+   "end": 76.82,
+   "en_text": "So brown dwarfs are a sort of glowy gas giant",
+   "zh_text": "所以褐矮星算是一种会发光的气态巨行星，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 76.82,
+   "end": 79.76,
+   "en_text": "that don't fit into any category very well.",
+   "zh_text": "很难归入任何一个类别。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 80.36,
+   "end": 85.24,
+   "en_text": "But we want to talk about stars not failed wannabe stars, so let's move on.",
+   "zh_text": "但我们想聊的是恒星，不是失败的准恒星，所以继续往下看吧。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 86.34,
+   "end": 88.1,
+   "en_text": "Main sequence stars",
+   "zh_text": "主序星",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 88.96,
+   "end": 92.48,
+   "en_text": "Once large gas balls pass a certain mass threshold,",
+   "zh_text": "一旦巨大的气体球超过某个质量阈值，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 92.48,
+   "end": 95.66,
+   "en_text": "their core become hot and sense enough to ignite.",
+   "zh_text": "它们的核心就会变得足够热、足够致密，从而被点燃。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 96.5,
+   "end": 102.38,
+   "en_text": "Hydrogen is fuss to helium in their cores, releasing tremendous amounts of energy.",
+   "zh_text": "核心中的氢聚变成氦，释放出巨大的能量。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 102.38,
+   "end": 106.04,
+   "en_text": "Stars that do that, are called main sequence stars.",
+   "zh_text": "这样做的恒星被称为主序星。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 106.04,
+   "end": 112.02,
+   "en_text": "The more massive a main sequence star is, the hotter and brighter it burns, and the shorter its life is.",
+   "zh_text": "主序星的质量越大，燃烧得就越热、越亮，寿命也越短。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 112.82,
+   "end": 116.68,
+   "en_text": "Once the hydrogen burning phase is over, stars grow,",
+   "zh_text": "一旦氢燃烧阶段结束，恒星就会膨胀，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 116.68,
+   "end": 120.64,
+   "en_text": "Up to hundreds of thousand of times their original size.",
+   "zh_text": "最多能膨胀到原来体积的几十万倍。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 121.1,
+   "end": 125.32,
+   "en_text": "But these giant phases only last for a fraction of their lifespan.",
+   "zh_text": "但这些巨星阶段只占它们寿命的一小部分。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 125.96,
+   "end": 130.72,
+   "en_text": "So we'll be comparing stars at drastically different stages in their lives.",
+   "zh_text": "所以我们要比较的恒星，处于它们生命中截然不同的阶段。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 130.72,
+   "end": 132.88,
+   "en_text": "This doesn't make them less impressive,",
+   "zh_text": "这并不会让它们逊色，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 132.88,
+   "end": 137.72,
+   "en_text": "But maybe it's good to keep in mind that we'll be comparing babies to adults.",
+   "zh_text": "但也许最好记住，我们是在拿婴儿和成年人作比较。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 138.24,
+   "end": 139.62,
+   "en_text": "Now, back to the beginning.",
+   "zh_text": "现在，回到最开始。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 140.24,
+   "end": 145.76,
+   "en_text": "The smallest real star, are red dwarfs, about 100 times the mass of Jupiter,",
+   "zh_text": "最小的真正恒星是红矮星，质量约为木星的100倍，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 145.76,
+   "end": 149.16,
+   "en_text": "Barely massive enough to fuse hydrogen to helium.",
+   "zh_text": "勉强有足够的质量把氢聚变成氦。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 149.46,
+   "end": 154.74,
+   "en_text": "Because they're not very massive, they are small, not very hot and shine pretty dimly.",
+   "zh_text": "因为它们质量不大，所以个头小、温度不高，发出的光也相当暗淡。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 155.22,
+   "end": 159.42,
+   "en_text": "They are the only stars in the main sequence that don't grow when they die",
+   "zh_text": "它们是主序星中唯一在死亡时不会膨胀的恒星，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 159.42,
+   "end": 161.42,
+   "en_text": "but sort of... fizz out.",
+   "zh_text": "而是有点……慢慢熄灭。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 162.36,
+   "end": 166.38,
+   "en_text": "Red dwarfs are by far the most abundant type [of stars] in the universe",
+   "zh_text": "红矮星是宇宙中数量最多的一类恒星，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 166.68,
+   "end": 172.16,
+   "en_text": "Because they burn their fuel very slowly, it lasts them up to ten trillion years,",
+   "zh_text": "因为它们燃烧燃料非常缓慢，所以能持续燃烧长达十万亿年，",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 172.16,
+   "end": 175.4,
+   "en_text": "a thousand times the current age of the universe.",
+   "zh_text": "是宇宙当前年龄的一千倍。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 175.72,
+   "end": 180.96,
+   "en_text": "For example, one of the closest stars to Earth is a red dwarf star, Barnard's star.",
+   "zh_text": "比如，离地球最近的恒星之一就是一颗红矮星——巴纳德星。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 180.96,
+   "end": 183.98,
+   "en_text": "shines too dimly to be seen without a telescope",
+   "zh_text": "它发出的光太暗，不用望远镜根本看不见。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 184.0,
+   "end": 187.24,
+   "en_text": "We made a whole video on red dwarfs if you want to learn more.",
+   "zh_text": "如果你想了解更多，我们专门做过一整期关于红矮星的视频。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 187.94,
+   "end": 190.96,
+   "en_text": "The next stage are stars like our sun.",
+   "zh_text": "下一个阶段是像我们太阳这样的恒星。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 190.96,
+   "end": 195.12,
+   "en_text": "To say the sun dominates the solar system is not doing it justice,",
+   "zh_text": "说太阳主宰着太阳系，都还不足以形容它的地位，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 195.12,
+   "end": 199.16,
+   "en_text": "since it makes up 99.6% of all it's mass.",
+   "zh_text": "因为它占了太阳系总质量的99.6%。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 199.9,
+   "end": 206.64,
+   "en_text": "It burns far hotter and brighter than red dwarfs which reduced its lifetime to about 10 billion years.",
+   "zh_text": "它燃烧的温度和亮度都远高于红矮星，这使它的寿命缩短到大约100亿年。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 206.64,
+   "end": 210.04,
+   "en_text": "The sun is 7 times more massive than Barnard's star,",
+   "zh_text": "太阳的质量是巴纳德星的7倍，",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 210.04,
+   "end": 214.84,
+   "en_text": "but that makes it nearly 300 times brighter, with twice it's surface temperature.",
+   "zh_text": "但它的亮度却高出近300倍，表面温度也是后者的两倍。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 216.14,
+   "end": 217.2,
+   "en_text": "Let's go bigger.",
+   "zh_text": "咱们往更大的看。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 217.98,
+   "end": 223.18,
+   "en_text": "Small changes in mass produce enormous changes in a main sequence star's brightness.",
+   "zh_text": "质量的微小变化，会让主序星的亮度发生巨大的变化。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 223.82,
+   "end": 231.28,
+   "en_text": "The brightest star in the night sky, Sirius A, is two solar masses, with a radius 1.7 times that of the sun.",
+   "zh_text": "夜空中最亮的恒星天狼星A，质量是太阳的两倍，半径是太阳的1.7倍。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 231.28,
+   "end": 237.62,
+   "en_text": "But it's surface is nearly 10,000℃, making it shine 25 times brighter.",
+   "zh_text": "但它的表面温度接近10000℃，所以亮度是太阳的25倍。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 238.1,
+   "end": 244.74,
+   "en_text": "Burning that hot reduces it's total lifespan by 4 times, to 2.5 billion years.",
+   "zh_text": "燃烧得这么热，使它的总寿命缩短了4倍，只有25亿年。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 245.18,
+   "end": 252.02,
+   "en_text": "Stars close to ten times the mass of our sun have surface temperatures near 25,000℃.",
+   "zh_text": "质量接近太阳十倍的恒星，表面温度接近25000℃。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 252.52,
+   "end": 259.46,
+   "en_text": "Beta Centauri contains two of these massive stars, each shining with about 20,000 times the power of the sun.",
+   "zh_text": "半人马座β包含两颗这样的大质量恒星，每颗的亮度大约是太阳的两万倍。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 259.84,
+   "end": 264.1,
+   "en_text": "That's a lot of power, coming from something only 13 times larger [than the sun].",
+   "zh_text": "这能量可真不少，而它们的体积只比太阳大13倍。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 264.1,
+   "end": 267.24,
+   "en_text": "But they'll only burn for about 20 million years",
+   "zh_text": "但它们只能燃烧大约2000万年，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 267.24,
+   "end": 273.76,
+   "en_text": "Entire generations of these blue stars die in the time it takes the sun to orbit the Galaxy",
+   "zh_text": "太阳绕银河系转一圈的时间里，这些蓝色恒星就已经整整好几代生灭更替了。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 274.68,
+   "end": 276.46,
+   "en_text": "So is this the formula?",
+   "zh_text": "那么规律就是这样吗？",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 276.46,
+   "end": 279.3,
+   "en_text": "The more massive, the larger the star.",
+   "zh_text": "质量越大，恒星就越大。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 279.94,
+   "end": 283.84,
+   "en_text": "The most massive star that we know is R136a1.",
+   "zh_text": "我们知道的质量最大的恒星是R136a1。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 284.36,
+   "end": 289.94,
+   "en_text": "It has 315 solar masses, and is nearly 9 million times brighter than the sun.",
+   "zh_text": "它有315个太阳质量，亮度接近太阳的900万倍。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 290.56,
+   "end": 296.64,
+   "en_text": "And yet, despite its tremendous mass and power, it's barely 30 times the size of the sun.",
+   "zh_text": "然而，尽管它有着巨大的质量和能量，它的体积却只有太阳的30倍左右。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 297.24,
+   "end": 302.12,
+   "en_text": "The star is so extreme and barely held together by gravity that it loses",
+   "zh_text": "这颗恒星极端到几乎无法靠引力维系自身，以至于它会流失",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 302.12,
+   "end": 306.76,
+   "en_text": "321 thousand billion tonnes of material through its stellar wind.",
+   "zh_text": "321万亿吨的物质，通过它的恒星风。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 307.1,
+   "end": 308.76,
+   "en_text": "Every single second.",
+   "zh_text": "每一秒都如此。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 309.36,
+   "end": 315.26,
+   "en_text": "Stars of this sort are extremely rare because they break the rules of star formation a tiny bit.",
+   "zh_text": "这类恒星极其罕见，因为它们稍微打破了恒星形成的规律。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 315.36,
+   "end": 320.32,
+   "en_text": "When supermassive stars are born, they burn extremely hot and bright,",
+   "zh_text": "当超大质量恒星诞生时，它们燃烧得极其炽热明亮，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 320.32,
+   "end": 324.26,
+   "en_text": "and this blows away any extra gas that could make them more massive.",
+   "zh_text": "这会把任何能让它们变得更重的多余气体吹走。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 324.28,
+   "end": 328.3,
+   "en_text": "So the mass limit for such a star is around 150 times the sun",
+   "zh_text": "所以这类恒星的质量上限大约是太阳的150倍。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 328.3,
+   "end": 334.84,
+   "en_text": "Stars like R136a1 are probably formed through the merging of several high mass stars",
+   "zh_text": "像R136a1这样的恒星，很可能是由几颗大质量恒星合并而成的，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 334.84,
+   "end": 341.08,
+   "en_text": "in dense star forming regions, and burn their core hydrogen in only a few million years.",
+   "zh_text": "在密集的恒星形成区里，它们只用几百万年就烧尽核心的氢。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 341.08,
+   "end": 344.32,
+   "en_text": "So this means they are rare and short lived.",
+   "zh_text": "所以这意味着它们既稀有又短命。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 344.78,
+   "end": 348.62,
+   "en_text": "From here, the trick to growing bigger isn't adding more mass,",
+   "zh_text": "到了这一步，变得更大的诀窍并不是增加更多质量，",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 348.62,
+   "end": 352.04,
+   "en_text": "To make the biggest stars, we have to kill them.",
+   "zh_text": "要造出最大的恒星，我们得先杀死它们。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 353.2,
+   "end": 354.44,
+   "en_text": "Red giants",
+   "zh_text": "红巨星",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 355.26,
+   "end": 358.98,
+   "en_text": "When main sequence stars begins to exhaust the hydrogen in their core,",
+   "zh_text": "当主序星开始耗尽核心的氢时，",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 358.98,
+   "end": 362.12,
+   "en_text": "It contracts, making it hotter and denser.",
+   "zh_text": "核心会收缩，变得更热、更致密。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 362.12,
+   "end": 366.96,
+   "en_text": "This leads to hotter do faster fusion, which pushes back against gravity,",
+   "zh_text": "这导致更热、更快的聚变，从而抵抗引力，",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 366.96,
+   "end": 370.42,
+   "en_text": "and makes tee outer layer swell, in a giant phase.",
+   "zh_text": "并使外层膨胀，进入巨星阶段。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 370.86,
+   "end": 374.24,
+   "en_text": "And these stars become truly giant indeed.",
+   "zh_text": "而这些恒星确实变得非常巨大。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 374.82,
+   "end": 379.78,
+   "en_text": "For example Gacrux, only 30% more massive than the sun,",
+   "zh_text": "比如Gacrux，质量只比太阳大30%，",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 379.78,
+   "end": 383.34,
+   "en_text": "It has swollen to about 84 times it's radius.",
+   "zh_text": "它却膨胀到了大约自身半径的84倍。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 383.34,
+   "end": 389.22,
+   "en_text": "Still, when the sun enters the last stage of its life, it will swell and become even bigger.",
+   "zh_text": "不过，当太阳进入生命的最后阶段时，它也会膨胀，变得更大。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 389.44,
+   "end": 392.02,
+   "en_text": "200 times its current radius.",
+   "zh_text": "达到它目前半径的200倍。",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 392.4,
+   "end": 396.42,
+   "en_text": "In this final phase of its life, it will swallow the inner planets.",
+   "zh_text": "在生命的最后阶段，它会吞没内行星。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 397.06,
+   "end": 401.76,
+   "en_text": "And if you think that's impressive, let's finally introduce the largest stars in the universe",
+   "zh_text": "如果你觉得这已经很惊人了，那我们终于要介绍宇宙中最大的恒星了。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 402.28,
+   "end": 403.38,
+   "en_text": "Hypergiants",
+   "zh_text": "超巨星",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 404.18,
+   "end": 408.82,
+   "en_text": "Hypergiants are the giant phase of the most massive stars in the universe.",
+   "zh_text": "超巨星是宇宙中质量最大的恒星所处的巨星阶段。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 409.44,
+   "end": 414.58,
+   "en_text": "They have an enormous surface area that can radiate an insane amount of light.",
+   "zh_text": "它们有着巨大的表面积，能辐射出多得离谱的光。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 415.2,
+   "end": 421.72,
+   "en_text": "Being so large, They're basically blowing themselves apart, as gravity at the surface is too weak",
+   "zh_text": "由于如此巨大，它们基本上是在把自己吹散，因为表面的引力太弱，",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 421.72,
+   "end": 426.32,
+   "en_text": "to hold on to the hot mass which is lifted away in powerful stellar winds.",
+   "zh_text": "无法留住那些被强大的恒星风吹走的热物质。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 426.94,
+   "end": 432.42,
+   "en_text": "Pistol star is 25 solar masses, but 300 times the radius of the sun,",
+   "zh_text": "手枪星有25个太阳质量，但半径是太阳的300倍，",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 432.42,
+   "end": 436.56,
+   "en_text": "a blue hypergiant, aptly named for its energetic bye star light.",
+   "zh_text": "它是一颗蓝色超巨星，这个名字恰如其分地来自它那充满能量的星光。",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 437.08,
+   "end": 443.02,
+   "en_text": "It's hard to say exactly how long pistol star will live, but probably just a few million years.",
+   "zh_text": "很难说手枪星到底能活多久，但大概也就几百万年。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 443.4,
+   "end": 447.16,
+   "en_text": "Even larger than the blue hypergiants, are the yellow hypergiants.",
+   "zh_text": "比蓝超巨星更大的，是黄超巨星。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 447.44,
+   "end": 451.2,
+   "en_text": "The most well studied is Rho Cassiopeiae, a star so bright",
+   "zh_text": "研究得最透彻的是仙后座ρ星，这颗星非常明亮，",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 451.2,
+   "end": 455.52,
+   "en_text": "it can be seen with the naked eye although it's thousand of light years from Earth.",
+   "zh_text": "虽然它距离地球有几千光年，但用肉眼就能看见。",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 456.0,
+   "end": 464.4,
+   "en_text": "At 40 solar masses, this star is about 500 times the radius of the sun and 500,000 times brighter.",
+   "zh_text": "这颗星有40个太阳质量，半径约为太阳的500倍，亮度是太阳的50万倍。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 464.4,
+   "end": 468.78,
+   "en_text": "If the Earth was as close to Rho Cassiopeiae as it is to the sun,",
+   "zh_text": "如果地球和仙后座ρ星的距离，跟地球到太阳的距离一样近，",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 468.84,
+   "end": 472.08,
+   "en_text": "It would be inside it, and you would be very dead.",
+   "zh_text": "那地球就会在它内部，而你早就死透了。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 473.1,
+   "end": 475.74,
+   "en_text": "Yellow hypergiants are very rare though.",
+   "zh_text": "不过黄超巨星非常罕见。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 475.74,
+   "end": 477.16,
+   "en_text": "Only 15 are known.",
+   "zh_text": "目前已知的只有15颗。",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 477.82,
+   "end": 481.72,
+   "en_text": "This means they're likely just a short-lived intermediate state,",
+   "zh_text": "这意味着它们很可能只是一个短暂的中间状态，",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 481.72,
+   "end": 486.0,
+   "en_text": "as a star grows or shrinks between other phases of hypergiantness.",
+   "zh_text": "是恒星在超巨星的不同阶段之间变大或变小时的样子。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 487.06,
+   "end": 491.22,
+   "en_text": "With red hypergiants, we can reach the largest stars known to us,",
+   "zh_text": "说到红超巨星，我们就触及了已知最大的恒星，",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 491.22,
+   "end": 494.04,
+   "en_text": "probably the largest stars even possible.",
+   "zh_text": "可能也是恒星能达到的最大尺寸。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 494.54,
+   "end": 497.76,
+   "en_text": "So who's the winner of this insane contest?",
+   "zh_text": "那么这场疯狂的比拼，谁才是赢家呢？",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 498.62,
+   "end": 500.8,
+   "en_text": "Well, the truth is we don't know.",
+   "zh_text": "其实，我们也不知道。",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 501.96,
+   "end": 508.98,
+   "en_text": "Red hypergiants are extremely bright and far away, which means even tiny uncertainties in our measurements",
+   "zh_text": "红超巨星极其明亮又极其遥远，这意味着哪怕我们的测量只有一点点不确定，",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 508.98,
+   "end": 511.94,
+   "en_text": "can give us a huge margin of error for their size.",
+   "zh_text": "算出来的尺寸误差也会非常大。",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 512.54,
+   "end": 518.58,
+   "en_text": "Worse still, red hypergiants are solar system size behemoths that are blowing themselves apart,",
+   "zh_text": "更糟的是，红超巨星是太阳系级别的庞然大物，还在不断把自己吹散，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 518.58,
+   "end": 520.26,
+   "en_text": "which makes them harder to measure.",
+   "zh_text": "这让它们更难测量。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 520.96,
+   "end": 527.08,
+   "en_text": "As we do more science and our instruments improve, whatever the largest star is change.",
+   "zh_text": "随着我们做更多研究、仪器不断进步，所谓最大的恒星也会变。",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 527.42,
+   "end": 532.92,
+   "en_text": "The star that is currently thought to be among the largest we've found is Stevenson 2-18.",
+   "zh_text": "目前被认为是我们发现的最大恒星之一的，是史蒂文森2-18。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 533.28,
+   "end": 538.0,
+   "en_text": "It was probably born as a main sequence star a few tense of times the mass of the sun",
+   "zh_text": "它刚诞生时可能是一颗主序星，质量是太阳的几十倍，",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 538.0,
+   "end": 540.74,
+   "en_text": "And has likely lost about half its mass by now.",
+   "zh_text": "而到现在大概已经失去了一半的质量。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 541.26,
+   "end": 546.48,
+   "en_text": "While typical red hypergiants are 1500 times the size of the sun,",
+   "zh_text": "典型的红超巨星有太阳的1500倍大，",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 546.48,
+   "end": 553.42,
+   "en_text": "the largest rough estimate places Stevenson 2-18 at 2150 solar radii.",
+   "zh_text": "而粗略估计的最大值，把史蒂文森2-18定在2150个太阳半径。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 553.42,
+   "end": 557.72,
+   "en_text": "and shining with a list half a million times the power of the sun.",
+   "zh_text": "它的亮度大约是太阳的50万倍。",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 558.58,
+   "end": 561.92,
+   "en_text": "By comparison, the sun seems like a grain of dust.",
+   "zh_text": "相比之下，太阳就像一粒尘埃。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 562.66,
+   "end": 566.3,
+   "en_text": "Our brains don't really have a way of grasping this kid of scale.",
+   "zh_text": "我们的大脑其实没办法真正理解这种尺度。",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 566.96,
+   "end": 571.88,
+   "en_text": "Even at light speed, it would take you 8.7 hours to travel around it once.",
+   "zh_text": "就算以光速飞行，绕它一圈也要8.7个小时。",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 571.88,
+   "end": 576.06,
+   "en_text": "The fastest plane on Earth would take about 500 yars.",
+   "zh_text": "地球上最快的飞机大约要飞500年。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 576.68,
+   "end": 580.42,
+   "en_text": "Dropped on the sun, it would fill Saturn's orbit.",
+   "zh_text": "把它放到太阳的位置，它会填满土星的轨道。",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 581.02,
+   "end": 587.96,
+   "en_text": "As it evolves it will probably shed even more mass, and shrink into another, hotter hypergiant phase",
+   "zh_text": "随着它不断演化，它很可能会抛掉更多质量，收缩进入另一个更炽热的特超巨星阶段",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 587.96,
+   "end": 594.24,
+   "en_text": "Accumulate heavy elements in its core before finally exploding in a core collapse supernova,",
+   "zh_text": "在核心中积累重元素，最终以核心坍缩超新星的形式爆炸，",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 594.24,
+   "end": 596.98,
+   "en_text": "giving its gas back to the galaxy.",
+   "zh_text": "把它的气体还给星系。",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 597.36,
+   "end": 602.54,
+   "en_text": "This gas will then go on to form another generation of stars of all sizes,",
+   "zh_text": "这些气体随后会形成新一代各种大小的恒星，",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 602.98,
+   "end": 607.9,
+   "en_text": "starting the cycle of birth and death again, to light up our universe.",
+   "zh_text": "再次开启诞生与死亡的循环，照亮我们的宇宙。",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 608.84,
+   "end": 612.68,
+   "en_text": "Let's make this journey again, but this time, without the talking.",
+   "zh_text": "让我们再走一遍这段旅程，不过这次，不说话。",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 613.26,
+   "end": 615.26,
+   "en_text": "The universe is big.",
+   "zh_text": "宇宙很大。",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 615.26,
+   "end": 617.36,
+   "en_text": "There are many large things in it.",
+   "zh_text": "里面有很多巨大的东西。",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 637.28,
+   "end": 641.12,
+   "en_text": "If you want to play a bit more with size stuff, we have good news.",
+   "zh_text": "如果你想再多玩玩关于大小尺度的话题，我们有个好消息。",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 641.12,
+   "end": 647.82,
+   "en_text": "We've created our first app, Universe in a Nutshell, together with Tim Urban, the bring behind Wait but Why.",
+   "zh_text": "我们和Tim Urban一起做了我们的第一个应用，Universe in a Nutshell，他就是Wait but Why背后的那个人。",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 648.24,
+   "end": 651.32,
+   "en_text": "You can seamlessly travel between the smallest things in existence,",
+   "zh_text": "你可以在现存最小的东西之间无缝穿梭，",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 651.32,
+   "end": 652.6,
+   "en_text": "past the coronavirus,",
+   "zh_text": "经过冠状病毒，",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 652.68,
+   "end": 654.68,
+   "en_text": "human cell, and dinosaurs,",
+   "zh_text": "人体细胞和恐龙，",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 654.74,
+   "end": 657.36,
+   "en_text": "all the way to the largest star and galaxies,",
+   "zh_text": "一路到最大的恒星和星系，",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 657.36,
+   "end": 660.48,
+   "en_text": "and marvel at the whole observable universe.",
+   "zh_text": "惊叹于整个可观测宇宙。",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 660.96,
+   "end": 666.22,
+   "en_text": "You can learn more about each object, or simply enjoy the sheer scale of it all.",
+   "zh_text": "你可以了解每个物体的更多信息，或者单纯享受这一切的宏大尺度。",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 666.22,
+   "end": 673.06,
+   "en_text": "The app is inspired by the scale of the universe website by the Huang twins, that we spent a lot of time with when it came out years ago,",
+   "zh_text": "这个应用的灵感来自黄氏双胞胎做的scale of the universe网站，多年前它刚出来时我们花了很多时间在上面，",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 673.18,
+   "end": 677.78,
+   "en_text": "and felt that it was finally time to create a Wait but Why and Kurzgesagt version.",
+   "zh_text": "觉得终于该做一个Wait but Why和Kurzgesagt的版本了。",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 678.08,
+   "end": 682.32,
+   "en_text": "You can get it on your app store, there are no in-app purchases, and no ads.",
+   "zh_text": "你可以在应用商店里下载，没有应用内购买，也没有广告。",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 682.32,
+   "end": 684.48,
+   "en_text": "All future updates are included.",
+   "zh_text": "未来所有更新都包含在内。",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 684.48,
+   "end": 689.78,
+   "en_text": "And since this is our first app, we'd love to hear your feedback so we can improve it over time.",
+   "zh_text": "因为这是我们的第一个应用，我们很想听听你的反馈，好让我们不断改进它。",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 690.2,
+   "end": 696.84,
+   "en_text": "If this sounds good to you, download the Universe in a Nutshell app now, and leave us a 5 star review if you want to support it.",
+   "zh_text": "如果这听起来不错，现在就下载Universe in a Nutshell应用，如果你想支持它，就给我们留个五星好评。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 697.36,
+   "end": 702.72,
+   "en_text": "Kurzgesagt and all the projects we do are mostly funded by viewers, like you.",
+   "zh_text": "Kurzgesagt和我们做的所有项目，大部分都由像你这样的观众资助。",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 702.72,
+   "end": 706.94,
+   "en_text": "So if you like the app, we'll make more digital things in future.",
+   "zh_text": "所以如果你喜欢这个应用，我们以后会做更多数字产品。",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 707.28,
+   "end": 708.3,
+   "en_text": "Thank you for watching",
+   "zh_text": "感谢观看",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 708.34,
+   "end": 718.54,
+   "en_text": "[Outro music]",
+   "zh_text": "[片尾音乐]",
+   "highlights": []
+  }
+ ]
+}

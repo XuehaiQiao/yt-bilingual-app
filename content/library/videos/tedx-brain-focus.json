@@ -1,0 +1,1909 @@
+{
+ "id": "tedx-brain-focus",
+ "youtubeId": "PBaFURjVrm0",
+ "title": "How to hack your brain for better focus | Sasha Hamdani | TEDxKC",
+ "channel": "TEDx Talks",
+ "duration": 897,
+ "level": "C2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/PBaFURjVrm0/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:49:13+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 12.711,
+   "end": 15.781,
+   "en_text": "In 2020, I had a baby.",
+   "zh_text": "2020年，我生了个孩子。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 16.665,
+   "end": 17.933,
+   "en_text": "Two days later...",
+   "zh_text": "两天后……",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 18.967,
+   "end": 19.968,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 20.636,
+   "end": 22.921,
+   "en_text": "Two days later, COVID shut down the world,",
+   "zh_text": "两天后，新冠疫情让整个世界停摆了，",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 23.171,
+   "end": 27.109,
+   "en_text": "and I was as worried and as grocery-wiping as anyone.",
+   "zh_text": "我和大家一样焦虑，一样会去擦购物袋。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 27.209,
+   "end": 30.596,
+   "en_text": "But truthfully, quarantine worked out pretty well for maternity leave.",
+   "zh_text": "但说实话，隔离对休产假来说还挺不错的。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 30.612,
+   "end": 33.582,
+   "en_text": "I was tethered to a very hungry little boy.",
+   "zh_text": "我被拴在一个特别能吃的小男孩身边。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 33.632,
+   "end": 35.567,
+   "en_text": "Shockingly hungry. He ate all the time.",
+   "zh_text": "饿得惊人。他一直在吃。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 36.285,
+   "end": 40.472,
+   "en_text": "Now, I already had one full time job: seeing patients as a psychiatrist.",
+   "zh_text": "要知道，我本来就有一份全职工作：当精神科医生看病人。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 40.973,
+   "end": 44.059,
+   "en_text": "In that world, I would be hurriedly switching back and forth",
+   "zh_text": "在那个世界里，我得匆匆忙忙地来回切换，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 44.326,
+   "end": 50.582,
+   "en_text": "between medication, therapy, strategy, empathy, phone calls, admin, supervision.",
+   "zh_text": "在开药、治疗、策略、共情、打电话、行政事务、督导之间。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 51.583,
+   "end": 53.452,
+   "en_text": "In my COVID mom life,",
+   "zh_text": "而在我的疫情妈妈生活里，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 53.719,
+   "end": 57.422,
+   "en_text": "I was a human milk farm bound to the couch.",
+   "zh_text": "我就是一台被绑在沙发上的产奶机。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 59.458,
+   "end": 62.778,
+   "en_text": "So how did I pass my time? Thank you so much for asking.",
+   "zh_text": "那我是怎么打发时间的呢？谢谢你问这个问题。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 62.945,
+   "end": 65.03,
+   "en_text": "I watched Love Island.",
+   "zh_text": "我在看《爱情岛》。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 66.832,
+   "end": 70.769,
+   "en_text": "Each season more salacious than the last.",
+   "zh_text": "每一季都比上一季更劲爆。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 72.471,
+   "end": 77.075,
+   "en_text": "And for those of you who aren’t familiar with this UK dating show,",
+   "zh_text": "对于那些不熟悉这档英国相亲节目的人，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 77.376,
+   "end": 79.394,
+   "en_text": "it’s trash.",
+   "zh_text": "它就是垃圾。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 80.662,
+   "end": 84.416,
+   "en_text": "But it will eat up hours of your life",
+   "zh_text": "但它会吞掉你人生中好几个小时，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 84.516,
+   "end": 90.756,
+   "en_text": "because there is backbiting and twists and turns and British slang.",
+   "zh_text": "因为里面有背后捅刀、有反转、还有英国俚语。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 90.889,
+   "end": 93.241,
+   "en_text": "And it’s highly recommended.",
+   "zh_text": "而且强烈推荐。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 95.527,
+   "end": 96.812,
+   "en_text": "I was obsessed.",
+   "zh_text": "我迷上了。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 97.946,
+   "end": 101.383,
+   "en_text": "But then something weird happened.",
+   "zh_text": "但后来发生了件怪事。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 102.684,
+   "end": 106.972,
+   "en_text": "My Hulu stopped working, which is actually not even true.",
+   "zh_text": "我的Hulu用不了了，其实也不是真的用不了。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 107.072,
+   "end": 109.975,
+   "en_text": "The account that I’d been mooching off of reset their password",
+   "zh_text": "是我一直蹭用的那个账号重置了密码，",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 109.975,
+   "end": 110.976,
+   "en_text": "so I couldn’t get in.",
+   "zh_text": "所以我登不进去了。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 113.295,
+   "end": 114.346,
+   "en_text": "Okay.",
+   "zh_text": "好吧。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 115.38,
+   "end": 120.719,
+   "en_text": "And I probably could have gotten my own, but that would have required focus.",
+   "zh_text": "我大概也能自己开一个，但那需要专注。",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 120.852,
+   "end": 122.621,
+   "en_text": "Focus and energy.",
+   "zh_text": "专注和精力。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 124.022,
+   "end": 125.223,
+   "en_text": "So here I was,",
+   "zh_text": "于是我就这样，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 125.257,
+   "end": 130.512,
+   "en_text": "six to eight hours of a day of nursing or pumping",
+   "zh_text": "一天六到八个小时都在喂奶或泵奶，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 131.78,
+   "end": 133.799,
+   "en_text": "with no Love Island.",
+   "zh_text": "却没有《爱情岛》可看。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 136.301,
+   "end": 137.352,
+   "en_text": "Okay.",
+   "zh_text": "好吧。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 138.236,
+   "end": 140.872,
+   "en_text": "I was so addicted to the show",
+   "zh_text": "我对这节目太上瘾了，",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 140.872,
+   "end": 145.093,
+   "en_text": "that I didn’t even know where to start replacing that kind of dopamine hit.",
+   "zh_text": "以至于我根本不知道该从哪儿开始替代那种多巴胺快感。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 146.161,
+   "end": 147.496,
+   "en_text": "So I didn’t.",
+   "zh_text": "所以我干脆没找。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 147.562,
+   "end": 151.55,
+   "en_text": "I just sat there for hours and I didn’t do anything in particular.",
+   "zh_text": "我就那么一坐好几个小时，什么特别的事也不做。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 151.55,
+   "end": 157.406,
+   "en_text": "I just remember being profoundly and existentially bored.",
+   "zh_text": "我只记得自己无聊到了极点，无聊到怀疑人生。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 159.007,
+   "end": 165.731,
+   "en_text": "And that continued for days until something weirder happened.",
+   "zh_text": "这样持续了好几天，直到更奇怪的事发生了。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 166.281,
+   "end": 171.42,
+   "en_text": "My brain, which had been reduced to absolute oatmeal throughout this time,",
+   "zh_text": "我的大脑，这段时间里已经退化成一团浆糊，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 171.72,
+   "end": 173.021,
+   "en_text": "seemed to reset.",
+   "zh_text": "似乎重启了。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 173.422,
+   "end": 176.591,
+   "en_text": "I started thinking about creative ways to spend my time.",
+   "zh_text": "我开始琢磨怎么有创意地打发时间。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 176.942,
+   "end": 181.146,
+   "en_text": "I started brainstorming how to get more people",
+   "zh_text": "我开始头脑风暴，想办法让更多人",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 181.179,
+   "end": 185.117,
+   "en_text": "better access to good, sound information on mental health care.",
+   "zh_text": "更容易获得可靠、正确的心理健康护理信息。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 185.634,
+   "end": 187.953,
+   "en_text": "I started to research, imagine,",
+   "zh_text": "我开始做研究、展开想象，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 188.153,
+   "end": 190.689,
+   "en_text": "then create educational content around that.",
+   "zh_text": "然后围绕这些制作教育内容。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 191.189,
+   "end": 192.858,
+   "en_text": "I put some of those videos online",
+   "zh_text": "我把其中一些视频发到了网上，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 192.874,
+   "end": 196.228,
+   "en_text": "and before I knew it, I had over a million followers across platforms.",
+   "zh_text": "不知不觉间，我在各个平台上就有了超过一百万的粉丝。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 196.928,
+   "end": 200.615,
+   "en_text": "Because of those videos, I was offered a book deal.",
+   "zh_text": "因为那些视频，我拿到了一份出书合同。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 201.149,
+   "end": 203.685,
+   "en_text": "I was able to develop an ADHD management app.",
+   "zh_text": "我得以开发出一款ADHD管理应用。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 204.136,
+   "end": 206.988,
+   "en_text": "I was asked by the vice president and the surgeon general",
+   "zh_text": "副总统和卫生总监邀请我",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 207.022,
+   "end": 208.573,
+   "en_text": "to speak about burnout.",
+   "zh_text": "去讲一讲职业倦怠。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 210.041,
+   "end": 212.377,
+   "en_text": "And all of those things happened",
+   "zh_text": "而所有这些事情的发生",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 214.012,
+   "end": 216.031,
+   "en_text": "because my Hulu stopped working.",
+   "zh_text": "都是因为我的Hulu不工作了。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 218.934,
+   "end": 220.435,
+   "en_text": "All of those things happened",
+   "zh_text": "所有这些事情的发生",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 220.435,
+   "end": 223.288,
+   "en_text": "because I was stuck to the couch with a dull routine.",
+   "zh_text": "都是因为我被无聊的日常困在沙发上。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 223.488,
+   "end": 226.942,
+   "en_text": "All of that happened because I was bored.",
+   "zh_text": "这一切的发生都是因为我无聊了。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 227.843,
+   "end": 232.063,
+   "en_text": "Now, most of my content and educational research is about ADHD.",
+   "zh_text": "现在，我的大部分内容和教育研究都是关于ADHD的。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 232.314,
+   "end": 234.466,
+   "en_text": "I have it and I treat it.",
+   "zh_text": "我自己有ADHD，我也治疗它。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 234.666,
+   "end": 237.385,
+   "en_text": "So I spent a lot of my time focusing on focus.",
+   "zh_text": "所以我花了很多时间专注于“专注”这件事。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 237.953,
+   "end": 239.271,
+   "en_text": "And I started to wonder,",
+   "zh_text": "我开始琢磨，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 239.955,
+   "end": 243.008,
+   "en_text": "why was there such a seismic shift in my focus?",
+   "zh_text": "为什么我的专注力会发生这么大的转变？",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 244.443,
+   "end": 245.627,
+   "en_text": "And I’ll tell you,",
+   "zh_text": "我来告诉你，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 246.595,
+   "end": 249.164,
+   "en_text": "it’s because I allowed myself to be bored.",
+   "zh_text": "是因为我允许自己感到无聊。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 249.414,
+   "end": 253.101,
+   "en_text": "The true secret to dialing in",
+   "zh_text": "真正能让你进入状态的秘诀",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 254.386,
+   "end": 256.755,
+   "en_text": "is being able to space out.",
+   "zh_text": "是能够放空发呆。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 259.124,
+   "end": 261.693,
+   "en_text": "Your brain is a very busy place.",
+   "zh_text": "你的大脑是个非常忙碌的地方。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 261.743,
+   "end": 264.996,
+   "en_text": "Parts of it are working even when you think they aren’t.",
+   "zh_text": "即使你以为某些部分没在工作，它们其实也在运转。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 265.197,
+   "end": 268.45,
+   "en_text": "And you probably heard that myth that you only use 10% of your brain.",
+   "zh_text": "你可能听过那个说法，说你只用了大脑的10%。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 268.784,
+   "end": 271.503,
+   "en_text": "That’s not true. You actually use all of it.",
+   "zh_text": "那不是真的。你其实用到了全部。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 271.536,
+   "end": 274.339,
+   "en_text": "Even when you’re sleeping, your brain is always active.",
+   "zh_text": "即使在你睡觉的时候，你的大脑也一直很活跃。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 275.807,
+   "end": 280.562,
+   "en_text": "So when you’re awake, alert, focused on a task,",
+   "zh_text": "所以当你醒着、警觉、专注于一项任务时，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 280.912,
+   "end": 284.466,
+   "en_text": "you’re being ripped in a million different directions by distractions.",
+   "zh_text": "各种干扰正把你撕扯向无数个不同的方向。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 284.666,
+   "end": 287.002,
+   "en_text": "And that’s not even an ADHD-specific thing.",
+   "zh_text": "这甚至不是ADHD特有的现象。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 287.002,
+   "end": 289.404,
+   "en_text": "That’s a human-in-this-modern-world thing.",
+   "zh_text": "这是现代世界里作为人的普遍现象。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 290.489,
+   "end": 292.874,
+   "en_text": "So when you attempt to multitask,",
+   "zh_text": "所以当你试图同时做多件事时，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 293.208,
+   "end": 296.261,
+   "en_text": "you’re not actually doing more than one activity at a time.",
+   "zh_text": "你其实并不是真的在同时做一件以上的事。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 297.012,
+   "end": 302.267,
+   "en_text": "Instead, you’re rapidly shifting your focus from one thing to another,",
+   "zh_text": "你是在快速地把注意力从一件事切换到另一件事，",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 302.517,
+   "end": 305.387,
+   "en_text": "using up oxygenated glucose in the brain,",
+   "zh_text": "消耗着大脑里的含氧葡萄糖，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 305.604,
+   "end": 309.624,
+   "en_text": "which is exactly the fuel you need when you're trying to focus.",
+   "zh_text": "而这恰恰是你想要专注时所需的燃料。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 310.375,
+   "end": 313.461,
+   "en_text": "So here you are, burning through your resources,",
+   "zh_text": "于是你就在这儿，把自己的资源烧个精光，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 313.912,
+   "end": 317.449,
+   "en_text": "and it's even harder to stay on task for a prolonged period of time.",
+   "zh_text": "想要长时间保持专注就更难了。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 318.967,
+   "end": 321.219,
+   "en_text": "So you jump from task to task even more,",
+   "zh_text": "于是你更频繁地从一项任务跳到另一项任务，",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 321.686,
+   "end": 325.207,
+   "en_text": "and you use up more glucose, and you keep jumping,",
+   "zh_text": "消耗更多葡萄糖，然后继续跳，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 325.207,
+   "end": 326.508,
+   "en_text": "and it goes on and on,",
+   "zh_text": "如此反复不停，",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 326.508,
+   "end": 329.878,
+   "en_text": "and you get stuck on this vicious cycle of brain fatigue.",
+   "zh_text": "你就陷进了大脑疲劳的恶性循环。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 332.013,
+   "end": 333.548,
+   "en_text": "And it’s exhausting.",
+   "zh_text": "这让人精疲力竭。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 335.483,
+   "end": 337.302,
+   "en_text": "So how do we exit that loop?",
+   "zh_text": "那我们怎么跳出这个循环呢？",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 338.486,
+   "end": 340.522,
+   "en_text": "When you allow your brain to quiet down,",
+   "zh_text": "当你让大脑安静下来时，",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 340.522,
+   "end": 344.593,
+   "en_text": "you activate lesser-known neural pathways called the default mode network.",
+   "zh_text": "你会激活一些鲜为人知的神经通路，叫做默认模式网络。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 344.876,
+   "end": 348.797,
+   "en_text": "And I would describe that neurologically, but it's a relatively recent concept.",
+   "zh_text": "我本可以从神经学角度来描述它，但它是个相对较新的概念。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 348.997,
+   "end": 350.632,
+   "en_text": "There’s not a complete consensus",
+   "zh_text": "目前还没有完全的共识",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 350.632,
+   "end": 353.401,
+   "en_text": "on all the brain regions included in the definition of it.",
+   "zh_text": "来确定它定义中到底包含哪些脑区。",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 354.169,
+   "end": 357.722,
+   "en_text": "But what we do know is that these are the areas of the brain",
+   "zh_text": "但我们知道的是，这些是大脑中的区域",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 358.206,
+   "end": 361.977,
+   "en_text": "that are active when your brain is at wakeful rest,",
+   "zh_text": "它们在你大脑处于清醒休息状态时是活跃的，",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 362.327,
+   "end": 363.845,
+   "en_text": "like daydreaming.",
+   "zh_text": "比如做白日梦的时候。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 365.263,
+   "end": 368.333,
+   "en_text": "So when you're spacing out in the shower,",
+   "zh_text": "所以当你在洗澡时走神，",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 368.483,
+   "end": 371.603,
+   "en_text": "when you’re sitting in the car on a long, boring drive,",
+   "zh_text": "当你坐在车里经历一段漫长无聊的驾驶，",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 371.736,
+   "end": 373.872,
+   "en_text": "when you’re fused to a breast pump,",
+   "zh_text": "当你被吸奶器拴住动弹不得时，",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 374.189,
+   "end": 378.41,
+   "en_text": "that’s when your default mode engages,",
+   "zh_text": "那就是你的默认模式启动的时候，",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 378.793,
+   "end": 380.745,
+   "en_text": "When your brain has nothing better to do,",
+   "zh_text": "当你大脑无事可做时，",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 380.745,
+   "end": 384.099,
+   "en_text": "you dip into these emotional and memory centers of the brain.",
+   "zh_text": "你就会潜入大脑中这些情绪和记忆中心。",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 384.516,
+   "end": 388.003,
+   "en_text": "And the result is that you get to access forgotten memories,",
+   "zh_text": "结果就是你能接触到被遗忘的记忆，",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 388.236,
+   "end": 390.055,
+   "en_text": "tap into repressed emotions,",
+   "zh_text": "触及被压抑的情绪，",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 390.238,
+   "end": 395.443,
+   "en_text": "and problem-solve with tools not usually accessible in your toolbox.",
+   "zh_text": "并用平时工具箱里拿不到的工具来解决问题。",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 396.528,
+   "end": 398.546,
+   "en_text": "And this concept is especially important",
+   "zh_text": "这个概念尤其重要",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 398.546,
+   "end": 400.999,
+   "en_text": "to those of us who have focus issues at baseline.",
+   "zh_text": "对我们这些本来就有专注力问题的人来说。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 402.067,
+   "end": 405.136,
+   "en_text": "In the neurotypical brain, the default mode network,",
+   "zh_text": "在神经典型的大脑中，默认模式网络",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 405.287,
+   "end": 409.19,
+   "en_text": "and the task-positive or executive network are reciprocal.",
+   "zh_text": "和任务正向网络，也就是执行网络，是此消彼长的。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 409.341,
+   "end": 411.743,
+   "en_text": "As one works more, the other slows down.",
+   "zh_text": "一个运转得越多，另一个就慢下来。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 412.46,
+   "end": 417.382,
+   "en_text": "For people who have focus issues, the default mode remains active",
+   "zh_text": "对于有专注力问题的人，默认模式网络会一直保持活跃",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 417.716,
+   "end": 421.069,
+   "en_text": "while the executive network is trying to get stuff done,",
+   "zh_text": "而执行网络正试图把事情做完，",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 421.102,
+   "end": 423.755,
+   "en_text": "which explains why it’s so hard to stay on task.",
+   "zh_text": "这就解释了为什么保持专注这么难。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 425.724,
+   "end": 429.794,
+   "en_text": "In order to reclaim our fragmented focus",
+   "zh_text": "为了找回我们支离破碎的专注力",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 430.695,
+   "end": 433.181,
+   "en_text": "from an increasingly distracted world,",
+   "zh_text": "从一个越来越让人分心的世界里，",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 434.633,
+   "end": 438.236,
+   "en_text": "we need to be able to tap into the default mode network",
+   "zh_text": "我们需要能够调动默认模式网络",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 439.02,
+   "end": 440.522,
+   "en_text": "because there's magic in there.",
+   "zh_text": "因为那里有奇妙之处。",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 442.007,
+   "end": 443.475,
+   "en_text": "So how do we do that?",
+   "zh_text": "那我们该怎么做呢？",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 444.976,
+   "end": 446.761,
+   "en_text": "There’s a ton of research out there",
+   "zh_text": "有大量研究",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 446.761,
+   "end": 449.414,
+   "en_text": "showing how to suppress the default mode network.",
+   "zh_text": "展示了如何抑制默认模式网络。",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 449.664,
+   "end": 454.953,
+   "en_text": "There’s a lot of solid data showing how mindfulness, meditation, and exercise",
+   "zh_text": "有很多可靠的数据表明，正念、冥想和运动",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 456.054,
+   "end": 459.391,
+   "en_text": "diminish the default mode network.",
+   "zh_text": "能减弱默认模式网络。",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 460.525,
+   "end": 467.032,
+   "en_text": "Mindfulness, meditation, and exercise influence the way we process thoughts.",
+   "zh_text": "正念、冥想和运动会影响我们处理想法的方式。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 468.9,
+   "end": 472.337,
+   "en_text": "And it does it by diminishing the default mode network.",
+   "zh_text": "而它是通过减弱默认模式网络来实现的。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 472.337,
+   "end": 474.773,
+   "en_text": "You’re probably thinking, why are we diminishing it?",
+   "zh_text": "你可能会想，我们为什么要减弱它呢？",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 474.773,
+   "end": 476.925,
+   "en_text": "Don’t we want to use the default mode network?",
+   "zh_text": "我们不是想用默认模式网络吗？",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 477.826,
+   "end": 478.827,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 479.861,
+   "end": 484.399,
+   "en_text": "But mindfulness, meditation, and exercise serve to clean up both of our networks,",
+   "zh_text": "但正念、冥想和运动的作用是清理我们的两个网络，",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 485.25,
+   "end": 486.801,
+   "en_text": "reorganizing the mind.",
+   "zh_text": "重新整理心智。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 487.002,
+   "end": 491.056,
+   "en_text": "So when we’re focusing, we’re focusing. And when we're not, we're not.",
+   "zh_text": "这样当我们专注时，我们就专注。当我们不专注时，我们就不专注。",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 491.339,
+   "end": 493.775,
+   "en_text": "And this is really important to those of us tho have",
+   "zh_text": "这对我们这些",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 493.775,
+   "end": 496.361,
+   "en_text": "both networks firing at the same time.",
+   "zh_text": "两个网络同时运转的人来说非常重要。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 498.463,
+   "end": 505.336,
+   "en_text": "But I'm not here to talk about meditation, and I'm not here to talk about exercise.",
+   "zh_text": "但我来这里不是谈冥想的，也不是谈运动的。",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 505.553,
+   "end": 507.038,
+   "en_text": "Instead,",
+   "zh_text": "相反，",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 508.206,
+   "end": 510.191,
+   "en_text": "I’m here to encourage you",
+   "zh_text": "我来这里是想鼓励你们",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 510.959,
+   "end": 515.13,
+   "en_text": "to exercise mindlessness",
+   "zh_text": "练习“无心”",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 517.032,
+   "end": 522.153,
+   "en_text": "as a way to unlock your most creative, most productive self",
+   "zh_text": "以此释放你最有创造力、最高效的自己",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 522.62,
+   "end": 525.056,
+   "en_text": "by activating the default mode network.",
+   "zh_text": "通过激活默认模式网络。",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 527.809,
+   "end": 529.561,
+   "en_text": "Okay, so Einstein...",
+   "zh_text": "好，那么爱因斯坦……",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 530.028,
+   "end": 531.613,
+   "en_text": "Einstein was a daydreamer.",
+   "zh_text": "爱因斯坦是个爱做白日梦的人。",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 531.83,
+   "end": 534.632,
+   "en_text": "He recommended it. He actively participated in it.",
+   "zh_text": "他推荐了它。他积极地参与其中。",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 534.682,
+   "end": 535.683,
+   "en_text": "Why?",
+   "zh_text": "为什么？",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 535.767,
+   "end": 538.787,
+   "en_text": "Because when the default mode network is active,",
+   "zh_text": "因为当默认模式网络活跃时，",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 538.903,
+   "end": 542.057,
+   "en_text": "creativity and problem-solving are optimized.",
+   "zh_text": "创造力和解决问题的能力会达到最佳状态。",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 542.657,
+   "end": 545.593,
+   "en_text": "When the default mode network is actively firing,",
+   "zh_text": "当默认模式网络积极运作时，",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 545.944,
+   "end": 548.396,
+   "en_text": "you naturally demote your executive network.",
+   "zh_text": "你会自然而然地降低执行网络的优先级。",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 548.463,
+   "end": 550.281,
+   "en_text": "Give it some time off between tasks.",
+   "zh_text": "在任务之间给它一些休息时间。",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 551.216,
+   "end": 554.119,
+   "en_text": "This is when creativity flourishes.",
+   "zh_text": "这正是创造力蓬勃发展的时刻。",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 554.319,
+   "end": 556.521,
+   "en_text": "So when you return to problem-solving,",
+   "zh_text": "所以当你重新回到解决问题时，",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 556.821,
+   "end": 560.391,
+   "en_text": "you’ve actually reset your executive network.",
+   "zh_text": "你实际上已经重置了你的执行网络。",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 560.492,
+   "end": 564.562,
+   "en_text": "And sometimes even given it new ideas to sort through and select from.",
+   "zh_text": "有时甚至给了它新的想法去梳理和挑选。",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 566.414,
+   "end": 567.515,
+   "en_text": "And I get it,",
+   "zh_text": "我明白，",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 569.784,
+   "end": 571.97,
+   "en_text": "not a lot of people encourage daydreaming.",
+   "zh_text": "没有多少人鼓励做白日梦。",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 572.353,
+   "end": 574.939,
+   "en_text": "Usually when we’re in it, we try to snap out of it",
+   "zh_text": "通常当我们沉浸其中时，我们会试图赶紧摆脱它，",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 574.956,
+   "end": 576.391,
+   "en_text": "because we’re busy.",
+   "zh_text": "因为我们很忙。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 576.891,
+   "end": 581.346,
+   "en_text": "But clearly there’s value in it. Our brains are literally trying to reset.",
+   "zh_text": "但显然它是有价值的。我们的大脑真的在试图重置。",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 581.796,
+   "end": 586.868,
+   "en_text": "So how do we purposefully be mindless?",
+   "zh_text": "那么，我们如何有目的地放空呢？",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 588.937,
+   "end": 590.455,
+   "en_text": "It seems like a paradox, right?",
+   "zh_text": "这看起来像个悖论，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 591.139,
+   "end": 594.626,
+   "en_text": "We can trigger these mind-wandering breaks",
+   "zh_text": "我们可以触发这些走神休息，",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 594.726,
+   "end": 598.429,
+   "en_text": "with a concept that I call brain babbling.",
+   "zh_text": "用一个我称之为“大脑咿呀”的概念。",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 600.398,
+   "end": 601.966,
+   "en_text": "Brain babbling",
+   "zh_text": "大脑咿呀",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 602.25,
+   "end": 607.388,
+   "en_text": "is the expression of the contents of your consciousness without censorship",
+   "zh_text": "就是不加审查地表达你意识中的内容，",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 608.173,
+   "end": 612.46,
+   "en_text": "as a means of activating and stimulating your unconscious.",
+   "zh_text": "以此作为激活和刺激你潜意识的手段。",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 613.261,
+   "end": 616.397,
+   "en_text": "So the next time you feel stuck, I want you to try this.",
+   "zh_text": "所以下次你感到卡住的时候，我想让你试试这个。",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 617.332,
+   "end": 620.635,
+   "en_text": "Look around you and grab hold of something you see.",
+   "zh_text": "环顾四周，抓住你看到的某样东西。",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 621.202,
+   "end": 622.787,
+   "en_text": "I’m going to give you an example.",
+   "zh_text": "我给你们举个例子。",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 623.104,
+   "end": 626.558,
+   "en_text": "I’ll give you a phone-related example because I’m always around my phone.",
+   "zh_text": "我举一个和手机有关的例子，因为我总是手机不离身。",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 627.075,
+   "end": 628.493,
+   "en_text": "So, phone...",
+   "zh_text": "那么，手机……",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 628.91,
+   "end": 632.33,
+   "en_text": "I’m going to start with the word “cell.”",
+   "zh_text": "我从“cell”这个词开始。",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 633.882,
+   "end": 639.554,
+   "en_text": "Cell. Genetics. DNA. Evolution. Caveman.",
+   "zh_text": "Cell。遗传学。DNA。进化。穴居人。",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 639.904,
+   "end": 643.525,
+   "en_text": "Cave painting. Handprint. Fingerprint.",
+   "zh_text": "洞穴壁画。手印。指纹。",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 643.875,
+   "end": 647.645,
+   "en_text": "Criminal. Smooth criminal. Michael Jackson.",
+   "zh_text": "罪犯。犯罪高手。迈克尔·杰克逊。",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 647.912,
+   "end": 648.947,
+   "en_text": "Moon --",
+   "zh_text": "月亮——",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 650.748,
+   "end": 651.749,
+   "en_text": "Moonwalk.",
+   "zh_text": "太空步。",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 654.469,
+   "end": 655.503,
+   "en_text": "Moon --",
+   "zh_text": "月亮——",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 655.803,
+   "end": 657.805,
+   "en_text": "Can you guys imagine if I had fallen there?",
+   "zh_text": "你们能想象如果我刚才在那儿摔倒了吗？",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 657.805,
+   "end": 659.824,
+   "en_text": "I would have had to explain to everybody",
+   "zh_text": "我就得向所有人解释",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 660.225,
+   "end": 663.478,
+   "en_text": "that I fell while attempting to moonwalk during a Ted talk.",
+   "zh_text": "我在TED演讲中尝试走太空步时摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 667.866,
+   "end": 668.983,
+   "en_text": "Moonwalk.",
+   "zh_text": "太空步。",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 670.201,
+   "end": 674.539,
+   "en_text": "You can see how far we’ve come from “cell” to “moonwalk.”",
+   "zh_text": "你们可以看到我们从“cell”到“moonwalk”走了多远。",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 676.374,
+   "end": 679.527,
+   "en_text": "I’ll give you another example. Maybe let’s do “phone” this time.",
+   "zh_text": "我再给你们举个例子。这次也许用“phone”吧。",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 680.345,
+   "end": 681.529,
+   "en_text": "Phone.",
+   "zh_text": "手机。",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 682.013,
+   "end": 685.216,
+   "en_text": "Alexander Graham Bell. Graham cracker.",
+   "zh_text": "亚历山大·格雷厄姆·贝尔。全麦饼干。",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 685.35,
+   "end": 689.003,
+   "en_text": "S’mores. Campfire. Smokey the Bear.",
+   "zh_text": "棉花糖夹心饼干。篝火。护林熊斯莫基。",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 689.22,
+   "end": 692.924,
+   "en_text": "Yellowstone Park. Geysers. Steam.",
+   "zh_text": "黄石公园。间歇泉。蒸汽。",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 693.074,
+   "end": 695.159,
+   "en_text": "Steamy Romance.",
+   "zh_text": "情色浪漫小说。",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 695.443,
+   "end": 696.511,
+   "en_text": "Love Island.",
+   "zh_text": "《爱情岛》。",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 699.264,
+   "end": 702.617,
+   "en_text": "Because that’s just been imprinted in my brain now.",
+   "zh_text": "因为这个现在已经印在我脑子里了。",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 703.334,
+   "end": 705.436,
+   "en_text": "The point is, you can start from anywhere.",
+   "zh_text": "关键是，你可以从任何地方开始。",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 705.536,
+   "end": 707.121,
+   "en_text": "You could pick anything you want",
+   "zh_text": "你可以随便挑任何你想要的东西，",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 707.121,
+   "end": 710.074,
+   "en_text": "and you just let your associations run free.",
+   "zh_text": "然后让你的联想自由驰骋。",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 710.358,
+   "end": 714.412,
+   "en_text": "We don’t have to stop at a chain of words. If a memory comes up, let it play.",
+   "zh_text": "我们不必停留在词语的链条上。如果浮现出一段记忆，就让它展开。",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 714.412,
+   "end": 717.265,
+   "en_text": "It’s this imaginative fluidity that’s key.",
+   "zh_text": "这种想象的流动性才是关键。",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 718.233,
+   "end": 722.487,
+   "en_text": "Because when you return to whatever it is you were doing before,",
+   "zh_text": "因为当你回到之前在做的事情时，",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 722.62,
+   "end": 725.056,
+   "en_text": "you’re likely going to be more focused.",
+   "zh_text": "你很可能会更加专注。",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 725.34,
+   "end": 729.56,
+   "en_text": "Because you have indulged that default mode network",
+   "zh_text": "因为你纵容了那个默认模式网络",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 729.861,
+   "end": 732.981,
+   "en_text": "and restored your executive network.",
+   "zh_text": "并恢复了你大脑的执行网络。",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 733.414,
+   "end": 735.566,
+   "en_text": "Our brains need these breaks.",
+   "zh_text": "我们的大脑需要这些休息。",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 735.934,
+   "end": 740.171,
+   "en_text": "It’s what moves the needle from surviving to thriving.",
+   "zh_text": "正是它让我们从勉强生存走向蓬勃发展。",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 741.706,
+   "end": 745.977,
+   "en_text": "We evolved as creatures with complex minds,",
+   "zh_text": "我们进化成了拥有复杂心智的生物，",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 746.427,
+   "end": 747.645,
+   "en_text": "alert to danger,",
+   "zh_text": "对危险保持警觉，",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 748.246,
+   "end": 750.748,
+   "en_text": "constantly predicting and solving problems.",
+   "zh_text": "不断预测和解决问题。",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 751.733,
+   "end": 753.618,
+   "en_text": "But we used to get bored also.",
+   "zh_text": "但我们也曾经会感到无聊。",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 753.985,
+   "end": 757.522,
+   "en_text": "And now we've developed this civilization",
+   "zh_text": "而现在我们发展出了这样的文明，",
+   "highlights": []
+  },
+  {
+   "id": 205,
+   "start": 758.606,
+   "end": 761.359,
+   "en_text": "that seems designed to prevent boredom at all costs.",
+   "zh_text": "它似乎就是为了不惜一切代价防止无聊而设计的。",
+   "highlights": []
+  },
+  {
+   "id": 206,
+   "start": 761.659,
+   "end": 764.529,
+   "en_text": "Endless distraction available 24-7.",
+   "zh_text": "无穷无尽的干扰全天候随时可得。",
+   "highlights": []
+  },
+  {
+   "id": 207,
+   "start": 764.829,
+   "end": 766.648,
+   "en_text": "But what is that doing to us?",
+   "zh_text": "但这正在对我们做什么呢？",
+   "highlights": []
+  },
+  {
+   "id": 208,
+   "start": 769.15,
+   "end": 775.84,
+   "en_text": "The key idea here is finding a way to utilize mindlessness",
+   "zh_text": "这里的关键思路是找到一种方法，利用无意识状态",
+   "highlights": []
+  },
+  {
+   "id": 209,
+   "start": 776.624,
+   "end": 780.378,
+   "en_text": "as a way of becoming more mindful.",
+   "zh_text": "来让自己变得更有正念。",
+   "highlights": []
+  },
+  {
+   "id": 210,
+   "start": 781.145,
+   "end": 783.965,
+   "en_text": "And I don’t want you to be mindless all the time.",
+   "zh_text": "我并不是想让你一直处于无意识状态。",
+   "highlights": []
+  },
+  {
+   "id": 211,
+   "start": 783.965,
+   "end": 785.199,
+   "en_text": "Nobody wants that.",
+   "zh_text": "没人想要那样。",
+   "highlights": []
+  },
+  {
+   "id": 212,
+   "start": 785.216,
+   "end": 787.352,
+   "en_text": "We don’t want to be spacing out all the time.",
+   "zh_text": "我们不想一直走神发呆。",
+   "highlights": []
+  },
+  {
+   "id": 213,
+   "start": 787.435,
+   "end": 791.306,
+   "en_text": "We just want to be able to focus when we want to focus.",
+   "zh_text": "我们只是希望在想专注的时候能够专注。",
+   "highlights": []
+  },
+  {
+   "id": 214,
+   "start": 791.472,
+   "end": 795.543,
+   "en_text": "And we do that by using the default mode network.",
+   "zh_text": "而我们做到这一点，靠的就是运用默认模式网络。",
+   "highlights": []
+  },
+  {
+   "id": 215,
+   "start": 796.711,
+   "end": 798.78,
+   "en_text": "And remember, I got interested in this",
+   "zh_text": "记住，我对这个话题产生兴趣",
+   "highlights": []
+  },
+  {
+   "id": 216,
+   "start": 799.063,
+   "end": 802.867,
+   "en_text": "because of the profound effect that being mindless had on me.",
+   "zh_text": "是因为无意识状态对我产生了深远的影响。",
+   "highlights": []
+  },
+  {
+   "id": 217,
+   "start": 803.267,
+   "end": 805.803,
+   "en_text": "So many new ideas began to bubble up",
+   "zh_text": "那么多新想法开始涌现出来",
+   "highlights": []
+  },
+  {
+   "id": 218,
+   "start": 805.803,
+   "end": 809.007,
+   "en_text": "once I didn’t have Adam and Zara’s love affair to distract me.",
+   "zh_text": "一旦我不再被Adam和Zara的恋情分心。",
+   "highlights": []
+  },
+  {
+   "id": 219,
+   "start": 811.192,
+   "end": 814.912,
+   "en_text": "I think the trick for me, and for all of us,",
+   "zh_text": "我觉得对我来说，对我们所有人来说，诀窍",
+   "highlights": []
+  },
+  {
+   "id": 220,
+   "start": 815.713,
+   "end": 820.151,
+   "en_text": "is to find space in our schedules to indulge the default mode network",
+   "zh_text": "就是在日程安排中留出空间，纵容默认模式网络",
+   "highlights": []
+  },
+  {
+   "id": 221,
+   "start": 820.201,
+   "end": 823.137,
+   "en_text": "as a way to get our whole brain to work better.",
+   "zh_text": "以此让我们整个大脑运转得更好。",
+   "highlights": []
+  },
+  {
+   "id": 222,
+   "start": 824.272,
+   "end": 829.31,
+   "en_text": "Mindlessness allows us to travel to the past, the present, the future,",
+   "zh_text": "无意识状态让我们能够游走于过去、现在和未来，",
+   "highlights": []
+  },
+  {
+   "id": 223,
+   "start": 829.31,
+   "end": 831.329,
+   "en_text": "untethered to what we have to do,",
+   "zh_text": "不受我们必须做的事情的束缚，",
+   "highlights": []
+  },
+  {
+   "id": 224,
+   "start": 831.462,
+   "end": 833.581,
+   "en_text": "and connects us simply to being.",
+   "zh_text": "并简单地把我们与存在本身连接起来。",
+   "highlights": []
+  },
+  {
+   "id": 225,
+   "start": 834.782,
+   "end": 839.42,
+   "en_text": "Doing nothing is actually doing something,",
+   "zh_text": "什么都不做其实也是在做事，",
+   "highlights": []
+  },
+  {
+   "id": 226,
+   "start": 840.071,
+   "end": 842.857,
+   "en_text": "and it’s probably doing something more than what you think,",
+   "zh_text": "而且它做的事可能比你以为的更多，",
+   "highlights": []
+  },
+  {
+   "id": 227,
+   "start": 842.857,
+   "end": 846.627,
+   "en_text": "because this is generally when we find those breakthrough moments",
+   "zh_text": "因为这通常正是我们找到那些突破性时刻的时候",
+   "highlights": []
+  },
+  {
+   "id": 228,
+   "start": 846.627,
+   "end": 848.896,
+   "en_text": "that feel like strokes of genius.",
+   "zh_text": "那些感觉像是天才灵感的时刻。",
+   "highlights": []
+  },
+  {
+   "id": 229,
+   "start": 851.265,
+   "end": 855.803,
+   "en_text": "Because if we can access those parts of the brain,",
+   "zh_text": "因为如果我们能触及大脑的那些部分，",
+   "highlights": []
+  },
+  {
+   "id": 230,
+   "start": 856.187,
+   "end": 860.091,
+   "en_text": "we have a unique opportunity to connect the two parts of ourselves.",
+   "zh_text": "我们就有了一个独特的机会，把自身的两个部分连接起来。",
+   "highlights": []
+  },
+  {
+   "id": 231,
+   "start": 861.225,
+   "end": 863.394,
+   "en_text": "The focus task-performing part",
+   "zh_text": "那个专注执行任务的部分，",
+   "highlights": []
+  },
+  {
+   "id": 232,
+   "start": 863.394,
+   "end": 866.381,
+   "en_text": "that helps us achieve, solve problems, make a living.",
+   "zh_text": "帮助我们取得成就、解决问题、谋生。",
+   "highlights": []
+  },
+  {
+   "id": 233,
+   "start": 867.165,
+   "end": 872.954,
+   "en_text": "And the daydreamy, spacey part that restores us, makes us feel alive.",
+   "zh_text": "还有那个爱做白日梦、爱走神的部分，它让我们恢复元气，让我们感到活着。",
+   "highlights": []
+  },
+  {
+   "id": 234,
+   "start": 875.123,
+   "end": 879.177,
+   "en_text": "When those two parts are really in sync,",
+   "zh_text": "当这两个部分真正同步时，",
+   "highlights": []
+  },
+  {
+   "id": 235,
+   "start": 881.245,
+   "end": 884.365,
+   "en_text": "that’s a beautiful couple, I think they might just win this thing.",
+   "zh_text": "那是一对美好的搭档，我觉得它们说不定真能赢下这一局。",
+   "highlights": []
+  },
+  {
+   "id": 236,
+   "start": 885.783,
+   "end": 886.784,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢。",
+   "highlights": []
+  }
+ ]
+}

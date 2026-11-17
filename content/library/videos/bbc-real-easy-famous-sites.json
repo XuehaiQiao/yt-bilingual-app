@@ -1,0 +1,1021 @@
+{
+ "id": "bbc-real-easy-famous-sites",
+ "youtubeId": "KHimUkNBDiQ",
+ "title": "What are your favourite famous sites? 🎡 | Improve your listening with Real Easy English",
+ "channel": "BBC Learning English",
+ "duration": 418,
+ "level": "A2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/KHimUkNBDiQ/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:33+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.04,
+   "end": 0.64,
+   "en_text": "Hi Georgie.",
+   "zh_text": "嗨，Georgie。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 0.64,
+   "end": 2.12,
+   "en_text": "Hi Phil. How are you?",
+   "zh_text": "嗨，Phil。你好吗？",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 2.12,
+   "end": 3.68,
+   "en_text": "I'm good, I'm good.",
+   "zh_text": "我很好，我很好。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 3.68,
+   "end": 8.36,
+   "en_text": "I wanted to ask if you've been to any famous places or landmarks",
+   "zh_text": "我想问问你最近有没有去过伦敦的什么著名的地方或者地标。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 8.36,
+   "end": 9.76,
+   "en_text": "in London recently.",
+   "zh_text": "就在伦敦。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 9.76,
+   "end": 13.2,
+   "en_text": "It's funny you should ask, because I did.",
+   "zh_text": "你问得真巧，我还真去了。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 13.2,
+   "end": 16.68,
+   "en_text": "A few days ago, I went to the Royal Albert Hall, which is",
+   "zh_text": "几天前，我去了皇家阿尔伯特音乐厅，那是",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 16.68,
+   "end": 19.68,
+   "en_text": "a famous concert hall in London.",
+   "zh_text": "伦敦一座著名的音乐厅。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 19.68,
+   "end": 26.56,
+   "en_text": "OK. So, Georgie, today we're talking about landmarks – British landmarks.",
+   "zh_text": "好。那么，Georgie，今天我们要聊的是地标——英国的地标。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 26.56,
+   "end": 31.64,
+   "en_text": "Now, those are famous buildings like the Royal Albert Hall or like...",
+   "zh_text": "就是那些著名的建筑，比如皇家阿尔伯特音乐厅，或者像……",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 31.64,
+   "end": 33.16,
+   "en_text": "like Big Ben in London.",
+   "zh_text": "比如伦敦的大本钟。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 33.16,
+   "end": 36.44,
+   "en_text": "That's a really famous landmark that everyone knows.",
+   "zh_text": "那是一个非常著名的地标，人人都知道。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 36.44,
+   "end": 38.92,
+   "en_text": "Yeah, that's a famous clock tower,",
+   "zh_text": "对，那是一座著名的钟楼，",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 38.92,
+   "end": 41.2,
+   "en_text": "but before we start talking about landmarks,",
+   "zh_text": "不过在开始聊地标之前，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 41.2,
+   "end": 44.92,
+   "en_text": "I need to remind people that they can download a free worksheet",
+   "zh_text": "我需要提醒大家，他们可以下载一份免费的学习单",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 44.92,
+   "end": 47.92,
+   "en_text": "to test the vocabulary they learn in this programme,",
+   "zh_text": "来测试他们在这个节目里学到的词汇，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 47.92,
+   "end": 49.96,
+   "en_text": "at bbclearningenglish.com.",
+   "zh_text": "网址是 bbclearningenglish.com。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 55.76,
+   "end": 56.32,
+   "en_text": "OK.",
+   "zh_text": "好。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 56.32,
+   "end": 61.48,
+   "en_text": "So, Georgie, you just said you'd been to the Royal Albert Hall, which is",
+   "zh_text": "那么，Georgie，你刚才说你去了皇家阿尔伯特音乐厅，那是",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 61.48,
+   "end": 64.68,
+   "en_text": "a famous concert hall in London.",
+   "zh_text": "伦敦一座著名的音乐厅。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 64.68,
+   "end": 65.96,
+   "en_text": "Why did you go there?",
+   "zh_text": "你为什么去那儿呢？",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 65.96,
+   "end": 69.6,
+   "en_text": "I went to a classical music concert,",
+   "zh_text": "我去听了一场古典音乐会，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 69.6,
+   "end": 73.68,
+   "en_text": "but this was not the first time I've been to the Royal Albert Hall.",
+   "zh_text": "不过这不是我第一次去皇家阿尔伯特音乐厅。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 73.68,
+   "end": 74.68,
+   "en_text": "No?",
+   "zh_text": "不是？",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 74.68,
+   "end": 80.08,
+   "en_text": "No, I actually performed there with my choir last year.",
+   "zh_text": "不是，其实我去年还和我的合唱团在那儿演出过。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 80.08,
+   "end": 81.88,
+   "en_text": "It was... it was amazing.",
+   "zh_text": "那真是……真是太棒了。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 81.88,
+   "end": 82.56,
+   "en_text": "Oh wow!",
+   "zh_text": "哇哦！",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 82.56,
+   "end": 87.52,
+   "en_text": "Phil, have you visited any famous landmarks in London?",
+   "zh_text": "Phil，你去过伦敦的什么著名地标吗？",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 87.52,
+   "end": 88.52,
+   "en_text": "Yeah, I think...",
+   "zh_text": "去过，我觉得……",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 88.52,
+   "end": 92.48,
+   "en_text": "I think I've probably visited most of the famous ones.",
+   "zh_text": "我觉得那些著名的地标我大概都去过了。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 92.48,
+   "end": 94.36,
+   "en_text": "I've been on the London Eye.",
+   "zh_text": "我坐过伦敦眼。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 94.36,
+   "end": 96.68,
+   "en_text": "That's the big wheel.",
+   "zh_text": "就是那个大摩天轮。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 96.68,
+   "end": 100.44,
+   "en_text": "I've been to Tower Bridge lots of times.",
+   "zh_text": "我去过伦敦塔桥好多次。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 100.44,
+   "end": 102.84,
+   "en_text": "I've been in the Houses of Parliament.",
+   "zh_text": "我进过议会大厦。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 102.84,
+   "end": 105.76,
+   "en_text": "That's right by Big Ben, where the government is.",
+   "zh_text": "就在大本钟旁边，是政府所在地。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 105.76,
+   "end": 108.52,
+   "en_text": "Phil, why have you been in the Houses of Parliament?",
+   "zh_text": "Phil，你为什么进议会大厦呢？",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 108.52,
+   "end": 113.32,
+   "en_text": "It was just something for work, so it wasn't that interesting,",
+   "zh_text": "就是工作上的事，所以没那么有意思，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 113.32,
+   "end": 115.0,
+   "en_text": "but it's good to see the building.",
+   "zh_text": "不过看看这座建筑还是挺好的。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 115.0,
+   "end": 116.76,
+   "en_text": "You see it from outside all the time,",
+   "zh_text": "你总是从外面看它，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 116.76,
+   "end": 120.24,
+   "en_text": "and it's kind of interesting to see it from the inside. It's really...",
+   "zh_text": "从里面看看还挺有意思的。它真的……",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 120.24,
+   "end": 122.52,
+   "en_text": "it's a very beautiful building as well, I think.",
+   "zh_text": "我觉得它也是一座非常漂亮的建筑。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 122.52,
+   "end": 126.28,
+   "en_text": "Yeah, it is. So, you've been to a lot of landmarks in London.",
+   "zh_text": "对，确实。那么，你去过伦敦的很多地标。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 126.28,
+   "end": 128.0,
+   "en_text": "Do you have a favourite one?",
+   "zh_text": "你有最喜欢的一个吗？",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 128.0,
+   "end": 132.8,
+   "en_text": "My favourite one is actually the river.",
+   "zh_text": "我最喜欢的其实是那条河。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 132.8,
+   "end": 136.12,
+   "en_text": "I love going up and down the river on a boat.",
+   "zh_text": "我很喜欢坐船在河上来来回回。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 136.12,
+   "end": 138.24,
+   "en_text": "Yeah, I really like the river too.",
+   "zh_text": "是啊，我也真的很喜欢那条河。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 138.24,
+   "end": 142.32,
+   "en_text": "My favourite landmark in London is the Tower of London.",
+   "zh_text": "我在伦敦最喜欢的地标是伦敦塔。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 142.32,
+   "end": 144.56,
+   "en_text": "I went with my dad.",
+   "zh_text": "我是和我爸爸一起去的。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 144.56,
+   "end": 147.44,
+   "en_text": "It's a very, very old building.",
+   "zh_text": "那是一座非常非常古老的建筑。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 147.44,
+   "end": 153.92,
+   "en_text": "I think in history a lot of people died there, so it has a kind of spooky...",
+   "zh_text": "我觉得历史上有很多人在那里死去，所以它有一种阴森森的……",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 153.92,
+   "end": 155.8,
+   "en_text": "a spooky feeling there.",
+   "zh_text": "那里有一种阴森森的感觉。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 155.8,
+   "end": 159.28,
+   "en_text": "But it's quite a large area you can walk around and,",
+   "zh_text": "但那是一片挺大的区域，你可以四处走走，而且，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 159.28,
+   "end": 162.44,
+   "en_text": "yeah, it all just feels really old and quite special.",
+   "zh_text": "对，整体感觉就是非常古老，而且挺特别的。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 162.44,
+   "end": 164.32,
+   "en_text": "OK. So, we've been talking about London,",
+   "zh_text": "好。我们一直在聊伦敦，",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 164.32,
+   "end": 167.52,
+   "en_text": "but what about the rest of Britain, Georgie?",
+   "zh_text": "那英国其他地方呢，Georgie？",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 167.52,
+   "end": 170.72,
+   "en_text": "What's your favourite landmark in the rest of Britain?",
+   "zh_text": "英国其他地方你最喜欢的标志性景点是哪里？",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 170.72,
+   "end": 173.2,
+   "en_text": "Ooh, I can't wait to talk about this!",
+   "zh_text": "哦，我太想聊这个了！",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 173.2,
+   "end": 176.2,
+   "en_text": "One of my favourite places in the UK is Edinburgh,",
+   "zh_text": "我在英国最喜欢的地方之一是爱丁堡，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 176.2,
+   "end": 178.24,
+   "en_text": "which is the capital of Scotland.",
+   "zh_text": "它是苏格兰的首府。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 178.24,
+   "end": 182.16,
+   "en_text": "And in the city, they have – in the middle of the city,",
+   "zh_text": "在这座城市里，他们有一块——在市中心，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 182.16,
+   "end": 185.6,
+   "en_text": "they have a big black rock, like a hill.",
+   "zh_text": "他们有一块巨大的黑色岩石，像一座小山。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 185.6,
+   "end": 189.48,
+   "en_text": "And on the top, there is the castle, Edinburgh Castle,",
+   "zh_text": "山顶上就是那座城堡，爱丁堡城堡，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 189.48,
+   "end": 191.88,
+   "en_text": "and it's so beautiful.",
+   "zh_text": "它太美了。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 191.88,
+   "end": 194.68,
+   "en_text": "I used to live there when I was at university and",
+   "zh_text": "我上大学的时候曾住在那里，而且",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 194.68,
+   "end": 197.44,
+   "en_text": "every time I walked past it, I was...",
+   "zh_text": "每次我路过它，我都……",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 197.44,
+   "end": 199.2,
+   "en_text": "I felt like a tourist every day.",
+   "zh_text": "我每天都感觉自己像个游客。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 199.2,
+   "end": 203.36,
+   "en_text": "I was always taking photos of it because it looks unreal.",
+   "zh_text": "我总在给它拍照，因为它看起来不真实。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 203.36,
+   "end": 207.52,
+   "en_text": "It doesn't look... It looks like it's from a storybook.",
+   "zh_text": "它看起来不……它看起来就像童话书里的一样。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 207.52,
+   "end": 209.68,
+   "en_text": "It's magical, I love it.",
+   "zh_text": "它很有魔力，我很喜欢。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 209.68,
+   "end": 210.88,
+   "en_text": "Yeah, I love Edinburgh.",
+   "zh_text": "是啊，我很喜欢爱丁堡。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 210.88,
+   "end": 213.4,
+   "en_text": "I went there one year for New Year and it was...",
+   "zh_text": "有一年新年我去过那里，那真是……",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 213.4,
+   "end": 216.64,
+   "en_text": "It's amazing. You can feel the history.",
+   "zh_text": "太棒了。你能感受到那里的历史。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 216.64,
+   "end": 221.6,
+   "en_text": "There're so many old buildings and it's... yeah, it's very dramatic.",
+   "zh_text": "那里有好多古老的建筑，而且……对，非常震撼。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 221.6,
+   "end": 224.16,
+   "en_text": "I did a guided tour there actually once.",
+   "zh_text": "其实我有一次在那里参加了一个导览游。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 224.16,
+   "end": 230.96,
+   "en_text": "It was around Halloween, so it was a kind of spooky-themed guided tour.",
+   "zh_text": "那是在万圣节前后，所以算是一个阴森主题的导览游。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 230.96,
+   "end": 237.12,
+   "en_text": "They took us to a graveyard and they told us stories about witches,",
+   "zh_text": "他们带我们去了一个墓地，给我们讲了关于女巫的故事，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 237.12,
+   "end": 238.64,
+   "en_text": "and that was really exciting.",
+   "zh_text": "那真的特别刺激。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 238.64,
+   "end": 240.32,
+   "en_text": "I like guided tours.",
+   "zh_text": "我喜欢导览游。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 240.32,
+   "end": 242.08,
+   "en_text": "Oh yeah, that sounds exciting.",
+   "zh_text": "哦对，听起来很刺激。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 242.08,
+   "end": 244.32,
+   "en_text": "So, Phil, do you enjoy sightseeing?",
+   "zh_text": "那么，Phil，你喜欢观光吗？",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 244.32,
+   "end": 248.72,
+   "en_text": "So, when you see lots of different landmarks in a city or a country.",
+   "zh_text": "就是在一座城市或一个国家里看到很多不同的标志性景点。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 248.72,
+   "end": 250.56,
+   "en_text": "I do, yes.",
+   "zh_text": "我喜欢，是的。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 250.56,
+   "end": 258.84,
+   "en_text": "I think usually when you go sightseeing you see lots of old buildings, usually.",
+   "zh_text": "我觉得通常观光的时候，你会看到很多古老的建筑，一般都是这样。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 258.84,
+   "end": 264.52,
+   "en_text": "And they often give you an idea of how people used to live,",
+   "zh_text": "它们常常能让你了解人们过去是怎么生活的，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 264.52,
+   "end": 268.76,
+   "en_text": "how people lived in the past, and I find that really interesting.",
+   "zh_text": "过去的人是怎么生活的，我觉得这特别有意思。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 268.76,
+   "end": 276.44,
+   "en_text": "So yes, if I visit a new city, I almost always go sightseeing at some point.",
+   "zh_text": "所以是的，如果我去一座新城市，我几乎总会在某个时候去观光。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 276.44,
+   "end": 278.6,
+   "en_text": "Yeah, I really like sightseeing as well.",
+   "zh_text": "是啊，我也很喜欢观光。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 278.6,
+   "end": 282.76,
+   "en_text": "You can see lots of a city, or it's the best way to see a place, I think,",
+   "zh_text": "你能看到一座城市的很多地方，我觉得这是了解一个地方最好的方式，",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 282.76,
+   "end": 284.68,
+   "en_text": "when you visit somewhere new.",
+   "zh_text": "当你去一个新地方的时候。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 284.68,
+   "end": 286.64,
+   "en_text": "It can be quite exhausting though, can't it?",
+   "zh_text": "不过这也挺累人的，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 286.64,
+   "end": 290.32,
+   "en_text": "Especially if you're walking all over the city to see all",
+   "zh_text": "尤其是当你要走遍整座城市去看所有这些",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 290.32,
+   "end": 292.04,
+   "en_text": "of these different landmarks.",
+   "zh_text": "不同的地标的时候。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 292.04,
+   "end": 296.92,
+   "en_text": "So, Phil, my favourite UK landmark is Edinburgh Castle.",
+   "zh_text": "那么，Phil，我最喜欢的英国地标是爱丁堡城堡。",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 296.92,
+   "end": 299.08,
+   "en_text": "Do you have a favourite?",
+   "zh_text": "你有最喜欢的吗？",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 299.08,
+   "end": 302.28,
+   "en_text": "Yes. I think it's got to be",
+   "zh_text": "有。我觉得一定是",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 302.28,
+   "end": 309.04,
+   "en_text": "Stonehenge, just because it is so old.",
+   "zh_text": "巨石阵，就因为它太古老了。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 309.04,
+   "end": 312.2,
+   "en_text": "It's thousands of years old.",
+   "zh_text": "它有几千年的历史了。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 312.2,
+   "end": 318.28,
+   "en_text": "I don't think I've seen anything else that's that old.",
+   "zh_text": "我想我没见过别的什么东西有那么古老。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 318.28,
+   "end": 321.16,
+   "en_text": "Yeah. So, the Stonehenge is in England and",
+   "zh_text": "对。所以，巨石阵在英格兰，",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 321.16,
+   "end": 327.76,
+   "en_text": "it's a circle or a ring of really big, tall stones.",
+   "zh_text": "它是一圈或一环非常巨大、高耸的石头。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 327.76,
+   "end": 329.72,
+   "en_text": "And humans put it up and",
+   "zh_text": "是人类把它立起来的，",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 329.72,
+   "end": 333.96,
+   "en_text": "it's really amazing because it's not fully known how they did it,",
+   "zh_text": "这真的很了不起，因为人们并不完全清楚他们是怎么做到的，",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 333.96,
+   "end": 337.56,
+   "en_text": "because the rocks are so heavy.",
+   "zh_text": "因为这些石头太重了。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 337.56,
+   "end": 339.96,
+   "en_text": "So, if anyone comes to the UK to visit,",
+   "zh_text": "所以，如果有人来英国旅游，",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 339.96,
+   "end": 343.96,
+   "en_text": "I would really recommend going to see that.",
+   "zh_text": "我真的会推荐去看看它。",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 349.52,
+   "end": 352.84,
+   "en_text": "So, let's look at some of the words that we talked about today.",
+   "zh_text": "那么，我们来看看今天谈到的一些单词。",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 352.84,
+   "end": 355.76,
+   "en_text": "And the big one was 'landmark',",
+   "zh_text": "最重要的一个是“landmark”（地标），",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 355.76,
+   "end": 361.36,
+   "en_text": "and those are famous buildings or famous places that people visit,",
+   "zh_text": "指的是人们参观的著名建筑或著名地点，",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 361.36,
+   "end": 364.16,
+   "en_text": "and usually they know what they look like beforehand, often.",
+   "zh_text": "而且通常他们事先就知道它们长什么样，很多时候是这样。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 364.16,
+   "end": 366.52,
+   "en_text": "Yes. For example, the London Eye.",
+   "zh_text": "对。比如伦敦眼。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 366.52,
+   "end": 371.56,
+   "en_text": "We also heard 'sightseeing', which is when you visit landmarks and famous places",
+   "zh_text": "我们还听到了“sightseeing”（观光），指的是你参观一个城市或国家里的地标和著名地点",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 371.56,
+   "end": 373.08,
+   "en_text": "in a city or country.",
+   "zh_text": "的时候。",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 373.08,
+   "end": 376.4,
+   "en_text": "Yes. And one of the ways that you can do sightseeing",
+   "zh_text": "对。而观光的方式之一",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 376.4,
+   "end": 379.52,
+   "en_text": "is you can go on a guided tour,",
+   "zh_text": "就是参加有导游的游览，",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 379.52,
+   "end": 384.56,
+   "en_text": "and that's when someone, a guide, leads you around different places",
+   "zh_text": "就是有人，一位导游，带着你逛不同的地方",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 384.56,
+   "end": 389.4,
+   "en_text": "and they tell you about the history of all those places.",
+   "zh_text": "并给你讲所有这些地方的历史。",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 389.4,
+   "end": 391.88,
+   "en_text": "So, Georgie, we're out of time.",
+   "zh_text": "那么，Georgie，我们时间到了。",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 391.88,
+   "end": 394.96,
+   "en_text": "That's it for Real Easy English for this week.",
+   "zh_text": "本周的Real Easy English就到这里。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 394.96,
+   "end": 399.8,
+   "en_text": "But if you like landmarks, make sure you go to our website",
+   "zh_text": "但如果你喜欢地标，一定要去我们的网站",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 399.8,
+   "end": 402.88,
+   "en_text": "to check out the London Letter Challenge,",
+   "zh_text": "看看London Letter Challenge，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 402.88,
+   "end": 407.24,
+   "en_text": "where you can see lots of different landmarks and learn easy English.",
+   "zh_text": "在那里你可以看到许多不同的地标，还能学简单的英语。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 407.24,
+   "end": 409.08,
+   "en_text": "And you can find a free worksheet",
+   "zh_text": "你还可以找到免费的练习表",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 409.08,
+   "end": 412.8,
+   "en_text": "and transcript on our website, bbclearningenglish.com.",
+   "zh_text": "和文字稿，就在我们的网站bbclearningenglish.com上。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 412.8,
+   "end": 413.92,
+   "en_text": "Goodbye for now.",
+   "zh_text": "先再见啦。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 413.92,
+   "end": 415.0,
+   "en_text": "Bye!",
+   "zh_text": "拜拜！",
+   "highlights": []
+  }
+ ]
+}

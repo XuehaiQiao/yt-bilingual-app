@@ -1,0 +1,1125 @@
+{
+ "id": "eci-play-verb",
+ "youtubeId": "kMsy__T_4GY",
+ "title": "PLAY 👦🧸🎮🪀 Learn English Verbs | English Comprehensible Input Easy Beginner Lesson",
+ "channel": "English Comprehensible Input for ESL Beginners",
+ "duration": 485,
+ "level": "A1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/kMsy__T_4GY/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "auto",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:57:37+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 1.28,
+   "end": 10.36,
+   "en_text": "listen understand",
+   "zh_text": "听，理解",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 4.96,
+   "end": 10.36,
+   "en_text": "learn Len understand learn",
+   "zh_text": "学，Len，理解，学",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 11.12,
+   "end": 16.68,
+   "en_text": "English comprehensible",
+   "zh_text": "英语，可理解的",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 14.599,
+   "end": 19.359,
+   "en_text": "English",
+   "zh_text": "英语",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 16.68,
+   "end": 21.4,
+   "en_text": "comprehensible",
+   "zh_text": "可理解的",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 19.359,
+   "end": 24.4,
+   "en_text": "English",
+   "zh_text": "英语",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 21.4,
+   "end": 24.4,
+   "en_text": "comprehensible",
+   "zh_text": "可理解的",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 27.4,
+   "end": 35.0,
+   "en_text": "English in this picture is there a boy",
+   "zh_text": "这张图片里有一个男孩",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 30.96,
+   "end": 39.2,
+   "en_text": "or a girl a boy yeah in this picture",
+   "zh_text": "还是女孩？一个男孩，对，在这张图片里",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 35.0,
+   "end": 43.2,
+   "en_text": "there is a boy and what is the boy doing",
+   "zh_text": "有一个男孩，那这个男孩在做什么",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 39.2,
+   "end": 46.239,
+   "en_text": "what is he doing he is playing with his",
+   "zh_text": "他在做什么？他在玩他的",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 43.2,
+   "end": 49.64,
+   "en_text": "airplane yeah yeah so in this picture",
+   "zh_text": "飞机，对，对，所以在这张图片里",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 46.239,
+   "end": 52.239,
+   "en_text": "there is a boy and he's playing he's",
+   "zh_text": "有一个男孩，他在玩，他在",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 49.64,
+   "end": 54.84,
+   "en_text": "playing what is he playing with he's",
+   "zh_text": "玩，他在玩什么？他在",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 52.239,
+   "end": 57.359,
+   "en_text": "playing with his airplane yeah yeah he's",
+   "zh_text": "玩他的飞机，对，对，他在",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 54.84,
+   "end": 61.48,
+   "en_text": "playing with his airplane he's playing",
+   "zh_text": "玩他的飞机，他在玩",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 57.359,
+   "end": 65.64,
+   "en_text": "with a toy airplane so he's playing with",
+   "zh_text": "一个玩具飞机，所以他在玩",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 61.48,
+   "end": 68.32,
+   "en_text": "a toy and oh what what toy is it again",
+   "zh_text": "一个玩具，哦，那是什么玩具来着",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 65.64,
+   "end": 71.2,
+   "en_text": "it's an airplane a toy airplane yeah so",
+   "zh_text": "是一架飞机，一个玩具飞机，对，所以",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 68.32,
+   "end": 75.56,
+   "en_text": "this toy is a toy airplane that he's",
+   "zh_text": "这个玩具是一个玩具飞机，他在",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 71.2,
+   "end": 76.799,
+   "en_text": "playing with um oh Luke um do you like",
+   "zh_text": "玩它，嗯，哦，Luke，嗯，你喜欢",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 75.56,
+   "end": 80.04,
+   "en_text": "to",
+   "zh_text": "玩吗",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 76.799,
+   "end": 83.04,
+   "en_text": "play yeah playing is fun yeah do do you",
+   "zh_text": "玩吗？对，玩很有趣，对，你",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 80.04,
+   "end": 84.68,
+   "en_text": "like to play with toys like toy",
+   "zh_text": "喜欢玩玩具吗，比如玩具",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 83.04,
+   "end": 90.439,
+   "en_text": "airplanes",
+   "zh_text": "飞机",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 84.68,
+   "end": 93.72,
+   "en_text": "or um not not right now no oh what when",
+   "zh_text": "还是，嗯，现在不，不，哦，什么，我",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 90.439,
+   "end": 96.96,
+   "en_text": "I was a kid yes I liked playing with",
+   "zh_text": "小时候，对，我喜欢玩",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 93.72,
+   "end": 100.72,
+   "en_text": "toys yeah yeah so when same same with me",
+   "zh_text": "玩具，对，对，所以，跟我一样",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 96.96,
+   "end": 105.32,
+   "en_text": "so when I was little when I was a kid um",
+   "zh_text": "所以，我小的时候，我小时候，嗯",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 100.72,
+   "end": 111.759,
+   "en_text": "I would play um I had many toys I had uh",
+   "zh_text": "我会玩，嗯，我有很多玩具，我有，呃",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 105.32,
+   "end": 115.159,
+   "en_text": "toy planes um I had toy uh toy cars let",
+   "zh_text": "玩具飞机，嗯，我有玩具，呃，玩具汽车，让",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 111.759,
+   "end": 116.92,
+   "en_text": "me draw a toy car something like I had",
+   "zh_text": "我画一辆玩具汽车，大概像这样，我有",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 115.159,
+   "end": 120.479,
+   "en_text": "toy",
+   "zh_text": "玩具",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 116.92,
+   "end": 124.079,
+   "en_text": "cars like this yeah toy cars that I can",
+   "zh_text": "汽车，像这样，对，玩具汽车，我可以",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 120.479,
+   "end": 127.479,
+   "en_text": "play with or toy trucks",
+   "zh_text": "玩，或者玩具卡车",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 124.079,
+   "end": 130.72,
+   "en_text": "yeah um little ones little toy trucks",
+   "zh_text": "对，嗯，小小的，小玩具卡车",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 127.479,
+   "end": 134.599,
+   "en_text": "little toy uh cars that I could play",
+   "zh_text": "小玩具，呃，汽车，我可以玩",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 130.72,
+   "end": 138.16,
+   "en_text": "with and sometimes crash make them crash",
+   "zh_text": "它们，有时候撞在一起，让它们撞",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 134.599,
+   "end": 141.239,
+   "en_text": "together yeah yeah so uh yeah so when we",
+   "zh_text": "在一起，对，对，所以，呃，对，所以当我们",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 138.16,
+   "end": 144.72,
+   "en_text": "were young when we were little we would",
+   "zh_text": "年轻的时候，我们小的时候，我们会",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 141.239,
+   "end": 148.16,
+   "en_text": "play with toys like toy uh toy",
+   "zh_text": "玩玩具，比如玩具，呃，玩具",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 144.72,
+   "end": 150.48,
+   "en_text": "trucks uh toy cars many many different",
+   "zh_text": "卡车，呃，玩具汽车，很多很多不同的",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 148.16,
+   "end": 155.519,
+   "en_text": "toys right yeah",
+   "zh_text": "玩具，对吧，对",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 150.48,
+   "end": 159.56,
+   "en_text": "yeah um and now uh these days Luke um",
+   "zh_text": "对，嗯，那现在，呃，这些天，Luke，嗯",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 155.519,
+   "end": 162.959,
+   "en_text": "what do you like to play or what do you",
+   "zh_text": "你喜欢玩什么，或者你喜欢",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 159.56,
+   "end": 162.959,
+   "en_text": "like to play",
+   "zh_text": "玩什么",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 164.159,
+   "end": 171.76,
+   "en_text": "with I don't",
+   "zh_text": "玩什么？我不",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 166.84,
+   "end": 177.76,
+   "en_text": "play I like to It's Complicated",
+   "zh_text": "玩，我喜欢，这很复杂",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 171.76,
+   "end": 180.599,
+   "en_text": "okay I like to I like to um I like",
+   "zh_text": "好吧，我喜欢，我喜欢，嗯，我喜欢",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 177.76,
+   "end": 184.239,
+   "en_text": "to I like to study",
+   "zh_text": "，我喜欢学习",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 180.599,
+   "end": 186.239,
+   "en_text": "I like to study Spanish oh that so that",
+   "zh_text": "我喜欢学习西班牙语，哦，那，所以那",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 184.239,
+   "end": 188.68,
+   "en_text": "that's that's studying though is that is",
+   "zh_text": "那是学习，不过，那是，那是",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 186.239,
+   "end": 191.0,
+   "en_text": "that play it's like play it's like play",
+   "zh_text": "玩吗？就像玩，就像玩",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 188.68,
+   "end": 196.0,
+   "en_text": "it's fun I like oh I see it's fun it's",
+   "zh_text": "很有趣，我喜欢，哦，我明白了，很有趣，很",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 191.0,
+   "end": 198.599,
+   "en_text": "fun yeah yeah and I I move around and do",
+   "zh_text": "有趣，对，对，而且我，我到处动，做",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 196.0,
+   "end": 203.319,
+   "en_text": "I like to I like to",
+   "zh_text": "我喜欢，我喜欢",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 198.599,
+   "end": 207.0,
+   "en_text": "move my body oh okay jump around and",
+   "zh_text": "活动我的身体，哦好吧，跳来跳去，然后",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 203.319,
+   "end": 210.2,
+   "en_text": "move like a monkey and move like a frog",
+   "zh_text": "像猴子一样动，像青蛙一样动",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 207.0,
+   "end": 212.319,
+   "en_text": "and move like a bear so I'm I'm working",
+   "zh_text": "还像熊一样动，所以我在锻炼",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 210.2,
+   "end": 214.76,
+   "en_text": "my body and getting stronger but it's",
+   "zh_text": "我的身体，变得更强壮，但这",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 212.319,
+   "end": 217.56,
+   "en_text": "fun it's really fun oh right right yeah",
+   "zh_text": "很好玩，真的很好玩，哦对，对对，是啊",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 214.76,
+   "end": 220.04,
+   "en_text": "so so exercise things like exercise or",
+   "zh_text": "所以像锻炼这类事情，或者",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 217.56,
+   "end": 223.28,
+   "en_text": "moving like that that can be like play",
+   "zh_text": "那样动来动去，那也可以算是玩",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 220.04,
+   "end": 225.879,
+   "en_text": "right yeah okay I I was thinking of like",
+   "zh_text": "对吧，对，好吧，我刚才想的是像",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 223.28,
+   "end": 228.28,
+   "en_text": "playing playing uh video games or",
+   "zh_text": "玩，玩电子游戏，或者",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 225.879,
+   "end": 230.84,
+   "en_text": "playing computer games or things like",
+   "zh_text": "玩电脑游戏，或者类似的",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 228.28,
+   "end": 235.04,
+   "en_text": "that or playing games on your phone do",
+   "zh_text": "东西，或者在手机上玩游戏，你",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 230.84,
+   "end": 238.76,
+   "en_text": "you do that at all do you play not a lot",
+   "zh_text": "会玩吗，你玩吗，不太玩",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 235.04,
+   "end": 242.04,
+   "en_text": "not a lot a little bit a little bit okay",
+   "zh_text": "不太玩，玩一点点，一点点，好吧",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 238.76,
+   "end": 245.959,
+   "en_text": "yeah me too um I play games just a",
+   "zh_text": "是啊，我也是，嗯，我玩游戏只是",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 242.04,
+   "end": 249.04,
+   "en_text": "little bit on my computer but maybe just",
+   "zh_text": "在电脑上玩一点点，但可能只是",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 245.959,
+   "end": 250.799,
+   "en_text": "for a few minutes like five minutes or",
+   "zh_text": "玩几分钟，比如五分钟或者",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 249.04,
+   "end": 255.439,
+   "en_text": "10 minutes a",
+   "zh_text": "十分钟，一",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 250.799,
+   "end": 258.799,
+   "en_text": "day um but I don't play even on my phone",
+   "zh_text": "天，嗯，但我连手机上都不玩",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 255.439,
+   "end": 262.52,
+   "en_text": "um I don't have any I don't have any",
+   "zh_text": "嗯，我没有任何，我没有任何",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 258.799,
+   "end": 265.4,
+   "en_text": "games on my phone so I delete them I get",
+   "zh_text": "游戏在手机上，所以我会删掉它们，我把",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 262.52,
+   "end": 269.0,
+   "en_text": "rid of games on my phone um and also on",
+   "zh_text": "手机上的游戏都清掉，嗯，还有在",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 265.4,
+   "end": 273.199,
+   "en_text": "my computer because if I had games on my",
+   "zh_text": "我的电脑上，因为如果我电脑上",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 269.0,
+   "end": 275.479,
+   "en_text": "computer or on my phone I might spend uh",
+   "zh_text": "或者手机上有游戏，我可能会花",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 273.199,
+   "end": 277.72,
+   "en_text": "lots and lots and lots of time a long",
+   "zh_text": "很多很多很多时间，很长",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 275.479,
+   "end": 280.6,
+   "en_text": "time uh just playing",
+   "zh_text": "时间，嗯，就只是玩",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 277.72,
+   "end": 284.32,
+   "en_text": "games things like",
+   "zh_text": "游戏，类似",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 280.6,
+   "end": 287.72,
+   "en_text": "that yeah but there's many ways to play",
+   "zh_text": "那样的，是啊，但有很多方式可以玩",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 284.32,
+   "end": 292.0,
+   "en_text": "and have fun and a lot of things can be",
+   "zh_text": "和找乐子，很多事情都可以",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 287.72,
+   "end": 294.72,
+   "en_text": "like play right yeah yeah um yeah but",
+   "zh_text": "算是玩，对吧，对，对，嗯，是啊，但是",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 292.0,
+   "end": 298.8,
+   "en_text": "when uh when we were younger right when",
+   "zh_text": "当，嗯，当我们更年轻的时候，对吧，当",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 294.72,
+   "end": 300.32,
+   "en_text": "we were kids um we'd play with many toys",
+   "zh_text": "我们还是孩子的时候，嗯，我们会玩很多玩具",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 298.8,
+   "end": 305.12,
+   "en_text": "so we'd play",
+   "zh_text": "所以我们会玩",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 300.32,
+   "end": 309.199,
+   "en_text": "uh play with toy cars or toy trucks or",
+   "zh_text": "嗯，玩玩具汽车或者玩具卡车，或者",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 305.12,
+   "end": 313.72,
+   "en_text": "we could play uh yeah play with uh toy",
+   "zh_text": "我们可以玩，嗯，对，玩，嗯，玩具",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 309.199,
+   "end": 317.24,
+   "en_text": "planes uh like this boy here or well I",
+   "zh_text": "飞机，嗯，就像这里的这个男孩，或者，好吧，我",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 313.72,
+   "end": 320.36,
+   "en_text": "guess I guess dancing is like playing",
+   "zh_text": "猜，我猜跳舞也像是玩",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 317.24,
+   "end": 322.96,
+   "en_text": "yeah dancing is like playing yeah it's",
+   "zh_text": "对，跳舞就像是玩，对，它",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 320.36,
+   "end": 327.52,
+   "en_text": "it's fun it's fun usually people think",
+   "zh_text": "很好玩，很好玩，通常人们会想",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 322.96,
+   "end": 330.28,
+   "en_text": "oh it's dancing it's not play but um is",
+   "zh_text": "哦，那是跳舞，那不是玩，但是，嗯，它",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 327.52,
+   "end": 332.72,
+   "en_text": "like play yeah yeah you're right you're",
+   "zh_text": "就像是玩，对，对，你说得对，你",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 330.28,
+   "end": 337.039,
+   "en_text": "right I think so I think it's like",
+   "zh_text": "说得对，我也这么认为，我觉得它就像是",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 332.72,
+   "end": 339.6,
+   "en_text": "play um often when people think of play",
+   "zh_text": "玩，嗯，通常当人们想到玩",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 337.039,
+   "end": 343.24,
+   "en_text": "they think of kids playing like children",
+   "zh_text": "他们会想到孩子们在玩，像小孩",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 339.6,
+   "end": 348.4,
+   "en_text": "playing like this kids like this boy is",
+   "zh_text": "这样玩，孩子们，像这个男孩",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 343.24,
+   "end": 351.8,
+   "en_text": "playing with his toy wagon or um",
+   "zh_text": "在玩他的玩具小货车，或者，嗯",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 348.4,
+   "end": 353.88,
+   "en_text": "this this boy whoops this boy where is",
+   "zh_text": "这个，这个男孩，哎呀，这个男孩，在哪",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 351.8,
+   "end": 360.039,
+   "en_text": "he oh this boy is",
+   "zh_text": "呢，哦，这个男孩在",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 353.88,
+   "end": 363.8,
+   "en_text": "playing with his toy airplane yeah or uh",
+   "zh_text": "玩他的玩具飞机，对，或者，嗯",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 360.039,
+   "end": 367.12,
+   "en_text": "oh this boy is playing by climbing trees",
+   "zh_text": "哦，这个男孩在玩，他在爬树",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 363.8,
+   "end": 370.52,
+   "en_text": "so he's playing he's playing outside",
+   "zh_text": "所以他在玩，他在外面玩",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 367.12,
+   "end": 374.4,
+   "en_text": "yeah yeah so I think I think when I",
+   "zh_text": "对对，所以我觉得，我觉得当我们",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 370.52,
+   "end": 377.36,
+   "en_text": "think when we think of play we often",
+   "zh_text": "觉得，当我们想到玩的时候，我们常常",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 374.4,
+   "end": 382.039,
+   "en_text": "think of children what children do what",
+   "zh_text": "会想到孩子，孩子做的事，",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 377.36,
+   "end": 386.479,
+   "en_text": "boys girls do um playing um climbing is",
+   "zh_text": "男孩女孩做的事，嗯，玩，嗯，爬树也是",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 382.039,
+   "end": 391.319,
+   "en_text": "a kind of play uh many many children uh",
+   "zh_text": "一种玩，嗯，很多很多孩子，嗯，",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 386.479,
+   "end": 394.12,
+   "en_text": "climb trees or climb things to play or",
+   "zh_text": "爬树或者爬东西来玩，或者",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 391.319,
+   "end": 397.479,
+   "en_text": "playing playing with toys playing with",
+   "zh_text": "玩，玩玩具，玩",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 394.12,
+   "end": 400.68,
+   "en_text": "toy planes um playing with or playing",
+   "zh_text": "玩具飞机，嗯，玩，或者玩",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 397.479,
+   "end": 404.68,
+   "en_text": "with pets playing with a dog um playing",
+   "zh_text": "宠物，和狗玩，嗯，玩",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 400.68,
+   "end": 407.319,
+   "en_text": "with a wagon and things like that yeah",
+   "zh_text": "小推车之类的东西，对",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 404.68,
+   "end": 411.319,
+   "en_text": "but many many things can be play uh",
+   "zh_text": "但很多很多事情都可以是玩，嗯，",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 407.319,
+   "end": 414.319,
+   "en_text": "dancing can be play right yeah different",
+   "zh_text": "跳舞也可以是玩，对吧，对，不同的",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 411.319,
+   "end": 417.599,
+   "en_text": "exercises exercise or moving in",
+   "zh_text": "运动，锻炼，或者用不同方式",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 414.319,
+   "end": 420.96,
+   "en_text": "different ways can be play yeah and we",
+   "zh_text": "动来动去也可以是玩，对，而且我们",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 417.599,
+   "end": 424.16,
+   "en_text": "can play games uh many people play",
+   "zh_text": "可以玩游戏，嗯，很多人玩",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 420.96,
+   "end": 426.479,
+   "en_text": "computer games or play games on their",
+   "zh_text": "电脑游戏，或者在手机上",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 424.16,
+   "end": 431.0,
+   "en_text": "phone so there's many kinds of play",
+   "zh_text": "玩游戏，所以玩有很多种",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 426.479,
+   "end": 435.759,
+   "en_text": "right yes yeah and how about you um do",
+   "zh_text": "对吧，对，对，那你呢，嗯，你",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 431.0,
+   "end": 439.319,
+   "en_text": "you like to play um do you play do you",
+   "zh_text": "喜欢玩吗，嗯，你玩，你",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 435.759,
+   "end": 442.96,
+   "en_text": "play uh video games or computer games or",
+   "zh_text": "玩电子游戏或者电脑游戏吗，或者",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 439.319,
+   "end": 445.879,
+   "en_text": "do you play games on your phone or do",
+   "zh_text": "你在手机上玩游戏吗，或者",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 442.96,
+   "end": 449.56,
+   "en_text": "you do you play with toys do you play",
+   "zh_text": "你，你玩玩具吗，你玩",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 445.879,
+   "end": 452.199,
+   "en_text": "with uh toy cars or do you play with toy",
+   "zh_text": "嗯，玩具车吗，或者你玩玩具",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 449.56,
+   "end": 454.759,
+   "en_text": "trucks or do you",
+   "zh_text": "卡车吗，或者你",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 452.199,
+   "end": 460.12,
+   "en_text": "play uh do you play",
+   "zh_text": "玩，嗯，你玩",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 454.759,
+   "end": 463.84,
+   "en_text": "with uh toy toy airplanes or H how do",
+   "zh_text": "嗯，玩具，玩具飞机吗，或者，你",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 460.12,
+   "end": 466.56,
+   "en_text": "you play uh how do you play do you play",
+   "zh_text": "怎么玩，嗯，你怎么玩，你玩",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 463.84,
+   "end": 470.0,
+   "en_text": "how do you play um if you like type a",
+   "zh_text": "你怎么玩，嗯，如果你喜欢，就打",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 466.56,
+   "end": 474.319,
+   "en_text": "comment leave a comment below and let us",
+   "zh_text": "个评论，在下面留言，让我们",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 470.0,
+   "end": 476.319,
+   "en_text": "know watch listen understand learn watch",
+   "zh_text": "知道，看，听，理解，学，看",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 474.319,
+   "end": 481.08,
+   "en_text": "and listen to understand and learn",
+   "zh_text": "并且听，去理解和学",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 476.319,
+   "end": 481.08,
+   "en_text": "English comprehensible English",
+   "zh_text": "英语，可理解的英语",
+   "highlights": []
+  }
+ ]
+}

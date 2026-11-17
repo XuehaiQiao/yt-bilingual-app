@@ -1,0 +1,1949 @@
+{
+ "id": "bloomberg-ganges-cleanup",
+ "youtubeId": "gDBO-B__oLk",
+ "title": "Modi Promised to Clean the Ganges. This Is What Happened",
+ "channel": "Bloomberg Originals",
+ "duration": 869,
+ "level": "C2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/gDBO-B__oLk/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:49:12+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 1.1,
+   "end": 4.18,
+   "en_text": "- The Ganges, or Ganga, as it's called in India,",
+   "zh_text": "恒河，在印度被称为Ganga，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 4.18,
+   "end": 8.2,
+   "en_text": "supports more people than any other river system on Earth.",
+   "zh_text": "养育的人口比地球上任何其他河流系统都多。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 8.2,
+   "end": 11.96,
+   "en_text": "- About 600 million people depend on the river.",
+   "zh_text": "大约有6亿人依赖这条河。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 11.96,
+   "end": 15.359,
+   "en_text": "- It contributes over 40% to India's GDP.",
+   "zh_text": "它为印度GDP贡献了超过40%。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 15.359,
+   "end": 18.62,
+   "en_text": "It powers agriculture, industries, trade.",
+   "zh_text": "它支撑着农业、工业和贸易。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 19.76,
+   "end": 22.153,
+   "en_text": "It's a belief in India that if you take",
+   "zh_text": "印度人相信，如果你",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 22.153,
+   "end": 25.572,
+   "en_text": "a dip in this holy river, you achieve salvation.",
+   "zh_text": "在这条圣河里浸浴一次，就能获得救赎。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 34.54,
+   "end": 37.38,
+   "en_text": "- But India's rapid economic expansion",
+   "zh_text": "但印度快速的经济扩张",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 37.38,
+   "end": 39.9,
+   "en_text": "is pushing this holy river to the brink.",
+   "zh_text": "正把这条圣河推向崩溃的边缘。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 39.9,
+   "end": 41.74,
+   "en_text": "- The water is pitch black,",
+   "zh_text": "水黑得像墨汁一样，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 41.74,
+   "end": 43.7,
+   "en_text": "and it will smell like rotten egg.",
+   "zh_text": "闻起来像臭鸡蛋。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 45.78,
+   "end": 48.56,
+   "en_text": "- So polluted that India's prime minister",
+   "zh_text": "污染如此严重，以至于印度总理",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 48.56,
+   "end": 49.87,
+   "en_text": "vowed to clean it up.",
+   "zh_text": "发誓要把它清理干净。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 56.979,
+   "end": 59.16,
+   "en_text": "Narendra Modi was not the first,",
+   "zh_text": "纳伦德拉·莫迪并不是第一个这么做的人，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 59.16,
+   "end": 62.458,
+   "en_text": "but his government committed more money than ever before,",
+   "zh_text": "但他的政府投入的资金比以往任何时候都多，",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 62.458,
+   "end": 65.4,
+   "en_text": "$4.5 billion to clean the river.",
+   "zh_text": "45亿美元用于清理这条河。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 66.64,
+   "end": 67.94,
+   "en_text": "More than 10 years",
+   "zh_text": "十多年过去了，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 67.94,
+   "end": 70.74,
+   "en_text": "and hundreds of new treatment plants later,",
+   "zh_text": "建成了数百座新的污水处理厂之后，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 70.74,
+   "end": 73.46,
+   "en_text": "Bloomberg News investigated the true state",
+   "zh_text": "彭博新闻社调查了印度最神圣河流的",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 73.46,
+   "end": 75.172,
+   "en_text": "of India's holiest river.",
+   "zh_text": "真实状况。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 77.1,
+   "end": 79.52,
+   "en_text": "We mapped a decade of satellite data",
+   "zh_text": "我们绘制了近2000公里范围内",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 79.52,
+   "end": 81.86,
+   "en_text": "across nearly 2,000 kilometers,",
+   "zh_text": "十年的卫星数据，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 81.86,
+   "end": 84.46,
+   "en_text": "went on the ground in key cities",
+   "zh_text": "在重点城市实地走访，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 84.46,
+   "end": 86.74,
+   "en_text": "and independently tested the water.",
+   "zh_text": "并独立检测了水质。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 87.94,
+   "end": 89.74,
+   "en_text": "- We wanted to see, have sections",
+   "zh_text": "我们想看看，河流的某些河段",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 89.74,
+   "end": 92.997,
+   "en_text": "of the river gotten noticeably cleaned up? Have they not?",
+   "zh_text": "是否明显变干净了？还是并没有？",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 94.08,
+   "end": 96.56,
+   "en_text": "- Ultimately, this flagship program serves",
+   "zh_text": "归根结底，这个旗舰项目是",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 96.56,
+   "end": 97.82,
+   "en_text": "as a very visible part",
+   "zh_text": "一个非常直观的组成部分，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 97.82,
+   "end": 101.54,
+   "en_text": "of a report card on Modi's 12 years in power.",
+   "zh_text": "构成了莫迪执政12年的成绩单。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 101.54,
+   "end": 104.94,
+   "en_text": "- Cleaning the river Ganges, this is a litmus test",
+   "zh_text": "清理恒河，这是检验",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 104.94,
+   "end": 106.412,
+   "en_text": "of his ultimate governance.",
+   "zh_text": "他整体治理能力的一块试金石。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 118.08,
+   "end": 120.259,
+   "en_text": "- Sweeping to power in 2014,",
+   "zh_text": "2014年大获全胜上台后，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 120.259,
+   "end": 124.059,
+   "en_text": "Narendra Modi made restoring the Ganges a central pillar",
+   "zh_text": "纳伦德拉·莫迪把修复恒河作为",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 124.059,
+   "end": 125.959,
+   "en_text": "of his national agenda.",
+   "zh_text": "国家议程的核心支柱。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 125.959,
+   "end": 128.739,
+   "en_text": "- Modi loves to set ambitious goals.",
+   "zh_text": "莫迪喜欢设定雄心勃勃的目标。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 128.739,
+   "end": 131.82,
+   "en_text": "- The financial inclusion, the Clean India Mission.",
+   "zh_text": "金融普惠、清洁印度运动。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 131.82,
+   "end": 134.34,
+   "en_text": "Cleaning the river Ganges is a mammoth task.",
+   "zh_text": "清理恒河是一项艰巨的任务。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 135.64,
+   "end": 139.28,
+   "en_text": "- Namami Gange was launched in 2014 to clean the river",
+   "zh_text": "Namami Gange计划于2014年启动，旨在清除河中",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 139.28,
+   "end": 142.18,
+   "en_text": "of sewage and toxic industrial waste.",
+   "zh_text": "的污水和有毒工业废料。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 142.18,
+   "end": 143.92,
+   "en_text": "- But, even leaders",
+   "zh_text": "但是，即便是从一开始",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 143.92,
+   "end": 148.12,
+   "en_text": "that have overseen this plan from the start acknowledge",
+   "zh_text": "就主导这项计划的领导人也不得不承认，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 148.12,
+   "end": 150.56,
+   "en_text": "that cities are growing very fast,",
+   "zh_text": "城市发展非常快，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 150.56,
+   "end": 152.88,
+   "en_text": "and so capturing all the waste",
+   "zh_text": "因此要收集来自城市的",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 152.88,
+   "end": 156.32,
+   "en_text": "that comes from them is becoming harder and harder.",
+   "zh_text": "所有废料正变得越来越难。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 156.32,
+   "end": 159.58,
+   "en_text": "- India's government says it has made significant progress",
+   "zh_text": "印度政府表示，在清理恒河方面",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 159.58,
+   "end": 163.04,
+   "en_text": "in cleaning the Ganges, but it recognizes",
+   "zh_text": "已取得重大进展，但也承认",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 163.04,
+   "end": 164.535,
+   "en_text": "that much remains to be done.",
+   "zh_text": "还有很多工作要做。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 173.36,
+   "end": 176.06,
+   "en_text": "- Haridwar is a small religious town,",
+   "zh_text": "哈里德瓦尔是一座小小的宗教城镇，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 176.06,
+   "end": 178.54,
+   "en_text": "which literally means gateway to God.",
+   "zh_text": "它的名字字面意思就是通往神的大门。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 179.948,
+   "end": 181.86,
+   "en_text": "- Haridwar is also a testing ground",
+   "zh_text": "哈里德瓦尔也是一个试验场，",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 181.86,
+   "end": 184.44,
+   "en_text": "for new public-private funding models",
+   "zh_text": "用来试验新的公私合作融资模式，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 184.44,
+   "end": 188.1,
+   "en_text": "that build state-of-the-art facilities like this plant.",
+   "zh_text": "建设像这座工厂一样最先进的设施。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 188.1,
+   "end": 191.16,
+   "en_text": "- Haridwar would be, I think, one of the success stories.",
+   "zh_text": "我认为哈里德瓦尔会是一个成功案例。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 191.16,
+   "end": 192.36,
+   "en_text": "As per our reporting,",
+   "zh_text": "根据我们的报道，",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 192.36,
+   "end": 194.32,
+   "en_text": "the river has become visibly cleaner",
+   "zh_text": "这条河已经明显比2015年",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 194.32,
+   "end": 196.48,
+   "en_text": "than it was in 2015.",
+   "zh_text": "更干净了。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 196.48,
+   "end": 198.58,
+   "en_text": "There are five sewage treatment plants",
+   "zh_text": "这里有五座污水处理厂",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 198.58,
+   "end": 200.64,
+   "en_text": "and the government claims that all",
+   "zh_text": "政府声称所有",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 200.64,
+   "end": 202.68,
+   "en_text": "of the drains are connected.",
+   "zh_text": "排水管都已经接入了。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 202.68,
+   "end": 206.4,
+   "en_text": "- But look down from space and a different reality emerges.",
+   "zh_text": "- 但从太空往下看，呈现的却是另一番景象。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 207.24,
+   "end": 209.963,
+   "en_text": "- What we can do is build a limited picture of",
+   "zh_text": "- 我们能做的，是通过几个不同的参数",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 209.963,
+   "end": 212.72,
+   "en_text": "river health through a few different parameters.",
+   "zh_text": "来构建一幅有限的河流健康状况图景。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 212.72,
+   "end": 215.097,
+   "en_text": "One of them is turbidity,",
+   "zh_text": "其中一个参数是浊度，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 215.097,
+   "end": 218.04,
+   "en_text": "so this is how much light can penetrate water.",
+   "zh_text": "也就是有多少光能穿透水体。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 219.02,
+   "end": 222.16,
+   "en_text": "If we put pre and post-monsoon trends together,",
+   "zh_text": "如果把季风前和季风后的趋势放在一起看，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 222.16,
+   "end": 224.1,
+   "en_text": "there is this clear pattern showing",
+   "zh_text": "就会看到一个清晰的规律，",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 224.1,
+   "end": 225.9,
+   "en_text": "that it's muddying in both seasons.",
+   "zh_text": "表明两个季节河水都在变浑浊。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 228.04,
+   "end": 229.18,
+   "en_text": "- On the ground the cause",
+   "zh_text": "- 到了实地，这种全年浑浊的",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 229.18,
+   "end": 231.24,
+   "en_text": "of this year-round muddying becomes clear,",
+   "zh_text": "原因就一目了然了：",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 232.12,
+   "end": 235.059,
+   "en_text": "widespread riverbed construction and sand-mining.",
+   "zh_text": "大范围的河床施工和采砂。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 237.44,
+   "end": 239.459,
+   "en_text": "And when millions descend on the river",
+   "zh_text": "而当数以百万计的人涌向河边",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 239.459,
+   "end": 241.12,
+   "en_text": "during religious festivals,",
+   "zh_text": "参加宗教节日时，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 241.12,
+   "end": 245.199,
+   "en_text": "facilities processing sewage are completely overwhelmed.",
+   "zh_text": "处理污水的设施就完全不堪重负了。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 245.199,
+   "end": 249.3,
+   "en_text": "- There were some 7.5 million people on one day.",
+   "zh_text": "- 有一天来了大约750万人。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 249.3,
+   "end": 252.22,
+   "en_text": "It is just not possible to construct infrastructure",
+   "zh_text": "根本不可能去建基础设施，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 252.22,
+   "end": 253.42,
+   "en_text": "for population which is going",
+   "zh_text": "只为了应对那些",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 253.42,
+   "end": 254.963,
+   "en_text": "to be there only for a day or two.",
+   "zh_text": "只来一两天的临时人口。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 262.78,
+   "end": 265.18,
+   "en_text": "- Downstream are villages like this one.",
+   "zh_text": "- 下游就是这样的村庄。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 267.02,
+   "end": 270.0,
+   "en_text": "The residents here complain of multiple health issues,",
+   "zh_text": "这里的居民抱怨有多种健康问题，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 270.84,
+   "end": 273.306,
+   "en_text": "skin lesions, stomach infections",
+   "zh_text": "皮肤病变、肠胃感染",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 273.306,
+   "end": 274.673,
+   "en_text": "and nail deformities.",
+   "zh_text": "还有指甲畸形。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 296.103,
+   "end": 298.775,
+   "en_text": "They say the impacts go far beyond their own health.",
+   "zh_text": "他们说影响远不止他们自身的健康。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 315.52,
+   "end": 318.38,
+   "en_text": "Experts also say that contaminated water is",
+   "zh_text": "专家还表示，受污染的水正",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 318.38,
+   "end": 320.36,
+   "en_text": "entering India's food chain.",
+   "zh_text": "进入印度的食物链。",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 320.36,
+   "end": 323.223,
+   "en_text": "- There have been a lot of studies which show",
+   "zh_text": "- 有很多研究表明，",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 323.223,
+   "end": 326.76,
+   "en_text": "if the crop is irrigated by arsenic-laden water,",
+   "zh_text": "如果农作物用含砷的水灌溉，",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 326.76,
+   "end": 328.5,
+   "en_text": "that arsenic would be taken up by the crop",
+   "zh_text": "砷就会被农作物吸收，",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 328.5,
+   "end": 330.86,
+   "en_text": "and eventually you are eating that crop.",
+   "zh_text": "最终你就把这种农作物吃进了肚子里。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 332.26,
+   "end": 334.94,
+   "en_text": "- Studies have linked harmful compounds to the Ganges",
+   "zh_text": "- 研究已将有害化合物与恒河",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 334.94,
+   "end": 336.84,
+   "en_text": "and India's broader food chain,",
+   "zh_text": "以及印度更广泛的食品链联系起来，",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 336.84,
+   "end": 339.38,
+   "en_text": "but limited disease tracking means the scale",
+   "zh_text": "但疾病追踪有限，意味着问题的规模",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 339.38,
+   "end": 341.08,
+   "en_text": "of the problem remains unclear.",
+   "zh_text": "仍不清楚。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 343.76,
+   "end": 345.78,
+   "en_text": "Urban growth and religious tourism",
+   "zh_text": "城市扩张和宗教旅游",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 345.78,
+   "end": 347.412,
+   "en_text": "are just part of the problem.",
+   "zh_text": "只是问题的一部分。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 351.7,
+   "end": 355.66,
+   "en_text": "The Ganges is home to large industrial cities like Kanpur,",
+   "zh_text": "恒河流经坎普尔等大型工业城市，",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 355.66,
+   "end": 357.26,
+   "en_text": "India's leather capital,",
+   "zh_text": "坎普尔是印度的皮革之都，",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 357.26,
+   "end": 360.08,
+   "en_text": "and historically one of the most polluted stretches",
+   "zh_text": "历史上也是整条河污染最严重的",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 360.08,
+   "end": 362.318,
+   "en_text": "of the entire river.",
+   "zh_text": "河段之一。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 362.318,
+   "end": 364.86,
+   "en_text": "King's International is one of the largest exporters",
+   "zh_text": "King's International是坎普尔最大的",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 364.86,
+   "end": 366.84,
+   "en_text": "of leather products in Kanpur.",
+   "zh_text": "皮革产品出口商之一。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 366.84,
+   "end": 370.2,
+   "en_text": "The company says it processes wastewater on site",
+   "zh_text": "该公司表示会在厂区内处理废水，",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 370.2,
+   "end": 372.12,
+   "en_text": "before sending it to a treatment plant.",
+   "zh_text": "然后再送往处理厂。",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 372.12,
+   "end": 373.68,
+   "en_text": "- When it comes to the pollution,",
+   "zh_text": "- 说到污染，",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 373.68,
+   "end": 375.82,
+   "en_text": "it's a stigma on the leather industry.",
+   "zh_text": "这是皮革行业的一个污名。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 377.9,
+   "end": 380.458,
+   "en_text": "Despite the fact that we do our treatment",
+   "zh_text": "尽管我们做了处理，",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 380.458,
+   "end": 381.799,
+   "en_text": "both at primary level,",
+   "zh_text": "在初级层面、",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 381.799,
+   "end": 383.675,
+   "en_text": "secondary level in the CTP.",
+   "zh_text": "在中央处理厂的二级层面都做了。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 386.12,
+   "end": 387.32,
+   "en_text": "We are told to adhere",
+   "zh_text": "我们被要求遵守",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 387.32,
+   "end": 389.68,
+   "en_text": "to certain directions which are not there",
+   "zh_text": "某些规定，而这些规定",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 389.68,
+   "end": 391.02,
+   "en_text": "for other parts of the country.",
+   "zh_text": "对全国其他地区并不适用。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 392.48,
+   "end": 394.946,
+   "en_text": "- But we saw other smaller factories",
+   "zh_text": "- 但我们看到其他较小的工厂",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 394.946,
+   "end": 396.02,
+   "en_text": "dumping waste into the",
+   "zh_text": "通过露天排水沟",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 396.02,
+   "end": 397.847,
+   "en_text": "river through open drains.",
+   "zh_text": "把废料排入河中。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 398.7,
+   "end": 401.98,
+   "en_text": "- At Kanpur we see some improvement in the pre-monsoon",
+   "zh_text": "- 在坎普尔，我们看到季风前那段时间",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 401.98,
+   "end": 405.5,
+   "en_text": "window but in the post-monsoon window we see",
+   "zh_text": "有所改善，但在季风后那段时间，我们看到",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 405.5,
+   "end": 407.7,
+   "en_text": "that it's actually getting muddier.",
+   "zh_text": "它实际上变得越来越浑浊了。",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 407.7,
+   "end": 410.24,
+   "en_text": "- Muddier water indicates a high likelihood",
+   "zh_text": "- 水更浑浊，说明很可能",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 410.24,
+   "end": 411.66,
+   "en_text": "of pollution in Kanpur.",
+   "zh_text": "坎普尔存在污染。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 412.64,
+   "end": 414.66,
+   "en_text": "On the one hand, there is evidence",
+   "zh_text": "一方面，有证据表明",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 414.66,
+   "end": 417.22,
+   "en_text": "of major government success like tapping,",
+   "zh_text": "政府取得了重大成功，比如截流，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 417.22,
+   "end": 420.14,
+   "en_text": "or stopping, the flow of this massive drain,",
+   "zh_text": "或者说阻止了这条巨大排水渠的水流，",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 420.14,
+   "end": 421.482,
+   "en_text": "one of Asia's largest.",
+   "zh_text": "它是亚洲最大的排水渠之一。",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 422.52,
+   "end": 423.88,
+   "en_text": "But on the other hand,",
+   "zh_text": "但另一方面，",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 423.88,
+   "end": 427.5,
+   "en_text": "more than a dozen other drains are still releasing raw",
+   "zh_text": "还有十几条排水渠仍在把未经处理的",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 427.5,
+   "end": 429.5,
+   "en_text": "sewage directly into the river.",
+   "zh_text": "污水直接排入河中。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 430.48,
+   "end": 433.0,
+   "en_text": "And people here claim that some drains are opened at",
+   "zh_text": "而且这里的人说，有些排水渠会在",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 433.0,
+   "end": 435.12,
+   "en_text": "night to avoid attention.",
+   "zh_text": "夜里打开，以避人耳目。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 435.12,
+   "end": 436.96,
+   "en_text": "- While I was speaking to people, they said",
+   "zh_text": "- 我在跟人们交谈时，他们说",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 436.96,
+   "end": 440.44,
+   "en_text": "that there is this drain that is not tapped.",
+   "zh_text": "有这么一条排水渠没有被截流。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 440.44,
+   "end": 443.18,
+   "en_text": "I went there around 8:00, 8:30 at night just",
+   "zh_text": "我晚上8点、8点半左右去了那里，就是",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 443.18,
+   "end": 445.6,
+   "en_text": "to check if this is indeed true",
+   "zh_text": "想确认这是不是真的，",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 445.6,
+   "end": 446.859,
+   "en_text": "and what I found was shocking.",
+   "zh_text": "结果让我震惊。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 449.58,
+   "end": 453.793,
+   "en_text": "Black water being released straight into the river.",
+   "zh_text": "黑水正直接排入河中。",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 459.38,
+   "end": 461.92,
+   "en_text": "- Treatment plants can remove visible pollution,",
+   "zh_text": "- 处理厂可以去除看得见的污染，",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 461.92,
+   "end": 464.459,
+   "en_text": "but they don't necessarily clear contaminants",
+   "zh_text": "但它们未必能清除溶解在水中的",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 464.459,
+   "end": 465.92,
+   "en_text": "dissolved in the water.",
+   "zh_text": "污染物。",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 466.92,
+   "end": 470.199,
+   "en_text": "Satellite imagery reveals changes in turbidity, algae",
+   "zh_text": "卫星图像能揭示数千公里范围内浊度、藻类",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 470.199,
+   "end": 472.96,
+   "en_text": "and water temperature across thousands of kilometers,",
+   "zh_text": "和水温的变化，",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 473.819,
+   "end": 476.68,
+   "en_text": "but it cannot detect chemicals, heavy metals",
+   "zh_text": "但无法检测水中的化学物质、重金属",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 476.68,
+   "end": 478.4,
+   "en_text": "or pathogens in the water.",
+   "zh_text": "或病原体。",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 478.4,
+   "end": 481.48,
+   "en_text": "- So one example is dissolved oxygen,",
+   "zh_text": "- 举个例子就是溶解氧，",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 481.48,
+   "end": 484.54,
+   "en_text": "so this is the amount of life that the water can support.",
+   "zh_text": "也就是水体能支撑多少生命。",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 484.54,
+   "end": 486.92,
+   "en_text": "This is effectively invisible to satellites.",
+   "zh_text": "这实际上是卫星看不到的。",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 486.92,
+   "end": 489.839,
+   "en_text": "They also can't measure things like fecal coliform",
+   "zh_text": "它们也测不了粪大肠菌群",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 489.839,
+   "end": 491.38,
+   "en_text": "or total suspended solids.",
+   "zh_text": "或总悬浮固体这类东西。",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 492.56,
+   "end": 493.393,
+   "en_text": "- Scientists from the",
+   "zh_text": "- 来自",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 493.393,
+   "end": 495.551,
+   "en_text": "Indian Institute of Technology, Kharagpur",
+   "zh_text": "印度理工学院卡拉格普尔分校的科学家",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 495.551,
+   "end": 497.78,
+   "en_text": "independently tested river water,",
+   "zh_text": "独立检测了河水、",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 497.78,
+   "end": 500.042,
+   "en_text": "irrigation channels and groundwater",
+   "zh_text": "灌溉渠和地下水，",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 500.042,
+   "end": 501.833,
+   "en_text": "along key stretches of the basin",
+   "zh_text": "取样点分布在流域的关键河段，",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 501.833,
+   "end": 503.083,
+   "en_text": "for Bloomberg News.",
+   "zh_text": "这是为彭博新闻社做的。",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 504.18,
+   "end": 507.4,
+   "en_text": "In Kanpur, results show river water exceeding government",
+   "zh_text": "在坎普尔，结果显示河水超过了政府",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 507.4,
+   "end": 508.98,
+   "en_text": "safety standards for bathing",
+   "zh_text": "规定的沐浴安全标准，",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 508.98,
+   "end": 511.32,
+   "en_text": "and pollution in drinking water was more than",
+   "zh_text": "而饮用水中的污染超过",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 511.32,
+   "end": 513.42,
+   "en_text": "twice the permissible limit.",
+   "zh_text": "允许限值两倍以上。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 513.42,
+   "end": 516.4,
+   "en_text": "An irrigation channel used for agriculture showed evidence",
+   "zh_text": "一条用于农业的灌溉渠显示出",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 516.4,
+   "end": 519.28,
+   "en_text": "of severe pollution from treated tannery wastewater.",
+   "zh_text": "经处理的制革废水造成严重污染的迹象。",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 520.32,
+   "end": 522.444,
+   "en_text": "A drinking water well in Jana Village",
+   "zh_text": "贾纳村的一口饮用水井",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 522.444,
+   "end": 523.369,
+   "en_text": "contained fluoride more",
+   "zh_text": "氟化物含量超过",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 523.369,
+   "end": 525.84,
+   "en_text": "than four times India's permissible limit,",
+   "zh_text": "印度允许限值的四倍多，",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 525.84,
+   "end": 528.68,
+   "en_text": "with nitrate more than twice the limit.",
+   "zh_text": "硝酸盐也超过限值两倍以上。",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 528.68,
+   "end": 531.057,
+   "en_text": "Prolonged exposure to excessive fluoride",
+   "zh_text": "长期接触过量氟化物",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 531.057,
+   "end": 533.36,
+   "en_text": "can damage bones, while high nitrate",
+   "zh_text": "会损害骨骼，而高硝酸盐",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 533.36,
+   "end": 536.512,
+   "en_text": "can impair the blood's ability to carry oxygen,",
+   "zh_text": "会削弱血液输送氧气的能力，",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 536.512,
+   "end": 538.62,
+   "en_text": "according to the World Health Organization.",
+   "zh_text": "据世界卫生组织称。",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 540.0,
+   "end": 543.0,
+   "en_text": "Farther east in Varanasi, satellite images show",
+   "zh_text": "再往东到瓦拉纳西，卫星图像显示",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 543.0,
+   "end": 544.82,
+   "en_text": "how government spending has yielded",
+   "zh_text": "政府的投入产生了",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 544.82,
+   "end": 546.54,
+   "en_text": "vastly different results.",
+   "zh_text": "截然不同的结果。",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 546.54,
+   "end": 548.78,
+   "en_text": "- This area is kind of consistently improving,",
+   "zh_text": "- 这个区域可以说在持续改善，",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 548.78,
+   "end": 550.82,
+   "en_text": "at least from the turbidity standpoint",
+   "zh_text": "至少从浊度角度来看是这样，",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 550.82,
+   "end": 555.08,
+   "en_text": "and then this data here is showing how much",
+   "zh_text": "然后这里的这些数据展示了",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 555.08,
+   "end": 558.02,
+   "en_text": "that area has increased in urbanization",
+   "zh_text": "该区域的城市化程度增加了多少，",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 558.02,
+   "end": 560.8,
+   "en_text": "through the change in nighttime light intensity.",
+   "zh_text": "这是通过夜间光照强度的变化看出来的。",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 560.8,
+   "end": 562.76,
+   "en_text": "That's kind of the big tension here, right?",
+   "zh_text": "这就是这里最大的矛盾，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 563.62,
+   "end": 566.94,
+   "en_text": "The government is attempting to put more money,",
+   "zh_text": "政府正试图投入更多资金，",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 566.94,
+   "end": 569.332,
+   "en_text": "build new sewage treatment plants to",
+   "zh_text": "建造新的污水处理厂，",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 569.332,
+   "end": 570.3,
+   "en_text": "make the river cleaner,",
+   "zh_text": "让河水变得更干净，",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 570.3,
+   "end": 573.003,
+   "en_text": "but the areas are growing very, very rapidly.",
+   "zh_text": "但这些区域发展得非常非常快。",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 574.0,
+   "end": 576.46,
+   "en_text": "- Modi, one of India's most popular leaders,",
+   "zh_text": "- 莫迪是印度最受欢迎的领导人之一，",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 576.46,
+   "end": 579.34,
+   "en_text": "announced the cleanup plan here in Varanasi,",
+   "zh_text": "他在瓦拉纳西这里宣布了清理计划，",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 579.34,
+   "end": 582.68,
+   "en_text": "his parliamentary constituency and a key political base.",
+   "zh_text": "这里是他的议会选区，也是重要的政治根据地。",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 584.62,
+   "end": 587.74,
+   "en_text": "- Varanasi has been showcased as a big success",
+   "zh_text": "- 瓦拉纳西一直被当作一大成功案例来展示，",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 587.74,
+   "end": 589.44,
+   "en_text": "within the Namami Ganges program.",
+   "zh_text": "属于“致敬恒河”计划的一部分。",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 589.44,
+   "end": 590.92,
+   "en_text": "- These are areas where a lot",
+   "zh_text": "- 这些地区投入了大量",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 590.92,
+   "end": 592.745,
+   "en_text": "of money has been spent",
+   "zh_text": "资金，",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 592.745,
+   "end": 595.38,
+   "en_text": "towards building new infrastructure.",
+   "zh_text": "用于建设新的基础设施。",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 595.38,
+   "end": 597.421,
+   "en_text": "- While the city's ancient waterfronts",
+   "zh_text": "- 虽然这座城市古老的河岸",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 597.421,
+   "end": 598.604,
+   "en_text": "have been transformed,",
+   "zh_text": "已经焕然一新，",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 598.604,
+   "end": 601.74,
+   "en_text": "the water here remains unsafe for human use,",
+   "zh_text": "但这里的水质对人类使用来说仍不安全，",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 601.74,
+   "end": 603.76,
+   "en_text": "according to independent studies.",
+   "zh_text": "这是独立研究得出的结论。",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 603.76,
+   "end": 606.1,
+   "en_text": "The government says it wants to make the Ganges fit",
+   "zh_text": "政府表示，希望在2029年下届大选前让恒河达到",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 606.1,
+   "end": 610.02,
+   "en_text": "for bathing by the next election in 2029.",
+   "zh_text": "可以沐浴的标准。",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 610.02,
+   "end": 612.22,
+   "en_text": "- In the area where people are bathing,",
+   "zh_text": "- 在人们沐浴的区域，",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 612.22,
+   "end": 614.88,
+   "en_text": "the water is clearly very, very dirty.",
+   "zh_text": "水明显非常非常脏。",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 614.88,
+   "end": 617.24,
+   "en_text": "The crematoria issue is a particularly",
+   "zh_text": "火葬场问题对政府来说尤其",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 617.24,
+   "end": 619.14,
+   "en_text": "thorny one for the government.",
+   "zh_text": "棘手。",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 619.14,
+   "end": 621.1,
+   "en_text": "It's an important religious practice",
+   "zh_text": "这是一项重要的宗教习俗，",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 621.1,
+   "end": 625.22,
+   "en_text": "and many people want their loved ones to be in touch",
+   "zh_text": "很多人都希望自己的亲人离世时能接触到",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 625.22,
+   "end": 627.96,
+   "en_text": "with the sacred waters as they pass on.",
+   "zh_text": "这神圣的河水。",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 627.96,
+   "end": 630.36,
+   "en_text": "But it's also a genuine source of pollution",
+   "zh_text": "但把骨灰、有时还有遗体排入河中，",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 630.36,
+   "end": 634.03,
+   "en_text": "to discharge ashes and sometimes bodies in the river.",
+   "zh_text": "也确实是一个实实在在的污染源。",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 635.54,
+   "end": 637.26,
+   "en_text": "- Pilgrims and politicians believe",
+   "zh_text": "- 朝圣者和政客都相信",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 637.26,
+   "end": 639.54,
+   "en_text": "that its waters can self-purify",
+   "zh_text": "恒河水能够自我净化，",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 639.54,
+   "end": 642.123,
+   "en_text": "or cleanse any amount of waste.",
+   "zh_text": "或者净化掉任何数量的废物。",
+   "highlights": []
+  },
+  {
+   "id": 205,
+   "start": 666.24,
+   "end": 667.66,
+   "en_text": "- The Ganges crucial role",
+   "zh_text": "- 恒河作为精神净化者的关键作用，",
+   "highlights": []
+  },
+  {
+   "id": 206,
+   "start": 667.66,
+   "end": 670.34,
+   "en_text": "as a spiritual cleanser while bearing the weight",
+   "zh_text": "同时又要承受污染的重负，",
+   "highlights": []
+  },
+  {
+   "id": 207,
+   "start": 670.34,
+   "end": 672.78,
+   "en_text": "of pollution is at the heart of the tension.",
+   "zh_text": "正是这种矛盾的核心所在。",
+   "highlights": []
+  },
+  {
+   "id": 208,
+   "start": 673.88,
+   "end": 675.88,
+   "en_text": "Scientists are also now pointing",
+   "zh_text": "科学家们现在还指出",
+   "highlights": []
+  },
+  {
+   "id": 209,
+   "start": 675.88,
+   "end": 678.121,
+   "en_text": "to a compounding problem.",
+   "zh_text": "一个雪上加霜的问题。",
+   "highlights": []
+  },
+  {
+   "id": 210,
+   "start": 678.121,
+   "end": 681.08,
+   "en_text": "- The groundwater that was actually feeding the Ganga",
+   "zh_text": "- 原本补给恒河的地下水",
+   "highlights": []
+  },
+  {
+   "id": 211,
+   "start": 681.08,
+   "end": 684.24,
+   "en_text": "is actually being taken out to the level that the water",
+   "zh_text": "实际上正被抽取到这样的程度——原本",
+   "highlights": []
+  },
+  {
+   "id": 212,
+   "start": 684.24,
+   "end": 685.86,
+   "en_text": "that was actually supporting the river",
+   "zh_text": "支撑这条河生存的水",
+   "highlights": []
+  },
+  {
+   "id": 213,
+   "start": 685.86,
+   "end": 687.96,
+   "en_text": "to survive is not there anymore.",
+   "zh_text": "已经不复存在了。",
+   "highlights": []
+  },
+  {
+   "id": 214,
+   "start": 688.94,
+   "end": 693.22,
+   "en_text": "Our studies have shown over the years that there is ample",
+   "zh_text": "我们的研究多年来表明，整个",
+   "highlights": []
+  },
+  {
+   "id": 215,
+   "start": 693.22,
+   "end": 695.88,
+   "en_text": "concentration of persistent organic pollutants across the",
+   "zh_text": "恒河流域存在大量浓度的",
+   "highlights": []
+  },
+  {
+   "id": 216,
+   "start": 695.88,
+   "end": 699.8,
+   "en_text": "river Ganga seeping below from the rivers",
+   "zh_text": "持久性有机污染物，从河流渗入地下，",
+   "highlights": []
+  },
+  {
+   "id": 217,
+   "start": 699.8,
+   "end": 702.6,
+   "en_text": "to the urban centers and rural places.",
+   "zh_text": "蔓延到城市中心和乡村地区。",
+   "highlights": []
+  },
+  {
+   "id": 218,
+   "start": 734.06,
+   "end": 737.58,
+   "en_text": "- Much of Modi's vision remains a work in progress.",
+   "zh_text": "- 莫迪的许多愿景仍停留在进行中。",
+   "highlights": []
+  },
+  {
+   "id": 219,
+   "start": 737.58,
+   "end": 740.02,
+   "en_text": "Only about half of the funds allocated",
+   "zh_text": "截至2025年，“致敬恒河”项目分配的",
+   "highlights": []
+  },
+  {
+   "id": 220,
+   "start": 740.02,
+   "end": 744.0,
+   "en_text": "for the Namami Gange project were spent through 2025",
+   "zh_text": "资金只花掉了大约一半，",
+   "highlights": []
+  },
+  {
+   "id": 221,
+   "start": 744.0,
+   "end": 747.82,
+   "en_text": "and industries continue to flout pollution norms.",
+   "zh_text": "而工业企业仍在无视污染规定。",
+   "highlights": []
+  },
+  {
+   "id": 222,
+   "start": 747.82,
+   "end": 751.0,
+   "en_text": "- The Ganges can be seen as a metaphor",
+   "zh_text": "- 恒河可以看作是",
+   "highlights": []
+  },
+  {
+   "id": 223,
+   "start": 751.0,
+   "end": 753.045,
+   "en_text": "for India's growth story.",
+   "zh_text": "印度发展故事的一个隐喻。",
+   "highlights": []
+  },
+  {
+   "id": 224,
+   "start": 753.045,
+   "end": 756.94,
+   "en_text": "The strive to develop and to lift its people out",
+   "zh_text": "一边努力发展、让人民摆脱",
+   "highlights": []
+  },
+  {
+   "id": 225,
+   "start": 756.94,
+   "end": 759.94,
+   "en_text": "of poverty while at the same time preserving",
+   "zh_text": "贫困，一边又要保护",
+   "highlights": []
+  },
+  {
+   "id": 226,
+   "start": 759.94,
+   "end": 761.813,
+   "en_text": "its natural resources.",
+   "zh_text": "自然资源。",
+   "highlights": []
+  },
+  {
+   "id": 227,
+   "start": 763.48,
+   "end": 765.288,
+   "en_text": "- Satellite data points to only about",
+   "zh_text": "- 卫星数据显示，过去10年里",
+   "highlights": []
+  },
+  {
+   "id": 228,
+   "start": 765.288,
+   "end": 766.446,
+   "en_text": "one in ten stretches",
+   "zh_text": "只有大约十分之一的",
+   "highlights": []
+  },
+  {
+   "id": 229,
+   "start": 766.446,
+   "end": 768.86,
+   "en_text": "of the river showing consistent improvement",
+   "zh_text": "河段",
+   "highlights": []
+  },
+  {
+   "id": 230,
+   "start": 768.86,
+   "end": 770.68,
+   "en_text": "over the last 10 years.",
+   "zh_text": "呈现出持续的改善。",
+   "highlights": []
+  },
+  {
+   "id": 231,
+   "start": 770.68,
+   "end": 772.5,
+   "en_text": "- The water is muddying",
+   "zh_text": "- 水变得越来越浑浊，",
+   "highlights": []
+  },
+  {
+   "id": 232,
+   "start": 772.5,
+   "end": 775.86,
+   "en_text": "we have higher nutrient loads and warmer waters.",
+   "zh_text": "营养物负荷更高，水温也更暖。",
+   "highlights": []
+  },
+  {
+   "id": 233,
+   "start": 775.86,
+   "end": 777.18,
+   "en_text": "There's many stretches of the river",
+   "zh_text": "这条河有很多河段",
+   "highlights": []
+  },
+  {
+   "id": 234,
+   "start": 777.18,
+   "end": 778.9,
+   "en_text": "where the three parameters",
+   "zh_text": "在那里，三个参数",
+   "highlights": []
+  },
+  {
+   "id": 235,
+   "start": 778.9,
+   "end": 780.32,
+   "en_text": "that we can measure from satellites are",
+   "zh_text": "我们能从卫星上测量的三个参数",
+   "highlights": []
+  },
+  {
+   "id": 236,
+   "start": 780.32,
+   "end": 781.54,
+   "en_text": "pointing in the wrong direction.",
+   "zh_text": "正朝着错误的方向发展。",
+   "highlights": []
+  },
+  {
+   "id": 237,
+   "start": 782.46,
+   "end": 786.28,
+   "en_text": "So what this tells us is that infrastructure has the ability",
+   "zh_text": "所以这告诉我们的是，基础设施有能力",
+   "highlights": []
+  },
+  {
+   "id": 238,
+   "start": 786.28,
+   "end": 788.9,
+   "en_text": "to make a difference, but that investment needs",
+   "zh_text": "带来改变，但投资需要",
+   "highlights": []
+  },
+  {
+   "id": 239,
+   "start": 788.9,
+   "end": 790.38,
+   "en_text": "to be spread uniformly",
+   "zh_text": "均匀地分布",
+   "highlights": []
+  },
+  {
+   "id": 240,
+   "start": 790.38,
+   "end": 792.84,
+   "en_text": "and there needs to be more of it in order for there",
+   "zh_text": "而且需要更多的投资，才能",
+   "highlights": []
+  },
+  {
+   "id": 241,
+   "start": 792.84,
+   "end": 795.902,
+   "en_text": "to be meaningful efforts towards cleanup.",
+   "zh_text": "朝着清理的目标做出有意义的努力。",
+   "highlights": []
+  }
+ ]
+}

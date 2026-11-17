@@ -1,0 +1,693 @@
+{
+ "id": "teded-languages-evolve",
+ "youtubeId": "iWDKsHm6gTA",
+ "title": "How languages evolve - Alex Gendler",
+ "channel": "TED-Ed",
+ "duration": 243,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/iWDKsHm6gTA/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:37+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 7.369,
+   "end": 9.722,
+   "en_text": "In the biblical story of the Tower of Babel,",
+   "zh_text": "在《圣经》中巴别塔的故事里，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 9.722,
+   "end": 12.566,
+   "en_text": "all of humanity once spoke a single language",
+   "zh_text": "全人类曾经只说一种语言，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 12.566,
+   "end": 14.818,
+   "en_text": "until they suddenly split into many groups",
+   "zh_text": "直到他们突然分裂成许多群体，",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 14.818,
+   "end": 16.973,
+   "en_text": "unable to understand each other.",
+   "zh_text": "彼此无法理解。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 16.973,
+   "end": 20.526,
+   "en_text": "We don't really know if such an original language ever existed,",
+   "zh_text": "我们并不真的知道这样一种原始语言是否曾经存在过，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 20.526,
+   "end": 23.792,
+   "en_text": "but we do know that the thousands of languages existing today",
+   "zh_text": "但我们确实知道，今天存在的数千种语言",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 23.792,
+   "end": 27.021,
+   "en_text": "can be traced back to a much smaller number.",
+   "zh_text": "都可以追溯到数量少得多的一些语言。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 27.021,
+   "end": 29.245,
+   "en_text": "So how did we end up with so many?",
+   "zh_text": "那么，我们怎么会有这么多语言呢？",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 29.245,
+   "end": 31.607,
+   "en_text": "In the early days of human migration,",
+   "zh_text": "在人类迁徙的早期，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 31.607,
+   "end": 33.652,
+   "en_text": "the world was much less populated.",
+   "zh_text": "世界人口要少得多。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 33.652,
+   "end": 36.621,
+   "en_text": "Groups of people that shared a single language and culture",
+   "zh_text": "共享同一种语言和文化的群体",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 36.621,
+   "end": 38.726,
+   "en_text": "often split into smaller tribes,",
+   "zh_text": "常常分裂成更小的部落，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 38.726,
+   "end": 42.166,
+   "en_text": "going separate ways in search of fresh game and fertile land.",
+   "zh_text": "为了寻找新的猎物和肥沃的土地而各奔东西。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 42.166,
+   "end": 44.6,
+   "en_text": "As they migrated and settled in new places,",
+   "zh_text": "随着他们迁徙并在新的地方定居，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 44.6,
+   "end": 46.611,
+   "en_text": "they became isolated from one another",
+   "zh_text": "他们彼此隔绝开来，",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 46.611,
+   "end": 48.652,
+   "en_text": "and developed in different ways.",
+   "zh_text": "并以不同的方式发展。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 48.652,
+   "end": 50.475,
+   "en_text": "Centuries of living in different conditions,",
+   "zh_text": "几个世纪生活在不同的环境中，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 50.475,
+   "end": 51.569,
+   "en_text": "eating different food",
+   "zh_text": "吃不同的食物，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 51.569,
+   "end": 53.482,
+   "en_text": "and encountering different neighbors",
+   "zh_text": "接触不同的邻居，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 53.482,
+   "end": 56.886,
+   "en_text": "turned similar dialects with varied pronunciation and vocabulary",
+   "zh_text": "使发音和词汇各异的相似方言",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 56.886,
+   "end": 59.197,
+   "en_text": "into radically different languages,",
+   "zh_text": "变成了截然不同的语言，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 59.197,
+   "end": 62.912,
+   "en_text": "continuing to divide as populations grew and spread out further.",
+   "zh_text": "并随着人口增长和进一步扩散而继续分化。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 62.912,
+   "end": 66.597,
+   "en_text": "Like genealogists, modern linguists try to map this process",
+   "zh_text": "像家谱学家一样，现代语言学家试图描绘这一过程，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 66.597,
+   "end": 69.705,
+   "en_text": "by tracing multiple languages back as far as they can",
+   "zh_text": "尽可能地把多种语言往前追溯，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 69.705,
+   "end": 72.651,
+   "en_text": "to their common ancestor, or protolanguage.",
+   "zh_text": "追溯到它们的共同祖先，也就是原始语言。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 72.651,
+   "end": 76.865,
+   "en_text": "A group of all languages related in this way is called a language family,",
+   "zh_text": "以这种方式相关联的所有语言构成一个语系，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 76.865,
+   "end": 80.271,
+   "en_text": "which can contain many branches and sub-families.",
+   "zh_text": "其中可以包含许多分支和子语系。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 80.271,
+   "end": 84.416,
+   "en_text": "So how do we determine whether languages are related in the first place?",
+   "zh_text": "那么，我们首先如何判断语言之间是否相关呢？",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 84.416,
+   "end": 86.57,
+   "en_text": "Similar sounding words don't tell us much.",
+   "zh_text": "发音相似的词并不能告诉我们太多。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 86.57,
+   "end": 89.862,
+   "en_text": "They could be false cognates or just directly borrowed terms",
+   "zh_text": "它们可能是假同源词，或者只是直接借用的词，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 89.862,
+   "end": 92.382,
+   "en_text": "rather than derived from a common root.",
+   "zh_text": "而不是源自共同的词根。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 92.382,
+   "end": 94.756,
+   "en_text": "Grammar and syntax are a more reliable guide,",
+   "zh_text": "语法和句法是更可靠的指南，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 94.756,
+   "end": 96.463,
+   "en_text": "as well as basic vocabulary,",
+   "zh_text": "基本词汇也是如此，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 96.463,
+   "end": 99.146,
+   "en_text": "such as pronouns, numbers or kinship terms,",
+   "zh_text": "比如代词、数字或亲属称谓，",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 99.146,
+   "end": 101.504,
+   "en_text": "that's less likely to be borrowed.",
+   "zh_text": "这些不太可能被借用。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 101.504,
+   "end": 103.79,
+   "en_text": "By systematically comparing these features",
+   "zh_text": "通过系统地比较这些特征，",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 103.79,
+   "end": 106.346,
+   "en_text": "and looking for regular patterns of sound changes",
+   "zh_text": "并寻找音变的规律模式",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 106.346,
+   "end": 108.556,
+   "en_text": "and correspondences between languages,",
+   "zh_text": "以及语言之间的对应关系，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 108.556,
+   "end": 110.501,
+   "en_text": "linguists can determine relationships,",
+   "zh_text": "语言学家可以确定语言之间的关系，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 110.501,
+   "end": 112.718,
+   "en_text": "trace specific steps in their evolution",
+   "zh_text": "追溯它们演变中的具体步骤，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 112.718,
+   "end": 116.723,
+   "en_text": "and even reconstruct earlier languages with no written records.",
+   "zh_text": "甚至重建没有文字记录的早期语言。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 116.723,
+   "end": 120.744,
+   "en_text": "Linguistics can even reveal other important historical clues,",
+   "zh_text": "语言学甚至能揭示其他重要的历史线索，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 120.744,
+   "end": 124.683,
+   "en_text": "such as determining the geographic origins and lifestyles of ancient peoples",
+   "zh_text": "比如确定古代民族的地理起源和生活方式，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 124.683,
+   "end": 126.542,
+   "en_text": "based on which of their words were native,",
+   "zh_text": "依据是他们的哪些词是本族词，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 126.542,
+   "end": 128.761,
+   "en_text": "and which were borrowed.",
+   "zh_text": "哪些是借来的。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 128.761,
+   "end": 130.724,
+   "en_text": "There are two main problems linguists face",
+   "zh_text": "语言学家在构建这些语系树时",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 130.724,
+   "end": 133.049,
+   "en_text": "when constructing these language family trees.",
+   "zh_text": "面临两个主要问题。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 133.049,
+   "end": 135.642,
+   "en_text": "One is that there is no clear way of deciding",
+   "zh_text": "一是没有明确的方法来决定",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 135.642,
+   "end": 137.505,
+   "en_text": "where the branches at the bottom should end, that is,",
+   "zh_text": "最底层的分支应该在哪里结束，也就是说，",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 137.505,
+   "end": 142.755,
+   "en_text": "which dialects should be considered separate languages or vice versa.",
+   "zh_text": "哪些方言应该算作独立的语言，或者反过来。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 142.755,
+   "end": 145.248,
+   "en_text": "Chinese is classified as a single language,",
+   "zh_text": "汉语被归类为一种单一语言，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 145.248,
+   "end": 149.052,
+   "en_text": "but its dialects vary to the point of being mutually unintelligible,",
+   "zh_text": "但它的各方言差异之大，已经到了彼此无法听懂的程度，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 149.052,
+   "end": 151.017,
+   "en_text": "while speakers of Spanish and Portuguese",
+   "zh_text": "而说西班牙语和葡萄牙语的人",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 151.017,
+   "end": 152.885,
+   "en_text": "can often understand each other.",
+   "zh_text": "却常常能听懂对方。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 152.885,
+   "end": 155.626,
+   "en_text": "Languages actually spoken by living people",
+   "zh_text": "活人实际说的语言",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 155.626,
+   "end": 158.041,
+   "en_text": "do not exist in neatly divided categories,",
+   "zh_text": "并不存在于划分得整整齐齐的类别里，",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 158.041,
+   "end": 160.111,
+   "en_text": "but tend to transition gradually,",
+   "zh_text": "而往往是逐渐过渡的，",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 160.111,
+   "end": 162.621,
+   "en_text": "crossing borders and classifications.",
+   "zh_text": "跨越国界和分类。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 162.621,
+   "end": 164.9,
+   "en_text": "Often the difference between languages and dialects",
+   "zh_text": "语言和方言之间的区别，往往",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 164.9,
+   "end": 168.011,
+   "en_text": "is a matter of changing political and national considerations,",
+   "zh_text": "取决于不断变化的政治和民族考量，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 168.011,
+   "end": 170.637,
+   "en_text": "rather than any linguistic features.",
+   "zh_text": "而不是任何语言特征。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 170.637,
+   "end": 172.877,
+   "en_text": "This is why the answer to, \"How many languages are there?\"",
+   "zh_text": "这就是为什么“世界上有多少种语言？”的答案",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 172.877,
+   "end": 176.026,
+   "en_text": "can be anywhere between 3,000 and 8,000,",
+   "zh_text": "可以是3000到8000之间的任何数字，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 176.026,
+   "end": 178.08,
+   "en_text": "depending on who's counting.",
+   "zh_text": "取决于谁来数。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 178.08,
+   "end": 180.784,
+   "en_text": "The other problem is that the farther we move back in time",
+   "zh_text": "另一个问题是，我们越往时间深处回溯，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 180.784,
+   "end": 182.149,
+   "en_text": "towards the top of the tree,",
+   "zh_text": "越靠近这棵树的顶端，",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 182.149,
+   "end": 185.445,
+   "en_text": "the less evidence we have about the languages there.",
+   "zh_text": "关于那里语言的证据就越少。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 185.445,
+   "end": 187.499,
+   "en_text": "The current division of major language families",
+   "zh_text": "目前对主要语系的划分",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 187.499,
+   "end": 190.675,
+   "en_text": "represents the limit at which relationships can be established",
+   "zh_text": "代表了能够确立亲缘关系的极限，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 190.675,
+   "end": 192.615,
+   "en_text": "with reasonable certainty,",
+   "zh_text": "而且是有相当把握的，",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 192.615,
+   "end": 194.194,
+   "en_text": "meaning that languages of different families",
+   "zh_text": "也就是说，不同语系的语言",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 194.194,
+   "end": 197.359,
+   "en_text": "are presumed not to be related on any level.",
+   "zh_text": "被认为在任何层面上都没有关联。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 197.359,
+   "end": 198.819,
+   "en_text": "But this may change.",
+   "zh_text": "但这可能会改变。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 198.819,
+   "end": 201.593,
+   "en_text": "While many proposals for higher level relationships --",
+   "zh_text": "虽然许多关于更高层级关系的提议——",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 201.593,
+   "end": 203.706,
+   "en_text": "or super families -- are speculative,",
+   "zh_text": "也就是超级语系——都只是推测，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 203.706,
+   "end": 205.436,
+   "en_text": "some have been widely accepted",
+   "zh_text": "有些已被广泛接受，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 205.436,
+   "end": 207.015,
+   "en_text": "and others are being considered,",
+   "zh_text": "还有些正在被考虑，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 207.015,
+   "end": 209.992,
+   "en_text": "especially for native languages with small speaker populations",
+   "zh_text": "尤其是那些使用者人数很少的土著语言，",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 209.992,
+   "end": 212.432,
+   "en_text": "that have not been extensively studied.",
+   "zh_text": "它们还没有被充分研究过。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 212.432,
+   "end": 215.293,
+   "en_text": "We may never be able to determine how language came about,",
+   "zh_text": "我们也许永远无法确定语言是如何产生的，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 215.293,
+   "end": 218.808,
+   "en_text": "or whether all human languages did in fact have a common ancestor",
+   "zh_text": "也无法确定是否所有人类语言确实都有一个共同的祖先，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 218.808,
+   "end": 221.426,
+   "en_text": "scattered through the babel of migration.",
+   "zh_text": "散落在迁徙的纷乱之中。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 221.426,
+   "end": 224.158,
+   "en_text": "But the next time you hear a foreign language, pay attention.",
+   "zh_text": "但下次你听到一门外语时，留心听一听。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 224.158,
+   "end": 226.571,
+   "en_text": "It may not be as foreign as you think.",
+   "zh_text": "它可能没有你想的那么陌生。",
+   "highlights": []
+  }
+ ]
+}

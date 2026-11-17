@@ -1,0 +1,549 @@
+{
+ "id": "eci-stand-verb",
+ "youtubeId": "n50v95kAJCQ",
+ "title": "STAND 🧍‍♂️ Learn English Verbs | English Comprehensible Input Easy Beginner Lesson",
+ "channel": "English Comprehensible Input for ESL Beginners",
+ "duration": 241,
+ "level": "A1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/n50v95kAJCQ/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "auto",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:57:32+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 8.2,
+   "end": 16.28,
+   "en_text": "watch and listen",
+   "zh_text": "看和听",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 10.36,
+   "end": 16.28,
+   "en_text": "to understand love English",
+   "zh_text": "来理解，喜欢英语",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 21.88,
+   "end": 28.0,
+   "en_text": "comprehens in this picture is there a",
+   "zh_text": "理解，在这张图片里，有一个",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 24.24,
+   "end": 30.599,
+   "en_text": "man or a woman a man yeah in this",
+   "zh_text": "男人还是女人？一个男人。对，在这张",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 28.0,
+   "end": 33.879,
+   "en_text": "picture there's a man what is the man",
+   "zh_text": "图片里有一个男人。这个男人",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 30.599,
+   "end": 38.2,
+   "en_text": "wearing he's wearing a suit yeah he's",
+   "zh_text": "穿着什么？他穿着一套西装。对，他",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 33.879,
+   "end": 40.559,
+   "en_text": "wearing a suit he's wearing a suit",
+   "zh_text": "穿着一套西装。他穿着一套西装",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 38.2,
+   "end": 44.239,
+   "en_text": "there's his suit jacket uh there's his",
+   "zh_text": "这是他的西装外套，呃，这是他的",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 40.559,
+   "end": 47.32,
+   "en_text": "tie he's wearing a red tie he's wearing",
+   "zh_text": "领带。他系着一条红领带。他穿着",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 44.239,
+   "end": 48.719,
+   "en_text": "a white shirt a white dress shirt",
+   "zh_text": "一件白衬衫，一件白色正装衬衫",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 47.32,
+   "end": 51.64,
+   "en_text": "there's the",
+   "zh_text": "这是",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 48.719,
+   "end": 56.559,
+   "en_text": "collar and he's",
+   "zh_text": "衣领，他",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 51.64,
+   "end": 59.44,
+   "en_text": "wearing brown shoes and blue uh pants",
+   "zh_text": "穿着棕色的鞋和蓝色的，呃，裤子",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 56.559,
+   "end": 60.76,
+   "en_text": "there and what is he holding what's he",
+   "zh_text": "在那里。他拿着什么？他",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 59.44,
+   "end": 63.92,
+   "en_text": "holding",
+   "zh_text": "拿着什么？",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 60.76,
+   "end": 65.24,
+   "en_text": "he's holding his briefcase yeah he's",
+   "zh_text": "他拿着他的公文包。对，他",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 63.92,
+   "end": 69.28,
+   "en_text": "holding his",
+   "zh_text": "拿着他的",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 65.24,
+   "end": 71.88,
+   "en_text": "briefcase so I think he is a businessman",
+   "zh_text": "公文包。所以我觉得他是个商人",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 69.28,
+   "end": 74.479,
+   "en_text": "right do you yeah he looks like a",
+   "zh_text": "对吧？你觉得呢？对，他看起来像个",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 71.88,
+   "end": 76.88,
+   "en_text": "businessman he looks like a businessman",
+   "zh_text": "商人。他看起来像个商人",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 74.479,
+   "end": 79.92,
+   "en_text": "yeah so he's got his business suit his",
+   "zh_text": "对，所以他有他的商务西装、他的",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 76.88,
+   "end": 82.56,
+   "en_text": "tie uh he's wearing a tie he's got a",
+   "zh_text": "领带，呃，他系着领带。他有一个",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 79.92,
+   "end": 84.079,
+   "en_text": "briefcase so he looks like he looks like",
+   "zh_text": "公文包，所以他看起来像，看起来像",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 82.56,
+   "end": 86.4,
+   "en_text": "he's a",
+   "zh_text": "他是个",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 84.079,
+   "end": 90.04,
+   "en_text": "businessman and what what is this",
+   "zh_text": "商人。那这个",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 86.4,
+   "end": 90.04,
+   "en_text": "businessman doing",
+   "zh_text": "商人在做什么？",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 92.36,
+   "end": 99.36,
+   "en_text": "he's standing yeah he is standing he is",
+   "zh_text": "他站着。对，他站着。他",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 96.52,
+   "end": 102.399,
+   "en_text": "standing and are you standing Luke are",
+   "zh_text": "站着。那你站着吗，Luke？你",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 99.36,
+   "end": 104.52,
+   "en_text": "you standing not right now no oh well",
+   "zh_text": "站着吗？现在没有。没有。哦，好吧",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 102.399,
+   "end": 107.079,
+   "en_text": "just before you were standing right were",
+   "zh_text": "就在刚才你站着，对吧？你",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 104.52,
+   "end": 109.92,
+   "en_text": "you standing I was standing yeah yeah",
+   "zh_text": "刚才站着吗？我刚才站着。对，对",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 107.079,
+   "end": 114.479,
+   "en_text": "before just uh just a moment ago you",
+   "zh_text": "刚才，就，就在片刻之前你",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 109.92,
+   "end": 118.68,
+   "en_text": "were standing but now right now um he is",
+   "zh_text": "站着，但现在，现在，呃，他",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 114.479,
+   "end": 121.52,
+   "en_text": "standing right now are you standing no",
+   "zh_text": "现在站着。你站着吗？没有",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 118.68,
+   "end": 125.88,
+   "en_text": "yeah yeah are sitting down just like I",
+   "zh_text": "对，对，你坐着，就像我",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 121.52,
+   "end": 130.119,
+   "en_text": "am sitting down so um Luke uh can you",
+   "zh_text": "坐着一样。所以，呃，Luke，呃，你能",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 125.88,
+   "end": 132.92,
+   "en_text": "stand up yes can stand you want to see",
+   "zh_text": "站起来吗？能，能站。你想看",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 130.119,
+   "end": 136.28,
+   "en_text": "oh sure yeah yeah all",
+   "zh_text": "哦，当然，对，对，好",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 132.92,
+   "end": 139.04,
+   "en_text": "right bam yes yeah you can stand you are",
+   "zh_text": "好，砰，对，对，你能站。你",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 136.28,
+   "end": 142.44,
+   "en_text": "standing yeah I can stand up too like",
+   "zh_text": "站着。对，我也能站起来，像",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 139.04,
+   "end": 148.44,
+   "en_text": "that there I'm standing I will sit back",
+   "zh_text": "那样，在那里，我站着。我会坐",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 142.44,
+   "end": 152.959,
+   "en_text": "down so I can stand too but right now I",
+   "zh_text": "下来。所以我也能站，但现在我",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 148.44,
+   "end": 156.44,
+   "en_text": "prefer to sit down I prefer to sit so",
+   "zh_text": "更想坐下。我更想坐。所以",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 152.959,
+   "end": 159.64,
+   "en_text": "right right now um I don't want to stand",
+   "zh_text": "对，对，现在，呃，我不想站",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 156.44,
+   "end": 163.8,
+   "en_text": "up I want to stay",
+   "zh_text": "起来。我想保持",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 159.64,
+   "end": 167.8,
+   "en_text": "seated um Luke do you like",
+   "zh_text": "坐着。呃，Luke，你喜欢",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 163.8,
+   "end": 170.319,
+   "en_text": "standing yes standing is good it makes",
+   "zh_text": "站着吗？喜欢，站着很好。它让",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 167.8,
+   "end": 175.159,
+   "en_text": "your legs",
+   "zh_text": "你的腿",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 170.319,
+   "end": 179.519,
+   "en_text": "strong yeah um I think I think sometimes",
+   "zh_text": "强壮。对，呃，我觉得，我觉得有时候",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 175.159,
+   "end": 180.8,
+   "en_text": "I like to sit and other times I like to",
+   "zh_text": "我喜欢坐着，其他时候我喜欢",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 179.519,
+   "end": 185.44,
+   "en_text": "stand",
+   "zh_text": "站着",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 180.8,
+   "end": 190.08,
+   "en_text": "stand but um if if I stand if I'm",
+   "zh_text": "站。但是，呃，如果我站，如果我",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 185.44,
+   "end": 194.12,
+   "en_text": "standing for a very long time then I'll",
+   "zh_text": "站很长时间，那我会",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 190.08,
+   "end": 198.68,
+   "en_text": "feel tired my legs My legs will be tired",
+   "zh_text": "觉得累。我的腿，我的腿会累",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 194.12,
+   "end": 201.68,
+   "en_text": "yeah and then I will want to sit down",
+   "zh_text": "对，然后我就会想坐下",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 198.68,
+   "end": 205.239,
+   "en_text": "yeah but if I'm sitting down if I'm just",
+   "zh_text": "对，但如果我坐下来，如果我只是",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 201.68,
+   "end": 209.4,
+   "en_text": "sitting and sitting for a long",
+   "zh_text": "坐着，而且坐很长",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 205.239,
+   "end": 212.519,
+   "en_text": "time I'll also feel kind of uh tired",
+   "zh_text": "时间，我也会觉得有点，呃，累",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 209.4,
+   "end": 216.92,
+   "en_text": "like that so then I will want to stand",
+   "zh_text": "像那样，所以那时候我就会想站起来",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 212.519,
+   "end": 220.76,
+   "en_text": "up I will want to stand up so sometimes",
+   "zh_text": "我就会想站起来，所以有时候",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 216.92,
+   "end": 222.799,
+   "en_text": "sometimes I like to stand up and",
+   "zh_text": "有时候我喜欢站起来，而且",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 220.76,
+   "end": 228.64,
+   "en_text": "sometimes I like",
+   "zh_text": "有时候我喜欢",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 222.799,
+   "end": 231.48,
+   "en_text": "to uh sit yeah me too watch listen",
+   "zh_text": "呃，坐着，对，我也是，看，听",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 228.64,
+   "end": 233.12,
+   "en_text": "understand learn watch and listen to",
+   "zh_text": "理解，学习，看和听",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 231.48,
+   "end": 237.079,
+   "en_text": "understand and learn English",
+   "zh_text": "理解并学习英语",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 233.12,
+   "end": 237.079,
+   "en_text": "comprehensible English",
+   "zh_text": "可理解的英语",
+   "highlights": []
+  }
+ ]
+}

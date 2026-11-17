@@ -1,0 +1,1653 @@
+{
+ "id": "ted-brain-scans",
+ "youtubeId": "esPRsT-lmw8",
+ "title": "The most important lesson from 83,000 brain scans | Daniel Amen | TEDxOrangeCoast",
+ "channel": "TEDx Talks",
+ "duration": 877,
+ "level": "C2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/esPRsT-lmw8/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:49:09+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 7.375,
+   "end": 13.333,
+   "en_text": "In this talk, I'm going to give you the single most important lesson",
+   "zh_text": "在这次演讲中，我要告诉你们最重要的一课",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 13.334,
+   "end": 18.751,
+   "en_text": "my colleagues and I have learned from looking at 83,000 brain scans.",
+   "zh_text": "这是我和同事们从八万三千份脑部扫描中学到的。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 19.331,
+   "end": 23.386,
+   "en_text": "But first, let me put the lesson into context.",
+   "zh_text": "但首先，让我先讲讲这一课的背景。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 23.387,
+   "end": 25.874,
+   "en_text": "I am in the middle of seven children.",
+   "zh_text": "我在家里七个孩子中排行中间。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 25.875,
+   "end": 29.202,
+   "en_text": "Growing up, my father called me a maverick",
+   "zh_text": "从小到大，我父亲都叫我“独行侠”",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 29.203,
+   "end": 32.473,
+   "en_text": "which to him was not a good thing.",
+   "zh_text": "在他眼里，这可不是什么好事。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 33.863,
+   "end": 37.279,
+   "en_text": "In 1972, the army called my number,",
+   "zh_text": "1972年，军队征召了我，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 37.28,
+   "end": 42.376,
+   "en_text": "and I was trained as an infantry medic where my love of medicine was born.",
+   "zh_text": "我被训练成一名步兵卫生员，我对医学的热爱就是从那时开始的。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 43.284,
+   "end": 49.711,
+   "en_text": "But since I truly hated the idea of being shot at or sleeping in the mud,",
+   "zh_text": "但因为我是真的讨厌被人开枪打、讨厌睡在泥地里，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 50.331,
+   "end": 53.731,
+   "en_text": "I got myself retrained as an X-ray technician",
+   "zh_text": "我就让自己重新受训，成了一名X光技师，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 53.732,
+   "end": 57.687,
+   "en_text": "and developed a passion for medical imaging.",
+   "zh_text": "并对医学影像产生了浓厚的兴趣。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 57.688,
+   "end": 62.823,
+   "en_text": "As our professors used to say: \"How do you know, unless you look?\"",
+   "zh_text": "就像我们的教授常说的：“你不去看，怎么会知道？”",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 63.393,
+   "end": 67.217,
+   "en_text": "In 1979, when I was a second-year medical student,",
+   "zh_text": "1979年，我还是个二年级的医学生，",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 67.218,
+   "end": 71.286,
+   "en_text": "someone in my family became seriously suicidal,",
+   "zh_text": "我家里有人出现了严重的自杀倾向，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 72.136,
+   "end": 74.678,
+   "en_text": "and I took her to see a wonderful psychiatrist.",
+   "zh_text": "我带她去看了一位很棒的精神科医生。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 75.148,
+   "end": 80.896,
+   "en_text": "Over time, I realized if he helped her, which he did,",
+   "zh_text": "随着时间推移，我意识到，如果他帮到了她——而他确实帮到了——",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 80.897,
+   "end": 84.003,
+   "en_text": "it would not only save her life,",
+   "zh_text": "那不仅会救她的命，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 84.004,
+   "end": 89.689,
+   "en_text": "but it would also help her children and even her future grandchildren,",
+   "zh_text": "还会帮到她的孩子，甚至她未来的孙辈，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 89.69,
+   "end": 95.942,
+   "en_text": "as they would be shaped by someone who is happier and more stable.",
+   "zh_text": "因为他们会被一个更快乐、更稳定的人所影响。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 96.505,
+   "end": 98.763,
+   "en_text": "I fell in love with psychiatry",
+   "zh_text": "我爱上了精神医学，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 98.764,
+   "end": 105.363,
+   "en_text": "because I realized it had the potential to change generations of people.",
+   "zh_text": "因为我意识到它有改变几代人的潜力。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 107.0,
+   "end": 111.334,
+   "en_text": "In 1991, I went to my first lecture on brain SPECT imaging.",
+   "zh_text": "1991年，我去听了我的第一堂关于脑部SPECT成像的讲座。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 111.353,
+   "end": 116.836,
+   "en_text": "SPECT is a nuclear medicine study that looks at the blood flow and activity,",
+   "zh_text": "SPECT是一种核医学检查，用来观察血流和活动，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 116.837,
+   "end": 120.168,
+   "en_text": "it looks at how your brain works.",
+   "zh_text": "它看的是你的大脑是如何运作的。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 120.748,
+   "end": 124.193,
+   "en_text": "SPECT was presented as a tool to help psychiatrists",
+   "zh_text": "当时SPECT被介绍为一种工具，帮助精神科医生",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 124.194,
+   "end": 128.896,
+   "en_text": "get more information to help their patients.",
+   "zh_text": "获取更多信息来帮助他们的病人。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 129.538,
+   "end": 133.337,
+   "en_text": "In that one lecture, my two professional loves,",
+   "zh_text": "就在那一堂讲座上，我职业上的两大热爱——",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 133.338,
+   "end": 135.829,
+   "en_text": "medical imaging and psychiatry,",
+   "zh_text": "医学影像和精神医学——",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 135.83,
+   "end": 140.505,
+   "en_text": "came together, and quite honestly, revolutionized my life.",
+   "zh_text": "结合在了一起，说实话，这彻底改变了我的生活。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 141.045,
+   "end": 144.977,
+   "en_text": "Over the next 22 years, my colleagues and I would build",
+   "zh_text": "在接下来的22年里，我和同事们建立了",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 144.978,
+   "end": 149.609,
+   "en_text": "the world's largest database of brain scans related to behavior",
+   "zh_text": "世界上最大的、与行为相关的脑部扫描数据库，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 149.61,
+   "end": 152.854,
+   "en_text": "on patients from 93 countries.",
+   "zh_text": "病人来自93个国家。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 153.592,
+   "end": 157.528,
+   "en_text": "SPECT basically tells us three things about the brain:",
+   "zh_text": "SPECT基本上能告诉我们关于大脑的三件事：",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 157.529,
+   "end": 161.071,
+   "en_text": "good activity, too little, or too much.",
+   "zh_text": "活动良好、活动太少，或者活动太多。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 161.072,
+   "end": 163.756,
+   "en_text": "Here's a set of healthy SPECT scans.",
+   "zh_text": "这是一组健康的SPECT扫描图。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 163.757,
+   "end": 168.199,
+   "en_text": "The image on the left shows the outside surface of the brain,",
+   "zh_text": "左边的图像显示的是大脑的外表面，",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 168.2,
+   "end": 173.176,
+   "en_text": "and a healthy scan shows full, even, symmetrical activity.",
+   "zh_text": "健康的扫描图显示出饱满、均匀、对称的活动。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 173.177,
+   "end": 178.146,
+   "en_text": "The color is not important, it's the shape that matters.",
+   "zh_text": "颜色不重要，重要的是形状。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 178.147,
+   "end": 183.521,
+   "en_text": "In the image on the right, red equals the areas of high activity,",
+   "zh_text": "在右边的图像中，红色代表高活动区域，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 183.522,
+   "end": 188.837,
+   "en_text": "and in a healthy brain, they're typically in the back part of the brain.",
+   "zh_text": "而在健康的大脑中，它们通常位于大脑的后部。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 190.241,
+   "end": 194.128,
+   "en_text": "Here's a healthy scan compared to someone who had two strokes.",
+   "zh_text": "这是一张健康扫描图，对比一个得过两次中风的人。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 194.129,
+   "end": 196.796,
+   "en_text": "You can see the holes of activity.",
+   "zh_text": "你能看到那些活动缺失的空洞。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 197.502,
+   "end": 199.284,
+   "en_text": "Here's what Alzheimer's looks like,",
+   "zh_text": "这是阿尔茨海默病的样子，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 199.285,
+   "end": 203.108,
+   "en_text": "where the back half of the brain is deteriorating.",
+   "zh_text": "大脑的后半部分在退化。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 203.109,
+   "end": 208.419,
+   "en_text": "Did you know that Alzheimer's disease actually starts in the brain",
+   "zh_text": "你知道吗，阿尔茨海默病其实在你出现任何症状之前",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 208.42,
+   "end": 213.014,
+   "en_text": "30 to 50 years before you have any symptoms?",
+   "zh_text": "30到50年就已经在大脑里开始了？",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 214.171,
+   "end": 216.514,
+   "en_text": "Here's a scan of a traumatic brain injury.",
+   "zh_text": "这是一张创伤性脑损伤的扫描图。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 216.515,
+   "end": 220.232,
+   "en_text": "Your brain is soft, and your skull is really hard.",
+   "zh_text": "你的大脑很软，而你的头骨非常硬。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 221.002,
+   "end": 222.844,
+   "en_text": "Or drug abuse.",
+   "zh_text": "或者药物滥用。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 222.845,
+   "end": 227.059,
+   "en_text": "The real reason not to use drugs - they damage your brain.",
+   "zh_text": "不要吸毒的真正原因——它们会损害你的大脑。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 228.059,
+   "end": 229.753,
+   "en_text": "Obsessive–compulsive disorder",
+   "zh_text": "强迫症",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 229.754,
+   "end": 232.925,
+   "en_text": "where the front part of the brain typically works too hard,",
+   "zh_text": "这种情况下大脑前部通常过度活跃，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 233.745,
+   "end": 236.736,
+   "en_text": "so that people cannot turn off their thoughts.",
+   "zh_text": "以至于人们无法关掉自己的念头。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 237.406,
+   "end": 243.379,
+   "en_text": "An epilepsy where we frequently see areas of increased activity.",
+   "zh_text": "还有癫痫，我们经常能看到活动增强的区域。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 244.473,
+   "end": 248.822,
+   "en_text": "In 1992, I went to an all-day conference on brain SPECT imaging,",
+   "zh_text": "1992年，我去参加了一个为期一整天的脑SPECT成像会议，",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 248.823,
+   "end": 251.959,
+   "en_text": "it was amazing and mirrored",
+   "zh_text": "那太棒了，而且和",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 251.96,
+   "end": 257.899,
+   "en_text": "our own early experience using SPECT in psychiatry.",
+   "zh_text": "我们自己在精神科使用SPECT的早期经验如出一辙。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 257.901,
+   "end": 263.202,
+   "en_text": "But at that same meeting, researchers started to complain loudly",
+   "zh_text": "但在同一次会议上，研究人员开始大声抱怨",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 263.203,
+   "end": 267.667,
+   "en_text": "that clinical psychiatrists like me should not be doing scans,",
+   "zh_text": "说像我这样的临床精神科医生不该做扫描，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 267.668,
+   "end": 271.699,
+   "en_text": "that they were only for their research.",
+   "zh_text": "说扫描只供他们做研究用。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 272.519,
+   "end": 277.196,
+   "en_text": "Being the maverick and having clinical experience,",
+   "zh_text": "作为一个特立独行又有临床经验的人，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 277.197,
+   "end": 280.251,
+   "en_text": "I thought that was a really dumb idea.",
+   "zh_text": "我觉得那真是个愚蠢的想法。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 282.177,
+   "end": 284.198,
+   "en_text": "Without imaging,",
+   "zh_text": "没有成像技术，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 284.199,
+   "end": 289.913,
+   "en_text": "psychiatrists then and even now make diagnosis like they did in 1840,",
+   "zh_text": "精神科医生当时乃至现在做诊断的方式，和1840年一样，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 289.914,
+   "end": 292.8,
+   "en_text": "when Abraham Lincoln was depressed,",
+   "zh_text": "那时候亚伯拉罕·林肯正患有抑郁症，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 292.801,
+   "end": 297.533,
+   "en_text": "by talking to people and looking for symptom clusters.",
+   "zh_text": "就是靠和人交谈、寻找症状群来诊断。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 298.323,
+   "end": 301.63,
+   "en_text": "Imaging was showing us there was a better way.",
+   "zh_text": "成像技术向我们表明，有更好的办法。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 301.631,
+   "end": 306.748,
+   "en_text": "Did you know that psychiatrists are the only medical specialists",
+   "zh_text": "你知道吗，精神科医生是唯一一种",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 306.749,
+   "end": 310.275,
+   "en_text": "that virtually never look at the organ they treat?",
+   "zh_text": "几乎从不看自己所治疗器官的医学专科医生？",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 310.276,
+   "end": 311.414,
+   "en_text": "Think about it!",
+   "zh_text": "想想看！",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 311.894,
+   "end": 317.399,
+   "en_text": "Cardiologists look, neurologists look, orthopedic doctors look,",
+   "zh_text": "心脏科医生会看，神经科医生会看，骨科医生会看，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 317.4,
+   "end": 321.665,
+   "en_text": "virtually every other medical specialties look -",
+   "zh_text": "几乎其他所有医学专科都会看——",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 321.666,
+   "end": 323.579,
+   "en_text": "psychiatrists guess.",
+   "zh_text": "而精神科医生靠猜。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 324.589,
+   "end": 325.937,
+   "en_text": "Before imaging,",
+   "zh_text": "在有了成像技术之前，",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 325.938,
+   "end": 331.798,
+   "en_text": "I always felt like I was throwing darts in the dark at my patients",
+   "zh_text": "我总觉得自己像是在黑暗中朝病人扔飞镖",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 331.799,
+   "end": 337.17,
+   "en_text": "and had hurt some of them which horrified me.",
+   "zh_text": "还伤到了其中一些人，这让我惊恐不已。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 337.76,
+   "end": 339.191,
+   "en_text": "There is a reason",
+   "zh_text": "这是有原因的，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 339.192,
+   "end": 342.674,
+   "en_text": "that most psychiatric medications have black box warnings.",
+   "zh_text": "大多数精神科药物都带有黑框警告。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 343.274,
+   "end": 349.23,
+   "en_text": "Give them to the wrong person, and you can precipitate a disaster.",
+   "zh_text": "把它们给错了人，就可能引发一场灾难。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 351.722,
+   "end": 356.082,
+   "en_text": "Early on, our imaging work taught us many important lessons,",
+   "zh_text": "早期，我们的成像工作教会了我们许多重要的经验，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 356.083,
+   "end": 360.166,
+   "en_text": "such as illnesses, like ADHD, anxiety, depression, and addictions,",
+   "zh_text": "比如像多动症、焦虑、抑郁和成瘾这类疾病，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 360.183,
+   "end": 364.403,
+   "en_text": "are not simple or single disorders in the brain,",
+   "zh_text": "在大脑里并不是简单或单一的障碍，",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 364.404,
+   "end": 367.04,
+   "en_text": "they all have multiple types.",
+   "zh_text": "它们都有多种类型。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 367.041,
+   "end": 369.263,
+   "en_text": "For example, here are two patients",
+   "zh_text": "举个例子，这是两位病人，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 369.264,
+   "end": 372.542,
+   "en_text": "who have been diagnosed with major depression,",
+   "zh_text": "他们都被诊断患有重度抑郁症，",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 372.543,
+   "end": 378.105,
+   "en_text": "that had virtually the same symptoms, yet radically different brains.",
+   "zh_text": "症状几乎完全相同，大脑却截然不同。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 378.106,
+   "end": 384.199,
+   "en_text": "One had really low activity in the brain, the other one had really high activity.",
+   "zh_text": "一个人的大脑活动非常低，另一个人的大脑活动非常高。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 385.464,
+   "end": 391.235,
+   "en_text": "How would you ever know what to do for them, unless you actually looked?",
+   "zh_text": "除非你真的去看一看，否则你怎么可能知道该怎么帮他们？",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 391.662,
+   "end": 394.428,
+   "en_text": "Treatment needs to be tailored",
+   "zh_text": "治疗需要量身定制",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 394.429,
+   "end": 399.276,
+   "en_text": "to individual brains, not clusters of symptoms.",
+   "zh_text": "针对每个个体的大脑，而不是针对一堆症状。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 400.352,
+   "end": 402.276,
+   "en_text": "Our imaging work also taught us",
+   "zh_text": "我们的影像工作还让我们认识到",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 402.277,
+   "end": 408.514,
+   "en_text": "that mild traumatic brain injury was a major cause of psychiatric illness",
+   "zh_text": "轻度创伤性脑损伤是精神疾病的一个主要原因",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 408.515,
+   "end": 410.684,
+   "en_text": "that ruin people's lives,",
+   "zh_text": "这些疾病会毁掉人们的生活，",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 410.685,
+   "end": 415.713,
+   "en_text": "and virtually no one knew about it because they would see psychiatrists",
+   "zh_text": "而几乎没有人知道这一点，因为他们会去看精神科医生",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 415.714,
+   "end": 420.69,
+   "en_text": "for things like temper problems, anxiety, depression, and insomnia,",
+   "zh_text": "看的是脾气问题、焦虑、抑郁和失眠这类毛病，",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 420.691,
+   "end": 423.918,
+   "en_text": "and they would never look, so they would never know.",
+   "zh_text": "而医生从来不会去查看，所以他们永远不会知道。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 424.838,
+   "end": 427.921,
+   "en_text": "Here's a scan of a 15-year-old boy",
+   "zh_text": "这是一张15岁男孩的扫描图",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 427.922,
+   "end": 431.615,
+   "en_text": "who felt down a flight of stairs at the age of three.",
+   "zh_text": "他三岁时从一段楼梯上摔了下来。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 432.335,
+   "end": 437.204,
+   "en_text": "Even though he was unconscious for only a few minutes,",
+   "zh_text": "尽管他只昏迷了几分钟，",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 438.554,
+   "end": 444.543,
+   "en_text": "there was nothing mild about the enduring effect",
+   "zh_text": "但那次受伤对他人生造成的持久影响",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 444.544,
+   "end": 447.549,
+   "en_text": "that injury had on this boy's life.",
+   "zh_text": "一点也不轻微。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 447.55,
+   "end": 452.123,
+   "en_text": "When I met him at the age of 15, he had just been kicked out",
+   "zh_text": "我15岁见到他时，他刚刚被赶出",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 452.124,
+   "end": 456.525,
+   "en_text": "of his third residential treatment program for violence.",
+   "zh_text": "他的第三个寄宿式治疗项目，原因是暴力行为。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 456.526,
+   "end": 460.077,
+   "en_text": "He needed a brain rehabilitation program,",
+   "zh_text": "他需要的是一个大脑康复项目，",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 460.078,
+   "end": 465.044,
+   "en_text": "not just more medication thrown at him in the dark,",
+   "zh_text": "而不是在黑暗中给他灌更多药，",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 465.045,
+   "end": 470.504,
+   "en_text": "or behavioral therapy which, if you think about it, is really cruel.",
+   "zh_text": "也不是行为疗法——你想想就知道，那其实很残忍。",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 470.505,
+   "end": 472.984,
+   "en_text": "To put him on a behavioral therapy program",
+   "zh_text": "让他去做行为疗法，",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 472.985,
+   "end": 478.437,
+   "en_text": "when behavior is really an expression of the problem, it's not the problem.",
+   "zh_text": "可行为其实只是问题的表现，它并不是问题本身。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 479.5,
+   "end": 482.921,
+   "en_text": "Researchers have found that undiagnosed brain injuries",
+   "zh_text": "研究人员发现，未被诊断出的脑损伤",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 482.922,
+   "end": 488.13,
+   "en_text": "are a major cause of homelessness, drug and alcohol abuse, depression,",
+   "zh_text": "是无家可归、吸毒酗酒、抑郁、",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 488.131,
+   "end": 491.617,
+   "en_text": "panic attacks, ADHD, and suicide.",
+   "zh_text": "惊恐发作、多动症和自杀的一个主要原因。",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 492.126,
+   "end": 495.496,
+   "en_text": "We are in for a pending disaster",
+   "zh_text": "我们正面临一场即将到来的灾难",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 495.497,
+   "end": 498.156,
+   "en_text": "with the hundreds and thousands of soldiers",
+   "zh_text": "随着成百上千的士兵",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 498.157,
+   "end": 500.565,
+   "en_text": "coming back from Iraq and Afganistan,",
+   "zh_text": "从伊拉克和阿富汗返回，",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 500.566,
+   "end": 505.342,
+   "en_text": "and virtually no one is looking at the function of their brain.",
+   "zh_text": "而几乎没人在检查他们的大脑功能。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 506.749,
+   "end": 510.815,
+   "en_text": "As we continued our work with SPECT,",
+   "zh_text": "随着我们继续用SPECT开展工作，",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 510.816,
+   "end": 515.318,
+   "en_text": "the criticism grew louder, but so did the lessons.",
+   "zh_text": "批评声越来越大，但学到的经验也越来越多。",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 516.14,
+   "end": 520.576,
+   "en_text": "Judges and defense attorneys sought our help to understand criminal behavior.",
+   "zh_text": "法官和辩护律师寻求我们的帮助，以理解犯罪行为。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 520.577,
+   "end": 523.822,
+   "en_text": "Today, we have scanned over 500 convicted felons",
+   "zh_text": "如今，我们已经扫描了500多名被定罪的罪犯",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 523.823,
+   "end": 526.415,
+   "en_text": "including 90 murderers.",
+   "zh_text": "其中包括90名杀人犯。",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 526.956,
+   "end": 529.75,
+   "en_text": "Our work taught us that people who do bad things",
+   "zh_text": "我们的工作让我们认识到，做坏事的人",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 529.751,
+   "end": 532.055,
+   "en_text": "often have troubled brains.",
+   "zh_text": "往往有着出问题的大脑。",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 532.056,
+   "end": 534.133,
+   "en_text": "That was not a surprise.",
+   "zh_text": "这并不令人意外。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 534.134,
+   "end": 536.708,
+   "en_text": "But what did surprise us",
+   "zh_text": "但让我们意外的是",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 536.709,
+   "end": 542.293,
+   "en_text": "was that many of these brains could be rehabilitated.",
+   "zh_text": "这些大脑中有很多是可以康复的。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 543.54,
+   "end": 545.544,
+   "en_text": "So here's a radical idea.",
+   "zh_text": "所以这里有一个大胆的想法。",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 545.545,
+   "end": 548.529,
+   "en_text": "What if we evaluated and treated troubled brains",
+   "zh_text": "如果我们去评估并治疗这些有问题的大脑，",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 548.53,
+   "end": 553.558,
+   "en_text": "rather than simply warehousing them in toxic, stressful environments?",
+   "zh_text": "而不是简单地把他们关在有毒、高压的环境里，会怎样？",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 553.559,
+   "end": 559.625,
+   "en_text": "In my experience, we could save tremendous amounts of money",
+   "zh_text": "根据我的经验，我们可以省下巨额资金",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 560.345,
+   "end": 563.299,
+   "en_text": "by making these people more functional,",
+   "zh_text": "让这些人变得更有能力，",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 563.3,
+   "end": 567.238,
+   "en_text": "so when they left prison, they could work,",
+   "zh_text": "这样他们出狱后就能工作，",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 567.239,
+   "end": 571.049,
+   "en_text": "support their families and pay taxes.",
+   "zh_text": "养家糊口，还能交税。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 572.389,
+   "end": 575.538,
+   "en_text": "Dostoyevsky once said: \"A society should be judged",
+   "zh_text": "陀思妥耶夫斯基曾说过：“评判一个社会，",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 575.539,
+   "end": 578.805,
+   "en_text": "not by how well it treats its outstanding citizens,",
+   "zh_text": "不是看它如何对待优秀的公民，",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 579.905,
+   "end": 582.737,
+   "en_text": "but by how it treats its criminals.\"",
+   "zh_text": "而是看它如何对待罪犯。”",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 583.277,
+   "end": 587.481,
+   "en_text": "Instead of just crime and punishment,",
+   "zh_text": "与其只讲犯罪和惩罚，",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 587.482,
+   "end": 593.686,
+   "en_text": "we should be thinking about crime evaluation and treatment.",
+   "zh_text": "我们应该考虑的是犯罪评估和治疗。",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 600.074,
+   "end": 604.528,
+   "en_text": "So after 22 years and 83,000 scans,",
+   "zh_text": "所以，经过22年和83000次扫描之后，",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 605.378,
+   "end": 610.077,
+   "en_text": "the single most important lesson my colleagues and I have learned",
+   "zh_text": "我和同事们学到的最重要的一课",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 610.078,
+   "end": 612.495,
+   "en_text": "is that you can literally change people's brains.",
+   "zh_text": "就是，你真的可以改变人的大脑。",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 613.365,
+   "end": 616.242,
+   "en_text": "And when you do, you change their life.",
+   "zh_text": "而当你这么做时，你就改变了他们的人生。",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 616.243,
+   "end": 618.548,
+   "en_text": "You are not stuck with the brain you have,",
+   "zh_text": "你不会被现有的大脑困住，",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 618.549,
+   "end": 621.874,
+   "en_text": "you can make it better, and we can prove it.",
+   "zh_text": "你可以让它变得更好，而且我们能证明这一点。",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 622.524,
+   "end": 626.798,
+   "en_text": "My colleagues and I performed the first and largest study",
+   "zh_text": "我和同事们做了第一项也是规模最大的一项研究，",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 626.799,
+   "end": 629.881,
+   "en_text": "on active and retired NFL players,",
+   "zh_text": "研究对象是在役和退役的NFL球员，",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 629.882,
+   "end": 634.275,
+   "en_text": "showing high levels of damage in these players at the time",
+   "zh_text": "结果显示这些球员当时存在高水平的损伤，",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 634.276,
+   "end": 638.045,
+   "en_text": "when the NFL said they didn't know",
+   "zh_text": "而当时NFL说他们不知道",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 638.046,
+   "end": 640.742,
+   "en_text": "if playing football caused long-term brain damage.",
+   "zh_text": "打橄榄球是否会造成长期的大脑损伤。",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 641.562,
+   "end": 644.106,
+   "en_text": "The fact was they didn't want to know.",
+   "zh_text": "事实是他们不想知道。",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 644.107,
+   "end": 645.327,
+   "en_text": "That was not a surprise.",
+   "zh_text": "这并不令人意外。",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 645.334,
+   "end": 648.21,
+   "en_text": "I think, if you get the most thoughtful 9-year-olds together,",
+   "zh_text": "我觉得，如果你把最有想法的9岁孩子聚在一起，",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 648.217,
+   "end": 652.334,
+   "en_text": "and you talk about the brain is soft, about the consistency of soft butter,",
+   "zh_text": "跟他们讲大脑很软，质地像软黄油一样，",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 652.335,
+   "end": 656.423,
+   "en_text": "it's housed in a really hard skull that has many sharp, bony ridges,",
+   "zh_text": "它装在一个非常坚硬的颅骨里，颅骨上有很多尖锐的骨嵴，",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 656.424,
+   "end": 659.765,
+   "en_text": "you know, 28 out of 30 nine-year-olds would go:",
+   "zh_text": "你知道，30个九岁孩子里会有28个说：",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 659.766,
+   "end": 662.259,
+   "en_text": "\"Probably a bad idea for your life.\"",
+   "zh_text": "“这对你的人生来说可能不是个好主意。”",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 664.812,
+   "end": 669.801,
+   "en_text": "But what really got us excited was the second part of the study",
+   "zh_text": "但真正让我们兴奋的是研究的第二部分，",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 669.802,
+   "end": 674.736,
+   "en_text": "where we put players on a brain-smart program",
+   "zh_text": "我们让球员参加一个健脑计划，",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 674.737,
+   "end": 680.019,
+   "en_text": "and demonstrated that 80% of them could improve",
+   "zh_text": "并证明其中80%的人可以得到改善，",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 680.02,
+   "end": 683.845,
+   "en_text": "in the areas of blood flow, memory, and mood,",
+   "zh_text": "在血流、记忆和情绪方面，",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 683.846,
+   "end": 687.148,
+   "en_text": "that you are not stuck with the brain you have,",
+   "zh_text": "你不会被现有的大脑困住，",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 687.149,
+   "end": 691.329,
+   "en_text": "you can make it better on a brain-smart program.",
+   "zh_text": "通过健脑计划你可以让它变得更好。",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 691.33,
+   "end": 693.038,
+   "en_text": "How exciting is that?",
+   "zh_text": "这多令人兴奋啊？",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 693.039,
+   "end": 694.829,
+   "en_text": "I am so excited.",
+   "zh_text": "我太激动了。",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 694.834,
+   "end": 699.126,
+   "en_text": "Reversing brain damage is a very exciting new frontier,",
+   "zh_text": "逆转大脑损伤是一个非常令人兴奋的新前沿，",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 699.127,
+   "end": 702.709,
+   "en_text": "but the implications are really much wider.",
+   "zh_text": "但它的意义其实要广泛得多。",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 702.71,
+   "end": 707.163,
+   "en_text": "Here is this scan of a teenage girl who has ADHD,",
+   "zh_text": "这是一张患有ADHD的少女的扫描图，",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 707.164,
+   "end": 712.24,
+   "en_text": "who was cutting herself, failing in school, and fighting with her parents.",
+   "zh_text": "她当时在自残，学业不及格，还和父母吵架。",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 712.88,
+   "end": 715.306,
+   "en_text": "When we improved her brain,",
+   "zh_text": "当我们改善了她的大脑后，",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 715.307,
+   "end": 720.096,
+   "en_text": "she went from D's and F's to A's and B's,",
+   "zh_text": "她的成绩从D和F变成了A和B，",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 720.097,
+   "end": 722.799,
+   "en_text": "and was much more emotionally stable.",
+   "zh_text": "情绪也稳定多了。",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 723.389,
+   "end": 725.485,
+   "en_text": "Here is the scan of Nancy.",
+   "zh_text": "这是Nancy的扫描图。",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 725.486,
+   "end": 728.693,
+   "en_text": "Nancy had been diagnosed with dementia,",
+   "zh_text": "Nancy被诊断出患有痴呆症，",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 728.694,
+   "end": 733.332,
+   "en_text": "and her doctor told her husband that he should find a home for her",
+   "zh_text": "她的医生告诉她丈夫，他应该给她找个养老院，",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 733.333,
+   "end": 737.517,
+   "en_text": "because within a year, she would not know his name.",
+   "zh_text": "因为一年之内，她就不会认得他的名字了。",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 738.377,
+   "end": 744.984,
+   "en_text": "But on an intensive, brain-rehabilitation program,",
+   "zh_text": "但在一个密集的大脑康复项目中，",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 745.814,
+   "end": 750.407,
+   "en_text": "Nancy's brain was better, as was her memory,",
+   "zh_text": "Nancy的大脑好转了，她的记忆力也一样，",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 750.408,
+   "end": 755.987,
+   "en_text": "and four years later, Nancy still knows her husband's name.",
+   "zh_text": "四年后，Nancy仍然记得她丈夫的名字。",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 756.969,
+   "end": 761.253,
+   "en_text": "Or my favorite story to illustrate this point: Andrew,",
+   "zh_text": "或者用我最喜欢的故事来说明这一点：Andrew，",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 761.253,
+   "end": 765.16,
+   "en_text": "a 9-year-old boy who attacked a little girl on the baseball field",
+   "zh_text": "一个9岁的男孩，在棒球场上攻击了一个小女孩",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 765.161,
+   "end": 767.399,
+   "en_text": "for no particular reason,",
+   "zh_text": "没有什么特别的原因，",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 767.4,
+   "end": 770.758,
+   "en_text": "and at the time, was drawing pictures of himself",
+   "zh_text": "而且当时，他正在画自己的画",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 770.759,
+   "end": 775.041,
+   "en_text": "hanging from a tree and shooting other children.",
+   "zh_text": "画的是自己吊在树上，朝其他孩子开枪。",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 776.308,
+   "end": 780.204,
+   "en_text": "Andrew was Columbine, Aurora,",
+   "zh_text": "Andrew就是Columbine、Aurora，",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 781.664,
+   "end": 784.49,
+   "en_text": "and Sandy Hook waiting to happen.",
+   "zh_text": "和Sandy Hook事件的潜在重演。",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 784.491,
+   "end": 786.956,
+   "en_text": "Most psychiatrists would have medicated Andrew,",
+   "zh_text": "大多数精神科医生会给Andrew用药，",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 786.957,
+   "end": 791.491,
+   "en_text": "as they did Eric Harris and the other mass shooters",
+   "zh_text": "就像他们对Eric Harris和其他大规模枪击者所做的那样",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 791.492,
+   "end": 794.355,
+   "en_text": "before they committed their awful crimes,",
+   "zh_text": "在他们犯下可怕的罪行之前，",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 794.356,
+   "end": 799.06,
+   "en_text": "but SPECT imaging taught me that I had to look at his brain",
+   "zh_text": "但SPECT成像教会我，我必须看看他的大脑",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 799.061,
+   "end": 803.885,
+   "en_text": "and not throw darts in the dark at him to understand what he needed.",
+   "zh_text": "而不是在黑暗中对他乱扔飞镖，来理解他需要什么。",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 804.465,
+   "end": 810.209,
+   "en_text": "His SPECT scan showed a cyst, the size of a golf ball,",
+   "zh_text": "他的SPECT扫描显示了一个囊肿，高尔夫球大小，",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 810.21,
+   "end": 814.005,
+   "en_text": "occupying the space of his left temple lobe.",
+   "zh_text": "占据了他左侧颞叶的空间。",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 814.006,
+   "end": 817.737,
+   "en_text": "No amount of medication or therapy would have helped Andrew.",
+   "zh_text": "再多的药物或治疗都不会对Andrew有帮助。",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 817.738,
+   "end": 820.075,
+   "en_text": "When the cyst was removed,",
+   "zh_text": "当囊肿被切除后，",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 821.685,
+   "end": 825.15,
+   "en_text": "his behavior completely went back to normal,",
+   "zh_text": "他的行为完全恢复了正常，",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 825.151,
+   "end": 830.863,
+   "en_text": "and he became the sweet, loving boy he always wanted to be.",
+   "zh_text": "他变成了他一直想成为的那个甜美、有爱心的男孩。",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 831.738,
+   "end": 835.51,
+   "en_text": "Now 18 years later, Andrew, who is my nephew,",
+   "zh_text": "18年后的今天，Andrew，也就是我的侄子，",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 836.52,
+   "end": 841.237,
+   "en_text": "owns his own home, is employed and pays taxes.",
+   "zh_text": "拥有自己的房子，有工作，还纳税。",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 843.31,
+   "end": 847.418,
+   "en_text": "Because someone bothered to look at his brain,",
+   "zh_text": "因为有人费心去看了他的大脑，",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 847.419,
+   "end": 850.53,
+   "en_text": "he has been a better son,",
+   "zh_text": "他成了一个更好的儿子，",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 850.531,
+   "end": 856.48,
+   "en_text": "and will be a better husband, father, and grandfather.",
+   "zh_text": "将来也会成为更好的丈夫、父亲和祖父。",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 857.781,
+   "end": 862.563,
+   "en_text": "When you have the privilege of changing someone's brain,",
+   "zh_text": "当你有幸改变某人的大脑时，",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 862.564,
+   "end": 865.66,
+   "en_text": "you not only change his or her life",
+   "zh_text": "你不仅改变了他或她的生活",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 865.661,
+   "end": 870.745,
+   "en_text": "but you have the opportunity to change generations to come.",
+   "zh_text": "你还有机会改变未来的几代人。",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 871.627,
+   "end": 873.569,
+   "en_text": "I'm Dr. Daniel Amen. Thank you.",
+   "zh_text": "我是Daniel Amen医生。谢谢。",
+   "highlights": []
+  }
+ ]
+}

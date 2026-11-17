@@ -1,0 +1,701 @@
+{
+ "id": "eci-bob-wants-swim",
+ "youtubeId": "2V5W4yF_Yqo",
+ "title": "Bob Wants to Swim | Easy Simple Beginner English Listening Story | Comprehensible Input for ESL/ELT",
+ "channel": "English Comprehensible Input for ESL Beginners",
+ "duration": 360,
+ "level": "A1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/2V5W4yF_Yqo/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "auto",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:49:18+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 5.67,
+   "end": 12.64,
+   "en_text": "hi everyone this is a man his name is Bob is at home the weather is good",
+   "zh_text": "大家好，这是一个男人，他叫Bob，他在家，天气很好",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 12.65,
+   "end": 19.91,
+   "en_text": "it is sunny it is not raining Bob looks",
+   "zh_text": "天气晴朗，没有下雨，Bob看了看",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 19.92,
+   "end": 25.4,
+   "en_text": "outside he sees that it is sunny he sees",
+   "zh_text": "外面，他看到天气晴朗，他看到",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 25.41,
+   "end": 31.22,
+   "en_text": "that it is not raining he sees that the",
+   "zh_text": "没有下雨，他看到",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 31.23,
+   "end": 35.959,
+   "en_text": "weather is good because the weather is",
+   "zh_text": "天气很好，因为天气",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 35.969,
+   "end": 39.979,
+   "en_text": "good Bob wants to go to the beach and",
+   "zh_text": "很好，Bob想去海滩",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 39.989,
+   "end": 45.7,
+   "en_text": "swim he wants to swim at the beach so",
+   "zh_text": "游泳，他想在海滩游泳，所以",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 45.71,
+   "end": 50.029,
+   "en_text": "Bob puts on his shorts and he goes",
+   "zh_text": "Bob穿上他的短裤，他走了",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 50.039,
+   "end": 55.84,
+   "en_text": "outside Bob walks to the beach",
+   "zh_text": "出去，Bob走到海滩",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 55.85,
+   "end": 62.119,
+   "en_text": "Bob arrives at the beach he looks at the",
+   "zh_text": "Bob到了海滩，他看着",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 62.129,
+   "end": 67.51,
+   "en_text": "water he sees something in the water",
+   "zh_text": "水，他看到水里有东西",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 67.52,
+   "end": 70.899,
+   "en_text": "it is a shark",
+   "zh_text": "是一条鲨鱼",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 70.909,
+   "end": 75.499,
+   "en_text": "da-da-da-da-da-da Bob sees a shark in",
+   "zh_text": "哒哒哒哒哒哒，Bob看到水里有条鲨鱼",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 75.509,
+   "end": 81.23,
+   "en_text": "the water Bob is scared of the shark Bob",
+   "zh_text": "水里有鲨鱼，Bob害怕那条鲨鱼，Bob",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 81.24,
+   "end": 84.37,
+   "en_text": "does not want to swim at the beach",
+   "zh_text": "不想在海滩游泳了",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 84.38,
+   "end": 90.649,
+   "en_text": "anymore so he walks away from the beach",
+   "zh_text": "所以他离开海滩走了",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 90.659,
+   "end": 98.929,
+   "en_text": "as Bob is walking he sees a big pool Bob",
+   "zh_text": "Bob走着走着，看到一个大水池，Bob",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 98.939,
+   "end": 104.81,
+   "en_text": "thinks that is a swimming pool I can",
+   "zh_text": "想那是个游泳池，我可以在",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 104.82,
+   "end": 110.42,
+   "en_text": "swim in that pool Bob wants to swim in",
+   "zh_text": "那个池子里游泳，Bob想在",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 110.43,
+   "end": 115.899,
+   "en_text": "the pool so he climbs into the pool and",
+   "zh_text": "池子里游泳，所以他爬进池子，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 115.909,
+   "end": 121.789,
+   "en_text": "swims in the pool suddenly Bob sees",
+   "zh_text": "在池子里游泳，突然Bob看到",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 121.799,
+   "end": 127.52,
+   "en_text": "something in the pool it is a shark Bob",
+   "zh_text": "池子里有东西，是一条鲨鱼，Bob",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 127.53,
+   "end": 131.69,
+   "en_text": "sees a shark in the pool",
+   "zh_text": "看到池子里有条鲨鱼",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 131.7,
+   "end": 136.66,
+   "en_text": "is very very scared he is terrified",
+   "zh_text": "非常非常害怕，他吓坏了",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 136.67,
+   "end": 139.97,
+   "en_text": "Bob quickly jumps out of the pool and",
+   "zh_text": "Bob赶紧从池子里跳出来，",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 139.98,
+   "end": 144.62,
+   "en_text": "runs away he runs away he runs and runs",
+   "zh_text": "跑走了，他跑走了，他跑啊跑",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 144.63,
+   "end": 147.74,
+   "en_text": "and runs as fast as he can he runs and",
+   "zh_text": "跑啊跑，他拼命地跑，他跑",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 147.75,
+   "end": 150.5,
+   "en_text": "runs and runs as fast as he can he runs",
+   "zh_text": "啊跑啊跑，他拼命地跑，他跑",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 150.51,
+   "end": 153.47,
+   "en_text": "all the way back home",
+   "zh_text": "一路跑回了家",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 153.48,
+   "end": 157.25,
+   "en_text": "hi again everyone so this is a man and",
+   "zh_text": "大家好，又见面了，这是一个男人，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 157.26,
+   "end": 161.57,
+   "en_text": "his name is Bob he is a man named Bob",
+   "zh_text": "他叫Bob，他是一个叫Bob的男人",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 161.58,
+   "end": 166.759,
+   "en_text": "and Bob is at home he is in his house",
+   "zh_text": "Bob在家，他在他的房子里",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 166.769,
+   "end": 171.02,
+   "en_text": "and outside the weather is good it is",
+   "zh_text": "外面天气很好，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 171.03,
+   "end": 175.25,
+   "en_text": "sunny and it is not raining so outside",
+   "zh_text": "天气晴朗，没有下雨，所以外面",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 175.26,
+   "end": 178.67,
+   "en_text": "the weather is good and Bob looks",
+   "zh_text": "天气很好，Bob看着",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 178.68,
+   "end": 182.449,
+   "en_text": "outside he looks out his window he looks",
+   "zh_text": "外面，他看着窗外，他看着",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 182.459,
+   "end": 186.759,
+   "en_text": "outside and he sees that it is sunny and",
+   "zh_text": "外面，他看到天气晴朗，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 186.769,
+   "end": 191.24,
+   "en_text": "he sees that it is not raining so he",
+   "zh_text": "他看到没有下雨，所以",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 191.25,
+   "end": 194.5,
+   "en_text": "sees that the weather is good and",
+   "zh_text": "他看到天气很好，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 194.51,
+   "end": 197.87,
+   "en_text": "because the weather is good he decides",
+   "zh_text": "因为天气很好，他决定",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 197.88,
+   "end": 202.039,
+   "en_text": "to go out he decides to go outside Bob",
+   "zh_text": "出去，他决定到外面去，Bob",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 202.049,
+   "end": 205.759,
+   "en_text": "wants to go to the beach and go swimming",
+   "zh_text": "想去海滩，去游泳",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 205.769,
+   "end": 209.33,
+   "en_text": "at the beach so he wants to swim at the",
+   "zh_text": "在海滩游泳，所以他想在海滩",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 209.34,
+   "end": 213.47,
+   "en_text": "beach so Bob puts on his shorts and he",
+   "zh_text": "游泳，所以Bob穿上他的短裤，他",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 213.48,
+   "end": 217.059,
+   "en_text": "goes outside he walks to the beach and",
+   "zh_text": "走了出去，他走到海滩，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 217.069,
+   "end": 221.33,
+   "en_text": "when he arrives at the beach he looks at",
+   "zh_text": "当他到达海滩时，他看着",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 221.34,
+   "end": 225.949,
+   "en_text": "the water in the water in the water",
+   "zh_text": "水里的水，水里的水",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 225.959,
+   "end": 230.99,
+   "en_text": "there is a shark so he sees a shark in",
+   "zh_text": "有一条鲨鱼，所以他看到水里有条鲨鱼",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 231.0,
+   "end": 236.75,
+   "en_text": "the water Bob is scared of the shark Bob",
+   "zh_text": "水里。Bob害怕那条鲨鱼。Bob",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 236.76,
+   "end": 239.78,
+   "en_text": "does not want to swim at this beach",
+   "zh_text": "不想在这个海滩游泳了",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 239.79,
+   "end": 244.819,
+   "en_text": "anymore so because Bob is scared of this",
+   "zh_text": "因为Bob害怕这条",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 244.829,
+   "end": 248.39,
+   "en_text": "shark he leaves the beach he walks away",
+   "zh_text": "鲨鱼，所以他离开了海滩，他走开了",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 248.4,
+   "end": 252.8,
+   "en_text": "from the beach so Bob walks away from",
+   "zh_text": "从海滩走开，所以Bob走离了",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 252.81,
+   "end": 256.37,
+   "en_text": "the beach and as he's walking as he's",
+   "zh_text": "海滩，当他走着的时候，当他",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 256.38,
+   "end": 261.379,
+   "en_text": "walking he sees a big pool here Bob",
+   "zh_text": "走着的时候，他看到一个很大的水池。在这里，Bob",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 261.389,
+   "end": 266.629,
+   "en_text": "thinks this is a swimming pool he thinks",
+   "zh_text": "觉得这是一个游泳池，他觉得",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 266.639,
+   "end": 272.779,
+   "en_text": "I can swim in this pool so Bob decides",
+   "zh_text": "我可以在这个池子里游泳，所以Bob决定",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 272.789,
+   "end": 277.55,
+   "en_text": "to swim in the pool so Bob wants to swim",
+   "zh_text": "在池子里游泳，所以Bob想游泳",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 277.56,
+   "end": 281.45,
+   "en_text": "he decides to swim in this pool so he",
+   "zh_text": "他决定在这个池子里游泳，所以他",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 281.46,
+   "end": 285.71,
+   "en_text": "climbs up he climbs up and goes into the",
+   "zh_text": "爬上去，他爬上去，然后进了",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 285.72,
+   "end": 286.879,
+   "en_text": "pool",
+   "zh_text": "池子",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 286.889,
+   "end": 290.719,
+   "en_text": "and he swims in the pool suddenly Bob",
+   "zh_text": "他在池子里游泳。突然Bob",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 290.729,
+   "end": 294.86,
+   "en_text": "sees something in the pool what is in",
+   "zh_text": "看到池子里有东西。池子里",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 294.87,
+   "end": 297.86,
+   "en_text": "the pool well there is a shark in the",
+   "zh_text": "有什么呢？嗯，池子里有一条鲨鱼",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 297.87,
+   "end": 302.54,
+   "en_text": "pool Bob sees that there is a shark in",
+   "zh_text": "Bob看到池子里有一条鲨鱼",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 302.55,
+   "end": 306.23,
+   "en_text": "the pool he sees a shark in the pool Bob",
+   "zh_text": "他看到池子里有一条鲨鱼。Bob",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 306.24,
+   "end": 310.339,
+   "en_text": "is very very scared he is terrified he",
+   "zh_text": "非常非常害怕，他吓坏了，他",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 310.349,
+   "end": 312.92,
+   "en_text": "sees a shark in the pool and he is",
+   "zh_text": "看到池子里有一条鲨鱼，他",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 312.93,
+   "end": 316.07,
+   "en_text": "terrified quickly he jumps out of the",
+   "zh_text": "吓坏了。他很快地跳出",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 316.08,
+   "end": 319.01,
+   "en_text": "pool he jumps out of the pool and he",
+   "zh_text": "池子，他跳出池子，然后他",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 319.02,
+   "end": 321.89,
+   "en_text": "runs away he runs and runs and runs he",
+   "zh_text": "跑开了，他跑啊跑啊跑，他",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 321.9,
+   "end": 324.83,
+   "en_text": "runs and runs as fast as he can and he",
+   "zh_text": "拼命地跑，他",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 324.84,
+   "end": 326.54,
+   "en_text": "runs and runs and runs and runs all the",
+   "zh_text": "跑啊跑啊跑啊跑，一路",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 326.55,
+   "end": 329.57,
+   "en_text": "way back home so he runs all the way",
+   "zh_text": "跑回家，所以他一路",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 329.58,
+   "end": 332.48,
+   "en_text": "back home he runs back home he is so",
+   "zh_text": "跑回家，他跑回家，他太",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 332.49,
+   "end": 336.92,
+   "en_text": "scared hi again everyone thank you for",
+   "zh_text": "害怕了。大家好，又见面了，谢谢你们",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 336.93,
+   "end": 339.439,
+   "en_text": "watching this video if you liked this",
+   "zh_text": "观看这个视频。如果你喜欢这个",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 339.449,
+   "end": 342.559,
+   "en_text": "video please click or press the like",
+   "zh_text": "视频，请点击或按下点赞",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 342.569,
+   "end": 345.589,
+   "en_text": "button to like it and please click or",
+   "zh_text": "按钮给它点赞，并且请点击或",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 345.599,
+   "end": 347.809,
+   "en_text": "press the subscribe button to subscribe",
+   "zh_text": "按下订阅按钮，订阅",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 347.819,
+   "end": 351.23,
+   "en_text": "to this channel also click or press the",
+   "zh_text": "这个频道。还要点击或按下",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 351.24,
+   "end": 354.05,
+   "en_text": "bell to see new videos like this one",
+   "zh_text": "小铃铛，以便看到像这样的新视频",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 354.06,
+   "end": 356.269,
+   "en_text": "also please share this channel with",
+   "zh_text": "另外，请把这个频道分享给",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 356.279,
+   "end": 358.76,
+   "en_text": "other people who you think will like it",
+   "zh_text": "其他你觉得也会喜欢它",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 358.77,
+   "end": 361.009,
+   "en_text": "too",
+   "zh_text": "的人",
+   "highlights": []
+  }
+ ]
+}

@@ -1,0 +1,2309 @@
+{
+ "id": "ted-master-procrastinator",
+ "youtubeId": "arj7oStGLkU",
+ "title": "Inside the Mind of a Master Procrastinator | Tim Urban | TED",
+ "channel": "TED",
+ "duration": 844,
+ "level": "C1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/arj7oStGLkU/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:46+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 12.645,
+   "end": 14.015,
+   "en_text": "So in college,",
+   "zh_text": "所以上大学的时候，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 15.349,
+   "end": 16.913,
+   "en_text": "I was a government major,",
+   "zh_text": "我的专业是政治学，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 16.937,
+   "end": 19.399,
+   "en_text": "which means I had to write a lot of papers.",
+   "zh_text": "这意味着我得写很多论文。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 19.423,
+   "end": 21.471,
+   "en_text": "Now, when a normal student writes a paper,",
+   "zh_text": "普通学生写论文的时候，",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 21.495,
+   "end": 23.868,
+   "en_text": "they might spread the work out a little like this.",
+   "zh_text": "可能会把工作稍微分摊一下，就像这样。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 23.892,
+   "end": 25.043,
+   "en_text": "So, you know --",
+   "zh_text": "所以，你知道——",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 26.748,
+   "end": 28.575,
+   "en_text": "you get started maybe a little slowly,",
+   "zh_text": "你开始的时候可能有点慢，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 28.599,
+   "end": 30.567,
+   "en_text": "but you get enough done in the first week",
+   "zh_text": "但第一周你能完成足够多的量，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 30.591,
+   "end": 32.422,
+   "en_text": "that, with some heavier days later on,",
+   "zh_text": "这样，后面几天再加重一些，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 32.446,
+   "end": 34.603,
+   "en_text": "everything gets done, things stay civil.",
+   "zh_text": "一切都能完成，事情还算体面。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 35.853,
+   "end": 38.124,
+   "en_text": "And I would want to do that like that.",
+   "zh_text": "我本来想那样做的。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 38.148,
+   "end": 39.342,
+   "en_text": "That would be the plan.",
+   "zh_text": "那本该是计划。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 39.366,
+   "end": 41.856,
+   "en_text": "I would have it all ready to go,",
+   "zh_text": "我会把一切都准备好，",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 41.88,
+   "end": 44.374,
+   "en_text": "but then, actually, the paper would come along,",
+   "zh_text": "但后来，实际上，论文来了，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 44.398,
+   "end": 46.339,
+   "en_text": "and then I would kind of do this.",
+   "zh_text": "然后我就会变成这样。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 48.757,
+   "end": 50.9,
+   "en_text": "And that would happen every single paper.",
+   "zh_text": "而且每篇论文都会这样。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 51.638,
+   "end": 55.52,
+   "en_text": "But then came my 90-page senior thesis,",
+   "zh_text": "但后来来了我那篇90页的毕业论文，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 55.544,
+   "end": 57.831,
+   "en_text": "a paper you're supposed to spend a year on.",
+   "zh_text": "一篇你本该花一年时间来写的论文。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 57.855,
+   "end": 61.474,
+   "en_text": "And I knew for a paper like that, my normal work flow was not an option.",
+   "zh_text": "我知道对于这样一篇论文，我平常的工作流程根本行不通。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 61.498,
+   "end": 62.899,
+   "en_text": "It was way too big a project.",
+   "zh_text": "这个项目太大了。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 62.923,
+   "end": 64.076,
+   "en_text": "So I planned things out,",
+   "zh_text": "所以我做了规划，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 64.1,
+   "end": 67.305,
+   "en_text": "and I decided I kind of had to go something like this.",
+   "zh_text": "我决定大概得这样做。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 67.781,
+   "end": 69.233,
+   "en_text": "This is how the year would go.",
+   "zh_text": "这一年会这样过。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 69.257,
+   "end": 71.224,
+   "en_text": "So I'd start off light,",
+   "zh_text": "所以我会轻松开始，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 71.248,
+   "end": 73.566,
+   "en_text": "and I'd bump it up in the middle months,",
+   "zh_text": "中间几个月加大力度，",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 73.59,
+   "end": 76.216,
+   "en_text": "and then at the end, I would kick it up into high gear",
+   "zh_text": "然后到最后，我会全力冲刺，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 76.24,
+   "end": 77.679,
+   "en_text": "just like a little staircase.",
+   "zh_text": "就像一个小楼梯。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 77.703,
+   "end": 79.765,
+   "en_text": "How hard could it be to walk up the stairs?",
+   "zh_text": "走上楼梯能有多难呢？",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 80.233,
+   "end": 81.552,
+   "en_text": "No big deal, right?",
+   "zh_text": "没什么大不了的，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 83.09,
+   "end": 84.9,
+   "en_text": "But then, the funniest thing happened.",
+   "zh_text": "但后来，最搞笑的事情发生了。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 84.924,
+   "end": 86.235,
+   "en_text": "Those first few months?",
+   "zh_text": "最初那几个月呢？",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 86.791,
+   "end": 87.958,
+   "en_text": "They came and went,",
+   "zh_text": "来了又走了，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 87.982,
+   "end": 89.567,
+   "en_text": "and I couldn't quite do stuff.",
+   "zh_text": "而我根本没法做事。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 89.591,
+   "end": 91.44,
+   "en_text": "So we had an awesome new revised plan.",
+   "zh_text": "于是我们有了一个超棒的新修订计划。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 92.655,
+   "end": 93.814,
+   "en_text": "And then --",
+   "zh_text": "然后——",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 95.744,
+   "end": 98.528,
+   "en_text": "But then those middle months actually went by,",
+   "zh_text": "但后来中间那几个月真的过去了，",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 98.552,
+   "end": 100.734,
+   "en_text": "and I didn't really write words,",
+   "zh_text": "而我并没有真正写出字来，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 100.758,
+   "end": 102.593,
+   "en_text": "and so we were here.",
+   "zh_text": "于是我们就到了这里。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 103.5,
+   "end": 106.076,
+   "en_text": "And then two months turned into one month,",
+   "zh_text": "然后两个月变成一个月，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 106.1,
+   "end": 107.725,
+   "en_text": "which turned into two weeks.",
+   "zh_text": "又变成两周。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 107.749,
+   "end": 109.058,
+   "en_text": "And one day I woke up",
+   "zh_text": "有一天我醒来，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 109.724,
+   "end": 112.343,
+   "en_text": "with three days until the deadline,",
+   "zh_text": "距离截止日期只剩三天，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 113.502,
+   "end": 115.433,
+   "en_text": "still not having written a word,",
+   "zh_text": "却还是一个字都没写，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 115.457,
+   "end": 117.516,
+   "en_text": "and so I did the only thing I could:",
+   "zh_text": "于是我做了唯一能做的事：",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 117.54,
+   "end": 120.147,
+   "en_text": "I wrote 90 pages over 72 hours,",
+   "zh_text": "我在72小时里写了90页，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 120.171,
+   "end": 122.447,
+   "en_text": "pulling not one but two all-nighters --",
+   "zh_text": "不是熬了一个通宵，而是熬了两个通宵——",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 122.471,
+   "end": 125.04,
+   "en_text": "humans are not supposed to pull two all-nighters --",
+   "zh_text": "人类本不该熬两个通宵的——",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 126.373,
+   "end": 128.366,
+   "en_text": "sprinted across campus,",
+   "zh_text": "我飞奔穿过校园，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 128.39,
+   "end": 129.876,
+   "en_text": "dove in slow motion,",
+   "zh_text": "以慢动作扑过去，",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 129.9,
+   "end": 131.956,
+   "en_text": "and got it in just at the deadline.",
+   "zh_text": "刚好在截止日期前交上了。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 131.98,
+   "end": 134.004,
+   "en_text": "I thought that was the end of everything.",
+   "zh_text": "我以为一切都完了。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 134.028,
+   "end": 135.587,
+   "en_text": "But a week later I get a call,",
+   "zh_text": "但一周后我接到一个电话，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 135.611,
+   "end": 137.097,
+   "en_text": "and it's the school.",
+   "zh_text": "是学校打来的。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 137.757,
+   "end": 139.396,
+   "en_text": "And they say, \"Is this Tim Urban?\"",
+   "zh_text": "他们说：“是Tim Urban吗？”",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 139.42,
+   "end": 140.888,
+   "en_text": "And I say, \"Yeah.\"",
+   "zh_text": "我说：“是的。”",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 140.912,
+   "end": 143.252,
+   "en_text": "And they say, \"We need to talk about your thesis.\"",
+   "zh_text": "他们说：“我们得谈谈你的论文。”",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 143.276,
+   "end": 144.531,
+   "en_text": "And I say, \"OK.\"",
+   "zh_text": "我说：“好啊。”",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 145.468,
+   "end": 146.69,
+   "en_text": "And they say,",
+   "zh_text": "他们说：",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 147.23,
+   "end": 149.126,
+   "en_text": "\"It's the best one we've ever seen.\"",
+   "zh_text": "“这是我们见过的最好的论文。”",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 156.945,
+   "end": 158.247,
+   "en_text": "That did not happen.",
+   "zh_text": "那并没有发生。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 160.433,
+   "end": 163.056,
+   "en_text": "It was a very, very bad thesis.",
+   "zh_text": "那是一篇非常非常糟糕的论文。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 165.378,
+   "end": 169.478,
+   "en_text": "I just wanted to enjoy that one moment when all of you thought,",
+   "zh_text": "我只是想享受一下那一刻，让你们所有人都以为，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 169.502,
+   "end": 171.407,
+   "en_text": "\"This guy is amazing!\"",
+   "zh_text": "“这家伙太厉害了！”",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 172.803,
+   "end": 174.47,
+   "en_text": "No, no, it was very, very bad.",
+   "zh_text": "不，不，它非常非常糟糕。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 175.343,
+   "end": 178.751,
+   "en_text": "Anyway, today I'm a writer-blogger guy.",
+   "zh_text": "总之，现在我是个写博客的家伙。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 178.775,
+   "end": 180.518,
+   "en_text": "I write the blog Wait But Why.",
+   "zh_text": "我写一个叫 Wait But Why 的博客。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 180.542,
+   "end": 184.278,
+   "en_text": "And a couple of years ago, I decided to write about procrastination.",
+   "zh_text": "几年前，我决定写一写拖延症。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 184.302,
+   "end": 187.586,
+   "en_text": "My behavior has always perplexed the non-procrastinators around me,",
+   "zh_text": "我的行为一直让我身边那些不拖延的人感到困惑，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 187.61,
+   "end": 191.298,
+   "en_text": "and I wanted to explain to the non-procrastinators of the world",
+   "zh_text": "我想向世界上那些不拖延的人解释",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 191.322,
+   "end": 193.429,
+   "en_text": "what goes on in the heads of procrastinators,",
+   "zh_text": "拖延症患者脑子里到底在想什么，",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 193.453,
+   "end": 194.893,
+   "en_text": "and why we are the way we are.",
+   "zh_text": "以及我们为什么会是这样。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 194.917,
+   "end": 196.073,
+   "en_text": "Now, I had a hypothesis",
+   "zh_text": "当时我有一个假设，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 196.097,
+   "end": 198.952,
+   "en_text": "that the brains of procrastinators were actually different",
+   "zh_text": "那就是拖延症患者的大脑其实和别人的不一样，",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 198.976,
+   "end": 200.933,
+   "en_text": "than the brains of other people.",
+   "zh_text": "和别人的大脑不一样。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 201.698,
+   "end": 203.889,
+   "en_text": "And to test this, I found an MRI lab",
+   "zh_text": "为了验证这一点，我找了一家核磁共振实验室，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 203.913,
+   "end": 206.345,
+   "en_text": "that actually let me scan both my brain",
+   "zh_text": "他们真的让我扫描了我自己的大脑",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 206.369,
+   "end": 209.024,
+   "en_text": "and the brain of a proven non-procrastinator,",
+   "zh_text": "以及一个公认不拖延的人的大脑，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 209.048,
+   "end": 210.483,
+   "en_text": "so I could compare them.",
+   "zh_text": "这样我就能把它们做个对比。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 210.507,
+   "end": 212.708,
+   "en_text": "I actually brought them here to show you today.",
+   "zh_text": "我今天真的把它们带来给你们看了。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 212.732,
+   "end": 216.269,
+   "en_text": "I want you to take a look carefully to see if you can notice a difference.",
+   "zh_text": "我想让你们仔细看一看，看能不能发现什么不同。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 216.293,
+   "end": 218.607,
+   "en_text": "I know that if you're not a trained brain expert,",
+   "zh_text": "我知道，如果你不是受过训练的大脑专家，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 218.631,
+   "end": 220.894,
+   "en_text": "it's not that obvious, but just take a look, OK?",
+   "zh_text": "差别没那么明显，但就看一眼，好吗？",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 220.918,
+   "end": 223.046,
+   "en_text": "So here's the brain of a non-procrastinator.",
+   "zh_text": "这是一个不拖延的人的大脑。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 226.133,
+   "end": 227.284,
+   "en_text": "Now ...",
+   "zh_text": "现在……",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 228.325,
+   "end": 229.639,
+   "en_text": "here's my brain.",
+   "zh_text": "这是我的大脑。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 235.713,
+   "end": 237.277,
+   "en_text": "There is a difference.",
+   "zh_text": "确实有区别。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 237.904,
+   "end": 240.292,
+   "en_text": "Both brains have a Rational Decision-Maker in them,",
+   "zh_text": "两个大脑里都有一个理性的决策者，",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 240.316,
+   "end": 241.968,
+   "en_text": "but the procrastinator's brain",
+   "zh_text": "但拖延症患者的大脑里",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 241.992,
+   "end": 244.978,
+   "en_text": "also has an Instant Gratification Monkey.",
+   "zh_text": "还有一个即时满足猴子。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 245.002,
+   "end": 247.304,
+   "en_text": "Now, what does this mean for the procrastinator?",
+   "zh_text": "那么，这对拖延症患者意味着什么呢？",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 247.328,
+   "end": 249.769,
+   "en_text": "Well, it means everything's fine until this happens.",
+   "zh_text": "意思是，一切都好，直到这件事发生。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 249.793,
+   "end": 252.415,
+   "en_text": "[This is a perfect time to get some work done.] [Nope!]",
+   "zh_text": "[现在正是做点工作的完美时机。] [才不呢！]",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 252.439,
+   "end": 255.372,
+   "en_text": "So the Rational Decision-Maker will make the rational decision",
+   "zh_text": "于是理性的决策者会做出理性的决定，",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 255.396,
+   "end": 257.292,
+   "en_text": "to do something productive,",
+   "zh_text": "去做一些有成效的事，",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 257.316,
+   "end": 259.266,
+   "en_text": "but the Monkey doesn't like that plan,",
+   "zh_text": "但猴子不喜欢这个计划，",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 259.29,
+   "end": 260.798,
+   "en_text": "so he actually takes the wheel,",
+   "zh_text": "所以他实际上抢过了方向盘，",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 260.822,
+   "end": 263.703,
+   "en_text": "and he says, \"Actually, let's read the entire Wikipedia page",
+   "zh_text": "他说：“其实，咱们去把 Nancy Kerrigan 和 Tonya Harding 丑闻的",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 263.727,
+   "end": 265.863,
+   "en_text": "of the Nancy Kerrigan/ Tonya Harding scandal,",
+   "zh_text": "整个维基百科页面读一遍吧，",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 265.887,
+   "end": 268.018,
+   "en_text": "because I just remembered that that happened.",
+   "zh_text": "因为我刚想起来还有这么回事。",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 269.082,
+   "end": 270.24,
+   "en_text": "Then --",
+   "zh_text": "然后——",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 271.551,
+   "end": 273.589,
+   "en_text": "Then we're going to go over to the fridge,",
+   "zh_text": "然后我们要去冰箱那边，",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 273.613,
+   "end": 276.479,
+   "en_text": "to see if there's anything new in there since 10 minutes ago.",
+   "zh_text": "看看从十分钟前到现在有没有什么新东西。",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 276.503,
+   "end": 279.141,
+   "en_text": "After that, we're going to go on a YouTube spiral",
+   "zh_text": "之后，我们要在 YouTube 上越看越深，",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 279.165,
+   "end": 282.415,
+   "en_text": "that starts with videos of Richard Feynman talking about magnets",
+   "zh_text": "从 Richard Feynman 讲磁铁的的视频开始，",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 282.439,
+   "end": 285.155,
+   "en_text": "and ends much, much later with us watching interviews",
+   "zh_text": "然后过了很久很久，最后变成在看",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 285.179,
+   "end": 287.059,
+   "en_text": "with Justin Bieber's mom.",
+   "zh_text": "Justin Bieber 妈妈的采访。",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 289.295,
+   "end": 291.058,
+   "en_text": "\"All of that's going to take a while,",
+   "zh_text": "“所有这些都得花上一阵子，",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 291.082,
+   "end": 294.584,
+   "en_text": "so we're not going to really have room on the schedule for any work today.",
+   "zh_text": "所以今天的日程上根本腾不出地方来做任何工作了。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 294.608,
+   "end": 295.771,
+   "en_text": "Sorry!\"",
+   "zh_text": "抱歉啦！”",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 295.795,
+   "end": 296.96,
+   "en_text": "(Sigh)",
+   "zh_text": "（叹气）",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 298.325,
+   "end": 301.694,
+   "en_text": "Now, what is going on here?",
+   "zh_text": "那么，这到底是怎么回事呢？",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 303.481,
+   "end": 306.172,
+   "en_text": "The Instant Gratification Monkey does not seem like a guy",
+   "zh_text": "即时满足猴子看起来可不像是那种",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 306.196,
+   "end": 307.45,
+   "en_text": "you want behind the wheel.",
+   "zh_text": "你会想让他来掌方向盘的人。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 307.474,
+   "end": 309.419,
+   "en_text": "He lives entirely in the present moment.",
+   "zh_text": "他完全活在当下这一刻。",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 309.443,
+   "end": 312.271,
+   "en_text": "He has no memory of the past, no knowledge of the future,",
+   "zh_text": "他对过去没有记忆，对未来一无所知，",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 312.295,
+   "end": 313.992,
+   "en_text": "and he only cares about two things:",
+   "zh_text": "他只在乎两件事：",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 314.016,
+   "end": 315.699,
+   "en_text": "easy and fun.",
+   "zh_text": "轻松和好玩。",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 316.338,
+   "end": 319.43,
+   "en_text": "Now, in the animal world, that works fine.",
+   "zh_text": "在动物世界里，这样完全没问题。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 319.454,
+   "end": 320.662,
+   "en_text": "If you're a dog",
+   "zh_text": "如果你是一只狗，",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 320.686,
+   "end": 324.257,
+   "en_text": "and you spend your whole life doing nothing other than easy and fun things,",
+   "zh_text": "一辈子除了轻松好玩的事什么都不干，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 324.281,
+   "end": 325.446,
+   "en_text": "you're a huge success!",
+   "zh_text": "那你就是巨大的成功！",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 327.405,
+   "end": 328.691,
+   "en_text": "And to the Monkey,",
+   "zh_text": "而在猴子眼里，",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 329.969,
+   "end": 332.063,
+   "en_text": "humans are just another animal species.",
+   "zh_text": "人类不过是又一个动物物种。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 332.087,
+   "end": 336.593,
+   "en_text": "You have to keep well-slept, well-fed and propagating into the next generation,",
+   "zh_text": "你得睡好、吃饱、繁衍下一代，",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 336.617,
+   "end": 338.903,
+   "en_text": "which in tribal times might have worked OK.",
+   "zh_text": "这在部落时代也许还行得通。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 338.927,
+   "end": 341.777,
+   "en_text": "But, if you haven't noticed, now we're not in tribal times.",
+   "zh_text": "但是，如果你没注意到的话，我们现在可不在部落时代了。",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 341.801,
+   "end": 345.934,
+   "en_text": "We're in an advanced civilization, and the Monkey does not know what that is.",
+   "zh_text": "我们身处一个先进的文明社会，而猴子根本不知道那是什么。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 345.958,
+   "end": 348.239,
+   "en_text": "Which is why we have another guy in our brain,",
+   "zh_text": "这就是为什么我们脑子里还有另一个家伙，",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 348.263,
+   "end": 350.628,
+   "en_text": "the Rational Decision-Maker,",
+   "zh_text": "理性决策者，",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 350.652,
+   "end": 353.679,
+   "en_text": "who gives us the ability to do things no other animal can do.",
+   "zh_text": "他赋予我们做其他动物都做不到的事情的能力。",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 353.703,
+   "end": 355.624,
+   "en_text": "We can visualize the future.",
+   "zh_text": "我们能想象未来。",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 355.648,
+   "end": 357.4,
+   "en_text": "We can see the big picture.",
+   "zh_text": "我们能看清全局。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 357.424,
+   "end": 358.774,
+   "en_text": "We can make long-term plans.",
+   "zh_text": "我们能制定长期计划。",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 358.798,
+   "end": 361.281,
+   "en_text": "And he wants to take all of that into account.",
+   "zh_text": "他想把这一切都考虑进去。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 362.138,
+   "end": 363.829,
+   "en_text": "And he wants to just have us do",
+   "zh_text": "他就是想让我们去做",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 363.853,
+   "end": 366.801,
+   "en_text": "whatever makes sense to be doing right now.",
+   "zh_text": "此刻真正该做的事。",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 366.825,
+   "end": 368.214,
+   "en_text": "Now, sometimes it makes sense",
+   "zh_text": "有时候，做那些",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 368.238,
+   "end": 370.267,
+   "en_text": "to be doing things that are easy and fun,",
+   "zh_text": "轻松好玩的事确实是合理的，",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 370.291,
+   "end": 372.442,
+   "en_text": "like when you're having dinner or going to bed",
+   "zh_text": "比如吃晚饭、上床睡觉，",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 372.466,
+   "end": 374.294,
+   "en_text": "or enjoying well-earned leisure time.",
+   "zh_text": "或者享受应得的休闲时光。",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 374.318,
+   "end": 375.768,
+   "en_text": "That's why there's an overlap.",
+   "zh_text": "这就是为什么两者会有重叠。",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 375.792,
+   "end": 377.536,
+   "en_text": "Sometimes they agree.",
+   "zh_text": "有时候他们意见一致。",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 377.56,
+   "end": 380.382,
+   "en_text": "But other times, it makes much more sense",
+   "zh_text": "但其他时候，做那些更难、",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 380.406,
+   "end": 384.008,
+   "en_text": "to be doing things that are harder and less pleasant,",
+   "zh_text": "更不愉快的事情要合理得多，",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 384.032,
+   "end": 385.572,
+   "en_text": "for the sake of the big picture.",
+   "zh_text": "为了顾全大局。",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 385.596,
+   "end": 387.485,
+   "en_text": "And that's when we have a conflict.",
+   "zh_text": "这时候我们就产生了冲突。",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 388.017,
+   "end": 389.332,
+   "en_text": "And for the procrastinator,",
+   "zh_text": "而对于拖延症患者来说，",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 389.356,
+   "end": 391.865,
+   "en_text": "that conflict tends to end a certain way every time,",
+   "zh_text": "这种冲突每次往往都以同样的方式收场，",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 391.889,
+   "end": 395.609,
+   "en_text": "leaving him spending a lot of time in this orange zone,",
+   "zh_text": "让他花大量时间待在这个橙色区域里，",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 395.633,
+   "end": 399.96,
+   "en_text": "an easy and fun place that's entirely out of the Makes Sense circle.",
+   "zh_text": "一个轻松好玩、却完全在“合理”圆圈之外的地方。",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 399.984,
+   "end": 402.263,
+   "en_text": "I call it the Dark Playground.",
+   "zh_text": "我称之为黑暗游乐场。",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 403.935,
+   "end": 407.063,
+   "en_text": "Now, the Dark Playground is a place",
+   "zh_text": "这个黑暗游乐场，是一个",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 407.087,
+   "end": 410.279,
+   "en_text": "that all of you procrastinators out there know very well.",
+   "zh_text": "你们所有拖延症患者都非常熟悉的地方。",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 410.892,
+   "end": 412.696,
+   "en_text": "It's where leisure activities happen",
+   "zh_text": "休闲活动就是在这里发生的，",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 412.72,
+   "end": 416.03,
+   "en_text": "at times when leisure activities are not supposed to be happening.",
+   "zh_text": "而且是在本不该发生休闲活动的时候。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 416.418,
+   "end": 418.308,
+   "en_text": "The fun you have in the Dark Playground",
+   "zh_text": "你在黑暗游乐场里得到的乐趣",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 418.332,
+   "end": 420.815,
+   "en_text": "isn't actually fun, because it's completely unearned,",
+   "zh_text": "其实并不算乐趣，因为那完全是不劳而获的，",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 420.839,
+   "end": 424.054,
+   "en_text": "and the air is filled with guilt, dread, anxiety, self-hatred --",
+   "zh_text": "空气里弥漫着内疚、恐惧、焦虑、自我厌恶——",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 424.078,
+   "end": 426.196,
+   "en_text": "all of those good procrastinator feelings.",
+   "zh_text": "全都是拖延症患者熟悉的美好感受。",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 426.703,
+   "end": 430.179,
+   "en_text": "And the question is, in this situation, with the Monkey behind the wheel,",
+   "zh_text": "问题是，在这种情况下，猴子握着方向盘，",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 430.203,
+   "end": 433.796,
+   "en_text": "how does the procrastinator ever get himself over here to this blue zone,",
+   "zh_text": "拖延症患者到底怎么才能让自己来到这边这个蓝色区域，",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 433.82,
+   "end": 437.101,
+   "en_text": "a less pleasant place, but where really important things happen?",
+   "zh_text": "一个不那么舒服、但真正重要的事情会发生的地方？",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 437.125,
+   "end": 442.162,
+   "en_text": "Well, turns out the procrastinator has a guardian angel,",
+   "zh_text": "结果发现，拖延症患者有一位守护天使，",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 442.186,
+   "end": 445.394,
+   "en_text": "someone who's always looking down on him and watching over him",
+   "zh_text": "一个总是俯视着他、守护着他的人，",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 445.418,
+   "end": 446.848,
+   "en_text": "in his darkest moments --",
+   "zh_text": "在他最黑暗的时刻——",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 446.872,
+   "end": 448.967,
+   "en_text": "someone called the Panic Monster.",
+   "zh_text": "这个人叫恐慌怪兽。",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 454.386,
+   "end": 459.246,
+   "en_text": "Now, the Panic Monster is dormant most of the time,",
+   "zh_text": "恐慌怪兽大部分时间都在休眠，",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 459.27,
+   "end": 463.172,
+   "en_text": "but he suddenly wakes up anytime a deadline gets too close",
+   "zh_text": "但只要截止日期太近了，他就会突然醒来，",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 463.196,
+   "end": 465.241,
+   "en_text": "or there's danger of public embarrassment,",
+   "zh_text": "或者有当众出丑的危险，",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 465.265,
+   "end": 467.776,
+   "en_text": "a career disaster or some other scary consequence.",
+   "zh_text": "事业灾难或其他可怕的后果。",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 467.8,
+   "end": 471.972,
+   "en_text": "And importantly, he's the only thing the Monkey is terrified of.",
+   "zh_text": "重要的是，他是猴子唯一害怕的东西。",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 471.996,
+   "end": 476.574,
+   "en_text": "Now, he became very relevant in my life pretty recently,",
+   "zh_text": "他最近在我的生活里变得非常重要，",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 476.598,
+   "end": 479.844,
+   "en_text": "because the people of TED reached out to me about six months ago",
+   "zh_text": "因为大约六个月前，TED的人联系了我，",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 479.868,
+   "end": 481.889,
+   "en_text": "and invited me to do a TED Talk.",
+   "zh_text": "邀请我做一场TED演讲。",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 487.058,
+   "end": 488.965,
+   "en_text": "Now, of course, I said yes.",
+   "zh_text": "当然，我答应了。",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 488.989,
+   "end": 492.794,
+   "en_text": "It's always been a dream of mine to have done a TED Talk in the past.",
+   "zh_text": "在过去做过一场TED演讲，一直是我的梦想。",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 504.203,
+   "end": 506.172,
+   "en_text": "But in the middle of all this excitement,",
+   "zh_text": "但在这一片兴奋之中，",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 506.196,
+   "end": 509.497,
+   "en_text": "the Rational Decision-Maker seemed to have something else on his mind.",
+   "zh_text": "理性决策者似乎心里在想别的事。",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 509.521,
+   "end": 512.069,
+   "en_text": "He was saying, \"Are we clear on what we just accepted?",
+   "zh_text": "他说：“我们清楚自己刚刚接受了什么吗？",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 512.093,
+   "end": 515.342,
+   "en_text": "Do we get what's going to be now happening one day in the future?",
+   "zh_text": "我们明白未来某一天将会发生什么吗？",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 515.366,
+   "end": 517.633,
+   "en_text": "We need to sit down and work on this right now.\"",
+   "zh_text": "我们现在就得坐下来开始做这件事。”",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 517.657,
+   "end": 520.922,
+   "en_text": "And the Monkey said, \"Totally agree, but let's just open Google Earth",
+   "zh_text": "猴子说：“完全同意，不过我们先打开谷歌地球",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 520.946,
+   "end": 524.106,
+   "en_text": "and zoom in to the bottom of India, like 200 feet above the ground,",
+   "zh_text": "放大到印度底部，离地面大概200英尺的地方，",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 524.13,
+   "end": 527.751,
+   "en_text": "and scroll up for two and a half hours til we get to the top of the country,",
+   "zh_text": "然后往上滚动两个半小时，一直到这个国家的顶部，",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 527.775,
+   "end": 529.753,
+   "en_text": "so we can get a better feel for India.\"",
+   "zh_text": "这样我们就能更好地感受一下印度。”",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 535.149,
+   "end": 536.634,
+   "en_text": "So that's what we did that day.",
+   "zh_text": "那天我们就这么干了。",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 540.604,
+   "end": 544.5,
+   "en_text": "As six months turned into four and then two and then one,",
+   "zh_text": "随着六个月变成四个月，再变成两个月，再变成一个月，",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 544.524,
+   "end": 547.619,
+   "en_text": "the people of TED decided to release the speakers.",
+   "zh_text": "TED的人决定公布演讲者名单。",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 547.643,
+   "end": 550.255,
+   "en_text": "And I opened up the website, and there was my face",
+   "zh_text": "我打开网站，我的脸就在那里，",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 550.279,
+   "end": 551.635,
+   "en_text": "staring right back at me.",
+   "zh_text": "直直地盯着我。",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 551.659,
+   "end": 553.259,
+   "en_text": "And guess who woke up?",
+   "zh_text": "猜猜谁醒了？",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 557.43,
+   "end": 559.88,
+   "en_text": "So the Panic Monster starts losing his mind,",
+   "zh_text": "于是恐慌怪兽开始发疯，",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 559.904,
+   "end": 562.65,
+   "en_text": "and a few seconds later, the whole system's in mayhem.",
+   "zh_text": "几秒钟后，整个系统一片混乱。",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 567.511,
+   "end": 570.612,
+   "en_text": "And the Monkey -- remember, he's terrified of the Panic Monster --",
+   "zh_text": "而猴子——记住，他害怕恐慌怪兽——",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 570.636,
+   "end": 571.794,
+   "en_text": "boom, he's up the tree!",
+   "zh_text": "砰，他就爬上树了！",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 571.818,
+   "end": 572.969,
+   "en_text": "And finally,",
+   "zh_text": "最后，",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 572.993,
+   "end": 575.589,
+   "en_text": "finally, the Rational Decision-Maker can take the wheel",
+   "zh_text": "终于，理性决策者能来掌舵了",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 575.613,
+   "end": 577.331,
+   "en_text": "and I can start working on the talk.",
+   "zh_text": "我也能开始准备演讲了。",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 577.355,
+   "end": 579.643,
+   "en_text": "Now, the Panic Monster explains",
+   "zh_text": "那么，恐慌怪兽解释了",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 579.667,
+   "end": 583.148,
+   "en_text": "all kinds of pretty insane procrastinator behavior,",
+   "zh_text": "各种相当疯狂的拖延行为，",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 583.172,
+   "end": 585.506,
+   "en_text": "like how someone like me could spend two weeks",
+   "zh_text": "比如像我这样的人怎么会花上两个星期",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 585.53,
+   "end": 589.374,
+   "en_text": "unable to start the opening sentence of a paper,",
+   "zh_text": "都没法动笔写论文的开头一句，",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 589.398,
+   "end": 592.169,
+   "en_text": "and then miraculously find the unbelievable work ethic",
+   "zh_text": "然后又能奇迹般地拿出难以置信的敬业精神",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 592.193,
+   "end": 595.289,
+   "en_text": "to stay up all night and write eight pages.",
+   "zh_text": "熬上一整夜，写出八页纸。",
+   "highlights": []
+  },
+  {
+   "id": 205,
+   "start": 596.385,
+   "end": 599.367,
+   "en_text": "And this entire situation, with the three characters --",
+   "zh_text": "而这整个局面，加上这三个角色——",
+   "highlights": []
+  },
+  {
+   "id": 206,
+   "start": 599.391,
+   "end": 601.411,
+   "en_text": "this is the procrastinator's system.",
+   "zh_text": "这就是拖延者的系统。",
+   "highlights": []
+  },
+  {
+   "id": 207,
+   "start": 602.096,
+   "end": 605.521,
+   "en_text": "It's not pretty, but in the end, it works.",
+   "zh_text": "它不太好看，但最终，它管用。",
+   "highlights": []
+  },
+  {
+   "id": 208,
+   "start": 605.545,
+   "end": 609.607,
+   "en_text": "This is what I decided to write about on the blog a couple of years ago.",
+   "zh_text": "这就是几年前我决定在博客上写的内容。",
+   "highlights": []
+  },
+  {
+   "id": 209,
+   "start": 609.631,
+   "end": 612.602,
+   "en_text": "When I did, I was amazed by the response.",
+   "zh_text": "写完之后，大家的反应让我很惊讶。",
+   "highlights": []
+  },
+  {
+   "id": 210,
+   "start": 612.626,
+   "end": 614.779,
+   "en_text": "Literally thousands of emails came in,",
+   "zh_text": "真的有好几千封邮件涌进来，",
+   "highlights": []
+  },
+  {
+   "id": 211,
+   "start": 614.803,
+   "end": 617.58,
+   "en_text": "from all different kinds of people from all over the world,",
+   "zh_text": "来自世界各地各种各样的人，",
+   "highlights": []
+  },
+  {
+   "id": 212,
+   "start": 617.604,
+   "end": 619.342,
+   "en_text": "doing all different kinds of things.",
+   "zh_text": "做着各种各样的事。",
+   "highlights": []
+  },
+  {
+   "id": 213,
+   "start": 619.366,
+   "end": 622.332,
+   "en_text": "These are people who were nurses, bankers, painters, engineers",
+   "zh_text": "这些人里有护士、银行家、画家、工程师",
+   "highlights": []
+  },
+  {
+   "id": 214,
+   "start": 622.356,
+   "end": 624.678,
+   "en_text": "and lots and lots of PhD students.",
+   "zh_text": "还有许许多多的博士生。",
+   "highlights": []
+  },
+  {
+   "id": 215,
+   "start": 626.727,
+   "end": 629.015,
+   "en_text": "And they were all writing, saying the same thing:",
+   "zh_text": "他们都在写，说着同样的话：",
+   "highlights": []
+  },
+  {
+   "id": 216,
+   "start": 629.039,
+   "end": 630.991,
+   "en_text": "\"I have this problem too.\"",
+   "zh_text": "“我也有这个问题。”",
+   "highlights": []
+  },
+  {
+   "id": 217,
+   "start": 631.015,
+   "end": 634.844,
+   "en_text": "But what struck me was the contrast between the light tone of the post",
+   "zh_text": "但让我触动的是，那篇文章轻松的语调",
+   "highlights": []
+  },
+  {
+   "id": 218,
+   "start": 634.868,
+   "end": 636.963,
+   "en_text": "and the heaviness of these emails.",
+   "zh_text": "和这些邮件沉重的内容之间的反差。",
+   "highlights": []
+  },
+  {
+   "id": 219,
+   "start": 636.987,
+   "end": 640.07,
+   "en_text": "These people were writing with intense frustration",
+   "zh_text": "这些人写的时候带着强烈的挫败感，",
+   "highlights": []
+  },
+  {
+   "id": 220,
+   "start": 640.094,
+   "end": 642.856,
+   "en_text": "about what procrastination had done to their lives,",
+   "zh_text": "写拖延给他们的生活带来了什么，",
+   "highlights": []
+  },
+  {
+   "id": 221,
+   "start": 642.88,
+   "end": 644.91,
+   "en_text": "about what this Monkey had done to them.",
+   "zh_text": "写这只猴子对他们做了什么。",
+   "highlights": []
+  },
+  {
+   "id": 222,
+   "start": 646.902,
+   "end": 649.868,
+   "en_text": "And I thought about this, and I said,",
+   "zh_text": "我琢磨了一下，然后说，",
+   "highlights": []
+  },
+  {
+   "id": 223,
+   "start": 649.892,
+   "end": 653.004,
+   "en_text": "well, if the procrastinator's system works, then what's going on?",
+   "zh_text": "好吧，如果拖延者的系统管用，那到底是怎么回事？",
+   "highlights": []
+  },
+  {
+   "id": 224,
+   "start": 653.028,
+   "end": 655.514,
+   "en_text": "Why are all of these people in such a dark place?",
+   "zh_text": "为什么这些人都陷在这么灰暗的境地？",
+   "highlights": []
+  },
+  {
+   "id": 225,
+   "start": 655.538,
+   "end": 658.836,
+   "en_text": "Well, it turns out that there's two kinds of procrastination.",
+   "zh_text": "结果发现，拖延有两种。",
+   "highlights": []
+  },
+  {
+   "id": 226,
+   "start": 659.987,
+   "end": 662.821,
+   "en_text": "Everything I've talked about today, the examples I've given,",
+   "zh_text": "我今天讲的所有内容、我举的例子，",
+   "highlights": []
+  },
+  {
+   "id": 227,
+   "start": 662.845,
+   "end": 663.996,
+   "en_text": "they all have deadlines.",
+   "zh_text": "它们都有截止日期。",
+   "highlights": []
+  },
+  {
+   "id": 228,
+   "start": 664.02,
+   "end": 665.318,
+   "en_text": "And when there's deadlines,",
+   "zh_text": "而当有截止日期时，",
+   "highlights": []
+  },
+  {
+   "id": 229,
+   "start": 665.342,
+   "end": 668.267,
+   "en_text": "the effects of procrastination are contained to the short term",
+   "zh_text": "拖延的影响就被限制在短期内，",
+   "highlights": []
+  },
+  {
+   "id": 230,
+   "start": 668.291,
+   "end": 670.204,
+   "en_text": "because the Panic Monster gets involved.",
+   "zh_text": "因为恐慌怪兽会介入。",
+   "highlights": []
+  },
+  {
+   "id": 231,
+   "start": 670.228,
+   "end": 672.282,
+   "en_text": "But there's a second kind of procrastination",
+   "zh_text": "但还有第二种拖延，",
+   "highlights": []
+  },
+  {
+   "id": 232,
+   "start": 672.306,
+   "end": 674.793,
+   "en_text": "that happens in situations when there is no deadline.",
+   "zh_text": "它发生在没有截止日期的情况下。",
+   "highlights": []
+  },
+  {
+   "id": 233,
+   "start": 674.817,
+   "end": 677.507,
+   "en_text": "So if you wanted a career where you're a self-starter --",
+   "zh_text": "所以如果你想要一份靠自我驱动的职业——",
+   "highlights": []
+  },
+  {
+   "id": 234,
+   "start": 677.531,
+   "end": 679.944,
+   "en_text": "something in the arts, something entrepreneurial --",
+   "zh_text": "艺术类的，或者创业类的——",
+   "highlights": []
+  },
+  {
+   "id": 235,
+   "start": 679.968,
+   "end": 683.493,
+   "en_text": "there's no deadlines on those things at first, because nothing's happening,",
+   "zh_text": "这些事一开始都没有截止日期，因为什么都还没发生，",
+   "highlights": []
+  },
+  {
+   "id": 236,
+   "start": 683.517,
+   "end": 685.761,
+   "en_text": "not until you've gone out and done the hard work",
+   "zh_text": "除非你走出去，付出艰苦的努力",
+   "highlights": []
+  },
+  {
+   "id": 237,
+   "start": 685.785,
+   "end": 687.411,
+   "en_text": "to get momentum, get things going.",
+   "zh_text": "去获得动力，把事情推动起来。",
+   "highlights": []
+  },
+  {
+   "id": 238,
+   "start": 687.435,
+   "end": 690.513,
+   "en_text": "There's also all kinds of important things outside of your career",
+   "zh_text": "除了事业之外，还有各种重要的事情",
+   "highlights": []
+  },
+  {
+   "id": 239,
+   "start": 690.537,
+   "end": 692.142,
+   "en_text": "that don't involve any deadlines,",
+   "zh_text": "是不涉及任何截止日期的，",
+   "highlights": []
+  },
+  {
+   "id": 240,
+   "start": 692.166,
+   "end": 695.431,
+   "en_text": "like seeing your family or exercising and taking care of your health,",
+   "zh_text": "比如看望家人，或者锻炼身体、照顾健康，",
+   "highlights": []
+  },
+  {
+   "id": 241,
+   "start": 695.455,
+   "end": 696.859,
+   "en_text": "working on your relationship",
+   "zh_text": "经营你的感情关系",
+   "highlights": []
+  },
+  {
+   "id": 242,
+   "start": 696.883,
+   "end": 699.564,
+   "en_text": "or getting out of a relationship that isn't working.",
+   "zh_text": "或者从一段不合适的感情中抽身出来。",
+   "highlights": []
+  },
+  {
+   "id": 243,
+   "start": 699.588,
+   "end": 704.736,
+   "en_text": "Now if the procrastinator's only mechanism of doing these hard things",
+   "zh_text": "如果拖延者做这些难事的唯一机制",
+   "highlights": []
+  },
+  {
+   "id": 244,
+   "start": 704.76,
+   "end": 706.645,
+   "en_text": "is the Panic Monster, that's a problem,",
+   "zh_text": "就是恐慌怪兽，那就有问题了，",
+   "highlights": []
+  },
+  {
+   "id": 245,
+   "start": 706.669,
+   "end": 709.469,
+   "en_text": "because in all of these non-deadline situations,",
+   "zh_text": "因为在所有这些没有截止日期的情况下，",
+   "highlights": []
+  },
+  {
+   "id": 246,
+   "start": 709.493,
+   "end": 711.121,
+   "en_text": "the Panic Monster doesn't show up.",
+   "zh_text": "恐慌怪兽根本不会出现。",
+   "highlights": []
+  },
+  {
+   "id": 247,
+   "start": 711.145,
+   "end": 712.597,
+   "en_text": "He has nothing to wake up for,",
+   "zh_text": "它没有什么需要被唤醒的，",
+   "highlights": []
+  },
+  {
+   "id": 248,
+   "start": 712.621,
+   "end": 715.319,
+   "en_text": "so the effects of procrastination, they're not contained;",
+   "zh_text": "所以拖延的影响并不会被控制住；",
+   "highlights": []
+  },
+  {
+   "id": 249,
+   "start": 715.343,
+   "end": 717.083,
+   "en_text": "they just extend outward forever.",
+   "zh_text": "它们只会一直向外蔓延。",
+   "highlights": []
+  },
+  {
+   "id": 250,
+   "start": 717.953,
+   "end": 720.693,
+   "en_text": "And it's this long-term kind of procrastination",
+   "zh_text": "而正是这种长期的拖延",
+   "highlights": []
+  },
+  {
+   "id": 251,
+   "start": 720.717,
+   "end": 723.798,
+   "en_text": "that's much less visible and much less talked about",
+   "zh_text": "比起那种更好笑、短期的、有截止日期的拖延，",
+   "highlights": []
+  },
+  {
+   "id": 252,
+   "start": 723.822,
+   "end": 726.723,
+   "en_text": "than the funnier, short-term deadline-based kind.",
+   "zh_text": "要隐蔽得多，也被谈论得少得多。",
+   "highlights": []
+  },
+  {
+   "id": 253,
+   "start": 726.747,
+   "end": 729.85,
+   "en_text": "It's usually suffered quietly and privately.",
+   "zh_text": "它通常是人们默默独自承受的。",
+   "highlights": []
+  },
+  {
+   "id": 254,
+   "start": 730.816,
+   "end": 731.97,
+   "en_text": "And it can be the source",
+   "zh_text": "而它可能成为",
+   "highlights": []
+  },
+  {
+   "id": 255,
+   "start": 731.994,
+   "end": 735.729,
+   "en_text": "of a huge amount of long-term unhappiness, and regrets.",
+   "zh_text": "大量长期的不快乐和遗憾的根源。",
+   "highlights": []
+  },
+  {
+   "id": 256,
+   "start": 736.576,
+   "end": 739.448,
+   "en_text": "And I thought, that's why those people are emailing,",
+   "zh_text": "我就想，这就是那些人发邮件的原因，",
+   "highlights": []
+  },
+  {
+   "id": 257,
+   "start": 739.472,
+   "end": 741.974,
+   "en_text": "and that's why they're in such a bad place.",
+   "zh_text": "这就是他们处境那么糟的原因。",
+   "highlights": []
+  },
+  {
+   "id": 258,
+   "start": 741.998,
+   "end": 744.742,
+   "en_text": "It's not that they're cramming for some project.",
+   "zh_text": "并不是他们在为某个项目临时抱佛脚。",
+   "highlights": []
+  },
+  {
+   "id": 259,
+   "start": 744.766,
+   "end": 748.187,
+   "en_text": "It's that long-term procrastination has made them feel like a spectator,",
+   "zh_text": "而是长期拖延让他们有时觉得自己像个旁观者，",
+   "highlights": []
+  },
+  {
+   "id": 260,
+   "start": 748.211,
+   "end": 750.25,
+   "en_text": "at times, in their own lives.",
+   "zh_text": "在自己的人生里像个旁观者。",
+   "highlights": []
+  },
+  {
+   "id": 261,
+   "start": 750.594,
+   "end": 753.576,
+   "en_text": "The frustration is not that they couldn't achieve their dreams;",
+   "zh_text": "令人沮丧的不是他们没能实现梦想；",
+   "highlights": []
+  },
+  {
+   "id": 262,
+   "start": 753.6,
+   "end": 756.689,
+   "en_text": "it's that they weren't even able to start chasing them.",
+   "zh_text": "而是他们甚至都没能开始去追逐梦想。",
+   "highlights": []
+  },
+  {
+   "id": 263,
+   "start": 756.713,
+   "end": 760.896,
+   "en_text": "So I read these emails and I had a little bit of an epiphany --",
+   "zh_text": "所以我读了这些邮件，有了一点顿悟——",
+   "highlights": []
+  },
+  {
+   "id": 264,
+   "start": 762.182,
+   "end": 765.582,
+   "en_text": "that I don't think non-procrastinators exist.",
+   "zh_text": "我觉得不拖延的人根本不存在。",
+   "highlights": []
+  },
+  {
+   "id": 265,
+   "start": 765.979,
+   "end": 769.215,
+   "en_text": "That's right -- I think all of you are procrastinators.",
+   "zh_text": "没错——我觉得你们所有人都是拖延者。",
+   "highlights": []
+  },
+  {
+   "id": 266,
+   "start": 769.898,
+   "end": 771.812,
+   "en_text": "Now, you might not all be a mess,",
+   "zh_text": "当然，你们可能不是每个人都一团糟，",
+   "highlights": []
+  },
+  {
+   "id": 267,
+   "start": 771.836,
+   "end": 773.186,
+   "en_text": "like some of us,",
+   "zh_text": "不像我们中的一些人，",
+   "highlights": []
+  },
+  {
+   "id": 268,
+   "start": 774.763,
+   "end": 778.079,
+   "en_text": "and some of you may have a healthy relationship with deadlines,",
+   "zh_text": "你们中有些人可能和截止日期有着健康的关系，",
+   "highlights": []
+  },
+  {
+   "id": 269,
+   "start": 778.103,
+   "end": 780.627,
+   "en_text": "but remember: the Monkey's sneakiest trick",
+   "zh_text": "但记住：猴子最狡猾的伎俩",
+   "highlights": []
+  },
+  {
+   "id": 270,
+   "start": 780.651,
+   "end": 782.491,
+   "en_text": "is when the deadlines aren't there.",
+   "zh_text": "就是在没有截止日期的时候。",
+   "highlights": []
+  },
+  {
+   "id": 271,
+   "start": 783.249,
+   "end": 785.281,
+   "en_text": "Now, I want to show you one last thing.",
+   "zh_text": "现在，我想给你们看最后一样东西。",
+   "highlights": []
+  },
+  {
+   "id": 272,
+   "start": 785.305,
+   "end": 787.678,
+   "en_text": "I call this a Life Calendar.",
+   "zh_text": "我把它叫做人生日历。",
+   "highlights": []
+  },
+  {
+   "id": 273,
+   "start": 788.352,
+   "end": 792.631,
+   "en_text": "That's one box for every week of a 90-year life.",
+   "zh_text": "这是九十年人生中每一周对应一个格子。",
+   "highlights": []
+  },
+  {
+   "id": 274,
+   "start": 793.345,
+   "end": 794.934,
+   "en_text": "That's not that many boxes,",
+   "zh_text": "格子其实没那么多，",
+   "highlights": []
+  },
+  {
+   "id": 275,
+   "start": 794.958,
+   "end": 797.932,
+   "en_text": "especially since we've already used a bunch of those.",
+   "zh_text": "尤其是我们已经用掉了一大堆。",
+   "highlights": []
+  },
+  {
+   "id": 276,
+   "start": 798.607,
+   "end": 803.739,
+   "en_text": "So I think we need to all take a long, hard look at that calendar.",
+   "zh_text": "所以我觉得我们都需要好好、认真地看看那张日历。",
+   "highlights": []
+  },
+  {
+   "id": 277,
+   "start": 804.977,
+   "end": 807.99,
+   "en_text": "We need to think about what we're really procrastinating on,",
+   "zh_text": "我们需要想想自己真正在拖延的是什么，",
+   "highlights": []
+  },
+  {
+   "id": 278,
+   "start": 808.014,
+   "end": 811.379,
+   "en_text": "because everyone is procrastinating on something in life.",
+   "zh_text": "因为每个人在生活中都在拖延某件事。",
+   "highlights": []
+  },
+  {
+   "id": 279,
+   "start": 812.782,
+   "end": 815.812,
+   "en_text": "We need to stay aware of the Instant Gratification Monkey.",
+   "zh_text": "我们需要时刻警惕那只即时满足猴子。",
+   "highlights": []
+  },
+  {
+   "id": 280,
+   "start": 817.455,
+   "end": 819.947,
+   "en_text": "That's a job for all of us.",
+   "zh_text": "这是我们所有人的任务。",
+   "highlights": []
+  },
+  {
+   "id": 281,
+   "start": 820.669,
+   "end": 822.969,
+   "en_text": "And because there's not that many boxes on there,",
+   "zh_text": "而且因为上面的格子没那么多，",
+   "highlights": []
+  },
+  {
+   "id": 282,
+   "start": 822.993,
+   "end": 825.283,
+   "en_text": "it's a job that should probably start today.",
+   "zh_text": "这项任务可能应该从今天就开始。",
+   "highlights": []
+  },
+  {
+   "id": 283,
+   "start": 825.307,
+   "end": 828.307,
+   "en_text": "Well, maybe not today, but ...",
+   "zh_text": "嗯，也许不是今天，但是……",
+   "highlights": []
+  },
+  {
+   "id": 284,
+   "start": 829.996,
+   "end": 831.146,
+   "en_text": "You know.",
+   "zh_text": "你知道的。",
+   "highlights": []
+  },
+  {
+   "id": 285,
+   "start": 831.576,
+   "end": 832.726,
+   "en_text": "Sometime soon.",
+   "zh_text": "很快的某一天。",
+   "highlights": []
+  },
+  {
+   "id": 286,
+   "start": 833.393,
+   "end": 834.602,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢。",
+   "highlights": []
+  }
+ ]
+}

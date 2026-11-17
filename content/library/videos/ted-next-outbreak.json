@@ -1,0 +1,1109 @@
+{
+ "id": "ted-next-outbreak",
+ "youtubeId": "6Af6b_wyiwI",
+ "title": "The next outbreak? We’re not ready | Bill Gates | TED",
+ "channel": "TED",
+ "duration": 517,
+ "level": "C1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/6Af6b_wyiwI/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:57:41+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 17.504,
+   "end": 19.398,
+   "en_text": "When I was a kid,",
+   "zh_text": "我小的时候，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 19.398,
+   "end": 22.959,
+   "en_text": "the disaster we worried about most was a nuclear war.",
+   "zh_text": "我们最担心的灾难是核战争。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 23.819,
+   "end": 27.085,
+   "en_text": "That's why we had a barrel like this down in our basement,",
+   "zh_text": "所以我们在自家地下室放了一个这样的桶，",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 27.085,
+   "end": 29.656,
+   "en_text": "filled with cans of food and water.",
+   "zh_text": "里面装满了罐头食品和水。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 30.256,
+   "end": 31.901,
+   "en_text": "When the nuclear attack came,",
+   "zh_text": "核攻击来的时候，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 31.901,
+   "end": 36.637,
+   "en_text": "we were supposed to go downstairs, hunker down, and eat out of that barrel.",
+   "zh_text": "我们应该下楼，躲起来，靠那个桶里的东西过活。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 37.877,
+   "end": 41.597,
+   "en_text": "Today the greatest risk of global catastrophe",
+   "zh_text": "如今全球灾难的最大风险",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 41.597,
+   "end": 44.457,
+   "en_text": "doesn't look like this.",
+   "zh_text": "看起来并不是这样。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 44.457,
+   "end": 47.238,
+   "en_text": "Instead, it looks like this.",
+   "zh_text": "而是这样。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 48.438,
+   "end": 53.929,
+   "en_text": "If anything kills over 10 million people in the next few decades,",
+   "zh_text": "如果未来几十年里有东西能杀死超过一千万人，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 53.929,
+   "end": 57.314,
+   "en_text": "it's most likely to be a highly infectious virus",
+   "zh_text": "那最可能是一种高度传染性的病毒，",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 57.314,
+   "end": 59.792,
+   "en_text": "rather than a war.",
+   "zh_text": "而不是战争。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 59.792,
+   "end": 63.679,
+   "en_text": "Not missiles, but microbes.",
+   "zh_text": "不是导弹，而是微生物。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 63.679,
+   "end": 65.878,
+   "en_text": "Now, part of the reason for this is that",
+   "zh_text": "造成这种情况的部分原因是，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 65.878,
+   "end": 70.081,
+   "en_text": "we've invested a huge amount in nuclear deterrents.",
+   "zh_text": "我们在核威慑上投入了巨额资金。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 70.081,
+   "end": 75.179,
+   "en_text": "But we've actually invested very little in a system to stop an epidemic.",
+   "zh_text": "但我们在阻止流行病的系统上投入其实非常少。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 76.129,
+   "end": 79.093,
+   "en_text": "We're not ready for the next epidemic.",
+   "zh_text": "我们还没准备好应对下一场流行病。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 80.023,
+   "end": 81.758,
+   "en_text": "Let's look at Ebola.",
+   "zh_text": "我们来看看埃博拉。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 81.758,
+   "end": 85.615,
+   "en_text": "I'm sure all of you read about it in the newspaper,",
+   "zh_text": "我相信你们都在报纸上读到过，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 85.615,
+   "end": 87.221,
+   "en_text": "lots of tough challenges.",
+   "zh_text": "有很多严峻的挑战。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 87.221,
+   "end": 90.876,
+   "en_text": "I followed it carefully through the case analysis tools",
+   "zh_text": "我用病例分析工具仔细跟踪了它，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 90.876,
+   "end": 95.721,
+   "en_text": "we use to track polio eradication.",
+   "zh_text": "就是我们用来追踪脊髓灰质炎根除的那些工具。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 95.721,
+   "end": 97.573,
+   "en_text": "And as you look at what went on,",
+   "zh_text": "当你看看当时发生的情况，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 97.573,
+   "end": 102.081,
+   "en_text": "the problem wasn't that there was a system that didn't work well enough,",
+   "zh_text": "问题并不是有个系统运转得不够好，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 102.081,
+   "end": 105.649,
+   "en_text": "the problem was that we didn't have a system at all.",
+   "zh_text": "问题是我们根本没有系统。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 106.589,
+   "end": 111.028,
+   "en_text": "In fact, there's some pretty obvious key missing pieces.",
+   "zh_text": "事实上，有几个相当明显的关键缺失环节。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 111.028,
+   "end": 115.94,
+   "en_text": "We didn't have a group of epidemiologists ready to go, who would have gone,",
+   "zh_text": "我们没有一支随时待命的流行病学家队伍，他们本可以赶过去，",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 115.94,
+   "end": 119.696,
+   "en_text": "seen what the disease was, seen how far it had spread.",
+   "zh_text": "看看这是什么病，看看它已经传播了多远。",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 119.696,
+   "end": 122.452,
+   "en_text": "The case reports came in on paper.",
+   "zh_text": "病例报告是写在纸上送来的。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 122.452,
+   "end": 124.808,
+   "en_text": "It was very delayed before they were put online",
+   "zh_text": "它们被放到网上之前拖了很久，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 124.808,
+   "end": 126.782,
+   "en_text": "and they were extremely inaccurate.",
+   "zh_text": "而且极不准确。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 127.492,
+   "end": 129.858,
+   "en_text": "We didn't have a medical team ready to go.",
+   "zh_text": "我们没有一支随时待命的医疗队。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 129.858,
+   "end": 132.453,
+   "en_text": "We didn't have a way of preparing people.",
+   "zh_text": "我们没有一套让人们做好准备的办法。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 132.453,
+   "end": 137.784,
+   "en_text": "Now, Médecins Sans Frontières did a great job orchestrating volunteers.",
+   "zh_text": "无国界医生在组织志愿者方面做得非常出色。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 137.784,
+   "end": 140.88,
+   "en_text": "But even so, we were far slower than we should have been",
+   "zh_text": "但即便如此，我们的速度也远远慢于应有的水平，",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 140.88,
+   "end": 144.022,
+   "en_text": "getting the thousands of workers into these countries.",
+   "zh_text": "把成千上万的工人送进这些国家。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 144.022,
+   "end": 151.007,
+   "en_text": "And a large epidemic would require us to have hundreds of thousands of workers.",
+   "zh_text": "而一场大规模流行病会需要我们拥有几十万名工作人员。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 152.752,
+   "end": 157.155,
+   "en_text": "There was no one there to look at treatment approaches.",
+   "zh_text": "那里没有人去研究治疗方法。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 157.155,
+   "end": 158.946,
+   "en_text": "No one to look at the diagnostics.",
+   "zh_text": "没有人去看诊断方法。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 158.946,
+   "end": 162.243,
+   "en_text": "No one to figure out what tools should be used.",
+   "zh_text": "没有人去弄清楚该用什么工具。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 162.243,
+   "end": 165.723,
+   "en_text": "As an example, we could have taken the blood of survivors,",
+   "zh_text": "举个例子，我们本可以抽取幸存者的血液，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 165.723,
+   "end": 171.158,
+   "en_text": "processed it, and put that plasma back in people to protect them.",
+   "zh_text": "处理一下，再把那些血浆输回人体内来保护他们。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 171.158,
+   "end": 173.764,
+   "en_text": "But that was never tried.",
+   "zh_text": "但这从来没有被尝试过。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 173.764,
+   "end": 175.52,
+   "en_text": "So there was a lot that was missing.",
+   "zh_text": "所以，当时缺的东西有很多。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 175.52,
+   "end": 179.415,
+   "en_text": "And these things are really a global failure.",
+   "zh_text": "而这些事情真的是全球性的失败。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 180.305,
+   "end": 185.873,
+   "en_text": "The WHO is funded to monitor epidemics, but not to do these things I talked about.",
+   "zh_text": "世卫组织获得的资金是用来监测流行病的，而不是来做我刚才说的那些事情的。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 187.049,
+   "end": 189.842,
+   "en_text": "Now, in the movies it's quite different.",
+   "zh_text": "而在电影里，情况就大不一样了。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 189.842,
+   "end": 194.674,
+   "en_text": "There's a group of handsome epidemiologists ready to go,",
+   "zh_text": "有一群英俊的流行病学家随时待命，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 194.674,
+   "end": 200.446,
+   "en_text": "they move in, they save the day, but that's just pure Hollywood.",
+   "zh_text": "他们赶赴现场，力挽狂澜，但那纯粹是好莱坞的桥段。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 202.177,
+   "end": 205.887,
+   "en_text": "The failure to prepare could allow the next epidemic",
+   "zh_text": "准备工作的缺失可能会让下一场流行病",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 205.887,
+   "end": 209.695,
+   "en_text": "to be dramatically more devastating than Ebola",
+   "zh_text": "变得比埃博拉严重得多、破坏性大得多。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 210.735,
+   "end": 215.531,
+   "en_text": "Let's look at the progression of Ebola over this year.",
+   "zh_text": "我们来看看今年埃博拉的发展过程。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 216.311,
+   "end": 219.149,
+   "en_text": "About 10,000 people died,",
+   "zh_text": "大约有一万人死亡，",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 219.149,
+   "end": 223.846,
+   "en_text": "and nearly all were in the three West African countries.",
+   "zh_text": "而且几乎都集中在三个西非国家。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 223.846,
+   "end": 226.433,
+   "en_text": "There's three reasons why it didn't spread more.",
+   "zh_text": "它没有扩散得更广，原因有三个。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 226.433,
+   "end": 230.874,
+   "en_text": "The first is that there was a lot of heroic work by the health workers.",
+   "zh_text": "第一，医护人员做了大量英勇的工作。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 230.874,
+   "end": 234.136,
+   "en_text": "They found the people and they prevented more infections.",
+   "zh_text": "他们找到了感染者，防止了更多感染。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 234.136,
+   "end": 236.621,
+   "en_text": "The second is the nature of the virus.",
+   "zh_text": "第二是这个病毒本身的性质。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 236.621,
+   "end": 239.697,
+   "en_text": "Ebola does not spread through the air.",
+   "zh_text": "埃博拉不通过空气传播。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 239.697,
+   "end": 241.81,
+   "en_text": "And by the time you're contagious,",
+   "zh_text": "而且等到你有传染性的时候，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 241.81,
+   "end": 244.55,
+   "en_text": "most people are so sick that they're bedridden.",
+   "zh_text": "大多数人已经病得很重，只能卧床不起。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 246.22,
+   "end": 250.411,
+   "en_text": "Third, it didn't get into many urban areas.",
+   "zh_text": "第三，它没有进入很多城市地区。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 250.411,
+   "end": 252.115,
+   "en_text": "And that was just luck.",
+   "zh_text": "而这纯粹是运气。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 252.115,
+   "end": 254.355,
+   "en_text": "If it had gotten into a lot more urban areas,",
+   "zh_text": "如果它进入了多得多的城市地区，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 254.355,
+   "end": 257.877,
+   "en_text": "the case numbers would have been much larger.",
+   "zh_text": "病例数会大得多。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 257.877,
+   "end": 261.466,
+   "en_text": "So next time, we might not be so lucky.",
+   "zh_text": "所以下一次，我们可能就没这么幸运了。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 261.466,
+   "end": 266.53,
+   "en_text": "You can have a virus where people feel well enough while they're infectious",
+   "zh_text": "可能会有这样一种病毒，人们被感染时还感觉良好，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 266.53,
+   "end": 269.842,
+   "en_text": "that they get on a plane or they go to a market.",
+   "zh_text": "以至于他们会登上飞机，或者去逛市场。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 269.842,
+   "end": 272.846,
+   "en_text": "The source of the virus could be a natural epidemic like Ebola,",
+   "zh_text": "病毒的来源可能是像埃博拉这样的自然流行病，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 272.846,
+   "end": 274.826,
+   "en_text": "or it could be bioterrorism.",
+   "zh_text": "也可能是生物恐怖主义。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 274.826,
+   "end": 279.474,
+   "en_text": "So there are things that would literally make things a thousand times worse.",
+   "zh_text": "所以有些情况真的会让事态糟糕一千倍。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 279.474,
+   "end": 285.475,
+   "en_text": "In fact, let's look at a model of a virus spread through the air,",
+   "zh_text": "事实上，我们来看一个通过空气传播的病毒模型，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 285.475,
+   "end": 289.07,
+   "en_text": "like the Spanish Flu back in 1918.",
+   "zh_text": "就像1918年的西班牙流感那样。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 289.63,
+   "end": 291.56,
+   "en_text": "So here's what would happen:",
+   "zh_text": "情况会是这样：",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 291.56,
+   "end": 295.558,
+   "en_text": "It would spread throughout the world very, very quickly.",
+   "zh_text": "它会非常非常快地传遍全世界。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 295.558,
+   "end": 300.683,
+   "en_text": "And you can see over 30 million people died from that epidemic.",
+   "zh_text": "你可以看到，那场流行病导致三千多万人死亡。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 300.683,
+   "end": 302.496,
+   "en_text": "So this is a serious problem.",
+   "zh_text": "所以这是一个严重的问题。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 302.496,
+   "end": 304.257,
+   "en_text": "We should be concerned.",
+   "zh_text": "我们应该感到担忧。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 304.257,
+   "end": 308.692,
+   "en_text": "But in fact, we can build a really good response system.",
+   "zh_text": "但事实上，我们可以建立一个非常好的应对系统。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 308.692,
+   "end": 313.836,
+   "en_text": "We have the benefits of all the science and technology that we talk about here.",
+   "zh_text": "我们拥有这里所谈到的所有科学和技术带来的好处。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 313.836,
+   "end": 314.883,
+   "en_text": "We've got cell phones",
+   "zh_text": "我们有手机，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 314.883,
+   "end": 318.14,
+   "en_text": "to get information from the public and get information out to them.",
+   "zh_text": "可以从公众那里获取信息，也能把信息传达给他们。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 318.14,
+   "end": 322.319,
+   "en_text": "We have satellite maps where we can see where people are and where they're moving.",
+   "zh_text": "我们有卫星地图，可以看到人们在哪里、往哪里移动。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 322.319,
+   "end": 324.627,
+   "en_text": "We have advances in biology",
+   "zh_text": "我们在生物学上也有进步",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 324.627,
+   "end": 328.453,
+   "en_text": "that should dramatically change the turnaround time to look at a pathogen",
+   "zh_text": "这应该会大幅缩短研究病原体的周转时间",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 328.453,
+   "end": 333.322,
+   "en_text": "and be able to make drugs and vaccines that fit for that pathogen.",
+   "zh_text": "并且能够研制出针对那种病原体的药物和疫苗。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 333.322,
+   "end": 334.888,
+   "en_text": "So we can have tools,",
+   "zh_text": "所以我们能有工具，",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 334.888,
+   "end": 339.5,
+   "en_text": "but those tools need to be put into an overall global health system.",
+   "zh_text": "但这些工具需要被纳入一个整体的全球卫生体系。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 339.5,
+   "end": 341.793,
+   "en_text": "And we need preparedness.",
+   "zh_text": "而且我们需要做好准备。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 341.793,
+   "end": 344.257,
+   "en_text": "The best lessons, I think, on how to get prepared",
+   "zh_text": "我认为，关于如何做好准备的最好经验",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 344.257,
+   "end": 346.758,
+   "en_text": "are again, what we do for war.",
+   "zh_text": "还是我们为战争所做的那些。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 346.758,
+   "end": 351.005,
+   "en_text": "For soldiers, we have full-time, waiting to go.",
+   "zh_text": "对于士兵，我们有全职的，随时待命出发。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 351.005,
+   "end": 354.316,
+   "en_text": "We have reserves that can scale us up to large numbers.",
+   "zh_text": "我们有预备役，可以扩充到很大的数量。",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 354.316,
+   "end": 358.005,
+   "en_text": "NATO has a mobile unit that can deploy very rapidly.",
+   "zh_text": "北约有一支机动部队，可以非常迅速地部署。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 358.005,
+   "end": 361.455,
+   "en_text": "NATO does a lot of war games to check, are people well trained?",
+   "zh_text": "北约做很多军事演习来检查，人员训练得好不好？",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 361.455,
+   "end": 363.883,
+   "en_text": "Do they understand about fuel and logistics",
+   "zh_text": "他们懂不懂燃料和后勤",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 363.883,
+   "end": 366.241,
+   "en_text": "and the same radio frequencies?",
+   "zh_text": "以及相同的无线电频率？",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 366.241,
+   "end": 368.779,
+   "en_text": "So they are absolutely ready to go.",
+   "zh_text": "所以他们完全准备好出发了。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 368.779,
+   "end": 373.134,
+   "en_text": "So those are the kinds of things we need to deal with an epidemic.",
+   "zh_text": "这些就是我们应对流行病所需要的那类东西。",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 373.134,
+   "end": 375.301,
+   "en_text": "What are the key pieces?",
+   "zh_text": "关键的部分有哪些？",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 375.301,
+   "end": 380.591,
+   "en_text": "First, we need strong health systems in poor countries.",
+   "zh_text": "第一，我们需要在贫困国家建立强大的卫生系统。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 380.591,
+   "end": 383.778,
+   "en_text": "That's where mothers can give birth safely,",
+   "zh_text": "在那里母亲可以安全分娩，",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 383.778,
+   "end": 385.295,
+   "en_text": "kids can get all their vaccines.",
+   "zh_text": "孩子们能接种所有疫苗。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 385.295,
+   "end": 389.634,
+   "en_text": "But, also where we'll see the outbreak very early on.",
+   "zh_text": "但同时，我们也能在那里很早就发现疫情。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 390.154,
+   "end": 391.935,
+   "en_text": "We need a medical reserve corps:",
+   "zh_text": "我们需要一支医疗预备队：",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 391.935,
+   "end": 394.501,
+   "en_text": "lots of people who've got the training and background",
+   "zh_text": "很多受过训练、有背景的人",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 394.501,
+   "end": 397.853,
+   "en_text": "who are ready to go, with the expertise.",
+   "zh_text": "随时准备出发，带着专业知识。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 397.853,
+   "end": 402.266,
+   "en_text": "And then we need to pair those medical people with the military.",
+   "zh_text": "然后我们需要把这些医疗人员和军队配对，",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 402.266,
+   "end": 406.417,
+   "en_text": "taking advantage of the military's ability to move fast, do logistics",
+   "zh_text": "利用军队快速行动、做后勤",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 406.417,
+   "end": 408.22,
+   "en_text": "and secure areas.",
+   "zh_text": "以及保障区域安全的能力。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 408.22,
+   "end": 411.129,
+   "en_text": "We need to do simulations,",
+   "zh_text": "我们需要做模拟演练，",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 411.129,
+   "end": 415.927,
+   "en_text": "germ games, not war games, so that we see where the holes are.",
+   "zh_text": "是病菌演练，不是军事演习，这样我们就能看到漏洞在哪里。",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 415.927,
+   "end": 418.723,
+   "en_text": "The last time a germ game was done in the United States",
+   "zh_text": "美国上一次做病菌演练",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 418.723,
+   "end": 422.443,
+   "en_text": "was back in 2001, and it didn't go so well.",
+   "zh_text": "还是在2001年，而且进行得不太顺利。",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 422.453,
+   "end": 427.49,
+   "en_text": "So far the score is germs: 1, people: 0.",
+   "zh_text": "到目前为止比分是病菌：1，人类：0。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 427.49,
+   "end": 433.609,
+   "en_text": "Finally, we need lots of advanced R&D in areas of vaccines and diagnostics.",
+   "zh_text": "最后，我们需要在疫苗和诊断领域进行大量先进的研发。",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 433.609,
+   "end": 437.246,
+   "en_text": "There are some big breakthroughs, like the Adeno-associated virus,",
+   "zh_text": "有一些重大突破，比如腺相关病毒，",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 437.246,
+   "end": 441.229,
+   "en_text": "that could work very, very quickly.",
+   "zh_text": "它可以非常非常快地起作用。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 441.229,
+   "end": 444.599,
+   "en_text": "Now I don't have an exact budget for what this would cost,",
+   "zh_text": "现在我没有确切的预算说这要花多少钱，",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 444.599,
+   "end": 449.095,
+   "en_text": "but I'm quite sure it's very modest compared to the potential harm.",
+   "zh_text": "但我很确定，与潜在的危害相比，这非常有限。",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 449.095,
+   "end": 453.74,
+   "en_text": "The World Bank estimates that if we have a worldwide flu epidemic,",
+   "zh_text": "世界银行估计，如果我们发生全球性流感疫情，",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 453.74,
+   "end": 457.465,
+   "en_text": "global wealth will go down by over three trillion dollars",
+   "zh_text": "全球财富将减少超过三万亿美元",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 457.465,
+   "end": 461.332,
+   "en_text": "and we'd have millions and millions of deaths.",
+   "zh_text": "而且我们会有数以百万计、数以百万计的死亡。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 461.332,
+   "end": 464.317,
+   "en_text": "These investments offer significant benefits",
+   "zh_text": "这些投资带来显著的益处",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 464.317,
+   "end": 466.518,
+   "en_text": "beyond just being ready for the epidemic.",
+   "zh_text": "远不止是让我们为流行病做好准备。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 466.518,
+   "end": 468.982,
+   "en_text": "The primary healthcare, the R&D,",
+   "zh_text": "基础医疗、研发，",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 468.982,
+   "end": 471.812,
+   "en_text": "those things would reduce global health equity",
+   "zh_text": "这些做法会减少全球健康不平等",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 471.812,
+   "end": 475.502,
+   "en_text": "and make the world more just as well as more safe.",
+   "zh_text": "让世界不仅更安全，也更加公平。",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 475.502,
+   "end": 478.864,
+   "en_text": "So I think this should absolutely be a priority.",
+   "zh_text": "所以我认为这绝对应该成为一项优先事项。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 479.514,
+   "end": 480.98,
+   "en_text": "There's no need to panic.",
+   "zh_text": "没必要恐慌。",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 480.98,
+   "end": 485.469,
+   "en_text": "We don't have to hoard cans of spaghetti or go down into the basement.",
+   "zh_text": "我们不必囤积一罐罐意大利面，也不用躲进地下室。",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 485.469,
+   "end": 489.309,
+   "en_text": "But we need to get going, because time is not on our side.",
+   "zh_text": "但我们需要行动起来，因为时间不等人。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 489.309,
+   "end": 495.524,
+   "en_text": "In fact, if there's one positive thing that can come out of the Ebola epidemic,",
+   "zh_text": "事实上，如果说埃博拉疫情能带来一件积极的事，",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 495.524,
+   "end": 501.33,
+   "en_text": "it's that it can serve as an early warning, a wake-up call, to get ready.",
+   "zh_text": "那就是它可以充当一个预警、一次警钟，让我们做好准备。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 501.33,
+   "end": 506.978,
+   "en_text": "If we start now, we can be ready for the next epidemic.",
+   "zh_text": "如果我们现在就开始，就能为下一次疫情做好准备。",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 506.978,
+   "end": 508.574,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢。",
+   "highlights": []
+  }
+ ]
+}

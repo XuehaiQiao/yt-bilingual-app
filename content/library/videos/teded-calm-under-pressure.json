@@ -1,0 +1,661 @@
+{
+ "id": "teded-calm-under-pressure",
+ "youtubeId": "CqgmozFr_GM",
+ "title": "How to stay calm under pressure - Noa Kageyama and Pen-Pen Chen",
+ "channel": "TED-Ed",
+ "duration": 268,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/CqgmozFr_GM/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:52+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 6.825,
+   "end": 10.488,
+   "en_text": "Your favorite athlete closes in for a victorious win.",
+   "zh_text": "你最喜欢的运动员逼近胜利的一刻。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 10.488,
+   "end": 12.296,
+   "en_text": "The crowd holds its breath,",
+   "zh_text": "全场观众屏住呼吸，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 12.296,
+   "end": 15.655,
+   "en_text": "and, at the crucial moment, she misses the shot.",
+   "zh_text": "可就在这关键时刻，她投偏了。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 15.655,
+   "end": 19.461,
+   "en_text": "That competitor just experienced the phenomenon known as \"choking,\"",
+   "zh_text": "这位选手刚刚经历了一种现象，叫做“发挥失常”，",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 19.461,
+   "end": 22.225,
+   "en_text": "where despite months, even years, of practice,",
+   "zh_text": "也就是尽管练习了几个月、甚至几年，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 22.225,
+   "end": 24.96,
+   "en_text": "a person fails right when it matters most.",
+   "zh_text": "一个人偏偏在最要紧的时候掉了链子。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 24.96,
+   "end": 26.588,
+   "en_text": "Choking is common in sports,",
+   "zh_text": "发挥失常在体育中很常见，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 26.588,
+   "end": 29.706,
+   "en_text": "where performance often occurs under intense pressure",
+   "zh_text": "因为运动表现往往是在巨大压力下产生的",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 29.706,
+   "end": 31.566,
+   "en_text": "and depends on key moments.",
+   "zh_text": "而且取决于关键时刻。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 31.566,
+   "end": 35.536,
+   "en_text": "And yet, performance anxiety also haunts public speakers,",
+   "zh_text": "然而，表现焦虑也困扰着演讲者、",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 35.536,
+   "end": 37.457,
+   "en_text": "contestants in spelling bees,",
+   "zh_text": "拼字比赛的参赛者，",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 37.457,
+   "end": 39.748,
+   "en_text": "and even world-famous musicians.",
+   "zh_text": "甚至世界著名的音乐家。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 39.748,
+   "end": 42.796,
+   "en_text": "Most people intuitively blame it on their nerves,",
+   "zh_text": "大多数人凭直觉把原因归咎于紧张，",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 42.796,
+   "end": 46.886,
+   "en_text": "but why does being nervous undermine expert performance?",
+   "zh_text": "但紧张为什么会削弱高手的表现呢？",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 46.886,
+   "end": 48.686,
+   "en_text": "There are two sets of theories,",
+   "zh_text": "有两类理论，",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 48.686,
+   "end": 54.267,
+   "en_text": "which both say that primarily, choking under pressure boils down to focus.",
+   "zh_text": "它们都认为，压力下的发挥失常主要归结于注意力。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 54.267,
+   "end": 57.146,
+   "en_text": "First, there are the distraction theories.",
+   "zh_text": "第一类是分心理论。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 57.146,
+   "end": 60.736,
+   "en_text": "These suggest that performance suffers when the mind is preoccupied",
+   "zh_text": "这类理论认为，当大脑被",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 60.736,
+   "end": 62.845,
+   "en_text": "with worries, doubts, or fears,",
+   "zh_text": "担忧、疑虑或恐惧占据时，表现就会变差，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 62.845,
+   "end": 67.675,
+   "en_text": "instead of focusing its attention on performing the task at hand.",
+   "zh_text": "而不是把注意力集中在完成眼前的任务上。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 67.675,
+   "end": 71.136,
+   "en_text": "When relevant and irrelevant thoughts compete for the same attention,",
+   "zh_text": "当相关的想法和不相关的想法争夺同一份注意力时，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 71.136,
+   "end": 73.188,
+   "en_text": "something has to give.",
+   "zh_text": "总有一方要让步。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 73.188,
+   "end": 76.686,
+   "en_text": "The brain can only process so much information at once.",
+   "zh_text": "大脑一次只能处理这么多信息。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 76.686,
+   "end": 78.786,
+   "en_text": "Tasks that challenge working memory,",
+   "zh_text": "那些挑战工作记忆的任务——",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 78.786,
+   "end": 80.676,
+   "en_text": "the mental “scratch pad” we use",
+   "zh_text": "工作记忆就是我们用来",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 80.676,
+   "end": 83.775,
+   "en_text": "to temporarily store phone numbers and grocery lists,",
+   "zh_text": "临时记住电话号码和购物清单的“草稿纸”——",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 83.775,
+   "end": 86.894,
+   "en_text": "are especially vulnerable to pressure.",
+   "zh_text": "特别容易受到压力的影响。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 86.894,
+   "end": 90.325,
+   "en_text": "In a 2004 study, a group of university students",
+   "zh_text": "在2004年的一项研究中，一组大学生",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 90.325,
+   "end": 92.218,
+   "en_text": "were asked to perform math problems,",
+   "zh_text": "被要求做数学题，",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 92.218,
+   "end": 96.187,
+   "en_text": "some easy, others more complex and memory-intensive.",
+   "zh_text": "有些题简单，有些题更复杂、更费记忆。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 96.187,
+   "end": 100.637,
+   "en_text": "Half the students completed both problem types with nothing at stake,",
+   "zh_text": "一半学生在没有任何利害关系的情况下完成了两种题目，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 100.637,
+   "end": 104.985,
+   "en_text": "while the others completed them when calm and under pressure.",
+   "zh_text": "而另一半学生则在平静时和压力下各完成一次。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 104.985,
+   "end": 107.525,
+   "en_text": "While everyone did well on the easy problems,",
+   "zh_text": "虽然每个人在简单题上都做得不错，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 107.525,
+   "end": 109.577,
+   "en_text": "those who were stressed performed worse",
+   "zh_text": "但那些感到压力的学生",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 109.577,
+   "end": 112.386,
+   "en_text": "on the more difficult, memory-intensive tasks.",
+   "zh_text": "在更难、更费记忆的题目上表现更差。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 112.386,
+   "end": 116.436,
+   "en_text": "Explicit monitoring theories make up the second group of explanations",
+   "zh_text": "外显监控理论构成了压力下发挥失常的",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 116.436,
+   "end": 118.116,
+   "en_text": "for choking under pressure.",
+   "zh_text": "第二类解释。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 118.116,
+   "end": 119.471,
+   "en_text": "They’re concerned with how pressure",
+   "zh_text": "这类理论关注的是压力",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 119.471,
+   "end": 123.176,
+   "en_text": "can cause people to overanalyze the task at hand.",
+   "zh_text": "如何让人过度分析眼前的任务。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 123.176,
+   "end": 126.707,
+   "en_text": "Here, the logic goes that once a skill becomes automatic,",
+   "zh_text": "这里的逻辑是，一旦某项技能变得自动化，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 126.707,
+   "end": 131.341,
+   "en_text": "thinking about its precise mechanics interferes with your ability to do it.",
+   "zh_text": "去想它的具体动作机制反而会干扰你完成它的能力。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 131.341,
+   "end": 136.655,
+   "en_text": "Tasks we do unconsciously seem to be most vulnerable to this kind of choking.",
+   "zh_text": "我们无意识完成的任务似乎最容易出现这种发挥失常。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 136.655,
+   "end": 140.005,
+   "en_text": "A study on competitive golfers compared their performance",
+   "zh_text": "一项针对竞技高尔夫球手的研究比较了他们的表现：",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 140.005,
+   "end": 143.936,
+   "en_text": "when instructed to simply focus on putting as accurately as possible,",
+   "zh_text": "一种情况是让他们只专注于尽可能准确地推杆，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 143.936,
+   "end": 146.877,
+   "en_text": "versus when they were primed to be acutely aware",
+   "zh_text": "另一种情况是事先让他们高度留意",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 146.877,
+   "end": 149.326,
+   "en_text": "of the mechanics of their putting stroke.",
+   "zh_text": "自己推杆动作的机制。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 149.326,
+   "end": 152.467,
+   "en_text": "Golfers usually perform this action subconsciously,",
+   "zh_text": "高尔夫球手通常是无意识地完成这个动作的，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 152.467,
+   "end": 156.547,
+   "en_text": "so those who suddenly tuned in to the precise details of their own moves",
+   "zh_text": "所以那些突然关注起自己动作精确细节的人",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 156.547,
+   "end": 159.912,
+   "en_text": "also became worse at making accurate shots.",
+   "zh_text": "在准确投篮方面也变得更差了。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 159.912,
+   "end": 162.787,
+   "en_text": "Choking may not be inevitable for everyone though.",
+   "zh_text": "不过，发挥失常对每个人来说也许并非不可避免。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 162.787,
+   "end": 166.166,
+   "en_text": "Research suggests that some are more susceptible than others,",
+   "zh_text": "研究表明，有些人比其他人更容易受影响，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 166.166,
+   "end": 168.166,
+   "en_text": "especially those who are self-conscious,",
+   "zh_text": "尤其是那些自我意识强、",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 168.166,
+   "end": 169.221,
+   "en_text": "anxious,",
+   "zh_text": "容易焦虑、",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 169.221,
+   "end": 172.092,
+   "en_text": "and afraid of being judged negatively by others.",
+   "zh_text": "以及害怕被别人负面评价的人。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 172.092,
+   "end": 175.386,
+   "en_text": "So, how can we avoid choking when it really counts?",
+   "zh_text": "那么，在真正关键的时刻，我们怎样才能避免发挥失常呢？",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 175.386,
+   "end": 178.927,
+   "en_text": "First, it helps to practice under stressful conditions.",
+   "zh_text": "首先，在压力环境下练习会有帮助。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 178.927,
+   "end": 181.138,
+   "en_text": "In a study on expert dart players,",
+   "zh_text": "在一项针对资深飞镖选手的研究中，",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 181.138,
+   "end": 184.757,
+   "en_text": "researchers found that those who hadn’t practiced under stress",
+   "zh_text": "研究人员发现，那些没有在压力下练习过的人",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 184.757,
+   "end": 186.694,
+   "en_text": "performed worse when anxious,",
+   "zh_text": "在焦虑时表现更差，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 186.694,
+   "end": 190.146,
+   "en_text": "compared to those who had become accustomed to pressure.",
+   "zh_text": "相比之下，那些已经习惯压力的人则表现更好。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 190.146,
+   "end": 195.117,
+   "en_text": "Secondly, many performers extol the virtues of a pre-performance routine,",
+   "zh_text": "其次，许多表演者都推崇表演前固定流程的好处，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 195.117,
+   "end": 197.506,
+   "en_text": "whether it’s taking a few deep breaths,",
+   "zh_text": "无论是做几次深呼吸、",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 197.506,
+   "end": 199.056,
+   "en_text": "repeating a cue word,",
+   "zh_text": "重复一个提示词，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 199.056,
+   "end": 201.796,
+   "en_text": "or doing a rhythmic sequence of movements.",
+   "zh_text": "还是做一套有节奏的连续动作。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 201.796,
+   "end": 204.558,
+   "en_text": "Studies on golfing, bowling, and water polo",
+   "zh_text": "针对高尔夫、保龄球和水球的研究",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 204.558,
+   "end": 207.885,
+   "en_text": "find that short rituals can lead to more consistent",
+   "zh_text": "发现，简短的固定仪式能让表现更稳定、",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 207.885,
+   "end": 210.217,
+   "en_text": "and accurate performance under pressure.",
+   "zh_text": "在压力下更准确。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 210.217,
+   "end": 211.998,
+   "en_text": "And thirdly, researchers have shown",
+   "zh_text": "第三，研究人员已经表明，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 211.998,
+   "end": 215.226,
+   "en_text": "that having an external focus on the ultimate goal",
+   "zh_text": "把注意力放在最终目标这个外部焦点上",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 215.226,
+   "end": 217.536,
+   "en_text": "works better than an internal focus,",
+   "zh_text": "比放在内部焦点上更有效，",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 217.536,
+   "end": 221.165,
+   "en_text": "where someone is tuned into the mechanics of what they’re doing.",
+   "zh_text": "也就是把注意力集中在动作的具体机制上。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 221.165,
+   "end": 224.926,
+   "en_text": "A study of experienced golfers revealed that those who hit chip shots",
+   "zh_text": "一项针对经验丰富的高尔夫球手的研究显示，那些打切球时",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 224.926,
+   "end": 227.037,
+   "en_text": "while focused on the flight of the ball",
+   "zh_text": "把注意力放在球的飞行轨迹上的人",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 227.037,
+   "end": 231.456,
+   "en_text": "performed significantly better than those who focused on the motion of their arms.",
+   "zh_text": "表现明显好于那些把注意力放在手臂动作上的人。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 231.456,
+   "end": 234.587,
+   "en_text": "So, perhaps we can modify that age-old saying:",
+   "zh_text": "所以，也许我们可以把那句老话改一改：",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 234.587,
+   "end": 235.417,
+   "en_text": "practice,",
+   "zh_text": "练习，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 235.417,
+   "end": 236.426,
+   "en_text": "under pressure,",
+   "zh_text": "在压力下，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 236.426,
+   "end": 237.788,
+   "en_text": "with focus,",
+   "zh_text": "带着专注，",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 237.788,
+   "end": 240.209,
+   "en_text": "and with that glorious end goal in sight,",
+   "zh_text": "并且心中想着那光辉的最终目标，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 240.209,
+   "end": 241.747,
+   "en_text": "makes perfect.",
+   "zh_text": "才能做到完美。",
+   "highlights": []
+  }
+ ]
+}

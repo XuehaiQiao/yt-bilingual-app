@@ -1,0 +1,1653 @@
+{
+ "id": "ted-ai-danger",
+ "youtubeId": "eXdVDhOGqoE",
+ "title": "AI Is Dangerous, but Not for the Reasons You Think | Sasha Luccioni | TED",
+ "channel": "TED",
+ "duration": 619,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/eXdVDhOGqoE/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:01+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 4.292,
+   "end": 7.796,
+   "en_text": "So I've been an AI researcher for over a decade.",
+   "zh_text": "我做AI研究员已经十多年了。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 7.796,
+   "end": 11.299,
+   "en_text": "And a couple of months ago, I got the weirdest email of my career.",
+   "zh_text": "几个月前，我收到了职业生涯中最诡异的一封邮件。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 11.925,
+   "end": 13.593,
+   "en_text": "A random stranger wrote to me",
+   "zh_text": "一个陌生人写信给我，",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 13.635,
+   "end": 17.055,
+   "en_text": "saying that my work in AI is going to end humanity.",
+   "zh_text": "说我在AI方面的工作会终结人类。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 18.598,
+   "end": 22.352,
+   "en_text": "Now I get it, AI, it's so hot right now.",
+   "zh_text": "我明白，AI现在确实太火了。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 24.02,
+   "end": 26.106,
+   "en_text": "It's in the headlines pretty much every day,",
+   "zh_text": "几乎每天都能上头条，",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 26.106,
+   "end": 28.024,
+   "en_text": "sometimes because of really cool things",
+   "zh_text": "有时候是因为特别酷的事，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 28.066,
+   "end": 30.235,
+   "en_text": "like discovering new molecules for medicine",
+   "zh_text": "比如发现用于医学的新分子，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 30.235,
+   "end": 32.487,
+   "en_text": "or that dope Pope in the white puffer coat.",
+   "zh_text": "或者那位穿着白色羽绒服的酷教皇。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 33.446,
+   "end": 35.907,
+   "en_text": "But other times the headlines have been really dark,",
+   "zh_text": "但有时候头条也特别黑暗，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 35.907,
+   "end": 39.578,
+   "en_text": "like that chatbot telling that guy that he should divorce his wife",
+   "zh_text": "比如那个聊天机器人告诉那家伙他应该和妻子离婚，",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 39.619,
+   "end": 43.707,
+   "en_text": "or that AI meal planner app proposing a crowd pleasing recipe",
+   "zh_text": "或者那个AI膳食规划应用提出一个迎合大众的食谱，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 43.707,
+   "end": 45.709,
+   "en_text": "featuring chlorine gas.",
+   "zh_text": "里面居然有氯气。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 46.376,
+   "end": 47.794,
+   "en_text": "And in the background,",
+   "zh_text": "而在幕后，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 47.836,
+   "end": 50.255,
+   "en_text": "we've heard a lot of talk about doomsday scenarios,",
+   "zh_text": "我们听到很多关于末日场景的讨论，",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 50.255,
+   "end": 52.173,
+   "en_text": "existential risk and the singularity,",
+   "zh_text": "存在性风险和奇点，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 52.215,
+   "end": 54.718,
+   "en_text": "with letters being written and events being organized",
+   "zh_text": "人们写公开信、组织活动，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 54.718,
+   "end": 56.72,
+   "en_text": "to make sure that doesn't happen.",
+   "zh_text": "来确保这些不会发生。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 57.637,
+   "end": 62.267,
+   "en_text": "Now I'm a researcher who studies AI's impacts on society,",
+   "zh_text": "我是个研究AI对社会影响的研究员，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 62.267,
+   "end": 65.103,
+   "en_text": "and I don't know what's going to happen in 10 or 20 years,",
+   "zh_text": "我不知道10年或20年后会发生什么，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 65.145,
+   "end": 67.606,
+   "en_text": "and nobody really does.",
+   "zh_text": "也没人真的知道。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 67.981,
+   "end": 72.527,
+   "en_text": "But what I do know is that there's some pretty nasty things going on right now,",
+   "zh_text": "但我知道的是，现在就有一些相当糟糕的事情正在发生，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 72.527,
+   "end": 75.405,
+   "en_text": "because AI doesn't exist in a vacuum.",
+   "zh_text": "因为AI不是存在于真空中的。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 75.447,
+   "end": 79.367,
+   "en_text": "It is part of society, and it has impacts on people and the planet.",
+   "zh_text": "它是社会的一部分，它对人和地球都有影响。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 80.16,
+   "end": 82.662,
+   "en_text": "AI models can contribute to climate change.",
+   "zh_text": "AI模型会加剧气候变化。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 82.704,
+   "end": 86.166,
+   "en_text": "Their training data uses art and books created by artists",
+   "zh_text": "它们的训练数据使用了艺术家创作的艺术作品和书籍",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 86.207,
+   "end": 87.917,
+   "en_text": "and authors without their consent.",
+   "zh_text": "以及作者的作品，却没有征得他们的同意。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 87.959,
+   "end": 91.796,
+   "en_text": "And its deployment can discriminate against entire communities.",
+   "zh_text": "而且它的部署会歧视整个群体。",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 92.797,
+   "end": 94.924,
+   "en_text": "But we need to start tracking its impacts.",
+   "zh_text": "但我们需要开始追踪它的影响。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 94.966,
+   "end": 98.553,
+   "en_text": "We need to start being transparent and disclosing them and creating tools",
+   "zh_text": "我们需要开始保持透明、公开这些影响，并创造工具，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 98.595,
+   "end": 101.014,
+   "en_text": "so that people understand AI better,",
+   "zh_text": "让人们更好地理解AI，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 101.056,
+   "end": 103.391,
+   "en_text": "so that hopefully future generations of AI models",
+   "zh_text": "这样希望未来几代AI模型",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 103.433,
+   "end": 106.269,
+   "en_text": "are going to be more trustworthy, sustainable,",
+   "zh_text": "会变得更值得信赖、更可持续，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 106.269,
+   "end": 109.105,
+   "en_text": "maybe less likely to kill us, if that's what you're into.",
+   "zh_text": "也许更不容易杀死我们，如果你在意这个的话。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 110.148,
+   "end": 111.9,
+   "en_text": "But let's start with sustainability,",
+   "zh_text": "但让我们从可持续性说起，",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 111.9,
+   "end": 117.656,
+   "en_text": "because that cloud that AI models live on is actually made out of metal, plastic,",
+   "zh_text": "因为AI模型所栖身的那片云其实是由金属、塑料制成的，",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 117.656,
+   "end": 120.116,
+   "en_text": "and powered by vast amounts of energy.",
+   "zh_text": "并且由大量能源驱动。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 120.116,
+   "end": 124.579,
+   "en_text": "And each time you query an AI model, it comes with a cost to the planet.",
+   "zh_text": "每次你查询一个AI模型，都会给地球带来代价。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 125.789,
+   "end": 128.833,
+   "en_text": "Last year, I was part of the BigScience initiative,",
+   "zh_text": "去年，我参与了BigScience计划，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 128.833,
+   "end": 130.96,
+   "en_text": "which brought together a thousand researchers",
+   "zh_text": "它汇集了一千名研究员",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 130.96,
+   "end": 133.463,
+   "en_text": "from all over the world to create Bloom,",
+   "zh_text": "来自世界各地，共同创建了Bloom，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 133.505,
+   "end": 137.842,
+   "en_text": "the first open large language model, like ChatGPT,",
+   "zh_text": "这是第一个开放的大语言模型，类似ChatGPT，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 137.842,
+   "end": 141.388,
+   "en_text": "but with an emphasis on ethics, transparency and consent.",
+   "zh_text": "但强调伦理、透明度和知情同意。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 141.721,
+   "end": 144.974,
+   "en_text": "And the study I led that looked at Bloom's environmental impacts",
+   "zh_text": "而我主导的那项研究考察了 Bloom 对环境的影响",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 145.016,
+   "end": 148.269,
+   "en_text": "found that just training it used as much energy",
+   "zh_text": "发现光是训练它就消耗了相当于",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 148.311,
+   "end": 150.522,
+   "en_text": "as 30 homes in a whole year",
+   "zh_text": "30 户家庭一整年的用电量",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 150.563,
+   "end": 152.982,
+   "en_text": "and emitted 25 tons of carbon dioxide,",
+   "zh_text": "并排放了 25 吨二氧化碳，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 153.024,
+   "end": 156.277,
+   "en_text": "which is like driving your car five times around the planet",
+   "zh_text": "相当于开着你的车绕地球五圈",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 156.319,
+   "end": 159.489,
+   "en_text": "just so somebody can use this model to tell a knock-knock joke.",
+   "zh_text": "就为了让某个人用这个模型讲个敲门笑话。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 159.489,
+   "end": 161.658,
+   "en_text": "And this might not seem like a lot,",
+   "zh_text": "这看起来可能不算多，",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 161.7,
+   "end": 164.16,
+   "en_text": "but other similar large language models,",
+   "zh_text": "但其他类似的大型语言模型，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 164.202,
+   "end": 165.328,
+   "en_text": "like GPT-3,",
+   "zh_text": "比如 GPT-3，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 165.37,
+   "end": 167.914,
+   "en_text": "emit 20 times more carbon.",
+   "zh_text": "排放的碳是它的 20 倍。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 167.956,
+   "end": 170.834,
+   "en_text": "But the thing is, tech companies aren't measuring this stuff.",
+   "zh_text": "但问题是，科技公司并没有在测量这些东西。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 170.875,
+   "end": 172.127,
+   "en_text": "They're not disclosing it.",
+   "zh_text": "他们也没有公开。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 172.168,
+   "end": 174.629,
+   "en_text": "And so this is probably only the tip of the iceberg,",
+   "zh_text": "所以这很可能只是冰山一角，",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 174.629,
+   "end": 176.047,
+   "en_text": "even if it is a melting one.",
+   "zh_text": "哪怕这座冰山本身正在融化。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 176.798,
+   "end": 180.427,
+   "en_text": "And in recent years we've seen AI models balloon in size",
+   "zh_text": "近年来我们看到 AI 模型的规模急剧膨胀",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 180.468,
+   "end": 183.93,
+   "en_text": "because the current trend in AI is \"bigger is better.\"",
+   "zh_text": "因为当下 AI 界的潮流是“越大越好”。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 184.305,
+   "end": 187.1,
+   "en_text": "But please don't get me started on why that's the case.",
+   "zh_text": "但请别让我开始讲为什么会这样。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 187.1,
+   "end": 190.103,
+   "en_text": "In any case, we've seen large language models in particular",
+   "zh_text": "无论如何，我们看到尤其是大型语言模型",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 190.103,
+   "end": 193.314,
+   "en_text": "grow 2,000 times in size over the last five years.",
+   "zh_text": "在过去五年里规模增长了两千倍。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 193.314,
+   "end": 196.359,
+   "en_text": "And of course, their environmental costs are rising as well.",
+   "zh_text": "当然，它们的环境成本也在上升。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 196.401,
+   "end": 200.196,
+   "en_text": "The most recent work I led, found that switching out a smaller,",
+   "zh_text": "我最近主导的研究发现，把一个更小、",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 200.238,
+   "end": 203.575,
+   "en_text": "more efficient model for a larger language model",
+   "zh_text": "更高效的模型换成一个更大的语言模型",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 203.616,
+   "end": 207.37,
+   "en_text": "emits 14 times more carbon for the same task.",
+   "zh_text": "完成同样的任务会多排放 14 倍的碳。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 207.412,
+   "end": 209.289,
+   "en_text": "Like telling that knock-knock joke.",
+   "zh_text": "比如讲那个敲门笑话。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 209.289,
+   "end": 212.751,
+   "en_text": "And as we're putting in these models into cell phones and search engines",
+   "zh_text": "而随着我们把这些模型装进手机、搜索引擎",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 212.792,
+   "end": 215.628,
+   "en_text": "and smart fridges and speakers,",
+   "zh_text": "智能冰箱和音箱里，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 215.628,
+   "end": 218.256,
+   "en_text": "the environmental costs are really piling up quickly.",
+   "zh_text": "环境成本真的在迅速累积。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 218.84,
+   "end": 222.594,
+   "en_text": "So instead of focusing on some future existential risks,",
+   "zh_text": "所以与其关注某些未来的生存风险，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 222.635,
+   "end": 225.388,
+   "en_text": "let's talk about current tangible impacts",
+   "zh_text": "不如谈谈当下实实在在的影响",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 225.388,
+   "end": 229.017,
+   "en_text": "and tools we can create to measure and mitigate these impacts.",
+   "zh_text": "以及我们能开发出来衡量和减轻这些影响的工具。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 229.893,
+   "end": 231.561,
+   "en_text": "I helped create CodeCarbon,",
+   "zh_text": "我参与开发了 CodeCarbon，",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 231.603,
+   "end": 234.564,
+   "en_text": "a tool that runs in parallel to AI training code",
+   "zh_text": "这个工具与 AI 训练代码并行运行",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 234.564,
+   "end": 236.775,
+   "en_text": "that estimates the amount of energy it consumes",
+   "zh_text": "估算它消耗的能量",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 236.775,
+   "end": 238.443,
+   "en_text": "and the amount of carbon it emits.",
+   "zh_text": "以及它排放的碳量。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 238.485,
+   "end": 241.362,
+   "en_text": "And using a tool like this can help us make informed choices,",
+   "zh_text": "使用这样的工具能帮我们做出明智的选择，",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 241.404,
+   "end": 244.657,
+   "en_text": "like choosing one model over the other because it's more sustainable,",
+   "zh_text": "比如选择某个模型而不是另一个，因为它更可持续，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 244.657,
+   "end": 247.577,
+   "en_text": "or deploying AI models on renewable energy,",
+   "zh_text": "或者把 AI 模型部署在使用可再生能源的地方，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 247.619,
+   "end": 250.163,
+   "en_text": "which can drastically reduce their emissions.",
+   "zh_text": "这能大幅减少它们的排放。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 250.163,
+   "end": 252.248,
+   "en_text": "But let's talk about other things",
+   "zh_text": "但我们来谈谈其他方面",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 252.29,
+   "end": 255.251,
+   "en_text": "because there's other impacts of AI apart from sustainability.",
+   "zh_text": "因为除了可持续性，AI 还有其他影响。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 255.627,
+   "end": 258.755,
+   "en_text": "For example, it's been really hard for artists and authors",
+   "zh_text": "例如，艺术家和作者一直很难",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 258.797,
+   "end": 263.009,
+   "en_text": "to prove that their life's work has been used for training AI models",
+   "zh_text": "证明他们毕生的作品被用来训练 AI 模型",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 263.051,
+   "end": 264.26,
+   "en_text": "without their consent.",
+   "zh_text": "而且未经他们同意。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 264.302,
+   "end": 267.472,
+   "en_text": "And if you want to sue someone, you tend to need proof, right?",
+   "zh_text": "而如果你想起诉某人，你往往需要证据，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 267.806,
+   "end": 271.726,
+   "en_text": "So Spawning.ai, an organization that was founded by artists,",
+   "zh_text": "所以，Spawning.ai，一个由艺术家创立的组织，",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 271.726,
+   "end": 275.063,
+   "en_text": "created this really cool tool called “Have I Been Trained?”",
+   "zh_text": "开发了一个非常酷的工具，叫“Have I Been Trained?”（我被训练过吗？）",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 275.104,
+   "end": 277.565,
+   "en_text": "And it lets you search these massive data sets",
+   "zh_text": "它可以让你搜索这些庞大的数据集",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 277.607,
+   "end": 279.692,
+   "en_text": "to see what they have on you.",
+   "zh_text": "看看里面有什么关于你的内容。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 279.734,
+   "end": 281.402,
+   "en_text": "Now, I admit it, I was curious.",
+   "zh_text": "我承认，我很好奇。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 281.444,
+   "end": 283.071,
+   "en_text": "I searched LAION-5B,",
+   "zh_text": "我搜索了LAION-5B，",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 283.112,
+   "end": 285.573,
+   "en_text": "which is this huge data set of images and text,",
+   "zh_text": "这是一个包含图像和文本的巨型数据集，",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 285.615,
+   "end": 288.326,
+   "en_text": "to see if any images of me were in there.",
+   "zh_text": "看看里面有没有我的照片。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 289.285,
+   "end": 290.87,
+   "en_text": "Now those two first images,",
+   "zh_text": "那前两张图片，",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 290.87,
+   "end": 293.039,
+   "en_text": "that's me from events I've spoken at.",
+   "zh_text": "是我在演讲活动上的照片。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 293.081,
+   "end": 295.834,
+   "en_text": "But the rest of the images, none of those are me.",
+   "zh_text": "但其余的图片，没有一张是我。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 295.875,
+   "end": 297.877,
+   "en_text": "They're probably of other women named Sasha",
+   "zh_text": "它们很可能是其他叫Sasha的女性",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 297.919,
+   "end": 300.547,
+   "en_text": "who put photographs of themselves up on the internet.",
+   "zh_text": "把自己照片传到网上的。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 301.047,
+   "end": 302.674,
+   "en_text": "And this can probably explain why,",
+   "zh_text": "这大概能解释为什么，",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 302.715,
+   "end": 304.551,
+   "en_text": "when I query an image generation model",
+   "zh_text": "当我让一个图像生成模型",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 304.551,
+   "end": 306.845,
+   "en_text": "to generate a photograph of a woman named Sasha,",
+   "zh_text": "生成一张叫Sasha的女性的照片时，",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 306.886,
+   "end": 309.639,
+   "en_text": "more often than not I get images of bikini models.",
+   "zh_text": "我得到的往往是比基尼模特的图片。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 309.681,
+   "end": 311.307,
+   "en_text": "Sometimes they have two arms,",
+   "zh_text": "有时候她们有两条胳膊，",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 311.349,
+   "end": 313.643,
+   "en_text": "sometimes they have three arms,",
+   "zh_text": "有时候有三条胳膊，",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 313.685,
+   "end": 315.728,
+   "en_text": "but they rarely have any clothes on.",
+   "zh_text": "但她们很少穿着衣服。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 316.563,
+   "end": 319.357,
+   "en_text": "And while it can be interesting for people like you and me",
+   "zh_text": "虽然搜索这些数据集",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 319.357,
+   "end": 321.484,
+   "en_text": "to search these data sets,",
+   "zh_text": "对你我这样的人来说可能挺有意思，",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 321.526,
+   "end": 323.57,
+   "en_text": "for artists like Karla Ortiz,",
+   "zh_text": "但对像Karla Ortiz这样的艺术家来说，",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 323.57,
+   "end": 327.323,
+   "en_text": "this provides crucial evidence that her life's work, her artwork,",
+   "zh_text": "这提供了关键证据，证明她毕生的作品、她的艺术创作，",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 327.365,
+   "end": 330.326,
+   "en_text": "was used for training AI models without her consent,",
+   "zh_text": "在未经她同意的情况下被用于训练AI模型，",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 330.326,
+   "end": 332.662,
+   "en_text": "and she and two artists used this as evidence",
+   "zh_text": "她和另外两位艺术家以此作为证据",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 332.704,
+   "end": 335.498,
+   "en_text": "to file a class action lawsuit against AI companies",
+   "zh_text": "对AI公司提起集体诉讼",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 335.54,
+   "end": 337.5,
+   "en_text": "for copyright infringement.",
+   "zh_text": "指控其侵犯版权。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 337.542,
+   "end": 338.71,
+   "en_text": "And most recently --",
+   "zh_text": "而最近——",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 342.13,
+   "end": 345.174,
+   "en_text": "And most recently Spawning.ai partnered up with Hugging Face,",
+   "zh_text": "而最近Spawning.ai与Hugging Face合作，",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 345.216,
+   "end": 346.801,
+   "en_text": "the company where I work at,",
+   "zh_text": "也就是我工作的公司，",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 346.801,
+   "end": 351.723,
+   "en_text": "to create opt-in and opt-out mechanisms for creating these data sets.",
+   "zh_text": "为创建这些数据集建立了选择加入和选择退出的机制。",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 352.098,
+   "end": 355.685,
+   "en_text": "Because artwork created by humans shouldn’t be an all-you-can-eat buffet",
+   "zh_text": "因为人类创作的艺术作品不该成为任人随意取用的自助餐",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 355.727,
+   "end": 357.52,
+   "en_text": "for training AI language models.",
+   "zh_text": "用来训练AI语言模型。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 362.567,
+   "end": 364.903,
+   "en_text": "The very last thing I want to talk about is bias.",
+   "zh_text": "我最后想谈的是偏见。",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 364.944,
+   "end": 366.863,
+   "en_text": "You probably hear about this a lot.",
+   "zh_text": "你可能经常听到这个话题。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 367.196,
+   "end": 370.909,
+   "en_text": "Formally speaking, it's when AI models encode patterns and beliefs",
+   "zh_text": "正式来说，它是指AI模型编码了某些模式和信念，",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 370.95,
+   "end": 374.078,
+   "en_text": "that can represent stereotypes or racism and sexism.",
+   "zh_text": "这些模式和信念可能代表刻板印象、种族主义和性别歧视。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 374.412,
+   "end": 377.624,
+   "en_text": "One of my heroes, Dr. Joy Buolamwini, experienced this firsthand",
+   "zh_text": "我心目中的英雄之一，Joy Buolamwini博士，亲身经历过这种情况，",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 377.665,
+   "end": 380.71,
+   "en_text": "when she realized that AI systems wouldn't even detect her face",
+   "zh_text": "她发现AI系统甚至无法识别她的脸",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 380.752,
+   "end": 382.921,
+   "en_text": "unless she was wearing a white-colored mask.",
+   "zh_text": "除非她戴着一个白色的面具。",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 382.962,
+   "end": 386.716,
+   "en_text": "Digging deeper, she found that common facial recognition systems",
+   "zh_text": "深入调查后，她发现常见的面部识别系统",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 386.758,
+   "end": 390.011,
+   "en_text": "were vastly worse for women of color compared to white men.",
+   "zh_text": "对有色人种女性的识别效果远差于白人男性。",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 390.428,
+   "end": 395.725,
+   "en_text": "And when biased models like this are deployed in law enforcement settings,",
+   "zh_text": "当这种带有偏见的模型被部署到执法场景中时，",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 395.767,
+   "end": 400.063,
+   "en_text": "this can result in false accusations, even wrongful imprisonment,",
+   "zh_text": "可能导致错误指控，甚至错误监禁，",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 400.063,
+   "end": 403.983,
+   "en_text": "which we've seen happen to multiple people in recent months.",
+   "zh_text": "近几个月我们已经看到多起这样的事件发生在不同人身上。",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 404.025,
+   "end": 407.111,
+   "en_text": "For example, Porcha Woodruff was wrongfully accused of carjacking",
+   "zh_text": "比如，Porcha Woodruff 被错误地指控劫车",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 407.111,
+   "end": 408.363,
+   "en_text": "at eight months pregnant",
+   "zh_text": "当时她已怀孕八个月",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 408.363,
+   "end": 411.324,
+   "en_text": "because an AI system wrongfully identified her.",
+   "zh_text": "因为一个人工智能系统错误地指认了她。",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 412.325,
+   "end": 414.327,
+   "en_text": "But sadly, these systems are black boxes,",
+   "zh_text": "但遗憾的是，这些系统都是黑箱，",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 414.369,
+   "end": 420.333,
+   "en_text": "and even their creators can't say exactly why they work the way they do.",
+   "zh_text": "就连它们的创造者也说不清它们为什么会这样运作。",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 420.917,
+   "end": 424.379,
+   "en_text": "And for example, for image generation systems,",
+   "zh_text": "再比如，对于图像生成系统来说，",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 424.379,
+   "end": 428.508,
+   "en_text": "if they're used in contexts like generating a forensic sketch",
+   "zh_text": "如果它们被用在生成嫌疑人素描这类场景中，",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 428.549,
+   "end": 431.26,
+   "en_text": "based on a description of a perpetrator,",
+   "zh_text": "根据对罪犯的描述来生成画像，",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 431.26,
+   "end": 434.847,
+   "en_text": "they take all those biases and they spit them back out",
+   "zh_text": "它们会把这些偏见全都吐出来，",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 434.889,
+   "end": 438.351,
+   "en_text": "for terms like dangerous criminal, terrorists or gang member,",
+   "zh_text": "比如遇到“危险罪犯”“恐怖分子”或“帮派成员”这些词时，",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 438.393,
+   "end": 440.561,
+   "en_text": "which of course is super dangerous",
+   "zh_text": "这当然非常危险，",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 440.603,
+   "end": 445.024,
+   "en_text": "when these tools are deployed in society.",
+   "zh_text": "尤其是当这些工具被部署到社会中时。",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 445.566,
+   "end": 447.86,
+   "en_text": "And so in order to understand these tools better,",
+   "zh_text": "所以为了更好地理解这些工具，",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 447.902,
+   "end": 451.114,
+   "en_text": "I created this tool called the Stable Bias Explorer,",
+   "zh_text": "我做了这个叫 Stable Bias Explorer 的工具，",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 451.155,
+   "end": 454.534,
+   "en_text": "which lets you explore the bias of image generation models",
+   "zh_text": "它可以让你探索图像生成模型的偏见，",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 454.575,
+   "end": 456.244,
+   "en_text": "through the lens of professions.",
+   "zh_text": "从职业的角度来看。",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 457.37,
+   "end": 460.415,
+   "en_text": "So try to picture a scientist in your mind.",
+   "zh_text": "那你在脑海里想象一位科学家。",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 460.456,
+   "end": 461.624,
+   "en_text": "Don't look at me.",
+   "zh_text": "别看我。",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 461.666,
+   "end": 463.001,
+   "en_text": "What do you see?",
+   "zh_text": "你看到了什么？",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 463.835,
+   "end": 465.336,
+   "en_text": "A lot of the same thing, right?",
+   "zh_text": "很多都差不多，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 465.378,
+   "end": 467.755,
+   "en_text": "Men in glasses and lab coats.",
+   "zh_text": "戴眼镜、穿白大褂的男人。",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 467.797,
+   "end": 469.507,
+   "en_text": "And none of them look like me.",
+   "zh_text": "没有一个长得像我。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 470.174,
+   "end": 471.634,
+   "en_text": "And the thing is,",
+   "zh_text": "而问题是，",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 471.676,
+   "end": 474.929,
+   "en_text": "is that we looked at all these different image generation models",
+   "zh_text": "我们研究了所有这些不同的图像生成模型",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 474.929,
+   "end": 476.556,
+   "en_text": "and found a lot of the same thing:",
+   "zh_text": "发现了大量相同的情况：",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 476.597,
+   "end": 479.183,
+   "en_text": "significant representation of whiteness and masculinity",
+   "zh_text": "白人和男性形象占比极高",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 479.225,
+   "end": 481.352,
+   "en_text": "across all 150 professions that we looked at,",
+   "zh_text": "在我们研究的所有150种职业中都是如此，",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 481.352,
+   "end": 483.146,
+   "en_text": "even if compared to the real world,",
+   "zh_text": "即使跟现实世界相比也是如此，",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 483.187,
+   "end": 485.023,
+   "en_text": "the US Labor Bureau of Statistics.",
+   "zh_text": "也就是美国劳工统计局的数据。",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 485.023,
+   "end": 488.067,
+   "en_text": "These models show lawyers as men,",
+   "zh_text": "这些模型把律师呈现为男性，",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 488.109,
+   "end": 491.571,
+   "en_text": "and CEOs as men, almost 100 percent of the time,",
+   "zh_text": "把CEO呈现为男性，几乎百分之百都是这样，",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 491.571,
+   "end": 494.741,
+   "en_text": "even though we all know not all of them are white and male.",
+   "zh_text": "尽管我们都知道并非所有律师和CEO都是白人和男性。",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 494.782,
+   "end": 499.162,
+   "en_text": "And sadly, my tool hasn't been used to write legislation yet.",
+   "zh_text": "遗憾的是，我的工具还没被用来起草法律。",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 499.203,
+   "end": 503.166,
+   "en_text": "But I recently presented it at a UN event about gender bias",
+   "zh_text": "但我最近在一个关于性别偏见的联合国活动上展示了它，",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 503.166,
+   "end": 507.045,
+   "en_text": "as an example of how we can make tools for people from all walks of life,",
+   "zh_text": "作为例子说明我们如何能为各行各业的人打造工具，",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 507.086,
+   "end": 509.338,
+   "en_text": "even those who don't know how to code,",
+   "zh_text": "甚至是那些不会编程的人，",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 509.38,
+   "end": 512.633,
+   "en_text": "to engage with and better understand AI because we use professions,",
+   "zh_text": "让他们参与进来、更好地理解AI，因为我们用的是职业，",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 512.633,
+   "end": 515.72,
+   "en_text": "but you can use any terms that are of interest to you.",
+   "zh_text": "但你也可以用任何你感兴趣的词。",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 516.596,
+   "end": 519.348,
+   "en_text": "And as these models are being deployed,",
+   "zh_text": "而随着这些模型被部署，",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 519.39,
+   "end": 522.518,
+   "en_text": "are being woven into the very fabric of our societies,",
+   "zh_text": "被编织进我们社会的肌理之中，",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 522.518,
+   "end": 524.562,
+   "en_text": "our cell phones, our social media feeds,",
+   "zh_text": "我们的手机、我们的社交媒体信息流，",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 524.604,
+   "end": 527.815,
+   "en_text": "even our justice systems and our economies have AI in them.",
+   "zh_text": "甚至我们的司法系统和经济体里都有人工智能。",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 527.815,
+   "end": 531.694,
+   "en_text": "And it's really important that AI stays accessible",
+   "zh_text": "人工智能保持可及性真的非常重要，",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 531.736,
+   "end": 536.449,
+   "en_text": "so that we know both how it works and when it doesn't work.",
+   "zh_text": "这样我们才能既知道它如何运作，也知道它何时不奏效。",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 536.908,
+   "end": 541.204,
+   "en_text": "And there's no single solution for really complex things like bias",
+   "zh_text": "而且对于像偏见这样真正复杂的问题，并没有单一的解决方案",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 541.245,
+   "end": 543.664,
+   "en_text": "or copyright or climate change.",
+   "zh_text": "或者版权，或者气候变化。",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 543.664,
+   "end": 546.375,
+   "en_text": "But by creating tools to measure AI's impact,",
+   "zh_text": "但通过创造衡量AI影响的工具，",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 546.375,
+   "end": 549.712,
+   "en_text": "we can start getting an idea of how bad they are",
+   "zh_text": "我们就能开始了解它们有多糟糕",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 549.754,
+   "end": 552.256,
+   "en_text": "and start addressing them as we go.",
+   "zh_text": "并在前进的过程中着手解决它们。",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 552.256,
+   "end": 555.593,
+   "en_text": "Start creating guardrails to protect society and the planet.",
+   "zh_text": "开始建立防护栏来保护社会和地球。",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 556.177,
+   "end": 558.513,
+   "en_text": "And once we have this information,",
+   "zh_text": "一旦我们掌握了这些信息，",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 558.513,
+   "end": 560.348,
+   "en_text": "companies can use it in order to say,",
+   "zh_text": "公司就可以利用它来说，",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 560.389,
+   "end": 563.559,
+   "en_text": "OK, we're going to choose this model because it's more sustainable,",
+   "zh_text": "好，我们要选这个模型，因为它更可持续，",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 563.601,
+   "end": 565.645,
+   "en_text": "this model because it respects copyright.",
+   "zh_text": "选这个模型，因为它尊重版权。",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 565.686,
+   "end": 568.773,
+   "en_text": "Legislators who really need information to write laws,",
+   "zh_text": "真正需要信息来制定法律的立法者，",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 568.773,
+   "end": 572.235,
+   "en_text": "can use these tools to develop new regulation mechanisms",
+   "zh_text": "可以利用这些工具来开发新的监管机制",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 572.276,
+   "end": 576.072,
+   "en_text": "or governance for AI as it gets deployed into society.",
+   "zh_text": "或者随着AI被部署到社会中，对它进行治理。",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 576.114,
+   "end": 578.491,
+   "en_text": "And users like you and me can use this information",
+   "zh_text": "而像你我这样的用户，可以利用这些信息",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 578.491,
+   "end": 581.828,
+   "en_text": "to choose AI models that we can trust,",
+   "zh_text": "来选择我们可以信任的AI模型，",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 581.869,
+   "end": 584.789,
+   "en_text": "not to misrepresent us and not to misuse our data.",
+   "zh_text": "不会歪曲我们、也不会滥用我们数据的模型。",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 585.79,
+   "end": 587.708,
+   "en_text": "But what did I reply to that email",
+   "zh_text": "但我对那封邮件是怎么回复的？",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 587.75,
+   "end": 590.711,
+   "en_text": "that said that my work is going to destroy humanity?",
+   "zh_text": "那封说我的工作会毁灭人类的邮件？",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 590.711,
+   "end": 594.757,
+   "en_text": "I said that focusing on AI's future existential risks",
+   "zh_text": "我说，把注意力放在AI未来的生存风险上",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 594.799,
+   "end": 596.843,
+   "en_text": "is a distraction from its current,",
+   "zh_text": "会让人忽视它当前",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 596.843,
+   "end": 598.678,
+   "en_text": "very tangible impacts",
+   "zh_text": "非常切实的影响",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 598.719,
+   "end": 602.723,
+   "en_text": "and the work we should be doing right now, or even yesterday,",
+   "zh_text": "以及我们现在、甚至昨天就该做的、",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 602.723,
+   "end": 604.642,
+   "en_text": "for reducing these impacts.",
+   "zh_text": "用来减少这些影响的工作。",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 604.684,
+   "end": 608.729,
+   "en_text": "Because yes, AI is moving quickly, but it's not a done deal.",
+   "zh_text": "因为没错，AI发展得很快，但这不是已成定局的事。",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 608.771,
+   "end": 611.274,
+   "en_text": "We're building the road as we walk it,",
+   "zh_text": "我们是一边走一边修路，",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 611.274,
+   "end": 615.069,
+   "en_text": "and we can collectively decide what direction we want to go in together.",
+   "zh_text": "我们可以共同决定要一起往哪个方向走。",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 615.069,
+   "end": 616.279,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢。",
+   "highlights": []
+  }
+ ]
+}

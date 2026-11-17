@@ -1,0 +1,1269 @@
+{
+ "id": "ted-climate-mental-health",
+ "youtubeId": "-IlDkCEvsYw",
+ "title": "How climate change affects your mental health | Britt Wray",
+ "channel": "TED",
+ "duration": 452,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/-IlDkCEvsYw/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:00+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 13.722,
+   "end": 16.532,
+   "en_text": "For all that's ever been said about climate change,",
+   "zh_text": "关于气候变化，人们已经说了那么多，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 16.556,
+   "end": 20.436,
+   "en_text": "we haven't heard nearly enough about the psychological impacts",
+   "zh_text": "但我们听到的关于心理影响的讨论还远远不够，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 20.46,
+   "end": 22.584,
+   "en_text": "of living in a warming world.",
+   "zh_text": "也就是生活在一个不断变暖的世界里会带来什么心理影响。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 22.608,
+   "end": 24.569,
+   "en_text": "If you've heard the grim climate research",
+   "zh_text": "如果你听过那些严峻的气候研究，",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 24.593,
+   "end": 28.077,
+   "en_text": "that science communicators like me weave into our books and documentaries,",
+   "zh_text": "也就是像我这样的科学传播者写进书和纪录片里的那些研究，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 28.101,
+   "end": 32.092,
+   "en_text": "you've probably felt bouts of fear, fatalism or hopelessness.",
+   "zh_text": "你大概也感受过一阵阵的恐惧、宿命感或绝望。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 32.617,
+   "end": 34.672,
+   "en_text": "If you've been impacted by climate disaster,",
+   "zh_text": "如果你亲身经历过气候灾害，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 34.696,
+   "end": 36.974,
+   "en_text": "these feelings can set in much deeper,",
+   "zh_text": "这些感受会扎得更深，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 36.998,
+   "end": 39.394,
+   "en_text": "leading to shock, trauma,",
+   "zh_text": "导致震惊、创伤、",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 39.418,
+   "end": 41.299,
+   "en_text": "strained relationships, substance abuse",
+   "zh_text": "关系紧张、药物滥用，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 41.323,
+   "end": 43.816,
+   "en_text": "and the loss of personal identity and control.",
+   "zh_text": "以及失去自我认同和掌控感。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 44.314,
+   "end": 48.546,
+   "en_text": "Vital political and technological work is underway to moderate our climate chaos,",
+   "zh_text": "重大的政治和技术工作正在推进，以缓解我们的气候混乱，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 48.57,
+   "end": 51.214,
+   "en_text": "but I'm here to evoke a feeling in you",
+   "zh_text": "但我来这里是想让你真切地感受到，",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 51.238,
+   "end": 54.357,
+   "en_text": "for why we also need our actions and policies",
+   "zh_text": "为什么我们的行动和政策也需要",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 54.381,
+   "end": 57.263,
+   "en_text": "to reflect an understanding of how our changing environments",
+   "zh_text": "体现出这样一种理解：我们不断变化的环境",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 57.287,
+   "end": 60.374,
+   "en_text": "threaten our mental, social and spiritual well-being.",
+   "zh_text": "是如何威胁我们的心理、社交和精神健康的。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 60.97,
+   "end": 64.613,
+   "en_text": "The anxiety, grief and depression of climate scientists and activists",
+   "zh_text": "气候科学家和活动人士的焦虑、悲伤和抑郁，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 64.637,
+   "end": 66.653,
+   "en_text": "have been reported on for years.",
+   "zh_text": "多年来一直有报道。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 66.677,
+   "end": 68.827,
+   "en_text": "Trends we've seen after extreme weather events",
+   "zh_text": "我们在极端天气事件之后看到的趋势，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 68.851,
+   "end": 70.581,
+   "en_text": "like hurricane Sandy or Katrina",
+   "zh_text": "比如飓风桑迪或卡特里娜，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 70.605,
+   "end": 73.434,
+   "en_text": "for increased PTSD and suicidality.",
+   "zh_text": "是创伤后应激障碍和自杀倾向的增加。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 73.8,
+   "end": 76.776,
+   "en_text": "And there are rich mental-health data from northern communities",
+   "zh_text": "还有来自北方社区的丰富心理健康数据，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 76.8,
+   "end": 78.244,
+   "en_text": "where warming is the fastest,",
+   "zh_text": "那里变暖速度最快，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 78.268,
+   "end": 80.331,
+   "en_text": "like the Inuit in Labrador,",
+   "zh_text": "比如拉布拉多的因纽特人，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 80.355,
+   "end": 83.228,
+   "en_text": "who face existential distress as they witness the ice,",
+   "zh_text": "他们目睹着冰——",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 83.252,
+   "end": 84.839,
+   "en_text": "a big part of their identity,",
+   "zh_text": "他们身份认同的重要部分——",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 84.863,
+   "end": 86.73,
+   "en_text": "vanishing before their eyes.",
+   "zh_text": "在眼前消失，承受着存在性的痛苦。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 87.22,
+   "end": 88.585,
+   "en_text": "Now if that weren't enough,",
+   "zh_text": "如果这还不够，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 88.609,
+   "end": 90.459,
+   "en_text": "the American Psychological Association",
+   "zh_text": "美国心理学会",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 90.483,
+   "end": 93.355,
+   "en_text": "says that our psychological responses to climate change,",
+   "zh_text": "表示，我们对气候变化的心理反应，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 93.379,
+   "end": 97.609,
+   "en_text": "like conflict avoidance, helplessness and resignation, are growing.",
+   "zh_text": "比如回避冲突、无助感和认命，正在加剧。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 98.101,
+   "end": 101.022,
+   "en_text": "This means that our conscious and unconscious mental processes",
+   "zh_text": "这意味着我们有意识和无意识的心理过程",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 101.046,
+   "end": 102.212,
+   "en_text": "are holding us back",
+   "zh_text": "正在阻碍我们",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 102.236,
+   "end": 105.117,
+   "en_text": "from identifying the causes of the problem for what they are,",
+   "zh_text": "认清问题的真正根源，",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 105.141,
+   "end": 108.339,
+   "en_text": "working on solutions and fostering our own psychological resilience,",
+   "zh_text": "去研究解决方案，并培养我们自己的心理韧性，",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 108.363,
+   "end": 111.902,
+   "en_text": "but we need all those things to take on what we've created.",
+   "zh_text": "而我们需要这一切来应对我们自己造成的局面。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 112.878,
+   "end": 114.944,
+   "en_text": "Lately, I've been studying a phenomenon",
+   "zh_text": "最近，我一直在研究一种现象，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 114.968,
+   "end": 117.483,
+   "en_text": "that's just one example of the emotional hardships",
+   "zh_text": "它只是我们所看到的情绪困境中的一个例子。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 117.507,
+   "end": 118.696,
+   "en_text": "that we're seeing.",
+   "zh_text": "仅此而已。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 118.72,
+   "end": 120.632,
+   "en_text": "And it comes in the form of a question",
+   "zh_text": "它以一个问题的形式出现，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 120.656,
+   "end": 124.363,
+   "en_text": "that a significant amount of people in my generation are struggling to answer.",
+   "zh_text": "我这一代有很多人都难以回答这个问题。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 124.89,
+   "end": 126.073,
+   "en_text": "That being:",
+   "zh_text": "那就是：",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 126.097,
+   "end": 129.105,
+   "en_text": "Should I have a child in the age of climate change?",
+   "zh_text": "在气候变化的时代，我该不该要孩子？",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 129.613,
+   "end": 131.136,
+   "en_text": "After all, any child born today",
+   "zh_text": "毕竟，今天出生的任何孩子",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 131.16,
+   "end": 134.43,
+   "en_text": "will have to live in a world where hurricanes, flooding, wildfires --",
+   "zh_text": "都将生活在一个飓风、洪水、野火——",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 134.454,
+   "end": 136.424,
+   "en_text": "what we used to call natural disasters --",
+   "zh_text": "我们过去称之为自然灾害的东西——",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 136.448,
+   "end": 137.852,
+   "en_text": "have become commonplace.",
+   "zh_text": "已经司空见惯的世界里。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 138.688,
+   "end": 142.442,
+   "en_text": "The hottest 20 years on record occurred within the last 22.",
+   "zh_text": "有记录以来最热的20年都发生在过去22年里。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 143.172,
+   "end": 145.974,
+   "en_text": "The UN expects that two-thirds of the global population",
+   "zh_text": "联合国预计，全球三分之二的人口",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 145.998,
+   "end": 148.971,
+   "en_text": "may face water shortages only six years from now.",
+   "zh_text": "可能仅仅六年后就会面临水资源短缺。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 149.844,
+   "end": 151.677,
+   "en_text": "The World Bank predicts that by 2050,",
+   "zh_text": "世界银行预测，到2050年，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 151.701,
+   "end": 154.629,
+   "en_text": "there's going to be 140 million climate refugees",
+   "zh_text": "将会有1.4亿气候难民",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 154.653,
+   "end": 157.593,
+   "en_text": "in sub-Saharan Africa, Latin America and South Asia.",
+   "zh_text": "出现在撒哈拉以南非洲、拉丁美洲和南亚。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 157.617,
+   "end": 160.585,
+   "en_text": "And other estimates put that number at over one billion.",
+   "zh_text": "而其他估算认为这个数字超过十亿。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 161.284,
+   "end": 163.474,
+   "en_text": "Mass migrations and resource scarcity",
+   "zh_text": "大规模移民和资源短缺",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 163.498,
+   "end": 167.479,
+   "en_text": "increase the risk for violence, war and political instability.",
+   "zh_text": "会增加暴力、战争和政治动荡的风险。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 168.146,
+   "end": 172.788,
+   "en_text": "The UN just reported that we are pushing up to a million species to extinction,",
+   "zh_text": "联合国刚刚报告说，我们正把多达一百万种物种推向灭绝，",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 172.812,
+   "end": 173.987,
+   "en_text": "many within decades,",
+   "zh_text": "许多会在几十年内消失，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 174.011,
+   "end": 178.635,
+   "en_text": "and our emissions are still increasing, even after the Paris Agreement.",
+   "zh_text": "而我们的排放量仍在增加，即便在《巴黎协定》之后也是如此。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 179.373,
+   "end": 180.841,
+   "en_text": "Over the last year and a half,",
+   "zh_text": "在过去的一年半里，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 180.865,
+   "end": 182.976,
+   "en_text": "I've been conducting workshops and interviews",
+   "zh_text": "我一直在举办工作坊和访谈，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 183.0,
+   "end": 184.198,
+   "en_text": "with hundreds of people",
+   "zh_text": "和数百人交流，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 184.222,
+   "end": 186.556,
+   "en_text": "about parenting in the climate crisis.",
+   "zh_text": "话题是在气候危机中养育孩子。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 186.58,
+   "end": 187.736,
+   "en_text": "And I can tell you",
+   "zh_text": "我可以告诉你，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 187.76,
+   "end": 191.117,
+   "en_text": "that people who are worried about having kids because of climate change",
+   "zh_text": "那些因为气候变化而担心要不要孩子的人",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 191.141,
+   "end": 193.093,
+   "en_text": "are not motivated by an ascetic pride.",
+   "zh_text": "并不是出于一种禁欲式的骄傲。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 193.117,
+   "end": 194.649,
+   "en_text": "They're nerve-racked.",
+   "zh_text": "他们是焦虑不安的。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 194.673,
+   "end": 196.735,
+   "en_text": "There's even a movement called BirthStrike,",
+   "zh_text": "甚至有一个叫BirthStrike的运动，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 196.759,
+   "end": 199.491,
+   "en_text": "whose members have declared they're not going to have kids",
+   "zh_text": "其成员公开表示他们不打算要孩子，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 199.515,
+   "end": 201.704,
+   "en_text": "because of the state of the ecological crisis",
+   "zh_text": "因为生态危机的现状，",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 201.728,
+   "end": 204.855,
+   "en_text": "and inaction from governments to address this existential threat.",
+   "zh_text": "也因为各国政府在应对这一生存威胁上的不作为。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 204.879,
+   "end": 208.346,
+   "en_text": "And yes, other generations have also faced their own apocalyptic dangers,",
+   "zh_text": "没错，其他世代也面临过他们自己的末日式危险，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 208.37,
+   "end": 212.068,
+   "en_text": "but that is no reason to disregard the very real threat to our survival now.",
+   "zh_text": "但这不能成为忽视我们当下所面临的真实生存威胁的理由。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 212.489,
+   "end": 215.299,
+   "en_text": "Some feel that it's better to adopt children.",
+   "zh_text": "有些人觉得领养孩子更好。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 215.323,
+   "end": 217.434,
+   "en_text": "Or that it's unethical to have more than one,",
+   "zh_text": "或者觉得生一个以上是不道德的，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 217.458,
+   "end": 219.196,
+   "en_text": "especially three, four or more,",
+   "zh_text": "尤其是三个、四个甚至更多，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 219.22,
+   "end": 222.601,
+   "en_text": "because kids increase greenhouse gas emissions.",
+   "zh_text": "因为孩子会增加温室气体排放。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 222.625,
+   "end": 225.813,
+   "en_text": "Now, it is a really unfortunate state of affairs",
+   "zh_text": "现在，这真是一种令人遗憾的状况，",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 225.837,
+   "end": 228.228,
+   "en_text": "when people who want kids sacrifice their right to",
+   "zh_text": "当想要孩子的人牺牲了他们要孩子的权利，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 228.252,
+   "end": 232.325,
+   "en_text": "because, somehow, they have been told that their lifestyle choices are to blame",
+   "zh_text": "因为不知怎么的，他们被告知要怪自己的生活方式选择，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 232.349,
+   "end": 234.095,
+   "en_text": "when the fault is far more systemic,",
+   "zh_text": "而真正的过错要系统得多，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 234.119,
+   "end": 236.269,
+   "en_text": "but let's just unpack the logic here.",
+   "zh_text": "但我们不妨来拆解一下这里的逻辑。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 237.048,
+   "end": 239.361,
+   "en_text": "So an oft-cited study shows that, on average,",
+   "zh_text": "一项常被引用的研究表明，平均而言，",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 239.385,
+   "end": 242.085,
+   "en_text": "having one less child in an industrialized nation",
+   "zh_text": "在工业化国家少生一个孩子",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 242.109,
+   "end": 245.99,
+   "en_text": "can save about 59 tons of carbon dioxide per year.",
+   "zh_text": "每年可以节省约59吨二氧化碳。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 246.617,
+   "end": 248.037,
+   "en_text": "While in comparison,",
+   "zh_text": "相比之下，",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 248.061,
+   "end": 251.004,
+   "en_text": "living car-free saves nearly 2.5 tons,",
+   "zh_text": "不开车能节省近2.5吨，",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 251.028,
+   "end": 254.084,
+   "en_text": "avoiding a transatlantic flight -- and this is just one --",
+   "zh_text": "避免一次跨大西洋飞行——而这只是一次——",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 254.108,
+   "end": 256.068,
+   "en_text": "saves about 1.5 tons,",
+   "zh_text": "能节省约1.5吨，",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 256.092,
+   "end": 259.743,
+   "en_text": "and eating a plant-based diet can save almost one ton per year.",
+   "zh_text": "而吃植物性饮食每年能节省近一吨。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 260.76,
+   "end": 263.156,
+   "en_text": "And consider that a Bangladeshi child",
+   "zh_text": "再想想，一个孟加拉国的孩子",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 263.18,
+   "end": 267.024,
+   "en_text": "only adds 56 metric tons of carbon to their parents' carbon legacy",
+   "zh_text": "只给父母的碳遗产增加56公吨碳",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 267.048,
+   "end": 268.5,
+   "en_text": "over their lifetime,",
+   "zh_text": "在他们的一生中，",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 268.524,
+   "end": 273.944,
+   "en_text": "while an American child, in comparison, adds 9,441 to theirs.",
+   "zh_text": "而相比之下，一个美国孩子会给父母的碳遗产增加9441公吨。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 274.428,
+   "end": 275.96,
+   "en_text": "So this is why some people argue",
+   "zh_text": "所以这就是为什么有些人主张",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 275.984,
+   "end": 278.706,
+   "en_text": "that it's parents from nations with huge carbon footprints",
+   "zh_text": "是那些来自碳足迹巨大国家父母",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 278.73,
+   "end": 281.583,
+   "en_text": "who should think the hardest about how many kids they have.",
+   "zh_text": "最应该认真考虑自己生几个孩子。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 281.901,
+   "end": 285.25,
+   "en_text": "But the decision to have a child and one's feelings about the future",
+   "zh_text": "但要不要孩子这个决定，以及一个人对未来的感受",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 285.274,
+   "end": 286.71,
+   "en_text": "are deeply personal,",
+   "zh_text": "都是极其私人的事，",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 286.734,
+   "end": 288.956,
+   "en_text": "and wrapped up in all sorts of cultural norms,",
+   "zh_text": "还牵扯到各种各样的文化规范、",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 288.98,
+   "end": 292.83,
+   "en_text": "religious beliefs, socioeconomic status, education levels and more.",
+   "zh_text": "宗教信仰、社会经济地位、教育水平等等。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 293.184,
+   "end": 296.001,
+   "en_text": "And so to some, this debate about kids in the climate crisis",
+   "zh_text": "所以对一些人来说，这场关于气候危机下要不要孩子的争论",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 296.025,
+   "end": 298.556,
+   "en_text": "can seem like it came from another planet.",
+   "zh_text": "简直像是从另一个星球来的。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 298.58,
+   "end": 301.763,
+   "en_text": "Many have more immediate threats to their survival to think about,",
+   "zh_text": "很多人有更迫在眉睫的生存威胁要考虑，",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 301.787,
+   "end": 304.084,
+   "en_text": "like, how they're going to put food on the table,",
+   "zh_text": "比如怎么把饭端上桌，",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 304.108,
+   "end": 306.205,
+   "en_text": "when they're a single mom working three jobs,",
+   "zh_text": "当一个打三份工的单亲妈妈，",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 306.229,
+   "end": 309.22,
+   "en_text": "or they're HIV positive or on the move in a migrant caravan.",
+   "zh_text": "或者自己是HIV阳性，或者正跟着移民大篷车迁徙。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 309.244,
+   "end": 312.99,
+   "en_text": "Tragically, though, climate change is really great at intersectionality.",
+   "zh_text": "但不幸的是，气候变化在交叉性方面真是厉害得很。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 313.387,
+   "end": 317.201,
+   "en_text": "It multiplies the stresses marginalized communities already face.",
+   "zh_text": "它会放大边缘化群体本已承受的压力。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 318.442,
+   "end": 321.379,
+   "en_text": "A political scientist once said to me that a leading indicator",
+   "zh_text": "一位政治学家曾对我说，一个领先指标",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 321.403,
+   "end": 324.513,
+   "en_text": "that climate change is starting to hit home, psychologically,",
+   "zh_text": "能说明气候变化开始在心理上真正影响到人们，",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 324.537,
+   "end": 326.912,
+   "en_text": "would be an increase in the rate of informed women",
+   "zh_text": "那就是越来越多了解情况的女性",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 326.936,
+   "end": 328.607,
+   "en_text": "deciding to not have children.",
+   "zh_text": "决定不生孩子。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 329.522,
+   "end": 330.672,
+   "en_text": "Interesting.",
+   "zh_text": "有意思。",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 331.236,
+   "end": 333.89,
+   "en_text": "Is it hitting home with you, psychologically?",
+   "zh_text": "它是不是也在心理上影响到你了？",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 334.521,
+   "end": 338.062,
+   "en_text": "Are you perhaps someone with climate-linked pre-traumatic stress?",
+   "zh_text": "你会不会正经历与气候相关的创伤前压力？",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 338.737,
+   "end": 340.689,
+   "en_text": "A climate psychiatrist coined that term,",
+   "zh_text": "这个词是一位气候精神病学家创造的，",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 340.713,
+   "end": 344.102,
+   "en_text": "and that's a profession now, by the way, shrinks for climate woes.",
+   "zh_text": "顺便说一句，这现在是个职业了，专治气候烦恼的心理医生。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 344.126,
+   "end": 346.704,
+   "en_text": "They're getting work at a time when some high schoolers",
+   "zh_text": "他们现在活儿不少，因为有些高中生",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 346.728,
+   "end": 348.831,
+   "en_text": "don't want to apply to university any longer,",
+   "zh_text": "已经不想申请大学了，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 348.855,
+   "end": 351.418,
+   "en_text": "because they can't foresee a future for themselves.",
+   "zh_text": "因为他们看不到自己的未来。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 351.831,
+   "end": 354.262,
+   "en_text": "And this brings me back to my main point.",
+   "zh_text": "这就回到了我的主要观点。",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 354.91,
+   "end": 357.761,
+   "en_text": "The growing concern about having kids in the climate crisis",
+   "zh_text": "人们对在气候危机中要孩子的日益担忧",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 357.785,
+   "end": 361.78,
+   "en_text": "is an urgent indicator of how hard-pressed people are feeling.",
+   "zh_text": "是一个紧迫的信号，说明人们感到多么压力山大。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 363.11,
+   "end": 366.791,
+   "en_text": "Right now, students around the world are screaming for change",
+   "zh_text": "现在，世界各地的学生都在大声疾呼要求改变，",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 366.815,
+   "end": 368.771,
+   "en_text": "in the piercing voice of despair.",
+   "zh_text": "用绝望而刺耳的声音。",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 369.645,
+   "end": 372.558,
+   "en_text": "And the fact that we can see how we contribute to this problem",
+   "zh_text": "而我们能看清自己如何造成这个问题、",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 372.582,
+   "end": 374.05,
+   "en_text": "that makes us feel unsafe",
+   "zh_text": "如何让自己感到不安全，",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 374.074,
+   "end": 375.907,
+   "en_text": "is crazy-making in itself.",
+   "zh_text": "这本身就让人快疯了。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 376.947,
+   "end": 378.879,
+   "en_text": "Climate change is all-encompassing",
+   "zh_text": "气候变化是无所不包的，",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 378.903,
+   "end": 381.665,
+   "en_text": "and so are the ways that it messes with our minds.",
+   "zh_text": "它扰乱我们心智的方式也是如此。",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 382.648,
+   "end": 384.014,
+   "en_text": "Many activists will tell you",
+   "zh_text": "很多活动人士会告诉你",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 384.038,
+   "end": 386.403,
+   "en_text": "that the best antidote to grief is activism.",
+   "zh_text": "化解悲伤最好的解药就是行动主义。",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 386.75,
+   "end": 390.297,
+   "en_text": "And some psychologists will tell you the answer can be found in therapy.",
+   "zh_text": "有些心理学家会告诉你，答案可以在心理治疗里找到。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 390.321,
+   "end": 393.226,
+   "en_text": "Others believe the key is to imagine you're on your deathbed,",
+   "zh_text": "还有人相信，关键在于想象自己躺在临终的床上，",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 393.25,
+   "end": 395.94,
+   "en_text": "reflecting back on what's mattered the most in your life,",
+   "zh_text": "回想一生中什么最重要，",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 395.964,
+   "end": 398.363,
+   "en_text": "so you can identify what you should do more of now,",
+   "zh_text": "这样你就能看清现在应该多做什么，",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 398.387,
+   "end": 399.982,
+   "en_text": "with the time that you have left.",
+   "zh_text": "用你剩下的时间。",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 400.006,
+   "end": 401.863,
+   "en_text": "We need all these ideas, and more,",
+   "zh_text": "我们需要所有这些想法，还需要更多，",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 401.887,
+   "end": 403.633,
+   "en_text": "to take care of our innermost selves",
+   "zh_text": "来照顾我们内心最深处的自己，",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 403.657,
+   "end": 407.783,
+   "en_text": "as the environments we've known become more punishing towards us.",
+   "zh_text": "因为我们所熟悉的环境正变得越来越对我们不友好。",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 407.807,
+   "end": 409.95,
+   "en_text": "And whether you have children or not,",
+   "zh_text": "不管你有没有孩子，",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 409.974,
+   "end": 412.72,
+   "en_text": "we need to be honest about what is happening,",
+   "zh_text": "我们都得坦诚面对正在发生的事，",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 412.744,
+   "end": 414.611,
+   "en_text": "and what we owe one another.",
+   "zh_text": "以及我们彼此之间应尽的责任。",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 415.601,
+   "end": 416.847,
+   "en_text": "We cannot afford to treat",
+   "zh_text": "我们承担不起这样的代价：",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 416.871,
+   "end": 418.947,
+   "en_text": "the psychological impacts of climate change",
+   "zh_text": "把气候变化带来的心理影响",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 418.971,
+   "end": 420.132,
+   "en_text": "as some afterthought,",
+   "zh_text": "当成事后才想到的事，",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 420.156,
+   "end": 424.442,
+   "en_text": "because the other issues, of science, technology and the politics and economy,",
+   "zh_text": "因为科学、技术、政治和经济这些其他问题，",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 424.466,
+   "end": 427.799,
+   "en_text": "feel hard, while this somehow feels soft.",
+   "zh_text": "让人觉得很难，而这个问题却不知怎么让人觉得是软性的。",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 428.807,
+   "end": 431.181,
+   "en_text": "Mental health needs to be an integral part",
+   "zh_text": "心理健康必须成为",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 431.205,
+   "end": 433.506,
+   "en_text": "of any climate change survival strategy,",
+   "zh_text": "任何气候变化生存策略中不可或缺的一部分，",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 433.53,
+   "end": 436.85,
+   "en_text": "requiring funding, and ethics of equity and care,",
+   "zh_text": "需要资金投入，需要公平与关怀的伦理，",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 436.874,
+   "end": 438.541,
+   "en_text": "and widespread awareness.",
+   "zh_text": "还需要广泛的认知。",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 438.886,
+   "end": 442.442,
+   "en_text": "Because even if you're the most emotionally avoidant person on the planet,",
+   "zh_text": "因为就算你是这个星球上最会回避情绪的人，",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 442.466,
+   "end": 445.707,
+   "en_text": "there's no rug in the world that's big enough to sweep this up under.",
+   "zh_text": "世上也没有哪块地毯大到能把这件事扫到下面藏起来。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 445.731,
+   "end": 446.896,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢。",
+   "highlights": []
+  }
+ ]
+}

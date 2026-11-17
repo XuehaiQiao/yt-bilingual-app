@@ -1,0 +1,749 @@
+{
+ "id": "teded-internet-cables",
+ "youtubeId": "er3v4PVNQqE",
+ "title": "The hidden network that makes the internet possible - Sajan Saini",
+ "channel": "TED-Ed",
+ "duration": 319,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/er3v4PVNQqE/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:42+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 7.016,
+   "end": 8.476,
+   "en_text": "In 2012,",
+   "zh_text": "2012年，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 8.476,
+   "end": 13.136,
+   "en_text": "a team of Japanese and Danish researchers set a world record,",
+   "zh_text": "一个由日本和丹麦研究人员组成的团队创下了一项世界纪录，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 13.136,
+   "end": 15.716,
+   "en_text": "transmitting 1 petabit of data—",
+   "zh_text": "在一秒内传输了1拍比特的数据——",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 15.716,
+   "end": 19.006,
+   "en_text": "that’s 10,000 hours of high-def video—",
+   "zh_text": "相当于1万小时的高清视频——",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 19.006,
+   "end": 22.526,
+   "en_text": "over a fifty-kilometer cable, in a second.",
+   "zh_text": "通过一条五十公里长的光缆。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 22.526,
+   "end": 24.426,
+   "en_text": "This wasn’t just any cable.",
+   "zh_text": "这可不是普通的光缆。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 24.426,
+   "end": 27.466,
+   "en_text": "It was a souped-up version of fiber optics—",
+   "zh_text": "它是光纤的升级加强版——",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 27.466,
+   "end": 29.766,
+   "en_text": "the hidden network that links our planet",
+   "zh_text": "这个隐藏的网络连接着我们的星球，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 29.766,
+   "end": 32.236,
+   "en_text": "and makes the internet possible.",
+   "zh_text": "让互联网成为可能。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 32.236,
+   "end": 33.116,
+   "en_text": "For decades,",
+   "zh_text": "几十年来，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 33.116,
+   "end": 36.496,
+   "en_text": "long-distance communications between cities and countries",
+   "zh_text": "城市与国家之间的长途通信",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 36.496,
+   "end": 38.546,
+   "en_text": "were carried by electrical signals,",
+   "zh_text": "都是靠电信号传输的，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 38.546,
+   "end": 40.266,
+   "en_text": "in wires made of copper.",
+   "zh_text": "用的是铜制的导线。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 40.266,
+   "end": 42.236,
+   "en_text": "This was slow and inefficient,",
+   "zh_text": "这种方式又慢又低效，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 42.236,
+   "end": 47.656,
+   "en_text": "with metal wires limiting data rates and power lost as wasted heat.",
+   "zh_text": "金属导线限制了数据传输速率，电能还以废热的形式白白损耗。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 47.656,
+   "end": 49.596,
+   "en_text": "But in the late 20th century,",
+   "zh_text": "但在20世纪末，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 49.596,
+   "end": 53.596,
+   "en_text": "engineers mastered a far superior method of transmission.",
+   "zh_text": "工程师们掌握了一种优越得多的传输方式。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 53.596,
+   "end": 55.056,
+   "en_text": "Instead of metal,",
+   "zh_text": "不用金属，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 55.056,
+   "end": 60.146,
+   "en_text": "glass can be carefully melted and drawn into flexible fiber strands,",
+   "zh_text": "而是把玻璃小心地熔化、拉制成柔韧的纤维丝，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 60.146,
+   "end": 64.535,
+   "en_text": "hundreds of kilometers long and no thicker than human hair.",
+   "zh_text": "长达数百公里，却比人的头发还细。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 64.535,
+   "end": 66.237,
+   "en_text": "And instead of electricity,",
+   "zh_text": "而且不用电，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 66.237,
+   "end": 71.487,
+   "en_text": "these strands carry pulses of light, representing digital data.",
+   "zh_text": "这些纤维丝传输的是光脉冲，用来表示数字数据。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 71.487,
+   "end": 76.227,
+   "en_text": "But how does light travel within glass, rather than just pass through it?",
+   "zh_text": "可是，光如何在玻璃内部传播，而不是直接穿过去呢？",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 76.227,
+   "end": 81.511,
+   "en_text": "The trick lies in a phenomenon known as total internal reflection.",
+   "zh_text": "诀窍在于一种叫做全反射的现象。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 81.511,
+   "end": 83.168,
+   "en_text": "Since Isaac Newton’s time,",
+   "zh_text": "自艾萨克·牛顿时代起，",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 83.168,
+   "end": 86.798,
+   "en_text": "lensmakers and scientists have known that light bends",
+   "zh_text": "镜片制造商和科学家就知道，光会发生弯折，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 86.798,
+   "end": 91.588,
+   "en_text": "when it passes between air and materials like water or glass.",
+   "zh_text": "当它在空气和水或玻璃这类材料之间穿过时。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 91.588,
+   "end": 96.239,
+   "en_text": "When a ray of light inside glass hits its surface at a steep angle,",
+   "zh_text": "当玻璃内部的一束光以陡峭的角度射到表面时，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 96.239,
+   "end": 99.969,
+   "en_text": "it refracts, or bends as it exits into air.",
+   "zh_text": "它会折射，也就是在射入空气时发生弯折。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 99.969,
+   "end": 102.959,
+   "en_text": "But if the ray travels at a shallow angle,",
+   "zh_text": "但如果这束光以很浅的角度传播，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 102.959,
+   "end": 106.029,
+   "en_text": "it’ll bend so far that it stays trapped,",
+   "zh_text": "它就会弯折得太多，以至于被困住，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 106.029,
+   "end": 108.949,
+   "en_text": "bouncing along inside the glass.",
+   "zh_text": "在玻璃内部不断反射前行。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 108.949,
+   "end": 110.319,
+   "en_text": "Under the right condition,",
+   "zh_text": "在合适的条件下，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 110.319,
+   "end": 115.549,
+   "en_text": "something normally transparent to light can instead hide it from the world.",
+   "zh_text": "原本对光透明的物质，反而能把光藏起来，不让外界看到。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 115.549,
+   "end": 117.991,
+   "en_text": "Compared to electricity or radio,",
+   "zh_text": "与电或无线电相比，",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 117.991,
+   "end": 121.781,
+   "en_text": "fiber optic signals barely degrade over great distances—",
+   "zh_text": "光纤信号在长距离传输中几乎不会衰减——",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 121.781,
+   "end": 124.051,
+   "en_text": "a little power does scatter away,",
+   "zh_text": "会有一点点能量散射掉，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 124.051,
+   "end": 126.581,
+   "en_text": "and fibers can’t bend too sharply,",
+   "zh_text": "而且光纤不能弯得太急，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 126.581,
+   "end": 128.491,
+   "en_text": "otherwise the light leaks out.",
+   "zh_text": "否则光就会泄漏出去。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 128.491,
+   "end": 132.791,
+   "en_text": "Today, a single optical fiber carries many wavelengths of light,",
+   "zh_text": "如今，一根光纤可以承载许多种波长的光，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 132.791,
+   "end": 135.256,
+   "en_text": "each a different channel of data.",
+   "zh_text": "每一种波长都是一个独立的数据通道。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 135.256,
+   "end": 139.466,
+   "en_text": "And a fiber optic cable contains hundreds of these fiber strands.",
+   "zh_text": "而一根光缆里包含数百根这样的纤维丝。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 139.466,
+   "end": 143.445,
+   "en_text": "Over a million kilometers of cable crisscross our ocean floors",
+   "zh_text": "超过一百万公里的光缆纵横交错于我们的海底，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 143.445,
+   "end": 145.045,
+   "en_text": "to link the continents—",
+   "zh_text": "把各个大洲连接起来——",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 145.045,
+   "end": 149.435,
+   "en_text": "that’s enough to wind around the Equator nearly thirty times.",
+   "zh_text": "这长度足以绕赤道将近三十圈。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 149.435,
+   "end": 150.631,
+   "en_text": "With fiber optics,",
+   "zh_text": "有了光纤，",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 150.631,
+   "end": 152.851,
+   "en_text": "distance hardly limits data,",
+   "zh_text": "距离几乎不再限制数据，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 152.851,
+   "end": 156.851,
+   "en_text": "which has allowed the internet to evolve into a planetary computer.",
+   "zh_text": "这让互联网得以发展成一台行星级的计算机。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 156.851,
+   "end": 157.651,
+   "en_text": "Increasingly,",
+   "zh_text": "越来越多地，",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 157.651,
+   "end": 163.221,
+   "en_text": "our mobile work and play rely on legions of overworked computer servers,",
+   "zh_text": "我们移动办公和娱乐都依赖于大批超负荷运转的计算机服务器，",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 163.221,
+   "end": 167.161,
+   "en_text": "warehoused in gigantic data centers flung across the world.",
+   "zh_text": "它们被安置在世界各地庞大的数据中心里。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 167.161,
+   "end": 169.081,
+   "en_text": "This is called cloud computing,",
+   "zh_text": "这就叫做云计算。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 169.081,
+   "end": 171.361,
+   "en_text": "and it leads to two big problems:",
+   "zh_text": "这带来了两大问题：",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 171.361,
+   "end": 174.144,
+   "en_text": "heat waste and bandwidth demand.",
+   "zh_text": "热量浪费和带宽需求。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 174.144,
+   "end": 178.844,
+   "en_text": "The vast majority of internet traffic shuttles around inside data centers,",
+   "zh_text": "绝大多数互联网流量都在数据中心内部来回传输，",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 178.844,
+   "end": 183.544,
+   "en_text": "where thousands of servers are connected by traditional electrical cables.",
+   "zh_text": "那里成千上万台服务器由传统的电缆连接。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 183.544,
+   "end": 186.286,
+   "en_text": "Half of their running power is wasted as heat.",
+   "zh_text": "它们运行所耗电力有一半以热量形式浪费掉了。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 186.286,
+   "end": 190.446,
+   "en_text": "Meanwhile, wireless bandwidth demand steadily marches on,",
+   "zh_text": "与此同时，无线带宽需求稳步增长，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 190.446,
+   "end": 193.536,
+   "en_text": "and the gigahertz signals used in our mobile devices",
+   "zh_text": "而我们移动设备中使用的千兆赫兹信号",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 193.536,
+   "end": 196.336,
+   "en_text": "are reaching their data delivery limits.",
+   "zh_text": "正逐渐达到其数据传输的极限。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 196.336,
+   "end": 199.866,
+   "en_text": "It seems fiber optics has been too good for its own good,",
+   "zh_text": "看来光纤技术好得过了头，反而给自己带来了麻烦，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 199.866,
+   "end": 204.576,
+   "en_text": "fueling overly-ambitious cloud and mobile computing expectations.",
+   "zh_text": "助长了对云计算和移动计算过于雄心勃勃的期待。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 204.576,
+   "end": 209.826,
+   "en_text": "But a related technology, integrated photonics, has come to the rescue.",
+   "zh_text": "但一项相关的技术——集成光子学——来救场了。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 209.827,
+   "end": 212.857,
+   "en_text": "Light can be guided not only in optical fibers,",
+   "zh_text": "光不仅可以在光纤中传导，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 212.857,
+   "end": 216.217,
+   "en_text": "but also in ultrathin silicon wires.",
+   "zh_text": "也可以在超细的硅线中传导。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 216.217,
+   "end": 219.547,
+   "en_text": "Silicon wires don’t guide light as well as fiber.",
+   "zh_text": "硅线导光的效果不如光纤。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 219.547,
+   "end": 222.117,
+   "en_text": "But they do enable engineers to shrink",
+   "zh_text": "但它们确实能让工程师把",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 222.117,
+   "end": 225.597,
+   "en_text": "all the devices in a hundred kilometer fiber optic network",
+   "zh_text": "一个百公里光纤网络中的所有器件",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 225.597,
+   "end": 229.237,
+   "en_text": "down to tiny photonic chips that plug into servers",
+   "zh_text": "缩小成微小的光子芯片，插进服务器里，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 229.237,
+   "end": 233.327,
+   "en_text": "and convert their electrical signals to optical and back.",
+   "zh_text": "把它们的电信号转换成光信号，再转换回来。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 233.327,
+   "end": 239.429,
+   "en_text": "These electricity-to-light chips allow for wasteful electrical cables in data centers",
+   "zh_text": "这些电光转换芯片让数据中心里浪费电的电缆",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 239.429,
+   "end": 242.809,
+   "en_text": "to be swapped out for power-efficient fiber.",
+   "zh_text": "可以被节能的光纤所取代。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 242.809,
+   "end": 247.379,
+   "en_text": "Photonic chips can help break open wireless bandwidth limitations, too.",
+   "zh_text": "光子芯片也有助于打破无线带宽的限制。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 247.379,
+   "end": 250.861,
+   "en_text": "Researchers are working to replace mobile gigahertz signals",
+   "zh_text": "研究人员正致力于用太赫兹频率",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 250.861,
+   "end": 252.651,
+   "en_text": "with terahertz frequencies,",
+   "zh_text": "取代移动设备的千兆赫兹信号，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 252.651,
+   "end": 255.581,
+   "en_text": "to carry data thousands of times faster.",
+   "zh_text": "从而以快上数千倍的速度传输数据。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 255.581,
+   "end": 257.621,
+   "en_text": "But these are short-range signals:",
+   "zh_text": "但这些是短距离信号：",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 257.621,
+   "end": 259.721,
+   "en_text": "they get absorbed by moisture in the air,",
+   "zh_text": "它们会被空气中的水分吸收，",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 259.721,
+   "end": 261.961,
+   "en_text": "or blocked by tall buildings.",
+   "zh_text": "或者被高楼挡住。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 261.961,
+   "end": 265.331,
+   "en_text": "With tiny wireless-to-fiber photonic transmitter chips",
+   "zh_text": "借助微小的无线转光纤光子发射芯片，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 265.331,
+   "end": 267.001,
+   "en_text": "distributed throughout cities,",
+   "zh_text": "把它们分布到城市各处，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 267.001,
+   "end": 271.431,
+   "en_text": "terahertz signals can be relayed over long-range distances.",
+   "zh_text": "太赫兹信号就能中继传输到很远的地方。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 271.431,
+   "end": 274.069,
+   "en_text": "They can do so via a stable middleman,",
+   "zh_text": "它们可以通过一个稳定的中间媒介做到这一点，",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 274.069,
+   "end": 279.429,
+   "en_text": "optical fiber, and make hyperfast wireless connectivity a reality.",
+   "zh_text": "那就是光纤，从而让超高速无线连接成为现实。",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 279.429,
+   "end": 281.303,
+   "en_text": "For all of human history,",
+   "zh_text": "在整个人类历史上，",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 281.303,
+   "end": 283.893,
+   "en_text": "light has gifted us with sight and heat,",
+   "zh_text": "光一直赐予我们视觉和温暖，",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 283.893,
+   "end": 289.183,
+   "en_text": "serving as a steady companion while we explored and settled the physical world.",
+   "zh_text": "在我们探索和定居于物质世界的过程中，始终如一地陪伴着我们。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 289.183,
+   "end": 292.812,
+   "en_text": "Now, we’ve saddled light with information and redirected it",
+   "zh_text": "如今，我们让光承载信息，并引导它",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 292.812,
+   "end": 295.762,
+   "en_text": "to run along a fiber optic superhighway—",
+   "zh_text": "沿着光纤高速公路奔跑——",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 295.762,
+   "end": 299.102,
+   "en_text": "with many different integrated photonic exits—",
+   "zh_text": "沿途有许多不同的集成光子出口——",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 299.102,
+   "end": 302.882,
+   "en_text": "to build an even more expansive, virtual world.",
+   "zh_text": "去构建一个更加广阔的虚拟世界。",
+   "highlights": []
+  }
+ ]
+}

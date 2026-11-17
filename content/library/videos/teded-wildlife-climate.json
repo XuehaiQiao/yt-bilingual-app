@@ -1,0 +1,725 @@
+{
+ "id": "teded-wildlife-climate",
+ "youtubeId": "ZCKRjP_DMII",
+ "title": "Can wildlife adapt to climate change? - Erin Eastwood",
+ "channel": "TED-Ed",
+ "duration": 287,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/ZCKRjP_DMII/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:31+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 6.909,
+   "end": 8.911,
+   "en_text": "Rising temperatures and seas,",
+   "zh_text": "气温和海平面不断上升，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 8.911,
+   "end": 10.357,
+   "en_text": "massive droughts,",
+   "zh_text": "严重的干旱，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 10.357,
+   "end": 12.069,
+   "en_text": "changing landscapes.",
+   "zh_text": "不断变化的自然景观。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 12.069,
+   "end": 16.897,
+   "en_text": "Successfully adapting to climate change is growing increasingly important.",
+   "zh_text": "成功适应气候变化正变得越来越重要。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 16.897,
+   "end": 20.625,
+   "en_text": "For humans, this means using our technological advancement",
+   "zh_text": "对人类来说，这意味着利用我们的技术进步",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 20.625,
+   "end": 22.14,
+   "en_text": "to find solutions,",
+   "zh_text": "来寻找解决办法，",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 22.14,
+   "end": 25.419,
+   "en_text": "like smarter cities and better water management.",
+   "zh_text": "比如更智能的城市和更好的水资源管理。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 25.419,
+   "end": 27.161,
+   "en_text": "But for some plants and animals,",
+   "zh_text": "但对一些动植物来说，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 27.161,
+   "end": 32.082,
+   "en_text": "adapting to these global changes involves the most ancient solution of all:",
+   "zh_text": "适应这些全球性变化，靠的是最古老的解决办法：",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 32.082,
+   "end": 33.735,
+   "en_text": "evolution.",
+   "zh_text": "进化。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 33.735,
+   "end": 38.751,
+   "en_text": "Evolutionary adaptation usually occurs along time scales of thousands",
+   "zh_text": "进化性适应通常发生在数千",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 38.751,
+   "end": 41.195,
+   "en_text": "to hundreds of thousands of years.",
+   "zh_text": "到数十万年的时间尺度上。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 41.195,
+   "end": 46.218,
+   "en_text": "But in cases where species are under especially strong selective conditions,",
+   "zh_text": "但在物种面临特别强的选择压力的情况下，",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 46.218,
+   "end": 48.857,
+   "en_text": "like those caused by rapidly changing climates,",
+   "zh_text": "比如由快速变化的气候造成的压力，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 48.857,
+   "end": 52.202,
+   "en_text": "adaptive evolution can happen more quickly.",
+   "zh_text": "适应性进化可以发生得更快。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 52.202,
+   "end": 53.302,
+   "en_text": "In recent decades,",
+   "zh_text": "近几十年来，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 53.302,
+   "end": 54.58,
+   "en_text": "we've seen many plants,",
+   "zh_text": "我们看到许多植物、",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 54.58,
+   "end": 55.391,
+   "en_text": "animals,",
+   "zh_text": "动物",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 55.391,
+   "end": 57.832,
+   "en_text": "and insects relocating themselves",
+   "zh_text": "和昆虫迁移到别处，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 57.832,
+   "end": 60.253,
+   "en_text": "and undergoing changes to their body sizes,",
+   "zh_text": "并经历了体型的变化，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 60.253,
+   "end": 63.495,
+   "en_text": "and the dates they flower or breed.",
+   "zh_text": "以及开花或繁殖时间的变化。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 63.495,
+   "end": 65.202,
+   "en_text": "But many of these are plastic,",
+   "zh_text": "但其中许多都是可塑性的，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 65.202,
+   "end": 69.461,
+   "en_text": "or nonheritable changes to an individual's physical traits.",
+   "zh_text": "也就是个体身体特征上不可遗传的变化。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 69.461,
+   "end": 73.223,
+   "en_text": "And there are limits to how much an organism can change its own physiology",
+   "zh_text": "而且一个生物体改变自身生理机能",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 73.223,
+   "end": 75.768,
+   "en_text": "to meet environmental requirements.",
+   "zh_text": "以满足环境需求的程度是有限的。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 75.768,
+   "end": 80.045,
+   "en_text": "That's why scientists are seeking examples of evolutionary changes",
+   "zh_text": "这就是为什么科学家们在寻找进化性变化的例子，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 80.045,
+   "end": 83.262,
+   "en_text": "coded in species' DNA that are heritable,",
+   "zh_text": "这些变化编码在物种的DNA中，可以遗传、",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 83.262,
+   "end": 84.579,
+   "en_text": "long-lasting,",
+   "zh_text": "能长期保持，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 84.579,
+   "end": 87.414,
+   "en_text": "and may provide a key to their future.",
+   "zh_text": "并可能成为它们未来的关键。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 87.414,
+   "end": 89.286,
+   "en_text": "Take the tawny owl.",
+   "zh_text": "以灰林鸮为例。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 89.286,
+   "end": 93.404,
+   "en_text": "If you were walking through a wintry forest in northern Europe 30 years ago,",
+   "zh_text": "如果你30年前走在北欧的冬季森林里，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 93.404,
+   "end": 96.5,
+   "en_text": "chances are you'd have heard, rather than seen,",
+   "zh_text": "你很可能只是听到、而不是看到",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 96.5,
+   "end": 98.452,
+   "en_text": "this elusive bird.",
+   "zh_text": "这种难以捉摸的鸟。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 98.452,
+   "end": 99.939,
+   "en_text": "Against the snowy backdrop,",
+   "zh_text": "在白雪皑皑的背景下，",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 99.939,
+   "end": 103.798,
+   "en_text": "its plumage would have been near impossible to spot.",
+   "zh_text": "它的羽毛几乎不可能被发现。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 103.798,
+   "end": 106.444,
+   "en_text": "Today, the landscape is vastly different.",
+   "zh_text": "如今，景象已大不相同。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 106.444,
+   "end": 107.916,
+   "en_text": "Since the 1980s,",
+   "zh_text": "自20世纪80年代以来，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 107.916,
+   "end": 111.076,
+   "en_text": "climate change has led to significantly less snowfall,",
+   "zh_text": "气候变化导致降雪量明显减少，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 111.076,
+   "end": 114.194,
+   "en_text": "but you'd still struggle to spot a tawny owl",
+   "zh_text": "但你仍然很难发现灰林鸮，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 114.194,
+   "end": 117.024,
+   "en_text": "because nowadays, they're brown.",
+   "zh_text": "因为如今它们变成了棕色。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 117.024,
+   "end": 122.405,
+   "en_text": "The brown color variant is the genetically dominant form of plumage in this species,",
+   "zh_text": "棕色变种是该物种羽毛颜色中基因上占优势的类型，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 122.405,
+   "end": 123.785,
+   "en_text": "but historically,",
+   "zh_text": "但在过去，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 123.785,
+   "end": 126.683,
+   "en_text": "the recessive pale gray variant triumphed",
+   "zh_text": "隐性遗传的浅灰色变种占了上风，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 126.683,
+   "end": 131.225,
+   "en_text": "because of its selective advantage in helping these predators blend in.",
+   "zh_text": "因为它在帮助这些捕食者融入环境方面具有选择优势。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 131.225,
+   "end": 135.284,
+   "en_text": "However, less snow cover reduces opportunities for camouflage,",
+   "zh_text": "然而，积雪减少降低了伪装的机会，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 135.284,
+   "end": 137.373,
+   "en_text": "so lately, this gray color variant",
+   "zh_text": "所以近来，这种灰色变种",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 137.373,
+   "end": 140.561,
+   "en_text": "has been losing the battle against natural selection.",
+   "zh_text": "在与自然选择的较量中节节败退。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 140.561,
+   "end": 143.418,
+   "en_text": "The offspring of the brown color morphs, on the other hand,",
+   "zh_text": "另一方面，棕色变种的后代",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 143.418,
+   "end": 145.991,
+   "en_text": "have an advantage in exposed forests,",
+   "zh_text": "在无遮蔽的森林中具有优势，",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 145.991,
+   "end": 149.734,
+   "en_text": "so brown tawny owls are flourishing today.",
+   "zh_text": "所以如今棕色灰林鸮数量兴旺。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 149.734,
+   "end": 151.625,
+   "en_text": "Several other species have undergone",
+   "zh_text": "近几十年来，还有其他几个物种也经历了",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 151.625,
+   "end": 156.296,
+   "en_text": "similar climate-change-adaptive genetic changes in recent decades.",
+   "zh_text": "类似的适应气候变化的基因变化。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 156.296,
+   "end": 158.937,
+   "en_text": "Pitcher plant mosquitoes have rapidly evolved",
+   "zh_text": "猪笼草蚊已迅速进化，",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 158.937,
+   "end": 161.388,
+   "en_text": "to take advantage of the warmer temperatures,",
+   "zh_text": "以利用更温暖的气温，",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 161.388,
+   "end": 164.892,
+   "en_text": "entering dormancy later and later in the year.",
+   "zh_text": "一年中进入休眠的时间越来越晚。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 164.892,
+   "end": 167.171,
+   "en_text": "Two spot ladybug populations,",
+   "zh_text": "两个七星瓢虫种群，",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 167.171,
+   "end": 171.972,
+   "en_text": "once comprised of equal numbers of melanic and non-melanic morphs,",
+   "zh_text": "曾经由数量相等的黑色型和浅色型变种组成，",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 171.972,
+   "end": 176.223,
+   "en_text": "have now shifted almost entirely to the non-melanic color combination.",
+   "zh_text": "如今几乎完全转变成了非黑化的颜色组合。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 176.223,
+   "end": 179.668,
+   "en_text": "Scientists think that keeps them from overheating.",
+   "zh_text": "科学家认为这能让它们避免过热。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 179.668,
+   "end": 183.302,
+   "en_text": "Meanwhile, pink salmon have adapted to warmer waters",
+   "zh_text": "与此同时，粉红鲑鱼已经适应了更温暖的水域，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 183.302,
+   "end": 187.62,
+   "en_text": "by spawning earlier in the season to protect their sensitive eggs.",
+   "zh_text": "办法是提前在当季更早的时候产卵，以保护它们脆弱的卵。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 187.62,
+   "end": 191.837,
+   "en_text": "And wild thyme plants in Europe are producing more repellent oils",
+   "zh_text": "而欧洲的野生百里香植株正在产生更多驱避性的油脂，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 191.837,
+   "end": 194.374,
+   "en_text": "to protect themselves against the herbivores",
+   "zh_text": "来保护自己免受食草动物的侵害，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 194.374,
+   "end": 197.304,
+   "en_text": "that become more common when it's warm.",
+   "zh_text": "这些食草动物在天气变暖时变得更加常见。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 197.304,
+   "end": 201.747,
+   "en_text": "These plants and animals belong to a group of about 20 identified species",
+   "zh_text": "这些动植物属于大约20种已被确认的物种，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 201.747,
+   "end": 205.898,
+   "en_text": "with evolutionary adaptations to rapid climate change,",
+   "zh_text": "它们通过进化适应了快速的气候变化，",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 205.898,
+   "end": 207.314,
+   "en_text": "including snapping turtles,",
+   "zh_text": "包括鳄龟、",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 207.314,
+   "end": 208.601,
+   "en_text": "wood frogs,",
+   "zh_text": "林蛙、",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 208.601,
+   "end": 209.697,
+   "en_text": "knotweed,",
+   "zh_text": "虎杖，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 209.697,
+   "end": 212.849,
+   "en_text": "and silver spotted skipper butterflies.",
+   "zh_text": "以及银斑弄蝶。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 212.849,
+   "end": 216.488,
+   "en_text": "However, scientists hope to discover more species evolving",
+   "zh_text": "不过，科学家希望在这颗星球上870万个物种中，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 216.488,
+   "end": 221.704,
+   "en_text": "in response to climate change out of 8.7 million species on the planet.",
+   "zh_text": "发现更多为应对气候变化而进化的物种。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 221.704,
+   "end": 224.98,
+   "en_text": "For most of our planet's astounding and precious biodiversity,",
+   "zh_text": "对于地球上大多数令人惊叹又珍贵的生物多样性来说，",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 224.98,
+   "end": 227.465,
+   "en_text": "evolution won't be the answer.",
+   "zh_text": "进化并不会是解决办法。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 227.465,
+   "end": 231.133,
+   "en_text": "Instead, many of those species will have to rely on us",
+   "zh_text": "相反，其中许多物种将不得不依靠我们，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 231.133,
+   "end": 233.902,
+   "en_text": "to help them survive a changing world",
+   "zh_text": "来帮助它们在一个不断变化的世界中生存下去，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 233.902,
+   "end": 236.324,
+   "en_text": "or face extinction.",
+   "zh_text": "否则就会面临灭绝。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 236.324,
+   "end": 238.864,
+   "en_text": "The good news is we already have the tools.",
+   "zh_text": "好消息是，我们已经有办法了。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 238.864,
+   "end": 241.689,
+   "en_text": "Across the planet, we're making on-the-ground decisions",
+   "zh_text": "在全球各地，我们正在做出切实的决策，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 241.689,
+   "end": 244.82,
+   "en_text": "that will help entire ecosystems adapt.",
+   "zh_text": "来帮助整个生态系统适应变化。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 244.82,
+   "end": 248.679,
+   "en_text": "Critical climate refuges are being identified and set aside,",
+   "zh_text": "关键的气候避难所正在被确认并划为保护区，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 248.679,
+   "end": 251.507,
+   "en_text": "and projects are underway to help mobile species",
+   "zh_text": "还有一些项目正在进行，帮助会迁徙的物种",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 251.507,
+   "end": 253.795,
+   "en_text": "move to more suitable climates.",
+   "zh_text": "迁移到更适宜的气候中。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 253.795,
+   "end": 258.528,
+   "en_text": "Existing parks and protected areas are also doing climate change check-ups",
+   "zh_text": "现有的公园和保护区也在进行气候变化检查，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 258.528,
+   "end": 260.878,
+   "en_text": "to help their wildlife cope.",
+   "zh_text": "以帮助其中的野生动物应对变化。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 260.878,
+   "end": 263.479,
+   "en_text": "Fortunately, it's still within our power",
+   "zh_text": "幸运的是，我们仍然有能力",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 263.479,
+   "end": 266.571,
+   "en_text": "to preserve much of the wondrous biodiversity of this planet,",
+   "zh_text": "保护这颗星球上大量奇妙的生物多样性，",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 266.571,
+   "end": 270.467,
+   "en_text": "which, after all, sustains us in so many ways.",
+   "zh_text": "毕竟，它以如此多的方式维系着我们的生存。",
+   "highlights": []
+  }
+ ]
+}

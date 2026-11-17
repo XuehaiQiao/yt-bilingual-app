@@ -1,0 +1,653 @@
+{
+ "id": "teded-stress-brain",
+ "youtubeId": "WuyPuH9ojCE",
+ "title": "How stress affects your brain - Madhumita Murgia",
+ "channel": "TED-Ed",
+ "duration": 256,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/WuyPuH9ojCE/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:39+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 6.791,
+   "end": 8.526,
+   "en_text": "Are you sleeping restlessly,",
+   "zh_text": "你是不是睡得不安稳，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 8.526,
+   "end": 10.299,
+   "en_text": "feeling irritable or moody,",
+   "zh_text": "容易烦躁或情绪低落，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 10.299,
+   "end": 11.839,
+   "en_text": "forgetting little things,",
+   "zh_text": "忘掉一些小事，",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 11.839,
+   "end": 14.602,
+   "en_text": "and feeling overwhelmed and isolated?",
+   "zh_text": "还感到不堪重负、孤立无援？",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 14.602,
+   "end": 16.567,
+   "en_text": "Don't worry. We've all been there.",
+   "zh_text": "别担心，我们都经历过。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 16.567,
+   "end": 18.779,
+   "en_text": "You're probably just stressed out.",
+   "zh_text": "你大概只是压力太大了。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 18.779,
+   "end": 20.967,
+   "en_text": "Stress isn't always a bad thing.",
+   "zh_text": "压力并不总是坏事。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 20.967,
+   "end": 24.178,
+   "en_text": "It can be handy for a burst of extra energy and focus,",
+   "zh_text": "它能帮你瞬间爆发出额外的精力和专注力，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 24.178,
+   "end": 26.589,
+   "en_text": "like when you're playing a competitive sport,",
+   "zh_text": "比如你在打一场竞技比赛时，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 26.589,
+   "end": 28.516,
+   "en_text": "or have to speak in public.",
+   "zh_text": "或者不得不在公众面前讲话时。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 28.516,
+   "end": 30.086,
+   "en_text": "But when its continuous,",
+   "zh_text": "但当压力持续不断，",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 30.086,
+   "end": 33.105,
+   "en_text": "the kind most of us face day in and day out,",
+   "zh_text": "也就是我们大多数人日复一日面对的那种，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 33.105,
+   "end": 36.932,
+   "en_text": "it actually begins to change your brain.",
+   "zh_text": "它其实就开始改变你的大脑了。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 36.932,
+   "end": 38.152,
+   "en_text": "Chronic stress,",
+   "zh_text": "长期压力，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 38.152,
+   "end": 41.235,
+   "en_text": "like being overworked or having arguments at home,",
+   "zh_text": "比如过度劳累或在家里争吵，",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 41.235,
+   "end": 42.778,
+   "en_text": "can affect brain size,",
+   "zh_text": "会影响大脑的大小、",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 42.778,
+   "end": 43.966,
+   "en_text": "its structure,",
+   "zh_text": "它的结构，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 43.966,
+   "end": 45.249,
+   "en_text": "and how it functions,",
+   "zh_text": "以及它的运作方式，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 45.249,
+   "end": 48.249,
+   "en_text": "right down to the level of your genes.",
+   "zh_text": "甚至一直影响到你的基因层面。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 48.249,
+   "end": 49.98,
+   "en_text": "Stress begins with something called",
+   "zh_text": "压力始于一个叫做",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 49.98,
+   "end": 53.606,
+   "en_text": "the hypothalamus pituitary adrenal axis,",
+   "zh_text": "下丘脑—垂体—肾上腺轴的东西，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 53.606,
+   "end": 55.698,
+   "en_text": "a series of interactions",
+   "zh_text": "它是一系列相互作用，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 55.698,
+   "end": 59.579,
+   "en_text": "between endocrine glands in the brain and on the kidney,",
+   "zh_text": "发生在脑部和肾脏的内分泌腺之间，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 59.579,
+   "end": 62.5,
+   "en_text": "which controls your body's reaction to stress.",
+   "zh_text": "它控制着你身体对压力的反应。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 62.5,
+   "end": 64.904,
+   "en_text": "When your brain detects a stressful situation,",
+   "zh_text": "当你的大脑察觉到压力情境时，",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 64.904,
+   "end": 68.856,
+   "en_text": "your HPA axis is instantly activated",
+   "zh_text": "你的HPA轴会立刻被激活，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 68.856,
+   "end": 75.022,
+   "en_text": "and releases a hormone called cortisol, which primes your body for instant action.",
+   "zh_text": "并释放一种叫皮质醇的激素，让你的身体做好立即行动的准备。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 75.022,
+   "end": 78.331,
+   "en_text": "But high levels of cortisol over long periods of time",
+   "zh_text": "但皮质醇长期处于高水平",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 78.331,
+   "end": 80.826,
+   "en_text": "wreak havoc on your brain.",
+   "zh_text": "会对你的大脑造成严重破坏。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 80.826,
+   "end": 84.262,
+   "en_text": "For example, chronic stress increases the activity level",
+   "zh_text": "例如，长期压力会提高",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 84.262,
+   "end": 88.277,
+   "en_text": "and number of neural connections in the amygdala,",
+   "zh_text": "杏仁核中神经连接的活动水平和数量，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 88.277,
+   "end": 90.489,
+   "en_text": "your brain's fear center.",
+   "zh_text": "杏仁核是你大脑的恐惧中心。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 90.489,
+   "end": 92.413,
+   "en_text": "And as levels of cortisol rise,",
+   "zh_text": "而随着皮质醇水平升高，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 92.413,
+   "end": 94.76,
+   "en_text": "electric signals in your hippocampus,",
+   "zh_text": "你海马体中的电信号，",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 94.76,
+   "end": 99.421,
+   "en_text": "the part of the brain associated with learning, memories, and stress control,",
+   "zh_text": "海马体是大脑中与学习、记忆和压力控制相关的部分，",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 99.421,
+   "end": 101.054,
+   "en_text": "deteriorate.",
+   "zh_text": "会逐渐退化。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 101.054,
+   "end": 105.229,
+   "en_text": "The hippocampus also inhibits the activity of the HPA axis,",
+   "zh_text": "海马体还会抑制HPA轴的活动，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 105.229,
+   "end": 106.511,
+   "en_text": "so when it weakens,",
+   "zh_text": "所以当它变弱时，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 106.511,
+   "end": 109.982,
+   "en_text": "so does your ability to control your stress.",
+   "zh_text": "你控制压力的能力也会变弱。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 109.982,
+   "end": 111.322,
+   "en_text": "That's not all, though.",
+   "zh_text": "不过，这还不是全部。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 111.322,
+   "end": 115.88,
+   "en_text": "Cortisol can literally cause your brain to shrink in size.",
+   "zh_text": "皮质醇真的能让你的大脑体积缩小。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 115.88,
+   "end": 120.703,
+   "en_text": "Too much of it results in the loss of synaptic connections between neurons",
+   "zh_text": "皮质醇过多会导致神经元之间的突触连接丧失，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 120.703,
+   "end": 123.267,
+   "en_text": "and the shrinking of your prefrontal cortex,",
+   "zh_text": "以及你的前额叶皮层萎缩，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 123.267,
+   "end": 126.871,
+   "en_text": "the part of your brain the regulates behaviors like concentration,",
+   "zh_text": "前额叶皮层是大脑中调节专注力等行为的部分，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 126.871,
+   "end": 128.253,
+   "en_text": "decision-making,",
+   "zh_text": "决策、",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 128.253,
+   "end": 129.379,
+   "en_text": "judgement,",
+   "zh_text": "判断，",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 129.379,
+   "end": 131.62,
+   "en_text": "and social interaction.",
+   "zh_text": "以及社交互动。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 131.62,
+   "end": 136.437,
+   "en_text": "It also leads to fewer new brain cells being made in the hippocampus.",
+   "zh_text": "它还会导致海马体中生成的新脑细胞减少。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 136.437,
+   "end": 139.925,
+   "en_text": "This means chronic stress might make it harder for you to learn",
+   "zh_text": "这意味着长期压力可能会让你更难学习",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 139.925,
+   "end": 141.401,
+   "en_text": "and remember things,",
+   "zh_text": "和记住东西，",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 141.401,
+   "end": 144.324,
+   "en_text": "and also set the stage for more serious mental problems,",
+   "zh_text": "还会为更严重的心理问题埋下伏笔，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 144.324,
+   "end": 148.875,
+   "en_text": "like depression and eventually Alzheimer's disease.",
+   "zh_text": "比如抑郁症，最终甚至可能导致阿尔茨海默病。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 148.875,
+   "end": 153.181,
+   "en_text": "The effects of stress may filter right down to your brain's DNA.",
+   "zh_text": "压力的影响甚至可能一直深入到大脑的DNA。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 153.181,
+   "end": 154.497,
+   "en_text": "An experiment showed",
+   "zh_text": "一项实验表明，",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 154.497,
+   "end": 158.706,
+   "en_text": "that the amount of nurturing a mother rat provides its newborn baby",
+   "zh_text": "母鼠对新生幼鼠的照料程度",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 158.706,
+   "end": 163.878,
+   "en_text": "plays a part in determining how that baby responds to stress later in life.",
+   "zh_text": "在一定程度上决定了这只幼鼠日后如何应对压力。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 163.878,
+   "end": 168.336,
+   "en_text": "The pups of nurturing moms turned out less sensitive to stress",
+   "zh_text": "结果发现，被悉心照料的幼鼠对压力的敏感度更低",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 168.336,
+   "end": 171.769,
+   "en_text": "because their brains developed more cortisol receptors,",
+   "zh_text": "因为它们的大脑发育出了更多的皮质醇受体，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 171.769,
+   "end": 174.757,
+   "en_text": "which stick to cortisol and dampen the stress response.",
+   "zh_text": "这些受体与皮质醇结合，从而抑制了压力反应。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 174.757,
+   "end": 178.223,
+   "en_text": "The pups of negligent moms had the opposite outcome,",
+   "zh_text": "而被疏于照料的幼鼠则恰恰相反，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 178.223,
+   "end": 181.91,
+   "en_text": "and so became more sensitive to stress throughout life.",
+   "zh_text": "因此它们一生中对压力都更加敏感。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 181.91,
+   "end": 184.675,
+   "en_text": "These are considered epigenetic changes,",
+   "zh_text": "这些被认为是表观遗传变化，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 184.675,
+   "end": 187.524,
+   "en_text": "meaning that they effect which genes are expressed",
+   "zh_text": "意思是它们会影响哪些基因被表达出来，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 187.524,
+   "end": 190.514,
+   "en_text": "without directly changing the genetic code.",
+   "zh_text": "而不会直接改变遗传密码。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 190.514,
+   "end": 194.361,
+   "en_text": "And these changes can be reversed if the moms are swapped.",
+   "zh_text": "而且如果把这些母鼠对调，这些变化是可以逆转的。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 194.361,
+   "end": 196.123,
+   "en_text": "But there's a surprising result.",
+   "zh_text": "但还有一个令人惊讶的结果。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 196.123,
+   "end": 199.788,
+   "en_text": "The epigenetic changes caused by one single mother rat",
+   "zh_text": "仅仅一只母鼠所造成的表观遗传变化，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 199.788,
+   "end": 203.622,
+   "en_text": "were passed down to many generations of rats after her.",
+   "zh_text": "竟然遗传给了她之后的许多代老鼠。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 203.622,
+   "end": 208.077,
+   "en_text": "In other words, the results of these actions were inheritable.",
+   "zh_text": "换句话说，这些行为的结果是可以遗传的。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 208.077,
+   "end": 210.417,
+   "en_text": "It's not all bad news, though.",
+   "zh_text": "不过也不全是坏消息。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 210.417,
+   "end": 214.817,
+   "en_text": "There are many ways to reverse what cortisol does to your stressed brain.",
+   "zh_text": "有很多方法可以逆转皮质醇对你受压大脑造成的影响。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 214.817,
+   "end": 218.713,
+   "en_text": "The most powerful weapons are exercise and meditation,",
+   "zh_text": "最有力的武器是运动和冥想，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 218.713,
+   "end": 220.376,
+   "en_text": "which involves breathing deeply",
+   "zh_text": "冥想包括深呼吸，",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 220.376,
+   "end": 223.521,
+   "en_text": "and being aware and focused on your surroundings.",
+   "zh_text": "以及觉察并专注于你周围的环境。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 223.521,
+   "end": 226.255,
+   "en_text": "Both of these activities decrease your stress",
+   "zh_text": "这两种活动都能减轻你的压力，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 226.255,
+   "end": 229.525,
+   "en_text": "and increase the size of the hippocampus,",
+   "zh_text": "并增大海马体的大小，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 229.525,
+   "end": 231.77,
+   "en_text": "thereby improving your memory.",
+   "zh_text": "从而改善你的记忆力。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 231.77,
+   "end": 234.47,
+   "en_text": "So don't feel defeated by the pressures of daily life.",
+   "zh_text": "所以，不要被日常生活的压力打败。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 234.47,
+   "end": 239.228,
+   "en_text": "Get in control of your stress before it takes control of you.",
+   "zh_text": "在压力控制你之前，先掌控好你的压力。",
+   "highlights": []
+  }
+ ]
+}

@@ -1,0 +1,1565 @@
+{
+ "id": "ted-social-health",
+ "youtubeId": "LpSDuDIaBGk",
+ "title": "Why Social Health Is Key to Happiness and Longevity | Kasley Killam | TED",
+ "channel": "TED",
+ "duration": 575,
+ "level": "C1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/LpSDuDIaBGk/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:42+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 4.292,
+   "end": 6.002,
+   "en_text": "So a couple of years ago,",
+   "zh_text": "所以几年前，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 6.044,
+   "end": 9.005,
+   "en_text": "a woman I know who I'll call Maya,",
+   "zh_text": "我认识一位女士，我就叫她玛雅吧，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 9.047,
+   "end": 12.175,
+   "en_text": "went through a lot of big changes in a short amount of time.",
+   "zh_text": "在很短的时间里经历了很多巨大的变化。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 12.217,
+   "end": 13.385,
+   "en_text": "She got married.",
+   "zh_text": "她结婚了。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 13.426,
+   "end": 16.096,
+   "en_text": "She and her husband moved for his job to a new city",
+   "zh_text": "她和丈夫因为他的工作搬到了一个新城市，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 16.096,
+   "end": 17.764,
+   "en_text": "where she didn’t know anyone.",
+   "zh_text": "在那里她谁也不认识。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 17.806,
+   "end": 20.392,
+   "en_text": "She started a new role working from home,",
+   "zh_text": "她开始了一份新工作，在家办公，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 20.433,
+   "end": 23.979,
+   "en_text": "all while managing her dad's new diagnosis of dementia.",
+   "zh_text": "同时还要应对她爸爸新确诊的痴呆症。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 24.688,
+   "end": 27.566,
+   "en_text": "And to manage the stress of all this change,",
+   "zh_text": "为了缓解所有这些变化带来的压力，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 27.607,
+   "end": 30.944,
+   "en_text": "Maya doubled down on her physical and mental health.",
+   "zh_text": "玛雅在身体和心理健康上更加下功夫。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 30.986,
+   "end": 32.779,
+   "en_text": "She exercised almost every day,",
+   "zh_text": "她几乎每天都锻炼，",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 32.821,
+   "end": 34.197,
+   "en_text": "she ate healthy foods,",
+   "zh_text": "她吃健康的食物，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 34.239,
+   "end": 35.991,
+   "en_text": "she went to therapy once a week.",
+   "zh_text": "她每周去做一次心理治疗。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 36.324,
+   "end": 37.951,
+   "en_text": "And these actions really helped.",
+   "zh_text": "这些做法确实很有帮助。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 37.993,
+   "end": 39.661,
+   "en_text": "Her body got stronger.",
+   "zh_text": "她的身体变得更强壮了。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 39.703,
+   "end": 43.54,
+   "en_text": "Her mind got more resilient, but only up to a point.",
+   "zh_text": "她的心理也更有韧性了，但只到一定程度。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 44.332,
+   "end": 45.875,
+   "en_text": "She was still struggling,",
+   "zh_text": "她依然在苦苦挣扎，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 45.875,
+   "end": 48.795,
+   "en_text": "often losing sleep in the middle of the night,",
+   "zh_text": "常常半夜失眠，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 48.795,
+   "end": 51.256,
+   "en_text": "feeling unfocused, unmotivated during the day.",
+   "zh_text": "白天感觉注意力不集中、提不起劲。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 51.298,
+   "end": 55.051,
+   "en_text": "Maya was doing everything that doctors typically tell us to do",
+   "zh_text": "玛雅做了医生通常告诉我们要做的一切，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 55.051,
+   "end": 57.721,
+   "en_text": "to be physically and mentally healthy,",
+   "zh_text": "来保持身心健康，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 57.762,
+   "end": 59.681,
+   "en_text": "and yet something was missing.",
+   "zh_text": "可还是缺了点什么。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 61.057,
+   "end": 63.935,
+   "en_text": "What if I told you that what was missing for Maya",
+   "zh_text": "如果我告诉你，玛雅所缺的那样东西，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 63.977,
+   "end": 67.939,
+   "en_text": "is also missing for billions of people around the world,",
+   "zh_text": "也是全世界数十亿人所缺的，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 67.939,
+   "end": 69.858,
+   "en_text": "and that it might be missing for you?",
+   "zh_text": "而且可能你也缺呢？",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 70.859,
+   "end": 74.863,
+   "en_text": "What if I told you that not having it undermines our other efforts",
+   "zh_text": "如果我告诉你，缺少它会削弱我们在其他方面的努力——",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 74.904,
+   "end": 78.283,
+   "en_text": "to be healthy and can even shorten your lifespan?",
+   "zh_text": "那些为了健康的努力，甚至可能缩短你的寿命呢？",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 79.951,
+   "end": 82.162,
+   "en_text": "I’ve been studying this for over a decade,",
+   "zh_text": "我研究这个已经十多年了，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 82.203,
+   "end": 85.206,
+   "en_text": "and I've discovered that the traditional way we think",
+   "zh_text": "我发现，我们传统上对健康的看法",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 85.248,
+   "end": 87.959,
+   "en_text": "about health is incomplete.",
+   "zh_text": "是不完整的。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 88.46,
+   "end": 92.213,
+   "en_text": "By thinking of our health as primarily physical and mental,",
+   "zh_text": "当我们把健康主要看作身体和心理两方面时，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 92.255,
+   "end": 95.8,
+   "en_text": "we overlook what I believe is the greatest challenge",
+   "zh_text": "我们就忽略了——我认为这是当今最大的挑战，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 95.842,
+   "end": 98.637,
+   "en_text": "and the greatest opportunity of our time.",
+   "zh_text": "也是最大的机遇。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 99.304,
+   "end": 100.972,
+   "en_text": "Social health.",
+   "zh_text": "社交健康。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 101.681,
+   "end": 104.267,
+   "en_text": "While physical health is about our bodies",
+   "zh_text": "身体健康关乎我们的身体，",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 104.309,
+   "end": 106.436,
+   "en_text": "and mental health is about our minds,",
+   "zh_text": "心理健康关乎我们的心智，",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 106.478,
+   "end": 110.19,
+   "en_text": "social health is about our relationships.",
+   "zh_text": "而社交健康关乎我们的人际关系。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 110.649,
+   "end": 112.692,
+   "en_text": "And if you haven't heard this term before,",
+   "zh_text": "如果你以前没听过这个词，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 112.692,
+   "end": 116.696,
+   "en_text": "that's because it hasn't yet made its way into mainstream vocabulary,",
+   "zh_text": "那是因为它还没进入主流词汇，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 116.738,
+   "end": 119.324,
+   "en_text": "yet it is equally important.",
+   "zh_text": "但它同样重要。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 120.158,
+   "end": 123.453,
+   "en_text": "Maya didn't yet have a sense of community in her new home.",
+   "zh_text": "玛雅在新家还没有归属感。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 123.453,
+   "end": 125.205,
+   "en_text": "She wasn't seeing her family,",
+   "zh_text": "她不再见到她的家人，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 125.246,
+   "end": 128.291,
+   "en_text": "or her friends or her coworkers in person anymore,",
+   "zh_text": "也不再当面见到她的朋友或同事，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 128.333,
+   "end": 132.045,
+   "en_text": "and she often went weeks only spending quality time with her husband.",
+   "zh_text": "她常常好几周都只和丈夫共度美好时光。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 132.045,
+   "end": 136.424,
+   "en_text": "Her story shows us that we can't be fully healthy,",
+   "zh_text": "她的故事告诉我们，我们无法完全健康，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 136.466,
+   "end": 140.47,
+   "en_text": "we can’t thrive, if we take care of our bodies and our minds,",
+   "zh_text": "无法茁壮成长，如果我们只照顾身体和心智，",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 140.47,
+   "end": 142.305,
+   "en_text": "but not our relationships.",
+   "zh_text": "却不照顾我们的人际关系。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 143.723,
+   "end": 145.308,
+   "en_text": "Similar to Maya,",
+   "zh_text": "和玛雅类似，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 145.308,
+   "end": 149.396,
+   "en_text": "hundreds of millions of people around the world go weeks at a time",
+   "zh_text": "全世界有数亿人一连好几周",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 149.396,
+   "end": 153.149,
+   "en_text": "without talking to a single friend or family member.",
+   "zh_text": "都不跟任何一个朋友或家人说话。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 154.275,
+   "end": 157.737,
+   "en_text": "Globally, one in four people feel lonely.",
+   "zh_text": "全球有四分之一的人感到孤独。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 158.488,
+   "end": 162.534,
+   "en_text": "And 20 percent of adults worldwide don't feel like they have anyone",
+   "zh_text": "全世界有20%的成年人觉得自己没有任何人",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 162.575,
+   "end": 164.619,
+   "en_text": "they can reach out to for support.",
+   "zh_text": "可以求助、可以依靠。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 165.245,
+   "end": 166.413,
+   "en_text": "Think about that.",
+   "zh_text": "想想看吧。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 166.746,
+   "end": 170.917,
+   "en_text": "One in five people you encounter may feel like they have no one.",
+   "zh_text": "你遇到的每五个人里，可能就有一个人觉得自己无人可依。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 172.377,
+   "end": 174.921,
+   "en_text": "This is more than heartbreaking.",
+   "zh_text": "这不仅仅是让人心碎。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 174.963,
+   "end": 177.215,
+   "en_text": "It's also a public health crisis.",
+   "zh_text": "这也是一场公共卫生危机。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 177.549,
+   "end": 180.176,
+   "en_text": "Disconnection triggers stress in the body.",
+   "zh_text": "缺乏联结会引发身体里的压力反应。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 180.218,
+   "end": 182.887,
+   "en_text": "It weakens people's immune systems.",
+   "zh_text": "它会削弱人的免疫系统。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 182.929,
+   "end": 188.059,
+   "en_text": "It puts them at a risk, greater risk, of stroke, heart disease, diabetes,",
+   "zh_text": "它让人面临更大风险，更容易患上中风、心脏病、糖尿病、",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 188.059,
+   "end": 191.146,
+   "en_text": "dementia, depression and early death.",
+   "zh_text": "痴呆、抑郁症，甚至过早离世。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 191.646,
+   "end": 194.607,
+   "en_text": "Social health is essential for longevity.",
+   "zh_text": "社交健康对长寿至关重要。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 196.025,
+   "end": 197.402,
+   "en_text": "So you might be wondering,",
+   "zh_text": "所以你可能会想，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 197.444,
+   "end": 199.863,
+   "en_text": "what does it look like to be socially healthy?",
+   "zh_text": "社交健康到底是什么样子的？",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 199.863,
+   "end": 201.239,
+   "en_text": "What does that even mean?",
+   "zh_text": "这到底是什么意思？",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 201.531,
+   "end": 204.451,
+   "en_text": "Well it’s about developing close relationships",
+   "zh_text": "它指的是建立亲密的关系，",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 204.451,
+   "end": 208.079,
+   "en_text": "with your family, your friends, your partner, yourself.",
+   "zh_text": "和你的家人、朋友、伴侣，还有你自己。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 208.58,
+   "end": 212.917,
+   "en_text": "It's about having regular interaction with your coworkers, your neighbors.",
+   "zh_text": "它指的是和同事、邻居保持经常的互动。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 212.917,
+   "end": 215.503,
+   "en_text": "It's about feeling like you belong to a community.",
+   "zh_text": "它指的是感觉自己属于某个社群。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 216.254,
+   "end": 220.091,
+   "en_text": "Being socially healthy is about having the right quantity",
+   "zh_text": "社交健康意味着拥有适合你的",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 220.133,
+   "end": 222.594,
+   "en_text": "and quality of connection for you.",
+   "zh_text": "数量和质量的联结。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 223.845,
+   "end": 225.638,
+   "en_text": "And Maya's story is one example",
+   "zh_text": "Maya的故事就是一个例子，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 225.68,
+   "end": 228.183,
+   "en_text": "of how social health challenges come up.",
+   "zh_text": "说明社交健康的挑战是怎么出现的。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 228.224,
+   "end": 230.56,
+   "en_text": "In my work, I hear many others.",
+   "zh_text": "在我的工作中，我还听到很多别的故事。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 230.602,
+   "end": 232.02,
+   "en_text": "Stories like Jay,",
+   "zh_text": "比如Jay的故事，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 232.061,
+   "end": 233.438,
+   "en_text": "a freshman in college",
+   "zh_text": "他是个大学新生，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 233.48,
+   "end": 236.149,
+   "en_text": "who’s eager to get involved in campus",
+   "zh_text": "很想参与校园活动，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 236.149,
+   "end": 238.985,
+   "en_text": "yet is having a hard time fitting in with people in his dorm",
+   "zh_text": "却很难融入宿舍里的人，",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 239.027,
+   "end": 240.612,
+   "en_text": "and often feels homesick.",
+   "zh_text": "还经常想家。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 241.154,
+   "end": 244.991,
+   "en_text": "Or Serena and Ali, a couple juggling the chaos of young kids",
+   "zh_text": "或者Serena和Ali，这对夫妻一边应付年幼孩子的忙乱，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 245.033,
+   "end": 246.576,
+   "en_text": "with demanding jobs,",
+   "zh_text": "一边还要应对繁重的工作，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 246.618,
+   "end": 248.411,
+   "en_text": "they rarely have time to see friends",
+   "zh_text": "他们很少有时间见朋友，",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 248.411,
+   "end": 250.205,
+   "en_text": "or spend time one-on-one.",
+   "zh_text": "也很少有时间单独相处。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 250.997,
+   "end": 253.124,
+   "en_text": "Or Henry, recently retired,",
+   "zh_text": "还有Henry，他刚退休不久，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 253.166,
+   "end": 255.46,
+   "en_text": "who cherishes time with his spouse",
+   "zh_text": "很珍惜和配偶在一起的时光，",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 255.46,
+   "end": 258.963,
+   "en_text": "and yet feels untethered without his team anymore",
+   "zh_text": "但没有了团队，他觉得自己像断了线，",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 258.963,
+   "end": 262.008,
+   "en_text": "and wishes he could see his kids and grandkids more often.",
+   "zh_text": "希望能更常见到自己的孩子和孙辈。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 262.467,
+   "end": 267.18,
+   "en_text": "These stories show that social health is relevant to each of us",
+   "zh_text": "这些故事说明，社交健康和每个人都息息相关，",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 267.222,
+   "end": 269.14,
+   "en_text": "at every life stage.",
+   "zh_text": "在人生的每个阶段都是如此。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 269.766,
+   "end": 271.726,
+   "en_text": "So if you're not sure where to start,",
+   "zh_text": "所以如果你不确定从哪里开始，",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 271.726,
+   "end": 274.521,
+   "en_text": "try the 5-3-1 guideline from my book.",
+   "zh_text": "可以试试我书里的5-3-1法则。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 274.562,
+   "end": 275.855,
+   "en_text": "It goes like this.",
+   "zh_text": "它是这样的。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 275.897,
+   "end": 279.442,
+   "en_text": "Aim to interact with five different people each week,",
+   "zh_text": "目标是每周和五个不同的人互动，",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 279.484,
+   "end": 283.488,
+   "en_text": "to strengthen at least three close relationships overall,",
+   "zh_text": "总体上至少巩固三段亲密关系，",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 283.53,
+   "end": 286.449,
+   "en_text": "and to spend one hour a day connecting.",
+   "zh_text": "每天花一小时去建立联结。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 286.449,
+   "end": 287.826,
+   "en_text": "Let's dig into these.",
+   "zh_text": "我们来详细说说。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 288.201,
+   "end": 292.038,
+   "en_text": "So first, interact with five different people each week.",
+   "zh_text": "首先，每周和五个不同的人互动。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 292.08,
+   "end": 294.457,
+   "en_text": "Just like eating a variety of vegetables",
+   "zh_text": "就像吃各种各样的蔬菜",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 294.499,
+   "end": 297.085,
+   "en_text": "and other food groups is more nutritious,",
+   "zh_text": "和其他食物种类更有营养一样，",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 297.085,
+   "end": 300.547,
+   "en_text": "research has shown that interacting with a variety of people",
+   "zh_text": "研究表明，和形形色色的人互动",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 300.547,
+   "end": 301.84,
+   "en_text": "is more rewarding.",
+   "zh_text": "会更有意义。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 301.881,
+   "end": 305.844,
+   "en_text": "So your five could include close loved ones, casual acquaintances,",
+   "zh_text": "所以你的五个人可以包括亲近的亲人、泛泛之交，",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 305.844,
+   "end": 307.095,
+   "en_text": "even complete strangers.",
+   "zh_text": "甚至完全陌生的人。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 307.136,
+   "end": 309.347,
+   "en_text": "In fact, in one study that I love,",
+   "zh_text": "其实，在一项我很喜欢的研究中，",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 309.347,
+   "end": 311.766,
+   "en_text": "people who just smiled, made eye contact",
+   "zh_text": "那些只是微笑、进行眼神交流",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 311.766,
+   "end": 313.726,
+   "en_text": "and chit-chatted with a barista,",
+   "zh_text": "还和咖啡师闲聊了几句的人，",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 313.726,
+   "end": 316.396,
+   "en_text": "felt happier and a greater sense of belonging",
+   "zh_text": "感到更快乐，也更有归属感，",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 316.437,
+   "end": 319.315,
+   "en_text": "than people who just rushed to get their coffee and go.",
+   "zh_text": "比起那些匆匆拿了咖啡就走的人。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 320.066,
+   "end": 323.778,
+   "en_text": "Next, strengthen at least three close relationships.",
+   "zh_text": "接下来，至少强化三段亲密关系。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 324.237,
+   "end": 326.614,
+   "en_text": "OK, we've all heard of a to-do list,",
+   "zh_text": "好，我们都听说过待办清单，",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 326.656,
+   "end": 330.41,
+   "en_text": "but I would like to invite you to write a to-love list.",
+   "zh_text": "但我想邀请你写一份“待爱清单”。",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 331.327,
+   "end": 333.162,
+   "en_text": "Who matters most to you?",
+   "zh_text": "谁对你最重要？",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 333.204,
+   "end": 335.29,
+   "en_text": "Who can you be yourself with?",
+   "zh_text": "在谁面前你可以做自己？",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 335.331,
+   "end": 337.041,
+   "en_text": "Make sure that you invest",
+   "zh_text": "一定要确保你投入精力",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 337.041,
+   "end": 340.628,
+   "en_text": "in the names of at least three of the people that you write down.",
+   "zh_text": "在你写下的至少三个人的名字上。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 340.67,
+   "end": 342.797,
+   "en_text": "By scheduling regular time together,",
+   "zh_text": "通过安排固定的相处时间，",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 342.797,
+   "end": 345.508,
+   "en_text": "by showing a genuine interest in their lives,",
+   "zh_text": "通过真诚地关心他们的生活，",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 345.55,
+   "end": 346.885,
+   "en_text": "and also by opening up",
+   "zh_text": "也通过敞开心扉",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 346.926,
+   "end": 349.262,
+   "en_text": "about the experiences that you're going through.",
+   "zh_text": "聊聊你正在经历的事情。",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 349.637,
+   "end": 352.181,
+   "en_text": "And I'm often asked, does it have to be in person?",
+   "zh_text": "经常有人问我，一定要面对面吗？",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 352.223,
+   "end": 353.725,
+   "en_text": "Does texting count?",
+   "zh_text": "发短信算吗？",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 354.309,
+   "end": 356.728,
+   "en_text": "Studies have shown that face-to-face is ideal,",
+   "zh_text": "研究表明面对面是最理想的，",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 356.769,
+   "end": 358.313,
+   "en_text": "so do that whenever possible.",
+   "zh_text": "所以只要有可能就这样做。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 358.313,
+   "end": 362.108,
+   "en_text": "But there are absolutely still benefits to staying connected virtually.",
+   "zh_text": "但通过线上方式保持联系也绝对是有好处的。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 362.901,
+   "end": 367.488,
+   "en_text": "And last, spend one hour a day on meaningful connection.",
+   "zh_text": "最后，每天花一小时在有意义的联结上。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 367.488,
+   "end": 370.742,
+   "en_text": "OK, if you're an introvert, right now you're probably thinking",
+   "zh_text": "好，如果你是内向的人，现在你大概在想",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 370.742,
+   "end": 373.036,
+   "en_text": "one hour sounds like a lot.",
+   "zh_text": "一小时听起来好多啊。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 373.494,
+   "end": 374.704,
+   "en_text": "I get it.",
+   "zh_text": "我懂。",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 374.704,
+   "end": 377.999,
+   "en_text": "It might be surprising, but I'm actually also an introvert.",
+   "zh_text": "可能有点意外，但其实我也是个内向的人。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 378.791,
+   "end": 382.837,
+   "en_text": "However, keep in mind that just like getting eight hours of sleep at night,",
+   "zh_text": "不过，请记住，就像晚上睡八个小时一样，",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 382.879,
+   "end": 385.59,
+   "en_text": "the exact amount that's right for you personally",
+   "zh_text": "对你个人来说真正合适的量",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 385.59,
+   "end": 387.3,
+   "en_text": "might be higher or lower.",
+   "zh_text": "可能更高，也可能更低。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 388.259,
+   "end": 392.013,
+   "en_text": "But if you are thinking that one hour a day sounds like way too much",
+   "zh_text": "但如果你觉得每天一小时听起来实在太多了",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 392.055,
+   "end": 394.015,
+   "en_text": "because you're just way too busy,",
+   "zh_text": "因为你实在太忙了，",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 394.015,
+   "end": 395.308,
+   "en_text": "I challenge you.",
+   "zh_text": "那我向你发起挑战。",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 395.85,
+   "end": 398.853,
+   "en_text": "Adults in the US spend an average of 4.5 hours",
+   "zh_text": "美国成年人平均每天花4.5个小时",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 398.895,
+   "end": 400.897,
+   "en_text": "each day on their smartphones.",
+   "zh_text": "在智能手机上。",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 401.356,
+   "end": 403.858,
+   "en_text": "So instead of scrolling on social media,",
+   "zh_text": "所以，与其刷社交媒体，",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 403.858,
+   "end": 405.401,
+   "en_text": "text a friend.",
+   "zh_text": "不如给朋友发条短信。",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 405.944,
+   "end": 409.656,
+   "en_text": "Instead of reading news headlines, write a thank-you card.",
+   "zh_text": "与其看新闻头条，不如写一张感谢卡。",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 410.323,
+   "end": 413.618,
+   "en_text": "Instead of listening to a podcast, call a family member.",
+   "zh_text": "与其听播客，不如给家人打个电话。",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 414.953,
+   "end": 416.621,
+   "en_text": "Maya put this into practice",
+   "zh_text": "Maya把这个方法付诸实践，",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 416.663,
+   "end": 421.0,
+   "en_text": "by scheduling recurring hangouts with a new local friend that she made,",
+   "zh_text": "她和一个新认识的本地朋友安排了定期聚会，",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 421.042,
+   "end": 424.379,
+   "en_text": "by attending community events",
+   "zh_text": "参加社区活动，",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 424.42,
+   "end": 427.632,
+   "en_text": "and dropping cards off in her neighbors mailboxes,",
+   "zh_text": "把卡片投进邻居的信箱，",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 427.674,
+   "end": 429.217,
+   "en_text": "by planning trips to see family",
+   "zh_text": "计划去看望家人，",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 429.258,
+   "end": 432.053,
+   "en_text": "and inviting friends in other cities to come visit.",
+   "zh_text": "还邀请其他城市的朋友来玩。",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 432.095,
+   "end": 435.348,
+   "en_text": "And bolstering her social health",
+   "zh_text": "而增强她的社交健康",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 435.348,
+   "end": 436.641,
+   "en_text": "made more of a difference",
+   "zh_text": "带来的改变",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 436.683,
+   "end": 441.187,
+   "en_text": "than focusing solely on her physical and mental health ever could.",
+   "zh_text": "比只关注她的身心健康所能带来的都要大。",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 441.646,
+   "end": 445.108,
+   "en_text": "And I know this because Maya",
+   "zh_text": "我知道这一点，是因为Maya",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 445.149,
+   "end": 446.484,
+   "en_text": "is actually me.",
+   "zh_text": "其实说的就是我。",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 448.82,
+   "end": 452.532,
+   "en_text": "I am so passionate about sharing tools to be socially healthy",
+   "zh_text": "我特别热衷于分享让自己在社交上更健康的工具",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 452.532,
+   "end": 454.409,
+   "en_text": "because honestly, I need them too.",
+   "zh_text": "因为说实话，我自己也需要它们。",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 454.701,
+   "end": 458.746,
+   "en_text": "And the 5-3-1 guideline is one way that we can be proactive",
+   "zh_text": "而5-3-1法则就是让我们能主动",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 458.788,
+   "end": 461.666,
+   "en_text": "and intentional about our relationships.",
+   "zh_text": "并有意识地去经营人际关系的一种方法。",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 461.708,
+   "end": 463.334,
+   "en_text": "And that is really the point.",
+   "zh_text": "而这正是关键所在。",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 463.376,
+   "end": 467.171,
+   "en_text": "Be proactive and intentional about your social health.",
+   "zh_text": "主动且有意识地去关注你的社交健康。",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 468.548,
+   "end": 473.678,
+   "en_text": "So zooming out beyond the steps that you and I take individually,",
+   "zh_text": "所以，把视野放宽，不只局限于你我个人采取的这些步骤，",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 473.678,
+   "end": 477.64,
+   "en_text": "together, we need to shape a society that thrives through social health.",
+   "zh_text": "我们还需要共同塑造一个因社交健康而繁荣的社会。",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 478.099,
+   "end": 479.267,
+   "en_text": "Over the next decade,",
+   "zh_text": "在未来十年里，",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 479.308,
+   "end": 483.271,
+   "en_text": "I envision educators championing social health in schools.",
+   "zh_text": "我设想教育工作者会在学校里倡导社交健康。",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 483.271,
+   "end": 486.941,
+   "en_text": "And just like kids build their physical muscles in gym class,",
+   "zh_text": "就像孩子们在体育课上锻炼身体肌肉一样，",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 486.941,
+   "end": 490.528,
+   "en_text": "they'll exercise their social muscles in connection class.",
+   "zh_text": "他们也会在人际连接课上锻炼自己的社交肌肉。",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 491.237,
+   "end": 492.363,
+   "en_text": "Over the next decade,",
+   "zh_text": "在未来十年里，",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 492.405,
+   "end": 494.907,
+   "en_text": "I see our cities and neighborhoods",
+   "zh_text": "我看到我们的城市和社区",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 494.907,
+   "end": 497.577,
+   "en_text": "being designed with social health in mind,",
+   "zh_text": "在设计时会把社交健康考虑在内，",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 497.577,
+   "end": 500.371,
+   "en_text": "where vibrant gathering places foster unity",
+   "zh_text": "充满活力的聚会场所促进团结，",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 500.413,
+   "end": 503.708,
+   "en_text": "and community builders are empowered to bring them to life.",
+   "zh_text": "社区建设者也有能力把它们变成现实。",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 504.709,
+   "end": 505.877,
+   "en_text": "Over the next decade,",
+   "zh_text": "在未来十年里，",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 505.918,
+   "end": 507.587,
+   "en_text": "I believe that social health",
+   "zh_text": "我相信社交健康",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 507.628,
+   "end": 511.299,
+   "en_text": "will become as ingrained in our collective consciousness",
+   "zh_text": "会像今天的心理健康一样，",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 511.34,
+   "end": 513.342,
+   "en_text": "as mental health is today.",
+   "zh_text": "深深扎根于我们的集体意识之中。",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 513.384,
+   "end": 514.635,
+   "en_text": "Because not that long ago,",
+   "zh_text": "因为就在不久之前，",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 514.635,
+   "end": 518.347,
+   "en_text": "mental health was a taboo topic shrouded in stigma.",
+   "zh_text": "心理健康还是一个被污名笼罩的禁忌话题。",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 518.347,
+   "end": 521.017,
+   "en_text": "And now public figures talk openly about it,",
+   "zh_text": "而现在公众人物会公开谈论它，",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 521.059,
+   "end": 524.187,
+   "en_text": "there's an entire industry to support it,",
+   "zh_text": "有整个行业来支持它，",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 524.228,
+   "end": 526.647,
+   "en_text": "and more and more people think of going to therapy",
+   "zh_text": "越来越多的人把去做心理咨询",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 526.689,
+   "end": 527.982,
+   "en_text": "like going to the gym.",
+   "zh_text": "看作像去健身房一样。",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 529.192,
+   "end": 532.487,
+   "en_text": "In this future, loneliness will subside,",
+   "zh_text": "在这样的未来，孤独感会消退，",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 532.528,
+   "end": 535.031,
+   "en_text": "just like smoking subsided when we recognized",
+   "zh_text": "就像当年我们认识到吸烟",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 535.073,
+   "end": 537.492,
+   "en_text": "and treated it as a public health issue.",
+   "zh_text": "并将其作为公共卫生问题来处理后，吸烟现象逐渐减少一样。",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 538.493,
+   "end": 539.994,
+   "en_text": "In this future,",
+   "zh_text": "在这样的未来，",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 540.036,
+   "end": 543.706,
+   "en_text": "I hope that social health will become so deeply woven",
+   "zh_text": "我希望社交健康会如此深深地融入",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 543.748,
+   "end": 545.583,
+   "en_text": "into the fabric of our culture",
+   "zh_text": "我们文化的肌理之中，",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 545.625,
+   "end": 548.586,
+   "en_text": "that no one needs the 5-3-1 guideline anymore.",
+   "zh_text": "以至于再也没有人需要5-3-1法则了。",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 549.837,
+   "end": 551.839,
+   "en_text": "So to get there,",
+   "zh_text": "所以，要达到那一步，",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 551.881,
+   "end": 555.885,
+   "en_text": "make relationships your priority not only for you,",
+   "zh_text": "请把人际关系放在首位，不仅为了你自己，",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 555.885,
+   "end": 557.887,
+   "en_text": "but also for the people you love.",
+   "zh_text": "也为了你所爱的人。",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 557.929,
+   "end": 561.599,
+   "en_text": "Because the beauty of nurturing your own social health",
+   "zh_text": "因为培养自身社交健康的美妙之处在于，",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 561.599,
+   "end": 564.06,
+   "en_text": "is that it naturally enriches the social health",
+   "zh_text": "它会自然而然地丰富",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 564.102,
+   "end": 566.02,
+   "en_text": "of everyone you connect with.",
+   "zh_text": "与你相连的每个人的社交健康。",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 566.854,
+   "end": 568.022,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢。",
+   "highlights": []
+  }
+ ]
+}

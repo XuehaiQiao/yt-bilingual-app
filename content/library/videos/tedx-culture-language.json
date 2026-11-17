@@ -1,0 +1,1157 @@
+{
+ "id": "tedx-culture-language",
+ "youtubeId": "fbQ3LGoFaLc",
+ "title": "The surprising implications of culture on language and how we talk",
+ "channel": "TEDx Talks",
+ "duration": 553,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/fbQ3LGoFaLc/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:04+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 13.926,
+   "end": 16.304,
+   "en_text": "What images come to your mind",
+   "zh_text": "你脑海中会浮现出哪些画面",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 16.304,
+   "end": 20.099,
+   "en_text": "when you see or hear the word “culture?”",
+   "zh_text": "当你看到或听到“文化”这个词的时候？",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 22.101,
+   "end": 25.48,
+   "en_text": "If you were to ask me personally, I would say food,",
+   "zh_text": "如果你问我个人的话，我会说是美食，",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 25.813,
+   "end": 28.566,
+   "en_text": "because who doesn’t love to bond over a great meal?",
+   "zh_text": "因为谁不喜欢在一顿美餐中拉近彼此的距离呢？",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 29.358,
+   "end": 32.528,
+   "en_text": "But have you thought about the implications",
+   "zh_text": "但你想过吗，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 32.528,
+   "end": 34.572,
+   "en_text": "of culture on language,",
+   "zh_text": "文化对语言的影响，",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 35.239,
+   "end": 40.536,
+   "en_text": "and more importantly, how culture can impact our everyday communication?",
+   "zh_text": "更重要的是，文化如何影响我们日常的交流？",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 41.996,
+   "end": 46.292,
+   "en_text": "Just by a show of hands, how many of you speak a language other than English",
+   "zh_text": "我们举个手看看，有多少人会讲英语以外的语言，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 46.417,
+   "end": 48.086,
+   "en_text": "or know someone who does?",
+   "zh_text": "或者认识这样的人？",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 49.879,
+   "end": 51.464,
+   "en_text": "Take a moment to look around you,",
+   "zh_text": "花点时间看看你周围，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 51.464,
+   "end": 54.383,
+   "en_text": "because almost all of you have raised your hand.",
+   "zh_text": "因为几乎所有人都举手了。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 56.511,
+   "end": 59.68,
+   "en_text": "Having grown up both within the United States and Iran,",
+   "zh_text": "我在美国和伊朗两地长大，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 59.806,
+   "end": 64.268,
+   "en_text": "I have been exposed to two very different and unique ways of life",
+   "zh_text": "接触过两种截然不同、各具特色的生活方式，",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 64.936,
+   "end": 67.939,
+   "en_text": "each with their own distinct culture.",
+   "zh_text": "每一种都有自己独特的文化。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 68.564,
+   "end": 72.193,
+   "en_text": "But it was only when I started to teach English in Iran",
+   "zh_text": "但直到我开始在伊朗教英语，",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 72.193,
+   "end": 73.903,
+   "en_text": "that I began to understand",
+   "zh_text": "我才开始理解",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 73.903,
+   "end": 79.325,
+   "en_text": "the dynamic relationship between culture and language.",
+   "zh_text": "文化与语言之间那种动态的关系。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 80.243,
+   "end": 84.247,
+   "en_text": "Culture can impact what we communicate verbally and non-verbally.",
+   "zh_text": "文化会影响我们用言语和非言语方式传达的内容。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 84.372,
+   "end": 87.416,
+   "en_text": "And to demonstrate that to you today, I’d like to reflect",
+   "zh_text": "为了今天向大家说明这一点，我想回顾一下",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 87.5,
+   "end": 91.212,
+   "en_text": "on some of my English language teaching experiences.",
+   "zh_text": "我的一些英语教学经历。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 92.755,
+   "end": 97.593,
+   "en_text": "You can understand the shock on my face when my student addressed me as master.",
+   "zh_text": "你能想象当我的学生称呼我“师父”时，我脸上有多震惊。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 99.428,
+   "end": 102.557,
+   "en_text": "For a second, I didn’t know how to respond.",
+   "zh_text": "有那么一瞬间，我不知道该怎么回应。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 103.891,
+   "end": 106.394,
+   "en_text": "Was this a scene from Karate Kid?",
+   "zh_text": "这是《龙威小子》里的场景吗？",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 107.186,
+   "end": 111.232,
+   "en_text": "Was I master Miyagi, and my student Daniel-san?",
+   "zh_text": "我是宫城师父，而我的学生是丹尼尔吗？",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 111.649,
+   "end": 113.776,
+   "en_text": "Wax on, wax off.",
+   "zh_text": "打蜡，擦蜡。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 115.069,
+   "end": 117.613,
+   "en_text": "However, with the help of one of my colleagues,",
+   "zh_text": "不过，在我一位同事的帮助下，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 117.613,
+   "end": 121.576,
+   "en_text": "I came to understand that one of the Persian words for teacher",
+   "zh_text": "我渐渐明白，波斯语中表示“老师”的一个词",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 121.659,
+   "end": 125.83,
+   "en_text": "when translated to English has a similar definition to master,",
+   "zh_text": "翻译成英语后，含义和“师父”相似，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 126.789,
+   "end": 130.751,
+   "en_text": "highlighting and signifying the high degree of respect",
+   "zh_text": "凸显并象征着学生对他或她的老师",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 131.002,
+   "end": 133.629,
+   "en_text": "a student holds for his or her teacher.",
+   "zh_text": "所怀有的高度敬意。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 134.463,
+   "end": 139.385,
+   "en_text": "Or another time when after a long and stressful day of teaching,",
+   "zh_text": "还有一次，在漫长而压力山大的一天教学之后，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 139.76,
+   "end": 141.554,
+   "en_text": "my students stopped me",
+   "zh_text": "我的学生们拦住我，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 142.096,
+   "end": 147.268,
+   "en_text": "and said in the calmest and smoothest of voices,",
+   "zh_text": "用最平静、最柔和的声音说：",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 148.102,
+   "end": 150.479,
+   "en_text": "“Don’t be tired.”",
+   "zh_text": "“别累了。”",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 152.398,
+   "end": 154.358,
+   "en_text": "I wasn't sure what to make of that.",
+   "zh_text": "我不太确定该怎么理解这句话。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 154.692,
+   "end": 158.779,
+   "en_text": "Was I being encouraged or mocked because of my teaching efforts?",
+   "zh_text": "这是在鼓励我，还是在嘲讽我的教学付出？",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 159.739,
+   "end": 161.49,
+   "en_text": "When I told a colleague of mine,",
+   "zh_text": "当我告诉一位同事时，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 161.741,
+   "end": 164.535,
+   "en_text": "she said that the statement that my student had uttered",
+   "zh_text": "她说我学生说的那句话",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 164.952,
+   "end": 168.956,
+   "en_text": "was similar to a simple “thank you” in the English language.",
+   "zh_text": "相当于英语里一句简单的“谢谢”。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 169.916,
+   "end": 173.586,
+   "en_text": "However, it differed in that the connotation of the expression",
+   "zh_text": "不过，不同之处在于这个表达的内涵",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 174.003,
+   "end": 177.632,
+   "en_text": "underlined the mental and physical efforts",
+   "zh_text": "强调的是我那天在课堂上",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 177.673,
+   "end": 179.717,
+   "en_text": "that I had put into class that day.",
+   "zh_text": "所付出的脑力和体力。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 181.51,
+   "end": 185.473,
+   "en_text": "Now culture is not only limited to verbal modes of communication",
+   "zh_text": "文化不仅限于语言交流方式",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 185.598,
+   "end": 188.935,
+   "en_text": "but can also impact nonverbal communication as well.",
+   "zh_text": "也会影响非语言交流。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 189.685,
+   "end": 192.48,
+   "en_text": "Think about body gestures for a second.",
+   "zh_text": "想想肢体动作。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 193.564,
+   "end": 196.692,
+   "en_text": "Let’s say that you and I were having a conversation,",
+   "zh_text": "假设你和我正在聊天，",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 197.068,
+   "end": 199.57,
+   "en_text": "much like the one that we’re having right now,",
+   "zh_text": "就像我们现在这样，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 199.654,
+   "end": 203.616,
+   "en_text": "and I decided to fold my arms.",
+   "zh_text": "然后我决定把双臂交叉抱起来。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 204.533,
+   "end": 206.077,
+   "en_text": "What would you make of that?",
+   "zh_text": "你会怎么理解？",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 207.912,
+   "end": 210.498,
+   "en_text": "For one, it could mean that I'm cold.",
+   "zh_text": "一方面，这可能意味着我冷了。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 210.915,
+   "end": 214.293,
+   "en_text": "But what could it potentially reveal about my personality?",
+   "zh_text": "但它可能揭示出我性格的什么特点呢？",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 215.795,
+   "end": 217.255,
+   "en_text": "Here in the United States,",
+   "zh_text": "在美国这里，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 217.255,
+   "end": 220.675,
+   "en_text": "folding your arms is associated with being unfriendly,",
+   "zh_text": "抱臂被认为是不友好、",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 221.133,
+   "end": 223.678,
+   "en_text": "distant or standoffish.",
+   "zh_text": "疏远或冷淡的表现。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 224.136,
+   "end": 227.682,
+   "en_text": "But what if I told you that the same exact body gesture",
+   "zh_text": "但如果我告诉你，完全相同的肢体动作",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 227.807,
+   "end": 231.102,
+   "en_text": "has a completely different connotation in another environment,",
+   "zh_text": "在另一个环境里有着完全不同的含义，",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 231.56,
+   "end": 234.188,
+   "en_text": "like East Asia and the Middle East?",
+   "zh_text": "比如东亚和中东呢？",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 235.564,
+   "end": 236.691,
+   "en_text": "In that context,",
+   "zh_text": "在那种语境下，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 236.691,
+   "end": 240.861,
+   "en_text": "folding your arms is a sign of contemplation and wisdom,",
+   "zh_text": "抱臂是沉思和智慧的标志，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 241.57,
+   "end": 245.866,
+   "en_text": "indicating that you are wholeheartedly thinking about what has been said to you",
+   "zh_text": "表示你在全心全意地思考对方说的话",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 246.075,
+   "end": 248.577,
+   "en_text": "to provide the best possible response.",
+   "zh_text": "以便给出最好的回应。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 250.538,
+   "end": 253.708,
+   "en_text": "Now oftentimes there are even cultural concepts and notions",
+   "zh_text": "而且很多时候，甚至有些文化概念和观念",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 253.916,
+   "end": 256.752,
+   "en_text": "that are virtually nonexistent in another environment.",
+   "zh_text": "在另一个环境里几乎不存在。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 259.255,
+   "end": 263.009,
+   "en_text": "Take, for instance, the Persian cultural concept of “tarof.”",
+   "zh_text": "比如波斯文化中的“tarof”概念。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 264.427,
+   "end": 269.098,
+   "en_text": "Simply put, “tarof” is a staple and integral part of the Persian culture,",
+   "zh_text": "简单来说，“tarof”是波斯文化的基本组成部分，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 269.348,
+   "end": 273.019,
+   "en_text": "emphasizing polite gestures and cultural pleasantries",
+   "zh_text": "强调礼貌举止和文化客套",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 273.352,
+   "end": 275.604,
+   "en_text": "in a wide array of situations.",
+   "zh_text": "在各种场合中。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 275.938,
+   "end": 277.481,
+   "en_text": "And here’s what it looks like.",
+   "zh_text": "它是这样的。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 278.274,
+   "end": 281.319,
+   "en_text": "For me going out to eat looks very different,",
+   "zh_text": "对我来说，出去吃饭的情况很不一样，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 281.319,
+   "end": 285.323,
+   "en_text": "depending on whether I’m with my Persian or non-Persian friends.",
+   "zh_text": "取决于我是和波斯朋友还是非波斯朋友在一起。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 286.907,
+   "end": 288.534,
+   "en_text": "With my non-Persian friends,",
+   "zh_text": "和我的非波斯朋友在一起时，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 288.534,
+   "end": 291.287,
+   "en_text": "it’s a very peaceful and tranquil experience.",
+   "zh_text": "那是非常平静安宁的体验。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 291.954,
+   "end": 295.583,
+   "en_text": "When the bill comes, everyone pays for the meal they had separately,",
+   "zh_text": "账单来了，大家各付各的，",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 295.958,
+   "end": 296.959,
+   "en_text": "and we leave.",
+   "zh_text": "然后我们就走了。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 298.21,
+   "end": 302.548,
+   "en_text": "However, it’s a completely different story when I’m out with my Persian friends.",
+   "zh_text": "然而，和波斯朋友出去就完全是另一回事了。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 303.299,
+   "end": 304.8,
+   "en_text": "It’s a battlefield",
+   "zh_text": "那是一场战场，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 305.593,
+   "end": 308.095,
+   "en_text": "as we try to snatch the bill from the waiter",
+   "zh_text": "我们争着从服务员手里抢账单，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 308.596,
+   "end": 311.098,
+   "en_text": "to proclaim victorious in paying for everyone.",
+   "zh_text": "好宣布自己胜利地为所有人付了钱。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 311.474,
+   "end": 313.184,
+   "en_text": "Now this might seem strange,",
+   "zh_text": "这看起来可能很奇怪，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 313.392,
+   "end": 317.188,
+   "en_text": "but this is a sign of hospitality within the Persian culture,",
+   "zh_text": "但这是波斯文化中好客的表现，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 317.688,
+   "end": 321.359,
+   "en_text": "indicating that you have greatly enjoyed the other person’s presence,",
+   "zh_text": "表示你非常享受对方的陪伴，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 321.359,
+   "end": 323.152,
+   "en_text": "and they are your guest for the meal.",
+   "zh_text": "对方是你这顿饭的客人。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 324.111,
+   "end": 327.531,
+   "en_text": "This can even go to extremes as we arrive earlier at a restaurant",
+   "zh_text": "这甚至可以做到极端，我们会提前到餐厅",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 327.531,
+   "end": 329.575,
+   "en_text": "just to provide a credit card,",
+   "zh_text": "只是为了先交一张信用卡，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 329.867,
+   "end": 333.245,
+   "en_text": "so our guest has absolutely no chance of paying.",
+   "zh_text": "这样我们的客人就完全没机会付钱。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 333.996,
+   "end": 335.873,
+   "en_text": "So take it from me.",
+   "zh_text": "所以听我的。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 336.165,
+   "end": 338.209,
+   "en_text": "Make sure you have some Persian friends.",
+   "zh_text": "一定要交几个波斯朋友。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 338.209,
+   "end": 341.045,
+   "en_text": "That way, you’ll never have to pick up the bill.",
+   "zh_text": "这样，你就永远不用买单了。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 344.09,
+   "end": 347.927,
+   "en_text": "Cultural concepts such as “tarof” are even more difficult to grasp",
+   "zh_text": "像“tarof”这样的文化概念更难理解",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 347.927,
+   "end": 350.596,
+   "en_text": "for individuals not familiar with the context.",
+   "zh_text": "对于不熟悉这个背景的人来说。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 351.931,
+   "end": 355.726,
+   "en_text": "So you can imagine the puzzling look on my European friend’s face",
+   "zh_text": "所以你可以想象我那位欧洲朋友脸上困惑的表情",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 355.726,
+   "end": 358.02,
+   "en_text": "when he came to Iran for the first time,",
+   "zh_text": "当他第一次来伊朗的时候，",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 358.729,
+   "end": 362.108,
+   "en_text": "and the cab driver told him that he didn’t have to pay the fare,",
+   "zh_text": "出租车司机告诉他不用付车费，",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 363.234,
+   "end": 365.611,
+   "en_text": "saying something along the lines of,",
+   "zh_text": "说的是类似这样的话：",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 366.404,
+   "end": 368.447,
+   "en_text": "“It’s not worthy of you.”",
+   "zh_text": "“这配不上您。”",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 370.241,
+   "end": 374.036,
+   "en_text": "Next thing you know, the same cab driver is shouting and yelling at him,",
+   "zh_text": "结果你猜怎么着，同一个出租车司机又冲他大喊大叫，",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 374.286,
+   "end": 377.748,
+   "en_text": "“Where do you think you’re going, pal? You forgot to pay the fare.”",
+   "zh_text": "“你以为你往哪儿走呢，哥们儿？你忘了付车费了。”",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 378.124,
+   "end": 381.669,
+   "en_text": "My friend, unaware of the cultural concept of “tarof,”",
+   "zh_text": "我朋友不了解“tarof”这个文化概念，",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 381.919,
+   "end": 384.88,
+   "en_text": "solely relied on his understanding of language,",
+   "zh_text": "只凭自己对语言的理解，",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 385.214,
+   "end": 387.8,
+   "en_text": "which led him to literally take the offer.",
+   "zh_text": "结果就字面意思地接受了这个免单。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 388.342,
+   "end": 392.096,
+   "en_text": "However, it is this cultural knowledge that makes it known",
+   "zh_text": "然而，正是这种文化知识让人明白",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 392.096,
+   "end": 397.726,
+   "en_text": "that it’s customary for service personnel to refuse payment two or three times",
+   "zh_text": "服务人员习惯性地拒绝收钱两三次",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 397.81,
+   "end": 399.687,
+   "en_text": "as a sign of hospitality",
+   "zh_text": "以表示好客",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 399.77,
+   "end": 403.482,
+   "en_text": "all while expecting the payment to be completed in the end.",
+   "zh_text": "但同时又期望最后钱还是照付。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 405.609,
+   "end": 406.777,
+   "en_text": "Now keep in mind,",
+   "zh_text": "现在请记住，",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 406.819,
+   "end": 409.238,
+   "en_text": "all of the examples that we have talked about today",
+   "zh_text": "我们今天谈到的所有例子",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 409.405,
+   "end": 411.866,
+   "en_text": "represent a very microskill",
+   "zh_text": "都只代表一个非常微小的技能点",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 412.032,
+   "end": 414.827,
+   "en_text": "of the present-day multiculturalism that exists.",
+   "zh_text": "在当今存在的多元文化中。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 415.786,
+   "end": 421.417,
+   "en_text": "Currently, there are around 1.35 billion English speakers around the world.",
+   "zh_text": "目前，全世界大约有13.5亿英语使用者。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 422.543,
+   "end": 426.922,
+   "en_text": "Out of which around 1 billion also speak a language other than English,",
+   "zh_text": "其中大约有10亿人还会说英语以外的另一种语言，",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 427.298,
+   "end": 432.887,
+   "en_text": "which consciously and unconsciously brings with itself cultural norms and perceptions",
+   "zh_text": "这会有意无意地带来文化规范和观念",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 432.928,
+   "end": 436.807,
+   "en_text": "which may influence and impact their English communication.",
+   "zh_text": "这些可能会影响和作用于他们的英语交流。",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 439.977,
+   "end": 444.356,
+   "en_text": "And the United States is a wonderful example of a multicultural environment.",
+   "zh_text": "而美国就是一个多元文化环境的绝佳例子。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 444.607,
+   "end": 449.278,
+   "en_text": "As of 2018, there are around 67 million individuals",
+   "zh_text": "截至2018年，大约有6700万人",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 449.612,
+   "end": 452.239,
+   "en_text": "who speak a language other than English right here.",
+   "zh_text": "就在这里说英语以外的语言。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 453.782,
+   "end": 457.161,
+   "en_text": "Now you might be asking yourself: Why is any of this important?",
+   "zh_text": "现在你可能会问自己：这些为什么重要？",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 458.204,
+   "end": 461.624,
+   "en_text": "Well firstly, fostering and developing an appreciation",
+   "zh_text": "首先，培养和发展一种认识，",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 461.957,
+   "end": 464.543,
+   "en_text": "that each and every single culture",
+   "zh_text": "即每一种文化",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 464.877,
+   "end": 467.171,
+   "en_text": "brings something to this table called life.",
+   "zh_text": "都为这个叫做生活的东西贡献了一份力量。",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 468.214,
+   "end": 470.216,
+   "en_text": "And secondly, for me personally,",
+   "zh_text": "其次，对我个人而言，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 470.424,
+   "end": 473.344,
+   "en_text": "this is important because, as an English language instructor",
+   "zh_text": "这很重要，因为作为一名英语教师",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 473.594,
+   "end": 475.971,
+   "en_text": "and doctoral student here at Texas A&M,",
+   "zh_text": "以及德州农工大学的博士生，",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 476.222,
+   "end": 479.266,
+   "en_text": "I feel responsible for paying forward this knowledge",
+   "zh_text": "我觉得有责任把这份知识传递下去",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 479.475,
+   "end": 481.81,
+   "en_text": "to the future generation of educators",
+   "zh_text": "传给未来的教育工作者",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 482.436,
+   "end": 483.896,
+   "en_text": "so that they not only know",
+   "zh_text": "让他们不仅知道",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 484.063,
+   "end": 486.815,
+   "en_text": "what to provide in the classroom in terms of the language",
+   "zh_text": "在课堂上要提供什么样的语言内容",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 486.815,
+   "end": 489.109,
+   "en_text": "that is accurate and appropriate",
+   "zh_text": "才是准确和恰当的",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 489.652,
+   "end": 493.906,
+   "en_text": "but also take into context the richness and culture",
+   "zh_text": "还要考虑到这些人的丰富性和文化",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 493.906,
+   "end": 496.158,
+   "en_text": "that these individuals possess.",
+   "zh_text": "他们所拥有的。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 497.451,
+   "end": 498.869,
+   "en_text": "Which brings the question:",
+   "zh_text": "这就引出了一个问题：",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 498.994,
+   "end": 502.623,
+   "en_text": "What can we do when the landscape is so rich?",
+   "zh_text": "当情况如此丰富多样时，我们能做些什么？",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 505.334,
+   "end": 508.128,
+   "en_text": "Realistically and practically speaking,",
+   "zh_text": "现实地、实际地讲，",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 508.504,
+   "end": 512.299,
+   "en_text": "we cannot be expected to know every single thing there is",
+   "zh_text": "我们不能指望自己知道存在的每一件事",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 512.508,
+   "end": 514.843,
+   "en_text": "about the wide array of cultures that exist.",
+   "zh_text": "关于世界上存在的各种各样的文化。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 515.928,
+   "end": 517.763,
+   "en_text": "But if there’s one thing",
+   "zh_text": "但如果有一件事",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 517.763,
+   "end": 521.767,
+   "en_text": "that I would like for you to take away from this talk today, it’s this:",
+   "zh_text": "是我希望大家今天听完这场演讲后能记住的，那就是：",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 523.269,
+   "end": 526.564,
+   "en_text": "That just because individuals act and say things",
+   "zh_text": "仅仅因为有些人的言行",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 526.564,
+   "end": 530.609,
+   "en_text": "that may slightly differ from our norms and perceptions",
+   "zh_text": "可能和我们的规范与认知稍有不同",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 530.985,
+   "end": 533.696,
+   "en_text": "does not mean that they are wrong, and we are right.",
+   "zh_text": "并不意味着他们就是错的，我们就是对的。",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 534.989,
+   "end": 539.535,
+   "en_text": "Rather, it offers a different lens and perspective of looking into life,",
+   "zh_text": "相反，这提供了一种看待生活的不同视角和眼光，",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 540.411,
+   "end": 544.707,
+   "en_text": "one that you and I might be interested in learning a little bit more about.",
+   "zh_text": "一种你我也许会有兴趣多了解一点的视角。",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 544.999,
+   "end": 546.041,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢大家。",
+   "highlights": []
+  }
+ ]
+}

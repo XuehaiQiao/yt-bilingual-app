@@ -1,0 +1,733 @@
+{
+ "id": "teded-bilingual-brain",
+ "youtubeId": "MMmOLN5zBLY",
+ "title": "The benefits of a bilingual brain - Mia Nacamulli",
+ "channel": "TED-Ed",
+ "duration": 304,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/MMmOLN5zBLY/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:55+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 6.635,
+   "end": 12.495,
+   "en_text": "¿Hablas español? Parlez-vous français? 你会说中文吗？",
+   "zh_text": "你会说西班牙语吗？你会说法语吗？你会说中文吗？",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 12.495,
+   "end": 18.333,
+   "en_text": "If you answered, \"sí,\" \"oui,\" or \"会\" and you're watching this in English,",
+   "zh_text": "如果你回答了“sí”“oui”或“会”，而且你正在用英语看这个视频，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 18.333,
+   "end": 23.469,
+   "en_text": "chances are you belong to the world's bilingual and multilingual majority.",
+   "zh_text": "那你很可能属于世界上会两种或多种语言的多数人。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 23.469,
+   "end": 25.563,
+   "en_text": "And besides having an easier time traveling",
+   "zh_text": "除了旅行时更轻松",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 25.563,
+   "end": 27.471,
+   "en_text": "or watching movies without subtitles,",
+   "zh_text": "或者看没有字幕的电影时更轻松之外，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 27.471,
+   "end": 29.895,
+   "en_text": "knowing two or more languages means that your brain",
+   "zh_text": "会两种或更多语言意味着你的大脑",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 29.895,
+   "end": 34.777,
+   "en_text": "may actually look and work differently than those of your monolingual friends.",
+   "zh_text": "可能真的看起来和运作方式都跟只会一种语言的朋友不一样。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 34.777,
+   "end": 38.272,
+   "en_text": "So what does it really mean to know a language?",
+   "zh_text": "那么，会一门语言到底意味着什么呢？",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 38.272,
+   "end": 43.133,
+   "en_text": "Language ability is typically measured in two active parts, speaking and writing,",
+   "zh_text": "语言能力通常用两个主动部分来衡量，即说和写，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 43.133,
+   "end": 46.985,
+   "en_text": "and two passive parts, listening and reading.",
+   "zh_text": "以及两个被动部分，即听和读。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 46.985,
+   "end": 49.655,
+   "en_text": "While a balanced bilingual has near equal",
+   "zh_text": "均衡的双语者在两种语言上",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 49.655,
+   "end": 52.377,
+   "en_text": "abilities across the board in two languages,",
+   "zh_text": "各方面的能力几乎相当，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 52.377,
+   "end": 55.76,
+   "en_text": "most bilinguals around the world know and use their languages",
+   "zh_text": "但世界上大多数双语者掌握和使用语言的程度",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 55.76,
+   "end": 57.981,
+   "en_text": "in varying proportions.",
+   "zh_text": "各不相同。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 57.981,
+   "end": 61.612,
+   "en_text": "And depending on their situation and how they acquired each language,",
+   "zh_text": "根据他们所处的环境和习得每种语言的方式，",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 61.612,
+   "end": 64.915,
+   "en_text": "they can be classified into three general types.",
+   "zh_text": "他们可以归为三大类。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 64.915,
+   "end": 67.767,
+   "en_text": "For example, let's take Gabriella,",
+   "zh_text": "举个例子，我们来看看加布里埃拉，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 67.767,
+   "end": 72.007,
+   "en_text": "whose family immigrates to the US from Peru when she's two-years old.",
+   "zh_text": "她两岁时全家从秘鲁移民到美国。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 72.007,
+   "end": 73.823,
+   "en_text": "As a compound bilingual,",
+   "zh_text": "作为复合型双语者，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 73.823,
+   "end": 78.275,
+   "en_text": "Gabriella develops two linguistic codes simultaneously,",
+   "zh_text": "加布里埃拉同时发展出两套语言代码，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 78.275,
+   "end": 80.297,
+   "en_text": "with a single set of concepts,",
+   "zh_text": "共用一套概念，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 80.297,
+   "end": 82.165,
+   "en_text": "learning both English and Spanish",
+   "zh_text": "同时学习英语和西班牙语，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 82.165,
+   "end": 85.358,
+   "en_text": "as she begins to process the world around her.",
+   "zh_text": "就在她开始认识周围世界的时候。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 85.358,
+   "end": 89.162,
+   "en_text": "Her teenage brother, on the other hand, might be a coordinate bilingual,",
+   "zh_text": "另一方面，她十几岁的哥哥可能是并列型双语者，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 89.162,
+   "end": 91.338,
+   "en_text": "working with two sets of concepts,",
+   "zh_text": "使用两套概念，",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 91.338,
+   "end": 93.2,
+   "en_text": "learning English in school,",
+   "zh_text": "在学校学英语，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 93.2,
+   "end": 96.764,
+   "en_text": "while continuing to speak Spanish at home and with friends.",
+   "zh_text": "同时继续在家和跟朋友说西班牙语。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 96.764,
+   "end": 101.845,
+   "en_text": "Finally, Gabriella's parents are likely to be subordinate bilinguals",
+   "zh_text": "最后，加布里埃拉的父母很可能是从属型双语者，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 101.845,
+   "end": 103.41,
+   "en_text": "who learn a secondary language",
+   "zh_text": "他们学习第二语言时",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 103.41,
+   "end": 106.198,
+   "en_text": "by filtering it through their primary language.",
+   "zh_text": "是通过母语来过滤理解的。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 106.198,
+   "end": 110.215,
+   "en_text": "Because all types of bilingual people can become fully proficient in a language",
+   "zh_text": "因为所有类型的双语者都能完全精通一门语言，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 110.215,
+   "end": 112.723,
+   "en_text": "regardless of accent or pronunciation,",
+   "zh_text": "不论口音或发音如何，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 112.723,
+   "end": 115.843,
+   "en_text": "the difference may not be apparent to a casual observer.",
+   "zh_text": "这种差异对普通观察者来说可能并不明显。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 115.843,
+   "end": 118.619,
+   "en_text": "But recent advances in brain imaging technology",
+   "zh_text": "但脑成像技术的最新进展",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 118.619,
+   "end": 120.859,
+   "en_text": "have given neurolinguists a glimpse",
+   "zh_text": "让神经语言学家得以一窥",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 120.859,
+   "end": 125.714,
+   "en_text": "into how specific aspects of language learning affect the bilingual brain.",
+   "zh_text": "语言学习的特定方面如何影响双语者的大脑。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 125.714,
+   "end": 129.009,
+   "en_text": "It's well known that the brain's left hemisphere is more dominant",
+   "zh_text": "众所周知，大脑左半球在逻辑过程中",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 129.009,
+   "end": 131.622,
+   "en_text": "and analytical in logical processes,",
+   "zh_text": "更具主导性和分析性，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 131.622,
+   "end": 136.202,
+   "en_text": "while the right hemisphere is more active in emotional and social ones,",
+   "zh_text": "而右半球在情感和社交过程中更活跃，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 136.202,
+   "end": 140.075,
+   "en_text": "though this is a matter of degree, not an absolute split.",
+   "zh_text": "不过这只是一个程度问题，并非绝对的分工。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 140.075,
+   "end": 142.883,
+   "en_text": "The fact that language involves both types of functions",
+   "zh_text": "语言涉及这两种功能，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 142.883,
+   "end": 145.861,
+   "en_text": "while lateralization develops gradually with age,",
+   "zh_text": "而侧化会随着年龄逐渐发展，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 145.861,
+   "end": 148.799,
+   "en_text": "has lead to the critical period hypothesis.",
+   "zh_text": "这一事实引出了关键期假说。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 148.799,
+   "end": 150.43,
+   "en_text": "According to this theory,",
+   "zh_text": "根据这一理论，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 150.43,
+   "end": 152.406,
+   "en_text": "children learn languages more easily",
+   "zh_text": "儿童学习语言更容易",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 152.406,
+   "end": 155.196,
+   "en_text": "because the plasticity of their developing brains",
+   "zh_text": "因为他们发育中的大脑具有可塑性，",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 155.196,
+   "end": 158.975,
+   "en_text": "lets them use both hemispheres in language acquisition,",
+   "zh_text": "使他们在语言习得中能同时使用两个半球。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 158.975,
+   "end": 162.992,
+   "en_text": "while in most adults, language is lateralized to one hemisphere,",
+   "zh_text": "而在大多数成年人身上，语言功能是偏侧化到一个半球的，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 162.992,
+   "end": 164.898,
+   "en_text": "usually the left.",
+   "zh_text": "通常是左半球。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 164.898,
+   "end": 167.684,
+   "en_text": "If this is true, learning a language in childhood",
+   "zh_text": "如果真是这样，那么在童年时期学习一门语言",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 167.684,
+   "end": 172.48,
+   "en_text": "may give you a more holistic grasp of its social and emotional contexts.",
+   "zh_text": "也许能让你更全面地把握它的社交和情感语境。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 172.48,
+   "end": 174.81,
+   "en_text": "Conversely, recent research showed",
+   "zh_text": "反过来，最近的研究表明",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 174.81,
+   "end": 177.52,
+   "en_text": "that people who learned a second language in adulthood",
+   "zh_text": "成年后才学第二语言的人",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 177.52,
+   "end": 181.423,
+   "en_text": "exhibit less emotional bias and a more rational approach",
+   "zh_text": "表现出更少的情感偏见，以及更理性的方式",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 181.423,
+   "end": 183.811,
+   "en_text": "when confronting problems in the second language",
+   "zh_text": "在用第二语言面对问题时",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 183.811,
+   "end": 185.46,
+   "en_text": "than in their native one.",
+   "zh_text": "相比用母语时。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 185.46,
+   "end": 188.109,
+   "en_text": "But regardless of when you acquire additional languages,",
+   "zh_text": "但不管你是什么时候学会其他语言的，",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 188.109,
+   "end": 192.21,
+   "en_text": "being multilingual gives your brain some remarkable advantages.",
+   "zh_text": "会多种语言都会给你的大脑带来一些显著的优势。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 192.21,
+   "end": 193.754,
+   "en_text": "Some of these are even visible,",
+   "zh_text": "其中有些甚至是看得见的，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 193.754,
+   "end": 196.338,
+   "en_text": "such as higher density of the grey matter",
+   "zh_text": "比如灰质密度更高",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 196.338,
+   "end": 199.441,
+   "en_text": "that contains most of your brain's neurons and synapses,",
+   "zh_text": "灰质包含了你大脑里大部分的神经元和突触，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 199.441,
+   "end": 203.504,
+   "en_text": "and more activity in certain regions when engaging a second language.",
+   "zh_text": "以及在使用第二语言时某些脑区活动更活跃。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 203.504,
+   "end": 206.889,
+   "en_text": "The heightened workout a bilingual brain receives throughout its life",
+   "zh_text": "双语大脑一生中受到的这种加强锻炼",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 206.889,
+   "end": 211.334,
+   "en_text": "can also help delay the onset of diseases, like Alzheimer's and dementia",
+   "zh_text": "还能帮助推迟某些疾病的发作，比如阿尔茨海默病和痴呆症",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 211.334,
+   "end": 213.225,
+   "en_text": "by as much as five years.",
+   "zh_text": "最多可推迟五年。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 213.225,
+   "end": 215.943,
+   "en_text": "The idea of major cognitive benefits to bilingualism",
+   "zh_text": "双语能带来重大认知益处的观点",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 215.943,
+   "end": 217.519,
+   "en_text": "may seem intuitive now,",
+   "zh_text": "如今也许显得理所当然，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 217.519,
+   "end": 220.507,
+   "en_text": "but it would have surprised earlier experts.",
+   "zh_text": "但早年的专家听了会大吃一惊。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 220.507,
+   "end": 224.194,
+   "en_text": "Before the 1960s, bilingualism was considered a handicap",
+   "zh_text": "在20世纪60年代之前，双语被认为是一种缺陷",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 224.194,
+   "end": 225.999,
+   "en_text": "that slowed a child's development",
+   "zh_text": "会拖慢孩子的发展",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 225.999,
+   "end": 230.652,
+   "en_text": "by forcing them to spend too much energy distinguishing between languages,",
+   "zh_text": "因为它迫使孩子花太多精力去区分不同的语言，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 230.652,
+   "end": 234.089,
+   "en_text": "a view based largely on flawed studies.",
+   "zh_text": "这种看法很大程度上基于有缺陷的研究。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 234.089,
+   "end": 236.178,
+   "en_text": "And while a more recent study did show",
+   "zh_text": "而虽然一项更近期的研究确实表明",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 236.178,
+   "end": 239.415,
+   "en_text": "that reaction times and errors increase for some bilingual students",
+   "zh_text": "一些双语学生在跨语言测试中",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 239.415,
+   "end": 241.427,
+   "en_text": "in cross-language tests,",
+   "zh_text": "反应时间和错误都会增加，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 241.427,
+   "end": 243.825,
+   "en_text": "it also showed that the effort and attention needed",
+   "zh_text": "但它也表明，切换语言所需的努力和注意力",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 243.825,
+   "end": 246.776,
+   "en_text": "to switch between languages triggered more activity in,",
+   "zh_text": "会激发更多活动，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 246.776,
+   "end": 251.465,
+   "en_text": "and potentially strengthened, the dorsolateral prefrontal cortex.",
+   "zh_text": "并可能强化背外侧前额叶皮层。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 251.465,
+   "end": 254.142,
+   "en_text": "This is the part of the brain that plays a large role",
+   "zh_text": "这是大脑中发挥重要作用的一部分",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 254.142,
+   "end": 258.971,
+   "en_text": "in executive function, problem solving, switching between tasks,",
+   "zh_text": "涉及执行功能、解决问题、在任务之间切换，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 258.971,
+   "end": 262.644,
+   "en_text": "and focusing while filtering out irrelevant information.",
+   "zh_text": "以及在过滤无关信息的同时保持专注。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 262.644,
+   "end": 266.48,
+   "en_text": "So, while bilingualism may not necessarily make you smarter,",
+   "zh_text": "所以，双语也许不一定让你更聪明，",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 266.48,
+   "end": 270.897,
+   "en_text": "it does make your brain more healthy, complex and actively engaged,",
+   "zh_text": "但它确实让你的大脑更健康、更复杂、更积极地运转，",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 270.897,
+   "end": 273.422,
+   "en_text": "and even if you didn't have the good fortune",
+   "zh_text": "而且即使你没有那份好运",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 273.422,
+   "end": 275.651,
+   "en_text": "of learning a second language as a child,",
+   "zh_text": "在小时候就学会第二语言，",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 275.651,
+   "end": 277.794,
+   "en_text": "it's never too late to do yourself a favor",
+   "zh_text": "为自己做件好事也永远不晚",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 277.794,
+   "end": 280.572,
+   "en_text": "and make the linguistic leap from, \"Hello,\"",
+   "zh_text": "让你的语言来一次飞跃，从“Hello”",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 280.572,
+   "end": 283.559,
+   "en_text": "to, \"Hola,\" \"Bonjour\" or \"你好’s\"",
+   "zh_text": "到“Hola”“Bonjour”或“你好”",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 283.559,
+   "end": 288.081,
+   "en_text": "because when it comes to our brains a little exercise can go a long way.",
+   "zh_text": "因为说到我们的大脑，一点点锻炼就能带来很大的效果。",
+   "highlights": []
+  }
+ ]
+}

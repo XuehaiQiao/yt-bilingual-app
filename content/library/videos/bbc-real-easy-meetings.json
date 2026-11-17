@@ -1,0 +1,749 @@
+{
+ "id": "bbc-real-easy-meetings",
+ "youtubeId": "TL61VKkme14",
+ "title": "Talking about meetings 🗓️🤝👔 Real Easy English",
+ "channel": "BBC Learning English",
+ "duration": 351,
+ "level": "A2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/TL61VKkme14/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:51:17+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.0,
+   "end": 2.88,
+   "en_text": "Hello and welcome to Real Easy English",
+   "zh_text": "大家好，欢迎来到Real Easy English",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 2.88,
+   "end": 6.12,
+   "en_text": "In this podcast, we have real conversations",
+   "zh_text": "在这个播客里，我们进行真实的对话",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 6.12,
+   "end": 8.28,
+   "en_text": "in easy English to help you learn.",
+   "zh_text": "用简单的英语来帮助大家学习。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 8.28,
+   "end": 9.4,
+   "en_text": "I'm Georgie.",
+   "zh_text": "我是Georgie。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 9.4,
+   "end": 11.04,
+   "en_text": "And I'm Beth.",
+   "zh_text": "我是Beth。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 11.04,
+   "end": 14.04,
+   "en_text": "You can find a video of this podcast",
+   "zh_text": "你可以在我们的网站上找到这个播客的视频",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 14.04,
+   "end": 17.0,
+   "en_text": "and a worksheet to help you learn on our website,",
+   "zh_text": "和帮助你学习的练习表，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 17.0,
+   "end": 18.92,
+   "en_text": "bbclearningenglish.com.",
+   "zh_text": "网址是bbclearningenglish.com。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 25.68,
+   "end": 27.32,
+   "en_text": "Hi Beth. How are you today?",
+   "zh_text": "嗨，Beth。你今天怎么样？",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 27.32,
+   "end": 28.48,
+   "en_text": "I'm good, thank you.",
+   "zh_text": "我很好，谢谢。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 28.48,
+   "end": 29.68,
+   "en_text": "I am very busy.",
+   "zh_text": "我非常忙。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 29.68,
+   "end": 31.84,
+   "en_text": "I have a lot of meetings.",
+   "zh_text": "我有很多会议。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 31.84,
+   "end": 32.92,
+   "en_text": "How are you?",
+   "zh_text": "你怎么样？",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 32.92,
+   "end": 34.6,
+   "en_text": "I'm OK, thank you, Beth,",
+   "zh_text": "我挺好的，谢谢你，Beth，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 34.6,
+   "end": 36.48,
+   "en_text": "I don't have many meetings today.",
+   "zh_text": "我今天没有很多会议。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 36.48,
+   "end": 41.52,
+   "en_text": "But today we are talking about meetings – in particular work meetings,",
+   "zh_text": "不过今天我们要聊的是会议——特别是工作会议，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 41.52,
+   "end": 46.4,
+   "en_text": "where you talk to colleagues and discuss ideas or make decisions.",
+   "zh_text": "就是你和同事交谈、讨论想法或者做决定的那种会议。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 46.4,
+   "end": 47.84,
+   "en_text": "That's right. OK.",
+   "zh_text": "没错。好。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 47.84,
+   "end": 49.12,
+   "en_text": "Shall we get started?",
+   "zh_text": "我们开始吧？",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 49.12,
+   "end": 52.88,
+   "en_text": "Yes. So, Beth, you have a lot of meetings today.",
+   "zh_text": "好的。那么，Beth，你今天有很多会议。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 52.88,
+   "end": 57.4,
+   "en_text": "Do you generally have a lot of meetings at work?",
+   "zh_text": "你平时工作上会议多吗？",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 57.4,
+   "end": 62.16,
+   "en_text": "It really depends on what I'm working on.",
+   "zh_text": "这真的要看我在做什么工作。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 62.16,
+   "end": 68.8,
+   "en_text": "So, if I have a project where I need to meet a lot of people,",
+   "zh_text": "所以，如果我有一个项目需要见很多人，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 68.8,
+   "end": 71.88,
+   "en_text": "then I might have quite a few meetings.",
+   "zh_text": "那我可能就会有不少会议。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 71.88,
+   "end": 74.2,
+   "en_text": "And that's why I'm busy now.",
+   "zh_text": "这就是我现在很忙的原因。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 74.2,
+   "end": 77.72,
+   "en_text": "But generally, we have a lot of...",
+   "zh_text": "但一般来说，我们有很多……",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 77.72,
+   "end": 81.8,
+   "en_text": "a few meetings together as a team,",
+   "zh_text": "作为一个团队，我们会一起开一些会，",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 81.8,
+   "end": 85.32,
+   "en_text": "but I don't think we have loads of meetings.",
+   "zh_text": "但我觉得我们的会议不算特别多。",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 85.32,
+   "end": 89.28,
+   "en_text": "Compared to other jobs, I don't think we have many meetings.",
+   "zh_text": "和其他工作相比，我觉得我们的会议不算多。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 89.28,
+   "end": 95.76,
+   "en_text": "Most of our work is producing things and editing and writing.",
+   "zh_text": "我们大部分工作是制作内容、编辑和写作。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 95.76,
+   "end": 97.84,
+   "en_text": "But you're right. When there are lots",
+   "zh_text": "但你说得对。当有很多",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 97.84,
+   "end": 102.68,
+   "en_text": "of big projects that we need to talk to other people on the project,",
+   "zh_text": "大项目，需要我们和项目里的其他人沟通时，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 102.68,
+   "end": 104.32,
+   "en_text": "we have more meetings.",
+   "zh_text": "我们的会议就会更多。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 104.32,
+   "end": 106.88,
+   "en_text": "But yeah, like you, it really depends.",
+   "zh_text": "不过是的，跟你一样，这真的要看情况。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 106.88,
+   "end": 110.68,
+   "en_text": "So, when do you think meetings are useful?",
+   "zh_text": "那么，你觉得会议什么时候有用？",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 110.68,
+   "end": 116.88,
+   "en_text": "I think when you need to brainstorm.",
+   "zh_text": "我觉得当你需要头脑风暴的时候。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 116.88,
+   "end": 121.48,
+   "en_text": "So, a brainstorm is when you have lots of new ideas and",
+   "zh_text": "头脑风暴就是当你有很多新想法，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 121.48,
+   "end": 123.6,
+   "en_text": "you need to talk about them together.",
+   "zh_text": "需要大家一起讨论的时候。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 123.6,
+   "end": 129.56,
+   "en_text": "I think then meetings are really useful because you hear lots of new ideas,",
+   "zh_text": "我觉得那时候会议真的很有用，因为你能听到很多新想法，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 129.56,
+   "end": 134.0,
+   "en_text": "and when you're in a room with other people, if,",
+   "zh_text": "当你和其他人待在一个房间里，如果，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 134.0,
+   "end": 137.72,
+   "en_text": "for example, I have an idea and you say, that's good,",
+   "zh_text": "比如说，我有个想法，你说这个不错，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 137.72,
+   "end": 142.44,
+   "en_text": "and we can also do this and we can all work together,",
+   "zh_text": "我们还可以这样做，我们可以一起合作，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 142.44,
+   "end": 146.48,
+   "en_text": "and I think those kind of meetings are really useful.",
+   "zh_text": "我觉得那种会议真的很有用。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 146.48,
+   "end": 151.08,
+   "en_text": "Yeah, I think that way of doing it is also more efficient.",
+   "zh_text": "是的，我觉得那种做法也更高效。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 151.08,
+   "end": 155.16,
+   "en_text": "So, sometimes it's better to just have one hour,",
+   "zh_text": "所以，有时候更好的做法就是花一个小时，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 155.16,
+   "end": 159.04,
+   "en_text": "come up with ideas and decide on the ideas.",
+   "zh_text": "想出点子，然后把这些点子定下来。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 159.04,
+   "end": 160.64,
+   "en_text": "Yeah, definitely.",
+   "zh_text": "是的，绝对是这样。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 160.64,
+   "end": 164.6,
+   "en_text": "Do you tend to speak up in meetings?",
+   "zh_text": "你在会议上通常会积极发言吗？",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 164.6,
+   "end": 170.6,
+   "en_text": "So, that means do you ask questions and feel confident to speak?",
+   "zh_text": "那么，这是说你会提问，而且有信心发言吗？",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 170.6,
+   "end": 175.72,
+   "en_text": "I think, if the meeting has lots of people,",
+   "zh_text": "我觉得，如果会议人很多的话，",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 175.72,
+   "end": 179.92,
+   "en_text": "I find it a bit more stressful to speak up",
+   "zh_text": "我会觉得开口发言有点更有压力，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 179.92,
+   "end": 184.2,
+   "en_text": "because I get a bit nervous to speak in front of lots of people.",
+   "zh_text": "因为在一大群人面前说话我会有点紧张。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 184.2,
+   "end": 187.36,
+   "en_text": "But if it's a meeting with just our team,",
+   "zh_text": "但如果是只有我们团队的会议，",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 187.36,
+   "end": 191.68,
+   "en_text": "for example, you guys I like and trust,",
+   "zh_text": "比如说，你们这些我喜欢又信任的人，",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 191.68,
+   "end": 195.88,
+   "en_text": "I... I don't mind speaking up that much.",
+   "zh_text": "我……我不太介意发言。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 195.88,
+   "end": 200.52,
+   "en_text": "And sometimes we have meetings in person.",
+   "zh_text": "有时候我们开面对面的会议。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 200.52,
+   "end": 203.0,
+   "en_text": "Sometimes you have meetings on a call.",
+   "zh_text": "有时候你们通过通话开会。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 203.0,
+   "end": 210.28,
+   "en_text": "So a video call. Do you prefer meeting in person or having calls?",
+   "zh_text": "也就是视频通话。你更喜欢面对面开会还是打电话？",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 210.28,
+   "end": 217.0,
+   "en_text": "I think I prefer meetings in person because you can... you can kind of see",
+   "zh_text": "我觉得我更喜欢面对面开会，因为你能……你能比较容易地看到",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 217.0,
+   "end": 221.32,
+   "en_text": "the facial expressions and body language more easily, I think.",
+   "zh_text": "面部表情和肢体语言，我觉得。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 221.32,
+   "end": 226.52,
+   "en_text": "And it's easier to know when a person wants to speak –",
+   "zh_text": "而且更容易知道一个人什么时候想发言——",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 226.52,
+   "end": 228.36,
+   "en_text": "these kinds of things.",
+   "zh_text": "这类的事情。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 228.36,
+   "end": 231.6,
+   "en_text": "Yeah. No, I agree with what you're saying.",
+   "zh_text": "对。不，我同意你说的。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 231.6,
+   "end": 235.32,
+   "en_text": "A lot of the meetings that I have had recently have been",
+   "zh_text": "我最近开的很多会议都是",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 235.32,
+   "end": 240.08,
+   "en_text": "with people in different time zones in different countries.",
+   "zh_text": "和不同国家、不同时区的人一起开的。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 240.08,
+   "end": 245.6,
+   "en_text": "So, definitely then a call is better",
+   "zh_text": "所以，那种情况下肯定是打电话更好，",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 245.6,
+   "end": 248.52,
+   "en_text": "because it's the best way to speak",
+   "zh_text": "因为这是最好的交流方式，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 248.52,
+   "end": 252.64,
+   "en_text": "without having to go to different countries.",
+   "zh_text": "不用跑到不同的国家去。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 252.64,
+   "end": 260.2,
+   "en_text": "But I agree, I think it's nice to be able to see body language better",
+   "zh_text": "但我同意，我觉得在面对面会议里能更好地看到肢体语言是很好的，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 260.2,
+   "end": 262.32,
+   "en_text": "in a face-to-face meeting,",
+   "zh_text": "在面对面会议里，",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 262.32,
+   "end": 270.04,
+   "en_text": "but meetings on calls now are so normal that there's not loads of difference.",
+   "zh_text": "不过现在电话会议太常见了，所以差别也不大。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 270.04,
+   "end": 275.2,
+   "en_text": "It is also really nice to be able to take calls in your own house.",
+   "zh_text": "能在自己家里接电话也真的很不错。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 275.2,
+   "end": 280.36,
+   "en_text": "So, working from home can be really nice because you can have your snacks",
+   "zh_text": "所以，在家工作可以很舒服，因为你可以把零食",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 280.36,
+   "end": 282.84,
+   "en_text": "and drinks nearby.",
+   "zh_text": "和饮料放在旁边。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 282.84,
+   "end": 285.4,
+   "en_text": "So, yeah, they both have their pros and cons.",
+   "zh_text": "所以，对，两者各有优缺点。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 285.4,
+   "end": 286.6,
+   "en_text": "That's true.",
+   "zh_text": "没错。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 293.24,
+   "end": 297.4,
+   "en_text": "OK. Let's recap the language we heard during the conversation,",
+   "zh_text": "好。我们来回顾一下对话中听到的语言，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 297.4,
+   "end": 299.04,
+   "en_text": "starting with 'brainstorm',",
+   "zh_text": "从“brainstorm（头脑风暴）”开始，",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 299.04,
+   "end": 304.56,
+   "en_text": "which is when you get together with a group of people to come up with ideas.",
+   "zh_text": "它指的是你和一群人聚在一起想点子。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 304.56,
+   "end": 311.16,
+   "en_text": "If you 'speak up' in a meeting, you express your opinion using your voice.",
+   "zh_text": "如果你在会议上“speak up（开口发言）”，就是用你的声音表达你的观点。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 311.16,
+   "end": 315.96,
+   "en_text": "In an 'in-person' meeting, everyone is in the same physical place.",
+   "zh_text": "在“in-person（面对面）”会议中，每个人都在同一个实际地点。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 315.96,
+   "end": 319.32,
+   "en_text": "We can also call this a 'face-to-face' meeting.",
+   "zh_text": "我们也可以把这叫做“face-to-face（面对面）”会议。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 319.32,
+   "end": 322.84,
+   "en_text": "And we also talked about 'having a call'.",
+   "zh_text": "我们还谈到了“having a call（打电话/通话）”。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 322.84,
+   "end": 326.08,
+   "en_text": "This could be a phone call or a video call.",
+   "zh_text": "这可以是电话通话，也可以是视频通话。",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 326.08,
+   "end": 330.32,
+   "en_text": "And we can also describe this as a 'remote' meeting.",
+   "zh_text": "我们也可以把这描述为“remote（远程）”会议。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 330.32,
+   "end": 333.56,
+   "en_text": "That's it for this episode of Real Easy English.",
+   "zh_text": "这就是本期 Real Easy English 的全部内容。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 333.56,
+   "end": 337.08,
+   "en_text": "Why not test what you've learned using the worksheet on our website,",
+   "zh_text": "为什么不用我们网站上的练习表测试一下你学到的东西呢，",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 337.08,
+   "end": 339.36,
+   "en_text": "bbclearningenglish.com.",
+   "zh_text": "bbclearningenglish.com。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 339.36,
+   "end": 343.88,
+   "en_text": "And we'll be back next week with another conversation in easy English.",
+   "zh_text": "我们下周会带着另一段简单英语对话回来。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 343.88,
+   "end": 344.96,
+   "en_text": "See you then.",
+   "zh_text": "到时候见。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 344.96,
+   "end": 345.88,
+   "en_text": "Goodbye!",
+   "zh_text": "再见！",
+   "highlights": []
+  }
+ ]
+}

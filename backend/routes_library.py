@@ -47,6 +47,7 @@ MIN_VIDEO_SECONDS = 60
 MAX_VIDEO_SECONDS = 7200
 
 LEVELS = frozenset({"A1", "A2", "B1", "B2", "C1", "C2"})
+LEVEL_ORDER = ("A1", "A2", "B1", "B2", "C1", "C2")
 
 _ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 _YOUTUBE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
@@ -369,10 +370,18 @@ def get_library():
     except LibraryUnavailable as exc:
         logger.warning("读取免费资源库失败：%s", exc)
         raise HTTPException(status_code=503, detail="免费资源库暂时不可用。") from exc
+    video_summaries = [_video_summary(video) for video in videos]
+    article_summaries = [_article_summary(article) for article in articles]
+    # 等级分布由后端算，前端筛选 chips 直接显示数量，避免两端各算一遍。
+    video_levels = {level: 0 for level in LEVEL_ORDER}
+    for video in video_summaries:
+        video_levels[video["level"]] = video_levels.get(video["level"], 0) + 1
     return _json(
         {
-            "videos": [_video_summary(video) for video in videos],
-            "articles": [_article_summary(article) for article in articles],
+            "videos": video_summaries,
+            "articles": article_summaries,
+            "counts": {"videos": len(video_summaries), "articles": len(article_summaries)},
+            "videoLevels": video_levels,
         },
         max_age=300,
     )

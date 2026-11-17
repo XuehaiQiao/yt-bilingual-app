@@ -1,0 +1,989 @@
+{
+ "id": "kurzgesagt-scariest-place",
+ "youtubeId": "yDAAlojz8NU",
+ "title": "This Is the Scariest Place in The Universe",
+ "channel": "Kurzgesagt – In a Nutshell",
+ "duration": 553,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/yDAAlojz8NU/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:18+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 1.68,
+   "end": 5.68,
+   "en_text": "The vast majority of the cosmos is voids.",
+   "zh_text": "宇宙的绝大部分都是空洞。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 5.68,
+   "end": 10.48,
+   "en_text": "Gigantic, unfathomably large&nbsp; spaces of empty nothingness.",
+   "zh_text": "巨大无比、大到难以想象的空无一物的空间。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 10.48,
+   "end": 14.8,
+   "en_text": "Bubbles of eternal night, stretching&nbsp; hundreds of millions of light-years,",
+   "zh_text": "永恒黑夜的气泡，绵延数亿光年，",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 14.8,
+   "end": 20.0,
+   "en_text": "almost entirely devoid of&nbsp; galaxies, stars, or light.",
+   "zh_text": "几乎完全没有星系、恒星或光。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 20.0,
+   "end": 23.52,
+   "en_text": "The loneliest places in existence.",
+   "zh_text": "是存在中最孤独的地方。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 23.52,
+   "end": 29.2,
+   "en_text": "Voids are not just the absence of stuff but&nbsp; weird worlds of darkness that are growing,",
+   "zh_text": "空洞不只是缺少物质，而是不断膨胀的、奇异的黑暗世界，",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 29.2,
+   "end": 34.64,
+   "en_text": "drifting, colliding and merging with&nbsp; each other – Inside them space itself",
+   "zh_text": "它们漂移、碰撞、彼此融合——在它们内部，空间本身",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 34.64,
+   "end": 39.6,
+   "en_text": "is stretched violently and it's&nbsp; almost impossible to enter them.",
+   "zh_text": "被剧烈地拉伸，几乎不可能进入其中。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 39.6,
+   "end": 43.52,
+   "en_text": "Simply put: voids are weird and scary.",
+   "zh_text": "简单说：空洞既怪异又可怕。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 43.52,
+   "end": 48.96,
+   "en_text": "But they sculpt the entire universe&nbsp; and may ultimately decide its fate.",
+   "zh_text": "但它们塑造了整个宇宙，也许最终会决定它的命运。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 49.6,
+   "end": 55.76,
+   "en_text": "Today we know of over 8,000 voids and&nbsp; supervoids, and we keep discovering more.",
+   "zh_text": "如今我们已知超过8000个空洞和超空洞，而且还在不断发现更多。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 55.76,
+   "end": 60.08,
+   "en_text": "No matter how large a cluster or&nbsp; supercluster of galaxies gets,",
+   "zh_text": "无论一个星系团或超星系团有多大，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 60.08,
+   "end": 64.48,
+   "en_text": "there always seems to be&nbsp; an even larger void nearby.",
+   "zh_text": "附近似乎总有一个更大的空洞。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 64.48,
+   "end": 72.32,
+   "en_text": "Let’s jump off the cosmic cliff and drop&nbsp; into the heart of cosmic nothingness.",
+   "zh_text": "让我们从宇宙的悬崖上跳下，坠入宇宙虚无的中心。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 72.32,
+   "end": 76.08,
+   "en_text": "The Loneliest Place in the Universe",
+   "zh_text": "宇宙中最孤独的地方",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 76.08,
+   "end": 80.08,
+   "en_text": "You are zooming away from Earth, at&nbsp; thousands of times the speed of light,",
+   "zh_text": "你正以数千倍光速远离地球，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 80.08,
+   "end": 84.08,
+   "en_text": "leaving our solar system and&nbsp; our solar neighborhood behind.",
+   "zh_text": "把我们的太阳系和太阳邻域抛在身后。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 84.08,
+   "end": 87.84,
+   "en_text": "Now we see the entire Milky Way&nbsp; with its 200 billion stars and",
+   "zh_text": "现在我们看到了整个银河系，连同它的2000亿颗恒星和",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 87.84,
+   "end": 90.88,
+   "en_text": "dozens of dwarf galaxies zipping around it.",
+   "zh_text": "几十个绕着它飞驰的矮星系。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 90.88,
+   "end": 93.52,
+   "en_text": "2.5 million light-years away on a collision course",
+   "zh_text": "250万光年之外，正朝着碰撞的方向",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 93.52,
+   "end": 98.0,
+   "en_text": "is giant Andromeda and its own&nbsp; swarm of satellite galaxies.",
+   "zh_text": "是巨大的仙女座星系和它自己的一群卫星星系。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 98.72,
+   "end": 104.88,
+   "en_text": "We are now moving a million times faster than the&nbsp; speed of light, seeing the local group of over 50",
+   "zh_text": "我们现在正以比光速快一百万倍的速度移动，看到由50多个",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 104.88,
+   "end": 112.8,
+   "en_text": "galaxies woven together by gravity, rivers of&nbsp; gas, and invisible scaffolds of dark matter.",
+   "zh_text": "星系组成的本星系群，被引力、气流和看不见的暗物质支架编织在一起。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 112.8,
+   "end": 119.92,
+   "en_text": "This is our pocket of the universe, 10 million&nbsp; light years across, no human will ever leave it.",
+   "zh_text": "这是我们在宇宙中的一隅，横跨1000万光年，没有人类能离开它。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 119.92,
+   "end": 122.16,
+   "en_text": "Except for you apparently.",
+   "zh_text": "不过显然除了你。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 122.8,
+   "end": 126.96,
+   "en_text": "As we zoom away even faster&nbsp; we see the Virgo Supercluster,",
+   "zh_text": "当我们以更快的速度飞离，我们看到了室女座超星系团，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 126.96,
+   "end": 133.6,
+   "en_text": "a colossal wall of more than 2,000 galaxies&nbsp; spread over roughly 100 million light-years.",
+   "zh_text": "一堵由2000多个星系组成的巨大墙，分布在约1亿光年的范围内。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 133.6,
+   "end": 137.84,
+   "en_text": "Careful now, you are right on the edge&nbsp; of the cosmic cliff where the true,",
+   "zh_text": "小心点，你正处在宇宙悬崖的边缘，真正的",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 137.84,
+   "end": 145.84,
+   "en_text": "deep darkness begins: the Local Void – a gigantic,&nbsp; empty bubble 200 million light-years across.",
+   "zh_text": "深邃黑暗从这里开始：本空洞——一个横跨2亿光年的巨大空泡。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 145.84,
+   "end": 148.88,
+   "en_text": "If it was a bright thing&nbsp; and not absolute darkness,",
+   "zh_text": "如果它是一个明亮的东西，而不是绝对的黑暗，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 148.88,
+   "end": 152.8,
+   "en_text": "it would fill 40% of the&nbsp; night sky we see from earth.",
+   "zh_text": "它会占据我们从地球上看到的夜空的40%。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 152.8,
+   "end": 156.0,
+   "en_text": "All around us are dozens of other superclusters",
+   "zh_text": "我们周围到处都是几十个其他超星系团",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 156.0,
+   "end": 161.2,
+   "en_text": "and gigantic voids filled&nbsp; with suffocating emptiness.",
+   "zh_text": "以及充满令人窒息的空旷的巨大空洞。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 161.2,
+   "end": 164.16,
+   "en_text": "You are now traveling towards the greatest and",
+   "zh_text": "你现在正飞向宇宙中最巨大、",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 164.16,
+   "end": 170.24,
+   "en_text": "emptiest nothing in existence – right&nbsp; into the center of the Boötes Supervoid.",
+   "zh_text": "最空旷的虚无——直抵牧夫座超级空洞的中心。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 170.24,
+   "end": 175.12,
+   "en_text": "A cosmic desert around 300&nbsp; million light-years wide.",
+   "zh_text": "一片宽约3亿光年的宇宙荒漠。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 175.12,
+   "end": 178.8,
+   "en_text": "So gigantic it should contain&nbsp; thousands of galaxies.",
+   "zh_text": "它大得本该容纳数千个星系。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 178.8,
+   "end": 182.48,
+   "en_text": "But instead, what do you see?",
+   "zh_text": "但结果呢，你看到了什么？",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 182.48,
+   "end": 189.52,
+   "en_text": "You are surrounded by perfect darkness, the most&nbsp; absolute blackness the human mind can conceive.",
+   "zh_text": "你被纯粹的黑暗包围，那是人类大脑能想象出的最绝对的漆黑。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 189.52,
+   "end": 191.44,
+   "en_text": "There is no up or down.",
+   "zh_text": "没有上，也没有下。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 191.44,
+   "end": 192.48,
+   "en_text": "No motion.",
+   "zh_text": "没有运动。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 192.48,
+   "end": 194.64,
+   "en_text": "Nothing to orient yourself.",
+   "zh_text": "没有任何可以辨别方向的东西。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 194.64,
+   "end": 198.96,
+   "en_text": "There is not a single sign that&nbsp; the outside universe even exists.",
+   "zh_text": "没有任何迹象表明外面的宇宙还存在。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 198.96,
+   "end": 200.88,
+   "en_text": "It’s an inescapable prison.",
+   "zh_text": "这是一座无法逃脱的牢笼。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 200.88,
+   "end": 203.84,
+   "en_text": "And this isn’t some exotic corner of the cosmos.",
+   "zh_text": "而这并不是宇宙中某个奇异的角落。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 203.84,
+   "end": 208.08,
+   "en_text": "This is how the vast majority of&nbsp; the universe feels to human eyes.",
+   "zh_text": "在人类眼中，宇宙的绝大部分就是这个样子。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 208.08,
+   "end": 211.44,
+   "en_text": "Just silent blackness without any movement.",
+   "zh_text": "只有寂静的黑暗，没有任何动静。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 211.44,
+   "end": 212.48,
+   "en_text": "Everywhere.",
+   "zh_text": "到处都是。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 212.48,
+   "end": 215.12,
+   "en_text": "Forever.",
+   "zh_text": "永远如此。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 215.12,
+   "end": 220.4,
+   "en_text": "Although there is something mysterious hiding&nbsp; in the dark – faint tendrils of dark matter,",
+   "zh_text": "不过，黑暗中确实藏着某种神秘的东西——暗物质的微弱丝缕，",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 220.4,
+   "end": 223.84,
+   "en_text": "penetrating into the void like cosmic lichen.",
+   "zh_text": "像宇宙地衣一样伸进空洞之中。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 223.84,
+   "end": 227.92,
+   "en_text": "A miniature echo of the much larger&nbsp; forest of dark matter filaments that",
+   "zh_text": "这是那片大得多的暗物质纤维森林的微缩回声，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 227.92,
+   "end": 232.64,
+   "en_text": "forms the scaffold of galaxies and&nbsp; galaxy clusters outside the void.",
+   "zh_text": "正是那片森林构成了空洞之外星系和星系团的骨架。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 232.64,
+   "end": 237.92,
+   "en_text": "And at their tips we find faint&nbsp; blueish specs in the ocean of darkness:",
+   "zh_text": "在它们的末端，我们在黑暗的海洋中发现了微弱的蓝色光点：",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 237.92,
+   "end": 242.96,
+   "en_text": "Void galaxies, lonely fireflies&nbsp; unable to light up the night.",
+   "zh_text": "空洞星系，孤独的萤火虫，无法照亮黑夜。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 242.96,
+   "end": 248.8,
+   "en_text": "The rarest galaxies we know,&nbsp; very isolated, very lonely.",
+   "zh_text": "我们所知最稀有的星系，极其孤立，极其孤独。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 248.8,
+   "end": 252.08,
+   "en_text": "A Universe of Bubbles",
+   "zh_text": "泡泡宇宙",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 252.08,
+   "end": 254.24,
+   "en_text": "Before we could look deep into space,",
+   "zh_text": "在我们能够深入观测太空之前，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 254.24,
+   "end": 258.8,
+   "en_text": "astronomers thought we lived in a uniform&nbsp; cosmos with galaxies spread out evenly.",
+   "zh_text": "天文学家以为我们生活在一个均匀的宇宙里，星系均匀地分布着。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 258.8,
+   "end": 260.96,
+   "en_text": "But instead, we found that galaxies,",
+   "zh_text": "但结果我们发现，星系、",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 260.96,
+   "end": 265.92,
+   "en_text": "cosmic gas and dark matter were&nbsp; arranged into a vast cosmic web.",
+   "zh_text": "宇宙气体和暗物质被排列成了一张巨大的宇宙网。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 265.92,
+   "end": 271.36,
+   "en_text": "A recurring pattern of sheets and filaments,&nbsp; organized around enormous empty gaps,",
+   "zh_text": "一种由片状结构和纤维结构反复出现的图案，围绕着巨大的空旷区域组织起来，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 271.36,
+   "end": 275.92,
+   "en_text": "meeting at dense knots with galaxy&nbsp; clusters and super clusters.",
+   "zh_text": "在密集的节点处交汇，那里有星系团和超星系团。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 275.92,
+   "end": 278.16,
+   "en_text": "But this structure is not static,",
+   "zh_text": "但这种结构并不是静止的，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 278.16,
+   "end": 283.28,
+   "en_text": "it just seems to be because the distances&nbsp; between galaxies are so incredibly vast.",
+   "zh_text": "它看起来静止，只是因为星系之间的距离实在太遥远了。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 283.28,
+   "end": 289.04,
+   "en_text": "In reality galaxies shoot through space at&nbsp; speeds of millions of kilometers per hour.",
+   "zh_text": "实际上，星系以每小时数百万公里的速度穿梭于太空。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 289.04,
+   "end": 291.68,
+   "en_text": "They are on collision&nbsp; courses, orbiting each other,",
+   "zh_text": "它们正处在碰撞的轨道上，互相绕行，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 291.68,
+   "end": 296.8,
+   "en_text": "moving towards the center of larger galaxy&nbsp; clusters millions of light years away.",
+   "zh_text": "朝着数百万光年外更大星系团的中心移动。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 296.8,
+   "end": 299.6,
+   "en_text": "But they always seem to stick to the rims of voids",
+   "zh_text": "但它们似乎总是贴着空洞的边缘",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 299.6,
+   "end": 304.16,
+   "en_text": "like reflections of light on soap&nbsp; bubbles – which is kind of weird.",
+   "zh_text": "就像肥皂泡上光的倒影——这有点奇怪。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 304.16,
+   "end": 309.2,
+   "en_text": "If they are this dynamic, shouldn’t a&nbsp; galaxy shoot into a void occasionally?",
+   "zh_text": "既然它们这么活跃，难道不应该偶尔有星系射进空洞里吗？",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 309.2,
+   "end": 314.0,
+   "en_text": "Well voids are actually extremely hard to&nbsp; enter for galaxies from the outside – at",
+   "zh_text": "其实，对于从外部进入的星系来说，空洞是极难进入的——至少",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 314.0,
+   "end": 320.16,
+   "en_text": "least naturally – because gravity becomes weird at&nbsp; their edges and even weirder deeper inside them.",
+   "zh_text": "在自然情况下是这样——因为引力在它们的边缘会变得很奇怪，越往深处越奇怪。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 320.16,
+   "end": 323.92,
+   "en_text": "If you didn't know better, you might&nbsp; think voids spit out anything trying",
+   "zh_text": "如果你不了解情况，你可能会以为空洞会把任何想",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 323.92,
+   "end": 327.44,
+   "en_text": "to get inside, pushing galaxies to the edge.",
+   "zh_text": "进去的东西都吐出来，把星系推到边缘。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 327.44,
+   "end": 329.52,
+   "en_text": "The way gravity works is that everything with",
+   "zh_text": "引力的运作方式是，宇宙中一切有",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 329.52,
+   "end": 332.96,
+   "en_text": "mass in the universe attracts&nbsp; every other thing with mass.",
+   "zh_text": "质量的物体都会吸引其他一切有质量的物体。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 332.96,
+   "end": 335.28,
+   "en_text": "And since there is almost no mass inside,",
+   "zh_text": "而由于空洞内部几乎没有质量，",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 335.28,
+   "end": 341.28,
+   "en_text": "the cosmic web of galaxy super clusters on&nbsp; their edges are pulling things out of voids.",
+   "zh_text": "位于它们边缘的星系超星系团构成的宇宙网正在把东西从空洞里往外拉。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 341.28,
+   "end": 346.16,
+   "en_text": "The emptier a void is, the harder&nbsp; gravity is pulling on what remains.",
+   "zh_text": "空洞越空，引力对剩余物质的拉扯就越强。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 346.16,
+   "end": 350.24,
+   "en_text": "It's really like a tug of war&nbsp; where one side isn’t even trying.",
+   "zh_text": "这真像一场拔河，而其中一方根本没在使劲。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 350.24,
+   "end": 354.16,
+   "en_text": "Over time voids are really only&nbsp; getting even emptier and the",
+   "zh_text": "随着时间推移，空洞真的只会变得越来越空，而",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 354.16,
+   "end": 358.24,
+   "en_text": "walls and knots around them denser and brighter.",
+   "zh_text": "它们周围的壁和结点则越来越密、越来越亮。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 358.24,
+   "end": 362.96,
+   "en_text": "Would it be hard to fly into a cosmic void&nbsp; with a spaceship? Well not technically,",
+   "zh_text": "乘飞船飞进宇宙空洞会很难吗？嗯，从技术上讲不难，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 362.96,
+   "end": 367.76,
+   "en_text": "the hardest part is escaping&nbsp; the gravity of your home galaxy.",
+   "zh_text": "最难的部分是摆脱你所在星系的引力。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 367.76,
+   "end": 371.12,
+   "en_text": "It also doesn’t make much sense&nbsp; because… what exactly do you want",
+   "zh_text": "而且这也没多大意义，因为……你到底想",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 371.12,
+   "end": 376.08,
+   "en_text": "to visit inside a void? It makes sense&nbsp; to fly into a void if you want to hide.",
+   "zh_text": "去空洞里看什么呢？如果你想藏起来，飞进空洞倒是说得通。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 376.08,
+   "end": 378.56,
+   "en_text": "Like really, really hide.",
+   "zh_text": "真的是彻彻底底地藏起来。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 378.56,
+   "end": 385.68,
+   "en_text": "But what cosmic horror would be scary enough for a&nbsp; civilization to try to escape into a cosmic void?",
+   "zh_text": "但什么样的宇宙恐怖才够可怕，能让一个文明试图逃进宇宙空洞呢？",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 385.68,
+   "end": 390.0,
+   "en_text": "Galaxies in the crowded cluster regions&nbsp; like our milky way are very active,",
+   "zh_text": "像我们银河系这样位于拥挤星系团区域的星系非常活跃，",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 390.0,
+   "end": 395.36,
+   "en_text": "since its neighbours’ gravity tugs and&nbsp; pulls at it, they collide and merge.",
+   "zh_text": "因为邻居的引力不断拉扯它，它们会碰撞、合并。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 395.36,
+   "end": 399.92,
+   "en_text": "Void galaxies are so isolated that&nbsp; they are aging in slow motion.",
+   "zh_text": "空洞里的星系如此孤立，以至于它们在慢动作中衰老。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 399.92,
+   "end": 406.72,
+   "en_text": "They tend to be smaller, bluer and full of&nbsp; gas, birthing new stars slower and calmer.",
+   "zh_text": "它们往往更小、更蓝、充满气体，孕育新恒星的速度更慢、更平静。",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 406.72,
+   "end": 412.88,
+   "en_text": "So void galaxies could be the last places that&nbsp; will stay habitable in our dying universe.",
+   "zh_text": "所以，在我们这个正在衰亡的宇宙里，空洞星系可能是最后还能保持宜居的地方。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 412.88,
+   "end": 416.88,
+   "en_text": "The last star in the universe&nbsp; will likely be born here.",
+   "zh_text": "宇宙中最后一颗恒星很可能就在这里诞生。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 416.88,
+   "end": 422.16,
+   "en_text": "So maybe in a 100 trillion years or so&nbsp; a desperate alien race will embark on an",
+   "zh_text": "所以也许在大约100万亿年后，一个绝望的外星种族会踏上一段",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 422.16,
+   "end": 428.56,
+   "en_text": "impossible journey to stretch their existence&nbsp; just a bit longer inside a void galaxy.",
+   "zh_text": "不可能的旅程，只为在一个空洞星系里让自己的存在再延续一点点。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 428.56,
+   "end": 432.88,
+   "en_text": "There is one more thing that makes&nbsp; voids unique places: Dark Energy.",
+   "zh_text": "还有一样东西让空洞成为独特之地：暗能量。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 432.88,
+   "end": 436.32,
+   "en_text": "The mysterious force that most&nbsp; scientists think is accelerating",
+   "zh_text": "这种神秘的力量，大多数科学家认为它正在加速",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 436.32,
+   "end": 440.8,
+   "en_text": "the expansion of the universe and&nbsp; will ultimately cause its demise.",
+   "zh_text": "宇宙的膨胀最终会导致它的消亡。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 441.44,
+   "end": 446.8,
+   "en_text": "We can’t see dark energy do anything inside our&nbsp; galaxy or inside clusters because there is too",
+   "zh_text": "我们看不到暗能量在我们的星系内部或星系团内部做什么，因为那里有太多",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 446.8,
+   "end": 452.88,
+   "en_text": "much stuff pulling things together via gravity&nbsp; – but we can see its effects inside voids.",
+   "zh_text": "物质通过引力把东西拉在一起——但我们能在空洞内部看到它的作用。",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 452.88,
+   "end": 456.72,
+   "en_text": "Here dark energy blows up the bubbles of nothing.",
+   "zh_text": "在这里，暗能量把虚无的气泡吹大。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 456.72,
+   "end": 462.08,
+   "en_text": "This is where the acceleration of&nbsp; cosmic expansion becomes visible.",
+   "zh_text": "正是在这里，宇宙膨胀的加速变得可见。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 462.08,
+   "end": 467.52,
+   "en_text": "As voids are getting larger and larger, they&nbsp; are breaking the structure of the universe,",
+   "zh_text": "随着空洞越来越大，它们正在破坏宇宙的结构，",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 467.52,
+   "end": 472.24,
+   "en_text": "the beautiful galaxy filaments&nbsp; are slowly being ripped apart.",
+   "zh_text": "那些美丽的星系纤维正慢慢被撕裂。",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 472.24,
+   "end": 477.04,
+   "en_text": "As the emptiness encroaches, walls of&nbsp; thousands of galaxies are thinned out",
+   "zh_text": "随着虚空不断侵入，由数千个星系组成的墙被削薄",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 477.04,
+   "end": 481.92,
+   "en_text": "and pulled towards the edges – attracted&nbsp; by much denser regions at the margins,",
+   "zh_text": "并被拉向边缘——被边缘处密度大得多的区域吸引，",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 481.92,
+   "end": 487.2,
+   "en_text": "giving space to the emptiness of&nbsp; two void bubbles becoming one.",
+   "zh_text": "为两个空洞气泡合二为一的虚空让出空间。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 487.2,
+   "end": 492.48,
+   "en_text": "In the far, far future supervoids will&nbsp; take over the observable universe.",
+   "zh_text": "在遥远的未来，超级空洞将占据可观测宇宙。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 492.48,
+   "end": 498.16,
+   "en_text": "Crushing clusters, and expanding further&nbsp; and further, until the entire observable",
+   "zh_text": "压碎星系团，并不断向外扩张，直到整个可观测",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 498.16,
+   "end": 503.2,
+   "en_text": "universe is nothing more than&nbsp; a gigantic void of nothingness.",
+   "zh_text": "宇宙不过是一个巨大的虚无空洞。",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 503.2,
+   "end": 508.0,
+   "en_text": "The loneliest place in existence.",
+   "zh_text": "存在中最孤独的地方。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 508.0,
+   "end": 509.44,
+   "en_text": "Let’s head back to Earth.",
+   "zh_text": "让我们回到地球吧。",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 509.44,
+   "end": 514.16,
+   "en_text": "When we land, please exit through the&nbsp; gift shop and pick up a few souvenirs.",
+   "zh_text": "着陆后，请从礼品店出口离开，顺便挑几件纪念品。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 514.16,
+   "end": 517.76,
+   "en_text": "We created this latest Space Souvenir&nbsp; Drop for all of you who have been",
+   "zh_text": "我们打造了这次最新的太空纪念品发售，献给所有多年来",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 517.76,
+   "end": 521.84,
+   "en_text": "travelling with us for so many years now. While you’re there, take a look around,",
+   "zh_text": "一直和我们一起旅行的你们。到了那里，四处看看吧，",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 521.84,
+   "end": 525.84,
+   "en_text": "you might discover a unique product&nbsp; dedicated to your favorite science topic.",
+   "zh_text": "你可能会发现一件专为你最爱的科学主题打造的独特产品。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 525.84,
+   "end": 529.68,
+   "en_text": "Everything is created with lots of&nbsp; care by our team of scientists and",
+   "zh_text": "每一件都由我们的科学家和设计师团队用心打造，",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 529.68,
+   "end": 533.44,
+   "en_text": "designers to inspire you and spark your curiosity.",
+   "zh_text": "只为启发你、点燃你的好奇心。",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 533.44,
+   "end": 538.96,
+   "en_text": "Thank you for traveling&nbsp; with kurzgesagt space tours.",
+   "zh_text": "感谢你乘坐 kurzgesagt 太空之旅。",
+   "highlights": []
+  }
+ ]
+}

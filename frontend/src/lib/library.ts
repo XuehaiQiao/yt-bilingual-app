@@ -25,6 +25,10 @@ export interface LibraryArticleSummary {
 export interface LibraryIndex {
     videos: LibraryVideoSummary[];
     articles: LibraryArticleSummary[];
+    /** Server-computed totals (the UI still derives chips from `videos`). */
+    counts?: { videos: number; articles: number };
+    /** Server-computed CEFR distribution for the video tab chips. */
+    videoLevels?: Record<string, number>;
 }
 
 export interface LibraryHighlight {
@@ -178,9 +182,24 @@ export async function fetchLibraryIndex(): Promise<LibraryIndex> {
     if (videos.some((item): item is null => item === null) || articles.some((item): item is null => item === null)) {
         throw new LibraryApiError('免费资源数据格式不正确', 0);
     }
+    const counts = isRecord(data.counts)
+        ? {
+              videos: typeof data.counts.videos === 'number' ? data.counts.videos : videos.length,
+              articles: typeof data.counts.articles === 'number' ? data.counts.articles : articles.length,
+          }
+        : undefined;
+    const videoLevels = isRecord(data.videoLevels)
+        ? Object.fromEntries(
+              Object.entries(data.videoLevels).filter(
+                  (entry): entry is [string, number] => typeof entry[1] === 'number',
+              ),
+          )
+        : undefined;
     return {
         videos: videos as LibraryVideoSummary[],
         articles: articles as LibraryArticleSummary[],
+        counts,
+        videoLevels,
     };
 }
 

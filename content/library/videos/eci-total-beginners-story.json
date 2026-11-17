@@ -1,0 +1,1045 @@
+{
+ "id": "eci-total-beginners-story",
+ "youtubeId": "31AtaK035JQ",
+ "title": "Very Easy Simple English Story for Total Beginners (Comprehensible Input & TPRS Circling Questions)",
+ "channel": "English Comprehensible Input for ESL Beginners",
+ "duration": 402,
+ "level": "A1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/31AtaK035JQ/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:49:11+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.46,
+   "end": 1.74,
+   "en_text": "Hi everyone!",
+   "zh_text": "大家好！",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 1.74,
+   "end": 6.12,
+   "en_text": "Today I'm going to tell you a story.",
+   "zh_text": "今天我要给你们讲一个故事。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 6.12,
+   "end": 11.28,
+   "en_text": "This story is about Ben and Liz.",
+   "zh_text": "这个故事讲的是Ben和Liz。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 11.28,
+   "end": 15.62,
+   "en_text": "So listen as I tell you the story.",
+   "zh_text": "所以听我给你们讲这个故事。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 17.12,
+   "end": 19.42,
+   "en_text": "There is a man.",
+   "zh_text": "有一个男人。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 19.42,
+   "end": 22.2,
+   "en_text": "His name is Ben.",
+   "zh_text": "他的名字叫Ben。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 22.2,
+   "end": 24.42,
+   "en_text": "Ben is tall.",
+   "zh_text": "Ben很高。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 24.42,
+   "end": 27.64,
+   "en_text": "He is a tall man.",
+   "zh_text": "他是个高个子男人。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 27.64,
+   "end": 29.9,
+   "en_text": "There is a woman.",
+   "zh_text": "有一个女人。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 29.9,
+   "end": 32.46,
+   "en_text": "Her name is Liz.",
+   "zh_text": "她的名字叫Liz。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 32.46,
+   "end": 34.6,
+   "en_text": "Liz is short.",
+   "zh_text": "Liz很矮。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 34.6,
+   "end": 38.02,
+   "en_text": "She is a short woman.",
+   "zh_text": "她是个矮个子女人。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 38.02,
+   "end": 40.92,
+   "en_text": "Ben is running.",
+   "zh_text": "Ben在跑步。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 40.92,
+   "end": 44.48,
+   "en_text": "Liz sees Ben.",
+   "zh_text": "Liz看见了Ben。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 44.48,
+   "end": 49.54,
+   "en_text": "Ben does not see Liz.",
+   "zh_text": "Ben没有看见Liz。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 49.54,
+   "end": 53.08,
+   "en_text": "Ben runs into Liz.",
+   "zh_text": "Ben撞到了Liz。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 53.08,
+   "end": 55.76,
+   "en_text": "Ben falls over.",
+   "zh_text": "Ben摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 55.76,
+   "end": 58.06,
+   "en_text": "Liz falls over too.",
+   "zh_text": "Liz也摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 59.7,
+   "end": 61.72,
+   "en_text": "So that was the story.",
+   "zh_text": "故事就是这样。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 61.72,
+   "end": 65.94,
+   "en_text": "Now I will tell you the story again.",
+   "zh_text": "现在我再给你们讲一遍这个故事。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 65.94,
+   "end": 70.7,
+   "en_text": "This time I will ask you many questions.",
+   "zh_text": "这一次我要问你们很多问题。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 70.7,
+   "end": 75.56,
+   "en_text": "I will ask you many questions about the story.",
+   "zh_text": "我要问你们很多关于这个故事的问题。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 76.54,
+   "end": 79.36,
+   "en_text": "There is a man.",
+   "zh_text": "有一个男人。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 79.36,
+   "end": 84.48,
+   "en_text": "Is there a man or a woman?",
+   "zh_text": "是一个男人还是一个女人？",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 84.48,
+   "end": 87.1,
+   "en_text": "There is a man.",
+   "zh_text": "有一个男人。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 87.1,
+   "end": 89.76,
+   "en_text": "His name is Ben.",
+   "zh_text": "他的名字叫Ben。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 89.76,
+   "end": 93.02,
+   "en_text": "What is his name?",
+   "zh_text": "他叫什么名字？",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 93.02,
+   "end": 96.44,
+   "en_text": "Is his name Bill?",
+   "zh_text": "他叫Bill吗？",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 96.44,
+   "end": 100.54,
+   "en_text": "No, his name is not Bill.",
+   "zh_text": "不，他不叫Bill。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 100.54,
+   "end": 103.62,
+   "en_text": "Is his name Ben?",
+   "zh_text": "他叫Ben吗？",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 103.62,
+   "end": 104.96,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 104.96,
+   "end": 109.08,
+   "en_text": "His name is Ben.",
+   "zh_text": "他的名字叫Ben。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 109.08,
+   "end": 112.4,
+   "en_text": "Ben is tall.",
+   "zh_text": "Ben很高。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 112.4,
+   "end": 114.0,
+   "en_text": "Is Ben short?",
+   "zh_text": "Ben矮吗？",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 114.1,
+   "end": 116.1,
+   "en_text": "Is Ben short?",
+   "zh_text": "Ben矮吗？",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 116.1,
+   "end": 119.44,
+   "en_text": "No, Ben is not short.",
+   "zh_text": "不，Ben不矮。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 119.44,
+   "end": 122.32,
+   "en_text": "Is Ben tall?",
+   "zh_text": "Ben高吗？",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 122.32,
+   "end": 123.12,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 123.12,
+   "end": 125.74,
+   "en_text": "Ben is tall.",
+   "zh_text": "Ben很高。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 125.74,
+   "end": 129.64,
+   "en_text": "He is a tall man.",
+   "zh_text": "他是个高个子男人。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 129.64,
+   "end": 133.12,
+   "en_text": "Who is a tall man?",
+   "zh_text": "谁是高个子男人？",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 133.12,
+   "end": 136.28,
+   "en_text": "Is Ben a tall man?",
+   "zh_text": "Ben是个高个子男人吗？",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 136.28,
+   "end": 137.26,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 137.26,
+   "end": 141.72,
+   "en_text": "Ben is a tall man.",
+   "zh_text": "Ben是个高个子男人。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 141.72,
+   "end": 144.26,
+   "en_text": "There is a woman.",
+   "zh_text": "有一个女人。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 144.26,
+   "end": 146.36,
+   "en_text": "Is there a woman?",
+   "zh_text": "有一个女人吗？",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 146.36,
+   "end": 147.18,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 147.18,
+   "end": 149.8,
+   "en_text": "There is a woman.",
+   "zh_text": "有一个女人。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 149.8,
+   "end": 152.84,
+   "en_text": "Her name is Liz.",
+   "zh_text": "她的名字叫Liz。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 152.84,
+   "end": 154.04,
+   "en_text": "What—",
+   "zh_text": "什么——",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 154.04,
+   "end": 156.92,
+   "en_text": "What is her name?",
+   "zh_text": "她叫什么名字？",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 156.92,
+   "end": 161.68,
+   "en_text": "Is her name Ann?",
+   "zh_text": "她叫Ann吗？",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 161.68,
+   "end": 165.3,
+   "en_text": "No, her name is not Ann.",
+   "zh_text": "不，她不叫Ann。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 165.3,
+   "end": 168.56,
+   "en_text": "Is her name Jill?",
+   "zh_text": "她叫Jill吗？",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 168.56,
+   "end": 172.66,
+   "en_text": "No. Her name is not Jill either.",
+   "zh_text": "不。她也不叫Jill。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 172.66,
+   "end": 176.02,
+   "en_text": "Is her name Liz?",
+   "zh_text": "她叫Liz吗？",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 176.02,
+   "end": 177.42,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 177.42,
+   "end": 180.9,
+   "en_text": "Her name is Liz.",
+   "zh_text": "她的名字叫Liz。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 180.9,
+   "end": 182.88,
+   "en_text": "Liz is short.",
+   "zh_text": "Liz很矮。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 182.88,
+   "end": 185.84,
+   "en_text": "Is Liz tall?",
+   "zh_text": "Liz高吗？",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 185.84,
+   "end": 189.72,
+   "en_text": "No. Liz is not tall.",
+   "zh_text": "不，Liz不高。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 189.72,
+   "end": 192.72,
+   "en_text": "Is Liz short?",
+   "zh_text": "Liz矮吗？",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 192.72,
+   "end": 193.52,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 193.52,
+   "end": 195.82,
+   "en_text": "Liz is short.",
+   "zh_text": "Liz很矮。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 195.82,
+   "end": 198.66,
+   "en_text": "She is a short woman.",
+   "zh_text": "她是个矮个子女人。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 198.66,
+   "end": 201.92,
+   "en_text": "Is Liz a tall woman?",
+   "zh_text": "Liz是个高个子女人吗？",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 201.92,
+   "end": 206.68,
+   "en_text": "No, Liz is not a tall woman.",
+   "zh_text": "不，Liz不是高个子女人。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 206.68,
+   "end": 210.36,
+   "en_text": "Is Liz a short woman?",
+   "zh_text": "Liz是个矮个子女人吗？",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 210.36,
+   "end": 211.28,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 211.28,
+   "end": 214.0,
+   "en_text": "Liz is a short woman.",
+   "zh_text": "Liz是个矮个子女人。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 214.0,
+   "end": 216.44,
+   "en_text": "Ben is running.",
+   "zh_text": "Ben在跑步。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 216.44,
+   "end": 220.22,
+   "en_text": "What is Ben doing?",
+   "zh_text": "Ben在做什么？",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 220.22,
+   "end": 223.28,
+   "en_text": "Is Ben eating?",
+   "zh_text": "Ben在吃东西吗？",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 223.28,
+   "end": 227.3,
+   "en_text": "No, Ben is not eating.",
+   "zh_text": "不，Ben没在吃东西。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 227.3,
+   "end": 229.9,
+   "en_text": "Is Ben thinking?",
+   "zh_text": "Ben在思考吗？",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 229.9,
+   "end": 230.86,
+   "en_text": "No.",
+   "zh_text": "不。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 230.86,
+   "end": 234.72,
+   "en_text": "Ben is not thinking either.",
+   "zh_text": "Ben也没在思考。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 234.72,
+   "end": 239.5,
+   "en_text": "Is Ben walking?",
+   "zh_text": "Ben在走路吗？",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 239.5,
+   "end": 242.72,
+   "en_text": "No, Ben is not walking.",
+   "zh_text": "不，Ben没在走路。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 242.72,
+   "end": 246.36,
+   "en_text": "Is Ben running?",
+   "zh_text": "Ben在跑步吗？",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 246.36,
+   "end": 247.24,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 247.24,
+   "end": 249.58,
+   "en_text": "Ben is running.",
+   "zh_text": "Ben在跑步。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 249.58,
+   "end": 252.34,
+   "en_text": "Liz sees Ben.",
+   "zh_text": "Liz看见Ben了。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 252.54,
+   "end": 254.76,
+   "en_text": "Liz sees Ben.",
+   "zh_text": "Liz看见Ben了。",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 254.76,
+   "end": 258.2,
+   "en_text": "Does Liz see?",
+   "zh_text": "Liz看见了吗？",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 258.2,
+   "end": 258.98,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 259.04,
+   "end": 261.54,
+   "en_text": "Liz sees.",
+   "zh_text": "Liz看见了。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 261.54,
+   "end": 265.62,
+   "en_text": "Who does Liz see?",
+   "zh_text": "Liz看见了谁？",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 265.62,
+   "end": 269.6,
+   "en_text": "Does Liz see Ben?",
+   "zh_text": "Liz看见Ben了吗？",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 269.6,
+   "end": 270.74,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 270.74,
+   "end": 276.0,
+   "en_text": "Liz sees Ben.",
+   "zh_text": "Liz看见Ben了。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 276.0,
+   "end": 280.52,
+   "en_text": "Ben does not see Liz.",
+   "zh_text": "Ben没看见Liz。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 280.52,
+   "end": 282.66,
+   "en_text": "Does Ben see?",
+   "zh_text": "Ben看见了吗？",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 282.66,
+   "end": 283.54,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 283.54,
+   "end": 285.34,
+   "en_text": "Ben sees.",
+   "zh_text": "Ben看见了。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 285.34,
+   "end": 289.4,
+   "en_text": "Does Ben see Liz?",
+   "zh_text": "Ben看见Liz了吗？",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 289.4,
+   "end": 290.32,
+   "en_text": "No.",
+   "zh_text": "不。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 290.32,
+   "end": 293.34,
+   "en_text": "Ben does not see Liz.",
+   "zh_text": "Ben没看见Liz。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 293.44,
+   "end": 297.12,
+   "en_text": "Ben does not see Liz.",
+   "zh_text": "Ben没看见Liz。",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 297.12,
+   "end": 301.56,
+   "en_text": "Ben runs into Liz.",
+   "zh_text": "Ben撞上了Liz。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 301.56,
+   "end": 305.66,
+   "en_text": "Does Ben run past Liz?",
+   "zh_text": "Ben从Liz身边跑过去了吗？",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 305.66,
+   "end": 310.12,
+   "en_text": "No, Ben does not run past Liz.",
+   "zh_text": "不，Ben没有从Liz身边跑过去。",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 310.12,
+   "end": 314.12,
+   "en_text": "Does Ben run away from Liz?",
+   "zh_text": "Ben跑离Liz了吗？",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 314.12,
+   "end": 319.88,
+   "en_text": "No, Ben does not run away from Liz either.",
+   "zh_text": "不，Ben也没有跑离Liz。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 319.88,
+   "end": 322.44,
+   "en_text": "Does Ben run into Liz?",
+   "zh_text": "Ben撞上Liz了吗？",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 322.6,
+   "end": 325.94,
+   "en_text": "Does Ben run into Liz?",
+   "zh_text": "Ben撞上Liz了吗？",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 325.94,
+   "end": 326.93,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 326.93,
+   "end": 330.96,
+   "en_text": "Ben runs into Liz.",
+   "zh_text": "Ben撞上了Liz。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 330.96,
+   "end": 333.88,
+   "en_text": "Ben falls over.",
+   "zh_text": "Ben摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 333.88,
+   "end": 337.2,
+   "en_text": "Does Ben fall over?",
+   "zh_text": "Ben摔倒了吗？",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 337.2,
+   "end": 338.1,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 338.1,
+   "end": 341.14,
+   "en_text": "Ben falls over.",
+   "zh_text": "Ben摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 341.14,
+   "end": 343.96,
+   "en_text": "Liz falls over too.",
+   "zh_text": "Liz也摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 344.1,
+   "end": 346.14,
+   "en_text": "Liz falls over too.",
+   "zh_text": "Liz也摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 346.14,
+   "end": 348.84,
+   "en_text": "Does Liz fall over?",
+   "zh_text": "Liz摔倒了吗？",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 348.84,
+   "end": 349.74,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 349.74,
+   "end": 352.14,
+   "en_text": "Liz falls over too.",
+   "zh_text": "Liz也摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 352.15,
+   "end": 356.81,
+   "en_text": "Ben falls over and Liz falls over too.",
+   "zh_text": "Ben摔倒了，Liz也摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 356.81,
+   "end": 360.76,
+   "en_text": "Do Ben and Liz both fall over?",
+   "zh_text": "Ben和Liz都摔倒了吗？",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 360.76,
+   "end": 361.74,
+   "en_text": "Yes.",
+   "zh_text": "是的。",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 361.74,
+   "end": 363.44,
+   "en_text": "They both fall over.",
+   "zh_text": "他们俩都摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 363.56,
+   "end": 365.4,
+   "en_text": "They both fall over.",
+   "zh_text": "他们俩都摔倒了。",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 371.42,
+   "end": 372.92,
+   "en_text": "Hi again everyone!",
+   "zh_text": "大家好，又见面了！",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 372.92,
+   "end": 375.2,
+   "en_text": "Thank you for watching this video.",
+   "zh_text": "谢谢你观看这个视频。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 375.2,
+   "end": 381.16,
+   "en_text": "If you liked this video, please click or press the like button to like it,",
+   "zh_text": "如果你喜欢这个视频，请点击或按下点赞按钮给它点赞，",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 381.16,
+   "end": 386.14,
+   "en_text": "and please click or press the subscribe button to subscribe to this channel.",
+   "zh_text": "也请点击或按下订阅按钮来订阅这个频道。",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 386.14,
+   "end": 391.06,
+   "en_text": "Also, click or press the bell to see new videos like this one.",
+   "zh_text": "另外，点击或按下小铃铛，就能看到像这样的新视频。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 391.06,
+   "end": 396.36,
+   "en_text": "Also, please share this channel with other people who you think will like it too.",
+   "zh_text": "还有，请把这个频道分享给其他你觉得也会喜欢它的人。",
+   "highlights": []
+  }
+ ]
+}

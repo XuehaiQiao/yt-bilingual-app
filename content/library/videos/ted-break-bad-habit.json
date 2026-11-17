@@ -1,0 +1,1725 @@
+{
+ "id": "ted-break-bad-habit",
+ "youtubeId": "-moW9jvvMr4",
+ "title": "A Simple Way to Break a Bad Habit | Judson Brewer | TED",
+ "channel": "TED",
+ "duration": 565,
+ "level": "C1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/-moW9jvvMr4/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:49+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 12.76,
+   "end": 14.616,
+   "en_text": "When I was first learning to meditate,",
+   "zh_text": "我刚开始学冥想的时候，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 14.64,
+   "end": 17.696,
+   "en_text": "the instruction was to simply pay attention to my breath,",
+   "zh_text": "指导方法就是单纯地注意自己的呼吸，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 17.72,
+   "end": 19.8,
+   "en_text": "and when my mind wandered, to bring it back.",
+   "zh_text": "当思绪飘走时，再把它拉回来。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 20.64,
+   "end": 22.0,
+   "en_text": "Sounded simple enough.",
+   "zh_text": "听起来挺简单的。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 22.68,
+   "end": 25.896,
+   "en_text": "Yet I'd sit on these silent retreats,",
+   "zh_text": "可我却坐在那些静默闭关中，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 25.92,
+   "end": 29.256,
+   "en_text": "sweating through T-shirts in the middle of winter.",
+   "zh_text": "大冬天里汗湿了一件又一件T恤。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 29.28,
+   "end": 32.616,
+   "en_text": "I'd take naps every chance I got because it was really hard work.",
+   "zh_text": "我一有机会就打盹，因为这活儿真的很费劲。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 32.64,
+   "end": 34.64,
+   "en_text": "Actually, it was exhausting.",
+   "zh_text": "说实话，那真是累人。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 35.4,
+   "end": 37.136,
+   "en_text": "The instruction was simple enough",
+   "zh_text": "指导方法本身够简单了，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 37.16,
+   "end": 39.28,
+   "en_text": "but I was missing something really important.",
+   "zh_text": "但我漏掉了一个非常重要的东西。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 40.32,
+   "end": 42.56,
+   "en_text": "So why is it so hard to pay attention?",
+   "zh_text": "那么，为什么集中注意力这么难呢？",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 43.08,
+   "end": 44.536,
+   "en_text": "Well, studies show",
+   "zh_text": "研究表明，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 44.56,
+   "end": 47.736,
+   "en_text": "that even when we're really trying to pay attention to something --",
+   "zh_text": "即使我们真的很努力地想专注于某件事——",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 47.76,
+   "end": 49.336,
+   "en_text": "like maybe this talk --",
+   "zh_text": "比如也许就是这场演讲——",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 49.36,
+   "end": 50.576,
+   "en_text": "at some point,",
+   "zh_text": "到了某个时刻，",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 50.6,
+   "end": 52.936,
+   "en_text": "about half of us will drift off into a daydream,",
+   "zh_text": "我们中大约有一半人会走神做起白日梦，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 52.96,
+   "end": 55.04,
+   "en_text": "or have this urge to check our Twitter feed.",
+   "zh_text": "或者有种冲动想去刷一下Twitter。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 56.36,
+   "end": 57.88,
+   "en_text": "So what's going on here?",
+   "zh_text": "那这到底是怎么回事呢？",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 59.0,
+   "end": 62.456,
+   "en_text": "It turns out that we're fighting one of the most evolutionarily-conserved",
+   "zh_text": "原来，我们是在对抗科学界目前已知的",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 62.48,
+   "end": 65.336,
+   "en_text": "learning processes currently known in science,",
+   "zh_text": "最受进化保守的学习过程之一，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 65.36,
+   "end": 66.576,
+   "en_text": "one that's conserved",
+   "zh_text": "这个过程的保守性",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 66.6,
+   "end": 69.04,
+   "en_text": "back to the most basic nervous systems known to man.",
+   "zh_text": "可以一直追溯到人类已知的最基本的神经系统。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 69.84,
+   "end": 71.496,
+   "en_text": "This reward-based learning process",
+   "zh_text": "这个基于奖励的学习过程",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 71.52,
+   "end": 73.696,
+   "en_text": "is called positive and negative reinforcement,",
+   "zh_text": "叫做正强化和负强化，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 73.72,
+   "end": 75.28,
+   "en_text": "and basically goes like this.",
+   "zh_text": "基本上是这样的。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 76.2,
+   "end": 77.896,
+   "en_text": "We see some food that looks good,",
+   "zh_text": "我们看到一些看起来不错的食物，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 77.92,
+   "end": 80.616,
+   "en_text": "our brain says, \"Calories! ... Survival!\"",
+   "zh_text": "大脑就说：“卡路里！……生存！”",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 80.64,
+   "end": 82.136,
+   "en_text": "We eat the food, we taste it --",
+   "zh_text": "我们吃掉食物，尝到味道——",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 82.16,
+   "end": 83.376,
+   "en_text": "it tastes good.",
+   "zh_text": "味道不错。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 83.4,
+   "end": 84.936,
+   "en_text": "And especially with sugar,",
+   "zh_text": "尤其是糖，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 84.96,
+   "end": 87.216,
+   "en_text": "our bodies send a signal to our brain that says,",
+   "zh_text": "我们的身体会向大脑发送一个信号，说：",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 87.24,
+   "end": 89.72,
+   "en_text": "\"Remember what you're eating and where you found it.\"",
+   "zh_text": "“记住你在吃什么，以及你在哪儿找到的。”",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 91.28,
+   "end": 94.016,
+   "en_text": "We lay down this context-dependent memory",
+   "zh_text": "我们就这样留下了这种依赖情境的记忆，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 94.04,
+   "end": 96.496,
+   "en_text": "and learn to repeat the process next time.",
+   "zh_text": "并学会下次重复这个过程。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 96.52,
+   "end": 97.736,
+   "en_text": "See food,",
+   "zh_text": "看到食物，",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 97.76,
+   "end": 99.456,
+   "en_text": "eat food, feel good,",
+   "zh_text": "吃掉食物，感觉很好，",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 99.48,
+   "end": 100.936,
+   "en_text": "repeat.",
+   "zh_text": "重复。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 100.96,
+   "end": 103.576,
+   "en_text": "Trigger, behavior, reward.",
+   "zh_text": "触发、行为、奖励。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 103.6,
+   "end": 104.8,
+   "en_text": "Simple, right?",
+   "zh_text": "很简单，对吧？",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 105.92,
+   "end": 108.056,
+   "en_text": "Well, after a while, our creative brains say,",
+   "zh_text": "过了一阵子，我们富有创造力的大脑就说：",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 108.08,
+   "end": 109.296,
+   "en_text": "\"You know what?",
+   "zh_text": "“你知道吗？",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 109.32,
+   "end": 112.936,
+   "en_text": "You can use this for more than just remembering where food is.",
+   "zh_text": "你可以用这个做的不只是记住食物在哪儿。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 112.96,
+   "end": 115.136,
+   "en_text": "You know, next time you feel bad,",
+   "zh_text": "你看，下次你感觉不好的时候，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 115.16,
+   "end": 118.6,
+   "en_text": "why don't you try eating something good so you'll feel better?\"",
+   "zh_text": "干嘛不试试吃点好东西让自己感觉好一点呢？”",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 119.72,
+   "end": 121.736,
+   "en_text": "We thank our brains for the great idea,",
+   "zh_text": "我们感谢大脑出了个好主意，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 121.76,
+   "end": 123.336,
+   "en_text": "try this and quickly learn",
+   "zh_text": "试了一试，很快就学到",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 123.36,
+   "end": 126.656,
+   "en_text": "that if we eat chocolate or ice cream when we're mad or sad,",
+   "zh_text": "如果我们生气或难过时吃巧克力或冰淇淋，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 126.68,
+   "end": 127.88,
+   "en_text": "we feel better.",
+   "zh_text": "就会感觉好一些。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 128.64,
+   "end": 130.016,
+   "en_text": "Same process,",
+   "zh_text": "同样的过程，",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 130.04,
+   "end": 131.776,
+   "en_text": "just a different trigger.",
+   "zh_text": "只是换了个触发点。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 131.8,
+   "end": 134.896,
+   "en_text": "Instead of this hunger signal coming from our stomach,",
+   "zh_text": "不再是来自胃里的饥饿信号，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 134.92,
+   "end": 136.896,
+   "en_text": "this emotional signal -- feeling sad --",
+   "zh_text": "而是这种情绪信号——感到难过——",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 136.92,
+   "end": 138.2,
+   "en_text": "triggers that urge to eat.",
+   "zh_text": "触发了吃东西的冲动。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 139.04,
+   "end": 140.56,
+   "en_text": "Maybe in our teenage years,",
+   "zh_text": "也许在我们十几岁的时候，",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 141.199,
+   "end": 142.6,
+   "en_text": "we were a nerd at school,",
+   "zh_text": "我们在学校里是个书呆子，",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 143.6,
+   "end": 146.296,
+   "en_text": "and we see those rebel kids outside smoking and we think,",
+   "zh_text": "看到外面那些叛逆的孩子在抽烟，我们就想：",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 146.32,
+   "end": 147.576,
+   "en_text": "\"Hey, I want to be cool.\"",
+   "zh_text": "“嘿，我想变酷。”",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 147.6,
+   "end": 148.8,
+   "en_text": "So we start smoking.",
+   "zh_text": "于是我们开始抽烟。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 149.8,
+   "end": 153.536,
+   "en_text": "The Marlboro Man wasn't a dork, and that was no accident.",
+   "zh_text": "万宝路牛仔可不是个呆子，这绝非偶然。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 153.56,
+   "end": 154.776,
+   "en_text": "See cool,",
+   "zh_text": "看，酷，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 154.8,
+   "end": 156.096,
+   "en_text": "smoke to be cool,",
+   "zh_text": "抽烟显得酷，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 156.12,
+   "end": 157.936,
+   "en_text": "feel good. Repeat.",
+   "zh_text": "感觉好。重复。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 157.96,
+   "end": 159.96,
+   "en_text": "Trigger, behavior, reward.",
+   "zh_text": "触发、行为、奖励。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 160.64,
+   "end": 161.896,
+   "en_text": "And each time we do this,",
+   "zh_text": "每次我们这样做，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 161.92,
+   "end": 163.936,
+   "en_text": "we learn to repeat the process",
+   "zh_text": "我们就学会了重复这个过程",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 163.96,
+   "end": 165.2,
+   "en_text": "and it becomes a habit.",
+   "zh_text": "然后它就变成了习惯。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 165.92,
+   "end": 167.216,
+   "en_text": "So later,",
+   "zh_text": "所以后来，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 167.24,
+   "end": 170.856,
+   "en_text": "feeling stressed out triggers that urge to smoke a cigarette",
+   "zh_text": "感到压力大就会触发想抽根烟的冲动",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 170.88,
+   "end": 172.28,
+   "en_text": "or to eat something sweet.",
+   "zh_text": "或者想吃点甜的东西。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 173.2,
+   "end": 176.136,
+   "en_text": "Now, with these same brain processes,",
+   "zh_text": "现在，靠着同样的大脑机制，",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 176.16,
+   "end": 178.056,
+   "en_text": "we've gone from learning to survive",
+   "zh_text": "我们从学会生存",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 178.08,
+   "end": 180.936,
+   "en_text": "to literally killing ourselves with these habits.",
+   "zh_text": "变成了用这些习惯实实在在地害死自己。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 180.96,
+   "end": 182.216,
+   "en_text": "Obesity and smoking",
+   "zh_text": "肥胖和吸烟",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 182.24,
+   "end": 186.52,
+   "en_text": "are among the leading preventable causes of morbidity and mortality in the world.",
+   "zh_text": "是世界上可预防的致病和致死主要原因之一。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 187.48,
+   "end": 188.88,
+   "en_text": "So back to my breath.",
+   "zh_text": "所以回到我的呼吸。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 189.72,
+   "end": 192.096,
+   "en_text": "What if instead of fighting our brains,",
+   "zh_text": "如果我们不去跟自己的大脑较劲，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 192.12,
+   "end": 194.656,
+   "en_text": "or trying to force ourselves to pay attention,",
+   "zh_text": "也不去强迫自己集中注意力，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 194.68,
+   "end": 198.696,
+   "en_text": "we instead tapped into this natural, reward-based learning process ...",
+   "zh_text": "而是利用这种自然的、基于奖励的学习过程……",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 198.72,
+   "end": 199.92,
+   "en_text": "but added a twist?",
+   "zh_text": "但加一点变化呢？",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 200.52,
+   "end": 202.576,
+   "en_text": "What if instead we just got really curious",
+   "zh_text": "如果我们只是变得非常好奇，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 202.6,
+   "end": 205.096,
+   "en_text": "about what was happening in our momentary experience?",
+   "zh_text": "好奇我们当下这一刻的经历里正在发生什么？",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 205.12,
+   "end": 206.656,
+   "en_text": "I'll give you an example.",
+   "zh_text": "我给你们举个例子。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 206.68,
+   "end": 207.896,
+   "en_text": "In my lab,",
+   "zh_text": "在我的实验室里，",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 207.92,
+   "end": 211.256,
+   "en_text": "we studied whether mindfulness training could help people quit smoking.",
+   "zh_text": "我们研究了正念训练能否帮助人们戒烟。",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 211.28,
+   "end": 214.936,
+   "en_text": "Now, just like trying to force myself to pay attention to my breath,",
+   "zh_text": "就像我试图强迫自己关注呼吸一样，",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 214.96,
+   "end": 218.216,
+   "en_text": "they could try to force themselves to quit smoking.",
+   "zh_text": "他们也可以试着强迫自己戒烟。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 218.24,
+   "end": 221.176,
+   "en_text": "And the majority of them had tried this before and failed --",
+   "zh_text": "他们大多数人以前都试过，而且失败了——",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 221.2,
+   "end": 223.12,
+   "en_text": "on average, six times.",
+   "zh_text": "平均六次。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 223.96,
+   "end": 225.456,
+   "en_text": "Now, with mindfulness training,",
+   "zh_text": "而用正念训练，",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 225.48,
+   "end": 228.8,
+   "en_text": "we dropped the bit about forcing and instead focused on being curious.",
+   "zh_text": "我们去掉了强迫的部分，转而专注于保持好奇。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 229.6,
+   "end": 232.816,
+   "en_text": "In fact, we even told them to smoke.",
+   "zh_text": "事实上，我们甚至让他们去抽烟。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 232.84,
+   "end": 234.816,
+   "en_text": "What? Yeah, we said, \"Go ahead and smoke,",
+   "zh_text": "什么？对，我们说：“去抽吧，",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 234.84,
+   "end": 238.376,
+   "en_text": "just be really curious about what it's like when you do.\"",
+   "zh_text": "只是要非常好奇地体会抽烟时到底是什么感觉。”",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 238.4,
+   "end": 240.096,
+   "en_text": "And what did they notice?",
+   "zh_text": "他们注意到了什么？",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 240.12,
+   "end": 242.816,
+   "en_text": "Well here's an example from one of our smokers.",
+   "zh_text": "这里有个我们一位吸烟者的例子。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 242.84,
+   "end": 244.576,
+   "en_text": "She said, \"Mindful smoking:",
+   "zh_text": "她说：“正念抽烟：",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 244.6,
+   "end": 246.216,
+   "en_text": "smells like stinky cheese",
+   "zh_text": "闻起来像臭奶酪，",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 246.24,
+   "end": 247.856,
+   "en_text": "and tastes like chemicals,",
+   "zh_text": "尝起来像化学药品，",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 247.88,
+   "end": 249.08,
+   "en_text": "YUCK!\"",
+   "zh_text": "恶心！”",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 249.68,
+   "end": 253.056,
+   "en_text": "Now, she knew, cognitively that smoking was bad for her,",
+   "zh_text": "她其实在认知上早就知道抽烟对她有害，",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 253.08,
+   "end": 254.96,
+   "en_text": "that's why she joined our program.",
+   "zh_text": "所以才加入我们的项目。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 255.68,
+   "end": 260.216,
+   "en_text": "What she discovered just by being curiously aware when she smoked",
+   "zh_text": "而她只是通过抽烟时好奇地觉察，就发现了",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 260.24,
+   "end": 263.376,
+   "en_text": "was that smoking tastes like shit.",
+   "zh_text": "抽烟尝起来像屎一样。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 266.36,
+   "end": 270.375,
+   "en_text": "Now, she moved from knowledge to wisdom.",
+   "zh_text": "于是，她从知识走向了智慧。",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 270.399,
+   "end": 273.495,
+   "en_text": "She moved from knowing in her head that smoking was bad for her",
+   "zh_text": "她从脑子里知道抽烟对她有害，",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 273.519,
+   "end": 275.976,
+   "en_text": "to knowing it in her bones,",
+   "zh_text": "变成了骨子里都明白这一点，",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 276.0,
+   "end": 278.296,
+   "en_text": "and the spell of smoking was broken.",
+   "zh_text": "抽烟的魔咒就被打破了。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 278.32,
+   "end": 281.68,
+   "en_text": "She started to become disenchanted with her behavior.",
+   "zh_text": "她开始对自己的行为不再着迷。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 282.96,
+   "end": 285.056,
+   "en_text": "Now, the prefrontal cortex,",
+   "zh_text": "前额叶皮层，",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 285.08,
+   "end": 288.616,
+   "en_text": "that youngest part of our brain from an evolutionary perspective,",
+   "zh_text": "从进化角度看是我们大脑中最年轻的部分，",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 288.64,
+   "end": 292.696,
+   "en_text": "it understands on an intellectual level that we shouldn't smoke.",
+   "zh_text": "它在理智层面上明白我们不该抽烟。",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 292.72,
+   "end": 296.536,
+   "en_text": "And it tries its hardest to help us change our behavior,",
+   "zh_text": "它竭尽全力想帮我们改变行为，",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 296.56,
+   "end": 297.896,
+   "en_text": "to help us stop smoking,",
+   "zh_text": "帮我们戒烟，",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 297.92,
+   "end": 302.04,
+   "en_text": "to help us stop eating that second, that third, that fourth cookie.",
+   "zh_text": "帮我们忍住不吃第二块、第三块、第四块饼干。",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 302.96,
+   "end": 304.456,
+   "en_text": "We call this cognitive control.",
+   "zh_text": "我们把这叫做认知控制。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 304.48,
+   "end": 307.28,
+   "en_text": "We're using cognition to control our behavior.",
+   "zh_text": "我们用认知来控制自己的行为。",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 307.96,
+   "end": 309.176,
+   "en_text": "Unfortunately,",
+   "zh_text": "不幸的是，",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 309.2,
+   "end": 311.136,
+   "en_text": "this is also the first part of our brain",
+   "zh_text": "这也是我们大脑中",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 311.16,
+   "end": 313.176,
+   "en_text": "that goes offline when we get stressed out,",
+   "zh_text": "在压力大时会最先罢工的部分，",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 313.2,
+   "end": 314.456,
+   "en_text": "which isn't that helpful.",
+   "zh_text": "这可帮不上什么忙。",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 314.48,
+   "end": 316.957,
+   "en_text": "Now, we can all relate to this in our own experience.",
+   "zh_text": "这一点我们都能从自己的经历中体会到。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 316.981,
+   "end": 320.136,
+   "en_text": "We're much more likely to do things like yell at our spouse or kids",
+   "zh_text": "我们更容易做出冲配偶或孩子大吼这类事，",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 320.16,
+   "end": 321.776,
+   "en_text": "when we're stressed out or tired,",
+   "zh_text": "当我们压力大或疲惫的时候，",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 321.8,
+   "end": 324.136,
+   "en_text": "even though we know it's not going to be helpful.",
+   "zh_text": "哪怕我们知道这样做没什么好处。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 324.16,
+   "end": 325.68,
+   "en_text": "We just can't help ourselves.",
+   "zh_text": "我们就是控制不住自己。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 327.12,
+   "end": 329.296,
+   "en_text": "When the prefrontal cortex goes offline,",
+   "zh_text": "当前额叶皮层罢工时，",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 329.32,
+   "end": 331.536,
+   "en_text": "we fall back into our old habits,",
+   "zh_text": "我们就会退回到旧习惯里，",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 331.56,
+   "end": 334.416,
+   "en_text": "which is why this disenchantment is so important.",
+   "zh_text": "这就是为什么这种“祛魅”如此重要。",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 334.44,
+   "end": 336.096,
+   "en_text": "Seeing what we get from our habits",
+   "zh_text": "看清我们从习惯中得到了什么，",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 336.12,
+   "end": 338.296,
+   "en_text": "helps us understand them at a deeper level --",
+   "zh_text": "能帮我们在更深的层面上理解它们——",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 338.32,
+   "end": 339.576,
+   "en_text": "to know it in our bones",
+   "zh_text": "真正从骨子里明白它，",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 339.6,
+   "end": 341.856,
+   "en_text": "so we don't have to force ourselves to hold back",
+   "zh_text": "这样我们就不必强迫自己克制",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 341.88,
+   "end": 343.616,
+   "en_text": "or restrain ourselves from behavior.",
+   "zh_text": "或约束自己的行为。",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 343.64,
+   "end": 346.416,
+   "en_text": "We're just less interested in doing it in the first place.",
+   "zh_text": "我们只是从一开始就没那么想做了。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 346.44,
+   "end": 348.976,
+   "en_text": "And this is what mindfulness is all about:",
+   "zh_text": "而这正是正念的意义所在：",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 349.0,
+   "end": 352.68,
+   "en_text": "Seeing really clearly what we get when we get caught up in our behaviors,",
+   "zh_text": "真正清楚地看到，当我们陷入某种行为时，我们得到了什么，",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 353.56,
+   "end": 357.136,
+   "en_text": "becoming disenchanted on a visceral level",
+   "zh_text": "在身体感受的层面上对它祛魅，",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 357.16,
+   "end": 360.28,
+   "en_text": "and from this disenchanted stance, naturally letting go.",
+   "zh_text": "然后从这种祛魅的立场出发，自然而然地放下。",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 360.92,
+   "end": 364.416,
+   "en_text": "This isn't to say that, poof, magically we quit smoking.",
+   "zh_text": "这并不是说，噗的一下，我们就神奇地戒烟了。",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 364.44,
+   "end": 367.056,
+   "en_text": "But over time, as we learn to see more and more clearly",
+   "zh_text": "但随着时间推移，当我们学会越来越清楚地看到",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 367.08,
+   "end": 368.416,
+   "en_text": "the results of our actions,",
+   "zh_text": "自己行为的结果，",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 368.44,
+   "end": 371.08,
+   "en_text": "we let go of old habits and form new ones.",
+   "zh_text": "我们就会放下旧习惯，养成新习惯。",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 372.12,
+   "end": 373.456,
+   "en_text": "The paradox here",
+   "zh_text": "这里的悖论在于，",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 373.48,
+   "end": 376.296,
+   "en_text": "is that mindfulness is just about being really interested",
+   "zh_text": "正念其实就是怀着真正的好奇心",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 376.32,
+   "end": 377.736,
+   "en_text": "in getting close and personal",
+   "zh_text": "去贴近、去亲身感受",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 377.76,
+   "end": 380.336,
+   "en_text": "with what's actually happening in our bodies and minds",
+   "zh_text": "我们身心当下实际发生的一切，",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 380.36,
+   "end": 381.976,
+   "en_text": "from moment to moment.",
+   "zh_text": "一刻接一刻。",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 382.0,
+   "end": 384.296,
+   "en_text": "This willingness to turn toward our experience",
+   "zh_text": "这种愿意转向自己体验的态度，",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 384.32,
+   "end": 388.0,
+   "en_text": "rather than trying to make unpleasant cravings go away as quickly as possible.",
+   "zh_text": "而不是急着让不愉快的渴望尽快消失。",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 388.76,
+   "end": 391.336,
+   "en_text": "And this willingness to turn toward our experience",
+   "zh_text": "而这种愿意转向自己体验的态度",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 391.36,
+   "end": 393.216,
+   "en_text": "is supported by curiosity,",
+   "zh_text": "是由好奇心支撑的，",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 393.24,
+   "end": 394.976,
+   "en_text": "which is naturally rewarding.",
+   "zh_text": "好奇心本身就会带来回报。",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 395.0,
+   "end": 396.736,
+   "en_text": "What does curiosity feel like?",
+   "zh_text": "好奇心是什么感觉？",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 396.76,
+   "end": 397.96,
+   "en_text": "It feels good.",
+   "zh_text": "感觉很好。",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 399.04,
+   "end": 401.346,
+   "en_text": "And what happens when we get curious?",
+   "zh_text": "当我们产生好奇心时会发生什么？",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 401.37,
+   "end": 404.816,
+   "en_text": "We start to notice that cravings are simply made up of body sensations --",
+   "zh_text": "我们开始注意到，渴望不过是由身体感觉组成的——",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 404.84,
+   "end": 407.096,
+   "en_text": "oh, there's tightness, there's tension,",
+   "zh_text": "哦，这里有紧绷，这里有紧张，",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 407.12,
+   "end": 408.776,
+   "en_text": "there's restlessness --",
+   "zh_text": "这里有躁动不安——",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 408.8,
+   "end": 411.24,
+   "en_text": "and that these body sensations come and go.",
+   "zh_text": "而这些身体感觉来了又去。",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 411.88,
+   "end": 414.856,
+   "en_text": "These are bite-size pieces of experiences",
+   "zh_text": "这些都是一小口一小块的体验，",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 414.88,
+   "end": 416.896,
+   "en_text": "that we can manage from moment to moment",
+   "zh_text": "我们可以一刻接一刻地应对，",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 416.92,
+   "end": 421.056,
+   "en_text": "rather than getting clobbered by this huge, scary craving",
+   "zh_text": "而不是被这个巨大又可怕的渴望击垮，",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 421.08,
+   "end": 422.456,
+   "en_text": "that we choke on.",
+   "zh_text": "被它噎得喘不过气。",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 422.48,
+   "end": 424.976,
+   "en_text": "In other words, when we get curious,",
+   "zh_text": "换句话说，当我们产生好奇心时，",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 425.0,
+   "end": 429.736,
+   "en_text": "we step out of our old, fear-based, reactive habit patterns,",
+   "zh_text": "我们就走出了过去那种基于恐惧、条件反射式的习惯模式，",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 429.76,
+   "end": 431.976,
+   "en_text": "and we step into being.",
+   "zh_text": "我们进入了存在的状态。",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 432.0,
+   "end": 434.896,
+   "en_text": "We become this inner scientist",
+   "zh_text": "我们变成了内心的科学家，",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 434.92,
+   "end": 438.136,
+   "en_text": "where we're eagerly awaiting that next data point.",
+   "zh_text": "热切地等待着下一个数据点。",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 438.16,
+   "end": 442.696,
+   "en_text": "Now, this might sound too simplistic to affect behavior.",
+   "zh_text": "这听起来可能太简单了，不足以影响行为。",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 442.72,
+   "end": 445.176,
+   "en_text": "But in one study, we found that mindfulness training",
+   "zh_text": "但在有一项研究中，我们发现正念训练",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 445.2,
+   "end": 449.096,
+   "en_text": "was twice as good as gold standard therapy at helping people quit smoking.",
+   "zh_text": "在帮助人们戒烟方面，效果是金标准疗法的两倍。",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 449.12,
+   "end": 450.56,
+   "en_text": "So it actually works.",
+   "zh_text": "所以它确实有效。",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 451.8,
+   "end": 454.616,
+   "en_text": "And when we studied the brains of experienced meditators,",
+   "zh_text": "当我们研究经验丰富的冥想者的大脑时，",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 454.64,
+   "end": 458.456,
+   "en_text": "we found that parts of a neural network of self-referential processing",
+   "zh_text": "我们发现自我参照加工神经网络的一部分，",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 458.48,
+   "end": 460.056,
+   "en_text": "called the default mode network",
+   "zh_text": "也就是所谓的默认模式网络，",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 460.08,
+   "end": 461.296,
+   "en_text": "were at play.",
+   "zh_text": "在起作用。",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 461.32,
+   "end": 464.256,
+   "en_text": "Now, one current hypothesis is that a region of this network,",
+   "zh_text": "目前有一种假说认为，这个网络中的一个区域，",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 464.28,
+   "end": 466.496,
+   "en_text": "called the posterior cingulate cortex,",
+   "zh_text": "叫做后扣带皮层，",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 466.52,
+   "end": 469.256,
+   "en_text": "is activated not necessarily by craving itself",
+   "zh_text": "它的激活未必是因为渴望本身，",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 469.28,
+   "end": 471.896,
+   "en_text": "but when we get caught up in it, when we get sucked in,",
+   "zh_text": "而是当我们陷入其中、被卷进去的时候，",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 471.92,
+   "end": 473.616,
+   "en_text": "and it takes us for a ride.",
+   "zh_text": "它就会带着我们走。",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 473.64,
+   "end": 475.736,
+   "en_text": "In contrast, when we let go --",
+   "zh_text": "相反，当我们放下——",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 475.76,
+   "end": 477.136,
+   "en_text": "step out of the process",
+   "zh_text": "走出这个过程",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 477.16,
+   "end": 479.656,
+   "en_text": "just by being curiously aware of what's happening --",
+   "zh_text": "只是好奇地觉察正在发生的事——",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 479.68,
+   "end": 481.8,
+   "en_text": "this same brain region quiets down.",
+   "zh_text": "这同一个大脑区域就会安静下来。",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 483.32,
+   "end": 487.416,
+   "en_text": "Now we're testing app and online-based mindfulness training programs",
+   "zh_text": "现在我们正在测试基于应用和网络的正念训练项目，",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 487.44,
+   "end": 490.576,
+   "en_text": "that target these core mechanisms",
+   "zh_text": "它们针对这些核心机制，",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 490.6,
+   "end": 495.096,
+   "en_text": "and, ironically, use the same technology that's driving us to distraction",
+   "zh_text": "而且讽刺的是，用的正是让我们分心的同一种技术，",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 495.12,
+   "end": 497.656,
+   "en_text": "to help us step out of our unhealthy habit patterns",
+   "zh_text": "来帮助我们走出不健康的习惯模式，",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 497.68,
+   "end": 501.696,
+   "en_text": "of smoking, of stress eating and other addictive behaviors.",
+   "zh_text": "比如吸烟、压力性进食和其他成瘾行为。",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 501.72,
+   "end": 504.296,
+   "en_text": "Now, remember that bit about context-dependent memory?",
+   "zh_text": "还记得刚才说的情境依赖记忆吗？",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 504.32,
+   "end": 507.216,
+   "en_text": "We can deliver these tools to peoples' fingertips",
+   "zh_text": "我们可以把这些工具送到人们的指尖，",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 507.24,
+   "end": 509.496,
+   "en_text": "in the contexts that matter most.",
+   "zh_text": "在最关键的情境中。",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 509.52,
+   "end": 510.736,
+   "en_text": "So we can help them",
+   "zh_text": "这样我们就能帮助他们",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 510.76,
+   "end": 513.736,
+   "en_text": "tap into their inherent capacity to be curiously aware",
+   "zh_text": "调动他们与生俱来的好奇觉察能力，",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 513.76,
+   "end": 517.68,
+   "en_text": "right when that urge to smoke or stress eat or whatever arises.",
+   "zh_text": "就在想抽烟、压力性进食或别的什么冲动出现的那一刻。",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 518.64,
+   "end": 520.456,
+   "en_text": "So if you don't smoke or stress eat,",
+   "zh_text": "所以如果你不抽烟，也不压力性进食，",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 520.48,
+   "end": 524.135,
+   "en_text": "maybe the next time you feel this urge to check your email when you're bored,",
+   "zh_text": "也许下次你无聊时感到想查邮件的冲动，",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 524.159,
+   "end": 526.399,
+   "en_text": "or you're trying to distract yourself from work,",
+   "zh_text": "或者你想从工作中分心的时候，",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 526.423,
+   "end": 530.222,
+   "en_text": "or maybe to compulsively respond to that text message when you're driving,",
+   "zh_text": "又或者开车时忍不住想回那条短信，",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 531.08,
+   "end": 534.936,
+   "en_text": "see if you can tap into this natural capacity,",
+   "zh_text": "看看你能不能调动这种天生的能力，",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 534.96,
+   "end": 536.216,
+   "en_text": "just be curiously aware",
+   "zh_text": "只是好奇地觉察",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 536.24,
+   "end": 539.176,
+   "en_text": "of what's happening in your body and mind in that moment.",
+   "zh_text": "那一刻你身体和心里正在发生什么。",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 539.2,
+   "end": 540.656,
+   "en_text": "It will just be another chance",
+   "zh_text": "这只会是又一次机会",
+   "highlights": []
+  },
+  {
+   "id": 205,
+   "start": 540.68,
+   "end": 544.336,
+   "en_text": "to perpetuate one of our endless and exhaustive habit loops ...",
+   "zh_text": "去延续我们无数个令人精疲力竭的习惯循环……",
+   "highlights": []
+  },
+  {
+   "id": 206,
+   "start": 544.36,
+   "end": 545.6,
+   "en_text": "or step out of it.",
+   "zh_text": "或者走出它。",
+   "highlights": []
+  },
+  {
+   "id": 207,
+   "start": 546.08,
+   "end": 548.976,
+   "en_text": "Instead of see text message, compulsively text back,",
+   "zh_text": "与其看到短信就忍不住回过去，",
+   "highlights": []
+  },
+  {
+   "id": 208,
+   "start": 549.0,
+   "end": 550.736,
+   "en_text": "feel a little bit better --",
+   "zh_text": "感觉好一点——",
+   "highlights": []
+  },
+  {
+   "id": 209,
+   "start": 550.76,
+   "end": 552.216,
+   "en_text": "notice the urge,",
+   "zh_text": "注意到那股冲动，",
+   "highlights": []
+  },
+  {
+   "id": 210,
+   "start": 552.24,
+   "end": 553.696,
+   "en_text": "get curious,",
+   "zh_text": "产生好奇，",
+   "highlights": []
+  },
+  {
+   "id": 211,
+   "start": 553.72,
+   "end": 555.656,
+   "en_text": "feel the joy of letting go",
+   "zh_text": "感受放下的喜悦",
+   "highlights": []
+  },
+  {
+   "id": 212,
+   "start": 555.68,
+   "end": 556.88,
+   "en_text": "and repeat.",
+   "zh_text": "然后重复。",
+   "highlights": []
+  },
+  {
+   "id": 213,
+   "start": 557.44,
+   "end": 558.656,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢。",
+   "highlights": []
+  }
+ ]
+}

@@ -1,0 +1,741 @@
+{
+ "id": "bbc-real-easy-housemates",
+ "youtubeId": "lHZCWPdQr80",
+ "title": "Talking about housemates 🏠🛋️🫶 Real Easy English",
+ "channel": "BBC Learning English",
+ "duration": 348,
+ "level": "A2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/lHZCWPdQr80/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:51:15+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.08,
+   "end": 3.32,
+   "en_text": "Hello and welcome to Real Easy English.",
+   "zh_text": "大家好，欢迎来到Real Easy English。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 3.32,
+   "end": 4.68,
+   "en_text": "In this podcast,",
+   "zh_text": "在这期播客里，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 4.68,
+   "end": 9.28,
+   "en_text": "we have real conversations in easy English to help you learn.",
+   "zh_text": "我们用简单的英语进行真实的对话，帮助大家学习。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 9.28,
+   "end": 10.4,
+   "en_text": "I'm Neil.",
+   "zh_text": "我是Neil。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 10.4,
+   "end": 12.04,
+   "en_text": "And I'm Beth.",
+   "zh_text": "我是Beth。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 12.04,
+   "end": 15.68,
+   "en_text": "You can find a video version of this podcast",
+   "zh_text": "你可以在我们的网站上找到这期播客的视频版",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 15.68,
+   "end": 19.84,
+   "en_text": "and a free worksheet to help you learn on our website,",
+   "zh_text": "和一份免费的学习练习表，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 19.84,
+   "end": 23.48,
+   "en_text": "bbclearningenglish.com",
+   "zh_text": "网址是bbclearningenglish.com",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 28.24,
+   "end": 29.68,
+   "en_text": "Hi Beth, how are you?",
+   "zh_text": "嗨，Beth，你好吗？",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 29.68,
+   "end": 31.4,
+   "en_text": "I'm good, Neil. How are you?",
+   "zh_text": "我很好，Neil。你呢？",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 31.4,
+   "end": 33.04,
+   "en_text": "Very well, thank you.",
+   "zh_text": "非常好，谢谢。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 33.04,
+   "end": 35.8,
+   "en_text": "What are we talking about today?",
+   "zh_text": "我们今天聊什么？",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 35.8,
+   "end": 39.6,
+   "en_text": "Today we are talking about housemates.",
+   "zh_text": "今天我们聊室友。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 39.6,
+   "end": 47.0,
+   "en_text": "Housemates – the people that you share a house with who aren't your family.",
+   "zh_text": "室友——就是和你合住一个房子、但不是你家人的人。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 47.0,
+   "end": 48.76,
+   "en_text": "Maybe they're your friends,",
+   "zh_text": "他们可能是你的朋友，",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 48.76,
+   "end": 52.56,
+   "en_text": "or even strangers who just need somewhere to live.",
+   "zh_text": "也可能只是需要找个地方住的陌生人。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 52.56,
+   "end": 58.2,
+   "en_text": "Exactly. And it's quite common in the UK to live with housemates",
+   "zh_text": "没错。在英国，和室友一起住很常见，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 58.2,
+   "end": 60.08,
+   "en_text": "when you're younger.",
+   "zh_text": "尤其是在你年轻的时候。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 60.08,
+   "end": 63.36,
+   "en_text": "Have you ever lived with housemates?",
+   "zh_text": "你以前和室友一起住过吗？",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 63.36,
+   "end": 69.4,
+   "en_text": "Yes, of course. I had house or flatmates when I was a student",
+   "zh_text": "当然住过。我当学生的时候有过室友或合租伙伴，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 69.4,
+   "end": 76.52,
+   "en_text": "and then after I was a student in my first jobs and before I got married.",
+   "zh_text": "后来毕业了、做第一几份工作的时候，还有结婚之前，也都和人合住过。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 76.52,
+   "end": 79.04,
+   "en_text": "That's exactly the same as me.",
+   "zh_text": "我跟你完全一样。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 79.04,
+   "end": 84.4,
+   "en_text": "So, when I went to university, I moved in with five people,",
+   "zh_text": "我上大学的时候，和五个人一起住，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 84.4,
+   "end": 89.68,
+   "en_text": "and we all had a separate room and a separate bathroom.",
+   "zh_text": "我们每人都有独立的房间和独立的卫生间。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 89.68,
+   "end": 93.88,
+   "en_text": "But yeah, they were my flatmates for my first year of university.",
+   "zh_text": "不过，大学第一年他们算是我的合租室友。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 93.88,
+   "end": 99.2,
+   "en_text": "But in my second year, then I moved into a house and we all shared a bathroom,",
+   "zh_text": "到了第二年，我搬进了一栋房子，我们共用一个卫生间，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 99.2,
+   "end": 103.16,
+   "en_text": "and they were my housemates because we were in a house.",
+   "zh_text": "他们就是我的室友了，因为我们住在一栋房子里。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 103.16,
+   "end": 108.0,
+   "en_text": "Did you enjoy having housemates?",
+   "zh_text": "你喜欢有室友吗？",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 108.0,
+   "end": 112.92,
+   "en_text": "I think it really depends on the people that you live with.",
+   "zh_text": "我觉得这真的取决于跟你一起住的人。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 112.92,
+   "end": 115.8,
+   "en_text": "I have had some bad housemates.",
+   "zh_text": "我遇到过一些糟糕的室友。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 115.8,
+   "end": 121.28,
+   "en_text": "Bad because they weren't tidy, didn't clean.",
+   "zh_text": "糟糕是因为他们不爱整洁，不打扫卫生。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 121.28,
+   "end": 124.92,
+   "en_text": "There were dishes in the kitchen that were dirty",
+   "zh_text": "厨房里有脏盘子，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 124.92,
+   "end": 127.92,
+   "en_text": "and not cleaned for a long time.",
+   "zh_text": "很久都没洗。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 127.92,
+   "end": 133.16,
+   "en_text": "But I've also had some really nice housemates as well.",
+   "zh_text": "但我也遇到过一些非常好的室友。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 133.16,
+   "end": 138.28,
+   "en_text": "Do you enjoy living with housemates or did you enjoy living with housemates?",
+   "zh_text": "你喜欢和室友一起住吗，或者说你以前喜欢和室友一起住吗？",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 138.28,
+   "end": 143.68,
+   "en_text": "I think as you said, it really depends on the person.",
+   "zh_text": "我觉得就像你说的，这真的取决于人。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 143.68,
+   "end": 148.56,
+   "en_text": "So, you mentioned people being messy and that kind of thing.",
+   "zh_text": "你刚才提到有人很邋遢之类的。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 148.56,
+   "end": 152.84,
+   "en_text": "Also, noisy people are difficult.",
+   "zh_text": "还有，吵闹的人也很难相处。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 152.84,
+   "end": 160.12,
+   "en_text": "But some of my best friends now have been my housemates in the past.",
+   "zh_text": "但我现在一些最好的朋友，就是以前的室友。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 160.12,
+   "end": 166.24,
+   "en_text": "So, I think you can really get to know people very well.",
+   "zh_text": "所以我觉得，你真的可以很深入地了解一个人。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 166.24,
+   "end": 168.4,
+   "en_text": "And you can also meet some people",
+   "zh_text": "你也可能遇到一些人，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 168.4,
+   "end": 171.4,
+   "en_text": "who you never want to see again in your life!",
+   "zh_text": "你这辈子再也不想见到他们！",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 171.4,
+   "end": 172.68,
+   "en_text": "That's true!",
+   "zh_text": "确实如此！",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 172.68,
+   "end": 178.28,
+   "en_text": "So, Neil, what do you think is the best kind of personality,",
+   "zh_text": "那么，Neil，你觉得什么样的性格最好，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 178.28,
+   "end": 181.44,
+   "en_text": "the best kind of person to live with?",
+   "zh_text": "最适合一起住的是什么样的人？",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 181.44,
+   "end": 184.48,
+   "en_text": "They have to be easygoing.",
+   "zh_text": "他们得随和才行。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 184.48,
+   "end": 185.8,
+   "en_text": "What does that mean?",
+   "zh_text": "那是什么意思？",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 185.8,
+   "end": 189.84,
+   "en_text": "Somebody who is easygoing is relaxed,",
+   "zh_text": "随和的人就是很放松，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 189.84,
+   "end": 196.2,
+   "en_text": "and they don't get too upset or angry over little things.",
+   "zh_text": "不会因为小事就太难过或者生气。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 196.2,
+   "end": 200.72,
+   "en_text": "And they're quite easy to live with.",
+   "zh_text": "而且跟他们住在一起挺轻松的。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 200.72,
+   "end": 202.84,
+   "en_text": "And there's the clue – easygoing.",
+   "zh_text": "这里就有线索了——随和。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 202.84,
+   "end": 208.08,
+   "en_text": "I think something else important about living with other people",
+   "zh_text": "我觉得跟别人一起住还有一点也很重要，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 208.08,
+   "end": 209.92,
+   "en_text": "or renting somewhere,",
+   "zh_text": "或者是租房住，",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 209.92,
+   "end": 214.88,
+   "en_text": "so paying monthly, is having a good landlord.",
+   "zh_text": "也就是按月付钱，那就是得有个好房东。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 214.88,
+   "end": 216.08,
+   "en_text": "It's very important.",
+   "zh_text": "这非常重要。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 216.08,
+   "end": 217.8,
+   "en_text": "So, who is a landlord?",
+   "zh_text": "那么，谁是房东？",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 217.8,
+   "end": 219.0,
+   "en_text": "What is a landlord?",
+   "zh_text": "什么是房东？",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 219.0,
+   "end": 225.88,
+   "en_text": "So, the landlord is, or landlady is, the person that owns the house or flat",
+   "zh_text": "房东就是拥有这套房子或公寓的人，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 225.88,
+   "end": 228.44,
+   "en_text": "that you're in and you pay them rent.",
+   "zh_text": "你住在里面，然后付给他房租。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 228.44,
+   "end": 231.04,
+   "en_text": "So, you pay them a monthly amount.",
+   "zh_text": "也就是你每个月付给他一笔钱。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 231.04,
+   "end": 236.48,
+   "en_text": "But you might live there for a year or two years or three years,",
+   "zh_text": "你可能在那儿住一年、两年或者三年，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 236.48,
+   "end": 238.2,
+   "en_text": "but you don't own the place.",
+   "zh_text": "但你不拥有这个地方。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 238.2,
+   "end": 240.72,
+   "en_text": "It's the landlord that owns the place.",
+   "zh_text": "是房东拥有这个地方。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 240.72,
+   "end": 244.56,
+   "en_text": "Yeah, and a good landlord can make a big difference.",
+   "zh_text": "对，一个好房东能带来很大的不同。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 244.56,
+   "end": 247.56,
+   "en_text": "Neil, are you easy to live with?",
+   "zh_text": "Neil，你是个好相处的人吗？",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 247.56,
+   "end": 250.48,
+   "en_text": "Should we be flatmates?",
+   "zh_text": "我们要不要做室友？",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 250.48,
+   "end": 258.36,
+   "en_text": "I don't know, but I think I have made some good friends",
+   "zh_text": "我不知道，不过我觉得我交到了一些好朋友，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 258.36,
+   "end": 260.8,
+   "en_text": "when I've been a housemate.",
+   "zh_text": "在我做室友的时候。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 260.8,
+   "end": 264.08,
+   "en_text": "So, they think that I was a good housemate.",
+   "zh_text": "所以，他们觉得我是个不错的室友。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 264.08,
+   "end": 264.64,
+   "en_text": "OK.",
+   "zh_text": "好。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 264.64,
+   "end": 266.32,
+   "en_text": "How about you?",
+   "zh_text": "你呢？",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 266.32,
+   "end": 268.68,
+   "en_text": "Yeah, I think I'm easy to live with,",
+   "zh_text": "嗯，我觉得我挺好相处的，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 268.68,
+   "end": 274.28,
+   "en_text": "but I like to sing a lot, so maybe people would tell me to be quiet.",
+   "zh_text": "但我很喜欢唱歌，所以也许别人会让我安静点。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 274.28,
+   "end": 276.12,
+   "en_text": "Although no one's ever told me to be quiet...",
+   "zh_text": "不过从来没人让我安静过……",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 276.12,
+   "end": 279.96,
+   "en_text": "but maybe they wanted me to and just didn't say!",
+   "zh_text": "但也许他们想让我安静，只是没说出口！",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 285.92,
+   "end": 290.0,
+   "en_text": "Let's recap the vocabulary we've heard in this podcast,",
+   "zh_text": "我们来回顾一下这期播客里听到的词汇，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 290.0,
+   "end": 295.28,
+   "en_text": "starting with 'housemate'. A housemate is someone you live with",
+   "zh_text": "从“housemate”开始。室友就是跟你一起住的人，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 295.28,
+   "end": 299.44,
+   "en_text": "who probably isn't part of your family.",
+   "zh_text": "他可能不是你的家人。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 299.44,
+   "end": 302.0,
+   "en_text": "We also hear 'flatmate'.",
+   "zh_text": "我们还听到了“flatmate”。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 302.0,
+   "end": 307.8,
+   "en_text": "And we had 'easygoing', which means relaxed and not easily upset.",
+   "zh_text": "还有“easygoing”，意思是放松、不容易生气。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 307.8,
+   "end": 311.84,
+   "en_text": "Flatmates or housemates often 'rent' a property",
+   "zh_text": "室友或同住的人通常会“租”一处房子，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 311.84,
+   "end": 314.12,
+   "en_text": "and that means they don't own it –",
+   "zh_text": "意思是他们不拥有它——",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 314.12,
+   "end": 317.88,
+   "en_text": "they pay money to the person who does own it.",
+   "zh_text": "他们把钱付给真正拥有它的人。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 317.88,
+   "end": 322.72,
+   "en_text": "And the person who owns the house or flat is the 'landlord'.",
+   "zh_text": "而拥有这套房子或公寓的人就是“房东”。",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 322.72,
+   "end": 327.04,
+   "en_text": "That's who you pay every month and they own the property.",
+   "zh_text": "你每个月付钱给他，房子是他的。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 327.04,
+   "end": 331.68,
+   "en_text": "That's it for this episode of Real Easy English. To test what you've learnt,",
+   "zh_text": "这期Real Easy English就到这里。想测试你学到的东西，",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 331.68,
+   "end": 336.32,
+   "en_text": "there's a worksheet on our website, bbclearningenglish.com",
+   "zh_text": "我们网站上有练习题，bbclearningenglish.com",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 336.32,
+   "end": 340.56,
+   "en_text": "And we'll be back next week with another easy English conversation.",
+   "zh_text": "下周我们会带来另一段轻松的英语对话。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 340.56,
+   "end": 341.6,
+   "en_text": "Bye for now.",
+   "zh_text": "先再见啦。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 341.6,
+   "end": 342.76,
+   "en_text": "Goodbye!",
+   "zh_text": "再见！",
+   "highlights": []
+  }
+ ]
+}

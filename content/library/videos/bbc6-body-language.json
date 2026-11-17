@@ -1,0 +1,1101 @@
+{
+ "id": "bbc6-body-language",
+ "youtubeId": "oTPZWpQ9pbA",
+ "title": "Cultural differences and body language - 6 Minute English",
+ "channel": "BBC Learning English",
+ "duration": 372,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/oTPZWpQ9pbA/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:40+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 7.12,
+   "end": 9.453,
+   "en_text": "Neil: Welcome to 6 Minute English. In this",
+   "zh_text": "Neil：欢迎收听《6分钟英语》。在本",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 9.453,
+   "end": 11.886,
+   "en_text": "programme we bring you an expressive topic",
+   "zh_text": "节目中，我们会带给你一个生动有趣的话题",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 11.886,
+   "end": 14.2,
+   "en_text": "and six items of vocabulary. I'm Neil.",
+   "zh_text": "以及六个词汇。我是Neil。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 14.2,
+   "end": 20.07,
+   "en_text": "Tim: And I'm Tim. So, we had an argument just before",
+   "zh_text": "Tim：我是Tim。我们在节目开始前",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 20.07,
+   "end": 21.17,
+   "en_text": "we started the show.",
+   "zh_text": "刚吵了一架。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 21.17,
+   "end": 25.08,
+   "en_text": "Neil: We did, Tim. But no hard feelings?",
+   "zh_text": "Neil：确实，Tim。不过别往心里去？",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 25.08,
+   "end": 29.07,
+   "en_text": "Tim: None. No hard feelings is something you say",
+   "zh_text": "Tim：没有。No hard feelings 是你在跟人",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 29.07,
+   "end": 32.74,
+   "en_text": "to somebody you have argued with to say you'd still like",
+   "zh_text": "吵过架之后对对方说的话，意思是你们还是",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 32.74,
+   "end": 35.46,
+   "en_text": "to be friends. We often fall out",
+   "zh_text": "愿意做朋友。我们常常因为一些",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 35.469,
+   "end": 36.649,
+   "en_text": "over silly things.",
+   "zh_text": "鸡毛蒜皮的小事闹翻。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 36.649,
+   "end": 38.77,
+   "en_text": "Neil: Like who's going to introduce the show.",
+   "zh_text": "Neil：比如谁来介绍这期节目。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 38.77,
+   "end": 40.6,
+   "en_text": "Tim: Or who's going to choose the quiz question.",
+   "zh_text": "Tim：或者谁来选测验题。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 40.6,
+   "end": 43.59,
+   "en_text": "Neil: But we understand each other. That's the important",
+   "zh_text": "Neil：但我们彼此理解。这才是最重要的",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 43.59,
+   "end": 46.34,
+   "en_text": "thing, isn't it? To fall out with somebody by the",
+   "zh_text": "一点，对吧？顺便说一下，to fall out with somebody",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 46.34,
+   "end": 49.7,
+   "en_text": "way, is another way of saying to argue or disagree",
+   "zh_text": "是另一种说法，表示跟某人争吵或意见不合。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 49.7,
+   "end": 51.64,
+   "en_text": "with them. Did you know that you wave your arms",
+   "zh_text": "你知道吗，你吵架的时候会不停地挥舞手臂，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 51.64,
+   "end": 53.78,
+   "en_text": "around a lot when you're arguing, Tim?",
+   "zh_text": "Tim，你争论的时候会经常动来动去吗？",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 53.789,
+   "end": 56.979,
+   "en_text": "Tim: No, I didn't know I did that.",
+   "zh_text": "Tim：不，我不知道我会那样。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 56.979,
+   "end": 58.46,
+   "en_text": "Neil: That isn't very British.",
+   "zh_text": "Neil：那可不太像英国人的作风。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 58.46,
+   "end": 63.039,
+   "en_text": "Tim: I know. Using gestures, or movements you make",
+   "zh_text": "Tim：我知道。用手势，也就是用手或头做出的动作",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 63.039,
+   "end": 65.6,
+   "en_text": "with your hands or your head to express what you are",
+   "zh_text": "来表达你正在想什么或感受什么，这在一些",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 65.6,
+   "end": 68.72,
+   "en_text": "thinking of feeling is common in some",
+   "zh_text": "国家很常见，但在另一些国家却不然。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 68.72,
+   "end": 71.92,
+   "en_text": "countries but not in others. Then there are",
+   "zh_text": "还有一些动作，比如摇头，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 71.92,
+   "end": 74.33,
+   "en_text": "some movements, like shaking your head, which",
+   "zh_text": "它大多表示“不”，但在有些国家意思",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 74.33,
+   "end": 77.7,
+   "en_text": "mostly means 'no' but in some countries can mean the",
+   "zh_text": "正好相反。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 77.7,
+   "end": 81.22,
+   "en_text": "opposite. Neil: That's right. In which country does",
+   "zh_text": "Neil：没错。在哪个国家摇头表示",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 81.22,
+   "end": 84.22,
+   "en_text": "shaking your head mean 'yes', Tim? Is it?",
+   "zh_text": "“是”呢，Tim？是",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 84.22,
+   "end": 85.58,
+   "en_text": "a) Greece,",
+   "zh_text": "a）希腊，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 85.58,
+   "end": 88.57,
+   "en_text": "b) Japan or c) Bulgaria?",
+   "zh_text": "b）日本，还是c）保加利亚？",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 88.57,
+   "end": 93.66,
+   "en_text": "Tim: No idea. I'll guess Greece. I do know that",
+   "zh_text": "Tim：不知道。我猜是希腊。我确实知道",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 93.66,
+   "end": 95.6,
+   "en_text": "in India people shake their heads to mean",
+   "zh_text": "在印度，人们摇头可以表示",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 95.6,
+   "end": 97.22,
+   "en_text": "lots of different things.",
+   "zh_text": "很多不同的意思。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 97.22,
+   "end": 99.2,
+   "en_text": "Neil: There are plenty of gestures you need to be",
+   "zh_text": "Neil：当你跟来自不同文化的人见面打招呼时，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 99.2,
+   "end": 101.28,
+   "en_text": "careful with when you're meeting and greeting people",
+   "zh_text": "有很多手势你都得小心使用，",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 101.28,
+   "end": 103.18,
+   "en_text": "from a culture that's different to",
+   "zh_text": "以免冒犯别人或造成",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 103.18,
+   "end": 105.82,
+   "en_text": "your own, to avoid offending people or making an",
+   "zh_text": "尴尬的失礼。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 105.82,
+   "end": 107.53,
+   "en_text": "awkward faux pas.",
+   "zh_text": "Tim：如果你犯了 faux pas（失礼），意思是你在社交场合说了或",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 107.53,
+   "end": 111.26,
+   "en_text": "Tim: If you make a faux pas it means you say or",
+   "zh_text": "做了什么让人尴尬的事。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 111.26,
+   "end": 114.999,
+   "en_text": "do something embarrassing in a social situation.",
+   "zh_text": "比如，我们日常用的竖大拇指",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 114.999,
+   "end": 118.66,
+   "en_text": "For example, our every day use of the thumbs-up",
+   "zh_text": "手势可能会冒犯来自中东的人。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 118.66,
+   "end": 121.78,
+   "en_text": "signal might offend people from the Middle East.",
+   "zh_text": "Neil：to offend 的意思是让某人生气",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 121.78,
+   "end": 124.56,
+   "en_text": "Neil: And to offend means to make somebody angry",
+   "zh_text": "或不快。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 124.56,
+   "end": 125.71,
+   "en_text": "or upset.",
+   "zh_text": "Tim：现在我们来听听商学教授Erin",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 125.71,
+   "end": 128.89,
+   "en_text": "Tim: Let's hear now from Business Professor Erin",
+   "zh_text": "Meyer谈谈，当我们不属于同一种文化时，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 128.89,
+   "end": 132.58,
+   "en_text": "Meyer talking about how easy it is to misunderstand",
+   "zh_text": "在日常情境中多么容易误解",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 132.58,
+   "end": 135.28,
+   "en_text": "why some people behave the way they do in everyday",
+   "zh_text": "某些人为什么会有那样的行为。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 135.29,
+   "end": 139.38,
+   "en_text": "situations when we don't belong to the same culture.",
+   "zh_text": "（此处为衔接句）",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 139.38,
+   "end": 143.54,
+   "en_text": "Professor Erin Meyer: A while ago I was in Dubai",
+   "zh_text": "Erin Meyer教授：不久前我在迪拜",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 143.54,
+   "end": 145.54,
+   "en_text": "and one of my Emirati",
+   "zh_text": "我的一个阿联酋",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 145.54,
+   "end": 148.94,
+   "en_text": "students was driving me home after a session and the",
+   "zh_text": "学生在一节课后开车送我回家，",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 148.94,
+   "end": 151.05,
+   "en_text": "car stopped at a light and she rolled",
+   "zh_text": "车在红灯前停下，她摇下",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 151.05,
+   "end": 152.88,
+   "en_text": "down her window, and she started shouting at someone",
+   "zh_text": "车窗，开始冲着窗外的",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 152.88,
+   "end": 154.5,
+   "en_text": "outside of the window. This guy",
+   "zh_text": "某个人大喊。这个男的",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 154.5,
+   "end": 157.08,
+   "en_text": "was crossing the street with a big box of",
+   "zh_text": "正抱着一大箱",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 157.08,
+   "end": 159.99,
+   "en_text": "cloth. And he started shouting back, and she",
+   "zh_text": "布料过马路。他也开始回喊，然后她",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 159.99,
+   "end": 163.68,
+   "en_text": "opened up the door, and they started gesticulating and",
+   "zh_text": "打开车门，他们开始比划着",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 163.68,
+   "end": 165.2,
+   "en_text": "shouting at one another. And I thought,",
+   "zh_text": "互相大喊大叫。我当时想，",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 165.2,
+   "end": 167.44,
+   "en_text": "wow, they're having a huge fight, I thought",
+   "zh_text": "哇，他们吵得好凶，我还以为",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 167.44,
+   "end": 169.42,
+   "en_text": "maybe he was going to hit her. And she got",
+   "zh_text": "他可能要打她了。后来她",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 169.42,
+   "end": 171.66,
+   "en_text": "back in the car, and I said, well, what were you fighting",
+   "zh_text": "回到车里，我就问，你们刚才在吵",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 171.66,
+   "end": 173.29,
+   "en_text": "about? And she said, 'Oh no,",
+   "zh_text": "什么呀？她说：“哦不，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 173.29,
+   "end": 175.64,
+   "en_text": "we weren't fighting, he was giving me directions to",
+   "zh_text": "我们没吵架，他是在给我指路，告诉我",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 175.64,
+   "end": 179.0,
+   "en_text": "your hotel. And I thought that was a great example of",
+   "zh_text": "你的酒店怎么走。我觉得这是个很好的例子，说明",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 179.0,
+   "end": 183.14,
+   "en_text": "how someone from another culture may misperceive or",
+   "zh_text": "来自另一种文化的人可能会误以为或",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 183.14,
+   "end": 187.32,
+   "en_text": "misunderstand something as a fight when in fact they",
+   "zh_text": "误解为在吵架，而实际上他们",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 187.32,
+   "end": 191.28,
+   "en_text": "were just being emotionally expressive. '",
+   "zh_text": "只是在情绪外露地表达而已。”",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 191.28,
+   "end": 193.58,
+   "en_text": "Neil: Gesticulating. What does that mean?",
+   "zh_text": "Neil：Gesticulating。这是什么意思？",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 193.58,
+   "end": 195.92,
+   "en_text": "Tim: It means what I was doing earlier! Waving",
+   "zh_text": "Tim：就是我刚才做的动作！挥舞",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 195.92,
+   "end": 199.12,
+   "en_text": "your arms around to express what you're feeling.",
+   "zh_text": "手臂来表达你的感受。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 199.13,
+   "end": 202.09,
+   "en_text": "Neil: Erin Meyer was worried because her student",
+   "zh_text": "Neil：Erin Meyer 当时很担心，因为她的学生",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 202.09,
+   "end": 204.08,
+   "en_text": "and the man on the street were shouting and",
+   "zh_text": "和街上那个男人在大喊大叫，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 204.08,
+   "end": 206.33,
+   "en_text": "gesticulating at each other. She thought they",
+   "zh_text": "还互相比划着手势。她以为他们",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 206.33,
+   "end": 207.38,
+   "en_text": "were having a fight when in fact they were",
+   "zh_text": "在吵架，而实际上他们",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 207.38,
+   "end": 210.57,
+   "en_text": "just being emotionally expressive.",
+   "zh_text": "只是在情绪外露地表达而已。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 210.57,
+   "end": 213.7,
+   "en_text": "Tim: And expressive means showing what you think",
+   "zh_text": "Tim：而 expressive 的意思是表现出你所想的",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 213.7,
+   "end": 214.7,
+   "en_text": "or feel.",
+   "zh_text": "或所感受到的。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 214.7,
+   "end": 217.47,
+   "en_text": "Neil: You were nodding in agreement, there, Tim.",
+   "zh_text": "Neil：你刚才点头表示同意呢，Tim。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 217.47,
+   "end": 219.76,
+   "en_text": "Which reminds me of our quiz question. In which",
+   "zh_text": "这让我想起我们的测验问题。在哪个",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 219.76,
+   "end": 221.8,
+   "en_text": "country does shaking your head mean",
+   "zh_text": "国家，摇头表示",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 221.8,
+   "end": 226.58,
+   "en_text": "'yes'? Is it? a) Greece, b) Japan or c) Bulgaria?",
+   "zh_text": "“是”？是 a) 希腊、b) 日本，还是 c) 保加利亚？",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 226.58,
+   "end": 228.61,
+   "en_text": "Tim: I said Greece.",
+   "zh_text": "Tim：我说的是希腊。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 228.61,
+   "end": 231.88,
+   "en_text": "Neil: That's the wrong answer I'm afraid. The right",
+   "zh_text": "Neil：恐怕这个答案是错的。正确",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 231.88,
+   "end": 235.02,
+   "en_text": "answer is Bulgaria. In some Southeastern European",
+   "zh_text": "答案是保加利亚。在一些东南欧",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 235.02,
+   "end": 238.6,
+   "en_text": "areas such as Bulgaria and southern Albania,",
+   "zh_text": "地区，比如保加利亚和阿尔巴尼亚南部，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 238.61,
+   "end": 240.48,
+   "en_text": "shaking your head is used to indicate 'yes'.",
+   "zh_text": "摇头用来表示“是”。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 240.48,
+   "end": 244.03,
+   "en_text": "In those regions, nodding in fact means 'no'",
+   "zh_text": "在那些地区，点头实际上表示“不”，",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 244.03,
+   "end": 245.03,
+   "en_text": "as well.",
+   "zh_text": "也是这样。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 245.03,
+   "end": 247.33,
+   "en_text": "Tim: OK, I hope I remember that next time I meet",
+   "zh_text": "Tim：好，希望我下次遇到",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 247.33,
+   "end": 250.54,
+   "en_text": "somebody from Southeastern Europe.",
+   "zh_text": "东南欧来的人时能记住这一点。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 250.54,
+   "end": 253.25,
+   "en_text": "OK, shall we look back at the words we learned today?",
+   "zh_text": "好，我们来回看一下今天学到的词吧？",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 253.25,
+   "end": 255.18,
+   "en_text": "Neil: No hard feelings is something you say to",
+   "zh_text": "Neil：No hard feelings 是你对",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 255.18,
+   "end": 256.68,
+   "en_text": "somebody you have argued with or",
+   "zh_text": "和你争论过、或者在游戏或比赛中",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 256.68,
+   "end": 260.398,
+   "en_text": "beaten in a game or contest to say you'd still like",
+   "zh_text": "输给过的人说的话，表示你仍然愿意",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 260.398,
+   "end": 261.419,
+   "en_text": "to be friends.",
+   "zh_text": "和对方做朋友。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 261.419,
+   "end": 264.889,
+   "en_text": "Tim: For example, I always get the quiz questions",
+   "zh_text": "Tim：比如说，我测验题总是",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 264.889,
+   "end": 269.46,
+   "en_text": "right, unlike you Neil. But no hard feelings, OK?",
+   "zh_text": "答对，不像你，Neil。不过别往心里去，好吗？",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 269.46,
+   "end": 272.85,
+   "en_text": "Neil: That's not a very realistic example, Tim,",
+   "zh_text": "Neil：这个例子可不太现实啊，Tim。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 272.85,
+   "end": 275.36,
+   "en_text": "But I'll let it go. Number two... to fall out",
+   "zh_text": "不过我就不计较了。第二个……to fall out",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 275.36,
+   "end": 277.41,
+   "en_text": "with somebody means to argue or disagree",
+   "zh_text": "with somebody 意思是和某人争吵或意见不合",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 277.41,
+   "end": 278.41,
+   "en_text": "with them.",
+   "zh_text": "和他们一起。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 278.41,
+   "end": 281.28,
+   "en_text": "Tim: I fell out with my best friend at school.",
+   "zh_text": "Tim：我上学时和我最好的朋友闹翻了。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 281.28,
+   "end": 283.49,
+   "en_text": "We didn't talk to each other for a whole week!",
+   "zh_text": "我们整整一个星期没跟对方说话！",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 283.49,
+   "end": 285.86,
+   "en_text": "Neil: That must've been a serious disagreement,",
+   "zh_text": "Neil：那肯定是一次很严重的争执，",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 285.86,
+   "end": 287.639,
+   "en_text": "Tim! What were you arguing about?",
+   "zh_text": "Tim！你们当时在吵什么？",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 287.639,
+   "end": 291.47,
+   "en_text": "Tim: I can't remember. It was a long time ago.",
+   "zh_text": "Tim：我记不清了。那是很久以前的事了。",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 291.47,
+   "end": 294.36,
+   "en_text": "Number three, a 'gesture' is a movement you make with",
+   "zh_text": "第三个，gesture 是你用手",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 294.46,
+   "end": 297.48,
+   "en_text": "your hands or head to express what",
+   "zh_text": "或头做出的动作，用来表达",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 297.49,
+   "end": 298.83,
+   "en_text": "you are thinking of feeling.",
+   "zh_text": "你正在想或感受到的东西。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 298.83,
+   "end": 301.275,
+   "en_text": "Neil: She opened her arms wide in a gesture",
+   "zh_text": "Neil：她张开双臂，做出一个",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 301.275,
+   "end": 301.9,
+   "en_text": "of welcome.",
+   "zh_text": "表示欢迎的手势。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 301.9,
+   "end": 305.55,
+   "en_text": "Tim: Or the verb: 'I gestured to Neil that we only",
+   "zh_text": "Tim：或者作动词用：I gestured to Neil that we only",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 305.55,
+   "end": 307.8,
+   "en_text": "had one minute left to finish the show!'",
+   "zh_text": "had one minute left to finish the show!（我向Neil示意我们只剩一分钟来完成节目了！）",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 307.8,
+   "end": 311.18,
+   "en_text": "Neil: Is that true, Tim? You're nodding your head,",
+   "zh_text": "Neil：这是真的吗，Tim？你在点头，",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 311.18,
+   "end": 313.38,
+   "en_text": "but we should also quickly mention 'gesticulate' which",
+   "zh_text": "不过我们还应该快速提一下 gesticulate，它",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 313.38,
+   "end": 315.97,
+   "en_text": "means to make gestures with your hands",
+   "zh_text": "意思是用手",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 315.97,
+   "end": 316.97,
+   "en_text": "or arms!",
+   "zh_text": "或手臂做手势！",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 316.97,
+   "end": 319.53,
+   "en_text": "Tim: A 'faux pas' is saying or doing something",
+   "zh_text": "Tim：faux pas 是指在社交场合说了或做了",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 319.53,
+   "end": 323.16,
+   "en_text": "embarrassing in a social situation. For example, I",
+   "zh_text": "令人尴尬的事。比如说，我",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 323.16,
+   "end": 325.96,
+   "en_text": "committed a serious faux pas at a party",
+   "zh_text": "昨晚在一个派对上犯了个严重的失礼错误，",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 325.96,
+   "end": 327.7,
+   "en_text": "last night that I'm too embarrassed to tell",
+   "zh_text": "尴尬得我都不好意思",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 327.7,
+   "end": 328.84,
+   "en_text": "you about!",
+   "zh_text": "跟你们讲！",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 328.85,
+   "end": 331.34,
+   "en_text": "Neil: Oh dear, Tim. I hope you didn't offend too",
+   "zh_text": "Neil：哎呀，Tim。我希望你没有冒犯太多",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 331.34,
+   "end": 333.98,
+   "en_text": "many people - 'offend' is our next word and it means to",
+   "zh_text": "人——offend 是我们的下一个词，它的意思是",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 333.98,
+   "end": 336.389,
+   "en_text": "make somebody angry or upset",
+   "zh_text": "让某人生气或难过",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 336.389,
+   "end": 339.55,
+   "en_text": "Tim: Well, you've given us a good example already,",
+   "zh_text": "Tim：嗯，你已经给我们举了个好例子，",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 339.55,
+   "end": 343.32,
+   "en_text": "Neil, so let's move on to the final word - 'expressive',",
+   "zh_text": "Neil，那我们接着讲最后一个词——expressive，",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 343.32,
+   "end": 345.699,
+   "en_text": "which means showing what you think or feel.",
+   "zh_text": "意思是把你的想法或感受表现出来。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 345.699,
+   "end": 348.41,
+   "en_text": "Neil: Tim has a very expressive face.",
+   "zh_text": "Neil：Tim 有一张表情非常丰富的脸。",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 348.41,
+   "end": 351.93,
+   "en_text": "Tim: Thanks! Another quick example - 'I waved my",
+   "zh_text": "Tim：谢谢！再举个简短的例子——I waved my",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 351.93,
+   "end": 353.24,
+   "en_text": "hand expressively to signal to Neil that it",
+   "zh_text": "用手富有表现力地向Neil示意，表示它",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 353.24,
+   "end": 355.77,
+   "en_text": "was time to finish the show.",
+   "zh_text": "was time to finish the show.（我富有表情地挥了挥手，向Neil示意该结束节目了。）",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 355.77,
+   "end": 358.37,
+   "en_text": "Neil: Taking my cue from Tim, that's all for",
+   "zh_text": "Neil：我领会了Tim的暗示，今天就到这里。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 358.37,
+   "end": 360.68,
+   "en_text": "today. But please remember to check out our Instagram,",
+   "zh_text": "不过请记得去看看我们的Instagram、",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 360.68,
+   "end": 364.84,
+   "en_text": "Twitter, Facebook and YouTube pages.",
+   "zh_text": "Twitter、Facebook和YouTube页面。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 364.85,
+   "end": 368.37,
+   "en_text": "Both: Bye!",
+   "zh_text": "两人：再见！",
+   "highlights": []
+  }
+ ]
+}

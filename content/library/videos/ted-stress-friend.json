@@ -1,0 +1,2213 @@
+{
+ "id": "ted-stress-friend",
+ "youtubeId": "RcGyVTAoXEU",
+ "title": "How to Make Stress Your Friend | Kelly McGonigal | TED",
+ "channel": "TED",
+ "duration": 869,
+ "level": "C1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/RcGyVTAoXEU/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:48+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 12.841,
+   "end": 15.511,
+   "en_text": "I have a confession to make.",
+   "zh_text": "我得坦白一件事。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 16.968,
+   "end": 22.443,
+   "en_text": "But first, I want you to make a little confession to me.",
+   "zh_text": "但首先，我想让你们也向我坦白一点。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 23.779,
+   "end": 26.533,
+   "en_text": "In the past year, I want you to just raise your hand",
+   "zh_text": "在过去一年里，如果你感受到的压力相对较小，请举手。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 26.557,
+   "end": 29.947,
+   "en_text": "if you've experienced relatively little stress.",
+   "zh_text": "如果你在过去一年里感受到的压力相对较小，请举手。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 29.971,
+   "end": 30.998,
+   "en_text": "Anyone?",
+   "zh_text": "有人吗？",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 32.604,
+   "end": 34.879,
+   "en_text": "How about a moderate amount of stress?",
+   "zh_text": "那压力适中的人呢？",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 35.84,
+   "end": 38.417,
+   "en_text": "Who has experienced a lot of stress?",
+   "zh_text": "谁经历过很大的压力？",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 38.441,
+   "end": 40.825,
+   "en_text": "Yeah. Me too.",
+   "zh_text": "对，我也是。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 40.849,
+   "end": 42.973,
+   "en_text": "But that is not my confession.",
+   "zh_text": "但这还不是我要坦白的事。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 42.997,
+   "end": 44.758,
+   "en_text": "My confession is this:",
+   "zh_text": "我要坦白的是：",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 44.782,
+   "end": 46.779,
+   "en_text": "I am a health psychologist,",
+   "zh_text": "我是一名健康心理学家，",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 46.803,
+   "end": 50.646,
+   "en_text": "and my mission is to help people be happier and healthier.",
+   "zh_text": "我的使命是帮助人们更快乐、更健康。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 51.699,
+   "end": 54.902,
+   "en_text": "But I fear that something I've been teaching",
+   "zh_text": "但我担心，我过去10年来一直在教的东西，弊大于利，",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 54.926,
+   "end": 59.23,
+   "en_text": "for the last 10 years is doing more harm than good,",
+   "zh_text": "我担心我过去10年来一直在教的东西，弊大于利，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 59.254,
+   "end": 61.084,
+   "en_text": "and it has to do with stress.",
+   "zh_text": "而这和压力有关。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 61.826,
+   "end": 64.829,
+   "en_text": "For years I've been telling people, stress makes you sick.",
+   "zh_text": "多年来我一直告诉人们，压力会让你生病。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 64.853,
+   "end": 67.724,
+   "en_text": "It increases the risk of everything from the common cold",
+   "zh_text": "它会增加各种疾病的风险，从普通感冒",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 67.748,
+   "end": 69.52,
+   "en_text": "to cardiovascular disease.",
+   "zh_text": "到心血管疾病。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 70.134,
+   "end": 73.666,
+   "en_text": "Basically, I've turned stress into the enemy.",
+   "zh_text": "基本上，我把压力变成了敌人。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 74.383,
+   "end": 77.071,
+   "en_text": "But I have changed my mind about stress,",
+   "zh_text": "但我已经改变了对压力的看法，",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 77.095,
+   "end": 80.264,
+   "en_text": "and today, I want to change yours.",
+   "zh_text": "而今天，我想改变你们的看法。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 81.01,
+   "end": 83.366,
+   "en_text": "Let me start with the study that made me rethink",
+   "zh_text": "让我从一项研究说起，它让我重新思考",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 83.39,
+   "end": 85.377,
+   "en_text": "my whole approach to stress.",
+   "zh_text": "我对待压力的整个方式。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 86.004,
+   "end": 90.639,
+   "en_text": "This study tracked 30,000 adults in the United States for eight years,",
+   "zh_text": "这项研究追踪了美国3万名成年人，历时八年，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 90.663,
+   "end": 93.166,
+   "en_text": "and they started by asking people,",
+   "zh_text": "他们一开始先问人们：",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 93.19,
+   "end": 96.382,
+   "en_text": "\"How much stress have you experienced in the last year?\"",
+   "zh_text": "“过去一年里你经历了多少压力？”",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 97.088,
+   "end": 98.628,
+   "en_text": "They also asked,",
+   "zh_text": "他们还问：",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 98.652,
+   "end": 102.984,
+   "en_text": "\"Do you believe that stress is harmful for your health?\"",
+   "zh_text": "“你认为压力对你的健康有害吗？”",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 104.43,
+   "end": 107.986,
+   "en_text": "And then they used public death records to find out who died.",
+   "zh_text": "然后他们用公开的死亡记录来查明谁去世了。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 109.215,
+   "end": 111.013,
+   "en_text": "Okay.",
+   "zh_text": "好。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 111.037,
+   "end": 113.187,
+   "en_text": "Some bad news first.",
+   "zh_text": "先说一些坏消息。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 113.211,
+   "end": 116.612,
+   "en_text": "People who experienced a lot of stress in the previous year",
+   "zh_text": "过去一年里经历过大量压力的人，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 116.636,
+   "end": 119.389,
+   "en_text": "had a 43 percent increased risk of dying.",
+   "zh_text": "死亡风险增加了43%。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 120.612,
+   "end": 124.371,
+   "en_text": "But that was only true for the people",
+   "zh_text": "但这只适用于那些人——",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 124.395,
+   "end": 128.032,
+   "en_text": "who also believed that stress is harmful for your health.",
+   "zh_text": "他们也认为压力对健康有害。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 130.84,
+   "end": 133.116,
+   "en_text": "People who experienced a lot of stress",
+   "zh_text": "那些经历过大量压力",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 133.14,
+   "end": 135.08,
+   "en_text": "but did not view stress as harmful",
+   "zh_text": "但不认为压力有害的人，",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 135.104,
+   "end": 136.781,
+   "en_text": "were no more likely to die.",
+   "zh_text": "死亡的可能性并没有更高。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 136.805,
+   "end": 140.348,
+   "en_text": "In fact, they had the lowest risk of dying",
+   "zh_text": "事实上，他们的死亡风险是最低的，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 140.372,
+   "end": 141.672,
+   "en_text": "of anyone in the study,",
+   "zh_text": "是研究中所有人里最低的，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 141.696,
+   "end": 144.153,
+   "en_text": "including people who had relatively little stress.",
+   "zh_text": "包括那些压力相对较小的人。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 144.896,
+   "end": 147.516,
+   "en_text": "Now the researchers estimated that over the eight years",
+   "zh_text": "现在，研究人员估计，在他们追踪死亡情况的八年里，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 147.54,
+   "end": 149.11,
+   "en_text": "they were tracking deaths,",
+   "zh_text": "在他们追踪死亡情况的八年里，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 149.134,
+   "end": 152.31,
+   "en_text": "182,000 Americans died prematurely,",
+   "zh_text": "有18.2万美国人过早死亡，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 152.334,
+   "end": 153.772,
+   "en_text": "not from stress,",
+   "zh_text": "不是死于压力，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 153.796,
+   "end": 156.977,
+   "en_text": "but from the belief that stress is bad for you.",
+   "zh_text": "而是死于“压力对你有害”这个信念。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 158.257,
+   "end": 161.299,
+   "en_text": "That is over 20,000 deaths a year.",
+   "zh_text": "这相当于每年超过2万人死亡。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 161.931,
+   "end": 164.735,
+   "en_text": "Now, if that estimate is correct,",
+   "zh_text": "如果这个估计是正确的，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 164.759,
+   "end": 166.998,
+   "en_text": "that would make believing stress is bad for you",
+   "zh_text": "那么“认为压力对你有害”这一信念",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 167.022,
+   "end": 171.093,
+   "en_text": "the 15th largest cause of death in the United States last year,",
+   "zh_text": "就会成为去年美国第15大死因，",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 171.117,
+   "end": 175.1,
+   "en_text": "killing more people than skin cancer, HIV/AIDS and homicide.",
+   "zh_text": "致死人数超过皮肤癌、艾滋病和凶杀。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 179.311,
+   "end": 182.112,
+   "en_text": "You can see why this study freaked me out.",
+   "zh_text": "你能看出来，为什么这项研究把我吓坏了。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 182.136,
+   "end": 186.185,
+   "en_text": "Here I've been spending so much energy telling people",
+   "zh_text": "我一直以来花了那么多精力去告诉人们",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 186.209,
+   "end": 188.05,
+   "en_text": "stress is bad for your health.",
+   "zh_text": "压力对健康有害。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 189.09,
+   "end": 190.762,
+   "en_text": "So this study got me wondering:",
+   "zh_text": "所以这项研究让我不禁想问：",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 190.786,
+   "end": 194.858,
+   "en_text": "Can changing how you think about stress make you healthier?",
+   "zh_text": "改变你对压力的看法，能让你更健康吗？",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 194.882,
+   "end": 196.702,
+   "en_text": "And here the science says yes.",
+   "zh_text": "而在这里，科学给出的答案是肯定的。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 196.726,
+   "end": 198.784,
+   "en_text": "When you change your mind about stress,",
+   "zh_text": "当你改变对压力的看法时，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 198.808,
+   "end": 202.06,
+   "en_text": "you can change your body's response to stress.",
+   "zh_text": "你就能改变身体对压力的反应。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 202.084,
+   "end": 204.417,
+   "en_text": "Now to explain how this works,",
+   "zh_text": "现在，为了解释这是怎么运作的，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 204.441,
+   "end": 207.298,
+   "en_text": "I want you all to pretend that you are participants",
+   "zh_text": "我想请大家假装自己是参与者，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 207.322,
+   "end": 209.905,
+   "en_text": "in a study designed to stress you out.",
+   "zh_text": "参加一项专门让你感到压力的研究。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 209.929,
+   "end": 212.589,
+   "en_text": "It's called the social stress test.",
+   "zh_text": "它叫做社会压力测试。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 212.613,
+   "end": 214.643,
+   "en_text": "You come into the laboratory,",
+   "zh_text": "你走进实验室，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 214.667,
+   "end": 216.638,
+   "en_text": "and you're told you have to give",
+   "zh_text": "然后有人告诉你，你得",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 216.662,
+   "end": 221.277,
+   "en_text": "a five-minute impromptu speech on your personal weaknesses",
+   "zh_text": "就自己的个人弱点做一个五分钟的即兴演讲，",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 221.301,
+   "end": 224.934,
+   "en_text": "to a panel of expert evaluators sitting right in front of you,",
+   "zh_text": "讲给坐在你正前方的一排专家评审听，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 224.958,
+   "end": 226.816,
+   "en_text": "and to make sure you feel the pressure,",
+   "zh_text": "而且为了确保你感受到压力，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 226.84,
+   "end": 229.787,
+   "en_text": "there are bright lights and a camera in your face,",
+   "zh_text": "还有刺眼的灯光和怼在你脸上的摄像机，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 229.811,
+   "end": 231.27,
+   "en_text": "kind of like this.",
+   "zh_text": "差不多就像这样。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 232.476,
+   "end": 235.356,
+   "en_text": "And the evaluators have been trained",
+   "zh_text": "而这些评审都受过训练，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 235.38,
+   "end": 239.072,
+   "en_text": "to give you discouraging, non-verbal feedback,",
+   "zh_text": "会给你令人泄气的非语言反馈，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 239.096,
+   "end": 240.27,
+   "en_text": "like this.",
+   "zh_text": "就像这样。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 245.334,
+   "end": 246.335,
+   "en_text": "(Exhales)",
+   "zh_text": "（呼气）",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 249.264,
+   "end": 251.332,
+   "en_text": "Now that you're sufficiently demoralized,",
+   "zh_text": "现在你已经足够灰心丧气了，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 251.356,
+   "end": 254.132,
+   "en_text": "time for part two: a math test.",
+   "zh_text": "该进行第二部分了：数学测试。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 254.156,
+   "end": 256.233,
+   "en_text": "And unbeknownst to you,",
+   "zh_text": "而你并不知道，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 256.257,
+   "end": 259.816,
+   "en_text": "the experimenter has been trained to harass you during it.",
+   "zh_text": "实验者已经受过训练，会在这过程中不断骚扰你。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 260.285,
+   "end": 262.635,
+   "en_text": "Now we're going to all do this together.",
+   "zh_text": "现在我们要一起来做这个。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 262.659,
+   "end": 264.029,
+   "en_text": "It's going to be fun.",
+   "zh_text": "会很好玩的。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 264.404,
+   "end": 265.427,
+   "en_text": "For me.",
+   "zh_text": "对我来说。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 265.451,
+   "end": 266.468,
+   "en_text": "Okay.",
+   "zh_text": "好。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 267.723,
+   "end": 271.722,
+   "en_text": "I want you all to count backwards from 996",
+   "zh_text": "我想请大家从996开始倒着数，",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 271.746,
+   "end": 273.114,
+   "en_text": "in increments of seven.",
+   "zh_text": "每次减七。",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 273.138,
+   "end": 274.742,
+   "en_text": "You're going to do this out loud,",
+   "zh_text": "你们要大声地数出来，",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 274.766,
+   "end": 276.75,
+   "en_text": "as fast as you can,",
+   "zh_text": "尽可能快，",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 276.774,
+   "end": 278.866,
+   "en_text": "starting with 996.",
+   "zh_text": "从996开始。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 278.89,
+   "end": 279.928,
+   "en_text": "Go!",
+   "zh_text": "开始！",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 279.952,
+   "end": 281.309,
+   "en_text": "(Audience counting)",
+   "zh_text": "（观众数数）",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 281.333,
+   "end": 284.122,
+   "en_text": "Go faster. Faster please.",
+   "zh_text": "快一点。请再快一点。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 284.146,
+   "end": 285.512,
+   "en_text": "You're going too slow.",
+   "zh_text": "你数得太慢了。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 285.536,
+   "end": 286.574,
+   "en_text": "(Audience counting)",
+   "zh_text": "（观众数数）",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 286.598,
+   "end": 288.09,
+   "en_text": "Stop. Stop, stop, stop.",
+   "zh_text": "停。停，停，停。",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 288.114,
+   "end": 289.52,
+   "en_text": "That guy made a mistake.",
+   "zh_text": "那个人数错了。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 289.544,
+   "end": 291.742,
+   "en_text": "We are going to have to start all over again.",
+   "zh_text": "我们得从头再来一遍。",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 292.791,
+   "end": 295.003,
+   "en_text": "You're not very good at this, are you?",
+   "zh_text": "你不太擅长这个，是吧？",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 295.027,
+   "end": 296.477,
+   "en_text": "Okay, so you get the idea.",
+   "zh_text": "好，所以你们明白意思了。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 296.501,
+   "end": 298.316,
+   "en_text": "If you were actually in this study,",
+   "zh_text": "如果你真的参加了这项研究，",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 298.34,
+   "end": 300.262,
+   "en_text": "you'd probably be a little stressed out.",
+   "zh_text": "你大概会有点压力。",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 300.286,
+   "end": 301.801,
+   "en_text": "Your heart might be pounding,",
+   "zh_text": "你的心可能怦怦直跳，",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 301.825,
+   "end": 305.205,
+   "en_text": "you might be breathing faster, maybe breaking out into a sweat.",
+   "zh_text": "你可能呼吸变快，也许还会冒汗。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 305.229,
+   "end": 309.801,
+   "en_text": "And normally, we interpret these physical changes as anxiety",
+   "zh_text": "通常，我们会把这些身体变化解读为焦虑，",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 309.825,
+   "end": 312.69,
+   "en_text": "or signs that we aren't coping very well with the pressure.",
+   "zh_text": "或者是我们没能很好应对压力的迹象。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 313.142,
+   "end": 314.991,
+   "en_text": "But what if you viewed them instead",
+   "zh_text": "但如果你换个角度，把它们看作",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 315.015,
+   "end": 317.338,
+   "en_text": "as signs that your body was energized,",
+   "zh_text": "你的身体充满活力的信号，",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 317.362,
+   "end": 320.342,
+   "en_text": "was preparing you to meet this challenge?",
+   "zh_text": "是在让你做好准备迎接这个挑战呢？",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 321.064,
+   "end": 323.626,
+   "en_text": "Now that is exactly what participants were told",
+   "zh_text": "而这正是参与者被告知的内容，",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 323.65,
+   "end": 326.104,
+   "en_text": "in a study conducted at Harvard University.",
+   "zh_text": "在一项哈佛大学进行的研究中。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 326.596,
+   "end": 329.393,
+   "en_text": "Before they went through the social stress test,",
+   "zh_text": "在他们经历社会压力测试之前，",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 329.417,
+   "end": 332.599,
+   "en_text": "they were taught to rethink their stress response as helpful.",
+   "zh_text": "他们被教导要把自己的压力反应重新理解为有益的。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 332.623,
+   "end": 335.868,
+   "en_text": "That pounding heart is preparing you for action.",
+   "zh_text": "那颗怦怦直跳的心脏正在为你行动做准备。",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 336.408,
+   "end": 338.737,
+   "en_text": "If you're breathing faster, it's no problem.",
+   "zh_text": "如果你呼吸变快了，那也没问题。",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 338.761,
+   "end": 340.972,
+   "en_text": "It's getting more oxygen to your brain.",
+   "zh_text": "它是在给大脑输送更多氧气。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 341.846,
+   "end": 344.519,
+   "en_text": "And participants who learned to view the stress response",
+   "zh_text": "而那些学会了把压力反应",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 344.543,
+   "end": 346.756,
+   "en_text": "as helpful for their performance,",
+   "zh_text": "看作对表现有帮助的参与者，",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 346.78,
+   "end": 350.263,
+   "en_text": "well, they were less stressed out, less anxious, more confident,",
+   "zh_text": "他们压力更小、更不焦虑、更自信，",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 350.287,
+   "end": 352.356,
+   "en_text": "but the most fascinating finding to me",
+   "zh_text": "但对我来说最有趣的发现",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 352.38,
+   "end": 355.319,
+   "en_text": "was how their physical stress response changed.",
+   "zh_text": "是他们的身体压力反应发生了怎样的变化。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 355.906,
+   "end": 357.631,
+   "en_text": "Now, in a typical stress response,",
+   "zh_text": "在典型的压力反应中，",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 357.655,
+   "end": 359.447,
+   "en_text": "your heart rate goes up,",
+   "zh_text": "你的心率会上升，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 359.471,
+   "end": 362.851,
+   "en_text": "and your blood vessels constrict like this.",
+   "zh_text": "你的血管会像这样收缩。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 364.343,
+   "end": 366.926,
+   "en_text": "And this is one of the reasons that chronic stress",
+   "zh_text": "这也是长期压力",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 366.95,
+   "end": 369.785,
+   "en_text": "is sometimes associated with cardiovascular disease.",
+   "zh_text": "有时与心血管疾病有关的原因之一。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 369.809,
+   "end": 372.542,
+   "en_text": "It's not really healthy to be in this state all the time.",
+   "zh_text": "一直处于这种状态其实并不健康。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 373.518,
+   "end": 374.606,
+   "en_text": "But in the study,",
+   "zh_text": "但在这项研究中，",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 374.63,
+   "end": 377.637,
+   "en_text": "when participants viewed their stress response as helpful,",
+   "zh_text": "当参与者把压力反应看作有帮助时，",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 377.661,
+   "end": 380.629,
+   "en_text": "their blood vessels stayed relaxed like this.",
+   "zh_text": "他们的血管就像这样保持放松。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 381.176,
+   "end": 382.953,
+   "en_text": "Their heart was still pounding,",
+   "zh_text": "他们的心脏依然在怦怦跳，",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 382.977,
+   "end": 385.704,
+   "en_text": "but this is a much healthier cardiovascular profile.",
+   "zh_text": "但这是健康得多的心血管状态。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 385.728,
+   "end": 388.359,
+   "en_text": "It actually looks a lot like what happens",
+   "zh_text": "它实际上看起来很像",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 388.383,
+   "end": 392.351,
+   "en_text": "in moments of joy and courage.",
+   "zh_text": "在喜悦和勇气时刻发生的情况。",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 393.391,
+   "end": 395.911,
+   "en_text": "Over a lifetime of stressful experiences,",
+   "zh_text": "在一生的压力经历中，",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 395.935,
+   "end": 399.101,
+   "en_text": "this one biological change",
+   "zh_text": "这一个生理上的变化",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 399.125,
+   "end": 400.405,
+   "en_text": "could be the difference",
+   "zh_text": "可能就决定了",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 400.429,
+   "end": 403.409,
+   "en_text": "between a stress-induced heart attack at age 50",
+   "zh_text": "是50岁时因压力诱发心脏病发作，",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 403.433,
+   "end": 405.657,
+   "en_text": "and living well into your 90s.",
+   "zh_text": "还是健康活到90多岁。",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 406.356,
+   "end": 409.417,
+   "en_text": "And this is really what the new science of stress reveals,",
+   "zh_text": "而这正是压力新科学所揭示的，",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 409.441,
+   "end": 412.443,
+   "en_text": "that how you think about stress matters.",
+   "zh_text": "你怎么看待压力很重要。",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 413.197,
+   "end": 416.086,
+   "en_text": "So my goal as a health psychologist has changed.",
+   "zh_text": "所以作为一名健康心理学家，我的目标变了。",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 416.11,
+   "end": 418.248,
+   "en_text": "I no longer want to get rid of your stress.",
+   "zh_text": "我不再想消除你的压力。",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 418.272,
+   "end": 421.206,
+   "en_text": "I want to make you better at stress.",
+   "zh_text": "我想让你更擅长应对压力。",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 421.23,
+   "end": 423.403,
+   "en_text": "And we just did a little intervention.",
+   "zh_text": "我们刚刚做了一个小小的干预。",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 423.935,
+   "end": 425.459,
+   "en_text": "If you raised your hand and said",
+   "zh_text": "如果你刚才举手说",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 425.483,
+   "end": 427.528,
+   "en_text": "you'd had a lot of stress in the last year,",
+   "zh_text": "过去一年里你压力很大，",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 427.552,
+   "end": 429.371,
+   "en_text": "we could have saved your life,",
+   "zh_text": "我们可能已经救了你的命，",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 429.395,
+   "end": 432.922,
+   "en_text": "because hopefully the next time your heart is pounding from stress,",
+   "zh_text": "因为希望下次你的心脏因压力而怦怦跳时，",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 432.946,
+   "end": 434.769,
+   "en_text": "you're going to remember this talk",
+   "zh_text": "你会想起这场演讲，",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 434.793,
+   "end": 436.931,
+   "en_text": "and you're going to think to yourself,",
+   "zh_text": "你会对自己说，",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 436.955,
+   "end": 441.52,
+   "en_text": "this is my body helping me rise to this challenge.",
+   "zh_text": "这是我的身体在帮我迎接这个挑战。",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 442.129,
+   "end": 444.444,
+   "en_text": "And when you view stress in that way,",
+   "zh_text": "当你这样看待压力时，",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 444.468,
+   "end": 446.501,
+   "en_text": "your body believes you,",
+   "zh_text": "你的身体会相信你，",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 446.525,
+   "end": 449.008,
+   "en_text": "and your stress response becomes healthier.",
+   "zh_text": "你的压力反应就会变得更健康。",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 450.204,
+   "end": 454.356,
+   "en_text": "Now I said I have over a decade of demonizing stress",
+   "zh_text": "我说过，我花了十多年把压力妖魔化，",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 454.38,
+   "end": 456.33,
+   "en_text": "to redeem myself from,",
+   "zh_text": "需要为自己赎罪，",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 456.354,
+   "end": 458.94,
+   "en_text": "so we are going to do one more intervention.",
+   "zh_text": "所以我们再来做一次干预。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 458.964,
+   "end": 460.068,
+   "en_text": "I want to tell you",
+   "zh_text": "我想告诉你们",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 460.092,
+   "end": 463.963,
+   "en_text": "about one of the most under-appreciated aspects of the stress response,",
+   "zh_text": "压力反应中最被低估的一个方面，",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 463.987,
+   "end": 465.822,
+   "en_text": "and the idea is this:",
+   "zh_text": "这个观点就是：",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 465.846,
+   "end": 468.241,
+   "en_text": "Stress makes you social.",
+   "zh_text": "压力让你更善于社交。",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 469.266,
+   "end": 471.026,
+   "en_text": "To understand this side of stress,",
+   "zh_text": "要理解压力的这一面，",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 471.05,
+   "end": 473.893,
+   "en_text": "we need to talk about a hormone, oxytocin,",
+   "zh_text": "我们需要谈谈一种激素——催产素。",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 473.917,
+   "end": 478.841,
+   "en_text": "and I know oxytocin has already gotten as much hype as a hormone can get.",
+   "zh_text": "我知道催产素作为一种激素，已经被炒得够火的了。",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 478.865,
+   "end": 482.18,
+   "en_text": "It even has its own cute nickname, the cuddle hormone,",
+   "zh_text": "它甚至有个可爱的昵称，叫“拥抱激素”，",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 482.204,
+   "end": 484.866,
+   "en_text": "because it's released when you hug someone.",
+   "zh_text": "因为你拥抱别人的时候它就会释放。",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 484.89,
+   "end": 488.815,
+   "en_text": "But this is a very small part of what oxytocin is involved in.",
+   "zh_text": "但这只是催产素所参与的一小部分。",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 489.572,
+   "end": 491.846,
+   "en_text": "Oxytocin is a neuro-hormone.",
+   "zh_text": "催产素是一种神经激素。",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 491.87,
+   "end": 495.42,
+   "en_text": "It fine-tunes your brain's social instincts.",
+   "zh_text": "它会微调你大脑的社交本能。",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 495.978,
+   "end": 497.951,
+   "en_text": "It primes you to do things",
+   "zh_text": "它会促使你去做一些",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 497.975,
+   "end": 500.891,
+   "en_text": "that strengthen close relationships.",
+   "zh_text": "能巩固亲密关系的事。",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 501.486,
+   "end": 506.31,
+   "en_text": "Oxytocin makes you crave physical contact with your friends and family.",
+   "zh_text": "催产素会让你渴望和朋友、家人有身体接触。",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 506.334,
+   "end": 507.896,
+   "en_text": "It enhances your empathy.",
+   "zh_text": "它会增强你的共情能力。",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 507.92,
+   "end": 510.604,
+   "en_text": "It even makes you more willing to help and support",
+   "zh_text": "它甚至会让你更愿意去帮助和支持",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 510.628,
+   "end": 512.312,
+   "en_text": "the people you care about.",
+   "zh_text": "你在乎的人。",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 513.672,
+   "end": 517.626,
+   "en_text": "Some people have even suggested we should snort oxytocin...",
+   "zh_text": "有些人甚至建议我们应该吸催产素……",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 519.179,
+   "end": 521.867,
+   "en_text": "to become more compassionate and caring.",
+   "zh_text": "好让自己变得更有同情心、更关心他人。",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 523.34,
+   "end": 527.116,
+   "en_text": "But here's what most people don't understand about oxytocin.",
+   "zh_text": "但关于催产素，大多数人都不了解的是：",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 528.164,
+   "end": 530.23,
+   "en_text": "It's a stress hormone.",
+   "zh_text": "它是一种压力激素。",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 531.13,
+   "end": 534.224,
+   "en_text": "Your pituitary gland pumps this stuff out",
+   "zh_text": "你的脑垂体分泌出这种东西，",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 534.248,
+   "end": 535.772,
+   "en_text": "as part of the stress response.",
+   "zh_text": "作为压力反应的一部分。",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 535.796,
+   "end": 538.023,
+   "en_text": "It's as much a part of your stress response",
+   "zh_text": "它和让你心跳加速的肾上腺素一样，",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 538.047,
+   "end": 541.374,
+   "en_text": "as the adrenaline that makes your heart pound.",
+   "zh_text": "都是你压力反应的一部分。",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 542.271,
+   "end": 544.945,
+   "en_text": "And when oxytocin is released in the stress response,",
+   "zh_text": "而当催产素在压力反应中被释放出来时，",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 544.969,
+   "end": 547.575,
+   "en_text": "it is motivating you to seek support.",
+   "zh_text": "它会促使你去寻求支持。",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 548.33,
+   "end": 550.359,
+   "en_text": "Your biological stress response",
+   "zh_text": "你身体的压力反应",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 550.383,
+   "end": 553.902,
+   "en_text": "is nudging you to tell someone how you feel,",
+   "zh_text": "在轻轻推着你去告诉别人你的感受，",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 553.926,
+   "end": 555.614,
+   "en_text": "instead of bottling it up.",
+   "zh_text": "而不是把情绪憋在心里。",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 556.306,
+   "end": 559.386,
+   "en_text": "Your stress response wants to make sure you notice",
+   "zh_text": "你的压力反应想确保你能注意到",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 559.41,
+   "end": 561.705,
+   "en_text": "when someone else in your life is struggling",
+   "zh_text": "你生活中有人正在苦苦挣扎，",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 561.729,
+   "end": 563.688,
+   "en_text": "so that you can support each other.",
+   "zh_text": "这样你们就能互相支持。",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 564.299,
+   "end": 565.959,
+   "en_text": "When life is difficult,",
+   "zh_text": "当生活艰难时，",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 565.983,
+   "end": 570.57,
+   "en_text": "your stress response wants you to be surrounded",
+   "zh_text": "你的压力反应希望你身边围绕着",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 570.594,
+   "end": 572.113,
+   "en_text": "by people who care about you.",
+   "zh_text": "关心你的人。",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 573.158,
+   "end": 577.313,
+   "en_text": "Okay, so how is knowing this side of stress going to make you healthier?",
+   "zh_text": "好，那么了解压力的这一面，怎么会让你更健康呢？",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 577.686,
+   "end": 580.247,
+   "en_text": "Well, oxytocin doesn't only act on your brain.",
+   "zh_text": "其实，催产素不只作用于你的大脑。",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 580.271,
+   "end": 582.638,
+   "en_text": "It also acts on your body,",
+   "zh_text": "它也作用于你的身体，",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 582.662,
+   "end": 584.837,
+   "en_text": "and one of its main roles in your body",
+   "zh_text": "它在身体里的主要作用之一",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 584.861,
+   "end": 589.522,
+   "en_text": "is to protect your cardiovascular system from the effects of stress.",
+   "zh_text": "就是保护你的心血管系统免受压力的影响。",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 589.956,
+   "end": 592.5,
+   "en_text": "It's a natural anti-inflammatory.",
+   "zh_text": "它是一种天然的消炎物质。",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 592.524,
+   "end": 595.945,
+   "en_text": "It also helps your blood vessels stay relaxed during stress.",
+   "zh_text": "它还能帮助你的血管在压力下保持放松。",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 595.969,
+   "end": 599.342,
+   "en_text": "But my favorite effect on the body is actually on the heart.",
+   "zh_text": "但我最喜欢的它对身体的作用，其实是在心脏上。",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 599.366,
+   "end": 603.304,
+   "en_text": "Your heart has receptors for this hormone,",
+   "zh_text": "你的心脏有这种激素的受体，",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 603.328,
+   "end": 606.782,
+   "en_text": "and oxytocin helps heart cells regenerate",
+   "zh_text": "催产素能帮助心脏细胞再生，",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 606.806,
+   "end": 609.94,
+   "en_text": "and heal from any stress-induced damage.",
+   "zh_text": "并修复任何由压力造成的损伤。",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 610.774,
+   "end": 614.473,
+   "en_text": "This stress hormone strengthens your heart.",
+   "zh_text": "这种压力激素会强健你的心脏。",
+   "highlights": []
+  },
+  {
+   "id": 205,
+   "start": 615.591,
+   "end": 618.833,
+   "en_text": "And the cool thing is that all of these physical benefits",
+   "zh_text": "而最妙的是，催产素的这些身体益处",
+   "highlights": []
+  },
+  {
+   "id": 206,
+   "start": 618.857,
+   "end": 623.883,
+   "en_text": "of oxytocin are enhanced by social contact and social support.",
+   "zh_text": "都会因社交接触和社交支持而增强。",
+   "highlights": []
+  },
+  {
+   "id": 207,
+   "start": 623.907,
+   "end": 626.802,
+   "en_text": "So when you reach out to others under stress,",
+   "zh_text": "所以当你在压力下主动联系他人时，",
+   "highlights": []
+  },
+  {
+   "id": 208,
+   "start": 626.826,
+   "end": 630.075,
+   "en_text": "either to seek support or to help someone else,",
+   "zh_text": "无论是寻求支持还是去帮助别人，",
+   "highlights": []
+  },
+  {
+   "id": 209,
+   "start": 630.099,
+   "end": 632.083,
+   "en_text": "you release more of this hormone,",
+   "zh_text": "你都会释放更多这种激素，",
+   "highlights": []
+  },
+  {
+   "id": 210,
+   "start": 632.107,
+   "end": 634.345,
+   "en_text": "your stress response becomes healthier,",
+   "zh_text": "你的压力反应就会变得更健康，",
+   "highlights": []
+  },
+  {
+   "id": 211,
+   "start": 634.369,
+   "end": 637.02,
+   "en_text": "and you actually recover faster from stress.",
+   "zh_text": "而且你实际上能更快地从压力中恢复过来。",
+   "highlights": []
+  },
+  {
+   "id": 212,
+   "start": 637.658,
+   "end": 639.777,
+   "en_text": "I find this amazing,",
+   "zh_text": "我觉得这太神奇了，",
+   "highlights": []
+  },
+  {
+   "id": 213,
+   "start": 639.801,
+   "end": 643.705,
+   "en_text": "that your stress response has a built-in mechanism",
+   "zh_text": "你的压力反应里竟然有一个内置的机制",
+   "highlights": []
+  },
+  {
+   "id": 214,
+   "start": 643.729,
+   "end": 646.61,
+   "en_text": "for stress resilience,",
+   "zh_text": "用来产生抗压韧性，",
+   "highlights": []
+  },
+  {
+   "id": 215,
+   "start": 646.634,
+   "end": 649.015,
+   "en_text": "and that mechanism is human connection.",
+   "zh_text": "而这个机制就是人与人之间的联结。",
+   "highlights": []
+  },
+  {
+   "id": 216,
+   "start": 651.174,
+   "end": 654.374,
+   "en_text": "I want to finish by telling you about one more study.",
+   "zh_text": "最后，我想再给你们讲一项研究。",
+   "highlights": []
+  },
+  {
+   "id": 217,
+   "start": 654.398,
+   "end": 657.516,
+   "en_text": "And listen up, because this study could also save a life.",
+   "zh_text": "请仔细听，因为这项研究也可能救一条命。",
+   "highlights": []
+  },
+  {
+   "id": 218,
+   "start": 658.651,
+   "end": 661.906,
+   "en_text": "This study tracked about 1,000 adults in the United States,",
+   "zh_text": "这项研究追踪了美国大约1000名成年人，",
+   "highlights": []
+  },
+  {
+   "id": 219,
+   "start": 661.93,
+   "end": 666.069,
+   "en_text": "and they ranged in age from 34 to 93,",
+   "zh_text": "他们的年龄从34岁到93岁不等，",
+   "highlights": []
+  },
+  {
+   "id": 220,
+   "start": 666.093,
+   "end": 668.338,
+   "en_text": "and they started the study by asking,",
+   "zh_text": "研究一开始先问他们：",
+   "highlights": []
+  },
+  {
+   "id": 221,
+   "start": 668.362,
+   "end": 671.565,
+   "en_text": "\"How much stress have you experienced in the last year?\"",
+   "zh_text": "“过去一年里你经历了多少压力？”",
+   "highlights": []
+  },
+  {
+   "id": 222,
+   "start": 672.779,
+   "end": 674.28,
+   "en_text": "They also asked,",
+   "zh_text": "他们还问了：",
+   "highlights": []
+  },
+  {
+   "id": 223,
+   "start": 674.304,
+   "end": 678.939,
+   "en_text": "\"How much time have you spent helping out friends, neighbors,",
+   "zh_text": "“你花了多少时间去帮助朋友、邻居，",
+   "highlights": []
+  },
+  {
+   "id": 224,
+   "start": 678.963,
+   "end": 680.801,
+   "en_text": "people in your community?\"",
+   "zh_text": "以及你社区里的人？”",
+   "highlights": []
+  },
+  {
+   "id": 225,
+   "start": 682.133,
+   "end": 684.884,
+   "en_text": "And then they used public records for the next five years",
+   "zh_text": "然后他们查阅了接下来五年的公开记录，",
+   "highlights": []
+  },
+  {
+   "id": 226,
+   "start": 684.908,
+   "end": 686.287,
+   "en_text": "to find out who died.",
+   "zh_text": "看看谁去世了。",
+   "highlights": []
+  },
+  {
+   "id": 227,
+   "start": 687.531,
+   "end": 690.188,
+   "en_text": "Okay, so the bad news first:",
+   "zh_text": "好，先说坏消息：",
+   "highlights": []
+  },
+  {
+   "id": 228,
+   "start": 690.212,
+   "end": 693.147,
+   "en_text": "For every major stressful life experience,",
+   "zh_text": "每经历一次重大的压力性生活事件，",
+   "highlights": []
+  },
+  {
+   "id": 229,
+   "start": 693.171,
+   "end": 696.196,
+   "en_text": "like financial difficulties or family crisis,",
+   "zh_text": "比如经济困难或家庭危机，",
+   "highlights": []
+  },
+  {
+   "id": 230,
+   "start": 696.22,
+   "end": 699.39,
+   "en_text": "that increased the risk of dying by 30 percent.",
+   "zh_text": "死亡风险就会增加30%。",
+   "highlights": []
+  },
+  {
+   "id": 231,
+   "start": 700.451,
+   "end": 704.421,
+   "en_text": "But -- and I hope you are expecting a \"but\" by now --",
+   "zh_text": "但是——我猜你们现在已经料到会有个“但是”了——",
+   "highlights": []
+  },
+  {
+   "id": 232,
+   "start": 704.445,
+   "end": 706.852,
+   "en_text": "but that wasn't true for everyone.",
+   "zh_text": "但并不是所有人都这样。",
+   "highlights": []
+  },
+  {
+   "id": 233,
+   "start": 706.876,
+   "end": 710.514,
+   "en_text": "People who spent time caring for others",
+   "zh_text": "那些花时间照顾他人的人",
+   "highlights": []
+  },
+  {
+   "id": 234,
+   "start": 710.538,
+   "end": 715.041,
+   "en_text": "showed absolutely no stress-related increase in dying.",
+   "zh_text": "完全没有出现与压力相关的死亡风险上升。",
+   "highlights": []
+  },
+  {
+   "id": 235,
+   "start": 715.065,
+   "end": 716.065,
+   "en_text": "Zero.",
+   "zh_text": "一点都没有。",
+   "highlights": []
+  },
+  {
+   "id": 236,
+   "start": 716.738,
+   "end": 718.813,
+   "en_text": "Caring created resilience.",
+   "zh_text": "关爱他人造就了韧性。",
+   "highlights": []
+  },
+  {
+   "id": 237,
+   "start": 720.233,
+   "end": 721.692,
+   "en_text": "And so we see once again",
+   "zh_text": "于是我们再一次看到，",
+   "highlights": []
+  },
+  {
+   "id": 238,
+   "start": 721.716,
+   "end": 724.33,
+   "en_text": "that the harmful effects of stress on your health",
+   "zh_text": "压力对健康的有害影响",
+   "highlights": []
+  },
+  {
+   "id": 239,
+   "start": 724.354,
+   "end": 725.994,
+   "en_text": "are not inevitable.",
+   "zh_text": "并不是不可避免的。",
+   "highlights": []
+  },
+  {
+   "id": 240,
+   "start": 726.578,
+   "end": 729.014,
+   "en_text": "How you think and how you act",
+   "zh_text": "你如何思考、如何行动，",
+   "highlights": []
+  },
+  {
+   "id": 241,
+   "start": 729.038,
+   "end": 732.078,
+   "en_text": "can transform your experience of stress.",
+   "zh_text": "能够改变你经历压力的方式。",
+   "highlights": []
+  },
+  {
+   "id": 242,
+   "start": 732.998,
+   "end": 737.912,
+   "en_text": "When you choose to view your stress response as helpful,",
+   "zh_text": "当你选择把自己的压力反应看作是有帮助的，",
+   "highlights": []
+  },
+  {
+   "id": 243,
+   "start": 737.936,
+   "end": 741.069,
+   "en_text": "you create the biology of courage.",
+   "zh_text": "你就创造出了勇气的生理机制。",
+   "highlights": []
+  },
+  {
+   "id": 244,
+   "start": 742.547,
+   "end": 745.964,
+   "en_text": "And when you choose to connect with others under stress,",
+   "zh_text": "而当你选择在压力下与他人建立联结，",
+   "highlights": []
+  },
+  {
+   "id": 245,
+   "start": 745.988,
+   "end": 748.106,
+   "en_text": "you can create resilience.",
+   "zh_text": "你就能创造出韧性。",
+   "highlights": []
+  },
+  {
+   "id": 246,
+   "start": 749.606,
+   "end": 755.136,
+   "en_text": "Now I wouldn't necessarily ask for more stressful experiences in my life,",
+   "zh_text": "当然，我不会主动要求自己的生活里多一些压力体验，",
+   "highlights": []
+  },
+  {
+   "id": 247,
+   "start": 755.16,
+   "end": 760.168,
+   "en_text": "but this science has given me a whole new appreciation for stress.",
+   "zh_text": "但这门科学让我对压力有了全新的认识。",
+   "highlights": []
+  },
+  {
+   "id": 248,
+   "start": 761.237,
+   "end": 764.349,
+   "en_text": "Stress gives us access to our hearts.",
+   "zh_text": "压力让我们触及自己的内心。",
+   "highlights": []
+  },
+  {
+   "id": 249,
+   "start": 765.897,
+   "end": 769.556,
+   "en_text": "The compassionate heart that finds joy and meaning",
+   "zh_text": "那颗充满同情的心，能在与他人联结中找到快乐和意义，",
+   "highlights": []
+  },
+  {
+   "id": 250,
+   "start": 769.58,
+   "end": 771.094,
+   "en_text": "in connecting with others,",
+   "zh_text": "与他人建立联结中找到快乐和意义，",
+   "highlights": []
+  },
+  {
+   "id": 251,
+   "start": 771.118,
+   "end": 774.656,
+   "en_text": "and yes, your pounding physical heart,",
+   "zh_text": "没错，还有你那颗砰砰跳动的心脏，",
+   "highlights": []
+  },
+  {
+   "id": 252,
+   "start": 774.68,
+   "end": 778.541,
+   "en_text": "working so hard to give you strength and energy.",
+   "zh_text": "它如此努力地工作，给你力量和能量。",
+   "highlights": []
+  },
+  {
+   "id": 253,
+   "start": 779.945,
+   "end": 783.264,
+   "en_text": "And when you choose to view stress in this way,",
+   "zh_text": "而当你选择以这种方式看待压力时，",
+   "highlights": []
+  },
+  {
+   "id": 254,
+   "start": 783.288,
+   "end": 785.776,
+   "en_text": "you're not just getting better at stress,",
+   "zh_text": "你不仅是在压力面前变得更从容，",
+   "highlights": []
+  },
+  {
+   "id": 255,
+   "start": 785.8,
+   "end": 788.543,
+   "en_text": "you're actually making a pretty profound statement.",
+   "zh_text": "你实际上是在表达一个相当深刻的宣言。",
+   "highlights": []
+  },
+  {
+   "id": 256,
+   "start": 789.627,
+   "end": 794.636,
+   "en_text": "You're saying that you can trust yourself to handle life's challenges.",
+   "zh_text": "你在说，你相信自己能够应对生活中的挑战。",
+   "highlights": []
+  },
+  {
+   "id": 257,
+   "start": 795.928,
+   "end": 800.691,
+   "en_text": "And you're remembering that you don't have to face them alone.",
+   "zh_text": "而且你记得，你不必独自面对它们。",
+   "highlights": []
+  },
+  {
+   "id": 258,
+   "start": 801.659,
+   "end": 802.709,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢。",
+   "highlights": []
+  },
+  {
+   "id": 259,
+   "start": 812.014,
+   "end": 815.062,
+   "en_text": "Chris Anderson: This is kind of amazing, what you're telling us.",
+   "zh_text": "Chris Anderson：你告诉我们的这些真有点不可思议。",
+   "highlights": []
+  },
+  {
+   "id": 260,
+   "start": 815.086,
+   "end": 818.993,
+   "en_text": "It seems amazing to me that a belief about stress",
+   "zh_text": "对我来说很神奇的是，一个关于压力的信念",
+   "highlights": []
+  },
+  {
+   "id": 261,
+   "start": 819.017,
+   "end": 822.958,
+   "en_text": "can make so much difference to someone's life expectancy.",
+   "zh_text": "竟然能对一个人的预期寿命产生这么大的影响。",
+   "highlights": []
+  },
+  {
+   "id": 262,
+   "start": 823.5,
+   "end": 825.702,
+   "en_text": "How would that extend to advice,",
+   "zh_text": "那这该怎么延伸到建议上呢？",
+   "highlights": []
+  },
+  {
+   "id": 263,
+   "start": 825.726,
+   "end": 827.869,
+   "en_text": "like, if someone is making a lifestyle choice",
+   "zh_text": "比如说，如果有人在做一个生活方式上的选择",
+   "highlights": []
+  },
+  {
+   "id": 264,
+   "start": 827.893,
+   "end": 831.748,
+   "en_text": "between, say, a stressful job and a non-stressful job,",
+   "zh_text": "在比如一份压力大的工作和一份压力小的工作之间选，",
+   "highlights": []
+  },
+  {
+   "id": 265,
+   "start": 831.772,
+   "end": 834.429,
+   "en_text": "does it matter which way they go?",
+   "zh_text": "他们选哪边有关系吗？",
+   "highlights": []
+  },
+  {
+   "id": 266,
+   "start": 834.453,
+   "end": 836.958,
+   "en_text": "It's equally wise to go for the stressful job",
+   "zh_text": "选择压力大的那份工作同样也是明智的，",
+   "highlights": []
+  },
+  {
+   "id": 267,
+   "start": 836.982,
+   "end": 839.895,
+   "en_text": "so long as you believe that you can handle it, in some sense?",
+   "zh_text": "只要你在某种意义上相信自己能应付得了？",
+   "highlights": []
+  },
+  {
+   "id": 268,
+   "start": 839.919,
+   "end": 842.179,
+   "en_text": "KM: Yeah, and one thing we know for certain",
+   "zh_text": "KM：是的，而且有一件事我们很确定，",
+   "highlights": []
+  },
+  {
+   "id": 269,
+   "start": 842.203,
+   "end": 844.587,
+   "en_text": "is that chasing meaning is better for your health",
+   "zh_text": "那就是追求意义对你的健康更有好处，",
+   "highlights": []
+  },
+  {
+   "id": 270,
+   "start": 844.611,
+   "end": 846.191,
+   "en_text": "than trying to avoid discomfort.",
+   "zh_text": "比试图逃避不适要好。",
+   "highlights": []
+  },
+  {
+   "id": 271,
+   "start": 846.215,
+   "end": 849.263,
+   "en_text": "And so I would say that's really the best way to make decisions,",
+   "zh_text": "所以我会说，那才是做决定的最好方式，",
+   "highlights": []
+  },
+  {
+   "id": 272,
+   "start": 849.287,
+   "end": 852.01,
+   "en_text": "is go after what it is that creates meaning in your life",
+   "zh_text": "就是去追求那些能为你的人生创造意义的东西，",
+   "highlights": []
+  },
+  {
+   "id": 273,
+   "start": 852.034,
+   "end": 855.091,
+   "en_text": "and then trust yourself to handle the stress that follows.",
+   "zh_text": "然后相信自己能应对随之而来的压力。",
+   "highlights": []
+  },
+  {
+   "id": 274,
+   "start": 855.758,
+   "end": 858.13,
+   "en_text": "CA: Thank you so much, Kelly. It's pretty cool.",
+   "zh_text": "CA：非常感谢你，Kelly。这真的很棒。",
+   "highlights": []
+  }
+ ]
+}

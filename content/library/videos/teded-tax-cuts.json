@@ -1,0 +1,605 @@
+{
+ "id": "teded-tax-cuts",
+ "youtubeId": "wCLP3djiKvM",
+ "title": "Do tax cuts stimulate the economy? - Jonathan Smith",
+ "channel": "TED-Ed",
+ "duration": 279,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/wCLP3djiKvM/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:35+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 7.754,
+   "end": 11.674,
+   "en_text": "When President Ronald Reagan began his first term in 1981,",
+   "zh_text": "1981年，罗纳德·里根总统开始他的第一个任期时，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 11.674,
+   "end": 13.551,
+   "en_text": "the US economy was struggling.",
+   "zh_text": "美国经济正举步维艰。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 13.718,
+   "end": 16.345,
+   "en_text": "Unemployment rates were high and getting higher,",
+   "zh_text": "失业率很高，而且还在不断攀升，",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 16.345,
+   "end": 21.559,
+   "en_text": "and in 1979, inflation had peaked at an all-time high for peacetime.",
+   "zh_text": "1979年，通货膨胀率达到了和平时期的最高点。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 22.31,
+   "end": 24.437,
+   "en_text": "In an effort to combat these issues,",
+   "zh_text": "为了解决这些问题，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 24.437,
+   "end": 28.399,
+   "en_text": "Reagan's administration introduced a number of economic policies,",
+   "zh_text": "里根政府推出了一系列经济政策，",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 28.775,
+   "end": 33.654,
+   "en_text": "including tax cuts for large corporations and high-income earners.",
+   "zh_text": "包括对大公司和高收入者减税。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 33.905,
+   "end": 37.033,
+   "en_text": "The idea was that tax savings for the rich",
+   "zh_text": "其想法是，给富人的税收减免",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 37.033,
+   "end": 40.495,
+   "en_text": "would cause extra money to trickle down to everyone else,",
+   "zh_text": "会让多余的钱涓滴而下，惠及其他人，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 40.495,
+   "end": 41.704,
+   "en_text": "and for that reason,",
+   "zh_text": "正因如此，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 41.704,
+   "end": 46.292,
+   "en_text": "these policies are often referred to as trickle-down economics.",
+   "zh_text": "这些政策常被称为涓滴经济学。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 46.709,
+   "end": 48.669,
+   "en_text": "From the 80s to the late 90s,",
+   "zh_text": "从80年代到90年代末，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 48.669,
+   "end": 51.839,
+   "en_text": "the US saw one of its longest and strongest periods",
+   "zh_text": "美国经历了历史上最长、最强劲的",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 51.839,
+   "end": 53.966,
+   "en_text": "of economic growth in history.",
+   "zh_text": "经济增长时期之一。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 54.55,
+   "end": 58.221,
+   "en_text": "Median income rose, as did rates of job creation.",
+   "zh_text": "收入中位数上升了，就业创造率也提高了。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 58.304,
+   "end": 61.974,
+   "en_text": "Since then, many politicians have invoked trickle-down theory",
+   "zh_text": "从那以后，许多政客都援引涓滴理论",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 61.974,
+   "end": 64.393,
+   "en_text": "as a justification for tax cuts—",
+   "zh_text": "作为减税的理由——",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 64.519,
+   "end": 67.021,
+   "en_text": "but did these policies actually work,",
+   "zh_text": "但这些政策真的奏效了吗？",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 67.021,
+   "end": 69.732,
+   "en_text": "either in the sense of stimulating economic growth,",
+   "zh_text": "无论是从刺激经济增长的意义上说，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 69.732,
+   "end": 73.319,
+   "en_text": "or in terms of improving circumstances for Americans?",
+   "zh_text": "还是从改善美国人生活状况的角度说？",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 73.486,
+   "end": 75.655,
+   "en_text": "Would they work in other circumstances?",
+   "zh_text": "它们在别的情况下会奏效吗？",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 76.155,
+   "end": 77.615,
+   "en_text": "To answer these questions,",
+   "zh_text": "要回答这些问题，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 77.615,
+   "end": 80.952,
+   "en_text": "the main things to consider are whether the impact of the tax cut",
+   "zh_text": "主要需要考虑的是：减税对政府税收的影响",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 80.952,
+   "end": 83.621,
+   "en_text": "on the government’s tax revenue is harmful,",
+   "zh_text": "是否有害，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 84.33,
+   "end": 88.292,
+   "en_text": "whether the money saved in taxes actually stimulates the economy,",
+   "zh_text": "省下来的税款是否真的刺激了经济，",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 88.417,
+   "end": 92.713,
+   "en_text": "and whether stimulating the economy actually improves people’s lives.",
+   "zh_text": "以及刺激经济是否真的改善了人们的生活。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 93.339,
+   "end": 96.759,
+   "en_text": "The idea behind tax cuts is that if taxes are too high,",
+   "zh_text": "减税背后的想法是，如果税率太高，",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 96.759,
+   "end": 98.761,
+   "en_text": "people will be less willing to work,",
+   "zh_text": "人们就不太愿意工作，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 98.761,
+   "end": 101.264,
+   "en_text": "which would ultimately decrease tax revenue.",
+   "zh_text": "这最终会减少税收。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 101.764,
+   "end": 106.352,
+   "en_text": "So at a lower tax rate, the government might actually gain more tax money",
+   "zh_text": "所以在较低的税率下，政府实际上可能获得更多的税收，",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 106.352,
+   "end": 110.314,
+   "en_text": "that it can theoretically put towards improving life for its citizens,",
+   "zh_text": "理论上可以用来改善公民的生活，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 110.94,
+   "end": 114.694,
+   "en_text": "because people will work more when they get to keep more of their earnings.",
+   "zh_text": "因为当人们能留下更多收入时，他们就会更努力地工作。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 115.111,
+   "end": 118.906,
+   "en_text": "Of course, there’s a limit to how much the government can cut taxes:",
+   "zh_text": "当然，政府能减多少税是有限度的：",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 118.906,
+   "end": 123.953,
+   "en_text": "at a zero tax rate there is no tax revenue regardless of how much people are working.",
+   "zh_text": "在零税率下，无论人们工作多少，都没有税收。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 124.203,
+   "end": 127.748,
+   "en_text": "So while cuts from a very high tax rate might be fine,",
+   "zh_text": "所以，从很高的税率往下减也许没问题，",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 127.748,
+   "end": 131.043,
+   "en_text": "cuts from a lower tax rate might be counterproductive,",
+   "zh_text": "但从较低的税率往下减可能适得其反，",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 131.419,
+   "end": 134.589,
+   "en_text": "hampering the government's ability to accomplish crucial things.",
+   "zh_text": "削弱政府完成关键事务的能力。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 134.881,
+   "end": 137.925,
+   "en_text": "Tax rates were extremely high when Reagan took office.",
+   "zh_text": "里根上任时，税率极高。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 137.925,
+   "end": 143.723,
+   "en_text": "His administration cut the highest income tax bracket from 70% to 28%",
+   "zh_text": "他的政府把最高所得税税率从70%降到28%，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 143.723,
+   "end": 147.435,
+   "en_text": "and corporation tax from 48% to 34%.",
+   "zh_text": "把公司税从48%降到34%。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 148.144,
+   "end": 151.522,
+   "en_text": "By comparison, as of early 2021,",
+   "zh_text": "相比之下，截至2021年初，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 151.522,
+   "end": 155.318,
+   "en_text": "those rates were 37% and 21% respectively.",
+   "zh_text": "这两个税率分别是37%和21%。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 155.693,
+   "end": 159.822,
+   "en_text": "When tax rates are lower, tax cuts for the wealthy can be harmful.",
+   "zh_text": "当税率较低时，给富人减税反而可能有害。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 159.822,
+   "end": 162.742,
+   "en_text": "For example, in 2012 to 2013,",
+   "zh_text": "例如，在2012到2013年，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 162.742,
+   "end": 167.872,
+   "en_text": "lawmakers cut the top tax-rate in the state of Kansas by almost 30%",
+   "zh_text": "立法者把堪萨斯州的最高税率下调了近30%，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 167.872,
+   "end": 170.917,
+   "en_text": "and reduced some business tax rates to zero.",
+   "zh_text": "还把一些企业税率降到了零。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 171.292,
+   "end": 174.503,
+   "en_text": "As a result, the government’s balance sheet immediately fell",
+   "zh_text": "结果，政府的资产负债表立刻",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 174.503,
+   "end": 177.381,
+   "en_text": "into negative territory and did not recover,",
+   "zh_text": "陷入负值，而且再也没能恢复，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 177.381,
+   "end": 180.968,
+   "en_text": "implying that wealthy individuals and companies did not invest",
+   "zh_text": "这意味着富人和企业并没有把钱",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 180.968,
+   "end": 182.511,
+   "en_text": "back into the economy.",
+   "zh_text": "重新投回经济中去。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 182.887,
+   "end": 185.848,
+   "en_text": "In short, the money did not trickle down.",
+   "zh_text": "简而言之，钱并没有往下渗透。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 186.432,
+   "end": 188.351,
+   "en_text": "This appears to be a trend:",
+   "zh_text": "这似乎是一种趋势：",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 188.351,
+   "end": 192.813,
+   "en_text": "in a study over multiple periods of history and across 18 countries,",
+   "zh_text": "在一项跨越历史上多个时期、涵盖18个国家的研究中，",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 192.813,
+   "end": 196.567,
+   "en_text": "The London School of Economics found that cutting taxes",
+   "zh_text": "伦敦政治经济学院发现，减税",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 196.567,
+   "end": 199.57,
+   "en_text": "increased the wealth of the top 1% of people,",
+   "zh_text": "增加了最富有的1%人群的财富，",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 199.57,
+   "end": 202.156,
+   "en_text": "but had little effect on the economy as a whole.",
+   "zh_text": "但对整体经济几乎没有影响。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 202.907,
+   "end": 206.911,
+   "en_text": "In order for tax cuts for the rich to truly stimulate the economy,",
+   "zh_text": "要让给富人减税真正刺激经济，",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 206.911,
+   "end": 209.372,
+   "en_text": "they would have to spend the saved money",
+   "zh_text": "他们就得把省下来的钱花出去，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 209.372,
+   "end": 212.708,
+   "en_text": "putting it back into, for example, local businesses—",
+   "zh_text": "比如重新投入到本地企业中去——",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 212.708,
+   "end": 215.044,
+   "en_text": "but this isn’t what happens in practice.",
+   "zh_text": "但实际情况并非如此。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 215.336,
+   "end": 218.673,
+   "en_text": "No economic policy operates in isolation:",
+   "zh_text": "没有哪项经济政策是孤立运作的：",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 218.673,
+   "end": 223.469,
+   "en_text": "each time and place is unique with multiple policies in place simultaneously,",
+   "zh_text": "每个时间、每个地点都是独特的，同时有多项政策在起作用，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 223.636,
+   "end": 227.431,
+   "en_text": "so there is only ever one test case for each set of scenarios.",
+   "zh_text": "所以每一组情形都只有一次试验机会。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 227.682,
+   "end": 231.143,
+   "en_text": "This makes it difficult to deliver definitive rulings on whether",
+   "zh_text": "这就很难给出确定的结论，来判断",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 231.143,
+   "end": 232.728,
+   "en_text": "an economic policy worked,",
+   "zh_text": "某项经济政策是否奏效，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 232.728,
+   "end": 234.981,
+   "en_text": "whether something else might have worked better,",
+   "zh_text": "别的做法是否可能效果更好，",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 234.981,
+   "end": 237.566,
+   "en_text": "or whether it would work in a different situation.",
+   "zh_text": "或者它在另一种情况下是否也行得通。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 237.9,
+   "end": 241.195,
+   "en_text": "And yet, rhetoric around trickle-down economics,",
+   "zh_text": "然而，围绕涓滴经济学的那些说法，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 241.195,
+   "end": 243.739,
+   "en_text": "both during the Reagan era and since,",
+   "zh_text": "无论是在里根时代还是在那之后，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 243.823,
+   "end": 246.242,
+   "en_text": "often promises something definitive:",
+   "zh_text": "往往都承诺得很绝对：",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 246.242,
+   "end": 251.038,
+   "en_text": "that spending by society’s richest members on things other than taxes",
+   "zh_text": "说社会最富有的成员在纳税之外的花费，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 251.038,
+   "end": 255.209,
+   "en_text": "directly improves the financial circumstances of the less wealthy.",
+   "zh_text": "会直接改善不那么富裕的人的财务状况。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 255.418,
+   "end": 258.045,
+   "en_text": "And there’s not much evidence to support that.",
+   "zh_text": "而支持这一点的证据并不多。",
+   "highlights": []
+  }
+ ]
+}

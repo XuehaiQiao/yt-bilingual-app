@@ -1,11 +1,11 @@
 // Home "free library" window (user request #11).
 //
 // Sits directly below "For you": no login, no LLM, no price estimate. The list
-// is three pre-built videos (bilingual blocks already on disk, YouTube embed)
-// and three original bilingual articles. Clicking a card hands the id to App,
-// which fetches the detail and enters the existing video view or the local
-// article reader.
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+// is 50+ pre-built videos (bilingual blocks already on disk, YouTube embed,
+// A1–C2 level filter chips) and the original/public-domain bilingual articles.
+// Clicking a card hands the id to App, which fetches the detail and enters the
+// existing video view or the local article reader.
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
     AlertCircle,
     BookOpen,
@@ -40,6 +40,10 @@ interface LibrarySectionProps {
 
 type LibraryTab = 'videos' | 'articles';
 
+const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
+const LEVEL_FILTERS = ['ALL', ...CEFR_LEVELS] as const;
+type LevelFilter = (typeof LEVEL_FILTERS)[number];
+
 const CARD =
     'group shrink-0 w-[196px] sm:w-[236px] snap-start text-left rounded-2xl border border-white/5 ' +
     'bg-zinc-900/40 p-4 hover:border-white/10 hover:bg-zinc-800/40 transition-colors cursor-pointer';
@@ -48,25 +52,30 @@ function DifficultyBadge({
     level,
     difficulty,
     testId,
+    hideBand = false,
 }: {
     level: string;
     difficulty?: DifficultyItem | null;
     testId: string;
+    /** Videos already show an editorial level badge; suppress the second CEFR. */
+    hideBand?: boolean;
 }) {
     const { t } = useI18n();
-    const band = difficultyBadge(difficulty, level);
+    const band = hideBand ? null : difficultyBadge(difficulty, level);
     const bucket = difficultyBucket(difficulty);
     return (
         <span className="inline-flex flex-col items-end gap-0.5">
-            <span
-                data-testid={testId}
-                data-cefr-input={difficulty?.cefrInput ?? ''}
-                data-bucket={bucket ?? ''}
-                title={t('difficulty.estimateHint')}
-                className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-300"
-            >
-                {band ?? t('difficulty.unrated')}
-            </span>
+            {band && (
+                <span
+                    data-testid={testId}
+                    data-cefr-input={difficulty?.cefrInput ?? ''}
+                    data-bucket={bucket ?? ''}
+                    title={t('difficulty.estimateHint')}
+                    className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-300"
+                >
+                    {band}
+                </span>
+            )}
             {bucket && (
                 <span className="text-[10px] text-zinc-500 tabular-nums">
                     {t('difficulty.novelty', { bucket })}
@@ -110,14 +119,24 @@ function VideoCard({
             </h4>
             <p className="mt-0.5 truncate text-[11px] text-zinc-500">{video.channel}</p>
             <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-zinc-500">
-                <span className="inline-flex items-center gap-1 tabular-nums">
-                    <Clock className="w-3.5 h-3.5" />
-                    {t('library.minutes', { count: formatNumber(Math.max(1, Math.round(video.duration / 60))) })}
+                <span className="inline-flex min-w-0 items-center gap-1.5 tabular-nums">
+                    <span
+                        data-testid={`library-video-level-${video.id}`}
+                        title={t('library.levelTagAria', { level: video.level })}
+                        className="inline-flex items-center rounded-md bg-zinc-800/80 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-300"
+                    >
+                        {video.level}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        {t('library.minutes', { count: formatNumber(Math.max(1, Math.round(video.duration / 60))) })}
+                    </span>
                 </span>
                 <DifficultyBadge
                     level={video.level}
                     difficulty={difficulty}
                     testId={`library-video-difficulty-${video.id}`}
+                    hideBand
                 />
             </div>
             <p className="mt-2 text-[10px] font-medium text-zinc-600 group-hover:text-zinc-500 transition-colors">
@@ -193,8 +212,9 @@ function SkeletonCard() {
 }
 
 export function LibrarySection({ onOpenVideo, onOpenArticle }: LibrarySectionProps) {
-    const { t } = useI18n();
+    const { t, formatNumber } = useI18n();
     const [data, setData] = useState<LibraryIndex | null>(null);
+    const [levelFilter, setLevelFilter] = useState<LevelFilter>('ALL');
     const [loading, setLoading] = useState(true);
     const [failed, setFailed] = useState(false);
     const [tab, setTab] = useState<LibraryTab>('videos');
@@ -251,7 +271,16 @@ export function LibrarySection({ onOpenVideo, onOpenArticle }: LibrarySectionPro
 
     const videos = data?.videos ?? [];
     const articles = data?.articles ?? [];
-    const activeItems = tab === 'videos' ? videos : articles;
+    const levelCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (const video of videos) counts[video.level] = (counts[video.level] ?? 0) + 1;
+        return counts;
+    }, [videos]);
+    const filteredVideos = useMemo(
+        () => (levelFilter === 'ALL' ? videos : videos.filter((video) => video.level === levelFilter)),
+        [videos, levelFilter],
+    );
+    const activeItems = tab === 'videos' ? filteredVideos : articles;
     const retry = () => {
         setLoading(true);
         setFailed(false);
@@ -313,6 +342,45 @@ export function LibrarySection({ onOpenVideo, onOpenArticle }: LibrarySectionPro
                 </div>
             </div>
 
+            {tab === 'videos' && videos.length > 0 && (
+                <div
+                    data-testid="library-level-filter"
+                    role="group"
+                    aria-label={t('library.filter.groupAria')}
+                    className="mt-2.5 -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 custom-scrollbar"
+                >
+                    {LEVEL_FILTERS.map((level) => {
+                        const active = levelFilter === level;
+                        const count = level === 'ALL' ? videos.length : levelCounts[level] ?? 0;
+                        const label = level === 'ALL' ? t('library.filter.all') : level;
+                        return (
+                            <button
+                                key={level}
+                                type="button"
+                                data-testid={`library-level-${level}`}
+                                aria-pressed={active}
+                                aria-label={
+                                    level === 'ALL'
+                                        ? t('library.filter.allChipAria', { count: formatNumber(count) })
+                                        : t('library.filter.chipAria', { level, count: formatNumber(count) })
+                                }
+                                onClick={() => setLevelFilter(level)}
+                                className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors ${
+                                    active
+                                        ? 'border-transparent bg-zinc-100 text-zinc-900'
+                                        : 'border-white/5 bg-zinc-900/60 text-zinc-400 hover:border-white/10 hover:text-zinc-200'
+                                }`}
+                            >
+                                <span>{label}</span>
+                                <span className={`tabular-nums ${active ? 'text-zinc-500' : 'text-zinc-600'}`}>
+                                    {formatNumber(count)}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             {loading && !data ? (
                 <div
                     data-testid="library-loading"
@@ -355,7 +423,7 @@ export function LibrarySection({ onOpenVideo, onOpenArticle }: LibrarySectionPro
                     className="mt-3 flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory custom-scrollbar"
                 >
                     {tab === 'videos'
-                        ? videos.map((video) => (
+                        ? filteredVideos.map((video) => (
                               <VideoCard
                                   key={video.id}
                                   video={video}

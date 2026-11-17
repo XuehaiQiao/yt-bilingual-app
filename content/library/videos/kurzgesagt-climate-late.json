@@ -1,0 +1,1173 @@
+{
+ "id": "kurzgesagt-climate-late",
+ "youtubeId": "wbR-5mHI6bo",
+ "title": "Is It Too Late To Stop Climate Change? Well, it's Complicated.",
+ "channel": "Kurzgesagt – In a Nutshell",
+ "duration": 607,
+ "level": "B2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/wbR-5mHI6bo/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:02+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 1.1,
+   "end": 3.26,
+   "en_text": "Climate change is just too much.",
+   "zh_text": "气候变化实在太让人头疼了。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 3.26,
+   "end": 4.86,
+   "en_text": "There's never any good news.",
+   "zh_text": "从来就没有什么好消息。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 5.2,
+   "end": 8.4,
+   "en_text": "Only graphs that get more and more red and angry.",
+   "zh_text": "只有越来越红、越来越刺眼的图表。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 8.4,
+   "end": 11.04,
+   "en_text": "Almost every year breaks some horrible record,",
+   "zh_text": "几乎每年都会打破某项可怕的纪录，",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 11.64,
+   "end": 13.04,
+   "en_text": "from the harshest heat waves",
+   "zh_text": "从最猛烈的热浪",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 13.54,
+   "end": 15.12,
+   "en_text": "to the most rapid glacier melt.",
+   "zh_text": "到最快的冰川融化。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 15.5,
+   "end": 16.54,
+   "en_text": "It's endless,",
+   "zh_text": "没完没了，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 17.06,
+   "end": 18.16,
+   "en_text": "and relentless.",
+   "zh_text": "而且毫不留情。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 18.92,
+   "end": 25.28,
+   "en_text": "We've known for decades that rapid climate change has been caused by the release of greenhouse gases.",
+   "zh_text": "几十年来我们就已经知道，快速的气候变化是由温室气体的排放造成的。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 25.38,
+   "end": 33.02,
+   "en_text": "But instead of reducing them, in 2019 the world was emitting 50% more CO₂ than in the year 2000.",
+   "zh_text": "但温室气体不但没有减少，2019年全球的二氧化碳排放量反而比2000年多了50%。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 33.64,
+   "end": 35.86,
+   "en_text": "And emissions are still rising.",
+   "zh_text": "而且排放量还在持续上升。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 36.14,
+   "end": 40.88,
+   "en_text": "Why is that? Why is it so hard to just stop emitting these gases?",
+   "zh_text": "为什么会这样？为什么就是很难停止排放这些气体呢？",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 49.76,
+   "end": 55.94,
+   "en_text": "Our collective CO₂ emissions can be expressed as a product of four factors and their relationship with each other.",
+   "zh_text": "我们总的二氧化碳排放量可以表示为四个因素的乘积，以及它们彼此之间的关系。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 56.52,
+   "end": 63.14,
+   "en_text": "Two of them explain why worldwide CO₂ emissions are still rising, and two explain how we can stop that.",
+   "zh_text": "其中两个因素解释了为什么全球二氧化碳排放量仍在上升，另外两个则说明了我们怎样才能阻止这种上升。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 64.32,
+   "end": 71.36,
+   "en_text": "Population Size, Economic Growth, Energy Intensity, and Emissions pere Energy unit produced.",
+   "zh_text": "人口规模、经济增长、能源强度，以及每单位能源产生的排放量。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 72.6,
+   "end": 74.82,
+   "en_text": "Number 1: Population Size",
+   "zh_text": "第一：人口规模",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 76.32,
+   "end": 79.48,
+   "en_text": "People need food, homes, and clothing.",
+   "zh_text": "人们需要食物、住房和衣服。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 79.48,
+   "end": 84.24,
+   "en_text": "And they demand luxury products from iPhones to one dollar cheeseburgers",
+   "zh_text": "而且他们还想要各种奢侈品，从iPhone到一美元的芝士汉堡。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 84.8,
+   "end": 87.12,
+   "en_text": "more people = higher CO₂ emissions.",
+   "zh_text": "人越多 = 二氧化碳排放越多。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 87.4,
+   "end": 89.5,
+   "en_text": "It's a very simple equation.",
+   "zh_text": "这是个非常简单的等式。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 89.8,
+   "end": 99.9,
+   "en_text": "The global population is growing, and according to the UN it will level off at about 11 billion in 2100, which is 40% more than today.",
+   "zh_text": "全球人口正在增长，根据联合国的预测，到2100年将稳定在约110亿，比现在多40%。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 100.16,
+   "end": 107.58,
+   "en_text": "The only way to slow down this growth is investment in healthcare, and access to contraception and education in developing countries.",
+   "zh_text": "要减缓这种增长，唯一的办法是投资医疗保健，并让发展中国家的人们能获得避孕措施和教育。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 108.46,
+   "end": 114.96,
+   "en_text": "But even with massive investment, it will take a few decades for the effects of lower birthrates to manifest themselves,",
+   "zh_text": "但即使投入大量资金，出生率下降的效果也要几十年才能显现出来，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 115.32,
+   "end": 118.74,
+   "en_text": "so the global population will keep growing for the foreseeable future,",
+   "zh_text": "所以在可预见的未来，全球人口还会继续增长，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 119.04,
+   "end": 124.16,
+   "en_text": "and, as a consequence, global CO₂ emissions rise over the next few decades.",
+   "zh_text": "因此，未来几十年全球二氧化碳排放量也会上升。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 125.3,
+   "end": 128.36,
+   "en_text": "Number 2: Growth, or \"Getting Richer\".",
+   "zh_text": "第二：增长，或者说“变得更富有”。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 129.22,
+   "end": 131.04,
+   "en_text": "But it's not just about our numbers,",
+   "zh_text": "但这不只是人口数量的问题，",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 131.7,
+   "end": 136.44,
+   "en_text": "The richer and more developed we are, the more emissions our lifestyle produces.",
+   "zh_text": "我们越富有、越发达，我们的生活方式产生的排放就越多。",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 137.02,
+   "end": 142.02,
+   "en_text": "A programmer in the US has a higher CO₂ footprint than 50 farmers in Uganda.",
+   "zh_text": "美国一个程序员的二氧化碳足迹比乌干达50个农民加起来还多。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 142.96,
+   "end": 145.5,
+   "en_text": "The world's wealth is growing almost everywhere.",
+   "zh_text": "世界上几乎每个地方的财富都在增长。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 146.28,
+   "end": 155.9,
+   "en_text": "And although it's far from easily distrubuted, economic growth has led to the highest standards of living, and the largest reduction in extreme poverty in human history.",
+   "zh_text": "虽然财富远未平均分配，但经济增长带来了人类历史上最高的生活水平，以及极端贫困的最大幅度减少。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 157.16,
+   "end": 163.28,
+   "en_text": "Growth has become the dominant mantra of the world's economies, no matter what kind of political system they have.",
+   "zh_text": "增长已经成为世界经济体的主导信条，无论它们实行什么样的政治制度。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 163.74,
+   "end": 168.32,
+   "en_text": "It's unlikely that rich countries will give up the concept of growth any time soon.",
+   "zh_text": "富裕国家不太可能在短期内放弃增长这个概念。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 168.96,
+   "end": 173.62,
+   "en_text": "But even if they were to, developing countries want to become rich too",
+   "zh_text": "但就算他们愿意，发展中国家也想变富裕",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 173.98,
+   "end": 177.92,
+   "en_text": "For billions of people, the end of growth would probably mean staying poor",
+   "zh_text": "对数十亿人来说，增长的终结很可能意味着继续贫穷",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 178.3,
+   "end": 182.48,
+   "en_text": "and so developing countries are not willing to stop growing their economies.",
+   "zh_text": "所以发展中国家不愿意停止经济增长。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 182.88,
+   "end": 189.46,
+   "en_text": "All in all, we can agree that growth as a guiding economic ideology is not going to go away any time soon.",
+   "zh_text": "总而言之，我们可以达成共识：把增长当作指导性经济意识形态，短期内是不会消失的。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 190.0,
+   "end": 198.04,
+   "en_text": "More countries and their citizens around the world will grow and become richer while the rich economies will continue to grow their wealth.",
+   "zh_text": "世界上更多的国家和它们的公民会发展、变富，而富裕经济体也会继续增长财富。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 198.62,
+   "end": 204.48,
+   "en_text": "There are some signs that growth can be decoupled from CO₂ emissions but we're not close to that yet.",
+   "zh_text": "有一些迹象表明，增长可以和二氧化碳排放脱钩，但我们离那一步还很远。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 204.9,
+   "end": 209.02,
+   "en_text": "As a consequence of this growth, CO₂ emissions will rise.",
+   "zh_text": "这种增长带来的后果就是，二氧化碳排放会上升。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 209.52,
+   "end": 216.82,
+   "en_text": "Ok, so far we've learned that because of population growth and economic growth, humanity's CO₂ emissions will increase.",
+   "zh_text": "好，到目前为止我们了解到，由于人口增长和经济增长，人类的二氧化碳排放会增加。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 217.04,
+   "end": 219.8,
+   "en_text": "...which is the opposite of what should be happening.",
+   "zh_text": "……而这和本该发生的情况正好相反。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 220.12,
+   "end": 224.32,
+   "en_text": "We need to slow, peak, and then reduce annual emissions.",
+   "zh_text": "我们需要让年排放量放缓、达到峰值，然后再降下来。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 224.82,
+   "end": 228.88,
+   "en_text": "The next two factors describe how we can actually do this.",
+   "zh_text": "接下来的两个因素讲的是我们究竟怎样才能做到这一点。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 229.68,
+   "end": 232.28,
+   "en_text": "Number 3: Energy Intensity",
+   "zh_text": "第三点：能源强度",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 232.86,
+   "end": 236.68,
+   "en_text": "Energy intensity describes how efficiently we use energy.",
+   "zh_text": "能源强度描述的是我们使用能源的效率有多高。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 237.08,
+   "end": 240.76,
+   "en_text": "A street food vendor in rural Brazil might burn coal to cook...",
+   "zh_text": "巴西农村的一个街头小吃摊贩可能烧煤来做饭……",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 240.9,
+   "end": 245.86,
+   "en_text": "while a street food vendor in France might use an induction stove powered by nuclear energy.",
+   "zh_text": "而法国的一个街头小吃摊贩可能用核能供电的电磁炉。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 246.28,
+   "end": 248.54,
+   "en_text": "The latter is way more efficient.",
+   "zh_text": "后者效率高得多。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 248.98,
+   "end": 253.24,
+   "en_text": "The more efficient something is, the less energy we need to do something.",
+   "zh_text": "某样东西效率越高，我们做某件事需要的能源就越少。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 253.52,
+   "end": 257.28,
+   "en_text": "Be it powering a metropolitan area, or grilling a kebab.",
+   "zh_text": "不管是给一个大都市区供电，还是烤一串烤肉。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 257.9,
+   "end": 263.46,
+   "en_text": "So making our technology more efficient, and coming up with more efficient ways to organise our societies",
+   "zh_text": "所以，让我们的技术更高效，想出更高效的方式来组织我们的社会",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 263.6,
+   "end": 267.82,
+   "en_text": "is one of the most important ways to reduce the modern world's CO₂ dependancy.",
+   "zh_text": "是减少现代世界对二氧化碳依赖的最重要方式之一。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 268.88,
+   "end": 272.32,
+   "en_text": "This can mean everything from reducing power consumption with A.I.,",
+   "zh_text": "这可以意味着一切，从用人工智能降低能耗，",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 272.72,
+   "end": 276.02,
+   "en_text": "the electrification of the transportation and industrial sectors,",
+   "zh_text": "到交通和工业部门的电气化，",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 276.28,
+   "end": 278.02,
+   "en_text": "or sustainable concrete production.",
+   "zh_text": "再到可持续的混凝土生产。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 278.82,
+   "end": 282.08,
+   "en_text": "The opportunities for improvement are almost limitless,",
+   "zh_text": "改进的机会几乎无穷无尽，",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 282.26,
+   "end": 285.14,
+   "en_text": "and human ingenuity can run wild.",
+   "zh_text": "人类的聪明才智可以尽情发挥。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 285.56,
+   "end": 289.74,
+   "en_text": "But we know that increasing efficiency alone will not be enough,",
+   "zh_text": "但我们知道，仅仅提高效率是不够的，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 290.08,
+   "end": 291.74,
+   "en_text": "mostly for 3 reasons:",
+   "zh_text": "主要有三个原因：",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 292.38,
+   "end": 295.2,
+   "en_text": "1: Direct Rebound Effects.",
+   "zh_text": "1：直接反弹效应。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 295.6,
+   "end": 299.28,
+   "en_text": "This means that once something becomes more efficient, it's used more,",
+   "zh_text": "意思是，一旦某样东西变得更高效，它就会被用得更多，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 299.4,
+   "end": 305.74,
+   "en_text": "and so overall, the increased efficiency does not lead to a reduction as impressive as you would first think.",
+   "zh_text": "所以总体来看，效率提高带来的减排并没有你一开始想的那么可观。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 306.1,
+   "end": 311.18,
+   "en_text": "...or worse, sometimes more efficiency makes humans use not *less* of a resource,",
+   "zh_text": "……或者更糟，有时候效率提高反而让人用的资源不是*更少*，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 311.18,
+   "end": 312.7,
+   "en_text": "but *more* of it.",
+   "zh_text": "而是*更多*。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 313.2,
+   "end": 319.24,
+   "en_text": "When planes became more fuel-efficient, ticket prices decreased, and more people started to travel by plane.",
+   "zh_text": "当飞机变得更省油时，机票价格下降了，坐飞机出行的人也变多了。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 319.5,
+   "end": 325.3,
+   "en_text": "So making things more efficient does not automatically mean less energy use in total.",
+   "zh_text": "所以，提高效率并不自动意味着总能耗会减少。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 325.7,
+   "end": 328.52,
+   "en_text": "It might have the opposite effect.",
+   "zh_text": "它可能产生相反的效果。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 328.96,
+   "end": 331.74,
+   "en_text": "2: Indirect Rebound Effects.",
+   "zh_text": "2：间接反弹效应。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 332.16,
+   "end": 336.94,
+   "en_text": "Sometimes when you save money on a thing that becomes more efficient, you might spend it elsewhere.",
+   "zh_text": "有时候，当你在某件变得更高效的东西上省了钱，你可能会把钱花到别处去。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 337.14,
+   "end": 339.84,
+   "en_text": "For example, if you buy a more fuel-efficient car,",
+   "zh_text": "比如，如果你买了一辆更省油的车，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 340.0,
+   "end": 343.98,
+   "en_text": "you save money on fuel, and end up with extra funds in your bank account...",
+   "zh_text": "你在燃油上省了钱，结果银行账户里多出了一笔钱……",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 344.18,
+   "end": 347.22,
+   "en_text": "...that you might spend on vacation, and take a flight with.",
+   "zh_text": "你可能会拿这笔钱去度假，还坐飞机出行。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 347.5,
+   "end": 350.76,
+   "en_text": "So in the end, you might actually emit more CO₂",
+   "zh_text": "所以到头来，你实际上可能排放了更多二氧化碳，",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 351.04,
+   "end": 353.86,
+   "en_text": "despite getting a more efficient car.",
+   "zh_text": "尽管你开的是一辆更高效的车。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 353.86,
+   "end": 355.86,
+   "en_text": "3: And lastly,",
+   "zh_text": "3：最后一点，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 356.52,
+   "end": 358.76,
+   "en_text": "the more you optimise for efficiency,",
+   "zh_text": "你越是追求效率优化，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 358.8,
+   "end": 362.26,
+   "en_text": "the harder and more expensive it becomes to get more efficient.",
+   "zh_text": "想要进一步提高效率就越难、越贵。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 362.56,
+   "end": 365.56,
+   "en_text": "So, over time, the return on investment slows down.",
+   "zh_text": "所以，随着时间推移，投资回报会逐渐放缓。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 365.92,
+   "end": 369.86,
+   "en_text": "And, with many technologies, we are already pretty efficient.",
+   "zh_text": "而且，在很多技术上，我们已经相当高效了。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 370.46,
+   "end": 373.4,
+   "en_text": "But, regardless of how efficient we make our economies,",
+   "zh_text": "但是，无论我们把经济搞得多高效，",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 373.62,
+   "end": 377.62,
+   "en_text": "as long as we need at least some energy, we will have emissions.",
+   "zh_text": "只要我们至少还需要一些能源，就会有排放。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 378.26,
+   "end": 382.32,
+   "en_text": "Efficiency alone won't create a zero-carbon world.",
+   "zh_text": "光靠效率无法创造零碳世界。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 382.82,
+   "end": 385.64,
+   "en_text": "This brings us to our last factor:",
+   "zh_text": "这就引出了我们的最后一个因素：",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 386.06,
+   "end": 392.58,
+   "en_text": "Number 4: CO₂ emissions per energy unit used, or \"Our Global Carbon Footprint\".",
+   "zh_text": "第4点：每单位能源使用所产生的二氧化碳排放，也就是“我们的全球碳足迹”。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 392.58,
+   "end": 395.5,
+   "en_text": "Humanity's global carbon footprint",
+   "zh_text": "人类的全球碳足迹",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 395.8,
+   "end": 398.74,
+   "en_text": "is the CO₂ released per energy unit generated.",
+   "zh_text": "就是每产生一单位能源所释放的二氧化碳。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 398.98,
+   "end": 402.34,
+   "en_text": "For example, coal plants release much much more CO₂",
+   "zh_text": "比如，燃煤电厂释放的二氧化碳要多得多，",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 402.42,
+   "end": 404.46,
+   "en_text": "than solar power per unit of energy.",
+   "zh_text": "远超太阳能每单位能源的排放。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 404.64,
+   "end": 406.66,
+   "en_text": "This relationship is crystal clear.",
+   "zh_text": "这种关系再清楚不过了。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 406.82,
+   "end": 411.3,
+   "en_text": "The more fossil fuels we burn, the higher our CO₂ output.",
+   "zh_text": "我们燃烧的化石燃料越多，二氧化碳排放就越高。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 411.6,
+   "end": 415.4,
+   "en_text": "Fossil fuels are the greatest lever humanity has right now.",
+   "zh_text": "化石燃料是人类目前最有力的杠杆。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 415.52,
+   "end": 418.84,
+   "en_text": "Of course, it's impossible to shut down coal and oil overnight",
+   "zh_text": "当然，不可能一夜之间关停煤炭和石油，",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 418.84,
+   "end": 421.46,
+   "en_text": "without throwing society into chaos.",
+   "zh_text": "而不让社会陷入混乱。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 422.08,
+   "end": 426.58,
+   "en_text": "But the reality is, that we're not doing nearly enough to keep fossil fuels in the ground",
+   "zh_text": "但现实是，我们在把化石燃料留在地下方面做得远远不够，",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 426.82,
+   "end": 429.26,
+   "en_text": "and use lower-carbon alternatives",
+   "zh_text": "也不够努力去使用低碳替代品。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 429.54,
+   "end": 434.04,
+   "en_text": "We need to do 2 things to speed the transition away from fossil fuels.",
+   "zh_text": "要加快摆脱化石燃料的转型，我们需要做两件事。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 434.84,
+   "end": 439.36,
+   "en_text": "First, we need to use the real leverage we have today, with today's technology",
+   "zh_text": "第一，我们需要用今天的技术，发挥我们当下真正拥有的杠杆作用。",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 440.14,
+   "end": 443.08,
+   "en_text": "There are a lot of things we can do extremely quickly.",
+   "zh_text": "有很多事情我们可以极快地做到。",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 443.16,
+   "end": 446.32,
+   "en_text": "We can leave nuclear power plants online longer.",
+   "zh_text": "我们可以让核电站运行更长时间。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 446.8,
+   "end": 449.34,
+   "en_text": "We can cut subsidies to the fossil fuel industry,",
+   "zh_text": "我们可以削减对化石燃料行业的补贴，",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 449.48,
+   "end": 451.34,
+   "en_text": "and funnel them into renewables.",
+   "zh_text": "把它们投入到可再生能源上。",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 451.96,
+   "end": 453.98,
+   "en_text": "We can price carbon emissions harshly,",
+   "zh_text": "我们可以对碳排放严厉定价，",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 454.18,
+   "end": 456.02,
+   "en_text": "and increase the price each year",
+   "zh_text": "并且每年提高价格，",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 456.02,
+   "end": 459.8,
+   "en_text": "to create strong incentives for the world's industries to transition.",
+   "zh_text": "从而为全球各行业转型创造强有力的激励。",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 460.46,
+   "end": 463.5,
+   "en_text": "We can enforce strict standards for energy efficiency,",
+   "zh_text": "我们可以对能源效率执行严格标准，",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 463.62,
+   "end": 465.96,
+   "en_text": "and for any type of new construction.",
+   "zh_text": "对任何类型的新建项目也是如此。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 466.16,
+   "end": 468.82,
+   "en_text": "We can phase out fossil fuel vehicles.",
+   "zh_text": "我们可以逐步淘汰化石燃料车辆。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 469.48,
+   "end": 473.16,
+   "en_text": "Next, we also need to invent new and better technology.",
+   "zh_text": "接下来，我们还需要发明新的、更好的技术。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 474.02,
+   "end": 476.62,
+   "en_text": "Without new technologies and innovation,",
+   "zh_text": "如果没有新技术和创新，",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 476.62,
+   "end": 480.0,
+   "en_text": "it will be impossible to achieve a zero CO₂ emission world,",
+   "zh_text": "就不可能实现一个零二氧化碳排放的世界，",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 480.14,
+   "end": 482.62,
+   "en_text": "be it from technologies like carbon capture,",
+   "zh_text": "无论是碳捕集这样的技术，",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 482.7,
+   "end": 485.02,
+   "en_text": "or a new generation of nuclear power plants,",
+   "zh_text": "还是新一代的核电站，",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 485.12,
+   "end": 489.04,
+   "en_text": "to new batteries that revolutionise the energy storage from renewables.",
+   "zh_text": "再到彻底改变可再生能源储能方式的新型电池。",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 489.5,
+   "end": 493.92,
+   "en_text": "But innovation takes time: years, and decades...",
+   "zh_text": "但创新需要时间：几年，甚至几十年……",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 493.92,
+   "end": 495.92,
+   "en_text": "...and we don't have this time.",
+   "zh_text": "而我们没有这么多时间。",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 496.5,
+   "end": 499.7,
+   "en_text": "Every year, we keep adding more carbon to the atmosphere.",
+   "zh_text": "每一年，我们都在向大气中排放更多的碳。",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 500.0,
+   "end": 502.96,
+   "en_text": "This means we can't keep relying on innovation alone.",
+   "zh_text": "这意味着我们不能只依赖创新。",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 503.56,
+   "end": 509.08,
+   "en_text": "We need to find ways to reduce emissions today, while we invent what we will need in the future.",
+   "zh_text": "我们需要在发明未来所需技术的同时，找到今天就能减少排放的办法。",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 509.5,
+   "end": 512.38,
+   "en_text": "The less fossil fuel we burn over the next few years,",
+   "zh_text": "未来几年我们燃烧的化石燃料越少，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 512.7,
+   "end": 515.26,
+   "en_text": "the more time we give innovation to catch up.",
+   "zh_text": "我们给创新追赶的时间就越多。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 515.6,
+   "end": 518.64,
+   "en_text": "The more low-carbon energy infrastructure we build today,",
+   "zh_text": "我们今天建成的低碳能源基础设施越多，",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 518.84,
+   "end": 522.88,
+   "en_text": "the more we can compensate for economic growth, and the people born today.",
+   "zh_text": "我们就越能抵消经济增长和今天出生的人所带来的影响。",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 523.92,
+   "end": 527.46,
+   "en_text": "The more coal power plants in construction we stop from being finished,",
+   "zh_text": "我们阻止建成的燃煤电厂越多，",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 527.66,
+   "end": 529.46,
+   "en_text": "the more CO₂ we save.",
+   "zh_text": "我们节省的二氧化碳就越多。",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 530.28,
+   "end": 533.82,
+   "en_text": "Neither innovation, nor the alternatives we're using today alone",
+   "zh_text": "无论是创新，还是我们今天使用的替代方案，单靠任何一方",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 533.82,
+   "end": 535.82,
+   "en_text": "can solve rapid climate change.",
+   "zh_text": "都无法解决快速的气候变化。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 536.28,
+   "end": 541.54,
+   "en_text": "But, innovation, together with a decisive move away from fossil fuels where it's possible today",
+   "zh_text": "但是，创新，加上在今天可行的领域果断摆脱化石燃料",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 541.54,
+   "end": 543.1,
+   "en_text": "could do it.",
+   "zh_text": "就能做到。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 543.26,
+   "end": 546.24,
+   "en_text": "Solving climate change will be complicated.",
+   "zh_text": "解决气候变化会很复杂。",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 546.56,
+   "end": 549.48,
+   "en_text": "We have to account for the needs of billions of people",
+   "zh_text": "我们必须考虑到数十亿人的需求",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 549.62,
+   "end": 554.5,
+   "en_text": "and the reality that right now, society runs mostly on fossil fuels.",
+   "zh_text": "以及这样一个现实：目前社会主要依靠化石燃料运转。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 555.04,
+   "end": 556.96,
+   "en_text": "This will not change overnight,",
+   "zh_text": "这不会一夜之间改变，",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 557.2,
+   "end": 559.74,
+   "en_text": "but it needs to change as quickly as possible.",
+   "zh_text": "但需要尽可能快地改变。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 560.1,
+   "end": 563.0,
+   "en_text": "And it is still very much possible🤞🏻",
+   "zh_text": "而且这仍然非常有可能🤞🏻",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 564.92,
+   "end": 568.04,
+   "en_text": "We'll look at different aspects of climate change, and how to solve it",
+   "zh_text": "我们将探讨气候变化的各个方面，以及如何解决它",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 568.12,
+   "end": 569.64,
+   "en_text": "in more videos.",
+   "zh_text": "在更多视频中。",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 569.64,
+   "end": 572.66,
+   "en_text": "Let us know what kind of stuff you want to know more about",
+   "zh_text": "告诉我们你想了解更多哪方面的内容",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 573.1,
+   "end": 576.32,
+   "en_text": "Here on YouTube, or join us in our subreddit",
+   "zh_text": "在YouTube上，或者加入我们的subreddit",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 576.62,
+   "end": 580.92,
+   "en_text": "This video is part of a series about climate change supported by Breakthrough Energy,",
+   "zh_text": "本视频是由Breakthrough Energy支持的气候变化系列的一部分，",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 580.92,
+   "end": 585.32,
+   "en_text": "a coalition founded by Bill Gates, that's working to expand clean energy investment",
+   "zh_text": "这是一个由Bill Gates创立的联盟，致力于扩大清洁能源投资",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 585.4,
+   "end": 589.4,
+   "en_text": "and support the innovations that will lead the world to net-zero carbon emissions",
+   "zh_text": "并支持那些将引领世界实现净零碳排放的创新",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 589.72,
+   "end": 595.66,
+   "en_text": "Also, a special thanks to the team at Our World in Data, for helping us out with data & research",
+   "zh_text": "另外，特别感谢Our World in Data团队，帮助我们提供数据和研究",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 596.74,
+   "end": 597.66,
+   "en_text": "*quack* 🦆",
+   "zh_text": "*嘎嘎* 🦆",
+   "highlights": []
+  }
+ ]
+}

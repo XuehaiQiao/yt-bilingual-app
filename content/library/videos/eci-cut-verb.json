@@ -1,0 +1,717 @@
+{
+ "id": "eci-cut-verb",
+ "youtubeId": "8x1inMgDh-A",
+ "title": "CUT ✂ Learn English Verbs | English Comprehensible Input Easy Beginner Lesson | Natural Approach",
+ "channel": "English Comprehensible Input for ESL Beginners",
+ "duration": 322,
+ "level": "A1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/8x1inMgDh-A/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "auto",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:57:33+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.32,
+   "end": 8.0,
+   "en_text": "what about this would you cut money no",
+   "zh_text": "那这个呢，你会剪钱吗？不",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 4.88,
+   "end": 10.28,
+   "en_text": "don't cut the money no should I should I",
+   "zh_text": "别剪钱，不，我应该，我应该",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 8.0,
+   "end": 13.96,
+   "en_text": "cut the money no don't do it should I",
+   "zh_text": "剪钱吗？不，别这么做，我应该",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 10.28,
+   "end": 13.96,
+   "en_text": "don't do it cut the money",
+   "zh_text": "别这么做，剪钱",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 15.44,
+   "end": 21.72,
+   "en_text": "no watch listen understand",
+   "zh_text": "不，看，听，理解",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 21.92,
+   "end": 27.24,
+   "en_text": "learn listen to understand and learn",
+   "zh_text": "学，听着去理解，然后学",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 28.96,
+   "end": 38.36,
+   "en_text": "English comprehensible",
+   "zh_text": "可理解的英语",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 38.6,
+   "end": 44.92,
+   "en_text": "English in this picture is there a man",
+   "zh_text": "英语，这张图里有一个男人",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 41.16,
+   "end": 48.84,
+   "en_text": "or a woman a man yeah yeah there's a man",
+   "zh_text": "还是女人？一个男人，对，对，有一个男人",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 44.92,
+   "end": 51.68,
+   "en_text": "here and what what is he doing what is",
+   "zh_text": "在这儿，那，他在做什么，什么",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 48.84,
+   "end": 56.16,
+   "en_text": "this man doing what is he",
+   "zh_text": "这个男人在做什么，他在",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 51.68,
+   "end": 60.64,
+   "en_text": "doing he's cutting a piece of paper yeah",
+   "zh_text": "做什么，他在剪一张纸，对",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 56.16,
+   "end": 64.04,
+   "en_text": "yeah so he's cutting or is yeah",
+   "zh_text": "对，所以他在剪，还是，对",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 60.64,
+   "end": 67.72,
+   "en_text": "he's cutting or he's he's going to cut",
+   "zh_text": "他在剪，或者他，他要剪",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 64.04,
+   "end": 72.24,
+   "en_text": "he's going to cut a piece of paper here",
+   "zh_text": "他要在这儿剪一张纸",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 67.72,
+   "end": 77.119,
+   "en_text": "yeah yeah um what oh what is he going to",
+   "zh_text": "对，对，嗯，什么，哦，他要",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 72.24,
+   "end": 80.0,
+   "en_text": "cut this paper with he's going to use",
+   "zh_text": "用什么剪这张纸，他要用",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 77.119,
+   "end": 83.119,
+   "en_text": "scissors yeah he's going to use uh",
+   "zh_text": "剪刀，对，他要用，嗯",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 80.0,
+   "end": 87.4,
+   "en_text": "scissors he's going to use a pair of",
+   "zh_text": "剪刀，他要用一把",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 83.119,
+   "end": 91.28,
+   "en_text": "scissors so this is a pair of scissors",
+   "zh_text": "剪刀，所以这是一把剪刀",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 87.4,
+   "end": 96.159,
+   "en_text": "and he's going to use these scissors to",
+   "zh_text": "他要用这把剪刀来",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 91.28,
+   "end": 101.2,
+   "en_text": "cut this piece of paper yeah yeah and",
+   "zh_text": "剪这张纸，对，对，还有",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 96.159,
+   "end": 105.159,
+   "en_text": "here oh here I have I have some paper",
+   "zh_text": "这儿，哦，这儿我有，我这儿有一些纸",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 101.2,
+   "end": 109.799,
+   "en_text": "here so this is paper and here's a piece",
+   "zh_text": "所以这是纸，这儿有一张",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 105.159,
+   "end": 112.96,
+   "en_text": "of paper or a sheet of paper and what do",
+   "zh_text": "纸，或者说一张纸，那",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 109.799,
+   "end": 116.159,
+   "en_text": "I have here scissors yeah I have",
+   "zh_text": "我这儿有什么，剪刀，对，我有",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 112.96,
+   "end": 120.079,
+   "en_text": "scissors I have a pair of scissors so I",
+   "zh_text": "剪刀，我有一把剪刀，所以我",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 116.159,
+   "end": 121.32,
+   "en_text": "am going to cut this paper I'm going to",
+   "zh_text": "要剪这张纸，我要",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 120.079,
+   "end": 124.84,
+   "en_text": "cut this",
+   "zh_text": "剪这张",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 121.32,
+   "end": 127.2,
+   "en_text": "paper in half so I'm cutting it and",
+   "zh_text": "纸，剪成两半，所以我在剪它，然后",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 124.84,
+   "end": 127.2,
+   "en_text": "cutting",
+   "zh_text": "剪",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 127.28,
+   "end": 136.959,
+   "en_text": "it there I have cut it in half so I've",
+   "zh_text": "它，在那儿，我把它剪成两半了，所以我",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 132.44,
+   "end": 141.0,
+   "en_text": "cut this piece of paper into two pieces",
+   "zh_text": "把这张纸剪成了两张",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 136.959,
+   "end": 145.28,
+   "en_text": "of paper one two two pieces of paper I",
+   "zh_text": "纸，一，二，两张纸，我",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 141.0,
+   "end": 148.64,
+   "en_text": "cut it in half or cut it in two with",
+   "zh_text": "把它剪成两半，或者用这把剪刀把它剪成两半",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 145.28,
+   "end": 153.599,
+   "en_text": "these scissors Luke do you like uh",
+   "zh_text": "Luke，你喜欢，嗯",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 148.64,
+   "end": 159.64,
+   "en_text": "cutting things with scissors H it's fun",
+   "zh_text": "用剪刀剪东西吗？嗯，很好玩",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 153.599,
+   "end": 164.879,
+   "en_text": "yeah uh what do you like to cut with uh",
+   "zh_text": "对，嗯，你喜欢用，嗯",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 159.64,
+   "end": 166.959,
+   "en_text": "scissors paper paper so do you cut uh",
+   "zh_text": "剪刀剪什么？纸，纸，那你剪，嗯",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 164.879,
+   "end": 171.84,
+   "en_text": "paper like",
+   "zh_text": "纸，像",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 166.959,
+   "end": 174.0,
+   "en_text": "this yes okay and you like to cut paper",
+   "zh_text": "这样？对，好，那你喜欢用剪刀剪纸",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 171.84,
+   "end": 176.959,
+   "en_text": "with scissors yeah it's fun good what",
+   "zh_text": "对，很好玩，好，那",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 174.0,
+   "end": 182.12,
+   "en_text": "about oh what about this uh would you",
+   "zh_text": "这个呢，哦，这个呢，嗯，你会",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 176.959,
+   "end": 184.799,
+   "en_text": "cut uh money no don't cut the money no",
+   "zh_text": "剪，嗯，钱吗？不，别剪钱，不",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 182.12,
+   "end": 189.84,
+   "en_text": "should I should I cut don't do it no no",
+   "zh_text": "我应该，我应该剪吗？别这么做，不，不",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 184.799,
+   "end": 193.56,
+   "en_text": "I no I won't I won't cut this money with",
+   "zh_text": "我，不，我不会，我不会用剪刀剪这钱",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 189.84,
+   "end": 197.799,
+   "en_text": "scissors yeah so um I can cut",
+   "zh_text": "对，所以，嗯，我可以剪",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 193.56,
+   "end": 199.72,
+   "en_text": "paper but I I won't I won't uh cut money",
+   "zh_text": "纸，但我，我不会，我不会，嗯，用剪刀剪钱",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 197.799,
+   "end": 202.959,
+   "en_text": "with scissors or with",
+   "zh_text": "或者用",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 199.72,
+   "end": 205.319,
+   "en_text": "anything yeah so we can cut uh we can",
+   "zh_text": "任何东西，对，所以我们可以剪，呃，我们可以",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 202.959,
+   "end": 208.76,
+   "en_text": "cut things or we can cut we can cut",
+   "zh_text": "剪东西，或者我们可以剪，我们可以剪",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 205.319,
+   "end": 211.2,
+   "en_text": "paper with uh scissors um what else",
+   "zh_text": "用剪刀剪纸，嗯，还有什么",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 208.76,
+   "end": 215.159,
+   "en_text": "what's something else you used to",
+   "zh_text": "你还用什么来",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 211.2,
+   "end": 217.92,
+   "en_text": "cut to cut things with like a",
+   "zh_text": "剪东西，用什么来剪东西，比如",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 215.159,
+   "end": 223.08,
+   "en_text": "saw oh right right yeah yeah a saw",
+   "zh_text": "锯子，哦对，对对，对，锯子",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 217.92,
+   "end": 223.08,
+   "en_text": "actually for a tree there you can use a",
+   "zh_text": "其实砍树的话，你可以用",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 223.319,
+   "end": 231.4,
+   "en_text": "saw there's a saw saw",
+   "zh_text": "锯子，有一把锯子，锯子",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 227.36,
+   "end": 236.439,
+   "en_text": "has so you can use a saw and you can saw",
+   "zh_text": "有，所以你可以用锯子，你可以锯",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 231.4,
+   "end": 240.239,
+   "en_text": "and cut down the tree like that",
+   "zh_text": "然后把树砍倒，就像那样",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 236.439,
+   "end": 243.4,
+   "en_text": "Timber cut down you can cut down a tree",
+   "zh_text": "倒啦，砍倒，你可以砍倒一棵树",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 240.239,
+   "end": 246.12,
+   "en_text": "with a saw or something like that right",
+   "zh_text": "用锯子或者类似的东西，对吧",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 243.4,
+   "end": 248.28,
+   "en_text": "or an axe you can use an axe to cut down",
+   "zh_text": "或者斧头，你可以用斧头砍倒",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 246.12,
+   "end": 248.28,
+   "en_text": "a",
+   "zh_text": "一棵",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 248.4,
+   "end": 253.36,
+   "en_text": "tree there's an",
+   "zh_text": "树，有一把",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 250.68,
+   "end": 255.44,
+   "en_text": "axe uh something like",
+   "zh_text": "斧头，呃，差不多",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 253.36,
+   "end": 259.32,
+   "en_text": "that",
+   "zh_text": "那样",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 255.44,
+   "end": 262.759,
+   "en_text": "yeah that's not a very good drawing um",
+   "zh_text": "对，这画得不太好，嗯",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 259.32,
+   "end": 265.28,
+   "en_text": "yeah so you can you can cut down a tree",
+   "zh_text": "对，所以你可以，你可以砍倒一棵树",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 262.759,
+   "end": 267.72,
+   "en_text": "with a saw or with an",
+   "zh_text": "用锯子或者用",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 265.28,
+   "end": 270.0,
+   "en_text": "axe trying to draw a better axe what",
+   "zh_text": "斧头，我试着画个更好的斧头，什么",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 267.72,
+   "end": 274.28,
+   "en_text": "does an axe look like it's just got a",
+   "zh_text": "斧头长什么样，它就是有个",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 270.0,
+   "end": 274.28,
+   "en_text": "longer handle yeah something",
+   "zh_text": "更长的手柄，对，差不多",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 275.08,
+   "end": 280.639,
+   "en_text": "like like that there's an axe yeah you",
+   "zh_text": "像，像那样，有一把斧头，对，你",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 278.12,
+   "end": 283.639,
+   "en_text": "can chop chop chop and then cut down you",
+   "zh_text": "可以砍，砍，砍，然后就砍倒了，你",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 280.639,
+   "end": 287.24,
+   "en_text": "can cut down a tree with an axe or with",
+   "zh_text": "可以用斧头砍倒一棵树，或者用",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 283.639,
+   "end": 289.84,
+   "en_text": "a saw right yeah yeah can you can you",
+   "zh_text": "锯子，对吧，对对，你能，你能",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 287.24,
+   "end": 292.759,
+   "en_text": "cut down a tree with h",
+   "zh_text": "用，嗯",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 289.84,
+   "end": 296.039,
+   "en_text": "scissors no no",
+   "zh_text": "剪刀砍倒一棵树吗，不能，不能",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 292.759,
+   "end": 300.44,
+   "en_text": "no no yeah you need something like a saw",
+   "zh_text": "不能，不能，对，你需要像锯子",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 296.039,
+   "end": 304.199,
+   "en_text": "or an axe to cut down a tree right yeah",
+   "zh_text": "或者斧头这样的东西来砍倒一棵树，对吧，对",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 300.44,
+   "end": 305.72,
+   "en_text": "yeah so scissors scissors are good for",
+   "zh_text": "对，所以剪刀，剪刀适合",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 304.199,
+   "end": 309.88,
+   "en_text": "cutting",
+   "zh_text": "剪",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 305.72,
+   "end": 312.72,
+   "en_text": "paper things like paper watch listen",
+   "zh_text": "纸，像纸这样的东西，看，听",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 309.88,
+   "end": 314.32,
+   "en_text": "understand learn watch and listen to",
+   "zh_text": "理解，学习，看和听",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 312.72,
+   "end": 317.24,
+   "en_text": "understand and learn English",
+   "zh_text": "来理解和学习英语",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 314.32,
+   "end": 317.24,
+   "en_text": "comprehensible",
+   "zh_text": "可理解的",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 321.24,
+   "end": 324.24,
+   "en_text": "English",
+   "zh_text": "英语",
+   "highlights": []
+  }
+ ]
+}

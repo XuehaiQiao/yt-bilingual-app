@@ -1,0 +1,829 @@
+{
+ "id": "bbc-real-easy-mistakes",
+ "youtubeId": "eK5Tsornvng",
+ "title": "Talking about mistakes 👎❌🤦 Real Easy English",
+ "channel": "BBC Learning English",
+ "duration": 346,
+ "level": "A2",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/eK5Tsornvng/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:51:17+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.28,
+   "end": 2.88,
+   "en_text": "Hello and welcome to Real Easy English,",
+   "zh_text": "大家好，欢迎来到Real Easy English，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 2.88,
+   "end": 7.08,
+   "en_text": "the podcast where we have real conversations in easy English",
+   "zh_text": "这档播客用简单的英语进行真实对话",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 7.08,
+   "end": 8.24,
+   "en_text": "to help you learn.",
+   "zh_text": "来帮助你学习。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 8.24,
+   "end": 9.2,
+   "en_text": "I'm Neil.",
+   "zh_text": "我是Neil。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 9.2,
+   "end": 10.56,
+   "en_text": "And I'm Beth.",
+   "zh_text": "我是Beth。",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 10.56,
+   "end": 13.84,
+   "en_text": "You can find a video version of this podcast",
+   "zh_text": "你可以在我们的网站上找到这档播客的视频版",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 13.84,
+   "end": 17.64,
+   "en_text": "and a worksheet to help you learn on our website,",
+   "zh_text": "和帮助你学习的学习单，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 17.64,
+   "end": 19.64,
+   "en_text": "bbclearningenglish.com.",
+   "zh_text": "网址是bbclearningenglish.com。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 26.08,
+   "end": 27.56,
+   "en_text": "How are you today, Beth?",
+   "zh_text": "Beth，你今天怎么样？",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 27.56,
+   "end": 28.64,
+   "en_text": "I'm OK, Neil.",
+   "zh_text": "我还行，Neil。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 28.64,
+   "end": 31.48,
+   "en_text": "I'm a little bit tired. How are you?",
+   "zh_text": "我有点累。你呢？",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 31.48,
+   "end": 32.6,
+   "en_text": "I'm very well.",
+   "zh_text": "我很好。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 32.6,
+   "end": 34.2,
+   "en_text": "I'm fine. Great.",
+   "zh_text": "我挺好的。太好了。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 34.2,
+   "end": 35.68,
+   "en_text": "Good, good.",
+   "zh_text": "好，好。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 35.68,
+   "end": 38.76,
+   "en_text": "Well, today we're going to talk about 'mistakes'.",
+   "zh_text": "那么，今天我们要聊的是“错误”。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 38.76,
+   "end": 43.12,
+   "en_text": "So hopefully I won't make many mistakes, being tired.",
+   "zh_text": "所以希望我累了也不会犯太多错误。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 43.12,
+   "end": 44.84,
+   "en_text": "No. 'Mistakes' –",
+   "zh_text": "不会的。“错误”——",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 44.84,
+   "end": 47.64,
+   "en_text": "'mistakes' can be things that are wrong",
+   "zh_text": "“错误”可以指做错的事情，",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 47.64,
+   "end": 49.8,
+   "en_text": "like a mistake in a maths problem.",
+   "zh_text": "比如数学题里的一个错误。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 49.8,
+   "end": 54.48,
+   "en_text": "But we can also use 'mistake' to talk about really big things in life.",
+   "zh_text": "但我们也可以用“错误”来谈生活中真正重大的事情。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 54.48,
+   "end": 57.88,
+   "en_text": "Decisions that you've made, actions that you've taken.",
+   "zh_text": "你做过的决定，你采取过的行动。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 57.88,
+   "end": 61.8,
+   "en_text": "Yes, that's true. So I think let's start the conversation.",
+   "zh_text": "是的，没错。那我觉得咱们开始聊吧。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 61.8,
+   "end": 67.4,
+   "en_text": "Let's do it. So, Beth, have you made any mistakes recently?",
+   "zh_text": "来吧。那么，Beth，你最近犯过什么错误吗？",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 67.4,
+   "end": 74.56,
+   "en_text": "Yes. So, I recently left my suitcase on a train by mistake.",
+   "zh_text": "有。我最近不小心把手提箱落在火车上了。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 74.56,
+   "end": 75.72,
+   "en_text": "Oh no!",
+   "zh_text": "哦不！",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 75.72,
+   "end": 78.56,
+   "en_text": "So, I was travelling from home",
+   "zh_text": "当时我从家出发",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 78.56,
+   "end": 80.8,
+   "en_text": "to Leeds on the train.",
+   "zh_text": "坐火车去Leeds。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 80.8,
+   "end": 85.4,
+   "en_text": "And I got to the station at Leeds,",
+   "zh_text": "我到了Leeds的车站，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 85.4,
+   "end": 87.68,
+   "en_text": "and there were loads of people, and they were...",
+   "zh_text": "那里人特别多，他们……",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 87.68,
+   "end": 91.08,
+   "en_text": "they were football fans and they were singing really loudly.",
+   "zh_text": "他们是足球球迷，唱得特别大声。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 91.08,
+   "end": 93.72,
+   "en_text": "And I just wanted to get off the train.",
+   "zh_text": "我就只想赶紧下火车。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 93.72,
+   "end": 95.12,
+   "en_text": "And that's what I did.",
+   "zh_text": "我就那么做了。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 95.12,
+   "end": 101.24,
+   "en_text": "And then I realised about half an hour later that I didn't have my suitcase.",
+   "zh_text": "然后大概半小时后我才意识到我没拿手提箱。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 101.24,
+   "end": 102.04,
+   "en_text": "Oh no!",
+   "zh_text": "哦不！",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 102.04,
+   "end": 103.16,
+   "en_text": "So...",
+   "zh_text": "所以……",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 103.16,
+   "end": 105.56,
+   "en_text": "That's a bad mistake. Did you get it back?",
+   "zh_text": "那是个严重的错误。你拿回来了吗？",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 105.56,
+   "end": 107.52,
+   "en_text": "I did, I was so lucky.",
+   "zh_text": "拿回来了，我太幸运了。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 107.52,
+   "end": 109.96,
+   "en_text": "The train stopped at Leeds.",
+   "zh_text": "那趟火车停在Leeds。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 109.96,
+   "end": 115.64,
+   "en_text": "So, when I realised I ran and said to the people on the platform,",
+   "zh_text": "所以我一意识到，就跑过去对站台上的人说，",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 115.64,
+   "end": 117.44,
+   "en_text": "\"Arrgh, my suitcase is on the train!\"",
+   "zh_text": "“啊，我的手提箱在火车上！”",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 117.44,
+   "end": 121.76,
+   "en_text": "And they held the train for me and I ran up the platform.",
+   "zh_text": "他们为我拦住了火车，我沿着站台跑过去。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 121.76,
+   "end": 125.76,
+   "en_text": "I grabbed my suitcase and then they blew the whistle and the train went.",
+   "zh_text": "我抓起手提箱，然后他们吹了哨，火车就开走了。",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 125.76,
+   "end": 126.88,
+   "en_text": "I was so lucky.",
+   "zh_text": "我太幸运了。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 126.88,
+   "end": 128.44,
+   "en_text": "But yeah, that was a big mistake.",
+   "zh_text": "不过是啊，那是个大错误。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 128.44,
+   "end": 131.36,
+   "en_text": "And I will not make that mistake again.",
+   "zh_text": "我不会再犯那个错误了。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 131.36,
+   "end": 134.52,
+   "en_text": "Everybody says that.",
+   "zh_text": "大家都这么说。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 134.52,
+   "end": 140.28,
+   "en_text": "So, earlier we said that mistakes can be small things, like my suitcase.",
+   "zh_text": "刚才我们说错误可以指小事，比如我的手提箱。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 140.28,
+   "end": 143.6,
+   "en_text": "But there are big mistakes that we can make.",
+   "zh_text": "但我们也会犯大错误。",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 143.6,
+   "end": 147.48,
+   "en_text": "So, have you ever made a big mistake, do you think?",
+   "zh_text": "那你有没有犯过什么大错误，你觉得呢？",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 147.48,
+   "end": 151.72,
+   "en_text": "Yeah. Well, once I had a job that I really, really enjoyed.",
+   "zh_text": "有。我曾经有一份我特别特别喜欢的工作。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 151.72,
+   "end": 156.6,
+   "en_text": "I was teaching at a school in Prague, in the Czech Republic, teaching English,",
+   "zh_text": "我在捷克共和国布拉格的一所学校教书，教英语，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 156.6,
+   "end": 159.52,
+   "en_text": "and I loved the job and I had loads of really good friends.",
+   "zh_text": "我很喜欢那份工作，也有很多特别好的朋友。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 159.52,
+   "end": 164.64,
+   "en_text": "But I had this feeling that I needed to go – move somewhere else,",
+   "zh_text": "但我有种感觉，我需要离开——搬到别的地方去，",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 164.64,
+   "end": 166.6,
+   "en_text": "do something else with my life.",
+   "zh_text": "去做点别的事情。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 166.6,
+   "end": 168.84,
+   "en_text": "And so I resigned.",
+   "zh_text": "所以我就辞职了。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 168.84,
+   "end": 173.08,
+   "en_text": "But then about a week or so later, I realised",
+   "zh_text": "但大概一周左右之后，我意识到",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 173.08,
+   "end": 176.96,
+   "en_text": "that I really, really didn't want to leave that school.",
+   "zh_text": "我真的真的不想离开那所学校。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 176.96,
+   "end": 182.12,
+   "en_text": "So, I went back to the boss and I said, \"I've changed my mind.",
+   "zh_text": "所以，我回去找老板，说：“我改变主意了。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 182.12,
+   "end": 183.44,
+   "en_text": "I want to stay.\"",
+   "zh_text": "我想留下来。”",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 183.44,
+   "end": 189.24,
+   "en_text": "And he said, \"Well, it's too late because I've given your job to somebody else.\"",
+   "zh_text": "他说：“嗯，太晚了，因为我已经把你的工作给别人了。”",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 189.24,
+   "end": 190.92,
+   "en_text": "Oh no! That's so sad.",
+   "zh_text": "哦不！太惨了。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 190.92,
+   "end": 192.56,
+   "en_text": "So, you left your job,",
+   "zh_text": "所以，你辞了工作，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 192.56,
+   "end": 193.8,
+   "en_text": "left Prague?",
+   "zh_text": "离开了布拉格？",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 193.8,
+   "end": 198.04,
+   "en_text": "No, actually, a bit like your suitcase, Beth,",
+   "zh_text": "没有，其实，有点像你的行李箱，Beth，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 198.04,
+   "end": 202.8,
+   "en_text": "it ended up being OK because the person who took my job",
+   "zh_text": "结果还不错，因为接替我工作的人",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 202.8,
+   "end": 205.52,
+   "en_text": "then decided that he didn't want the job either.",
+   "zh_text": "后来也决定他不想要这份工作了。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 205.52,
+   "end": 207.68,
+   "en_text": "So, in the end, I did stay.",
+   "zh_text": "所以，最后我还是留下来了。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 207.68,
+   "end": 214.8,
+   "en_text": "So, when we make mistakes, Neil, sometimes we then have a regret",
+   "zh_text": "所以，当我们犯错时，Neil，有时候我们会后悔，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 214.8,
+   "end": 217.96,
+   "en_text": "or we regret the thing that we did.",
+   "zh_text": "或者我们后悔自己做过的事。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 217.96,
+   "end": 220.52,
+   "en_text": "That means that we feel bad about it.",
+   "zh_text": "意思是我们对此感到难过。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 220.52,
+   "end": 224.44,
+   "en_text": "Or we wish that we'd done something differently.",
+   "zh_text": "或者我们希望自己当初做了不一样的选择。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 224.44,
+   "end": 226.76,
+   "en_text": "Do you have any regrets?",
+   "zh_text": "你有什么后悔的事吗？",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 226.76,
+   "end": 232.32,
+   "en_text": "Yeah. When I was a kid, I guess I was probably 12 or 13.",
+   "zh_text": "有。我小时候，大概十二三岁吧。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 232.32,
+   "end": 240.2,
+   "en_text": "I had some piano lessons, and I quit as soon as I could.",
+   "zh_text": "我上过一些钢琴课，然后一有机会就放弃了。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 240.2,
+   "end": 242.16,
+   "en_text": "My parents gave me that choice.",
+   "zh_text": "我父母给了我那个选择。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 242.16,
+   "end": 246.08,
+   "en_text": "And I regret that because I love music and I play guitar,",
+   "zh_text": "我后悔那件事，因为我喜欢音乐，也弹吉他，",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 246.08,
+   "end": 250.76,
+   "en_text": "and I think I would have enjoyed playing piano.",
+   "zh_text": "我觉得我本来会喜欢弹钢琴的。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 250.76,
+   "end": 254.88,
+   "en_text": "I always think, to be honest, you shouldn't have any regrets,",
+   "zh_text": "说实话，我一直觉得人不该有什么后悔，",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 254.88,
+   "end": 258.56,
+   "en_text": "because whatever you've done, you've learnt something from it.",
+   "zh_text": "因为不管你做了什么，你都从中学到了东西。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 258.56,
+   "end": 264.32,
+   "en_text": "Even if something bad happened, then you know for next time.",
+   "zh_text": "即使发生了不好的事，那下次你就知道了。",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 264.32,
+   "end": 267.76,
+   "en_text": "And it's a kind of self-improvement thing.",
+   "zh_text": "这是一种自我提升。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 267.76,
+   "end": 271.44,
+   "en_text": "That is a very positive attitude to mistakes, Beth.",
+   "zh_text": "这真是对待错误非常积极的态度，Beth。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 271.44,
+   "end": 275.72,
+   "en_text": "Yeah, I think it's important to learn from your mistakes.",
+   "zh_text": "是啊，我觉得从错误中学习很重要。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 275.72,
+   "end": 281.44,
+   "en_text": "And that's a common expression in English – to learn from your mistakes.",
+   "zh_text": "这在英语里是个常用表达——从错误中学习。",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 286.24,
+   "end": 289.76,
+   "en_text": "Let's recap the vocabulary we've learnt in this podcast.",
+   "zh_text": "我们来回顾一下这期播客里学到的词汇。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 289.76,
+   "end": 294.96,
+   "en_text": "Starting with 'mistake', and a mistake is an action that is wrong.",
+   "zh_text": "从“mistake”开始，mistake 就是一个错误的行为。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 294.96,
+   "end": 297.76,
+   "en_text": "Or that you do when you don't mean to.",
+   "zh_text": "或者是你无意中做的事。",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 297.76,
+   "end": 299.92,
+   "en_text": "And we can 'make a mistake'.",
+   "zh_text": "我们可以说“make a mistake”。",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 299.92,
+   "end": 302.28,
+   "en_text": "That means we do something wrong.",
+   "zh_text": "意思是我们做错了事。",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 302.28,
+   "end": 307.64,
+   "en_text": "Or we can do something 'by mistake', which means we do something accidentally,",
+   "zh_text": "或者我们可以说“by mistake”，意思是我们不小心做了某事，",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 307.64,
+   "end": 309.08,
+   "en_text": "without meaning to.",
+   "zh_text": "并非有意。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 309.08,
+   "end": 314.44,
+   "en_text": "For example, I left my suitcase on the train by mistake.",
+   "zh_text": "比如，我不小心把行李箱落在火车上了。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 314.44,
+   "end": 317.36,
+   "en_text": "We also heard 'regret', which means feel bad",
+   "zh_text": "我们还听到了“regret”，意思是感到难过",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 317.36,
+   "end": 321.92,
+   "en_text": "or sorry about something you've done or a mistake that you've made.",
+   "zh_text": "或者为做过的事、犯过的错表示抱歉。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 321.92,
+   "end": 327.0,
+   "en_text": "And we heard 'learn from your mistakes', which means remember the mistake",
+   "zh_text": "我们还听到了“learn from your mistakes”，意思是记住这个错误",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 327.0,
+   "end": 330.88,
+   "en_text": "and then not do it again the next time.",
+   "zh_text": "然后下次不要再犯。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 330.88,
+   "end": 333.36,
+   "en_text": "That's it for this episode of Real Easy English.",
+   "zh_text": "这集Real Easy English就到这里。",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 333.36,
+   "end": 337.24,
+   "en_text": "You can test yourself on what you've learned with a worksheet on our website,",
+   "zh_text": "你可以用我们网站上的练习来测试一下学到的东西，",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 337.24,
+   "end": 339.082,
+   "en_text": "bbclearningenglish.com.",
+   "zh_text": "bbclearningenglish.com。",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 339.082,
+   "end": 340.44,
+   "en_text": "See you then. Goodbye.",
+   "zh_text": "到时候见。再见。",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 340.44,
+   "end": 341.44,
+   "en_text": "Bye!",
+   "zh_text": "拜拜！",
+   "highlights": []
+  }
+ ]
+}

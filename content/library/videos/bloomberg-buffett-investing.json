@@ -1,0 +1,1669 @@
+{
+ "id": "bloomberg-buffett-investing",
+ "youtubeId": "HxkHu4kdEeg",
+ "title": "How Warren Buffett Changed Investing Forever",
+ "channel": "Bloomberg Originals",
+ "duration": 561,
+ "level": "C1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/HxkHu4kdEeg/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:49:02+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 0.3,
+   "end": 2.16,
+   "en_text": "If investors had a Hall of Fame,",
+   "zh_text": "如果投资者有一座名人堂，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 2.16,
+   "end": 4.5,
+   "en_text": "Warren Buffett would occupy his own wing",
+   "zh_text": "沃伦·巴菲特会独占一个展区。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 5.37,
+   "end": 8.91,
+   "en_text": "People from all over the planet, look up to him,",
+   "zh_text": "全世界的人都敬仰他，",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 8.91,
+   "end": 12.63,
+   "en_text": "read his biography, hop on a plane to go see him talk.",
+   "zh_text": "读他的传记，坐飞机去听他演讲。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 13.68,
+   "end": 16.71,
+   "en_text": "He took a failing textile mill",
+   "zh_text": "他把一家濒临倒闭的纺织厂",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 16.71,
+   "end": 20.04,
+   "en_text": "and turned it into a trillion dollar conglomerate.",
+   "zh_text": "变成了一家市值万亿美元的企业集团。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 20.04,
+   "end": 24.9,
+   "en_text": "It has insurance companies, Dairy Queen, railroads",
+   "zh_text": "旗下有保险公司、Dairy Queen、铁路",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 24.9,
+   "end": 27.48,
+   "en_text": "and energy businesses.",
+   "zh_text": "和能源业务。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 27.48,
+   "end": 30.45,
+   "en_text": "For decades, Buffett's investment savvy has led Berkshire",
+   "zh_text": "几十年来，巴菲特的投资眼光让伯克希尔",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 30.45,
+   "end": 32.04,
+   "en_text": "Hathaway to beat benchmarks.",
+   "zh_text": "哈撒韦不断跑赢基准。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 32.04,
+   "end": 33.69,
+   "en_text": "One of the biggest asset managers",
+   "zh_text": "如今最大的资产管理公司之一，",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 33.69,
+   "end": 35.01,
+   "en_text": "today, which is Vanguard.",
+   "zh_text": "就是先锋领航。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 35.01,
+   "end": 37.26,
+   "en_text": "The entire philosophy is: no one's really",
+   "zh_text": "它的整套理念就是：没人真的",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 37.26,
+   "end": 38.31,
+   "en_text": "gonna be able to beat the market.",
+   "zh_text": "能跑赢市场。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 38.31,
+   "end": 39.96,
+   "en_text": "So you might as well not even try.",
+   "zh_text": "所以你干脆连试都别试。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 39.96,
+   "end": 42.27,
+   "en_text": "Well, okay, no one besides Warren Buffett.",
+   "zh_text": "好吧，除了沃伦·巴菲特，没人能做到。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 42.27,
+   "end": 45.24,
+   "en_text": "If you look at the total returns, Berkshire blows the",
+   "zh_text": "如果你看总回报，伯克希尔把",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 45.24,
+   "end": 46.95,
+   "en_text": "S&P 500 away.",
+   "zh_text": "标普500远远甩在后面。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 46.95,
+   "end": 48.54,
+   "en_text": "The legendary investor, Warren Buffett.",
+   "zh_text": "传奇投资者，沃伦·巴菲特。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 48.54,
+   "end": 50.853,
+   "en_text": "So when the 95-year-old announced he would",
+   "zh_text": "所以当这位95岁的老人宣布他将在",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 50.853,
+   "end": 53.245,
+   "en_text": "retire at the end of 2025...",
+   "zh_text": "2025年底退休时……",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 53.245,
+   "end": 55.77,
+   "en_text": "Greg should become the",
+   "zh_text": "格雷格应该会成为",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 55.77,
+   "end": 59.436,
+   "en_text": "Chief Executive Officer of the company.",
+   "zh_text": "公司的首席执行官。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 59.436,
+   "end": 62.61,
+   "en_text": "It marked the end of an era at Berkshire Hathaway,",
+   "zh_text": "这标志着伯克希尔·哈撒韦一个时代的结束，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 62.61,
+   "end": 66.09,
+   "en_text": "and left everyone with one massive question.",
+   "zh_text": "也给所有人留下了一个巨大的问题。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 71.55,
+   "end": 75.33,
+   "en_text": "Warren Buffett is one of the richest people on earth,",
+   "zh_text": "沃伦·巴菲特是地球上最富有的人之一，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 75.33,
+   "end": 78.3,
+   "en_text": "but his lifestyle doesn't exactly scream it.",
+   "zh_text": "但他的生活方式可完全看不出来。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 78.3,
+   "end": 80.91,
+   "en_text": "He lives in Omaha. He lives in the same house.",
+   "zh_text": "他住在奥马哈。他住在那同一栋房子里。",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 80.91,
+   "end": 82.83,
+   "en_text": "He's lived for many, many years.",
+   "zh_text": "他已经住了很多很多年。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 85.373,
+   "end": 87.3,
+   "en_text": "He goes to McDonalds in Omaha.",
+   "zh_text": "他去奥马哈的麦当劳。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 87.3,
+   "end": 89.28,
+   "en_text": "A lot of people around the city know him.",
+   "zh_text": "城里很多人都认识他。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 89.28,
+   "end": 91.41,
+   "en_text": "He's paid just 100k",
+   "zh_text": "他的薪水只有10万",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 91.41,
+   "end": 95.13,
+   "en_text": "and has been paid that amount for years.",
+   "zh_text": "而且多年来一直拿这个数。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 95.13,
+   "end": 96.81,
+   "en_text": "That's very refreshing when you think",
+   "zh_text": "想想今天的世道，",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 96.81,
+   "end": 98.1,
+   "en_text": "about the landscape today.",
+   "zh_text": "这真让人耳目一新。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 100.44,
+   "end": 101.61,
+   "en_text": "So what's the backstory?",
+   "zh_text": "那么背景故事是什么呢？",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 102.45,
+   "end": 105.15,
+   "en_text": "Well, Buffett's childhood fascination with money led him",
+   "zh_text": "巴菲特童年时对金钱的着迷，让他",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 105.15,
+   "end": 106.77,
+   "en_text": "to Columbia Business School",
+   "zh_text": "走进了哥伦比亚商学院，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 106.77,
+   "end": 109.44,
+   "en_text": "where he studied under a renowned educator.",
+   "zh_text": "在那里他师从一位著名教育家。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 109.44,
+   "end": 113.55,
+   "en_text": "Benjamin Graham was a financial analyst considered",
+   "zh_text": "本杰明·格雷厄姆是一位金融分析师，被认为是",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 113.55,
+   "end": 116.76,
+   "en_text": "to be the father of value investing.",
+   "zh_text": "价值投资之父。",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 116.76,
+   "end": 118.59,
+   "en_text": "Value investing is really this idea",
+   "zh_text": "价值投资其实就是这个理念：",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 118.59,
+   "end": 121.89,
+   "en_text": "that you're not just betting on some fluke in the market.",
+   "zh_text": "你不只是在赌市场上的某个偶然波动。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 121.89,
+   "end": 125.25,
+   "en_text": "You're really looking at what you think it's worth versus",
+   "zh_text": "你真正看的是你认为它值多少，对比",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 125.25,
+   "end": 127.89,
+   "en_text": "what the value that the market is providing.",
+   "zh_text": "市场给出的价值。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 127.89,
+   "end": 129.84,
+   "en_text": "Ideally, you want to buy a company",
+   "zh_text": "理想情况下，你想买一家",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 129.84,
+   "end": 131.16,
+   "en_text": "that you think is undervalued",
+   "zh_text": "你认为被低估的公司，",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 131.16,
+   "end": 133.47,
+   "en_text": "and that it's going to rise in many years,",
+   "zh_text": "而且它会在很多年后上涨，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 133.47,
+   "end": 136.17,
+   "en_text": "but that requires a lot of due diligence that requires you",
+   "zh_text": "但这需要大量的尽职调查，需要你",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 136.17,
+   "end": 138.63,
+   "en_text": "to make sure you actually understand how the business works.",
+   "zh_text": "确保自己真的理解这门生意是怎么运作的。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 138.63,
+   "end": 139.56,
+   "en_text": "I'm not buying 'em 'cause I think",
+   "zh_text": "我买它们不是因为我以为",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 139.56,
+   "end": 140.94,
+   "en_text": "they're gonna go up next year.",
+   "zh_text": "它们明年会涨。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 140.94,
+   "end": 143.1,
+   "en_text": "I'm buying 'em 'cause I think they'll be worth quite a bit",
+   "zh_text": "我买它们是因为我认为它们会值不少钱",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 143.1,
+   "end": 145.2,
+   "en_text": "more money 10 years or 20 years from now.",
+   "zh_text": "十年或二十年后能赚更多的钱。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 145.2,
+   "end": 146.85,
+   "en_text": "Investment after investment.",
+   "zh_text": "一笔接一笔的投资。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 146.85,
+   "end": 149.4,
+   "en_text": "That strategy came to define Berkshire Hathaway,",
+   "zh_text": "这个策略后来成了伯克希尔·哈撒韦的标志，",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 150.3,
+   "end": 153.69,
+   "en_text": "But let's see it in action by focusing on just one.",
+   "zh_text": "但我们只看其中一笔投资，来看看它实际是怎么运作的。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 153.69,
+   "end": 155.73,
+   "en_text": "American Express is an investment that he's had",
+   "zh_text": "美国运通是他持有了几十年的一笔投资，",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 155.73,
+   "end": 157.71,
+   "en_text": "for decades, and when he bought it,",
+   "zh_text": "当年他买入的时候，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 157.71,
+   "end": 159.18,
+   "en_text": "the stock price was a bit down",
+   "zh_text": "股价正处于低位，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 159.18,
+   "end": 161.79,
+   "en_text": "because of a scandal at the time,",
+   "zh_text": "因为当时公司出了丑闻，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 161.79,
+   "end": 164.88,
+   "en_text": "but he saw the value of Americans",
+   "zh_text": "但他看到了美国人的价值——",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 164.88,
+   "end": 167.94,
+   "en_text": "that kept swiping the Amex all over the place.",
+   "zh_text": "他们到处都在刷美国运通的卡。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 167.94,
+   "end": 170.13,
+   "en_text": "That was back in the 1960s.",
+   "zh_text": "那是上世纪60年代的事了。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 170.13,
+   "end": 173.25,
+   "en_text": "But look at this, Berkshire's current Amex Holding was",
+   "zh_text": "但你看，伯克希尔目前持有的美国运通股份，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 173.25,
+   "end": 176.16,
+   "en_text": "largely assembled here in the 1990s",
+   "zh_text": "大部分是90年代在这里建仓的，",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 176.16,
+   "end": 178.74,
+   "en_text": "for about $1.3 billion.",
+   "zh_text": "花了大约13亿美元。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 178.74,
+   "end": 182.38,
+   "en_text": "Since then, Buffett's largely left that core stake intact,",
+   "zh_text": "从那以后，巴菲特基本没动过这笔核心持股，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 182.38,
+   "end": 186.07,
+   "en_text": "but Amex's market value has soared in the years since making",
+   "zh_text": "但此后美国运通的市值一路飙升，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 186.07,
+   "end": 190.18,
+   "en_text": "his 22% holding worth tens of billions of dollars.",
+   "zh_text": "让他那22%的持股价值高达数百亿美元。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 191.11,
+   "end": 194.692,
+   "en_text": "He was interested because the company has a good moat.",
+   "zh_text": "他感兴趣，是因为这家公司有一条很好的护城河。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 194.692,
+   "end": 198.76,
+   "en_text": "By moat, he means some competitive advantage against other",
+   "zh_text": "所谓护城河，指的是相对于同行业其他",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 198.76,
+   "end": 200.47,
+   "en_text": "companies in the business.",
+   "zh_text": "公司所拥有的某种竞争优势。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 200.47,
+   "end": 201.97,
+   "en_text": "For Amex, that moat is a mix",
+   "zh_text": "对美国运通来说，这条护城河是几样东西的结合：",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 201.97,
+   "end": 204.28,
+   "en_text": "of its premium brand, affluent cardholders",
+   "zh_text": "它的高端品牌、富裕的持卡人，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 204.28,
+   "end": 206.56,
+   "en_text": "and a network built around their spending power.",
+   "zh_text": "以及围绕他们消费能力建立起来的网络。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 207.73,
+   "end": 210.85,
+   "en_text": "Another kind of edge you can have over your competitors",
+   "zh_text": "另一种能让你胜过竞争对手的优势",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 210.85,
+   "end": 212.53,
+   "en_text": "is regulation.",
+   "zh_text": "是监管。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 212.53,
+   "end": 214.36,
+   "en_text": "Think about the energy business.",
+   "zh_text": "想想能源行业。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 214.36,
+   "end": 216.52,
+   "en_text": "A lot of those have advantages",
+   "zh_text": "很多这类企业都有优势，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 216.52,
+   "end": 218.83,
+   "en_text": "that a competitor couldn't come in",
+   "zh_text": "竞争对手没法轻易进来",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 218.83,
+   "end": 220.87,
+   "en_text": "and easily take the market share.",
+   "zh_text": "抢走市场份额。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 220.87,
+   "end": 223.42,
+   "en_text": "That's really helped his business sustain itself.",
+   "zh_text": "这确实帮助他的企业维持了自身的发展。",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 223.42,
+   "end": 227.53,
+   "en_text": "He's built up companies that are not so easy to replicate,",
+   "zh_text": "他打造的公司都不那么容易被复制，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 227.53,
+   "end": 230.08,
+   "en_text": "But perhaps the most underappreciated force",
+   "zh_text": "但伯克希尔崛起背后最被低估的力量，",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 230.08,
+   "end": 233.2,
+   "en_text": "behind Berkshire's Rise is its insurance business.",
+   "zh_text": "也许要数它的保险业务。",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 233.2,
+   "end": 234.49,
+   "en_text": "They're not always the companies",
+   "zh_text": "这些公司并不总是那种",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 234.49,
+   "end": 237.1,
+   "en_text": "that are gonna draw the hype from stockholders,",
+   "zh_text": "能引来股东追捧的公司，",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 237.1,
+   "end": 238.48,
+   "en_text": "but it's actually been a force",
+   "zh_text": "但实际上，正是这股力量",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 238.48,
+   "end": 240.01,
+   "en_text": "that's built up Berkshire a lot.",
+   "zh_text": "让伯克希尔发展壮大了很多。",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 240.01,
+   "end": 243.19,
+   "en_text": "The insurance business provides us with float",
+   "zh_text": "保险业务为我们提供了浮存金，",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 243.19,
+   "end": 246.28,
+   "en_text": "and float is money that we hold that doesn't belong to us.",
+   "zh_text": "浮存金就是我们持有、但并不属于我们的钱。",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 246.28,
+   "end": 251.28,
+   "en_text": "The way it works is it has a very large insurance arm",
+   "zh_text": "它的运作方式是，公司有一个规模很大的保险部门，",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 251.35,
+   "end": 255.01,
+   "en_text": "that has a lot of money from policy holders.",
+   "zh_text": "手里握着大量来自投保人的钱。",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 255.01,
+   "end": 257.41,
+   "en_text": "They have to invest it to reap some benefits",
+   "zh_text": "他们必须把这些钱投出去以获得一些收益，",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 257.41,
+   "end": 259.96,
+   "en_text": "and make sure that they can pay claims afterwards.",
+   "zh_text": "同时确保之后能付得起理赔。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 259.96,
+   "end": 262.99,
+   "en_text": "Berkshire Hathaway has been ramping that up to the max,",
+   "zh_text": "伯克希尔·哈撒韦一直在把这件事做到极致，",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 262.99,
+   "end": 265.3,
+   "en_text": "buying a lot of insurance companies",
+   "zh_text": "收购了大量保险公司，",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 265.3,
+   "end": 268.78,
+   "en_text": "and using that money, the float, to invest afterwards.",
+   "zh_text": "然后再用这些钱，也就是浮存金，去做投资。",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 268.78,
+   "end": 271.15,
+   "en_text": "This is actually one of the hottest plays in the",
+   "zh_text": "这其实是当下投资界最热门的玩法之一，",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 271.15,
+   "end": 273.79,
+   "en_text": "investment world right now with a lot of private equity",
+   "zh_text": "很多私募股权",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 273.79,
+   "end": 276.73,
+   "en_text": "and alternative asset managers either buying",
+   "zh_text": "和另类资产管理公司要么在收购",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 276.73,
+   "end": 279.28,
+   "en_text": "or having relationships with insurers.",
+   "zh_text": "保险公司，要么与它们建立了合作关系。",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 280.75,
+   "end": 282.91,
+   "en_text": "While Buffet has been the face of Berkshire Hathaway,",
+   "zh_text": "虽然巴菲特一直是伯克希尔·哈撒韦的门面，",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 282.91,
+   "end": 286.57,
+   "en_text": "he long had a sidekick, both conveniently available",
+   "zh_text": "但他长期以来都有一个搭档，两人恰好都能",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 286.57,
+   "end": 288.55,
+   "en_text": "as lovingly hand-rendered plushies.",
+   "zh_text": "被做成可爱的纯手工毛绒玩偶。",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 289.42,
+   "end": 292.21,
+   "en_text": "Charlie Munger passed away in 2023,",
+   "zh_text": "查理·芒格于2023年去世，",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 292.21,
+   "end": 295.54,
+   "en_text": "but the dynamic he had with Buffett for many years was one",
+   "zh_text": "但他多年来与巴菲特之间的默契配合，一直是",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 295.54,
+   "end": 297.43,
+   "en_text": "of the main draws of Berkshire.",
+   "zh_text": "伯克希尔最吸引人的看点之一。",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 297.43,
+   "end": 299.23,
+   "en_text": "They were a unique pair.",
+   "zh_text": "他们是一对独特的组合。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 299.23,
+   "end": 301.81,
+   "en_text": "If you saw them sitting together at the Berkshire annual",
+   "zh_text": "如果你在伯克希尔年度股东大会上看到他们坐在一起，",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 301.81,
+   "end": 303.82,
+   "en_text": "meeting, they would banter.",
+   "zh_text": "他们就会互相打趣。",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 303.82,
+   "end": 305.8,
+   "en_text": "I predict Charlie's gonna talk about Costco.",
+   "zh_text": "我预测查理会聊到Costco。",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 305.8,
+   "end": 309.34,
+   "en_text": "Go ahead, Charlie. Well, Costco of course is a-",
+   "zh_text": "说吧，查理。嗯，Costco当然是一家——",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 311.92,
+   "end": 315.61,
+   "en_text": "Munger was fundamental to Buffett's investing thesis.",
+   "zh_text": "芒格对巴菲特的投资理念至关重要。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 315.61,
+   "end": 316.63,
+   "en_text": "At the start of his career,",
+   "zh_text": "在职业生涯初期，",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 316.63,
+   "end": 318.82,
+   "en_text": "Buffett was very into this idea of cigar",
+   "zh_text": "巴菲特非常痴迷于所谓的“捡烟蒂”",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 318.82,
+   "end": 321.13,
+   "en_text": "butt investing, in which you would take a company,",
+   "zh_text": "投资法，就是找一家公司，",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 321.13,
+   "end": 322.87,
+   "en_text": "you'd take one last puff",
+   "zh_text": "抽上最后一口",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 322.87,
+   "end": 324.22,
+   "en_text": "and you'd get what you could out of it",
+   "zh_text": "能榨多少是多少，",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 324.22,
+   "end": 326.025,
+   "en_text": "before it sort of faltered.",
+   "zh_text": "然后它就慢慢不行了。",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 326.025,
+   "end": 327.52,
+   "en_text": "And Charlie was one",
+   "zh_text": "而查理正是那个",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 327.52,
+   "end": 330.64,
+   "en_text": "who really reshaped his thinking into thinking about",
+   "zh_text": "真正重塑了他想法的人，让他转而关注",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 330.64,
+   "end": 334.15,
+   "en_text": "companies that had a longer term advantage.",
+   "zh_text": "那些具有长期优势的公司。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 334.15,
+   "end": 336.49,
+   "en_text": "He went from buying companies that were, you know,",
+   "zh_text": "他从收购那些，你知道，",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 336.49,
+   "end": 339.79,
+   "en_text": "not very famous like Berkshire Hathaway, a textile mill",
+   "zh_text": "不太有名的公司，比如伯克希尔·哈撒韦——一家苦苦挣扎的",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 339.79,
+   "end": 344.23,
+   "en_text": "that was struggling to taking stakes into Coca-Cola",
+   "zh_text": "纺织厂——转变为入股可口可乐",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 344.23,
+   "end": 345.67,
+   "en_text": "or Bank of America.",
+   "zh_text": "或美国银行。",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 347.47,
+   "end": 350.5,
+   "en_text": "Not that this approach is always a sure thing.",
+   "zh_text": "不过这种方法也并非万无一失。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 350.5,
+   "end": 352.03,
+   "en_text": "One is IBM.",
+   "zh_text": "一个例子是IBM。",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 352.03,
+   "end": 355.15,
+   "en_text": "When he bought his stake in the early 2010,",
+   "zh_text": "他在2010年代初买入股份时，",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 355.15,
+   "end": 357.23,
+   "en_text": "he said afterwards that it was a big mistake.",
+   "zh_text": "事后说那是个巨大的错误。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 357.23,
+   "end": 361.76,
+   "en_text": "He didn't see how IBM was about to lose the turn",
+   "zh_text": "他没看出IBM即将错失",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 361.76,
+   "end": 364.01,
+   "en_text": "of the industry towards cloud computing.",
+   "zh_text": "行业向云计算转型的时机。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 364.01,
+   "end": 365.99,
+   "en_text": "He also orchestrated the merger of Kraft",
+   "zh_text": "他还主导了卡夫",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 365.99,
+   "end": 367.49,
+   "en_text": "and Heinz about 10 years ago.",
+   "zh_text": "与亨氏的合并，大约在10年前。",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 367.49,
+   "end": 368.9,
+   "en_text": "It just hasn't gone to plan.",
+   "zh_text": "结果就是没按计划走。",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 368.9,
+   "end": 372.26,
+   "en_text": "Part of that is down to changing consumer tastes,",
+   "zh_text": "部分原因是消费者口味在变，",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 372.26,
+   "end": 374.78,
+   "en_text": "consumers wanting healthier things.",
+   "zh_text": "消费者想要更健康的东西。",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 374.78,
+   "end": 377.06,
+   "en_text": "Part of that is down to inflation.",
+   "zh_text": "部分原因是通货膨胀。",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 377.06,
+   "end": 379.28,
+   "en_text": "And Buffett commented recently",
+   "zh_text": "巴菲特最近评论说，",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 379.28,
+   "end": 383.09,
+   "en_text": "that while he didn't think the merger in hindsight was a",
+   "zh_text": "虽然事后看来他并不认为这次合并是个",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 383.09,
+   "end": 385.1,
+   "en_text": "great idea, he doesn't think that undoing it",
+   "zh_text": "好主意，但他也不认为撤销合并",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 385.1,
+   "end": 387.74,
+   "en_text": "is gonna fix the company's problems.",
+   "zh_text": "就能解决公司的问题。",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 387.74,
+   "end": 390.35,
+   "en_text": "And lately Buffett has struggled finding companies he",
+   "zh_text": "而最近巴菲特一直很难找到他",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 390.35,
+   "end": 393.17,
+   "en_text": "wants to invest in, leaving Berkshire",
+   "zh_text": "想投资的公司，这让伯克希尔",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 393.17,
+   "end": 395.21,
+   "en_text": "with a record amount of cash.",
+   "zh_text": "手握创纪录的现金。",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 395.21,
+   "end": 396.74,
+   "en_text": "It is so much easier",
+   "zh_text": "当你管理着一亿",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 396.74,
+   "end": 399.5,
+   "en_text": "to make very successful bets when you're managing a hundred",
+   "zh_text": "或两亿美元时，做出非常成功的投资",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 399.5,
+   "end": 401.15,
+   "en_text": "million, 200 million.",
+   "zh_text": "要容易得多。",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 401.15,
+   "end": 405.92,
+   "en_text": "He's now got a cash pile that's more than $300 billion.",
+   "zh_text": "他现在手握超过3000亿美元的现金。",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 405.92,
+   "end": 407.45,
+   "en_text": "And finding a place to put that capital",
+   "zh_text": "而要找到地方让这些资金",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 407.45,
+   "end": 409.76,
+   "en_text": "to work is getting really difficult.",
+   "zh_text": "发挥作用，变得非常困难。",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 409.76,
+   "end": 414.53,
+   "en_text": "He doesn't like to have money that is sitting around",
+   "zh_text": "他不喜欢让钱闲置在那里",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 414.53,
+   "end": 416.51,
+   "en_text": "and not earning more money.",
+   "zh_text": "却不赚更多的钱。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 416.51,
+   "end": 418.97,
+   "en_text": "Higher interest rates these past few years have turned",
+   "zh_text": "过去几年较高的利率已经让",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 418.97,
+   "end": 421.43,
+   "en_text": "that cash pile into a nice income generator.",
+   "zh_text": "把那笔现金变成不错的收益来源。",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 422.27,
+   "end": 423.56,
+   "en_text": "But it is gonna get harder",
+   "zh_text": "但会变得越来越难",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 423.56,
+   "end": 425.66,
+   "en_text": "and harder to deploy that level",
+   "zh_text": "越来越难去部署这么大规模的",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 425.66,
+   "end": 427.22,
+   "en_text": "of capital the bigger it gets.",
+   "zh_text": "资金，规模越大越难。",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 428.75,
+   "end": 430.82,
+   "en_text": "So this is the Berkshire Hathaway Greg Abel is",
+   "zh_text": "所以这就是格雷格·阿贝尔即将接手的伯克希尔·哈撒韦，",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 430.82,
+   "end": 433.37,
+   "en_text": "inheriting as the company's new CEO,",
+   "zh_text": "他将出任公司新任CEO，",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 433.37,
+   "end": 435.29,
+   "en_text": "although sadly we don't have a plushie of him.",
+   "zh_text": "可惜我们没有他的毛绒玩偶。",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 436.37,
+   "end": 440.24,
+   "en_text": "He led Berkshire's energy business for so many years.",
+   "zh_text": "他领导伯克希尔的能源业务很多年。",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 440.24,
+   "end": 443.39,
+   "en_text": "But it is tricky. Warren Buffett has not only been a very",
+   "zh_text": "但这很棘手。沃伦·巴菲特不仅是一位非常",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 443.39,
+   "end": 446.36,
+   "en_text": "good investor, but he's also pretty charismatic.",
+   "zh_text": "出色的投资者，他还相当有个人魅力。",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 446.36,
+   "end": 447.8,
+   "en_text": "That's part of the reason that",
+   "zh_text": "这也是为什么",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 447.8,
+   "end": 450.86,
+   "en_text": "so many investors have always made that trek to Omaha.",
+   "zh_text": "那么多投资者一直不辞辛劳地奔赴奥马哈。",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 450.86,
+   "end": 454.04,
+   "en_text": "Despite the cost, despite the distance.",
+   "zh_text": "不顾花费，不顾路途遥远。",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 454.04,
+   "end": 456.62,
+   "en_text": "Abel will also be taking charge at a time when Buffett's",
+   "zh_text": "阿贝尔接任之际，正值巴菲特的",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 456.62,
+   "end": 459.53,
+   "en_text": "hallmark strategy is being tested.",
+   "zh_text": "标志性策略受到考验。",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 459.53,
+   "end": 462.77,
+   "en_text": "It is tough to be a value investor when what's really",
+   "zh_text": "当真正推动股市上涨的是高增长公司时，",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 462.77,
+   "end": 465.14,
+   "en_text": "lifting the stock market is high-growth companies.",
+   "zh_text": "做价值投资者就很难了。",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 465.14,
+   "end": 469.46,
+   "en_text": "The tech companies valuation might be really high compared",
+   "zh_text": "科技公司的估值可能非常高，相比",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 469.46,
+   "end": 471.68,
+   "en_text": "to sort of what the underlying assets are.",
+   "zh_text": "其 underlying 资产而言。",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 472.67,
+   "end": 475.58,
+   "en_text": "While Buffett has bet on technology in recent years,",
+   "zh_text": "尽管巴菲特近年来押注科技，",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 475.58,
+   "end": 479.039,
+   "en_text": "his misses on those opportunities will always sort of linger",
+   "zh_text": "但他在那些机会上的错失总会萦绕不去。",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 480.785,
+   "end": 483.11,
+   "en_text": "The change in leadership also risks reviving a",
+   "zh_text": "领导层的变动还可能重新引发一场",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 483.11,
+   "end": 484.76,
+   "en_text": "longstanding debate.",
+   "zh_text": "由来已久的争论。",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 484.76,
+   "end": 487.04,
+   "en_text": "A conglomerate is not a thing that has stuck around.",
+   "zh_text": "企业集团并不是一种能长久存在的东西。",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 487.04,
+   "end": 488.54,
+   "en_text": "We've seen many conglomerates such",
+   "zh_text": "我们看到许多企业集团，比如",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 488.54,
+   "end": 491.75,
+   "en_text": "as GE fall apart in recent years and sort of be split up.",
+   "zh_text": "GE，近年来分崩离析，被拆分。",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 492.62,
+   "end": 494.39,
+   "en_text": "Buffett's presence at Berkshire won't be",
+   "zh_text": "巴菲特在伯克希尔的存在不会",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 494.39,
+   "end": 496.19,
+   "en_text": "disappearing overnight.",
+   "zh_text": "一夜之间消失。",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 496.19,
+   "end": 497.51,
+   "en_text": "He'll remain as chairman",
+   "zh_text": "他将留任董事长",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 497.51,
+   "end": 500.33,
+   "en_text": "and I think his influence will still be felt by the company.",
+   "zh_text": "我认为公司仍会感受到他的影响力。",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 500.33,
+   "end": 502.19,
+   "en_text": "He's a major shareholder of the firm",
+   "zh_text": "他是公司的大股东",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 502.19,
+   "end": 504.86,
+   "en_text": "and while he is slowly divesting that stake and giving it",
+   "zh_text": "虽然他正在慢慢减持这部分股份，把它",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 504.86,
+   "end": 506.66,
+   "en_text": "to his children's foundations,",
+   "zh_text": "捐给他子女的基金会，",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 506.66,
+   "end": 508.76,
+   "en_text": "I think his legacy will long be felt.",
+   "zh_text": "但我认为他的遗产将长久被人感受到。",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 508.76,
+   "end": 511.4,
+   "en_text": "But Abel will be taking over many of his duties,",
+   "zh_text": "但阿贝尔将接手他的许多职责，",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 511.4,
+   "end": 512.63,
+   "en_text": "including the writing",
+   "zh_text": "包括撰写",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 512.63,
+   "end": 515.6,
+   "en_text": "of Berkshire's annual letter to shareholders.",
+   "zh_text": "伯克希尔致股东的年度信。",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 515.6,
+   "end": 518.42,
+   "en_text": "This is a big change because Buffett fans have been",
+   "zh_text": "这是一个巨大的变化，因为巴菲特的粉丝们多年来",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 518.42,
+   "end": 520.52,
+   "en_text": "poring over that letter over the years",
+   "zh_text": "一直在仔细研读那封信",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 520.52,
+   "end": 524.27,
+   "en_text": "because it's full of witticisms, investment advice,",
+   "zh_text": "因为它充满了妙语、投资建议",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 524.27,
+   "end": 525.83,
+   "en_text": "pearls of wisdom.",
+   "zh_text": "和智慧结晶。",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 525.83,
+   "end": 529.43,
+   "en_text": "There's also the fact that he's not going to be taking Q&A",
+   "zh_text": "还有一点，他将不再在明年五月于奥马哈举行的",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 529.43,
+   "end": 533.63,
+   "en_text": "at the annual meeting next May in Omaha.",
+   "zh_text": "年度股东大会上回答提问。",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 534.63,
+   "end": 535.47,
+   "en_text": "Welcome to Berkshire Hathaway.",
+   "zh_text": "欢迎来到伯克希尔·哈撒韦。",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 535.47,
+   "end": 539.85,
+   "en_text": "He was talking for four to five hours every year",
+   "zh_text": "他每年都要讲四到五个小时",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 539.85,
+   "end": 541.83,
+   "en_text": "and taking questions from people",
+   "zh_text": "回答来自世界各地",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 541.83,
+   "end": 544.2,
+   "en_text": "that follow him all over the planet.",
+   "zh_text": "追随他的人的提问。",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 544.2,
+   "end": 545.31,
+   "en_text": "That is gonna be a big change",
+   "zh_text": "这将是一个巨大的变化",
+   "highlights": []
+  },
+  {
+   "id": 205,
+   "start": 545.31,
+   "end": 547.92,
+   "en_text": "because Buffett's personality isn't matched in the",
+   "zh_text": "因为巴菲特的个性在投资界",
+   "highlights": []
+  },
+  {
+   "id": 206,
+   "start": 547.92,
+   "end": 548.94,
+   "en_text": "investment world.",
+   "zh_text": "无人能及。",
+   "highlights": []
+  }
+ ]
+}

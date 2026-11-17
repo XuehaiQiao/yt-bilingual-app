@@ -1,0 +1,637 @@
+{
+ "id": "teded-confidence-tips",
+ "youtubeId": "l_NYrWqUR40",
+ "title": "3 tips to boost your confidence - TED-Ed",
+ "channel": "TED-Ed",
+ "duration": 257,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/l_NYrWqUR40/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:47+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 6.389,
+   "end": 8.055,
+   "en_text": "When faced with a big challenge",
+   "zh_text": "当面对一个巨大的挑战",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 8.055,
+   "end": 11.336,
+   "en_text": "where potential failure seems to lurk at every corner,",
+   "zh_text": "感觉失败的可能性似乎潜伏在每个角落时，",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 11.336,
+   "end": 14.228,
+   "en_text": "maybe you've heard this advice before:",
+   "zh_text": "也许你以前听过这样的建议：",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 14.228,
+   "end": 16.419,
+   "en_text": "\"Be more confident.\"",
+   "zh_text": "“要更自信一点。”",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 16.419,
+   "end": 19.53,
+   "en_text": "And most likely, this is what you think when you hear it:",
+   "zh_text": "而听到这句话时，你多半会这么想：",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 19.53,
+   "end": 22.261,
+   "en_text": "\"If only it were that simple.\"",
+   "zh_text": "“要是真有那么简单就好了。”",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 22.261,
+   "end": 24.322,
+   "en_text": "But what is confidence?",
+   "zh_text": "但自信到底是什么？",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 24.322,
+   "end": 28.086,
+   "en_text": "Take the belief that you are valuable, worthwhile, and capable,",
+   "zh_text": "先是有一种信念，相信自己有价值、有意义、有能力，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 28.086,
+   "end": 30.136,
+   "en_text": "also known as self-esteem,",
+   "zh_text": "也就是所谓的自尊，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 30.136,
+   "end": 34.769,
+   "en_text": "add in the optimism that comes when you are certain of your abilities,",
+   "zh_text": "再加上当你确信自己能力时所产生的乐观，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 34.769,
+   "end": 36.82,
+   "en_text": "and then empowered by these,",
+   "zh_text": "然后被这些力量所激励，",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 36.82,
+   "end": 40.869,
+   "en_text": "act courageously to face a challenge head-on.",
+   "zh_text": "勇敢地行动起来，正面迎接挑战。",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 40.869,
+   "end": 42.857,
+   "en_text": "This is confidence.",
+   "zh_text": "这就是自信。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 42.857,
+   "end": 46.684,
+   "en_text": "It turns thoughts into action.",
+   "zh_text": "它把想法变成行动。",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 46.684,
+   "end": 49.48,
+   "en_text": "So where does confidence even come from?",
+   "zh_text": "那么自信到底从何而来呢？",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 49.48,
+   "end": 52.632,
+   "en_text": "There are several factors that impact confidence.",
+   "zh_text": "有几个因素会影响自信。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 52.632,
+   "end": 55.492,
+   "en_text": "One: what you're born with, such as your genes,",
+   "zh_text": "第一：你与生俱来的东西，比如你的基因，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 55.492,
+   "end": 60.466,
+   "en_text": "which will impact things like the balance of neurochemicals in your brain.",
+   "zh_text": "它会影响你大脑中神经化学物质的平衡之类的事情。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 60.466,
+   "end": 63.037,
+   "en_text": "Two: how you're treated.",
+   "zh_text": "第二：你受到的对待。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 63.037,
+   "end": 66.354,
+   "en_text": "This includes the social pressures of your environment.",
+   "zh_text": "这包括你所处环境中的社会压力。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 66.354,
+   "end": 69.563,
+   "en_text": "And three: the part you have control over,",
+   "zh_text": "第三：你能掌控的部分，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 69.563,
+   "end": 71.038,
+   "en_text": "the choices you make,",
+   "zh_text": "你做出的选择，",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 71.038,
+   "end": 72.516,
+   "en_text": "the risks you take,",
+   "zh_text": "你承担的风险，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 72.516,
+   "end": 76.653,
+   "en_text": "and how you think about and respond to challenges and setbacks.",
+   "zh_text": "以及你如何看待和应对挑战与挫折。",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 76.653,
+   "end": 80.385,
+   "en_text": "It isn't possible to completely untangle these three factors,",
+   "zh_text": "这三个因素不可能完全分开，",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 80.385,
+   "end": 83.955,
+   "en_text": "but the personal choices we make certainly play a major role",
+   "zh_text": "但我们所做的个人选择肯定起着重要作用",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 83.955,
+   "end": 86.039,
+   "en_text": "in confidence development.",
+   "zh_text": "在自信的培养过程中。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 86.039,
+   "end": 89.573,
+   "en_text": "So, by keeping in mind a few practical tips,",
+   "zh_text": "所以，只要记住几个实用的小技巧，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 89.573,
+   "end": 95.419,
+   "en_text": "we do actually have the power to cultivate our own confidence.",
+   "zh_text": "我们其实是有能力培养自己的自信的。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 95.419,
+   "end": 98.023,
+   "en_text": "Tip 1: a quick fix.",
+   "zh_text": "技巧一：快速见效的方法。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 98.023,
+   "end": 101.307,
+   "en_text": "There are a few tricks that can give you an immediate confidence boost",
+   "zh_text": "有几个小窍门能让你立刻提升自信",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 101.307,
+   "end": 103.008,
+   "en_text": "in the short term.",
+   "zh_text": "在短期内。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 103.008,
+   "end": 106.767,
+   "en_text": "Picture your success when you're beginning a difficult task,",
+   "zh_text": "在开始一项困难任务时，想象一下你成功的样子，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 106.767,
+   "end": 109.723,
+   "en_text": "something as simple as listening to music with deep bass;",
+   "zh_text": "或者做点简单的事，比如听低音很重的音乐；",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 109.723,
+   "end": 113.546,
+   "en_text": "it can promote feelings of power.",
+   "zh_text": "它能激发力量感。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 113.546,
+   "end": 118.554,
+   "en_text": "You can even strike a powerful pose or give yourself a pep talk.",
+   "zh_text": "你甚至可以摆出一个充满力量的姿势，或者给自己打打气。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 118.554,
+   "end": 123.824,
+   "en_text": "Tip two: believe in your ability to improve.",
+   "zh_text": "技巧二：相信你有能力进步。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 123.824,
+   "end": 126.013,
+   "en_text": "If you're looking for a long-term change,",
+   "zh_text": "如果你想要长期的改变，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 126.013,
+   "end": 129.895,
+   "en_text": "consider the way you think about your abilities and talents.",
+   "zh_text": "想想你是如何看待自己的能力和天赋的。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 129.895,
+   "end": 132.243,
+   "en_text": "Do you think they are fixed at birth,",
+   "zh_text": "你觉得它们是出生时就固定下来的，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 132.243,
+   "end": 135.1,
+   "en_text": "or that they can be developed, like a muscle?",
+   "zh_text": "还是可以像肌肉一样锻炼发展的？",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 135.1,
+   "end": 138.193,
+   "en_text": "These beliefs matter because they can influence how you act",
+   "zh_text": "这些信念很重要，因为它们会影响你的行动方式",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 138.193,
+   "end": 140.594,
+   "en_text": "when you're faced with setbacks.",
+   "zh_text": "当你遇到挫折的时候。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 140.594,
+   "end": 142.263,
+   "en_text": "If you have a fixed mindset,",
+   "zh_text": "如果你有固定型思维，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 142.263,
+   "end": 144.881,
+   "en_text": "meaning that you think your talents are locked in place,",
+   "zh_text": "意思是认为自己的天赋是固定不变的，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 144.881,
+   "end": 146.52,
+   "en_text": "you might give up,",
+   "zh_text": "你可能会放弃，",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 146.52,
+   "end": 150.216,
+   "en_text": "assuming you've discovered something you're not very good at.",
+   "zh_text": "认定自己发现了某件不太擅长的事。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 150.216,
+   "end": 154.652,
+   "en_text": "But if you have a growth mindset and think your abilities can improve,",
+   "zh_text": "但如果你有成长型思维，认为自己的能力可以提升，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 154.652,
+   "end": 158.343,
+   "en_text": "a challenge is an opportunity to learn and grow.",
+   "zh_text": "挑战是学习和成长的机会。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 158.343,
+   "end": 160.821,
+   "en_text": "Neuroscience supports the growth mindset.",
+   "zh_text": "神经科学支持成长型思维。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 160.821,
+   "end": 166.028,
+   "en_text": "The connections in your brain do get stronger and grow with study and practice.",
+   "zh_text": "你大脑里的连接确实会随着学习和练习变得更强、不断生长。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 166.028,
+   "end": 168.209,
+   "en_text": "It also turns out, on average,",
+   "zh_text": "而且事实证明，平均来看，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 168.209,
+   "end": 171.322,
+   "en_text": "people who have a growth mindset are more successful,",
+   "zh_text": "拥有成长型思维的人更成功，",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 171.322,
+   "end": 173.054,
+   "en_text": "getting better grades,",
+   "zh_text": "成绩更好，",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 173.054,
+   "end": 176.529,
+   "en_text": "and doing better in the face of challenges.",
+   "zh_text": "面对挑战时也表现得更好。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 176.529,
+   "end": 179.751,
+   "en_text": "Tip three: practice failure.",
+   "zh_text": "第三个建议：练习失败。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 179.751,
+   "end": 182.406,
+   "en_text": "Face it, you're going to fail sometimes.",
+   "zh_text": "面对现实吧，你有时候是会失败的。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 182.406,
+   "end": 184.562,
+   "en_text": "Everyone does.",
+   "zh_text": "每个人都会。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 184.562,
+   "end": 187.421,
+   "en_text": "J.K. Rowling was rejected by twelve different publishers",
+   "zh_text": "J.K. Rowling 曾被十二家不同的出版社拒绝，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 187.421,
+   "end": 189.798,
+   "en_text": "before one picked up \"Harry Potter.\"",
+   "zh_text": "之后才有一家接受了《Harry Potter》。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 189.798,
+   "end": 193.236,
+   "en_text": "The Wright Brothers built on history's failed attempts at flight,",
+   "zh_text": "Wright 兄弟是在历史上那些失败的飞行尝试基础上继续努力的，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 193.236,
+   "end": 194.903,
+   "en_text": "including some of their own,",
+   "zh_text": "包括他们自己的一些失败尝试，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 194.903,
+   "end": 197.635,
+   "en_text": "before designing a successful airplane.",
+   "zh_text": "最后才设计出成功的飞机。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 197.635,
+   "end": 202.303,
+   "en_text": "Studies show that those who fail regularly and keep trying anyway",
+   "zh_text": "研究表明，那些经常失败却仍然坚持尝试的人，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 202.303,
+   "end": 205.413,
+   "en_text": "are better equipped to respond to challenges and setbacks",
+   "zh_text": "更有能力以建设性的方式应对挑战和挫折，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 205.413,
+   "end": 208.176,
+   "en_text": "in a constructive way.",
+   "zh_text": "以建设性的方式。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 208.176,
+   "end": 210.515,
+   "en_text": "They learn how to try different strategies,",
+   "zh_text": "他们学会了如何尝试不同的策略，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 210.515,
+   "end": 212.226,
+   "en_text": "ask others for advice,",
+   "zh_text": "向别人请教，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 212.226,
+   "end": 214.223,
+   "en_text": "and perservere.",
+   "zh_text": "并坚持下去。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 214.223,
+   "end": 217.017,
+   "en_text": "So, think of a challenge you want to take on,",
+   "zh_text": "所以，想一想你想接受的一个挑战，",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 217.017,
+   "end": 219.749,
+   "en_text": "realize it's not going to be easy,",
+   "zh_text": "认识到它不会容易，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 219.749,
+   "end": 221.929,
+   "en_text": "accept that you'll make mistakes,",
+   "zh_text": "接受你会犯错，",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 221.929,
+   "end": 224.341,
+   "en_text": "and be kind to yourself when you do.",
+   "zh_text": "犯错时对自己好一点。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 224.341,
+   "end": 229.511,
+   "en_text": "Give yourself a pep talk, stand up, and go for it.",
+   "zh_text": "给自己打打气，站起来，放手去做。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 229.511,
+   "end": 232.887,
+   "en_text": "The excitement you'll feel knowing that whatever the result,",
+   "zh_text": "当你明白无论结果如何，",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 232.887,
+   "end": 236.223,
+   "en_text": "you'll have gained greater knowledge and understanding.",
+   "zh_text": "你都会收获更多的知识和理解时，你会感到兴奋。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 236.223,
+   "end": 238.247,
+   "en_text": "This is confidence.",
+   "zh_text": "这就是自信。",
+   "highlights": []
+  }
+ ]
+}

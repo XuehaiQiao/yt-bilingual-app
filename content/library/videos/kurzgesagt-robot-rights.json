@@ -1,0 +1,637 @@
+{
+ "id": "kurzgesagt-robot-rights",
+ "youtubeId": "DHyUYg8X31c",
+ "title": "Do Robots Deserve Rights? What if Machines Become Conscious?",
+ "channel": "Kurzgesagt – In a Nutshell",
+ "duration": 394,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/DHyUYg8X31c/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:36+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 2.16,
+   "end": 7.26,
+   "en_text": "Imagine a future where your toaster anticipates what kind of toast you want.",
+   "zh_text": "想象一下这样的未来：你的烤面包机会预判你想要哪种吐司。",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 7.26,
+   "end": 11.56,
+   "en_text": "During the day, it scans the Internet for new and exciting types of toast.",
+   "zh_text": "白天，它会上网搜索各种新奇有趣的吐司种类。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 11.56,
+   "end": 17.54,
+   "en_text": "Maybe it asks you about your day, and wants to chat about new achievements in toast technology.",
+   "zh_text": "也许它会问问你今天过得怎么样，还想聊聊吐司技术的新进展。",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 17.54,
+   "end": 20.16,
+   "en_text": "At what level would it become a person?",
+   "zh_text": "它要到什么程度才算是一个人？",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 20.16,
+   "end": 24.24,
+   "en_text": "At which point will you ask yourself if your toaster has feelings?",
+   "zh_text": "到什么时候你会开始问自己，你的烤面包机是不是有感情？",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 24.24,
+   "end": 27.26,
+   "en_text": "If it did, would unplugging it be murder?",
+   "zh_text": "如果它有感情，那拔掉它的电源算不算谋杀？",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 27.26,
+   "end": 33.42,
+   "en_text": "And would you still own it? Will we someday be forced to give our machines rights?",
+   "zh_text": "你还拥有它吗？我们会不会有一天被迫赋予机器权利？",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 43.18,
+   "end": 45.6,
+   "en_text": "AI is already all around you.",
+   "zh_text": "人工智能其实已经无处不在。",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 45.6,
+   "end": 48.38,
+   "en_text": "It makes sure discounters are stocked with enough snacks,",
+   "zh_text": "它确保折扣店备足了零食，",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 48.38,
+   "end": 55.4,
+   "en_text": "it serves you up just the right Internet ad, and you may have even read a new story written entirely by a machine.",
+   "zh_text": "它为你精准推送合适的网络广告，你甚至可能读过一篇完全由机器写成的新闻故事。",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 55.4,
+   "end": 61.18,
+   "en_text": "Right now we look at chat bots like Siri and laugh at their primitive simulated emotions,",
+   "zh_text": "现在我们看着 Siri 这样的聊天机器人，嘲笑它们那套原始的模拟情绪，",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 61.18,
+   "end": 65.2,
+   "en_text": "but it's likely that we will have to deal with beings that make it hard to draw the line",
+   "zh_text": "但很可能我们将来要面对一些存在，让我们很难划清界限——",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 65.2,
+   "end": 68.72,
+   "en_text": "between real and simulated humanity.",
+   "zh_text": "分不清真实的人性和模拟的人性。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 68.72,
+   "end": 72.54,
+   "en_text": "Are there any machines in existence that deserve rights?",
+   "zh_text": "现存有哪台机器配得上拥有权利吗？",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 72.54,
+   "end": 78.46,
+   "en_text": "Most likely, not yet. But if they come, we are not prepared for it.",
+   "zh_text": "很可能还没有。但如果它们出现了，我们并没有做好准备。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 78.46,
+   "end": 83.86,
+   "en_text": "Much of the philosophy of rights is ill-equipped to deal with the case of Artificial Intelligence.",
+   "zh_text": "关于权利的许多哲学理论，都不足以应对人工智能这种情况。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 83.86,
+   "end": 89.86,
+   "en_text": "Most claims for right, with a human or animal, are centered around the question of consciousness.",
+   "zh_text": "大多数关于权利的主张，无论针对人还是动物，都围绕意识这个问题展开。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 89.86,
+   "end": 93.16,
+   "en_text": "Unfortunately, nobody knows what consciousness is.",
+   "zh_text": "不幸的是，没人知道意识是什么。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 93.16,
+   "end": 99.1,
+   "en_text": "Some think that it's immaterial, others say it's a state of matter, like gas or liquid.",
+   "zh_text": "有人认为它是非物质的，也有人认为它是物质的一种状态，就像气体或液体。",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 99.1,
+   "end": 105.9,
+   "en_text": "Regardless of the precise definition, we have an intuitive knowledge of consciousness because we experience it.",
+   "zh_text": "不管确切定义如何，我们对意识有一种直觉上的认识，因为我们亲身经历着它。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 105.9,
+   "end": 111.76,
+   "en_text": "We are aware of ourselves and our surroundings, and know what unconsciousness feels like.",
+   "zh_text": "我们知道自己和周围环境的存在，也知道失去意识是什么感觉。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 111.76,
+   "end": 117.5,
+   "en_text": "Some neuroscientists believe that any sufficiently advanced system can generate consciousness.",
+   "zh_text": "一些神经科学家认为，任何足够先进的系统都能产生意识。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 117.5,
+   "end": 122.88,
+   "en_text": "So, if your toaster's hardware was powerful enough, it may become self-aware.",
+   "zh_text": "所以，如果你烤面包机的硬件足够强大，它也许会产生自我意识。",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 122.88,
+   "end": 125.78,
+   "en_text": "If it does, would it deserve rights?",
+   "zh_text": "如果真是这样，它配得上拥有权利吗？",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 125.78,
+   "end": 131.68,
+   "en_text": "Well, not so fast. Would what we define as \"rights\" make sense to it?",
+   "zh_text": "别急。我们所定义的“权利”对它来说讲得通吗？",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 131.68,
+   "end": 137.2,
+   "en_text": "Consciousness entitles beings to have rights because it gives a being the ability to suffer.",
+   "zh_text": "意识之所以赋予生命体拥有权利，是因为它让生命体有了感受痛苦的能力。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 137.2,
+   "end": 142.16,
+   "en_text": "It means the ability to not only feel pain, but to be aware of it.",
+   "zh_text": "这意味着不仅能感受到疼痛，还能意识到这种疼痛。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 142.16,
+   "end": 147.54,
+   "en_text": "Robots don't suffer, and they probably won't unless we programmed them to.",
+   "zh_text": "机器人不会受苦，除非我们给它们编程，否则它们大概也不会。",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 147.54,
+   "end": 152.9,
+   "en_text": "Without pain or pleasure, there's no preference, and rights are meaningless.",
+   "zh_text": "没有痛苦或快乐，就没有偏好，权利也就毫无意义。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 152.9,
+   "end": 158.78,
+   "en_text": "Our human rights are deeply tied to our own programming, for example we dislike pain",
+   "zh_text": "我们的人权与自身的程序设定密切相关，比如说我们讨厌疼痛",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 158.78,
+   "end": 161.66,
+   "en_text": "because our brains evolved to keep us alive.",
+   "zh_text": "因为我们的大脑进化出这种机制来让我们活下去。",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 161.7,
+   "end": 166.48,
+   "en_text": "To stop us from touching a hot fire, or to make us run away from predators.",
+   "zh_text": "为了阻止我们去碰滚烫的火，或者让我们逃离捕食者。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 166.64,
+   "end": 171.74,
+   "en_text": "So we came up with rights that protect us from infringements that cause us pain.",
+   "zh_text": "所以我们想出了权利，来保护我们免受那些带来痛苦的侵害。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 171.74,
+   "end": 176.54,
+   "en_text": "Even more abstract rights like freedom are rooted in the way our brains are wired",
+   "zh_text": "就连自由这样更抽象的权利，也根植于我们大脑的构造方式——",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 176.54,
+   "end": 180.1,
+   "en_text": "to detect what is fair and unfair.",
+   "zh_text": "它能分辨什么是公平、什么是不公平。",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 180.1,
+   "end": 184.78,
+   "en_text": "Would a toaster that is unable to move, mind being locked in a cage?",
+   "zh_text": "一台动不了的烤面包机，会在意自己被关在笼子里吗？",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 184.78,
+   "end": 188.92,
+   "en_text": "Would it mind being dismantled, if it had no fear of death?",
+   "zh_text": "如果它不怕死，它会在意自己被拆解吗？",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 188.92,
+   "end": 193.88,
+   "en_text": "Would it mind being insulted, if it had no need for self-esteem?",
+   "zh_text": "如果它不需要自尊，它会在意被侮辱吗？",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 193.88,
+   "end": 197.48,
+   "en_text": "But what if we programmed the robot to feel pain and emotions?",
+   "zh_text": "但如果我们把机器人编程成能感受疼痛和情绪呢？",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 197.48,
+   "end": 202.46,
+   "en_text": "To prefer justice over injustice, pleasure over pain and be aware of it?",
+   "zh_text": "让它偏爱公正胜过不公，偏爱快乐胜过痛苦，并且能意识到这些呢？",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 202.46,
+   "end": 205.24,
+   "en_text": "Would that make them sufficiently human?",
+   "zh_text": "这会让它们足够像人吗？",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 205.24,
+   "end": 209.3,
+   "en_text": "Many technologists believe that an explosion in technology would occur,",
+   "zh_text": "许多技术专家认为，技术会迎来一次爆发，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 209.3,
+   "end": 214.28,
+   "en_text": "when Artificial Intelligence can learn and create their own Artificial Intelligences,",
+   "zh_text": "当人工智能能够学习并创造出自己的人工智能时，",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 214.28,
+   "end": 216.88,
+   "en_text": "even smarter than themselves.",
+   "zh_text": "甚至比它们自己还聪明。",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 216.88,
+   "end": 222.52,
+   "en_text": "At this point, the question of how our robots are programmed will be largely out of our control.",
+   "zh_text": "到那时，我们的机器人如何被编程，将在很大程度上不受我们控制。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 222.52,
+   "end": 227.44,
+   "en_text": "What if an Artificial Intelligence found it necessary to program the ability to feel pain,",
+   "zh_text": "如果一个人工智能觉得有必要编程出感受疼痛的能力，",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 227.44,
+   "end": 232.06,
+   "en_text": "just as evolutionary biology found it necessary in most living creatures?",
+   "zh_text": "就像进化生物学在大多数生物身上发现这种能力必不可少一样，那会怎样？",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 232.06,
+   "end": 234.78,
+   "en_text": "Do robots deserve those rights?",
+   "zh_text": "机器人配得上这些权利吗？",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 234.78,
+   "end": 239.72,
+   "en_text": "But maybe we should be less worried about the risk that super-intelligent robots pose to us,",
+   "zh_text": "但也许我们不该那么担心超级智能机器人给我们带来的风险，",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 239.72,
+   "end": 243.06,
+   "en_text": "and more worried about the danger we pose to them.",
+   "zh_text": "而更该担心我们给它们带来的危险。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 243.06,
+   "end": 247.56,
+   "en_text": "Our whole human identity is based on the idea of human exceptionalism,",
+   "zh_text": "我们整个人类身份都建立在人类例外论这一观念之上，",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 247.56,
+   "end": 252.94,
+   "en_text": "that we are special unique snowflakes, entitled to dominate the natural world.",
+   "zh_text": "认为我们是独特而特别的雪花，有权主宰自然界。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 252.94,
+   "end": 257.9,
+   "en_text": "Humans have a history of denying that other beings are capable of suffering as they do.",
+   "zh_text": "人类历来否认其他生命能像自己一样感受痛苦。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 257.9,
+   "end": 265.12,
+   "en_text": "In the midst of the Scientific Revolution, René Descartes argued animals were mere automata―robots if you will.",
+   "zh_text": "在科学革命时期，勒内·笛卡尔主张动物只是自动机器——也可以说是机器人。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 265.12,
+   "end": 270.24,
+   "en_text": "As such, injuring a rabbit was about as morally repugnant as punching a stuffed animal.",
+   "zh_text": "因此，伤害一只兔子在道德上就像打一个毛绒玩具一样令人反感。",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 270.24,
+   "end": 275.3,
+   "en_text": "And many of the greatest crimes against humanity were justified by their perpetrators",
+   "zh_text": "许多最严重的反人类罪行，都被施害者以这样的理由辩护：",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 275.3,
+   "end": 280.18,
+   "en_text": "on the grounds that the victims were more animal than civilized human.",
+   "zh_text": "受害者更像动物，而不是文明的人类。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 280.18,
+   "end": 285.5,
+   "en_text": "Even more problematic is that we have an economic interest in denying robot rights.",
+   "zh_text": "更有问题的是，否认机器人权利对我们有经济利益。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 285.5,
+   "end": 291.04,
+   "en_text": "If can coerce a sentient AI―possibly through programmed torture―into doing as we please,",
+   "zh_text": "如果我们能胁迫一个有感知能力的人工智能——也许通过程序化的折磨——让它按我们的意愿行事，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 291.04,
+   "end": 293.66,
+   "en_text": "the economic potential is unlimited.",
+   "zh_text": "那经济潜力将是无限的。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 293.66,
+   "end": 296.28,
+   "en_text": "We've done it before, after all.",
+   "zh_text": "毕竟，我们以前就这么干过。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 296.28,
+   "end": 299.76,
+   "en_text": "Violence has been used to force our fellow humans into working.",
+   "zh_text": "暴力一直被用来强迫我们的同类去干活。",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 299.76,
+   "end": 304.96,
+   "en_text": "And we've never had trouble coming up with ideological justifications.",
+   "zh_text": "而且我们从来不愁找不到意识形态上的理由。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 304.96,
+   "end": 312.16,
+   "en_text": "Slave owners argued that slavery benefited the slaves: it put a roof over their head and taught them Christianity.",
+   "zh_text": "奴隶主辩称奴隶制对奴隶有好处：它给他们提供了住处，还教他们基督教。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 312.16,
+   "end": 319.48,
+   "en_text": "Men who were against women voting argued that it was in women's own interest to leave the hard decisions to men.",
+   "zh_text": "反对女性投票权的男人辩称，把艰难的决定留给男人，是为了女性自身的利益。",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 319.48,
+   "end": 327.7,
+   "en_text": "Farmers argue that looking after animals and feeding them justifies their early death for our dietary preferences.",
+   "zh_text": "农民辩称，照顾动物、喂养动物，就足以证明为了我们的饮食偏好而让它们早死是合理的。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 327.7,
+   "end": 332.14,
+   "en_text": "If robots become sentient, there will be no shortage of arguments for those who say",
+   "zh_text": "如果机器人有了知觉，那些说它们不该拥有权利的人，绝不会缺少论据，",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 332.14,
+   "end": 337.76,
+   "en_text": "that they should remain without rights, especially from those who stand to profit from it.",
+   "zh_text": "尤其是那些能从中获利的人。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 337.76,
+   "end": 342.66,
+   "en_text": "Artificial Intelligence raises serious questions about philosophical boundaries.",
+   "zh_text": "人工智能引发了关于哲学边界的严肃问题。",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 342.66,
+   "end": 346.8,
+   "en_text": "What we may ask if sentient robots are conscious or deserving of rights,",
+   "zh_text": "我们也许会问，有知觉的机器人是否有意识，或者是否应该享有权利，",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 346.8,
+   "end": 354.8,
+   "en_text": "it forces us to pose basic questions like, what makes us human? What makes us deserving of rights?",
+   "zh_text": "这会迫使我们提出一些根本性的问题，比如：是什么让我们成为人？是什么让我们理应享有权利？",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 354.8,
+   "end": 359.72,
+   "en_text": "Regardless of what we think, the question might need to be resolved in the near future.",
+   "zh_text": "不管我们怎么想，这个问题可能需要在不久的将来得到解决。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 359.72,
+   "end": 365.68,
+   "en_text": "What are we going to do if robots start demanding their own rights?",
+   "zh_text": "如果机器人开始要求自己的权利，我们该怎么办？",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 367.28,
+   "end": 370.78,
+   "en_text": "What can robots demanding rights teach us about ourselves?",
+   "zh_text": "机器人要求权利这件事，能让我们对自己有什么认识？",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 370.78,
+   "end": 376.86,
+   "en_text": "Our friends at Wisecrack made a video exploring this very question using the philosophy of Westworld.",
+   "zh_text": "我们在Wisecrack的朋友用《西部世界》的哲学做了一期视频，专门探讨这个问题。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 376.86,
+   "end": 381.42,
+   "en_text": "Wisecrack dissects pop culture in a unique and philosophical way.",
+   "zh_text": "Wisecrack以一种独特而富有哲学意味的方式剖析流行文化。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 381.42,
+   "end": 385.14,
+   "en_text": "Click here to check out the video and subscribe to their channel.",
+   "zh_text": "点击这里观看视频，并订阅他们的频道。",
+   "highlights": []
+  }
+ ]
+}

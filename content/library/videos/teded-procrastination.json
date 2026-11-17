@@ -1,0 +1,661 @@
+{
+ "id": "teded-procrastination",
+ "youtubeId": "FWTNMzK9vG4",
+ "title": "Why you procrastinate even when it feels bad",
+ "channel": "TED-Ed",
+ "duration": 345,
+ "level": "B1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/FWTNMzK9vG4/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:47:45+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 7.67,
+   "end": 12.759,
+   "en_text": "It’s 5 p.m. and you’ve just realized that report you’ve been putting off",
+   "zh_text": "现在是下午5点，你刚意识到那份一直拖着没做的报告",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 12.759,
+   "end": 14.385,
+   "en_text": "is due tomorrow.",
+   "zh_text": "明天就要交了。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 14.719,
+   "end": 17.597,
+   "en_text": "It’s time to buckle down, open your computer...",
+   "zh_text": "该埋头干活了，打开电脑……",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 17.597,
+   "end": 19.682,
+   "en_text": "and check your phone.",
+   "zh_text": "然后刷起了手机。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 20.016,
+   "end": 22.518,
+   "en_text": "Maybe catch up on your favorite YouTube channel?",
+   "zh_text": "要不先看看你最喜欢的YouTube频道？",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 22.977,
+   "end": 25.521,
+   "en_text": "Actually, you should probably make dinner first.",
+   "zh_text": "其实，你可能应该先做晚饭。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 25.521,
+   "end": 27.148,
+   "en_text": "You usually like cooking,",
+   "zh_text": "你平时挺喜欢做饭的，",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 27.148,
+   "end": 30.568,
+   "en_text": "though it’s hard to enjoy with this work hanging over your head,",
+   "zh_text": "可这活儿压在心头，实在很难享受，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 30.568,
+   "end": 33.613,
+   "en_text": "and oh— it’s actually pretty late!",
+   "zh_text": "哎呀——其实已经挺晚了！",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 33.863,
+   "end": 36.491,
+   "en_text": "Maybe you should just try again in the morning?",
+   "zh_text": "要不还是明天早上再试试吧？",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 36.866,
+   "end": 43.414,
+   "en_text": "This is the cycle of procrastination, and I promise you, we have all been there.",
+   "zh_text": "这就是拖延的循环，我向你保证，我们都经历过。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 44.082,
+   "end": 48.92,
+   "en_text": "But why do we keep procrastinating even when we know it’s bad for us?",
+   "zh_text": "可为什么明知拖延对我们不好，我们还是一直拖呢？",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 49.962,
+   "end": 54.634,
+   "en_text": "To be clear, putting something off isn’t always procrastinating.",
+   "zh_text": "先说清楚，把事情往后推并不一定就是拖延。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 54.884,
+   "end": 59.388,
+   "en_text": "Responsible time management requires deciding which tasks are important",
+   "zh_text": "负责任的时间管理需要判断哪些任务重要",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 59.388,
+   "end": 60.932,
+   "en_text": "and which ones can wait.",
+   "zh_text": "哪些可以往后放。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 61.057,
+   "end": 66.729,
+   "en_text": "Procrastination is when we avoid a task we said we would do, for no good reason,",
+   "zh_text": "拖延是指我们毫无正当理由地逃避自己说过要做的事，",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 66.729,
+   "end": 70.441,
+   "en_text": "despite expecting our behavior to bring negative consequences.",
+   "zh_text": "尽管我们预料到这种行为会带来负面后果。",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 70.65,
+   "end": 74.821,
+   "en_text": "Obviously, it’s irrational to do something you expect to harm you.",
+   "zh_text": "显然，做一件你预料会伤害自己的事是不理性的。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 75.238,
+   "end": 81.577,
+   "en_text": "But ironically, procrastination is the result of our bodies trying to protect us,",
+   "zh_text": "但讽刺的是，拖延其实是我们的身体在试图保护我们，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 81.869,
+   "end": 86.499,
+   "en_text": "specifically by avoiding a task we see as threatening.",
+   "zh_text": "具体来说，就是避开一项我们视为威胁的任务。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 86.999,
+   "end": 89.585,
+   "en_text": "When you realize you need to write that report,",
+   "zh_text": "当你意识到自己得写那份报告时，",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 89.585,
+   "end": 93.548,
+   "en_text": "your brain responds like it would to any incoming threat.",
+   "zh_text": "你的大脑的反应就像面对任何即将到来的威胁一样。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 93.798,
+   "end": 97.885,
+   "en_text": "Your amygdala, a set of neurons involved in emotional processing",
+   "zh_text": "你的杏仁核——一组参与情绪处理",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 97.885,
+   "end": 99.637,
+   "en_text": "and threat identification,",
+   "zh_text": "和威胁识别的神经元——",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 99.637,
+   "end": 104.767,
+   "en_text": "releases hormones including adrenaline that kick off a fear response.",
+   "zh_text": "会释放包括肾上腺素在内的激素，启动恐惧反应。",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 105.309,
+   "end": 110.773,
+   "en_text": "This stress-induced panic can overpower the impulses from your prefrontal cortex,",
+   "zh_text": "这种压力引发的恐慌会压过前额叶皮层发出的冲动，",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 110.773,
+   "end": 114.819,
+   "en_text": "which typically help you think long term and regulate your emotions.",
+   "zh_text": "而前额叶皮层通常帮你做长远思考、调节情绪。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 115.069,
+   "end": 119.198,
+   "en_text": "And it’s in the midst of this fight, flight, or freeze response",
+   "zh_text": "正是在这种战斗、逃跑或僵住反应之中，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 119.198,
+   "end": 121.117,
+   "en_text": "that you decide to handle the threat",
+   "zh_text": "你决定这样应对威胁：",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 121.117,
+   "end": 124.996,
+   "en_text": "by avoiding it in favor of some less stressful task.",
+   "zh_text": "避开它，转而去做一些压力更小的任务。",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 125.329,
+   "end": 127.832,
+   "en_text": "This response might seem extreme—",
+   "zh_text": "这种反应看起来可能有点极端——",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 128.124,
+   "end": 131.127,
+   "en_text": "after all, it’s just a deadline, not a bear attack.",
+   "zh_text": "毕竟，这只是个截止日期，又不是熊袭击。",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 131.335,
+   "end": 136.257,
+   "en_text": "But we’re most likely to procrastinate tasks that evoke negative feelings,",
+   "zh_text": "但我们最容易拖延的，往往是那些引发负面情绪的任务，",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 136.257,
+   "end": 140.136,
+   "en_text": "such as dread, incompetence, and insecurity.",
+   "zh_text": "比如恐惧、无能感和不安全感。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 140.136,
+   "end": 144.473,
+   "en_text": "Studies of procrastinating university students have found participants",
+   "zh_text": "对拖延的大学生进行的研究发现，参与者",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 144.473,
+   "end": 149.353,
+   "en_text": "were more likely to put off tasks they perceived as stressful or challenging.",
+   "zh_text": "更容易推迟那些他们认为有压力或有挑战性的任务。",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 149.478,
+   "end": 152.356,
+   "en_text": "And the perception of how difficult the task is",
+   "zh_text": "而对任务难度的感知",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 152.356,
+   "end": 155.193,
+   "en_text": "increases while you’re putting it off.",
+   "zh_text": "会在你拖延的过程中不断加剧。",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 155.776,
+   "end": 160.531,
+   "en_text": "In one experiment, students were given reminders to study throughout the day.",
+   "zh_text": "在一项实验中，学生们全天都会收到学习的提醒。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 161.115,
+   "end": 164.619,
+   "en_text": "While they were studying, most reported that it wasn’t so bad.",
+   "zh_text": "在学习的时候，大多数人表示其实没那么糟。",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 164.785,
+   "end": 166.787,
+   "en_text": "But when they were procrastinating,",
+   "zh_text": "但当他们在拖延时，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 166.787,
+   "end": 171.626,
+   "en_text": "they consistently rated the idea of studying as very stressful,",
+   "zh_text": "他们一直把学习这件事评价为压力很大，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 171.918,
+   "end": 174.378,
+   "en_text": "making it difficult to get started.",
+   "zh_text": "导致很难开始动手。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 175.004,
+   "end": 178.799,
+   "en_text": "Because procrastination is motivated by our negative feelings,",
+   "zh_text": "因为拖延是由我们的负面情绪驱动的，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 178.799,
+   "end": 182.511,
+   "en_text": "some individuals are more susceptible to it than others.",
+   "zh_text": "所以有些人比其他人更容易拖延。",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 182.762,
+   "end": 185.473,
+   "en_text": "People who have difficulty regulating their emotions",
+   "zh_text": "那些难以调节自己情绪的人",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 185.473,
+   "end": 188.017,
+   "en_text": "and those who struggle with low self-esteem",
+   "zh_text": "以及那些自尊心较低、为此挣扎的人",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 188.017,
+   "end": 190.478,
+   "en_text": "are much more likely to procrastinate,",
+   "zh_text": "拖延的可能性要大得多，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 190.686,
+   "end": 193.606,
+   "en_text": "regardless of how good they are at time management.",
+   "zh_text": "不管他们有多擅长时间管理。",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 194.148,
+   "end": 199.57,
+   "en_text": "However, it's a common misconception that all procrastinators are lazy.",
+   "zh_text": "然而，一个常见的误解是，所有拖延的人都很懒。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 200.529,
+   "end": 206.118,
+   "en_text": "In the body and brain, laziness is marked by no energy and general apathy.",
+   "zh_text": "在身体和大脑层面，懒惰的特征是没有精力、普遍冷漠。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 206.786,
+   "end": 210.456,
+   "en_text": "When you’re feeling lazy, you’re more likely to sit around doing nothing",
+   "zh_text": "当你感到懒散时，你更可能坐着什么都不做，",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 210.456,
+   "end": 213.459,
+   "en_text": "than distract yourself with unimportant tasks.",
+   "zh_text": "而不是用无关紧要的事情来分散自己的注意力。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 213.876,
+   "end": 218.673,
+   "en_text": "In fact, many people procrastinate because they care too much.",
+   "zh_text": "事实上，很多人拖延是因为他们太在乎了。",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 219.298,
+   "end": 223.052,
+   "en_text": "Procrastinators often report a high fear of failure,",
+   "zh_text": "拖延者常常表示自己非常害怕失败，",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 223.052,
+   "end": 225.846,
+   "en_text": "putting things off because they’re afraid their work",
+   "zh_text": "把事情往后推，是因为他们害怕自己的成果",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 225.846,
+   "end": 228.224,
+   "en_text": "won’t live up to their high standards.",
+   "zh_text": "达不到自己的高标准。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 228.808,
+   "end": 233.437,
+   "en_text": "Whatever the reason for procrastination, the results are often the same.",
+   "zh_text": "不管拖延的原因是什么，结果往往都是一样的。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 233.813,
+   "end": 238.276,
+   "en_text": "Frequent procrastinators are likely to suffer from anxiety and depression,",
+   "zh_text": "经常拖延的人很可能饱受焦虑和抑郁之苦，",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 238.484,
+   "end": 240.319,
+   "en_text": "ongoing feelings of shame,",
+   "zh_text": "持续感到羞耻，",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 240.319,
+   "end": 245.324,
+   "en_text": "higher stress levels and physical ailments associated with high stress.",
+   "zh_text": "压力水平更高，还会出现与高压相关的身体不适。",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 245.866,
+   "end": 249.62,
+   "en_text": "Worst of all, while procrastination hurts us in the long run,",
+   "zh_text": "最糟糕的是，虽然拖延从长远来看会伤害我们，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 249.787,
+   "end": 253.04,
+   "en_text": "it does temporarily reduce our stress level,",
+   "zh_text": "但它确实会暂时降低我们的压力水平，",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 253.457,
+   "end": 258.587,
+   "en_text": "reinforcing it as a bodily response for coping with stressful tasks.",
+   "zh_text": "从而强化它作为一种应对压力任务的身体反应。",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 258.963,
+   "end": 263.384,
+   "en_text": "So, how can we break the cycle of procrastination?",
+   "zh_text": "那么，我们怎样才能打破拖延的循环呢？",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 263.843,
+   "end": 267.513,
+   "en_text": "Traditionally, people thought procrastinators needed to cultivate",
+   "zh_text": "传统上，人们认为拖延者需要培养",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 267.513,
+   "end": 270.683,
+   "en_text": "discipline and practice strict time management.",
+   "zh_text": "自律，并练习严格的时间管理。",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 271.183,
+   "end": 274.979,
+   "en_text": "But today, many researchers feel the exact opposite.",
+   "zh_text": "但如今，许多研究者的看法恰恰相反。",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 275.479,
+   "end": 280.192,
+   "en_text": "Being too hard on yourself can layer additional bad emotions onto a task,",
+   "zh_text": "对自己太苛刻，会给一项任务叠加更多糟糕的情绪，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 280.192,
+   "end": 283.07,
+   "en_text": "making the threat even more intense.",
+   "zh_text": "让这种威胁感变得更加强烈。",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 283.404,
+   "end": 285.698,
+   "en_text": "To short-circuit this stress response,",
+   "zh_text": "为了短路这种压力反应，",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 285.698,
+   "end": 290.119,
+   "en_text": "we need to address and reduce these negative emotions.",
+   "zh_text": "我们需要处理并减少这些负面情绪。",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 290.619,
+   "end": 295.041,
+   "en_text": "Some simple strategies include breaking a task into smaller elements",
+   "zh_text": "一些简单的策略包括把一项任务拆成更小的部分，",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 295.249,
+   "end": 297.668,
+   "en_text": "or journaling about why it's stressing you out",
+   "zh_text": "或者写日记，记录它为什么让你感到压力，",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 297.835,
+   "end": 300.88,
+   "en_text": "and addressing those underlying concerns.",
+   "zh_text": "并处理这些潜在的担忧。",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 301.464,
+   "end": 306.594,
+   "en_text": "Try removing nearby distractions that make it easy to impulsively procrastinate.",
+   "zh_text": "试着移除身边那些让你容易冲动拖延的干扰物。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 307.136,
+   "end": 311.849,
+   "en_text": "And more than anything, it helps to cultivate an attitude of self-compassion,",
+   "zh_text": "最重要的是，培养自我同情的态度会很有帮助，",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 312.099,
+   "end": 316.395,
+   "en_text": "forgiving yourself, and making a plan to do better next time.",
+   "zh_text": "原谅自己，并制定一个下次做得更好的计划。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 317.188,
+   "end": 321.984,
+   "en_text": "Because a culture that perpetuates this cycle of stress and procrastination",
+   "zh_text": "因为一种让这种压力和拖延的循环持续下去的文化，",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 322.151,
+   "end": 324.695,
+   "en_text": "hurts all of us in the long term.",
+   "zh_text": "从长远来看会伤害我们所有人。",
+   "highlights": []
+  }
+ ]
+}

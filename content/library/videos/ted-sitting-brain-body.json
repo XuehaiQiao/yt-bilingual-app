@@ -1,0 +1,1853 @@
+{
+ "id": "ted-sitting-brain-body",
+ "youtubeId": "rKgtm81yi94",
+ "title": "What Sitting All Day Does to Your Brain and Body | Keith Diaz | TED",
+ "channel": "TED",
+ "duration": 684,
+ "level": "C1",
+ "free": true,
+ "source": "youtube",
+ "thumbnail": "https://i.ytimg.com/vi/rKgtm81yi94/hqdefault.jpg",
+ "license": "字幕与元数据为本地构建产物；原视频版权归 YouTube 频道所有，播放通过官方嵌入，不下载视频文件。",
+ "subtitleSource": "manual",
+ "translation": {
+  "model": "deepseek-chat",
+  "provider": "DeepSeek",
+  "promptVersion": "library-video-zh-v1",
+  "translatedAt": "2026-11-16T23:48:46+00:00"
+ },
+ "blocks": [
+  {
+   "id": 1,
+   "start": 4.368,
+   "end": 8.472,
+   "en_text": "My favorite job ever was as a summer-camp counselor,",
+   "zh_text": "我最喜欢的工作是当夏令营辅导员，",
+   "highlights": []
+  },
+  {
+   "id": 2,
+   "start": 8.506,
+   "end": 11.275,
+   "en_text": "where I was basically paid to play games with kids all day.",
+   "zh_text": "基本上就是拿钱整天陪孩子们玩游戏。",
+   "highlights": []
+  },
+  {
+   "id": 3,
+   "start": 11.308,
+   "end": 14.945,
+   "en_text": "We played capture the flag, running bases, dodgeball,",
+   "zh_text": "我们玩夺旗、跑垒、躲避球，",
+   "highlights": []
+  },
+  {
+   "id": 4,
+   "start": 14.979,
+   "end": 16.914,
+   "en_text": "went swimming in the pool every day.",
+   "zh_text": "每天都去游泳池游泳。",
+   "highlights": []
+  },
+  {
+   "id": 5,
+   "start": 16.914,
+   "end": 18.249,
+   "en_text": "And at the end of the day,",
+   "zh_text": "一天下来，",
+   "highlights": []
+  },
+  {
+   "id": 6,
+   "start": 18.282,
+   "end": 20.584,
+   "en_text": "I'd be tired, but in a good way.",
+   "zh_text": "我会很累，但是那种舒服的累。",
+   "highlights": []
+  },
+  {
+   "id": 7,
+   "start": 20.618,
+   "end": 23.954,
+   "en_text": "Not mentally drained, but physically tired.",
+   "zh_text": "不是精神上的疲惫，而是身体上的累。",
+   "highlights": []
+  },
+  {
+   "id": 8,
+   "start": 23.988,
+   "end": 25.189,
+   "en_text": "A satisfied kind of tired",
+   "zh_text": "是一种满足的累，",
+   "highlights": []
+  },
+  {
+   "id": 9,
+   "start": 25.222,
+   "end": 28.092,
+   "en_text": "where I'd use my body to complete a hard day's work.",
+   "zh_text": "因为我用身体完成了一天的辛苦工作。",
+   "highlights": []
+  },
+  {
+   "id": 10,
+   "start": 28.592,
+   "end": 30.194,
+   "en_text": "Flash forward,",
+   "zh_text": "快进到现在，",
+   "highlights": []
+  },
+  {
+   "id": 11,
+   "start": 30.227,
+   "end": 33.097,
+   "en_text": "and my job today looks very different.",
+   "zh_text": "我如今的工作看起来完全不一样了。",
+   "highlights": []
+  },
+  {
+   "id": 12,
+   "start": 35.666,
+   "end": 37.501,
+   "en_text": "Even though I'm an exercise scientist,",
+   "zh_text": "虽然我是运动科学家，",
+   "highlights": []
+  },
+  {
+   "id": 13,
+   "start": 37.535,
+   "end": 39.97,
+   "en_text": "I don't get to actually do any exercise at work.",
+   "zh_text": "但我在工作中其实根本不做任何运动。",
+   "highlights": []
+  },
+  {
+   "id": 14,
+   "start": 40.004,
+   "end": 43.507,
+   "en_text": "Instead, my days consist of staring at a computer screen",
+   "zh_text": "相反，我每天就是盯着电脑屏幕，",
+   "highlights": []
+  },
+  {
+   "id": 15,
+   "start": 43.541,
+   "end": 45.509,
+   "en_text": "and sitting in countless meetings.",
+   "zh_text": "还有开不完的会。",
+   "highlights": []
+  },
+  {
+   "id": 16,
+   "start": 45.976,
+   "end": 49.113,
+   "en_text": "The transition for me to office work was jarring.",
+   "zh_text": "对我来说，转到办公室工作让我很不适应。",
+   "highlights": []
+  },
+  {
+   "id": 17,
+   "start": 49.48,
+   "end": 51.882,
+   "en_text": "I no longer had those same feelings of satisfaction",
+   "zh_text": "我再也找不到以前那种满足感了，",
+   "highlights": []
+  },
+  {
+   "id": 18,
+   "start": 51.882,
+   "end": 53.284,
+   "en_text": "at the end of the day's work.",
+   "zh_text": "在一天工作结束的时候。",
+   "highlights": []
+  },
+  {
+   "id": 19,
+   "start": 53.317,
+   "end": 55.186,
+   "en_text": "I was still tired, exhausted, actually,",
+   "zh_text": "我还是很累，其实是精疲力竭，",
+   "highlights": []
+  },
+  {
+   "id": 20,
+   "start": 55.219,
+   "end": 57.888,
+   "en_text": "but I hadn't used my body at all.",
+   "zh_text": "但我根本没用过我的身体。",
+   "highlights": []
+  },
+  {
+   "id": 21,
+   "start": 58.722,
+   "end": 62.193,
+   "en_text": "And this shift that I experienced, I'm not alone in feeling.",
+   "zh_text": "而我经历的这种转变，并不只有我有这种感觉。",
+   "highlights": []
+  },
+  {
+   "id": 22,
+   "start": 62.96,
+   "end": 66.764,
+   "en_text": "We are living in the most sedentary era in modern history.",
+   "zh_text": "我们正生活在现代史上最久坐不动的时代。",
+   "highlights": []
+  },
+  {
+   "id": 23,
+   "start": 67.465,
+   "end": 69.066,
+   "en_text": "In a single year,",
+   "zh_text": "仅仅一年里，",
+   "highlights": []
+  },
+  {
+   "id": 24,
+   "start": 69.1,
+   "end": 72.536,
+   "en_text": "the average adult will now spend a full 187 days,",
+   "zh_text": "普通成年人现在会花整整187天，",
+   "highlights": []
+  },
+  {
+   "id": 25,
+   "start": 72.57,
+   "end": 74.672,
+   "en_text": "over half of the year,",
+   "zh_text": "超过半年，",
+   "highlights": []
+  },
+  {
+   "id": 26,
+   "start": 74.672,
+   "end": 77.374,
+   "en_text": "sitting or physically idle.",
+   "zh_text": "坐着或身体不动。",
+   "highlights": []
+  },
+  {
+   "id": 27,
+   "start": 78.309,
+   "end": 81.645,
+   "en_text": "The bad news is that our bodies weren't designed for this.",
+   "zh_text": "坏消息是，我们的身体并不是为此设计的。",
+   "highlights": []
+  },
+  {
+   "id": 28,
+   "start": 81.645,
+   "end": 83.981,
+   "en_text": "I know because I've spent my career as a scientist",
+   "zh_text": "我知道这一点，因为我整个职业生涯都在做科学家，",
+   "highlights": []
+  },
+  {
+   "id": 29,
+   "start": 84.014,
+   "end": 86.117,
+   "en_text": "studying the harms of being highly sedentary.",
+   "zh_text": "研究高度久坐的危害。",
+   "highlights": []
+  },
+  {
+   "id": 30,
+   "start": 86.15,
+   "end": 89.62,
+   "en_text": "And what scientists have found is that being highly sedentary",
+   "zh_text": "科学家们发现，高度久坐",
+   "highlights": []
+  },
+  {
+   "id": 31,
+   "start": 89.62,
+   "end": 92.656,
+   "en_text": "increases your risk of diabetes,",
+   "zh_text": "会增加你患糖尿病的风险，",
+   "highlights": []
+  },
+  {
+   "id": 32,
+   "start": 92.656,
+   "end": 94.925,
+   "en_text": "cancer, dementia,",
+   "zh_text": "癌症、痴呆，",
+   "highlights": []
+  },
+  {
+   "id": 33,
+   "start": 94.959,
+   "end": 98.229,
+   "en_text": "heart disease and ultimately early death.",
+   "zh_text": "心脏病，最终是过早死亡。",
+   "highlights": []
+  },
+  {
+   "id": 34,
+   "start": 98.863,
+   "end": 103.634,
+   "en_text": "Worse, this is true even if you exercise regularly.",
+   "zh_text": "更糟的是，即使你经常锻炼，这一点依然成立。",
+   "highlights": []
+  },
+  {
+   "id": 35,
+   "start": 104.668,
+   "end": 105.903,
+   "en_text": "To put it simply,",
+   "zh_text": "简单来说，",
+   "highlights": []
+  },
+  {
+   "id": 36,
+   "start": 105.903,
+   "end": 109.54,
+   "en_text": "being highly sedentary, as many of us are,",
+   "zh_text": "像我们很多人一样高度久坐，",
+   "highlights": []
+  },
+  {
+   "id": 37,
+   "start": 109.54,
+   "end": 110.708,
+   "en_text": "is toxic.",
+   "zh_text": "是有害的。",
+   "highlights": []
+  },
+  {
+   "id": 38,
+   "start": 112.109,
+   "end": 114.578,
+   "en_text": "Let's start with the healthiest people among us",
+   "zh_text": "我们先从我们当中最健康的人说起，",
+   "highlights": []
+  },
+  {
+   "id": 39,
+   "start": 114.578,
+   "end": 116.147,
+   "en_text": "to use as an example.",
+   "zh_text": "拿他们当例子。",
+   "highlights": []
+  },
+  {
+   "id": 40,
+   "start": 116.514,
+   "end": 117.948,
+   "en_text": "In one study,",
+   "zh_text": "在一项研究中，",
+   "highlights": []
+  },
+  {
+   "id": 41,
+   "start": 117.948,
+   "end": 121.619,
+   "en_text": "when highly trained endurance athletes were forced to bed rest,",
+   "zh_text": "当训练有素的耐力运动员被迫卧床休息时，",
+   "highlights": []
+  },
+  {
+   "id": 42,
+   "start": 121.619,
+   "end": 125.256,
+   "en_text": "their aerobic fitness levels dropped by about 20 percent",
+   "zh_text": "他们的有氧适能水平下降了大约20%，",
+   "highlights": []
+  },
+  {
+   "id": 43,
+   "start": 125.289,
+   "end": 127.992,
+   "en_text": "in just three days.",
+   "zh_text": "仅仅三天时间。",
+   "highlights": []
+  },
+  {
+   "id": 44,
+   "start": 128.726,
+   "end": 131.228,
+   "en_text": "What took them months to build",
+   "zh_text": "他们花几个月练出来的东西，",
+   "highlights": []
+  },
+  {
+   "id": 45,
+   "start": 131.262,
+   "end": 134.231,
+   "en_text": "was erased in a matter of a long weekend",
+   "zh_text": "在一个长周末里就被抹掉了，",
+   "highlights": []
+  },
+  {
+   "id": 46,
+   "start": 134.231,
+   "end": 135.499,
+   "en_text": "with no movement.",
+   "zh_text": "完全不动。",
+   "highlights": []
+  },
+  {
+   "id": 47,
+   "start": 135.9,
+   "end": 139.236,
+   "en_text": "This isn’t unique to highly trained endurance athletes.",
+   "zh_text": "这并不只发生在训练有素的耐力运动员身上。",
+   "highlights": []
+  },
+  {
+   "id": 48,
+   "start": 139.27,
+   "end": 142.106,
+   "en_text": "If you took a regular, typical, healthy adult",
+   "zh_text": "如果你找一个普通、典型的健康成年人，",
+   "highlights": []
+  },
+  {
+   "id": 49,
+   "start": 142.139,
+   "end": 144.942,
+   "en_text": "and forced them to 40 days of bed rest,",
+   "zh_text": "让他们卧床休息40天，",
+   "highlights": []
+  },
+  {
+   "id": 50,
+   "start": 144.975,
+   "end": 149.88,
+   "en_text": "their heart would show changes similar to 50 years of aging.",
+   "zh_text": "他们的心脏会出现类似50年衰老的变化。",
+   "highlights": []
+  },
+  {
+   "id": 51,
+   "start": 151.048,
+   "end": 154.118,
+   "en_text": "Now, this isn't about missing a workout or two.",
+   "zh_text": "当然，这不是说少锻炼一两次的问题。",
+   "highlights": []
+  },
+  {
+   "id": 52,
+   "start": 154.485,
+   "end": 158.455,
+   "en_text": "Exercise only makes up a tiny fraction of your day.",
+   "zh_text": "运动只占你一天中很小的一部分。",
+   "highlights": []
+  },
+  {
+   "id": 53,
+   "start": 158.489,
+   "end": 163.661,
+   "en_text": "The toxicity comes from when movement begins to disappear from your life.",
+   "zh_text": "真正的危害在于，活动开始从你的生活中消失。",
+   "highlights": []
+  },
+  {
+   "id": 54,
+   "start": 164.828,
+   "end": 166.63,
+   "en_text": "And this begs the question,",
+   "zh_text": "这就引出了一个问题：",
+   "highlights": []
+  },
+  {
+   "id": 55,
+   "start": 166.664,
+   "end": 170.201,
+   "en_text": "why isn't exercise alone enough?",
+   "zh_text": "为什么光靠运动还不够？",
+   "highlights": []
+  },
+  {
+   "id": 56,
+   "start": 171.035,
+   "end": 173.971,
+   "en_text": "Part of the answer lies in our muscles.",
+   "zh_text": "部分答案就在我们的肌肉里。",
+   "highlights": []
+  },
+  {
+   "id": 57,
+   "start": 174.638,
+   "end": 178.209,
+   "en_text": "Our muscles are more than just a machinery that power movement.",
+   "zh_text": "我们的肌肉不只是驱动运动的机器。",
+   "highlights": []
+  },
+  {
+   "id": 58,
+   "start": 178.209,
+   "end": 182.079,
+   "en_text": "They're also really important for regulating things like our metabolism.",
+   "zh_text": "它们对调节新陈代谢等功能也非常重要。",
+   "highlights": []
+  },
+  {
+   "id": 59,
+   "start": 182.112,
+   "end": 184.148,
+   "en_text": "Let's use blood sugar as an example.",
+   "zh_text": "我们拿血糖来举例。",
+   "highlights": []
+  },
+  {
+   "id": 60,
+   "start": 188.619,
+   "end": 192.323,
+   "en_text": "Our muscles are like sponges for blood sugar.",
+   "zh_text": "我们的肌肉就像吸收血糖的海绵。",
+   "highlights": []
+  },
+  {
+   "id": 61,
+   "start": 192.756,
+   "end": 196.327,
+   "en_text": "When we regularly use and contract our muscles,",
+   "zh_text": "当我们经常使用并收缩肌肉时，",
+   "highlights": []
+  },
+  {
+   "id": 62,
+   "start": 196.36,
+   "end": 197.761,
+   "en_text": "they're like a moist sponge,",
+   "zh_text": "它们就像一块湿润的海绵，",
+   "highlights": []
+  },
+  {
+   "id": 63,
+   "start": 197.795,
+   "end": 200.264,
+   "en_text": "soaking up the sugar from the bloodstream.",
+   "zh_text": "把血液中的糖分吸收进来。",
+   "highlights": []
+  },
+  {
+   "id": 64,
+   "start": 200.297,
+   "end": 204.501,
+   "en_text": "But when we don’t regularly use and contract our muscles,",
+   "zh_text": "但当我们不经常使用和收缩肌肉时，",
+   "highlights": []
+  },
+  {
+   "id": 65,
+   "start": 204.535,
+   "end": 206.237,
+   "en_text": "like a dry and shriveled-up sponge,",
+   "zh_text": "它们就像一块干瘪的海绵，",
+   "highlights": []
+  },
+  {
+   "id": 66,
+   "start": 206.27,
+   "end": 208.372,
+   "en_text": "not really good at soaking up anything.",
+   "zh_text": "根本不太能吸收任何东西。",
+   "highlights": []
+  },
+  {
+   "id": 67,
+   "start": 208.973,
+   "end": 210.14,
+   "en_text": "Now here's the key.",
+   "zh_text": "关键在于：",
+   "highlights": []
+  },
+  {
+   "id": 68,
+   "start": 210.14,
+   "end": 212.109,
+   "en_text": "When we exercise,",
+   "zh_text": "当我们运动时，",
+   "highlights": []
+  },
+  {
+   "id": 69,
+   "start": 212.109,
+   "end": 214.178,
+   "en_text": "it rewets the sponge,",
+   "zh_text": "它会把海绵重新浸湿，",
+   "highlights": []
+  },
+  {
+   "id": 70,
+   "start": 214.211,
+   "end": 217.681,
+   "en_text": "but eventually that sponge dries out",
+   "zh_text": "但最终这块海绵还是会变干，",
+   "highlights": []
+  },
+  {
+   "id": 71,
+   "start": 217.715,
+   "end": 220.384,
+   "en_text": "if you get little to no movement the rest of your day.",
+   "zh_text": "如果你一天剩下的时间里几乎不动的话。",
+   "highlights": []
+  },
+  {
+   "id": 72,
+   "start": 220.417,
+   "end": 221.685,
+   "en_text": "So what do we do?",
+   "zh_text": "那我们该怎么办？",
+   "highlights": []
+  },
+  {
+   "id": 73,
+   "start": 222.319,
+   "end": 226.023,
+   "en_text": "Well, we need to keep the sponge moist.",
+   "zh_text": "我们需要让海绵保持湿润。",
+   "highlights": []
+  },
+  {
+   "id": 74,
+   "start": 229.727,
+   "end": 233.631,
+   "en_text": "Now I’m not going to tell you that we need to move all day.",
+   "zh_text": "我不会告诉你我们需要一整天都在动。",
+   "highlights": []
+  },
+  {
+   "id": 75,
+   "start": 234.331,
+   "end": 236.834,
+   "en_text": "Instead, I'm going to suggest that we follow the lead",
+   "zh_text": "相反，我想建议我们效仿",
+   "highlights": []
+  },
+  {
+   "id": 76,
+   "start": 236.834,
+   "end": 238.802,
+   "en_text": "of an unlikely place.",
+   "zh_text": "一个意想不到的地方。",
+   "highlights": []
+  },
+  {
+   "id": 77,
+   "start": 238.802,
+   "end": 240.237,
+   "en_text": "The tobacco industry.",
+   "zh_text": "烟草行业。",
+   "highlights": []
+  },
+  {
+   "id": 78,
+   "start": 241.772,
+   "end": 245.409,
+   "en_text": "In their early days, cigars were their primary product.",
+   "zh_text": "在早期，雪茄是他们的主要产品。",
+   "highlights": []
+  },
+  {
+   "id": 79,
+   "start": 245.442,
+   "end": 247.845,
+   "en_text": "But this was the industrial age.",
+   "zh_text": "但那是工业时代。",
+   "highlights": []
+  },
+  {
+   "id": 80,
+   "start": 248.312,
+   "end": 250.314,
+   "en_text": "Millions were working in factories,",
+   "zh_text": "数百万人在工厂里工作，",
+   "highlights": []
+  },
+  {
+   "id": 81,
+   "start": 250.347,
+   "end": 253.317,
+   "en_text": "and those workers only got short breaks from their lines.",
+   "zh_text": "而那些工人只能从流水线上得到短暂的休息。",
+   "highlights": []
+  },
+  {
+   "id": 82,
+   "start": 253.317,
+   "end": 255.853,
+   "en_text": "Certainly not long enough to smoke a cigar.",
+   "zh_text": "肯定不够长到抽完一支雪茄。",
+   "highlights": []
+  },
+  {
+   "id": 83,
+   "start": 255.886,
+   "end": 260.991,
+   "en_text": "Thus, the cigarette became the primary focus of the tobacco industry",
+   "zh_text": "于是，香烟成了烟草行业的主要焦点，",
+   "highlights": []
+  },
+  {
+   "id": 84,
+   "start": 261.025,
+   "end": 264.662,
+   "en_text": "so that these workers could get their fix in small, short doses,",
+   "zh_text": "这样这些工人就能以小而短的剂量满足烟瘾，",
+   "highlights": []
+  },
+  {
+   "id": 85,
+   "start": 264.695,
+   "end": 267.197,
+   "en_text": "a few minutes at a time throughout the day.",
+   "zh_text": "一天中每次几分钟。",
+   "highlights": []
+  },
+  {
+   "id": 86,
+   "start": 268.565,
+   "end": 272.67,
+   "en_text": "And if sitting truly is the new smoking,",
+   "zh_text": "如果久坐真的相当于新型吸烟，",
+   "highlights": []
+  },
+  {
+   "id": 87,
+   "start": 272.67,
+   "end": 274.405,
+   "en_text": "as the saying goes,",
+   "zh_text": "就像俗话说的那样，",
+   "highlights": []
+  },
+  {
+   "id": 88,
+   "start": 274.405,
+   "end": 276.073,
+   "en_text": "then what better way to fight back",
+   "zh_text": "那还有什么更好的反击方式",
+   "highlights": []
+  },
+  {
+   "id": 89,
+   "start": 276.073,
+   "end": 278.442,
+   "en_text": "than to use the approach of the tobacco industry?",
+   "zh_text": "比借用烟草行业的做法呢？",
+   "highlights": []
+  },
+  {
+   "id": 90,
+   "start": 278.475,
+   "end": 281.712,
+   "en_text": "But instead of smoke breaks,",
+   "zh_text": "但不是抽烟休息，",
+   "highlights": []
+  },
+  {
+   "id": 91,
+   "start": 281.712,
+   "end": 282.98,
+   "en_text": "“movement breaks.”",
+   "zh_text": "而是“活动休息”。",
+   "highlights": []
+  },
+  {
+   "id": 92,
+   "start": 283.714,
+   "end": 287.251,
+   "en_text": "Short bouts of movement, a few minutes at a time,",
+   "zh_text": "短暂的活动，每次几分钟，",
+   "highlights": []
+  },
+  {
+   "id": 93,
+   "start": 287.284,
+   "end": 289.286,
+   "en_text": "sprinkled in throughout the day.",
+   "zh_text": "分散在一天当中。",
+   "highlights": []
+  },
+  {
+   "id": 94,
+   "start": 290.387,
+   "end": 293.891,
+   "en_text": "If our muscles need regular use to function optimally,",
+   "zh_text": "如果我们的肌肉需要经常使用才能发挥最佳功能，",
+   "highlights": []
+  },
+  {
+   "id": 95,
+   "start": 293.924,
+   "end": 295.592,
+   "en_text": "then outside of any exercise time,",
+   "zh_text": "那么在运动时间之外，",
+   "highlights": []
+  },
+  {
+   "id": 96,
+   "start": 295.592,
+   "end": 298.996,
+   "en_text": "we need to be contracting them frequently through movement.",
+   "zh_text": "我们需要通过活动频繁地收缩它们。",
+   "highlights": []
+  },
+  {
+   "id": 97,
+   "start": 299.797,
+   "end": 302.066,
+   "en_text": "The question that we asked in my lab is,",
+   "zh_text": "我们在我的实验室里提出的问题是：",
+   "highlights": []
+  },
+  {
+   "id": 98,
+   "start": 302.066,
+   "end": 304.902,
+   "en_text": "what’s the least amount of “movement breaks” that we need",
+   "zh_text": "我们最少需要多少次“活动休息”",
+   "highlights": []
+  },
+  {
+   "id": 99,
+   "start": 304.935,
+   "end": 308.038,
+   "en_text": "in order to offset the harms of being highly sedentary?",
+   "zh_text": "才能抵消长时间久坐带来的危害？",
+   "highlights": []
+  },
+  {
+   "id": 100,
+   "start": 308.739,
+   "end": 311.475,
+   "en_text": "And the answer we found",
+   "zh_text": "我们找到的答案是",
+   "highlights": []
+  },
+  {
+   "id": 101,
+   "start": 311.508,
+   "end": 314.111,
+   "en_text": "was a five-minute walk every half hour.",
+   "zh_text": "每半小时走五分钟。",
+   "highlights": []
+  },
+  {
+   "id": 102,
+   "start": 314.545,
+   "end": 318.382,
+   "en_text": "This reduced the blood sugar spike after eating by about 60 percent.",
+   "zh_text": "这让餐后血糖的飙升幅度降低了大约60%。",
+   "highlights": []
+  },
+  {
+   "id": 103,
+   "start": 319.183,
+   "end": 321.652,
+   "en_text": "That's the size of reduction you would expect to see",
+   "zh_text": "这个降幅，正是你预期会看到的",
+   "highlights": []
+  },
+  {
+   "id": 104,
+   "start": 321.652,
+   "end": 323.854,
+   "en_text": "if you put someone on medication",
+   "zh_text": "如果让某人服用药物",
+   "highlights": []
+  },
+  {
+   "id": 105,
+   "start": 323.887,
+   "end": 325.889,
+   "en_text": "to manage their blood sugar levels.",
+   "zh_text": "来控制血糖水平时能达到的效果。",
+   "highlights": []
+  },
+  {
+   "id": 106,
+   "start": 326.557,
+   "end": 330.961,
+   "en_text": "The cool part is that our participants weren't sprinting or even walking fast.",
+   "zh_text": "最妙的是，我们的参与者并没有冲刺，甚至都没有快走。",
+   "highlights": []
+  },
+  {
+   "id": 107,
+   "start": 331.729,
+   "end": 334.965,
+   "en_text": "This was a stroll, they were walking at two miles an hour.",
+   "zh_text": "这只是散步，他们以每小时两英里的速度走着。",
+   "highlights": []
+  },
+  {
+   "id": 108,
+   "start": 337.301,
+   "end": 338.836,
+   "en_text": "Now I want to be honest.",
+   "zh_text": "现在我想坦白说。",
+   "highlights": []
+  },
+  {
+   "id": 109,
+   "start": 339.57,
+   "end": 343.841,
+   "en_text": "What I’m proposing to you as the answer to our modern sedentary lives",
+   "zh_text": "我向大家提出的、作为应对我们现代久坐生活的答案",
+   "highlights": []
+  },
+  {
+   "id": 110,
+   "start": 345.509,
+   "end": 348.278,
+   "en_text": "are five-minute breaks every hour or every half hour.",
+   "zh_text": "就是每小时或每半小时做五分钟的休息活动。",
+   "highlights": []
+  },
+  {
+   "id": 111,
+   "start": 349.246,
+   "end": 353.15,
+   "en_text": "The truth is that when I found out that this was the answer,",
+   "zh_text": "说实话，当我发现答案就是这个时，",
+   "highlights": []
+  },
+  {
+   "id": 112,
+   "start": 353.183,
+   "end": 354.585,
+   "en_text": "I was disappointed.",
+   "zh_text": "我很失望。",
+   "highlights": []
+  },
+  {
+   "id": 113,
+   "start": 354.618,
+   "end": 355.886,
+   "en_text": "My immediate reaction was,",
+   "zh_text": "我的第一反应是，",
+   "highlights": []
+  },
+  {
+   "id": 114,
+   "start": 355.886,
+   "end": 357.888,
+   "en_text": "there's no way people are going to do this,",
+   "zh_text": "人们根本不可能这么做，",
+   "highlights": []
+  },
+  {
+   "id": 115,
+   "start": 357.921,
+   "end": 360.457,
+   "en_text": "largely because I couldn't realistically do it myself.",
+   "zh_text": "主要因为我自己在现实中就做不到。",
+   "highlights": []
+  },
+  {
+   "id": 116,
+   "start": 360.457,
+   "end": 363.727,
+   "en_text": "And so part of me wondered whether this should be the end of the road",
+   "zh_text": "所以我心里有一部分在想，这是不是该到此为止了",
+   "highlights": []
+  },
+  {
+   "id": 117,
+   "start": 363.761,
+   "end": 365.462,
+   "en_text": "for my research on movement breaks.",
+   "zh_text": "我关于活动休息的研究。",
+   "highlights": []
+  },
+  {
+   "id": 118,
+   "start": 365.996,
+   "end": 368.699,
+   "en_text": "But rather than argue with the data,",
+   "zh_text": "但与其跟数据争辩，",
+   "highlights": []
+  },
+  {
+   "id": 119,
+   "start": 368.699,
+   "end": 370.267,
+   "en_text": "I decided to press forward",
+   "zh_text": "我决定继续推进",
+   "highlights": []
+  },
+  {
+   "id": 120,
+   "start": 370.267,
+   "end": 372.636,
+   "en_text": "and put it to the test in the real world.",
+   "zh_text": "把它放到现实世界中去检验。",
+   "highlights": []
+  },
+  {
+   "id": 121,
+   "start": 373.103,
+   "end": 374.872,
+   "en_text": "With a little help from public radio,",
+   "zh_text": "在公共广播的一点帮助下，",
+   "highlights": []
+  },
+  {
+   "id": 122,
+   "start": 374.905,
+   "end": 377.007,
+   "en_text": "we had over 20,000 people try our experiment",
+   "zh_text": "我们让超过两万人尝试了我们的实验",
+   "highlights": []
+  },
+  {
+   "id": 123,
+   "start": 377.04,
+   "end": 379.076,
+   "en_text": "to take movement breaks throughout the day,",
+   "zh_text": "在一天中做活动休息，",
+   "highlights": []
+  },
+  {
+   "id": 124,
+   "start": 379.109,
+   "end": 382.179,
+   "en_text": "anywhere from every half hour to every two hours for two weeks.",
+   "zh_text": "从每半小时一次到每两小时一次，持续两周。",
+   "highlights": []
+  },
+  {
+   "id": 125,
+   "start": 382.946,
+   "end": 384.915,
+   "en_text": "And to my surprise,",
+   "zh_text": "出乎我意料的是，",
+   "highlights": []
+  },
+  {
+   "id": 126,
+   "start": 384.948,
+   "end": 388.552,
+   "en_text": "the vast majority of people liked taking movement breaks.",
+   "zh_text": "绝大多数人都喜欢做活动休息。",
+   "highlights": []
+  },
+  {
+   "id": 127,
+   "start": 388.585,
+   "end": 390.287,
+   "en_text": "Many wanted to keep going.",
+   "zh_text": "很多人还想继续下去。",
+   "highlights": []
+  },
+  {
+   "id": 128,
+   "start": 390.788,
+   "end": 394.491,
+   "en_text": "We had tapped into something that people were craving,",
+   "zh_text": "我们触及到了人们渴望的某种东西，",
+   "highlights": []
+  },
+  {
+   "id": 129,
+   "start": 394.525,
+   "end": 397.728,
+   "en_text": "an antidote to our toxic modern lives.",
+   "zh_text": "一剂对抗我们有害现代生活的解药。",
+   "highlights": []
+  },
+  {
+   "id": 130,
+   "start": 398.595,
+   "end": 400.998,
+   "en_text": "But what really surprised me",
+   "zh_text": "但真正让我惊讶的是，",
+   "highlights": []
+  },
+  {
+   "id": 131,
+   "start": 400.998,
+   "end": 404.168,
+   "en_text": "is that when we asked people what they liked about movement breaks,",
+   "zh_text": "当我们问人们喜欢活动休息的哪一点时，",
+   "highlights": []
+  },
+  {
+   "id": 132,
+   "start": 404.201,
+   "end": 406.703,
+   "en_text": "very few touted the physical health benefits.",
+   "zh_text": "很少有人称赞它对身体健康的益处。",
+   "highlights": []
+  },
+  {
+   "id": 133,
+   "start": 406.737,
+   "end": 409.406,
+   "en_text": "Instead, what they liked",
+   "zh_text": "相反，他们喜欢的",
+   "highlights": []
+  },
+  {
+   "id": 134,
+   "start": 409.406,
+   "end": 412.209,
+   "en_text": "was how the movement breaks made them feel.",
+   "zh_text": "是活动休息带给他们的感受。",
+   "highlights": []
+  },
+  {
+   "id": 135,
+   "start": 413.277,
+   "end": 416.847,
+   "en_text": "They loved that they felt energized,",
+   "zh_text": "他们喜欢自己感到精力充沛，",
+   "highlights": []
+  },
+  {
+   "id": 136,
+   "start": 416.847,
+   "end": 420.617,
+   "en_text": "that they no longer felt like they were in this brain fog throughout the day,",
+   "zh_text": "喜欢自己不再觉得一整天都处在脑雾之中，",
+   "highlights": []
+  },
+  {
+   "id": 137,
+   "start": 420.651,
+   "end": 423.887,
+   "en_text": "that they were able to actually better focus at work.",
+   "zh_text": "喜欢自己在工作中真的能更好地集中注意力。",
+   "highlights": []
+  },
+  {
+   "id": 138,
+   "start": 425.189,
+   "end": 427.791,
+   "en_text": "And this really resonated with me and my experiences",
+   "zh_text": "这真的引起了我的共鸣，也让我想起自己的经历",
+   "highlights": []
+  },
+  {
+   "id": 139,
+   "start": 427.825,
+   "end": 428.992,
+   "en_text": "as an office worker",
+   "zh_text": "作为一名上班族",
+   "highlights": []
+  },
+  {
+   "id": 140,
+   "start": 428.992,
+   "end": 431.395,
+   "en_text": "and how the exhaustion impacted my life.",
+   "zh_text": "以及那种疲惫如何影响了我的生活。",
+   "highlights": []
+  },
+  {
+   "id": 141,
+   "start": 431.995,
+   "end": 433.73,
+   "en_text": "I remember when my kids were younger",
+   "zh_text": "我记得孩子们还小的时候，",
+   "highlights": []
+  },
+  {
+   "id": 142,
+   "start": 433.764,
+   "end": 435.532,
+   "en_text": "and I'd come home from my office job,",
+   "zh_text": "我下班回到家，",
+   "highlights": []
+  },
+  {
+   "id": 143,
+   "start": 435.566,
+   "end": 436.733,
+   "en_text": "I’d open the door",
+   "zh_text": "打开门",
+   "highlights": []
+  },
+  {
+   "id": 144,
+   "start": 436.733,
+   "end": 438.969,
+   "en_text": "and they'd greet me with energy and enthusiasm,",
+   "zh_text": "他们充满活力和热情地迎接我，",
+   "highlights": []
+  },
+  {
+   "id": 145,
+   "start": 438.969,
+   "end": 441.371,
+   "en_text": "and want me to immediately start playing with them,",
+   "zh_text": "想让我马上开始陪他们玩，",
+   "highlights": []
+  },
+  {
+   "id": 146,
+   "start": 441.405,
+   "end": 443.006,
+   "en_text": "and I just didn't have it in me.",
+   "zh_text": "而我就是没有那个力气。",
+   "highlights": []
+  },
+  {
+   "id": 147,
+   "start": 443.04,
+   "end": 445.075,
+   "en_text": "I was too drained from the day.",
+   "zh_text": "我被这一天耗得太累了。",
+   "highlights": []
+  },
+  {
+   "id": 148,
+   "start": 446.143,
+   "end": 449.346,
+   "en_text": "And that's one of the most striking findings that we see in the lab.",
+   "zh_text": "这是我们在实验室里看到的最惊人的发现之一。",
+   "highlights": []
+  },
+  {
+   "id": 149,
+   "start": 449.379,
+   "end": 451.815,
+   "en_text": "Over the course of sitting all day with no movement,",
+   "zh_text": "在整天坐着不动的情况下，",
+   "highlights": []
+  },
+  {
+   "id": 150,
+   "start": 451.849,
+   "end": 453.584,
+   "en_text": "people's mood plummets",
+   "zh_text": "人们的情绪会一落千丈，",
+   "highlights": []
+  },
+  {
+   "id": 151,
+   "start": 453.617,
+   "end": 456.086,
+   "en_text": "while their fatigue builds and builds.",
+   "zh_text": "而疲劳感则会不断累积、越来越重。",
+   "highlights": []
+  },
+  {
+   "id": 152,
+   "start": 456.487,
+   "end": 461.992,
+   "en_text": "And that's because our muscles have a symbiotic relationship with our brains.",
+   "zh_text": "这是因为我们的肌肉和大脑之间有一种共生关系。",
+   "highlights": []
+  },
+  {
+   "id": 153,
+   "start": 463.06,
+   "end": 465.429,
+   "en_text": "They're in constant communication.",
+   "zh_text": "它们一直在相互沟通。",
+   "highlights": []
+  },
+  {
+   "id": 154,
+   "start": 465.996,
+   "end": 467.898,
+   "en_text": "Our biological need to contract muscle",
+   "zh_text": "我们收缩肌肉的生理需求，",
+   "highlights": []
+  },
+  {
+   "id": 155,
+   "start": 467.898,
+   "end": 471.001,
+   "en_text": "is more than just about physical health and metabolism.",
+   "zh_text": "不仅仅关乎身体健康和新陈代谢。",
+   "highlights": []
+  },
+  {
+   "id": 156,
+   "start": 471.034,
+   "end": 475.539,
+   "en_text": "It's also foundational to mental and brain health.",
+   "zh_text": "它也是心理和大脑健康的基础。",
+   "highlights": []
+  },
+  {
+   "id": 157,
+   "start": 476.039,
+   "end": 479.843,
+   "en_text": "The promising news is that in our real-world experiment,",
+   "zh_text": "好消息是，在我们的真实世界实验中，",
+   "highlights": []
+  },
+  {
+   "id": 158,
+   "start": 479.877,
+   "end": 483.08,
+   "en_text": "our participants only averaged four to five movement breaks a day.",
+   "zh_text": "参与者平均每天只做四到五次活动休息。",
+   "highlights": []
+  },
+  {
+   "id": 159,
+   "start": 483.113,
+   "end": 485.916,
+   "en_text": "Far below our lab-tested prescription.",
+   "zh_text": "远远低于我们在实验室里测试出的建议量。",
+   "highlights": []
+  },
+  {
+   "id": 160,
+   "start": 485.949,
+   "end": 489.353,
+   "en_text": "And yet, they still reduced their feelings of fatigue",
+   "zh_text": "但即便如此，他们的疲劳感仍然减少了",
+   "highlights": []
+  },
+  {
+   "id": 161,
+   "start": 489.386,
+   "end": 491.221,
+   "en_text": "by about 25 percent.",
+   "zh_text": "大约25%。",
+   "highlights": []
+  },
+  {
+   "id": 162,
+   "start": 491.855,
+   "end": 494.291,
+   "en_text": "And we see this play out in the lab as well.",
+   "zh_text": "我们在实验室里也看到了同样的结果。",
+   "highlights": []
+  },
+  {
+   "id": 163,
+   "start": 494.324,
+   "end": 499.429,
+   "en_text": "Something as small as a one-minute walk every hour",
+   "zh_text": "哪怕只是每小时走一分钟这样的小动作，",
+   "highlights": []
+  },
+  {
+   "id": 164,
+   "start": 499.463,
+   "end": 503.7,
+   "en_text": "can still largely offset the impact of sitting all day on your mood.",
+   "zh_text": "也能在很大程度上抵消整天坐着对情绪的影响。",
+   "highlights": []
+  },
+  {
+   "id": 165,
+   "start": 504.468,
+   "end": 508.372,
+   "en_text": "So even small, short, infrequent movement breaks",
+   "zh_text": "所以，即便是短暂、零散的活动休息，",
+   "highlights": []
+  },
+  {
+   "id": 166,
+   "start": 508.405,
+   "end": 510.674,
+   "en_text": "can counter some, not all,",
+   "zh_text": "也能抵消一部分——不是全部，",
+   "highlights": []
+  },
+  {
+   "id": 167,
+   "start": 510.707,
+   "end": 514.311,
+   "en_text": "but some of the hidden costs of our sedentary lives.",
+   "zh_text": "但能抵消一部分久坐生活带来的隐性代价。",
+   "highlights": []
+  },
+  {
+   "id": 168,
+   "start": 515.479,
+   "end": 519.85,
+   "en_text": "Now one of the biggest concerns I often hear from employers and schools",
+   "zh_text": "我经常从雇主和学校那里听到的最大担忧之一，",
+   "highlights": []
+  },
+  {
+   "id": 169,
+   "start": 519.883,
+   "end": 521.051,
+   "en_text": "about movement breaks",
+   "zh_text": "就是关于活动休息，",
+   "highlights": []
+  },
+  {
+   "id": 170,
+   "start": 521.051,
+   "end": 522.986,
+   "en_text": "is they worry that it’s disruptive,",
+   "zh_text": "他们担心这会打乱工作，",
+   "highlights": []
+  },
+  {
+   "id": 171,
+   "start": 523.02,
+   "end": 525.622,
+   "en_text": "that it'll hurt productivity and performance.",
+   "zh_text": "会损害生产力和表现。",
+   "highlights": []
+  },
+  {
+   "id": 172,
+   "start": 526.189,
+   "end": 529.059,
+   "en_text": "But movement doesn't mean you have to stop working.",
+   "zh_text": "但活动并不意味着你必须停下工作。",
+   "highlights": []
+  },
+  {
+   "id": 173,
+   "start": 529.96,
+   "end": 533.363,
+   "en_text": "You can have walking meetings, pace around while you're on a call,",
+   "zh_text": "你可以开边走边开的会，打电话时来回踱步，",
+   "highlights": []
+  },
+  {
+   "id": 174,
+   "start": 533.397,
+   "end": 534.565,
+   "en_text": "get walking pads,",
+   "zh_text": "买一台走步机，",
+   "highlights": []
+  },
+  {
+   "id": 175,
+   "start": 534.598,
+   "end": 536.767,
+   "en_text": "or simply just move around while thinking.",
+   "zh_text": "或者干脆一边思考一边活动身体。",
+   "highlights": []
+  },
+  {
+   "id": 176,
+   "start": 536.8,
+   "end": 540.103,
+   "en_text": "But the bigger idea and concept with movement breaks",
+   "zh_text": "但活动休息背后更重要的理念和概念是，",
+   "highlights": []
+  },
+  {
+   "id": 177,
+   "start": 540.137,
+   "end": 542.973,
+   "en_text": "is that when you compare brain activity",
+   "zh_text": "当你比较大脑活动时，",
+   "highlights": []
+  },
+  {
+   "id": 178,
+   "start": 542.973,
+   "end": 544.541,
+   "en_text": "after movement",
+   "zh_text": "活动之后",
+   "highlights": []
+  },
+  {
+   "id": 179,
+   "start": 544.575,
+   "end": 546.476,
+   "en_text": "versus after sitting,",
+   "zh_text": "和坐着之后相比，",
+   "highlights": []
+  },
+  {
+   "id": 180,
+   "start": 546.476,
+   "end": 548.412,
+   "en_text": "the differences are so striking.",
+   "zh_text": "差异非常惊人。",
+   "highlights": []
+  },
+  {
+   "id": 181,
+   "start": 548.779,
+   "end": 550.948,
+   "en_text": "The brain after movement looks like one",
+   "zh_text": "活动之后的大脑看起来就像是一个",
+   "highlights": []
+  },
+  {
+   "id": 182,
+   "start": 550.981,
+   "end": 553.383,
+   "en_text": "certainly far more ready to learn and to work.",
+   "zh_text": "显然更准备好学习和工作的状态。",
+   "highlights": []
+  },
+  {
+   "id": 183,
+   "start": 553.417,
+   "end": 555.018,
+   "en_text": "And yet, somewhere along the way,",
+   "zh_text": "然而，在某个过程中，",
+   "highlights": []
+  },
+  {
+   "id": 184,
+   "start": 555.018,
+   "end": 556.353,
+   "en_text": "we decided that sitting",
+   "zh_text": "我们认定坐着",
+   "highlights": []
+  },
+  {
+   "id": 185,
+   "start": 556.353,
+   "end": 559.456,
+   "en_text": "and staring in front of a computer screen for eight hours straight",
+   "zh_text": "盯着电脑屏幕连续八个小时",
+   "highlights": []
+  },
+  {
+   "id": 186,
+   "start": 559.489,
+   "end": 560.657,
+   "en_text": "is the best way to work.",
+   "zh_text": "才是最好的工作方式。",
+   "highlights": []
+  },
+  {
+   "id": 187,
+   "start": 560.691,
+   "end": 562.859,
+   "en_text": "And that's where the real challenge lies.",
+   "zh_text": "而真正的挑战就在这里。",
+   "highlights": []
+  },
+  {
+   "id": 188,
+   "start": 563.827,
+   "end": 566.997,
+   "en_text": "Productivity culture, convenience culture,",
+   "zh_text": "生产力文化、便利文化",
+   "highlights": []
+  },
+  {
+   "id": 189,
+   "start": 567.03,
+   "end": 570.567,
+   "en_text": "and technology are reengineering our lives",
+   "zh_text": "和技术正在重新设计我们的生活，",
+   "highlights": []
+  },
+  {
+   "id": 190,
+   "start": 570.567,
+   "end": 573.67,
+   "en_text": "and steadily removing the need for movement.",
+   "zh_text": "并一步步消除我们对活动的需求。",
+   "highlights": []
+  },
+  {
+   "id": 191,
+   "start": 574.871,
+   "end": 576.473,
+   "en_text": "We can have groceries delivered,",
+   "zh_text": "我们可以让人把杂货送到家，",
+   "highlights": []
+  },
+  {
+   "id": 192,
+   "start": 576.506,
+   "end": 579.776,
+   "en_text": "and robots vacuum our floors without ever getting off the couch.",
+   "zh_text": "机器人会给我们吸地板，我们连沙发都不用下。",
+   "highlights": []
+  },
+  {
+   "id": 193,
+   "start": 580.477,
+   "end": 585.882,
+   "en_text": "And the consequences of this reengineering are that we now often see movement --",
+   "zh_text": "而这种重新设计带来的后果是，我们现在常常把活动——",
+   "highlights": []
+  },
+  {
+   "id": 194,
+   "start": 588.085,
+   "end": 589.353,
+   "en_text": "As an inconvenience.",
+   "zh_text": "看作一种麻烦。",
+   "highlights": []
+  },
+  {
+   "id": 195,
+   "start": 589.386,
+   "end": 592.222,
+   "en_text": "[My laptop is dying. But my charger is all the way upstairs]",
+   "zh_text": "[我的笔记本电脑快没电了。但我的充电器在楼上]",
+   "highlights": []
+  },
+  {
+   "id": 196,
+   "start": 592.255,
+   "end": 594.191,
+   "en_text": "We see it as an interruption.",
+   "zh_text": "我们把它看作一种打扰。",
+   "highlights": []
+  },
+  {
+   "id": 197,
+   "start": 594.224,
+   "end": 596.76,
+   "en_text": "We see it as something to avoid.",
+   "zh_text": "我们把它看作要尽量避免的事情。",
+   "highlights": []
+  },
+  {
+   "id": 198,
+   "start": 598.629,
+   "end": 600.964,
+   "en_text": "I saw this play out with my daughter recently",
+   "zh_text": "最近我就在我女儿身上看到了这种情况",
+   "highlights": []
+  },
+  {
+   "id": 199,
+   "start": 600.998,
+   "end": 604.201,
+   "en_text": "when I had to drive her to our local library.",
+   "zh_text": "当时我得开车送她去我们当地的图书馆。",
+   "highlights": []
+  },
+  {
+   "id": 200,
+   "start": 604.234,
+   "end": 606.503,
+   "en_text": "But when we got there, the parking lot was full,",
+   "zh_text": "可到了那儿，停车场已经满了，",
+   "highlights": []
+  },
+  {
+   "id": 201,
+   "start": 606.536,
+   "end": 609.039,
+   "en_text": "so I had to park a little further away in the street,",
+   "zh_text": "所以我只好把车停到稍远一点的街上，",
+   "highlights": []
+  },
+  {
+   "id": 202,
+   "start": 609.072,
+   "end": 613.176,
+   "en_text": "and she immediately started complaining that I had parked so far away.",
+   "zh_text": "她立马就开始抱怨我把车停得太远了。",
+   "highlights": []
+  },
+  {
+   "id": 203,
+   "start": 613.21,
+   "end": 614.778,
+   "en_text": "Now mind you,",
+   "zh_text": "你听我说，",
+   "highlights": []
+  },
+  {
+   "id": 204,
+   "start": 614.778,
+   "end": 616.613,
+   "en_text": "the place I had parked may have added",
+   "zh_text": "我停车的地方可能也就给她多加了",
+   "highlights": []
+  },
+  {
+   "id": 205,
+   "start": 616.647,
+   "end": 618.949,
+   "en_text": "an additional 20 seconds of walking to her life.",
+   "zh_text": "20秒的步行时间而已。",
+   "highlights": []
+  },
+  {
+   "id": 206,
+   "start": 618.949,
+   "end": 620.15,
+   "en_text": "Not a mile.",
+   "zh_text": "不是一英里。",
+   "highlights": []
+  },
+  {
+   "id": 207,
+   "start": 620.15,
+   "end": 621.518,
+   "en_text": "Twenty seconds.",
+   "zh_text": "就20秒。",
+   "highlights": []
+  },
+  {
+   "id": 208,
+   "start": 622.052,
+   "end": 624.254,
+   "en_text": "But that moment hit me.",
+   "zh_text": "但那一刻触动了我。",
+   "highlights": []
+  },
+  {
+   "id": 209,
+   "start": 624.788,
+   "end": 628.258,
+   "en_text": "Movement had become an inconvenience for my daughter too.",
+   "zh_text": "活动身体对我女儿来说也变成了一件麻烦事。",
+   "highlights": []
+  },
+  {
+   "id": 210,
+   "start": 628.692,
+   "end": 631.228,
+   "en_text": "So I gave her a classic dad lecture.",
+   "zh_text": "于是我就给她上了一堂经典的爸爸课。",
+   "highlights": []
+  },
+  {
+   "id": 211,
+   "start": 631.962,
+   "end": 634.665,
+   "en_text": "And this was met with a preteen eye roll.",
+   "zh_text": "结果换来的是一个青春期前孩子的翻白眼。",
+   "highlights": []
+  },
+  {
+   "id": 212,
+   "start": 635.866,
+   "end": 637.934,
+   "en_text": "But a few days later,",
+   "zh_text": "但几天后，",
+   "highlights": []
+  },
+  {
+   "id": 213,
+   "start": 637.968,
+   "end": 640.871,
+   "en_text": "we were leaving a stadium and I was taking the escalator down.",
+   "zh_text": "我们正从体育场出来，我坐扶梯下楼。",
+   "highlights": []
+  },
+  {
+   "id": 214,
+   "start": 640.904,
+   "end": 642.072,
+   "en_text": "And as I'm going down,",
+   "zh_text": "就在我往下走的时候，",
+   "highlights": []
+  },
+  {
+   "id": 215,
+   "start": 642.105,
+   "end": 644.875,
+   "en_text": "I see something pass by me and I look and it's my daughter,",
+   "zh_text": "我看到有个身影从我身边经过，一看是我女儿，",
+   "highlights": []
+  },
+  {
+   "id": 216,
+   "start": 644.875,
+   "end": 646.576,
+   "en_text": "taking the regular set of stairs --",
+   "zh_text": "她走的是普通的楼梯——",
+   "highlights": []
+  },
+  {
+   "id": 217,
+   "start": 646.576,
+   "end": 648.578,
+   "en_text": "happily taking the regular set of stairs --",
+   "zh_text": "开开心心地走普通楼梯——",
+   "highlights": []
+  },
+  {
+   "id": 218,
+   "start": 648.578,
+   "end": 650.113,
+   "en_text": "smiling at me as she goes by.",
+   "zh_text": "经过时还冲我笑。",
+   "highlights": []
+  },
+  {
+   "id": 219,
+   "start": 650.113,
+   "end": 651.648,
+   "en_text": "It was a small victory.",
+   "zh_text": "这是一次小小的胜利。",
+   "highlights": []
+  },
+  {
+   "id": 220,
+   "start": 652.315,
+   "end": 657.187,
+   "en_text": "And if my eye rolling preteen can make this shift on occasion,",
+   "zh_text": "如果我这个爱翻白眼的青春期前孩子偶尔都能做出这样的改变，",
+   "highlights": []
+  },
+  {
+   "id": 221,
+   "start": 657.22,
+   "end": 659.122,
+   "en_text": "then I have hope for the rest of us.",
+   "zh_text": "那我对我们其他人也抱有希望。",
+   "highlights": []
+  },
+  {
+   "id": 222,
+   "start": 659.79,
+   "end": 662.993,
+   "en_text": "Because movement breaks are ultimately about something bigger.",
+   "zh_text": "因为活动休息归根结底关乎一件更大的事。",
+   "highlights": []
+  },
+  {
+   "id": 223,
+   "start": 663.46,
+   "end": 666.496,
+   "en_text": "They're about seeing those small moments in your day",
+   "zh_text": "它关乎去发现你一天中那些小小的时刻，",
+   "highlights": []
+  },
+  {
+   "id": 224,
+   "start": 666.496,
+   "end": 668.365,
+   "en_text": "when you have the opportunity to move,",
+   "zh_text": "当你有机会活动身体的时候，",
+   "highlights": []
+  },
+  {
+   "id": 225,
+   "start": 668.398,
+   "end": 671.134,
+   "en_text": "to see them not as inconveniences,",
+   "zh_text": "不把它们看作麻烦事，",
+   "highlights": []
+  },
+  {
+   "id": 226,
+   "start": 671.134,
+   "end": 674.571,
+   "en_text": "but as a way to reconnect our bodies and our brains",
+   "zh_text": "而是看作让我们的身体和大脑重新连接的方式，",
+   "highlights": []
+  },
+  {
+   "id": 227,
+   "start": 674.604,
+   "end": 678.041,
+   "en_text": "so we're not living some tired, drained version of ourselves.",
+   "zh_text": "这样我们就不会活成疲惫不堪、精力耗尽的自己。",
+   "highlights": []
+  },
+  {
+   "id": 228,
+   "start": 678.542,
+   "end": 679.676,
+   "en_text": "Thank you.",
+   "zh_text": "谢谢。",
+   "highlights": []
+  },
+  {
+   "id": 229,
+   "start": 679.71,
+   "end": 683.447,
+   "en_text": "(Cheers and applause)",
+   "zh_text": "（欢呼和掌声）",
+   "highlights": []
+  }
+ ]
+}
