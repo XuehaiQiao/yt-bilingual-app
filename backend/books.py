@@ -7,6 +7,10 @@
   Standard Ebooks 等），解析成段落，再与本地译文按下标对齐返回 ``{en, zh}``；
 - 正常请求每次都抓取；抓取失败时只允许用进程内 5 分钟缓存降级，
   绝不写磁盘、不建原文表。
+- 本地没有译文时，调用方可以把全局译文缓存（``book_chapter_translations``，
+  由 ``book_translation.py`` 读写）按下标传进来，用
+  :func:`merge_cached_translations` 合并；本模块仍然不 import ``llm``、不连
+  数据库。
 
 本模块只负责「书单校验 + 公版源抓取/解析/对齐」。HTTP 语义在
 ``routes_books.py``；不 import ``llm``、不连数据库、不写任何状态文件。
@@ -29,13 +33,14 @@ import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 from urllib.parse import urlsplit
 from urllib.robotparser import RobotFileParser
 
 import requests
 
 import config
+import languages
 
 logger = logging.getLogger("linguatrek.books")
 
@@ -1039,7 +1044,106 @@ def get_chapter_source(book: dict, number: int) -> SourceResult:
         raise BookSourceUnavailable(f"公版源没有第 {number} 章")
     return result
 
-def build_chapter_payload(manifest: dict, book_id: str, number: int) -> dict:
+def translation_status(values: Sequence[str | None]) -> str:
+    """按段落译文的完整度返回 ``cached`` / ``partial`` / ``missing``。
+
+    - ``cached``：每个英文段落都有非空译文（本地书稿或全局缓存）；
+    - ``partial``：只有一部分段落有译文（其余 ``zh: null``，可重试补齐）；
+    - ``missing``：整章都还没有译文。
+
+    这三个值直接出现在章节 payload 的 ``translationStatus`` 字段里，前端据此
+    决定是否调用 ``POST .../translate``；缺省（历史行为）等价于 ``missing``。
+    """
+    total = len(values)
+    if total == 0:
+        return "missing"
+    present = sum(
+        1 for value in values if isinstance(value, str) and bool(value.strip())
+    )
+    if present == total:
+        return "cached"
+    if present == 0:
+        return "missing"
+    return "partial"
+
+
+def merge_cached_translations(
+    payload: dict,
+    cached_paragraphs: Sequence[str | None] | None,
+    *,
+    model: str | None = None,
+    updated_at: int | None = None,
+) -> dict:
+    """把全局译文缓存（按段落下标对齐）合并进章节 payload。
+
+    - payload 里**已有**的译文（本地书稿 ``content/books/.../*.zh.json``）优先，
+      缓存只补 ``zh: null`` 的段落；
+    - 合并后重算 ``missingTranslations`` / ``translationStatus`` / ``translated``；
+    - 带 ``model`` / ``updated_at`` 时写入 ``translationModel`` /
+      ``translationUpdatedAt``（UTC ISO8601），用于前端/运维追溯；
+    - 本函数不做 IO，缓存内容由 ``book_translation.py`` 读出后传入。
+    """
+    if cached_paragraphs is None:
+        return payload
+    paragraphs = payload.get("paragraphs")
+    if not isinstance(paragraphs, list):
+        return payload
+
+    used_cache = 0
+    for index, item in enumerate(paragraphs):
+        if not isinstance(item, dict):
+            continue
+        existing = item.get("zh")
+        if isinstance(existing, str) and existing.strip():
+            continue
+        value = (
+            cached_paragraphs[index] if index < len(cached_paragraphs) else None
+        )
+        if isinstance(value, str) and value.strip():
+            item["zh"] = value.strip()
+            used_cache += 1
+
+    values = [
+        item.get("zh") if isinstance(item, dict) else None for item in paragraphs
+    ]
+    status = translation_status(values)
+    payload["missingTranslations"] = sum(
+        1
+        for value in values
+        if not (isinstance(value, str) and value.strip())
+    )
+    payload["translationStatus"] = status
+    # 兼容旧字段：只要本章已经有完整译文，就允许客户端按「已翻译」渲染。
+    if status == "cached":
+        payload["translated"] = True
+    if used_cache:
+        payload["translationSource"] = (
+            "mixed" if payload.get("translationSource") == "bundled" else "cache"
+        )
+    if model is not None:
+        payload["translationModel"] = model
+    if updated_at is not None:
+        payload["translationUpdatedAt"] = time.strftime(
+            "%Y-%m-%dT%H:%M:%SZ", time.gmtime(updated_at / 1000)
+        )
+    return payload
+
+
+def build_chapter_payload(
+    manifest: dict,
+    book_id: str,
+    number: int,
+    *,
+    target_lang: str = languages.DEFAULT_TARGET_LANG,
+) -> dict:
+    """抓取一章原文并与本地译文对齐；``target_lang`` 决定使用哪份本地译文。
+
+    本地书稿目前只有中文（``*.zh.json``），因此只有 ``target_lang=zh-CN`` 时
+    才会读取它；其他目标语言由调用方合并全局缓存（见
+    :func:`merge_cached_translations`）。字段 ``translationStatus`` 为
+    ``cached`` / ``partial`` / ``missing``，无译文时保持历史兼容的 ``zh: null``。
+    """
+    lang = languages.resolve_target_lang(target_lang)
     book = find_book(manifest, book_id)
     if book["status"] != "available":
         raise BookNotFound(book_id)
@@ -1050,7 +1154,11 @@ def build_chapter_payload(manifest: dict, book_id: str, number: int) -> dict:
         raise BookNotFound(f"{book_id}/{number}")
 
     translation_path = _chapter_path(book["id"], number)
-    translation = load_translation(book, number) if translation_path.is_file() else None
+    translation = (
+        load_translation(book, number)
+        if lang == languages.DEFAULT_TARGET_LANG and translation_path.is_file()
+        else None
+    )
     source = get_chapter_source(book, number)
     parsed = next((item for item in source.chapters if item.number == number), None)
     if parsed is None:
@@ -1074,6 +1182,7 @@ def build_chapter_payload(manifest: dict, book_id: str, number: int) -> dict:
             missing += 1
         paragraphs.append({"index": index, "en": en, "zh": zh})
 
+    status = translation_status([item["zh"] for item in paragraphs])
     series = next(item for item in manifest["series"] if item["id"] == book["seriesId"])
     return {
         "bookId": book["id"],
@@ -1093,6 +1202,11 @@ def build_chapter_payload(manifest: dict, book_id: str, number: int) -> dict:
         "seriesTitle": series["title"],
         "contentNote": book.get("contentNote"),
         "translationMeta": translation["meta"] if translation else {},
+        "targetLang": lang,
+        "translationStatus": status,
+        "translationSource": "bundled" if translation else "none",
+        "translationModel": None,
+        "translationUpdatedAt": None,
         "source": {
             "provider": book["source"],
             "url": book.get("catalogUrl") or book["sourceUrl"],

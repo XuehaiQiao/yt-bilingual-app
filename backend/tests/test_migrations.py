@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0018_imported_books"
+HEAD = "0019_book_chapter_translations"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -75,9 +75,42 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "articles", "article_paragraphs", "article_translations", "article_progress",
         "exam_sessions", "exam_answers",
         "credit_transactions", "app_settings",
+        "imported_books", "imported_book_translations",
+        "book_chapter_translations",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD
+
+    # 内置公版书按需翻译的全局缓存（0019_book_chapter_translations）：
+    # 三列主键、译文数组与时间戳；书单是 JSON，所以 book_id 不建外键。
+    book_translations = columns(db, "book_chapter_translations")
+    assert list(book_translations) == [
+        "book_id",
+        "chapter_no",
+        "target_lang",
+        "paragraphs_json",
+        "model",
+        "created_at",
+        "updated_at",
+    ]
+    assert [
+        book_translations[name]["pk"]
+        for name in ("book_id", "chapter_no", "target_lang")
+    ] == [1, 2, 3]
+    for required in (
+        "book_id",
+        "chapter_no",
+        "target_lang",
+        "paragraphs_json",
+        "created_at",
+        "updated_at",
+    ):
+        assert book_translations[required]["notnull"] == 1, required
+    assert book_translations["model"]["notnull"] == 0
+    assert (
+        "ix_book_chapter_translations_book_lang"
+        in index_names(db, "book_chapter_translations")
+    )
 
     # 基线字段与 auth_db.py 一致（名字/顺序/可空性）
     users = columns(db, "users")

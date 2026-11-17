@@ -288,8 +288,8 @@ def test_migration_0011_schema_and_downgrade(tmp_path):
     db = tmp_path / "app.db"
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
 
-    # head 已推进到 0018_imported_books；0011 的四张表仍应齐全。
-    assert revision(db) == "0018_imported_books"
+    # head 已推进到 0019_book_chapter_translations；0011 的四张表仍应齐全。
+    assert revision(db) == "0019_book_chapter_translations"
     assert {
         "articles",
         "article_paragraphs",
