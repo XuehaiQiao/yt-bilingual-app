@@ -1188,6 +1188,20 @@ def get_job(job_id: str):
     job = _load_job_or_http(job_id)
     return _job_view(job)
 
+def _history_mtime_and_updated_at(file_path: str) -> tuple[float | None, int]:
+    """历史 JSON 的 mtime → ``(秒, 毫秒 UTC)``；stat 失败（无 mtime）时 ``(None, 0)``。
+
+    ``updatedAt`` 是给客户端排序/展示用的毫秒时间戳（epoch ms，按 UTC 语义）；
+    ``mtime`` 保留为旧字段（秒）以兼容既有调用方。取不到 mtime 时统一给
+    ``updatedAt=0``（表示未知，不要当 1970 年显示）。
+    """
+    try:
+        mtime = os.path.getmtime(file_path)
+    except OSError:
+        return None, 0
+    return mtime, int(mtime * 1000)
+
+
 @router.get("/api/history")
 def list_history(targetLang: str | None = None):
     """只列**当前目标语言**目录里的视频/剧集缓存。
@@ -1195,6 +1209,9 @@ def list_history(targetLang: str | None = None):
     ``zh-CN`` → ``history/`` 根目录；其他语言 → ``history/<code>/``。
     省略参数按 zh-CN（旧前端/旧移动端行为不变）。根目录里的元数据文件
     （收藏/订阅/词典缓存）永远不当历史卡片；遍历时跳过目录（vi-VN 是目录）。
+
+    每个条目带 ``updatedAt``（历史 JSON 文件 mtime 的毫秒 UTC 时间戳；stat
+    失败取不到 mtime 时为 0，表示未知）。列表按 ``updatedAt`` 降序（最新优先）。
     """
     lang = _target_lang_or_400(targetLang)
     files = []
@@ -1206,10 +1223,10 @@ def list_history(targetLang: str | None = None):
             file_path = os.path.join(history_root, f)
             if not os.path.isfile(file_path):
                 continue  # 语言子目录（vi-VN/ 等）不参与列表
+            mtime, updated_at = _history_mtime_and_updated_at(file_path)
             try:
                 with open(file_path, "r", encoding="utf-8") as file:
                     data = json.load(file)
-                    mtime = os.path.getmtime(file_path)
                     files.append({
                         "filename": f,
                         "videoId": data.get("videoId"),
@@ -1218,14 +1235,22 @@ def list_history(targetLang: str | None = None):
                         "modelName": _model_display_name(data.get("model")),
                         "studyCount": int(data.get("studyCount") or 0),
                         "mtime": mtime,
+                        "updatedAt": updated_at,
                         "targetLang": lang,
                     })
             except Exception as e:
                 print(f"Error reading history file {f}: {e}")
-                files.append({"filename": f, "metadata": {}, "targetLang": lang})
+                files.append({
+                    "filename": f,
+                    "metadata": {},
+                    "targetLang": lang,
+                    "mtime": mtime,
+                    "updatedAt": updated_at,
+                })
 
-    # Sort files by the local processing time (mtime), descending
-    files.sort(key=lambda x: x.get("mtime", 0), reverse=True)
+    # Sort files by the local processing time (mtime), descending.
+    # updatedAt 是同一 mtime 的毫秒表示；取不到 mtime 的条目（0）沉底。
+    files.sort(key=lambda x: x.get("updatedAt") or 0, reverse=True)
     return files
 
 

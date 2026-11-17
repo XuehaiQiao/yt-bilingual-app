@@ -1128,7 +1128,7 @@ cd ../frontend && npx tsc -b && npm run check:i18n
 | `POST /api/process-video-stream` | 同上 | zh-CN | 所有 SSE 事件带 `targetLang`；`meta` 另带 `sourceLang`、`promptVersion` |
 | `POST /api/process-subtitle` | 同上 | zh-CN | 缓存 payload 带 `target_lang`；非中文 `summary` 为空 + `summary_kind="episode_label"` |
 | `GET /api/shows/{show_id}/processed` | `?targetLang=` | zh-CN | 返回 `{processed, targetLang}` |
-| `GET /api/history`、`GET/DELETE /api/history/{filename}` | `?targetLang=` | zh-CN | 列表项加 `targetLang`；只在对应语言目录解析/删除 |
+| `GET /api/history`、`GET/DELETE /api/history/{filename}` | `?targetLang=` | zh-CN | 列表项加 `targetLang`、`updatedAt`（历史 JSON 文件 mtime 的毫秒 UTC 时间戳，取不到 mtime 时为 0 表示未知；列表按它降序）；只在对应语言目录解析/删除 |
 | `POST /api/define` | body `targetLang`（也接受 `target_lang`） | zh-CN | 加 `targetLang`，可选 `pos_label` / `example_translation` |
 
 - 语言代码经 `languages.resolve_target_lang()` 规范化（`zh`/`vi` 等别名可用）；**非法代码 400** `{"detail":"不支持的语言代码：xx-XX"}`。
