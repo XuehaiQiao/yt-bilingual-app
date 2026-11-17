@@ -17,8 +17,6 @@ import {
     BookMarked,
     BookOpen,
     ChevronDown,
-    ChevronLeft,
-    ChevronRight,
     Download,
     Eye,
     EyeOff,
