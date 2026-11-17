@@ -16,6 +16,7 @@
 - routes_videos.py   估价 / 处理 / 流式 / 历史 / 频道更新
 - routes_content.py  本地剧集 + 句子精背
 - routes_user.py     词典 / 收藏 / 订阅
+- routes_vocabulary.py 单词本词表目录 / 分页搜索 / 词级 CEFR（公开只读）
 - routes_review.py   生词复习队列 / 作答 / 暂停 / 统计（M2）
 - routes_quiz.py     理解题出题 / 作答 / 结果（M3）
 - routes_events.py   学习事件上报 / 周报（M5）
@@ -86,6 +87,7 @@ import routes_recommend
 import routes_review
 import routes_user
 import routes_videos
+import routes_vocabulary
 import storage
 
 
@@ -114,6 +116,7 @@ _PUBLIC_API_PREFIXES = (
     "/api/library/",
     "/api/books/",
     "/api/content/difficulty/",
+    "/api/vocabulary/",
 )
 _PUBLIC_API_EXACT = frozenset(
     {
@@ -272,6 +275,7 @@ app.include_router(routes_videos.router)
 app.include_router(routes_content.router)
 app.include_router(routes_difficulty.router)
 app.include_router(routes_user.router)
+app.include_router(routes_vocabulary.router)
 app.include_router(routes_review.router)
 app.include_router(routes_quiz.router)
 app.include_router(routes_events.router)

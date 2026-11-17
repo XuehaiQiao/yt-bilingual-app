@@ -3,6 +3,9 @@
 运行期唯一词→频带映射，用于内容难度管线的词汇覆盖率（UTR）与生词率估算
 （`backend/difficulty.py`）。**只读、随仓库分发、无 LLM、无数据库。**
 
+> 单词本页面的 CEFR A1–C1 词表与词级等级也派生自本频表；GRE/CET4/CET6
+> 考试词表与释义索引见 [`content/wordlists/`](../wordlists/README.md)。
+
 ## 文件
 
 | 文件 | 用途 |

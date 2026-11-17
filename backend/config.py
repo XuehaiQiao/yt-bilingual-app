@@ -87,6 +87,15 @@ WORDLIST_PATH = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "wordlist", "frequency_bands.v1.json"),
 )
 
+# 单词本词表（V1，见 vocabulary.py / routes_vocabulary.py / scripts/build_word_lists.py）：
+# content/wordlists/ 下的 exam-bands.v1.json（GRE/CET4/CET6，ECDICT tag）
+# 与 lexicon.v1.json（词→音标/首行中文释义）随仓库分发；CEFR A1–C1 仍从上面
+# 的 WORDLIST_PATH 派生，不复制第二份。测试可指向 tmp 副本验证 503/404。
+VOCABULARY_DIR = os.environ.get(
+    "VOCABULARY_DIR",
+    os.path.join(_BACKEND_DIR, "..", "content", "wordlists"),
+)
+
 # curated 视频的英文字幕构建期缓存（见 scripts/backfill_content_difficulty.py）：
 # data/ 已 gitignore，不入库；只存字幕正文供离线难度计算，运行期不联网。
 CURATED_SUBTITLES_DIR = os.environ.get(

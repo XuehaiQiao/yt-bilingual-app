@@ -9,6 +9,7 @@
 | `exam/` | 考试练习题库（V2，草稿待教研审校）：30 道自编题 = 15 词汇 + 5 语法 + 10 阅读（3 段短文），见 [exam/README](./exam/README.md) |
 | `blog/` | 官方博客的 4 篇 Markdown 文章（V1，可发布草稿待运营复核），见 [blog/README](./blog/README.md) |
 | `library/` | 本地免费资源库：55 个视频（A1–C2）的预置双语字幕 + 67 篇文章（3 篇原创 + 64 篇公版，无需账号、运行时零 LLM），见 [library/README](./library/README.md) |
+| `wordlists/` | 单词本词表：GRE 7,479 / CET4 3,837 / CET6 5,396（去重 11,307）+ 10k CEFR 频表派生的 A1–C1 与释义索引；C2 未建模（`available:false`），公开只读，见 [wordlists/README](./wordlists/README.md) |
 | `curated.json` | 人工精选推荐池（V1 规则推荐，草稿待运营复核）：30 条真实 YouTube 视频，A2–C1 / 5 主题 / 4–32 分钟，见下文 |
 
 ## curated.json（人工精选推荐池）

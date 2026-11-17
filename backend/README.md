@@ -159,6 +159,43 @@ data/                                  # DATA_DIR（gitignore）
 - 前端：`lib/favorites.ts` 提供 `fetchFavorites/addFavorite/removeFavorite`，`replaceAllFavorites` 仅为兼容路径；App 先乐观更新，失败回滚 + toast。
 - 测试：`venv/bin/python -m pytest tests/test_favorites_api.py -q`（全离线：增删/幂等/400/404/排序/旧数据/墓碑/并发）。
 
+## 单词本词表与等级 API（公开只读）
+
+「单词本」页面的词表与词级 CEFR 数据。**没有数据库迁移**：只读
+`content/wordlist/frequency_bands.v1.json`（CEFR A1–C1 来源）与
+`content/wordlists/{exam-bands,lexicon}.v1.json`（GRE/CET4/CET6 成员 +
+音标/首行中文释义），随仓库分发、运行期零 LLM。加载/校验见
+[`vocabulary.py`](./vocabulary.py)，路由见
+[`routes_vocabulary.py`](./routes_vocabulary.py)，数据口径见
+[`content/wordlists/README.md`](../content/wordlists/README.md) 与
+[`NOTICE.md`](../content/wordlists/NOTICE.md)。
+
+| 端点 | 请求 | 成功 | 失败 |
+|---|---|---|---|
+| `GET /api/vocabulary/lists` | — | `200` 数组：CEFR A1–C2（C2 `available:false`）+ GRE/CET4/CET6；每项含 `id/label/count/source/license/notice/approximate/available/note/version` | `503` 词表文件缺失/损坏/完整性失败 |
+| `GET /api/vocabulary/lists/{id}` | `page`（≥1）、`pageSize`（1–200，默认 50）、`q`（≤64 字符） | `200 {items:[{word,phonetic,translation,cefrLevel}], total, page, pageSize, hasMore}` | `404` id 不存在或 C2 未建模；`503`；`422` 页码/页大小越界；`400` q 超长 |
+| `GET /api/vocabulary/level` | `words=a,b,c`（逗号分隔或重复传参，≤100） | `200 {词: "A1"…"C1"|"C1+"|null}` | `400` words 为空/超过 100；`503` 频表缺失 |
+
+- **公开只读**：`main.py` 的 `_PUBLIC_API_PREFIXES` 含 `/api/vocabulary/`，
+  不要求登录、也不签发游客 Cookie；响应 `Cache-Control: public, max-age=3600`。
+- **CEFR 口径**：A1≤1k / A2≤2k / B1≤4k / B2≤7k / C1≤10k（频带估计，不是
+  官方 CEFR 词表）；C2 **未建模**，目录标 `available:false`，详情 `404`，
+  不拿 GRE 冒充。
+- **考试词表口径**：成员来自 ECDICT `tag` 列（`approximate:false`；不是词频
+  近似），但 ECDICT 是整理库、不是考试机构官方发布。一个词可同时在多表。
+- **词级等级**：在 10k 频表（含 forms 折回 lemma）→ A1–C1；合法英文词但
+  不在频表 → `C1+`（不查 ECDICT，所以本地词典缺失时行为一致）；非法 token
+  → `null`。考试列表里 `cefrLevel:null` 表示不在 CEFR 频表，展开时用
+  `/level` 显示 `C1+`。
+- **分页/搜索**：CEFR 按频表秩、考试按 ECDICT `frq`/`bnc` 升序；`q` 大小写
+  不敏感，前缀匹配优先、其次包含。
+- **重建**：`scripts/build_word_lists.py`（ECDICT CSV 不提交；`--check`
+  离线校验，给 `--ecdict-csv` 做完整重建对比）。产物/许可/近似口径见
+  `content/wordlists/README.md`。
+- **测试**：`venv/bin/python -m pytest tests/test_vocabulary_api.py tests/test_word_lists_build.py -q`
+  （构建幂等 + 目录/分页/搜索/等级/C1+/C2 unavailable/参数上限/503/公开
+  只读无游客 Cookie）。
+
 ## 复习引擎（M2：FSRS-6 + 队列 + 复习日志）
 
 把收藏夹升级成「可调度的记忆系统」：每个词有状态、FSRS 参数、到期时间与复习流水。
