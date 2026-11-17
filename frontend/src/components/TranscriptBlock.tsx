@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Star, Languages } from 'lucide-react';
 import { isUntranslated, type TranslationMode } from '../lib/transcript';
+import { cleanReadingWord } from '../lib/useReadingHighlights';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { motion } from 'framer-motion';
@@ -14,20 +15,31 @@ export function cn(...inputs: ClassValue[]) {
 export type WordClickHandler = (word: string, e: React.MouseEvent) => void;
 
 /** Strip leading/trailing punctuation for dictionary lookup. */
-const cleanWord = (token: string) => token.replace(/^[^A-Za-z0-9']+|[^A-Za-z0-9']+$/g, '');
+const cleanWord = (token: string) => cleanReadingWord(token);
 
 /** Render plain text with each word clickable for dictionary lookup. */
-export const ClickableWords: React.FC<{ text: string; onWordClick: WordClickHandler }> = ({ text, onWordClick }) => (
+export const ClickableWords: React.FC<{
+    text: string;
+    onWordClick: WordClickHandler;
+    /** Optional reading-difficulty emphasis (amber underline/background). */
+    isHighlighted?: (word: string) => boolean;
+}> = ({ text, onWordClick, isHighlighted }) => (
     <>
         {text.split(/(\s+)/).map((token, i) => {
             const word = cleanWord(token);
             if (!word || /^\s+$/.test(token)) return <span key={i}>{token}</span>;
+            const highlighted = isHighlighted?.(word) ?? false;
             return (
                 <span
                     key={i}
                     data-word-hit={word}
+                    data-highlight={highlighted ? '1' : undefined}
                     onClick={(e) => { e.stopPropagation(); onWordClick(word, e); }}
-                    className="cursor-pointer rounded-sm hover:bg-white/10 transition-colors"
+                    className={cn(
+                        'cursor-pointer rounded-sm transition-colors hover:bg-white/10',
+                        highlighted
+                            && 'bg-amber-400/[0.08] underline decoration-amber-400/50 decoration-dotted decoration-1 underline-offset-[3px]',
+                    )}
                 >
                     {token}
                 </span>

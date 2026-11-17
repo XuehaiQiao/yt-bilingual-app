@@ -15,12 +15,13 @@
 | `HomeRecommendations.tsx` | 首页 | 「为你推荐」横排卡片（user request #10）：区间副标题/初步推荐徽章、缩略图+难度徽章+时长+标题+理由、水平滚动、「换一批」seed 轮转、加载/失败/空态；点击整卡复用 `EstimateDialog` 估价流程 |
 | `LibrarySection.tsx` | 首页 | 「免费资源」窗（user request #11）：视频/文章分段 tab、55 张预置视频卡（编辑等级 chip/频道/时长/计算带/免费标识）、A1–C2 等级筛选 chips（含数量）、水平滚动、加载/失败/空态；游客可用，点击直接进本地内容，不进入估价流程 |
 | `LibraryArticleReader.tsx` | 免费文章 | 本地阅读器（user request #11，2026-11-17 补点词/左右对照）：标题/等级/词数/作者/许可、全部/隐藏译文切换、逐段 en+zh、复用 `ClickableWords`+全局 `WordPopover`（source 标免费文章 id/标题）；≥lg 左右两栏、<lg 上下、隐藏译文单栏；内容来自 `/api/library/articles/{id}`，不挂载阅读 API 客户端，没有「翻译本文」按钮，不触发 `/api/article/*` |
-| `VocabAxis.tsx` | 我的·设置 | 英语水平轴（CEFR A1–C2 六站，见 specs/004）；选择即写入 localStorage，`showTitle=false` 时由调用方给标题 |
+| `VocabAxis.tsx` | 我的·设置 | 高亮难度轴（CEFR A1–C2 六站，见 specs/004）：只决定哪些词被标亮，不是能力评级；选择即写入 localStorage，`showTitle=false` 时由调用方给标题 |
 | `SentencePacks.tsx` | 首页 | 句子精背入口卡（5 册 + 进度） |
 | `VideoPlayer.tsx` | 学习页 | YouTube 播放器封装：seek/播放暂停命令、倍速、全屏 |
 | `LocalEpisodeStage.tsx` | 学习页（本地剧集） | 本地剧集媒体占位卡：剧名/集名、取景图标、模拟播放（播放/暂停、可点击进度、当前/总时长） |
 | `TranscriptView.tsx` | 学习页 | 字幕列表：**Apple Music 式跟随滚动**、memo 化（只在换句时重渲染）、用户滚动时暂停跟随 |
 | `TranscriptBlock.tsx` | 学习页 | 单句：时间戳、译文显隐、收藏星标、听写模糊；**导出 `HighlightedText`/`ClickableWords`/`cn`** 供他处复用 |
+| `ReadingHighlight.tsx` | 四个阅读器 | 阅读标亮 UI：`ReadingHighlight` 包装 `ClickableWords`（淡琥珀下划线/背景，不拦截点词），`ReadingHighlightToggle` 是工具栏「标亮生词」开关（默认开、localStorage 记忆，切换后即时重算） |
 | `BilingualRow.tsx` | 阅读器 | 双语段落布局原语：≥lg 左英右中同段同行（同一滚动容器），<lg 英文在上中文在下；译文隐藏时调用方传 `twoColumn=false` 即英文单栏；英文/译文槽位分离，译文栏不参与点词 |
 | `WordPopover.tsx` | 全局 | 点查词典卡：音标/释义/例句/TTS/入生词本；卡片打开后单击另一个单词直接切词（触屏无 hover 也一次命中），点空白才关闭 |
 | `SentenceView.tsx` | 句子精背 | 背诵视图：册切换、按天卡片、自测遮中文、复习打卡、搜索、单句分享卡 |
@@ -30,7 +31,7 @@
 | `DiscoverScreen.tsx` | 内容发现 | 主题搜索全屏视图（specs/017）：搜索框 + 示例、约 10–20 秒 loading、3–5 张候选卡（缩略图/频道/时长/A1–C1/理由/字幕有或未知/已学过）、「换一批」force、空/失败/degraded 提示与重试；点击候选接现有估价流程，上次结果留在 sessionStorage |
 | `ReaderScreen.tsx` | 读文章 | 阅读器全屏视图（specs/019）：我的文章列表、URL/粘贴正文双 tab 导入（loading/SSRF/超限/网络错误可读）、阅读态标题与英文段落、全部/隐藏译文切换、缺译文时翻译（真实进度、失败段可重试）、点词复用 `WordPopover`（source 标文章 id/标题）、滚动节流保存进度并恢复、删除确认、空/错误态、中越双语与 375px；≥lg 左右对照、<lg 上下；段落菜单与选中文本分享卡 |
 | `BlogScreen.tsx` | 官方博客 | 官方博客全屏视图（specs/020）：列表（日期/阅读时长/标题/摘要/标签/RSS）→ 详情（`react-markdown` 排版、文章中文标注、来源文章标签）；加载/错误/空态、首页底部入口、Giscus 预留（未配置显示「评论即将开放」）、中越双语与 375px；正文来自仓库 `content/blog/*.md`，无 CMS |
-| `AccountScreen.tsx` | 用户页 | 登录用户的账号页（specs/023）：头像占位（首字母）+ 用户名内联改名（`PATCH /api/user/profile`）、邮箱、注册日期；余额卡（`credits` / 本月 AI 花费 `monthSpendUsd` / 今日学习分钟，附「额度由管理员发放」）；设置（界面/翻译语言复用 `LanguageSettingsModal`、默认模型复用 `ModelBar`、英语水平内联 `VocabAxis`（选择即保存）、安装到桌面复用 `PwaInstallButton`）；关于（版本号、官方博客入口、隐私/协议占位不造假链接）；退出登录与仅管理员可见的「管理控制台」入口（打开独立整页控制台）；游客显示登录提示；中越双语与 375px |
+| `AccountScreen.tsx` | 用户页 | 登录用户的账号页（specs/023）：头像占位（首字母）+ 用户名内联改名（`PATCH /api/user/profile`）、邮箱、注册日期；余额卡（`credits` / 本月 AI 花费 `monthSpendUsd` / 今日学习分钟，附「额度由管理员发放」）；设置（界面/翻译语言复用 `LanguageSettingsModal`、默认模型复用 `ModelBar`、高亮难度内联 `VocabAxis`（选择即保存，首次按能力档案高带预填）、安装到桌面复用 `PwaInstallButton`）；关于（版本号、官方博客入口、隐私/协议占位不造假链接）；退出登录与仅管理员可见的「管理控制台」入口（打开独立整页控制台）；游客显示登录提示；中越双语与 375px |
 | `AdminConsoleScreen.tsx` | 管理控制台 | 独立整页管理员控制台（specs/021 + 023）：概览（总用户/近 7 天新增/今日活跃/游客/今日 AI 花费/失败任务）、用户（搜索、每页 20 条分页、调余额、封禁/解封，不能操作自己/最后一个管理员）、设置（维护模式开关 + 公告，公开公告条待接入）、用量与健康（按天×功能、迁移版本/磁盘/最近 failed jobs）；仅管理员可进，非管理员被 toast 拦回首页；中越双语；表格各自横向滚动，375px 不撑破页面 |
 | `EstimateDialog.tsx` | 首页 / 内容发现 | 共用的处理前估价流程：`/api/estimate-cost` loading 覆盖层 → `ModelSelectionModal` → 确认后交给调用方开始处理；首页链接输入与发现页候选点击都走它 |
 | `ReportScreen.tsx` | 本周报告 | 本周报告全屏视图（M5 / specs/015）：周一到今天日期范围、三个数字（无答题显示「暂无」）、一句事实/下一步/连续天数、证据句子与「回看 mm:ss」、明日到期词入口；加载/错误/空数据态，中越双语、375px 单列 |

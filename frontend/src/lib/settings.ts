@@ -26,6 +26,10 @@ const LEGACY_LEVELS: Record<string, VocabLevelId> = {
     advanced: 'deep-space',
 };
 
+/** Fired whenever the highlighter level is saved, so mounted readers/rows can
+ *  recompute without a reload (the `storage` event only covers other tabs). */
+export const VOCAB_LEVEL_EVENT = 'yt-bilingual:vocab-level';
+
 export function loadVocabLevel(): VocabLevelId {
     const saved = localStorage.getItem(VOCAB_LEVEL_KEY) || '';
     if (VOCAB_LEVELS.some(l => l.id === saved)) return saved as VocabLevelId;
@@ -33,8 +37,43 @@ export function loadVocabLevel(): VocabLevelId {
     return 'orbit';
 }
 
+/**
+ * True when the learner ever saved the slider (current or legacy ids).
+ *
+ * The ability profile seeds the slider only on the very first run; once a
+ * choice exists it is never overwritten, even when the profile later changes.
+ */
+export function hasSavedVocabLevel(): boolean {
+    const saved = localStorage.getItem(VOCAB_LEVEL_KEY) || '';
+    return VOCAB_LEVELS.some(l => l.id === saved) || saved in LEGACY_LEVELS;
+}
+
 export function saveVocabLevel(level: VocabLevelId) {
     localStorage.setItem(VOCAB_LEVEL_KEY, level);
+    window.dispatchEvent(new CustomEvent<VocabLevelId>(VOCAB_LEVEL_EVENT, { detail: level }));
+}
+
+/** CEFR band → slider stop. The slider's internal ids stay as they are. */
+const CEFR_TO_VOCAB_LEVEL: Record<string, VocabLevelId> = {
+    A1: 'liftoff',
+    A2: 'orbit',
+    B1: 'moonwalk',
+    B2: 'interstellar',
+    C1: 'deep-space',
+    C2: 'supernova',
+};
+
+/**
+ * Map a placement/ability band to the slider's stop, using the *high* edge of
+ * the interval (`A2–B1` → B1). Returns null when the band cannot be parsed so
+ * callers keep the existing default instead of guessing.
+ */
+export function vocabLevelFromCefr(band: string | null | undefined): VocabLevelId | null {
+    if (!band) return null;
+    const matches = String(band).toUpperCase().match(/\b(A1|A2|B1|B2|C1|C2)\b/g);
+    if (!matches || matches.length === 0) return null;
+    // Interval labels are ordered low → high; the last match is the high band.
+    return CEFR_TO_VOCAB_LEVEL[matches[matches.length - 1]] ?? null;
 }
 
 // Current global model, chosen in the home-screen model bar. Every LLM call

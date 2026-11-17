@@ -33,7 +33,8 @@ import {
 import { motion } from 'framer-motion';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
-import { ClickableWords } from './TranscriptBlock';
+import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { ShareCardDialog } from './ShareCardDialog';
 import { classifyPublicDomainBookUrl } from '../lib/publicDomain';
@@ -244,6 +245,11 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const [shareData, setShareData] = useState<ShareCardData | null>(null);
     const [menuIdx, setMenuIdx] = useState<number | null>(null);
     const [selection, setSelection] = useState<{ idx: number; text: string; left: number; top: number } | null>(null);
+    // Words above the slider threshold get the restrained amber mark. The hook
+    // caches per word and fails silently, so reading never waits on it.
+    const highlight = useReadingHighlights(
+        article ? article.paragraphs.map((paragraph) => paragraph.text) : [],
+    );
 
     const mountedRef = useRef(true);
     const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -1089,10 +1095,18 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                     <ArrowLeft className="w-4 h-4" />
                     {t('reader.backToList')}
                 </button>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                     <span className="hidden sm:inline text-xs text-zinc-500">
                         {t('reader.wordLookupHint')}
                     </span>
+                    {article && (
+                        <ReadingHighlightToggle
+                            testId="reader-highlight-toggle"
+                            enabled={highlight.enabled}
+                            onChange={highlight.setEnabled}
+                            levelLabel={highlight.levelLabel}
+                        />
+                    )}
                     {article && translationToggle}
                 </div>
             </div>
@@ -1221,8 +1235,9 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                                         lang={article.lang || undefined}
                                                         className="pr-8 text-base sm:text-[17px] leading-relaxed text-zinc-200 break-words"
                                                     >
-                                                        <ClickableWords
+                                                        <ReadingHighlight
                                                             text={paragraph.text}
+                                                            isHighlighted={highlight.isHighlighted}
                                                             onWordClick={(word, e) => onWordLookup(
                                                                 word,
                                                                 paragraph.text,

@@ -24,7 +24,8 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
-import { ClickableWords } from './TranscriptBlock';
+import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import {
     BooksApiError,
@@ -178,6 +179,10 @@ export function BookReaderScreen({
     const [translating, setTranslating] = useState(false);
     const [translateError, setTranslateError] = useState<TranslationKey | null>(null);
     const [translateNotice, setTranslateNotice] = useState<'done' | 'partial' | null>(null);
+    // Reading difficulty marks, shared with the article/imported-book readers.
+    const highlight = useReadingHighlights(
+        chapter ? chapter.paragraphs.map((paragraph) => paragraph.en) : [],
+    );
     const scrollRef = useRef<HTMLDivElement>(null);
     const saveTimerRef = useRef<number | null>(null);
     const pendingScrollRef = useRef<number | null>(null);
@@ -631,6 +636,12 @@ export function BookReaderScreen({
                                             {t('books.reader.translation')}
                                         </span>
                                         <SegmentedToggle show={showTranslations} onChange={setShowTranslations} />
+                                        <ReadingHighlightToggle
+                                            testId="book-highlight-toggle"
+                                            enabled={highlight.enabled}
+                                            onChange={highlight.setEnabled}
+                                            levelLabel={highlight.levelLabel}
+                                        />
                                         <span className={`min-w-0 text-[11px] ${
                                             translateNotice === 'done' ? 'text-emerald-400/90' : 'text-zinc-600'
                                         }`}>
@@ -794,8 +805,9 @@ export function BookReaderScreen({
                                                                 lang="en"
                                                                 className="text-base leading-relaxed text-zinc-200 break-words"
                                                             >
-                                                                <ClickableWords
+                                                                <ReadingHighlight
                                                                     text={paragraph.en}
+                                                                    isHighlighted={highlight.isHighlighted}
                                                                     onWordClick={(word, event) =>
                                                                         onWordLookup(word, paragraph.en, paragraph.index, event, {
                                                                             id: bookId,

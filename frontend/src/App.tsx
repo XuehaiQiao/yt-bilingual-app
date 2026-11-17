@@ -65,7 +65,14 @@ import {
   type JobSnapshot,
   type PendingJob,
 } from './lib/jobs';
-import { loadVocabLevel, loadModel, VOCAB_LEVELS } from './lib/settings';
+import {
+  hasSavedVocabLevel,
+  loadVocabLevel,
+  loadModel,
+  saveVocabLevel,
+  vocabLevelFromCefr,
+  VOCAB_LEVELS,
+} from './lib/settings';
 import {
   clampSplitRatio,
   DEFAULT_SPLIT_RATIO,
@@ -629,6 +636,21 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       });
     return () => { cancelled = true; };
   }, [placementNonce, dataRevision]);
+
+  // Seed the highlighter once from the ability profile's upper band (A2–B1 →
+  // B1). The slider is a reading preference, not an ability rating, but the
+  // first visit should not make the learner guess: only when they have never
+  // saved a level. Once saved, this effect never writes again. Top-level (not
+  // 我的) so it also applies before the first video/reading is opened; no
+  // profile (guest / not tested yet) keeps the existing default.
+  useEffect(() => {
+    if (placementLoading || placementFailed || !placementProfile) return;
+    if (hasSavedVocabLevel()) return;
+    const seeded = vocabLevelFromCefr(
+      placementProfile.levelBandHigh || placementProfile.cefr,
+    );
+    if (seeded) saveVocabLevel(seeded);
+  }, [placementLoading, placementFailed, placementProfile]);
 
   // Review stats power the practice badge and the Today review card. Guests are
   // skipped: specs/013 makes every review endpoint 403 without an account.

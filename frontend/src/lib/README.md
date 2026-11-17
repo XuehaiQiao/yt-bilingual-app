@@ -9,7 +9,7 @@
 | `username.ts` | 显示名规则（specs/023）：2–24 个字符、中文/英文/数字/下划线/连字符、首尾不能空白；`usernameProblem`（返回首个不满足的 i18n key）、`displayUsername`（无用户名回落邮箱前缀）、`usernameInitial`（头像首字母）。与后端 `account.validate_username` 保持同步 |
 | `transcript.ts` | 字幕核心逻辑：`findActiveIndex`（当前句判定，含 0.8s 前瞻）、SSE 流解析（`consumeSseStream`）、`[未翻译]` 标记判定、译文显示模式（全显/当前句/隐藏）持久化 |
 | `sentences.ts` | 句子精背：类型、拉取、四色语块配色、按册×天的背诵/复习进度持久化 |
-| `settings.ts` | 词汇水平（六站轴）与全局模型（`yt_bilingual_last_model`）的 localStorage 读写，含旧考试制存档迁移 |
+| `settings.ts` | 高亮难度（六站轴）与全局模型（`yt_bilingual_last_model`）的 localStorage 读写：旧考试制存档迁移、`hasSavedVocabLevel()` 首次预填判定、能力档案区间高带 → 轴档位映射；选择变化广播 `yt-bilingual:vocab-level` |
 | `progress.ts` | 每视频播放进度记忆（续播 + "已学 N%"），上限 200 条 |
 | `recent.ts` | 今日「最近学习」的纯数据层：视频（`/api/history` 行）/文章（`ArticleSummary`）/公版书与导入书 localStorage 进度 → 统一条目；按 `lastAt` 倒序（0/未知沉底）、大小写不敏感搜索、类型筛选、每页 10 条分页；不网络、不 UI 文案，时间与标签由组件按当前语言渲染 |
 | `events.ts` | 观看事件上报（M5 / specs/015）：只按播放位置增量计 `watchedSeconds`（暂停/拖动不计），内存队列 ≤50 条批量 POST `/api/events`，`clientEventId` 保证重试幂等；每 60s 播放 / 暂停 / 切后台时 flush（keepalive），失败静默重试一次 |
@@ -18,6 +18,7 @@
 | `shareCard.ts` | 分享卡（计划 D-6）：纯 Canvas 生成 1080×1440 PNG（系统字体栈、深色品牌卡、正文最多 6 行/生词卡 4 行、超出省略、空数据守卫）、`canvasToPngBlob`/`downloadBlob`/`buildShareText`/`copyShareText`；不请求网络、不落服务端 |
 | `favorites.ts` | 收藏按条 API（M1 ④）：`FavoriteItem` 类型、`fetchFavorites/addFavorite/removeFavorite`（后端按条写入、幂等）；`replaceAllFavorites` 仅为旧整文件 PUT 兼容路径，App 不再调用 |
 | `favoriteSource.ts` | 单词本「来源」解析：新收藏用 `source_kind/source_ref/source_title`，旧记录按 `videoId` 形状推断（11 位→视频、`sentence-pack-L*`→句子精背、其他→文章），标题未知时显示来源未知且不可点；IPA/释义拆分与 `L<levelId>` 解析 |
+| `useReadingHighlights.ts` | 阅读标亮（user request 2026-11-17 #3）：按当前 `loadVocabLevel()` 得到阈值，收集段落英文词后调用 `fetchVocabularyLevels`（≤100/批，模块级同词缓存），返回 `wordLevels` Map 与 `isHighlighted`；A1<A2<B1<B2<C1<C1+<C2，C2 不额外标亮；API 失败静默无高亮并保留 `yt_bilingual_reading_highlight` 开关 |
 | `vocabulary.ts` | 单词本词表客户端（specs/005）：`fetchVocabularyLists`（目录，C2 `available:false` 原样透传）、`fetchVocabularyPage`（服务端 `q` 搜索 + 分页，默认 50/页）、`fetchVocabularyLevels`（按 100 词分批查词级 CEFR，保留后端 `null`/`C1+` 不做本地推断） |
 | `review.ts` | 复习引擎客户端（M2 / specs/013）：队列/统计/作答/暂停的类型与四个 API 函数；走 `apiFetch`，按当前翻译目标语言取词，失败抛带 HTTP 状态的 `ReviewApiError` |
 | `quiz.ts` | 理解题客户端（M3 / specs/014）：lesson/题目/作答/结果类型与 `startLesson/getQuestions/answerQuestion/getResult`；走 `apiFetch`（start 自动带 `targetLang`），失败抛带 HTTP 状态的 `QuizApiError` |

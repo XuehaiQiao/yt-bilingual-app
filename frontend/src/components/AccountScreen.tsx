@@ -40,7 +40,7 @@ import type { PlacementProfile } from '../lib/placement';
 import { useInstallPrompt, useOnlineStatus } from '../lib/pwa';
 import { toast, describeApiError } from '../lib/toast';
 import { displayUsername, usernameInitial, usernameProblem } from '../lib/username';
-import { loadVocabLevel, saveVocabLevel, VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
+import { loadVocabLevel, saveVocabLevel, VOCAB_LEVEL_EVENT, VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
 import { LanguageSettingsModal } from './LanguageSettingsModal';
 import { ModelBar } from './ModelBar';
 import { PwaInstallButton } from './PwaInstallButton';
@@ -188,6 +188,18 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
     saveVocabLevel(level);
     toast.success(t('profile.vocabLevelSaved'));
   };
+
+  // App seeds the slider from the ability profile on first run (or another
+  // tab changes it); keep the displayed value in sync without a remount.
+  useEffect(() => {
+    const sync = () => setVocabLevel(loadVocabLevel());
+    window.addEventListener(VOCAB_LEVEL_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(VOCAB_LEVEL_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');

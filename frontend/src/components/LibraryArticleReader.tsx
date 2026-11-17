@@ -9,7 +9,8 @@ import { ArrowLeft, BookOpen, Languages } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { LibraryArticle } from '../lib/library';
 import { difficultyBadge, fetchDifficultyBatch, type DifficultyItem } from '../lib/difficulty';
-import { ClickableWords } from './TranscriptBlock';
+import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 
 interface LibraryArticleReaderProps {
@@ -39,6 +40,8 @@ export function LibraryArticleReader({ article, onClose, onWordLookup }: Library
     // The card shows the computed CEFR input band (M2). Fetch the same row so
     // the detail header cannot disagree with the card.
     const [difficulty, setDifficulty] = useState<DifficultyItem | null>(null);
+    // Same threshold + cache as the other three readers (B1 → mark B2+ words).
+    const highlight = useReadingHighlights(article.paragraphs.map((paragraph) => paragraph.en));
 
     useEffect(() => {
         let cancelled = false;
@@ -141,6 +144,12 @@ export function LibraryArticleReader({ article, onClose, onWordLookup }: Library
                                 {t('library.article.translation.hidden')}
                             </button>
                         </div>
+                        <ReadingHighlightToggle
+                            testId="library-highlight-toggle"
+                            enabled={highlight.enabled}
+                            onChange={highlight.setEnabled}
+                            levelLabel={highlight.levelLabel}
+                        />
                         <span className="text-[11px] text-zinc-600">{t('library.article.noApiHint')}</span>
                     </div>
 
@@ -162,8 +171,9 @@ export function LibraryArticleReader({ article, onClose, onWordLookup }: Library
                                             lang="en"
                                             className="text-base sm:text-[17px] leading-relaxed text-zinc-200 break-words"
                                         >
-                                            <ClickableWords
+                                            <ReadingHighlight
                                                 text={paragraph.en}
+                                                isHighlighted={highlight.isHighlighted}
                                                 onWordClick={(word, e) => onWordLookup(
                                                     word,
                                                     paragraph.en,

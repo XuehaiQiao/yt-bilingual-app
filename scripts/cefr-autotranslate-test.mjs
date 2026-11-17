@@ -466,7 +466,7 @@ for (const [viewport, name] of [
     await block.waitFor({ state: 'visible', timeout: 15000 });
     await block.scrollIntoViewIfNeeded();
     await page.locator('[data-testid=vocab-axis]').waitFor({ state: 'visible' });
-    assert.match(await block.innerText(), /你的英语水平（CEFR）/, 'the settings block must carry the CEFR title');
+    assert.match(await block.innerText(), /高亮难度/, 'the settings block must carry the highlight-difficulty title');
     assert.equal(await block.locator('[data-testid=account-vocab-current]').innerText(), 'A2',
         'the default saved level is A2');
     await noOverflow(page, `profile ${viewport.width}`);
@@ -489,7 +489,7 @@ for (const [viewport, name] of [
     await page.getByText('已保存', { exact: true }).waitFor({ state: 'visible', timeout: 5000 });
     await page.locator('[data-testid=vocab-axis-tagline]').waitFor({ state: 'visible' });
     await sleep(600); // AnimatePresence swaps the band description
-    assert.match(await page.locator('[data-testid=vocab-axis-tagline]').innerText(), /能读懂长文/,
+    assert.match(await page.locator('[data-testid=vocab-axis-tagline]').innerText(), /只标亮高于 C1 的词/,
         'the selected band description must follow the pick');
     await noOverflow(page, 'profile picked 1440');
     await shot(page, '05-profile-cefr-picked-1440');
