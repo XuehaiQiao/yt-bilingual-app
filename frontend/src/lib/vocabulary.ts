@@ -2,10 +2,15 @@
 //
 // Public read-only endpoints, no login required:
 //   GET /api/vocabulary/lists                     → catalog (+ C2 available:false)
-//   GET /api/vocabulary/lists/{id}?page&pageSize&q → paged/searchable entries
+//   GET /api/vocabulary/lists/{id}?page&pageSize&q&level → paged/searchable entries
 //   GET /api/vocabulary/phrases?page&pageSize&q&level&type → paged phrases
 //   GET /api/vocabulary/phrases/{id}               → one phrase (+ notes/license)
 //   GET /api/vocabulary/level?words=a,b,c          → word → A1–C1 / C1+ / null
+//
+// The UI's word-book shows one merged `cefr` list (A1–C1, filterable by level);
+// the backend also keeps the legacy per-level ids (`cefr-a1`…) for older
+// clients. `byLevel` is the merged list's per-level counts — the only source the
+// level-filter chips use, so the UI never hardcodes 1000/2000/3000.
 //
 // Phrases are a separate product surface: the catalog advertises them as an
 // extra list (`id: "phrases"`), but their items have a different shape and the
@@ -21,6 +26,8 @@ export interface VocabularyList {
     id: string;
     label: string;
     count: number;
+    /** Merged `cefr` only: counts per level, e.g. `{A1: 1000, …, C1: 3000}`. */
+    byLevel: Record<string, number>;
     source: string | null;
     license: string | null;
     notice: string | null;
@@ -31,6 +38,10 @@ export interface VocabularyList {
     version: string;
     note: string | null;
 }
+
+/** Frequency-band levels carried by the merged `cefr` list (C2 is not modelled). */
+export type CefrLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1';
+export const VOCABULARY_CEFR_LEVELS: readonly CefrLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1'];
 
 export interface VocabularyEntry {
     word: string;
@@ -93,7 +104,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Catalog in the backend's product order (A1…C1, C2, GRE, CET4, CET6). */
+/** Keep only finite numeric entries (the catalog may grow new metadata). */
+function numberRecord(value: unknown): Record<string, number> {
+    if (!isRecord(value)) return {};
+    const entries: Record<string, number> = {};
+    for (const [key, raw] of Object.entries(value)) {
+        if (Number.isFinite(raw)) entries[key] = Number(raw);
+    }
+    return entries;
+}
+
+/** Catalog in the backend's product order (merged CEFR, C2, GRE, CET4, CET6). */
 export async function fetchVocabularyLists(): Promise<VocabularyList[]> {
     const response = await apiFetch('/api/vocabulary/lists');
     if (!response.ok) throw new Error(await errorDetail(response));
@@ -103,6 +124,7 @@ export async function fetchVocabularyLists(): Promise<VocabularyList[]> {
         id: String(entry.id ?? ''),
         label: String(entry.label ?? ''),
         count: Number.isFinite(entry.count) ? Number(entry.count) : 0,
+        byLevel: numberRecord(entry.byLevel),
         source: typeof entry.source === 'string' ? entry.source : null,
         license: typeof entry.license === 'string' ? entry.license : null,
         notice: typeof entry.notice === 'string' ? entry.notice : null,
@@ -122,6 +144,8 @@ export async function fetchVocabularyPage(
         page?: number;
         pageSize?: number;
         q?: string;
+        /** Merged `cefr` list only: restrict to one frequency band. */
+        level?: CefrLevel | '';
         signal?: AbortSignal;
     } = {},
 ): Promise<VocabularyPage> {
@@ -133,6 +157,7 @@ export async function fetchVocabularyPage(
     });
     const query = (options.q ?? '').trim();
     if (query) params.set('q', query);
+    if (options.level) params.set('level', options.level);
 
     const response = await apiFetch(
         `/api/vocabulary/lists/${encodeURIComponent(listId)}?${params.toString()}`,

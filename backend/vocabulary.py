@@ -4,7 +4,9 @@
 
 - ``content/wordlist/frequency_bands.v1.json``：10,000 lemma 频表
   （wordfreq 3.1.1 数据，CC BY-SA 4.0），CEFR A1–C1 由累计秩锚点派生；
-  复用 :func:`difficulty.load_wordlist` 的加载与完整性校验。
+  复用 :func:`difficulty.load_wordlist` 的加载与完整性校验。目录里的
+  ``cefr`` 是合并后的 A1–C1 词表（可按等级筛选），``cefr-a1``…``cefr-c1``
+  仍保留以兼容旧的单级词表客户端。
 - ``content/wordlists/exam-bands.v1.json``：GRE / CET4 / CET6 索引，
   ``word -> [tagMask, rank]``，标签来自 ECDICT 官方 CSV 的 ``tag`` 列。
 - ``content/wordlists/lexicon.v1.json``：上述词 + CEFR lemma 的
@@ -60,7 +62,11 @@ PHRASE_ITEM_FIELDS: Tuple[str, ...] = (
     "id", "headword", "type", "cefr", "translation", "example", "source",
 )
 
-# 词表顺序按产品需求：CEFR A1–C2，然后 GRE / CET4 / CET6。
+# 词表顺序按产品需求：合并的 CEFR 词表，然后兼容用的单级 A1–C2，
+# 最后 GRE / CET4 / CET6。
+CEFR_LIST_ID = "cefr"
+CEFR_LIST_LABEL = "CEFR 词表"
+CEFR_MERGED_LIST_IDS: Tuple[str, ...] = (CEFR_LIST_ID,)
 CEFR_LIST_IDS: Tuple[str, ...] = (
     "cefr-a1",
     "cefr-a2",
@@ -83,7 +89,7 @@ EXAM_LIST_LABELS: Dict[str, str] = {
     "cet4": "CET-4",
     "cet6": "CET-6",
 }
-LIST_IDS: Tuple[str, ...] = CEFR_LIST_IDS + EXAM_LIST_IDS
+LIST_IDS: Tuple[str, ...] = CEFR_MERGED_LIST_IDS + CEFR_LIST_IDS + EXAM_LIST_IDS
 
 TAG_BITS: Dict[str, int] = {"cet4": 1, "cet6": 2, "gre": 4}
 CEFR_NOTICE = "content/wordlist/NOTICE.md"
@@ -678,6 +684,31 @@ def _cefr_entry(
     }
 
 
+def _cefr_merged_entry(
+    counts: Mapping[str, int],
+    version: str,
+    license_text: str,
+) -> Dict[str, Any]:
+    """合并 A1–C1 的 ``cefr`` 词表目录项（附 ``byLevel`` 供前端 chips）。"""
+    by_level = {level: int(counts.get(level, 0)) for level in CEFR_LEVELS}
+    return {
+        "id": CEFR_LIST_ID,
+        "label": CEFR_LIST_LABEL,
+        "count": sum(by_level.values()),
+        "byLevel": by_level,
+        "source": "wordfreq 3.1.1 → frequency_bands.v1.json",
+        "license": license_text,
+        "notice": CEFR_NOTICE,
+        "approximate": True,
+        "available": True,
+        "version": version,
+        "note": (
+            "合并 A1–C1 频带词表，按频秩排序，可按等级筛选；是频带估计，"
+            "不是官方 CEFR 词表；C2 未建模。"
+        ),
+    }
+
+
 def _exam_entry(
     list_id: str,
     count: int,
@@ -725,6 +756,9 @@ def list_catalog() -> List[Dict[str, Any]]:
     phrases = load_phrases()
     cefr_counts = _cefr_counts(wordlist)
     catalog: List[Dict[str, Any]] = [ _phrase_entry(phrases) ]
+    catalog.append(
+        _cefr_merged_entry(cefr_counts, wordlist.version, wordlist.license)
+    )
 
     for level in CEFR_LEVELS:
         catalog.append(
@@ -795,6 +829,17 @@ def _build_cefr_items(
     return tuple(items)
 
 
+def _build_cefr_merged_items(
+    wordlist: difficulty.Wordlist,
+    lexicon: Lexicon,
+) -> Tuple[Dict[str, Any], ...]:
+    """``cefr`` 合并列表：A1→C1 连续频带，等价于按频秩（rank）排序。"""
+    items: List[Dict[str, Any]] = []
+    for level in CEFR_LEVELS:
+        items.extend(_build_cefr_items(level, wordlist, lexicon))
+    return tuple(items)
+
+
 def _build_exam_items(
     list_id: str,
     exam: ExamBands,
@@ -834,7 +879,9 @@ def _cached_items(
         cached = _ITEM_CACHE.get(key)
         if cached is not None:
             return cached
-        if list_id in CEFR_LIST_LEVELS:
+        if list_id == CEFR_LIST_ID:
+            items = _build_cefr_merged_items(wordlist, lexicon)
+        elif list_id in CEFR_LIST_LEVELS:
             items = _build_cefr_items(CEFR_LIST_LEVELS[list_id], wordlist, lexicon)
         else:
             if exam is None:
@@ -862,13 +909,32 @@ def _filter_items(
     return prefix + contains
 
 
+def _normalize_word_list_level(level: Optional[str]) -> Optional[str]:
+    """词表等级筛选：空 → 不筛选；A1–C1（大小写不敏感），其余 400。"""
+    if level is None:
+        return None
+    value = str(level).strip().upper()
+    if not value:
+        return None
+    if value not in CEFR_LEVELS:
+        raise VocabularyInvalid(
+            "level 必须是 " + "/".join(CEFR_LEVELS) + " 之一。"
+        )
+    return value
+
+
 def list_page(
     list_id: str,
     page: int,
     page_size: int,
     query: Optional[str] = None,
+    level: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """``GET /api/vocabulary/lists/{id}`` 的分页/搜索实现。"""
+    """``GET /api/vocabulary/lists/{id}`` 的分页/搜索/等级筛选实现。
+
+    ``cefr`` 合并 A1–C1；``level`` 缩到单个等级，非法等级 → 400。
+    单级旧词表（``cefr-a1``…）保持兼容，同样接受 ``level``。
+    """
     if list_id == "cefr-c2":
         raise VocabularyNotFound("C2 未建模（available:false），没有可列出的词表。")
     if list_id == PHRASE_LIST_ID:
@@ -884,6 +950,7 @@ def list_page(
     q = (query or "").strip()
     if len(q) > MAX_QUERY_CHARS:
         raise VocabularyInvalid(f"q 最长 {MAX_QUERY_CHARS} 个字符。")
+    normalized_level = _normalize_word_list_level(level)
 
     wordlist = _load_wordlist()
     lexicon = load_lexicon()
@@ -891,6 +958,10 @@ def list_page(
     if list_id in EXAM_LIST_IDS:
         exam = load_exam_bands()
     items = _cached_items(list_id, wordlist, lexicon, exam)
+    if normalized_level is not None:
+        items = tuple(
+            item for item in items if item.get("cefrLevel") == normalized_level
+        )
     filtered = _filter_items(items, q)
     total = len(filtered)
     start = (page - 1) * page_size

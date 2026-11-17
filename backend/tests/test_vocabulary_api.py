@@ -1,7 +1,8 @@
 """单词本词表/等级 API 离线验收（routes_vocabulary.py / vocabulary.py）。
 
-覆盖：公开只读、目录 9 项（6 CEFR + GRE/CET4/CET6）、C2 unavailable、
-分页/搜索/前缀优先、等级映射/C1+/非法 token、大小限制、404/503、缓存头、
+覆盖：公开只读、目录 10 项（合并 cefr + 6 个兼容 CEFR 单级 + GRE/CET4/CET6）、
+合并 CEFR 的分页/搜索/等级筛选、C2 unavailable、分页/搜索/前缀优先、
+等级映射/C1+/非法 token、大小限制、404/503/400、缓存头、合并列表缓存、
 公开端点不签发游客 Cookie。
 """
 from __future__ import annotations
@@ -25,6 +26,7 @@ from tests.vocab_fixtures import (
 builder = load_builder()
 LIST_IDS = [
     "phrases",
+    "cefr",
     "cefr-a1",
     "cefr-a2",
     "cefr-b1",
@@ -83,7 +85,7 @@ def vocab_env(built, monkeypatch):
 # 词表目录
 # ---------------------------------------------------------------------------
 
-def test_lists_catalog_has_6_cefr_plus_3_exam_lists(vocab_env, make_client):
+def test_lists_catalog_has_merged_cefr_plus_legacy_lists(vocab_env, make_client):
     with make_client() as client:
         response = client.get("/api/vocabulary/lists")
     assert response.status_code == 200, response.text
@@ -100,6 +102,37 @@ def test_lists_catalog_has_6_cefr_plus_3_exam_lists(vocab_env, make_client):
     assert phrases["notice"] == "content/wordlists/PHRASES-NOTICE.md"
     assert phrases["note"] == "A2–C1 近似，非官方 CEFR 短语表"
     assert phrases["source"].startswith("LinguaTrek")
+
+    merged = by_id["cefr"]
+    assert merged["label"] == "CEFR 词表"
+    assert merged["count"] == 10_000
+    assert merged["byLevel"] == {
+        "A1": 1_000,
+        "A2": 1_000,
+        "B1": 2_000,
+        "B2": 3_000,
+        "C1": 3_000,
+    }
+    assert merged["available"] is True
+    assert merged["approximate"] is True
+    assert merged["license"] == "CC-BY-SA-4.0"
+    assert merged["notice"] == "content/wordlist/NOTICE.md"
+    assert merged["source"].startswith("wordfreq")
+    assert merged["version"]
+    assert "C2" in merged["note"] and "未建模" in merged["note"]
+    assert set(merged) == {
+        "id",
+        "label",
+        "count",
+        "byLevel",
+        "source",
+        "license",
+        "notice",
+        "approximate",
+        "available",
+        "version",
+        "note",
+    }
 
     for level, count in (
         ("cefr-a1", 1_000),
@@ -197,6 +230,181 @@ def test_cefr_a1_pagination(vocab_env, make_client):
     assert beyond_payload["total"] == 1_000
     assert beyond_payload["hasMore"] is False
     assert len(max_page.json()["items"]) == 200
+
+
+def test_merged_cefr_pagination(vocab_env, make_client):
+    with make_client() as client:
+        first = client.get(
+            "/api/vocabulary/lists/cefr", params={"page": 1, "pageSize": 3}
+        )
+        second = client.get(
+            "/api/vocabulary/lists/cefr", params={"page": 2, "pageSize": 3}
+        )
+        last = client.get(
+            "/api/vocabulary/lists/cefr", params={"page": 5_000, "pageSize": 2}
+        )
+        beyond = client.get(
+            "/api/vocabulary/lists/cefr", params={"page": 5_001, "pageSize": 2}
+        )
+        max_page = client.get(
+            "/api/vocabulary/lists/cefr", params={"page": 1, "pageSize": 200}
+        )
+    assert first.status_code == 200, first.text
+    payload = first.json()
+    assert payload["total"] == 10_000
+    assert payload["page"] == 1
+    assert payload["pageSize"] == 3
+    assert payload["hasMore"] is True
+    assert payload["items"][0]["word"] == "the"
+    assert payload["items"][0]["cefrLevel"] == "A1"
+    assert set(payload["items"][0]) == {
+        "word",
+        "phonetic",
+        "translation",
+        "cefrLevel",
+    }
+    # A1→C1 连续频带：按频秩排序等价于按等级顺序。
+    assert [item["cefrLevel"] for item in payload["items"]] == ["A1", "A1", "A1"]
+    second_payload = second.json()
+    assert second_payload["page"] == 2
+    assert second_payload["hasMore"] is True
+    assert second_payload["items"] != payload["items"]
+    last_payload = last.json()
+    assert last_payload["hasMore"] is False
+    assert len(last_payload["items"]) == 2
+    assert all(item["cefrLevel"] == "C1" for item in last_payload["items"])
+    beyond_payload = beyond.json()
+    assert beyond_payload["items"] == []
+    assert beyond_payload["total"] == 10_000
+    assert beyond_payload["hasMore"] is False
+    assert len(max_page.json()["items"]) == 200
+
+
+def test_merged_cefr_level_filter(vocab_env, make_client):
+    with make_client() as client:
+        a1 = client.get(
+            "/api/vocabulary/lists/cefr",
+            params={"level": "A1", "pageSize": 200},
+        ).json()
+        b2 = client.get(
+            "/api/vocabulary/lists/cefr",
+            params={"level": "b2", "pageSize": 200},
+        ).json()
+        c1 = client.get(
+            "/api/vocabulary/lists/cefr",
+            params={"level": "C1", "pageSize": 200},
+        ).json()
+        blank = client.get(
+            "/api/vocabulary/lists/cefr", params={"level": "", "pageSize": 1}
+        ).json()
+        combined = client.get(
+            "/api/vocabulary/lists/cefr",
+            params={"level": "B1", "q": "abandon"},
+        ).json()
+        combined_miss = client.get(
+            "/api/vocabulary/lists/cefr",
+            params={"level": "A1", "q": "abandon"},
+        ).json()
+    assert a1["total"] == 1_000
+    assert b2["total"] == 3_000
+    assert c1["total"] == 3_000
+    assert all(item["cefrLevel"] == "A1" for item in a1["items"])
+    assert all(item["cefrLevel"] == "B2" for item in b2["items"])
+    assert all(item["cefrLevel"] == "C1" for item in c1["items"])
+    assert a1["items"][0]["word"] == "the"
+    assert blank["total"] == 10_000
+    assert combined["total"] == 1
+    assert combined["items"][0]["word"] == "abandon"
+    assert combined["items"][0]["cefrLevel"] == "B1"
+    assert combined_miss["total"] == 0
+    assert combined_miss["items"] == []
+
+
+def test_merged_cefr_level_filter_validation(vocab_env, make_client):
+    with make_client() as client:
+        for bad in ("C2", "B3", "C1+", "all"):
+            response = client.get(
+                "/api/vocabulary/lists/cefr", params={"level": bad}
+            )
+            assert response.status_code == 400, bad
+            assert "level" in response.json()["detail"]
+        legacy_bad = client.get(
+            "/api/vocabulary/lists/cefr-a1", params={"level": "C2"}
+        )
+    assert legacy_bad.status_code == 400
+
+
+def test_merged_cefr_search_across_levels(vocab_env, make_client):
+    with make_client() as client:
+        abandon = client.get(
+            "/api/vocabulary/lists/cefr", params={"q": "aband"}
+        ).json()
+        africa = client.get(
+            "/api/vocabulary/lists/cefr", params={"q": "afr"}
+        ).json()
+        no_match = client.get(
+            "/api/vocabulary/lists/cefr", params={"q": "zzzz"}
+        ).json()
+    assert abandon["total"] == 1
+    assert abandon["items"][0]["word"] == "abandon"
+    assert abandon["items"][0]["cefrLevel"] == "B1"
+    assert abandon["items"][0]["translation"] == "vt. 放弃, 抛弃"
+    # 搜索跨等级：A2 词也能在合并表里被搜到。
+    assert [item["word"] for item in africa["items"]] == [
+        "africa",
+        "african",
+        "afraid",
+    ]
+    assert [item["cefrLevel"] for item in africa["items"]] == ["A2", "A2", "A2"]
+    assert no_match == {
+        "items": [],
+        "total": 0,
+        "page": 1,
+        "pageSize": 50,
+        "hasMore": False,
+    }
+
+
+def test_merged_cefr_items_are_cached(vocab_env, monkeypatch, make_client):
+    calls = {"count": 0}
+    original = vocabulary._build_cefr_merged_items
+
+    def counting(*args, **kwargs):
+        calls["count"] += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(vocabulary, "_build_cefr_merged_items", counting)
+    with make_client() as client:
+        first = client.get(
+            "/api/vocabulary/lists/cefr", params={"pageSize": 1}
+        )
+        second = client.get(
+            "/api/vocabulary/lists/cefr",
+            params={"pageSize": 1, "level": "C1"},
+        )
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert calls["count"] == 1
+
+
+def test_legacy_cefr_level_lists_remain_compatible(vocab_env, make_client):
+    with make_client() as client:
+        catalog = client.get("/api/vocabulary/lists").json()
+        ids = [item["id"] for item in catalog]
+        a1 = client.get(
+            "/api/vocabulary/lists/cefr-a1", params={"pageSize": 2}
+        )
+        c1 = client.get(
+            "/api/vocabulary/lists/cefr-c1", params={"pageSize": 200}
+        )
+    for level in ("cefr-a1", "cefr-a2", "cefr-b1", "cefr-b2", "cefr-c1"):
+        assert level in ids
+    assert a1.status_code == 200
+    assert a1.json()["total"] == 1_000
+    assert a1.json()["items"][0]["word"] == "the"
+    assert c1.status_code == 200
+    assert c1.json()["total"] == 3_000
+    assert all(item["cefrLevel"] == "C1" for item in c1.json()["items"])
 
 
 def test_search_is_case_insensitive_and_prefix_first(vocab_env, make_client):

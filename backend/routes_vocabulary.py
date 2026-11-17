@@ -2,8 +2,10 @@
 
 端点：
 
-- ``GET /api/vocabulary/lists``：词表目录（短语 + CEFR A1–C2 + GRE/CET4/CET6）；
-- ``GET /api/vocabulary/lists/{id}?page=1&pageSize=50&q=``：分页/搜索；
+- ``GET /api/vocabulary/lists``：词表目录（短语 + 合并 CEFR 词表 +
+  兼容用的 CEFR A1–C2 + GRE/CET4/CET6）；
+- ``GET /api/vocabulary/lists/{id}?page=1&pageSize=50&q=&level=``：分页/
+  搜索；``cefr`` 合并 A1–C1，可用 ``level`` 筛到单级；
 - ``GET /api/vocabulary/phrases?page=1&pageSize=50&q=&level=&type=``：短语分页/
   搜索/按等级与类型筛选；
 - ``GET /api/vocabulary/phrases/{id}``：短语详情；
@@ -31,7 +33,7 @@ def _handle_error(exc: vocabulary.VocabularyError) -> HTTPException:
 
 @router.get("/api/vocabulary/lists")
 def get_vocabulary_lists():
-    """词表目录：短语 + CEFR A1–C1（C2 标 available:false）+ GRE/CET4/CET6。"""
+    """词表目录：短语 + 合并 CEFR 词表 + 兼容的 A1–C1（C2 false）+ 考试词表。"""
     try:
         payload = vocabulary.list_catalog()
     except vocabulary.VocabularyError as exc:
@@ -51,10 +53,14 @@ def get_vocabulary_list(
         description=f"每页条数，1–{vocabulary.MAX_PAGE_SIZE}",
     ),
     q: str | None = Query(None, description="大小写不敏感的前缀/包含搜索"),
+    level: str | None = Query(
+        None,
+        description="A1 / A2 / B1 / B2 / C1；cefr 合并词表按等级筛选",
+    ),
 ):
-    """某个词表的分页条目；词表不存在/C2 → 404，数据文件缺失 → 503。"""
+    """某个词表的分页条目；词表不存在/C2 → 404，参数非法 → 400，数据缺失 → 503。"""
     try:
-        payload = vocabulary.list_page(list_id, page, page_size, q)
+        payload = vocabulary.list_page(list_id, page, page_size, q, level)
     except vocabulary.VocabularyError as exc:
         raise _handle_error(exc) from exc
     return JSONResponse(content=payload, headers=PUBLIC_CACHE_HEADERS)

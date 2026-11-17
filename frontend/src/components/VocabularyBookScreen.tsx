@@ -4,12 +4,14 @@
 //   1. 我的单词 — saved vocabulary favorites (sentences / share cards excluded),
 //      one line by default; expanding reveals the CEFR level (batched /level
 //      lookup; off-list words read C1+), provenance, saved time and delete.
-//   2. 词表 — CEFR A1–C2 + GRE/CET4/CET6 from `/api/vocabulary/lists`, with
-//      server-side search, 50-per-page pagination and a global "hide Chinese"
-//      switch (persisted; hidden rows reveal their translation on tap).
+//   2. 词表 — 短语 + one merged CEFR 词表 (A1–C1) + GRE/CET4/CET6 from
+//      `/api/vocabulary/lists`, with server-side search, 50-per-page pagination
+//      and a global "hide Chinese" switch (persisted; hidden rows reveal their
+//      translation on tap). The merged CEFR tab adds level chips whose counts
+//      come from the catalog's `byLevel`; the old per-level A1–C1 tabs are gone.
 //
-// C2 is intentionally not modelled by the backend (`available:false`): its tab
-// is disabled and explains itself instead of rendering an empty table.
+// C2 is intentionally not modelled by the backend (`available:false`): it is
+// explained inside the CEFR tab instead of getting its own disabled tab.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     AlertTriangle,
@@ -25,7 +27,6 @@ import {
     FileText,
     Info,
     Loader2,
-    Lock,
     Play,
     Search,
     Star,
@@ -52,7 +53,9 @@ import {
     PHRASE_LEVELS,
     PHRASE_PAGE_SIZE,
     PHRASE_TYPES,
+    VOCABULARY_CEFR_LEVELS,
     VOCABULARY_PAGE_SIZE,
+    type CefrLevel,
     type PhraseDetail,
     type PhraseEntry,
     type PhraseLevel,
@@ -85,16 +88,12 @@ type Phase = 'idle' | 'loading' | 'ready' | 'error';
 
 const MINE_TAB = 'mine';
 const PHRASES_TAB = 'phrases';
-/** Backend product order: A1…C1, C2 (unavailable), GRE, CET4, CET6. */
-const LIST_TAB_IDS = ['cefr-a1', 'cefr-a2', 'cefr-b1', 'cefr-b2', 'cefr-c1', 'cefr-c2', 'gre', 'cet4', 'cet6'] as const;
-const C2_TAB_ID = 'cefr-c2';
+/** Merged CEFR list id (`GET /api/vocabulary/lists/cefr`); A1–C1 in one tab. */
+const CEFR_TAB = 'cefr';
+/** Product order: 我的单词 / 短语 / CEFR 词表 / GRE / CET4 / CET6. */
+const LIST_TAB_IDS = [CEFR_TAB, 'gre', 'cet4', 'cet6'] as const;
 const FALLBACK_LABELS: Record<string, string> = {
-    'cefr-a1': 'A1',
-    'cefr-a2': 'A2',
-    'cefr-b1': 'B1',
-    'cefr-b2': 'B2',
-    'cefr-c1': 'C1',
-    'cefr-c2': 'C2',
+    cefr: 'CEFR 词表',
     gre: 'GRE',
     cet4: 'CET4',
     cet6: 'CET6',
@@ -210,8 +209,9 @@ export function VocabularyBookScreen({
         [catalog],
     );
     const activeIsMine = activeTab === MINE_TAB;
+    const activeIsCefr = activeTab === CEFR_TAB;
     const activeList = activeIsMine ? null : catalogById.get(activeTab) ?? null;
-    const activeUnavailable = activeTab === C2_TAB_ID || activeList?.available === false;
+    const activeUnavailable = activeList?.available === false;
 
     // ── My words: expand + batched CEFR lookup ────────────────────────────
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -279,6 +279,8 @@ export function VocabularyBookScreen({
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [page, setPage] = useState(1);
+    /** CEFR tab only; '' = 全部. Counts for the chips come from `byLevel`. */
+    const [listLevel, setListLevel] = useState<CefrLevel | ''>('');
     const [listPhase, setListPhase] = useState<Phase>('idle');
     const [listData, setListData] = useState<VocabularyPage | null>(null);
     const [listError, setListError] = useState('');
@@ -312,13 +314,13 @@ export function VocabularyBookScreen({
     const phraseDetailControllers = useRef<Map<string, AbortController>>(new Map());
 
     const selectTab = useCallback((id: string) => {
-        if (id === C2_TAB_ID) return;
         if (id !== MINE_TAB && catalogById.get(id)?.available === false) return;
         setActiveTab(id);
         // Both surfaces restart from page 1 with a clean query/reveal state.
         setQuery('');
         setDebouncedQuery('');
         setPage(1);
+        setListLevel('');
         setRevealed(new Set());
         setPhraseQuery('');
         setPhraseDebouncedQuery('');
@@ -348,10 +350,10 @@ export function VocabularyBookScreen({
         return () => window.clearTimeout(timer);
     }, [query]);
 
-    // A new list/page/search starts with every row's translation collapsed.
+    // A new list/page/search/level starts with every row's translation collapsed.
     useEffect(() => {
         setRevealed(new Set());
-    }, [activeTab, page, debouncedQuery]);
+    }, [activeTab, page, debouncedQuery, listLevel]);
 
     useEffect(() => {
         if (activeIsMine || activeUnavailable || activeTab === PHRASES_TAB) {
@@ -366,6 +368,7 @@ export function VocabularyBookScreen({
             page,
             pageSize: VOCABULARY_PAGE_SIZE,
             q: debouncedQuery,
+            level: activeIsCefr ? listLevel : '',
             signal: controller.signal,
         })
             .then((data) => {
@@ -379,7 +382,7 @@ export function VocabularyBookScreen({
                 setListPhase('error');
             });
         return () => controller.abort();
-    }, [activeIsMine, activeUnavailable, activeTab, page, debouncedQuery, listNonce]);
+    }, [activeIsMine, activeIsCefr, activeUnavailable, activeTab, page, debouncedQuery, listLevel, listNonce]);
 
     // 300ms phrase search debounce; a changed query restarts from page 1.
     // Compare with the committed query first: the initial mount (and a tab
@@ -504,9 +507,16 @@ export function VocabularyBookScreen({
         });
     };
 
+    /** Level chips: a new band always restarts at page 1; search combines. */
+    const selectListLevel = (level: CefrLevel | '') => {
+        setListLevel(level);
+        setPage(1);
+    };
+
     const total = listData?.total ?? 0;
     const pages = Math.max(1, Math.ceil(total / VOCABULARY_PAGE_SIZE));
-    const totalLabel = debouncedQuery
+    const listHasFilter = Boolean(debouncedQuery) || (activeIsCefr && Boolean(listLevel));
+    const totalLabel = listHasFilter
         ? t('vocab.search.results', { count: formatNumber(total) })
         : t('vocab.total', { count: formatNumber(total) });
 
@@ -569,13 +579,15 @@ export function VocabularyBookScreen({
                 <div className="flex w-max min-w-full items-center gap-0.5 border-b border-white/5 pb-2 sm:w-full sm:flex-wrap">
                     {tabs.map((id) => {
                         const entry = catalogById.get(id);
-                        const unavailable = id === C2_TAB_ID || entry?.available === false;
+                        const unavailable = entry?.available === false;
                         const active = activeTab === id;
                         const label = id === MINE_TAB
                             ? t('vocab.tab.mine')
                             : id === PHRASES_TAB
                                 ? t('vocab.tab.phrases')
-                                : (entry?.label || FALLBACK_LABELS[id] || id).replace(/^CEFR\s+/i, '');
+                                : id === CEFR_TAB
+                                    ? t('vocab.tab.cefr')
+                                    : (entry?.label || FALLBACK_LABELS[id] || id);
                         const count = id === MINE_TAB
                             ? mineTabCount
                             : typeof entry?.count === 'number' && !unavailable
@@ -590,7 +602,7 @@ export function VocabularyBookScreen({
                                 aria-selected={active}
                                 aria-disabled={unavailable || undefined}
                                 disabled={unavailable}
-                                title={unavailable ? (id === C2_TAB_ID ? t('vocab.c2.note') : entry?.note ?? undefined) : undefined}
+                                title={unavailable ? entry?.note ?? undefined : undefined}
                                 onClick={() => selectTab(id)}
                                 className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium transition-colors ${
                                     active
@@ -600,11 +612,8 @@ export function VocabularyBookScreen({
                                             : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'
                                 }`}
                             >
-                                {unavailable && <Lock className="w-3.5 h-3.5" aria-hidden="true" />}
                                 <span>{label}</span>
-                                {unavailable ? (
-                                    <span className="text-[10px] font-normal text-zinc-600">{t('vocab.c2.tabHint')}</span>
-                                ) : count != null ? (
+                                {!unavailable && count != null ? (
                                     <span
                                         data-testid={`vocab-tab-count-${id}`}
                                         className={`min-w-[18px] rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
@@ -642,6 +651,29 @@ export function VocabularyBookScreen({
             </div>
         );
     };
+
+    /** Shared chip recipe for phrase filters and the CEFR level filters. */
+    const filterChip = (
+        selected: boolean,
+        label: string,
+        testId: string,
+        onClick: () => void,
+    ) => (
+        <button
+            key={testId}
+            type="button"
+            data-testid={testId}
+            aria-pressed={selected}
+            onClick={onClick}
+            className={`inline-flex h-8 shrink-0 items-center rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+                selected
+                    ? 'border-blue-500/20 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'
+                    : 'border-white/5 bg-zinc-800/60 text-zinc-400 hover:bg-zinc-700/60 hover:text-zinc-100'
+            }`}
+        >
+            {label}
+        </button>
+    );
 
     const renderMine = () => (
         <div data-testid="vocab-mine-panel" className="flex flex-col gap-3">
@@ -869,27 +901,6 @@ export function VocabularyBookScreen({
             >
                 {phraseTypeLabel(type)}
             </span>
-        );
-        const filterChip = (
-            selected: boolean,
-            label: string,
-            testId: string,
-            onClick: () => void,
-        ) => (
-            <button
-                key={testId}
-                type="button"
-                data-testid={testId}
-                aria-pressed={selected}
-                onClick={onClick}
-                className={`inline-flex h-8 shrink-0 items-center rounded-lg border px-2.5 text-xs font-medium transition-colors ${
-                    selected
-                        ? 'border-blue-500/20 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'
-                        : 'border-white/5 bg-zinc-800/60 text-zinc-400 hover:bg-zinc-700/60 hover:text-zinc-100'
-                }`}
-            >
-                {label}
-            </button>
         );
 
         return (
@@ -1228,7 +1239,9 @@ export function VocabularyBookScreen({
     };
 
     const renderList = () => {
-        const label = activeList?.label || FALLBACK_LABELS[activeTab] || activeTab;
+        const label = activeIsCefr
+            ? t('vocab.tab.cefr')
+            : activeList?.label || FALLBACK_LABELS[activeTab] || activeTab;
         return (
             <div data-testid="vocab-list-panel" className="flex flex-col gap-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -1280,6 +1293,40 @@ export function VocabularyBookScreen({
                     <p className="text-[11px] leading-relaxed text-zinc-500">{t('vocab.hint.hide')}</p>
                 )}
 
+                {activeIsCefr && (
+                    <div className="flex flex-col gap-2">
+                        <div
+                            data-testid="vocab-level-filter"
+                            className="flex flex-wrap items-center gap-1.5"
+                        >
+                            <span className="mr-1 text-[11px] text-zinc-500">
+                                {t('vocab.cefr.filter.level')}
+                            </span>
+                            {filterChip(
+                                listLevel === '',
+                                t('vocab.cefr.filter.all'),
+                                'vocab-level-all',
+                                () => selectListLevel(''),
+                            )}
+                            {VOCABULARY_CEFR_LEVELS.map((level) => {
+                                const count = activeList?.byLevel?.[level];
+                                return filterChip(
+                                    listLevel === level,
+                                    count != null
+                                        ? t('vocab.cefr.levelCount', {
+                                            level,
+                                            count: formatNumber(count),
+                                        })
+                                        : level,
+                                    `vocab-level-${level}`,
+                                    () => selectListLevel(level),
+                                );
+                            })}
+                        </div>
+                        {renderC2Note()}
+                    </div>
+                )}
+
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
                     <span data-testid="vocab-total" className="tabular-nums">{totalLabel}</span>
                     <span className="text-zinc-600">{label}</span>
@@ -1316,8 +1363,8 @@ export function VocabularyBookScreen({
                 {listPhase === 'ready' && listData && (
                     listData.items.length === 0 ? (
                         emptyState(
-                            debouncedQuery ? t('vocab.empty.title') : t('vocab.empty.list'),
-                            debouncedQuery ? t('vocab.empty.hint') : t('vocab.empty.listHint'),
+                            listHasFilter ? t('vocab.empty.title') : t('vocab.empty.list'),
+                            listHasFilter ? t('vocab.empty.hint') : t('vocab.empty.listHint'),
                             Search,
                             'vocab-empty',
                         )
@@ -1429,7 +1476,6 @@ export function VocabularyBookScreen({
                     </div>
                 )}
                 {renderTabs()}
-                {renderC2Note()}
                 {activeIsMine ? renderMine() : activeTab === PHRASES_TAB ? renderPhrases() : renderList()}
             </div>
         </div>
