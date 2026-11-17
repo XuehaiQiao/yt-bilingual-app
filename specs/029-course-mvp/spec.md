@@ -131,3 +131,26 @@
 - 前端 tsc/check:i18n/build
 - Playwright：完成一课、刷新恢复、答错反馈、产出校验、游客提示、375/1440
 - 本地验证说明（启动命令、测试账号、事件检查）；部署不在本轮
+
+## 7. 后端实现与运行（已完成）
+
+代码：`backend/course.py`（课程包读取/校验/脱敏、attempt、判分、事件）+
+`backend/routes_course.py`（9 个 `/api/course/*` 端点，全部需登录，游客 401）+
+`backend/migrations/versions/0021_course_mvp.py`（`course_attempts` /
+`course_events`）。课程包目录默认 `content/course/`，可用 `COURSE_DIR` 覆盖；
+两张表与其它学习数据同在 `AUTH_DB_PATH`。
+
+```bash
+cd backend
+source venv/bin/activate
+venv/bin/python -m alembic -c alembic.ini upgrade head   # 建 0021 两张表
+uvicorn main:app --port 8001                              # 本地临时实测
+
+venv/bin/python -m py_compile *.py                        # 提交门禁
+venv/bin/python -m pytest tests/test_course_mvp.py -q     # 课程 MVP 测试
+```
+
+错误码：非法 400、游客 401、课程/attempt 404（`lesson_not_found` /
+`attempt_not_found`，不泄露他人）、未完成/已答过/已完成 409（`incomplete` /
+`answer_locked` 等）、内容或迁移缺失 503。评分在 `complete` 时按课程题目数
+计算（当前 `ocean-noise-12min` 为 8 题），前端只展示不重算。

@@ -217,7 +217,7 @@ def test_schema_status_tracks_migration_state(tmp_path, monkeypatch):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
     migrated = events.schema_status()
     assert migrated["events_table"] is True
-    assert migrated["alembic_revision"] == "0020_content_teaching_analysis"
+    assert migrated["alembic_revision"] == "0021_course_mvp"
     assert migrated["ready"] is True
 
 
@@ -225,7 +225,13 @@ def test_only_batch_event_endpoint_is_public():
     """M5 起只开放批量上报 ``POST /api/events``，不开放事件查询/修改端点。"""
     paths = {getattr(route, "path", "") for route in main.app.routes}
     assert "/api/events" in paths
-    event_paths = {path for path in paths if "event" in path.lower()}
+    # 课程 MVP 的 /api/course/attempts/{id}/events 是登录用户的 per-attempt
+    # 埋点入口（不是公开批量上报，也不能查询历史事件），不在本断言范围。
+    event_paths = {
+        path
+        for path in paths
+        if "event" in path.lower() and not path.startswith("/api/course/")
+    }
     # 批量上报是唯一写的公开入口；/api/admin/events 是管理员只读查询（M2 #7）。
     assert event_paths == {"/api/events", "/api/admin/events"}
 

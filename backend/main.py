@@ -19,6 +19,8 @@
 - routes_vocabulary.py 单词本词表目录 / 分页搜索 / 词级 CEFR（公开只读）
 - routes_review.py   生词复习队列 / 作答 / 暂停 / 统计（M2）
 - routes_quiz.py     理解题出题 / 作答 / 结果（M3）
+- course.py          课程 MVP：课程包校验/脱敏、attempt 进度、判分、埋点（specs/029）
+- routes_course.py   课程 MVP 路由（需登录）：课程/attempt/答题/步骤/产出/完成/事件
 - teaching_analysis.py AI 教学分析（高亮/习语/文化点）按内容+等级+语言缓存（specs/028）
 - routes_teaching_analysis.py 教学分析只读端点（GET /api/teaching-analysis/{ref}）
 - routes_events.py   学习事件上报 / 周报（M5）
@@ -77,6 +79,7 @@ import routes_blog
 import routes_book_import
 import routes_books
 import routes_content
+import routes_course
 import routes_difficulty
 import routes_discover
 import routes_events
@@ -281,6 +284,7 @@ app.include_router(routes_user.router)
 app.include_router(routes_vocabulary.router)
 app.include_router(routes_review.router)
 app.include_router(routes_quiz.router)
+app.include_router(routes_course.router)
 app.include_router(routes_teaching_analysis.router)
 app.include_router(routes_events.router)
 app.include_router(routes_placement.router)

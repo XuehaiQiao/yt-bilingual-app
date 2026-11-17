@@ -20,7 +20,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0020_content_teaching_analysis"
+HEAD = "0021_course_mvp"
 BEFORE = "0013_user_profile"
 
 

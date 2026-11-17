@@ -51,6 +51,14 @@ EXAM_DIR = os.environ.get(
     os.path.join(_BACKEND_DIR, "..", "content", "exam"),
 )
 
+# 课程 MVP 课程包（specs/029，见 course.py / routes_course.py）：
+# content/course/*.json 只读静态文件，随仓库分发；一课一个 JSON。
+# 测试可指向 tmp 副本验证 schema 校验/503，不碰仓库内容。
+COURSE_DIR = os.environ.get(
+    "COURSE_DIR",
+    os.path.join(_BACKEND_DIR, "..", "content", "course"),
+)
+
 # 人工精选推荐池（V1 规则推荐，见 recommend.py / specs/018）：只读静态文件，
 # 随仓库分发；测试可指向 tmp 副本验证内容闸门与回退。
 CURATED_CONTENT_PATH = os.environ.get(
