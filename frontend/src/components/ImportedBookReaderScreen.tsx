@@ -23,6 +23,7 @@ import {
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ClickableWords } from './TranscriptBlock';
+import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import {
     deleteImportedBook,
     fetchImportedBook,
@@ -379,6 +380,8 @@ export function ImportedBookReaderScreen({
     const translatedParagraphs =
         chapter?.paragraphs.filter((paragraph) => Boolean(paragraph.zh)).length ?? 0;
     const showPendingTranslation = Boolean(chapter && !chapter.translated);
+    // 双语两栏只在确实有译文可显示时启用；一章完全没译文时英文占满整行。
+    const bilingualColumns = showTranslations && translatedParagraphs > 0;
 
     return (
         <div data-testid="imported-book-reader" className="flex h-full min-h-0 flex-col bg-[#09090b]">
@@ -428,7 +431,7 @@ export function ImportedBookReaderScreen({
                 onScroll={handleScroll}
                 className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto custom-scrollbar"
             >
-                <div className="mx-auto w-full max-w-3xl px-4 py-5 sm:px-8 sm:py-8">
+                <div className={`mx-auto w-full px-4 py-5 sm:px-8 sm:py-8 ${bilingualReadingWidth(bilingualColumns)}`}>
                     {detailLoading && (
                         <div data-testid="imported-book-loading" className="space-y-4">
                             <div className="h-8 w-2/3 animate-pulse rounded bg-zinc-800/70" />
@@ -749,42 +752,54 @@ export function ImportedBookReaderScreen({
                                             data-testid={`imported-book-paragraph-${paragraph.index}`}
                                             className="-mx-2 mt-4 rounded-xl border border-transparent px-2 py-1 transition-colors hover:border-white/5 hover:bg-zinc-900/30"
                                         >
-                                            <p
-                                                lang="en"
-                                                className="break-words text-base leading-relaxed text-zinc-200"
-                                            >
-                                                <ClickableWords
-                                                    text={paragraph.en}
-                                                    onWordClick={(word, event) =>
-                                                        onWordLookup(
-                                                            word,
-                                                            paragraph.en,
-                                                            paragraph.index,
-                                                            event,
+                                            <BilingualRow
+                                                twoColumn={bilingualColumns}
+                                                testId={`imported-book-row-${paragraph.index}`}
+                                                english={(
+                                                    <p
+                                                        data-testid={`imported-book-en-${paragraph.index}`}
+                                                        data-lookup-context={paragraph.en}
+                                                        data-lookup-start={paragraph.index}
+                                                        lang="en"
+                                                        className="break-words text-base leading-relaxed text-zinc-200"
+                                                    >
+                                                        <ClickableWords
+                                                            text={paragraph.en}
+                                                            onWordClick={(word, event) =>
+                                                                onWordLookup(
+                                                                    word,
+                                                                    paragraph.en,
+                                                                    paragraph.index,
+                                                                    event,
+                                                                )
+                                                            }
+                                                        />
+                                                    </p>
+                                                )}
+                                                translation={
+                                                    showTranslations && paragraph.zh
+                                                        ? (
+                                                            <p
+                                                                data-testid={`imported-book-translation-${paragraph.index}`}
+                                                                lang="zh-CN"
+                                                                className="break-words text-[15px] leading-relaxed text-zinc-400"
+                                                            >
+                                                                {paragraph.zh}
+                                                            </p>
                                                         )
-                                                    }
-                                                />
-                                            </p>
-                                            {showTranslations && paragraph.zh ? (
-                                                <p
-                                                    data-testid={`imported-book-translation-${paragraph.index}`}
-                                                    lang="zh-CN"
-                                                    className="mt-2 break-words text-[15px] leading-relaxed text-zinc-400"
-                                                >
-                                                    {paragraph.zh}
-                                                </p>
-                                            ) : null}
-                                            {showTranslations &&
-                                            !paragraph.zh &&
-                                            translatedParagraphs > 0 ? (
-                                                <p
-                                                    data-testid={`imported-book-translation-missing-${paragraph.index}`}
-                                                    className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.06] px-2 py-0.5 text-[11px] text-amber-300/90"
-                                                >
-                                                    <AlertCircle className="h-3 w-3" />
-                                                    {t('importedBooks.reader.missingTranslation')}
-                                                </p>
-                                            ) : null}
+                                                        : showTranslations && translatedParagraphs > 0
+                                                            ? (
+                                                                <p
+                                                                    data-testid={`imported-book-translation-missing-${paragraph.index}`}
+                                                                    className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.06] px-2 py-0.5 text-[11px] text-amber-300/90"
+                                                                >
+                                                                    <AlertCircle className="h-3 w-3" />
+                                                                    {t('importedBooks.reader.missingTranslation')}
+                                                                </p>
+                                                            )
+                                                            : undefined
+                                                }
+                                            />
                                         </div>
                                     ))}
 

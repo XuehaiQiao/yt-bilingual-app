@@ -365,6 +365,7 @@
   "favorites.source.kind.video": "Video “{{title}}”",
   "favorites.source.kind.local_show": "Tập phim cục bộ “{{title}}”",
   "favorites.source.kind.article": "Bài viết “{{title}}”",
+  "favorites.source.kind.library_article": "Bài viết miễn phí “{{title}}”",
   "favorites.source.kind.sentence_pack": "Gói câu “{{title}}”",
   "favorites.source.confirmTitle": "Mở nguồn",
   "favorites.source.confirmBody": "Sẽ mở nguồn: {{source}}",

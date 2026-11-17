@@ -220,11 +220,24 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
     return (
         <>
             {/* click-away layer — also the hover probe: it sits above the page,
-                so pointer-move hit-testing reaches the word underneath. */}
+                so pointer-move hit-testing reaches the word underneath. A click
+                on a word under it retargets the card instead of only closing:
+                touch devices have no hover, so tapping a second word must work
+                in one tap. Clicking empty space closes as before. */}
             <div
                 data-testid="word-popover-overlay"
                 className="fixed inset-0 z-[80]"
-                onClick={handleClose}
+                onClick={(e) => {
+                    const target = findLookupWordAt(e.clientX, e.clientY);
+                    if (target) {
+                        const nextKey = lookupKey(target.word, target.context);
+                        if (nextKey !== lookupKey(word, context)) {
+                            onSwitchWord(target);
+                            return;
+                        }
+                    }
+                    handleClose();
+                }}
                 onPointerMove={handleHoverMove}
                 onPointerLeave={handleHoverEnd}
             />
@@ -240,7 +253,7 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
             >
                 <div className="flex items-start justify-between gap-2 mb-1">
                     <div className="flex items-baseline gap-2 flex-wrap min-w-0">
-                        <span className="text-[17px] font-semibold tracking-tight text-zinc-100 break-all">{definition?.word || word}</span>
+                        <span data-testid="word-popover-word" className="text-[17px] font-semibold tracking-tight text-zinc-100 break-all">{definition?.word || word}</span>
                         {definition?.ipa && <span className="text-xs text-zinc-400">{definition.ipa}</span>}
                         {definition?.pos && !hasSenseList && <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">{definition.pos}</span>}
                     </div>

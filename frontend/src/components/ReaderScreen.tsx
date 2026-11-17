@@ -34,6 +34,7 @@ import { motion } from 'framer-motion';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ClickableWords } from './TranscriptBlock';
+import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { ShareCardDialog } from './ShareCardDialog';
 import { classifyPublicDomainBookUrl } from '../lib/publicDomain';
 import type { ShareCardData } from '../lib/shareCard';
@@ -650,6 +651,9 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         ? article.paragraphs.filter((paragraph) => paragraph.translationFailed).length
         : 0;
     const hasTranslation = stats.translated > 0;
+    // ≥lg two columns only while Chinese is actually on screen: turning
+    // translations off gives the English source the full width back.
+    const bilingualColumns = showTranslations && hasTranslation;
     const showTranslateBar = stats.untranslated > 0 || translating || translateError !== null;
     const translateButtonLabel = translating
         ? t('reader.translation.translating')
@@ -1100,7 +1104,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                 data-testid="reader-scroll"
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar"
             >
-                <div className="max-w-3xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
+                <div className={`mx-auto px-4 sm:px-8 py-6 sm:py-10 ${bilingualReadingWidth(bilingualColumns)}`}>
                     {articleLoading ? (
                         <div
                             data-testid="reader-article-loading"
@@ -1206,49 +1210,57 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                                     </>
                                                 )}
                                             </div>
-                                            <p
-                                                data-lookup-context={paragraph.text}
-                                                data-lookup-start={paragraph.idx}
-                                                lang={article.lang || undefined}
-                                                className="pr-8 text-base sm:text-[17px] leading-relaxed text-zinc-200 break-words"
-                                            >
-                                                <ClickableWords
-                                                    text={paragraph.text}
-                                                    onWordClick={(word, e) => onWordLookup(
-                                                        word,
-                                                        paragraph.text,
-                                                        paragraph.idx,
-                                                        e,
-                                                        article.articleId,
-                                                        article.title || t('reader.untitled'),
-                                                    )}
-                                                />
-                                            </p>
-                                            {showTranslations && translated && (
-                                                <p
-                                                    data-testid={`reader-translation-${paragraph.idx}`}
-                                                    lang={article.targetLang || undefined}
-                                                    className="mt-2 pr-8 text-[15px] leading-relaxed text-zinc-400 break-words"
-                                                >
-                                                    {paragraph.translation}
-                                                </p>
-                                            )}
-                                            {showTranslations && paragraph.translationFailed && (
-                                                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-amber-400/90">
-                                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                                    <span>{t('reader.translation.failed')}</span>
-                                                    <button
-                                                        type="button"
-                                                        data-testid={`reader-translation-retry-${paragraph.idx}`}
-                                                        onClick={() => { void handleTranslate(); }}
-                                                        disabled={translating}
-                                                        className="inline-flex items-center gap-1 h-7 px-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 text-amber-300 transition-colors disabled:opacity-50"
+                                            <BilingualRow
+                                                twoColumn={bilingualColumns}
+                                                testId={`reader-row-${paragraph.idx}`}
+                                                english={(
+                                                    <p
+                                                        data-testid={`reader-en-${paragraph.idx}`}
+                                                        data-lookup-context={paragraph.text}
+                                                        data-lookup-start={paragraph.idx}
+                                                        lang={article.lang || undefined}
+                                                        className="pr-8 text-base sm:text-[17px] leading-relaxed text-zinc-200 break-words"
                                                     >
-                                                        <RefreshCw className="w-3 h-3" />
-                                                        {t('reader.translation.retry')}
-                                                    </button>
-                                                </div>
-                                            )}
+                                                        <ClickableWords
+                                                            text={paragraph.text}
+                                                            onWordClick={(word, e) => onWordLookup(
+                                                                word,
+                                                                paragraph.text,
+                                                                paragraph.idx,
+                                                                e,
+                                                                article.articleId,
+                                                                article.title || t('reader.untitled'),
+                                                            )}
+                                                        />
+                                                    </p>
+                                                )}
+                                                translation={
+                                                    showTranslations && translated ? (
+                                                        <p
+                                                            data-testid={`reader-translation-${paragraph.idx}`}
+                                                            lang={article.targetLang || undefined}
+                                                            className="pr-8 text-[15px] leading-relaxed text-zinc-400 break-words"
+                                                        >
+                                                            {paragraph.translation}
+                                                        </p>
+                                                    ) : showTranslations && paragraph.translationFailed ? (
+                                                        <div className="flex flex-wrap items-center gap-2 pr-8 text-xs text-amber-400/90">
+                                                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                                            <span>{t('reader.translation.failed')}</span>
+                                                            <button
+                                                                type="button"
+                                                                data-testid={`reader-translation-retry-${paragraph.idx}`}
+                                                                onClick={() => { void handleTranslate(); }}
+                                                                disabled={translating}
+                                                                className="inline-flex items-center gap-1 h-7 px-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 text-amber-300 transition-colors disabled:opacity-50"
+                                                            >
+                                                                <RefreshCw className="w-3 h-3" />
+                                                                {t('reader.translation.retry')}
+                                                            </button>
+                                                        </div>
+                                                    ) : undefined
+                                                }
+                                            />
                                         </article>
                                     );
                                 })}

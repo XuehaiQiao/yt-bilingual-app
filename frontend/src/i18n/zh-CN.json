@@ -365,6 +365,7 @@
   "favorites.source.kind.video": "视频《{{title}}》",
   "favorites.source.kind.local_show": "本地剧集《{{title}}》",
   "favorites.source.kind.article": "文章《{{title}}》",
+  "favorites.source.kind.library_article": "免费文章《{{title}}》",
   "favorites.source.kind.sentence_pack": "句子精背《{{title}}》",
   "favorites.source.confirmTitle": "打开来源",
   "favorites.source.confirmBody": "将打开来源：{{source}}",

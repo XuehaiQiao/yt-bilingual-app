@@ -24,6 +24,7 @@ import {
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ClickableWords } from './TranscriptBlock';
+import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import {
     BooksApiError,
     fetchBook,
@@ -267,6 +268,9 @@ export function BookReaderScreen({
         : null;
     const sourceUrl = detail?.catalogUrl || detail?.sourceUrl || '';
     const seriesNote = useMemo(() => t('books.series.vocabNote'), [t]);
+    // Two columns only when translated Chinese is actually displayed; a
+    // chapter without a translation keeps the full-width English source.
+    const bilingualColumns = showTranslations && Boolean(chapter?.translated);
 
     const goChapter = (n: number) => {
         if (n === chapterNumber) return;
@@ -335,7 +339,7 @@ export function BookReaderScreen({
                 onScroll={handleScroll}
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar"
             >
-                <div className="mx-auto w-full max-w-3xl px-4 sm:px-8 py-5 sm:py-8">
+                <div className={`mx-auto w-full px-4 sm:px-8 py-5 sm:py-8 ${bilingualReadingWidth(bilingualColumns)}`}>
                     {detailLoading && (
                         <div data-testid="book-reader-loading" className="space-y-4">
                             <div className="h-8 w-2/3 rounded bg-zinc-800/70 animate-pulse" />
@@ -578,36 +582,49 @@ export function BookReaderScreen({
                                                     data-testid={`book-paragraph-${paragraph.index}`}
                                                     className="mt-4 rounded-xl border border-transparent px-2 py-1 -mx-2 hover:border-white/5 hover:bg-zinc-900/30 transition-colors"
                                                 >
-                                                    <p
-                                                        lang="en"
-                                                        className="text-base leading-relaxed text-zinc-200 break-words"
-                                                    >
-                                                        <ClickableWords
-                                                            text={paragraph.en}
-                                                            onWordClick={(word, event) =>
-                                                                onWordLookup(word, paragraph.en, paragraph.index, event)
-                                                            }
-                                                        />
-                                                    </p>
-                                                    {showTranslations && chapter.translated && (
-                                                        paragraph.zh ? (
+                                                    <BilingualRow
+                                                        twoColumn={bilingualColumns}
+                                                        testId={`book-row-${paragraph.index}`}
+                                                        english={(
                                                             <p
-                                                                data-testid={`book-translation-${paragraph.index}`}
-                                                                lang="zh-CN"
-                                                                className="mt-2 text-[15px] leading-relaxed text-zinc-400 break-words"
+                                                                data-testid={`book-en-${paragraph.index}`}
+                                                                data-lookup-context={paragraph.en}
+                                                                data-lookup-start={paragraph.index}
+                                                                lang="en"
+                                                                className="text-base leading-relaxed text-zinc-200 break-words"
                                                             >
-                                                                {paragraph.zh}
+                                                                <ClickableWords
+                                                                    text={paragraph.en}
+                                                                    onWordClick={(word, event) =>
+                                                                        onWordLookup(word, paragraph.en, paragraph.index, event)
+                                                                    }
+                                                                />
                                                             </p>
-                                                        ) : (
-                                                            <p
-                                                                data-testid={`book-translation-missing-${paragraph.index}`}
-                                                                className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.06] px-2 py-0.5 text-[11px] text-amber-300/90"
-                                                            >
-                                                                <AlertCircle className="w-3 h-3" />
-                                                                {t('books.reader.missingTranslation')}
-                                                            </p>
-                                                        )
-                                                    )}
+                                                        )}
+                                                        translation={
+                                                            showTranslations && chapter.translated
+                                                                ? paragraph.zh
+                                                                    ? (
+                                                                        <p
+                                                                            data-testid={`book-translation-${paragraph.index}`}
+                                                                            lang="zh-CN"
+                                                                            className="text-[15px] leading-relaxed text-zinc-400 break-words"
+                                                                        >
+                                                                            {paragraph.zh}
+                                                                        </p>
+                                                                    )
+                                                                    : (
+                                                                        <p
+                                                                            data-testid={`book-translation-missing-${paragraph.index}`}
+                                                                            className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.06] px-2 py-0.5 text-[11px] text-amber-300/90"
+                                                                        >
+                                                                            <AlertCircle className="w-3 h-3" />
+                                                                            {t('books.reader.missingTranslation')}
+                                                                        </p>
+                                                                    )
+                                                                : undefined
+                                                        }
+                                                    />
                                                 </div>
                                             ))}
 

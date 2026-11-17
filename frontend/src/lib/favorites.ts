@@ -13,7 +13,7 @@ export interface FavoriteHighlight {
 }
 
 /** Where a favorite came from (`video` = YouTube). */
-export type FavoriteSourceKind = 'video' | 'local_show' | 'article' | 'sentence_pack';
+export type FavoriteSourceKind = 'video' | 'local_show' | 'article' | 'sentence_pack' | 'library_article';
 
 /**
  * Provenance of a favorite. Optional because records created before this

@@ -78,9 +78,15 @@ content/library/
 - 视频：App 里新增 `handleOpenLibraryVideo`，取详情后直接
   `setTranscript(blocks)` / `setMetadata(camera...)` / `setVideoId(youtubeId)`，
   `metadata.is_library=true`；媒体区左上角显示「免费资源 · 预置双语字幕」。
-- 文章：`LibraryArticleReader` 轻量阅读器（复用 `ClickableWords` 点词、
-  `reader.translation.*` 切换文案），段落 `en` + `zh`；不挂载 `ReaderScreen`
-  的导入/翻译/进度逻辑，因此不存在 `/api/article/*` 请求。
+- 文章：`LibraryArticleReader` 轻量阅读器（**2026-11-17 补齐** `ClickableWords`
+  点词与全局 `WordPopover`，source 标免费文章 id/标题，收藏「出处」走
+  `library_article` 路由；`reader.translation.*` 切换文案），段落 `en` + `zh`；
+  ≥lg 逐段左右对照（左英右中、同一滚动容器），<lg 上下排列，隐藏译文时英文
+  单栏；不挂载 `ReaderScreen` 的导入/翻译/进度逻辑，因此不存在
+  `/api/article/*` 请求。
+- 阅读器共用布局组件 `BilingualRow`（`ReaderScreen`/`LibraryArticleReader`/
+  `BookReaderScreen`/`ImportedBookReaderScreen`）；回归脚本
+  `scripts/reader-layout-test.mjs`。
 - 首页原有「为你推荐」「开始学习」「今日」等区块不动；375px 下卡片单列/横滑。
 
 ## 验收

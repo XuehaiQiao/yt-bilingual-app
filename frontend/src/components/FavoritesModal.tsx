@@ -33,6 +33,8 @@ interface FavoritesModalProps {
     onPlayFavorite: (videoId: string, start: number) => void;
     /** Open the reader at one article (favorites "出处" jump). */
     onOpenArticle: (articleId: string) => void;
+    /** Open one free-library article (favorites "出处" jump). */
+    onOpenLibraryArticle: (articleId: string) => void;
     /** Open one sentence pack by level id (favorites "出处" jump). */
     onOpenSentencePack: (levelId: number) => void;
 }
@@ -73,6 +75,7 @@ const SOURCE_ICON: Record<FavoriteSourceKind, SourceIconComponent> = {
     video: Play,
     local_show: Tv,
     article: FileText,
+    library_article: BookOpen,
     sentence_pack: BookOpen,
 };
 
@@ -80,10 +83,11 @@ const SOURCE_TITLE_KEY: Record<FavoriteSourceKind, TranslationKey> = {
     video: 'favorites.source.kind.video',
     local_show: 'favorites.source.kind.local_show',
     article: 'favorites.source.kind.article',
+    library_article: 'favorites.source.kind.library_article',
     sentence_pack: 'favorites.source.kind.sentence_pack',
 };
 
-const SOURCE_KINDS: readonly FavoriteSourceKind[] = ['video', 'local_show', 'article', 'sentence_pack'];
+const SOURCE_KINDS: readonly FavoriteSourceKind[] = ['video', 'local_show', 'article', 'library_article', 'sentence_pack'];
 const SENTENCE_PACK_PREFIX = 'sentence-pack-';
 
 interface ResolvedFavoriteSource {
@@ -322,6 +326,7 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({
     onRemoveFavorite,
     onPlayFavorite,
     onOpenArticle,
+    onOpenLibraryArticle,
     onOpenSentencePack,
 }) => {
     const { t, formatMonth } = useI18n();
@@ -406,6 +411,10 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({
         if (!pending) return;
         setPendingSource(null);
         const { fav, source } = pending;
+        if (source.kind === 'library_article') {
+            onOpenLibraryArticle(source.ref);
+            return;
+        }
         if (source.kind === 'article') {
             onOpenArticle(source.ref);
             return;
@@ -430,6 +439,10 @@ export const FavoritesModal: React.FC<FavoritesModalProps> = ({
         // before the article fallback swallows them.
         if (!fav.source_kind && /^(.+?)[-_/]S(\d+)E(\d+)$/i.test(fav.videoId)) {
             onPlayFavorite(fav.videoId, fav.start);
+            return;
+        }
+        if (source.kind === 'library_article') {
+            if (source.ref) onOpenLibraryArticle(source.ref);
             return;
         }
         if (source.kind === 'article') {

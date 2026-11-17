@@ -284,6 +284,27 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     });
   }, []);
 
+  // Free library articles are local content with their own route, so their
+  // words carry a distinct source kind: the favorites "出处" row must be able
+  // to reopen `#/learn/library/<id>` instead of the reading API article route.
+  const handleLibraryArticleWordLookup = useCallback((
+    word: string,
+    sentence: string,
+    start: number,
+    e: React.MouseEvent,
+    sourceId?: string,
+    sourceTitle?: string,
+  ) => {
+    setWordLookup({
+      word,
+      context: sentence,
+      start,
+      x: e.clientX,
+      y: e.clientY,
+      ...(sourceId ? { sourceId, sourceTitle, sourceKind: 'library_article' as const } : {}),
+    });
+  }, []);
+
   // The article reader recognises public-domain book links and hands them here:
   // switch to the content page and open the book-import dialog prefilled.
   const handleImportPublicDomainBook = useCallback((url: string) => {
@@ -310,7 +331,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     const sub = state.sub;
     const source = sub?.kind === 'book' || sub?.kind === 'imported-book'
       ? 'book'
-      : sub?.kind === 'reader'
+      : sub?.kind === 'reader' || (sub?.kind === 'learn' && libraryArticle)
         ? 'reader'
         : sub?.kind === 'sentences'
           ? 'sentence'
@@ -782,7 +803,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // the currently loaded video/episode.
   const handleToggleDictFavorite = (def: WordDefinition) => {
     if (!wordLookup) return;
-    const isArticle = wordLookup.sourceKind === 'article' || Boolean(wordLookup.sourceId);
+    // A lookup can point at a reading-API article or a free-library article;
+    // both keep their own id/title, but the "出处" row routes them differently.
+    const lookupSourceKind = wordLookup.sourceKind === 'article' || wordLookup.sourceKind === 'library_article'
+      ? wordLookup.sourceKind
+      : wordLookup.sourceId
+        ? 'article'
+        : null;
     const sourceId = wordLookup.sourceId || videoId;
     toggleFavorite({
       id: `vocab-${sourceId}-${def.word.replace(/\s+/g, '-')}`,
@@ -795,9 +822,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       added_at: Date.now(),
       highlights: [],
       type: 'vocabulary',
-      ...(isArticle
+      ...(lookupSourceKind
         ? {
-          source_kind: 'article' as const,
+          source_kind: lookupSourceKind,
           source_ref: sourceId,
           source_title: wordLookup.sourceTitle,
         }
@@ -1826,6 +1853,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     openSub({ kind: 'reader', articleId });
   };
 
+  // Free library articles live under the learn route, not the reading API.
+  const handleOpenFavoriteLibraryArticle = (articleId: string) => {
+    setWordLookup(null);
+    closeFavoritesForJump();
+    void handleOpenLibraryArticle(articleId);
+  };
+
   // Favorites "出处" jump into a sentence pack (`source_ref` = `L<levelId>`).
   const handleOpenFavoriteSentencePack = (levelId: number) => {
     if (!Number.isInteger(levelId) || levelId <= 0) return;
@@ -2660,7 +2694,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         case 'learn':
           if (libraryArticle) {
             return subFrame(
-              <LibraryArticleReader article={libraryArticle} onClose={handleCloseLibraryArticle} />,
+              <LibraryArticleReader
+                article={libraryArticle}
+                onClose={handleCloseLibraryArticle}
+                onWordLookup={handleLibraryArticleWordLookup}
+              />,
             );
           }
           if (transcript.length > 0) return learningView;
@@ -2924,6 +2962,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         onRemoveFavorite={handleRemoveFavorite}
         onPlayFavorite={handlePlayFavorite}
         onOpenArticle={handleOpenFavoriteArticle}
+        onOpenLibraryArticle={handleOpenFavoriteLibraryArticle}
         onOpenSentencePack={handleOpenFavoriteSentencePack}
       />
 

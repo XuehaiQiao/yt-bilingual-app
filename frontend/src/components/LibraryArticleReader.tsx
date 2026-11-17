@@ -9,15 +9,33 @@ import { ArrowLeft, BookOpen, Languages } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { LibraryArticle } from '../lib/library';
 import { difficultyBadge, fetchDifficultyBatch, type DifficultyItem } from '../lib/difficulty';
+import { ClickableWords } from './TranscriptBlock';
+import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 
 interface LibraryArticleReaderProps {
     article: LibraryArticle;
     onClose: () => void;
+    /**
+     * Reuse the app-wide dictionary card (App owns its state/favorites).
+     * Free library articles carry their id/title as the lookup source so a
+     * saved word keeps its provenance.
+     */
+    onWordLookup: (
+        word: string,
+        context: string,
+        start: number,
+        e: React.MouseEvent,
+        sourceId?: string,
+        sourceTitle?: string,
+    ) => void;
 }
 
-export function LibraryArticleReader({ article, onClose }: LibraryArticleReaderProps) {
+export function LibraryArticleReader({ article, onClose, onWordLookup }: LibraryArticleReaderProps) {
     const { t, formatNumber } = useI18n();
     const [showTranslations, setShowTranslations] = useState(true);
+    // Every paragraph has a Chinese translation on disk, so "show translations"
+    // is also "two columns on desktop".
+    const bilingualColumns = showTranslations;
     // The card shows the computed CEFR input band (M2). Fetch the same row so
     // the detail header cannot disagree with the card.
     const [difficulty, setDifficulty] = useState<DifficultyItem | null>(null);
@@ -57,7 +75,7 @@ export function LibraryArticleReader({ article, onClose }: LibraryArticleReaderP
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <article className="max-w-3xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
+                <article className={`mx-auto px-4 sm:px-8 py-6 sm:py-10 ${bilingualReadingWidth(bilingualColumns)}`}>
                     <header>
                         <h1
                             data-testid="library-article-title"
@@ -133,21 +151,40 @@ export function LibraryArticleReader({ article, onClose }: LibraryArticleReaderP
                                 data-testid={`library-paragraph-${index}`}
                                 className="rounded-2xl border border-transparent px-4 py-4 sm:px-5 hover:border-white/5 hover:bg-zinc-900/30 transition-colors"
                             >
-                                <p
-                                    lang="en"
-                                    className="text-base sm:text-[17px] leading-relaxed text-zinc-200 break-words"
-                                >
-                                    {paragraph.en}
-                                </p>
-                                {showTranslations && (
-                                    <p
-                                        data-testid={`library-article-translation-${index}`}
-                                        lang="zh-CN"
-                                        className="mt-2 text-[15px] leading-relaxed text-zinc-400 break-words"
-                                    >
-                                        {paragraph.zh}
-                                    </p>
-                                )}
+                                <BilingualRow
+                                    twoColumn={bilingualColumns}
+                                    testId={`library-row-${index}`}
+                                    english={(
+                                        <p
+                                            data-testid={`library-en-${index}`}
+                                            data-lookup-context={paragraph.en}
+                                            data-lookup-start={index}
+                                            lang="en"
+                                            className="text-base sm:text-[17px] leading-relaxed text-zinc-200 break-words"
+                                        >
+                                            <ClickableWords
+                                                text={paragraph.en}
+                                                onWordClick={(word, e) => onWordLookup(
+                                                    word,
+                                                    paragraph.en,
+                                                    index,
+                                                    e,
+                                                    article.id,
+                                                    article.title,
+                                                )}
+                                            />
+                                        </p>
+                                    )}
+                                    translation={showTranslations ? (
+                                        <p
+                                            data-testid={`library-article-translation-${index}`}
+                                            lang="zh-CN"
+                                            className="text-[15px] leading-relaxed text-zinc-400 break-words"
+                                        >
+                                            {paragraph.zh}
+                                        </p>
+                                    ) : undefined}
+                                />
                             </article>
                         ))}
                     </div>
