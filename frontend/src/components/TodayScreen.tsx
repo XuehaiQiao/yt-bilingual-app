@@ -46,6 +46,8 @@ interface TodayScreenProps {
     onOpenPlacement: (view: 'intro' | 'profile') => void;
     /** "学新内容" fallback when the paste input is not on screen. */
     onOpenContent: () => void;
+    /** 12-minute course entry (specs/029). */
+    onOpenCourse: () => void;
 }
 
 export function TodayScreen({
@@ -67,6 +69,7 @@ export function TodayScreen({
     onOpenReport,
     onOpenPlacement,
     onOpenContent,
+    onOpenCourse,
 }: TodayScreenProps) {
     const { t } = useI18n();
     const estimateRef = useRef<EstimateDialogHandle>(null);
@@ -199,6 +202,7 @@ export function TodayScreen({
                     onOpenPlacement={onOpenPlacement}
                     showPlacement={!placementProfile}
                     inputSlot={primaryInput}
+                    onOpenCourse={onOpenCourse}
                 />
 
                 <RecentLearning

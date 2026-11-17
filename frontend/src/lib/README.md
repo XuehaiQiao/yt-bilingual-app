@@ -10,6 +10,7 @@
 | `transcript.ts` | 字幕核心逻辑：`findActiveIndex`（当前句判定，含 0.8s 前瞻）、SSE 流解析（`consumeSseStream`）、`[未翻译]` 标记判定、译文显示模式（全显/当前句/隐藏）持久化 |
 | `sentences.ts` | 句子精背：类型、拉取、四色语块配色、按册×天的背诵/复习进度持久化 |
 | `settings.ts` | 高亮难度（六站轴）与全局模型（`yt_bilingual_last_model`）的 localStorage 读写：旧考试制存档迁移、`hasSavedVocabLevel()` 首次预填判定、能力档案区间高带 → 轴档位映射；选择变化广播 `yt-bilingual:vocab-level` |
+| `teachingAnalysis.ts` | 教学分析客户端（specs/028）：`TeachingAnalysis`/`TeachingHighlight`/`TeachingIdiom`/`TeachingCulture` 类型；`fetchTeachingAnalysis` 带登录 cookie/AbortSignal，按 `contentRef + level + targetLang` 做模块级内存缓存与同 key 请求合并（403/404/失败静默返回 null，`onIssue` 只把原因交给面板），`teachingAnalysisFromPayload` 优先复用历史缓存里已 attach 的 `idioms`/`culture`，`applyTeachingAnalysisHighlights` 用分析高亮覆盖旧 payload 高亮且不改文本/时间轴 |
 | `progress.ts` | 每视频播放进度记忆（续播 + "已学 N%"），上限 200 条 |
 | `recent.ts` | 今日「最近学习」的纯数据层：视频（`/api/history` 行）/文章（`ArticleSummary`）/公版书与导入书 localStorage 进度 → 统一条目；按 `lastAt` 倒序（0/未知沉底）、大小写不敏感搜索、类型筛选、每页 10 条分页；不网络、不 UI 文案，时间与标签由组件按当前语言渲染 |
 | `events.ts` | 观看事件上报（M5 / specs/015）：只按播放位置增量计 `watchedSeconds`（暂停/拖动不计），内存队列 ≤50 条批量 POST `/api/events`，`clientEventId` 保证重试幂等；每 60s 播放 / 暂停 / 切后台时 flush（keepalive），失败静默重试一次 |
@@ -22,6 +23,7 @@
 | `vocabulary.ts` | 单词本词表客户端（specs/005）：`fetchVocabularyLists`（目录，C2 `available:false` 原样透传）、`fetchVocabularyPage`（服务端 `q` 搜索 + 分页，默认 50/页）、`fetchPhrasePage`（短语服务端 `q` + level/type 筛选 + 分页，默认 50/页）、`fetchPhraseDetail`（展开时懒加载 `notes/license`）、`fetchVocabularyLevels`（按 100 词分批查词级 CEFR，保留后端 `null`/`C1+` 不做本地推断） |
 | `review.ts` | 复习引擎客户端（M2 / specs/013）：队列/统计/作答/暂停的类型与四个 API 函数；走 `apiFetch`，按当前翻译目标语言取词，失败抛带 HTTP 状态的 `ReviewApiError` |
 | `quiz.ts` | 理解题客户端（M3 / specs/014）：lesson/题目/作答/结果类型与 `startLesson/getQuestions/answerQuestion/getResult`；走 `apiFetch`（start 自动带 `targetLang`），失败抛带 HTTP 状态的 `QuizApiError` |
+| `course.ts` | 12 分钟课程客户端（specs/029）：`CourseLesson/CourseAttempt/CourseQuestion` 等类型与 `fetchCourseLessons/fetchCourseLesson/startCourseAttempt/fetchCourseAttempt/submitCourseAnswer/setCourseStep/saveCourseOutput/completeCourseAttempt`；走 `apiFetch`（会话 cookie/AbortSignal），失败抛带 HTTP 状态与错误码的 `CourseApiError`；题目答案只从作答接口取，客户端不存答案键；事件 `sendCourseEvent` 静默失败，卸载/离开用 `sendCourseDropBeacon` |
 | `placement.ts` | 能力定位测客户端（M4 / specs/016）：卷面/画像/结果类型与 `startPlacement/submitPlacement/getProfile/resetPlacement`；走 `apiFetch`，失败抛带 HTTP 状态的 `PlacementApiError`；`preliminary`/`sampleSize`/`disclaimer` 原样交给 UI，不做二次推断 |
 | `discover.ts` | 内容发现客户端（specs/017）：/api/discover 的候选/结果类型与 `discoverContent(query,targetLang,force)`；失败抛带 HTTP 状态与 `Retry-After` 的 `DiscoverApiError`；候选不补造、不强行凑足 3–5 个，`hasEnglishSubs` 只接受 true/null |
 | `reading.ts` | 读文章客户端（specs/019）：`importArticle`/`getArticle`/`translateArticle`/`listArticles`/`deleteArticle`/`saveProgress` 与文章/段落/译文/进度类型；读取显式带 `targetLang`，失败抛带 HTTP 状态的 `ReadingApiError`；不补造文章内容，译文失败按后端 `translationFailed` 标记展示 |

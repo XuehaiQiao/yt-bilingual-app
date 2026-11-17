@@ -3,11 +3,13 @@
 > 规格只讲**做什么**和**为什么**，不讲怎么实现。相关：specs/004（生词水平轴）、
 > specs/001（字幕流式管线）、specs/014（理解题，题目走独立管线）。
 
-**状态：** 已实现（后端） ｜ **对应代码：** `backend/teaching_analysis.py`、
-`backend/routes_teaching_analysis.py`、`backend/translate.py`、
-`backend/routes_videos.py`、`backend/routes_content.py`、
+**状态：** 已实现（后端 + 视频学习页前端） ｜ **对应代码：**
+`backend/teaching_analysis.py`、`backend/routes_teaching_analysis.py`、
+`backend/translate.py`、`backend/routes_videos.py`、`backend/routes_content.py`、
 `backend/routes_reading.py`、`backend/routes_books.py`、迁移
-`0020_content_teaching_analysis.py`
+`0020_content_teaching_analysis.py`；前端
+`frontend/src/lib/teachingAnalysis.ts`、`frontend/src/components/TeachingNotesPanel.tsx`、
+`frontend/src/App.tsx`（视频学习页）
 
 ---
 
@@ -122,8 +124,9 @@
   题目与作答记录仍按用户隔离（quiz.py 的既有口径）。
 - 长内容按 ≤200 blocks 分批调用后合并，单批失败整份失败（不写半成品）。
 - 高亮颜色固定沿用前端冻结配方 `text-purple-400 ...`，模型给的颜色不采信。
-- 不做前端：新增的 `idioms` / `culture` 字段前端暂未消费（向后兼容），
-  字幕高亮仍走既有 `block.highlights`。
+- 前端只接**视频学习页**（YouTube / 本地剧集）：侧栏「语言点」展示习语/文化点，
+  分析高亮覆盖翻译 payload 里的旧高亮；阅读器/书籍章节暂不消费这两个新字段。
+- 游客（403）不请求分析，面板显示「登录后查看语言点」；分析失败不阻断视频。
 - 不做旧缓存批量回填：旧视频下次打开时按需生成；切等级时按需重生成。
 
 ## 版本与变更记录
@@ -131,3 +134,4 @@
 | 日期 | 变更 |
 |---|---|
 | 2026-11-18 | 首版：迁移 0020、独立教学分析模块/端点、翻译 prompt 去 highlights、视频/本地剧集/文章/章节合并、34 条离线测试 |
+| 2026-11-18 | 前端视频学习页接入：语言点侧栏（习语/文化计数、点击 seek、折叠、骨架/空/重试/登录态）、分析高亮覆盖旧 payload 高亮、payload 优先与按 level 重取、游客 403 提示 |

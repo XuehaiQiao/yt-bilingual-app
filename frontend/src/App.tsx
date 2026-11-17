@@ -1,4 +1,5 @@
 import { apiFetch } from './lib/api';
+import { COURSE_MVP_LESSON_ID } from './lib/course';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, ArrowLeft } from 'lucide-react';
@@ -15,6 +16,7 @@ import { parseRoute, tabForSub, toHash, type SubRoute, type TabId } from './lib/
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
 import { TranscriptView } from './components/TranscriptView';
+import { TeachingNotesPanel, type TeachingNotesStatus } from './components/TeachingNotesPanel';
 import { addFavorite, fetchFavorites, removeFavorite, type FavoriteDraft, type FavoriteItem } from './lib/favorites';
 import { ChannelVideoList } from './components/ChannelVideoList';
 import { Toaster } from './components/Toaster';
@@ -38,6 +40,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { AppShell } from './components/AppShell';
 import { LearningHeader } from './components/LearningHeader';
 import { TodayScreen } from './components/TodayScreen';
+import { CourseScreen } from './components/CourseScreen';
 import { ContentScreen } from './components/ContentScreen';
 import { PracticeScreen } from './components/PracticeScreen';
 import { ProfileScreen } from './components/ProfileScreen';
@@ -72,7 +75,16 @@ import {
   saveVocabLevel,
   vocabLevelFromCefr,
   VOCAB_LEVELS,
+  VOCAB_LEVEL_EVENT,
+  type VocabLevelId,
 } from './lib/settings';
+import {
+  applyTeachingAnalysisHighlights,
+  fetchTeachingAnalysis,
+  teachingAnalysisFromPayload,
+  type TeachingAnalysis,
+  type TeachingAnalysisIssue,
+} from './lib/teachingAnalysis';
 import {
   clampSplitRatio,
   DEFAULT_SPLIT_RATIO,
@@ -120,6 +132,7 @@ const TASK_SUB_KINDS: ReadonlySet<SubRoute['kind']> = new Set<SubRoute['kind']>(
   'review',
   'exam',
   'placement',
+  'course',
 ]);
 
 // Breadcrumb fragment shown in the desktop top bar for each sub view.
@@ -139,6 +152,7 @@ const SUB_LABEL_KEYS: Record<SubRoute['kind'], TranslationKey> = {
   vocabulary: 'topbar.feature.vocabulary',
   ability: 'topbar.feature.ability',
   admin: 'topbar.feature.admin',
+  course: 'topbar.feature.course',
 };
 
 function formatClock(seconds: number): string {
@@ -458,6 +472,80 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Weekly-report evidence jump: contentRef + seconds, consumed by the same
   // post-load effect. It takes precedence over the resume-from-progress path.
   const pendingEvidenceSeekRef = useRef<{ contentRef: string; time: number; kind: 'video' | 'local_show' } | null>(null);
+
+  // ── Teaching analysis (specs/028) ───────────────────────────────────────
+  // Analysed content is shared across users and cached by
+  // content_hash + level + target_lang. The page keeps the payload copy (from
+  // a history cache that already carries idioms/culture) separate from the
+  // endpoint copy, so the payload can win without an extra request while a
+  // level switch still triggers a fresh lookup.
+  const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
+  const [payloadTeachingAnalysis, setPayloadTeachingAnalysis] = useState<{
+    analysis: TeachingAnalysis;
+    level: VocabLevelId;
+    stale: boolean;
+  } | null>(null);
+  const [teachingAnalysis, setTeachingAnalysis] = useState<TeachingAnalysis | null>(null);
+  // True only for endpoint results: those highlights are authoritative and
+  // override the legacy per-block highlights in the translation payload.
+  const [teachingHighlightsAuthoritative, setTeachingHighlightsAuthoritative] = useState(false);
+  const [teachingNotesStatus, setTeachingNotesStatus] = useState<TeachingNotesStatus>('idle');
+  const [teachingNotesRetry, setTeachingNotesRetry] = useState(0);
+  // The payload only stores idioms/culture, not the level they were generated
+  // for. Keep an entry per content ref, and mark every known payload stale when
+  // the level changes: after a settings change the payload may still carry the
+  // old level's analysis, so the endpoint (cache-first) wins even when a later
+  // reopen shows that payload again.
+  const payloadAnalysisLevelsRef = useRef(
+    new Map<string, { level: VocabLevelId; stale: boolean }>(),
+  );
+  const vocabLevelRef = useRef<VocabLevelId>(vocabLevel);
+
+  // The highlighter level is saved from 我的. Keep a live copy so returning to a
+  // still-mounted video refetches; opening a video again reads it at load time.
+  useEffect(() => {
+    const syncLevel = () => {
+      const next = loadVocabLevel();
+      if (next !== vocabLevelRef.current) {
+        vocabLevelRef.current = next;
+        payloadAnalysisLevelsRef.current.forEach((entry) => { entry.stale = true; });
+      }
+      setVocabLevel(next);
+    };
+    window.addEventListener(VOCAB_LEVEL_EVENT, syncLevel);
+    window.addEventListener('storage', syncLevel);
+    return () => {
+      window.removeEventListener(VOCAB_LEVEL_EVENT, syncLevel);
+      window.removeEventListener('storage', syncLevel);
+    };
+  }, []);
+
+  const resetTeachingAnalysis = useCallback(() => {
+    setTeachingAnalysis(null);
+    setTeachingHighlightsAuthoritative(false);
+    setTeachingNotesStatus('idle');
+    setPayloadTeachingAnalysis(null);
+  }, []);
+
+  const capturePayloadTeachingAnalysis = useCallback((payload: unknown) => {
+    const fromPayload = teachingAnalysisFromPayload(payload);
+    if (!fromPayload?.contentRef) {
+      setPayloadTeachingAnalysis(null);
+      return;
+    }
+    const level = loadVocabLevel();
+    let entry = payloadAnalysisLevelsRef.current.get(fromPayload.contentRef);
+    if (!entry) {
+      entry = { level, stale: false };
+      payloadAnalysisLevelsRef.current.set(fromPayload.contentRef, entry);
+    } else if (entry.level !== level) {
+      // A level change happened before this payload was read back; the payload
+      // may still hold the previous level's idioms/culture.
+      entry.level = level;
+      entry.stale = true;
+    }
+    setPayloadTeachingAnalysis({ analysis: fromPayload, level: entry.level, stale: entry.stale });
+  }, []);
 
   const cancelTranslationStream = () => {
     streamAbortRef.current?.abort();
@@ -929,6 +1017,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const resetLearning = useCallback(() => {
     streamAbortRef.current?.abort();
     streamAbortRef.current = null;
+    resetTeachingAnalysis();
     setTranslationProgress(null);
     if (subtitleTimerRef.current) clearInterval(subtitleTimerRef.current);
     subtitleTimerRef.current = null;
@@ -947,7 +1036,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setWordLookup(null);
     setSelectedChannel(null);
     setReviewStatsNonce(prev => prev + 1);
-  }, []);
+  }, [resetTeachingAnalysis]);
 
   // Cross-sub jumps (word book → player/reader/pack) replace the word-book
   // route instead of stacking a second history entry (IA §7.3, depth = 1).
@@ -983,6 +1072,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     resume?: { jobId?: string; from?: number },
   ) => {
     pauseSubtitleTimer();
+    resetTeachingAnalysis();
     // A fresh stream only proves a cache once the backend writes the payload
     // (on `meta` for reused caches, on `done` for new ones).
     setQuizCacheReady(false);
@@ -1123,6 +1213,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const handleSelectEpisode = async (showId: string, season: number, episode: number) => {
     pauseSubtitleTimer();
+    resetTeachingAnalysis();
     setQuizCacheReady(false);
     setLoadingState('loading');
     // The target can change while this request is in flight. The response is
@@ -1146,6 +1237,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         setSummary(data.summary || '');
         setMetadata({ ...data.metadata, is_local_subtitle: true });
         setVideoId(data.videoId);
+        capturePayloadTeachingAnalysis(data);
         setCurrentTime(0);
         setQuizCacheReady(true);
       } else {
@@ -1165,6 +1257,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         setSummary(data.summary || '');
         setMetadata({ ...data.metadata, is_local_subtitle: true });
         setVideoId(data.videoId);
+        capturePayloadTeachingAnalysis(data);
         setCurrentTime(0);
         setQuizCacheReady(true);
       }
@@ -1180,6 +1273,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const handleLoadHistory = async (filename: string) => {
     pauseSubtitleTimer();
+    resetTeachingAnalysis();
     setQuizCacheReady(false);
     setLoadingState('loading');
     const requestedTargetLang = getRuntimeTargetLang();
@@ -1197,6 +1291,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       setSummary(data.summary || '');
       setMetadata(data.metadata || null);
       setVideoId(data.videoId);
+      capturePayloadTeachingAnalysis(data);
       setCurrentTime(0);
       // Loaded straight out of history: the bilingual cache already exists.
       setQuizCacheReady(true);
@@ -1227,6 +1322,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // only reads pre-built blocks and enters the existing player, the article
   // path only renders a local payload. Neither calls estimate/process/define.
   const applyLibraryVideo = (data: Awaited<ReturnType<typeof fetchLibraryVideo>>) => {
+    resetTeachingAnalysis();
     setTranscript(data.blocks);
     setSummary('');
     setMetadata({
@@ -1267,6 +1363,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const handleOpenLibraryArticle = async (id: string) => {
     setWordLookup(null);
     setSelectedChannel(null);
+    resetTeachingAnalysis();
     setLoadingState('loading');
     try {
       const data = await fetchLibraryArticle(id);
@@ -1288,6 +1385,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // process/estimate (P0 IA R7). A miss returns to the content page with a
   // toast instead of silently re-billing.
   const restoreLearnRoute = async (sub: Extract<SubRoute, { kind: 'learn' }>) => {
+    resetTeachingAnalysis();
     if (sub.source === 'library' && sub.itemId) {
       try {
         const data = await fetchLibraryVideo(sub.itemId);
@@ -1318,6 +1416,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         setSummary(data.summary || '');
         setMetadata({ ...data.metadata, is_local_subtitle: true });
         setVideoId(data.videoId);
+        capturePayloadTeachingAnalysis(data);
         setCurrentTime(0);
         setQuizCacheReady(true);
       } catch {
@@ -1540,6 +1639,112 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
   }, [useSubtitleTimer, startSubtitleTimer, videoId]);
 
+  // ── Teaching analysis: load once per content + level + target language ───
+  // Free-library videos/articles are pre-built payloads with no analysis row;
+  // every other learning view (YouTube video, local episode) is eligible.
+  const teachingAnalysisContentRef =
+    videoId && !isLibraryVideo && !libraryArticle ? videoId : '';
+
+  useEffect(() => {
+    if (!teachingAnalysisContentRef || transcript.length === 0) {
+      setTeachingAnalysis(null);
+      setTeachingHighlightsAuthoritative(false);
+      setTeachingNotesStatus('idle');
+      return;
+    }
+    if (status === 'guest' || status === 'anonymous') {
+      setTeachingAnalysis(null);
+      setTeachingHighlightsAuthoritative(false);
+      setTeachingNotesStatus('login');
+      return;
+    }
+    if (status !== 'authenticated') {
+      setTeachingNotesStatus('loading');
+      return;
+    }
+
+    // A history payload that already carries the merged analysis wins: no
+    // endpoint call, and the transcript's own highlights are already correct.
+    const payloadMatches = payloadTeachingAnalysis !== null
+      && !payloadTeachingAnalysis.stale
+      && payloadTeachingAnalysis.level === vocabLevel
+      && (
+        payloadTeachingAnalysis.analysis.contentRef === teachingAnalysisContentRef
+        || !payloadTeachingAnalysis.analysis.contentRef
+      );
+    if (payloadMatches) {
+      setTeachingAnalysis(payloadTeachingAnalysis.analysis);
+      setTeachingHighlightsAuthoritative(false);
+      setTeachingNotesStatus('ready');
+      return;
+    }
+
+    // While a fresh stream is still translating, the backend has not produced
+    // analysis yet; asking now would race the same generation (and count it
+    // twice). Wait for the progress bar/summary stage to finish.
+    if (loadingState !== null || translationProgress !== null) {
+      setTeachingNotesStatus('loading');
+      return;
+    }
+    // A fresh stream only marks the cache ready on `done`, after the backend
+    // has persisted both translations and analysis. Asking earlier (e.g. after
+    // an aborted translation) could cache an analysis with empty zh_words.
+    if (!quizCacheReady) {
+      setTeachingNotesStatus('loading');
+      return;
+    }
+
+    const controller = new AbortController();
+    let cancelled = false;
+    let issue: TeachingAnalysisIssue | undefined;
+    setTeachingAnalysis(null);
+    setTeachingHighlightsAuthoritative(false);
+    setTeachingNotesStatus('loading');
+    fetchTeachingAnalysis(teachingAnalysisContentRef, vocabLevel, {
+      targetLang,
+      signal: controller.signal,
+      onIssue: (nextIssue) => { issue = nextIssue; },
+    }).then((nextAnalysis) => {
+      if (cancelled) return;
+      if (nextAnalysis) {
+        setTeachingAnalysis(nextAnalysis);
+        setTeachingHighlightsAuthoritative(true);
+        setTeachingNotesStatus('ready');
+        return;
+      }
+      if (issue === 'forbidden') setTeachingNotesStatus('login');
+      else if (issue === 'not-found') setTeachingNotesStatus('empty');
+      else setTeachingNotesStatus('error');
+    }).catch(() => {
+      if (!cancelled) setTeachingNotesStatus('error');
+    });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [
+    teachingAnalysisContentRef,
+    transcript.length,
+    status,
+    payloadTeachingAnalysis,
+    vocabLevel,
+    targetLang,
+    loadingState,
+    translationProgress,
+    quizCacheReady,
+    teachingNotesRetry,
+  ]);
+
+  // Endpoint highlights override the translation payload's old highlights;
+  // without analysis (guest / not found / failure) the original blocks remain
+  // the fallback, so subtitles keep their legacy highlights.
+  const displayTranscript = useMemo(
+    () => (teachingAnalysis && teachingHighlightsAuthoritative
+      ? applyTeachingAnalysisHighlights(transcript, teachingAnalysis.highlights)
+      : transcript),
+    [transcript, teachingAnalysis, teachingHighlightsAuthoritative],
+  );
+
   // Active sentence index — TranscriptView depends on this, not on raw
   // 100ms time ticks, so the 400+ sentence list re-renders only when the
   // spoken sentence actually changes.
@@ -1564,6 +1769,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
     seekTo(time, 'click');
   }, [loopEnabled, transcript, seekTo]);
+
+  // 「语言点」items carry a block id, not a time: resolve it against the
+  // transcript so the note and its quote land on the exact subtitle block.
+  const handleTeachingNoteSeek = useCallback((blockId: number | string) => {
+    const block = transcript.find((item) => String(item.id) === String(blockId));
+    if (block) seekTo(block.start, 'click');
+  }, [transcript, seekTo]);
+
+  const handleTeachingNotesRetry = useCallback(() => {
+    setTeachingNotesRetry((previous) => previous + 1);
+  }, []);
 
   const toggleLoop = useCallback(() => {
     setLoopEnabled(prev => {
@@ -1656,6 +1872,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const handleOpenReview = () => {
     if (!requireAccount()) return;
     openSub({ kind: 'review' });
+  };
+
+  // 12-minute course (specs/029): the one private-beta lesson.
+  const handleOpenCourse = () => {
+    openSub({ kind: 'course', lessonId: COURSE_MVP_LESSON_ID });
   };
 
   const handleCloseReview = () => {
@@ -2245,6 +2466,14 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const summaryBody = (
     <>
+      <TeachingNotesPanel
+        status={teachingNotesStatus}
+        analysis={teachingAnalysis}
+        transcript={transcript}
+        onSeek={handleTeachingNoteSeek}
+        onRetry={handleTeachingNotesRetry}
+        onRequestLogin={onRequestLogin}
+      />
       {summary ? (
         <>
           <button
@@ -2299,7 +2528,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       {transcript.length > 0 && (() => {
         const seen = new Set<string>();
         const vocabItems: { en: string; zh: string; start: number; en_text: string; zh_text: string; highlights: any[] }[] = [];
-        for (const block of transcript) {
+        for (const block of displayTranscript) {
           if (block.highlights) {
             for (const h of block.highlights) {
               const key = `${h.en_word}|||${h.zh_word}`;
@@ -2534,7 +2763,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       <div className="relative flex-1 min-h-0 bg-transparent">
         <div className="absolute top-0 inset-x-0 h-8 bg-gradient-to-b from-[#09090b] to-transparent z-10 pointer-events-none"></div>
         <TranscriptView
-          transcript={transcript}
+          transcript={displayTranscript}
           activeIndex={activeTranscriptIndex}
           videoId={videoId}
           favorites={favoriteIds}
@@ -2760,6 +2989,15 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               <p data-testid="restoring-view" className="text-sm">{t('nav.restoring')}</p>
             </div>
           );
+        case 'course':
+          return subFrame(
+            <CourseScreen
+              lessonId={sub.lessonId}
+              isGuest={status === 'guest'}
+              onRequestLogin={onRequestLogin}
+              onExit={back}
+            />,
+          );
         case 'review':
           return subFrame(
             <ReviewScreen onClose={handleCloseReview} onRequestLogin={onRequestLogin} />,
@@ -2955,6 +3193,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenReport={handleOpenReport}
             onOpenPlacement={handleOpenPlacement}
             onOpenContent={() => go('content')}
+            onOpenCourse={handleOpenCourse}
           />
         );
     }

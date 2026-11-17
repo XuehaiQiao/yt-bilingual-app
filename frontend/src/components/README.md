@@ -11,6 +11,7 @@
 | `BottomBar.tsx` | <md | 手机底栏：四个一级页图标+文字、安全区、练习到期徽章 |
 | `InputScreen.tsx` | 首页 | 今日工作台容器：今日头部、能力定位引导条与三张行动卡（继续学习/今日复习/本周报告）、「为你推荐」横排、开始学习输入区（含「搜索你想学的内容」发现入口）、词汇轴、句子精背整宽入口卡、四张 bento 卡（最近学习/本地剧集/订阅/最新视频） |
 | `TodayWorkbench.tsx` | 首页 | 今日头部（日期/今日状态/模型栏）、能力定位引导条（无画像：12 分钟定位；有画像：水平区间 + 重测）与三张行动卡（继续学习/今日复习/本周报告），复用设计语言卡片配方；继续卡无记录时引导到下方输入框 |
+| `CourseScreen.tsx` | 12 分钟课程（#/lesson/&lt;id&gt;） | 课程 MVP 全屏视图（specs/029）：S0 介绍 → S1 词卡揭示 → S2–S4 英文段落/可隐藏中文/讲解/2 题即时反馈 → S5 产出与 2 道出口题 → 完成页 score/8、产出与参考样例；游客登录提示；刷新/重进按 attempt 恢复步骤与答案；12:00 倒计时只显示；lesson_start/step_view/step_complete/answer/output_submit/lesson_complete 埋点与卸载 sendBeacon drop；中越与 375/1440 |
 | `RecentLearning.tsx` | 首页 | 「最近学习」聚合列表（视频 + 文章 + 公版书/导入书章节）：类型徽章/标题/来源/进度/学习时间，搜索（标题+副标题、大小写不敏感）、全部/视频/文章/书籍筛选 chips（带数量）、每页 10 条翻页；时间按今天 HH:mm / 昨天 / 日期显示，缺失显示「时间未知」；游客只请求视频+本地书进度、不请求文章/导入书；文章与书索引按需加载一次并在卸载时 abort；空/加载/错误态不阻塞今日三卡 |
 | `HomeRecommendations.tsx` | 首页 | 「为你推荐」横排卡片（user request #10）：区间副标题/初步推荐徽章、缩略图+难度徽章+时长+标题+理由、水平滚动、「换一批」seed 轮转、加载/失败/空态；点击整卡复用 `EstimateDialog` 估价流程 |
 | `LibrarySection.tsx` | 首页 | 「免费资源」窗（user request #11）：视频/文章分段 tab、55 张预置视频卡（编辑等级 chip/频道/时长/计算带/免费标识）、A1–C2 等级筛选 chips（含数量）、水平滚动、加载/失败/空态；游客可用，点击直接进本地内容，不进入估价流程 |
@@ -21,6 +22,7 @@
 | `LocalEpisodeStage.tsx` | 学习页（本地剧集） | 本地剧集媒体占位卡：剧名/集名、取景图标、模拟播放（播放/暂停、可点击进度、当前/总时长） |
 | `TranscriptView.tsx` | 学习页 | 字幕列表：**Apple Music 式跟随滚动**、memo 化（只在换句时重渲染）、用户滚动时暂停跟随 |
 | `TranscriptBlock.tsx` | 学习页 | 单句：时间戳、译文显隐、收藏星标、听写模糊；**导出 `HighlightedText`/`ClickableWords`/`cn`** 供他处复用 |
+| `TeachingNotesPanel.tsx` | 学习页（侧栏/视频下方） | 「语言点」面板（specs/028）：习语/文化点计数与分组列表（phrase/term、中文 meaning/note、quote、时间），点击条目按 blockId seek；折叠/展开、加载骨架、空态「本课暂无语言点」、错误重试、游客或 403 显示「登录后查看语言点」；不遮挡字幕 |
 | `ReadingHighlight.tsx` | 四个阅读器 | 阅读标亮 UI：`ReadingHighlight` 包装 `ClickableWords`（淡琥珀下划线/背景，不拦截点词），`ReadingHighlightToggle` 是工具栏「标亮生词」开关（默认开、localStorage 记忆，切换后即时重算） |
 | `BilingualRow.tsx` | 阅读器 | 双语段落布局原语：≥lg 左英右中同段同行（同一滚动容器），<lg 英文在上中文在下；译文隐藏时调用方传 `twoColumn=false` 即英文单栏；英文/译文槽位分离，译文栏不参与点词 |
 | `WordPopover.tsx` | 全局 | 点查词典卡：音标/释义/例句/TTS/入生词本；卡片打开后单击另一个单词直接切词（触屏无 hover 也一次命中），点空白才关闭 |

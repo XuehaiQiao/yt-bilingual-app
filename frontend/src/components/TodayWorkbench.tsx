@@ -10,7 +10,7 @@
 // routes to the profile / retest page. The link input moved below these cards
 // (see InputScreen) and stays one paste away — this component never owns the
 // submit pipeline.
-import { ArrowRight, CalendarRange, Gauge, Play, Repeat } from 'lucide-react';
+import { ArrowRight, CalendarRange, Gauge, GraduationCap, Play, Repeat } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
 import type { ReviewStats } from '../lib/review';
@@ -61,6 +61,8 @@ interface TodayWorkbenchProps {
     showPlacement?: boolean;
     /** Main "paste a link" input for a user without history (IA §3.1 order). */
     inputSlot?: React.ReactNode;
+    /** 12-minute course entry (specs/029); omitted by the legacy wrapper. */
+    onOpenCourse?: () => void;
 }
 
 const CARD = 'rounded-3xl border border-white/5 bg-zinc-900/40 p-3.5 sm:p-5 flex flex-col min-w-0';
@@ -91,6 +93,7 @@ export function TodayWorkbench({
     onOpenPlacement,
     showPlacement = true,
     inputSlot,
+    onOpenCourse,
 }: TodayWorkbenchProps) {
     const { t, formatNumber, formatDate } = useI18n();
 
@@ -497,6 +500,51 @@ export function TodayWorkbench({
                     </button>
                 </motion.section>
             </div>
+
+            {/* 12-minute course entry (specs/029). One full-width banner under
+                the three workbench cards; stacks on 375px with a full-width
+                action so it never competes with the primary card row. */}
+            {onOpenCourse && (
+                <motion.section
+                    data-testid="today-course-entry"
+                    whileTap={{ scale: 0.995 }}
+                    transition={{ type: 'spring', stiffness: 550, damping: 35 }}
+                    className="mt-2.5 sm:mt-4 rounded-2xl sm:rounded-3xl border border-white/5 bg-zinc-900/40 p-3.5 sm:p-5"
+                >
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                                <GraduationCap className="w-5 h-5 text-blue-400" />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span className="text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">
+                                        {t('course.entry.badge')}
+                                    </span>
+                                    <span className="text-[10px] sm:text-[11px] font-medium text-zinc-500 tabular-nums">
+                                        {t('course.entry.meta')}
+                                    </span>
+                                </div>
+                                <h3 className="mt-1 text-sm sm:text-[15px] font-semibold tracking-tight text-zinc-100">
+                                    {t('course.entry.title')}
+                                </h3>
+                                <p className="mt-0.5 text-[11px] sm:text-xs leading-relaxed text-zinc-500">
+                                    {t('course.entry.desc')}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            data-testid="today-course-button"
+                            onClick={onOpenCourse}
+                            className={`${ENTRY_ACTION} bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-300 hover:text-blue-200`}
+                        >
+                            {t('course.entry.start')}
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </motion.section>
+            )}
 
         </div>
     );

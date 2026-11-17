@@ -21,6 +21,7 @@
 //   #/learn/youtube/<videoId>                            learning view (YouTube)
 //   #/learn/local/<showId>/S<ss>E<ee>                    learning view (local episode)
 //   #/learn/library/<itemId>                             learning view (free library)
+//   #/lesson/<lessonId>                                  12-minute course
 //   #/profile/vocabulary                                 word book (单词本);
 //                                                          #/profile/favorites is
 //                                                          a legacy alias.
@@ -63,7 +64,8 @@ export type SubRoute =
   | { kind: 'imported-book'; bookId: string }
   | { kind: 'vocabulary' }
   | { kind: 'ability' }
-  | { kind: 'admin' };
+  | { kind: 'admin' }
+  | { kind: 'course'; lessonId: string };
 
 export interface NavState {
   tab: TabId;
@@ -121,6 +123,8 @@ export function tabOfSub(sub: SubRoute, fallback: TabId = 'today'): TabId {
     case 'ability':
     case 'admin':
       return 'profile';
+    case 'course':
+      return 'today';
     default:
       return 'today';
   }
@@ -139,6 +143,10 @@ export function tabForSub(sub: SubRoute, currentTab: TabId): TabId {
       return currentTab === 'today' || currentTab === 'practice' ? currentTab : 'practice';
     case 'report':
       return currentTab === 'today' || currentTab === 'profile' ? currentTab : 'today';
+    case 'course':
+      // The lesson lives outside the tabs; remember the entry page so "back"
+      // returns where the learner came from (today by default).
+      return currentTab === 'content' ? 'content' : 'today';
     default:
       return tabOfSub(sub, currentTab);
   }
@@ -229,6 +237,10 @@ export function parseRoute(hash: string): NavState {
     return { ...FALLBACK };
   }
 
+  if (head === 'lesson' && rest.length === 1 && rest[0]) {
+    return { tab: 'today', sub: { kind: 'course', lessonId: rest[0] } };
+  }
+
   if (head === 'learn') {
     // #/learn/youtube/<videoId>
     if (rest[0] === 'youtube' && rest.length === 2 && rest[1]) {
@@ -308,6 +320,8 @@ export function toHash(state: NavState): string {
       return '#/profile/ability';
     case 'admin':
       return '#/profile/admin';
+    case 'course':
+      return `#/lesson/${encodeSegment(sub.lessonId)}`;
     default:
       return `#/${tab}`;
   }
