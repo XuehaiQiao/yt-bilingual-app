@@ -1,7 +1,7 @@
 # 029 — 课程 MVP 垂直切片（私测版）
 
-> 状态：实现中 ｜ 2026-11-18 ｜ 范围：一课、登录用户、私测
-> 内容：`content/course/ocean-noise-12min.json`（自有文章，可公开；第三方视频 pack 不进入本功能）
+> 状态：实现中 ｜ 2026-11-18 ｜ 范围：一课、登录用户、**仅本地功能实现（不部署/不上线）**
+> 内容：`content/course/ocean-noise-12min.json`（自有文章；第三方视频 pack 不进入本功能）
 
 ## 1. 产品范围
 
@@ -117,16 +117,17 @@
 - 事件：step_view/step_complete/answer/output_submit/lesson_complete；卸载时 sendBeacon drop
 - 375/1440；中越 i18n
 
-## 5. 私测
+## 5. 本地功能验证（不部署）
 
-- 部署：现有 Docker 单容器 + Caddy；先不公开索引，链接只发给 10–20 个测试者
-- 内容：只上自有文章课；第三方视频课不进入公网
-- 指标：完成率、下一节点击、产出提交、每步流失、时长
+- 本轮只实现功能，在本机 `uvicorn` + Vite 上走通；不做 VPS/域名/Caddy/公开链接
+- 内容：只接自有文章课；第三方视频课不进入本功能
+- 验证：完成率、下一节点击、产出提交、每步流失、时长通过 `course_events` 本地检查
 - 数据：`course_attempts` + `course_events`
+- 部署/私测另立任务，不在本轮范围
 
 ## 6. 验收
 
 - 后端迁移/API/权限/评分/事件测试
 - 前端 tsc/check:i18n/build
 - Playwright：完成一课、刷新恢复、答错反馈、产出校验、游客提示、375/1440
-- 私测部署 runbook（VPS + Docker + Caddy）
+- 本地验证说明（启动命令、测试账号、事件检查）；部署不在本轮
