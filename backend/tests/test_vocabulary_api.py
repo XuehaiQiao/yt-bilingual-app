@@ -16,6 +16,7 @@ import config
 import difficulty
 import vocabulary
 from tests.vocab_fixtures import (
+    build_phrases,
     copy_frequency,
     load_builder,
     write_tiny_ecdict,
@@ -23,6 +24,7 @@ from tests.vocab_fixtures import (
 
 builder = load_builder()
 LIST_IDS = [
+    "phrases",
     "cefr-a1",
     "cefr-a2",
     "cefr-b1",
@@ -54,7 +56,11 @@ def built(tmp_path_factory):
         ]
     )
     assert code == 0
-    return SimpleNamespace(root=root, frequency=frequency, csv=csv_path, out=out_dir)
+    report = root / "phrases-report.json"
+    assert build_phrases(out_dir, csv_path, frequency, report) == 0
+    return SimpleNamespace(
+        root=root, frequency=frequency, csv=csv_path, out=out_dir, report=report
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -85,6 +91,15 @@ def test_lists_catalog_has_6_cefr_plus_3_exam_lists(vocab_env, make_client):
     catalog = response.json()
     assert [item["id"] for item in catalog] == LIST_IDS
     by_id = {item["id"]: item for item in catalog}
+
+    phrases = by_id["phrases"]
+    assert phrases["label"] == "短语"
+    assert phrases["count"] == 570
+    assert phrases["available"] is True
+    assert phrases["approximate"] is True
+    assert phrases["notice"] == "content/wordlists/PHRASES-NOTICE.md"
+    assert phrases["note"] == "A2–C1 近似，非官方 CEFR 短语表"
+    assert phrases["source"].startswith("LinguaTrek")
 
     for level, count in (
         ("cefr-a1", 1_000),
@@ -127,9 +142,11 @@ def test_lists_public_endpoint_does_not_issue_guest_cookie(make_client):
     with make_client() as client:
         response = client.get("/api/vocabulary/lists")
         detail = client.get("/api/vocabulary/lists/cefr-a1", params={"pageSize": 1})
+        phrases = client.get("/api/vocabulary/phrases", params={"pageSize": 1})
     assert response.status_code == 200
     assert detail.status_code == 200
-    for result in (response, detail):
+    assert phrases.status_code == 200
+    for result in (response, detail, phrases):
         assert "ln_guest" not in result.cookies
         assert all(
             "ln_guest" not in header
@@ -287,9 +304,12 @@ def test_unknown_list_and_c2_return_404(vocab_env, make_client):
     with make_client() as client:
         unknown = client.get("/api/vocabulary/lists/not-a-list")
         c2 = client.get("/api/vocabulary/lists/cefr-c2")
+        phrases_as_word_list = client.get("/api/vocabulary/lists/phrases")
     assert unknown.status_code == 404
     assert c2.status_code == 404
     assert "C2" in c2.json()["detail"]
+    assert phrases_as_word_list.status_code == 404
+    assert "/api/vocabulary/phrases" in phrases_as_word_list.json()["detail"]
 
 
 # ---------------------------------------------------------------------------

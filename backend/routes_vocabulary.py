@@ -2,8 +2,11 @@
 
 端点：
 
-- ``GET /api/vocabulary/lists``：词表目录（CEFR A1–C2 + GRE/CET4/CET6）；
+- ``GET /api/vocabulary/lists``：词表目录（短语 + CEFR A1–C2 + GRE/CET4/CET6）；
 - ``GET /api/vocabulary/lists/{id}?page=1&pageSize=50&q=``：分页/搜索；
+- ``GET /api/vocabulary/phrases?page=1&pageSize=50&q=&level=&type=``：短语分页/
+  搜索/按等级与类型筛选；
+- ``GET /api/vocabulary/phrases/{id}``：短语详情；
 - ``GET /api/vocabulary/level?words=a,b,c``：词 → A1–C1 / ``C1+`` / ``null``。
 
 数据来自 ``content/wordlists/`` 与 ``content/wordlist/`` 的只读 JSON，没有
@@ -28,7 +31,7 @@ def _handle_error(exc: vocabulary.VocabularyError) -> HTTPException:
 
 @router.get("/api/vocabulary/lists")
 def get_vocabulary_lists():
-    """词表目录：CEFR A1–C1（C2 标 available:false）+ GRE/CET4/CET6。"""
+    """词表目录：短语 + CEFR A1–C1（C2 标 available:false）+ GRE/CET4/CET6。"""
     try:
         payload = vocabulary.list_catalog()
     except vocabulary.VocabularyError as exc:
@@ -52,6 +55,47 @@ def get_vocabulary_list(
     """某个词表的分页条目；词表不存在/C2 → 404，数据文件缺失 → 503。"""
     try:
         payload = vocabulary.list_page(list_id, page, page_size, q)
+    except vocabulary.VocabularyError as exc:
+        raise _handle_error(exc) from exc
+    return JSONResponse(content=payload, headers=PUBLIC_CACHE_HEADERS)
+
+
+@router.get("/api/vocabulary/phrases")
+def get_vocabulary_phrases(
+    page: int = Query(1, ge=1, description="页码，从 1 开始"),
+    page_size: int = Query(
+        vocabulary.DEFAULT_PAGE_SIZE,
+        ge=1,
+        le=vocabulary.MAX_PAGE_SIZE,
+        alias="pageSize",
+        description=f"每页条数，1–{vocabulary.MAX_PAGE_SIZE}",
+    ),
+    q: str | None = Query(None, description="大小写不敏感：headword + 中文释义"),
+    level: str | None = Query(
+        None,
+        description="A2 / B1 / B2 / C1 / C1+（C1+ 表示 C1 及以上）",
+    ),
+    phrase_type: str | None = Query(
+        None,
+        alias="type",
+        description="phrasal_verb / idiom / collocation",
+    ),
+):
+    """短语分页；level/type 非法 → 400，文件缺失/损坏 → 503。"""
+    try:
+        payload = vocabulary.phrase_page(
+            page, page_size, q, level, phrase_type
+        )
+    except vocabulary.VocabularyError as exc:
+        raise _handle_error(exc) from exc
+    return JSONResponse(content=payload, headers=PUBLIC_CACHE_HEADERS)
+
+
+@router.get("/api/vocabulary/phrases/{phrase_id}")
+def get_vocabulary_phrase_detail(phrase_id: str):
+    """短语详情；id 不存在 → 404，文件缺失/损坏 → 503。"""
+    try:
+        payload = vocabulary.phrase_detail(phrase_id)
     except vocabulary.VocabularyError as exc:
         raise _handle_error(exc) from exc
     return JSONResponse(content=payload, headers=PUBLIC_CACHE_HEADERS)

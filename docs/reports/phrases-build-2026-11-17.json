@@ -1,0 +1,1797 @@
+{
+ "schema": "linguatrek.phrases-build-report.v1",
+ "generatedAt": "2026-11-17",
+ "version": "2026.11.17",
+ "artifact": "content/wordlists/phrases.v1.json",
+ "notice": "content/wordlists/PHRASES-NOTICE.md",
+ "totals": {
+  "total": 570,
+  "ecdict": 0,
+  "curated": 570,
+  "byType": {
+   "phrasal_verb": 302,
+   "idiom": 203,
+   "collocation": 65
+  },
+  "byCefr": {
+   "A2": 107,
+   "B1": 176,
+   "B2": 221,
+   "C1": 66,
+   "C1+": 0
+  },
+  "bySource": {
+   "ECDICT": 0,
+   "curated": 570
+  }
+ },
+ "ecdict": {
+  "rows": 770611,
+  "multiWordRows": 366599,
+  "pure2to4Rows": 280595,
+  "pure2to4WithChinese": 280323,
+  "tagged2to4Rows": 0,
+  "tagged2to4WithChinese": 0,
+  "taggedTranslationCoverage": null,
+  "taggedEntriesAfterFilter": 0,
+  "taggedByCefr": {
+   "A2": 0,
+   "B1": 0,
+   "B2": 0,
+   "C1": 0,
+   "C1+": 0
+  },
+  "csvSha256": "d1ecbdf9ee2b920afb6f430ca6b6bb9f559588cf0dff86e04bd255f9390843cc",
+  "snapshot": "ecdict.csv@master",
+  "entries": 0,
+  "note": "ECDICT tag 列只给单词打 CET4/CET6/GRE 标签；2–4 词条目中带三类 tag 的实际为 0 条，且这些条目 frq/bnc 均为 0。不按无 tag 词频补数。"
+ },
+ "curated": {
+  "baselineFile": "content/wordlists/curated-phrases.v1.json",
+  "baselineCount": 200,
+  "baselineVersion": "2026.11.17",
+  "extraFile": "content/wordlists/curated-phrases-extra.v1.json",
+  "extraCount": 370,
+  "extraVersion": "2026.11.17",
+  "entries": 570,
+  "license": "LinguaTrek 原创整理",
+  "note": "ECDICT 短语级 tag 覆盖为 0，为达到 500–800 条教学短语，在 150–200 条基线外增加补充批次；释义/例句均为语途自写，CEFR 为人工标注的近似值。"
+ },
+ "qualityGate": {
+  "sampleSize": 100,
+  "sampling": "按词表顺序等距抽样 100 条，覆盖 A2/B1/B2/C1 全段（本次 19/31/39/11）与三种类型（短语动词 55 / 习语 34 / 固定搭配 11）",
+  "failed": 0,
+  "failedIds": [],
+  "notes": "构建期自动核验字段，并对全部 570 条做人工通读复核；抽样 100 条逐条核对释义/例句/CEFR/非字面义。发现并修正 3 处例句标点/大小写问题（o'clock、people's、watch television）；无剩余返工项。"
+ },
+ "checklist": [
+  {
+   "id": "get-up",
+   "headword": "get up",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "起床；起身",
+   "example": "I usually get up at seven on weekdays.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "turn-off",
+   "headword": "turn off",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "关掉（电器）",
+   "example": "Please turn off your phone during the film.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "get-off",
+   "headword": "get off",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "下车",
+   "example": "We need to get off at the third stop.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "look-like",
+   "headword": "look like",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "看起来像",
+   "example": "That cloud looks like a rabbit.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "write-down",
+   "headword": "write down",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "写下；记下",
+   "example": "Write down the new words in your notebook.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "get-in",
+   "headword": "get in",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "进入；上车",
+   "example": "We got in the car and drove away.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "look-up",
+   "headword": "look up",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "查阅；抬头看",
+   "example": "You can look up the word in the dictionary.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "put-in",
+   "headword": "put in",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "放入；投入",
+   "example": "Put the milk in the fridge.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "turn-around",
+   "headword": "turn around",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "转身",
+   "example": "He turned around and smiled at me.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "work-out",
+   "headword": "work out",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "锻炼；解决",
+   "example": "I work out at the gym three times a week.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "take-away",
+   "headword": "take away",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "拿走；带走",
+   "example": "The waiter took away our empty plates.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "belong-to",
+   "headword": "belong to",
+   "type": "phrasal_verb",
+   "cefr": "A2",
+   "translation": "属于",
+   "example": "This umbrella belongs to my sister.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "keep-in-touch",
+   "headword": "keep in touch",
+   "type": "idiom",
+   "cefr": "A2",
+   "translation": "保持联系",
+   "example": "Let us keep in touch after graduation.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "take-a-shower",
+   "headword": "take a shower",
+   "type": "collocation",
+   "cefr": "A2",
+   "translation": "洗澡",
+   "example": "I take a shower before bed.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "do-homework",
+   "headword": "do homework",
+   "type": "collocation",
+   "cefr": "A2",
+   "translation": "做作业",
+   "example": "He does his homework after dinner.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "spend-time",
+   "headword": "spend time",
+   "type": "collocation",
+   "cefr": "A2",
+   "translation": "花时间",
+   "example": "I spend time reading every day.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "listen-to-music",
+   "headword": "listen to music",
+   "type": "collocation",
+   "cefr": "A2",
+   "translation": "听音乐",
+   "example": "She listens to music while cooking.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "take-medicine",
+   "headword": "take medicine",
+   "type": "collocation",
+   "cefr": "A2",
+   "translation": "吃药",
+   "example": "Take this medicine twice a day.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "get-ready",
+   "headword": "get ready",
+   "type": "collocation",
+   "cefr": "A2",
+   "translation": "准备；准备好",
+   "example": "It takes me ten minutes to get ready.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "find-out",
+   "headword": "find out",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "查明；发现",
+   "example": "I found out the truth from a friend.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "come-up-with",
+   "headword": "come up with",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "想出（主意）",
+   "example": "We need to come up with a better plan.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "take-up",
+   "headword": "take up",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "开始从事；占用",
+   "example": "He took up running last spring.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "bring-back",
+   "headword": "bring back",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "带回；使回忆起",
+   "example": "This song brings back happy memories.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "keep-on",
+   "headword": "keep on",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "继续",
+   "example": "She kept on talking even after the bell.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "run-into",
+   "headword": "run into",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "偶遇；撞上",
+   "example": "I ran into an old friend at the station.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "work-on",
+   "headword": "work on",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "从事；努力改善",
+   "example": "She is working on a new project.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "come-across",
+   "headword": "come across",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "偶然遇到；偶然发现",
+   "example": "I came across an old letter in the drawer.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "cross-out",
+   "headword": "cross out",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "划掉",
+   "example": "Cross out the wrong answers.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "fall-over",
+   "headword": "fall over",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "绊倒；摔倒",
+   "example": "She fell over and hurt her knee.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "go-ahead",
+   "headword": "go ahead",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "开始；请便",
+   "example": "Go ahead and ask your question.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "keep-out",
+   "headword": "keep out",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "不进入；挡住",
+   "example": "The sign says keep out.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "move-out",
+   "headword": "move out",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "搬出",
+   "example": "We are moving out at the end of the month.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "speed-up",
+   "headword": "speed up",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "加速",
+   "example": "The train sped up after the station.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "throw-up",
+   "headword": "throw up",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "呕吐",
+   "example": "He threw up after the long ride.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "care-about",
+   "headword": "care about",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "关心；在意",
+   "example": "She cares about her students very much.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "hang-on",
+   "headword": "hang on",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "稍等；坚持",
+   "example": "Hang on a second; I will get a pen.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "laugh-at",
+   "headword": "laugh at",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "嘲笑；因…发笑",
+   "example": "Do not laugh at other people's mistakes.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "think-over",
+   "headword": "think over",
+   "type": "phrasal_verb",
+   "cefr": "B1",
+   "translation": "仔细考虑",
+   "example": "Think it over before you decide.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "once-in-a-while",
+   "headword": "once in a while",
+   "type": "idiom",
+   "cefr": "B1",
+   "translation": "偶尔",
+   "example": "We go hiking once in a while.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "all-ears",
+   "headword": "all ears",
+   "type": "idiom",
+   "cefr": "B1",
+   "translation": "洗耳恭听",
+   "example": "Tell me your story; I am all ears.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "give-it-a-shot",
+   "headword": "give it a shot",
+   "type": "idiom",
+   "cefr": "B1",
+   "translation": "试一试",
+   "example": "Why not give it a shot?",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "take-ones-time",
+   "headword": "take one's time",
+   "type": "idiom",
+   "cefr": "B1",
+   "translation": "不着急；慢慢来",
+   "example": "Take your time; there is no rush.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "all-of-a-sudden",
+   "headword": "all of a sudden",
+   "type": "idiom",
+   "cefr": "B1",
+   "translation": "突然",
+   "example": "All of a sudden, the lights went out.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "hit-the-road",
+   "headword": "hit the road",
+   "type": "idiom",
+   "cefr": "B1",
+   "translation": "出发；上路",
+   "example": "We should hit the road before dark.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "play-a-role",
+   "headword": "play a role",
+   "type": "idiom",
+   "cefr": "B1",
+   "translation": "起作用；扮演角色",
+   "example": "Diet plays a role in health.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "heavy-traffic",
+   "headword": "heavy traffic",
+   "type": "collocation",
+   "cefr": "B1",
+   "translation": "交通拥堵",
+   "example": "We were stuck in heavy traffic.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "give-a-speech",
+   "headword": "give a speech",
+   "type": "collocation",
+   "cefr": "B1",
+   "translation": "发表演讲",
+   "example": "The mayor gave a speech at the ceremony.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "take-a-seat",
+   "headword": "take a seat",
+   "type": "collocation",
+   "cefr": "B1",
+   "translation": "请坐；就座",
+   "example": "Please take a seat; the doctor will see you soon.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "come-true",
+   "headword": "come true",
+   "type": "collocation",
+   "cefr": "B1",
+   "translation": "实现；成真",
+   "example": "Her dream of becoming a doctor came true.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "keep-fit",
+   "headword": "keep fit",
+   "type": "collocation",
+   "cefr": "B1",
+   "translation": "保持健康",
+   "example": "She swims to keep fit.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "否"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "bring-up",
+   "headword": "bring up",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "抚养；提出",
+   "example": "She was brought up by her grandparents.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "call-off",
+   "headword": "call off",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "取消",
+   "example": "They called off the trip because of the storm.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "keep-up",
+   "headword": "keep up",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "保持；跟上",
+   "example": "Keep up the good work!",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "pay-off",
+   "headword": "pay off",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "还清；取得成功",
+   "example": "It took him five years to pay off the loan.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "take-in",
+   "headword": "take in",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "吸收；理解；欺骗",
+   "example": "It took me a while to take in the news.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "bring-out",
+   "headword": "bring out",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "出版；使显现",
+   "example": "The company brought out a new phone.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "drop-by",
+   "headword": "drop by",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "顺道拜访",
+   "example": "Drop by whenever you are free.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "get-through",
+   "headword": "get through",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "通过；完成",
+   "example": "I finally got through the exam.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "hold-up",
+   "headword": "hold up",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "举起；延误",
+   "example": "The traffic held us up for an hour.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "look-through",
+   "headword": "look through",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "浏览；翻阅",
+   "example": "I looked through the magazine at the dentist.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "send-for",
+   "headword": "send for",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "派人去请/取",
+   "example": "We sent for a doctor at once.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "stand-out",
+   "headword": "stand out",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "突出；显眼",
+   "example": "Her painting stands out from the rest.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "think-up",
+   "headword": "think up",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "想出",
+   "example": "She thought up a clever idea.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "zoom-in",
+   "headword": "zoom in",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "放大；拉近",
+   "example": "Zoom in to see the details.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "hold-onto",
+   "headword": "hold onto",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "抓住；保留",
+   "example": "Hold onto the rope and do not let go.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "wait-on",
+   "headword": "wait on",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "服侍；招待",
+   "example": "The staff waited on us hand and foot.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "pass-on",
+   "headword": "pass on",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "传递；去世",
+   "example": "Please pass on my thanks to the team.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "put-across",
+   "headword": "put across",
+   "type": "phrasal_verb",
+   "cefr": "B2",
+   "translation": "清楚表达",
+   "example": "She put her argument across very well.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "in-the-same-boat",
+   "headword": "in the same boat",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "处境相同；同病相怜",
+   "example": "We are all in the same boat.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "pull-ones-leg",
+   "headword": "pull one's leg",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "开玩笑；逗弄",
+   "example": "Do not worry; I am just pulling your leg.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "face-the-music",
+   "headword": "face the music",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "承担后果",
+   "example": "He had to face the music after the mistake.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "on-cloud-nine",
+   "headword": "on cloud nine",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "非常高兴；乐翻天",
+   "example": "She was on cloud nine after the news.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "turn-a-blind-eye",
+   "headword": "turn a blind eye",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "视而不见；睁一只眼闭一只眼",
+   "example": "The guard turned a blind eye to the rule.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "an-open-book",
+   "headword": "an open book",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "一目了然；毫无秘密",
+   "example": "His feelings are an open book.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "down-to-earth",
+   "headword": "down to earth",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "务实的；接地气的",
+   "example": "Despite his fame, he is very down to earth.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "hold-ones-horses",
+   "headword": "hold one's horses",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "别着急；等一下",
+   "example": "Hold your horses; the results are not out yet.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "on-the-spot",
+   "headword": "on the spot",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "当场；立即",
+   "example": "He made a decision on the spot.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "ring-a-bell",
+   "headword": "ring a bell",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "听起来耳熟",
+   "example": "That name rings a bell.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "smell-a-rat",
+   "headword": "smell a rat",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "感到可疑",
+   "example": "I smell a rat in this offer.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "under-the-table",
+   "headword": "under the table",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "私下地；暗中（给钱）",
+   "example": "They paid him under the table.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "at-a-loss",
+   "headword": "at a loss",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "不知所措；困惑",
+   "example": "I was at a loss for words.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "catch-ones-eye",
+   "headword": "catch one's eye",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "引起某人注意",
+   "example": "The red dress caught my eye.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "easier-said-than-done",
+   "headword": "easier said than done",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "说起来容易做起来难",
+   "example": "Finding a cheap flat is easier said than done.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "get-the-picture",
+   "headword": "get the picture",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "明白情况",
+   "example": "I get the picture; you want more time.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "in-plain-sight",
+   "headword": "in plain sight",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "在明处；显而易见",
+   "example": "The keys were in plain sight.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "meet-halfway",
+   "headword": "meet halfway",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "各让一步；妥协",
+   "example": "I will meet you halfway on the price.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "rest-assured",
+   "headword": "rest assured",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "放心；尽管安心",
+   "example": "Rest assured, we will handle it.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "the-big-picture",
+   "headword": "the big picture",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "大局；全局",
+   "example": "Try to see the big picture.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "without-fail",
+   "headword": "without fail",
+   "type": "idiom",
+   "cefr": "B2",
+   "translation": "必定；从不例外",
+   "example": "He calls his mother every Sunday without fail.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "部分"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "carry-away",
+   "headword": "carry away",
+   "type": "phrasal_verb",
+   "cefr": "C1",
+   "translation": "使失去自制；带走",
+   "example": "He got carried away and spent too much.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "nod-off",
+   "headword": "nod off",
+   "type": "phrasal_verb",
+   "cefr": "C1",
+   "translation": "打瞌睡",
+   "example": "He nodded off during the lecture.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "put-down-to",
+   "headword": "put down to",
+   "type": "phrasal_verb",
+   "cefr": "C1",
+   "translation": "归因于",
+   "example": "He put his success down to hard work.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "get-around-to",
+   "headword": "get around to",
+   "type": "phrasal_verb",
+   "cefr": "C1",
+   "translation": "抽出时间做",
+   "example": "I never get around to cleaning the garage.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "wind-up",
+   "headword": "wind up",
+   "type": "phrasal_verb",
+   "cefr": "C1",
+   "translation": "结束；最终落得",
+   "example": "We wound up staying until midnight.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "follow-through",
+   "headword": "follow through",
+   "type": "phrasal_verb",
+   "cefr": "C1",
+   "translation": "贯彻到底",
+   "example": "He followed through on his promise.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "pay-through-the-nose",
+   "headword": "pay through the nose",
+   "type": "idiom",
+   "cefr": "C1",
+   "translation": "花大价钱；被宰",
+   "example": "We paid through the nose for the tickets.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "under-ones-belt",
+   "headword": "under one's belt",
+   "type": "idiom",
+   "cefr": "C1",
+   "translation": "已有（经验）在手",
+   "example": "She has ten years of experience under her belt.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "come-to-terms-with",
+   "headword": "come to terms with",
+   "type": "idiom",
+   "cefr": "C1",
+   "translation": "接受（不愉快的事）",
+   "example": "She came to terms with the loss.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "in-the-same-breath",
+   "headword": "in the same breath",
+   "type": "idiom",
+   "cefr": "C1",
+   "translation": "同时（常指自相矛盾）",
+   "example": "He praised and blamed her in the same breath.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  },
+  {
+   "id": "sit-tight",
+   "headword": "sit tight",
+   "type": "idiom",
+   "cefr": "C1",
+   "translation": "耐心等待；按兵不动",
+   "example": "Sit tight; help is on the way.",
+   "source": "curated",
+   "checks": {
+    "translationHasChinese": true,
+    "examplePresent": true,
+    "cefrInA2ToC1Plus": true,
+    "typeValid": true,
+    "nonLiteral": "是"
+   },
+   "reviewer": "LinguaTrek 构建抽检"
+  }
+ ],
+ "verification": {
+  "status": "passed",
+  "pyCompile": "OK：backend/vocabulary.py, backend/routes_vocabulary.py, scripts/build_phrases.py, backend/tests/test_phrases_*.py",
+  "pytest": {
+   "command": "cd backend && venv/bin/python -m pytest tests -q",
+   "passed": 958,
+   "failed": 0,
+   "newPhraseTests": 36
+  },
+  "builderCheck": "OK：scripts/build_phrases.py --check（含 --ecdict-csv 完整重建对比）",
+  "live8001": {
+   "base": "http://127.0.0.1:8001",
+   "lists": "phrases 条目 count=570, available=true",
+   "phrases": "total=570, pageSize=50/7 分页正常, hasMore 正确",
+   "search": "look=16；中文「照顾」=4；中文「放弃」=2",
+   "filters": "A2=107；idiom=203；B2+phrasal_verb=102；C1+ =66（C1 及以上）",
+   "details": [
+    "look-after",
+    "put-up-with",
+    "a-piece-of-cake",
+    "pick-up-on"
+   ],
+   "cache": "Cache-Control: public, max-age=3600；公开端点不签发游客 Cookie",
+   "errors": "未知 id=404；level=A1=400；page=0/pageSize=201=422；文件缺失/篡改=503"
+  },
+  "ecdictCoverage": "多词条目 366,599；2–4 词纯字母且含中文释义 280,595 条；带 CET4/CET6/GRE 任一 tag = 0 条；有中文释义覆盖率 n/a（0/0）；不按无 tag 词频补数。",
+  "repository": "content/wordlists/ 无 CSV；ECDICT 原始 CSV 仅存 /tmp，不提交。"
+ }
+}

@@ -12,7 +12,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "build_word_lists.py"
+PHRASES_SCRIPT = ROOT / "scripts" / "build_phrases.py"
 REAL_FREQUENCY = ROOT / "content" / "wordlist" / "frequency_bands.v1.json"
+REAL_CURATED = ROOT / "content" / "wordlists" / "curated-phrases.v1.json"
+REAL_CURATED_EXTRA = ROOT / "content" / "wordlists" / "curated-phrases-extra.v1.json"
 
 TINY_COLUMNS = [
     "word",
@@ -123,6 +126,44 @@ def load_builder():
     assert spec.loader is not None
     spec.loader.exec_module(module)
     return module
+
+
+def load_phrases_builder():
+    """从 scripts/ 动态加载短语构建脚本（不依赖 PYTHONPATH）。"""
+    spec = importlib.util.spec_from_file_location("build_phrases", PHRASES_SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def build_phrases(
+    out_dir: Path,
+    csv_path: Path,
+    frequency: Path,
+    report_path: Path,
+    *,
+    allow_small: bool = False,
+) -> int:
+    """用真实精选文件 + 迷你 ECDICT 构建短语产物（测试用）。"""
+    builder = load_phrases_builder()
+    argv = [
+        "--ecdict-csv",
+        str(csv_path),
+        "--frequency",
+        str(frequency),
+        "--out-dir",
+        str(out_dir),
+        "--report",
+        str(report_path),
+        "--curated",
+        str(REAL_CURATED),
+        "--curated-extra",
+        str(REAL_CURATED_EXTRA),
+    ]
+    if allow_small:
+        argv.append("--allow-small")
+    return builder.main(argv)
 
 
 def write_tiny_ecdict(path: Path) -> Path:

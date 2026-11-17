@@ -1,9 +1,10 @@
 # content/wordlists — 单词本词表与等级索引
 
-「单词本」页面的只读数据：CEFR 各级、GRE、CET4/6 词表，以及词 → 音标 /
-首行中文释义 / CEFR 的紧凑索引。**随仓库分发、运行期零 LLM、零数据库、
-零迁移**；后端加载器见 [`backend/vocabulary.py`](../../backend/vocabulary.py)，
-端点见 [`backend/routes_vocabulary.py`](../../backend/routes_vocabulary.py)。
+「单词本」页面的只读数据：CEFR 各级、GRE、CET4/6 词表、短语词表，以及
+词 → 音标 / 首行中文释义 / CEFR 的紧凑索引。**随仓库分发、运行期零 LLM、
+零数据库、零迁移**；后端加载器见
+[`backend/vocabulary.py`](../../backend/vocabulary.py)，端点见
+[`backend/routes_vocabulary.py`](../../backend/routes_vocabulary.py)。
 
 ## 文件
 
@@ -11,7 +12,11 @@
 |---|---|
 | `exam-bands.v1.json` | GRE / CET4 / CET6 成员索引：`[word, tagMask, rank]`；tagMask `cet4=1 / cet6=2 / gre=4`，rank 取 ECDICT `frq`（缺失回退 `bnc`） |
 | `lexicon.v1.json` | 词 → `[phonetic, translation]`；覆盖 10k CEFR lemma + 11,307 考试词（去重 15,807 条） |
-| `SHA256SUMS` | 两个 JSON 的文件级 SHA-256（`shasum -a 256 -c SHA256SUMS`） |
+| `curated-phrases.v1.json` | 短语精选基线 200 条（短语动词/习语/固定搭配），自写释义与例句 |
+| `curated-phrases-extra.v1.json` | 短语精选补充批次 370 条（ECDICT 短语 tag 覆盖为 0，为达到 500–800 条） |
+| `phrases.v1.json` | 合并后的短语词表 570 条（运行期读取），独立于单词表 |
+| `PHRASES-NOTICE.md` | 短语词表的来源、许可、CEFR 口径与质量闸 |
+| `SHA256SUMS` | `exam-bands` + `lexicon` 两个 JSON 的文件级 SHA-256（`shasum -a 256 -c SHA256SUMS`）；短语产物用内嵌 `integrity` |
 | `NOTICE.md` | 来源、许可、署名与数据授权口径（**必读**） |
 | `README.md` | 本文件：结构、API、重建、局限 |
 
@@ -91,6 +96,49 @@ GRE / CET4 / CET6 当前规模（一个词可以同时属于多个表，所以�
 - 词表不存在、或请求 `cefr-c2` → `404`；数据文件缺失/损坏/完整性失败 →
   `503`；参数越界 → `422`（页面/页大小）或 `400`（q 超长）。
 
+### 短语词表：`GET /api/vocabulary/phrases`
+
+短语是**独立词表**（`id: "phrases"`），不混进单词索引。`GET /api/vocabulary/lists`
+的第一项返回：
+
+```json
+{
+  "id": "phrases", "label": "短语", "count": 570,
+  "source": "LinguaTrek 原创精选（ECDICT 短语 tag=0）",
+  "notice": "content/wordlists/PHRASES-NOTICE.md",
+  "approximate": true, "available": true,
+  "note": "A2–C1 近似，非官方 CEFR 短语表"
+}
+```
+
+分页/搜索/筛选（公开只读、缓存 1 小时）：
+
+```json
+GET /api/vocabulary/phrases?page=1&pageSize=50&q=look&level=B1&type=phrasal_verb
+{
+  "items": [
+    {"id": "look-after", "headword": "look after", "type": "phrasal_verb",
+     "cefr": "A2", "translation": "照顾；照料",
+     "example": "She looks after her younger brother after school.",
+     "source": "curated"}
+  ],
+  "total": 570, "page": 1, "pageSize": 50, "hasMore": true
+}
+```
+
+- `q`：headword + 中文释义，大小写不敏感；前缀优先，其次包含，最后中文；
+- `level`：`A2 / B1 / B2 / C1 / C1+`；`C1+` 表示 C1 及以上（C2 未建模）；
+- `type`：`phrasal_verb / idiom / collocation`；
+- 详情：`GET /api/vocabulary/phrases/{id}`，额外返回 `license/notes`
+  （ECDICT 条目还含 `tagMask/rank`）；不存在 → `404`；
+- 数据文件缺失/损坏 → `503`；level/type/q 非法 → `400`；分页越界 → `422`；
+- `GET /api/vocabulary/lists/phrases` → `404`，并提示改用 `/api/vocabulary/phrases`
+  （两个端点的条目结构不同）。
+
+短语词表的真实口径：ECDICT 的 `tag` 列只给单词打 CET4/CET6/GRE 标签，
+**2–4 词条目中带这三类 tag 的实际为 0 条**；570 条全部来自精选批次。
+详见 [PHRASES-NOTICE.md](./PHRASES-NOTICE.md)。
+
 ### `GET /api/vocabulary/level?words=abandon,running,ubiquitous`
 
 `words` 逗号分隔（也可重复传参），最多 100 个。返回 `{词: 等级}`：
@@ -132,6 +180,17 @@ backend/venv/bin/python scripts/build_word_lists.py --check \
 - 本批产物对应的 ECDICT 快照：`ecdict.csv@master`（2026-11-17），
   SHA-256 `d1ecbdf9ee2b920afb6f430ca6b6bb9f559588cf0dff86e04bd255f9390843cc`，
   770,611 行，其中 11,307 行带 GRE/CET4/CET6 标签且为纯字母词。
+
+短语词表独立构建（不会改 exam-bands/lexicon/SHA256SUMS）：
+
+```bash
+# 重建 phrases.v1.json + 质量报告（需要同一份 /tmp/ecdict-full.csv）
+backend/venv/bin/python scripts/build_phrases.py \
+  --ecdict-csv /tmp/ecdict-full.csv
+
+# 离线校验（结构/完整性/精选规模/无 CSV）
+backend/venv/bin/python scripts/build_phrases.py --check
+```
 - `--allow-small` 只用于测试小 CSV；正式产物不要加（会跳过规模护栏）。
 - 重建后同步：`README.md` 计数 → `NOTICE.md` 变更记录 →
   `SHA256SUMS`（脚本自动写）→ 跑
@@ -154,5 +213,10 @@ backend/venv/bin/python scripts/build_word_lists.py --check \
   超过 120 字符截断，不保证覆盖全部义项。
 - `rank` 用 ECDICT `frq`（缺失回退 `bnc`），是语料库频次，不是教学顺序；
   同一词可在多个考试词表中重复出现。
+- 短语 CEFR 是人工标注/组成词频带的**近似值**，不是官方 CEFR 短语表；
+  C2 不提供。
+- ECDICT 短语级 tag=0，`phrases.v1.json` 当前无 ECDICT 条目；570 条均来自
+  精选批次（200 基线 + 370 补充）。补充批次是 A 无法供货时的显式取舍。
 - 数据授权：ECDICT 代码 MIT，词典数据多来源、授权状况不一；对外分发/
-  商用前请自行复核。详见 [NOTICE.md](./NOTICE.md)。
+  商用前请自行复核。详见 [NOTICE.md](./NOTICE.md) 与
+  [PHRASES-NOTICE.md](./PHRASES-NOTICE.md)。

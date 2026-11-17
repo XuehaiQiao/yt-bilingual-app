@@ -11,6 +11,10 @@
 | `exam-bands.v1.json` | GRE/CET4/CET6 成员：`[word, tagMask, rank]` | 派生自 ECDICT（仓库代码 MIT；**词典数据多来源、授权状况不一**） |
 | `lexicon.v1.json` | 词 → `[phonetic, translation]` 紧凑索引 | 音标/中文释义派生自 ECDICT；CEFR 词目派生自 wordfreq 频表 |
 | `SHA256SUMS` | 文件哈希 | 本仓库生成 |
+| `curated-phrases.v1.json` | 短语精选基线 200 条（自写释义/例句/CEFR/notes） | LinguaTrek 原创整理 |
+| `curated-phrases-extra.v1.json` | 短语精选补充批次 370 条（同上） | LinguaTrek 原创整理 |
+| `phrases.v1.json` | 合并短语词表 570 条；`counts` + `integrity` | 精选部分 LinguaTrek 原创整理；ECDICT 部分（本批 0 条）见 PHRASES-NOTICE |
+| `PHRASES-NOTICE.md` | 短语词表来源/许可/CEFR 口径/质量闸 | 本仓库生成 |
 
 本目录**不包含** ECDICT 的原始 CSV（约 60MB）、英文 `definition`、例句、
 `detail`、`audio`，也不包含任何仅研究用途的 CEFR-J / Octanove 词表。
@@ -95,3 +99,4 @@ CEFR A1–C1 的成员与等级仍由
 | 版本 | 日期 | 变更 |
 |---|---|---|
 | `2026.11.17` | 2026-11-17 | 首版：ECDICT `tag` 构建 GRE 7,479 / CET4 3,837 / CET6 5,396（去重 11,307）；lexicon 15,807 条；CEFR 由 10k 频表派生；C2 `available:false`。 |
+| `2026.11.17` | 2026-11-17 | 新增短语词表：ECDICT 多词 tag 实测 0 条；精选 200 + 补充 370 = 570 条；许可与口径见 `PHRASES-NOTICE.md`。 |

@@ -40,6 +40,7 @@ import difficulty
 
 SCHEMA_EXAM = "linguatrek.exam-bands.v1"
 SCHEMA_LEXICON = "linguatrek.lexicon.v1"
+SCHEMA_PHRASES = "linguatrek.phrases.v1"
 
 CEFR_LEVELS: Tuple[str, ...] = ("A1", "A2", "B1", "B2", "C1")
 CEFR_BEYOND = "C1+"
@@ -48,6 +49,16 @@ MAX_PAGE_SIZE = 200
 DEFAULT_PAGE_SIZE = 50
 MAX_QUERY_CHARS = 64
 MAX_TOKEN_CHARS = 64
+
+# 短语词表（content/wordlists/phrases.v1.json）：独立于单词表，不混索引。
+PHRASE_LIST_ID = "phrases"
+PHRASE_LIST_LABEL = "短语"
+PHRASE_TYPES: Tuple[str, ...] = ("phrasal_verb", "idiom", "collocation")
+PHRASE_LEVELS: Tuple[str, ...] = ("A2", "B1", "B2", "C1", "C1+")
+PHRASE_SOURCES: Tuple[str, ...] = ("ECDICT", "curated")
+PHRASE_ITEM_FIELDS: Tuple[str, ...] = (
+    "id", "headword", "type", "cefr", "translation", "example", "source",
+)
 
 # 词表顺序按产品需求：CEFR A1–C2，然后 GRE / CET4 / CET6。
 CEFR_LIST_IDS: Tuple[str, ...] = (
@@ -80,9 +91,14 @@ EXAM_NOTICE = "content/wordlists/NOTICE.md"
 
 EXAM_FILENAME = "exam-bands.v1.json"
 LEXICON_FILENAME = "lexicon.v1.json"
+PHRASES_FILENAME = "phrases.v1.json"
+PHRASES_NOTICE = "content/wordlists/PHRASES-NOTICE.md"
 
 _WORD_RE = re.compile(r"^[A-Za-z]+$")
 _TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z'\-]*$")
+_PHRASE_RE = re.compile(r"^[a-z]+(?:'[a-z]+)?(?: [a-z]+(?:'[a-z]+)?){1,3}$")
+_SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+_CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
 
 
 class VocabularyError(Exception):
@@ -138,11 +154,29 @@ class Lexicon:
     integrity: str
 
 
+@dataclass(frozen=True)
+class Phrases:
+    """运行期只读的短语词表（ECDICT 多词 tag + 精选）。"""
+
+    path: str
+    signature: Tuple[int, int]
+    version: str
+    license: str
+    notice: str
+    approximate: bool
+    counts: Mapping[str, Any]
+    entries: Tuple[Dict[str, Any], ...]
+    by_id: Mapping[str, Dict[str, Any]]
+    integrity: str
+
+
 _CACHE_LOCK = threading.Lock()
 _EXAM_CACHE: Dict[str, Tuple[Tuple[int, int], ExamBands]] = {}
 _LEXICON_CACHE: Dict[str, Tuple[Tuple[int, int], Lexicon]] = {}
+_PHRASES_CACHE: Dict[str, Tuple[Tuple[int, int], Phrases]] = {}
 _ITEM_LOCK = threading.Lock()
 _ITEM_CACHE: Dict[Tuple[Any, ...], Tuple[Dict[str, Any], ...]] = {}
+_PHRASE_ITEM_CACHE: Dict[str, Tuple[Dict[str, Any], ...]] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -169,13 +203,19 @@ def lexicon_path() -> str:
     return os.path.join(data_dir(), LEXICON_FILENAME)
 
 
+def phrases_path() -> str:
+    return os.path.join(data_dir(), PHRASES_FILENAME)
+
+
 def reset_cache() -> None:
     """清空词表/条目缓存（测试或换数据文件后调用）。"""
     with _CACHE_LOCK:
         _EXAM_CACHE.clear()
         _LEXICON_CACHE.clear()
+        _PHRASES_CACHE.clear()
     with _ITEM_LOCK:
         _ITEM_CACHE.clear()
+        _PHRASE_ITEM_CACHE.clear()
 
 
 def _signature(path: str, label: str) -> Tuple[int, int]:
@@ -400,6 +440,168 @@ def load_lexicon() -> Lexicon:
     return lexicon
 
 
+
+# ---------------------------------------------------------------------------
+# 短语词表（ECDICT 多词 tag + 精选）
+# ---------------------------------------------------------------------------
+
+def _phrases_payload_sha256(document: Mapping[str, Any]) -> str:
+    return _payload_sha256(
+        {
+            "entries": document["entries"],
+            "counts": document["counts"],
+            "version": document["version"],
+        }
+    )
+
+
+def _phrase_counts(entries: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    by_type = {phrase_type: 0 for phrase_type in PHRASE_TYPES}
+    by_cefr = {level: 0 for level in PHRASE_LEVELS}
+    by_source = {source: 0 for source in PHRASE_SOURCES}
+    for entry in entries:
+        by_type[entry["type"]] += 1
+        by_cefr[entry["cefr"]] += 1
+        by_source[entry["source"]] += 1
+    return {
+        "total": len(entries),
+        "ecdict": by_source["ECDICT"],
+        "curated": by_source["curated"],
+        "byType": by_type,
+        "byCefr": by_cefr,
+        "bySource": by_source,
+    }
+
+
+def load_phrases() -> Phrases:
+    """加载并校验短语词表；缺失/损坏/哈希不符 → ``VocabularyUnavailable``。"""
+    path = phrases_path()
+    signature = _signature(path, "短语词表")
+    with _CACHE_LOCK:
+        cached = _PHRASES_CACHE.get(path)
+        if cached is not None and cached[0] == signature:
+            return cached[1]
+
+    document = _read_json(path, "短语词表")
+    _require(
+        document.get("schema") == SCHEMA_PHRASES,
+        f"短语词表 schema 不是 {SCHEMA_PHRASES}",
+    )
+    _require(bool(document.get("version")), "短语词表缺少 version")
+    source = document.get("source")
+    _require(isinstance(source, dict), "短语词表缺少 source")
+    ecdict_source = source.get("ecdict") if isinstance(source, dict) else None
+    _require(isinstance(ecdict_source, dict), "短语词表缺少 source.ecdict")
+    _require(
+        isinstance(ecdict_source.get("csvSha256"), str)
+        and bool(re.fullmatch(r"[0-9a-f]{64}", ecdict_source.get("csvSha256", ""))),
+        "短语词表 source.ecdict.csvSha256 缺失/格式不对",
+    )
+    _require(
+        isinstance(ecdict_source.get("stats"), dict),
+        "短语词表 source.ecdict.stats 缺失",
+    )
+    _require(
+        isinstance(source.get("curated"), dict),
+        "短语词表缺少 source.curated",
+    )
+    _require(bool(document.get("license")), "短语词表缺少 license")
+    _require(
+        document.get("notice") == "PHRASES-NOTICE.md",
+        "短语词表 notice 必须是 PHRASES-NOTICE.md",
+    )
+    _require(document.get("approximate") is True, "短语 CEFR 必须标 approximate:true")
+    try:
+        expected_integrity = _phrases_payload_sha256(document)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise VocabularyUnavailable(f"短语词表完整性字段缺失：{exc}") from exc
+    _require(
+        _integrity_ok(document, expected_integrity),
+        "短语词表完整性校验失败（integrity.sha256 不匹配）",
+    )
+
+    raw_entries = document.get("entries")
+    _require(
+        isinstance(raw_entries, list) and bool(raw_entries),
+        "短语词表 entries 必须是非空数组",
+    )
+    entries: List[Dict[str, Any]] = []
+    by_id: Dict[str, Dict[str, Any]] = {}
+    for index, raw in enumerate(raw_entries):
+        _require(isinstance(raw, dict), f"短语词表 entries[{index}] 必须是对象")
+        entry = dict(raw)
+        entry_id = str(entry.get("id") or "")
+        _require(
+            bool(_SLUG_RE.fullmatch(entry_id)),
+            f"短语词表 entries[{index}] id 非法",
+        )
+        _require(entry_id not in by_id, f"短语词表 id 重复：{entry_id}")
+        headword = str(entry.get("headword") or "")
+        _require(
+            bool(_PHRASE_RE.fullmatch(headword)),
+            f"短语词表 entries[{index}] headword 非法：{headword!r}",
+        )
+        _require(
+            entry.get("type") in PHRASE_TYPES,
+            f"短语词表 entries[{index}] type 非法",
+        )
+        _require(
+            entry.get("cefr") in PHRASE_LEVELS,
+            f"短语词表 entries[{index}] cefr 非法",
+        )
+        translation = entry.get("translation")
+        _require(
+            isinstance(translation, str) and bool(_CJK_RE.search(translation)),
+            f"短语词表 entries[{index}] translation 必须含中文",
+        )
+        example = entry.get("example")
+        _require(isinstance(example, str), f"短语词表 entries[{index}] example 必须是字符串")
+        _require(
+            entry.get("source") in PHRASE_SOURCES,
+            f"短语词表 entries[{index}] source 非法",
+        )
+        _require(
+            entry.get("source") != "curated" or bool(example.strip()),
+            f"短语词表 entries[{index}] 精选条目缺少 example",
+        )
+        _require(
+            isinstance(entry.get("license"), str),
+            f"短语词表 entries[{index}] license 必须是字符串",
+        )
+        if entry.get("source") == "ECDICT":
+            _require(
+                isinstance(entry.get("tagMask"), int) and 1 <= entry["tagMask"] <= 7,
+                f"短语词表 entries[{index}] tagMask 非法",
+            )
+            _require(
+                isinstance(entry.get("rank"), int) and entry["rank"] >= 1,
+                f"短语词表 entries[{index}] rank 非法",
+            )
+        entries.append(entry)
+        by_id[entry_id] = entry
+
+    counts = _phrase_counts(entries)
+    _require(
+        document.get("counts") == counts,
+        "短语词表 counts 与 entries 不一致",
+    )
+
+    phrases = Phrases(
+        path=path,
+        signature=signature,
+        version=str(document["version"]),
+        license=str(document["license"]),
+        notice=str(document["notice"]),
+        approximate=True,
+        counts=counts,
+        entries=tuple(entries),
+        by_id=by_id,
+        integrity=expected_integrity,
+    )
+    with _CACHE_LOCK:
+        _PHRASES_CACHE[path] = (signature, phrases)
+    return phrases
+
 # ---------------------------------------------------------------------------
 # CEFR 频表
 # ---------------------------------------------------------------------------
@@ -500,13 +702,29 @@ def _exam_entry(
     }
 
 
+def _phrase_entry(phrases: Phrases) -> Dict[str, Any]:
+    return {
+        "id": PHRASE_LIST_ID,
+        "label": PHRASE_LIST_LABEL,
+        "count": int(phrases.counts["total"]),
+        "source": "LinguaTrek 原创精选（ECDICT 短语 tag=0）",
+        "license": "LinguaTrek 原创整理",
+        "notice": PHRASES_NOTICE,
+        "approximate": True,
+        "available": True,
+        "version": phrases.version,
+        "note": "A2–C1 近似，非官方 CEFR 短语表",
+    }
+
+
 def list_catalog() -> List[Dict[str, Any]]:
     """``GET /api/vocabulary/lists`` 的数据（按产品顺序）。"""
     wordlist = _load_wordlist()
     exam = load_exam_bands()
     load_lexicon()  # 目录也要求释义索引存在，保证两个端点可用性一致
+    phrases = load_phrases()
     cefr_counts = _cefr_counts(wordlist)
-    catalog: List[Dict[str, Any]] = []
+    catalog: List[Dict[str, Any]] = [ _phrase_entry(phrases) ]
 
     for level in CEFR_LEVELS:
         catalog.append(
@@ -653,6 +871,10 @@ def list_page(
     """``GET /api/vocabulary/lists/{id}`` 的分页/搜索实现。"""
     if list_id == "cefr-c2":
         raise VocabularyNotFound("C2 未建模（available:false），没有可列出的词表。")
+    if list_id == PHRASE_LIST_ID:
+        raise VocabularyNotFound(
+            "短语词表请使用 /api/vocabulary/phrases（条目结构与单词表不同）。"
+        )
     if list_id not in LIST_IDS:
         raise VocabularyNotFound("词表不存在。")
     if page < 1 or page_size < 1 or page_size > MAX_PAGE_SIZE:
@@ -682,6 +904,130 @@ def list_page(
         "hasMore": start + len(page_items) < total,
     }
 
+
+
+# ---------------------------------------------------------------------------
+# 短语：分页 / 搜索 / 等级 / 类型筛选 / 详情
+# ---------------------------------------------------------------------------
+
+def _phrase_items(phrases: Phrases) -> Tuple[Dict[str, Any], ...]:
+    """列表项只暴露协议字段（详情才给 license/notes/tagMask/rank）。"""
+    key = phrases.integrity
+    with _ITEM_LOCK:
+        cached = _PHRASE_ITEM_CACHE.get(key)
+        if cached is not None:
+            return cached
+        items = tuple(
+            {field: entry[field] for field in PHRASE_ITEM_FIELDS}
+            for entry in phrases.entries
+        )
+        _PHRASE_ITEM_CACHE[key] = items
+        return items
+
+
+def _filter_phrase_items(
+    items: Sequence[Dict[str, Any]], query: str
+) -> List[Dict[str, Any]]:
+    """headword 前缀优先，其次 headword 包含，最后中文释义包含。"""
+    needle = query.strip().casefold()
+    if not needle:
+        return list(items)
+    prefix: List[Dict[str, Any]] = []
+    contains: List[Dict[str, Any]] = []
+    translation: List[Dict[str, Any]] = []
+    for item in items:
+        headword = str(item["headword"]).casefold()
+        meaning = str(item["translation"]).casefold()
+        if headword.startswith(needle):
+            prefix.append(item)
+        elif needle in headword:
+            contains.append(item)
+        elif needle in meaning:
+            translation.append(item)
+    return prefix + contains + translation
+
+
+def _normalize_phrase_level(level: Optional[str]) -> Optional[str]:
+    if level is None:
+        return None
+    value = str(level).strip().upper()
+    if not value:
+        return None
+    if value not in PHRASE_LEVELS:
+        raise VocabularyInvalid(
+            "level 必须是 " + "/".join(PHRASE_LEVELS) + " 之一。"
+        )
+    return value
+
+
+def _normalize_phrase_type(phrase_type: Optional[str]) -> Optional[str]:
+    if phrase_type is None:
+        return None
+    value = str(phrase_type).strip().lower()
+    if not value:
+        return None
+    if value not in PHRASE_TYPES:
+        raise VocabularyInvalid(
+            "type 必须是 " + "/".join(PHRASE_TYPES) + " 之一。"
+        )
+    return value
+
+
+def _level_matches(cefr: str, level: Optional[str]) -> bool:
+    """``C1+`` 表示 C1 及以上（C2 未建模，不硬凑）。"""
+    if level is None:
+        return True
+    if level == "C1+":
+        return cefr in {"C1", "C1+"}
+    return cefr == level
+
+
+def phrase_page(
+    page: int,
+    page_size: int,
+    query: Optional[str] = None,
+    level: Optional[str] = None,
+    phrase_type: Optional[str] = None,
+) -> Dict[str, Any]:
+    """``GET /api/vocabulary/phrases`` 的分页/搜索/筛选实现。"""
+    if page < 1 or page_size < 1 or page_size > MAX_PAGE_SIZE:
+        raise VocabularyInvalid(
+            f"page 必须 ≥1；pageSize 必须在 1–{MAX_PAGE_SIZE} 之间。"
+        )
+    q = (query or "").strip()
+    if len(q) > MAX_QUERY_CHARS:
+        raise VocabularyInvalid(f"q 最长 {MAX_QUERY_CHARS} 个字符。")
+    normalized_level = _normalize_phrase_level(level)
+    normalized_type = _normalize_phrase_type(phrase_type)
+
+    phrases = load_phrases()
+    items = [
+        item
+        for item in _phrase_items(phrases)
+        if _level_matches(str(item["cefr"]), normalized_level)
+        and (normalized_type is None or item["type"] == normalized_type)
+    ]
+    filtered = _filter_phrase_items(items, q)
+    total = len(filtered)
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_items = filtered[start:end] if start < total else []
+    return {
+        "items": page_items,
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "hasMore": start + len(page_items) < total,
+    }
+
+
+def phrase_detail(phrase_id: str) -> Dict[str, Any]:
+    """``GET /api/vocabulary/phrases/{id}`` 的详情（含 license/notes/标签）。"""
+    phrases = load_phrases()
+    entry = phrases.by_id.get(str(phrase_id or "").strip())
+    if entry is None:
+        raise VocabularyNotFound("短语不存在。")
+    return dict(entry)
 
 # ---------------------------------------------------------------------------
 # 词级 CEFR 等级
