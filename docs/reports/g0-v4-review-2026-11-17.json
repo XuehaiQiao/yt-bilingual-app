@@ -1,0 +1,60 @@
+{
+  "schema": "g0-review.v1",
+  "round": "g0-v4",
+  "date": "2026-11-17",
+  "method": "two independent AI subagents (blind), lead unblinding + mechanical audit",
+  "reviewers": {
+    "A": {
+      "usable": 18,
+      "valid": 10,
+      "willing": true,
+      "topIssues": [
+        "重写两个形式讲解（E05/E07）：讲清比较级+than 的完整跨度与 water/air 双方，以及 if 从句边界和 told 的宾语，不要把任务丢给学员。",
+        "清理讲解中的内部/多余话语（E15“引文没有限定具体对象”、E03 的“易错点”、E14 的“即最优秀的求学者”），统一学员视角，只留必要信息。",
+        "修 Q02 解析与 O03 可读性：Q02 的 B 项改为“代价是时间/数据，不是钱”；O03 的“Kuznets gave GDP with a caveat”改写自然，并降低 welfare/unpaid care 的理解负担。"
+      ]
+    },
+    "B": {
+      "usable": 19,
+      "valid": 10,
+      "willing": true,
+      "topIssues": [
+        "E05 形式点必须重写：把「much farther and」当作比较级 + than 的结构片段，why_here 又让学员自己找比较双方，没有点明 in water / in air 这一比较对象；形式点应直接落到本句结构。",
+        "产出范文 O03 降难度：「Kuznets gave GDP with a caveat」搭配不自然，welfare / unpaid care 偏难，应换成学员级别内、搭配更自然的表达。",
+        "题目与选项措辞打磨：Q01 正确项用 harmless 解释 harmless（循环），Q04 正确项缺 that，Q10 正确项 credible source without sources 重复拗口，Q05/Q09 引文以代词开头；虽不影响答案唯一，但不够「可原样给学员」。"
+      ]
+    }
+  },
+  "thresholds": {
+    "usable": 16,
+    "valid": 8,
+    "willing": 1
+  },
+  "passed": true,
+  "failedPoints": [
+    {
+      "id": "E05",
+      "pack": "g0-ocean-noise-b1",
+      "point": "p5",
+      "reviewers": [
+        "A",
+        "B"
+      ]
+    },
+    {
+      "id": "E07",
+      "pack": "g0-teded-better-economy-b2",
+      "point": "p5",
+      "reviewers": [
+        "A"
+      ]
+    }
+  ],
+  "questionFailures": [],
+  "audit": {
+    "counts": "20/10/5 each",
+    "scores_range_ok": true,
+    "ids_unique_cover_all": true,
+    "mapping_resolved": true
+  }
+}
