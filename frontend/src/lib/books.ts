@@ -279,8 +279,8 @@ function asIndex(value: unknown): BooksIndex | null {
     };
 }
 
-export async function fetchBooksIndex(): Promise<BooksIndex> {
-    const response = await apiFetch('/api/books');
+export async function fetchBooksIndex(signal?: AbortSignal): Promise<BooksIndex> {
+    const response = await apiFetch('/api/books', signal ? { signal } : undefined);
     if (!response.ok) throw new BooksApiError(await readError(response), response.status);
     const payload = asIndex(await response.json());
     if (!payload) throw new BooksApiError('公版书数据格式不正确', 0);
@@ -457,7 +457,13 @@ const MAX_BOOK_ENTRIES = 100;
 export interface BookProgress {
     chapter: number;
     paragraph: number;
+    /** Epoch ms; `0` means the stored entry had no usable timestamp. */
     updated: number;
+}
+
+/** One localStorage entry plus the book id it belongs to. */
+export interface BookProgressEntry extends BookProgress {
+    bookId: string;
 }
 
 type ProgressMap = Record<string, BookProgress>;
@@ -479,6 +485,29 @@ export function getBookProgress(bookId: string): BookProgress | null {
     const updated = asNumber(entry.updated);
     if (chapter === null || paragraph === null || updated === null) return null;
     return { chapter, paragraph, updated };
+}
+
+/**
+ * All curated-book reading positions, newest first. The Today page joins these
+ * ids with `/api/books` to recover titles; entries with malformed fields are
+ * skipped instead of being guessed. A missing `updated` is kept as `0`
+ * (unknown) so the UI can label it honestly.
+ */
+export function listBookProgress(): BookProgressEntry[] {
+    const entries: BookProgressEntry[] = [];
+    for (const [bookId, entry] of Object.entries(loadMap())) {
+        if (!bookId || !isRecord(entry)) continue;
+        const chapter = asNumber(entry.chapter);
+        const paragraph = asNumber(entry.paragraph);
+        if (chapter === null || paragraph === null) continue;
+        entries.push({
+            bookId,
+            chapter: chapter,
+            paragraph: paragraph,
+            updated: asNumber(entry.updated) ?? 0,
+        });
+    }
+    return entries.sort((left, right) => right.updated - left.updated);
 }
 
 export function saveBookProgress(bookId: string, chapter: number, paragraph: number): void {

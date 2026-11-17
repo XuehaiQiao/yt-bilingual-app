@@ -367,9 +367,12 @@ export function translateArticle(
     }, parseTranslateResult);
 }
 
-/** The current user's articles, newest first (with paragraph count/progress). */
-export function listArticles(): Promise<ArticleSummary[]> {
-    return requestJson('/api/articles', undefined, (body) => {
+/**
+ * The current user's articles, newest first (with paragraph count/progress).
+ * An optional `signal` lets callers drop the request when they unmount.
+ */
+export function listArticles(signal?: AbortSignal): Promise<ArticleSummary[]> {
+    return requestJson('/api/articles', signal ? { signal } : undefined, (body) => {
         if (!isRecord(body) || !Array.isArray(body.articles)) {
             throw new ReadingApiError('articles response is missing articles', { status: -1 });
         }

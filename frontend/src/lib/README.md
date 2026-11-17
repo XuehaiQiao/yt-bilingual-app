@@ -11,6 +11,7 @@
 | `sentences.ts` | 句子精背：类型、拉取、四色语块配色、按册×天的背诵/复习进度持久化 |
 | `settings.ts` | 词汇水平（六站轴）与全局模型（`yt_bilingual_last_model`）的 localStorage 读写，含旧考试制存档迁移 |
 | `progress.ts` | 每视频播放进度记忆（续播 + "已学 N%"），上限 200 条 |
+| `recent.ts` | 今日「最近学习」的纯数据层：视频（`/api/history` 行）/文章（`ArticleSummary`）/公版书与导入书 localStorage 进度 → 统一条目；按 `lastAt` 倒序（0/未知沉底）、大小写不敏感搜索、类型筛选、每页 10 条分页；不网络、不 UI 文案，时间与标签由组件按当前语言渲染 |
 | `events.ts` | 观看事件上报（M5 / specs/015）：只按播放位置增量计 `watchedSeconds`（暂停/拖动不计），内存队列 ≤50 条批量 POST `/api/events`，`clientEventId` 保证重试幂等；每 60s 播放 / 暂停 / 切后台时 flush（keepalive），失败静默重试一次 |
 | `learningTelemetry.ts` | 学习行为埋点（CEFR M2 #7 / specs/027）：`dict_lookup` / `video_replay` / `playback_rate` / `tab_visibility` 四类事件；只发白名单字段（不含 context/原文），同词 60s、replay 1s（loop 10s）节流，队列 ≤100、批量 ≤20，`eventId` 幂等；失败静默，hidden/pagehide 用 keepalive flush |
 | `exporter.ts` | 收藏导出：Anki TSV（front/back/tags）与完整 CSV |

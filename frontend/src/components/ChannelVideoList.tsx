@@ -18,6 +18,10 @@ export interface HistoryItem {
     model?: string | null;
     modelName?: string;
     studyCount?: number;
+    /** Backend epoch-ms from the history file mtime; 0 = unknown. */
+    updatedAt?: number;
+    /** Legacy seconds field kept by the backend for older clients. */
+    mtime?: number | null;
 }
 
 interface ChannelVideoListProps {

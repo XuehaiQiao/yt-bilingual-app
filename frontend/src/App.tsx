@@ -2885,6 +2885,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onSearch={handleStartSearch}
             onRead={handleStartRead}
             onLoadHistory={(filename) => { void handleLoadHistory(filename); }}
+            onOpenArticle={(articleId) => openSub({ kind: 'reader', articleId })}
+            onOpenBook={(bookId) => openSub({ kind: 'book', bookId })}
+            onOpenImportedBook={(bookId) => openSub({ kind: 'imported-book', bookId })}
             onOpenReview={handleOpenReview}
             onOpenReport={handleOpenReport}
             onOpenPlacement={handleOpenPlacement}

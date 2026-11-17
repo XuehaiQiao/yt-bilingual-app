@@ -2,11 +2,10 @@
 //
 // One decision surface: what do I do today? Header + (main input for a fresh
 // user) + placement strip while there is no profile + three cards (continue /
-// review / report) + the compact "learn something new" input once history
-// exists. The exam card moved to 练习; the model bar moved to the app chrome.
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Clock, Loader2, Play, Trash2, Youtube } from 'lucide-react';
-import { motion } from 'framer-motion';
+// review / report) + the merged recent-learning panel (video / article / book,
+// 10 per page) + the compact "learn something new" input once history exists.
+// The exam card moved to 练习; the model bar moved to the app chrome.
+import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../lib/api';
 import type { HistoryItem } from './ChannelVideoList';
 import type { PlacementProfile } from '../lib/placement';
@@ -15,7 +14,8 @@ import type { EstimateDialogHandle } from './EstimateDialog';
 import { EstimateDialog } from './EstimateDialog';
 import { TodayWorkbench, type TodayWeekReport } from './TodayWorkbench';
 import { StartLearning } from './StartLearning';
-import { progressPercent, clearProgress } from '../lib/progress';
+import { RecentLearning } from './RecentLearning';
+import { clearProgress } from '../lib/progress';
 import { toast, describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 
@@ -37,6 +37,10 @@ interface TodayScreenProps {
     /** Start-input "read article" mode: reader prefills/imports the value. */
     onRead: (value: string) => void;
     onLoadHistory: (filename: string) => void;
+    /** Recent-learning rows: open the reading API article / book readers. */
+    onOpenArticle: (articleId: string) => void;
+    onOpenBook: (bookId: string) => void;
+    onOpenImportedBook: (bookId: string) => void;
     onOpenReview: () => void;
     onOpenReport: () => void;
     onOpenPlacement: (view: 'intro' | 'profile') => void;
@@ -56,6 +60,9 @@ export function TodayScreen({
     onSearch,
     onRead,
     onLoadHistory,
+    onOpenArticle,
+    onOpenBook,
+    onOpenImportedBook,
     onOpenReview,
     onOpenReport,
     onOpenPlacement,
@@ -118,8 +125,9 @@ export function TodayScreen({
         return () => { cancelled = true; };
     }, []);
 
-    const handleDeleteHistory = useCallback(async (event: React.MouseEvent, item: HistoryItem) => {
-        event.stopPropagation();
+    const handleRemoveVideo = async (filename: string) => {
+        const item = history.find(entry => entry.filename === filename);
+        if (!item) return;
         const title = item.metadata?.title || item.filename;
         if (!window.confirm(t('home.deleteConfirm', { title }))) return;
         try {
@@ -132,7 +140,7 @@ export function TodayScreen({
             console.error('Delete history failed:', err);
             toast.error(await describeApiError(err));
         }
-    }, [t]);
+    };
 
     const hasHistory = history.length > 0;
     const focusStartInput = () => {
@@ -193,70 +201,17 @@ export function TodayScreen({
                     inputSlot={primaryInput}
                 />
 
-                {hasHistory && (
-                    <section className="mt-5" data-testid="today-history-list">
-                        <div className="flex items-baseline justify-between gap-3">
-                            <h2 className="flex items-center gap-2 text-[17px] font-semibold tracking-tight text-zinc-100">
-                                <Clock className="w-4 h-4 text-zinc-500" />
-                                {t('today.history.title')}
-                            </h2>
-                            <p className="text-[11px] text-zinc-500">{t('today.history.hint')}</p>
-                        </div>
-                        <div className="mt-3 flex flex-col gap-2.5">
-                            {history.slice(0, 3).map(item => (
-                                <motion.div
-                                    key={item.filename}
-                                    whileTap={{ scale: 0.98 }}
-                                    transition={{ type: 'spring', stiffness: 550, damping: 35 }}
-                                    onClick={() => onLoadHistory(item.filename)}
-                                    data-testid="history-card"
-                                    className="group/card relative flex items-center gap-3.5 p-3 rounded-xl bg-zinc-800/30 hover:bg-zinc-800/60 border border-white/5 hover:border-white/10 transition-colors cursor-pointer"
-                                >
-                                    <button
-                                        onClick={(event) => { void handleDeleteHistory(event, item); }}
-                                        title={t('home.removeHistoryTitle')}
-                                        aria-label={t('home.removeHistoryTitle')}
-                                        className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-zinc-900/80 hover:bg-red-500/20 border border-white/5 text-zinc-400 hover:text-red-400 opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto [@media(pointer:coarse)]:opacity-100 [@media(pointer:coarse)]:pointer-events-auto transition-[opacity,background-color,color]"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <div className="relative w-20 sm:w-24 aspect-video rounded-lg overflow-hidden bg-zinc-900 shrink-0">
-                                        {item.metadata?.thumbnail && (
-                                            <img src={item.metadata.thumbnail} alt="thumb" className="w-full h-full object-cover" />
-                                        )}
-                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center justify-center">
-                                            <span className="bg-white/15 backdrop-blur-md p-2.5 rounded-full">
-                                                <Play className="w-4 h-4 text-white fill-current" />
-                                            </span>
-                                        </div>
-                                        {item.videoId && progressPercent(item.videoId) !== null && (
-                                            <div className="absolute bottom-0 inset-x-0 h-1 bg-black/60">
-                                                <div className="h-full bg-emerald-500" style={{ width: `${progressPercent(item.videoId)}%` }} />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col overflow-hidden min-w-0">
-                                        <h4 className="text-zinc-200 font-medium truncate text-sm mb-1">{item.metadata?.title || t('common.unknownVideo')}</h4>
-                                        <p className="text-zinc-500 text-xs flex items-center gap-1 truncate">
-                                            <Youtube className="w-3 h-3 shrink-0" /> {item.metadata?.channel || t('common.localFile')}
-                                            {item.videoId && progressPercent(item.videoId) !== null && (
-                                                <span className="ml-1 text-emerald-500/90 shrink-0">{t('common.watchedPercent', { percent: progressPercent(item.videoId) ?? 0 })}</span>
-                                            )}
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-1.5">
-                                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-zinc-700/40 border border-white/5 text-zinc-400 truncate max-w-[9rem]">
-                                                {item.modelName || t('common.notRecorded')}
-                                            </span>
-                                            <span className="text-[10px] text-zinc-500 tabular-nums">
-                                                {item.studyCount ? t('common.studiedTimes', { count: item.studyCount }) : t('common.noSessions')}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </section>
-                )}
+                <RecentLearning
+                    isGuest={isGuest}
+                    history={history}
+                    historyLoading={historyLoading}
+                    onLoadHistory={onLoadHistory}
+                    onOpenArticle={onOpenArticle}
+                    onOpenBook={onOpenBook}
+                    onOpenImportedBook={onOpenImportedBook}
+                    onOpenContent={onOpenContent}
+                    onRemoveVideo={(filename) => { void handleRemoveVideo(filename); }}
+                />
 
                 {hasHistory && (
                     <div className="mt-5">
@@ -267,13 +222,6 @@ export function TodayScreen({
                             onSearch={onSearch}
                             onRead={onRead}
                         />
-                    </div>
-                )}
-
-                {hasHistory && historyLoading && history.length === 0 && (
-                    <div className="mt-4 flex items-center gap-2 text-xs text-zinc-500">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        {t('home.today.loadingHistory')}
                     </div>
                 )}
             </div>

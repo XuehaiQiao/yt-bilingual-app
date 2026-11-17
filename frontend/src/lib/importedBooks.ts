@@ -431,7 +431,13 @@ const MAX_BOOK_ENTRIES = 100;
 export interface ImportedBookProgress {
     chapter: number;
     paragraph: number;
+    /** Epoch ms; `0` means the stored entry had no usable timestamp. */
     updated: number;
+}
+
+/** One localStorage entry plus the imported book id it belongs to. */
+export interface ImportedBookProgressEntry extends ImportedBookProgress {
+    bookId: string;
 }
 
 type ProgressMap = Record<string, ImportedBookProgress>;
@@ -453,6 +459,28 @@ export function getImportedBookProgress(bookId: string): ImportedBookProgress | 
     const updated = asNumber(entry.updated);
     if (chapter === null || paragraph === null || updated === null) return null;
     return { chapter, paragraph, updated };
+}
+
+/**
+ * All imported-book reading positions, newest first. The Today page joins
+ * these ids with `GET /api/books/imported` for titles; malformed entries are
+ * skipped and a missing timestamp stays `0` (unknown, never 1970).
+ */
+export function listImportedBookProgress(): ImportedBookProgressEntry[] {
+    const entries: ImportedBookProgressEntry[] = [];
+    for (const [bookId, entry] of Object.entries(loadProgressMap())) {
+        if (!bookId || !isRecord(entry)) continue;
+        const chapter = asNumber(entry.chapter);
+        const paragraph = asNumber(entry.paragraph);
+        if (chapter === null || paragraph === null) continue;
+        entries.push({
+            bookId,
+            chapter,
+            paragraph,
+            updated: asNumber(entry.updated) ?? 0,
+        });
+    }
+    return entries.sort((left, right) => right.updated - left.updated);
 }
 
 export function saveImportedBookProgress(
