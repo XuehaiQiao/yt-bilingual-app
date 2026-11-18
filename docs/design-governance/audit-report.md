@@ -190,6 +190,8 @@ node frontend/scripts/check-i18n.mjs
 - **建议方向**：紫色只保留在 `CHUNK_STYLE`/后端 highlights 数据路径；选中色改用 `brand/30`，词性徽章用中性 `bg-zinc-800` + `text-zinc-300`。
 
 #### V-06 · **P0** · 中文界面里 24 个键的关键文案是英文
+
+> 2026-11-19 A5 复核：默认可见英文键实际为 **31 个**（另 `sentences.day` 待裁决）；24 为初审计数，QA 清单按 31 执行。
 - **位置**：`i18n/zh-CN.json`（1,691 条中 53 条不含任何 CJK；49 条被 `*.tsx` 引用，其中 24 条是默认中文界面会直接显示的英文文案）。渲染点：
   - 视频处理全屏遮罩 5 条：`common.cancel`→"Cancel"（`ModelSelectionModal.tsx:180`）；`home.loading.loading`="Loading…"、`home.loading.processing`="Fetching subtitles…"、`home.loading.asr`="Transcribing locally…" 及其 2 条 hint（`App.tsx:3396-3402`）；`home.analyzing`/`home.analyzingHint`（`EstimateDialog.tsx:95-97`）
   - 估价弹窗 5 条：`estimate.title`="Confirm & Start"、`estimate.subtitle`（整句英文）、`estimate.words`="Words:"、`estimate.tokens`="Est. tokens:"、`estimate.confirm`="Confirm & Start"（`ModelSelectionModal.tsx:68/71/100/101/186`）

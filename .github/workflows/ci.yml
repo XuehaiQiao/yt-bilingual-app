@@ -70,3 +70,6 @@ jobs:
 
       - name: Build
         run: npx vite build
+
+      - name: i18n check
+        run: npm run check:i18n
