@@ -45,6 +45,7 @@ import { LanguageSettingsModal } from './LanguageSettingsModal';
 import { ModelBar } from './ModelBar';
 import { PwaInstallButton } from './PwaInstallButton';
 import { VocabAxis } from './VocabAxis';
+import { Button } from './ui/Button';
 
 export interface AccountUser {
   id: string;
@@ -84,10 +85,6 @@ interface AccountScreenProps {
   placementProfile?: PlacementProfile | null;
 }
 
-const PRIMARY_BUTTON =
-  'inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform,opacity] duration-200 ease-apple disabled:opacity-50 disabled:pointer-events-none';
-const SECONDARY_BUTTON =
-  'inline-flex items-center justify-center gap-2 h-9 px-3 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors disabled:opacity-50 disabled:pointer-events-none';
 const ROW_BUTTON =
   'inline-flex items-center gap-2 h-8 px-2.5 rounded-lg text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:bg-white/5 transition-colors shrink-0';
 
@@ -301,16 +298,16 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
         </button>
       )}
       {isAuthenticated && (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="md"
+          loading={isLoading}
           onClick={() => { void loadSummary(); }}
-          disabled={isLoading}
-          data-testid="account-refresh"
-          className={SECONDARY_BUTTON}
+          testId="account-refresh"
+          iconLeft={<RefreshCw className="w-4 h-4" />}
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           {t('account.refresh')}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -543,15 +540,16 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
               {t('account.guest.desc')}
             </p>
             {onRequestLogin && (
-              <button
-                type="button"
-                data-testid="account-guest-login"
+              <Button
+                variant="primary"
+                size="lg"
                 onClick={onRequestLogin}
-                className={`${PRIMARY_BUTTON} mt-5`}
+                testId="account-guest-login"
+                iconLeft={<UserRound className="w-4 h-4" />}
+                className="mt-5"
               >
-                <UserRound className="w-4 h-4" />
                 {t('account.guest.login')}
-              </button>
+              </Button>
             )}
           </div>
 
@@ -709,14 +707,15 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
               <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <p className="text-sm leading-relaxed text-zinc-300 break-words">{loadError}</p>
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="md"
                   onClick={() => { void loadSummary(); }}
-                  className={`${SECONDARY_BUTTON} mt-3`}
+                  iconLeft={<RefreshCw className="w-4 h-4" />}
+                  className="mt-3"
                 >
-                  <RefreshCw className="w-4 h-4" />
                   {t('account.retry')}
-                </button>
+                </Button>
               </div>
             </div>
           </section>

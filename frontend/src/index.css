@@ -2,26 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Runtime channels (tokens.md §10.3): colours that native CSS needs
+   (body, selection, outline) and the chrome heights used by safe-area
+   utilities live as space-separated RGB channels. */
+:root {
+  --app-bg: 9 9 11;
+  --brand: 10 132 255;
+  --focus-ring: 10 132 255;
+  --bottom-bar-h: 3.5rem;
+  --topbar-h-mobile: 3rem;
+}
+
 body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  background-color: #09090b; /* zinc-950 */
-  color: #f4f4f5; /* zinc-100 */
+  background-color: rgb(var(--app-bg));
+  color: #f4f4f5; /* zinc-100 — same value as text-fg-primary */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-/* Keyboard focus: one consistent ring across the product */
+/* Keyboard focus: one consistent ring across the product (§10.1).
+   No border-radius here: focusing must never change an element's shape. */
 :focus-visible {
-  outline: 2px solid rgba(10, 132, 255, 0.65);
+  outline: 2px solid rgb(var(--focus-ring) / 0.65);
   outline-offset: 2px;
-  border-radius: 8px;
 }
 
 ::selection {
-  background: rgba(10, 132, 255, 0.3);
+  background: rgb(var(--brand) / 0.3);
+}
+
+/* Safe-area utilities (tokens.md §11) — one class instead of five copies of
+   calc(56px + env(safe-area-inset-bottom)). */
+@layer utilities {
+  .pb-safe-nav {
+    padding-bottom: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom) + 1rem);
+  }
+
+  .scroll-pb-safe-nav {
+    scroll-padding-bottom: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom) + 1rem);
+  }
+
+  .bottom-safe-nav {
+    bottom: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom) + 0.75rem);
+  }
+
+  .scroll-pt-chrome {
+    scroll-padding-top: calc(var(--topbar-h-mobile) + 1rem);
+  }
+}
+
+/* Respect the OS motion preference for CSS animations/transitions. Functional
+   spinners are exempt: a frozen spinner reads as "stuck", not "loading". */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-spin {
+    animation: spin 1s linear infinite !important;
+  }
 }
 
 /* Custom Webkit Scrollbar — thin, quiet, macOS-like */
