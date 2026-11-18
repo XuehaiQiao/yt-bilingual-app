@@ -16,7 +16,6 @@
 // pass rate, and this screen never invents one. The only numbers are correct,
 // total, answered and unanswered. `disclaimer` is rendered as sent.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
     AlertCircle,
@@ -45,6 +44,7 @@ import {
 } from '../lib/exam';
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
+import { Dialog } from './ui/Dialog';
 
 interface ExamScreenProps {
     /** Guests can open the view but cannot practice (records belong to an account). */
@@ -171,6 +171,9 @@ export function ExamScreen({ isGuest, onClose, onRequestLogin }: ExamScreenProps
     const [startingType, setStartingType] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
+    // Keep the last kind while the exit animation runs; `confirm` is cleared the
+    // moment a close starts, but the panel stays mounted for ~160ms.
+    const [lastConfirm, setLastConfirm] = useState<ConfirmKind | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
     const [actionStatus, setActionStatus] = useState<number | null>(null);
 
@@ -217,19 +220,16 @@ export function ExamScreen({ isGuest, onClose, onRequestLogin }: ExamScreenProps
         });
     }, [session, phase, answers, flagged, index]);
 
-    // Escape closes the confirmation dialog (not the view itself).
+    // Escape now belongs to the shared Dialog (IX-09): no local listener.
     useEffect(() => {
-        if (!confirm) return;
-        const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') setConfirm(null);
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- keep copy/testid during the Dialog exit animation
+        if (confirm) setLastConfirm(confirm);
     }, [confirm]);
 
     const total = session?.items.length ?? 0;
     const totalItems = session?.itemCount ?? total;
     const currentItem: ExamItem | null = session?.items[index] ?? null;
+    const shownConfirm = confirm ?? lastConfirm;
     const answeredCount = useMemo(() => {
         if (!session) return 0;
         return session.items.reduce(
@@ -1229,72 +1229,68 @@ export function ExamScreen({ isGuest, onClose, onRequestLogin }: ExamScreenProps
                 </motion.div>
             </div>
 
-            {confirm &&
-                createPortal(
-                    <div
-                        className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/70 p-4 backdrop-blur-md sm:items-center"
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="exam-confirm-title"
-                        data-testid={`exam-confirm-${confirm}`}
+            <Dialog
+                open={confirm !== null}
+                onClose={() => setConfirm(null)}
+                title={
+                    shownConfirm === 'submit'
+                        ? unansweredCount > 0
+                            ? t('exam.quiz.submitTitleUnanswered', {
+                                count: formatNumber(unansweredCount),
+                            })
+                            : t('exam.quiz.submitTitle')
+                        : shownConfirm === 'exit'
+                            ? t('exam.quiz.exitTitle')
+                            : undefined
+                }
+                description={
+                    shownConfirm === 'submit'
+                        ? t('exam.quiz.submitBody', { total: formatNumber(total) })
+                        : shownConfirm === 'exit'
+                            ? t('exam.quiz.exitBody')
+                            : undefined
+                }
+                size="sm"
+                loading={submitting}
+                initialFocus='[data-testid="exam-confirm-cancel"]'
+                testId={shownConfirm ? `exam-confirm-${shownConfirm}` : undefined}
+                footer={
+                    <>
+                        <button
+                            type="button"
+                            data-testid="exam-confirm-cancel"
+                            onClick={() => setConfirm(null)}
+                            disabled={submitting}
+                            className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
+                        >
+                            {t('exam.quiz.keepGoing')}
+                        </button>
+                        <button
+                            type="button"
+                            data-testid="exam-confirm-ok"
+                            onClick={confirmAction}
+                            disabled={submitting}
+                            className={`${PRIMARY_BUTTON} w-full sm:w-auto`}
+                        >
+                            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {shownConfirm === 'submit'
+                                ? t('exam.quiz.submitConfirm')
+                                : t('exam.quiz.exitConfirm')}
+                        </button>
+                    </>
+                }
+            >
+                {shownConfirm === 'submit' && flaggedCount > 0 && (
+                    <p
+                        data-testid="exam-confirm-flagged"
+                        className="text-xs leading-relaxed text-amber-300 break-words"
                     >
-                        <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-900/90 p-5 shadow-2xl shadow-black/60 backdrop-blur-2xl">
-                            <h2
-                                id="exam-confirm-title"
-                                className="text-xl font-semibold tracking-tight text-zinc-100 break-words"
-                            >
-                                {confirm === 'submit'
-                                    ? unansweredCount > 0
-                                        ? t('exam.quiz.submitTitleUnanswered', {
-                                            count: formatNumber(unansweredCount),
-                                        })
-                                        : t('exam.quiz.submitTitle')
-                                    : t('exam.quiz.exitTitle')}
-                            </h2>
-                            <p className="mt-2 text-sm leading-relaxed text-zinc-400 break-words">
-                                {confirm === 'submit'
-                                    ? t('exam.quiz.submitBody', {
-                                        total: formatNumber(total),
-                                    })
-                                    : t('exam.quiz.exitBody')}
-                            </p>
-                            {confirm === 'submit' && flaggedCount > 0 && (
-                                <p
-                                    data-testid="exam-confirm-flagged"
-                                    className="mt-2 text-xs leading-relaxed text-amber-300 break-words"
-                                >
-                                    {t('exam.quiz.submitFlagged', {
-                                        count: formatNumber(flaggedCount),
-                                    })}
-                                </p>
-                            )}
-                            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                                <button
-                                    type="button"
-                                    data-testid="exam-confirm-cancel"
-                                    onClick={() => setConfirm(null)}
-                                    disabled={submitting}
-                                    className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
-                                >
-                                    {t('exam.quiz.keepGoing')}
-                                </button>
-                                <button
-                                    type="button"
-                                    data-testid="exam-confirm-ok"
-                                    onClick={confirmAction}
-                                    disabled={submitting}
-                                    className={`${PRIMARY_BUTTON} w-full sm:w-auto`}
-                                >
-                                    {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                    {confirm === 'submit'
-                                        ? t('exam.quiz.submitConfirm')
-                                        : t('exam.quiz.exitConfirm')}
-                                </button>
-                            </div>
-                        </div>
-                    </div>,
-                    document.body,
+                        {t('exam.quiz.submitFlagged', {
+                            count: formatNumber(flaggedCount),
+                        })}
+                    </p>
                 )}
+            </Dialog>
         </div>
     );
 }

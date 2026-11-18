@@ -11,7 +11,6 @@
 // prints "measured", a point grade, a numeric confidence, an accuracy figure or
 // an IELTS equivalence.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import {
     ArrowLeft,
     ArrowRight,
@@ -51,6 +50,7 @@ import {
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
+import { Dialog } from './ui/Dialog';
 
 interface AbilityScreenProps {
     /** Leave the screen (the previous page stays mounted underneath). */
@@ -210,16 +210,6 @@ function SelfAssessSheet({
     const pageItems = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
     const answeredCount = Object.keys(answers).length;
 
-    useEffect(() => {
-        const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key !== 'Escape' || submitting) return;
-            event.preventDefault();
-            onClose();
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [onClose, submitting]);
-
     const ratingLabel = (value: number): string => t(RATING_KEYS[value]);
 
     const submit = async () => {
@@ -247,140 +237,26 @@ function SelfAssessSheet({
         }
     };
 
-    return createPortal(
-        <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-950/70 backdrop-blur-md p-0 sm:p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="self-assess-title"
-            data-testid="ability-self-assess-sheet"
-        >
-            <div className="flex max-h-[92dvh] w-full max-w-2xl flex-col rounded-t-2xl sm:rounded-2xl bg-zinc-900/90 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60">
-                <header className="flex items-start justify-between gap-3 px-5 sm:px-6 py-4 border-b border-white/5">
-                    <div className="min-w-0">
-                        <h2 id="self-assess-title" className="text-xl font-semibold tracking-tight text-zinc-100">
-                            {t('ability.assess.title')}
-                        </h2>
-                        <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                            {t('ability.assess.subtitle')}
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        data-testid="ability-self-assess-close"
-                        onClick={onClose}
-                        disabled={submitting}
-                        aria-label={t('ability.assess.closeAria')}
-                        className="p-2 rounded-full bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-400 hover:text-zinc-100 transition-colors shrink-0 disabled:opacity-50"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </header>
-
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-5 sm:px-6 pt-4">
-                    <span className="text-[11px] font-medium text-zinc-400 tabular-nums">
-                        {t('ability.assess.page', {
-                            current: formatNumber(page + 1),
-                            total: formatNumber(pages),
-                        })}
-                    </span>
-                    <span
-                        data-testid="ability-self-assess-answered"
-                        className="text-[11px] font-medium text-zinc-500 tabular-nums"
-                    >
-                        {t('ability.assess.answered', {
-                            answered: formatNumber(answeredCount),
-                            total: formatNumber(items.length),
-                        })}
-                    </span>
-                    <span className="text-[11px] text-zinc-600">{t('ability.assess.skipHint')}</span>
-                </div>
-
-                <p className="px-5 sm:px-6 pt-2 text-[11px] leading-relaxed text-zinc-500">
-                    {t('ability.assess.legend')}
-                </p>
-
-                <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar px-5 sm:px-6 py-4 space-y-3">
-                    {pageItems.map((item, pageIndex) => {
-                        const number = page * PAGE_SIZE + pageIndex + 1;
-                        const current = answers[item.id];
-                        return (
-                            <div
-                                key={item.id}
-                                data-testid={`ability-self-assess-item-${item.id}`}
-                                className={SUB_CARD + ' p-3.5'}
-                            >
-                                <div className="flex items-start gap-2.5">
-                                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/5 text-[11px] font-semibold text-zinc-500 tabular-nums">
-                                        {number}
-                                    </span>
-                                    <div className="min-w-0">
-                                        <p className="text-sm leading-relaxed text-zinc-200 break-words">
-                                            {item.statement}
-                                        </p>
-                                        {(item.skill || item.band) && (
-                                            <p className="mt-1 text-[11px] text-zinc-500">
-                                                {t('ability.assess.itemSkill', {
-                                                    skill: item.skill
-                                                        ? (SKILL_LABEL_KEYS[item.skill] ? t(SKILL_LABEL_KEYS[item.skill]) : item.skill)
-                                                        : '—',
-                                                    band: item.band || '—',
-                                                })}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                                <div
-                                    role="radiogroup"
-                                    aria-label={item.statement}
-                                    className="mt-2.5 grid grid-cols-4 gap-0.5 rounded-lg border border-white/5 bg-zinc-800/80 p-0.5"
-                                >
-                                    {[0, 1, 2, 3].map((rating) => {
-                                        const selected = current === rating;
-                                        return (
-                                            <button
-                                                key={rating}
-                                                type="button"
-                                                role="radio"
-                                                aria-checked={selected}
-                                                aria-label={t('ability.assess.ratingAria', {
-                                                    statement: item.statement,
-                                                    label: ratingLabel(rating),
-                                                })}
-                                                data-testid={`ability-self-assess-option-${item.id}-${rating}`}
-                                                onClick={() => {
-                                                    setAnswers((prev) => ({ ...prev, [item.id]: rating }));
-                                                    setError(null);
-                                                }}
-                                                className={`min-w-0 rounded-md px-1 py-1.5 text-center transition-[background-color,color] duration-200 ease-apple ${
-                                                    selected
-                                                        ? 'bg-zinc-100 text-zinc-900'
-                                                        : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'
-                                                }`}
-                                            >
-                                                <span className="block text-[11px] font-semibold tabular-nums">
-                                                    {rating}
-                                                </span>
-                                                <span className="block truncate text-[10px] leading-tight">
-                                                    {t(RATING_SHORT_KEYS[rating])}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                <footer className="border-t border-white/5 px-5 sm:px-6 py-4">
+    return (
+        <Dialog
+            open
+            onClose={onClose}
+            title={t('ability.assess.title')}
+            description={t('ability.assess.subtitle')}
+            size="md"
+            sheet
+            loading={submitting}
+            closeLabel={t('ability.assess.closeAria')}
+            testId="ability-self-assess-sheet"
+            footer={
+                <div className="flex w-full flex-col gap-2">
                     {error && (
-                        <p data-testid="ability-self-assess-error" className="mb-2 text-xs leading-relaxed text-amber-300 break-words">
+                        <p data-testid="ability-self-assess-error" className="text-xs leading-relaxed text-amber-300 break-words">
                             {error}
                         </p>
                     )}
                     {answeredCount < MIN_ANSWERS && (
-                        <p className="mb-2 text-[11px] text-zinc-500">
+                        <p className="text-[11px] text-zinc-500">
                             {t('ability.assess.minimum', { answered: formatNumber(answeredCount) })}
                         </p>
                     )}
@@ -427,14 +303,109 @@ function SelfAssessSheet({
                         type="button"
                         onClick={onClose}
                         disabled={submitting}
-                        className={`${GHOST_BUTTON} mt-1 w-full sm:w-auto`}
+                        className={`${GHOST_BUTTON} w-full sm:w-auto`}
                     >
                         {t('ability.assess.close')}
                     </button>
-                </footer>
+                </div>
+            }
+        >
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <span className="text-[11px] font-medium text-zinc-400 tabular-nums">
+                    {t('ability.assess.page', {
+                        current: formatNumber(page + 1),
+                        total: formatNumber(pages),
+                    })}
+                </span>
+                <span
+                    data-testid="ability-self-assess-answered"
+                    className="text-[11px] font-medium text-zinc-500 tabular-nums"
+                >
+                    {t('ability.assess.answered', {
+                        answered: formatNumber(answeredCount),
+                        total: formatNumber(items.length),
+                    })}
+                </span>
+                <span className="text-[11px] text-zinc-600">{t('ability.assess.skipHint')}</span>
             </div>
-        </div>,
-        document.body,
+
+            <p className="pt-2 text-[11px] leading-relaxed text-zinc-500">
+                {t('ability.assess.legend')}
+            </p>
+
+            <div className="mt-4 space-y-3">
+                {pageItems.map((item, pageIndex) => {
+                    const number = page * PAGE_SIZE + pageIndex + 1;
+                    const current = answers[item.id];
+                    return (
+                        <div
+                            key={item.id}
+                            data-testid={`ability-self-assess-item-${item.id}`}
+                            className={SUB_CARD + ' p-3.5'}
+                        >
+                            <div className="flex items-start gap-2.5">
+                                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white/5 text-[11px] font-semibold text-zinc-500 tabular-nums">
+                                    {number}
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="text-sm leading-relaxed text-zinc-200 break-words">
+                                        {item.statement}
+                                    </p>
+                                    {(item.skill || item.band) && (
+                                        <p className="mt-1 text-[11px] text-zinc-500">
+                                            {t('ability.assess.itemSkill', {
+                                                skill: item.skill
+                                                    ? (SKILL_LABEL_KEYS[item.skill] ? t(SKILL_LABEL_KEYS[item.skill]) : item.skill)
+                                                    : '—',
+                                                band: item.band || '—',
+                                            })}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div
+                                role="radiogroup"
+                                aria-label={item.statement}
+                                className="mt-2.5 grid grid-cols-4 gap-0.5 rounded-lg border border-white/5 bg-zinc-800/80 p-0.5"
+                            >
+                                {[0, 1, 2, 3].map((rating) => {
+                                    const selected = current === rating;
+                                    return (
+                                        <button
+                                            key={rating}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={selected}
+                                            aria-label={t('ability.assess.ratingAria', {
+                                                statement: item.statement,
+                                                label: ratingLabel(rating),
+                                            })}
+                                            data-testid={`ability-self-assess-option-${item.id}-${rating}`}
+                                            onClick={() => {
+                                                setAnswers((prev) => ({ ...prev, [item.id]: rating }));
+                                                setError(null);
+                                            }}
+                                            className={`min-w-0 rounded-md px-1 py-1.5 text-center transition-[background-color,color] duration-200 ease-apple ${
+                                                selected
+                                                    ? 'bg-zinc-100 text-zinc-900'
+                                                    : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'
+                                            }`}
+                                        >
+                                            <span className="block text-[11px] font-semibold tabular-nums">
+                                                {rating}
+                                            </span>
+                                            <span className="block truncate text-[10px] leading-tight">
+                                                {t(RATING_SHORT_KEYS[rating])}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </Dialog>
     );
 }
 
@@ -453,14 +424,6 @@ function EvidenceDrawer({
 }) {
     const { t, formatNumber, formatDate } = useI18n();
 
-    useEffect(() => {
-        const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') onClose();
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [onClose]);
-
     const typeLabel = (type: string | null | undefined): string => {
         if (!type) return t('ability.evidence.type.other');
         const key = EVIDENCE_TYPE_KEYS[type];
@@ -473,88 +436,66 @@ function EvidenceDrawer({
         return t('ability.evidence.noResult');
     };
 
-    return createPortal(
-        <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-950/70 backdrop-blur-md p-0 sm:p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="evidence-title"
-            data-testid="ability-evidence-drawer"
+    return (
+        <Dialog
+            open
+            onClose={onClose}
+            title={t('ability.evidence.title')}
+            description={t('ability.evidence.subtitle', { count: formatNumber(evidence.length) })}
+            size="md"
+            sheet
+            closeLabel={t('ability.evidence.closeAria')}
+            testId="ability-evidence-drawer"
         >
-            <div className="flex max-h-[85dvh] w-full max-w-lg flex-col rounded-t-2xl sm:rounded-2xl bg-zinc-900/90 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60">
-                <header className="flex items-start justify-between gap-3 px-5 sm:px-6 py-4 border-b border-white/5">
-                    <div className="min-w-0">
-                        <h2 id="evidence-title" className="text-xl font-semibold tracking-tight text-zinc-100">
-                            {t('ability.evidence.title')}
-                        </h2>
-                        <p className="mt-1 text-xs text-zinc-500">
-                            {t('ability.evidence.subtitle', { count: formatNumber(evidence.length) })}
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        data-testid="ability-evidence-close"
-                        onClick={onClose}
-                        aria-label={t('ability.evidence.closeAria')}
-                        className="p-2 rounded-full bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-400 hover:text-zinc-100 transition-colors shrink-0"
+            <p className="text-[11px] leading-relaxed text-zinc-500">
+                {t('ability.evidence.privacy')}
+            </p>
+            {evidence.length === 0 && !selfReportBand && (
+                <p className="py-10 text-center text-xs text-zinc-500">{t('ability.evidence.empty')}</p>
+            )}
+            <ul className="mt-3 space-y-2">
+                {evidence.map((item, index) => (
+                    <li
+                        key={item.id ?? `${item.type ?? 'evidence'}-${index}`}
+                        data-testid="ability-evidence-item"
+                        className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-zinc-800/30 p-3"
                     >
-                        <X className="w-5 h-5" />
-                    </button>
-                </header>
-
-                <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar px-5 sm:px-6 py-4">
-                    <p className="text-[11px] leading-relaxed text-zinc-500">
-                        {t('ability.evidence.privacy')}
-                    </p>
-                    {evidence.length === 0 && !selfReportBand && (
-                        <p className="py-10 text-center text-xs text-zinc-500">{t('ability.evidence.empty')}</p>
-                    )}
-                    <ul className="mt-3 space-y-2">
-                        {evidence.map((item, index) => (
-                            <li
-                                key={item.id ?? `${item.type ?? 'evidence'}-${index}`}
-                                data-testid="ability-evidence-item"
-                                className="flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-zinc-800/30 p-3"
-                            >
-                                <div className="flex min-w-0 items-center gap-2.5">
-                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-zinc-500">
-                                        <FileText className="w-4 h-4" />
-                                    </span>
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-medium text-zinc-200">
-                                            {typeLabel(item.type)}
-                                        </p>
-                                        <p className="mt-0.5 text-[11px] text-zinc-500 tabular-nums">
-                                            {item.observedAt
-                                                ? formatDate(item.observedAt, { dateStyle: 'medium' })
-                                                : t('ability.time.unknown')}
-                                        </p>
-                                    </div>
-                                </div>
-                                <span className="shrink-0 rounded-full border border-white/5 bg-white/5 px-2 py-0.5 text-[11px] font-medium text-zinc-300">
-                                    {resultLabel(item)}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-
-                    {selfReportBand && (
-                        <div
-                            data-testid="ability-evidence-self-report"
-                            className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"
-                        >
-                            <p className="text-sm font-medium text-amber-200">
-                                {t('ability.evidence.selfReport', { band: selfReportBand })}
-                            </p>
-                            <p className="mt-1 text-[11px] leading-relaxed text-amber-200/70">
-                                {selfReportCaveat || t('ability.skill.writing.caveat')}
-                            </p>
+                        <div className="flex min-w-0 items-center gap-2.5">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-zinc-500">
+                                <FileText className="w-4 h-4" />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-sm font-medium text-zinc-200">
+                                    {typeLabel(item.type)}
+                                </p>
+                                <p className="mt-0.5 text-[11px] text-zinc-500 tabular-nums">
+                                    {item.observedAt
+                                        ? formatDate(item.observedAt, { dateStyle: 'medium' })
+                                        : t('ability.time.unknown')}
+                                </p>
+                            </div>
                         </div>
-                    )}
+                        <span className="shrink-0 rounded-full border border-white/5 bg-white/5 px-2 py-0.5 text-[11px] font-medium text-zinc-300">
+                            {resultLabel(item)}
+                        </span>
+                    </li>
+                ))}
+            </ul>
+
+            {selfReportBand && (
+                <div
+                    data-testid="ability-evidence-self-report"
+                    className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3"
+                >
+                    <p className="text-sm font-medium text-amber-200">
+                        {t('ability.evidence.selfReport', { band: selfReportBand })}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-amber-200/70">
+                        {selfReportCaveat || t('ability.skill.writing.caveat')}
+                    </p>
                 </div>
-            </div>
-        </div>,
-        document.body,
+            )}
+        </Dialog>
     );
 }
 

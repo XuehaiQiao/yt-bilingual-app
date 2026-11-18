@@ -6,6 +6,7 @@ import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRig
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { Dialog } from './components/ui/Dialog';
 import { AuthProvider, useAuth } from './lib/auth';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import { getLanguageMeta, getRuntimeTargetLang } from './i18n';
@@ -3421,25 +3422,37 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
 // Blocking overlay while a link is being estimated/processed/transcribed.
 // Lives at the app root so it also covers the first-level pages that started
-// the job (Today / Content).
+// the job (Today / Content). It is intentionally not dismissible (A2 C4 busy /
+// A3 IX-09): `alertdialog` + `loading` removes Escape/backdrop/X and exposes
+// aria-busy while the job runs.
 function ProcessingOverlay({ loadingState }: { loadingState: 'processing' | 'loading' | 'asr' }) {
   const { t } = useI18n();
+  const title = loadingState === 'asr'
+    ? t('home.loading.asr')
+    : loadingState === 'processing'
+      ? t('home.loading.processing')
+      : t('home.loading.loading');
   return (
-    <div
-      data-testid="processing-overlay"
-      className="fixed inset-0 z-50 bg-zinc-950/70 backdrop-blur-md flex flex-col items-center justify-center px-6 text-center"
+    <Dialog
+      open
+      onClose={() => {}}
+      role="alertdialog"
+      loading
+      showClose={false}
+      size="sm"
+      title={title}
+      testId="processing-overlay"
     >
-      <Loader2 className="w-12 h-12 text-zinc-300 animate-spin mb-6" />
-      <h2 className="text-xl font-semibold tracking-tight text-zinc-100 mb-2">
-        {loadingState === 'asr' ? t('home.loading.asr') : loadingState === 'processing' ? t('home.loading.processing') : t('home.loading.loading')}
-      </h2>
-      {loadingState === 'processing' && (
-        <p className="text-zinc-400">{t('home.loading.processingHint')}</p>
-      )}
-      {loadingState === 'asr' && (
-        <p className="text-zinc-400">{t('home.loading.asrHint')}</p>
-      )}
-    </div>
+      <div className="flex flex-col items-center gap-4 py-2 text-center">
+        <Loader2 className="w-12 h-12 text-zinc-300 animate-spin" />
+        {loadingState === 'processing' && (
+          <p className="text-zinc-400">{t('home.loading.processingHint')}</p>
+        )}
+        {loadingState === 'asr' && (
+          <p className="text-zinc-400">{t('home.loading.asrHint')}</p>
+        )}
+      </div>
+    </Dialog>
   );
 }
 
@@ -3558,6 +3571,7 @@ function LoginView({ next }: { next: string | null }) {
 // of replacing the app, so a guest who changes their mind keeps their video.
 function AuthGate() {
   const { status } = useAuth();
+  const { t } = useI18n();
   const [showAuth, setShowAuth] = useState(false);
   const { view: publicView, blank: blankHash, next: loginNext, sync: syncPublicView } = usePublicView();
 
@@ -3597,12 +3611,21 @@ function AuthGate() {
       <>
         <AppContent onRequestLogin={() => setShowAuth(true)} />
         {showAuth && (
-          <div
-            data-testid="guest-auth-overlay"
-            className="fixed inset-0 z-50 overflow-auto bg-[#09090b]"
+          <Dialog
+            open
+            onClose={() => setShowAuth(false)}
+            fullscreen
+            showClose={false}
+            ariaLabel={t('brand.fullName')}
+            initialFocus='[data-testid="auth-email"]'
+            testId="guest-auth-overlay"
           >
-            <AuthScreen onGuestContinue={() => setShowAuth(false)} />
-          </div>
+            {/* AuthScreen is its own full-height page; cancel the dialog body
+                padding so it keeps the exact pre-migration layout. */}
+            <div className="-m-6">
+              <AuthScreen onGuestContinue={() => setShowAuth(false)} />
+            </div>
+          </Dialog>
         )}
       </>
     );

@@ -20,13 +20,11 @@
 import {
   useCallback,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -56,13 +54,13 @@ import {
   UserRound,
   Users,
   Wrench,
-  X,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { getLanguageMeta, type TranslationKey } from '../i18n';
 import { useAuth } from '../lib/auth';
 import { displayUsername } from '../lib/username';
 import { toast } from '../lib/toast';
+import { Dialog } from './ui/Dialog';
 import {
   AdminApiError,
   adjustAdminUserCredits,
@@ -279,74 +277,6 @@ function StatusBadge({ banned }: { banned: boolean }) {
   );
 }
 
-/** Shared dialog shell: overlay, Escape close, titled panel, footer slot. */
-function ModalFrame({
-  title,
-  icon,
-  onClose,
-  testId,
-  children,
-  footer,
-}: {
-  title: string;
-  icon: ReactNode;
-  onClose: () => void;
-  testId: string;
-  children: ReactNode;
-  footer: ReactNode;
-}) {
-  const { t } = useI18n();
-  const titleId = useId();
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-zinc-950/70 backdrop-blur-md animate-[fadeIn_0.25s_ease-out]"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        data-testid={testId}
-        className="relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto custom-scrollbar bg-zinc-900/90 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl shadow-black/60 animate-[slideUp_0.32s_cubic-bezier(0.25,1,0.5,1)]"
-      >
-        <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-white/5">
-          <h2
-            id={titleId}
-            className="min-w-0 text-xl font-semibold tracking-tight text-zinc-100 flex items-center gap-2"
-          >
-            <span className="text-zinc-400 shrink-0">{icon}</span>
-            <span className="truncate">{title}</span>
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('common.close')}
-            title={t('common.close')}
-            className="p-2 rounded-full text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors shrink-0"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-6">{children}</div>
-        <div className="flex flex-wrap items-center justify-end gap-2 px-6 py-4 border-t border-white/5">
-          {footer}
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
 interface CreditDialogProps {
   target: AdminUserRow;
   onClose: () => void;
@@ -409,14 +339,28 @@ function CreditDialog({ target, onClose, onSaved, onAuthError }: CreditDialogPro
   };
 
   return (
-    <ModalFrame
-      title={t('admin.credit.title')}
-      icon={<Coins className="w-5 h-5" />}
+    <Dialog
+      open
       onClose={onClose}
+      title={
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-zinc-400"><Coins className="w-5 h-5" /></span>
+          <span className="truncate">{t('admin.credit.title')}</span>
+        </span>
+      }
+      size="sm"
+      loading={saving}
+      initialFocus='[data-testid="admin-credit-delta"]'
       testId="admin-credit-dialog"
       footer={
         <>
-          <button type="button" data-testid="admin-credit-cancel" onClick={onClose} className={SECONDARY_BUTTON}>
+          <button
+            type="button"
+            data-testid="admin-credit-cancel"
+            onClick={onClose}
+            disabled={saving}
+            className={SECONDARY_BUTTON}
+          >
             {t('admin.cancel')}
           </button>
           <button
@@ -450,7 +394,6 @@ function CreditDialog({ target, onClose, onSaved, onAuthError }: CreditDialogPro
           type="number"
           step={1}
           inputMode="numeric"
-          autoFocus
           value={deltaText}
           onChange={(event) => {
             setDeltaText(event.target.value);
@@ -506,7 +449,7 @@ function CreditDialog({ target, onClose, onSaved, onAuthError }: CreditDialogPro
           <span>{error}</span>
         </p>
       )}
-    </ModalFrame>
+    </Dialog>
   );
 }
 
@@ -547,14 +490,32 @@ function StatusDialog({ target, onClose, onSaved, onAuthError }: StatusDialogPro
   };
 
   return (
-    <ModalFrame
-      title={banned ? t('admin.status.unbanTitle') : t('admin.status.banTitle')}
-      icon={banned ? <LockOpen className="w-5 h-5" /> : <Ban className="w-5 h-5" />}
+    <Dialog
+      open
       onClose={onClose}
+      title={
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-zinc-400">
+            {banned ? <LockOpen className="w-5 h-5" /> : <Ban className="w-5 h-5" />}
+          </span>
+          <span className="truncate">
+            {banned ? t('admin.status.unbanTitle') : t('admin.status.banTitle')}
+          </span>
+        </span>
+      }
+      size="sm"
+      loading={saving}
+      initialFocus='[data-testid="admin-status-cancel"]'
       testId="admin-status-dialog"
       footer={
         <>
-          <button type="button" data-testid="admin-status-cancel" onClick={onClose} className={SECONDARY_BUTTON}>
+          <button
+            type="button"
+            data-testid="admin-status-cancel"
+            onClick={onClose}
+            disabled={saving}
+            className={SECONDARY_BUTTON}
+          >
             {t('admin.cancel')}
           </button>
           <button
@@ -586,7 +547,7 @@ function StatusDialog({ target, onClose, onSaved, onAuthError }: StatusDialogPro
           <span>{error}</span>
         </p>
       )}
-    </ModalFrame>
+    </Dialog>
   );
 }
 

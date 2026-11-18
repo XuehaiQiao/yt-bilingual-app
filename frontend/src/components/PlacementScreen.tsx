@@ -12,7 +12,6 @@
 // `weaknesses`). This component never turns the band into a score and never
 // hides the "preliminary estimate" caveat.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
     ArrowRight,
@@ -43,6 +42,7 @@ import {
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
+import { Dialog } from './ui/Dialog';
 
 export type PlacementInitialView = 'intro' | 'profile';
 
@@ -147,6 +147,9 @@ export function PlacementScreen({
     const [errorStatus, setErrorStatus] = useState<number | null>(null);
     const [retestError, setRetestError] = useState<string | null>(null);
     const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
+    // Copied into state so the panel keeps its copy/testid during the Dialog
+    // exit animation (confirm turns null first).
+    const [lastConfirm, setLastConfirm] = useState<ConfirmKind | null>(null);
 
     // Refs mirror the state that async callbacks / the countdown read. React
     // state alone would hand a stale paper/answer set to a timer callback.
@@ -368,14 +371,9 @@ export function PlacementScreen({
     }, [phase, confirm, submitting, chooseOption, recordAndAdvance]);
 
     useEffect(() => {
-        if (!confirm) return;
-        const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key !== 'Escape') return;
-            event.preventDefault();
-            setConfirm(null);
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
+        // Escape now belongs to the shared Dialog (IX-09).
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- keep copy/testid during the Dialog exit animation
+        if (confirm) setLastConfirm(confirm);
     }, [confirm]);
 
     const handleExitClick = () => {
@@ -1333,6 +1331,9 @@ export function PlacementScreen({
         },
     };
 
+    const shownConfirm = confirm ?? lastConfirm;
+    const shownCopy = shownConfirm ? confirmCopy[shownConfirm] : null;
+
     const confirmAction = () => {
         if (confirm === 'exit') {
             handleExitConfirm();
@@ -1397,51 +1398,43 @@ export function PlacementScreen({
                 </AnimatePresence>
             </div>
 
-            {confirm && createPortal(
-                <div
-                    className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-950/70 backdrop-blur-md p-4"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="placement-confirm-title"
-                    data-testid={`placement-confirm-${confirm}`}
-                >
-                    <div className="w-full max-w-sm rounded-2xl bg-zinc-900/90 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60 p-5">
-                        <h2
-                            id="placement-confirm-title"
-                            className="text-xl font-semibold tracking-tight text-zinc-100 break-words"
+            <Dialog
+                open={confirm !== null}
+                onClose={() => setConfirm(null)}
+                title={shownCopy?.title}
+                description={shownCopy?.body}
+                size="sm"
+                loading={starting}
+                initialFocus='[data-testid="placement-confirm-cancel"]'
+                testId={shownConfirm ? `placement-confirm-${shownConfirm}` : undefined}
+                footer={
+                    <>
+                        <button
+                            type="button"
+                            data-testid="placement-confirm-cancel"
+                            onClick={() => setConfirm(null)}
+                            disabled={starting}
+                            className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
                         >
-                            {confirmCopy[confirm].title}
-                        </h2>
-                        <p className="mt-2 text-sm leading-relaxed text-zinc-400 break-words">
-                            {confirmCopy[confirm].body}
-                        </p>
-                        {retestError && confirm === 'retest' && (
-                            <p className="mt-2 text-xs text-amber-300 break-words">{retestError}</p>
-                        )}
-                        <div className="mt-5 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                            <button
-                                type="button"
-                                data-testid="placement-confirm-cancel"
-                                onClick={() => setConfirm(null)}
-                                className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
-                            >
-                                {confirmCopy[confirm].cancel}
-                            </button>
-                            <button
-                                type="button"
-                                data-testid="placement-confirm-ok"
-                                onClick={confirmAction}
-                                disabled={starting}
-                                className={`${PRIMARY_BUTTON} w-full sm:w-auto`}
-                            >
-                                {starting && <Loader2 className="w-4 h-4 animate-spin" />}
-                                {confirmCopy[confirm].confirm}
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body,
-            )}
+                            {shownCopy?.cancel}
+                        </button>
+                        <button
+                            type="button"
+                            data-testid="placement-confirm-ok"
+                            onClick={confirmAction}
+                            disabled={starting}
+                            className={`${PRIMARY_BUTTON} w-full sm:w-auto`}
+                        >
+                            {starting && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {shownCopy?.confirm}
+                        </button>
+                    </>
+                }
+            >
+                {retestError && shownConfirm === 'retest' && (
+                    <p className="text-xs text-amber-300 break-words">{retestError}</p>
+                )}
+            </Dialog>
         </div>
     );
 }
