@@ -1,7 +1,13 @@
 # 030 — 课程生成（YouTube / 公版小说）
 
-> 状态：实现中 ｜ 2026-11-18 ｜ 范围：用户端生成入口、后端生成器、P&P 公版小说源
+> 状态：后端已实现（前端待做）｜ 2026-11-18 ｜ 范围：用户端生成入口、后端生成器、P&P 公版小说源
 > 依赖：029 课程 MVP（attempt/评分/事件）、既有视频字幕/翻译、teaching_analysis、Gutenberg 抓取
+>
+> 代码路径（后端）：`backend/course_generator.py`（源适配/切章/生成/校验/缓存/单飞）、
+> `backend/course.py`（静态 + 本人生成课程合并、脱敏、attempt）、
+> `backend/routes_course.py`（`POST /api/course/generate`）、
+> `backend/migrations/versions/0022_generated_courses.py`、
+> `backend/tests/test_course_generation.py`。
 
 ## 1. 目标
 

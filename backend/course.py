@@ -1,26 +1,33 @@
-"""课程 MVP 垂直切片（specs/029）：课程包读取、尝试进度、判分与埋点。
+"""课程垂直切片（specs/029 + 030）：课程包读取、尝试进度、判分与埋点。
 
-课程内容**只读**：``content/course/*.json``（``config.COURSE_DIR`` 可覆盖），
-一课一个 JSON 包，schema 为 ``linguatrek.course-lesson.v1``。运行期读文件、做
-结构与题目校验；内容坏了抛 :class:`CourseUnavailable`（路由 503），不静默降级、
-不写文件、不建表。
+课程内容有两种来源：
 
-数据落两张表（由 ``0021_course_mvp`` 迁移创建，运行时不建表）：
+- **静态课程**：``content/course/*.json``（``config.COURSE_DIR`` 可覆盖），
+  一课一个 JSON 包，schema 为 ``linguatrek.course-lesson.v1``。运行期读文件、
+  做结构与题目校验；内容坏了抛 :class:`CourseUnavailable`（路由 503），不
+  静默降级、不写文件。
+- **用户生成课程**：``generated_courses`` 表（迁移 ``0022_generated_courses``）
+  里当前用户的行，``lesson_json`` 同样是同一 schema。列表/详情/attempt 只认
+  本人：别人的生成课程 id 与不存在一样返回 404（不泄露存在性）。
+
+数据落三张表（运行时不建表）：
 
 - ``course_attempts``：某用户对某课的一次尝试。同一用户同一课程最多一条
   ``in_progress``（部分唯一索引兜底）；``answers_json`` 只存首次答案，
   重复同 choice 幂等、换 choice 409；``complete`` 时按课程题目数计分。
 - ``course_events``：append-only 埋点，为私测看流失用；payload 小对象 ≤2KB。
+- ``generated_courses``：生成课程缓存（含答案，仅服务端用）；只读本人行。
 
 安全与归属：
 
 - 所有 attempt 查询都带 ``user_id``；别人的 attempt 一律 404，不泄露存在性；
+- 生成课程按 ``owner_user_id`` 过滤，别人的课程 id 同样 404；
 - lesson 详情**脱敏**：``questions`` / ``exitTicket`` 里只保留 ``id/prompt/options``，
   不下发 ``answer`` / ``explain``（step 级讲解 ``explain`` 是教学内容，保留）。
 
 对外函数：
 
-- :func:`list_lessons` / :func:`get_lesson`（脱敏）；
+- :func:`list_lessons` / :func:`get_lesson`（静态 + 本人生成；脱敏）；
 - :func:`start_attempt` / :func:`get_attempt`；
 - :func:`answer_question` / :func:`update_step` / :func:`save_output`；
 - :func:`complete_attempt` / :func:`record_event`。
@@ -29,6 +36,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import os
 import re
 import sqlite3
@@ -39,6 +47,8 @@ from typing import Any
 
 import config
 
+logger = logging.getLogger("linguatrek.course")
+
 SCHEMA = "linguatrek.course-lesson.v1"
 SCHEMA_VERSION = 1
 
@@ -46,6 +56,10 @@ STATUS_IN_PROGRESS = "in_progress"
 STATUS_COMPLETED = "completed"
 STATUS_ABANDONED = "abandoned"
 ATTEMPT_STATUSES = (STATUS_IN_PROGRESS, STATUS_COMPLETED, STATUS_ABANDONED)
+
+GENERATED_TABLE = "generated_courses"
+GENERATED_ID_PREFIX = "gen-"
+GENERATED_STATUS_READY = "ready"
 
 EVENT_TYPES = frozenset(
     {
@@ -299,7 +313,7 @@ def _course_dir() -> str:
     return config.COURSE_DIR
 
 
-def load_lessons() -> dict[str, Lesson]:
+def _load_static_lessons() -> dict[str, Lesson]:
     """读取并校验 ``COURSE_DIR`` 下全部 ``*.json``；一台坏包整体 503。"""
     directory = _course_dir()
     if not os.path.isdir(directory):
@@ -327,19 +341,123 @@ def load_lessons() -> dict[str, Lesson]:
     return lessons
 
 
-def _get_lesson(lesson_id: str) -> Lesson:
-    lesson = load_lessons().get(lesson_id)
-    if lesson is None:
-        raise LessonNotFound(f"lesson_not_found：课程不存在（{lesson_id}）。")
+def _decode_generated_lesson(row: sqlite3.Row) -> Lesson:
+    """把 ``generated_courses.lesson_json`` 解析成校验通过的课程包。"""
+    try:
+        raw = json.loads(row["lesson_json"] or "")
+    except (TypeError, ValueError) as exc:
+        raise CourseUnavailable(
+            f"生成课程数据损坏（{row['id']}）：lesson_json 不是合法 JSON。"
+        ) from exc
+    lesson = parse_lesson(raw, where=f"{GENERATED_TABLE}:{row['id']}")
+    if lesson.id != row["id"]:
+        raise CourseUnavailable(
+            f"生成课程数据损坏（{row['id']}）：lesson_json 内 id={lesson.id!r} 不一致。"
+        )
     return lesson
 
 
-def _attempt_lesson(lesson_id: str) -> Lesson:
-    """attempt 指向的课程包必须仍然存在；已下架按 404 处理。"""
-    lesson = load_lessons().get(lesson_id)
-    if lesson is None:
-        raise LessonNotFound(f"lesson_not_found：课程内容已不存在（{lesson_id}）。")
-    return lesson
+def _load_generated_lessons(user_id: str | None, *, required: bool) -> dict[str, Lesson]:
+    """读当前用户全部生成课程；列表场景表缺失时静默降级为只看静态课程。"""
+    if not user_id:
+        return {}
+    path = config.AUTH_DB_PATH
+    if not os.path.exists(path):
+        if required:
+            raise CourseUnavailable(
+                f"数据库文件不存在：{path}（先运行 alembic upgrade head）"
+            )
+        return {}
+    try:
+        conn = _connect()
+    except CourseUnavailable:
+        if required:
+            raise
+        return {}
+    try:
+        if GENERATED_TABLE not in _table_names(conn):
+            if required:
+                raise CourseUnavailable(
+                    f"数据库缺少表 {GENERATED_TABLE}（先运行 alembic upgrade head；"
+                    "生成课程需要 0022_generated_courses 迁移）。"
+                )
+            return {}
+        rows = conn.execute(
+            f"SELECT * FROM {GENERATED_TABLE} "
+            "WHERE owner_user_id = ? AND status = ? "
+            "ORDER BY created_at ASC, id ASC",
+            (user_id, GENERATED_STATUS_READY),
+        ).fetchall()
+        return {row["id"]: _decode_generated_lesson(row) for row in rows}
+    except sqlite3.OperationalError as exc:
+        if required:
+            raise CourseUnavailable(
+                f"课程数据库暂时不可用：{exc}（先运行 alembic upgrade head）"
+            ) from exc
+        logger.warning("读取生成课程失败（已降级为只看静态课程）：%s", exc)
+        return {}
+    finally:
+        conn.close()
+
+
+def _load_generated_lesson(lesson_id: str, user_id: str | None) -> Lesson | None:
+    """按 id + 归属取一条生成课程；别人的行与不存在等价（返回 None）。"""
+    if not user_id:
+        return None
+    conn = _connect()
+    try:
+        if GENERATED_TABLE not in _table_names(conn):
+            raise CourseUnavailable(
+                f"数据库缺少表 {GENERATED_TABLE}（先运行 alembic upgrade head；"
+                "生成课程需要 0022_generated_courses 迁移）。"
+            )
+        row = conn.execute(
+            f"SELECT * FROM {GENERATED_TABLE} "
+            "WHERE id = ? AND owner_user_id = ? AND status = ?",
+            (lesson_id, user_id, GENERATED_STATUS_READY),
+        ).fetchone()
+    except sqlite3.OperationalError as exc:
+        raise CourseUnavailable(
+            f"课程数据库暂时不可用：{exc}（先运行 alembic upgrade head）"
+        ) from exc
+    finally:
+        conn.close()
+    return _decode_generated_lesson(row) if row is not None else None
+
+
+def load_lessons(user_id: str | None = None) -> dict[str, Lesson]:
+    """静态课程 + 当前用户生成课程；``user_id`` 缺省只看静态课程。"""
+    lessons = _load_static_lessons()
+    for lesson_id, lesson in _load_generated_lessons(
+        user_id, required=False
+    ).items():
+        if lesson_id in lessons:
+            raise CourseUnavailable(f"课程包 id 与生成课程冲突：{lesson_id}。")
+        lessons[lesson_id] = lesson
+    return lessons
+
+
+def _get_lesson(lesson_id: str, user_id: str | None = None) -> Lesson:
+    lesson = _load_static_lessons().get(lesson_id)
+    if lesson is not None:
+        return lesson
+    if lesson_id.startswith(GENERATED_ID_PREFIX):
+        generated = _load_generated_lesson(lesson_id, user_id)
+        if generated is not None:
+            return generated
+    raise LessonNotFound(f"lesson_not_found：课程不存在（{lesson_id}）。")
+
+
+def _attempt_lesson(lesson_id: str, user_id: str | None = None) -> Lesson:
+    """attempt 指向的课程必须仍然存在且属于本人；已下架按 404 处理。"""
+    lesson = _load_static_lessons().get(lesson_id)
+    if lesson is not None:
+        return lesson
+    if lesson_id.startswith(GENERATED_ID_PREFIX):
+        generated = _load_generated_lesson(lesson_id, user_id)
+        if generated is not None:
+            return generated
+    raise LessonNotFound(f"lesson_not_found：课程内容已不存在（{lesson_id}）。")
 
 
 # ---------------------------------------------------------------------------
@@ -370,7 +488,8 @@ def sanitized_lesson(lesson: Lesson) -> dict:
 def lesson_meta(lesson: Lesson) -> dict:
     """课程列表条目（只给元数据，不下发正文）。"""
     raw = lesson.raw
-    return {
+    generated = lesson.id.startswith(GENERATED_ID_PREFIX)
+    meta = {
         "id": lesson.id,
         "title": _lesson_title(raw, lesson.id),
         "titleZh": raw.get("titleZh") or _lesson_title(raw, lesson.id),
@@ -378,7 +497,13 @@ def lesson_meta(lesson: Lesson) -> dict:
         "durationMinutes": raw.get("durationMinutes") or 0,
         "status": raw.get("status") or "draft",
         "version": lesson.version,
+        "generated": generated,
     }
+    if generated:
+        source = raw.get("source") if isinstance(raw.get("source"), dict) else {}
+        meta["sourceKind"] = source.get("kind") or ""
+        meta["sourceRef"] = source.get("sourceRef") or ""
+    return meta
 
 
 # ---------------------------------------------------------------------------
@@ -493,18 +618,21 @@ def _completed_payload(row: sqlite3.Row, lesson: Lesson) -> dict:
 # 对外：课程读取
 # ---------------------------------------------------------------------------
 
-def list_lessons() -> dict:
-    lessons = load_lessons()
-    return {"lessons": [lesson_meta(lesson) for lesson in sorted(
-        lessons.values(), key=lambda item: item.id
-    )]}
+def list_lessons(user_id: str | None = None) -> dict:
+    """静态课程 + 当前用户生成课程（静态在前），只给元数据。"""
+    lessons = load_lessons(user_id)
+    ordered = sorted(
+        lessons.values(),
+        key=lambda item: (item.id.startswith(GENERATED_ID_PREFIX), item.id),
+    )
+    return {"lessons": [lesson_meta(lesson) for lesson in ordered]}
 
 
-def get_lesson(lesson_id: str) -> dict:
+def get_lesson(lesson_id: str, user_id: str | None = None) -> dict:
     lesson_id = (lesson_id or "").strip()
     if not lesson_id:
         raise InvalidRequest("lesson_not_found：缺少课程 id。")
-    return sanitized_lesson(_get_lesson(lesson_id))
+    return sanitized_lesson(_get_lesson(lesson_id, user_id))
 
 
 # ---------------------------------------------------------------------------
@@ -519,7 +647,7 @@ def start_attempt(user_id: str, lesson_id: str) -> dict:
     if not lesson_id:
         raise InvalidRequest("lessonId 不能为空。")
     # 先校验课程包：课程坏了不落一条永远无法推进的 attempt。
-    lesson = _get_lesson(lesson_id)
+    lesson = _get_lesson(lesson_id, user_id)
 
     stamp = now_ms()
     conn = _connect()
@@ -586,7 +714,7 @@ def get_attempt(user_id: str, attempt_id: str) -> dict:
         row = _require_attempt(conn, attempt_id, user_id)
         lesson = lesson_cache.get(row["lesson_id"])
         if lesson is None:
-            lesson = _attempt_lesson(row["lesson_id"])
+            lesson = _attempt_lesson(row["lesson_id"], user_id)
             lesson_cache[row["lesson_id"]] = lesson
     except sqlite3.OperationalError as exc:
         raise CourseUnavailable(
@@ -626,7 +754,7 @@ def answer_question(
         row = _require_attempt(conn, attempt_id, user_id)
         if row["status"] != STATUS_IN_PROGRESS:
             raise CourseConflict(f"attempt_completed：课程已{('完成' if row['status'] == STATUS_COMPLETED else '结束')}，不能再作答。")
-        lesson = _attempt_lesson(row["lesson_id"])
+        lesson = _attempt_lesson(row["lesson_id"], user_id)
         question = lesson.questions_by_id.get(question_id)
         if question is None:
             raise InvalidRequest(f"question_not_found：题目不存在（{question_id}）。")
@@ -700,7 +828,7 @@ def update_step(user_id: str, attempt_id: str, step_id: str) -> dict:
         row = _require_attempt(conn, attempt_id, user_id)
         if row["status"] != STATUS_IN_PROGRESS:
             raise CourseConflict("attempt_completed：课程已结束，不能更新步骤。")
-        lesson = _attempt_lesson(row["lesson_id"])
+        lesson = _attempt_lesson(row["lesson_id"], user_id)
         if step_id not in lesson.step_ids:
             raise InvalidRequest(f"invalid_step：步骤非法（{step_id}）。")
         stamp = now_ms()
@@ -772,7 +900,7 @@ def complete_attempt(user_id: str, attempt_id: str) -> dict:
     conn = _connect()
     try:
         row = _require_attempt(conn, attempt_id, user_id)
-        lesson = _attempt_lesson(row["lesson_id"])
+        lesson = _attempt_lesson(row["lesson_id"], user_id)
         if row["status"] == STATUS_COMPLETED:
             return _completed_payload(row, lesson)
         if row["status"] != STATUS_IN_PROGRESS:
@@ -846,7 +974,7 @@ def record_event(
     conn = _connect()
     try:
         row = _require_attempt(conn, attempt_id, user_id)
-        lesson = _attempt_lesson(row["lesson_id"])
+        lesson = _attempt_lesson(row["lesson_id"], user_id)
 
         step_id = (step_id or "").strip() or None
         if step_id is not None and step_id not in lesson.step_ids:

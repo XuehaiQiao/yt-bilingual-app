@@ -53,6 +53,8 @@ KNOWN_FEATURES = (
     "books",
     # AI 教学分析（teaching_analysis.py；高亮/习语/文化点，specs/028）。
     "analysis",
+    # 课程生成（course_generator.py；YouTube 字幕/公版小说 → 12 分钟课，specs/030）。
+    "course_generation",
 )
 FEATURE_LABELS = {
     "translate": "翻译",
@@ -63,6 +65,7 @@ FEATURE_LABELS = {
     "reading": "读文章",
     "books": "公版书",
     "analysis": "教学分析",
+    "course_generation": "课程生成",
 }
 
 # 目录里一个已知价都没有时的保守兜底（非官方报价，只在异常配置下使用）。

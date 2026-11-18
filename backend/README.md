@@ -13,13 +13,13 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速、封禁账号 403、维护模式 503）、结构化访问日志（request_id + 一行 JSON）、挂载路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/ABILITY/EXAM/COURSE/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*` / `READING_*` / `AI_DAILY_QUOTA_READING_BATCHES` / `RATE_LIMIT_READING_PER_MINUTE` / `AI_DAILY_QUOTA_ANALYSIS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`）、`BLOG_DIR`（官方博客 Markdown 目录，默认 `content/blog`）、`COURSE_DIR`（课程 MVP 课程包，默认 `content/course`）、`ADMIN_EMAILS`（后台管理员邮箱，逗号分隔、大小写不敏感，默认空 = 无管理员） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/ABILITY/EXAM/COURSE/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*` / `READING_*` / `AI_DAILY_QUOTA_READING_BATCHES` / `RATE_LIMIT_READING_PER_MINUTE` / `AI_DAILY_QUOTA_ANALYSIS` / `AI_DAILY_QUOTA_COURSE_GENERATION` / `COURSE_NOVEL_CACHE_SECONDS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`）、`BLOG_DIR`（官方博客 Markdown 目录，默认 `content/blog`）、`COURSE_DIR`（课程 MVP 课程包，默认 `content/course`）、`ADMIN_EMAILS`（后台管理员邮箱，逗号分隔、大小写不敏感，默认空 = 无管理员） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表/补列、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users` 自 0013 起带 `username` / `credits` / `status`；`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `account.py` | 账号资料与运营设置（specs/023）：用户名 2–24 字符校验、`PATCH /api/user/profile` 的落库、余额原子调账（`BEGIN IMMEDIATE` + `credit_transactions` 流水、不允许负余额）、封禁/解封规则（不能封自己/最后一个管理员）、`app_settings` 读写与**维护模式 5 秒进程内缓存**、用户页摘要（本月 AI 花费 / 今日分钟 / 版本） |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
 | `jobs.py` | 任务表 `jobs` 的读写层 + 单进程执行互斥（M1 ⑤）：`create_or_reuse`（同 user+kind+content_ref+targetLang 的未完成 job 复用，进程内锁 + 部分唯一索引兜底幂等）、`get`、`update_progress/mark_running/mark_done/mark_failed/settle_interrupted`（cursor 只增不减）、`try_acquire/release/is_active`（同一 job 同时只允许一条流生成，第二个请求 409/SSE error，杜绝重复付费）。表缺失（旧库没跑 0005）时全部降级为 no-op，只告警一次，视频处理照常 |
-| `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。功能枚举 `translate` / `summary` / `define` / `local_show` / `quiz` / `reading` / `books` / `analysis`。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额** |
+| `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。功能枚举 `translate` / `summary` / `define` / `local_show` / `quiz` / `reading` / `books` / `analysis` / `course_generation`。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额** |
 | `routes_auth.py` | `/api/auth/signup`（`username` 必填/旧客户端回落 email 前缀）、`/api/auth/login`（封禁账号 403）、`/api/auth/logout`、`/api/auth/me`（user 带 username/credits/status；游客返回 `{user:null,guest:true}`）、`/api/auth/claim-guest`（登录后幂等认领游客数据）；`ln_session` Cookie、登录失败短窗限流与 `auth_lockout` 接入（锁定统一 429 + `Retry-After`） |
 | `routes_account.py` | 用户页数据（specs/023）：`PATCH /api/user/profile`（改用户名）、`GET /api/user/summary`（用户信息/余额/本月花费/今日分钟/版本）；均需登录，游客 403 |
 | `guest.py` | 游客态（M1 ⑧）：32 字节随机 `ln_guest` Cookie（服务端只存 sha256）、`data/guests/<sha256>/` 隔离目录、游客累计试译上限、登录后把 `history/` / `favorites.json` / `subscriptions.json` 幂等合并到用户目录（同 videoId / 同收藏指纹 / 同订阅键去重，用户数据优先）。**不建表、不新增迁移** |
@@ -38,8 +38,9 @@
 | `routes_review.py` | 复习引擎 HTTP 路由（**需登录，游客 403**）：`POST /api/review/words`、`GET /api/review/queue`、`POST /api/review/answer`、`GET /api/review/stats`、`POST/DELETE /api/review/suspend`；契约与错误语义见下文「复习引擎」与 [specs/013](../specs/013-review-engine/spec.md) |
 | `quiz.py` | **理解题生成与作答（M3）**：读当前用户已有双语字幕缓存（video / local_show，≥8 句）→ 按 `(content_hash, prompt_version)` 缓存出 3 道题 → 两道闸（结构：mcq 4 选 1 / tf 判断；内容：英文题面不混中文、题目与证据句相关）→ 写 `content_items` / `questions` / `attempts` → 返回证据 block 与秒/毫秒时间点；失败重试 1 次，仍失败该题 `rejected`；表由 `0007_quiz` 创建，运行时不建表；作答写 `learning_events(quiz_answer)` |
 | `routes_quiz.py` | 理解题 HTTP 路由（**需登录，游客 403**）：`POST /api/lesson/start`、`GET /api/lesson/{id}/questions`、`POST /api/lesson/answer`、`GET /api/lesson/{id}/result`；契约与错误语义见下文「理解题」与 [specs/014](../specs/014-quiz/spec.md) |
-| `course.py` | **课程 MVP（specs/029）**：只读 `content/course/*.json`（`COURSE_DIR`，schema `linguatrek.course-lesson.v1`），校验 schema/version/步骤/题目；课程列表/详情（题目脱敏，不含 `answer`/`explain`）；attempt 开始/恢复（同一用户同一课程唯一 `in_progress`）、首次作答（重复同 choice 幂等、换 choice 409）、步骤/产出保存（≤2000 字符）、完成后按 8 题评分、事件写入（≤2KB）；所有查询校验 `user_id` 归属，越权 404；表由 `0021_course_mvp` 创建，运行时不建表 |
-| `routes_course.py` | 课程 MVP HTTP 路由（**需登录，游客 401**）：`GET /api/course/lessons`、`GET /api/course/lessons/{id}`、`POST /api/course/attempts`、`GET /api/course/attempts/{id}`、`POST /api/course/attempts/{id}/answer\|step\|output\|complete\|events`；非法 400、未完成 409 `incomplete`、课程/attempt 404、事件 payload ≤2KB；契约见 [specs/029](../specs/029-course-mvp/spec.md) |
+| `course.py` | **课程（specs/029 + 030）**：静态课程读 `content/course/*.json`（`COURSE_DIR`，schema `linguatrek.course-lesson.v1`），生成课程读 `generated_courses`（只认本人）；两类合并成列表/详情（题目脱敏，不含 `answer`/`explain`）；attempt 开始/恢复（同一用户同一课程唯一 `in_progress`）、首次作答（重复同 choice 幂等、换 choice 409）、步骤/产出保存（≤2000 字符）、完成后按题目数评分、事件写入（≤2KB）；所有查询校验 `user_id` 归属，越权 404；表由 `0021_course_mvp` / `0022_generated_courses` 创建，运行时不建表 |
+| `routes_course.py` | 课程 MVP HTTP 路由（**需登录，游客 401**）：`GET /api/course/lessons`、`GET /api/course/lessons/{id}`、`POST /api/course/generate`（生成/复用，缓存 `cached:true`，配额 `course_generation`）、`POST /api/course/attempts`、`GET /api/course/attempts/{id}`、`POST /api/course/attempts/{id}/answer\|step\|output\|complete\|events`；非法 400、未完成 409 `incomplete`、课程/attempt 404、事件 payload ≤2KB；契约见 [specs/029](../specs/029-course-mvp/spec.md) |
+| `course_generator.py` | **课程生成（specs/030）**：YouTube 读当前用户该目标语言的双语字幕（源未就绪 409 `source_not_ready`），小说抓 Project Gutenberg #1342（主站 + 官方镜像回退、进程内缓存、61 章切分）取前若干段；一次 LLM 产出整节课 JSON 后由服务端组装（3 精读段 / 4 词+1 形式点 / 6+2 题 / 产出，总英文 200–450 词），严格校验词与形式点原文、答案合法、evidence 子串，失败重试 1 次后 502 不落库；缓存键 `(owner, source_kind, source_ref, content_hash, level, target_lang, course-gen.v1)`，命中零模型调用、同 key 并发单飞；表由 `0022_generated_courses` 创建 |
 | `teaching_analysis.py` | **AI 教学分析（specs/028）**：高亮/习语/文化点从翻译拆出，按 `(content_hash, level, target_lang, analysis.v1)` 全局缓存（迁移 0020）；严格 JSON prompt、子串校验（en_word/zh_word/quote）、只保留可核对条目、单内容 ≤20 习语/≤10 文化点；进程内同 key 并发只跑一次模型，失败不写半成品；`attach_to_payload` 负责合并进视频/文章/章节 payload，缺表/失败静默跳过 |
 | `routes_teaching_analysis.py` | 教学分析只读端点（**需登录，游客 403**）：`GET /api/teaching-analysis/{content_ref}?level=&targetLang=&contentHash=`；解析已有双语字幕缓存，缓存命中零模型调用，生成走 `feature=analysis` 配额；错误语义 400/403/404/429/502/503；契约见 [specs/028](../specs/028-teaching-analysis/spec.md) |
 | `reports.py` | **观看事件 + 周报聚合（M5）**：`record_watch_events` 批量写 `watch_events`（`UNIQUE(user_id, client_event_id)` 幂等，游客归属 `guest:<sha256>`，0–86400 秒与未来 5 分钟校验）；`week_report` 用 SQL 算 UTC 周「被动学习分钟 / 复习词数 / 理解题正确率」、规则生成事实与下一步、取错题证据或最近观看的 5 秒窗口、算连续学习天数，并把首份结果写 `weekly_reports` 快照（同周不覆盖）；表由 `0008_weekly_report` 创建，运行时不建表；不调用模型 |
@@ -67,7 +68,7 @@
 | `routes_library.py` | 本地免费资源库 HTTP 路由（**公开只读，无需登录**）：`GET /api/library`、`GET /api/library/videos/{id}`、`GET /api/library/articles/{id}`；只读 `content/library/*.json`（预生成双语字幕块 + 原创双语短文），不连数据库、不 import `llm`、不写状态；未知/缺失 404、内容损坏 503；见 [specs/024](../specs/024-free-library/spec.md) 与 `content/library/README.md` |
 | `routes_admin.py` | 后台管理 HTTP 路由（**需登录 + 管理员**）：只读止血台（M1 ⑥：`GET /api/admin/stats`、`/users`、`/usage`、`/health`，连接 `PRAGMA query_only=ON`）+ 运营写操作（specs/023：`POST /users/{id}/credits`、`PATCH /users/{id}`、`GET/PUT /settings`）；管理员由 `config.ADMIN_EMAILS` 决定；限速 30 次/分钟 |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`trafilatura` 用于文章正文抽取、`pytest` 用于离线测试/CI；faster-whisper、readability-lxml/bs4 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）、`0012_exam.py`（`exam_sessions` / `exam_answers` + 未提交会话部分唯一索引）、`0013_user_profile.py`（`users.username/credits/status` + 旧用户 username 回填 + `credit_transactions` + `app_settings`）、`0014_ability.py`（`user_skill_profiles` / `skill_evidence` + `placement_answers.elapsed_ms` + 旧画像 seed）、`0015_assessment_sessions.py`（自评/后续测试会话 + 幂等键 + 部分唯一索引）、`0016_content_difficulty.py`（内容难度向量 `content_difficulty`）、`0017_behavior_events.py`（`learning_events` 加 `client_event_id` + 部分唯一索引，行为埋点幂等）、`0018_imported_books.py`（用户导入公版书 `imported_books` + 按章译文 `imported_book_translations`，UNIQUE(user_id, source_type, external_id)）、`0019_book_chapter_translations.py`（内置公版书按需翻译的全局译文缓存）、`0020_content_teaching_analysis.py`（AI 教学分析全局缓存；唯一键 `content_hash + level + target_lang + analysis_version`）、`0021_course_mvp.py`（课程 MVP：`course_attempts` 进度 + `course_events` 埋点 + 同用户同课程唯一 `in_progress` 部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）、`0012_exam.py`（`exam_sessions` / `exam_answers` + 未提交会话部分唯一索引）、`0013_user_profile.py`（`users.username/credits/status` + 旧用户 username 回填 + `credit_transactions` + `app_settings`）、`0014_ability.py`（`user_skill_profiles` / `skill_evidence` + `placement_answers.elapsed_ms` + 旧画像 seed）、`0015_assessment_sessions.py`（自评/后续测试会话 + 幂等键 + 部分唯一索引）、`0016_content_difficulty.py`（内容难度向量 `content_difficulty`）、`0017_behavior_events.py`（`learning_events` 加 `client_event_id` + 部分唯一索引，行为埋点幂等）、`0018_imported_books.py`（用户导入公版书 `imported_books` + 按章译文 `imported_book_translations`，UNIQUE(user_id, source_type, external_id)）、`0019_book_chapter_translations.py`（内置公版书按需翻译的全局译文缓存）、`0020_content_teaching_analysis.py`（AI 教学分析全局缓存；唯一键 `content_hash + level + target_lang + analysis_version`）、`0021_course_mvp.py`（课程 MVP：`course_attempts` 进度 + `course_events` 埋点 + 同用户同课程唯一 `in_progress` 部分唯一索引）、`0022_generated_courses.py`（课程生成缓存：`generated_courses` + 7 列唯一缓存键 + 归属索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -1015,6 +1016,36 @@ venv/bin/python -m pytest tests -q                # 全量 466
 2026-11-15 8001 临时实例（仓库内 `content/blog/`）实测：未登录 `GET /api/blog/posts` → 4 篇；`GET /api/blog/posts/why-linguatrek` → 元数据 + Markdown + HTML；`GET /api/blog/feed.xml` → RSS 2.0（4 个 item）；未知 slug 404；含 `<script>` / `javascript:` 链接的样例只渲染为转义文本（无标签执行）。
 
 
+## 课程生成（specs/030：YouTube / 公版小说 → 12 分钟课）
+
+把已有内容转成一节 S0–S5 课程，进入现有 `#/lesson/{id}`，复用课程 attempt/评分/事件。
+
+### 端点（需登录；游客 401）
+
+| 端点 | 请求 | 说明 |
+|---|---|---|
+| `POST /api/course/generate` | `{sourceKind:"youtube", videoId, level?, targetLang?}` 或 `{sourceKind:"novel", gutenbergId:1342, chapter:1-61, level?, targetLang?}` | 首次生成占 1 个 `AI_DAILY_QUOTA_COURSE_GENERATION`（默认 5/用户/日）；缓存命中 `cached:true`、零模型调用、不占额度；源未就绪 **409** `source_not_ready`；抓取/模型/校验失败 **502** `generation_failed`；配额 **429**；缺表 **503** |
+| `GET /api/course/lessons` | — | 静态课程 + 本人生成课程（元数据含 `generated` / `sourceKind`） |
+| `GET /api/course/lessons/{id}` | — | 静态或本人生成课程；题目脱敏（不含 `answer`/`explain`）；别人的生成课程 404 |
+
+### 表（迁移 `0022_generated_courses`）
+
+`generated_courses`：`id`（`gen-<uuid>`）/ `owner_user_id` / `source_kind` / `source_ref` / `content_hash` / `level` / `target_lang` / `prompt_version` / `title` / `lesson_json` / `status` / `created_at`；唯一键 `(owner_user_id, source_kind, source_ref, content_hash, level, target_lang, prompt_version)`，同源同等级/语言/prompt 版本只生成一次。失败不落库、不写半成品。
+
+### 源与生成
+
+- **YouTube**：只读当前用户在该目标语言下的双语字幕（`translate.find_history_file_for_video`），连续块分组成「源段落」，已有 `zh` 直接复用；无字幕/未翻译/内容不足 409。
+- **小说**：Project Gutenberg #1342《Pride and Prejudice》，按 `CHAPTER I.` … `CHAPTER LXI.` 切 61 章；正文用 `books.fetch_source_text` 抓取（超时/2MB/白名单），主站失败回退官方镜像，成功后进程内缓存（`COURSE_NOVEL_CACHE_SECONDS`，不落盘）；段落 `zh` 由同一次模型输出并标 `machine_translation`。
+- 一次模型调用产出整节课原始 JSON，服务端组装 schema `linguatrek.course-lesson.v1`：3 个精读段（每段 1–2 段原文）、4 词 + 1 形式点、6 主测 + 2 离场、2–5 句产出；校验总英文 200–450 词、词/形式点出现在对应原文、答案合法、`evidence` 是原文子串；失败重试 1 次后 502。
+
+### 运行与验证
+
+```bash
+cd backend
+venv/bin/python -m py_compile *.py
+venv/bin/python -m pytest tests/test_course_generation.py -q   # 31 个离线用例（fake LLM + 61 章 fixture）
+```
+
 ## 用户资料、余额与后台设置（V1 用户需求 1–3 / specs/023）
 
 用户需求 1/2/3 的后端：注册必须设用户名（可改）；独立「用户页」能拿到用户
@@ -1327,7 +1358,7 @@ GROUP BY feature ORDER BY usd DESC;
 
 ### 三层配额（硬闸，不是提醒）
 
-1. 每用户每功能日限额：`AI_DAILY_QUOTA_TRANSLATE_BATCHES=60`（1 批 ≤20 块 ≈ 2 分钟视频，≈120 分钟/日）、`AI_DAILY_QUOTA_SUMMARY=10`、`AI_DAILY_QUOTA_DEFINE=200`、`AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES=60`；0 = 关闭该功能。
+1. 每用户每功能日限额：`AI_DAILY_QUOTA_TRANSLATE_BATCHES=60`（1 批 ≤20 块 ≈ 2 分钟视频，≈120 分钟/日）、`AI_DAILY_QUOTA_SUMMARY=10`、`AI_DAILY_QUOTA_DEFINE=200`、`AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES=60`、`AI_DAILY_QUOTA_COURSE_GENERATION=5`（课程生成，缓存命中不占）；0 = 关闭该功能。
 2. 每用户日预算：`AI_DAILY_BUDGET_USER_USD`（默认 1.0，0 = 不启用）。
 3. 全局日预算：`AI_DAILY_BUDGET_GLOBAL_USD`（默认 20.0，0 = 不启用）。
 

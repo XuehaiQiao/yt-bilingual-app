@@ -46,6 +46,7 @@ _FEATURE_LIMIT_ATTRS = {
     "quiz": "AI_DAILY_QUOTA_QUIZ",
     "reading": "AI_DAILY_QUOTA_READING_BATCHES",
     "analysis": "AI_DAILY_QUOTA_ANALYSIS",
+    "course_generation": "AI_DAILY_QUOTA_COURSE_GENERATION",
 }
 
 _warned_missing_tables = False

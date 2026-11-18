@@ -11,7 +11,7 @@
 5. 完成：未答完/无产出 409、8 题评分、混合对错评分、重复完成幂等；
 6. 事件：写入 204、非法 event/step/payload/超 2KB 400、跨用户 404；
 7. 权限：游客 401；
-8. 迁移 0021：两张表/列/索引/部分唯一约束；head 已更新。
+8. 迁移 0021：两张表/列/索引/部分唯一约束；head 已更新到 0022。
 
 所有用例离线：数据库在 conftest 的 tmp_path 下通过真实 Alembic CLI 迁移；
 课程包读仓库内静态 JSON（或 tmp 副本），不联网、不碰 data/app.db。
@@ -621,7 +621,7 @@ def test_migration_0021_tables_columns_indexes(tmp_path):
     db = tmp_path / "app.db"
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (0021)")
 
-    assert revision(db) == "0021_course_mvp"
+    assert revision(db) == "0022_generated_courses"
     tables = table_names(db)
     assert {"course_attempts", "course_events"} <= tables
 

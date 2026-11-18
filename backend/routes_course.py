@@ -1,10 +1,14 @@
-"""课程 MVP HTTP 路由（specs/029）。
+"""课程 HTTP 路由（specs/029 课程 MVP + specs/030 课程生成）。
 
 端点（全部需登录，游客/未登录 401）：
 
-- ``GET  /api/course/lessons``：课程列表（只给元数据）；
-- ``GET  /api/course/lessons/{lesson_id}``：课程详情（脱敏：题目不含
-  ``answer``/``explain``）；
+- ``POST /api/course/generate``：从 YouTube 已处理视频 / P&P 公版小说生成一节
+  课程（``{sourceKind, videoId|gutenbergId+chapter, level?, targetLang?}``；
+  缓存命中 ``cached:true``、零模型调用、不占配额；源未就绪 409，
+  生成失败 502，配额/预算 429）；
+- ``GET  /api/course/lessons``：课程列表（静态课程 + 本人生成课程，只给元数据）；
+- ``GET  /api/course/lessons/{lesson_id}``：课程详情（静态或本人生成；脱敏：
+  题目不含 ``answer``/``explain``）；
 - ``POST /api/course/attempts``：开始/恢复一次尝试（``{lessonId}``）；
 - ``GET  /api/course/attempts/{attempt_id}``：恢复进度（仅本人，否则 404）；
 - ``POST /api/course/attempts/{attempt_id}/answer``：首次作答
@@ -20,14 +24,20 @@
 
 错误语义：
 
-- 400：lessonId/stepId/text 缺失，题目/选项/步骤/event 非法，payload 过大；
+- 400：lessonId/stepId/text 缺失，题目/选项/步骤/event 非法，payload 过大，
+  生成参数非法（level/sourceKind/videoId/chapter）；
 - 401：游客/未登录（学习进度要归属账号）；
 - 404：课程不存在（``lesson_not_found``）或 attempt 不存在/属于别人
   （``attempt_not_found``，不泄露存在性）；
-- 409：换答案、课程已完成、未答完/无产出；
-- 503：课程包损坏/缺失、数据库缺表（未跑 ``0021_course_mvp``）。
+- 409：换答案、课程已完成、未答完/无产出；生成时源未就绪
+  （``source_not_ready``）；
+- 429：课程生成日配额/预算用完（feature=``course_generation``）；
+- 502：生成抓取/模型/校验失败（``generation_failed``，不落半成品）；
+- 503：课程包损坏/缺失、数据库缺表（未跑 ``0021_course_mvp`` /
+  ``0022_generated_courses``）。
 
-业务逻辑都在 ``course.py``；本模块只做参数绑定、身份与错误映射。
+业务逻辑都在 ``course.py`` / ``course_generator.py``；本模块只做参数绑定、
+身份与错误映射。
 """
 from __future__ import annotations
 
@@ -37,6 +47,9 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import AliasChoices, BaseModel, Field
 
 import course
+import course_generator
+import languages
+from ai import quota
 
 router = APIRouter(tags=["course"])
 
@@ -44,6 +57,27 @@ router = APIRouter(tags=["course"])
 # ---------------------------------------------------------------------------
 # 请求模型
 # ---------------------------------------------------------------------------
+
+class GenerateCourseRequest(BaseModel):
+    source_kind: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("sourceKind", "source_kind"),
+    )
+    video_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("videoId", "video_id"),
+    )
+    gutenberg_id: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("gutenbergId", "gutenberg_id"),
+    )
+    chapter: int | None = None
+    level: str | None = None
+    target_lang: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("targetLang", "target_lang"),
+    )
+
 
 class StartAttemptRequest(BaseModel):
     lesson_id: str | None = Field(
@@ -110,16 +144,54 @@ def _raise_course_error(exc: Exception) -> None:
     raise exc
 
 
+def _raise_generation_error(exc: Exception) -> None:
+    """把课程生成的领域异常映射成 HTTP 错误。"""
+    if isinstance(exc, course_generator.SourceNotReady):
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    if isinstance(exc, course_generator.InvalidRequest):
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if isinstance(exc, course_generator.GenerationFailed):
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if isinstance(exc, course.CourseUnavailable):
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if isinstance(exc, languages.UnsupportedLanguage):
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    raise exc
+
+
 # ---------------------------------------------------------------------------
 # 端点
 # ---------------------------------------------------------------------------
 
+@router.post("/api/course/generate")
+async def course_generate(payload: GenerateCourseRequest, request: Request):
+    """生成/复用一节课程：缓存命中 ``cached:true``，首次生成占 1 次日配额。"""
+    user = _require_login(request)
+    try:
+        return await course_generator.generate_course(
+            user["id"],
+            source_kind=payload.source_kind,
+            video_id=payload.video_id,
+            gutenberg_id=payload.gutenberg_id,
+            chapter=payload.chapter,
+            level=payload.level,
+            target_lang=payload.target_lang,
+        )
+    except quota.QuotaExceeded as exc:
+        raise HTTPException(
+            status_code=getattr(exc, "status_code", 429), detail=str(exc)
+        ) from exc
+    except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
+        _raise_generation_error(exc)
+        raise  # pragma: no cover - _raise_generation_error 必抛
+
+
 @router.get("/api/course/lessons")
 def course_lessons(request: Request):
-    """课程列表：只给 id/标题/等级/时长/状态/version。"""
-    _require_login(request)
+    """课程列表：静态课程 + 本人生成课程（只给元数据）。"""
+    user = _require_login(request)
     try:
-        return course.list_lessons()
+        return course.list_lessons(user["id"])
     except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
         _raise_course_error(exc)
         raise  # pragma: no cover - _raise_course_error 必抛
@@ -127,10 +199,10 @@ def course_lessons(request: Request):
 
 @router.get("/api/course/lessons/{lesson_id}")
 def course_lesson(lesson_id: str, request: Request):
-    """课程详情：题目只含 id/prompt/options，不含答案与解析。"""
-    _require_login(request)
+    """课程详情：静态或本人生成；题目只含 id/prompt/options，不含答案与解析。"""
+    user = _require_login(request)
     try:
-        return course.get_lesson(lesson_id)
+        return course.get_lesson(lesson_id, user["id"])
     except Exception as exc:  # noqa: BLE001
         _raise_course_error(exc)
         raise  # pragma: no cover

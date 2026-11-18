@@ -482,6 +482,11 @@ AI_DAILY_QUOTA_READING_BATCHES = _int_env("AI_DAILY_QUOTA_READING_BATCHES", 60)
 # AI 教学分析（高亮/习语/文化点，specs/028）：每用户每日「生成一份内容分析」
 # 次数。缓存命中（同 content_hash + level + target_lang）不占额度、零模型调用。
 AI_DAILY_QUOTA_ANALYSIS = _int_env("AI_DAILY_QUOTA_ANALYSIS", 30)
+# 课程生成（specs/030）：每用户每日「生成一节课」次数；缓存命中（同源内容 +
+# 等级 + 语言 + prompt 版本）不占额度、零模型调用。
+AI_DAILY_QUOTA_COURSE_GENERATION = _int_env(
+    "AI_DAILY_QUOTA_COURSE_GENERATION", 5
+)
 
 # 第二、三层预算（美元/日；0 = 不启用该层硬闸）。默认值是保守占位，运营按
 # 实际成本目标调；检查依据是 ai_usage 当日 SUM，不是前端估价。
@@ -511,6 +516,9 @@ if AI_MODEL_REGION not in ("auto", "cn", "global"):
 MAX_BOOK_SOURCE_BYTES = _int_env("MAX_BOOK_SOURCE_BYTES", 2 * 1024 * 1024)
 BOOKS_SOURCE_TIMEOUT_SECONDS = _int_env("BOOKS_SOURCE_TIMEOUT_SECONDS", 20)
 BOOKS_SOURCE_CACHE_SECONDS = _int_env("BOOKS_SOURCE_CACHE_SECONDS", 300)
+# 课程生成（specs/030）抓取 Project Gutenberg #1342 后进程内缓存 TTL（秒）：
+# 正文不落盘；0 = 每次重新抓取（测试/运维可关）。
+COURSE_NOVEL_CACHE_SECONDS = _int_env("COURSE_NOVEL_CACHE_SECONDS", 3600)
 # 用户导入公版书（Gutenberg / Standard Ebooks）：整书纯文本上限、单章上限；
 # 原文每次实时抓取、不落库（见 book_import.py）。导入本身按用户 10 次/天。
 MAX_IMPORT_BOOK_BYTES = _int_env("MAX_IMPORT_BOOK_BYTES", 8 * 1024 * 1024)
