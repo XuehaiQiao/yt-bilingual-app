@@ -228,7 +228,7 @@ git diff origin/main...HEAD -- 'frontend/src/**/*.tsx' \
 |---|---|---|---|
 | 类型检查 | 已跑 `npx tsc -b` | `ci.yml:68-69` | **保持** |
 | 构建 | 已跑 `npx vite build` | `ci.yml:71-72` | **保持** |
-| i18n | 脚本有、**CI 未接**；当前通过（1691 keys × 2） | `package.json:11`；`ci.yml` 无此步 | 不接；PR 贴输出 |
+| i18n | 脚本有、**CI 已接**；当前通过（1691 keys × 2） | `package.json`；`ci.yml` 前端 job | 机器门禁；PR 可贴输出便于 review |
 | Lint | 脚本有、CI 未接；无自定义规则 | `package.json:9` | 不动（与门禁无关） |
 | token 扫描 | 无 | — | **阶段 4** |
 | 选择器冒烟 | 无（A4 已要求 `scripts/check-ui-selectors.mjs`） | — | **阶段 4** |
