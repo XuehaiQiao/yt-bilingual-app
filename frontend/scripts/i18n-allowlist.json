@@ -1,0 +1,178 @@
+{
+  "version": 1,
+  "notes": "zh-CN 值允许不含 CJK 的白名单（V-06 / QA-X-17 / 设计 QA 附录 A.3）。每条必须有 reason；live 键填 path（渲染来源，存在性由 check-i18n.mjs 校验）。deadKeys 是已确认无活代码引用的键：9 条仍被死代码 src/components/InputScreen.tsx 引用（删除会破坏 tsc 的 TranslationKey 类型），5 条全仓 0 引用；按 W2 文件边界（不改 components）暂留键结构，随 QA-X-25 删除 InputScreen 时一并清理。",
+  "allowlist": [
+    {
+      "key": "brand.engine",
+      "reason": "品牌/引擎英文名（LinguaTrek Engine），产品名不译",
+      "path": "src/components/WelcomeScreen.tsx"
+    },
+    {
+      "key": "welcome.footer.github",
+      "reason": "第三方品牌名 GitHub，不译",
+      "path": "src/components/WelcomeScreen.tsx"
+    },
+    {
+      "key": "library.article.license",
+      "reason": "原样渲染文章 license 字段（CC 协议等合法英文），无固定文案",
+      "path": "src/components/LibraryArticleReader.tsx"
+    },
+    {
+      "key": "vocab.cefr.levelCount",
+      "reason": "CEFR 等级标准缩写 + 全角括号计数，无中文可写",
+      "path": "src/components/VocabularyBookScreen.tsx"
+    },
+    {
+      "key": "vocab.col.level",
+      "reason": "CEFR 列表头，标准英文缩写",
+      "path": "src/components/VocabularyBookScreen.tsx"
+    },
+    {
+      "key": "reader.import.urlPlaceholder",
+      "reason": "URL 占位示例，不译",
+      "path": "src/components/ReaderScreen.tsx"
+    },
+    {
+      "key": "exam.result.correctValue",
+      "reason": "纯数字结果格式 {{correct}} / {{total}}，无文案",
+      "path": "src/components/ExamScreen.tsx"
+    },
+    {
+      "key": "ability.assess.itemSkill",
+      "reason": "技能名 + CEFR band 的拼接格式，无固定文案",
+      "path": "src/components/AbilityScreen.tsx"
+    },
+    {
+      "key": "ability.assess.ratingAria",
+      "reason": "评分 aria 的拼接格式（{{statement}}：{{label}}），无固定文案",
+      "path": "src/components/AbilityScreen.tsx"
+    },
+    {
+      "key": "books.license",
+      "reason": "原样渲染书籍 license 字段（合法英文），无固定文案",
+      "path": "src/components/BookReaderScreen.tsx"
+    },
+    {
+      "key": "importedBooks.sourceGutenberg",
+      "reason": "来源品牌名 Project Gutenberg，不译",
+      "path": "src/components/ImportedBookReaderScreen.tsx"
+    },
+    {
+      "key": "importedBooks.sourceStandardEbooks",
+      "reason": "来源品牌名 Standard Ebooks，不译",
+      "path": "src/components/ImportedBookReaderScreen.tsx"
+    },
+    {
+      "key": "importedBooks.dialog.urlPlaceholder",
+      "reason": "Gutenberg 链接占位示例，不译",
+      "path": "src/components/BookImportDialog.tsx"
+    },
+    {
+      "key": "novel.entry.title",
+      "reason": "公版书名 Pride and Prejudice，书名不译",
+      "path": "src/components/NovelCourseCard.tsx"
+    },
+    {
+      "key": "home.vocabLevel.liftoff.label",
+      "reason": "CEFR 等级 A1，标准英文缩写",
+      "path": "src/components/VocabAxis.tsx"
+    },
+    {
+      "key": "home.vocabLevel.orbit.label",
+      "reason": "CEFR 等级 A2，标准英文缩写",
+      "path": "src/components/VocabAxis.tsx"
+    },
+    {
+      "key": "home.vocabLevel.moonwalk.label",
+      "reason": "CEFR 等级 B1，标准英文缩写",
+      "path": "src/components/VocabAxis.tsx"
+    },
+    {
+      "key": "home.vocabLevel.interstellar.label",
+      "reason": "CEFR 等级 B2，标准英文缩写",
+      "path": "src/components/VocabAxis.tsx"
+    },
+    {
+      "key": "home.vocabLevel.deep-space.label",
+      "reason": "CEFR 等级 C1，标准英文缩写",
+      "path": "src/components/VocabAxis.tsx"
+    },
+    {
+      "key": "home.vocabLevel.supernova.label",
+      "reason": "CEFR 等级 C2，标准英文缩写",
+      "path": "src/components/VocabAxis.tsx"
+    },
+    {
+      "key": "vocab.phrases.source.ecdict",
+      "reason": "词典来源品牌名 ECDICT，不译",
+      "path": "src/components/VocabularyBookScreen.tsx"
+    }
+  ],
+  "deadKeys": [
+    {
+      "key": "common.back",
+      "reason": "死键：全仓 0 引用；保留仅为维持 1691 键结构，随 QA-X-25 清理"
+    },
+    {
+      "key": "common.thumbnailAlt",
+      "reason": "死键：全仓 0 引用；保留仅为维持 1691 键结构，随 QA-X-25 清理"
+    },
+    {
+      "key": "home.heroTitle",
+      "reason": "死键：全仓 0 引用（旧首页 hero 已移除）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
+    },
+    {
+      "key": "home.heroSubtitle",
+      "reason": "死键：全仓 0 引用（旧首页 hero 已移除）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
+    },
+    {
+      "key": "share.source.video",
+      "reason": "死键：全仓 0 引用（分享卡改用 share.source.local 等）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
+    },
+    {
+      "key": "common.notRecorded",
+      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
+      "path": "src/components/InputScreen.tsx"
+    },
+    {
+      "key": "common.noSessions",
+      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
+      "path": "src/components/InputScreen.tsx"
+    },
+    {
+      "key": "common.studiedTimes",
+      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
+      "path": "src/components/InputScreen.tsx"
+    },
+    {
+      "key": "common.watchedPercent",
+      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
+      "path": "src/components/InputScreen.tsx"
+    },
+    {
+      "key": "home.continueLearning",
+      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import；Today 的「继续学习」用 home.today.continueEyebrow）；待 QA-X-25 清理",
+      "path": "src/components/InputScreen.tsx"
+    },
+    {
+      "key": "home.continueEmpty",
+      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
+      "path": "src/components/InputScreen.tsx"
+    },
+    {
+      "key": "home.localShows",
+      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；内容页用 content.showsTitle；待 QA-X-25 清理",
+      "path": "src/components/InputScreen.tsx"
+    },
+    {
+      "key": "home.subscriptions",
+      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
+      "path": "src/components/InputScreen.tsx"
+    },
+    {
+      "key": "home.latestVideos",
+      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
+      "path": "src/components/InputScreen.tsx"
+    }
+  ]
+}

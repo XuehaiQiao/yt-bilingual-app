@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "source": "docs/design-governance/design-qa-checklist.md 附录 A.1（24 键）+ A.2（7 键）",
+  "expectedCount": 31,
+  "keys": [
+    "home.loading.loading",
+    "home.loading.processing",
+    "home.loading.asr",
+    "home.loading.processingHint",
+    "home.loading.asrHint",
+    "home.analyzing",
+    "home.analyzingHint",
+    "estimate.title",
+    "estimate.subtitle",
+    "estimate.words",
+    "estimate.tokens",
+    "estimate.confirm",
+    "shows.empty",
+    "shows.emptyHint",
+    "shows.back",
+    "shows.pickSeason",
+    "common.cancel",
+    "topbar.popOut",
+    "topbar.closePopOut",
+    "topbar.logoAlt",
+    "common.unknownVideo",
+    "common.unknownChannel",
+    "common.noThumbnail",
+    "home.deletedToast",
+    "home.removeHistoryTitle",
+    "home.deleteConfirm",
+    "home.noUploads",
+    "common.localFile",
+    "shows.season",
+    "shows.episodesShort",
+    "shows.seasonsEpisodes"
+  ],
+  "adjudicated": [
+    {
+      "key": "sentences.day",
+      "decision": "translate",
+      "reason": "句子包按天分组的分节标题（SentenceView.tsx），语义可译而非品牌/CEFR/书名/URL；vi 已有 Ngày {{day}}，zh 定为「第 {{day}} 天」，不进白名单。",
+      "zh": "第 {{day}} 天"
+    }
+  ]
+}
