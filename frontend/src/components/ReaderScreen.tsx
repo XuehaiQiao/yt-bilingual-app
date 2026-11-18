@@ -30,7 +30,6 @@ import {
     Share2,
     Trash2,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
@@ -39,6 +38,7 @@ import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { ShareCardDialog } from './ShareCardDialog';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { SubHeader } from './ui/SubHeader';
+import { Segmented } from './ui/Segmented';
 import { classifyPublicDomainBookUrl } from '../lib/publicDomain';
 import type { ShareCardData } from '../lib/shareCard';
 import { toast } from '../lib/toast';
@@ -733,44 +733,21 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                         {t('reader.import.title')}
                     </h2>
                 </div>
-                <div
-                    role="tablist"
-                    aria-label={t('reader.import.tabsAria')}
-                    className="inline-flex items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5"
-                >
-                    {([
-                        { key: 'url' as const, label: t('reader.import.tab.url') },
-                        { key: 'text' as const, label: t('reader.import.tab.text') },
-                    ]).map((tab) => {
-                        const active = importMode === tab.key;
-                        return (
-                            <button
-                                key={tab.key}
-                                type="button"
-                                role="tab"
-                                aria-selected={active}
-                                data-testid={`reader-import-tab-${tab.key}`}
-                                onClick={() => {
-                                    setImportMode(tab.key);
-                                    setImportError(null);
-                                    setPublicDomainUrl(null);
-                                }}
-                                className={`relative px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
-                                    active ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-200'
-                                }`}
-                            >
-                                {active && (
-                                    <motion.span
-                                        layoutId="readerImportThumb"
-                                        className="absolute inset-0 bg-zinc-100 rounded-md shadow-sm"
-                                        transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                                    />
-                                )}
-                                <span className="relative z-10">{tab.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+                <Segmented
+                    options={[
+                        { value: 'url', label: t('reader.import.tab.url'), testId: 'reader-import-tab-url' },
+                        { value: 'text', label: t('reader.import.tab.text'), testId: 'reader-import-tab-text' },
+                    ]}
+                    value={importMode}
+                    onChange={(value) => {
+                        setImportMode(value as 'url' | 'text');
+                        setImportError(null);
+                        setPublicDomainUrl(null);
+                    }}
+                    layoutId="reader-import"
+                    ariaLabel={t('reader.import.tabsAria')}
+                    size="sm"
+                />
             </div>
             <p className="mt-2 text-xs leading-relaxed text-zinc-500">
                 {t('reader.import.hint')}
@@ -988,40 +965,18 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
 
     // ── Reader state ───────────────────────────────────────────────────────
     const translationToggle = hasTranslation && (
-        <div
-            role="group"
-            aria-label={t('reader.translation.toggleAria')}
-            data-testid="reader-translation-toggle"
-            className="inline-flex items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5"
-        >
-            {([
-                { key: 'all' as const, label: t('reader.translation.all') },
-                { key: 'hidden' as const, label: t('reader.translation.hidden') },
-            ]).map((option) => {
-                const active = showTranslations === (option.key === 'all');
-                return (
-                    <button
-                        key={option.key}
-                        type="button"
-                        aria-pressed={active}
-                        data-testid={`reader-translation-${option.key}`}
-                        onClick={() => setShowTranslations(option.key === 'all')}
-                        className={`relative px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
-                            active ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-200'
-                        }`}
-                    >
-                        {active && (
-                            <motion.span
-                                layoutId="readerTranslationThumb"
-                                className="absolute inset-0 bg-zinc-100 rounded-md shadow-sm"
-                                transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                            />
-                        )}
-                        <span className="relative z-10">{option.label}</span>
-                    </button>
-                );
-            })}
-        </div>
+        <Segmented
+            options={[
+                { value: 'all', label: t('reader.translation.all'), testId: 'reader-translation-all' },
+                { value: 'hidden', label: t('reader.translation.hidden'), testId: 'reader-translation-hidden' },
+            ]}
+            value={showTranslations ? 'all' : 'hidden'}
+            onChange={(value) => setShowTranslations(value === 'all')}
+            layoutId="reader-translation"
+            ariaLabel={t('reader.translation.toggleAria')}
+            size="sm"
+            testId="reader-translation-toggle"
+        />
     );
 
     const translateSection = article && showTranslateBar && (

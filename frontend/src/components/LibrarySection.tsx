@@ -30,6 +30,7 @@ import {
     type LibraryIndex,
     type LibraryVideoSummary,
 } from '../lib/library';
+import { Tabs, tabPanelProps } from './ui/Tabs';
 
 interface LibrarySectionProps {
     /** Open a pre-built video (App loads blocks and enters the video view). */
@@ -310,38 +311,25 @@ export function LibrarySection({ onOpenVideo, onOpenArticle }: LibrarySectionPro
                     </p>
                 </div>
 
-                <div
-                    role="tablist"
-                    aria-label={t('library.title')}
-                    className="inline-flex items-center rounded-xl border border-white/5 bg-zinc-900/60 p-0.5"
-                >
-                    {tabs.map((item) => {
-                        const active = tab === item.key;
-                        return (
-                            <button
-                                key={item.key}
-                                type="button"
-                                role="tab"
-                                aria-selected={active}
-                                data-testid={`library-tab-${item.key}`}
-                                onClick={() => setTab(item.key)}
-                                className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors ${
-                                    active
-                                        ? 'bg-zinc-100 text-zinc-900'
-                                        : 'text-zinc-400 hover:text-zinc-200'
-                                }`}
-                            >
-                                {item.icon}
-                                <span>{item.label}</span>
-                                <span className={`tabular-nums ${active ? 'text-zinc-500' : 'text-zinc-600'}`}>
-                                    {item.count}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
+                <Tabs
+                    skin="panel"
+                    items={tabs.map((item) => ({
+                        id: item.key,
+                        label: item.label,
+                        count: item.count,
+                        icon: item.icon,
+                        testId: `library-tab-${item.key}`,
+                    }))}
+                    value={tab}
+                    onChange={(id) => setTab(id as LibraryTab)}
+                    layoutId="library-tab"
+                    ariaLabel={t('library.title')}
+                    idPrefix="library"
+                    testId="library-tabs"
+                />
             </div>
 
+            <div {...tabPanelProps('library', tab)}>
             {tab === 'videos' && videos.length > 0 && (
                 <div
                     data-testid="library-level-filter"
@@ -441,6 +429,7 @@ export function LibrarySection({ onOpenVideo, onOpenArticle }: LibrarySectionPro
                           ))}
                 </div>
             )}
+            </div>
         </section>
     );
 }

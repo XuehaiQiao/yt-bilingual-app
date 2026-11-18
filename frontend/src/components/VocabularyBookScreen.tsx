@@ -67,6 +67,7 @@ import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import { VocabPagination } from './VocabPagination';
 import { SubHeader } from './ui/SubHeader';
+import { Tabs, tabPanelProps, type TabItem } from './ui/Tabs';
 import type { TranslationKey } from '../i18n';
 
 interface VocabularyBookScreenProps {
@@ -562,65 +563,44 @@ export function VocabularyBookScreen({
 
     const renderTabs = () => {
         const tabs: string[] = [MINE_TAB, PHRASES_TAB, ...LIST_TAB_IDS];
+        const items: TabItem[] = tabs.map((id) => {
+            const entry = catalogById.get(id);
+            const unavailable = entry?.available === false;
+            const label = id === MINE_TAB
+                ? t('vocab.tab.mine')
+                : id === PHRASES_TAB
+                    ? t('vocab.tab.phrases')
+                    : id === CEFR_TAB
+                        ? t('vocab.tab.cefr')
+                        : (entry?.label || FALLBACK_LABELS[id] || id);
+            const count = id === MINE_TAB
+                ? mineTabCount
+                : typeof entry?.count === 'number' && !unavailable
+                    ? entry.count
+                    : null;
+            return {
+                id,
+                label,
+                count,
+                countLabel: count != null ? formatNumber(count) : undefined,
+                countTestId: !unavailable ? `vocab-tab-count-${id}` : undefined,
+                disabled: unavailable,
+                title: unavailable ? entry?.note ?? undefined : undefined,
+                testId: `vocab-tab-${id}`,
+            };
+        });
         return (
-            <div
-                data-testid="vocab-tabs"
-                role="tablist"
-                aria-label={t('vocab.title')}
-                className="-mx-4 overflow-x-auto overflow-y-hidden px-4 sm:mx-0 sm:overflow-visible sm:px-0 custom-scrollbar"
-            >
-                <div className="flex w-max min-w-full items-center gap-0.5 border-b border-white/5 pb-2 sm:w-full sm:flex-wrap">
-                    {tabs.map((id) => {
-                        const entry = catalogById.get(id);
-                        const unavailable = entry?.available === false;
-                        const active = activeTab === id;
-                        const label = id === MINE_TAB
-                            ? t('vocab.tab.mine')
-                            : id === PHRASES_TAB
-                                ? t('vocab.tab.phrases')
-                                : id === CEFR_TAB
-                                    ? t('vocab.tab.cefr')
-                                    : (entry?.label || FALLBACK_LABELS[id] || id);
-                        const count = id === MINE_TAB
-                            ? mineTabCount
-                            : typeof entry?.count === 'number' && !unavailable
-                                ? entry.count
-                                : null;
-                        return (
-                            <button
-                                key={id}
-                                type="button"
-                                role="tab"
-                                data-testid={`vocab-tab-${id}`}
-                                aria-selected={active}
-                                aria-disabled={unavailable || undefined}
-                                disabled={unavailable}
-                                title={unavailable ? entry?.note ?? undefined : undefined}
-                                onClick={() => selectTab(id)}
-                                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium transition-colors ${
-                                    active
-                                        ? 'bg-white/[0.07] text-zinc-50'
-                                        : unavailable
-                                            ? 'text-zinc-600 cursor-not-allowed'
-                                            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'
-                                }`}
-                            >
-                                <span>{label}</span>
-                                {!unavailable && count != null ? (
-                                    <span
-                                        data-testid={`vocab-tab-count-${id}`}
-                                        className={`min-w-[18px] rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
-                                            active ? 'bg-white/10 text-zinc-300' : 'bg-white/5 text-zinc-500'
-                                        }`}
-                                    >
-                                        {formatNumber(count)}
-                                    </span>
-                                ) : null}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
+            <Tabs
+                skin="panel"
+                items={items}
+                value={activeTab}
+                onChange={(id) => selectTab(id)}
+                layoutId="vocab-tab"
+                ariaLabel={t('vocab.title')}
+                idPrefix="vocab"
+                testId="vocab-tabs"
+                className="w-fit max-w-full self-start overflow-x-auto custom-scrollbar"
+            />
         );
     };
 
@@ -1470,7 +1450,9 @@ export function VocabularyBookScreen({
                     </div>
                 )}
                 {renderTabs()}
-                {activeIsMine ? renderMine() : activeTab === PHRASES_TAB ? renderPhrases() : renderList()}
+                <div {...tabPanelProps('vocab', activeTab)}>
+                    {activeIsMine ? renderMine() : activeTab === PHRASES_TAB ? renderPhrases() : renderList()}
+                </div>
             </div>
             </div>
         </div>

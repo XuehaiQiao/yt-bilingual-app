@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Search, Volume2, Star, Eye, EyeOff, CalendarCheck, Check, Share2 } from 'lucide-react';
 import {
     fetchSentenceLevels, fetchSentenceLevel, segToPlain,
@@ -13,6 +12,7 @@ import type { TranslationKey } from '../i18n';
 import { SentenceText } from './SentenceText';
 import { ShareCardDialog } from './ShareCardDialog';
 import { SubHeader } from './ui/SubHeader';
+import { Segmented } from './ui/Segmented';
 import type { ShareCardData } from '../lib/shareCard';
 import { speak } from '../lib/tts';
 
@@ -114,23 +114,19 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                 className="flex-none flex flex-wrap items-center gap-x-3 gap-y-2 px-4 md:px-6 py-2.5 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20"
             >
                 {/* 级别分段控件 */}
-                <div className="inline-flex items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5">
-                    {levels.map(lv => (
-                        <button
-                            key={lv.id}
-                            onClick={() => onSelectLevel(lv.id)}
-                            className={`relative px-2.5 py-1 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
-                                lv.id === levelId ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-200'
-                            }`}
-                        >
-                            {lv.id === levelId && (
-                                <motion.span layoutId="sentenceLevelThumb" className="absolute inset-0 bg-zinc-100 rounded-md shadow-sm"
-                                    transition={{ type: 'spring', stiffness: 420, damping: 36 }} />
-                            )}
-                            <span className="relative z-10">{lv.title}</span>
-                        </button>
-                    ))}
-                </div>
+                <Segmented
+                    options={levels.map((lv) => ({
+                        value: String(lv.id),
+                        label: lv.title,
+                        testId: `sentences-level-${lv.id}`,
+                    }))}
+                    value={String(levelId)}
+                    onChange={(value) => onSelectLevel(Number(value))}
+                    layoutId="sentence-level"
+                    ariaLabel={t('sentences.title')}
+                    size="sm"
+                    testId="sentences-level-tabs"
+                />
 
                 <button
                     onClick={toggleZh}

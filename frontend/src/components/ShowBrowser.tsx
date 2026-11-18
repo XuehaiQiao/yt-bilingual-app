@@ -1,8 +1,8 @@
 import { apiFetch } from '../lib/api';
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, BookOpen, Tv, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { useI18n } from '../i18n/I18nProvider';
+import { Segmented } from './ui/Segmented';
 
 interface Show {
     id: string;
@@ -140,32 +140,27 @@ export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoa
             {/* Season & Episode Selector */}
             {selectedShow && (
                 <div className="space-y-3">
-                    {/* Season Tabs */}
-                    <div className="inline-flex items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5">
-                        {seasons.map(s => (
-                            <button
-                                key={s.season}
-                                onClick={() => setSelectedSeason(s.season)}
-                                className={`relative px-3 py-1.5 text-sm font-medium rounded-md whitespace-nowrap transition-colors ${
-                                    selectedSeason === s.season
-                                        ? 'text-zinc-900'
-                                        : 'text-zinc-400 hover:text-zinc-200'
-                                }`}
-                            >
-                                {selectedSeason === s.season && (
-                                    <motion.span
-                                        layoutId="seasonThumb"
-                                        className="absolute inset-0 bg-zinc-100 rounded-md shadow-sm"
-                                        transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                                    />
-                                )}
-                                <span className="relative z-10">
+                    {/* Season selector */}
+                    <Segmented
+                        options={seasons.map((s) => ({
+                            value: String(s.season),
+                            label: (
+                                <>
                                     {t('shows.season', { number: s.season })}
-                                    <span className="ml-1.5 text-xs opacity-70">{t('shows.episodesShort', { count: s.episode_count })}</span>
-                                </span>
-                            </button>
-                        ))}
-                    </div>
+                                    <span className="ml-1.5 text-micro opacity-70">
+                                        {t('shows.episodesShort', { count: s.episode_count })}
+                                    </span>
+                                </>
+                            ),
+                            testId: `show-season-${s.season}`,
+                        }))}
+                        value={selectedSeason == null ? '' : String(selectedSeason)}
+                        onChange={(value) => setSelectedSeason(Number(value))}
+                        layoutId="season"
+                        ariaLabel={t('shows.pickSeason')}
+                        size="md"
+                        testId="show-season-tabs"
+                    />
 
                     {/* Episode Grid */}
                     {selectedSeason && (

@@ -25,7 +25,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { motion } from 'framer-motion';
 import {
   Activity,
   AlertCircle,
@@ -61,6 +60,7 @@ import { displayUsername } from '../lib/username';
 import { toast } from '../lib/toast';
 import { Dialog } from './ui/Dialog';
 import { BackButton } from './ui/BackButton';
+import { Tabs, tabPanelProps } from './ui/Tabs';
 import {
   AdminApiError,
   adjustAdminUserCredits,
@@ -877,45 +877,31 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
           )}
         </header>
 
-        <div
-          role="tablist"
-          aria-label={t('admin.tabs.aria')}
-          data-testid="admin-tabs"
-          className="mt-5 flex max-w-full items-center overflow-x-auto custom-scrollbar rounded-lg border border-white/5 bg-zinc-800/80 p-0.5 sm:inline-flex sm:w-auto"
-        >
-          {TABS.map((item) => {
-            const selected = tab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                data-testid={`admin-tab-${item.id}`}
-                onClick={() => setTab(item.id)}
-                className={`relative flex-1 sm:flex-none whitespace-nowrap px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  selected ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                {selected && (
-                  <motion.span
-                    layoutId="adminTabThumb"
-                    className="absolute inset-0 bg-zinc-100 rounded-md shadow-sm"
-                    transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                  />
-                )}
-                <span className="relative z-10 inline-flex items-center gap-1.5">
-                  {item.icon}
-                  {t(item.labelKey)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <Tabs
+          skin="panel"
+          items={TABS.map((item) => ({
+            id: item.id,
+            label: t(item.labelKey),
+            icon: item.icon,
+            testId: `admin-tab-${item.id}`,
+          }))}
+          value={tab}
+          onChange={(id) => setTab(id as AdminTab)}
+          layoutId="admin-tab"
+          ariaLabel={t('admin.tabs.aria')}
+          idPrefix="admin"
+          fill
+          testId="admin-tabs"
+          className="mt-5 flex w-full max-w-full overflow-x-auto custom-scrollbar sm:inline-flex sm:w-auto"
+        />
 
         {/* ── Overview ─────────────────────────────────────────────────── */}
         {tab === 'overview' && (
-          <section data-testid="admin-panel-overview" className="mt-6">
+          <section
+            {...tabPanelProps('admin', 'overview')}
+            data-testid="admin-panel-overview"
+            className="mt-6"
+          >
             {settings?.maintenance_mode && (
               <div
                 role="status"
@@ -1001,7 +987,11 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
 
         {/* ── Users ────────────────────────────────────────────────────── */}
         {tab === 'users' && (
-          <section data-testid="admin-panel-users" className="mt-6">
+          <section
+            {...tabPanelProps('admin', 'users')}
+            data-testid="admin-panel-users"
+            className="mt-6"
+          >
             <SectionTitle
               id="admin-users-title"
               title={t('admin.users.title')}
@@ -1170,7 +1160,11 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
 
         {/* ── Settings ─────────────────────────────────────────────────── */}
         {tab === 'settings' && (
-          <section data-testid="admin-panel-settings" className="mt-6 max-w-3xl">
+          <section
+            {...tabPanelProps('admin', 'settings')}
+            data-testid="admin-panel-settings"
+            className="mt-6 max-w-3xl"
+          >
             <SectionTitle
               id="admin-settings-title"
               title={t('admin.settings.title')}
@@ -1348,7 +1342,11 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
 
         {/* ── Usage & health ───────────────────────────────────────────── */}
         {tab === 'ops' && (
-          <section data-testid="admin-panel-ops" className="mt-6 space-y-8">
+          <section
+            {...tabPanelProps('admin', 'ops')}
+            data-testid="admin-panel-ops"
+            className="mt-6 space-y-8"
+          >
             <div>
               <SectionTitle
                 id="admin-usage-title"

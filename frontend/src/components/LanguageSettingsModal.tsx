@@ -1,70 +1,12 @@
-import { motion } from 'framer-motion';
 import { Languages } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
-import type { LanguageCode, LanguageMeta } from '../i18n';
+import type { LanguageCode } from '../i18n';
 import { Dialog } from './ui/Dialog';
+import { Segmented } from './ui/Segmented';
 
 interface LanguageSettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
-}
-
-interface LanguageSegmentedProps {
-    label: string;
-    value: LanguageCode;
-    options: readonly LanguageMeta[];
-    onChange: (code: LanguageCode) => void;
-}
-
-/**
- * Segmented control recipe from docs/设计语言.md: zinc track, sliding white
- * thumb, one option per language. Native name + BCP-47 code fit side by side
- * on a 375px screen without truncating.
- */
-function LanguageSegmented({ label, value, options, onChange }: LanguageSegmentedProps) {
-    return (
-        <div
-            role="radiogroup"
-            aria-label={label}
-            data-testid="language-ui-options"
-            className="inline-flex w-full items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5"
-        >
-            {options.map((option) => {
-                const isSelected = option.code === value;
-                return (
-                    <button
-                        key={option.code}
-                        type="button"
-                        role="radio"
-                        aria-checked={isSelected}
-                        data-testid={`language-option-${option.code}`}
-                        onClick={() => onChange(option.code)}
-                        className={`relative flex-1 min-w-0 px-2.5 py-2 rounded-md text-left transition-colors ${
-                            isSelected ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-200'
-                        }`}
-                    >
-                        {isSelected && (
-                            <motion.span
-                                layoutId="languageThumb"
-                                className="absolute inset-0 bg-zinc-100 rounded-md shadow-sm"
-                                transition={{ type: 'spring', stiffness: 420, damping: 36 }}
-                            />
-                        )}
-                        <span className="relative z-10 block min-w-0">
-                            <span className="block text-xs font-medium truncate">{option.nativeName}</span>
-                            <span
-                                className={`block text-[11px] mt-0.5 tabular-nums truncate ${
-                                    isSelected ? 'text-zinc-600' : 'text-zinc-500'
-                                }`}
-                            >
-                                {option.code}
-                            </span>
-                        </span>
-                    </button>
-                );
-            })}
-        </div>
-    );
 }
 
 /**
@@ -108,11 +50,28 @@ export const LanguageSettingsModal: React.FC<LanguageSettingsModalProps> = ({ is
                         {t('language.yourLanguageHint')}
                     </p>
                     <div className="mt-3">
-                        <LanguageSegmented
-                            label={t('language.yourLanguage')}
+                        <Segmented
+                            options={languages.map((option) => ({
+                                value: option.code,
+                                label: (
+                                    <span className="block min-w-0 text-left">
+                                        <span className="block truncate text-caption font-medium">
+                                            {option.nativeName}
+                                        </span>
+                                        <span className="mt-0.5 block truncate text-micro tabular-nums opacity-70">
+                                            {option.code}
+                                        </span>
+                                    </span>
+                                ),
+                                testId: `language-option-${option.code}`,
+                            }))}
                             value={language}
-                            options={languages}
-                            onChange={setLanguage}
+                            onChange={(code) => setLanguage(code as LanguageCode)}
+                            layoutId="language"
+                            ariaLabel={t('language.yourLanguage')}
+                            size="md"
+                            fullWidth
+                            testId="language-ui-options"
                         />
                     </div>
                 </section>
