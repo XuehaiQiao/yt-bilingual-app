@@ -1,7 +1,7 @@
 # UI/UX 治理修复计划（Remediation Plan）
 
 > 日期：2026-11-19 ｜ 来源：A1–A5 五角色交叉审阅 ｜ 状态：**最终验收为 conditional，不可宣称已全部达标**
-> **执行状态（2026-11-19）**：W0/W1/W2/W4/W5 与 W3-B1/B4-P0 已落地（W1 的 N-01 博客 slug、W3-B2 Dialog/Toast/I-02 仍待补）；W5 的 `/dev/ui` 组件矩阵、浏览器对比度实测、token/selector 自动扫描未完成——以 [`remediation-status.md`](./remediation-status.md) 为准。未完成项不得据此关闭 P0 或宣布可上线。
+> **执行状态（2026-11-19）**：W0/W1/W2/W4/W5 与 W3-B1/B4-P0、N-01、I-02 已落地，**7/7 P0 本地关闭**；剩余 P1/P2（其余弹窗/Toast/BackButton、B4/B5 组件、死键、`/dev/ui`、对比度实测、token/selector）未完成——以 [`remediation-status.md`](./remediation-status.md) 为准。最终验收仍为 conditional，不能宣布全面达标。
 > 关联：`00-team-charter.md`、`audit-report.md`、`design-system/`、`interaction-spec.md`、`navigation-model.md`、`component-consolidation.md`、`design-gate.md`、`design-qa-checklist.md`
 
 ## 0. 结论
