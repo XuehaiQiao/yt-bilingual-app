@@ -12,7 +12,7 @@ import { getLanguageMeta, getRuntimeTargetLang } from './i18n';
 import type { TranslationKey } from './i18n';
 import { ModelProvider } from './lib/model';
 import { useNav } from './lib/useNav';
-import { parseRoute, tabForSub, toHash, type SubRoute, type TabId } from './lib/nav';
+import { parseRoute, resolveRoute, TASK_SUB_KINDS, toHash, type SectionAnchor, type SubRoute, type TabId } from './lib/nav';
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
 import { TranscriptView } from './components/TranscriptView';
@@ -121,19 +121,8 @@ const SEEK_SETTLE_MS = 2500;
 // Desktop chrome (docs/信息架构-导航重构.md §4.1): immersive task views own the
 // whole width, so the Sidebar and the primary tabs step aside. Panel-style sub
 // views (blog / discover / report / word book) keep the shell so their
-// shortcut entry shows an active state.
-const TASK_SUB_KINDS: ReadonlySet<SubRoute['kind']> = new Set<SubRoute['kind']>([
-  'learn',
-  'reader',
-  'book',
-  'book-series',
-  'imported-book',
-  'sentences',
-  'review',
-  'exam',
-  'placement',
-  'course',
-]);
+// shortcut entry shows an active state. The set itself lives in `lib/nav.ts`
+// (navigation-model §12.1) so QA and the shell share one definition.
 
 // Breadcrumb fragment shown in the desktop top bar for each sub view.
 const SUB_LABEL_KEYS: Record<SubRoute['kind'], TranslationKey> = {
@@ -185,7 +174,7 @@ function contentRefMatches(
 function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const { user, status, isAdmin, dataRevision } = useAuth();
   const { t, language, targetLang } = useI18n();
-  const { state, go, open, replace, back } = useNav();
+  const { state, go, open, replace, back, openAnchor } = useNav();
 
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
@@ -985,12 +974,14 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     });
   };
 
-  // ── Route helpers (P0 IA §7.3) ────────────────────────────────────────────
-  // A tab click never stacks history; a sub-view entry pushes once; jumping
-  // between two sub views replaces the current one (stack depth stays 1).
+  // ── Route helpers (navigation-model D-01/D-02) ───────────────────────────
+  // Every forward move is a push (tab root→sub, sub→sub, list→detail, source→
+  // target); only tab switches and same-screen params replace. The browser
+  // history is the back stack, so there is no client-side depth clamp.
   const isLearningView = state.sub?.kind === 'learn';
   const isSubView = state.sub !== null;
   const isTaskView = state.sub !== null && TASK_SUB_KINDS.has(state.sub.kind);
+  const routeKey = toHash(state);
 
   const requireAccount = (): boolean => {
     if (status === 'authenticated') return true;
@@ -999,17 +990,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const openSub = useCallback((sub: SubRoute) => {
-    if (state.sub) replace({ tab: tabForSub(sub, state.tab), sub });
-    else open(sub);
-  }, [state.sub, state.tab, replace, open]);
-
-  const enterLearn = useCallback((sub: SubRoute) => {
-    if (state.sub) replace({ tab: tabForSub(sub, state.tab), sub });
-    else open(sub);
-  }, [state.sub, state.tab, replace, open]);
+    open(sub);
+  }, [open]);
 
   const navigateTab = (tab: TabId) => {
-    if (state.tab === tab && !state.sub) {
+    if (state.tab === tab && !state.sub && !state.anchor) {
       const scroller = document.querySelector('[data-page-scroll]');
       if (scroller instanceof HTMLElement) {
         scroller.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1018,6 +1003,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
     go(tab);
   };
+
+  // A route change dismisses transient overlays: a dictionary popover or a
+  // channel list belongs to the screen that opened it (navigation-model §2.2).
+  const previousRouteKeyRef = useRef(routeKey);
+  useEffect(() => {
+    if (previousRouteKeyRef.current === routeKey) return;
+    previousRouteKeyRef.current = routeKey;
+    setWordLookup(null);
+    setSelectedChannel(null);
+  }, [routeKey]);
 
   const resetLearning = useCallback(() => {
     streamAbortRef.current?.abort();
@@ -1043,12 +1038,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setReviewStatsNonce(prev => prev + 1);
   }, [resetTeachingAnalysis]);
 
-  // Cross-sub jumps (word book → player/reader/pack) replace the word-book
-  // route instead of stacking a second history entry (IA §7.3, depth = 1).
-  const closeWordbookForJump = () => {
-    if (state.sub?.kind === 'vocabulary') replace({ tab: 'profile', sub: null });
-  };
-
   const handlePlayFavorite = (favVideoId: string, start: number) => {
     if (favVideoId.length > 11) {
       // Local Subtitle: Extract showId, season, episode from string like "house-of-cards_S03E03"
@@ -1068,7 +1057,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         setSeekCommand({ time: start, timestamp: Date.now() });
       }
     }
-    closeWordbookForJump();
   };
 
   // ── Content loading (YouTube / local episode / free library) ──────────────
@@ -1162,7 +1150,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               setTimeout(() => setSeekCommand({ time: resumeAt, timestamp: Date.now() }), 1000);
             }
             // The URL now points at the learning view (push once).
-            enterLearn({
+            open({
               kind: 'learn',
               source: 'youtube',
               videoId: evt.data.videoId || id,
@@ -1266,7 +1254,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         setCurrentTime(0);
         setQuizCacheReady(true);
       }
-      enterLearn({ kind: 'learn', source: 'local', showId, season, episode });
+      open({ kind: 'learn', source: 'local', showId, season, episode });
     } catch (error) {
       console.error(error);
       pendingLocalSeekRef.current = null;
@@ -1304,7 +1292,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       // YouTube video id.
       const localMatch = String(filename).match(/^(.+?)[-_]S(\d+)E(\d+)\.json$/i);
       if (data.metadata?.is_local_subtitle && localMatch) {
-        enterLearn({
+        open({
           kind: 'learn',
           source: 'local',
           showId: localMatch[1],
@@ -1312,7 +1300,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           episode: Number.parseInt(localMatch[3], 10),
         });
       } else {
-        enterLearn({ kind: 'learn', source: 'youtube', videoId: data.videoId });
+        open({ kind: 'learn', source: 'youtube', videoId: data.videoId });
       }
     } catch (error) {
       console.error(error);
@@ -1356,7 +1344,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     try {
       const data = await fetchLibraryVideo(id);
       applyLibraryVideo(data);
-      enterLearn({ kind: 'learn', source: 'library', itemId: id });
+      open({ kind: 'learn', source: 'library', itemId: id });
     } catch (error) {
       console.error('Failed to load free library video:', error);
       toast.error(await describeApiError(error));
@@ -1373,7 +1361,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     try {
       const data = await fetchLibraryArticle(id);
       setLibraryArticle(data);
-      enterLearn({ kind: 'learn', source: 'library', itemId: id });
+      open({ kind: 'learn', source: 'library', itemId: id });
     } catch (error) {
       console.error('Failed to load free library article:', error);
       toast.error(await describeApiError(error));
@@ -2029,6 +2017,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleOpenPlacement = (view: 'intro' | 'profile') => {
+    // `view` is a same-screen parameter: intro ↔ profile replaces, it does not
+    // stack a second placement frame. Fresh entries push (D-02).
+    if (state.sub?.kind === 'placement') {
+      replace({ tab: state.tab, sub: { kind: 'placement', view } });
+      return;
+    }
     openSub({ kind: 'placement', view });
   };
 
@@ -2150,8 +2144,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleDiscoverStart = (url: string) => {
-    // Leave the discovery view first; processing renders the learning view.
-    if (state.sub) replace({ tab: 'content', sub: null });
+    // J26: the processing pipeline pushes the learning route on top of the
+    // discovery view, so "back" returns to the candidate list (no replace).
     void handleUrlSubmit(url);
   };
 
@@ -2182,14 +2176,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const handleOpenFavoriteArticle = (articleId: string) => {
     setWordLookup(null);
     setReaderInitialImport(null);
-    closeWordbookForJump();
     openSub({ kind: 'reader', articleId });
   };
 
   // Free library articles live under the learn route, not the reading API.
   const handleOpenFavoriteLibraryArticle = (articleId: string) => {
     setWordLookup(null);
-    closeWordbookForJump();
     void handleOpenLibraryArticle(articleId);
   };
 
@@ -2197,7 +2189,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const handleOpenFavoriteSentencePack = (levelId: number) => {
     if (!Number.isInteger(levelId) || levelId <= 0) return;
     setWordLookup(null);
-    closeWordbookForJump();
     openSub({ kind: 'sentences', levelId });
   };
 
@@ -2206,8 +2197,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleSelectSentenceLevel = (levelId: number) => {
-    // In-screen level switch: replace, never stack 5 history entries.
-    replace({ tab: 'content', sub: { kind: 'sentences', levelId } });
+    // In-screen level switch (same screen, new param): replace, never stack 5
+    // history entries; keep the source tab the pack was opened from.
+    replace({ tab: state.tab, sub: { kind: 'sentences', levelId } });
   };
 
   const handleOpenBlog = () => {
@@ -2218,41 +2210,51 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     back();
   };
 
-  // ── Sidebar shortcuts (desktop ≥lg) ──────────────────────────────────────
-  // Anchor entries reuse the pages that already own the content: library and
-  // public books scroll to their Content sections, "history" goes to Today's
-  // history list. The retry loop tolerates the async section mounts.
-  const quickAnchorRef = useRef<string | null>(null);
+  // ── Section anchors (D-05) ───────────────────────────────────────────────
+  // `#/content/library` and `#/content/books` are real URLs: the address bar
+  // owns the destination, the content page scrolls to the section. Sections
+  // mount asynchronously, so the scroll retries briefly instead of polling
+  // from the click handler (navigation-model §9).
   const scrollToPageAnchor = useCallback((testId: string, attempts = 0) => {
     const element = document.querySelector(`[data-page-scroll] [data-testid="${testId}"]`);
     if (element instanceof HTMLElement) {
       const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       element.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-      quickAnchorRef.current = null;
       return;
     }
-    if (attempts < 12) {
-      window.setTimeout(() => scrollToPageAnchor(testId, attempts + 1), 100);
-    } else {
-      quickAnchorRef.current = null;
-    }
+    if (attempts < 12) window.setTimeout(() => scrollToPageAnchor(testId, attempts + 1), 100);
   }, []);
 
-  const openPageAnchor = (testId: string, tab: TabId) => {
-    if (state.tab === tab && !state.sub) {
+  const anchorTestId = (anchor: SectionAnchor) => (
+    anchor === 'library' ? 'content-library' : 'content-books'
+  );
+
+  useEffect(() => {
+    if (state.tab !== 'content' || state.sub || !state.anchor) return;
+    scrollToPageAnchor(anchorTestId(state.anchor));
+  }, [state.anchor, state.tab, state.sub, scrollToPageAnchor]);
+
+  const handleOpenHistoryShortcut = () => {
+    // Today's history list has no URL anchor (P2): scroll after the tab renders.
+    if (state.tab === 'today' && !state.sub) {
+      scrollToPageAnchor('today-history-list');
+      return;
+    }
+    go('today');
+    window.setTimeout(() => scrollToPageAnchor('today-history-list'), 100);
+  };
+
+  const openSectionAnchor = (anchor: SectionAnchor) => {
+    const testId = anchorTestId(anchor);
+    if (state.tab === 'content' && !state.sub && state.anchor === anchor) {
       scrollToPageAnchor(testId);
       return;
     }
-    quickAnchorRef.current = testId;
-    go(tab);
-    window.setTimeout(() => {
-      if (quickAnchorRef.current === testId) scrollToPageAnchor(testId);
-    }, 100);
+    openAnchor(anchor);
   };
 
-  const handleOpenHistoryShortcut = () => openPageAnchor('today-history-list', 'today');
-  const handleOpenLibraryShortcut = () => openPageAnchor('content-library', 'content');
-  const handleOpenBooksShortcut = () => openPageAnchor('content-books', 'content');
+  const handleOpenLibraryShortcut = () => openSectionAnchor('library');
+  const handleOpenBooksShortcut = () => openSectionAnchor('books');
 
   // Sentence packs start at the learner's current vocabulary band (the six
   // CEFR stops map onto the five packs; C2 shares the last one).
@@ -2341,14 +2343,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   }, [isAdmin, status, replace, t]);
 
   const handleOpenWordbookRoute = () => {
-    // From another sub view (an open video/reader) push the word book on top so
-    // its back arrow returns to that exact context; from a tab page `openSub`
-    // pushes as usual. Staying on the word book never stacks a duplicate.
-    if (state.sub && state.sub.kind !== 'vocabulary') {
-      open({ kind: 'vocabulary' });
-      return;
-    }
-    openSub({ kind: 'vocabulary' });
+    // J23: always push on top of whatever is open (learning page included), so
+    // the word book's back arrow returns to that exact context. `open()` is
+    // de-duplicated, so sitting on the word book never stacks another frame.
+    open({ kind: 'vocabulary' });
   };
 
   const handleToggleSentenceFavorite = useCallback((s: Sentence, levelId: number, levelTitle?: string) => {
@@ -3206,8 +3204,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onOpenArticle={handleOpenFavoriteArticle}
               onOpenLibraryArticle={handleOpenFavoriteLibraryArticle}
               onOpenSentencePack={handleOpenFavoriteSentencePack}
-              onOpenBook={(bookId) => { setWordLookup(null); closeWordbookForJump(); openSub({ kind: 'book', bookId }); }}
-              onOpenImportedBook={(bookId) => { setWordLookup(null); closeWordbookForJump(); openSub({ kind: 'imported-book', bookId }); }}
+              onOpenBook={(bookId) => { setWordLookup(null); openSub({ kind: 'book', bookId }); }}
+              onOpenImportedBook={(bookId) => { setWordLookup(null); openSub({ kind: 'imported-book', bookId }); }}
             />,
           );
         default:
@@ -3428,15 +3426,43 @@ function AuthLoadingScreen() {
 type PublicView = 'welcome' | 'login';
 
 function readPublicView(hash: string): PublicView | null {
-  const raw = String(hash || '').trim().replace(/^#/, '').replace(/\/+$/, '').toLowerCase();
+  const raw = String(hash || '')
+    .trim()
+    .replace(/^#/, '')
+    .split('?')[0]
+    .replace(/\/+$/, '')
+    .toLowerCase();
   if (raw === 'welcome' || raw === '/welcome') return 'welcome';
   if (raw === 'login' || raw === '/login') return 'login';
   return null;
 }
 
-function readPublicLocation(): { view: PublicView | null; blank: boolean } {
+/**
+ * `#/login?next=<hash>` return target (D-09). Only an in-app hash is accepted
+ * (`#/...` or a bare `/...`); `http(s)://` is rejected so this can never become
+ * an open redirect, and another public page is not a valid destination.
+ * Invalid/absent → null (the caller lands on Today).
+ */
+function readLoginNext(): string | null {
   const hash = window.location.hash;
-  return { view: readPublicView(hash), blank: !hash || hash === '#' };
+  if (readPublicView(hash) !== 'login') return null;
+  const queryIndex = hash.indexOf('?');
+  if (queryIndex === -1) return null;
+  const candidate = new URLSearchParams(hash.slice(queryIndex + 1)).get('next');
+  if (!candidate) return null;
+  const normalized = candidate.startsWith('#')
+    ? candidate
+    : candidate.startsWith('/') ? `#${candidate}` : '';
+  if (!normalized) return null;
+  if (/^#\/(welcome|login)(?:[/?]|$)/.test(normalized)) return null;
+  const resolved = resolveRoute(normalized);
+  if (resolved.kind === 'invalid') return null;
+  return resolved.canonical;
+}
+
+function readPublicLocation(): { view: PublicView | null; blank: boolean; next: string | null } {
+  const hash = window.location.hash;
+  return { view: readPublicView(hash), blank: !hash || hash === '#', next: readLoginNext() };
 }
 
 function usePublicView() {
@@ -3455,7 +3481,7 @@ function usePublicView() {
 
 // The login view keeps a way back to the marketing page; without it the only
 // exit from #/login would be a successful sign-in or the browser back button.
-function LoginView() {
+function LoginView({ next }: { next: string | null }) {
   const { t } = useI18n();
   const { status } = useAuth();
   return (
@@ -3472,8 +3498,11 @@ function LoginView() {
         onGuestContinue={() => {
           // `guest` can use the app right away; `anonymous` (backend session
           // unavailable) would just bounce back to the auth gate, so return to
-          // the public page instead.
-          window.location.hash = status === 'anonymous' ? '#/welcome' : '#/today';
+          // the public page instead. Keep the `?next=` target when there is one
+          // (D-09): a guest opening a deep link should land on it, not Today.
+          window.location.hash = status === 'anonymous'
+            ? '#/welcome'
+            : (next ?? '#/today');
         }}
       />
     </div>
@@ -3490,7 +3519,7 @@ function LoginView() {
 function AuthGate() {
   const { status } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
-  const { view: publicView, blank: blankHash, sync: syncPublicView } = usePublicView();
+  const { view: publicView, blank: blankHash, next: loginNext, sync: syncPublicView } = usePublicView();
 
   // A visitor who opens the bare origin lands on the public welcome page.
   const defaultWelcome =
@@ -3502,17 +3531,26 @@ function AuthGate() {
     syncPublicView();
   }, [defaultWelcome, syncPublicView]);
 
-  // Signing in from #/login lands on Today, not back on the login URL.
+  // Signing in from #/login lands on the `?next=` target (or Today), never back
+  // on the login URL. The `replace` keeps #/login out of the back history.
+  // `publicView` (not a fresh hash read) is a dependency so that arriving at
+  // #/login later in the same session — a hand-edited URL — is also redirected.
   useEffect(() => {
-    if (status !== 'authenticated') return;
-    if (readPublicView(window.location.hash) !== 'login') return;
-    window.history.replaceState(null, '', '#/today');
+    if (status !== 'authenticated' || publicView !== 'login') return;
+    window.history.replaceState(null, '', loginNext ?? '#/today');
     syncPublicView();
-  }, [status, syncPublicView]);
+  }, [status, publicView, loginNext, syncPublicView]);
 
   if (status === 'loading') return <AuthLoadingScreen />;
   if (publicView === 'welcome' || defaultWelcome) return <WelcomeScreen />;
-  if (publicView === 'login' && status !== 'authenticated') return <LoginView />;
+  if (publicView === 'login') {
+    if (status !== 'authenticated') return <LoginView next={loginNext} />;
+    // An authenticated user is still sitting on #/login for one tick while the
+    // redirect effect above rewrites the hash to `?next=`/Today. Render the
+    // quiet loading screen instead of AppContent: mounting the app with a
+    // public hash would make `useNav` treat it as invalid and drop the target.
+    return <AuthLoadingScreen />;
+  }
   if (status === 'anonymous') return <AuthScreen />;
   if (status === 'guest') {
     return (
