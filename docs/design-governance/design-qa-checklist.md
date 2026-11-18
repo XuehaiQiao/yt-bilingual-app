@@ -1,6 +1,7 @@
-# 设计 QA 清单（按功能模块）v1.1
+# 设计 QA 清单（按功能模块）v1.2
 
-> 版本：**v1.1**（2026-11-19 W0 修订）｜责任人：A5（质量门禁与 QA）｜审批：lead
+> 版本：**v1.2**（2026-11-19 W5 修订）｜责任人：A5（质量门禁与 QA）｜审批：lead
+> W5 变更：`QA-X-02` 改为**全量 14 个浮层**（不再抽 5 个，词卡按 C13 非模态排除）；新增 `QA-NAV-21`（路由切换焦点）、`QA-X-29`（Tabs/Segmented 键盘与 ARIA）、`QA-X-30`（对比度实测/登记）、`QA-X-31`（组件矩阵 `/dev/ui`，前置 W3）；补 SHA 证据命名。**W0 的 3 对去重与 18 条迁出不重复做。**
 > 输入：A1 [`audit-report.md`](./audit-report.md)（90 条：P0 7 / P1 44 / P2 39）、A2 [`design-system/`](./design-system/tokens.md)、A3 [`interaction-spec.md`](./interaction-spec.md) / [`navigation-model.md`](./navigation-model.md)、A4 [`component-consolidation.md`](./component-consolidation.md)。
 > 与 [`design-gate.md`](./design-gate.md) 的分工：门禁是**每个 UI PR 的 8 项 5 分钟最小集**；本清单是**模块级全量回归 / 发布前验收**。本清单不替代门禁，也不检查后端正确性。
 
@@ -22,13 +23,14 @@
 
 `QA-NAV-01`、`QA-NAV-02`、`QA-NAV-03`、`QA-NAV-04`、`QA-VID-01`、`QA-VID-02`、`QA-VID-03`、`QA-DSC-03`、`QA-DSC-05`、`QA-MOB-01`、`QA-X-01`、`QA-X-02`
 
-追加规则：改文案 → 加 `QA-X-17`；改共享组件（Button/Dialog/Tabs/Segmented/Badge/EmptyState）→ 加 `QA-X-11`、`QA-X-12`；改导航壳 → 加 `QA-NAV-12`、`QA-NAV-13`、`QA-NAV-19`。
+追加规则：改文案 → 加 `QA-X-17`；改共享组件（Button/Dialog/Tabs/Segmented/Badge/EmptyState）→ 加 `QA-X-11`、`QA-X-12`、`QA-X-29`；改导航壳 → 加 `QA-NAV-12`、`QA-NAV-13`、`QA-NAV-19`、`QA-NAV-21`；发布前 → 加 `QA-X-30`；A4 组件批次出口 → 加 `QA-X-31`（`/dev/ui` 未落地前按未通过记，不得勾 N/A）。
 
 ### 0.3 判定与证据规则
 
 - 每项只有 **是 / 否**；不适用写 `N/A` **并给一句理由**（无理由的 N/A 视为未通过）。**没跑过的项不许勾「是」**。
 - 「否」→ 记 `ID + 一句现象 + 等级 + 负责人`；在 PR 或发布清单里可搜索。
 - 证据优先级：截图 / 录屏 > 命令输出 > `data-testid` DOM 片段 > 一句人工说明。截图文件名带**宽度 + 语言 + 状态**（`reader-375-vi-error.png`）。
+- **证据绑 SHA（v1.2）**：PR 首行写 `HEAD <sha7>`（`git rev-parse --short=7 HEAD`）；所有截图 / 录屏 / 回执文件名后缀 `@<sha7>`（`reader-375-vi-error@a1b2c3d.png`）。评审先核「首行 = 文件后缀 = 当前 HEAD」；不一致按**未提供证据**处理，不是 P1 延期。
 - **级别**默认对齐 A1；若因壳级 / 阻断性影响上调，标 `↑`（例：`L-13（↑P0）`）并给一句理由；下调标 `↓`。上调只影响本项目内的排期，不改变审计结论。
 - 判定口径以**用户可见结果**为准，不以「代码里有没有这个类」为准；命令只用来找漏项。
 
@@ -59,11 +61,11 @@
 | QA-NAV-01 | 在 4 个 tab 根页连续切换（今日→内容→练习→我的→今日）后按一次浏览器后退，**不会**逐个回退这 4 次 tab 切换（tab 切换是 replace，不堆历史） | N-03 | P0 | 先从外部页进入应用再切 4 个 tab，后退 1 次回外部页（不是回上一个 tab）；并记录 hash 序列 |
 | QA-NAV-02 | 子视图连续前进 A→B→C 后连续返回，按 C→B→A 逐层退出；「今日→报告→去复习→返回」回到**报告**，不越过一层 | N-03 | P0 | 3 行 hash 序列截图或 15s 录屏 |
 | QA-NAV-03 | 内容页右栏打开「本周报告/复习」，URL 前缀仍含 `content`（`#/content/report` 等），关闭后回**内容页**而不是今日/练习 | N-02 | P0 | 打开前 / 跳转后 / 关闭后 3 张截图 + hash |
-| QA-NAV-04 | 从今日/内容/练习/我的打开学习页或课程页，URL 第一段分别是 today/content/practice/profile；刷新后点返回，落点与刷新前一致 | N-04 | P0 | 4 组 hash + 每组刷新截图 |
-| QA-NAV-05 | 打开无缓存的本地剧集深链，停在「该剧集尚未处理，是否现在开始」的页面态（有主按钮），不是 toast + 弹回内容页 | N-05 | P1 | 输入 `#/learn/local/<show>/S01E02`（无缓存）+ 截图；确认无「已回内容页」 |
+| QA-NAV-04 | 从今日/内容/练习/我的打开学习页或课程页，URL 第一段分别是 today/content/practice/profile；刷新后点返回，落点与刷新前一致 | N-04 | P0（↑） | 4 组 hash + 每组刷新截图 |
+| QA-NAV-05 | 打开无缓存的本地剧集深链，停在「该剧集尚未处理，是否现在开始」的页面态（有主按钮），不是 toast + 弹回内容页 | N-05 | P1 | 输入 `#/content/learn/local/<show>/S01E02`（无缓存；旧 `#/learn/local/...` 应一次性 replace 为 content 前缀）+ 截图；确认无「已回内容页」 |
 | QA-NAV-06 | `#/content/library` 直达后停在免费库区块（该区块滚入视口），地址栏不被改写；侧栏「免费库」落到同一 URL | N-06 | P1 | 2 张截图 + 前后 hash 相同 |
 | QA-NAV-07 | 单词本 → 文章/书/句包 → 返回，落回**单词本**（不是「我的」） | N-18 | P1 | 3 行 hash + 返回截图 |
-| QA-NAV-08 | 旧入口均可用并规范化为新 URL：`#/learn/...`、`#/lesson/...`、`#/profile/favorites`、`#admin`、`/admin`；管理台在 auth ready 后判定，**代码中无固定 500ms `setTimeout`**（grep = 0） | N-13、N-14 | P1（↑） | 5 条 URL 截图 + `grep -rn "500" src/ | grep -i timeout` = 0 |
+| QA-NAV-08 | 旧入口均可用并**规范化为新 URL**：`#/learn/...` → `#/content/learn/...`、`#/lesson/...` → `#/today/lesson/...`、`#/profile/favorites` → `#/profile/vocabulary`、`#admin` / `#/admin` → `#/profile/admin`（地址栏必须变成目标前缀）；管理台在 auth ready 后判定，**代码中无固定 500ms `setTimeout`**（grep = 0） | N-13、N-14 | P1（↑） | 5 条「输入旧 URL → 改后 hash」截图 + `grep -rn "500" src/ | grep -i timeout` = 0 |
 | QA-NAV-09 | 非法 hash（`#/nonsense`、`#/content/sentences/0`、`#/practice/report`）回今日并出现**一次**可读提示，不静默 | N-11 | P1（↑） | 3 条 URL 截图 + 提示文案 |
 | QA-NAV-10 | 匿名新标签打开深链（如 `#/content/discover`）先看到登录；登录成功后回到**原目标页**，不丢 `next` | N-15 | P1 | 登录前/后 2 张截图 + hash |
 | QA-NAV-11 | 内容页滚到免费库 → 切今日 → 切回内容，滚动位置恢复；点**当前** tab 才平滑回顶 | N-16 | P1（↑） | 2 张截图；控制台读 `scrollTop` 不为 0 |
@@ -76,6 +78,7 @@
 | QA-NAV-18 | 导航 tab 只有两种皮肤（顶栏下划线 / 内容白滑块）；侧栏、顶栏、底栏、单词本四处计数徽章 ≥11px、>99 显示 `99+`、`aria-label` 带完整数字 | C-05、C-07、N-10 | P1 | 4 处截图；把计数改成 128 后看格式 |
 | QA-NAV-19 | 断点形态正确：<768 底栏 4 tab；768–1023 顶栏 tabs 无侧栏；≥1024 侧栏 + 顶栏标题；1280 只加宽；同一断点无重复出口 | L-11 | P1（↑） | 375 / 768 / 1024 / 1280 四张截图 |
 | QA-NAV-20 | 页面底色统一：`index.html` theme-color、`manifest.webmanifest`、`index.css --app-bg` 三处同值；页面类名用 `bg-app`（无 `bg-[#09090b]` 新增） | V-01 | P2 | 3 处 grep + 1 张截图 |
+| QA-NAV-21 | 路由切换后焦点移入新页主标题/主区域（`tabIndex={-1}`，无可见焦点环），读屏可播报页面名；浏览器后退/页面内返回后焦点回上一页主区域；覆盖层关闭回触发元素；焦点不得停在 `body`、`aria-hidden`/`inert` 背景或已卸载节点 | V-14（扩展）、A3 IX-10/IX-12 | P1 | 键盘录屏 + 每次切换的 `document.activeElement` 3 行输出 |
 
 ## 2. 视频学习
 
@@ -174,7 +177,7 @@
 
 | ID | 检查项（是 / 否可判定） | 关联审计 ID | 级别 | 证据 / 操作步骤 |
 |---|---|---|---|---|
-| QA-ADM-01 | 非管理员在 auth ready 后**立即**拦截 + 一次 toast；无固定 500ms 白屏 ×2；管理员书签 `/admin` 进入 ≤200ms | N-14 | P1 | 录屏计时 + toast 截图 |
+| QA-ADM-01 | 非管理员在 auth ready 后**立即**拦截 + 一次 toast；无固定 500ms 白屏 ×2；管理员书签 `#/profile/admin`（旧 `/admin` / `#admin` 应 replace 到该 URL）进入时 auth ready 后直接渲染，无固定 500ms 白屏（录屏记录耗时，不设硬毫秒阈值） | N-14 | P1 | 录屏 + toast 截图 + 改后 hash |
 | QA-ADM-02 | 管理台 tab 用白滑块（内容级），不再第三套视觉；`role=tablist/tabpanel` 存在 | C-05 | P1 | 截图 + DOM 片段 |
 | QA-ADM-03 | 调余额 / 封禁 / 删除用 ConfirmDialog；不能操作自己或最后一个管理员（按钮禁用 + 后端拒绝可读） | I-05、新增（specs/021） | P1 | 3 张截图 |
 | QA-ADM-04 | 维护模式 / 公告 / 保存：即时反馈，失败不留「假已保存」；成功后刷新仍正确 | I-19 | P1 | 成功/失败/刷新后 3 张截图 |
@@ -202,7 +205,7 @@
 | ID | 检查项（是 / 否可判定） | 关联审计 ID | 级别 | 证据 / 操作步骤 |
 |---|---|---|---|---|
 | QA-X-01 | 任何请求失败都**不得**渲染成空态（今日历史、内容右栏、订阅更新、推荐等）；显示 ErrorPanel + 重试；断网可复现 | I-01 | P0 | 断网逐页截图 + 恢复后重试成功 |
-| QA-X-02 | 所有浮层具备：Escape、遮罩点击、X、`role=dialog`（阻断型 `alertdialog`）、`aria-modal`、焦点陷阱、关闭回焦点、背景滚动锁；频道列表弹窗可键盘关闭；有输入时关闭先确认；无嵌套 Dialog | I-02、I-03、I-04、C-02 | P0 | 键盘录屏 + DOM 片段（14 个浮层抽 5 个）+ dirty/嵌套各 1 例 |
+| QA-X-02 | **全量 14 个浮层**（名单见下）不得抽样：13 个可关闭型都具备 Escape、遮罩点击、X、`role=dialog`（阻断型 `alertdialog`）、`aria-modal`、焦点陷阱、关闭回焦点、背景滚动锁；`ProcessingOverlay` 为不可关闭 busy 型，只核 `role`/`aria-modal`/`aria-busy`/焦点不逃逸/滚动锁；频道列表弹窗（I-02）可键盘关闭；有输入时关闭先确认；无嵌套 Dialog。**词卡 C13 是非模态，不在本清单，不要求 `aria-modal`/滚动锁。** | I-02、I-03、I-04、C-02 | P0 | 14 项键盘录屏 + DOM 片段 + dirty/嵌套各 1 例。名单：`ModelSelectionModal`、`EstimateDialog`、`LanguageSettingsModal`、`BookImportDialog`、`ShareCardDialog`、`ChannelVideoList`、`AbilityScreen` 自评、`AbilityScreen` 证据、`ExamScreen` 退出/重启确认、`PlacementScreen` 重启确认、`AdminConsoleScreen` 弹窗、`PwaInstallButton`、`ProcessingOverlay`（busy）、`guest-auth` 登录浮层 |
 | QA-X-03 | 全站无 `window.confirm/alert`；删除/退出考试/重置定位用 ConfirmDialog；取消无副作用 | I-05 | P1 | grep 新增 = 0 + 3 张确认框截图 |
 | QA-X-04 | 反馈层级：字段校验内联；操作失败 toast；页面级加载失败 ErrorPanel；同一错误不同时出现两处 | I-09 | P1 | 3 类错误截图 |
 | QA-X-05 | 加载态统一：首屏列表骨架（最小高度 240）、局部行内 spinner、阻断遮罩只用于付费/处理；spinner 三档 | I-07 | P1 | 3 处截图 |
@@ -226,10 +229,13 @@
 | QA-X-23 | 平台返回/手势兜底按 `navigation-model.md` §10 | I-20 | P2 | 安卓/PWA 录屏 |
 | QA-X-24 | 删除图标统一（`Trash2`/`X`），命中区与颜色一致 | C-15 | P2 | 4 处截图 |
 | QA-X-28 | 间距五档（4/8/12/16/24）；按压只 0.98/0.99；无 `hover:scale` | V-19、V-20 | P2 | grep + 录屏 |
+| QA-X-29 | Tabs：`role=tablist` + `role=tab` + `aria-selected` + `aria-controls`（有 `tabpanel` 时），roving tabindex（整组只 1 个 Tab 停点），←/→/Home/End 移动并激活，Tab 离开整组；Segmented：`role=radiogroup` + `role=radio`/`aria-checked`，←/→/Home/End 选中，2–5 项边界（5 项仍用、6 项起不得用），选中项自动滚入视口；两者都有 `ariaLabel` | C-05、C-06（扩展）、A3 IX-19 | P1 | 无鼠标录屏 + DOM 片段（Tabs 两皮肤各 1 + 5 项 Segmented + 6 项反例） |
+| QA-X-30 | 对比度实测：A 类文字（说明 / 占位 / 空态 / 导航 / 时间戳）≥4.5:1；B 类 `fg-muted` 4.12:1 为已登记例外，不得新增用于操作说明；`fg-disabled` 2.57:1 仅禁用态；实测值与附录 G 登记值一致（±0.1）；新增色必须先登记再使用 | V-03（扩展）、A2 tokens §2.3 | P1 | 取色器/DevTools 截图 3 组（A 类 / B 类 / 禁用）+ 比值记录；不达标记 issue |
+| QA-X-31 | 组件矩阵 `/dev/ui`：9 个共享组件 × 尺寸 × 状态 × 键盘（附录 F）；每个组件展示适用状态；键盘项可实际操作；375/1440 截图；不进入主导航；**前置 W3 后续新增 `/dev/ui` 路由**（当前不存在，未实现前按未通过记，不得勾 N/A） | C-01…C-15（扩展） | P1 | `/dev/ui` 截图 + 键盘录屏 + `tsc`/build 通过；`/dev/ui` 实现前该项阻塞 |
 
 ---
 
-> **级别上调理由（`↑`）**：`QA-NAV-08/09/11/13/19`、`QA-VID-08`、`QA-MOB-02`、`QA-ASM-06`、`QA-ADM-06/07` 涉及壳、权限、返回主路径或窄屏骨架，失败会从单页放大到全站，故在审计 P2 基础上升为 P1；审计结论不变，排期按本清单执行。
+> **级别上调理由（`↑`）**：`QA-NAV-08/09/11/13/19`、`QA-VID-08`、`QA-MOB-02`、`QA-ASM-06`、`QA-ADM-06/07` 涉及壳、权限、返回主路径或窄屏骨架，失败会从单页放大到全站，故在审计 P2 基础上升为 P1；`QA-NAV-04` 由 N-04 P1 上调 P0（刷新后返回落错 tab 影响来源链路，属上线阻塞）。审计结论不变，排期按本清单执行。
 
 ## 附录 A：V-06 文案清单与 CI 检查项
 
@@ -347,7 +353,7 @@ while read id; do grep -q -- "$id" design-qa-checklist.md || echo "MISSING $id";
 | L-06 | P1 | QA-NAV-16 | — |
 | L-07 | P1 | QA-VOC-01 | — |
 
-**统计**：V 12/12、I 14/14、N 9/9、C 9/9、L 7/7 → **51/51 覆盖，缺失 0**；其中 P0 7/7。**项数（W0 去重/迁出后）：115 条 = P0 12 / P1 84 / P2 19**（原 131；删 3 条重复 + 迁出 12 条无审计 ID + 迁出/改写 6 条不可判定，见附录 E）。V-06 有明确例外路径（31 键 + `sentences.day` + CI 规则草案 + 上线前 QA 勾选）。
+**统计**：V 12/12、I 14/14、N 9/9、C 9/9、L 7/7 → **51/51 覆盖，缺失 0**；其中 P0 7/7。**项数（W0 去重/迁出 + W5 新增后）：119 条 = P0 12 / P1 88 / P2 19**（W0：115；W5 +4：`QA-NAV-21`、`QA-X-29/30/31`；其中 `QA-X-31` 前置 `/dev/ui` 未落地，见附录 F）。V-06 有明确例外路径（31 键 + `sentences.day` + CI CJK 规则已由 W2 落地 + 上线前 QA 勾选）。
 
 ## 附录 C：P2 抽样（13 条，发布前跑）
 
@@ -369,7 +375,7 @@ while read id; do grep -q -- "$id" design-qa-checklist.md || echo "MISSING $id";
 
 ## 附录 E：W0 去重 / 迁出登记（可复核）
 
-> 依据：`reviews/a5-cross-review.md` 的「重复 / 无审计对应 / 不可判定」三组缺口。处置后 **131 → 115 条**（P0 12 / P1 84 / P2 19），51 条 A1 P0/P1 覆盖不变。
+> 依据：`reviews/a5-cross-review.md` 的「重复 / 无审计对应 / 不可判定」三组缺口。W0 处置后 **131 → 115 条**（P0 12 / P1 84 / P2 19）；W5 再 **+4 → 119 条**（P1 88），见 E.5。51 条 A1 P0/P1 覆盖不变。**W0 的去重/迁出已执行，W5 不重复。**
 
 ### E.1 删除的 3 对重复（保留左项，删除右项）
 
@@ -414,7 +420,7 @@ while read id; do grep -q -- "$id" design-qa-checklist.md || echo "MISSING $id";
 ```bash
 cd docs/design-governance
 # 设计 QA 项数
-grep -cE '^\| QA-[A-Z]+-[0-9]+ \|' design-qa-checklist.md     # 期望 115
+grep -cE '^\| QA-[A-Z]+-[0-9]+ \|' design-qa-checklist.md     # 期望 119
 # 已删/迁出的 ID 不应再出现在正文表（附录 E 除外）
 for id in QA-X-27 QA-DSC-10 QA-VOC-04 QA-VOC-09 QA-CRS-01 QA-CRS-02 QA-CRS-05 QA-ASM-02 QA-DSC-06 QA-DSC-07 QA-DSC-09 QA-ACC-08 QA-ACC-09 QA-ACC-10 QA-X-26 QA-X-25; do
   grep -n "^| $id |" design-qa-checklist.md && echo "STILL PRESENT: $id"
@@ -423,13 +429,72 @@ done
 grep -oE '^#### (V|I|N|C|L)-[0-9]+ · (\*\*P0\*\*|P1)' audit-report.md | grep -oE '(V|I|N|C|L)-[0-9]+' | sort -u | wc -l   # 期望 51
 ```
 
+### E.5 W5 新增（不重复 W0 的去重/迁出）
+
+| 新增 ID | 内容 | 依据 |
+|---|---|---|
+| `QA-NAV-21` | 路由切换/返回后的焦点落点（主标题或主区域、覆盖层回触发元素） | A3 IX-10/IX-12；A5「键盘盲区」 |
+| `QA-X-29` | Tabs / Segmented 键盘与 ARIA（roving、方向键、Home/End、2–5 项边界） | A2 C5/C6；A5「组件键盘未测」 |
+| `QA-X-30` | 对比度实测与登记（A 类 ≥4.5:1；B 类 4.12:1 例外；禁用 2.57:1） | A2 tokens §2.3；A1/A2 交叉审阅 |
+| `QA-X-31` | 组件矩阵 `/dev/ui`（9 组件 × 尺寸 × 状态 × 键盘） | A5「无 components/ui 矩阵」；前置 W3 |
+
+> W0 的 3 对重复（E.1）与 18 条迁出（E.2/E.3）保持原样，W5 未重复删除或迁移。
+
 ## 附录 D：证据锚点与命名
 
 - **data-testid**：全仓 821 处、去重 674 个；`scripts/*.mjs` 依赖 77 个。优先用 `data-testid` 定位，不靠 CSS 选择器。
 - **冻结的契约属性**（A4 §5.4，改名视为回归）：`data-word-hit`、`data-lookup-context`、`data-lookup-start`、`data-highlight`。
 - **已知改名**（B3 起）：`review-close` / `report-close` / `ability-close` → `*-back`；现有脚本 0 引用，QA 需同步。
-- **截图命名**：`<screen>-<width>-<lang>[-<state>].png`，例：`reader-375-vi-error.png`、`today-1440-zh-loading.png`。
+- **截图命名（v1.2 绑 SHA）**：`<screen>-<width>-<lang>[-<state>]@<sha7>.png`，例：`reader-375-vi-error@a1b2c3d.png`、`today-1440-zh-loading@a1b2c3d.png`。**后缀与 PR 首行 `HEAD <sha7>` 不一致 = 旧证据，按未提供处理。**
 - **命令输出**：贴最后一行即可（如 `i18n check passed: 1691 keys × 2 languages`）。
+
+## 附录 F：组件矩阵（`/dev/ui`，W3 后续）
+
+> 状态：**未实现**。`frontend/src` 当前没有 `/dev/ui` 路由；本附录是 W3 后续的实现与验收契约，`QA-X-31` 在路由落地前按未通过记（不得勾 N/A）。
+
+| # | 组件 | 尺寸 / 变体 | 必测状态 | 键盘 / ARIA |
+|---|---|---|---|---|
+| 1 | Button / IconButton | sm 32 / md 36 / lg 40 / xl 48；primary / secondary / tinted / ghost / destructive / icon | default / hover / active / focus / disabled / loading | Enter / Space；icon-only 有 `ariaLabel`；命中 ≥44 |
+| 2 | Card / ListRow / IconTile | card / row / tile 36·40·48 | default / hover / selected / focus / disabled | 可点击时 Enter/Space；不可点击不进 tab 序 |
+| 3 | Input / SearchField | sm / md；普通 / 搜索 / 错误 | default / focus / error / disabled | Tab 进入，`focus-within` 壳保留可见环；`aria-invalid` |
+| 4 | Dialog / ConfirmDialog | sm / md / lg / fullscreen / sheet；普通 / alertdialog / busy | open / busy / error / dirty（有输入） | Esc；Tab 循环；关闭回焦点；背景滚动锁；Confirm 默认焦点「取消」 |
+| 5 | Tabs | nav / panel；scroll / menu 溢出 | selected / disabled / 计数 loading | `tablist/tab/tabpanel`；←/→/Home/End roving；整组一个 Tab 停点 |
+| 6 | Segmented | sm / md；2 项 / 5 项 / 6 项反例 | selected / disabled / loading | `radiogroup/radio` + `aria-checked`；←/→/Home/End；6 项不得使用 |
+| 7 | Badge / CountBadge | 5 语义色 + highlight；0 / 99+ / 128 | default / disabled / loading / error | 计数 `aria-label` 带完整数字；0 不渲染 |
+| 8 | Toast | success 3s / info 5s / error 8s；同 key 去重 / 排队 | 单条 / 3 条 / 第 4 条排队 / 关闭 | Esc 关当前；action/close 可聚焦；`role=status`/`alert` + `aria-live` |
+| 9 | EmptyState / ErrorPanel / Skeleton | page `py-16` / card `py-10` / inline `py-3`；三态 | empty / loading / error / retry | 动作可 Tab/Enter；错误焦点到面板；骨架 `aria-busy` |
+
+**`/dev/ui` 实现要求（W3 后续）**：
+
+- 仅开发环境可达：不进入导航/路由分享，生产首屏不打包（动态 import 或 `import.meta.env.DEV` guard）。
+- 每个组件一个 section + `data-testid="dev-ui-<component>"`；用固定 fixtures，不读用户数据、不写后端。
+- 不新增 token/裸色；页面自身遵守 G1/G6；375/1440 可用。
+- 验收：9 个 section 齐全、状态可切换、键盘可操作、`tsc`/build/i18n 通过 + 截图/录屏。
+
+## 附录 G：对比度登记（A 类 4.5:1 / B 类 4.12:1）
+
+> 计算口径：WCAG 2.1 相对亮度，底色 `app #09090b`；数值由 tokens.md 的渲染值计算（2026-11-19 复核，与 tokens §2.2/§2.3 一致）。发布前用取色器/DevTools 对改动处实测，实测与登记差 >0.1 时先查色值来源。
+
+| 用途 | Token / 值 | 对比度 | 类别 | 判定 |
+|---|---|---|---|---|
+| 正文强调 / 标题 | `fg-primary` `#f4f4f5` | 18.10:1 | A | 通过 |
+| 列表主文字 / 次按钮 | `fg-strong` `#d4d4d8` | 13.46:1 | A | 通过 |
+| 说明 / 空态 / 占位 / 表单提示 | `fg-secondary` `#a1a1aa` | 7.76:1 | A | 通过（≥4.5） |
+| 品牌文字 / 图标 | `brand-300` `#66B0FF` | 8.73:1 | A | 通过 |
+| 品牌图标 / hover 文字 | `brand-400` `#409CFF` | 7.03:1 | A | 通过 |
+| 品牌填充 / 焦点 / 进度 | `brand` `#0A84FF` | 5.45:1 | A（非小字正文） | 通过；不作 11px 正文 |
+| 成功/警告/危险文字 | `success-fg` / `warning-fg` / `danger-fg` | 10.35 / 11.92 / 7.19 | A | 通过 |
+| 非关键元信息（计数/轴标签） | `fg-muted` `#71717a` | **4.12:1** | B | **已登记例外**；不得用于操作说明/空态/占位 |
+| 品牌按下填充 | `brand-600` `#0774E8` | 4.43:1 | 填充 | 只作填充，不作文字 |
+| AI 高亮底/边框 | `highlight` `#8B5CF6` | 4.70:1 | 非文字 | 只用于 AI 词高亮；注释用 `highlight-fg`（11.25:1） |
+| 禁用态文字 | `fg-disabled` `#52525b` | 2.57:1 | C | 仅 disabled（WCAG 豁免） |
+| 纯装饰 | `zinc-700` 及更暗 | — | D | 不作信息文字 |
+
+**规则**：
+
+- A 类必须 ≥ **4.5:1**；B 类 **4.12:1** 是登记例外（存量），**新增 B 类用于操作说明即 P1**；C 类只用于 disabled；D 类不放文字。
+- 新增颜色/语义色必须先在 `design-system/tokens.md` 定值并登记到本表，再使用；未登记的色值视为 G1 违规。
+- 对比度不达标项记 issue（owner + 到期）；主链路文字不可读时可升 P0。
 
 ## 变更记录
 
@@ -438,3 +503,4 @@ grep -oE '^#### (V|I|N|C|L)-[0-9]+ · (\*\*P0\*\*|P1)' audit-report.md | grep -o
 | 2026-11-19 | v0.1 | 初稿：11 个模块 + 5 条横切检查项（已被 v1.0 取代） | A5 |
 | 2026-11-19 | **v1.0** | 去掉初稿占位：12 个模块共 131 条可判定项；逐条挂审计 ID；补三种用法/最小必跑集/环境矩阵；加 V-06 31 键清单与 CI 规则草案；51 条 P0/P1 覆盖核对（缺失 0）；P2 抽样 13 条；testid 契约 | A5 |
 | 2026-11-19 | **v1.1** | W0 对齐：复核 5 组错值（NAV-13/ASM-06/ADM-07、ADM-05、X-12、X-11/VOC-07）；Toast/EmptyState/Dialog/Segmented/BackButton 契约同步；`sentences.day` 裁决；删 3 对重复、迁出 12 条无审计 ID、改写/迁出 6 条不可判定；131→115 条；白名单补 7 键 | A5 |
+| 2026-11-19 | **v1.2** | W5 加固：`QA-X-02` 改全量 14 浮层（含名单、busy 型例外、词卡 C13 非模态排除）；修 `QA-NAV-04` 未标 ↑、`QA-NAV-05/08` 旧 URL 目标前缀、`QA-ADM-01` 不可测毫秒阈值；新增 `QA-NAV-21`（路由焦点）、`QA-X-29`（Tabs/Segmented 键盘 ARIA）、`QA-X-30`（对比度 4.5:1 / 4.12:1 登记）、`QA-X-31`（组件矩阵 `/dev/ui`，前置 W3）；证据绑 `@<sha7>`；115→119 条（P1 84→88）；附录 F/G；**未重复 W0 去重/迁出** | A5 |

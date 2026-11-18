@@ -1,7 +1,7 @@
 # UI/UX 治理修复计划（Remediation Plan）
 
 > 日期：2026-11-19 ｜ 来源：A1–A5 五角色交叉审阅 ｜ 状态：**最终验收为 conditional，不可宣称已全部达标**
-> **执行状态（2026-11-19）**：**W0 文档对齐 + W6 A4 映射修正已完成**，证据/复核命令见 [`remediation-status.md`](./remediation-status.md)；W1–W5 仍未完成，不得据此关闭 P0 或宣布可上线。
+> **执行状态（2026-11-19）**：W0/W1/W2/W4/W5 与 W3-B1/B4-P0 已落地（W1 的 N-01 博客 slug、W3-B2 Dialog/Toast/I-02 仍待补）；W5 的 `/dev/ui` 组件矩阵、浏览器对比度实测、token/selector 自动扫描未完成——以 [`remediation-status.md`](./remediation-status.md) 为准。未完成项不得据此关闭 P0 或宣布可上线。
 > 关联：`00-team-charter.md`、`audit-report.md`、`design-system/`、`interaction-spec.md`、`navigation-model.md`、`component-consolidation.md`、`design-gate.md`、`design-qa-checklist.md`
 
 ## 0. 结论
@@ -84,6 +84,8 @@
 
 ### W5 · QA/门禁加固（1–2 人日）
 
+> **执行状态（2026-11-19 W5）**：**第 1–3 项与第 4 项的 QA 条目已交付**——PR 模板首行 SHA + 证据 `@<sha7>`、`scripts/gate-receipt.mjs`（report-only）、G1 扩到 A2 T-01…T-15、G2 加 `components/ui` 白名单/旧常量/新文件重复、G4 补输入壳例外、`QA-X-02` 全 14 浮层并新增 4 条（NAV-21/X-29/30/31）+ 附录 F/G 登记；**未落地**：第 4 项的 `/dev/ui` 组件矩阵（W3 后续）与浏览器对比度实测（发布前 QA）、第 6 项 token/selector 自动扫描（仍 warn/人工）。第 5 项已由 W0 完成，W5 不重复。详见 [`remediation-status.md`](./remediation-status.md)。
+
 1. 证据绑 SHA：PR 首行 `HEAD <sha7>`，截图名带 `@sha7`；评审抽 1 条人眼项。
 2. `npm run gate:receipt`：输出 SHA、diff、触发判定、G1/G2/G4/G6 计数、i18n 末行。
 3. G1 扩到 A2 T-01..T-15（purple/red/emerald/amber/zinc/white/black/shadow/transition/scale）；G2 加 `components/ui` 白名单、A4 常量清单、内联/新文件重复检测；G4 输入壳例外。
@@ -91,7 +93,7 @@
 5. 删除/合并 3 对重复 QA；12 条无审计 ID 的 specs 功能项移到功能验收，不进设计 QA；6 条不可判定项改可测或删除。
 6. token/selector 自动扫描：先 warn，基线清到 0 后 error。
 
-**出口**：门禁注入反例能命中；QA 去重后约 123 条；V-06/对比度/组件矩阵有证据。
+**出口**：门禁注入反例能命中；QA **119 条**（W0 去重后 115 + W5 新增 4）；V-06 有 CI 证据；对比度为**登记 + 发布前实测**、组件矩阵为 **W3 后续**，未落地前不得宣称已通过。
 
 ### W6 · A4 映射修正（0.5–1 人日）
 
@@ -141,6 +143,6 @@ W3 B1/B2/B4-P0 ──→ W4 L-01 验收
 1. **P0/P1**：A1 的 7 P0 + 44 P1 逐条有规范 + 已修/已排期；V-06 规则先红后绿。
 2. **覆盖**：元素实例 ≥80%（当前 96.6%）；文件 ≥80%（当前 80.6%）；屏级 67% 补 Menu/公开页/Table/Switch/chip/axis/分栏后再报，不混口径。
 3. **门禁**：PR 模板 + `gate:receipt` + CI i18n；用 3 个注入反例验证 G1/G2/G4/G7 能命中；P0 阻断。
-4. **QA**：去重后 123 条；每个 P0/P1 至少 1 条可执行检查；5 条错误值已修；V-06/对比度/组件矩阵有实测证据。
+4. **QA**：**119 条**（W0 后 115 + W5 新增 4；`/dev/ui` 矩阵前置未落地）；每个 P0/P1 至少 1 条可执行检查；5 条错误值已修；V-06 有 CI 证据，对比度已登记（浏览器实测待发布前 QA）、组件矩阵待 W3 后续。
 
 **未完成上述复核前，不宣布“UI/UX 治理完成/可上线”。**
