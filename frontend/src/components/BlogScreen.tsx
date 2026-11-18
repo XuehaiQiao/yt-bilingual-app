@@ -250,13 +250,25 @@ function BlogListCard({
   );
 }
 
-export function BlogScreen({ onClose }: { onClose: () => void }) {
+export function BlogScreen({
+  onClose,
+  initialSlug,
+  onOpenArticle,
+}: {
+  onClose: () => void;
+  /** Article slug from the route (`#/<tab>/blog/<slug>`); absent = list. */
+  initialSlug?: string;
+  /** List → article: the app pushes `...#/blog/<slug>` (N-01/J27). */
+  onOpenArticle: (slug: string) => void;
+}) {
   const { t, language, formatDate, formatNumber } = useI18n();
 
   const [posts, setPosts] = useState<BlogPostSummary[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  // The URL owns which article is open: a refresh or a shared link renders the
+  // article directly, and Back restores the list without local state.
+  const selectedSlug = initialSlug ?? null;
 
   const [article, setArticle] = useState<BlogPost | null>(null);
   const [articleLoading, setArticleLoading] = useState(false);
@@ -318,10 +330,9 @@ export function BlogScreen({ onClose }: { onClose: () => void }) {
   }, [selectedSlug, articleReloadKey, t]);
 
   const handleBack = () => {
-    if (selectedSlug) {
-      setSelectedSlug(null);
-      return;
-    }
+    // Both list → parent and article → list go through the route/history:
+    // App passes `back()`, which pops the pushed article frame or, for a deep
+    // link with no in-app history, replaces with the blog list (`parentOf`).
     onClose();
   };
 
@@ -336,6 +347,7 @@ export function BlogScreen({ onClose }: { onClose: () => void }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
+            data-testid="blog-back"
             onClick={handleBack}
             className="inline-flex items-center gap-1.5 h-9 px-2 -ml-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
           >
@@ -384,7 +396,7 @@ export function BlogScreen({ onClose }: { onClose: () => void }) {
                           {t('blog.retry')}
                         </button>
                       )}
-                      <button type="button" onClick={() => setSelectedSlug(null)} className={SECONDARY_BUTTON}>
+                      <button type="button" onClick={onClose} className={SECONDARY_BUTTON}>
                         <ArrowLeft className="w-4 h-4" />
                         {t('blog.backToList')}
                       </button>
@@ -495,7 +507,7 @@ export function BlogScreen({ onClose }: { onClose: () => void }) {
                   <BlogListCard
                     key={post.slug}
                     post={post}
-                    onOpen={setSelectedSlug}
+                    onOpen={onOpenArticle}
                     formatDate={formatDate}
                   />
                 ))}

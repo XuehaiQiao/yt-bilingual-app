@@ -2221,6 +2221,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     openSub({ kind: 'blog' });
   };
 
+  // Blog list → article is a forward move (J27/N-01): push the slug into the
+  // URL so refresh/share restores the article and `back()` returns to the list.
+  const handleOpenBlogArticle = (slug: string) => {
+    if (!slug) return;
+    openSub({ kind: 'blog', slug });
+  };
+
   const handleCloseBlog = () => {
     back();
   };
@@ -3191,7 +3198,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             />,
           );
         case 'blog':
-          return subFrame(<BlogScreen onClose={handleCloseBlog} />);
+          return subFrame(
+            <BlogScreen
+              initialSlug={sub.slug}
+              onOpenArticle={handleOpenBlogArticle}
+              onClose={handleCloseBlog}
+            />,
+          );
         case 'book':
           return subFrame(
             <BookReaderScreen
