@@ -6,7 +6,6 @@ import {
     CheckCircle2,
     Loader2,
     Play,
-    X,
 } from 'lucide-react';
 import { answerQuestion, getResult, QuizApiError } from '../lib/quiz';
 import type {
@@ -18,12 +17,15 @@ import type {
 } from '../lib/quiz';
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
+import { SubHeader } from './ui/SubHeader';
 
 interface QuizScreenProps {
     /** Lesson + questions returned by `POST /api/lesson/start`. */
     lesson: LessonQuestions;
     /** Leave the quiz and go back to the video (keeps the loaded lesson). */
     onExit: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     /** Close the quiz and jump the player to an evidence timestamp (seconds). */
     onSeekEvidence: (start: number) => void;
     /** Result screen's "home" action. */
@@ -82,6 +84,7 @@ interface WrongRow {
 export const QuizScreen: React.FC<QuizScreenProps> = ({
     lesson,
     onExit,
+    parentLabel,
     onSeekEvidence,
     onHome,
     onRequestLogin,
@@ -612,34 +615,22 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({
     return (
         <div
             data-testid="quiz-screen"
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+            className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]"
         >
+            <SubHeader
+                title={headerTitle}
+                onBack={onExit}
+                parentLabel={parentLabel}
+                backTestId="quiz-exit"
+                titleTestId="quiz-header"
+            />
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
             <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
-                <header className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                        <h1
-                            data-testid="quiz-header"
-                            className="text-xl sm:text-2xl font-semibold tracking-tight text-zinc-100 tabular-nums truncate"
-                        >
-                            {headerTitle}
-                        </h1>
-                        {phase === 'result' && (
-                            <p className="mt-0.5 text-xs text-zinc-500">
-                                {t('quiz.result.subtitle')}
-                            </p>
-                        )}
-                    </div>
-                    <button
-                        type="button"
-                        data-testid="quiz-exit"
-                        onClick={onExit}
-                        aria-label={t('quiz.exitAria')}
-                        title={t('quiz.exitAria')}
-                        className="p-2 rounded-full bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-400 hover:text-zinc-100 transition-colors shrink-0"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </header>
+                {phase === 'result' && (
+                    <p className="text-xs leading-relaxed text-fg-muted">
+                        {t('quiz.result.subtitle')}
+                    </p>
+                )}
 
                 <AnimatePresence mode="wait" initial={false}>
                     {phase === 'result' ? (
@@ -665,6 +656,7 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({
                         </motion.div>
                     )}
                 </AnimatePresence>
+            </div>
             </div>
         </div>
     );

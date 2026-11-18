@@ -33,10 +33,13 @@ import { loadModel } from '../lib/settings';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { EstimateDialog, type EstimateDialogHandle } from './EstimateDialog';
+import { SubHeader } from './ui/SubHeader';
 
 interface DiscoverScreenProps {
     /** Back to the home screen; the last result stays in session storage. */
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     /** Existing App processing pipeline (same one the home input uses). */
     onStart: (url: string) => void;
     onRequestLogin?: () => void;
@@ -119,6 +122,7 @@ function errorKeyForStatus(status: number): TranslationKey {
 
 export function DiscoverScreen({
     onClose,
+    parentLabel,
     onStart,
     onRequestLogin,
     initialQuery,
@@ -245,34 +249,28 @@ export function DiscoverScreen({
     return (
         <div
             data-testid="discover-screen"
-            className="h-full overflow-y-auto custom-scrollbar bg-[#09090b]"
+            className="flex-1 min-h-0 flex flex-col bg-[#09090b]"
         >
+            <SubHeader
+                title={t('discover.title')}
+                onBack={onClose}
+                parentLabel={parentLabel}
+                backTestId="discover-back"
+            />
             <EstimateDialog
                 ref={estimateRef}
                 currentModelId={currentModelId}
                 onStart={onStart}
             />
 
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
             <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-5 sm:py-8">
-                <button
-                    type="button"
-                    data-testid="discover-back"
-                    onClick={onClose}
-                    className="inline-flex items-center gap-1.5 h-8 px-2 -ml-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    {t('discover.back')}
-                </button>
-
-                <header className="mt-4 flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                        <Compass className="w-5 h-5 text-blue-400" />
+                <header className="mt-0 flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
+                        <Compass className="w-5 h-5 text-brand-300" />
                     </div>
                     <div className="min-w-0">
-                        <h2 className="text-2xl font-semibold tracking-tight text-zinc-50">
-                            {t('discover.title')}
-                        </h2>
-                        <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                        <p className="text-ui leading-relaxed text-fg-secondary">
                             {t('discover.subtitle')}
                         </p>
                     </div>
@@ -603,6 +601,7 @@ export function DiscoverScreen({
                         )}
                     </section>
                 ) : null}
+            </div>
             </div>
         </div>
     );

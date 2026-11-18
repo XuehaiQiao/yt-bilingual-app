@@ -14,11 +14,11 @@ import {
     Loader2,
     Quote,
     Repeat,
-    X,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
+import { SubHeader } from './ui/SubHeader';
 
 export interface WeekReportEvidence {
     source: 'quiz_wrong' | 'watch';
@@ -62,6 +62,8 @@ export interface WeekReport {
 interface ReportScreenProps {
     /** Return to the previous view (home, or the video that was open). */
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     /** Open the evidence content and seek to `evidence.start`. */
     onOpenEvidence: (evidence: WeekReportEvidence) => void;
     /** "Due tomorrow" entry: the review view. */
@@ -101,7 +103,7 @@ function BigStat({ label, value, testId }: { label: string; value: string; testI
     );
 }
 
-export function ReportScreen({ onClose, onOpenEvidence, onOpenReview }: ReportScreenProps) {
+export function ReportScreen({ onClose, parentLabel, onOpenEvidence, onOpenReview }: ReportScreenProps) {
     const { t, formatNumber, formatDate } = useI18n();
     const [phase, setPhase] = useState<Phase>('loading');
     const [report, setReport] = useState<WeekReport | null>(null);
@@ -133,47 +135,31 @@ export function ReportScreen({ onClose, onOpenEvidence, onOpenReview }: ReportSc
     }, [load]);
 
     const header = (
-        <header className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-                <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">{t('report.title')}</h1>
-                {phase === 'ready' && report && (
-                    <p
-                        data-testid="report-week-range"
-                        className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-zinc-500 tabular-nums"
-                    >
-                        <CalendarRange className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
-                        <ReportWeekRange report={report} formatDate={formatDate} />
-                    </p>
-                )}
-            </div>
-            <button
-                type="button"
-                data-testid="report-close"
-                onClick={onClose}
-                aria-label={t('report.closeAria')}
-                title={t('report.closeAria')}
-                className="p-2 rounded-full bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-400 hover:text-zinc-100 transition-colors shrink-0"
-            >
-                <X className="w-5 h-5" />
-            </button>
-        </header>
+        <SubHeader
+            title={t('report.title')}
+            onBack={onClose}
+            parentLabel={parentLabel}
+            backTestId="report-back"
+        />
     );
 
     if (phase === 'loading') {
         return (
             <div
                 data-testid="report-screen"
-                className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+                className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]"
             >
-                <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
-                    {header}
-                    <div
-                        data-testid="report-loading"
-                        role="status"
-                        className="flex flex-col items-center justify-center py-20 text-zinc-500"
-                    >
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        <p className="mt-3 text-sm">{t('report.loading')}</p>
+                {header}
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                    <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
+                        <div
+                            data-testid="report-loading"
+                            role="status"
+                            className="flex flex-col items-center justify-center py-20 text-zinc-500"
+                        >
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                            <p className="mt-3 text-sm">{t('report.loading')}</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -184,19 +170,21 @@ export function ReportScreen({ onClose, onOpenEvidence, onOpenReview }: ReportSc
         return (
             <div
                 data-testid="report-screen"
-                className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+                className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]"
             >
-                <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
-                    {header}
-                    <div data-testid="report-error" className="flex flex-col items-center justify-center py-16 text-center">
-                        <AlertTriangle className="w-10 h-10 text-amber-400/70 mb-3" />
-                        <p className="text-sm font-medium text-zinc-300">{t('report.error.title')}</p>
-                        <p className="mt-1 max-w-md text-xs text-zinc-500 break-words">
-                            {errorStatus === 503 ? t('report.error.migration') : (errorMessage || t('report.error.hint'))}
-                        </p>
-                        <button type="button" data-testid="report-retry" onClick={() => void load()} className={`${SECONDARY_BUTTON} mt-5`}>
-                            {t('common.retry')}
-                        </button>
+                {header}
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                    <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
+                        <div data-testid="report-error" className="flex flex-col items-center justify-center py-16 text-center">
+                            <AlertTriangle className="w-10 h-10 text-amber-400/70 mb-3" />
+                            <p className="text-sm font-medium text-zinc-300">{t('report.error.title')}</p>
+                            <p className="mt-1 max-w-md text-xs text-zinc-500 break-words">
+                                {errorStatus === 503 ? t('report.error.migration') : (errorMessage || t('report.error.hint'))}
+                            </p>
+                            <button type="button" data-testid="report-retry" onClick={() => void load()} className={`${SECONDARY_BUTTON} mt-5`}>
+                                {t('common.retry')}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -217,23 +205,31 @@ export function ReportScreen({ onClose, onOpenEvidence, onOpenReview }: ReportSc
     return (
         <div
             data-testid="report-screen"
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+            className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]"
         >
-            <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
-                {header}
+            {header}
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
+                    <p
+                        data-testid="report-week-range"
+                        className="inline-flex items-center gap-1.5 text-xs text-zinc-500 tabular-nums"
+                    >
+                        <CalendarRange className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
+                        <ReportWeekRange report={report} formatDate={formatDate} />
+                    </p>
 
-                {/* Three numbers. `null` accuracy means "no quiz attempts",
-                    not 0%, so it renders the localized placeholder. */}
-                <div data-testid="report-numbers" className="grid grid-cols-3 gap-2 sm:gap-3">
-                    <BigStat label={t('report.stats.passive')} value={formatNumber(passiveMinutes)} testId="report-number-passive" />
-                    <BigStat label={t('report.stats.reviewed')} value={formatNumber(reviewedWords)} testId="report-number-reviewed" />
-                    <BigStat label={t('report.stats.accuracy')} value={accuracyText} testId="report-number-accuracy" />
-                </div>
+                    {/* Three numbers. `null` accuracy means "no quiz attempts",
+                        not 0%, so it renders the localized placeholder. */}
+                    <div data-testid="report-numbers" className="grid grid-cols-3 gap-2 sm:gap-3">
+                        <BigStat label={t('report.stats.passive')} value={formatNumber(passiveMinutes)} testId="report-number-passive" />
+                        <BigStat label={t('report.stats.reviewed')} value={formatNumber(reviewedWords)} testId="report-number-reviewed" />
+                        <BigStat label={t('report.stats.accuracy')} value={accuracyText} testId="report-number-accuracy" />
+                    </div>
 
-                <div className="flex items-center gap-2 text-xs text-zinc-500" data-testid="report-streak">
-                    <Flame className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                    <span className="tabular-nums">{t('report.streak', { count: report.streakDays })}</span>
-                </div>
+                    <div className="flex items-center gap-2 text-xs text-zinc-500" data-testid="report-streak">
+                        <Flame className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                        <span className="tabular-nums">{t('report.streak', { count: report.streakDays })}</span>
+                    </div>
 
                 {noData && (
                     <div data-testid="report-empty" className={`${CARD} flex flex-col items-center justify-center py-10 px-6 text-center`}>
@@ -332,6 +328,7 @@ export function ReportScreen({ onClose, onOpenEvidence, onOpenReview }: ReportSc
                 <p className="pb-2 text-center text-[11px] text-zinc-600">
                     {t('report.footer')}
                 </p>
+                </div>
             </div>
         </div>
     );

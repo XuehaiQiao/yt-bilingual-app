@@ -38,6 +38,7 @@ import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { ShareCardDialog } from './ShareCardDialog';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { SubHeader } from './ui/SubHeader';
 import { classifyPublicDomainBookUrl } from '../lib/publicDomain';
 import type { ShareCardData } from '../lib/shareCard';
 import { toast } from '../lib/toast';
@@ -57,6 +58,8 @@ import {
 interface ReaderScreenProps {
     /** Back to the home screen. */
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     onRequestLogin?: () => void;
     isGuest?: boolean;
     /**
@@ -201,6 +204,7 @@ const ReaderErrorPanel: React.FC<{
 
 export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     onClose,
+    parentLabel,
     onRequestLogin,
     isGuest = false,
     initialArticleId,
@@ -693,23 +697,9 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
 
     // ── List state ─────────────────────────────────────────────────────────
     const listHeader = (
-        <header>
-            <button
-                type="button"
-                data-testid="reader-back-home"
-                onClick={onClose}
-                className="inline-flex items-center gap-2 h-8 px-3 -ml-3 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-            >
-                <ArrowLeft className="w-4 h-4" />
-                {t('reader.backHome')}
-            </button>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-100">
-                {t('reader.title')}
-            </h1>
-            <p className="mt-1 text-sm leading-relaxed text-zinc-400">
-                {t('reader.subtitle')}
-            </p>
-        </header>
+        <p className="text-ui leading-relaxed text-fg-secondary">
+            {t('reader.subtitle')}
+        </p>
     );
 
     const loginPanel = isGuest ? (
@@ -1097,30 +1087,31 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
 
     const readingView = selectedId !== null && (
         <div data-testid="reader-article" data-current-paragraph={currentIdx} className="flex flex-col h-full min-h-0">
-            <div className="flex-none flex flex-wrap items-center justify-between gap-2 px-4 sm:px-8 py-3 border-b border-white/5 bg-zinc-950/60 backdrop-blur-xl">
-                <button
-                    type="button"
-                    data-testid="reader-back-list"
-                    onClick={goBackToList}
-                    className="inline-flex items-center gap-2 h-8 px-3 -ml-3 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    {t('reader.backToList')}
-                </button>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                    <span className="hidden sm:inline text-xs text-zinc-500">
-                        {t('reader.wordLookupHint')}
-                    </span>
-                    {article && (
-                        <ReadingHighlightToggle
-                            testId="reader-highlight-toggle"
-                            enabled={highlight.enabled}
-                            onChange={highlight.setEnabled}
-                            levelLabel={highlight.levelLabel}
-                        />
-                    )}
-                    {article && translationToggle}
-                </div>
+            <SubHeader
+                title={t('reader.title')}
+                onBack={goBackToList}
+                parentLabel={parentLabel}
+                backAriaLabel={t('reader.backToList')}
+                backLabel={t('reader.backToList')}
+                backTestId="reader-back-list"
+                titleAs="p"
+            />
+            <div
+                data-testid="reader-toolbar"
+                className="flex-none flex items-center justify-end gap-2 px-4 sm:px-8 py-2 border-b border-white/5 bg-zinc-950/40"
+            >
+                <span className="hidden sm:inline text-xs text-zinc-500">
+                    {t('reader.wordLookupHint')}
+                </span>
+                {article && (
+                    <ReadingHighlightToggle
+                        testId="reader-highlight-toggle"
+                        enabled={highlight.enabled}
+                        onChange={highlight.setEnabled}
+                        levelLabel={highlight.levelLabel}
+                    />
+                )}
+                {article && translationToggle}
             </div>
 
             <div
@@ -1309,6 +1300,15 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
 
     return (
         <div data-testid="reader-screen" className="h-full min-h-0 flex flex-col bg-[#09090b]">
+            {!readingView && (
+                <SubHeader
+                    title={t('reader.title')}
+                    onBack={onClose}
+                    parentLabel={parentLabel}
+                    backTestId="reader-back-home"
+                    titleAs="h1"
+                />
+            )}
             {readingView || (
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
                     <div className="max-w-3xl mx-auto px-4 sm:px-8 py-6 sm:py-10">

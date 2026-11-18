@@ -5,17 +5,20 @@
 // The translation toggle is local state only — there is no "translate this"
 // button, no polling, and no /api/article request.
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BookOpen, Languages } from 'lucide-react';
+import { BookOpen, Languages } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { LibraryArticle } from '../lib/library';
 import { difficultyBadge, fetchDifficultyBatch, type DifficultyItem } from '../lib/difficulty';
 import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
+import { SubHeader } from './ui/SubHeader';
 
 interface LibraryArticleReaderProps {
     article: LibraryArticle;
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     /**
      * Reuse the app-wide dictionary card (App owns its state/favorites).
      * Free library articles carry their id/title as the lookup source so a
@@ -31,7 +34,7 @@ interface LibraryArticleReaderProps {
     ) => void;
 }
 
-export function LibraryArticleReader({ article, onClose, onWordLookup }: LibraryArticleReaderProps) {
+export function LibraryArticleReader({ article, onClose, parentLabel, onWordLookup }: LibraryArticleReaderProps) {
     const { t, formatNumber } = useI18n();
     const [showTranslations, setShowTranslations] = useState(true);
     // Every paragraph has a Chinese translation on disk, so "show translations"
@@ -61,21 +64,19 @@ export function LibraryArticleReader({ article, onClose, onWordLookup }: Library
 
     return (
         <div data-testid="library-reader" className="h-full min-h-0 flex flex-col bg-[#09090b]">
-            <div className="flex-none flex flex-wrap items-center gap-2 px-4 sm:px-8 py-3 border-b border-white/5 bg-zinc-950/60 backdrop-blur-xl">
-                <button
-                    type="button"
-                    data-testid="library-article-back"
-                    onClick={onClose}
-                    className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    {t('library.article.back')}
-                </button>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
-                    <BookOpen className="w-3.5 h-3.5" />
-                    {t('library.article.badge')}
-                </span>
-            </div>
+            <SubHeader
+                title={t('topbar.feature.library')}
+                onBack={onClose}
+                parentLabel={parentLabel}
+                meta={(
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-micro font-semibold text-emerald-300">
+                        <BookOpen className="w-3.5 h-3.5" />
+                        {t('library.article.badge')}
+                    </span>
+                )}
+                backTestId="library-article-back"
+                titleAs="p"
+            />
 
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 <article className={`mx-auto px-4 sm:px-8 py-6 sm:py-10 ${bilingualReadingWidth(bilingualColumns)}`}>

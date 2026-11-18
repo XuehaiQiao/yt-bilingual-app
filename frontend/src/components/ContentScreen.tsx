@@ -32,6 +32,7 @@ import { LibrarySection } from './LibrarySection';
 import { BooksSection } from './BooksSection';
 import { HomeRecommendations } from './HomeRecommendations';
 import { EmptyState, ErrorPanel, LoadingState, RefreshingState } from './ui/StateView';
+import { PageHeader } from './ui/PageHeader';
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 
@@ -243,12 +244,12 @@ export function ContentScreen({
             <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 pt-5 sm:pt-8">
                 <EstimateDialog ref={estimateRef} onStart={onSubmitUrl} />
 
-                <header className="lg:hidden">
-                    <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-50">
-                        {t('content.title')}
-                    </h1>
-                    <p className="mt-1 text-sm text-zinc-500">{t('content.subtitle')}</p>
-                </header>
+                <PageHeader
+                    testId="content-page-header"
+                    titleTestId="content-title"
+                    title={t('content.title')}
+                    subtitle={t('content.subtitle')}
+                />
 
                 <div className="mt-5 sm:mt-6 lg:mt-6 flex flex-col gap-6 sm:gap-8 xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-8 xl:items-start">
                 {/* Main action: paste a link (same estimate pipeline as Today). */}

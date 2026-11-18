@@ -2,11 +2,12 @@ import { apiFetch } from './lib/api';
 import { CourseApiError, COURSE_MVP_LESSON_ID, generateCourse, isCourseAbortError } from './lib/course';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, ArrowLeft, BookOpenCheck } from 'lucide-react';
+import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, BookOpenCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { Dialog } from './components/ui/Dialog';
+import { BackButton } from './components/ui/BackButton';
 import { AuthProvider, useAuth } from './lib/auth';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import { getLanguageMeta, getRuntimeTargetLang } from './i18n';
@@ -145,6 +146,14 @@ const SUB_LABEL_KEYS: Record<SubRoute['kind'], TranslationKey> = {
   course: 'topbar.feature.course',
 };
 
+/** Parent tab name for every sub-view back control's aria label. */
+const PARENT_LABEL_KEYS: Record<TabId, TranslationKey> = {
+  today: 'nav.today',
+  content: 'nav.content',
+  practice: 'nav.practice',
+  profile: 'nav.profile',
+};
+
 function formatClock(seconds: number): string {
   const safe = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
   const mm = Math.floor(safe / 60).toString().padStart(2, '0');
@@ -176,6 +185,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const { user, status, isAdmin, dataRevision } = useAuth();
   const { t, language, targetLang } = useI18n();
   const { state, go, open, replace, back, openAnchor } = useNav();
+  // Sub-view back controls name the source tab as the parent (NM §5.1).
+  const parentLabel = t(PARENT_LABEL_KEYS[state.tab]);
 
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
@@ -2923,7 +2934,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         style={{ height: '100dvh' }}
       >
         {isAdmin ? (
-          <AdminConsoleScreen onClose={handleCloseAdmin} onDenied={handleAdminDenied} />
+          <AdminConsoleScreen onClose={handleCloseAdmin} parentLabel={t('nav.profile')} onDenied={handleAdminDenied} />
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
@@ -2939,6 +2950,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         title={metadata?.title || t('common.unknownVideo')}
         featureLabel={featureLabel}
         onBack={() => back()}
+        parentLabel={parentLabel}
         wordbookCount={vocabularyFavoriteCount}
         onOpenWordbook={handleOpenWordbookRoute}
         showPip={Boolean(videoId) && transcript.length > 0 && !quizOpen}
@@ -3087,6 +3099,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         <QuizScreen
           lesson={quizLesson}
           onExit={handleQuizExit}
+          parentLabel={parentLabel}
           onSeekEvidence={handleQuizEvidence}
           onHome={handleQuizHome}
           onRequestLogin={onRequestLogin}
@@ -3102,6 +3115,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               <LibraryArticleReader
                 article={libraryArticle}
                 onClose={handleCloseLibraryArticle}
+                parentLabel={parentLabel}
                 onWordLookup={handleLibraryArticleWordLookup}
               />,
             );
@@ -3120,16 +3134,18 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               isGuest={status === 'guest'}
               onRequestLogin={onRequestLogin}
               onExit={back}
+              parentLabel={parentLabel}
             />,
           );
         case 'review':
           return subFrame(
-            <ReviewScreen onClose={handleCloseReview} onRequestLogin={onRequestLogin} />,
+            <ReviewScreen onClose={handleCloseReview} parentLabel={parentLabel} onRequestLogin={onRequestLogin} />,
           );
         case 'report':
           return subFrame(
             <ReportScreen
               onClose={handleCloseReport}
+              parentLabel={parentLabel}
               onOpenEvidence={(evidence) => { void handleOpenEvidence(evidence); }}
               onOpenReview={handleOpenReview}
             />,
@@ -3140,6 +3156,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               initialView={sub.view}
               isGuest={status === 'guest'}
               onClose={handleClosePlacement}
+              parentLabel={parentLabel}
               onStartLearning={handlePlacementStartLearning}
               onRequestLogin={onRequestLogin}
               onOpenAbility={handleOpenAbility}
@@ -3149,6 +3166,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           return subFrame(
             <AbilityScreen
               onClose={handleCloseAbility}
+              parentLabel={parentLabel}
               onOpenPlacement={() => handleOpenPlacement('intro')}
             />,
           );
@@ -3157,6 +3175,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             <ExamScreen
               isGuest={status === 'guest'}
               onClose={handleCloseExam}
+              parentLabel={parentLabel}
               onRequestLogin={onRequestLogin}
             />,
           );
@@ -3164,6 +3183,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           return subFrame(
             <DiscoverScreen
               onClose={handleCloseDiscover}
+              parentLabel={parentLabel}
               onStart={handleDiscoverStart}
               onRequestLogin={onRequestLogin}
               initialQuery={discoverInitialQuery ?? undefined}
@@ -3177,6 +3197,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               // favorites row jumps to (same key the pre-P0 nonce provided).
               key={`reader:${targetLang}:${sub.articleId ?? ''}`}
               onClose={handleCloseReader}
+              parentLabel={parentLabel}
               onRequestLogin={onRequestLogin}
               isGuest={status === 'guest'}
               onWordLookup={handleReaderWordLookup}
@@ -3196,6 +3217,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onToggleFavorite={handleToggleSentenceFavorite}
               favoriteIds={favoriteIds}
               onClose={() => back()}
+              parentLabel={parentLabel}
             />,
           );
         case 'blog':
@@ -3204,6 +3226,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               initialSlug={sub.slug}
               onOpenArticle={handleOpenBlogArticle}
               onClose={handleCloseBlog}
+              parentLabel={parentLabel}
             />,
           );
         case 'book':
@@ -3212,6 +3235,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               key={`book:${sub.bookId}`}
               bookId={sub.bookId}
               onClose={() => back()}
+              parentLabel={parentLabel}
               onOpenSeries={(seriesId) => openSub({ kind: 'book-series', seriesId })}
               onWordLookup={handleBookWordLookup}
             />,
@@ -3222,6 +3246,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               key={`book-series:${sub.seriesId}`}
               seriesId={sub.seriesId}
               onClose={() => back()}
+              parentLabel={parentLabel}
               onOpenBook={(bookId) => openSub({ kind: 'book', bookId })}
             />,
           );
@@ -3231,6 +3256,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               key={`imported-book:${targetLang}:${sub.bookId}`}
               bookId={sub.bookId}
               onClose={() => back()}
+              parentLabel={parentLabel}
               onWordLookup={handleImportedBookWordLookup}
               onRequestLogin={() => onRequestLogin?.()}
             />,
@@ -3240,6 +3266,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             <VocabularyBookScreen
               favorites={favorites}
               onBack={back}
+              parentLabel={parentLabel}
               onRemoveFavorite={handleRemoveFavorite}
               onPlayFavorite={handlePlayFavorite}
               onOpenArticle={handleOpenFavoriteArticle}
@@ -3539,14 +3566,13 @@ function LoginView({ next }: { next: string | null }) {
   const { status } = useAuth();
   return (
     <div className="relative">
-      <a
-        href="#/welcome"
-        data-testid="login-back"
-        className="fixed left-4 top-5 z-30 inline-flex h-9 items-center gap-1.5 rounded-xl border border-white/5 bg-zinc-800/60 px-3 text-xs font-medium text-zinc-300 transition-colors hover:border-white/10 hover:bg-zinc-700/60 hover:text-zinc-100 sm:left-6 sm:top-6"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {t('welcome.login.back')}
-      </a>
+      <BackButton
+        onBack={() => { window.location.hash = '#/welcome'; }}
+        ariaLabel={t('welcome.login.back')}
+        label={t('welcome.login.back')}
+        testId="login-back"
+        className="fixed left-4 top-5 z-30 sm:left-6 sm:top-6"
+      />
       <AuthScreen
         onGuestContinue={() => {
           // `guest` can use the app right away; `anonymous` (backend session

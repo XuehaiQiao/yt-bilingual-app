@@ -7,7 +7,6 @@
 import { useEffect, useState } from 'react';
 import {
     AlertCircle,
-    ArrowLeft,
     ArrowRight,
     BookOpen,
     CalendarDays,
@@ -19,10 +18,13 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { fetchBooksIndex, type BookSeries } from '../lib/books';
+import { SubHeader } from './ui/SubHeader';
 
 interface BookSeriesScreenProps {
     seriesId: string;
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     onOpenBook: (bookId: string) => void;
 }
 
@@ -32,7 +34,7 @@ const LevelBadge = ({ level }: { level: string }) => (
     </span>
 );
 
-export function BookSeriesScreen({ seriesId, onClose, onOpenBook }: BookSeriesScreenProps) {
+export function BookSeriesScreen({ seriesId, onClose, parentLabel, onOpenBook }: BookSeriesScreenProps) {
     const { t, formatNumber } = useI18n();
     const [series, setSeries] = useState<BookSeries | null>(null);
     const [loading, setLoading] = useState(true);
@@ -66,23 +68,14 @@ export function BookSeriesScreen({ seriesId, onClose, onOpenBook }: BookSeriesSc
 
     return (
         <div data-testid="book-series-screen" className="h-full min-h-0 flex flex-col bg-[#09090b]">
-            <div className="flex-none flex items-center gap-2 px-3 sm:px-6 py-2.5 border-b border-white/5 bg-zinc-950/60 backdrop-blur-xl">
-                <button
-                    type="button"
-                    data-testid="book-series-back"
-                    onClick={onClose}
-                    className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors shrink-0"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span className="hidden sm:inline">{t('books.series.back')}</span>
-                </button>
-                <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-zinc-200">
-                        {series?.title || t('books.series.title')}
-                    </p>
-                    {series && <p className="truncate text-[11px] text-zinc-500">{series.author}</p>}
-                </div>
-            </div>
+            <SubHeader
+                title={series?.title || t('books.series.title')}
+                onBack={onClose}
+                parentLabel={parentLabel}
+                meta={series?.author}
+                backTestId="book-series-back"
+                titleAs="h1"
+            />
 
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 <div className="mx-auto w-full max-w-3xl px-4 sm:px-8 py-5 sm:py-8">
@@ -146,9 +139,6 @@ export function BookSeriesScreen({ seriesId, onClose, onOpenBook }: BookSeriesSc
                                         {series.author}
                                     </span>
                                 </div>
-                                <h1 className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight text-zinc-100">
-                                    {series.title}
-                                </h1>
                                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
                                     <span className="inline-flex items-center gap-1.5">
                                         <BookOpen className="w-3.5 h-3.5" />

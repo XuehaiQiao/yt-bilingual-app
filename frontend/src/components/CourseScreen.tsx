@@ -9,7 +9,6 @@
 // out.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ArrowLeft,
     ArrowRight,
     Check,
     CheckCircle2,
@@ -28,6 +27,7 @@ import {
 } from 'lucide-react';
 import type { TranslationKey } from '../i18n';
 import { useI18n } from '../i18n/I18nProvider';
+import { SubHeader } from './ui/SubHeader';
 import {
     completeCourseAttempt,
     countCourseWords,
@@ -57,6 +57,8 @@ interface CourseScreenProps {
     onRequestLogin?: () => void;
     /** Leave the lesson (back to the entry page, today by default). */
     onExit: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
 }
 
 interface CompletionState {
@@ -108,6 +110,7 @@ function CourseHeader({
     showTimer,
     showProgress,
     onExit,
+    parentLabel,
 }: {
     lesson: CourseLesson;
     stepIndex: number;
@@ -117,6 +120,7 @@ function CourseHeader({
     showTimer: boolean;
     showProgress: boolean;
     onExit: () => void;
+    parentLabel?: string;
 }) {
     const { t, language } = useI18n();
     const title = language === 'zh-CN' && lesson.titleZh ? lesson.titleZh : lesson.title;
@@ -128,99 +132,76 @@ function CourseHeader({
     const timerTone = remainingMs <= 120_000 ? 'text-amber-300' : 'text-zinc-300';
 
     return (
-        <header
-            data-testid="course-header"
-            className="flex-none border-b border-white/5 bg-zinc-950/60 backdrop-blur-xl z-20"
-        >
-            <div className="mx-auto w-full max-w-5xl h-12 md:h-14 px-2 sm:px-4 lg:px-6 flex items-center gap-1.5 sm:gap-3">
-                <button
-                    type="button"
-                    data-testid="course-exit"
-                    onClick={onExit}
-                    aria-label={t('course.exit')}
-                    title={t('course.exit')}
-                    className="inline-flex items-center gap-1.5 h-9 px-2 rounded-lg text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:bg-white/5 transition-colors shrink-0"
+        <>
+            <SubHeader
+                title={title}
+                onBack={onExit}
+                parentLabel={parentLabel}
+                meta={<span className="hidden sm:inline-flex">{[subtitle, meta].filter(Boolean).join(' · ')}</span>}
+                backLabel={t('course.exit')}
+                backTestId="course-exit"
+                titleTestId="course-title"
+                testId="course-header"
+                titleAs="p"
+            />
+
+            {(showProgress || showTimer) && (
+                <div
+                    data-testid="course-toolbar"
+                    className="flex-none border-b border-white/5 bg-zinc-950/40 px-3 pb-2.5 pt-2 sm:px-4 lg:px-6"
                 >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span className="hidden sm:inline">{t('course.exit')}</span>
-                </button>
-
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 min-w-0">
-                        <p
-                            data-testid="course-title"
-                            className="min-w-0 truncate text-sm font-semibold tracking-tight text-zinc-100"
-                            title={title}
-                        >
-                            {title}
-                        </p>
-                        <span className="hidden lg:inline-flex items-center whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/50 border border-white/5 text-zinc-400 shrink-0">
-                            {t('course.entry.badgeShort')}
-                        </span>
-                    </div>
-                    <p className="hidden sm:block truncate text-[11px] leading-tight text-zinc-500">
-                        {[subtitle, meta].filter(Boolean).join(' · ')}
-                    </p>
-                </div>
-
-                {showProgress && (
-                    <span
-                        data-testid="course-step-count"
-                        className="hidden sm:inline-flex items-center whitespace-nowrap text-[11px] font-medium text-zinc-400 tabular-nums shrink-0"
-                    >
-                        {t('course.stepOf', { current: stepIndex + 1, total: totalSteps })}
-                    </span>
-                )}
-
-                {showTimer && (
-                    <span
-                        data-testid="course-timer"
-                        data-over={timeOver ? 'true' : 'false'}
-                        role="timer"
-                        aria-label={t('course.timer.remaining')}
-                        title={timeOver ? t('course.timer.over') : t('course.timer.remaining')}
-                        className={`inline-flex items-center gap-1.5 h-8 px-2 sm:px-2.5 rounded-lg bg-zinc-800/50 border border-white/5 text-xs font-medium tabular-nums shrink-0 ${timerTone}`}
-                    >
-                        <Clock3 className="w-3.5 h-3.5" />
-                        {formatClock(remainingMs)}
-                    </span>
-                )}
-            </div>
-
-            {showProgress && (
-                <div className="mx-auto w-full max-w-5xl px-3 sm:px-4 lg:px-6 pb-2.5">
-                    <div className="flex items-center justify-between gap-3 mb-1.5">
-                        <p className="min-w-0 truncate text-[11px] text-zinc-500">
-                            {t('course.progress')}
-                        </p>
-                        <div className="flex items-center gap-2 shrink-0">
-                            {timeOver && showTimer && (
-                                <p className="text-[11px] text-amber-300/90">
-                                    {t('course.timer.over')}
-                                </p>
-                            )}
-                            <span className="sm:hidden text-[11px] font-medium text-zinc-500 tabular-nums">
-                                {t('course.stepOf', { current: stepIndex + 1, total: totalSteps })}
-                            </span>
+                    <div className="mx-auto w-full max-w-5xl">
+                        <div className="mb-1.5 flex items-center justify-between gap-3">
+                            <p className="min-w-0 truncate text-[11px] text-zinc-500">
+                                {t('course.progress')}
+                            </p>
+                            <div className="flex shrink-0 items-center gap-2">
+                                {timeOver && showTimer && (
+                                    <p className="text-[11px] text-amber-300/90">{t('course.timer.over')}</p>
+                                )}
+                                {showProgress && (
+                                    <span
+                                        data-testid="course-step-count"
+                                        className="inline-flex items-center whitespace-nowrap text-[11px] font-medium text-zinc-400 tabular-nums"
+                                    >
+                                        {t('course.stepOf', { current: stepIndex + 1, total: totalSteps })}
+                                    </span>
+                                )}
+                                {showTimer && (
+                                    <span
+                                        data-testid="course-timer"
+                                        data-over={timeOver ? 'true' : 'false'}
+                                        role="timer"
+                                        aria-label={t('course.timer.remaining')}
+                                        title={timeOver ? t('course.timer.over') : t('course.timer.remaining')}
+                                        className={`inline-flex h-7 items-center gap-1.5 rounded-lg border border-white/5 bg-zinc-800/50 px-2.5 text-xs font-medium tabular-nums ${timerTone}`}
+                                    >
+                                        <Clock3 className="w-3.5 h-3.5" />
+                                        {formatClock(remainingMs)}
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                    <div
-                        data-testid="course-progress"
-                        role="progressbar"
-                        aria-valuemin={0}
-                        aria-valuemax={totalSteps}
-                        aria-valuenow={stepIndex + 1}
-                        aria-label={t('course.progress')}
-                        className="h-1.5 rounded-full bg-zinc-800 overflow-hidden"
-                    >
-                        <div
-                            className="h-full rounded-full bg-brand transition-[width] duration-300 ease-apple"
-                            style={{ width: `${Math.round(((stepIndex + 1) / Math.max(1, totalSteps)) * 100)}%` }}
-                        />
+                        {showProgress && (
+                            <div
+                                data-testid="course-progress"
+                                role="progressbar"
+                                aria-valuemin={0}
+                                aria-valuemax={totalSteps}
+                                aria-valuenow={stepIndex + 1}
+                                aria-label={t('course.progress')}
+                                className="h-1.5 rounded-full bg-zinc-800 overflow-hidden"
+                            >
+                                <div
+                                    className="h-full rounded-full bg-brand transition-[width] duration-300 ease-apple"
+                                    style={{ width: `${Math.round(((stepIndex + 1) / Math.max(1, totalSteps)) * 100)}%` }}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
-        </header>
+        </>
     );
 }
 
@@ -380,24 +361,18 @@ function QuestionBlock({
     );
 }
 
-function CourseGuest({ onRequestLogin, onExit }: Pick<CourseScreenProps, 'onRequestLogin' | 'onExit'>) {
+function CourseGuest({ onRequestLogin, onExit, parentLabel }: Pick<CourseScreenProps, 'onRequestLogin' | 'onExit'> & { parentLabel?: string }) {
     const { t } = useI18n();
     return (
         <div className="flex-1 min-h-0 flex flex-col bg-[#09090b]" data-testid="course-guest">
-            <header className="flex-none h-12 border-b border-white/5 bg-zinc-950/60 backdrop-blur-xl px-2 sm:px-4">
-                <div className="mx-auto w-full max-w-5xl h-full flex items-center">
-                    <button
-                        type="button"
-                        onClick={onExit}
-                        aria-label={t('course.exit')}
-                        title={t('course.exit')}
-                        className="inline-flex items-center gap-1.5 h-9 px-2 rounded-lg text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        <span className="hidden sm:inline">{t('course.exit')}</span>
-                    </button>
-                </div>
-            </header>
+            <SubHeader
+                title={t('course.entry.badgeShort')}
+                onBack={onExit}
+                parentLabel={parentLabel}
+                backLabel={t('course.exit')}
+                backTestId="course-exit"
+                titleAs="p"
+            />
             <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                 <div className="mx-auto w-full max-w-xl px-4 sm:px-6 py-12 sm:py-20">
                     <div className={`${CARD} p-6 sm:p-8 text-center`}>
@@ -436,7 +411,7 @@ function CourseGuest({ onRequestLogin, onExit }: Pick<CourseScreenProps, 'onRequ
     );
 }
 
-export function CourseScreen({ lessonId, isGuest, onRequestLogin, onExit }: CourseScreenProps) {
+export function CourseScreen({ lessonId, isGuest, onRequestLogin, onExit, parentLabel }: CourseScreenProps) {
     const { t, formatNumber } = useI18n();
     const [loadPhase, setLoadPhase] = useState<'loading' | 'ready' | 'error'>('loading');
     const [loadErrorKey, setLoadErrorKey] = useState<TranslationKey>('course.error.generic');
@@ -950,25 +925,19 @@ export function CourseScreen({ lessonId, isGuest, onRequestLogin, onExit }: Cour
     ]);
 
     if (isGuest) {
-        return <CourseGuest onRequestLogin={onRequestLogin} onExit={onExit} />;
+        return <CourseGuest onRequestLogin={onRequestLogin} onExit={onExit} parentLabel={parentLabel} />;
     }
 
     if (loadPhase === 'loading' || (!lesson && loadPhase !== 'error')) {
         return (
             <div className="flex-1 min-h-0 flex flex-col bg-[#09090b]" data-testid="course-loading">
-                <header className="flex-none h-12 border-b border-white/5 bg-zinc-950/60 px-2 sm:px-4">
-                    <div className="mx-auto w-full max-w-5xl h-full flex items-center">
-                        <button
-                            type="button"
-                            onClick={onExit}
-                            aria-label={t('course.exit')}
-                            className="inline-flex items-center gap-1.5 h-9 px-2 rounded-lg text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            <span className="hidden sm:inline">{t('course.exit')}</span>
-                        </button>
-                    </div>
-                </header>
+                <SubHeader
+                    title={t('course.entry.badgeShort')}
+                    onBack={onExit}
+                    parentLabel={parentLabel}
+                    backLabel={t('course.exit')}
+                    titleAs="p"
+                />
                 <div className="flex-1 flex flex-col items-center justify-center gap-3 text-zinc-500">
                     <Loader2 className="w-6 h-6 animate-spin" />
                     <p className="text-sm">{t('course.loading')}</p>
@@ -980,19 +949,13 @@ export function CourseScreen({ lessonId, isGuest, onRequestLogin, onExit }: Cour
     if (loadPhase === 'error' || !lesson) {
         return (
             <div className="flex-1 min-h-0 flex flex-col bg-[#09090b]" data-testid="course-error">
-                <header className="flex-none h-12 border-b border-white/5 bg-zinc-950/60 px-2 sm:px-4">
-                    <div className="mx-auto w-full max-w-5xl h-full flex items-center">
-                        <button
-                            type="button"
-                            onClick={onExit}
-                            aria-label={t('course.exit')}
-                            className="inline-flex items-center gap-1.5 h-9 px-2 rounded-lg text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            <span className="hidden sm:inline">{t('course.exit')}</span>
-                        </button>
-                    </div>
-                </header>
+                <SubHeader
+                    title={t('course.entry.badgeShort')}
+                    onBack={onExit}
+                    parentLabel={parentLabel}
+                    backLabel={t('course.exit')}
+                    titleAs="p"
+                />
                 <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
                     <div className="w-10 h-10 rounded-full bg-zinc-800/60 border border-white/5 flex items-center justify-center text-zinc-500">
                         <XCircle className="w-5 h-5" />
@@ -1036,6 +999,7 @@ export function CourseScreen({ lessonId, isGuest, onRequestLogin, onExit }: Cour
                     showTimer={false}
                     showProgress={false}
                     onExit={onExit}
+                    parentLabel={parentLabel}
                 />
                 <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                     <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-8 sm:py-12">
@@ -1194,6 +1158,7 @@ export function CourseScreen({ lessonId, isGuest, onRequestLogin, onExit }: Cour
                 showTimer
                 showProgress
                 onExit={onExit}
+                parentLabel={parentLabel}
             />
 
             <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">

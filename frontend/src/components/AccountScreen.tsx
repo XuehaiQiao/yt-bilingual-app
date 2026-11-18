@@ -11,7 +11,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertCircle,
-  ArrowLeft,
   BookOpen,
   CalendarRange,
   Check,
@@ -38,6 +37,8 @@ import { useI18n } from '../i18n/I18nProvider';
 import { getLanguageMeta, type LanguageCode } from '../i18n';
 import type { PlacementProfile } from '../lib/placement';
 import { useInstallPrompt, useOnlineStatus } from '../lib/pwa';
+import { BackButton } from './ui/BackButton';
+import { PageHeader } from './ui/PageHeader';
 import { toast, describeApiError } from '../lib/toast';
 import { displayUsername, usernameInitial, usernameProblem } from '../lib/username';
 import { loadVocabLevel, saveVocabLevel, VOCAB_LEVEL_EVENT, VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
@@ -67,6 +68,8 @@ interface AccountSummary {
 interface AccountScreenProps {
   /** Legacy full-screen close. Optional on the first-level 我的 page. */
   onClose?: () => void;
+  /** Parent screen name for the legacy back control's aria label. */
+  parentLabel?: string;
   /** First-level page mode: page title instead of a back button. */
   isPage?: boolean;
   /** Opens the existing public blog view (the product's official window). */
@@ -154,6 +157,7 @@ function SettingRow({
 
 export const AccountScreen: React.FC<AccountScreenProps> = ({
   onClose,
+  parentLabel,
   isPage = false,
   onOpenBlog,
   onOpenAdmin,
@@ -279,36 +283,38 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
     await logout();
   };
 
-  const pageChrome = (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      {isPage ? (
-        <div className="min-w-0 lg:hidden">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">{t('profile.title')}</h1>
-          <p className="mt-1 text-sm text-zinc-500">{t('profile.subtitle')}</p>
-        </div>
-      ) : (
-        <button
-          type="button"
-          data-testid="account-back"
-          onClick={onClose}
-          className="inline-flex items-center gap-1.5 h-9 px-2 -ml-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {t('account.back')}
-        </button>
-      )}
-      {isAuthenticated && (
-        <Button
-          variant="secondary"
-          size="md"
-          loading={isLoading}
-          onClick={() => { void loadSummary(); }}
-          testId="account-refresh"
-          iconLeft={<RefreshCw className="w-4 h-4" />}
-        >
-          {t('account.refresh')}
-        </Button>
-      )}
+  const refreshAction = isAuthenticated && (
+    <Button
+      variant="secondary"
+      size="md"
+      loading={isLoading}
+      onClick={() => { void loadSummary(); }}
+      testId="account-refresh"
+      iconLeft={<RefreshCw className="w-4 h-4" />}
+    >
+      {t('account.refresh')}
+    </Button>
+  );
+
+  const pageChrome = isPage ? (
+    <div className="flex items-start justify-between gap-3">
+      <PageHeader
+        title={t('profile.title')}
+        subtitle={t('profile.subtitle')}
+        testId="profile-page-header"
+        titleTestId="profile-title"
+      />
+      {refreshAction}
+    </div>
+  ) : (
+    <div className="flex items-center justify-between gap-3">
+      <BackButton
+        onBack={() => onClose?.()}
+        parentLabel={parentLabel}
+        testId="account-back"
+        className="-ml-2"
+      />
+      {refreshAction}
     </div>
   );
 

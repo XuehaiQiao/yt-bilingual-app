@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import type { PlacementProfile } from '../lib/placement';
 import type { ReviewStats } from '../lib/review';
 import { useI18n } from '../i18n/I18nProvider';
+import { PageHeader } from './ui/PageHeader';
 
 const PAGE_PAD = 'pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10';
 const CARD = 'rounded-3xl border border-white/5 bg-zinc-900/40 p-4 sm:p-5 min-w-0';
@@ -84,12 +85,12 @@ export function PracticeScreen({
             className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] ${PAGE_PAD}`}
         >
             <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 pt-5 sm:pt-8 space-y-4 sm:space-y-5">
-                <header className="lg:hidden">
-                    <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-50">
-                        {t('practice.title')}
-                    </h1>
-                    <p className="mt-1 text-sm text-zinc-500">{t('practice.subtitle')}</p>
-                </header>
+                <PageHeader
+                    testId="practice-page-header"
+                    titleTestId="practice-title"
+                    title={t('practice.title')}
+                    subtitle={t('practice.subtitle')}
+                />
 
                 {/* Main card: today's review. */}
                 <motion.section

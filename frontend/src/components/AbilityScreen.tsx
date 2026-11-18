@@ -29,7 +29,6 @@ import {
     ShieldQuestion,
     Sparkles,
     SquarePen,
-    X,
 } from 'lucide-react';
 import {
     canDoBasis,
@@ -51,10 +50,13 @@ import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { Dialog } from './ui/Dialog';
+import { SubHeader } from './ui/SubHeader';
 
 interface AbilityScreenProps {
     /** Leave the screen (the previous page stays mounted underneath). */
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     /** Start / retest the 12-minute placement test. */
     onOpenPlacement: () => void;
 }
@@ -501,7 +503,7 @@ function EvidenceDrawer({
 
 // ── Screen ───────────────────────────────────────────────────────────────
 
-export function AbilityScreen({ onClose, onOpenPlacement }: AbilityScreenProps) {
+export function AbilityScreen({ onClose, parentLabel, onOpenPlacement }: AbilityScreenProps) {
     const { t, language, formatNumber, formatDate } = useI18n();
     const [profile, setProfile] = useState<AbilityProfile | null>(null);
     const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -801,36 +803,21 @@ export function AbilityScreen({ onClose, onOpenPlacement }: AbilityScreenProps) 
     }
 
     const header = (
-        <header className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-                <p className="text-[11px] font-medium text-blue-400/90 tracking-tight">
-                    {t('ability.eyebrow')}
-                </p>
-                <h1
-                    data-testid="ability-title"
-                    className="mt-0.5 text-xl sm:text-2xl font-semibold tracking-tight text-zinc-100 break-words"
-                >
-                    {t('ability.title')}
-                </h1>
-                <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 break-words">
-                    {t('ability.subtitle')}
-                </p>
-            </div>
-            <button
-                type="button"
-                data-testid="ability-close"
-                onClick={onClose}
-                aria-label={t('ability.closeAria')}
-                title={t('ability.closeAria')}
-                className="p-2 rounded-full bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-400 hover:text-zinc-100 transition-colors shrink-0"
-            >
-                <X className="w-5 h-5" />
-            </button>
-        </header>
+        <SubHeader
+            title={t('ability.title')}
+            onBack={onClose}
+            parentLabel={parentLabel}
+            meta={t('ability.eyebrow')}
+            backTestId="ability-back"
+            titleTestId="ability-title"
+        />
     );
 
     const body = (
         <>
+            <p className="text-xs leading-relaxed text-fg-muted break-words">
+                {t('ability.subtitle')}
+            </p>
             {stale && (
                 <div
                     data-testid="ability-stale"
@@ -1150,13 +1137,13 @@ export function AbilityScreen({ onClose, onOpenPlacement }: AbilityScreenProps) 
 
     return (
         <div
-            ref={scrollRef}
             data-testid="ability-screen"
             data-phase={phase}
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+            className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]"
         >
+            {header}
+            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
             <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-5">
-                {header}
                 <div
                     aria-live="polite"
                     data-testid="ability-announce"
@@ -1199,6 +1186,7 @@ export function AbilityScreen({ onClose, onOpenPlacement }: AbilityScreenProps) 
                 )}
 
                 {phase === 'ready' && body}
+            </div>
             </div>
 
             {assessOpen && (

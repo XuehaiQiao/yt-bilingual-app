@@ -15,7 +15,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     AlertTriangle,
-    ArrowLeft,
     BookMarked,
     BookOpen,
     ChevronDown,
@@ -67,6 +66,7 @@ import {
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import { VocabPagination } from './VocabPagination';
+import { SubHeader } from './ui/SubHeader';
 import type { TranslationKey } from '../i18n';
 
 interface VocabularyBookScreenProps {
@@ -74,6 +74,8 @@ interface VocabularyBookScreenProps {
     favorites: FavoriteItem[];
     /** Back to the previous view (profile tab for a deep link). */
     onBack: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     /** Optimistic delete + rollback/toast live in App; the row disappears now. */
     onRemoveFavorite: (id: string) => void;
     onPlayFavorite: (videoId: string, start: number) => void;
@@ -162,6 +164,7 @@ function LevelBadge({ level, testId, title }: { level: string; testId?: string; 
 export function VocabularyBookScreen({
     favorites,
     onBack,
+    parentLabel,
     onRemoveFavorite,
     onPlayFavorite,
     onOpenArticle,
@@ -548,23 +551,13 @@ export function VocabularyBookScreen({
     const mineTabCount = myWords.length;
 
     const renderHeader = () => (
-        <header className="flex items-start gap-2.5">
-            <button
-                type="button"
-                data-testid="vocab-back"
-                onClick={onBack}
-                aria-label={t('vocab.back')}
-                title={t('vocab.back')}
-                className="mt-0.5 inline-flex h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/5 hover:text-zinc-100"
-            >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('vocab.back')}</span>
-            </button>
-            <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">{t('vocab.title')}</h1>
-                <p className="mt-1 text-xs text-zinc-500">{t('vocab.subtitle')}</p>
-            </div>
-        </header>
+        <SubHeader
+            title={t('vocab.title')}
+            onBack={onBack}
+            parentLabel={parentLabel}
+            meta={<span data-testid="vocab-total">{totalLabel}</span>}
+            backTestId="vocab-back"
+        />
     );
 
     const renderTabs = () => {
@@ -1450,10 +1443,11 @@ export function VocabularyBookScreen({
     return (
         <div
             data-testid="vocabulary-book"
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+            className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]"
         >
+            {renderHeader()}
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-8">
-                {renderHeader()}
                 {catalogPhase === 'error' && (
                     <div
                         data-testid="vocab-catalog-error"
@@ -1477,6 +1471,7 @@ export function VocabularyBookScreen({
                 )}
                 {renderTabs()}
                 {activeIsMine ? renderMine() : activeTab === PHRASES_TAB ? renderPhrases() : renderList()}
+            </div>
             </div>
         </div>
     );

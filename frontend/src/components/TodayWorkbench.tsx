@@ -17,6 +17,7 @@ import type { ReviewStats } from '../lib/review';
 import type { PlacementProfile } from '../lib/placement';
 import { progressPercent } from '../lib/progress';
 import { ErrorPanel } from './ui/StateView';
+import { PageHeader } from './ui/PageHeader';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 
@@ -195,23 +196,17 @@ export function TodayWorkbench({
     return (
         <div data-testid="today-workbench" className="min-w-0">
             {/* Today header: date + one status line. Language / model / account
-                live in the app chrome (P0 IA §5.4), not on this page. */}
-            <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2.5 sm:gap-4">
-                <div className="min-w-0">
-                    <p data-testid="today-date" className="text-[11px] sm:text-xs font-medium text-zinc-500 tabular-nums">
-                        {dateText}
-                    </p>
-                    <h2 className="mt-0.5 sm:mt-1 text-2xl sm:text-4xl md:text-5xl font-semibold tracking-[-0.015em] text-zinc-50">
-                        {t('home.today.heading')}
-                    </h2>
-                    <p
-                        data-testid="today-status"
-                        className="mt-1 sm:mt-2 max-w-2xl text-xs sm:text-sm leading-relaxed text-zinc-400 break-words"
-                    >
-                        {statusLine}
-                    </p>
-                </div>
-            </header>
+                live in the app chrome (P0 IA §5.4), not on this page. Desktop
+                titles live in the TopBar, so this header is `lg:hidden`. */}
+            <PageHeader
+                testId="today-page-header"
+                titleTestId="today-title"
+                title={t('home.today.heading')}
+                eyebrow={<span data-testid="today-date" className="tabular-nums">{dateText}</span>}
+                subtitle={(
+                    <span data-testid="today-status" className="break-words">{statusLine}</span>
+                )}
+            />
 
             {inputSlot}
 

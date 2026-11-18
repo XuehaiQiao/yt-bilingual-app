@@ -32,6 +32,7 @@ import {
   type BlogPost,
   type BlogPostSummary,
 } from '../lib/blog';
+import { SubHeader } from './ui/SubHeader';
 
 const GISCUS = {
   repo: import.meta.env.VITE_GISCUS_REPO as string | undefined,
@@ -42,8 +43,6 @@ const GISCUS = {
 
 const SECONDARY_BUTTON =
   'inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-sm font-medium text-zinc-300 hover:text-zinc-100 transition-colors disabled:opacity-50';
-const TINTED_BUTTON =
-  'inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-sm font-medium text-blue-300 hover:text-blue-200 transition-colors';
 
 function giscusConfigured(): boolean {
   return Boolean(GISCUS.repo && GISCUS.repoId && GISCUS.category && GISCUS.categoryId);
@@ -254,8 +253,11 @@ export function BlogScreen({
   onClose,
   initialSlug,
   onOpenArticle,
+  parentLabel,
 }: {
   onClose: () => void;
+  /** Parent screen name for the back control's aria label. */
+  parentLabel?: string;
   /** Article slug from the route (`#/<tab>/blog/<slug>`); absent = list. */
   initialSlug?: string;
   /** List → article: the app pushes `...#/blog/<slug>` (N-01/J27). */
@@ -341,31 +343,31 @@ export function BlogScreen({
   return (
     <div
       data-testid="blog-screen"
-      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+      className="flex-1 min-h-0 flex flex-col bg-[#09090b]"
     >
-      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 sm:py-10">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            data-testid="blog-back"
-            onClick={handleBack}
-            className="inline-flex items-center gap-1.5 h-9 px-2 -ml-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {selectedSlug ? t('blog.backToList') : t('blog.backHome')}
-          </button>
+      <SubHeader
+        title={t('blog.title')}
+        onBack={handleBack}
+        parentLabel={parentLabel}
+        backAriaLabel={selectedSlug ? t('blog.backToList') : undefined}
+        backLabel={selectedSlug ? t('blog.backToList') : undefined}
+        backTestId="blog-back"
+        titleAs={selectedSlug ? 'p' : 'h1'}
+        actions={(
           <a
             href={feedUrl}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={t('blog.feedAria')}
-            className={TINTED_BUTTON}
+            className="inline-flex h-9 items-center gap-1.5 rounded-control border border-white/5 bg-zinc-800/60 px-2.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100"
           >
             <Rss className="w-4 h-4" />
-            {t('blog.feed')}
+            <span className="hidden sm:inline">{t('blog.feed')}</span>
           </a>
-        </div>
-
+        )}
+      />
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
+      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 sm:py-10">
         {selectedSlug ? (
           <article className="mt-6">
             {articleLoading && (
@@ -459,12 +461,9 @@ export function BlogScreen({
           </article>
         ) : (
           <>
-            <header className="mt-6">
-              <p className="text-[11px] font-medium text-blue-400">{t('blog.eyebrow')}</p>
-              <h1 className="mt-1 text-3xl sm:text-4xl font-semibold tracking-tight text-zinc-50">
-                {t('blog.title')}
-              </h1>
-              <p className="mt-3 text-sm leading-relaxed text-zinc-400">{t('blog.subtitle')}</p>
+            <header className="mt-1">
+              <p className="text-micro font-medium text-brand-300">{t('blog.eyebrow')}</p>
+              <p className="mt-1 text-ui leading-relaxed text-fg-secondary">{t('blog.subtitle')}</p>
             </header>
 
             {listLoading && (
@@ -515,6 +514,7 @@ export function BlogScreen({
             )}
           </>
         )}
+      </div>
       </div>
     </div>
   );

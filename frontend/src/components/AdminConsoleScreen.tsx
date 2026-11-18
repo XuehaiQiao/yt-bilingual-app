@@ -29,7 +29,6 @@ import { motion } from 'framer-motion';
 import {
   Activity,
   AlertCircle,
-  ArrowLeft,
   Ban,
   Check,
   ChevronLeft,
@@ -61,6 +60,7 @@ import { useAuth } from '../lib/auth';
 import { displayUsername } from '../lib/username';
 import { toast } from '../lib/toast';
 import { Dialog } from './ui/Dialog';
+import { BackButton } from './ui/BackButton';
 import {
   AdminApiError,
   adjustAdminUserCredits,
@@ -554,11 +554,13 @@ function StatusDialog({ target, onClose, onSaved, onAuthError }: StatusDialogPro
 export interface AdminConsoleScreenProps {
   /** Leave the console — App returns to the account page or home. */
   onClose: () => void;
+  /** Parent screen name for the back control's aria label. */
+  parentLabel?: string;
   /** Access lost (not an admin / session expired): App toasts and goes home. */
   onDenied: () => void;
 }
 
-export function AdminConsoleScreen({ onClose, onDenied }: AdminConsoleScreenProps) {
+export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminConsoleScreenProps) {
   const { t, formatNumber, formatDate } = useI18n();
   const { user, isAdmin } = useAuth();
   const usd = useUsdFormatter();
@@ -831,15 +833,12 @@ export function AdminConsoleScreen({ onClose, onDenied }: AdminConsoleScreenProp
     >
       <div data-testid="admin-console" className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-5 sm:py-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <button
-            type="button"
-            data-testid="admin-back"
-            onClick={onClose}
-            className="inline-flex items-center gap-1.5 h-9 px-2 -ml-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {t('admin.back')}
-          </button>
+          <BackButton
+            onBack={onClose}
+            parentLabel={parentLabel}
+            testId="admin-back"
+            className="-ml-2"
+          />
           <div className="flex items-center gap-2">
             <LanguageMenu />
             <button

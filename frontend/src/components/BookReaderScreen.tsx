@@ -9,7 +9,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     AlertCircle,
-    ArrowLeft,
     ArrowRight,
     BookOpen,
     ChevronLeft,
@@ -25,6 +24,7 @@ import {
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { SubHeader } from './ui/SubHeader';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import {
@@ -41,6 +41,8 @@ import {
 interface BookReaderScreenProps {
     bookId: string;
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     onOpenSeries: (seriesId: string) => void;
     onWordLookup: (
         word: string,
@@ -162,6 +164,7 @@ const ErrorPanel = ({
 export function BookReaderScreen({
     bookId,
     onClose,
+    parentLabel,
     onOpenSeries,
     onWordLookup,
 }: BookReaderScreenProps) {
@@ -428,38 +431,25 @@ export function BookReaderScreen({
 
     return (
         <div data-testid="book-reader" className="h-full min-h-0 flex flex-col bg-[#09090b]">
-            <div className="flex-none flex items-center gap-2 px-3 sm:px-6 py-2.5 border-b border-white/5 bg-zinc-950/60 backdrop-blur-xl">
-                <button
-                    type="button"
-                    data-testid="book-reader-back"
-                    onClick={onClose}
-                    className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors shrink-0"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span className="hidden sm:inline">{t('books.reader.back')}</span>
-                </button>
-                <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-zinc-200">
-                        {detail?.titleZh || t('books.reader.loadingBook')}
-                    </p>
-                    {detail && (
-                        <p className="truncate text-[11px] text-zinc-500">
-                            {detail.author} · {detail.year}
-                        </p>
-                    )}
-                </div>
-                {detail && (
+            <SubHeader
+                title={detail?.titleZh || t('books.reader.loadingBook')}
+                onBack={onClose}
+                parentLabel={parentLabel}
+                meta={detail ? `${detail.author} · ${detail.year}` : undefined}
+                backTestId="book-reader-back"
+                titleAs="p"
+                actions={detail && (
                     <button
                         type="button"
                         data-testid="book-reader-series-link"
                         onClick={() => onOpenSeries(detail.seriesId)}
-                        className="hidden sm:inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors shrink-0"
+                        className="hidden sm:inline-flex items-center gap-1 h-9 px-2.5 rounded-control text-xs font-medium text-fg-secondary hover:text-fg-primary hover:bg-state-hover transition-colors shrink-0"
                     >
                         <Layers className="w-3.5 h-3.5" />
                         {t('books.reader.series')}
                     </button>
                 )}
-            </div>
+            />
 
             <div
                 ref={scrollRef}

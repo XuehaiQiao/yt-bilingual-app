@@ -25,7 +25,6 @@ import {
     RotateCcw,
     ShieldQuestion,
     Sparkles,
-    X,
 } from 'lucide-react';
 import {
     getProfile,
@@ -43,6 +42,7 @@ import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { Dialog } from './ui/Dialog';
+import { SubHeader } from './ui/SubHeader';
 
 export type PlacementInitialView = 'intro' | 'profile';
 
@@ -52,6 +52,8 @@ interface PlacementScreenProps {
     isGuest: boolean;
     /** Leave the view (home stays mounted underneath). */
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     /** Result screen "go learn": close and put the cursor in the link input. */
     onStartLearning?: () => void;
     /** Guest "log in to keep it longer" entry. */
@@ -118,6 +120,7 @@ export function PlacementScreen({
     initialView = 'intro',
     isGuest,
     onClose,
+    parentLabel,
     onStartLearning,
     onRequestLogin,
     onOpenAbility,
@@ -1352,38 +1355,24 @@ export function PlacementScreen({
 
     return (
         <div
-            ref={scrollRef}
             data-testid="placement-screen"
             data-phase={phase}
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+            className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]"
         >
+            <SubHeader
+                title={headerTitle}
+                onBack={handleExitClick}
+                parentLabel={parentLabel}
+                meta={t('placement.eyebrow')}
+                backTestId="placement-exit"
+                titleTestId="placement-title"
+            />
+
+            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
             <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
-                <header className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <p className="text-[11px] font-medium text-blue-400/90 tracking-tight">
-                            {t('placement.eyebrow')}
-                        </p>
-                        <h1
-                            data-testid="placement-title"
-                            className="mt-0.5 text-xl sm:text-2xl font-semibold tracking-tight text-zinc-100 break-words"
-                        >
-                            {headerTitle}
-                        </h1>
-                        <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 break-words">
-                            {headerSubtitle}
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        data-testid="placement-exit"
-                        onClick={handleExitClick}
-                        aria-label={t('placement.closeAria')}
-                        title={t('placement.closeAria')}
-                        className="p-2 rounded-full bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-400 hover:text-zinc-100 transition-colors shrink-0"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </header>
+                <p className="text-xs leading-relaxed text-fg-muted break-words">
+                    {headerSubtitle}
+                </p>
 
                 <AnimatePresence mode="wait" initial={false}>
                     <motion.div
@@ -1396,6 +1385,7 @@ export function PlacementScreen({
                         {body}
                     </motion.div>
                 </AnimatePresence>
+            </div>
             </div>
 
             <Dialog

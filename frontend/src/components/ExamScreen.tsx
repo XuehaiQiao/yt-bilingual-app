@@ -27,7 +27,6 @@ import {
     Loader2,
     LogIn,
     RotateCcw,
-    X,
 } from 'lucide-react';
 import {
     ExamApiError,
@@ -45,12 +44,15 @@ import {
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import { Dialog } from './ui/Dialog';
+import { SubHeader } from './ui/SubHeader';
 
 interface ExamScreenProps {
     /** Guests can open the view but cannot practice (records belong to an account). */
     isGuest: boolean;
     /** Leave the view (home stays mounted underneath). */
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     /** Guest "log in to use" entry. */
     onRequestLogin?: () => void;
 }
@@ -145,7 +147,7 @@ function clearDraft(sessionId: string): void {
     }
 }
 
-export function ExamScreen({ isGuest, onClose, onRequestLogin }: ExamScreenProps) {
+export function ExamScreen({ isGuest, onClose, parentLabel, onRequestLogin }: ExamScreenProps) {
     const { t, formatNumber, formatDate } = useI18n();
     const reduceMotion = useReducedMotion();
 
@@ -1164,60 +1166,43 @@ export function ExamScreen({ isGuest, onClose, onRequestLogin }: ExamScreenProps
         <div
             data-testid="exam-screen"
             data-phase={phase}
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+            className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]"
         >
-            <div className="mx-auto w-full max-w-2xl px-4 py-4 sm:px-6 sm:py-8 flex flex-col gap-4 sm:gap-6">
-                <header className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <p className="text-[11px] font-medium tracking-tight text-blue-400/90">
-                            {t('exam.eyebrow')}
-                        </p>
-                        <h1
-                            data-testid="exam-title"
-                            className="mt-0.5 text-xl font-semibold tracking-tight text-zinc-100 break-words sm:text-2xl"
-                        >
-                            {headerTitle}
-                        </h1>
-                        <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 break-words">
-                            {headerSubtitle}
-                        </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                        {!isGuest && phase !== 'quiz' && (
-                            <button
-                                type="button"
-                                data-testid={phase === 'history' ? 'exam-history-back' : 'exam-history-button'}
-                                onClick={
-                                    phase === 'history'
-                                        ? () => setPhase(result ? 'result' : 'types')
-                                        : openHistory
-                                }
-                                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-white/5 bg-zinc-800/60 px-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100 sm:px-3"
-                            >
-                                {phase === 'history' ? (
-                                    <ArrowLeft className="h-4 w-4" />
-                                ) : (
-                                    <History className="h-4 w-4" />
-                                )}
-                                <span className="hidden sm:inline">
-                                    {phase === 'history'
-                                        ? t('exam.history.back')
-                                        : t('exam.history')}
-                                </span>
-                            </button>
+            <SubHeader
+                title={headerTitle}
+                onBack={handleClose}
+                parentLabel={parentLabel}
+                meta={t('exam.eyebrow')}
+                backTestId="exam-back"
+                titleTestId="exam-title"
+                actions={!isGuest && phase !== 'quiz' && (
+                    <button
+                        type="button"
+                        data-testid={phase === 'history' ? 'exam-history-back' : 'exam-history-button'}
+                        onClick={
+                            phase === 'history'
+                                ? () => setPhase(result ? 'result' : 'types')
+                                : openHistory
+                        }
+                        className="inline-flex h-9 items-center gap-1.5 rounded-control border border-white/5 bg-zinc-800/60 px-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100 sm:px-3"
+                    >
+                        {phase === 'history' ? (
+                            <ArrowLeft className="h-4 w-4" />
+                        ) : (
+                            <History className="h-4 w-4" />
                         )}
-                        <button
-                            type="button"
-                            data-testid="exam-close"
-                            onClick={handleClose}
-                            aria-label={t('exam.closeAria')}
-                            title={t('exam.closeAria')}
-                            className="rounded-full border border-white/5 bg-zinc-800/60 p-2 text-zinc-400 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
-                </header>
+                        <span className="hidden sm:inline">
+                            {phase === 'history' ? t('exam.history.back') : t('exam.history')}
+                        </span>
+                    </button>
+                )}
+            />
+
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
+            <div className="mx-auto w-full max-w-2xl px-4 py-4 sm:px-6 sm:py-8 flex flex-col gap-4 sm:gap-6">
+                <p className="text-xs leading-relaxed text-fg-muted break-words">
+                    {headerSubtitle}
+                </p>
 
                 <motion.div
                     key={phase}
@@ -1227,6 +1212,7 @@ export function ExamScreen({ isGuest, onClose, onRequestLogin }: ExamScreenProps
                 >
                     {body}
                 </motion.div>
+            </div>
             </div>
 
             <Dialog

@@ -8,11 +8,11 @@ import {
     MoreHorizontal,
     Repeat,
     ShieldAlert,
-    X,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { loadModel } from '../lib/settings';
 import { describeApiError, toast } from '../lib/toast';
+import { SubHeader } from './ui/SubHeader';
 import {
     answerWord,
     getReviewQueue,
@@ -30,6 +30,8 @@ import type { TranslationKey } from '../i18n';
 interface ReviewScreenProps {
     /** Return to the home screen (specs/013: review is a view, not a page). */
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     /** Guest 403 path: open the auth screen instead of dead-ending. */
     onRequestLogin?: () => void;
 }
@@ -135,7 +137,7 @@ function StatCard({ label, value, testId }: { label: string; value: string; test
  * date. It never ranks words and never marks a wrong answer with a red cross —
  * a review is practice, not an exam.
  */
-export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, onRequestLogin }) => {
+export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, parentLabel, onRequestLogin }) => {
     const { t, formatNumber } = useI18n();
     const reduceMotion = useReducedMotion();
 
@@ -352,19 +354,12 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, onRequestLo
     }, [phase, revealed, submitting, menuOpen, onClose, handleReveal, handleRate]);
 
     const header = (
-        <header className="flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">{t('review.title')}</h1>
-            <button
-                type="button"
-                data-testid="review-close"
-                onClick={onClose}
-                aria-label={t('review.closeAria')}
-                title={t('review.closeAria')}
-                className="p-2 rounded-full bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-400 hover:text-zinc-100 transition-colors shrink-0"
-            >
-                <X className="w-5 h-5" />
-            </button>
-        </header>
+        <SubHeader
+            title={t('review.title')}
+            onBack={onClose}
+            parentLabel={parentLabel}
+            backTestId="review-back"
+        />
     );
 
     const statsRow = (
@@ -763,12 +758,14 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, onRequestLo
     return (
         <div
             data-testid="review-screen"
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b]"
+            className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#09090b]"
         >
-            <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
-                {header}
-                {statsRow}
-                {renderBody()}
+            {header}
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
+                    {statsRow}
+                    {renderBody()}
+                </div>
             </div>
         </div>
     );

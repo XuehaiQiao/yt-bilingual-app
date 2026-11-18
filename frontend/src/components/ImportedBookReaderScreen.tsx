@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     AlertCircle,
-    ArrowLeft,
     BookOpen,
     ChevronLeft,
     ChevronRight,
@@ -26,6 +25,7 @@ import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { ConfirmDialog } from './ui/ConfirmDialog';
+import { SubHeader } from './ui/SubHeader';
 import {
     deleteImportedBook,
     fetchImportedBook,
@@ -41,6 +41,8 @@ import {
 interface ImportedBookReaderScreenProps {
     bookId: string;
     onClose: () => void;
+    /** Parent screen name for the back control's aria label. */
+    parentLabel?: string;
     onWordLookup: (
         word: string,
         context: string,
@@ -112,6 +114,7 @@ const SourceBadge = ({ sourceType }: { sourceType: string }) => {
 export function ImportedBookReaderScreen({
     bookId,
     onClose,
+    parentLabel,
     onWordLookup,
     onRequestLogin,
 }: ImportedBookReaderScreenProps) {
@@ -391,27 +394,14 @@ export function ImportedBookReaderScreen({
 
     return (
         <div data-testid="imported-book-reader" className="flex h-full min-h-0 flex-col bg-[#09090b]">
-            <div className="flex flex-none items-center gap-2 border-b border-white/5 bg-zinc-950/60 px-3 py-2.5 backdrop-blur-xl sm:px-6">
-                <button
-                    type="button"
-                    data-testid="imported-book-reader-back"
-                    onClick={onClose}
-                    className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    <span className="hidden sm:inline">{t('importedBooks.reader.back')}</span>
-                </button>
-                <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-zinc-200">
-                        {detail?.title || t('importedBooks.reader.loadingBook')}
-                    </p>
-                    {detail && (
-                        <p className="truncate text-[11px] text-zinc-500">
-                            {detail.author || t('importedBooks.unknownAuthor')}
-                        </p>
-                    )}
-                </div>
-                {detail && (
+            <SubHeader
+                title={detail?.title || t('importedBooks.reader.loadingBook')}
+                onBack={onClose}
+                parentLabel={parentLabel}
+                meta={detail ? (detail.author || t('importedBooks.unknownAuthor')) : undefined}
+                backTestId="imported-book-reader-back"
+                titleAs="p"
+                actions={detail && (
                     <button
                         type="button"
                         data-testid="imported-book-delete"
@@ -422,7 +412,7 @@ export function ImportedBookReaderScreen({
                         disabled={deleting}
                         aria-label={t('importedBooks.reader.delete')}
                         title={t('importedBooks.reader.delete')}
-                        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40"
+                        className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control px-2 text-xs font-medium text-fg-muted transition-colors hover:bg-danger/10 hover:text-danger-fg disabled:opacity-40"
                     >
                         {deleting ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -432,7 +422,7 @@ export function ImportedBookReaderScreen({
                         <span className="hidden sm:inline">{t('importedBooks.reader.delete')}</span>
                     </button>
                 )}
-            </div>
+            />
 
             <div
                 ref={scrollRef}
