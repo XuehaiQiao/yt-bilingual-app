@@ -5,12 +5,12 @@
 // then hand the URL to the processing pipeline. Extracting the flow keeps the
 // discovery view from re-implementing the dialog or drifting from home.
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useI18n } from '../i18n/I18nProvider';
 import { ModelSelectionModal, type EstimationData } from './ModelSelectionModal';
 import { useModel } from '../lib/model';
+import { Dialog } from './ui/Dialog';
 
 export interface EstimateDialogHandle {
     /** Fetch the estimate for `url`; if that fails, start processing anyway. */
@@ -82,22 +82,19 @@ export const EstimateDialog = forwardRef<EstimateDialogHandle, EstimateDialogPro
 
         return (
             <>
-                <AnimatePresence>
-                    {isEstimating && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-50 bg-zinc-950/70 backdrop-blur-md flex flex-col items-center justify-center"
-                        >
-                            <Loader2 className="w-12 h-12 text-zinc-300 animate-spin mb-6" />
-                            <h2 className="text-xl font-semibold tracking-tight text-zinc-100 mb-2">
-                                {t('home.analyzing')}
-                            </h2>
-                            <p className="text-zinc-400">{t('home.analyzingHint')}</p>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                <Dialog
+                    open={isEstimating}
+                    onClose={() => setIsEstimating(false)}
+                    role="alertdialog"
+                    loading
+                    showClose={false}
+                    title={t('home.analyzing')}
+                    description={t('home.analyzingHint')}
+                >
+                    <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-12 w-12 animate-spin text-zinc-300" aria-hidden="true" />
+                    </div>
+                </Dialog>
 
                 <ModelSelectionModal
                     isOpen={isModalOpen}

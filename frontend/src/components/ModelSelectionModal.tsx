@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, Cpu, DollarSign, Info, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Cpu, DollarSign, Info, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
+import { Dialog } from './ui/Dialog';
 
 export interface ModelOption {
     id: string;
@@ -11,9 +12,15 @@ export interface ModelOption {
     quotaInfo: string;
 }
 
+export interface EstimationVideoMetadata {
+    title?: string | null;
+    channel?: string | null;
+    thumbnail?: string | null;
+}
+
 export interface EstimationData {
     videoId: string;
-    metadata: any;
+    metadata: EstimationVideoMetadata | null;
     transcriptStats: {
         wordCount: number;
         estimatedInputTokens: number;
@@ -45,42 +52,41 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
     currentModelId
 }) => {
     const { t, formatNumber } = useI18n();
-    if (!isOpen || !estimationData) return null;
-
-    const currentModel = estimationData.models.find(m => m.id === currentModelId) || null;
+    const currentModel = estimationData?.models.find(m => m.id === currentModelId) || null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-                className="absolute inset-0 bg-zinc-950/70 backdrop-blur-md animate-[fadeIn_0.25s_ease-out]"
-                onClick={onClose}
-            />
-
-            <div
-                data-testid="estimate-modal"
-                className="relative bg-zinc-900/90 backdrop-blur-2xl rounded-2xl w-full max-w-2xl border border-white/10 shadow-2xl shadow-black/60 flex flex-col overflow-hidden animate-[slideUp_0.32s_cubic-bezier(0.25,1,0.5,1)]"
-            >
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
-                    <div>
-                        <h2 className="text-xl font-semibold tracking-tight text-zinc-100 flex items-center gap-2">
-                            <Cpu className="w-5 h-5 text-blue-400" />
-                            {t('estimate.title')}
-                        </h2>
-                        <p className="text-sm text-zinc-400 mt-0.5">
-                            {t('estimate.subtitle')}
-                        </p>
-                    </div>
+        <Dialog
+            open={isOpen && estimationData !== null}
+            onClose={onClose}
+            size="md"
+            testId="estimate-modal"
+            title={
+                <span className="flex items-center gap-2">
+                    <Cpu className="h-5 w-5 shrink-0 text-blue-400" aria-hidden="true" />
+                    <span className="truncate">{t('estimate.title')}</span>
+                </span>
+            }
+            description={t('estimate.subtitle')}
+            footer={
+                <>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="p-2 rounded-full text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
+                        className="h-10 px-5 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
+                    >{t('common.cancel')}</button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-all duration-200"
                     >
-                        <X className="w-5 h-5" />
+                        {currentModel?.available !== false && <CheckCircle2 className="w-4 h-4" />}
+                        {t('estimate.confirm')}
                     </button>
-                </div>
-
-                {/* Content */}
-                <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
+                </>
+            }
+        >
+            {estimationData && (
+                <div className="space-y-6">
 
                     {/* Video Stats */}
                     <div className="bg-zinc-800/30 rounded-xl p-4 border border-white/5">
@@ -171,22 +177,7 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
                         )}
                     </div>
                 </div>
-
-                {/* Footer */}
-                <div className="px-6 py-4 border-t border-white/5 flex justify-end gap-3">
-                    <button
-                        onClick={onClose}
-                        className="h-10 px-5 rounded-xl text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-white/5 transition-colors"
-                    >{t('common.cancel')}</button>
-                    <button
-                        onClick={onConfirm}
-                        className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-all duration-200"
-                    >
-                        {currentModel?.available !== false && <CheckCircle2 className="w-4 h-4" />}
-                        {t('estimate.confirm')}
-                    </button>
-                </div>
-            </div>
-        </div>
+            )}
+        </Dialog>
     );
 };
