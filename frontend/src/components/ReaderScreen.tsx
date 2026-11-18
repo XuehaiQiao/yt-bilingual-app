@@ -37,6 +37,7 @@ import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { ShareCardDialog } from './ShareCardDialog';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import { classifyPublicDomainBookUrl } from '../lib/publicDomain';
 import type { ShareCardData } from '../lib/shareCard';
 import { toast } from '../lib/toast';
@@ -243,6 +244,10 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     // Share card + paragraph actions. One dialog instance serves both the
     // paragraph menu and the floating "share selection" chip.
     const [shareData, setShareData] = useState<ShareCardData | null>(null);
+    // The delete confirmation is one dialog instance for the whole list; the
+    // article is only removed after it resolves successfully.
+    const [pendingDelete, setPendingDelete] = useState<ArticleSummary | null>(null);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
     const [menuIdx, setMenuIdx] = useState<number | null>(null);
     const [selection, setSelection] = useState<{ idx: number; text: string; left: number; top: number } | null>(null);
     // Words above the slider threshold get the restrained amber mark. The hook
@@ -638,17 +643,24 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleDelete = async (e: React.MouseEvent, summary: ArticleSummary) => {
+    const requestDelete = (e: React.MouseEvent, summary: ArticleSummary) => {
         e.stopPropagation();
-        const title = summary.title || t('reader.untitled');
-        if (!window.confirm(t('reader.deleteConfirm', { title }))) return;
+        setDeleteError(null);
+        setPendingDelete(summary);
+    };
+
+    const handleDelete = async () => {
+        if (!pendingDelete) return;
         try {
-            await deleteArticle(summary.articleId);
+            await deleteArticle(pendingDelete.articleId);
             if (!mountedRef.current) return;
-            setArticles((prev) => prev.filter((item) => item.articleId !== summary.articleId));
+            setArticles((prev) => prev.filter((item) => item.articleId !== pendingDelete.articleId));
             toast.success(t('reader.list.deleted'));
         } catch (err) {
-            toast.error(t(errorKeyForStatus(statusOf(err))));
+            const message = t(errorKeyForStatus(statusOf(err)));
+            setDeleteError(message);
+            toast.error(message);
+            throw err;
         }
     };
 
@@ -969,7 +981,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                 <button
                                     type="button"
                                     data-testid={`article-delete-${summary.articleId}`}
-                                    onClick={(e) => { void handleDelete(e, summary); }}
+                                    onClick={(e) => { requestDelete(e, summary); }}
                                     aria-label={t('reader.list.deleteAria', { title })}
                                     title={t('reader.list.deleteAria', { title })}
                                     className="absolute top-2 right-2 p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
@@ -1319,6 +1331,23 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                     {t('share.action')}
                 </button>
             )}
+            <ConfirmDialog
+                open={pendingDelete !== null}
+                title={t('reader.deleteConfirm', {
+                    title: pendingDelete?.title || t('reader.untitled'),
+                })}
+                confirmLabel={t('reader.list.deleteAria', {
+                    title: pendingDelete?.title || t('reader.untitled'),
+                })}
+                destructive
+                onConfirm={handleDelete}
+                onClose={() => {
+                    setPendingDelete(null);
+                    setDeleteError(null);
+                }}
+                error={deleteError}
+                testId="article-delete-confirm"
+            />
             <ShareCardDialog
                 isOpen={shareData !== null}
                 data={shareData}

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "notes": "zh-CN 值允许不含 CJK 的白名单（V-06 / QA-X-17 / 设计 QA 附录 A.3）。每条必须有 reason；live 键填 path（渲染来源，存在性由 check-i18n.mjs 校验）。deadKeys 是已确认无活代码引用的键：9 条仍被死代码 src/components/InputScreen.tsx 引用（删除会破坏 tsc 的 TranslationKey 类型），5 条全仓 0 引用；按 W2 文件边界（不改 components）暂留键结构，随 QA-X-25 删除 InputScreen 时一并清理。",
+  "notes": "zh-CN 值允许不含 CJK 的白名单（V-06 / QA-X-17 / 设计 QA 附录 A.3）。每条必须有 reason；live 键填 path（渲染来源，存在性由 check-i18n.mjs 校验）。deadKeys 是已确认无活代码引用的键：9 条原先仅被死代码 src/components/InputScreen.tsx 引用，该文件已随 B2 删除；5 条全仓 0 引用；均保留键结构，随 QA-X-25 清理。",
   "allowlist": [
     {
       "key": "brand.engine",
@@ -131,48 +131,39 @@
     },
     {
       "key": "common.notRecorded",
-      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
-      "path": "src/components/InputScreen.tsx"
+      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
     },
     {
       "key": "common.noSessions",
-      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
-      "path": "src/components/InputScreen.tsx"
+      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
     },
     {
       "key": "common.studiedTimes",
-      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
-      "path": "src/components/InputScreen.tsx"
+      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
     },
     {
       "key": "common.watchedPercent",
-      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
-      "path": "src/components/InputScreen.tsx"
+      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
     },
     {
       "key": "home.continueLearning",
-      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import；Today 的「继续学习」用 home.today.continueEyebrow）；待 QA-X-25 清理",
-      "path": "src/components/InputScreen.tsx"
+      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
     },
     {
       "key": "home.continueEmpty",
-      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
-      "path": "src/components/InputScreen.tsx"
+      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
     },
     {
       "key": "home.localShows",
-      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；内容页用 content.showsTitle；待 QA-X-25 清理",
-      "path": "src/components/InputScreen.tsx"
+      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
     },
     {
       "key": "home.subscriptions",
-      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
-      "path": "src/components/InputScreen.tsx"
+      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
     },
     {
       "key": "home.latestVideos",
-      "reason": "死键：仅被死代码 src/components/InputScreen.tsx 引用（无任何 import）；删键会破坏 tsc 的 TranslationKey 类型，待 QA-X-25 删除组件时一并清理",
-      "path": "src/components/InputScreen.tsx"
+      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
     }
   ]
 }

@@ -16,6 +16,7 @@ import { TodayWorkbench, type TodayWeekReport } from './TodayWorkbench';
 import { NovelCourseCard } from './NovelCourseCard';
 import { StartLearning } from './StartLearning';
 import { RecentLearning } from './RecentLearning';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import { clearProgress } from '../lib/progress';
 import { toast, describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
@@ -157,11 +158,23 @@ export function TodayScreen({
         setWeekReloadToken((token) => token + 1);
     }, []);
 
-    const handleRemoveVideo = async (filename: string) => {
+    // Deletion runs from the shared ConfirmDialog: the row is only touched after
+    // the learner confirms, and a failed request keeps the dialog open with the
+    // list untouched (IX-24).
+    const [pendingDelete, setPendingDelete] = useState<{ filename: string; title: string } | null>(null);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+
+    const requestRemoveVideo = (filename: string) => {
         const item = history.find(entry => entry.filename === filename);
         if (!item) return;
-        const title = item.metadata?.title || item.filename;
-        if (!window.confirm(t('home.deleteConfirm', { title }))) return;
+        setDeleteError(null);
+        setPendingDelete({ filename: item.filename, title: item.metadata?.title || item.filename });
+    };
+
+    const handleRemoveVideo = async () => {
+        if (!pendingDelete) return;
+        const item = history.find(entry => entry.filename === pendingDelete.filename);
+        if (!item) return;
         try {
             const res = await apiFetch(`/api/history/${encodeURIComponent(item.filename)}`, { method: 'DELETE' });
             if (!res.ok) throw new Error(await describeApiError(res));
@@ -170,7 +183,10 @@ export function TodayScreen({
             toast.success(t('home.deletedToast'));
         } catch (err) {
             console.error('Delete history failed:', err);
-            toast.error(await describeApiError(err));
+            const message = await describeApiError(err);
+            setDeleteError(message);
+            toast.error(message);
+            throw err;
         }
     };
 
@@ -258,7 +274,7 @@ export function TodayScreen({
                     onOpenBook={onOpenBook}
                     onOpenImportedBook={onOpenImportedBook}
                     onOpenContent={onOpenContent}
-                    onRemoveVideo={(filename) => { void handleRemoveVideo(filename); }}
+                    onRemoveVideo={requestRemoveVideo}
                 />
 
                 {hasHistory && (
@@ -273,6 +289,20 @@ export function TodayScreen({
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={pendingDelete !== null}
+                title={t('home.deleteConfirm', { title: pendingDelete?.title ?? '' })}
+                confirmLabel={t('home.removeHistoryTitle')}
+                destructive
+                onConfirm={handleRemoveVideo}
+                onClose={() => {
+                    setPendingDelete(null);
+                    setDeleteError(null);
+                }}
+                error={deleteError}
+                testId="history-delete-confirm"
+            />
         </div>
     );
 }

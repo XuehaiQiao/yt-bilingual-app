@@ -25,6 +25,7 @@ import type { TranslationKey } from '../i18n';
 import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import {
     deleteImportedBook,
     fetchImportedBook,
@@ -134,6 +135,7 @@ export function ImportedBookReaderScreen({
     );
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const saveTimerRef = useRef<number | null>(null);
     const pendingScrollRef = useRef<number | null>(null);
@@ -362,9 +364,6 @@ export function ImportedBookReaderScreen({
 
     const handleDelete = async () => {
         if (!detail || deleting) return;
-        if (!window.confirm(t('importedBooks.reader.deleteConfirm', { title: detail.title }))) {
-            return;
-        }
         setDeleting(true);
         setDeleteError(null);
         try {
@@ -377,6 +376,7 @@ export function ImportedBookReaderScreen({
             }
             console.error('Failed to delete imported book:', error);
             setDeleteError(t('importedBooks.reader.deleteFailed'));
+            throw error;
         } finally {
             setDeleting(false);
         }
@@ -415,7 +415,10 @@ export function ImportedBookReaderScreen({
                     <button
                         type="button"
                         data-testid="imported-book-delete"
-                        onClick={() => void handleDelete()}
+                        onClick={() => {
+                            setDeleteError(null);
+                            setDeleteConfirmOpen(true);
+                        }}
                         disabled={deleting}
                         aria-label={t('importedBooks.reader.delete')}
                         title={t('importedBooks.reader.delete')}
@@ -849,6 +852,22 @@ export function ImportedBookReaderScreen({
                     )}
                 </div>
             </div>
+
+            <ConfirmDialog
+                open={deleteConfirmOpen && detail !== null}
+                title={t('importedBooks.reader.deleteConfirm', {
+                    title: detail?.title ?? '',
+                })}
+                confirmLabel={t('importedBooks.reader.delete')}
+                destructive
+                onConfirm={handleDelete}
+                onClose={() => {
+                    setDeleteConfirmOpen(false);
+                    setDeleteError(null);
+                }}
+                error={deleteError}
+                testId="imported-book-delete-confirm"
+            />
         </div>
     );
 }
