@@ -11,7 +11,8 @@
 | `BottomBar.tsx` | <md | 手机底栏：四个一级页图标+文字、安全区、练习到期徽章 |
 | `InputScreen.tsx` | 首页 | 今日工作台容器：今日头部、能力定位引导条与三张行动卡（继续学习/今日复习/本周报告）、「为你推荐」横排、开始学习输入区（含「搜索你想学的内容」发现入口）、词汇轴、句子精背整宽入口卡、四张 bento 卡（最近学习/本地剧集/订阅/最新视频） |
 | `TodayWorkbench.tsx` | 首页 | 今日头部（日期/今日状态/模型栏）、能力定位引导条（无画像：12 分钟定位；有画像：水平区间 + 重测）与三张行动卡（继续学习/今日复习/本周报告），复用设计语言卡片配方；继续卡无记录时引导到下方输入框 |
-| `CourseScreen.tsx` | 12 分钟课程（#/lesson/&lt;id&gt;） | 课程 MVP 全屏视图（specs/029）：S0 介绍 → S1 词卡揭示 → S2–S4 英文段落/可隐藏中文/讲解/2 题即时反馈 → S5 产出与 2 道出口题 → 完成页 score/8、产出与参考样例；游客登录提示；刷新/重进按 attempt 恢复步骤与答案；12:00 倒计时只显示；lesson_start/step_view/step_complete/answer/output_submit/lesson_complete 埋点与卸载 sendBeacon drop；中越与 375/1440 |
+| `CourseScreen.tsx` | 12 分钟课程（#/lesson/&lt;id&gt;） | 课程 MVP 全屏视图（specs/029）：S0 介绍 → S1 词卡揭示 → S2–S4 英文段落/可隐藏中文/讲解/2 题即时反馈 → S5 产出与 2 道出口题 → 完成页 score/8、产出与参考样例；游客登录提示；刷新/重进按 attempt 恢复步骤与答案；12:00 倒计时只显示；lesson_start/step_view/step_complete/answer/output_submit/lesson_complete 埋点与卸载 sendBeacon drop；中越与 375/1440；生成课程共用同一屏 |
+| `NovelCourseCard.tsx` | 首页 | 「经典小说课程」入口（specs/030）：Pride and Prejudice（Gutenberg #1342）第 1–61 章选择（默认 1）、生成按钮 → POST `/api/course/generate` → `#/lesson/{id}`；缓存命中同样直达；游客登录提示、409/502/429 行内错误；生成中防重复点击 |
 | `RecentLearning.tsx` | 首页 | 「最近学习」聚合列表（视频 + 文章 + 公版书/导入书章节）：类型徽章/标题/来源/进度/学习时间，搜索（标题+副标题、大小写不敏感）、全部/视频/文章/书籍筛选 chips（带数量）、每页 10 条翻页；时间按今天 HH:mm / 昨天 / 日期显示，缺失显示「时间未知」；游客只请求视频+本地书进度、不请求文章/导入书；文章与书索引按需加载一次并在卸载时 abort；空/加载/错误态不阻塞今日三卡 |
 | `HomeRecommendations.tsx` | 首页 | 「为你推荐」横排卡片（user request #10）：区间副标题/初步推荐徽章、缩略图+难度徽章+时长+标题+理由、水平滚动、「换一批」seed 轮转、加载/失败/空态；点击整卡复用 `EstimateDialog` 估价流程 |
 | `LibrarySection.tsx` | 首页 | 「免费资源」窗（user request #11）：视频/文章分段 tab、55 张预置视频卡（编辑等级 chip/频道/时长/计算带/免费标识）、A1–C2 等级筛选 chips（含数量）、水平滚动、加载/失败/空态；游客可用，点击直接进本地内容，不进入估价流程 |

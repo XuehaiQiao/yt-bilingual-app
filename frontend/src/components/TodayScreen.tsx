@@ -13,6 +13,7 @@ import type { ReviewStats } from '../lib/review';
 import type { EstimateDialogHandle } from './EstimateDialog';
 import { EstimateDialog } from './EstimateDialog';
 import { TodayWorkbench, type TodayWeekReport } from './TodayWorkbench';
+import { NovelCourseCard } from './NovelCourseCard';
 import { StartLearning } from './StartLearning';
 import { RecentLearning } from './RecentLearning';
 import { clearProgress } from '../lib/progress';
@@ -48,6 +49,12 @@ interface TodayScreenProps {
     onOpenContent: () => void;
     /** 12-minute course entry (specs/029). */
     onOpenCourse: () => void;
+    /** Current highlighter level, sent with novel course generation (specs/030). */
+    vocabLevel: string;
+    /** Guest generation entry: open the app's auth overlay. */
+    onRequestLogin?: () => void;
+    /** Generated novel lesson → the shared `#/lesson/{id}` screen. */
+    onOpenLesson: (lessonId: string) => void;
 }
 
 export function TodayScreen({
@@ -70,6 +77,9 @@ export function TodayScreen({
     onOpenPlacement,
     onOpenContent,
     onOpenCourse,
+    vocabLevel,
+    onRequestLogin,
+    onOpenLesson,
 }: TodayScreenProps) {
     const { t } = useI18n();
     const estimateRef = useRef<EstimateDialogHandle>(null);
@@ -203,6 +213,16 @@ export function TodayScreen({
                     showPlacement={!placementProfile}
                     inputSlot={primaryInput}
                     onOpenCourse={onOpenCourse}
+                />
+
+                {/* Public-domain novel generation (specs/030). A sibling of the
+                    static course banner, not a fourth workbench card: the
+                    three-card row keeps its 375/1440 rhythm. */}
+                <NovelCourseCard
+                    isGuest={isGuest}
+                    level={vocabLevel}
+                    onRequestLogin={onRequestLogin}
+                    onOpenLesson={onOpenLesson}
                 />
 
                 <RecentLearning

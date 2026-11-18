@@ -1673,5 +1673,21 @@
   "course.complete.nextLocked": "Bài tiếp theo sắp mở",
   "course.complete.high": "Hoàn thành rất tốt, hãy dùng cấu trúc hôm nay trong đoạn hội thoại tiếp theo.",
   "course.complete.mid": "Đã hoàn thành. Xem lại phần giải thích để làm tốt hơn lần sau.",
-  "course.complete.low": "Hoàn thành quan trọng hơn hoàn hảo, hãy xem lại phần giảng giải trước khi thử bài tiếp theo."
+  "course.complete.low": "Hoàn thành quan trọng hơn hoàn hảo, hãy xem lại phần giảng giải trước khi thử bài tiếp theo.",
+  "course.generate.cta": "Tạo khóa học",
+  "course.generate.loading": "Đang tạo khóa học 12 phút… khoảng 30 giây",
+  "course.generate.login": "Vui lòng đăng nhập để tạo khóa học.",
+  "course.generate.notReady": "Nội dung nguồn chưa sẵn sàng. Hãy hoàn tất tạo phụ đề/bản dịch trước.",
+  "course.generate.failed": "Tạo khóa học thất bại. Vui lòng thử lại sau.",
+  "course.generate.rateLimited": "Bạn đã dùng hết lượt tạo hôm nay. Vui lòng thử lại vào ngày mai.",
+  "course.generate.generic": "Tạo khóa học thất bại. Vui lòng thử lại.",
+  "novel.entry.badge": "Khóa học tiểu thuyết kinh điển",
+  "novel.entry.meta": "Jane Austen · 61 chương · khoảng 12 phút",
+  "novel.entry.title": "Pride and Prejudice",
+  "novel.entry.desc": "Chọn một chương để tạo bài học 12 phút: đọc nguyên văn, học cách diễn đạt, làm câu hỏi và viết vài câu.",
+  "novel.entry.chapter": "Chương",
+  "novel.entry.chapterAria": "Chọn chương",
+  "novel.entry.chapterOption": "Chương {{chapter}}",
+  "novel.entry.guestHint": "Đăng nhập để tạo khóa học",
+  "novel.entry.loading": "Đang tạo… 30 giây"
 }

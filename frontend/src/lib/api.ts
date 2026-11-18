@@ -41,6 +41,10 @@ const TARGET_LANG_BODY_PATHS = new Set([
     // specs/014-quiz: question generation is language-scoped; the lesson id
     // scopes the remaining endpoints, so they do not take targetLang.
     '/api/lesson/start',
+    // specs/030: generated courses are cached by content + level + target
+    // language; the endpoint treats targetLang as optional (default zh-CN) but
+    // the UI must send its current language so vi users do not get zh lessons.
+    '/api/course/generate',
 ]);
 
 function endpointPath(path: string): string {

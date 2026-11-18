@@ -1,4 +1,4 @@
-// 12-minute course client (specs/029-course-mvp).
+// 12-minute course client (specs/029-course-mvp, specs/030-course-generation).
 //
 // The backend owns attempts, answer keys, scoring and events. This module is a
 // thin typed wrapper around `/api/course/*`: every call goes through `apiFetch`
@@ -103,6 +103,24 @@ export interface CourseLessonSummary {
     version: number;
 }
 
+/** Source kinds `POST /api/course/generate` accepts (specs/030). */
+export type CourseGenerationSourceKind = 'youtube' | 'novel';
+
+export type GenerateCourseInput =
+    | { sourceKind: 'youtube'; videoId: string; level?: string }
+    | { sourceKind: 'novel'; gutenbergId: number; chapter: number; level?: string };
+
+/** `POST /api/course/generate` response: a ready-to-open generated lesson. */
+export interface GeneratedCourse {
+    lessonId: string;
+    title: string;
+    level: string;
+    sourceKind: CourseGenerationSourceKind;
+    /** True when the backend served an existing lesson without a model call. */
+    cached: boolean;
+    status: string;
+}
+
 export interface CourseAttempt {
     attemptId: string;
     /** Full lesson when the endpoint embeds it; the screen uses the detail call. */
@@ -153,6 +171,8 @@ export type CourseErrorCode =
     | 'not_found'
     | 'incomplete'
     | 'conflict'
+    | 'source_not_ready'
+    | 'generation_failed'
     | 'validation'
     | 'rate_limited'
     | 'server'
@@ -208,6 +228,8 @@ function statusCode(status: number, body: unknown): CourseErrorCode {
             case 'attempt_not_found':
             case 'incomplete':
             case 'conflict':
+            case 'source_not_ready':
+            case 'generation_failed':
             case 'validation':
             case 'rate_limited':
             case 'not_found':
@@ -479,11 +501,84 @@ function normalizeSummary(raw: unknown): CourseLessonSummary | null {
     };
 }
 
+function normalizeGeneratedCourse(
+    raw: unknown,
+    fallbackSourceKind: CourseGenerationSourceKind,
+    fallbackLevel?: string,
+): GeneratedCourse {
+    const record = isRecord(raw) ? raw : {};
+    // The contract is flat; the nested forms keep us tolerant of a lesson
+    // envelope while the backend and frontend land in parallel.
+    const source = isRecord(record.course)
+        ? record.course
+        : isRecord(record.lesson)
+            ? record.lesson
+            : record;
+    const lessonId =
+        asString(source.lessonId)
+        || asString(source.lesson_id)
+        || asString(source.id)
+        || '';
+    if (!lessonId) throw new CourseApiError(200, 'invalid_response');
+    const rawSourceKind = asString(source.sourceKind) || asString(source.source_kind);
+    const sourceKind: CourseGenerationSourceKind =
+        rawSourceKind === 'youtube' || rawSourceKind === 'novel'
+            ? rawSourceKind
+            : fallbackSourceKind;
+    return {
+        lessonId,
+        title: asString(source.title) ?? lessonId,
+        level: asString(source.level) ?? fallbackLevel ?? '',
+        sourceKind,
+        cached: source.cached === true,
+        status: asString(source.status) ?? 'ready',
+    };
+}
+
 /** `GET /api/course/lessons` — one private-beta lesson today. */
 export async function fetchCourseLessons(signal?: AbortSignal): Promise<CourseLessonSummary[]> {
     const body = await request<unknown>('/api/course/lessons', { signal });
     const list = isRecord(body) && Array.isArray(body.lessons) ? body.lessons : [];
     return list.map(normalizeSummary).filter((lesson): lesson is CourseLessonSummary => lesson !== null);
+}
+
+/**
+ * `POST /api/course/generate` — turn a processed video or a public-domain
+ * novel chapter into a cached 12-minute lesson (specs/030 §4).
+ *
+ * 409 `source_not_ready` means the source text/translation is not ready yet;
+ * 502 `generation_failed` means the model output failed validation. Both are
+ * deliberately distinct from the generic course conflict/server codes so the
+ * screen can show "finish subtitles first" vs "retry".
+ *
+ * The body carries only the source fields; `apiFetch` injects the current
+ * `targetLang`, because the backend caches generated courses per target
+ * language (the endpoint accepts it as an optional field).
+ */
+export async function generateCourse(
+    input: GenerateCourseInput,
+    signal?: AbortSignal,
+): Promise<GeneratedCourse> {
+    let body: unknown;
+    try {
+        body = await request<unknown>('/api/course/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(input),
+            signal,
+        });
+    } catch (error) {
+        if (error instanceof CourseApiError) {
+            if (error.status === 409 && error.code === 'conflict') {
+                throw new CourseApiError(409, 'source_not_ready', error.message);
+            }
+            if (error.status === 502 && error.code === 'server') {
+                throw new CourseApiError(502, 'generation_failed', error.message);
+            }
+        }
+        throw error;
+    }
+    return normalizeGeneratedCourse(body, input.sourceKind, input.level);
 }
 
 /** `GET /api/course/lessons/{id}` — sanitised lesson content. */

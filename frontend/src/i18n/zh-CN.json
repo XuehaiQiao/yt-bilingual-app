@@ -1673,5 +1673,21 @@
   "course.complete.nextLocked": "下一节即将开放",
   "course.complete.high": "完成得很好，把今天的表达用进下一段对话。",
   "course.complete.mid": "课程完成。重看一遍解析，下次会更稳。",
-  "course.complete.low": "完成比完美重要，先回看讲解再挑战下一课。"
+  "course.complete.low": "完成比完美重要，先回看讲解再挑战下一课。",
+  "course.generate.cta": "生成课程",
+  "course.generate.loading": "正在生成 12 分钟课程…约 30 秒",
+  "course.generate.login": "登录后才能生成课程。",
+  "course.generate.notReady": "源内容还没准备好，请先完成字幕生成/翻译。",
+  "course.generate.failed": "生成课程失败，请稍后重试。",
+  "course.generate.rateLimited": "今天的生成次数已用完，请明天再试。",
+  "course.generate.generic": "生成课程失败，请重试。",
+  "novel.entry.badge": "经典小说课程",
+  "novel.entry.meta": "简·奥斯汀 · 61 章 · 约 12 分钟",
+  "novel.entry.title": "Pride and Prejudice",
+  "novel.entry.desc": "选一章，生成一节 12 分钟课程：读原文、学表达、做小题、写几句。",
+  "novel.entry.chapter": "章节",
+  "novel.entry.chapterAria": "选择章节",
+  "novel.entry.chapterOption": "第 {{chapter}} 章",
+  "novel.entry.guestHint": "登录后可生成课程",
+  "novel.entry.loading": "正在生成…约 30 秒"
 }

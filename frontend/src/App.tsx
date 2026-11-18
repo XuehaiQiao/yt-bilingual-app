@@ -1,8 +1,8 @@
 import { apiFetch } from './lib/api';
-import { COURSE_MVP_LESSON_ID } from './lib/course';
+import { CourseApiError, COURSE_MVP_LESSON_ID, generateCourse, isCourseAbortError } from './lib/course';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, ArrowLeft } from 'lucide-react';
+import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, ArrowLeft, BookOpenCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -248,6 +248,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Synchronous guard: a double click on the entry must not fire two
   // `startLesson` requests (a cache miss calls the model once per request).
   const quizStartBusyRef = useRef(false);
+  // Course generation (specs/030) — one in-flight request per video. The
+  // backend caches by content, but two rapid clicks would still both hit the
+  // generator before the first result lands.
+  const [courseGenerating, setCourseGenerating] = useState(false);
+  const courseGeneratingRef = useRef(false);
   // Where the player was when the quiz opened; leaving the quiz (not via an
   // evidence link) returns there instead of restarting the video at 0.
   const quizReturnTimeRef = useRef(0);
@@ -1879,6 +1884,66 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     openSub({ kind: 'course', lessonId: COURSE_MVP_LESSON_ID });
   };
 
+  // Generate a 12-minute course from the current video's processed bilingual
+  // subtitles (specs/030). Readiness/caching/quota live in the backend; this
+  // handler only separates "source not ready" (finish subtitles/translation)
+  // from retryable failures.
+  const handleGenerateCourse = async () => {
+    if (courseGeneratingRef.current) return;
+    if (status !== 'authenticated') {
+      toast.info(t('course.generate.login'));
+      onRequestLogin?.();
+      return;
+    }
+    if (!videoId) return;
+    if (isLocalSubtitle) {
+      // The endpoint takes a YouTube video id; local episodes have no source
+      // contract yet, so never send an SxxEyy show id as a videoId.
+      toast.info(t('course.generate.notReady'));
+      return;
+    }
+    courseGeneratingRef.current = true;
+    setCourseGenerating(true);
+    try {
+      const result = await generateCourse({
+        sourceKind: 'youtube',
+        videoId,
+        level: vocabLevel,
+      });
+      openSub({ kind: 'course', lessonId: result.lessonId });
+    } catch (error) {
+      if (isCourseAbortError(error)) return;
+      if (error instanceof CourseApiError) {
+        switch (error.code) {
+          case 'unauthorized':
+          case 'forbidden':
+            toast.info(t('course.generate.login'));
+            onRequestLogin?.();
+            return;
+          case 'source_not_ready':
+            toast.info(t('course.generate.notReady'));
+            return;
+          case 'rate_limited':
+            toast.info(t('course.generate.rateLimited'));
+            return;
+          case 'generation_failed':
+          case 'server':
+          case 'network':
+          case 'invalid_response':
+            toast.error(t('course.generate.failed'));
+            return;
+          default:
+            toast.error(t('course.generate.generic'));
+            return;
+        }
+      }
+      toast.error(t('course.generate.failed'));
+    } finally {
+      courseGeneratingRef.current = false;
+      setCourseGenerating(false);
+    }
+  };
+
   const handleCloseReview = () => {
     back();
     setReviewStatsNonce(prev => prev + 1);
@@ -2701,6 +2766,32 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           <span>{quizStarting ? t('quiz.entry.preparing') : t('quiz.entry')}</span>
         </button>
 
+        {/* Course generation (specs/030). The source is this video's processed
+            bilingual subtitles, so the button is shown on YouTube/library
+            videos only (local episodes have no generate contract). */}
+        {!isLocalSubtitle && (
+          <button
+            type="button"
+            data-testid="course-generate-button"
+            data-state={courseGenerating ? 'loading' : 'idle'}
+            onClick={() => void handleGenerateCourse()}
+            disabled={courseGenerating}
+            aria-busy={courseGenerating}
+            aria-label={courseGenerating ? t('course.generate.loading') : t('course.generate.cta')}
+            title={courseGenerating ? t('course.generate.loading') : t('course.generate.cta')}
+            className={`inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border transition-colors shrink-0 ${
+              courseGenerating
+                ? 'bg-blue-500/10 border-blue-500/20 text-blue-300 cursor-wait'
+                : 'bg-blue-500/10 hover:bg-blue-500/15 border-blue-500/20 text-blue-300'
+            }`}
+          >
+            {courseGenerating
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <BookOpenCheck className="w-3.5 h-3.5" />}
+            <span>{courseGenerating ? t('course.generate.loading') : t('course.generate.cta')}</span>
+          </button>
+        )}
+
         <div className="flex-1" />
 
         <span
@@ -3194,6 +3285,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenPlacement={handleOpenPlacement}
             onOpenContent={() => go('content')}
             onOpenCourse={handleOpenCourse}
+            vocabLevel={vocabLevel}
+            onRequestLogin={onRequestLogin}
+            onOpenLesson={(lessonId) => openSub({ kind: 'course', lessonId })}
           />
         );
     }
