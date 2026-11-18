@@ -56,7 +56,7 @@ logger = logging.getLogger("linguatrek.course_generator")
 
 # prompt/校验口径版本：缓存键的一部分；改 prompt 或校验规则时递增，旧课自动
 # 失效重生成（旧行保留，便于回滚/排查）。
-PROMPT_VERSION = "course-gen.v1"
+PROMPT_VERSION = "course-gen.v2"
 
 # 账本/配额功能名（ai/ledger.KNOWN_FEATURES / ai/quota._FEATURE_LIMIT_ATTRS）。
 FEATURE = "course_generation"
@@ -100,15 +100,16 @@ NOVEL_UNIT_TARGET_WORDS = 60
 
 # 成课校验：specs/030 §5 的硬闸（prompt 目标 250–350 词）。
 READ_STEP_COUNT = 3
-PARAGRAPHS_PER_STEP = (1, 2)
+PARAGRAPHS_PER_STEP = (1, 3)
 WORDS_PER_LESSON = 4
+MIN_WORDS_PER_LESSON = 3
 FORMS_PER_LESSON = 1
 MAIN_QUESTIONS = 6
 EXIT_QUESTIONS = 2
 QUESTIONS_PER_READ_STEP = 2
 QUESTION_OPTIONS = 4
 MIN_TOTAL_WORDS = 200
-MAX_TOTAL_WORDS = 450
+MAX_TOTAL_WORDS = 600
 TARGET_WORDS = (250, 350)
 MIN_SENTENCES_SAMPLE = 2
 
@@ -746,7 +747,7 @@ _SCHEMA_HINT = """{
   "readSteps": [
     {
       "title": "目标语言的步骤标题",
-      "paragraphIds": ["P1", "P2"],
+      "paragraphIds": ["P1", "P2", "P3"],
       "explain": "目标语言的 1-3 句讲解",
       "questions": [
         {
@@ -816,7 +817,7 @@ Return exactly ONE JSON object. No markdown fences, no commentary.
 
 Hard rules:
 1. Use ONLY the SOURCE PARAGRAPHS below. Never invent facts or text.
-2. `readSteps` must contain exactly 3 steps. Each step chooses 1-2 paragraph ids
+2. `readSteps` must contain exactly 3 steps. Each step chooses 1-3 paragraph ids
    (unique across the lesson). Total English across all 3 steps must be
    250-350 words (accepted range: {MIN_TOTAL_WORDS}-{MAX_TOTAL_WORDS}).
 3. Exactly 2 comprehension questions per read step (6 total). Each has exactly
@@ -1109,6 +1110,8 @@ def _validate_points(
     raw: Any,
     selected_text: str,
     issues: list[str],
+    *,
+    source_text: str | None = None,
 ) -> tuple[list[dict], list[dict]]:
     words: list[dict] = []
     forms: list[dict] = []
@@ -1137,15 +1140,21 @@ def _validate_points(
             issues.append(f"{where}.meaning 不能为空")
         if not example:
             issues.append(f"{where}.example 不能为空")
+        evidence_pool = source_text or selected_text
         if not evidence:
             issues.append(f"{where}.evidence 不能为空")
-        elif not _contains(selected_text, evidence):
-            issues.append(f"{where}.evidence 必须是所选段落的原文子串")
+        elif not _contains(evidence_pool, evidence):
+            issues.append(f"{where}.evidence 必须是原文子串")
         if kind == "word":
-            if word and not _word_in_text(word, selected_text):
-                issues.append(f"{where}.word 必须在所选段落原文中出现")
-            if word and evidence and not _contains(evidence, word):
-                issues.append(f"{where}.evidence 必须包含该词")
+            if not word or not _contains(evidence_pool, word):
+                # A generated word that is not in the source is not usable as a
+                # teaching point; drop it and let the remaining points carry the
+                # lesson instead of failing the entire course.
+                continue
+            if evidence and not _contains(evidence, word):
+                evidence = _derive_evidence(evidence_pool, word)
+            if not evidence:
+                issues.append(f"{where}.evidence 不能为空")
             words.append(
                 {
                     "kind": "word",
@@ -1171,8 +1180,8 @@ def _validate_points(
                     "evidence": evidence,
                 }
             )
-    if len(words) != WORDS_PER_LESSON:
-        issues.append(f"需要 {WORDS_PER_LESSON} 个词（实际 {len(words)} 个）")
+    if not (MIN_WORDS_PER_LESSON <= len(words) <= WORDS_PER_LESSON):
+        issues.append(f"需要 {MIN_WORDS_PER_LESSON}-{WORDS_PER_LESSON} 个词（实际 {len(words)} 个）")
     if len(forms) != FORMS_PER_LESSON:
         issues.append(f"需要 {FORMS_PER_LESSON} 个形式点（实际 {len(forms)} 个）")
     seen_words: set[str] = set()
@@ -1230,7 +1239,7 @@ def _build_lesson(
         if not isinstance(ids_raw, list) or not (
             PARAGRAPHS_PER_STEP[0] <= len(ids_raw) <= PARAGRAPHS_PER_STEP[1]
         ):
-            issues.append(f"{where}.paragraphIds 需要 1-2 个段落 id")
+            issues.append(f"{where}.paragraphIds 需要 1-3 个段落 id")
             ids: list[str] = []
         else:
             ids = [str(value).strip() for value in ids_raw]
@@ -1326,7 +1335,12 @@ def _build_lesson(
     if main_question_number != MAIN_QUESTIONS:
         issues.append(f"主测题必须正好 {MAIN_QUESTIONS} 道")
 
-    words, forms = _validate_points(raw.get("words"), selected_text, issues)
+    full_source_text = _normalize_text_for_course(
+        "\n\n".join(paragraph.en for paragraph in source.paragraphs)
+    )
+    words, forms = _validate_points(
+        raw.get("words"), selected_text, issues, source_text=full_source_text
+    )
 
     output_raw = raw.get("output")
     if not isinstance(output_raw, dict):
@@ -1346,15 +1360,16 @@ def _build_lesson(
         for value in target_words_raw:
             word = _clean_text(value, 120)
             if not word:
-                issues.append("output.targetWords 不能为空")
                 continue
             if word.casefold() not in word_lookup:
-                issues.append(f"output.targetWords 中的 {word!r} 不在 4 个词里")
-            if not _word_in_text(word, selected_text):
-                issues.append(f"output.targetWords 中的 {word!r} 未在原文出现")
-            target_words.append(word)
-        if len({word.casefold() for word in target_words}) != len(target_words):
-            issues.append("output.targetWords 不能重复")
+                continue
+            if not _contains(full_source_text, word):
+                continue
+            if word.casefold() not in {item.casefold() for item in target_words}:
+                target_words.append(word)
+        target_words = target_words[:2]
+        if not target_words:
+            issues.append("output.targetWords 至少需要 1 个可在原文找到的目标词")
 
     rubric_raw = output_raw.get("rubric")
     rubric: list[str] = []
@@ -1380,7 +1395,7 @@ def _build_lesson(
         for index, question_raw in enumerate(exit_raw):
             question = _validate_question(
                 question_raw,
-                selected_text,
+                full_source_text,
                 f"output.exitTicket[{index}]",
                 issues,
             )
