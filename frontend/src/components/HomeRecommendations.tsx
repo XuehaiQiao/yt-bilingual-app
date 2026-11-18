@@ -12,16 +12,14 @@ import {
     formatRecommendationDuration,
     type RecommendationResult,
 } from '../lib/recommend';
+import { Badge } from './ui/Badge';
+import { Card } from './ui/Card';
 
 interface HomeRecommendationsProps {
     /** Reuse the existing estimate dialog / processing pipeline (never a new path). */
     onSelect: (url: string) => void;
 }
 
-const CARD =
-    'group w-[168px] sm:w-[224px] shrink-0 snap-start text-left rounded-2xl border border-white/5 ' +
-    'bg-zinc-900/40 p-2 sm:p-2.5 hover:border-white/10 hover:bg-zinc-800/40 ' +
-    'transition-colors cursor-pointer';
 const THUMB =
     'relative aspect-video rounded-lg overflow-hidden bg-zinc-900 border border-white/5';
 
@@ -35,6 +33,8 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
 
     useEffect(() => {
         const controller = new AbortController();
+        // The network is the external system this effect syncs with.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoading(true);
         setFailed(false);
         fetchRecommendations({ limit: 6, seed, signal: controller.signal })
@@ -84,13 +84,13 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
                             {t('home.recommend.title')}
                         </h3>
                         {result?.preliminary && (
-                            <span
-                                data-testid="recommend-preliminary"
+                            <Badge
+                                tone="neutral"
+                                testId="recommend-preliminary"
                                 title={t('home.recommend.preliminaryHint')}
-                                className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-300"
                             >
                                 {t('home.recommend.preliminary')}
-                            </span>
+                            </Badge>
                         )}
                     </div>
                     <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 break-words">
@@ -116,21 +116,23 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
                     aria-live="polite"
                 >
                     {Array.from({ length: 3 }).map((_, index) => (
-                        <div
+                        <Card
                             key={index}
-                            className="w-[168px] sm:w-[224px] shrink-0 rounded-2xl border border-white/5 bg-zinc-900/40 p-2 sm:p-2.5"
+                            padding="none"
+                            className="w-[168px] sm:w-[224px] shrink-0 p-2 sm:p-2.5"
                         >
                             <div className="aspect-video rounded-lg bg-zinc-800/70 animate-pulse" />
                             <div className="mt-2 h-3 w-4/5 rounded bg-zinc-800/70 animate-pulse" />
                             <div className="mt-1.5 h-3 w-2/3 rounded bg-zinc-800/50 animate-pulse" />
-                        </div>
+                        </Card>
                     ))}
                     <span className="sr-only">{t('home.recommend.loading')}</span>
                 </div>
             ) : failed && !result ? (
-                <div
-                    data-testid="recommend-failed"
-                    className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-white/5 bg-zinc-900/40 px-4 py-3"
+                <Card
+                    padding="none"
+                    testId="recommend-failed"
+                    className="mt-3 flex flex-wrap items-center gap-3 px-4 py-3"
                 >
                     <AlertCircle className="w-4 h-4 text-zinc-500 shrink-0" />
                     <p className="min-w-0 flex-1 text-xs leading-relaxed text-zinc-500">
@@ -144,14 +146,15 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
                         <RefreshCw className="w-3.5 h-3.5" />
                         {t('home.recommend.retry')}
                     </button>
-                </div>
+                </Card>
             ) : items.length === 0 ? (
-                <p
-                    data-testid="recommend-empty"
-                    className="mt-3 rounded-2xl border border-white/5 bg-zinc-900/40 px-4 py-3 text-xs leading-relaxed text-zinc-500"
+                <Card
+                    padding="none"
+                    testId="recommend-empty"
+                    className="mt-3 px-4 py-3 text-xs leading-relaxed text-zinc-500"
                 >
                     {t('home.recommend.empty')}
-                </p>
+                </Card>
             ) : (
                 <div
                     data-testid="recommend-row"
@@ -167,15 +170,16 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
                         // chip below never repeats a second band.
                         const displayLevel = item.difficulty?.cefrInput ?? item.level;
                         return (
-                            <button
+                            <Card
                                 key={`${item.videoId}-${index}`}
-                                type="button"
-                                data-testid={`recommend-card-${index}`}
+                                variant="interactive"
+                                padding="none"
+                                testId={`recommend-card-${index}`}
                                 data-video-id={item.videoId}
                                 data-level={displayLevel}
-                                aria-label={t('home.recommend.cardAria', { title })}
+                                ariaLabel={t('home.recommend.cardAria', { title })}
                                 onClick={() => onSelect(item.url)}
-                                className={CARD}
+                                className="group w-[168px] sm:w-[224px] shrink-0 snap-start p-2 sm:p-2.5"
                             >
                                 <div className={THUMB}>
                                     <div className="absolute inset-0 flex items-center justify-center text-zinc-700">
@@ -212,22 +216,21 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
                                     {item.channel || t('home.recommend.unknownChannel')}
                                 </p>
                                 {item.difficulty?.bucket && (
-                                    <span
-                                        data-testid={`recommend-difficulty-${index}`}
+                                    <Badge
+                                        tone="neutral"
+                                        testId={`recommend-difficulty-${index}`}
                                         data-cefr-input={item.difficulty?.cefrInput ?? ''}
                                         data-bucket={item.difficulty.bucket}
                                         title={t('difficulty.estimateHint')}
-                                        className="mt-1 inline-flex flex-wrap items-center gap-1 rounded-md border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-300"
+                                        className="mt-1"
                                     >
-                                        <span className="text-blue-200/80">
-                                            {t('difficulty.novelty', { bucket: item.difficulty.bucket })}
-                                        </span>
-                                    </span>
+                                        {t('difficulty.novelty', { bucket: item.difficulty.bucket })}
+                                    </Badge>
                                 )}
                                 <p className="mt-1 min-h-[2.9em] text-[11px] leading-relaxed text-zinc-500 line-clamp-2 break-words">
                                     {item.reason}
                                 </p>
-                            </button>
+                            </Card>
                         );
                     })}
                 </div>

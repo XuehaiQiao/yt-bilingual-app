@@ -11,9 +11,9 @@ import type { PlacementProfile } from '../lib/placement';
 import type { ReviewStats } from '../lib/review';
 import { useI18n } from '../i18n/I18nProvider';
 import { PageHeader } from './ui/PageHeader';
+import { Card, IconTile } from './ui/Card';
 
 const PAGE_PAD = 'pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10';
-const CARD = 'rounded-3xl border border-white/5 bg-zinc-900/40 p-4 sm:p-5 min-w-0';
 const ACTION =
     'inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-sm font-semibold transition-[background-color,border-color,color,transform] duration-200 ease-apple active:scale-[0.98]';
 
@@ -94,47 +94,47 @@ export function PracticeScreen({
 
                 {/* Main card: today's review. */}
                 <motion.section
-                    data-testid="practice-review-card"
-                    data-guest={isGuest ? 'true' : 'false'}
                     whileTap={{ scale: 0.995 }}
                     transition={{ type: 'spring', stiffness: 550, damping: 35 }}
-                    className={`${CARD} flex flex-col sm:flex-row sm:items-center gap-3.5`}
                 >
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                            <Repeat className="w-5 h-5 text-blue-400" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-[11px] font-medium text-zinc-500">{t('practice.review.title')}</p>
-                            <p
-                                data-testid="practice-review-line"
-                                className={`mt-0.5 text-base sm:text-lg font-semibold leading-snug break-words ${dueNow > 0 ? 'text-zinc-100' : 'text-zinc-300'}`}
-                            >
-                                {reviewLine}
-                            </p>
-                            {reviewHint && (
-                                <p className="mt-1 text-xs leading-relaxed text-zinc-500 break-words">{reviewHint}</p>
-                            )}
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        data-testid="practice-review-button"
-                        onClick={onOpenReview}
-                        className={`${ACTION} shrink-0 w-full sm:w-auto bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-300 hover:text-blue-200`}
+                    <Card
+                        variant="panel"
+                        testId="practice-review-card"
+                        data-guest={isGuest ? 'true' : 'false'}
+                        className="flex flex-col sm:flex-row sm:items-center gap-3.5"
                     >
-                        {reviewAction}
-                        <ArrowRight className="w-4 h-4" />
-                    </button>
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                            <IconTile icon={Repeat} tone="brand" size="md" />
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-medium text-zinc-500">{t('practice.review.title')}</p>
+                                <p
+                                    data-testid="practice-review-line"
+                                    className={`mt-0.5 text-base sm:text-lg font-semibold leading-snug break-words ${dueNow > 0 ? 'text-zinc-100' : 'text-zinc-300'}`}
+                                >
+                                    {reviewLine}
+                                </p>
+                                {reviewHint && (
+                                    <p className="mt-1 text-xs leading-relaxed text-zinc-500 break-words">{reviewHint}</p>
+                                )}
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            data-testid="practice-review-button"
+                            onClick={onOpenReview}
+                            className={`${ACTION} shrink-0 w-full sm:w-auto bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 text-blue-300 hover:text-blue-200`}
+                        >
+                            {reviewAction}
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                    </Card>
                 </motion.section>
 
                 {/* Quiz explainer + exam card (md: two columns). */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-                    <section data-testid="practice-quiz-card" className={`${CARD} flex flex-col`}>
+                    <Card variant="card" as="section" testId="practice-quiz-card" className="flex flex-col">
                         <div className="flex items-start gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                                <ScanSearch className="w-4 h-4 text-blue-400" />
-                            </div>
+                            <IconTile icon={ScanSearch} tone="brand" size="sm" />
                             <div className="min-w-0">
                                 <h2 className="text-[15px] font-semibold tracking-tight text-zinc-100">
                                     {t('practice.quiz.title')}
@@ -152,13 +152,11 @@ export function PracticeScreen({
                             {t('practice.quiz.goContinue')}
                             <ArrowRight className="w-4 h-4" />
                         </button>
-                    </section>
+                    </Card>
 
-                    <section data-testid="practice-exam-card" className={`${CARD} flex flex-col`}>
+                    <Card variant="card" as="section" testId="practice-exam-card" className="flex flex-col">
                         <div className="flex items-start gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                                <GraduationCap className="w-4 h-4 text-blue-400" />
-                            </div>
+                            <IconTile icon={GraduationCap} tone="brand" size="sm" />
                             <div className="min-w-0">
                                 <h2 className="text-[15px] font-semibold tracking-tight text-zinc-100">
                                     {t('practice.exam.title')}
@@ -185,16 +183,17 @@ export function PracticeScreen({
                             {isGuest ? t('exam.home.guestAction') : t('practice.exam.start')}
                             <ArrowRight className="w-4 h-4" />
                         </button>
-                    </section>
+                    </Card>
                 {/* Placement: one quiet row. */}
-                <section
-                    data-testid="practice-placement-card"
-                    className="rounded-2xl border border-white/5 bg-zinc-900/40 px-4 py-3.5 sm:px-5 flex flex-col md:flex-row md:items-center xl:flex-col xl:items-stretch gap-3 md:col-span-2 xl:col-span-1"
+                <Card
+                    variant="card"
+                    as="section"
+                    padding="none"
+                    testId="practice-placement-card"
+                    className="px-4 py-3.5 sm:px-5 flex flex-col md:flex-row md:items-center xl:flex-col xl:items-stretch gap-3 md:col-span-2 xl:col-span-1"
                 >
                     <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                            <Gauge className="w-4 h-4 text-blue-400" />
-                        </div>
+                        <IconTile icon={Gauge} tone="brand" size="sm" />
                         <div className="min-w-0">
                             <p className="text-[11px] font-medium text-zinc-500">{t('practice.placement.title')}</p>
                             {placementLoading ? (
@@ -229,7 +228,7 @@ export function PracticeScreen({
                         {placementProfile ? t('placement.home.viewProfile') : t('practice.placement.short')}
                         <ArrowRight className="w-4 h-4" />
                     </button>
-                </section>
+                </Card>
                 </div>
 
                 <p className="pt-1 text-[11px] leading-relaxed text-zinc-600">{t('practice.footnote')}</p>

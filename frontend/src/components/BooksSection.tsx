@@ -19,6 +19,8 @@ import { useI18n } from '../i18n/I18nProvider';
 import { fetchBooksIndex, type BookSeries, type BookSummary, type BooksIndex } from '../lib/books';
 import { BookImportDialog } from './BookImportDialog';
 import { ImportedBooksShelf } from './ImportedBooksShelf';
+import { Badge } from './ui/Badge';
+import { Card } from './ui/Card';
 
 interface BooksSectionProps {
     onOpenBook: (bookId: string) => void;
@@ -29,18 +31,6 @@ interface BooksSectionProps {
     /** A public-domain book link handed over from the article reader. */
     importSeed?: { url: string; nonce: number } | null;
     onImportSeedConsumed?: () => void;
-}
-
-const CARD =
-    'group shrink-0 w-[220px] sm:w-[256px] snap-start text-left rounded-2xl border border-white/5 ' +
-    'bg-zinc-900/40 p-4 hover:border-white/10 hover:bg-zinc-800/40 transition-colors cursor-pointer';
-
-function LevelBadge({ level }: { level: string }) {
-    return (
-        <span className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-300">
-            {level}
-        </span>
-    );
 }
 
 function BookCard({
@@ -54,21 +44,21 @@ function BookCard({
 }) {
     const { t, formatNumber } = useI18n();
     return (
-        <button
-            type="button"
-            data-testid={`book-card-${book.id}`}
-            aria-label={t('books.openBook', { title: book.titleZh })}
+        <Card
+            variant="interactive"
+            padding="none"
+            testId={`book-card-${book.id}`}
+            ariaLabel={t('books.openBook', { title: book.titleZh })}
             onClick={() => onOpen(book.id)}
-            className={CARD}
+            className="group shrink-0 w-[220px] sm:w-[256px] snap-start p-4"
         >
             <div className="flex items-start justify-between gap-2">
                 <span className="w-11 h-14 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
                     <BookOpen className="w-5 h-5" />
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
-                    <Globe2 className="w-3 h-3" />
+                <Badge tone="success" icon={<Globe2 />}>
                     {t('books.badgeShort')}
-                </span>
+                </Badge>
             </div>
             <h4 className="mt-3 min-h-[2.6em] text-[14px] font-semibold leading-snug text-zinc-100 line-clamp-2 break-words">
                 {book.titleZh}
@@ -84,12 +74,12 @@ function BookCard({
                           })
                         : t('books.originalReadable')}
                 </span>
-                <LevelBadge level={book.level} />
+                <Badge tone="neutral">{book.level}</Badge>
             </div>
             <p className="mt-1 text-[10px] text-zinc-600">
                 {t('books.seriesTotal', { count: formatNumber(totalBooks) })}
             </p>
-        </button>
+        </Card>
     );
 }
 
@@ -173,15 +163,16 @@ function Skeleton() {
                     <div className="h-4 w-36 rounded bg-zinc-800/70 animate-pulse" />
                     <div className="mt-3 flex gap-3 overflow-hidden">
                         {[0, 1].map((card) => (
-                            <div
+                            <Card
                                 key={card}
-                                className="shrink-0 w-[220px] sm:w-[256px] rounded-2xl border border-white/5 bg-zinc-900/40 p-4"
+                                padding="none"
+                                className="shrink-0 w-[220px] sm:w-[256px] p-4"
                             >
                                 <div className="w-11 h-14 rounded-lg bg-zinc-800/70 animate-pulse" />
                                 <div className="mt-3 h-3 w-5/6 rounded bg-zinc-800/70 animate-pulse" />
                                 <div className="mt-2 h-3 w-2/3 rounded bg-zinc-800/50 animate-pulse" />
                                 <div className="mt-4 h-3 w-1/2 rounded bg-zinc-800/40 animate-pulse" />
-                            </div>
+                            </Card>
                         ))}
                     </div>
                 </div>
@@ -248,9 +239,7 @@ export function BooksSection({
                         <h3 className="text-[17px] font-semibold tracking-tight text-zinc-100">
                             {t('books.title')}
                         </h3>
-                        <span className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-300">
-                            {t('books.badge')}
-                        </span>
+                        <Badge tone="neutral">{t('books.badge')}</Badge>
                     </div>
                     <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 break-words">
                         {t('books.subtitle')}

@@ -28,6 +28,9 @@ import type { TranslationKey } from '../i18n';
 import { useI18n } from '../i18n/I18nProvider';
 import type { HistoryItem } from './ChannelVideoList';
 import { EmptyState, ErrorPanel, LoadingState } from './ui/StateView';
+import { Badge } from './ui/Badge';
+import { Card } from './ui/Card';
+import { ListRow } from './ui/ListRow';
 import { fetchBooksIndex, listBookProgress } from '../lib/books';
 import {
     ImportedBooksApiError,
@@ -321,78 +324,70 @@ export function RecentLearning({
         const time = formatLastAt(item.lastAt);
         const subtitle = subtitleLabel(item);
         return (
-            <div
+            <ListRow
                 key={item.key}
-                data-testid="recent-item"
+                testId="recent-item"
                 data-kind={item.kind}
                 data-key={item.key}
                 data-last-at={item.lastAt}
-                role="button"
-                tabIndex={0}
-                aria-label={`${t(meta.labelKey)}: ${item.title}`}
+                ariaLabel={`${t(meta.labelKey)}: ${item.title}`}
                 onClick={() => openItem(item)}
-                onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        openItem(item);
-                    }
-                }}
-                className="group/recent flex min-w-0 cursor-pointer items-start gap-2.5 rounded-xl border border-white/5 bg-zinc-800/30 p-2.5 text-left transition-colors hover:border-white/10 hover:bg-zinc-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 sm:p-3"
-            >
-                <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-white/5 bg-zinc-900/60 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 sm:px-2">
-                    <Icon className="h-3 w-3" aria-hidden="true" />
-                    {t(meta.labelKey)}
-                </span>
-                <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-medium text-zinc-200">
-                        {item.title || t('common.unknownVideo')}
-                    </span>
-                    {subtitle && (
-                        <span className="mt-0.5 block truncate text-[11px] text-zinc-500">{subtitle}</span>
-                    )}
-                </span>
-                <span className="flex shrink-0 items-start gap-1">
-                    <span className="flex flex-col items-end gap-0.5">
-                        <time
-                            data-testid="recent-time"
-                            dateTime={time.dateTime}
-                            className="whitespace-nowrap text-[11px] tabular-nums text-zinc-500"
-                        >
-                            {time.text}
-                        </time>
-                        <span
-                            data-testid="recent-progress"
-                            className="whitespace-nowrap text-[11px] text-zinc-400"
-                        >
-                            {progressLabel(item)}
+                className="group/recent gap-2.5"
+                leading={
+                    <Badge className="mt-0.5" icon={<Icon />}>
+                        {t(meta.labelKey)}
+                    </Badge>
+                }
+                title={item.title || t('common.unknownVideo')}
+                titleClassName="truncate"
+                subtitle={subtitle || undefined}
+                subtitleClassName="truncate"
+                trailing={
+                    <>
+                        <span className="flex flex-col items-end gap-0.5">
+                            <time
+                                data-testid="recent-time"
+                                dateTime={time.dateTime}
+                                className="whitespace-nowrap text-[11px] tabular-nums text-zinc-500"
+                            >
+                                {time.text}
+                            </time>
+                            <span
+                                data-testid="recent-progress"
+                                className="whitespace-nowrap text-[11px] text-zinc-400"
+                            >
+                                {progressLabel(item)}
+                            </span>
                         </span>
-                    </span>
-                    {item.kind === 'video' && onRemoveVideo && (
-                        <button
-                            type="button"
-                            data-testid="recent-remove"
-                            title={t('home.removeHistoryTitle')}
-                            aria-label={t('home.removeHistoryTitle')}
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                onRemoveVideo(item.filename);
-                            }}
-                            className="mt-0.5 rounded-lg p-1 text-zinc-500 opacity-0 transition-[opacity,background-color,color] hover:bg-red-500/10 hover:text-red-400 focus-visible:opacity-100 group-hover/recent:opacity-100 [@media(pointer:coarse)]:opacity-100"
-                        >
-                            <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                    )}
-                </span>
-            </div>
+                        {item.kind === 'video' && onRemoveVideo && (
+                            <button
+                                type="button"
+                                data-testid="recent-remove"
+                                title={t('home.removeHistoryTitle')}
+                                aria-label={t('home.removeHistoryTitle')}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onRemoveVideo(item.filename);
+                                }}
+                                className="mt-0.5 rounded-lg p-1 text-zinc-500 opacity-0 transition-[opacity,background-color,color] hover:bg-red-500/10 hover:text-red-400 focus-visible:opacity-100 group-hover/recent:opacity-100 [@media(pointer:coarse)]:opacity-100"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                    </>
+                }
+            />
         );
     };
 
     return (
-        <section
-            data-testid="recent-learning"
+        <Card
+            as="section"
+            variant="panel"
+            testId="recent-learning"
             data-loading={loading ? 'true' : 'false'}
             aria-labelledby="recent-learning-title"
-            className="mt-5 min-w-0 rounded-3xl border border-white/5 bg-zinc-900/30 p-3.5 sm:p-5"
+            className="mt-5 min-w-0"
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -590,6 +585,6 @@ export function RecentLearning({
                     </>
                 )}
             </div>
-        </section>
+        </Card>
     );
 }

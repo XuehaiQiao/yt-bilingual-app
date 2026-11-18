@@ -16,15 +16,13 @@ import {
     getImportedBookProgress,
     type ImportedBookSummary,
 } from '../lib/importedBooks';
+import { Badge } from './ui/Badge';
+import { Card } from './ui/Card';
 
 interface ImportedBooksShelfProps {
     refreshToken: number;
     onOpenBook: (bookId: string) => void;
 }
-
-const CARD =
-    'group shrink-0 w-[220px] sm:w-[256px] snap-start text-left rounded-2xl border border-white/5 ' +
-    'bg-zinc-900/40 p-4 hover:border-white/10 hover:bg-zinc-800/40 transition-colors cursor-pointer';
 
 export function ImportedBooksShelf({ refreshToken, onOpenBook }: ImportedBooksShelfProps) {
     const { t, formatNumber } = useI18n();
@@ -73,15 +71,16 @@ export function ImportedBooksShelf({ refreshToken, onOpenBook }: ImportedBooksSh
                 {books === null && !failed && (
                     <div data-testid="imported-books-loading" className="flex gap-3">
                         {[0, 1].map((index) => (
-                            <div
+                            <Card
                                 key={index}
-                                className="w-[220px] shrink-0 rounded-2xl border border-white/5 bg-zinc-900/40 p-4 sm:w-[256px]"
+                                padding="none"
+                                className="w-[220px] shrink-0 p-4 sm:w-[256px]"
                             >
                                 <div className="h-4 w-16 animate-pulse rounded bg-zinc-800/70" />
                                 <div className="mt-3 h-3 w-5/6 animate-pulse rounded bg-zinc-800/60" />
                                 <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-zinc-800/40" />
                                 <div className="mt-4 h-3 w-1/2 animate-pulse rounded bg-zinc-800/30" />
-                            </div>
+                            </Card>
                         ))}
                     </div>
                 )}
@@ -124,30 +123,24 @@ export function ImportedBooksShelf({ refreshToken, onOpenBook }: ImportedBooksSh
                         {books.map((book) => {
                             const progress = getImportedBookProgress(book.bookId);
                             return (
-                                <button
+                                <Card
                                     key={book.bookId}
-                                    type="button"
-                                    data-testid={`imported-book-card-${book.bookId}`}
-                                    aria-label={t('importedBooks.openBook', { title: book.title })}
+                                    variant="interactive"
+                                    padding="none"
+                                    testId={`imported-book-card-${book.bookId}`}
+                                    ariaLabel={t('importedBooks.openBook', { title: book.title })}
                                     onClick={() => onOpenBook(book.bookId)}
-                                    className={CARD}
+                                    className="group shrink-0 w-[220px] sm:w-[256px] snap-start p-4"
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <span className="flex h-11 w-14 shrink-0 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
                                             <BookOpen className="h-5 w-5" />
                                         </span>
-                                        <span
-                                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                                                book.sourceType === 'gutenberg'
-                                                    ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
-                                                    : 'border-violet-500/20 bg-violet-500/10 text-violet-300'
-                                            }`}
-                                        >
-                                            <Globe2 className="h-3 w-3" />
+                                        <Badge tone="neutral" icon={<Globe2 />}>
                                             {book.sourceType === 'gutenberg'
                                                 ? t('importedBooks.sourceGutenberg')
                                                 : t('importedBooks.sourceStandardEbooks')}
-                                        </span>
+                                        </Badge>
                                     </div>
                                     <h5 className="mt-3 line-clamp-2 min-h-[2.6em] break-words text-[14px] font-semibold leading-snug text-zinc-100">
                                         {book.title}
@@ -174,7 +167,7 @@ export function ImportedBooksShelf({ refreshToken, onOpenBook }: ImportedBooksSh
                                               })
                                             : t('importedBooks.cardNotStarted')}
                                     </p>
-                                </button>
+                                </Card>
                             );
                         })}
                     </div>

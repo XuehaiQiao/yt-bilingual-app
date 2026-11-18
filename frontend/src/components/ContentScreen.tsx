@@ -33,11 +33,12 @@ import { BooksSection } from './BooksSection';
 import { HomeRecommendations } from './HomeRecommendations';
 import { EmptyState, ErrorPanel, LoadingState, RefreshingState } from './ui/StateView';
 import { PageHeader } from './ui/PageHeader';
+import { Card, SectionHeader } from './ui/Card';
+import { ListRow } from './ui/ListRow';
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 
 const PAGE_PAD = 'pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10';
-const SECTION_TITLE = 'text-[17px] font-semibold tracking-tight text-zinc-100';
 
 interface ChannelUpdate {
     videoId: string;
@@ -301,10 +302,7 @@ export function ContentScreen({
                     className="min-w-0 grid grid-cols-1 sm:grid-cols-2 xl:flex xl:flex-col gap-4 sm:gap-5 xl:col-start-2 xl:row-start-1 xl:row-span-2"
                 >
                     {/* Continue: the most recent item, one tap back into it. */}
-                    <section
-                        data-testid="content-rail-continue"
-                        className="rounded-2xl border border-white/5 bg-zinc-900/40 p-4"
-                    >
+                    <Card as="section" testId="content-rail-continue" className="min-w-0">
                         <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100">
                             <Play className="w-4 h-4 text-blue-400 fill-current" />
                             {t('content.rail.continueTitle')}
@@ -322,31 +320,31 @@ export function ContentScreen({
                                     className="mt-3"
                                 />
                             )}
-                            <button
-                                type="button"
+                            <ListRow
+                                className="mt-3 gap-3"
                                 onClick={() => onLoadHistory(latestHistory.filename)}
-                                className="mt-3 w-full flex gap-3 p-2.5 rounded-xl bg-zinc-800/30 hover:bg-zinc-800/60 border border-white/5 hover:border-white/10 transition-colors text-left"
-                            >
-                                <span className="relative w-20 aspect-video rounded-lg overflow-hidden bg-zinc-800 shrink-0">
-                                    {latestHistory.metadata?.thumbnail && (
-                                        <img src={latestHistory.metadata.thumbnail} alt="" className="w-full h-full object-cover" />
-                                    )}
-                                    {latestProgress !== null && (
-                                        <span className="absolute bottom-0 inset-x-0 h-1 bg-black/60">
-                                            <span className="block h-full bg-emerald-500" style={{ width: `${latestProgress}%` }} />
-                                        </span>
-                                    )}
-                                </span>
-                                <span className="min-w-0 flex flex-col justify-center">
-                                    <span className="text-[13px] font-medium leading-snug text-zinc-200 line-clamp-2 break-words">
-                                        {latestHistory.metadata?.title || t('common.unknownVideo')}
+                                leading={
+                                    <span className="relative w-20 aspect-video rounded-lg overflow-hidden bg-zinc-800">
+                                        {latestHistory.metadata?.thumbnail && (
+                                            <img src={latestHistory.metadata.thumbnail} alt="" className="w-full h-full object-cover" />
+                                        )}
+                                        {latestProgress !== null && (
+                                            <span className="absolute bottom-0 inset-x-0 h-1 bg-black/60">
+                                                <span className="block h-full bg-emerald-500" style={{ width: `${latestProgress}%` }} />
+                                            </span>
+                                        )}
                                     </span>
-                                    <span className="mt-1 inline-flex items-center gap-1 text-[11px] text-blue-300">
+                                }
+                                title={latestHistory.metadata?.title || t('common.unknownVideo')}
+                                titleClassName="line-clamp-2 break-words"
+                                subtitle={
+                                    <span className="inline-flex items-center gap-1">
                                         {t('content.rail.continueAction')}
                                         <ArrowRight className="w-3.5 h-3.5" />
                                     </span>
-                                </span>
-                            </button>
+                                }
+                                subtitleClassName="mt-1 text-brand-300"
+                            />
                             </>
                         ) : historyState === 'loading' ? (
                             <LoadingState
@@ -373,13 +371,10 @@ export function ContentScreen({
                                 testId="content-rail-continue-empty"
                             />
                         )}
-                    </section>
+                    </Card>
 
                     {/* This week: same three numbers as 我的·本周报告. */}
-                    <section
-                        data-testid="content-rail-week"
-                        className="rounded-2xl border border-white/5 bg-zinc-900/40 p-4"
-                    >
+                    <Card as="section" testId="content-rail-week" className="min-w-0">
                         <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100">
                             <CalendarRange className="w-4 h-4 text-blue-400" />
                             {t('content.rail.weekTitle')}
@@ -398,26 +393,26 @@ export function ContentScreen({
                                 />
                             )}
                             <div className="mt-3 grid grid-cols-3 gap-1.5">
-                                <div className="min-w-0 rounded-xl border border-white/5 bg-zinc-800/30 px-2 py-1.5">
+                                <Card variant="stat" padding="none" className="min-w-0 px-2 py-1.5">
                                     <p className="truncate text-[10px] font-medium text-zinc-500">{t('content.rail.weekMinutes')}</p>
                                     <p className="mt-0.5 truncate text-sm font-semibold text-zinc-100 tabular-nums">
                                         {formatNumber(weekReport.passiveMinutes)}
                                         <span className="ml-0.5 text-[10px] font-medium text-zinc-500">{t('home.today.minutesUnit')}</span>
                                     </p>
-                                </div>
-                                <div className="min-w-0 rounded-xl border border-white/5 bg-zinc-800/30 px-2 py-1.5">
+                                </Card>
+                                <Card variant="stat" padding="none" className="min-w-0 px-2 py-1.5">
                                     <p className="truncate text-[10px] font-medium text-zinc-500">{t('content.rail.weekReviewed')}</p>
                                     <p className="mt-0.5 truncate text-sm font-semibold text-zinc-100 tabular-nums">
                                         {formatNumber(weekReport.reviewedWords)}
                                         <span className="ml-0.5 text-[10px] font-medium text-zinc-500">{t('home.today.wordsUnit')}</span>
                                     </p>
-                                </div>
-                                <div className="min-w-0 rounded-xl border border-white/5 bg-zinc-800/30 px-2 py-1.5">
+                                </Card>
+                                <Card variant="stat" padding="none" className="min-w-0 px-2 py-1.5">
                                     <p className="truncate text-[10px] font-medium text-zinc-500">{t('content.rail.weekAccuracy')}</p>
                                     <p className="mt-0.5 truncate text-sm font-semibold text-zinc-100 tabular-nums">
                                         {weekReport.quizAccuracy === null ? '—' : `${Math.round(weekReport.quizAccuracy * 100)}%`}
                                     </p>
-                                </div>
+                                </Card>
                             </div>
                             </>
                         ) : weekState === 'loading' ? (
@@ -453,7 +448,7 @@ export function ContentScreen({
                             {t('content.rail.weekReport')}
                             <ArrowRight className="w-3.5 h-3.5" />
                         </button>
-                    </section>
+                    </Card>
                 </aside>
 
                 {/* Main column (≥xl) / the rest of the single column below. */}
@@ -463,9 +458,9 @@ export function ContentScreen({
                 >
                 {/* Materials shelf: local shows + sentence packs. */}
                 <section data-testid="content-materials">
-                    <h2 className={SECTION_TITLE}>{t('content.materials')}</h2>
+                    <SectionHeader title={t('content.materials')} />
                     <div className="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-6">
-                        <div className="rounded-3xl border border-white/5 bg-zinc-900/40 p-4 sm:p-5 min-w-0">
+                        <Card className="min-w-0">
                             <div className="flex items-center justify-between gap-2 mb-3">
                                 <h3 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100">
                                     <Tv className="w-4 h-4 text-blue-400" />
@@ -474,7 +469,7 @@ export function ContentScreen({
                                 <span className="text-[11px] text-zinc-500">{t('content.showsHint')}</span>
                             </div>
                             <ShowBrowser onSelectEpisode={onSelectEpisode} isLoading={busy} />
-                        </div>
+                        </Card>
                         {/* SentencePacks is already a card with its own heading;
                             keep it as the grid cell to avoid nesting two cards. */}
                         <div className="min-w-0">
@@ -511,8 +506,8 @@ export function ContentScreen({
 
                 {/* Subscriptions + latest videos (merged card). */}
                 <section data-testid="content-subscriptions">
-                    <h2 className={SECTION_TITLE}>{t('content.subscriptionsTitle')}</h2>
-                    <div className="mt-3 rounded-3xl border border-white/5 bg-zinc-900/40 p-4 sm:p-5">
+                    <SectionHeader title={t('content.subscriptionsTitle')} />
+                    <Card className="mt-3">
                         {subscriptions.length === 0 ? (
                             <EmptyState
                                 size="inline"
@@ -596,28 +591,30 @@ export function ContentScreen({
                                         />
                                     ) : (
                                         visibleUpdates.map((update, index) => (
-                                            <button
+                                            <ListRow
                                                 key={`${update.videoId}-${index}`}
-                                                type="button"
+                                                className="gap-3"
                                                 onClick={() => estimate(`https://youtube.com/watch?v=${update.videoId}`)}
-                                                className="w-full flex gap-3 p-2.5 rounded-xl bg-zinc-800/30 hover:bg-zinc-800/60 border border-white/5 hover:border-white/10 transition-colors text-left"
-                                            >
-                                                <span className="w-24 aspect-video rounded-lg bg-zinc-800 overflow-hidden shrink-0 relative">
-                                                    {update.thumbnail && <img src={update.thumbnail} className="w-full h-full object-cover" alt="" />}
-                                                </span>
-                                                <span className="flex flex-col justify-center min-w-0">
-                                                    <span className="text-zinc-300 text-sm font-medium line-clamp-2">{update.title}</span>
-                                                    <span className="text-zinc-500 text-xs mt-1 inline-flex items-center gap-1">
+                                                leading={
+                                                    <span className="relative w-24 aspect-video overflow-hidden rounded-lg bg-zinc-800">
+                                                        {update.thumbnail && <img src={update.thumbnail} className="w-full h-full object-cover" alt="" />}
+                                                    </span>
+                                                }
+                                                title={update.title}
+                                                titleClassName="line-clamp-2"
+                                                subtitle={
+                                                    <span className="inline-flex items-center gap-1">
                                                         <Youtube className="w-3 h-3" />{update.channel}
                                                     </span>
-                                                </span>
-                                            </button>
+                                                }
+                                                subtitleClassName="mt-1"
+                                            />
                                         ))
                                     )}
                                 </div>
                             </>
                         )}
-                    </div>
+                    </Card>
                 </section>
                 </div>
                 </div>
