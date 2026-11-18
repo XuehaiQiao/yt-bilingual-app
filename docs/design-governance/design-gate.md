@@ -1,6 +1,6 @@
 # 设计门禁（Design Gate）v1.2
 
-> 版本：**v1.2**（2026-11-19 W5 加固）｜责任人：A5（质量门禁与 QA）｜审批：lead
+> 版本：**v1.2**（2026-11-19 W5 加固；W5b 补记两扫描脚本，仍 report-only）｜责任人：A5（质量门禁与 QA）｜审批：lead
 > 适用：`yt-bilingual-app` 前端 **Web** 改动（含 375 响应式）；`mobile/` Expo 原生 app 本轮不在治理范围（章程 §1）。
 > 依据：A1 [`audit-report.md`](./audit-report.md)（90 条：P0 7 / P1 44 / P2 39）、A2 [`design-system/`](./design-system/tokens.md)（§13 T-01…T-15）、A3 [`interaction-spec.md`](./interaction-spec.md) / [`navigation-model.md`](./navigation-model.md)、A4 [`component-consolidation.md`](./component-consolidation.md)、[`gate-1-review.md`](./gate-1-review.md) / [`gate-2-review.md`](./gate-2-review.md)、[`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)、[`frontend/package.json`](../../frontend/package.json)、[`scripts/gate-receipt.mjs`](../../scripts/gate-receipt.mjs)（v1.2 回执）。
 > 与 [`design-qa-checklist.md`](./design-qa-checklist.md) 的分工：**本文件是每个 UI PR 的 8 项最小集**；QA 清单是发布前 / 阶段回归的模块全量集。两者不互相替代。
@@ -23,8 +23,8 @@
 
 1. **机器门禁 = tsc + build**（CI 已覆盖，PR 不用贴输出）。
 2. **i18n = CI 机器门禁**：`check:i18n` 已接入前端 job（v1.1 起）；PR 仍贴最后一行输出，便于 review。
-3. token/视觉扫描、选择器冒烟**仍未落地**（截至 v1.2 无自动 CI 步骤）；避免存量 90 条问题让门禁直接爆红。
-4. 阶段 3 **不新增任何会因存量 90 条问题爆红的规则**；token 正则、选择器冒烟、路径过滤一律放阶段 4（§4.3）。
+3. token/视觉扫描、选择器冒烟脚本**已落盘（W5b，report-only）**，但**未接 CI、存量未清**；避免存量 90 条问题让门禁直接爆红。
+4. 阶段 3 **不新增任何会因存量 90 条问题爆红的规则**；W5b 的两脚本也只报告不阻断，接 CI 与路径过滤仍放阶段 4（§4.3）。
 5. **v1.2 只加回执与证据绑定，不加阻断**：`gate-receipt` 是本地/评审用 **report-only** 脚本，不接 CI、不挡合并；P0 仍由评审按 §3.1 判定。
 
 ---
@@ -66,7 +66,7 @@
 ### 1.3 当前不触发、阶段 4 再补的
 
 - 自动路径过滤（按本节判定 UI PR 的 CI job）：阶段 4。
-- token / 选择器冒烟：阶段 4（§4.3）。
+- token / 选择器冒烟：脚本已落盘（W5b，report-only），接 CI 仍放阶段 4（§4.3）。
 - `mobile/`：恢复跟进时另立规则。
 
 ---
@@ -244,7 +244,7 @@ node scripts/gate-receipt.mjs --self-test         # 注入 A5 反例自测
 - **只报告，不阻断**：脚本默认退出码 0；不接 CI（v1.2）；P0 仍由评审按 §3.1 判定。
 - **不替代人眼**：G3/G5/G7/G8 与 375 截图/键盘走查不在脚本覆盖内；`G1/G2/G4/G6 = 0` 只说明机械规则未命中。
 - **误报处理**：在 PR 写一句原因（注释、既有配方、输入壳例外）；规则误报率 >5% 时由 A5 修脚本/规则，不放宽到「看不见」。
-- **未落地**：token/selector 的**自动**扫描仍未实现（无 `check-design-tokens.mjs` / `check-ui-selectors.mjs`）；receipt 只做 diff 正则，不声称已自动扫描。
+- **W5b 补记（仍 report-only）**：`scripts/check-design-tokens.mjs` / `scripts/check-ui-selectors.mjs` 已落盘，默认全量报告、`--diff` 只看新增；**未接 CI、不阻断**，基线见 [`reports/ui-baseline-2026-11-19.md`](./reports/ui-baseline-2026-11-19.md)。receipt 仍是 diff 级回执，不声称已自动扫描。
 
 ---
 
@@ -291,14 +291,14 @@ node scripts/gate-receipt.mjs --self-test         # 注入 A5 反例自测
 | i18n | 脚本有、**CI 已接**；当前通过（1691 keys × 2，31 键 + CJK 规则） | `frontend/scripts/check-i18n.mjs`；`ci.yml` 前端 job | 机器门禁；PR 贴末行 |
 | 门禁回执 | `scripts/gate-receipt.mjs` 已落盘；**本地/评审跑，未接 CI、不阻断** | `scripts/gate-receipt.mjs` | 建议贴 `[G1]/[G2]/[G4]/[G6]/[i18n]` 段 |
 | Lint | 脚本有、CI 未接；无自定义规则 | `package.json:9` | 不动（与门禁无关） |
-| token 扫描 | **无自动脚本**（`gate-receipt` 只做 diff 正则报告） | — | 阶段 4，仍 warn/人工 |
-| 选择器冒烟 | **无**（A4 要求 `scripts/check-ui-selectors.mjs`，尚未实现） | — | 阶段 4，仍 warn/人工 |
+| token 扫描 | **脚本已落盘**（W5b，report-only；未接 CI、基线未清） | `scripts/check-design-tokens.mjs` | 本地/评审可选跑；不阻断 |
+| 选择器冒烟 | **脚本已落盘**（W5b，report-only；未接 CI） | `scripts/check-ui-selectors.mjs` | 本地/评审可选跑；不阻断 |
 
 ### 4.3 阶段 4 计划（不阻塞当前）
 
-1. **先清基线，再开规则**：B3 出口开「z-index / 字号 / 圆角 / `zinc-600`」；B5 出口开「无 `blue-*` / `purple-*` / `shadow-[` / 裸 `transition`」（A4 §5.7 已定两档）。全绿后才接 CI。**截至 v1.2 未落地**；当前只有 receipt 报告，不得写成「自动 token 扫描已上线」。
+1. **先清基线，再开规则**：B3 出口开「z-index / 字号 / 圆角 / `zinc-600`」；B5 出口开「无 `blue-*` / `purple-*` / `shadow-[` / 裸 `transition`」（A4 §5.7 已定两档）。全绿后才接 CI。**W5b 已落盘两脚本与基线报告（report-only），但存量未清、未接 CI**；不得写成「自动 token 扫描已上线」。
 2. **i18n CJK 规则已由 W2 落地**（不是阶段 4 待办）：`check:i18n` 已含「zh 值须含 CJK」，白名单 **21 键**（14 + 6 CEFR + ECDICT），`sentences.day` 不入白名单；14 个死键仍按 W 系列清理（当前 WARN）。
-3. `check-ui-selectors.mjs`：674 个唯一 `data-testid`、77 个被脚本依赖、4 个契约属性（`data-word-hit`、`data-lookup-context`、`data-lookup-start`、`data-highlight`）。
+3. `check-ui-selectors.mjs`：W5b 已落盘（report-only）；HEAD `2a821d7` 基线为 **729** 个唯一静态 testid（含 `testId` prop）、**65** 个脚本依赖、4 个契约属性（`data-word-hit`、`data-lookup-context`、`data-lookup-start`、`data-highlight`）；工作区随批次变化，数字以基线报告为准。
 4. 自动路径过滤（按 §1.1 判断是否 UI PR）：最后做，只减少漏勾，不增加阻断。
 5. 上线节奏统一三步：**本地绿 → CI 只报告（warn）→ CI 阻断（error）**；任一步误报率 >5% 回退到上一步。
 
@@ -387,7 +387,7 @@ R=执行，A=最终负责，C=被咨询，I=知会。
 
 | 指标 | 定义 | 采集方式 | 当前基线（2026-11-19） | 目标 | 责任人 |
 |---|---|---|---|---|---|
-| **1. 每周新增裸值** | 新增 hex / 阶梯外字号 / 任意 z / 任意阴影 / 魔法间距条数 ÷ 该周 UI PR 数 | PR「例外数」+ `gate-receipt` G1 段；阶段 4 再接 `check-design-tokens.mjs --diff`（未落地） | 存量：35 hex / 87 `text-zinc-600` / 473 `blue-*` / 56 `z-*` / 93 越阶字号 / 5 `shadow-[` | 新增 = 0；例外 ≤1 / PR | A5 |
+| **1. 每周新增裸值** | 新增 hex / 阶梯外字号 / 任意 z / 任意阴影 / 魔法间距条数 ÷ 该周 UI PR 数 | PR「例外数」+ `gate-receipt` G1 段；W5b 起可跑 `check-design-tokens.mjs --diff`（report-only，未接 CI） | 存量：35 hex / 87 `text-zinc-600` / 473 `blue-*` / 56 `z-*` / 93 越阶字号 / 5 `shadow-[` | 新增 = 0；例外 ≤1 / PR | A5 |
 | **2. 重复组件数** | A4 映射表中「同一语义多实现」的组数 | `component-consolidation.md`（23 组 G0–G22、**222 行映射**（W6 后）、18.5 人日；G22 保留 7 行单列） | **23 组** | 每周不增；B1–B5 后 ≤11 组（降 ≥50%） | A4 提供，A5 统计 |
 | **3. 门禁通过率** | 首轮 P0 = 0 且 8 项全勾的 UI PR ÷ 全部 UI PR | PR 模板 + 评审复核 | 从本版起统计 | ≥90%；连续两周 <90% → 复盘规范缺口 | A5 |
 | 诊断 A：例外率 | 例外数 ÷ UI PR 数 | 同上 | — | >20% → 反馈 A2/A3 补规范 | A5 |
@@ -416,6 +416,7 @@ R=执行，A=最终负责，C=被咨询，I=知会。
 | 2026-11-19 | **v1.0** | 定稿：去掉初稿的占位表述；触发条件细化到 8 类触发源（T1–T8）× 变更类型；检查项定为 8 项（新增 G8 写操作），每项补「怎么判定 + 证据 + 等级 + 豁免」；落地 PR 模板；补合并规则、首次使用说明、度量基线与阶段 4 计划 | A5 |
 | 2026-11-19 | **v1.1** | 接入 `npm run check:i18n` 到前端 CI（阶段 3 门禁落地）；token/选择器扫描仍留阶段 4；同步 PR 模板 | lead |
 | 2026-11-19 | **v1.2** | W5 加固：PR 首行 `HEAD <sha7>` + 证据 `@<sha7>` 绑定；新增 `scripts/gate-receipt.mjs`（report-only，输出触发/G1/G2/G4/G6/T-13/i18n）；G1 对齐 A2 T-01…T-15（补 purple/red/emerald/amber/zinc/white/black、shadow、transition、scale、h-8 rounded-xl）；G2 加 `components/ui` 白名单 + 旧常量清单 + 新文件重复；G4 补输入壳 `outline-none` 例外；PR 模板 v1.2；**token/selector 自动扫描仍未落地（warn/人工）**，i18n 已在 CI | A5 |
+| 2026-11-19 | **v1.2（W5b 补记）** | 新增 `scripts/check-design-tokens.mjs` / `scripts/check-ui-selectors.mjs` 与 [`reports/ui-baseline-2026-11-19.md`](./reports/ui-baseline-2026-11-19.md)（report-only，默认退出码 0，`--diff/--baseline/--json/--fail`）；**未接 CI、不改 PR 流程**；门禁判定仍按 v1.2 | W5b |
 
 ---
 
@@ -432,17 +433,24 @@ R=执行，A=最终负责，C=被咨询，I=知会。
         run: npm run check:i18n
 ```
 
-仍留阶段 4 的（**截至 v1.2 未实现，未接入**）：
+**W5b 已落盘、仍未接入**（两脚本均 report-only；默认退出码 0，`--fail` 才非 0）：
+
+| 脚本 | 扫什么 | 常用命令 | 现状 |
+|---|---|---|---|
+| `scripts/check-design-tokens.mjs` | `frontend/src/**/*.{tsx,css}`：裸 hex/rgb、任意字号、任意/非 token z、阴影、blue/purple/violet/sky/pink、h-8/h-9 + rounded-xl、transition-all、hover:scale / active:scale-[0.95] | `--baseline` / `--diff <base>` / `--json` / `--fail` / `--self-test` | 本地/评审可选跑；**未接 CI** |
+| `scripts/check-ui-selectors.mjs` | 旧常量定义、`components/ui/` 外重复组件、冻结契约属性与关键 testid | 同上 | 本地/评审可选跑；**未接 CI** |
 
 ```yaml
-      # 仅扫本次 diff，避免存量债；先 warn 后 error
+      # W5b：脚本已落盘，但基线未清 + 未获 lead 同意，先不接；接 CI 时只扫本次 diff
       # - name: design tokens (diff)
       #   run: node scripts/check-design-tokens.mjs --diff origin/${{ github.base_ref }}
       # - name: ui selectors
       #   run: node scripts/check-ui-selectors.mjs
 ```
 
-接入前提：token/selector 脚本先写完、误报率可接受（<5%）、lead 同意改 CI。**v1.2 的 `gate-receipt` 不是这两个脚本**：它只读 diff、只报告，不接 CI，也不得被写成「自动 token 扫描已落地」。
+接入前提：token/selector 脚本先写完、误报率可接受（<5%）、lead 同意改 CI。**v1.2 的 `gate-receipt` 不是这两个脚本**：它只读 diff、只报告，不接 CI，也不得被写成「自动 token 扫描已落地」。W5b 的脚本同样不得被写成「门禁通过」：基线里是存量，`--baseline` 不是 PASS，只有 `--diff` 的新增计数才接近 PR 口径；且两者都只给候选，不替代人眼 / 截图 / 评审。
+
+基线报告：[`reports/ui-baseline-2026-11-19.md`](./reports/ui-baseline-2026-11-19.md)（记录脚本版本、计数、热点与复核命令；**不是门禁通过**）。
 
 ## 附录 C：命令速查
 
@@ -467,6 +475,14 @@ git diff origin/main...HEAD -- 'frontend/src/**/*.tsx' \
 # G7 硬编码 CJK + i18n 对齐
 git diff origin/main...HEAD -- 'frontend/src/**/*.tsx' | grep -E '^\+.*>[^<{]*[一-龥]'
 cd frontend && npm run check:i18n
+
+# W5b：token / selector 扫描（report-only；未接 CI，默认退出码 0）
+node scripts/check-design-tokens.mjs --baseline      # 基线计数（存量）
+node scripts/check-design-tokens.mjs --diff origin/main  # 只看新增行（PR 口径）
+node scripts/check-design-tokens.mjs --json         # 机器可读
+node scripts/check-ui-selectors.mjs --baseline      # 旧常量 / 冻结 testid 基线
+node scripts/check-ui-selectors.mjs --json          # 机器可读
+# 需要非 0 退出码时加 --fail（P0/P1 > 0 → 1）；自测加 --self-test
 ```
 
 > 命令只做「漏项提醒」，不替代人看截图；误报（注释、字符串常量里的示例、输入壳例外）由作者在 PR 写一句说明。
