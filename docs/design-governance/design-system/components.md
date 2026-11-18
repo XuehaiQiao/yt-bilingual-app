@@ -45,7 +45,7 @@
 | C1 | Button（含 IconButton/DangerButton） | C-01、V-04、V-20、V-21、I-19、C-15 | 全站 |
 | C2 | Card / ListRow / IconTile | C-01、C-11、V-09、V-10、V-12、V-18 | 一级页、右栏、书架、设置行 |
 | C3 | Input / Textarea / SearchField | 6.1「搜索框」行、V-14、I-17（模式选择改用 Segmented） | 粘贴框、搜索、表单 |
-| C4 | Dialog / ConfirmDialog / Sheet | C-02、I-02、I-03、I-04、I-05、V-10、V-13 | 13 个浮层 |
+| C4 | Dialog / ConfirmDialog / Sheet | C-02、I-02、I-03、I-04、I-05、V-10、V-13 | 14 个浮层（含 ProcessingOverlay / guest-auth） |
 | C5 | Tabs | C-05、C-07（计数）、L-07（与 C14 配合） | 顶栏导航、内容页、管理台、单词本 |
 | C6 | Segmented | C-06、I-17 | 译文模式、季选择、语言、登录/注册 |
 | C7 | Badge / CountBadge | C-07、C-13、V-02、N-10（格式化） | 导航、卡片、来源标签 |
@@ -204,6 +204,14 @@ ListRow: [leading icon/thumb 40] [title 14/500 + subtitle 13] [meta 11] [trailin
 - [ ] IconTile 宽度只出现 36/40/48。
 - [ ] 可点卡片有 focus ring；内部按钮不冒泡触发整卡。
 
+### C2b · OptionCard（考试/课程选项）
+
+A2 原 C2 只定义 card/panel/interactive/stat；A4 发现 4 份 `OPTION_BASE` 需要单一来源，登记为 C2 的**子组件**（不新增第 16 个组件族）：
+
+- 用于定位/考试/课程的单选选项；`<button role="radio" aria-checked>` 或 `<label><input type=radio>`，不可用整卡 onClick 模拟。
+- props：`selected`、`disabled`、`state: default | selected | correct | wrong`、`onSelect`；键盘方向键在组内移动，Space/Enter 选择。
+- 状态色：selected 用 `border-brand/40 bg-brand/10`；correct 用 success；wrong 用 danger；不显示分数/对错动画（由 A3 反馈层决定）。
+
 ---
 
 ## C3 · Input / Textarea / SearchField
@@ -350,7 +358,7 @@ Portal → Overlay(bg-overlay backdrop-blur-md z-overlay)
 
 ### QA 检查
 
-- [ ] 13 个浮层全部有 `role="dialog"` + `aria-modal`。
+- [ ] 14 个浮层全部有 `role="dialog"` + `aria-modal`。
 - [ ] 每个 Dialog 可用 Esc 关闭（除显式不可中断流程）。
 - [ ] 打开时 Tab 不能到背景；关闭后焦点回到触发按钮。
 - [ ] 无 `window.confirm`。
@@ -1105,7 +1113,7 @@ createWordLookup(source: WordLookupSource): (word: string, context: string, poin
 | `formatClock(seconds)` | `lib/time.ts` | `mm:ss`；`≥1h` → `h:mm:ss`；`NaN/负` → `00:00` | 7 份复制（C-08） |
 | `formatCountdown(seconds)` | `lib/time.ts` | 与 formatClock 同规则，供倒计时 | Course/Placement（C-08） |
 | `formatCount(n)` | `lib/format.ts` | `>99 → 99+`；`0 → '0'`（是否显示由组件决定） | 4 处入口（N-10） |
-| `resolveFavoriteSource(fav)` | `lib/vocabulary.ts` | 返回 `{kind, ref, title, canOpen}`；无 ref → canOpen=false | 单词本来源（I-12） |
+| `resolveFavoriteSource(fav)` | `lib/favoriteSource.ts` | 返回 `{kind, ref, title, canOpen}`；无 ref → canOpen=false | 单词本来源（I-12） |
 | `describeApiError(res)` | `lib/toast.ts` | 用户可读错误（已存在），toast 使用 | 错误文案（I-09） |
 
 - 组件只 import `lib/`，不得从另一个业务组件反向 import（C-09 的依赖反转）。

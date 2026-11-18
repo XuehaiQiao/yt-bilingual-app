@@ -505,6 +505,7 @@ export default {
           pressed: 'rgba(255,255,255,0.10)',
         },
         overlay: 'rgba(9,9,11,0.70)',
+        control: '#f4f4f5',
         brand: { DEFAULT: '#0A84FF', 300: '#66B0FF', 400: '#409CFF', 500: '#0A84FF', 600: '#0774E8' },
         success: { DEFAULT: '#10B981', fg: '#34D399' },
         warning: { DEFAULT: '#F59E0B', fg: '#FBBF24' },
