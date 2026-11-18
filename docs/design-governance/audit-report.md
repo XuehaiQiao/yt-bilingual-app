@@ -199,7 +199,7 @@ node frontend/scripts/check-i18n.mjs
   - 其他：`topbar.popOut`/`closePopOut`（`LearningHeader.tsx:79-85` 的按钮文字与 aria）、`topbar.logoAlt`（`AppShell.tsx:130` aria）、`common.unknownVideo`（`App.tsx:2907` 等 6 处）、`common.unknownChannel`/`noThumbnail`（`ModelSelectionModal.tsx:92/97`）、`home.deletedToast`="Removed from Continue Learning"（`TodayScreen.tsx:151` toast）
 - **表现**：默认 UI 语言是 `zh-CN`（`lib/i18n/index.ts:38`），但用户在「看视频→处理→确认→看本地剧集→删除历史」这条主链路上会连续看到 5 处英文；其中 `shows.emptyHint` 直接对用户说「把 .srt 文件放到 subtitles/ 目录」。
 - **影响**：中文用户在最关键的三个时刻（等待处理、确认花钱、选择本地内容）看到英文/开发者文案 → 界面像半成品，且「确认花费」这种高信任场景用英文按钮会降低确认率；`check-i18n.mjs` 只校验 vi-VN 对齐，**测不出这一类**。
-- **建议方向**：① 补齐这 24 个键的中文；② `check-i18n.mjs` 增加规则「`zh-CN` 值除白名单（品牌名、CEFR、Gutenberg、URL 占位、`Pride and Prejudice` 书名）外必须含 CJK」；③ `shows.emptyHint` 改成用户语言（「在设置里上传字幕，或选择免费资源」）。
+- **建议方向**：① 补齐这 24 个键的中文（A5 复核追加 7 键，合计 **31 键**；`sentences.day` 同批，W0 裁决）；② `check-i18n.mjs` 增加规则「`zh-CN` 值除白名单（品牌名、CEFR、Gutenberg、URL 占位、`Pride and Prejudice` 书名）外必须含 CJK」；③ `shows.emptyHint` 改成用户语言（「在设置里上传字幕，或选择免费资源」）。
 
 #### V-07 · P1 · 保留色之外新增 3 个色相
 - **位置**：`LibrarySection.tsx:168`、`ImportedBookReaderScreen.tsx:100`、`ImportedBooksShelf.tsx:143`（`violet-500/*` 徽章）、`VocabAxis.tsx:47`（`from-sky-400 via-violet-400 to-pink-400` + `shadow-[0_0_12px_rgba(139,92,246,0.5)]`）、`LocalEpisodeStage.tsx:82`（`from-blue-500/[0.08] … to-purple-500/[0.06]` 环境渐变）、`SentencePacks.tsx:43`、`SentenceView.tsx:169`（`from-emerald-400 to-sky-400`）
@@ -790,7 +790,7 @@ node frontend/scripts/check-i18n.mjs
 - **位置**：`ExamScreen.tsx:1170-1215`（eyebrow + 标题 + 副标题 + 历史按钮 + 关闭 + 进度）
 - **表现**：移动端 `text-xl sm:text-2xl` 的标题与 eyebrow/副标题/两个图标按钮同排，`flex-wrap` 后关闭按钮可能换行。
 - **影响**：考试是「有始有终」的任务页，头部越复杂越打断；关闭按钮位置在窄屏不稳。
-- **建议方向**：`SubHeader`（返回 + 标题 + 关闭），副标题下沉到内容区。
+- **建议方向**：`SubHeader`（返回 + 标题；页面级不再用关闭 X，D-04），副标题下沉到内容区。
 
 #### L-10 · P2 · 首屏无「下一步」的页面
 - **位置**：`DiscoverScreen.tsx:256-320`（搜索框 + 空态）、`ReaderScreen.tsx:700-720`（游客登录面板）、`ReportScreen.tsx:168-220`（报告空周）、`BlogScreen.tsx:487-490`（空列表只有一行字）
@@ -830,7 +830,7 @@ node frontend/scripts/check-i18n.mjs
 
 | # | ID | 一句话 | 建议归属 | 依赖 |
 |---|---|---|---|---|
-| 1 | V-06 | 补齐 `zh-CN` 中 24 个键的英文文案（或加 CI 规则） | A5 门禁 + 文案 | 无 |
+| 1 | V-06 | 补齐 `zh-CN` 中 31 个键的英文文案（初审计 24，A5 复核 +7；另 `sentences.day` 同批，W0 裁决）+ 加 CI 规则 | A5 门禁 + 文案/W2 | 无 |
 | 2 | I-01 | 三处「失败当空态」补错误态与重试 | A3 | 无 |
 | 3 | N-02 | 报告/复习不再改写底层 tab | A3 | N-04 同源 |
 | 4 | N-03 | `replace` 后重置 `canGoBackRef` | A3（`useNav` 一处） | 无 |

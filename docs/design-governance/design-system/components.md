@@ -181,7 +181,7 @@ ListRow: [leading icon/thumb 40] [title 14/500 + subtitle 13] [meta 11] [trailin
 | disabled | — | `opacity-50 pointer-events-none aria-disabled` | 同左 |
 | loading | Skeleton：标题 60% 宽、正文 2 行、圆角 `rounded-control` | 同左，保留卡片高度 | 3 行骨架，行高与真实行一致 |
 | error | 卡内 ErrorPanel（`p-4`），不整卡替换 | 同左 | 行内文字 `text-danger-fg` + 重试图标按钮 |
-| empty | 卡内 EmptyState `size=card` | 同左 | 不适用（空态在列表层） |
+| empty | 卡内 EmptyState `size=inline`（py-3） | 同左 | 不适用（空态在列表层） |
 
 ### 键盘 / 触屏 / ARIA
 
@@ -296,11 +296,14 @@ FieldShell: [leading icon 16] [input 14/400] [clear/spinner 16] [submit 按需]
 
 ```
 Portal → Overlay(bg-overlay backdrop-blur-md z-overlay)
-  Panel(role=dialog aria-modal=true aria-labelledby z-dialog
+  Panel(role=dialog | alertdialog, aria-modal=true aria-labelledby z-dialog
         bg-surface/90 backdrop-blur-2xl border-line-strong rounded-card shadow-elev-3)
     Header: title 20/600 + subtitle 14/400 + CloseButton 44
     Body: p-6 (可滚动；max-h 由 dvh 计算)
     Footer: 次按钮左 / 主按钮右；移动端纵向全宽
+
+Fullscreen 变体：Panel(inset-0 z-dialog rounded-none max-w-none max-h-none
+  bg-app，无模糊遮罩)；只用于登录门禁/首次引导，不用于普通表单。
 ```
 
 ### API
@@ -309,23 +312,33 @@ Portal → Overlay(bg-overlay backdrop-blur-md z-overlay)
 |---|---|---|
 | `open` / `onClose` | boolean / () => void | 受控；关闭后焦点回到触发元素 |
 | `title` / `description` | string | 必填 title；`aria-labelledby` 指向它 |
-| `size` | `sm(448) \| md(576) \| lg(896)` | 对应 T §4.3 |
+| `role` | `dialog \| alertdialog` | 普通模态用 `dialog`；**阻断型**（不可中断的处理/估价锁定/强制确认）用 `alertdialog` + `aria-busy`，并禁用 Esc/遮罩 |
+| `size` | `sm(448) \| md(576) \| lg(896)` | 对应 T §4.3；与 `fullscreen` 互斥 |
+| `fullscreen` | boolean | 全屏覆盖：`inset-0`、无遮罩模糊/圆角、内容区唯一滚动；用于登录门禁、首次引导 |
 | `initialFocus` | ref / selector | 默认：第一个可交互元素；危险确认默认「取消」 |
-| `closeOnBackdrop` | boolean | 默认 true；破坏性确认也 true（=取消） |
-| `closeOnEsc` | boolean | 默认 true；不可关闭的流程必须显式说明并给替代出口 |
+| `closeOnBackdrop` | boolean | 默认 true；破坏性确认也 true（=取消）；`alertdialog`/`busy` 时强制 false |
+| `closeOnEsc` | boolean | 默认 true；不可关闭的流程必须显式说明并给替代出口；`alertdialog` 默认 false |
 | `destructive` | boolean | ConfirmDialog 用；主按钮 danger |
 | `footer` | ReactNode | 最多 2 个动作 |
 | `sheet` | boolean | `<md` 底部弹层：`rounded-t-panel`、`max-h-[90dvh]`、底部 safe-area |
+| `loading` | boolean | body 保留标题 + Skeleton/Spinner；页脚主按钮 loading；不可关闭（除非显式可取消） |
+| `error` | string \| ReactNode | body 顶部 ErrorPanel（可重试）；不关闭 Dialog；错误区域 `role=alert` |
+| `dirty` | boolean | 有未保存输入：任何关闭路径（X/Esc/遮罩/返回）先走放弃确认（IX-15） |
+| `onBeforeClose` | () => boolean \| Promise<boolean> | 关闭前守卫：`false` 取消关闭；抛错/失败留在框内。`dirty` 时由它发起确认 |
 
 ### 行为契约（必须全部满足，逐条可测）
 
 1. `createPortal` 到 `body`。
-2. `role="dialog"` + `aria-modal="true"` + `aria-labelledby`（标题存在时）。
+2. `role="dialog"` + `aria-modal="true"` + `aria-labelledby`（标题存在时）；阻断型用 `role="alertdialog"` + `aria-busy`。
 3. 打开时：锁 `document.body` 滚动（`overflow:hidden` + 记录 scrollTop）；焦点移到 `initialFocus`。
 4. 焦点陷阱：Tab/Shift+Tab 在面板内循环；背景内容 `inert` 或 `aria-hidden`。
-5. Esc 关闭；点击遮罩关闭（可配置）；关闭按钮 44×44。
+5. Esc 关闭；点击遮罩关闭（可配置）；关闭按钮 44×44；`alertdialog` 与 `busy` 时禁用这两条退出路径并显示「处理中」。
 6. 关闭后：焦点回到触发元素；恢复滚动；动画结束后卸载。
-7. 不允许嵌套 Dialog；如内容需要二级确认，先关闭再打开一个新的 ConfirmDialog。
+7. **禁止嵌套 Dialog**；如内容需要二级确认，按以下之一处理，且都必须等前一个退出动画结束后再挂载：
+   - 先关闭当前 Dialog → 打开新的 ConfirmDialog（删除/放弃类确认）；
+   - 或同一 Dialog 内切换内容（保留标题与焦点陷阱，不新开壳）。
+8. `dirty` 关闭：`onBeforeClose` 先返回 `false` 并弹「放弃未保存内容？」确认（同一 Dialog 契约）；确认后才真正关闭；取消则留在框内、焦点回输入。
+9. `fullscreen`：`inset-0` 覆盖整个视口、无模糊遮罩/圆角；内容区是唯一滚动容器；关闭仍走 `onBeforeClose`；不用于普通表单/列表详情。
 
 ### 状态矩阵
 
@@ -337,9 +350,11 @@ Portal → Overlay(bg-overlay backdrop-blur-md z-overlay)
 | active | 按钮 `scale(.98)`；遮罩无 | — |
 | focus | 全局环；焦点陷阱 | Tab 不离开面板；Esc 关闭 |
 | disabled | 页脚按钮 disabled 时 `opacity-50` | 表单未满足时主按钮 disabled，但错误提示可见 |
-| loading | 面板内容保留标题，body 显示 Spinner/Skeleton；页脚主按钮 loading | 不可关闭（若操作不可中断）必须显示「处理中」；否则允许 Esc 但需确认 |
+| loading | 面板内容保留标题，body 显示 Spinner/Skeleton；页脚主按钮 loading | `busy`/`alertdialog` 不可关闭并显示「处理中」；允许 Esc 但需确认的流程必须显式说明 |
 | error | body 顶部 ErrorPanel（可重试）；不关闭 Dialog | 错误文案可读；重试按钮聚焦 |
-| empty | body 内 EmptyState `size=card` | 空列表也必须有动作/说明 |
+| dirty | 标题/关闭按钮保持可见；可显示「未保存」点 | X/Esc/遮罩/返回先弹放弃确认；取消留在框内 |
+| fullscreen | Panel `inset-0`、无圆角/遮罩模糊；内容区唯一滚动 | 登录门禁/首次引导；关闭仍受 `onBeforeClose` 约束 |
+| empty | body 内 EmptyState `size=inline`（py-3） | 空列表也必须有动作/说明 |
 
 ### 键盘 / 触屏 / ARIA
 
@@ -358,11 +373,14 @@ Portal → Overlay(bg-overlay backdrop-blur-md z-overlay)
 
 ### QA 检查
 
-- [ ] 14 个浮层全部有 `role="dialog"` + `aria-modal`。
+- [ ] 14 个浮层全部有 `role="dialog"`（阻断型为 `alertdialog`）+ `aria-modal`。
 - [ ] 每个 Dialog 可用 Esc 关闭（除显式不可中断流程）。
 - [ ] 打开时 Tab 不能到背景；关闭后焦点回到触发按钮。
 - [ ] 无 `window.confirm`。
 - [ ] 遮罩只用 `bg-overlay backdrop-blur-md`。
+- [ ] 有输入时关闭先弹「放弃未保存内容？」确认；取消后输入仍在。
+- [ ] 不出现嵌套 Dialog（二级确认先关再开，或同框切换内容）。
+- [ ] fullscreen 变体无圆角/模糊遮罩，且只出现在登录门禁/首次引导。
 
 ---
 
@@ -437,7 +455,7 @@ Portal → Overlay(bg-overlay backdrop-blur-md z-overlay)
 
 - **用途**：在一组紧凑选项中选一个（模式/语言/季/登录注册）。
 - **用**：译文模式、导入模式、语言设置、季选择、登录/注册、生词水平。
-- **不用**：导航级切换（Tabs）、超过 4 项（Select/Menu）、需要搜索的长列表。
+- **不用**：导航级切换（Tabs）、超过 5 项（改用 Tabs/Menu）、需要搜索的长列表。**边界统一**：2–5 项一律用 Segmented（含 5 项，不切 Tabs）；>5 项或需要分组/搜索时用 Tabs/Menu（A3 IX-19 同口径）。
 
 ### Anatomy
 
@@ -451,7 +469,7 @@ Portal → Overlay(bg-overlay backdrop-blur-md z-overlay)
 
 | 名称 | 类型 | 说明 |
 |---|---|---|
-| `options` | `{value,label,icon?}[]` | 2–4 项；超过 4 项改用 Tabs/Menu |
+| `options` | `{value,label,icon?}[]` | 2–5 项；超过 5 项改用 Tabs/Menu |
 | `value` / `onChange` | string / (v) => void | 即选即生效（自动保存）；需要「保存」的表单不要用 |
 | `ariaLabel` | string | radiogroup 名称 |
 | `layoutId` | string | 同一屏多个 Segmented 必须不同 id |
@@ -490,6 +508,7 @@ Portal → Overlay(bg-overlay backdrop-blur-md z-overlay)
 - [ ] `role=radiogroup` + `aria-checked`。
 - [ ] 同一屏 layoutId 唯一。
 - [ ] 模式选择不再出现原生 select。
+- [ ] 2 项与 5 项边界仍用 Segmented；6 项起改用 Tabs/Menu（不出现 6 项分段）。
 
 ---
 
@@ -565,12 +584,12 @@ Tone：`neutral`（`bg-surface-2/60 text-fg-strong border-line-subtle`）、`bra
 
 | 名称 | 类型 | 说明 |
 |---|---|---|
-| `type` | `info \| success \| warning \| error` | 决定 icon/边框/aria-live |
+| `type` | `info \| success \| error` | 三型（与 A3 IX-08 一致，不设 warning）；决定 icon/边框/aria-live |
 | `message` | string | 用户语言；错误须包含可行动信息（不只是后端 detail） |
-| `duration` | number | info 4000 / success 3000 / error 8000（错误可手动关闭） |
+| `duration` | number | success 3000 / info 5000 / error 8000（错误可手动关闭） |
 | `action` | `{label,onClick}` | 可选「重试/撤销」；点击后关闭 |
-| `dedupeKey` | string | 同 key 2s 内去重；默认 `type+message` |
-| `maxVisible` | number | 3；超出丢最旧 |
+| `dedupeKey` | string | 同 key 5s 内去重（更新已有条计时，不新增）；默认 `type+message` |
+| `maxVisible` | number | 3；第 4 条起 FIFO **排队**，不丢最旧；同 key 去重优先于排队 |
 
 ### 状态矩阵
 
@@ -582,7 +601,7 @@ Tone：`neutral`（`bg-surface-2/60 text-fg-strong border-line-subtle`）、`bra
 | focus | 环在 action/close；有焦点时暂停计时 | 键盘可达；Esc 关闭当前 toast |
 | disabled | — | — |
 | loading | 不允许 loading toast（用按钮内 loading） | — |
-| error | `border-danger/30` + `danger-fg` icon；`role="alert" aria-live="assertive"` | 8s + 手动关闭；内容可读；不自动消失到无法回看 |
+| error | `border-danger/30` + `danger-fg` icon；`role="alert" aria-live="assertive"` | 8s + 手动关闭；内容可读；最多 3 条可见，其余排队 |
 | empty | — | — |
 
 ### 位置与层级（I-10）
@@ -590,7 +609,7 @@ Tone：`neutral`（`bg-surface-2/60 text-fg-strong border-line-subtle`）、`bra
 - 桌面：`fixed right-6 bottom-6 z-toast max-w-[28rem]`。
 - 移动端：`left-4 right-4 bottom-safe-nav`，**必须高于底栏**（`56px + safe + 12px`），不得覆盖底栏 tab。
 - 离线标记不得与 toast 同区：离线标记移到顶栏下方/右上（`z-nav`），或 toast 打开时让位。
-- 最多 3 条；同 key 去重；不叠 5 条。
+- 最多 3 条**可见**；同 key 5s 去重；超出**排队**（FIFO），不丢旧条目、不叠 5 条。
 
 ### 键盘 / 触屏 / ARIA
 
@@ -610,7 +629,7 @@ Tone：`neutral`（`bg-surface-2/60 text-fg-strong border-line-subtle`）、`bra
 
 - [ ] 移动端 toast 不覆盖底栏（375/390/430 实测）。
 - [ ] 错误 toast 8s 且有 close。
-- [ ] 连续 5 个错误只显示 3 条且同 key 去重。
+- [ ] 连续 5 个错误只显示 3 条，其余排队；同 key 5s 内去重（更新计时而非新增）。
 - [ ] 含 action 的 toast 键盘可达。
 
 ---
@@ -696,7 +715,7 @@ Skeleton：rounded-control bg-white/5 animate-pulse；reduced-motion 下静态
 
 | 名称 | 类型 | 说明 |
 |---|---|---|
-| `EmptyState.size` | `page(48/16 py-16) \| card(40/12 py-10)` | 只允许两档 |
+| `EmptyState.size` | `page(48/16 py-16) \| card(40/12 py-10) \| inline(20/8 py-3)` | 三档；`inline` 用于卡片内部/右栏内联（A3 IX-04） |
 | `EmptyState.action` | `{label,onClick}` | L-10：每个空态给「最有价值的一次操作」；没有动作时必须有明确说明 |
 | `Loading.kind` | `spinner \| skeleton` | 首屏列表用 skeleton；按钮/刷新用 spinner |
 | `Loading.minHeight` | number | 预留高度，防布局跳动（默认 160） |
@@ -721,7 +740,7 @@ Skeleton：rounded-control bg-white/5 animate-pulse；reduced-motion 下静态
 - 状态源必须是显式枚举：`loading | error | empty | ready`；`items.length===0 && failed` → error。
 - 页面级加载失败：不得只 `console.error`；必须有 ErrorPanel + 重试（I-01）。
 - 首屏列表加载：skeleton 3 行；不是居中 spinner。
-- 空态：`py-16`（page）/`py-10`（card）；不得再用 py-24/py-20/py-12/py-8。
+- 空态：`py-16`（page，页面级）/`py-10`（card，独立卡片/区块）/`py-3`（inline，卡片内部与右栏内联）；不得再用 py-24/py-20/py-12/py-8。
 - 虚线边框只用于「可放置区」（拖拽导入），不用于普通空态。
 - 错误文案三层次（I-09）：字段级内联、操作级 toast、页面级 ErrorPanel；同一错误只出现一层。
 
@@ -737,13 +756,13 @@ Skeleton：rounded-control bg-white/5 animate-pulse；reduced-motion 下静态
 
 ### 替代旧实现
 
-`TodayScreen:100`、`ContentScreen:126/186` 失败当空 → ErrorPanel；`ChannelVideoList:81` loading 文本 → Skeleton；`ImportedBooksShelf:80` 骨架保留为基准；空态 8 处（I-08）→ 两档 EmptyState；`WordPopover` 错误内联（保留为 card 级）；`ReaderScreen:183` 错误面板保留为基准。
+`TodayScreen:100`、`ContentScreen:126/186` 失败当空 → ErrorPanel；`ChannelVideoList:81` loading 文本 → Skeleton；`ImportedBooksShelf:80` 骨架保留为基准；空态 8 处（I-08）→ 三档 EmptyState（page/card/inline）；`WordPopover` 错误内联（保留为 card 级）；`ReaderScreen:183` 错误面板保留为基准。
 
 ### QA 检查
 
 - [ ] 断网刷新今日/内容页：显示「加载失败 + 重试」，不是「暂无记录」。
 - [ ] 首屏列表是 skeleton，不是居中 spinner。
-- [ ] 空态 padding 只有 py-16/py-10。
+- [ ] 空态 padding 只有 py-16（page）/py-10（card）/py-3（inline）；卡片内部与右栏不套页面级空态。
 - [ ] 每个空态有 action 或明确说明。
 - [ ] 错误不重复出现在 toast + 面板。
 
@@ -754,8 +773,8 @@ Skeleton：rounded-control bg-white/5 animate-pulse；reduced-motion 下静态
 ### 用途 / 何时用 / 何时不用
 
 - **用途**：全局导航壳，承载一级导航、页面标题、全局入口。
-- **用**：所有一级页与面板型子视图。
-- **不用**：沉浸式任务页（学习、复习、考试、定位、课程）——隐藏侧栏/底栏，由子视图自己的 SubHeader 承担（N-17 的裁决：任务型隐藏；面板型保留壳 + 面包屑，见 `layout.md` §7）。
+- **用**：所有一级页；**桌面**的面板型子视图（报告/发现/博客/单词本/能力）。
+- **不用**：沉浸式任务页（学习、复习、考试、定位、课程）——隐藏侧栏/底栏，由子视图自己的 SubHeader 承担；**手机上的所有子视图（任务型与面板型）都不保留全局壳**（无 BottomBar、无顶栏 4 tab），只有页内 SubHeader + BackButton（D-03 / NM §1.4）。管理台是 A 类独立壳，不在 NavShell 内（D-10 / layout §6.5）。
 
 ### Anatomy / 尺寸
 
@@ -772,7 +791,7 @@ Skeleton：rounded-control bg-white/5 animate-pulse；reduced-motion 下静态
 | 名称 | 类型 | 说明 |
 |---|---|---|
 | `state.tab` / `state.sub` | NavState | 选中态来自路由，不由组件本地猜 |
-| `tabs` | `{id,label,icon}[]` | 顺序固定（今日/内容/练习/我的；代码当前为内容/练习/今日/我的是 owner 决定，见 A1 §9） |
+| `tabs` | `{id,label,icon}[]` | 可见顺序固定 **内容/练习/今日/我的**（D-08，owner 2026-11-17 决定）；默认落地仍为今日；桌面侧栏与手机底栏同序 |
 | `dueCount` | number | 仅练习 tab，0 不显示，>99 → `99+` |
 | `wordbookCount` | number | 顶栏/侧栏入口，统一 `99+` |
 | `onNavigate` | (tab) => void | 一级切换 replace（A3） |
@@ -833,7 +852,7 @@ Skeleton：rounded-control bg-white/5 animate-pulse；reduced-motion 下静态
 
 - **V-15 裁决**：一级页移动端标题 24（`text-page`），≥md 30（`text-page-lg`）；桌面端标题只在顶栏（15），页面内**不渲染** h1。子视图标题统一 17（`text-section`），不再出现 24/30 的大标题。
 - **L-12 裁决**：SubHeader 固定 `h-12`；工具条/副标题下沉到内容区第二行；`flex-wrap` 禁止在头部出现。
-- **L-09 裁决**：考试页头部只保留「返回 + 标题 + 关闭」；eyebrow/副标题/历史按钮移到内容区。
+- **L-09 裁决（W0 修订）**：考试页头部只保留「返回 + 标题」；**删除页面级关闭 X**；eyebrow/副标题/历史按钮移到内容区。退出/放弃是**业务动作**（IX-24），放在页内或 SubHeader trailing，按 ConfirmDialog 确认后执行，不是导航关闭。
 
 ### API
 
@@ -844,7 +863,8 @@ Skeleton：rounded-control bg-white/5 animate-pulse；reduced-motion 下静态
 | `meta` | ReactNode | 来源/等级徽章（≤1） |
 | `actions` | ReactNode | PageHeader ≤2；SubHeader ≤3；超出的收进 More 菜单 |
 | `onBack` | () => void | SubHeader 必填（返回上一层） |
-| `onClose` | () => void | 只有 Dialog 用 CloseButton；子视图用 Back |
+| `parentLabel` | string | 必填；父级名称（如今日/内容/列表/报告），由 A3 `backLabelFor(state)` 给出；用于 `aria-label="返回<父级>"` |
+| `onClose` | () => void | **只有 Dialog 用 CloseButton**；子视图一律用 Back，不提供 `onClose` |
 | `showBackLabel` | boolean | `≥sm` 显示「返回」文字；移动端只图标 |
 
 ### 状态矩阵
@@ -863,13 +883,13 @@ Skeleton：rounded-control bg-white/5 animate-pulse；reduced-motion 下静态
 ### 键盘 / 触屏 / ARIA
 
 - PageHeader 的 h1 是页面唯一 h1；桌面顶栏标题也应是 h1（不能两个 h1 同时可见）。
-- BackButton：`button` + `aria-label={t('nav.back')}`；`≥sm` 显示文字；命中 ≥44；`-ml-2` 与内容左缘对齐。
+- BackButton：`button`；`aria-label` = 有 `parentLabel` 时 `t('nav.backTo', { parent: parentLabel })`（「返回<父级>」），否则 `t('nav.back')`；`≥sm` 显示文字；命中 ≥44；`-ml-2` 与内容左缘对齐。与 A3 NM §5.1 / `backLabelFor(state)` 一致。
 - SubHeader 用 `<header>`；返回键是第一个 Tab 停靠点。
 - CloseButton（Dialog）：`aria-label={t('common.close')}`，`p-2 rounded-full`，44 命中。
 
 ### 禁止用法
 
-- 5 套返回（h-7/h-8/h-9、-ml-1/-2/-3）；子视图用 24px 大标题；头部 `flex-wrap` 成两行；同一视口两个 h1；Dialog 用返回箭头。
+- 5 套返回（h-7/h-8/h-9、-ml-1/-2/-3）；子视图用 24px 大标题；头部 `flex-wrap` 成两行；同一视口两个 h1；Dialog 用返回箭头；**页面级 X 与 BackButton 并存**（X 只属于 Dialog/词卡/频道列表等覆盖层）。
 
 ### 替代旧实现
 
@@ -881,6 +901,8 @@ Skeleton：rounded-control bg-white/5 animate-pulse；reduced-motion 下静态
 - [ ] 每个视口只有一个 h1。
 - [ ] 返回控件只有一种尺寸/位置；命中 ≥44。
 - [ ] 子视图标题 ≤17px；不再出现 24px 子视图标题。
+- [ ] 页面级无 X；所有子视图（含考试/定位/复习/报告/能力/发现）用 BackButton，`aria-label` 含父级名。
+- [ ] 业务退出（提交/完成/放弃/退出考试）走 IX-24 确认，不作为头部 X。
 
 ---
 
@@ -901,9 +923,9 @@ Click-away layer（z-overlay）→ Card（w-80，z-popover，bg-surface/85，sha
 ```
 
 - 定位：`left = clamp(12, x - w/2, innerWidth - w - 12)`；下方放不下则翻到上方（`bottom = innerHeight - y + 24`）；`maxHeight` 由可用空间计算；**必须夹取视口边界**（I-15）。
-- 打开：点击词/触屏点词；焦点进入卡片；**不锁背景滚动**（非模态），但点击空白关闭。
-- 关闭：Esc、点空白、关闭按钮；关闭后焦点回到触发的词。
-- 切词：卡片打开时点另一个词直接切换（触屏一次命中），不先关闭。
+- 打开：点击/触屏点词；**仅键盘触发时焦点进入卡片**（鼠标/触屏点击不抢焦点）；**不锁背景滚动**（非模态），点击空白关闭。
+- 关闭：Esc、点空白、关闭按钮；键盘触发时关闭后焦点回到触发的词。
+- 切词：卡片打开时**点击/键盘**点另一个词直接切换（触屏一次命中），不先关闭；**hover 只做视觉提示，不触发切词**（IX-11：hover 不承载业务状态）。
 
 ### WordLookup API（替代 5 份 handler，C-03/I-12）
 
@@ -944,7 +966,7 @@ createWordLookup(source: WordLookupSource): (word: string, context: string, poin
 
 ### 禁止用法
 
-- 紫色用于非 AI 语义；两套 ruby；hover 才出现的星标；词卡超出右边缘；无 role 的浮层；把词卡做成模态（锁滚动）；在卡片里用 `z-[90]`。
+- 紫色用于非 AI 语义；两套 ruby；hover 才出现的星标；hover 停留切词；词卡超出右边缘；无 role 的浮层；把词卡做成模态（锁滚动）；在卡片里用 `z-[90]`。
 
 ### 替代旧实现
 

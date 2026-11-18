@@ -1,6 +1,7 @@
 # UI/UX 治理修复计划（Remediation Plan）
 
 > 日期：2026-11-19 ｜ 来源：A1–A5 五角色交叉审阅 ｜ 状态：**最终验收为 conditional，不可宣称已全部达标**
+> **执行状态（2026-11-19）**：**W0 文档对齐 + W6 A4 映射修正已完成**，证据/复核命令见 [`remediation-status.md`](./remediation-status.md)；W1–W5 仍未完成，不得据此关闭 P0 或宣布可上线。
 > 关联：`00-team-charter.md`、`audit-report.md`、`design-system/`、`interaction-spec.md`、`navigation-model.md`、`component-consolidation.md`、`design-gate.md`、`design-qa-checklist.md`
 
 ## 0. 结论
@@ -18,9 +19,9 @@
 
 ## 1. 五个角色交叉审阅的共同结论
 
-1. **V-06 是最大的“假关闭”风险**：A1 初审计 24 键，A5 复核 31 键 + 1 待裁决；A4 仍按 24 键，7 键没有迁移行；`check:i18n` 当前绿，31 个英文键仍在。V-06 必须单列 P0，不能靠现有 CI 关闭。
+1. **V-06 是最大的“假关闭”风险**：A1 初审计 24 键，A5 复核 31 键 + 1 待裁决；A4 原按 24 键、7 键没有迁移行（**W0 已补为 31 键，见 `remediation-status.md`**）；`check:i18n` 当前绿，31 个英文键仍在。V-06 必须单列 P0，不能靠现有 CI 关闭。
 2. **导航 P0 没有实施归属**：A4 把 `nav.ts/useNav.ts/App` 推给 A3，A3 只写规范不改代码；D-01/D-02 没有 B0 批次、人日、owner。N-01/N-02/N-03 三个 P0 和 N-18 仍是无主。
-3. **A4 映射“文件级未归属 0”不等于“实现点未归属 0”**：至少漏 `DiscoverScreen` 5 处、`StartLearning` 1 处，`Placement` 2 处仅由 G22 兜底；217 行里 7 处行号超文件长度、3 行重复；B1–B5 有依赖倒置。
+3. **A4 映射“文件级未归属 0”不等于“实现点未归属 0”**：至少漏 `DiscoverScreen` 5 处、`StartLearning` 1 处，`Placement` 2 处仅由 G22 兜底；217 行里 7 处行号超文件长度、3 行重复；B1–B5 有依赖倒置（**W6 已修，映射 222 行，见 `remediation-status.md`**）。
 4. **A2/A3 有 7 处契约冲突**：Toast TTL/去重、EmptyState 间距、页面级 X vs BackButton、Dialog dirty/alertdialog、词卡 hover 切词、Segmented 5 项边界、移动端双壳/tab 顺序。
 5. **A5 门禁可被绕过**：G1 实测不抓 `bg-black/60`、任意 z/字号/阴影；G2 只抓固定常量名；G4 漏裸 `outline-none`；证据不绑 commit；131 项以页面为主，缺组件矩阵。
 6. **对比度仍是盲区**：A1 未算 WCAG，A2 把责任指向门禁 G6（但 G6 是移动端），A5 QA 只用 class 判断；发布前必须补实测。

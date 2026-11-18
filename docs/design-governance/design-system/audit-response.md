@@ -31,7 +31,7 @@
 | V-03 | P1 | `tokens.md` §2.3（Q-01/Q-02 裁决）、§2.5 #19 | 覆盖 | `zinc-600` 字面量归零：信息类升 `fg-secondary`（7.76:1），装饰/禁用用 `fg-muted`/`fg-disabled`；空态提示不再是 zinc-600 |
 | V-04 | P1 | `tokens.md` §2.2 品牌映射、§2.5 #20；`components.md` C1/C7 | 覆盖 | `blue-*` 473 处按 7 行映射到 `brand-*`；`brand-600` 只作填充；A5 用 T-04 正则拦截新 `blue-*` |
 | V-05 | P1 | `tokens.md` §2.2 保留色、§2.5 #21/#47；`components.md` C13 | 覆盖 | 紫色只保留 AI 高亮；选中改 `brand/30`（全局 `::selection`）；词性徽章改中性；注释色 `highlight-fg` 唯一 |
-| **V-06** | **P0** | `components.md` §1.1（组件不硬编码文案）、§1.3（11px 中文下限）；`tokens.md` §3.2；A5 待办 | **部分** | 设计系统只能给结构预防；24 个 `zh-CN` 英文键的补齐、`check-i18n.mjs` 的「zh 必须含 CJK」规则属文案/门禁，不在 A2 域。**未覆盖部分明确交 A5（规则）+ A4（文案）** |
+| **V-06** | **P0** | `components.md` §1.1（组件不硬编码文案）、§1.3（11px 中文下限）；`tokens.md` §3.2；A5 待办 | **部分** | 设计系统只能给结构预防；**31 个 `zh-CN` 英文键**（A1 初审计 24 + A5 复核 7）的补齐、`check-i18n.mjs` 的「zh 必须含 CJK」规则属文案/门禁，不在 A2 域。**未覆盖部分明确交 A5（规则）+ A4（文案）/W2**。另 1 键 `sentences.day` 已裁决为同批中文化（不计入 31 键；见 `remediation-status.md`）。 |
 | V-07 | P1 | `tokens.md` §2.2 保留色迁移、§2.5 #22 | 覆盖 | violet/sky/pink 全部收敛：紫只 AI，sky/pink 删除，轴改「灰轨 + brand 当前档」；`.glass-*` 只留欢迎页 |
 | V-08 | P2 | `tokens.md` §2.2；`components.md` C15 Progress | 覆盖 | 进度只允许 `brand`（进行）与 `success`（完成）两色；禁止渐变；高度 1.5px |
 | V-09 | P1 | `tokens.md` §5 圆角硬映射；`components.md` C1/C2 | 覆盖 | h-8/h-9 只允许 8px/full；h-10 用 12px；卡片 16px；页面主面板 24px；禁止 `rounded-2xl sm:rounded-3xl` |
@@ -101,7 +101,7 @@
 
 | ID | 缺什么 | 交给谁 | 验收 |
 |---|---|---|---|
-| V-06 | 24 个 `zh-CN` 英文键的实际翻译；`check-i18n.mjs` 的「zh 值必须含 CJK（白名单除外）」规则 | A5 门禁 + A4 文案 | `check:i18n` 新增规则通过；主链路（处理遮罩/估价/剧集/删除）无英文；A5 QA 勾选 |
+| V-06 | 31 个 `zh-CN` 英文键的实际翻译（+ `sentences.day` 同批中文化）；`check-i18n.mjs` 的「zh 值必须含 CJK（白名单除外）」规则 | A5 门禁 + A4 文案 / W2 | `check:i18n` 新增规则通过；主链路（处理遮罩/估价/剧集/删除）无英文；A5 QA 勾选 |
 
 ### 4.2 P2 部分覆盖（5 条，不阻塞门禁 1）
 

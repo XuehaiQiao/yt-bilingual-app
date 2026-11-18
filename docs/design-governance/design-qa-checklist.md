@@ -1,6 +1,6 @@
-# 设计 QA 清单（按功能模块）v1.0
+# 设计 QA 清单（按功能模块）v1.1
 
-> 版本：**v1.0**（2026-11-19 定稿）｜责任人：A5（质量门禁与 QA）｜审批：lead
+> 版本：**v1.1**（2026-11-19 W0 修订）｜责任人：A5（质量门禁与 QA）｜审批：lead
 > 输入：A1 [`audit-report.md`](./audit-report.md)（90 条：P0 7 / P1 44 / P2 39）、A2 [`design-system/`](./design-system/tokens.md)、A3 [`interaction-spec.md`](./interaction-spec.md) / [`navigation-model.md`](./navigation-model.md)、A4 [`component-consolidation.md`](./component-consolidation.md)。
 > 与 [`design-gate.md`](./design-gate.md) 的分工：门禁是**每个 UI PR 的 8 项 5 分钟最小集**；本清单是**模块级全量回归 / 发布前验收**。本清单不替代门禁，也不检查后端正确性。
 
@@ -63,7 +63,7 @@
 | QA-NAV-05 | 打开无缓存的本地剧集深链，停在「该剧集尚未处理，是否现在开始」的页面态（有主按钮），不是 toast + 弹回内容页 | N-05 | P1 | 输入 `#/learn/local/<show>/S01E02`（无缓存）+ 截图；确认无「已回内容页」 |
 | QA-NAV-06 | `#/content/library` 直达后停在免费库区块（该区块滚入视口），地址栏不被改写；侧栏「免费库」落到同一 URL | N-06 | P1 | 2 张截图 + 前后 hash 相同 |
 | QA-NAV-07 | 单词本 → 文章/书/句包 → 返回，落回**单词本**（不是「我的」） | N-18 | P1 | 3 行 hash + 返回截图 |
-| QA-NAV-08 | 旧入口均可用并规范化为新 URL：`#/learn/...`、`#/lesson/...`、`#/profile/favorites`、`#admin`、`/admin`；管理台在 auth ready 后判定，无固定 500ms 白屏 | N-13、N-14 | P1（↑） | 5 条 URL 截图 + 录屏计时（进入/拦截 ≤200ms） |
+| QA-NAV-08 | 旧入口均可用并规范化为新 URL：`#/learn/...`、`#/lesson/...`、`#/profile/favorites`、`#admin`、`/admin`；管理台在 auth ready 后判定，**代码中无固定 500ms `setTimeout`**（grep = 0） | N-13、N-14 | P1（↑） | 5 条 URL 截图 + `grep -rn "500" src/ | grep -i timeout` = 0 |
 | QA-NAV-09 | 非法 hash（`#/nonsense`、`#/content/sentences/0`、`#/practice/report`）回今日并出现**一次**可读提示，不静默 | N-11 | P1（↑） | 3 条 URL 截图 + 提示文案 |
 | QA-NAV-10 | 匿名新标签打开深链（如 `#/content/discover`）先看到登录；登录成功后回到**原目标页**，不丢 `next` | N-15 | P1 | 登录前/后 2 张截图 + hash |
 | QA-NAV-11 | 内容页滚到免费库 → 切今日 → 切回内容，滚动位置恢复；点**当前** tab 才平滑回顶 | N-16 | P1（↑） | 2 张截图；控制台读 `scrollTop` 不为 0 |
@@ -83,7 +83,7 @@
 |---|---|---|---|---|
 | QA-VID-01 | 375/390/430 学习页**只有一个滚动容器**：字幕区上下滑动只滚这一层；滚到底无链式滚动；最后一句完整可见；视频不 sticky | L-01 | P0 | 三档录屏 + DOM 统计滚动容器 = 1；滚到末句截图 |
 | QA-VID-02 | 处理/翻译/估价失败显示错误面板 + 重试，不显示「暂无」；重试不重复扣费；刷新页面 10 次，Network 中 `process/estimate` 调用为 0 | I-01 | P0 | 断网截图 + Network 截图（10 次刷新 0 请求） |
-| QA-VID-03 | 中文界面主链路无英文：处理遮罩 → 估价弹窗 → 本地剧集空态 → 删除历史 toast（31 键清单见附录 A） | V-06 | P0 | 5 张截图 + 逐键核对附录 A |
+| QA-VID-03 | 中文界面主链路无英文：处理遮罩 → 估价弹窗 → 本地剧集空态 → 删除历史 toast（31 键清单见附录 A；另 `sentences.day` 在句子包屏单独核） | V-06 | P0 | 5 张截图 + 逐键核对附录 A + 句子包 1 张 |
 | QA-VID-04 | 加载态为骨架或行内进度，不是全屏 spinner；翻译中占位文案对比度足够（`fg-secondary`，非 `zinc-600`），流式出现 | I-07、V-03 | P1 | 3G 限速截图 + 占位行截图 |
 | QA-VID-05 | 点词：单击开卡、点空白/Esc 关闭、切词不关；右侧 1/3 处点词卡片不越界；收藏词 `source_ref` 写入视频 id，单词本可回跳 | I-12、C-03、I-15 | P1 | 3 张截图 + 单词本来源行截图 + 跳转 |
 | QA-VID-06 | 触屏上收藏星常显可点（不依赖 hover）；点击立即变「已收藏」；游客点击打开登录浮层且星标不假成功；失败回滚 + toast | I-06、I-16 | P1 | 375 录屏 2 段（登录/断网） |
@@ -124,29 +124,23 @@
 | QA-VOC-01 | 移动端 tab 不再 8+ 横滚：2 个固定 tab + 词表菜单；选中项自动滚入视口；桌面可换行 | L-07 | P1 | 375 / 1440 截图 |
 | QA-VOC-02 | 来源列显示可读来源并可跳回原文；`vocab.source.unknown` 不出现；句子包来源可回跳 | I-12、C-03 | P1 | 3 条来源行截图 + 跳转录屏 |
 | QA-VOC-03 | tab 视觉为白滑块；计数徽章统一 11px / `99+`；四个入口计数一致 | C-05、C-07、N-10 | P1 | 3 处截图 |
-| QA-VOC-04 | 字号只在 11/13/15/17 档；无 9/10px；`zinc-600` 不再用于信息类文字（提亮到 `fg-secondary`） | V-02、V-03 | P1 | grep + 截图 |
 | QA-VOC-05 | 分页统一「页码条 + 状态文案」；步骤型改称「上一步/下一步」，不叫分页 | I-18 | P2 | 4 处截图 |
 | QA-VOC-06 | 来源/免费/等级标签用 Badge 五语义色；无逐处写色；中文不被 uppercase | C-13 | P2 | 截图 + grep |
 | QA-VOC-07 | 删除收藏有确认或可撤销 + 成功反馈；失败回滚；命中区 ≥44 | C-15、I-19 | P1 | 录屏 1 段 |
 | QA-VOC-08 | 空/加载/错误重试齐全；桌面表格与 375 单列不撑破、不横向滚动 | I-07、I-08 | P1 | 3 态 + 2 宽度截图 |
-| QA-VOC-09 | C2 档禁用并说明原因；短语搜索 / level / type 筛选 / 每页 50 可用；「全局隐藏中文」记忆生效、点行临时显示 | 新增（specs/004） | P1 | 4 张截图 |
 
 ## 6. 课程（本轮**不阻塞发布**，恢复投入时启用）
 
 | ID | 检查项（是 / 否可判定） | 关联审计 ID | 级别 | 证据 / 操作步骤 |
 |---|---|---|---|---|
-| QA-CRS-01 | 刷新或重进按 attempt 恢复到原步骤与已填答案，不从头开始 | 新增（specs/029） | P1 | 刷新前后 2 张截图 |
-| QA-CRS-02 | 12:00 倒计时只做展示，不催交、不跳步、不丢已答内容 | 新增（specs/029） | P1 | 倒计时到期截图 + 已答内容仍在 |
 | QA-CRS-03 | 游客进入有登录提示且不阻断试看；登录后进度保留 | I-13 | P1 | 2 张截图 |
 | QA-CRS-04 | 按钮 / OptionCard 复用；无 `h-10 sm:h-11` 变体；选项键盘可选 | C-01 | P1 | 截图 + 键盘操作 |
-| QA-CRS-05 | 完成页 score / 产出 / 参考样例可读，返回入口清晰；生成入口 409/502/429 为行内错误 | 新增（specs/030） | P2 | 2 张截图 |
 
 ## 7. 能力定位 / 考试
 
 | ID | 检查项（是 / 否可判定） | 关联审计 ID | 级别 | 证据 / 操作步骤 |
 |---|---|---|---|---|
 | QA-ASM-01 | 定位 12 分钟倒计时、超时自动交卷、退出作废确认（自绘 ConfirmDialog，Escape/取消可用） | I-05 | P1 | 超时截图 + 确认框截图 |
-| QA-ASM-02 | 结果页显示 CEFR 区间、置信度、免责声明；文案不出现「预测分数 / 保证」 | 新增（specs/016） | P1 | 结果页截图 |
 | QA-ASM-03 | 游客可测并提示「登录后结果保存更久」；登录后结果不丢 | I-13 | P1 | 2 张截图 |
 | QA-ASM-04 | 键盘 1–4 / Enter 可完成全部题；焦点可见；Tab 顺序与视觉顺序一致 | V-14 | P1 | 无鼠标录屏 1 段 |
 | QA-ASM-05 | 选项用 OptionCard（`role=radio` / `aria-checked`）；分段控件同一度量；无原生 `select` | C-06 | P1 | DOM 片段 + 截图 |
@@ -162,11 +156,7 @@
 | QA-DSC-03 | 博客文章深链 `#/content/blog/<slug>` 直接打开文章；列表点文章 URL 变化；刷新仍在文章；分享链接打开是文章；返回回列表 | N-01 | P0 | 4 步截图 + 4 行 hash |
 | QA-DSC-04 | 博客/发现的内部层级写 URL（列表↔文章、query）；刷新恢复；后退逐层 | N-08 | P1 | 3 行 hash + 刷新 |
 | QA-DSC-05 | 订阅更新 / 推荐请求失败显示错误面板 + 重试，不显示「暂无更新」；断网可复现 | I-01 | P0 | 断网截图 + 重试成功截图 |
-| QA-DSC-06 | 发现等待 10–20s 有进度/阶段说明；失败、degraded 有说明与重试；换一批不重复当前批次；空结果有说明 | 新增（specs/017） | P1 | 4 张截图 |
-| QA-DSC-07 | 候选卡信息完整（缩略图、频道、时长、CEFR、推荐理由、字幕状态）；缺字段有占位不塌 | 新增（specs/017） | P1 | 1 张完整卡 + 1 张缺字段卡 |
 | QA-DSC-08 | 空态给「最有价值的一次操作」：发现给 3 个示例主题、博客空列表给 RSS、报告空周给去复习 | L-10 | P2 | 3 张截图 |
-| QA-DSC-09 | Giscus 未配置时显示占位而非报错；RSS 链接可达 | 新增（specs/020） | P2 | 截图 + 打开 RSS |
-| QA-DSC-10 | 内容页右栏「本周报告」关闭后回内容页（NAV-03 的实例复核） | N-02 | P1 | 2 张截图 |
 
 ## 9. 登录 / 账户 / 设置
 
@@ -179,9 +169,6 @@
 | QA-ACC-05 | 改名/刷新等写操作：按钮内转圈 + 成功 toast + 失败回滚/内联；无假成功 | I-19 | P1 | 3 张截图（提交中/成功/失败） |
 | QA-ACC-06 | 焦点只用全局 `:focus-visible`；输入壳用 `focus-within`；无组件级 `outline-none` 吞环 | V-14 | P1 | Tab 走查截图 + grep |
 | QA-ACC-07 | 词汇等级轴改「灰轨 + brand 当前档」，去掉 sky→violet→pink 渐变与外发光；全页无新增 violet/sky/pink | V-07 | P1 | 设置页截图 + grep |
-| QA-ACC-08 | 未配置 Key 的模型置灰 + 原因说明；选择结果持久化；重启后仍生效 | 新增（specs/001） | P1 | 2 张截图 |
-| QA-ACC-09 | 退出登录清空登录态与相关缓存；游客账户页降级正确（不显示写操作） | 新增 | P1 | 退出前后截图 |
-| QA-ACC-10 | 设置入口不重复（侧栏/顶栏/我的）；同一设置在各入口值一致 | 新增（IA §3.4） | P2 | 3 处截图 |
 
 ## 10. 管理台
 
@@ -200,10 +187,10 @@
 
 | ID | 检查项（是 / 否可判定） | 关联审计 ID | 级别 | 证据 / 操作步骤 |
 |---|---|---|---|---|
-| QA-MOB-01 | 每个页面**恰好一个** `data-page-scroll` 容器（Dialog/词卡/代码块除外）；375 滚到最底部最后一张卡完整可见、底栏不重叠、间距 ≥16 | L-01、L-13 | P0 | 三档机型逐页录屏 + DOM 统计滚动容器 |
+| QA-MOB-01 | 每个路由**至多一个**页面滚动容器（`data-page-scroll` 或 `main` 内 `overflow-y-auto`；Dialog/词卡/代码块除外）；375 滚到最底部最后一张卡完整可见、底栏不重叠、间距 ≥16 | L-01、L-13 | P0 | 三档机型逐页录屏 + DOM 统计 `overflow-y-auto` 容器数 ≤1 |
 | QA-MOB-02 | 375/390/430 无横向滚动（表格、tab 条容器除外）；长列表滚动流畅，跟随与分页不打架 | L-13 | P1（↑） | 3 档截图 + 手势录屏 |
 | QA-MOB-03 | 底栏 56 + safe；Toast 在底栏上方；离线标记移到顶栏下方，二者不重叠、不遮 tab | I-10 | P1 | 断网 + 触发 toast 截图 |
-| QA-MOB-04 | 触控目标 ≥44；hover 才出现的操作在 coarse pointer 常显；无两个操作挤在 8px 内 | I-16 | P1 | 375 截图 + DevTools 触摸模拟 |
+| QA-MOB-04 | 触控目标 ≥44；hover 才出现的操作在 coarse pointer 常显；删除/收藏/播放等关键操作不依赖 hover | I-16 | P1 | 375 截图 + DevTools 触摸模拟 |
 | QA-MOB-05 | 软键盘弹出不遮输入框与提交按钮；输入字号 ≥16px（iOS 不缩放） | 新增（键盘遮挡）、L-13 | P1 | iOS Safari 截图（发布前） |
 | QA-MOB-06 | 只用 `dvh`；地址栏展开/收起不裁切、无双滚动条；`viewport-fit=cover` 保留 | V-11 | P1 | iOS Safari 展开/收起 2 张截图 |
 | QA-MOB-07 | 右侧 1/3 点词卡片不越界（clamp 8px + 上下翻转）；375 下卡片可完整阅读 | I-15 | P1 | 3 个点位截图 |
@@ -215,22 +202,22 @@
 | ID | 检查项（是 / 否可判定） | 关联审计 ID | 级别 | 证据 / 操作步骤 |
 |---|---|---|---|---|
 | QA-X-01 | 任何请求失败都**不得**渲染成空态（今日历史、内容右栏、订阅更新、推荐等）；显示 ErrorPanel + 重试；断网可复现 | I-01 | P0 | 断网逐页截图 + 恢复后重试成功 |
-| QA-X-02 | 所有浮层具备：Escape、遮罩点击、X、`role=dialog`、`aria-modal`、焦点陷阱、关闭回焦点、背景滚动锁；频道列表弹窗可键盘关闭 | I-02、I-03、I-04、C-02 | P0 | 键盘录屏 + DOM 片段（14 个浮层抽 5 个） |
+| QA-X-02 | 所有浮层具备：Escape、遮罩点击、X、`role=dialog`（阻断型 `alertdialog`）、`aria-modal`、焦点陷阱、关闭回焦点、背景滚动锁；频道列表弹窗可键盘关闭；有输入时关闭先确认；无嵌套 Dialog | I-02、I-03、I-04、C-02 | P0 | 键盘录屏 + DOM 片段（14 个浮层抽 5 个）+ dirty/嵌套各 1 例 |
 | QA-X-03 | 全站无 `window.confirm/alert`；删除/退出考试/重置定位用 ConfirmDialog；取消无副作用 | I-05 | P1 | grep 新增 = 0 + 3 张确认框截图 |
 | QA-X-04 | 反馈层级：字段校验内联；操作失败 toast；页面级加载失败 ErrorPanel；同一错误不同时出现两处 | I-09 | P1 | 3 类错误截图 |
 | QA-X-05 | 加载态统一：首屏列表骨架（最小高度 240）、局部行内 spinner、阻断遮罩只用于付费/处理；spinner 三档 | I-07 | P1 | 3 处截图 |
-| QA-X-06 | 空态只在「成功且为空」出现；EmptyState 四槽（icon/title/hint/action）+ `py-16`；虚线边框只用于可放置区 | I-08 | P1 | 4 处空态截图 |
-| QA-X-07 | Toast：TTL/去重/上限/位置/`aria-live`；错误可关闭或延长；连续 5 个错误不叠 5 条；不遮底栏与离线标记 | I-10 | P1 | 连发 5 个错误截图 + 读屏/aria 检查 |
+| QA-X-06 | 空态只在「成功且为空」出现；EmptyState 四槽（icon/title/hint/action）+ 尺寸规则（page `py-16` / card `py-10` / inline `py-3`）；虚线边框只用于可放置区 | I-08 | P1 | 4 处空态截图（页面/卡片/右栏各 1） |
+| QA-X-07 | Toast：success 3s / info 5s / error 8s；同 key 5s 去重；最多 3 条可见、其余 FIFO 排队；错误可手动关闭；移动端在底栏上方且不遮离线标记；`aria-live` 正确（error assertive / 其余 polite） | I-10 | P1 | 连发 5 个错误截图 + DOM 检查 `role`/`aria-live`（读屏人测可选，不作通过门槛） |
 | QA-X-08 | 收藏/取消乐观更新，失败回滚 + 错误 toast；游客点收藏不改变星标且打开登录浮层 | I-06 | P1 | 断网/游客 2 段录屏 |
 | QA-X-09 | 写操作三件套（按钮内 loading + 成功 toast + 失败 toast/内联）；高风险动作确认后仍失败有可读原因 | I-19 | P1 | 3 张截图 |
 | QA-X-10 | 全局 `:focus-visible` 唯一；无组件级 focus ring/`outline-none`；输入容器用 `focus-within`；焦点顺序与视觉一致 | V-14 | P1 | 键盘走查 + grep |
 | QA-X-11 | Button/Card/ListRow/Dialog 单一来源；无 `PRIMARY_BUTTON`/`CARD` 常量；删除类图标 hover/focus 变红 + 确认 + ≥44 | C-01、C-02、C-11、C-15 | P1 | grep 新增常量 = 0 + 截图 |
-| QA-X-12 | Tabs 两皮肤；Segmented 唯一度量（容器 `rounded-control bg-surface-2/80 p-0.5`、选项 `px-2.5 py-1 text-caption`）；Badge 五语义色；CountBadge 11px/99+ | C-05、C-06、C-07、C-13 | P1 | 4 处截图 + DOM |
+| QA-X-12 | Tabs 两皮肤；Segmented 唯一度量（容器 `rounded-control bg-surface-2/80 p-0.5`、选项 `px-2.5 py-1 text-caption`）且**只用于 2–5 项**（6 项起 Tabs/Menu）；Badge 五语义色；CountBadge 11px/99+ | C-05、C-06、C-07、C-13 | P1 | 4 处截图 + DOM + 5 项/6 项边界各 1 例 |
 | QA-X-13 | `formatClock/formatCountdown/formatCount` 单一来源；>1h 输出 `h:mm:ss`；计数统一 `99+` | C-08、N-10 | P1 | grep 副本 = 0 + 128 计数截图 |
 | QA-X-14 | `brand` 是唯一交互强调色；无新增 `blue-*`；紫只用于 AI 高亮；无 violet/sky/pink 新增；进度只用 brand/success | V-04、V-05、V-07、V-08 | P1 | diff grep + 4 处截图 |
 | QA-X-15 | 字号只用 11/13/15/17/24/30… 阶梯；中文 ≥11px；`zinc-600` 不再用于信息类文字（占位/空态/说明 → `fg-secondary`） | V-02、V-03 | P1 | grep + 空态/占位截图 |
 | QA-X-16 | 圆角按高度硬映射；材质 6 配方整选；阴影只 `elev-1/2/3`；z-index 只用 8 个 token（7 层 + `z-raised`），无 `z-[N]` | V-09、V-10、V-12、V-13 | P1 | grep + 弹窗/词卡截图 |
-| QA-X-17 | i18n：无硬编码文案；zh/vi 同键；zh 值必须含 CJK（白名单 14 键）；`check:i18n` 绿；31 键清单见附录 A | V-06 | P1 | `npm run check:i18n` 末行 + 附录 A 逐键 |
+| QA-X-17 | i18n：无硬编码文案；zh/vi 同键；zh 值必须含 CJK（白名单 A.3：14 键 + 6 CEFR + `vocab.phrases.source.ecdict`）；`check:i18n` 绿；31 键清单见附录 A；`sentences.day` 已中文化（不计入 31 键，但不得进白名单） | V-06 | P1 | `npm run check:i18n` 末行 + 附录 A 逐键 + `sentences.day` 渲染截图 |
 | QA-X-18 | 无裸 `transition` / `transition-all`（只颜色/transform）；默认 200ms + `ease-apple` 用于位移/缩放；`MotionConfig reducedMotion="user"` 全局兜底 | V-21 | P1 | grep + reduced-motion 录屏 |
 | QA-X-19 | 共享函数在 `lib/`（`cn` / `reading-layout` / `time`）；组件不反向 import 业务组件 | C-09 | P2 | import 图 + grep |
 | QA-X-20 | 分页形态统一（页码条 + 状态）；步骤型不叫分页 | I-18 | P2 | 4 处截图 |
@@ -238,9 +225,6 @@
 | QA-X-22 | 触屏可见性规则落地（coarse pointer 常显次要操作），不再靠单点特例 | I-16 | P2 | 375 全页扫一遍次要操作 |
 | QA-X-23 | 平台返回/手势兜底按 `navigation-model.md` §10 | I-20 | P2 | 安卓/PWA 录屏 |
 | QA-X-24 | 删除图标统一（`Trash2`/`X`），命中区与颜色一致 | C-15 | P2 | 4 处截图 |
-| QA-X-25 | 删除 `InputScreen.tsx` 死代码；>1000 行组件按 shell/section/原子拆分，无未使用导出 | C-10、C-16 | P2 | `grep -r InputScreen` = 0 + 文件行数 |
-| QA-X-26 | testid 契约：`data-testid` 只增不删；4 个契约属性保留；改名同 commit 改脚本（674 唯一 testid / 77 脚本依赖） | 新增（A4 §5.4） | P1 | diff grep testid + 跑 `scripts/*.mjs` 相关脚本 |
-| QA-X-27 | 底色三处一致（`index.html` theme-color / manifest / `index.css --app-bg`） | V-01 | P2 | 3 处 grep |
 | QA-X-28 | 间距五档（4/8/12/16/24）；按压只 0.98/0.99；无 `hover:scale` | V-19、V-20 | P2 | grep + 录屏 |
 
 ---
@@ -273,17 +257,19 @@
 | `shows.episodesShort` | "({{count}} ep)" | `ShowBrowser.tsx` | 中文 |
 | `shows.seasonsEpisodes` | "{{seasons}} seasons · {{episodes}} episodes" | `ShowBrowser.tsx` | 中文 |
 
-**合计 31 键**（24 + 7）+ **1 键待裁决**：`sentences.day` "Day {{day}}"（`SentenceView.tsx:197`，建议「第 N 天」）。
+**合计 31 键**（24 + 7）+ **`sentences.day` 已裁决（W0）**："Day {{day}}"（`SentenceView.tsx:197`）属用户可见英文，**W2 同批改为「第 N 天」**；它不计入 31 键，但**不得进入 CJK 白名单**（否则规则永久红）。
 
-### A.3 CJK 白名单（14 键，CI 规则用）
+### A.3 CJK 白名单（21 键，CI 规则用）
 
-`brand.engine`、`welcome.footer.github`、`library.article.license`、`vocab.cefr.levelCount`、`vocab.col.level`（CEFR）、`reader.import.urlPlaceholder`、`exam.result.correctValue`、`ability.assess.itemSkill`、`ability.assess.ratingAria`、`books.license`、`importedBooks.sourceGutenberg`、`importedBooks.sourceStandardEbooks`、`importedBooks.dialog.urlPlaceholder`、`novel.entry.title`（书名）。
+**A.3.1 原 14 键**：`brand.engine`、`welcome.footer.github`、`library.article.license`、`vocab.cefr.levelCount`、`vocab.col.level`（CEFR）、`reader.import.urlPlaceholder`、`exam.result.correctValue`、`ability.assess.itemSkill`、`ability.assess.ratingAria`、`books.license`、`importedBooks.sourceGutenberg`、`importedBooks.sourceStandardEbooks`、`importedBooks.dialog.urlPlaceholder`、`novel.entry.title`（书名）。
+
+**A.3.2 W2 补充 7 键**（A5 复核漏项）：6 个 CEFR 等级标签 `home.vocabLevel.liftoff.label`（A1）、`home.vocabLevel.orbit.label`（A2）、`home.vocabLevel.moonwalk.label`（B1）、`home.vocabLevel.interstellar.label`（B2）、`home.vocabLevel.deep-space.label`（C1）、`home.vocabLevel.supernova.label`（C2）+ `vocab.phrases.source.ecdict`（ECDICT 来源名）。**`sentences.day` 不在此列。**
 
 ### A.4 CI 检查项（阶段 4 开启，**不得现在开**）
 
 ```js
 // frontend/scripts/check-i18n.mjs 追加（草案）
-const WHITELIST = new Set([/* A.3 的 14 键 */]);
+const WHITELIST = new Set([/* A.3 的 21 键 */]);
 const CJK = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
 for (const [key, value] of Object.entries(base)) {
   if (WHITELIST.has(key)) continue;
@@ -291,8 +277,8 @@ for (const [key, value] of Object.entries(base)) {
 }
 ```
 
-- **开启条件**：A.1 + A.2 的 31 键中文落地、`sentences.day` 裁决完成、`npm run check:i18n` 通过。
-- **现在开会发生什么**：31 条直接失败 → CI/本地红。所以本阶段只在 QA 里人工勾 `QA-X-17`，不接 CI。
+- **开启条件**：A.1 + A.2 的 31 键中文落地、`sentences.day` 已中文化、白名单 21 键 + 删除 14 死键、`npm run check:i18n` 通过。
+- **现在开会发生什么**：31 条 + `sentences.day` 直接失败 → CI/本地红（W2 落地前仍应保持 warn/人工）。
 - **判定口径**：以「中文界面主链路无英文」为准，不以「白名单键数」为准；新增英文键按 P0 处理。
 
 ## 附录 B：审计覆盖核对表（51 条 P0/P1，缺失 = 0）
@@ -309,7 +295,7 @@ while read id; do grep -q -- "$id" design-qa-checklist.md || echo "MISSING $id";
 
 | 审计 ID | 级别 | 主 QA 项 | 补充 / 说明 |
 |---|---|---|---|
-| V-02 | P1 | QA-X-15 | QA-VOC-04 |
+| V-02 | P1 | QA-X-15 | — |
 | V-03 | P1 | QA-X-15 | QA-VID-04、QA-RDR-04 |
 | V-04 | P1 | QA-X-14 | 阶段 4 正则 T-04 |
 | V-05 | P1 | QA-X-14 | QA-VID-07 |
@@ -333,10 +319,10 @@ while read id; do grep -q -- "$id" design-qa-checklist.md || echo "MISSING $id";
 | I-10 | P1 | QA-X-07 | QA-MOB-03 |
 | I-11 | P1 | QA-NAV-12 | QA-ACC-02 |
 | I-12 | P1 | QA-VID-05 | QA-VOC-02、QA-BOOK-05、QA-RDR-05 |
-| I-13 | P1 | QA-RDR-02 | QA-ASM-03、QA-CRS-03、QA-ACC-09 |
+| I-13 | P1 | QA-RDR-02 | QA-ASM-03、QA-CRS-03 |
 | I-14 | P1 | QA-NAV-14 | — |
 | N-01 | **P0** | QA-DSC-03 | QA-DSC-04（同源） |
-| N-02 | **P0** | QA-NAV-03 | QA-DSC-10 |
+| N-02 | **P0** | QA-NAV-03 | —（QA-DSC-10 为重复项，已删） |
 | N-03 | **P0** | QA-NAV-01、QA-NAV-02 | — |
 | N-04 | P1 | QA-NAV-04 | — |
 | N-05 | P1 | QA-NAV-05 | — |
@@ -361,13 +347,13 @@ while read id; do grep -q -- "$id" design-qa-checklist.md || echo "MISSING $id";
 | L-06 | P1 | QA-NAV-16 | — |
 | L-07 | P1 | QA-VOC-01 | — |
 
-**统计**：V 12/12、I 14/14、N 9/9、C 9/9、L 7/7 → **51/51 覆盖，缺失 0**；其中 P0 7/7。V-06 有明确例外路径（31 键 + CI 规则草案 + 上线前 QA 勾选）。
+**统计**：V 12/12、I 14/14、N 9/9、C 9/9、L 7/7 → **51/51 覆盖，缺失 0**；其中 P0 7/7。**项数（W0 去重/迁出后）：115 条 = P0 12 / P1 84 / P2 19**（原 131；删 3 条重复 + 迁出 12 条无审计 ID + 迁出/改写 6 条不可判定，见附录 E）。V-06 有明确例外路径（31 键 + `sentences.day` + CI 规则草案 + 上线前 QA 勾选）。
 
 ## 附录 C：P2 抽样（13 条，发布前跑）
 
 | 审计 ID | 抽样项 | 对应 QA 项 |
 |---|---|---|
-| V-01 | 底色 hex → `bg-app`；三处同值 | QA-NAV-20、QA-X-27 |
+| V-01 | 底色 hex → `bg-app`；三处同值 | QA-NAV-20 |
 | V-08 | 进度条三套配色 → brand/success | QA-X-14 |
 | V-18 | 图标容器 5 种 → IconTile 36/40/48 | QA-X-11 |
 | V-19 | 间距网格 → 4/8/12/16/24 | QA-X-28 |
@@ -375,11 +361,67 @@ while read id; do grep -q -- "$id" design-qa-checklist.md || echo "MISSING $id";
 | I-18 | 分页 4 套 → Pagination | QA-X-20 |
 | N-10 | 单词本 4 入口计数 → `formatCount` | QA-X-13 |
 | N-16 | 切 tab 滚动恢复 | QA-MOB-08 |
-| C-10 | 删除 `InputScreen.tsx` | QA-X-25 |
+| C-10 | 删除 `InputScreen.tsx` | 已由 B1 执行；原 QA-X-25 移出（上线后） |
 | L-08 | CEFR 单一数据源 | QA-ASM-07 |
 | L-10 | 空态给下一步动作 | QA-X-06 |
 | L-11 | 三档布局契约 | QA-NAV-19 |
-| L-14 | 后台恢复/网络恢复静默刷新 | QA-DSC-06 |
+| L-14 | 后台恢复/网络恢复静默刷新 | 迁出功能验收（见附录 E.2） |
+
+## 附录 E：W0 去重 / 迁出登记（可复核）
+
+> 依据：`reviews/a5-cross-review.md` 的「重复 / 无审计对应 / 不可判定」三组缺口。处置后 **131 → 115 条**（P0 12 / P1 84 / P2 19），51 条 A1 P0/P1 覆盖不变。
+
+### E.1 删除的 3 对重复（保留左项，删除右项）
+
+| 保留 | 删除 | 依据 | 说明 |
+|---|---|---|---|
+| `QA-NAV-20` | QA-X-27 | V-01 底色三处一致 | 同一检查在两个模块重复；保留导航模块的 NAV-20 |
+| `QA-NAV-03` | QA-DSC-10 | N-02 右栏报告回内容页 | DSC-10 是 NAV-03 的实例复核，合并为一条 |
+| `QA-X-15` | QA-VOC-04 | V-02/V-03 字号与 zinc-600 | 词本模块无需单列；X-15 已覆盖全站 |
+
+### E.2 迁出设计 QA、改为 specs 功能验收的 12 条（无 A1 审计 ID）
+
+> 这些是 specs 的功能验收，不是设计判据；进设计 QA 会让失败无法归口（§0.5）。原 ID 保留以便追溯，但**不再计入设计 QA 项数**，也不在发布前设计走查中执行。
+
+| 原 ID | 内容（摘要） | 去向 |
+|---|---|---|
+| `QA-VOC-09` | C2 档禁用、短语搜索/筛选/每页 50、隐藏中文记忆 | `specs/004-vocab-level` 功能验收 |
+| `QA-CRS-01` | 课程 attempt 恢复原步骤/答案 | `specs/029` 功能验收 |
+| `QA-CRS-02` | 12:00 倒计时只展示、不催交 | `specs/029` 功能验收 |
+| `QA-CRS-05` | 完成页 score/产出/参考样例、409/502/429 行内错误 | `specs/030` 功能验收 |
+| `QA-ASM-02` | 结果页 CEFR 区间/置信度/免责声明 | `specs/016` 功能验收 |
+| `QA-DSC-06` | 发现等待 10–20s 进度、degraded、换一批 | `specs/017` 功能验收 |
+| `QA-DSC-07` | 候选卡字段完整/占位 | `specs/017` 功能验收 |
+| `QA-DSC-09` | Giscus 未配置占位、RSS 可达 | `specs/020` 功能验收 |
+| `QA-ACC-08` | 未配置 Key 模型置灰/持久化 | `specs/001` 功能验收 |
+| `QA-ACC-09` | 退出登录清空状态、游客降级 | 账户功能验收（无独立 spec） |
+| `QA-ACC-10` | 设置入口不重复、值一致 | IA §3.4 功能验收 |
+| `QA-X-26` | testid 只增不删、契约属性、改名同 commit | A4 §5.4 工程验收（CI/选择器冒烟） |
+
+### E.3 6 条不可判定项的处置
+
+| 原 ID | 原问题 | 处置 | 说明 |
+|---|---|---|---|
+| `QA-NAV-08` | 「≤200ms」无测量法 | **改写保留** | 删除毫秒阈值，改为「无固定 500ms `setTimeout`」+ grep 证据 |
+| `QA-MOB-01` | 「每页恰好 1 个 `data-page-scroll`」全仓仅 5 处 | **改写保留** | 改为「每个路由至多一个页面滚动容器（`overflow-y-auto` 计数 ≤1）」 |
+| `QA-MOB-04` | 「8px」无测量法 | **改写保留** | 删除 8px 子句，只留 ≥44 与 coarse-pointer 常显 |
+| `QA-X-07` | 「读屏」无设备 | **改写保留** | 改为 DOM/`aria-live` 可判定；读屏人测标为可选 |
+| `QA-X-25` | 「>1000 行拆分」主观且与 A4「不拆」冲突 | **迁出** | 拆分留上线后；`InputScreen` 删除由 B1 执行 |
+| `QA-X-26` | 「相关脚本」未定义 | **迁出**（同 E.2） | 改为 A4 §5.4 的工程验收 + CI 选择器冒烟 |
+
+### E.4 复核命令
+
+```bash
+cd docs/design-governance
+# 设计 QA 项数
+grep -cE '^\| QA-[A-Z]+-[0-9]+ \|' design-qa-checklist.md     # 期望 115
+# 已删/迁出的 ID 不应再出现在正文表（附录 E 除外）
+for id in QA-X-27 QA-DSC-10 QA-VOC-04 QA-VOC-09 QA-CRS-01 QA-CRS-02 QA-CRS-05 QA-ASM-02 QA-DSC-06 QA-DSC-07 QA-DSC-09 QA-ACC-08 QA-ACC-09 QA-ACC-10 QA-X-26 QA-X-25; do
+  grep -n "^| $id |" design-qa-checklist.md && echo "STILL PRESENT: $id"
+done
+# 51 条审计覆盖
+grep -oE '^#### (V|I|N|C|L)-[0-9]+ · (\*\*P0\*\*|P1)' audit-report.md | grep -oE '(V|I|N|C|L)-[0-9]+' | sort -u | wc -l   # 期望 51
+```
 
 ## 附录 D：证据锚点与命名
 
@@ -395,3 +437,4 @@ while read id; do grep -q -- "$id" design-qa-checklist.md || echo "MISSING $id";
 |---|---|---|---|
 | 2026-11-19 | v0.1 | 初稿：11 个模块 + 5 条横切检查项（已被 v1.0 取代） | A5 |
 | 2026-11-19 | **v1.0** | 去掉初稿占位：12 个模块共 131 条可判定项；逐条挂审计 ID；补三种用法/最小必跑集/环境矩阵；加 V-06 31 键清单与 CI 规则草案；51 条 P0/P1 覆盖核对（缺失 0）；P2 抽样 13 条；testid 契约 | A5 |
+| 2026-11-19 | **v1.1** | W0 对齐：复核 5 组错值（NAV-13/ASM-06/ADM-07、ADM-05、X-12、X-11/VOC-07）；Toast/EmptyState/Dialog/Segmented/BackButton 契约同步；`sentences.day` 裁决；删 3 对重复、迁出 12 条无审计 ID、改写/迁出 6 条不可判定；131→115 条；白名单补 7 键 | A5 |
