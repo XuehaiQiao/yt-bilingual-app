@@ -55,6 +55,19 @@ body {
   }
 }
 
+/* Learning view · single mobile scroll (layout §6.3, L-01). Below md the
+   media, transcript and summary share one vertical scroller (the learning
+   wrapper); TranscriptView supplies the safe-area bottom pad so the last
+   sentence clears the home indicator. Contain overscroll so a gesture at
+   either end never chains into the fixed app shell. */
+@media (max-width: 767.98px) {
+  .learning-scroll {
+    overscroll-behavior-y: contain;
+    scroll-padding-top: 0.75rem;
+    scroll-padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
+
 /* Respect the OS motion preference for CSS animations/transitions. Functional
    spinners are exempt: a frozen spinner reads as "stuck", not "loading". */
 @media (prefers-reduced-motion: reduce) {

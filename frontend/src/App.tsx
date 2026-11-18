@@ -206,7 +206,22 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const [transcriptLayout, setTranscriptLayout] = useState<TranscriptLayout>(loadTranscriptLayout);
   const [leftRatio, setLeftRatio] = useState<number>(loadSplitRatio);
   const [isResizing, setIsResizing] = useState(false);
-  const isTranscriptExpanded = transcriptLayout === 'split';
+  // The docked-right transcript is a desktop layout: mobile has exactly one
+  // scroll container (layout §6.3), so a `split` preference saved on desktop
+  // must not reorder the mobile page (summary before transcript). The stored
+  // preference is kept, so going back to desktop restores it untouched.
+  const [isCompactViewport, setIsCompactViewport] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 767.98px)').matches
+      : false,
+  );
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767.98px)');
+    const onChange = () => setIsCompactViewport(media.matches);
+    media.addEventListener?.('change', onChange);
+    return () => media.removeEventListener?.('change', onChange);
+  }, []);
+  const isTranscriptExpanded = transcriptLayout === 'split' && !isCompactViewport;
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
   const fullscreenWrapperRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -2658,10 +2673,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     </>
   );
 
-  const transcriptContent = (
+  // `pageScroll` is the one place the learning page differs by platform: on
+  // mobile the transcript grows with the page (the only scroll container is
+  // the layout wrapper) and auto-follow scrolls that container; on desktop
+  // (and in the PiP window) the transcript keeps its own scrollbar.
+  // Layout §6.3 (L-01).
+  const renderTranscriptContent = (pageScroll: boolean) => (
     <>
-      {/* Transcript toolbar: translation mode, loop, speed */}
-      <div className="flex-none flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20">
+      {/* Transcript toolbar: translation mode, loop, speed. On mobile it is
+          one horizontally scrollable row so the tools never wrap into a
+          multi-line block above the subtitles (§6.3 rule 7). */}
+      <div className="flex-none flex flex-wrap max-md:flex-nowrap max-md:overflow-x-auto max-md:overscroll-x-contain items-center gap-x-3 gap-y-1.5 px-4 py-2 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 z-20">
         <span className="text-xs text-zinc-500 font-medium shrink-0 whitespace-nowrap">{t('transcript.translationLabel')}</span>
         <div className="inline-flex items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5">
           {([
@@ -2809,7 +2831,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             title={isTranscriptExpanded
               ? t('transcript.layout.collapseTitle', { media: isLocalSubtitle ? t('transcript.media.local') : t('transcript.media.video') })
               : t('transcript.layout.expandTitle', { media: isLocalSubtitle ? t('transcript.media.local') : t('transcript.media.video') })}
-            className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border border-white/5 bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60 transition-colors shrink-0"
+            className="hidden md:inline-flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-lg border border-white/5 bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-700/60 transition-colors shrink-0"
           >
             {isTranscriptExpanded
               ? <PanelRightClose className="w-3.5 h-3.5" />
@@ -2850,7 +2872,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       )}
 
       <div className="relative flex-1 min-h-0 bg-transparent">
-        <div className="absolute top-0 inset-x-0 h-8 bg-gradient-to-b from-[#09090b] to-transparent z-10 pointer-events-none"></div>
+        {/* Edge fades belong to the inner desktop scroller. On mobile the
+            page itself scrolls, so an absolutely-positioned fade here would
+            just dim the first/last sentences. */}
+        <div className="max-md:hidden absolute top-0 inset-x-0 h-8 bg-gradient-to-b from-[#09090b] to-transparent z-10 pointer-events-none"></div>
         <TranscriptView
           transcript={displayTranscript}
           activeIndex={activeTranscriptIndex}
@@ -2863,8 +2888,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           onWordLookup={handleWordLookup}
           borderLeft={isTranscriptExpanded}
           uiLanguage={language}
+          pageScroll={pageScroll}
         />
-        <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[#09090b] to-transparent z-10 pointer-events-none"></div>
+        <div className="max-md:hidden absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[#09090b] to-transparent z-10 pointer-events-none"></div>
       </div>
     </>
   );
@@ -2913,7 +2939,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       />
       <div
         ref={fullscreenWrapperRef}
-        className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden max-md:overflow-y-auto relative bg-transparent group/wrapper"
+        data-testid="learning-scroll"
+        className="learning-scroll flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden max-md:overflow-y-auto relative bg-transparent group/wrapper"
       >
         {/* One shell for both learning modes. Left column: media stage +
             whatever sits beneath it — the transcript by default, the
@@ -2938,9 +2965,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           ) : (
             <div
               data-testid="transcript-column"
-              className="max-md:h-[52vh] md:flex-1 md:min-h-0 flex flex-col relative border-t border-white/5 bg-transparent"
+              className="md:flex-1 md:min-h-0 flex flex-col relative border-t border-white/5 bg-transparent"
             >
-              {transcriptContent}
+              {renderTranscriptContent(true)}
             </div>
           )}
         </div>
@@ -2948,7 +2975,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         {pipWindow ? (
           createPortal(
             <div className="w-full h-full flex flex-col relative bg-[#09090b]">
-              {transcriptContent}
+              {renderTranscriptContent(false)}
             </div>,
             pipWindow.document.body
           )
@@ -2988,14 +3015,14 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               {isTranscriptExpanded ? (
                 <div
                   data-testid="transcript-column"
-                  className="h-[52vh] md:h-full md:flex-1 min-h-0 flex flex-col relative bg-transparent"
+                  className="md:h-full md:flex-1 min-h-0 flex flex-col relative bg-transparent"
                 >
-                  {transcriptContent}
+                  {renderTranscriptContent(true)}
                 </div>
               ) : (
                 <div
                   data-testid="summary-panel"
-                  className="p-6 bg-zinc-900/60 backdrop-blur-xl overflow-y-auto custom-scrollbar md:h-full md:min-h-0"
+                  className="p-6 bg-zinc-900/60 backdrop-blur-xl md:overflow-y-auto custom-scrollbar md:h-full md:min-h-0"
                 >
                   {summaryBody}
                 </div>
