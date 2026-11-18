@@ -5,7 +5,7 @@
 // review / report) + the merged recent-learning panel (video / article / book,
 // 10 per page) + the compact "learn something new" input once history exists.
 // The exam card moved to 练习; the model bar moved to the app chrome.
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../lib/api';
 import type { HistoryItem } from './ChannelVideoList';
 import type { PlacementProfile } from '../lib/placement';
@@ -83,31 +83,43 @@ export function TodayScreen({
 }: TodayScreenProps) {
     const { t } = useI18n();
     const estimateRef = useRef<EstimateDialogHandle>(null);
+    // One async state per block (IX-01): a failed read is an error with a
+    // retry, never the "从第一个视频开始 / 暂无记录" empty branch.
     const [history, setHistory] = useState<HistoryItem[]>([]);
-    const [historyLoading, setHistoryLoading] = useState(true);
+    const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [historyReloadToken, setHistoryReloadToken] = useState(0);
     const [weekReport, setWeekReport] = useState<TodayWeekReport | null>(null);
-    const [weekReportLoading, setWeekReportLoading] = useState(true);
-    const [weekReportFailed, setWeekReportFailed] = useState(false);
+    const [weekState, setWeekState] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [weekReloadToken, setWeekReloadToken] = useState(0);
+    const historyLoading = historyState === 'loading';
+    const historyFailed = historyState === 'error';
+    const weekReportLoading = weekState === 'loading';
+    const weekReportFailed = weekState === 'error';
 
     useEffect(() => {
         let cancelled = false;
-        setHistoryLoading(true);
         apiFetch('/api/history')
-            .then(res => (res.ok ? res.json() : []))
-            .then(data => {
-                if (!cancelled) setHistory(Array.isArray(data) ? data : []);
+            .then(async (response) => {
+                if (!response.ok) throw new Error(await describeApiError(response));
+                const data = await response.json();
+                if (!Array.isArray(data)) throw new Error('invalid history payload');
+                return data;
             })
-            .catch(err => console.error('Failed to fetch history:', err))
-            .finally(() => {
-                if (!cancelled) setHistoryLoading(false);
+            .then((data) => {
+                if (cancelled) return;
+                setHistory(data);
+                setHistoryState('ready');
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                console.error('Failed to fetch history:', err);
+                setHistoryState('error');
             });
         return () => { cancelled = true; };
-    }, []);
+    }, [historyReloadToken]);
 
     useEffect(() => {
         let cancelled = false;
-        setWeekReportLoading(true);
-        setWeekReportFailed(false);
         apiFetch('/api/report/week')
             .then(async response => {
                 if (!response.ok) throw new Error(await describeApiError(response));
@@ -126,16 +138,23 @@ export function TodayScreen({
                         quizAccuracy: typeof numbers.quizAccuracy === 'number' ? numbers.quizAccuracy : null,
                     },
                 });
+                setWeekState('ready');
             })
             .catch(err => {
                 if (cancelled) return;
                 console.error('Failed to load weekly report summary:', err);
-                setWeekReportFailed(true);
-            })
-            .finally(() => {
-                if (!cancelled) setWeekReportLoading(false);
+                setWeekState('error');
             });
         return () => { cancelled = true; };
+    }, [weekReloadToken]);
+
+    const retryHistory = useCallback(() => {
+        setHistoryState('loading');
+        setHistoryReloadToken((token) => token + 1);
+    }, []);
+    const retryWeekReport = useCallback(() => {
+        setWeekState('loading');
+        setWeekReloadToken((token) => token + 1);
     }, []);
 
     const handleRemoveVideo = async (filename: string) => {
@@ -202,6 +221,9 @@ export function TodayScreen({
                     weekReportFailed={weekReportFailed}
                     history={history}
                     historyLoading={historyLoading}
+                    historyFailed={historyFailed}
+                    onRetryHistory={retryHistory}
+                    onRetryWeekReport={retryWeekReport}
                     onOpenReview={onOpenReview}
                     onOpenReport={onOpenReport}
                     onLoadHistory={onLoadHistory}
@@ -229,6 +251,8 @@ export function TodayScreen({
                     isGuest={isGuest}
                     history={history}
                     historyLoading={historyLoading}
+                    historyFailed={historyFailed}
+                    onRetryHistory={retryHistory}
                     onLoadHistory={onLoadHistory}
                     onOpenArticle={onOpenArticle}
                     onOpenBook={onOpenBook}

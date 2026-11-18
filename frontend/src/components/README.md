@@ -4,6 +4,7 @@
 
 | 组件 | 用在哪 | 职责 |
 |---|---|---|
+| `ui/StateView.tsx` | 全局 | 异步状态统一视图（C10）：`EmptyState` / `LoadingState` / `ErrorPanel` / `Skeleton`；`page(py-16)/card(py-10)/inline(py-3)` 三档；失败只渲染错误面板 + 重试（`ErrorPanel level=inline` 也用于「保留旧数据 + 刷新失败」），空态只来自成功且为空；错误面板 `role=alert`、加载块 `aria-busy` |
 | `AuthScreen.tsx` | 未登录 | 登录/注册门禁：单页两个 tab、邮箱+密码（注册含必填用户名 2–24 字与可选确认密码）、用户名/表单行内错误；成功后由 `AuthProvider` 切进应用 |
 | `AppShell.tsx` | 全局 | 应用外壳：≥lg 为 `[Sidebar 240/72][TopBar + Main]` 三栏，md–lg 保留 top tabs，<md 仅精简顶栏 + bottom bar；沉浸式任务子视图（视频/阅读/句子精背/复习/考试/定位）隐藏侧栏与主导航，内容占满宽度 |
 | `Sidebar.tsx` | 桌面（≥lg） | 左侧导航栏：品牌、四个一级页（图标+文字+练习到期徽章）、分组快捷入口（学习/内容/管理）、底部账号卡片 + 语言/设置；可折叠为 72px 图标栏（aria-label/title 提示），状态持久化在 `localStorage`；空白页签不在此出现，快捷入口全部复用 App 既有路由 |

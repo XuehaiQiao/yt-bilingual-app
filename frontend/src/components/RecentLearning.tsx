@@ -13,16 +13,12 @@
 // and only once per mount; leaving the screen aborts in-flight requests.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    AlertCircle,
-    ArrowRight,
     BookOpen,
     ChevronLeft,
     ChevronRight,
     Clock,
     FileText,
     Film,
-    Loader2,
-    RefreshCw,
     Search,
     Trash2,
     X,
@@ -31,6 +27,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { TranslationKey } from '../i18n';
 import { useI18n } from '../i18n/I18nProvider';
 import type { HistoryItem } from './ChannelVideoList';
+import { EmptyState, ErrorPanel, LoadingState } from './ui/StateView';
 import { fetchBooksIndex, listBookProgress } from '../lib/books';
 import {
     ImportedBooksApiError,
@@ -72,6 +69,9 @@ interface RecentLearningProps {
     /** Already fetched by TodayScreen; this component never re-requests it. */
     history: HistoryItem[];
     historyLoading: boolean;
+    /** `/api/history` failed: the list must show an error, never "暂无记录". */
+    historyFailed?: boolean;
+    onRetryHistory?: () => void;
     onLoadHistory: (filename: string) => void;
     onOpenArticle: (articleId: string) => void;
     /** Curated public-domain book reader. */
@@ -87,6 +87,8 @@ export function RecentLearning({
     isGuest,
     history,
     historyLoading,
+    historyFailed = false,
+    onRetryHistory,
     onLoadHistory,
     onOpenArticle,
     onOpenBook,
@@ -208,8 +210,14 @@ export function RecentLearning({
     );
     const paged = paginateRecentItems(filtered, page);
 
-    const loading = allItems.length === 0 && (historyLoading || articlesLoading || booksLoading);
-    const hasError = articlesFailed || booksFailed;
+    // One derived state per block: a failed read is an error, not an empty
+    // result (IX-01). The whole panel only loads while nothing is on screen.
+    const loading =
+        allItems.length === 0 &&
+        !historyFailed &&
+        (historyLoading || articlesLoading || booksLoading);
+    const hasError = historyFailed || articlesFailed || booksFailed;
+    const errorHint = articlesFailed || booksFailed ? t('today.recent.errorHint') : undefined;
 
     const formatLastAt = useCallback((lastAt: number): { text: string; dateTime?: string } => {
         const at = Number.isFinite(lastAt) && lastAt > 0 ? lastAt : 0;
@@ -292,13 +300,19 @@ export function RecentLearning({
     const retry = () => {
         // Retry is an event, so resetting the pending state here (rather than
         // synchronously inside the effects) keeps React's effect rules happy.
+        // Old rows stay on screen until the refetch succeeds (IX-01 stale data).
         setArticlesLoading(!isGuest);
         setArticlesFailed(false);
         setBooksLoading(true);
         setBooksFailed(false);
-        setCuratedBooks([]);
-        setImportedBooks([]);
         setReloadToken((token) => token + 1);
+    };
+
+    // The history read belongs to TodayScreen; retry it together with the
+    // article/book indexes so one button restores the whole merged list.
+    const retryAll = () => {
+        onRetryHistory?.();
+        retry();
     };
 
     const renderItem = (item: RecentItem) => {
@@ -473,81 +487,50 @@ export function RecentLearning({
 
             <div className="mt-3 min-w-0">
                 {loading ? (
-                    <div
-                        data-testid="recent-loading"
-                        className="flex items-center gap-2 rounded-2xl border border-white/5 bg-zinc-800/20 px-4 py-6 text-xs text-zinc-500"
-                    >
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                        {t('home.today.loadingHistory')}
-                    </div>
+                    <LoadingState
+                        kind="skeleton"
+                        rows={3}
+                        label={t('home.today.loadingHistory')}
+                        testId="recent-loading"
+                    />
                 ) : hasError && allItems.length === 0 ? (
-                    <div
-                        data-testid="recent-error"
-                        role="alert"
-                        className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-4"
-                    >
-                        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" aria-hidden="true" />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-amber-200">
-                                {t('today.recent.errorTitle')}
-                            </p>
-                            <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                                {t('today.recent.errorHint')}
-                            </p>
-                            <button
-                                type="button"
-                                data-testid="recent-retry"
-                                onClick={retry}
-                                className="mt-2 inline-flex h-8 items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 text-xs font-medium text-amber-200 transition-colors hover:bg-amber-500/15"
-                            >
-                                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-                                {t('today.recent.retry')}
-                            </button>
-                        </div>
-                    </div>
+                    <ErrorPanel
+                        level="card"
+                        title={t('today.recent.errorTitle')}
+                        detail={errorHint}
+                        onRetry={retryAll}
+                        retryLabel={t('today.recent.retry')}
+                        retryTestId="recent-retry"
+                        testId="recent-error"
+                    />
                 ) : allItems.length === 0 ? (
-                    <div
-                        data-testid="recent-empty"
-                        className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/5 px-4 py-10 text-center"
-                    >
-                        <Clock className="mb-3 h-10 w-10 text-zinc-700" aria-hidden="true" />
-                        <p className="text-sm font-medium text-zinc-400">
-                            {t('today.recent.emptyTitle')}
-                        </p>
-                        <p className="mt-1 max-w-md text-xs leading-relaxed text-zinc-500">
-                            {t('today.recent.emptyHint')}
-                        </p>
-                        <button
-                            type="button"
-                            data-testid="recent-empty-action"
-                            onClick={onOpenContent}
-                            className="mt-4 inline-flex h-9 items-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/15"
-                        >
-                            {t('today.recent.emptyAction')}
-                            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                    </div>
+                    <EmptyState
+                        size="inline"
+                        icon={Clock}
+                        title={t('today.recent.emptyTitle')}
+                        hint={t('today.recent.emptyHint')}
+                        action={{
+                            label: t('today.recent.emptyAction'),
+                            onClick: onOpenContent,
+                            testId: 'recent-empty-action',
+                        }}
+                        testId="recent-empty"
+                    />
                 ) : filtered.length === 0 ? (
-                    <div
-                        data-testid="recent-filtered-empty"
-                        className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/5 px-4 py-8 text-center"
-                    >
-                        <p className="text-sm font-medium text-zinc-400">
-                            {t('today.recent.filteredEmpty')}
-                        </p>
-                        <button
-                            type="button"
-                            data-testid="recent-clear-filters"
-                            onClick={() => {
+                    <EmptyState
+                        size="inline"
+                        title={t('today.recent.filteredEmpty')}
+                        action={{
+                            label: t('today.recent.clearFilters'),
+                            onClick: () => {
                                 setQuery('');
                                 setFilter('all');
                                 setPage(1);
-                            }}
-                            className="mt-3 inline-flex h-8 items-center rounded-lg border border-white/5 bg-zinc-800/60 px-3 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700/60"
-                        >
-                            {t('today.recent.clearFilters')}
-                        </button>
-                    </div>
+                            },
+                            testId: 'recent-clear-filters',
+                        }}
+                        testId="recent-filtered-empty"
+                    />
                 ) : (
                     <>
                         <div
@@ -594,21 +577,15 @@ export function RecentLearning({
                             </div>
                         )}
                         {hasError && (
-                            <div
-                                data-testid="recent-partial-error"
-                                className="mt-2.5 flex items-center gap-2 text-[11px] text-amber-300/80"
-                            >
-                                <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                <span className="min-w-0 flex-1">{t('today.recent.partialError')}</span>
-                                <button
-                                    type="button"
-                                    data-testid="recent-retry-inline"
-                                    onClick={retry}
-                                    className="shrink-0 rounded-lg px-2 py-1 text-amber-200/90 transition-colors hover:bg-amber-500/10"
-                                >
-                                    {t('today.recent.retry')}
-                                </button>
-                            </div>
+                            <ErrorPanel
+                                level="inline"
+                                title={t('today.recent.partialError')}
+                                onRetry={retryAll}
+                                retryLabel={t('today.recent.retry')}
+                                retryTestId="recent-retry-inline"
+                                testId="recent-partial-error"
+                                className="mt-2.5"
+                            />
                         )}
                     </>
                 )}

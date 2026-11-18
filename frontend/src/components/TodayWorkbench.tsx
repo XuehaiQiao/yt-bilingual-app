@@ -16,6 +16,7 @@ import type { HistoryItem } from './ChannelVideoList';
 import type { ReviewStats } from '../lib/review';
 import type { PlacementProfile } from '../lib/placement';
 import { progressPercent } from '../lib/progress';
+import { ErrorPanel } from './ui/StateView';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 
@@ -43,6 +44,11 @@ interface TodayWorkbenchProps {
     weekReportFailed: boolean;
     history: HistoryItem[];
     historyLoading: boolean;
+    /** `/api/history` failed — the continue card shows an error, not empty. */
+    historyFailed?: boolean;
+    onRetryHistory?: () => void;
+    /** `/api/report/week` failed — the report card shows an error + retry. */
+    onRetryWeekReport?: () => void;
     onOpenReview?: () => void;
     onOpenReport?: () => void;
     onLoadHistory: (filename: string) => void;
@@ -83,6 +89,9 @@ export function TodayWorkbench({
     weekReportFailed,
     history,
     historyLoading,
+    historyFailed = false,
+    onRetryHistory,
+    onRetryWeekReport,
     onOpenReview,
     onOpenReport,
     onLoadHistory,
@@ -323,6 +332,16 @@ export function TodayWorkbench({
                     <div className="mt-2.5 sm:mt-3 flex-1 min-w-0">
                         {historyLoading && history.length === 0 ? (
                             <p className="py-2 text-xs text-zinc-500">{t('home.today.loadingHistory')}</p>
+                        ) : historyFailed && !latestItem ? (
+                            <ErrorPanel
+                                level="inline"
+                                title={t('today.recent.errorTitle')}
+                                onRetry={onRetryHistory}
+                                retryLabel={t('common.retry')}
+                                retryTestId="today-continue-retry"
+                                testId="today-continue-error"
+                                className="py-1"
+                            />
                         ) : latestItem ? (
                             <div className="flex items-start gap-3 min-w-0">
                                 <div className="relative w-16 sm:w-24 aspect-video rounded-lg overflow-hidden bg-zinc-800 shrink-0">
@@ -482,7 +501,17 @@ export function TodayWorkbench({
                                 </p>
                             </div>
                         </div>
-                        {reportHint && (
+                        {weekReportFailed ? (
+                            <ErrorPanel
+                                level="inline"
+                                title={t('home.today.reportFailed')}
+                                onRetry={onRetryWeekReport}
+                                retryLabel={t('common.retry')}
+                                retryTestId="today-report-retry"
+                                testId="today-report-error"
+                                className="mt-1.5 sm:mt-2"
+                            />
+                        ) : reportHint && (
                             <p className="mt-1.5 sm:mt-2 text-[11px] leading-relaxed text-zinc-500 break-words">
                                 {reportHint}
                             </p>

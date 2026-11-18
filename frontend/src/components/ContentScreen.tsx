@@ -13,7 +13,6 @@ import {
     BookOpen,
     CalendarRange,
     Compass,
-    Loader2,
     Newspaper,
     Play,
     Rss,
@@ -32,6 +31,8 @@ import { SentencePacks } from './SentencePacks';
 import { LibrarySection } from './LibrarySection';
 import { BooksSection } from './BooksSection';
 import { HomeRecommendations } from './HomeRecommendations';
+import { EmptyState, ErrorPanel, LoadingState, RefreshingState } from './ui/StateView';
+import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 
 const PAGE_PAD = 'pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10';
@@ -98,69 +99,88 @@ export function ContentScreen({
 }: ContentScreenProps) {
     const { t, formatNumber } = useI18n();
     const estimateRef = useRef<EstimateDialogHandle>(null);
-    // Right rail: the last opened item and this week's three facts. Both are
-    // optional reads — a failure leaves the rail in its quiet empty state.
+    // Right rail: the last opened item and this week's three facts. Each block
+    // owns one async state (IX-01) — a failed read is an error panel with a
+    // retry, never the "暂无记录 / 本周还没有数据" empty copy.
     const [history, setHistory] = useState<HistoryItem[]>([]);
-    const [historyLoading, setHistoryLoading] = useState(true);
+    const [historyState, setHistoryState] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [historyReloadToken, setHistoryReloadToken] = useState(0);
     const [weekReport, setWeekReport] = useState<{
         passiveMinutes: number;
         reviewedWords: number;
         quizAccuracy: number | null;
     } | null>(null);
-    const [weekReportLoading, setWeekReportLoading] = useState(true);
-    const [weekReportFailed, setWeekReportFailed] = useState(false);
+    const [weekState, setWeekState] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [weekReloadToken, setWeekReloadToken] = useState(0);
     const [channelUpdates, setChannelUpdates] = useState<ChannelUpdate[]>([]);
-    const [updatesLoading, setUpdatesLoading] = useState(false);
+    const [updatesState, setUpdatesState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+    const [updatesReloadToken, setUpdatesReloadToken] = useState(0);
     // Unsubscribing hides the list immediately; no effect-level reset needed.
     const hasSubscriptions = subscriptions.length > 0;
     const visibleUpdates = hasSubscriptions ? channelUpdates : [];
-    const showUpdatesLoading = hasSubscriptions && updatesLoading;
+    const showUpdatesLoading = hasSubscriptions && updatesState === 'loading';
+    const retryHistory = useCallback(() => {
+        setHistoryState('loading');
+        setHistoryReloadToken((token) => token + 1);
+    }, []);
+    const retryWeek = useCallback(() => {
+        setWeekState('loading');
+        setWeekReloadToken((token) => token + 1);
+    }, []);
+    const retryUpdates = useCallback(() => {
+        setUpdatesState('loading');
+        setUpdatesReloadToken((token) => token + 1);
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
         apiFetch('/api/history')
-            .then(res => (res.ok ? res.json() : []))
-            .then(data => {
-                if (!cancelled) setHistory(Array.isArray(data) ? data : []);
+            .then(async (response) => {
+                if (!response.ok) throw new Error(await describeApiError(response));
+                const data = await response.json();
+                if (!Array.isArray(data)) throw new Error('invalid history payload');
+                return data;
             })
-            .catch(err => console.error('Failed to fetch history for content rail:', err))
-            .finally(() => {
-                if (!cancelled) setHistoryLoading(false);
+            .then((data) => {
+                if (cancelled) return;
+                setHistory(data);
+                setHistoryState('ready');
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                console.error('Failed to fetch history for content rail:', err);
+                setHistoryState('error');
             });
         return () => { cancelled = true; };
-    }, []);
+    }, [historyReloadToken]);
 
     useEffect(() => {
         let cancelled = false;
         apiFetch('/api/report/week')
             .then(async response => {
-                if (!response.ok) return null;
+                if (!response.ok) throw new Error(await describeApiError(response));
                 return response.json();
             })
-            .then(data => {
+            .then((data) => {
                 if (cancelled) return;
                 const numbers = data?.numbers;
                 if (!numbers || typeof numbers.passiveMinutes !== 'number') {
-                    setWeekReport(null);
-                    setWeekReportFailed(true);
-                    return;
+                    throw new Error('invalid report payload');
                 }
                 setWeekReport({
                     passiveMinutes: numbers.passiveMinutes,
                     reviewedWords: typeof numbers.reviewedWords === 'number' ? numbers.reviewedWords : 0,
                     quizAccuracy: typeof numbers.quizAccuracy === 'number' ? numbers.quizAccuracy : null,
                 });
+                setWeekState('ready');
             })
-            .catch(err => {
+            .catch((err) => {
                 if (cancelled) return;
                 console.error('Failed to load weekly report for content rail:', err);
-                setWeekReportFailed(true);
-            })
-            .finally(() => {
-                if (!cancelled) setWeekReportLoading(false);
+                setWeekState('error');
             });
         return () => { cancelled = true; };
-    }, []);
+    }, [weekReloadToken]);
 
     const latestHistory = history[0] ?? null;
     const latestProgress = latestHistory?.videoId ? progressPercent(latestHistory.videoId) : null;
@@ -175,22 +195,30 @@ export function ContentScreen({
         // Loader flag for the fetch below; the network is the external system
         // this effect syncs with (same pattern as the other data cards).
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setUpdatesLoading(true);
+        setUpdatesState('loading');
         apiFetch('/api/channel-updates', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ channels: subscriptions.map(sub => sub.id) }),
         })
-            .then(res => res.json())
-            .then(data => {
-                if (!cancelled) setChannelUpdates(Array.isArray(data.updates) ? data.updates : []);
+            .then(async (response) => {
+                if (!response.ok) throw new Error(await describeApiError(response));
+                const data = await response.json();
+                if (!Array.isArray(data?.updates)) throw new Error('invalid channel updates payload');
+                return data.updates as ChannelUpdate[];
             })
-            .catch(err => console.error('Failed to fetch channel updates:', err))
-            .finally(() => {
-                if (!cancelled) setUpdatesLoading(false);
+            .then((updates) => {
+                if (cancelled) return;
+                setChannelUpdates(updates);
+                setUpdatesState('ready');
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                console.error('Failed to fetch channel updates:', err);
+                setUpdatesState('error');
             });
         return () => { cancelled = true; };
-    }, [subscriptions]);
+    }, [subscriptions, updatesReloadToken]);
 
     const estimate = useCallback((url: string) => {
         estimateRef.current?.estimate(url);
@@ -280,12 +308,19 @@ export function ContentScreen({
                             <Play className="w-4 h-4 text-blue-400 fill-current" />
                             {t('content.rail.continueTitle')}
                         </h2>
-                        {historyLoading && !latestHistory ? (
-                            <p className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                {t('common.loading')}
-                            </p>
-                        ) : latestHistory ? (
+                        {latestHistory ? (
+                            <>
+                            {historyState === 'error' && (
+                                <ErrorPanel
+                                    level="inline"
+                                    title={t('today.recent.errorTitle')}
+                                    onRetry={retryHistory}
+                                    retryLabel={t('common.retry')}
+                                    retryTestId="content-rail-continue-retry"
+                                    testId="content-rail-continue-error"
+                                    className="mt-3"
+                                />
+                            )}
                             <button
                                 type="button"
                                 onClick={() => onLoadHistory(latestHistory.filename)}
@@ -311,10 +346,31 @@ export function ContentScreen({
                                     </span>
                                 </span>
                             </button>
+                            </>
+                        ) : historyState === 'loading' ? (
+                            <LoadingState
+                                kind="spinner"
+                                label={t('common.loading')}
+                                testId="content-rail-continue-loading"
+                                className="mt-3"
+                            />
+                        ) : historyState === 'error' ? (
+                            <ErrorPanel
+                                level="inline"
+                                title={t('today.recent.errorTitle')}
+                                onRetry={retryHistory}
+                                retryLabel={t('common.retry')}
+                                retryTestId="content-rail-continue-retry"
+                                testId="content-rail-continue-error"
+                                className="mt-3"
+                            />
                         ) : (
-                            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-                                {t('content.rail.continueEmpty')}
-                            </p>
+                            <EmptyState
+                                size="inline"
+                                icon={Play}
+                                title={t('content.rail.continueEmpty')}
+                                testId="content-rail-continue-empty"
+                            />
                         )}
                     </section>
 
@@ -327,12 +383,19 @@ export function ContentScreen({
                             <CalendarRange className="w-4 h-4 text-blue-400" />
                             {t('content.rail.weekTitle')}
                         </h2>
-                        {weekReportLoading && !weekReport ? (
-                            <p className="mt-3 flex items-center gap-2 text-xs text-zinc-500">
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                {t('common.loading')}
-                            </p>
-                        ) : weekReport ? (
+                        {weekReport ? (
+                            <>
+                            {weekState === 'error' && (
+                                <ErrorPanel
+                                    level="inline"
+                                    title={t('home.today.reportFailed')}
+                                    onRetry={retryWeek}
+                                    retryLabel={t('common.retry')}
+                                    retryTestId="content-rail-week-retry"
+                                    testId="content-rail-week-error"
+                                    className="mt-3"
+                                />
+                            )}
                             <div className="mt-3 grid grid-cols-3 gap-1.5">
                                 <div className="min-w-0 rounded-xl border border-white/5 bg-zinc-800/30 px-2 py-1.5">
                                     <p className="truncate text-[10px] font-medium text-zinc-500">{t('content.rail.weekMinutes')}</p>
@@ -355,10 +418,30 @@ export function ContentScreen({
                                     </p>
                                 </div>
                             </div>
+                            </>
+                        ) : weekState === 'loading' ? (
+                            <LoadingState
+                                kind="spinner"
+                                label={t('common.loading')}
+                                testId="content-rail-week-loading"
+                                className="mt-3"
+                            />
+                        ) : weekState === 'error' ? (
+                            <ErrorPanel
+                                level="inline"
+                                title={t('home.today.reportFailed')}
+                                onRetry={retryWeek}
+                                retryLabel={t('common.retry')}
+                                retryTestId="content-rail-week-retry"
+                                testId="content-rail-week-error"
+                                className="mt-3"
+                            />
                         ) : (
-                            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-                                {weekReportFailed ? t('content.rail.weekEmpty') : t('common.loading')}
-                            </p>
+                            <EmptyState
+                                size="inline"
+                                title={t('content.rail.weekEmpty')}
+                                testId="content-rail-week-empty"
+                            />
                         )}
                         <button
                             type="button"
@@ -430,7 +513,12 @@ export function ContentScreen({
                     <h2 className={SECTION_TITLE}>{t('content.subscriptionsTitle')}</h2>
                     <div className="mt-3 rounded-3xl border border-white/5 bg-zinc-900/40 p-4 sm:p-5">
                         {subscriptions.length === 0 ? (
-                            <p className="text-sm text-zinc-500">{t('content.noSubscriptions')}</p>
+                            <EmptyState
+                                size="inline"
+                                icon={Bell}
+                                title={t('content.noSubscriptions')}
+                                testId="content-subscriptions-empty"
+                            />
                         ) : (
                             <>
                                 <div className="flex flex-wrap items-center gap-2">
@@ -465,11 +553,46 @@ export function ContentScreen({
                                     <h3 className="text-[13px] font-semibold tracking-tight text-zinc-200">
                                         {t('content.latestVideos')}
                                     </h3>
-                                    {showUpdatesLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-500" />}
+                                    {showUpdatesLoading && visibleUpdates.length > 0 && (
+                                        <RefreshingState
+                                            label={t('common.loading')}
+                                            testId="content-updates-refreshing"
+                                        />
+                                    )}
                                 </div>
                                 <div className="mt-2 max-h-72 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                                    {visibleUpdates.length === 0 && !showUpdatesLoading ? (
-                                        <p className="py-3 text-sm text-zinc-500">{t('home.noUploads')}</p>
+                                    {updatesState === 'error' && visibleUpdates.length > 0 && (
+                                        <ErrorPanel
+                                            level="inline"
+                                            title={t('errors.unknown')}
+                                            onRetry={retryUpdates}
+                                            retryLabel={t('common.retry')}
+                                            retryTestId="content-updates-retry"
+                                            testId="content-updates-stale-error"
+                                        />
+                                    )}
+                                    {visibleUpdates.length === 0 && showUpdatesLoading ? (
+                                        <LoadingState
+                                            kind="skeleton"
+                                            rows={2}
+                                            label={t('common.loading')}
+                                            testId="content-updates-loading"
+                                        />
+                                    ) : visibleUpdates.length === 0 && updatesState === 'error' ? (
+                                        <ErrorPanel
+                                            level="inline"
+                                            title={t('errors.unknown')}
+                                            onRetry={retryUpdates}
+                                            retryLabel={t('common.retry')}
+                                            retryTestId="content-updates-retry"
+                                            testId="content-updates-error"
+                                        />
+                                    ) : visibleUpdates.length === 0 ? (
+                                        <EmptyState
+                                            size="inline"
+                                            title={t('home.noUploads')}
+                                            testId="content-updates-empty"
+                                        />
                                     ) : (
                                         visibleUpdates.map((update, index) => (
                                             <button
