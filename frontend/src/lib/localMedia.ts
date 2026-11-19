@@ -87,3 +87,29 @@ export function buildLocalTranscript(text: string): LocalTranscriptBlock[] {
             highlights: [] as [],
         }));
 }
+
+/** A subtitle file the user picked after the video was already playing. */
+export type LocalSubtitleFileError = 'format' | 'read' | 'empty';
+
+export type LocalSubtitleFileResult =
+    | { ok: true; transcript: LocalTranscriptBlock[] }
+    | { ok: false; reason: LocalSubtitleFileError };
+
+const SUBTITLE_EXTENSION_RE = /\.(srt|vtt)$/i;
+
+/**
+ * Read an SRT/VTT the user picked inside the player. Everything stays in the
+ * tab (`File.text()`); the caller only swaps the transcript, never the video.
+ */
+export async function readLocalSubtitleFile(file: File): Promise<LocalSubtitleFileResult> {
+    if (!SUBTITLE_EXTENSION_RE.test(file.name)) return { ok: false, reason: 'format' };
+    let text: string;
+    try {
+        text = await file.text();
+    } catch {
+        return { ok: false, reason: 'read' };
+    }
+    const transcript = buildLocalTranscript(text);
+    if (transcript.length === 0) return { ok: false, reason: 'empty' };
+    return { ok: true, transcript };
+}

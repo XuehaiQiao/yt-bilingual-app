@@ -49,7 +49,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { AppShell, type ProfileSectionId } from './components/AppShell';
 import { LearningHeader } from './components/LearningHeader';
 import { LocalVideoLearning } from './components/LocalVideoLearning';
-import { buildLocalTranscript, type LocalTranscriptBlock } from './lib/localMedia';
+import { readLocalSubtitleFile, type LocalTranscriptBlock } from './lib/localMedia';
 import { TodayScreen } from './components/TodayScreen';
 import { CourseScreen } from './components/CourseScreen';
 import { ContentScreen } from './components/ContentScreen';
@@ -3197,17 +3197,34 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       if (previous) URL.revokeObjectURL(previous.videoUrl);
       return { videoUrl, fileName: video.name, subtitleName: subtitle?.name, transcript: [] };
     });
-    if (subtitle) {
-      try {
-        const transcript = buildLocalTranscript(await subtitle.text());
-        setLocalVideo((current) => current && current.videoUrl === videoUrl
-          ? { ...current, transcript }
-          : current);
-      } catch {
-        // The video remains playable; the transcript panel explains the miss.
-      }
+    if (!subtitle) return;
+    const result = await readLocalSubtitleFile(subtitle);
+    setLocalVideo((current) => {
+      if (!current || current.videoUrl !== videoUrl) return current;
+      // A subtitle that yields no usable cues must not leave the panel stuck on
+      // "parsing": fall back to the empty state, where it can be replaced.
+      return result.ok
+        ? { ...current, subtitleName: subtitle.name, transcript: result.transcript }
+        : { ...current, subtitleName: undefined, transcript: [] };
+    });
+    if (!result.ok) {
+      toast.error(result.reason === 'empty'
+        ? t('localVideo.subtitleEmpty')
+        : t('localVideo.subtitleReadFailed'));
     }
-  }, []);
+  }, [t]);
+
+  // Subtitle chosen inside the player: swap the transcript in place. The video
+  // URL/state is untouched, so playback position and play state survive.
+  const handleLoadLocalSubtitle = async (file: File) => {
+    const result = await readLocalSubtitleFile(file);
+    if (result.ok) {
+      setLocalVideo((current) => (current
+        ? { ...current, subtitleName: file.name, transcript: result.transcript }
+        : current));
+    }
+    return result;
+  };
 
   const closeLocalVideo = useCallback(() => {
     setLocalVideo((previous) => {
@@ -3228,6 +3245,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           onOpenWordbook={handleOpenWordbookRoute}
           onClose={closeLocalVideo}
           onWordLookup={handleWordLookup}
+          onLoadSubtitle={handleLoadLocalSubtitle}
         />
       );
     }

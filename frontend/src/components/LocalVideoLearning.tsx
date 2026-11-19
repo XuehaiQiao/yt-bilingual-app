@@ -3,7 +3,7 @@
 // the transcript renderer and word lookup so the interaction matches the
 // YouTube learning view, while native <video> controls own playback.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Film, Loader2, Sparkles, XCircle } from 'lucide-react';
+import { AlertCircle, Captions, FileText, Film, Loader2, Sparkles, XCircle } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { findActiveIndex, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from '../lib/transcript';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
@@ -14,7 +14,8 @@ import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
 import { processLocalVideo, type LocalVideoProcessed } from '../lib/localVideo';
 import { TranscriptView } from './TranscriptView';
-import type { LocalTranscriptBlock } from '../lib/localMedia';
+import type { LocalSubtitleFileError, LocalSubtitleFileResult, LocalTranscriptBlock } from '../lib/localMedia';
+import { toast } from '../lib/toast';
 
 interface LocalVideoLearningProps {
     videoUrl: string;
@@ -25,6 +26,8 @@ interface LocalVideoLearningProps {
     onOpenWordbook: () => void;
     onClose: () => void;
     onWordLookup: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
+    /** Swap the subtitle without remounting the video (loaded later or replaced). */
+    onLoadSubtitle: (file: File) => Promise<LocalSubtitleFileResult>;
 }
 
 export function LocalVideoLearning({
@@ -36,9 +39,11 @@ export function LocalVideoLearning({
     onOpenWordbook,
     onClose,
     onWordLookup,
+    onLoadSubtitle,
 }: LocalVideoLearningProps) {
     const { t } = useI18n();
     const videoRef = useRef<HTMLVideoElement>(null);
+    const subtitleInputRef = useRef<HTMLInputElement>(null);
     const [currentTime, setCurrentTime] = useState(0);
     const [mediaError, setMediaError] = useState(false);
     const [translationMode, setTranslationMode] = useState<TranslationMode>(loadTranslationMode);
@@ -46,6 +51,10 @@ export function LocalVideoLearning({
     const [processed, setProcessed] = useState<LocalVideoProcessed | null>(null);
     const [processing, setProcessing] = useState(false);
     const [processError, setProcessError] = useState<string | null>(null);
+    const [subtitleLoading, setSubtitleLoading] = useState(false);
+    const [subtitleError, setSubtitleError] = useState<string | null>(null);
+    // Changing the subtitle invalidates an in-flight AI pass for the old cues.
+    const analysisEpoch = useRef(0);
     const blocks = useMemo<LocalTranscriptBlock[]>(
         () => (processed
             ? processed.blocks.map((block) => ({ ...block, highlights: [] as [] }))
@@ -88,17 +97,51 @@ export function LocalVideoLearning({
     }, [processed]);
     const handleAnalyze = async () => {
         if (processing || blocks.length === 0) return;
+        const epoch = analysisEpoch.current;
         setProcessing(true);
         setProcessError(null);
         try {
             const result = await processLocalVideo(blocks, highlight.level);
-            setProcessed(result);
+            if (epoch === analysisEpoch.current) setProcessed(result);
         } catch (error) {
-            setProcessError(error instanceof Error ? error.message : t('localVideo.analysisFailed'));
+            if (epoch === analysisEpoch.current) {
+                setProcessError(error instanceof Error ? error.message : t('localVideo.analysisFailed'));
+            }
         } finally {
             setProcessing(false);
         }
     };
+
+    const subtitleErrorMessage = (reason: LocalSubtitleFileError) => {
+        if (reason === 'format') return t('localVideo.subtitleFormatError');
+        if (reason === 'empty') return t('localVideo.subtitleEmpty');
+        return t('localVideo.subtitleReadFailed');
+    };
+
+    const loadSubtitle = async (file: File) => {
+        if (subtitleLoading) return;
+        setSubtitleLoading(true);
+        setSubtitleError(null);
+        try {
+            const result = await onLoadSubtitle(file);
+            if (!result.ok) {
+                setSubtitleError(subtitleErrorMessage(result.reason));
+                return;
+            }
+            // The previous AI pass described the old cues; start clean so the
+            // button re-enables against the new transcript.
+            analysisEpoch.current += 1;
+            setProcessed(null);
+            setProcessError(null);
+            toast.success(t('localVideo.subtitleLoaded', { name: file.name, count: result.transcript.length }));
+        } catch {
+            setSubtitleError(t('localVideo.subtitleReadFailed'));
+        } finally {
+            setSubtitleLoading(false);
+        }
+    };
+
+    const openSubtitlePicker = () => subtitleInputRef.current?.click();
 
     const activeIndex = useMemo(
         () => findActiveIndex(blocks, currentTime),
@@ -118,6 +161,19 @@ export function LocalVideoLearning({
 
     return (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <input
+                ref={subtitleInputRef}
+                type="file"
+                accept=".srt,.vtt"
+                data-testid="local-video-subtitle-input"
+                aria-label={t('localVideo.loadSubtitle')}
+                className="sr-only"
+                onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (file) void loadSubtitle(file);
+                }}
+            />
             <LearningHeader
                 title={fileName}
                 featureLabel={t('localVideo.feature')}
@@ -174,6 +230,20 @@ export function LocalVideoLearning({
                                 : <Sparkles className="h-3.5 w-3.5" />}
                             {processing ? t('localVideo.analyzing') : t('localVideo.analyze')}
                         </button>
+                        {transcript.length > 0 && (
+                            <button
+                                type="button"
+                                data-testid="local-video-change-subtitle"
+                                onClick={openSubtitlePicker}
+                                disabled={subtitleLoading}
+                                className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-white/5 bg-zinc-800/60 px-2.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {subtitleLoading
+                                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    : <Captions className="h-3.5 w-3.5" />}
+                                {subtitleLoading ? t('localVideo.readingSubtitle') : t('localVideo.changeSubtitle')}
+                            </button>
+                        )}
                         <ReadingHighlightToggle
                             testId="local-video-highlight-toggle"
                             enabled={highlight.enabled}
@@ -205,6 +275,16 @@ export function LocalVideoLearning({
                         </div>
                     </div>
 
+                    {subtitleError && (
+                        <p
+                            role="alert"
+                            data-testid="local-video-subtitle-error"
+                            className="flex items-start gap-1.5 border-b border-amber-500/15 bg-amber-500/[0.05] px-3 py-1.5 text-xs text-amber-200"
+                        >
+                            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                            <span>{subtitleError}</span>
+                        </p>
+                    )}
                     {processError && (
                         <p className="border-b border-amber-500/15 bg-amber-500/[0.05] px-3 py-1.5 text-xs text-amber-200">
                             {processError}
@@ -233,10 +313,28 @@ export function LocalVideoLearning({
                                 pageScroll={false}
                             />
                         </div>
+                    ) : subtitleName ? (
+                        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-zinc-500">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <p className="text-sm">{t('localVideo.parsing')}</p>
+                        </div>
                     ) : (
                         <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center text-zinc-500">
-                            {subtitleName ? <Loader2 className="h-5 w-5 animate-spin" /> : <Film className="h-8 w-8" />}
-                            <p className="text-sm">{subtitleName ? t('localVideo.parsing') : t('localVideo.noSubtitleHint')}</p>
+                            <Film className="h-8 w-8" />
+                            <p className="text-sm">{t('localVideo.noSubtitleHint')}</p>
+                            <button
+                                type="button"
+                                data-testid="local-video-load-subtitle"
+                                onClick={openSubtitlePicker}
+                                disabled={subtitleLoading}
+                                className="mt-1 inline-flex h-9 items-center gap-2 rounded-xl border border-brand/20 bg-brand/10 px-4 text-sm font-medium text-brand-300 transition-colors hover:bg-brand/15 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {subtitleLoading
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : <FileText className="h-4 w-4" />}
+                                {subtitleLoading ? t('localVideo.readingSubtitle') : t('localVideo.loadSubtitle')}
+                            </button>
+                            <p className="text-[11px] text-zinc-600">{t('localVideo.subtitleLocalOnly')}</p>
                         </div>
                     )}
                 </section>
