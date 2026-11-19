@@ -13,6 +13,7 @@ import { apiFetch } from '../lib/api';
 import { loadModel } from '../lib/settings';
 import { describeApiError, toast } from '../lib/toast';
 import { SubHeader } from './ui/SubHeader';
+import { Menu } from './ui/Menu';
 import {
     answerWord,
     getReviewQueue,
@@ -333,6 +334,9 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, parentLabel
                 }
                 return;
             }
+            // The open menu owns arrows/Enter/Space/Tab; do not grade or
+            // reveal the card behind it.
+            if (menuOpen) return;
             if (inField || event.metaKey || event.ctrlKey || event.altKey) return;
 
             if (event.code === 'Space' || event.key === ' ') {
@@ -644,51 +648,38 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, parentLabel
                         ) : (
                             <span />
                         )}
-                        <div className="relative">
-                            <button
-                                type="button"
-                                data-testid="review-suspend-menu"
-                                onClick={() => setMenuOpen(open => !open)}
-                                aria-label={t('review.menu')}
-                                aria-haspopup="menu"
-                                aria-expanded={menuOpen}
-                                title={t('review.menu')}
-                                className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
-                            >
-                                <MoreHorizontal className="w-4 h-4" />
-                            </button>
-                            {menuOpen && (
-                                <>
-                                    <div
-                                        className="fixed inset-0 z-20"
-                                        onClick={() => setMenuOpen(false)}
-                                    />
-                                    <div
-                                        role="menu"
-                                        className="absolute right-0 top-full mt-1 z-30 w-60 max-w-[calc(100vw-2rem)] rounded-xl bg-zinc-900/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/60 p-1"
-                                    >
-                                        <button
-                                            type="button"
-                                            role="menuitem"
-                                            data-testid="review-suspend"
-                                            onClick={() => void handleSuspend()}
-                                            disabled={suspendBusy}
-                                            className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-white/5 text-left transition-colors disabled:opacity-60"
-                                        >
-                                            <CalendarOff className="w-4 h-4 mt-0.5 text-zinc-400 shrink-0" />
-                                            <span className="min-w-0">
-                                                <span className="block text-sm text-zinc-200">
-                                                    {t('review.menu.suspend')}
-                                                </span>
-                                                <span className="block text-[11px] text-zinc-500 mt-0.5 leading-relaxed">
-                                                    {t('review.menu.suspendHint')}
-                                                </span>
-                                            </span>
-                                        </button>
-                                    </div>
-                                </>
+                        <Menu
+                            ariaLabel={t('review.menu')}
+                            open={menuOpen}
+                            onOpenChange={setMenuOpen}
+                            popupClassName="w-60"
+                            items={[
+                                {
+                                    id: 'suspend',
+                                    label: t('review.menu.suspend'),
+                                    description: t('review.menu.suspendHint'),
+                                    icon: <CalendarOff />,
+                                    disabled: suspendBusy,
+                                    testId: 'review-suspend',
+                                    onSelect: () => {
+                                        void handleSuspend();
+                                    },
+                                },
+                            ]}
+                            trigger={({ triggerRef, triggerProps }) => (
+                                <button
+                                    ref={triggerRef}
+                                    {...triggerProps}
+                                    type="button"
+                                    data-testid="review-suspend-menu"
+                                    aria-label={t('review.menu')}
+                                    title={t('review.menu')}
+                                    className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
+                                >
+                                    <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
+                                </button>
                             )}
-                        </div>
+                        />
                     </div>
 
                     <div className="text-center pt-1 pb-3">
