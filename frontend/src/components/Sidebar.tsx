@@ -59,8 +59,7 @@ interface SidebarProps {
   onOpenAbility: () => void;
   /** Profile · scroll to a section of the 我的 page (navigating there first). */
   onOpenProfileSection: (section: ProfileSectionId) => void;
-  /** Pinned bottom strip (official blog; admin console only for admins). */
-  onOpenBlog: () => void;
+  /** Pinned bottom strip (admin console only for admins). */
   onOpenAdmin: () => void;
   onRequestLogin?: () => void;
 }
@@ -107,7 +106,6 @@ export function Sidebar({
   onOpenPlacement,
   onOpenAbility,
   onOpenProfileSection,
-  onOpenBlog,
   onOpenAdmin,
   onRequestLogin,
 }: SidebarProps) {
@@ -463,23 +461,18 @@ export function Sidebar({
       {/* Pinned global entries: official blog, then admin console (admins only). */}
       <div className="flex-none border-t border-white/5 px-2 py-2">
         <nav aria-label={t('sidebar.fixed')} className="flex flex-col gap-0.5">
-          <button
-            type="button"
+          <a
+            href="#/blog"
             data-testid="sidebar-blog"
-            aria-current={subKind === 'blog' ? 'page' : undefined}
             aria-label={t('sidebar.blog')}
             title={t('sidebar.blog')}
-            onClick={() => selectShortcut(onOpenBlog)}
-            className={navButtonClass(subKind === 'blog')}
+            className={navButtonClass(false)}
           >
-            <Newspaper
-              className={`w-[18px] h-[18px] ${subKind === 'blog' ? 'text-brand-400' : 'text-zinc-500'}`}
-              aria-hidden="true"
-            />
+            <Newspaper className="w-[18px] h-[18px] text-zinc-500" aria-hidden="true" />
             {!collapsed && (
               <span className="min-w-0 truncate text-sm font-medium">{t('sidebar.blog')}</span>
             )}
-          </button>
+          </a>
           {isAdmin && (
             <button
               type="button"

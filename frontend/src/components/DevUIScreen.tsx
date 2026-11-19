@@ -40,13 +40,13 @@ export function DevUIScreen() {
               className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 text-caption"
             >
               <a
-                href="#/today"
+                href="#/app/today"
                 className="rounded-control text-brand-300 underline-offset-4 hover:underline"
               >
                 App · Today
               </a>
               <a
-                href="#/welcome"
+                href="/"
                 className="rounded-control text-fg-secondary underline-offset-4 hover:text-fg-primary hover:underline"
               >
                 Welcome

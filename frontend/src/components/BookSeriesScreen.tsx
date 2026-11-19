@@ -1,4 +1,4 @@
-// Series page (`#/content/book-series/<seriesId>`).
+// Series page (`#/app/content/book-series/<seriesId>`).
 //
 // Shows every book in the series — including the titles that are still
 // `coming_soon` — so the reader can see what repeats: the same characters and

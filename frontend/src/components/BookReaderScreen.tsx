@@ -1,4 +1,4 @@
-// Public-domain book reader (`#/content/book/<bookId>`).
+// Public-domain book reader (`#/app/content/book/<bookId>`).
 //
 // Two levels in one screen: the book's chapter index + series context, and the
 // reading pane for one chapter. The English text is fetched from the public-

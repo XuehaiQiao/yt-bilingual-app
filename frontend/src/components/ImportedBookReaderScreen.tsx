@@ -1,4 +1,4 @@
-// Reader for an imported public-domain book (`#/content/imported-book/<id>`).
+// Reader for an imported public-domain book (`#/app/content/imported-book/<id>`).
 //
 // Chapter list + reading pane. The English source is refetched from the
 // public-domain site on every chapter open (never stored). AI translation is

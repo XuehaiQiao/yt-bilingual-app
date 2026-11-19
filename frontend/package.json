@@ -9,7 +9,11 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "check:i18n": "node scripts/check-i18n.mjs",
-    "check:library": "node scripts/check-library-ui.mjs"
+    "check:library": "node scripts/check-library-ui.mjs",
+    "check:nav": "node scripts/check-nav.mjs",
+    "check:nav:e2e": "node scripts/check-nav-e2e.mjs",
+    "check:blog": "node scripts/check-blog-deeplink.mjs",
+    "check:public": "node scripts/check-public-routes.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

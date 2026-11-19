@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// End-to-end check for N-01: the blog article must be addressable
-// (`#/<tab>/blog/<slug>`), survive a refresh, be shareable, and return to the
-// list on Back (docs/design-governance/navigation-model.md §2.3 J27, §4).
+// End-to-end check for the public official blog:
+// `#/blog` is the list, `#/blog/<slug>` is a shareable article deep link that
+// survives a refresh, and the page renders **outside** the app shell (it must
+// not mount `app-shell`). The legacy in-app blog URLs redirect here too.
 //
 // It drives the real app against the running dev server. Only `GET
 // /api/auth/me` and the two public blog endpoints are stubbed, so the check is
@@ -108,7 +109,7 @@ async function waitForList(page) {
 async function openPage(context, hash) {
   const page = await context.newPage();
   await page.goto(`${BASE}/${hash}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="public-blog-screen"]', { timeout: 20000 });
   return page;
 }
 
@@ -147,12 +148,28 @@ try {
     });
   });
 
-  // a) Deep link renders the article, not the list, and keeps the URL.
-  await check('a) deep link #/content/blog/<slug> opens the article', async () => {
-    const page = await openPage(context, `#/content/blog/${SLUG}`);
+  // a) Public list renders outside the app shell.
+  await check('a) #/blog renders the public list without app-shell', async () => {
+    const page = await context.newPage();
+    try {
+      await page.goto(`${BASE}/#/blog`, { waitUntil: 'domcontentloaded' });
+      await waitForList(page);
+      assert.equal(hashOf(page), '#/blog');
+      assert.ok(await page.locator('[data-testid="public-blog-screen"]').isVisible());
+      assert.ok(await page.locator('[data-testid="public-header"]').isVisible());
+      assert.ok(await page.locator('[data-testid="public-footer"]').isVisible());
+      assert.equal(await page.locator('[data-testid="app-shell"]').count(), 0);
+    } finally {
+      await page.close();
+    }
+  });
+
+  // b) Deep link renders the article, not the list, and keeps the URL.
+  await check('b) deep link #/blog/<slug> opens the article', async () => {
+    const page = await openPage(context, `#/blog/${SLUG}`);
     try {
       await waitForArticle(page);
-      assert.equal(hashOf(page), `#/content/blog/${SLUG}`);
+      assert.equal(hashOf(page), `#/blog/${SLUG}`);
       assert.equal(await page.locator('[data-testid="blog-post-list"]').count(), 0);
       assert.ok(await page.locator('[data-testid="blog-screen"]').isVisible());
     } finally {
@@ -160,24 +177,24 @@ try {
     }
   });
 
-  // b) Refresh keeps the article (and its URL).
-  await check('b) refresh stays on the article', async () => {
-    const page = await openPage(context, `#/content/blog/${SLUG}`);
+  // c) Refresh keeps the article (and its URL).
+  await check('c) refresh stays on the article', async () => {
+    const page = await openPage(context, `#/blog/${SLUG}`);
     try {
       await waitForArticle(page);
       await page.reload({ waitUntil: 'domcontentloaded' });
-      await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
+      await page.waitForSelector('[data-testid="public-blog-screen"]', { timeout: 20000 });
       await waitForArticle(page);
-      assert.equal(hashOf(page), `#/content/blog/${SLUG}`);
+      assert.equal(hashOf(page), `#/blog/${SLUG}`);
       assert.equal(await page.locator('[data-testid="blog-post-list"]').count(), 0);
     } finally {
       await page.close();
     }
   });
 
-  // c) A shared URL opened in a fresh page renders the article.
-  await check('c) shared article URL opens the article in a fresh page', async () => {
-    const page = await openPage(context, `#/content/blog/${SLUG}`);
+  // d) A shared URL opened in a fresh page renders the article.
+  await check('d) shared article URL opens the article in a fresh page', async () => {
+    const page = await openPage(context, `#/blog/${SLUG}`);
     try {
       await waitForArticle(page);
       assert.ok(await page.locator('[data-testid="blog-screen"]').isVisible());
@@ -186,18 +203,18 @@ try {
     }
   });
 
-  // d) List → article pushes the slug; Back pops to the list.
-  await check('d) list → article writes URL, back returns to the list', async () => {
-    const page = await openPage(context, '#/content/blog');
+  // e) List → article pushes the slug; Back returns to the list.
+  await check('e) list → article writes the URL, back returns to the list', async () => {
+    const page = await openPage(context, '#/blog');
     try {
       await waitForList(page);
       await page.click(`[data-testid="blog-post-${SLUG}"]`);
-      await waitHash(page, `#/content/blog/${SLUG}`);
+      await waitHash(page, `#/blog/${SLUG}`);
       await waitForArticle(page);
       assert.equal(await page.locator('[data-testid="blog-post-list"]').count(), 0);
 
-      await page.click('[data-testid="blog-back"]');
-      await waitHash(page, '#/content/blog');
+      await page.click('[data-testid="public-blog-back"]');
+      await waitHash(page, '#/blog');
       await waitForList(page);
       assert.equal(await page.locator('[data-testid="blog-markdown"]').count(), 0);
     } finally {
@@ -205,64 +222,57 @@ try {
     }
   });
 
-  // e) A deep link has no in-app frame beneath it: Back falls back to the
-  //    article's parent (the list), never leaving the app (D-02/N-03).
-  await check('e) deep-link article back falls back to the list', async () => {
-    const page = await openPage(context, `#/content/blog/${SLUG}`);
+  // f) A cold deep link has no list frame beneath it: Back replaces to the
+  //    list instead of calling history.back() off-site (D-02/N-03).
+  await check('f) deep-link article back falls back to the public list', async () => {
+    const page = await openPage(context, `#/blog/${SLUG}`);
     try {
       await waitForArticle(page);
-      await page.click('[data-testid="blog-back"]');
-      await waitHash(page, '#/content/blog');
+      await page.click('[data-testid="public-blog-back"]');
+      await waitHash(page, '#/blog');
       await waitForList(page);
-
-      // The list's own Back then reaches the source tab.
-      await page.click('[data-testid="blog-back"]');
-      await waitHash(page, '#/content');
-      assert.ok(await page.locator('[data-testid="app-shell"]').isVisible());
+      assert.ok(await page.locator('[data-testid="public-blog-screen"]').isVisible());
     } finally {
       await page.close();
     }
   });
 
-  // f) Unknown slug shows the existing error panel, no white screen, no
+  // g) Unknown slug shows the existing error panel, no white screen, no
   //    silent URL rewrite; its "back to list" action still works.
-  await check('f) invalid slug shows an error panel, not a white screen', async () => {
-    const page = await openPage(context, '#/content/blog/does-not-exist-n01');
+  await check('g) invalid slug shows an error panel, not a white screen', async () => {
+    const page = await openPage(context, '#/blog/does-not-exist-n01');
     try {
       await page.waitForSelector('[data-testid="blog-detail-error"]', { timeout: 15000 });
       assert.ok(await page.locator('[data-testid="blog-detail-error"]').isVisible());
       const text = (await page.locator('[data-testid="blog-detail-error"]').innerText()).trim();
       assert.ok(text.length > 0, 'error panel should carry a message');
-      assert.equal(hashOf(page), '#/content/blog/does-not-exist-n01');
+      assert.equal(hashOf(page), '#/blog/does-not-exist-n01');
       assert.equal(await page.locator('[data-testid="blog-markdown"]').count(), 0);
 
       await page.locator('[data-testid="blog-detail-error"] button').last().click();
-      await waitHash(page, '#/content/blog');
+      await waitHash(page, '#/blog');
       await waitForList(page);
     } finally {
       await page.close();
     }
   });
 
-  // g) The source tab prefix survives both directions (today → blog → article).
-  await check('g) #/today/blog keeps the today prefix through list → article → back', async () => {
-    const page = await openPage(context, '#/today/blog');
+  // h) Legacy in-app blog URLs redirect to the public article deep link.
+  await check('h) old #/app/.../blog/<slug> redirects to #/blog/<slug>', async () => {
+    const page = await context.newPage();
     try {
-      await waitForList(page);
-      await page.click(`[data-testid="blog-post-${SLUG}"]`);
-      await waitHash(page, `#/today/blog/${SLUG}`);
+      await page.goto(`${BASE}/#/app/content/blog/${SLUG}`, { waitUntil: 'domcontentloaded' });
+      await waitHash(page, `#/blog/${SLUG}`);
       await waitForArticle(page);
-      await page.click('[data-testid="blog-back"]');
-      await waitHash(page, '#/today/blog');
-      await page.waitForSelector('[data-testid="blog-post-list"]');
+      assert.equal(await page.locator('[data-testid="app-shell"]').count(), 0);
     } finally {
       await page.close();
     }
   });
 
-  // h) The RSS feed entry on the list is untouched by the slug plumbing.
-  await check('h) list still exposes the RSS link', async () => {
-    const page = await openPage(context, '#/content/blog');
+  // i) The RSS feed entry on the public list is present and opens a new tab.
+  await check('i) list still exposes the RSS link', async () => {
+    const page = await openPage(context, '#/blog');
     try {
       await waitForList(page);
       const feed = page.locator('a[href*="/api/blog/feed.xml"]');

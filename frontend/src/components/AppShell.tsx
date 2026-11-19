@@ -60,7 +60,6 @@ interface AppShellProps {
   onOpenPlacement: () => void;
   onOpenAbility: () => void;
   onOpenProfileSection: (section: ProfileSectionId) => void;
-  onOpenBlog: () => void;
   onOpenAdmin: () => void;
   children: ReactNode;
 }
@@ -87,7 +86,6 @@ export function AppShell({
   onOpenPlacement,
   onOpenAbility,
   onOpenProfileSection,
-  onOpenBlog,
   onOpenAdmin,
   children,
 }: AppShellProps) {
@@ -120,7 +118,6 @@ export function AppShell({
           onOpenPlacement={onOpenPlacement}
           onOpenAbility={onOpenAbility}
           onOpenProfileSection={onOpenProfileSection}
-          onOpenBlog={onOpenBlog}
           onOpenAdmin={onOpenAdmin}
           onRequestLogin={onRequestLogin}
         />

@@ -54,7 +54,7 @@ interface TodayScreenProps {
     vocabLevel: string;
     /** Guest generation entry: open the app's auth overlay. */
     onRequestLogin?: () => void;
-    /** Generated novel lesson → the shared `#/lesson/{id}` screen. */
+    /** Generated novel lesson → the shared `#/app/today/lesson/{id}` screen. */
     onOpenLesson: (lessonId: string) => void;
 }
 

@@ -1,6 +1,6 @@
 // 单词本 (word book) — full-page replacement for the old favorites modal.
 //
-// Two halves, one route (`#/profile/vocabulary`):
+// Two halves, one route (`#/app/profile/vocabulary`):
 //   1. 我的单词 — saved vocabulary favorites (sentences / share cards excluded),
 //      one line by default; expanding reveals the CEFR level (batched /level
 //      lookup; off-list words read C1+), provenance, saved time and delete.

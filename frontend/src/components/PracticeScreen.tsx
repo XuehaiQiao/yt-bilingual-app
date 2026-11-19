@@ -31,7 +31,7 @@ interface PracticeScreenProps {
     placementProfile: PlacementProfile | null;
     placementLoading: boolean;
     placementFailed: boolean;
-    /** Opens `#/{today,practice}/review`; guests get the login overlay there. */
+    /** Opens `#/app/{today,practice}/review`; guests get the login overlay there. */
     onOpenReview: () => void;
     onOpenExam: () => void;
     onOpenPlacement: (view: 'intro' | 'profile') => void;

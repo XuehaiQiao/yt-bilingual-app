@@ -10,7 +10,7 @@
     {
       "key": "welcome.footer.github",
       "reason": "第三方品牌名 GitHub，不译",
-      "path": "src/components/WelcomeScreen.tsx"
+      "path": "src/components/PublicFooter.tsx"
     },
     {
       "key": "library.article.license",

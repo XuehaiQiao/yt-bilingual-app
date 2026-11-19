@@ -1,52 +1,68 @@
 // Navigation state model for the P0 IA, revised by
-// docs/design-governance/navigation-model.md (D-01/D-02/D-05/D-09).
+// docs/design-governance/navigation-model.md (D-01/D-02/D-05/D-09) and by the
+// public-site split (home / blog / pricing / resources outside the app shell).
 //
 // Pure functions only — no React, no DOM. `parseRoute` / `toHash` are the two
 // halves of one contract: `parseRoute(toHash(state))` returns `state` for every
 // legal nav state (see `resolveRoute` for the raw → canonical decision that
 // also tells `useNav` whether to rewrite a legacy URL or toast an invalid one).
 //
-// Route table (canonical hrefs, URL always starts with the source tab):
-//   #/today  #/content  #/practice  #/profile            first-level tabs
-//   #/content/library  #/content/books                   section anchors (D-05)
-//   #/<tab>/review        #/<tab>/report                  review / weekly report
-//   #/<tab>/placement[?view=profile]                      placement / profile
-//   #/<tab>/exam                                          exam practice
-//   #/<tab>/discover                                      content discovery
-//   #/<tab>/reader[/<articleId>]                          reading
-//   #/<tab>/sentences/<levelId>                           sentence packs
-//   #/<tab>/blog[/<slug>]                                 official blog
-//   #/<tab>/book/<bookId>                                 public-domain book reader
-//   #/<tab>/book-series/<seriesId>                        public-domain series page
-//   #/<tab>/imported-book/<bookId>                        imported book reader
-//   #/<tab>/learn/youtube/<videoId>                       learning view (YouTube)
-//   #/<tab>/learn/local/<showId>/S<ss>E<ee>               learning view (local episode)
-//   #/<tab>/learn/library/<itemId>                        learning view (free library)
-//   #/<tab>/lesson/<lessonId>                             12-minute course
-//   #/<tab>/vocabulary                                    word book (单词本)
-//   #/<tab>/ability                                       ability profile
-//   #/profile/admin                                       admin console (fixed, D-10)
-//   #/dev/ui                                              component matrix (dev/admin only;
-//                                                          not part of NavState — see
-//                                                          `isDevUiHash` below)
+// Route table (canonical hrefs, every app URL lives under `#/app`):
+//   #/app  →  #/app/today                                     app entry
+//   #/app/today  #/app/content  #/app/practice  #/app/profile first-level tabs
+//   #/app/content/library  #/app/content/books                section anchors (D-05)
+//   #/app/<tab>/review        #/app/<tab>/report              review / weekly report
+//   #/app/<tab>/placement[?view=profile]                      placement / profile
+//   #/app/<tab>/exam                                          exam practice
+//   #/app/<tab>/discover                                      content discovery
+//   #/app/<tab>/reader[/<articleId>]                          reading
+//   #/app/<tab>/sentences/<levelId>                           sentence packs
+//   #/app/<tab>/book/<bookId>                                 public-domain book reader
+//   #/app/<tab>/book-series/<seriesId>                        public-domain series page
+//   #/app/<tab>/imported-book/<bookId>                        imported book reader
+//   #/app/<tab>/learn/youtube/<videoId>                       learning view (YouTube)
+//   #/app/<tab>/learn/local/<showId>/S<ss>E<ee>               learning view (local episode)
+//   #/app/<tab>/learn/library/<itemId>                        learning view (free library)
+//   #/app/<tab>/lesson/<lessonId>                             12-minute course
+//   #/app/<tab>/vocabulary                                    word book (单词本)
+//   #/app/<tab>/ability                                       ability profile
+//   #/app/profile/admin                                       admin console (fixed, D-10)
+//   #/dev/ui                                                  component matrix (dev/admin only;
+//                                                              not part of NavState — see
+//                                                              `isDevUiHash` below)
 //
 // `<tab>` is the *source* tab (where the learner came from), not an ownership
 // claim: the same screen opened from Today and from Content keeps different
 // first segments so "back" lands where the learner came from (N-02/N-04/N-12).
 //
-// Legacy URLs (still readable, rewritten once by `useNav`):
-//   #/learn/...          → #/content/learn/...
-//   #/lesson/<id>        → #/today/lesson/<id>
-//   #/profile/favorites  → #/profile/vocabulary
-//   #admin / #/admin     → #/profile/admin
-//   #/<tab>/admin (≠profile) → #/profile/admin
+// Public routes (never part of NavState, they render outside AppShell/AuthGate):
+//   / (no hash)          marketing home (WelcomeScreen)
+//   #/welcome            → `/` (replaceState, the old marketing front door)
+//   #/blog[/<slug>]      official blog (list / article)
+//   #/pricing            pricing page (no real price yet)
+//   #/resources          free / public-domain resources
+//   #/login[?next=...]   existing auth screen (public)
+// The legacy in-app blog URLs (`#/<tab>/blog...`, `#/app/<tab>/blog...`) are
+// recognised as public-blog aliases and redirected to `#/blog...`.
 //
-// Invalid hashes fall back to `#/today` (D-07: the caller toasts once).
+// Legacy app URLs (still readable, rewritten once by `useNav`):
+//   #/today ...          → #/app/today ... (the pre-app-prefix IA)
+//   #/learn/...          → #/app/content/learn/...
+//   #/lesson/<id>        → #/app/today/lesson/<id>
+//   #/profile/favorites  → #/app/profile/vocabulary
+//   #admin / #/admin     → #/app/profile/admin
+//   #/<tab>/admin (≠profile) → #/app/profile/admin
+//
+// Invalid app hashes fall back to `#/app/today` (D-07: the caller toasts once).
+// Unknown non-app hashes are handled by the public site (home) instead.
 import type { TranslationKey } from '../i18n';
 
 export type TabId = 'today' | 'content' | 'practice' | 'profile';
 
 export const TAB_IDS: readonly TabId[] = ['content', 'practice', 'today', 'profile'];
+
+/** Every app screen is namespaced under this hash prefix. */
+export const APP_ROUTE_PREFIX = '#/app';
 
 export function isTabId(value: unknown): value is TabId {
   return typeof value === 'string' && (TAB_IDS as readonly string[]).includes(value);
@@ -80,7 +96,6 @@ export type SubRoute =
   | { kind: 'discover' }
   | { kind: 'reader'; articleId?: string }
   | { kind: 'sentences'; levelId: number }
-  | { kind: 'blog'; slug?: string }
   | { kind: 'book'; bookId: string }
   | { kind: 'book-series'; seriesId: string }
   | { kind: 'imported-book'; bookId: string }
@@ -90,7 +105,7 @@ export type SubRoute =
   | { kind: 'course'; lessonId: string };
 
 export interface NavState {
-  /** Source/return tab (the first URL segment). Not an ownership claim. */
+  /** Source/return tab (the first URL segment after `#/app`). Not an ownership claim. */
   tab: TabId;
   sub: SubRoute | null;
   /** Tab-level section anchor; mutually exclusive with `sub`. */
@@ -99,7 +114,7 @@ export interface NavState {
 
 /**
  * Immersive ("task") sub views hide the desktop Sidebar and the primary tabs;
- * panel-style views (report/discover/blog/wordbook/ability) keep the shell.
+ * panel-style views (report/discover/wordbook/ability) keep the shell.
  * Single source for `App.tsx` and the QA scripts (navigation-model §12.1).
  */
 export const TASK_SUB_KINDS: ReadonlySet<SubRoute['kind']> = new Set<SubRoute['kind']>([
@@ -117,7 +132,7 @@ export const TASK_SUB_KINDS: ReadonlySet<SubRoute['kind']> = new Set<SubRoute['k
 
 const FALLBACK: NavState = { tab: 'today', sub: null };
 
-const FALLBACK_HASH = '#/today';
+const FALLBACK_HASH = `${APP_ROUTE_PREFIX}/today`;
 
 function decode(value: string | undefined): string {
   if (!value) return '';
@@ -147,7 +162,7 @@ export function padSeason(value: number | undefined): string {
 /**
  * Which tab a sub view belongs to when the URL carries no tab prefix (legacy
  * `#/learn`, `#/lesson`) or when the caller has no valid current tab.
- * Not used for new navigation: canonical URLs always carry the source tab.
+ * Not used for new navigation: canonical app URLs always carry the source tab.
  */
 export function tabOfSub(sub: SubRoute, fallback: TabId = 'today'): TabId {
   switch (sub.kind) {
@@ -163,7 +178,6 @@ export function tabOfSub(sub: SubRoute, fallback: TabId = 'today'): TabId {
     case 'discover':
     case 'reader':
     case 'sentences':
-    case 'blog':
     case 'book':
     case 'book-series':
     case 'imported-book':
@@ -199,16 +213,20 @@ function normalizeHash(value: string): string {
   return raw === '#' ? '#' : `#${raw.slice(1).replace(/^\/+/, '/')}`;
 }
 
+function pathSegments(raw: string): string[] {
+  return raw.slice(2).split('?')[0].split('/').filter(Boolean).map(decode);
+}
+
 function parseLearnSegments(rest: string[]): SubRoute | null {
-  // #/<tab>/learn/youtube/<videoId>
+  // #/app/<tab>/learn/youtube/<videoId>
   if (rest[0] === 'youtube' && rest.length === 2 && rest[1]) {
     return { kind: 'learn', source: 'youtube', videoId: rest[1] };
   }
-  // #/<tab>/learn/library/<itemId>
+  // #/app/<tab>/learn/library/<itemId>
   if (rest[0] === 'library' && rest.length === 2 && rest[1]) {
     return { kind: 'learn', source: 'library', itemId: rest[1] };
   }
-  // #/<tab>/learn/local/<showId>/S<ss>E<ee>
+  // #/app/<tab>/learn/local/<showId>/S<ss>E<ee>
   if (rest[0] === 'local' && rest.length === 3 && rest[1]) {
     const parsed = parseSeasonEpisode(rest[2]);
     if (parsed) {
@@ -237,7 +255,7 @@ function parseSub(tab: TabId, rest: string[], query: URLSearchParams): SubRoute 
       case 'vocabulary':
         return { kind: 'vocabulary' };
       case 'favorites':
-        // Pre-word-book URL; the canonical form is `#/<tab>/vocabulary`.
+        // Pre-word-book URL; the canonical form is `#/app/<tab>/vocabulary`.
         return tab === 'profile' ? { kind: 'vocabulary' } : null;
       case 'ability':
         return { kind: 'ability' };
@@ -250,9 +268,6 @@ function parseSub(tab: TabId, rest: string[], query: URLSearchParams): SubRoute 
 
   if (head === 'reader' && rest.length <= 2) {
     return { kind: 'reader', articleId: rest[1] || undefined };
-  }
-  if (head === 'blog' && rest.length <= 2) {
-    return { kind: 'blog', slug: rest[1] || undefined };
   }
   if (head === 'sentences' && rest.length === 2) {
     const levelId = Number.parseInt(rest[1], 10);
@@ -290,28 +305,40 @@ function parseNormalized(raw: string): ParsedRoute | null {
   if (!raw.startsWith('#/')) return null;
 
   const [pathPart, queryPart = ''] = raw.slice(2).split('?');
-  const segments = pathPart.split('/').filter(Boolean).map(decode);
+  let segments = pathPart.split('/').filter(Boolean).map(decode);
   if (segments.length === 0) return { state: { ...FALLBACK }, legacy: false };
+
+  // App namespace: `#/app/...`. Anything else with a tab prefix is a legacy
+  // app URL that `resolveRoute` rewrites to the canonical `#/app/...` form.
+  let legacy = false;
+  if (segments[0] === 'app') {
+    segments = segments.slice(1);
+    if (segments.length === 0) {
+      return { state: { ...FALLBACK }, legacy: false };
+    }
+  } else {
+    legacy = true;
+  }
 
   const [head, ...rest] = segments;
 
   if (isTabId(head)) {
     const tab = head;
     if (rest.length === 0) {
-      return { state: { tab, sub: null }, legacy: false };
+      return { state: { tab, sub: null }, legacy };
     }
     // Section anchors only exist on the content page (D-05): they are legal
     // tab-level URLs, not aliases that get thrown away.
     if (tab === 'content' && rest.length === 1 && (rest[0] === 'library' || rest[0] === 'books')) {
-      return { state: { tab, sub: null, anchor: rest[0] as SectionAnchor }, legacy: false };
+      return { state: { tab, sub: null, anchor: rest[0] as SectionAnchor }, legacy };
     }
     const sub = parseSub(tab, rest, new URLSearchParams(queryPart));
     if (!sub) return null;
-    // The admin console is a global shell: always `#/profile/admin` (D-10).
+    // The admin console is a global shell: always `#/app/profile/admin` (D-10).
     if (sub.kind === 'admin' && tab !== 'profile') {
       return { state: { tab: 'profile', sub }, legacy: true };
     }
-    return { state: { tab, sub }, legacy: false };
+    return { state: { tab, sub }, legacy };
   }
 
   // Legacy source-absolute learning/course URLs (pre-D-01).
@@ -366,19 +393,19 @@ export function parseRoute(hash: string): NavState {
 }
 
 /**
- * Serialise a nav state to its canonical hash. Every app screen is
- * tab-prefixed (D-01); the admin console keeps its fixed `#/profile/admin`.
+ * Serialise a nav state to its canonical hash. Every app screen is namespaced
+ * under `#/app`; the admin console keeps its fixed `#/app/profile/admin`.
  */
 export function toHash(state: NavState): string {
   const tab: TabId = isTabId(state.tab) ? state.tab : 'today';
   const { sub } = state;
 
   if (!sub && tab === 'content' && isSectionAnchor(state.anchor)) {
-    return `#/content/${state.anchor}`;
+    return `${APP_ROUTE_PREFIX}/content/${state.anchor}`;
   }
-  if (!sub) return `#/${tab}`;
+  if (!sub) return `${APP_ROUTE_PREFIX}/${tab}`;
 
-  const prefix = `#/${tab}`;
+  const prefix = `${APP_ROUTE_PREFIX}/${tab}`;
   switch (sub.kind) {
     case 'learn':
       if (sub.source === 'youtube') {
@@ -406,8 +433,6 @@ export function toHash(state: NavState): string {
         : `${prefix}/reader`;
     case 'sentences':
       return `${prefix}/sentences/${sub.levelId}`;
-    case 'blog':
-      return sub.slug ? `${prefix}/blog/${encodeSegment(sub.slug)}` : `${prefix}/blog`;
     case 'book':
       return `${prefix}/book/${encodeSegment(sub.bookId)}`;
     case 'book-series':
@@ -419,11 +444,11 @@ export function toHash(state: NavState): string {
     case 'ability':
       return `${prefix}/ability`;
     case 'admin':
-      return '#/profile/admin';
+      return `${APP_ROUTE_PREFIX}/profile/admin`;
     case 'course':
       return `${prefix}/lesson/${encodeSegment(sub.lessonId)}`;
     default:
-      return `#/${tab}`;
+      return `${APP_ROUTE_PREFIX}/${tab}`;
   }
 }
 
@@ -442,7 +467,6 @@ export function parentOf(state: NavState): NavState | null {
   if (!sub) return null;
   if (sub.kind === 'admin') return { tab: 'profile', sub: null };
   if (sub.kind === 'reader' && sub.articleId) return { tab, sub: { kind: 'reader' } };
-  if (sub.kind === 'blog' && sub.slug) return { tab, sub: { kind: 'blog' } };
   return { tab, sub: null };
 }
 
@@ -452,8 +476,106 @@ export function parentOf(state: NavState): NavState | null {
  */
 export function backLabelFor(state: NavState): TranslationKey {
   if (state.sub?.kind === 'reader' && state.sub.articleId) return 'reader.backToList';
-  if (state.sub?.kind === 'blog' && state.sub.slug) return 'blog.backToList';
   return 'nav.back';
+}
+
+// ── Public site (outside AppShell/AuthGate) ────────────────────────────────
+
+export type PublicView = 'home' | 'blog' | 'pricing' | 'resources' | 'login';
+
+export interface PublicRoute {
+  view: PublicView;
+  /** Blog article slug, when `view === 'blog'` and the URL names an article. */
+  slug?: string;
+  /** Canonical address; only applied when `rewrite` is true. */
+  canonical: string;
+  /** True when the address bar must be rewritten (welcome → `/`, app-blog → `#/blog`). */
+  rewrite: boolean;
+}
+
+/**
+ * Parse a public-site hash. Returns `null` for anything that belongs to the
+ * app (including legacy app URLs) or is unknown; `App` then applies its own
+ * app/unknown decision. Kept pure so the QA scripts can test it without React.
+ */
+export function parsePublicRoute(hash: string): PublicRoute | null {
+  const raw = normalizeHash(hash);
+  if (!raw || raw === '#') {
+    return { view: 'home', canonical: '/', rewrite: false };
+  }
+  if (!raw.startsWith('#/')) return null;
+
+  const [pathPart, queryPart = ''] = raw.slice(2).split('?');
+  const segments = pathPart.split('/').filter(Boolean).map(decode);
+  if (segments.length === 0) {
+    return { view: 'home', canonical: '/', rewrite: true };
+  }
+
+  const [head, ...rest] = segments;
+  if (head === 'welcome' && rest.length === 0) {
+    return { view: 'home', canonical: '/', rewrite: true };
+  }
+  if (head === 'login' && rest.length === 0) {
+    // The `?next=` query belongs to the login page; leave it untouched.
+    void queryPart;
+    return { view: 'login', canonical: raw, rewrite: false };
+  }
+  if (head === 'pricing' && rest.length === 0) {
+    return { view: 'pricing', canonical: '#/pricing', rewrite: false };
+  }
+  if (head === 'resources' && rest.length === 0) {
+    return { view: 'resources', canonical: '#/resources', rewrite: false };
+  }
+
+  const blog = parseBlogAlias(segments);
+  if (blog) {
+    const canonical = blog.slug ? `#/blog/${encodeSegment(blog.slug)}` : '#/blog';
+    return { view: 'blog', slug: blog.slug, canonical, rewrite: canonical !== raw };
+  }
+  return null;
+}
+
+/**
+ * `#/blog[/<slug>]` plus the legacy in-app spellings (`#/<tab>/blog[/<slug>]`,
+ * `#/app/<tab>/blog[/<slug>]`, `#/app/blog[/<slug>]`).
+ */
+function parseBlogAlias(segments: string[]): { slug?: string } | null {
+  let rest = segments;
+  if (rest[0] === 'app') rest = rest.slice(1);
+  if (isTabId(rest[0])) rest = rest.slice(1);
+  if (rest[0] !== 'blog') return null;
+  if (rest.length === 1) return {};
+  if (rest.length === 2 && rest[1]) return { slug: rest[1] };
+  return null;
+}
+
+/**
+ * True when the hash belongs to the public site (or is blank, which is home).
+ * `useNav` skips these in its popstate/hashchange handlers so a public link
+ * clicked inside the app is not canonicalised back into `#/app/today`.
+ */
+export function isPublicHash(hash: string): boolean {
+  const raw = normalizeHash(hash);
+  if (!raw || raw === '#') return true;
+  return parsePublicRoute(raw) !== null;
+}
+
+/**
+ * True when the hash is an app namespace URL, including the legacy unprefixed
+ * spellings that `resolveRoute` knows how to canonicalise. Used by `App` to
+ * distinguish "the app owns this URL" from "unknown → home".
+ */
+export function isAppHash(hash: string): boolean {
+  const raw = normalizeHash(hash);
+  if (!raw) return false;
+  if (raw === '#admin') return true;
+  if (!raw.startsWith('#/')) return false;
+  const segments = pathSegments(raw);
+  if (segments.length === 0) return false;
+  const head = segments[0];
+  if (head === 'app') return true;
+  if (isTabId(head)) return true;
+  return head === 'learn' || head === 'lesson' || head === 'admin';
 }
 
 /**
@@ -472,12 +594,12 @@ export function isDevUiHash(hash: string): boolean {
 }
 
 /**
- * QA helper: true when the hash already is the canonical tab-prefixed app URL
- * (public pages `#/welcome` / `#/login` and legacy aliases are not).
+ * QA helper: true when the hash already is the canonical app URL
+ * (public pages `#/blog` / `#/login` and legacy aliases are not).
  */
 export function isTabPrefixedRoute(hash: string): boolean {
   const raw = String(hash ?? '').trim();
   if (!raw.startsWith('#/')) return false;
   const resolved = resolveRoute(raw);
-  return resolved.kind === 'canonical' && /^#\/(today|content|practice|profile)(\/|$)/.test(resolved.canonical);
+  return resolved.kind === 'canonical' && /^#\/app\/(today|content|practice|profile)(\/|$)/.test(resolved.canonical);
 }

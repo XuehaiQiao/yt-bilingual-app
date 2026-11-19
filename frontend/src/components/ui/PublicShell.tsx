@@ -1,4 +1,5 @@
-// Shared shell for the two public, pre-login pages (#/welcome and #/login).
+// Shared shell for the public site: home (`/`), blog (`#/blog`), pricing,
+// resources and the login page (`#/login`).
 //
 // Public pages sit outside the app shell (navigation-model.md §8.1), so they
 // get one small contract of their own instead of each page re-declaring the

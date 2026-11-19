@@ -3,7 +3,7 @@
 // Pride and Prejudice (Project Gutenberg #1342) is deliberately *not* part of
 // the 75-book library: this card is a second generation surface, not a reader.
 // Picking a chapter posts to `/api/course/generate`; the result opens the same
-// `#/lesson/{id}` screen static courses use. The backend owns the 1–61 range,
+// `#/app/today/lesson/{id}` screen static courses use. The backend owns the 1–61 range,
 // caching and quota — the card only turns errors into readable states.
 import { useRef, useState } from 'react';
 import { ArrowRight, BookOpen, Loader2 } from 'lucide-react';

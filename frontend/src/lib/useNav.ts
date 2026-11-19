@@ -6,7 +6,7 @@
 //   open(sub)      → pushState      (any forward move: tab → sub, sub → sub,
 //                                    list → detail, source → target; D-02)
 //   replace(state) → replaceState   (same-screen params / environment loss)
-//   openAnchor()   → replaceState   (`#/content/library|books`; D-05)
+//   openAnchor()   → replaceState   (`#/app/content/library|books`; D-05)
 //   back()         → history.back() when this entry has an in-app frame
 //                    beneath it (history.state.dshNav.depth > 0), otherwise
 //                    replace to `parentOf(state)` so a deep link never leaves
@@ -21,6 +21,7 @@
 // hash already committed and does nothing.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  isPublicHash,
   parentOf,
   resolveRoute,
   sameRoute,
@@ -109,14 +110,17 @@ export function useNav(): NavApi {
     setState(next);
   }, []);
 
-  // First mount: canonicalise whatever the address bar already held. An empty
-  // hash becomes `#/today`; a legacy alias is rewritten once; an invalid hash
-  // falls back to today with one toast. A reload keeps its in-app depth marker;
-  // a fresh deep link has no marker and therefore starts at depth 0.
+  // First mount: canonicalise whatever the address bar already held. An app
+  // URL is already `#/app/...`; a legacy alias is rewritten once; an invalid
+  // hash falls back to `#/app/today` with one toast. A reload keeps its in-app
+  // depth marker; a fresh deep link has no marker and starts at depth 0.
+  // Public hashes never mount AppContent, but guard anyway so a stale mount
+  // cannot rewrite the public URL into the app namespace.
   useEffect(() => {
     if (initialisedRef.current) return;
     initialisedRef.current = true;
     const raw = readHash();
+    if (isPublicHash(raw)) return;
     const resolved = resolveRoute(raw);
     const initialDepth = readDepth(window.history.state);
     window.history.replaceState(marker(initialDepth), '', resolved.canonical);
@@ -127,7 +131,6 @@ export function useNav(): NavApi {
     // synchronise-with-an-external-system case, not derived state.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL sync on mount
     setDepth(initialDepth);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL sync on mount
     setState(resolved.state);
     if (resolved.kind === 'invalid') notifyInvalid(raw);
   }, [notifyInvalid]);
@@ -149,6 +152,9 @@ export function useNav(): NavApi {
 
     const onPopState = (event: PopStateEvent) => {
       const raw = readHash();
+      // Public pages (`#/blog`, `#/login`, `#/welcome`, `/` …) are outside the
+      // app nav model: App's own public-view listener owns them.
+      if (isPublicHash(raw)) return;
       const resolved = resolveRoute(raw);
       // A frame pushed by us carries its depth; an external/older entry has no
       // marker and is treated as a new entry (depth 0 → parent fallback).
@@ -157,6 +163,7 @@ export function useNav(): NavApi {
 
     const onHashChange = () => {
       const raw = readHash();
+      if (isPublicHash(raw)) return;
       const resolved = resolveRoute(raw);
       // `popstate` may already have handled this gesture; our own
       // canonicalisation never fires hashchange. Anything left is a hand-edited
@@ -179,7 +186,7 @@ export function useNav(): NavApi {
 
   const open = useCallback((sub: SubRoute) => {
     const current = stateRef.current;
-    // `#/<source tab>/...`: the source is wherever the learner is now.
+    // `#/app/<source tab>/...`: the source is wherever the learner is now.
     const next: NavState = { tab: sub.kind === 'admin' ? 'profile' : current.tab, sub };
     if (sameRoute(current, next)) return;
     commit(next, 'push');

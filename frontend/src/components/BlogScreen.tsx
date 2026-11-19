@@ -254,14 +254,21 @@ export function BlogScreen({
   initialSlug,
   onOpenArticle,
   parentLabel,
+  publicMode = false,
 }: {
   onClose: () => void;
   /** Parent screen name for the back control's aria label. */
   parentLabel?: string;
-  /** Article slug from the route (`#/<tab>/blog/<slug>`); absent = list. */
+  /** Article slug from the route (`#/blog/<slug>`); absent = list. */
   initialSlug?: string;
-  /** List → article: the app pushes `...#/blog/<slug>` (N-01/J27). */
+  /** List → article: the caller pushes `#/blog/<slug>` (N-01/J27). */
   onOpenArticle: (slug: string) => void;
+  /**
+   * Public-site mode (`#/blog...`): no app SubHeader and no nested scroller —
+   * the caller wraps the screen in `PublicShell` + `PublicContainer` so home,
+   * blog, pricing and resources share one header/footer/measure.
+   */
+  publicMode?: boolean;
 }) {
   const { t, language, formatDate, formatNumber } = useI18n();
 
@@ -343,30 +350,32 @@ export function BlogScreen({
   return (
     <div
       data-testid="blog-screen"
-      className="flex-1 min-h-0 flex flex-col bg-[#09090b]"
+      className={publicMode ? 'flex flex-col' : 'flex-1 min-h-0 flex flex-col bg-[#09090b]'}
     >
-      <SubHeader
-        title={t('blog.title')}
-        onBack={handleBack}
-        parentLabel={parentLabel}
-        backAriaLabel={selectedSlug ? t('blog.backToList') : undefined}
-        backLabel={selectedSlug ? t('blog.backToList') : undefined}
-        backTestId="blog-back"
-        titleAs={selectedSlug ? 'p' : 'h1'}
-        actions={(
-          <a
-            href={feedUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={t('blog.feedAria')}
-            className="inline-flex h-9 items-center gap-1.5 rounded-control border border-white/5 bg-zinc-800/60 px-2.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100"
-          >
-            <Rss className="w-4 h-4" />
-            <span className="hidden sm:inline">{t('blog.feed')}</span>
-          </a>
-        )}
-      />
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
+      {!publicMode && (
+        <SubHeader
+          title={t('blog.title')}
+          onBack={handleBack}
+          parentLabel={parentLabel}
+          backAriaLabel={selectedSlug ? t('blog.backToList') : undefined}
+          backLabel={selectedSlug ? t('blog.backToList') : undefined}
+          backTestId="blog-back"
+          titleAs={selectedSlug ? 'p' : 'h1'}
+          actions={(
+            <a
+              href={feedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t('blog.feedAria')}
+              className="inline-flex h-9 items-center gap-1.5 rounded-control border border-white/5 bg-zinc-800/60 px-2.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100"
+            >
+              <Rss className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('blog.feed')}</span>
+            </a>
+          )}
+        />
+      )}
+      <div className={publicMode ? 'w-full' : 'flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar'}>
       <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 sm:py-10">
         {selectedSlug ? (
           <article className="mt-6">
@@ -463,7 +472,31 @@ export function BlogScreen({
           <>
             <header className="mt-1">
               <p className="text-micro font-medium text-brand-300">{t('blog.eyebrow')}</p>
-              <p className="mt-1 text-ui leading-relaxed text-fg-secondary">{t('blog.subtitle')}</p>
+              {publicMode ? (
+                <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h1 className="text-page font-semibold tracking-tight text-fg-primary sm:text-page-lg">
+                      {t('blog.title')}
+                    </h1>
+                    <p className="mt-2 max-w-2xl text-ui leading-relaxed text-fg-secondary">
+                      {t('blog.subtitle')}
+                    </p>
+                  </div>
+                  <a
+                    href={feedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid="public-blog-feed"
+                    aria-label={t('blog.feedAria')}
+                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control border border-line-subtle bg-surface-2/60 px-3 text-caption font-medium text-fg-secondary transition-colors hover:bg-state-hover hover:text-fg-primary"
+                  >
+                    <Rss className="w-4 h-4" />
+                    {t('blog.feed')}
+                  </a>
+                </div>
+              ) : (
+                <p className="mt-1 text-ui leading-relaxed text-fg-secondary">{t('blog.subtitle')}</p>
+              )}
             </header>
 
             {listLoading && (

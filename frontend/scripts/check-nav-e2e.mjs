@@ -1,16 +1,22 @@
 #!/usr/bin/env node
-// End-to-end check for the W1 navigation B0 behaviour
-// (docs/design-governance/navigation-model.md, remediation-plan W1).
+// End-to-end check for the app navigation model after the router refactor
+// (docs/design-governance/navigation-model.md, remediation-plan W1 + the
+// public-site split).
 //
 // It drives the real app in a browser against the running dev server and
 // verifies the user-visible contract the unit test cannot:
 //   a) A→B→C then back C→B→A (push stack, D-02/N-03);
 //   b) a shared/refreshed deep link stays put and Back stops at the parent
 //      inside the app (no history.length guess, N-03);
-//   c) `#/content/library` is a real URL and scrolls to the section (D-05);
+//   c) `#/app/content/library` is a real URL and scrolls to the section (D-05);
 //   d) report opened from Content returns to Content (N-02);
 //   e) word book → article returns to the word book (N-18);
-//   f) old `#/learn/...` / `#/lesson/...` aliases rewrite to the new prefix.
+//   f) old unprefixed URLs (`#/today`, `#/learn/...`, ...) rewrite once to
+//      `#/app/...`;
+//   g) `#/login?next=` only accepts app targets and lands on `#/app/today`
+//      otherwise;
+//   h) the app's official-blog entry leaves the shell for the public `#/blog`,
+//      and `#/app/blog...` aliases redirect there too.
 //
 // Only `GET /api/auth/me` (plus two guest-403 shapes) is stubbed: the point is
 // routing, not data. Everything else talks to the configured backend, so the
@@ -158,26 +164,27 @@ await context.route('**/api/course/**', (route) => route.fulfill({
 
 try {
   // ── a) A→B→C then back C→B→A ─────────────────────────────────────────────
-  await check('a) A→B→C pushes frames; back walks C→B→A', async () => {
-    const page = await openPage(context, '#/content');
+  await check('a) A→B→C pushes app frames; back walks C→B→A', async () => {
+    const page = await openPage(context, '#/app/content');
     try {
       await page.waitForSelector('[data-testid="content-screen"]');
-      await page.click('[data-testid="blog-entry"]');
-      await waitHash(page, '#/content/blog');
-      await page.waitForSelector('[data-testid="blog-screen"]');
+      await page.click('[data-testid="discover-entry"]');
+      await waitHash(page, '#/app/content/discover');
+      await page.waitForSelector('[data-testid="discover-screen"]');
 
       // B → C: the word book keeps the source tab in the URL (N-04 shape).
       await page.click('[data-testid="topbar-wordbook"]');
-      await waitHash(page, '#/content/vocabulary');
+      await waitHash(page, '#/app/content/vocabulary');
       await page.waitForSelector('[data-testid="vocab-back"]');
 
       // C → B
       await page.click('[data-testid="vocab-back"]');
-      await waitHash(page, '#/content/blog');
+      await waitHash(page, '#/app/content/discover');
 
-      // B → A (blog's own page back; it calls the same back()).
-      await page.locator('[data-testid="blog-screen"] button').first().click();
-      await waitHash(page, '#/content');
+      // B → A (discover's own back calls the same back()).
+      await page.waitForSelector('[data-testid="discover-back"]');
+      await page.click('[data-testid="discover-back"]');
+      await waitHash(page, '#/app/content');
     } finally {
       await page.close();
     }
@@ -185,7 +192,7 @@ try {
 
   // ── b) shared / refreshed deep link ──────────────────────────────────────
   await check('b) deep link survives a refresh and Back stops at the app parent', async () => {
-    const deep = `#/content/learn/library/${LIBRARY_VIDEO}`;
+    const deep = `#/app/content/learn/library/${LIBRARY_VIDEO}`;
     const page = await openPage(context, deep);
     try {
       await waitHash(page, deep);
@@ -198,15 +205,15 @@ try {
       // A deep link has no in-app frame beneath it: Back must land on the
       // parent (content), never call history.back() off-site (N-03).
       await page.click('[data-testid="learning-back"]');
-      await waitHash(page, '#/content');
+      await waitHash(page, '#/app/content');
     } finally {
       await page.close();
     }
   });
 
-  // ── c) #/content/library is a legal anchor and scrolls ───────────────────
-  await check('c) #/content/library keeps its URL and scrolls to the section', async () => {
-    const page = await openPage(context, '#/content/library');
+  // ── c) #/app/content/library is a legal anchor and scrolls ───────────────
+  await check('c) #/app/content/library keeps its URL and scrolls to the section', async () => {
+    const page = await openPage(context, '#/app/content/library');
     try {
       await page.waitForSelector('[data-testid="content-screen"]');
       await page.waitForSelector('[data-testid="content-library"]');
@@ -216,7 +223,7 @@ try {
         const scroller = document.querySelector('[data-page-scroll]');
         return Boolean(scroller && scroller.scrollTop > 0);
       }, null, { timeout: 6000 });
-      assert.equal(await hashOf(page), '#/content/library', 'the anchor must not be rewritten away');
+      assert.equal(await hashOf(page), '#/app/content/library', 'the anchor must not be rewritten away');
       const metrics = await page.evaluate(() => {
         const scroller = document.querySelector('[data-page-scroll]');
         const section = document.querySelector('[data-page-scroll] [data-testid="content-library"]');
@@ -238,14 +245,14 @@ try {
     }
   });
 
-  await check('c2) sidebar 免费库/公版书 shortcuts produce the anchor URLs', async () => {
-    const page = await openPage(context, '#/content');
+  await check('c2) sidebar 免费库/公版书 shortcuts produce the #/app anchor URLs', async () => {
+    const page = await openPage(context, '#/app/content');
     try {
       await page.waitForSelector('[data-testid="content-screen"]');
       await page.click('[data-testid="sidebar-quick-library"]');
-      await waitHash(page, '#/content/library');
+      await waitHash(page, '#/app/content/library');
       await page.click('[data-testid="sidebar-quick-books"]');
-      await waitHash(page, '#/content/books');
+      await waitHash(page, '#/app/content/books');
       await page.waitForSelector('[data-testid="content-books"]');
     } finally {
       await page.close();
@@ -254,14 +261,14 @@ try {
 
   // ── d) report from Content keeps Content as its source tab (N-02) ───────
   await check('d) report opened from Content returns to Content', async () => {
-    const page = await openPage(context, '#/content');
+    const page = await openPage(context, '#/app/content');
     try {
       await page.waitForSelector('[data-testid="content-rail-report-link"]');
       await page.click('[data-testid="content-rail-report-link"]');
-      await waitHash(page, '#/content/report');
+      await waitHash(page, '#/app/content/report');
       await page.waitForSelector('[data-testid="report-back"]');
       await page.click('[data-testid="report-back"]');
-      await waitHash(page, '#/content');
+      await waitHash(page, '#/app/content');
     } finally {
       await page.close();
     }
@@ -269,71 +276,130 @@ try {
 
   // ── e) word book → article keeps the word book below it (N-18) ──────────
   await check('e) word book → article returns to the word book, not Profile', async () => {
-    const page = await openPage(context, '#/profile');
+    const page = await openPage(context, '#/app/profile');
     try {
       await page.click('[data-testid="topbar-wordbook"]');
-      await waitHash(page, '#/profile/vocabulary');
+      await waitHash(page, '#/app/profile/vocabulary');
       await page.waitForSelector(`[data-testid="vocab-mine-toggle-${FAVORITE_ID}"]`);
       await page.click(`[data-testid="vocab-mine-toggle-${FAVORITE_ID}"]`);
       await page.click(`[data-testid="vocab-mine-source-${FAVORITE_ID}"]`);
-      await waitHash(page, `#/profile/learn/library/${LIBRARY_ARTICLE}`);
+      await waitHash(page, `#/app/profile/learn/library/${LIBRARY_ARTICLE}`);
       await page.waitForSelector('[data-testid="library-article-back"]');
       await page.click('[data-testid="library-article-back"]');
-      await waitHash(page, '#/profile/vocabulary');
+      await waitHash(page, '#/app/profile/vocabulary');
     } finally {
       await page.close();
     }
   });
 
-  // ── g) login `next` keeps the target hash (D-09) ────────────────────────
-  await check('g) #/login?next= lands on the target; an external next is ignored', async () => {
+  // ── g) login `next` keeps an app target (D-09) ──────────────────────────
+  await check('g) #/login?next= lands on the app target; an external next is ignored', async () => {
     const page = await context.newPage();
     try {
-      await page.goto(`${BASE}/#/login?next=${encodeURIComponent('#/content/discover')}`, {
+      await page.goto(`${BASE}/#/login?next=${encodeURIComponent('#/app/content/discover')}`, {
         waitUntil: 'domcontentloaded',
       });
       await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
-      await waitHash(page, '#/content/discover');
+      await waitHash(page, '#/app/content/discover');
+
+      // A legacy target is accepted and canonicalised to the app prefix.
+      await page.goto(`${BASE}/#/login?next=${encodeURIComponent('#/today')}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
+      await waitHash(page, '#/app/today');
 
       // `http(s)://` must never become a redirect target (open-redirect guard).
       await page.goto(`${BASE}/#/login?next=${encodeURIComponent('http://evil.example/steal')}`, {
         waitUntil: 'domcontentloaded',
       });
       await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
-      await waitHash(page, '#/today');
+      await waitHash(page, '#/app/today');
+
+      // A public page is not a valid app return target either.
+      await page.goto(`${BASE}/#/login?next=${encodeURIComponent('#/blog')}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
+      await waitHash(page, '#/app/today');
     } finally {
       await page.close();
     }
   });
 
-  // ── f) legacy aliases rewrite once to the tab-prefixed URL (D-01) ───────
+  // ── f) legacy aliases rewrite once to the #/app URL (D-01) ──────────────
   // Each alias gets a fresh page: the old URL mounts a real screen, so reusing
   // one page would let that screen's data requests race the next assertion.
-  await check('f) old #/learn alias canonicalises to the content prefix', async () => {
+  await check('f) old #/learn alias canonicalises to the app content prefix', async () => {
     const page = await openPage(context, `#/learn/library/${LIBRARY_VIDEO}`);
     try {
-      await waitHash(page, `#/content/learn/library/${LIBRARY_VIDEO}`);
+      await waitHash(page, `#/app/content/learn/library/${LIBRARY_VIDEO}`);
       await page.waitForSelector('[data-testid="learning-header"]');
     } finally {
       await page.close();
     }
   });
 
-  await check('f2) old #/lesson alias canonicalises to the today prefix', async () => {
+  await check('f2) old #/lesson alias canonicalises to the app today prefix', async () => {
     const page = await context.newPage();
     try {
       await page.goto(`${BASE}/#/lesson/nav-alias-lesson`, { waitUntil: 'domcontentloaded' });
-      await waitHash(page, '#/today/lesson/nav-alias-lesson');
+      await waitHash(page, '#/app/today/lesson/nav-alias-lesson');
     } finally {
       await page.close();
     }
   });
 
-  await check('f3) #/profile/favorites canonicalises to the word book', async () => {
+  await check('f3) #/profile/favorites canonicalises to the app word book', async () => {
     const page = await context.newPage();
     try {
       await page.goto(`${BASE}/#/profile/favorites`, { waitUntil: 'domcontentloaded' });
-      await waitHash(page, '#/profile/vocabulary');
+      await waitHash(page, '#/app/profile/vocabulary');
+    } finally {
+      await page.close();
+    }
+  });
+
+  await check('f4) old tab roots canonicalise to #/app/<tab>', async () => {
+    for (const [legacy, expected] of [
+      ['#/today', '#/app/today'],
+      ['#/content', '#/app/content'],
+      ['#/practice', '#/app/practice'],
+      ['#/profile', '#/app/profile'],
+    ]) {
+      const page = await openPage(context, legacy);
+      try {
+        await waitHash(page, expected);
+      } finally {
+        await page.close();
+      }
+    }
+  });
+
+  // ── h) official blog leaves the app shell for the public page ───────────
+  await check('h) content blog entry opens the public #/blog without app-shell', async () => {
+    const page = await openPage(context, '#/app/content');
+    try {
+      await page.waitForSelector('[data-testid="blog-entry"]');
+      await page.click('[data-testid="blog-entry"]');
+      await waitHash(page, '#/blog');
+      await page.waitForSelector('[data-testid="public-blog-screen"]');
+      assert.equal(await page.locator('[data-testid="app-shell"]').count(), 0, 'public blog must not render the app shell');
+      assert.ok(await page.locator('[data-testid="public-header"]').isVisible());
+    } finally {
+      await page.close();
+    }
+  });
+
+  await check('h2) old in-app blog URLs redirect to the public #/blog', async () => {
+    const page = await context.newPage();
+    try {
+      await page.goto(`${BASE}/#/app/content/blog/hello-world`, { waitUntil: 'domcontentloaded' });
+      await waitHash(page, '#/blog/hello-world');
+      await page.waitForSelector('[data-testid="public-blog-screen"]');
+
+      await page.goto(`${BASE}/#/today/blog`, { waitUntil: 'domcontentloaded' });
+      await waitHash(page, '#/blog');
     } finally {
       await page.close();
     }

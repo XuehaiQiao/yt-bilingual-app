@@ -14,7 +14,7 @@ import { getLanguageMeta, getRuntimeTargetLang } from './i18n';
 import type { TranslationKey } from './i18n';
 import { ModelProvider } from './lib/model';
 import { useNav } from './lib/useNav';
-import { isDevUiHash, parseRoute, resolveRoute, TASK_SUB_KINDS, toHash, type SectionAnchor, type SubRoute, type TabId } from './lib/nav';
+import { isAppHash, isDevUiHash, parsePublicRoute, parseRoute, resolveRoute, TASK_SUB_KINDS, toHash, type PublicView, type SectionAnchor, type SubRoute, type TabId } from './lib/nav';
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
 import { TranscriptView } from './components/TranscriptView';
@@ -36,7 +36,9 @@ import { LibraryArticleReader } from './components/LibraryArticleReader';
 import { BookReaderScreen } from './components/BookReaderScreen';
 import { BookSeriesScreen } from './components/BookSeriesScreen';
 import { ImportedBookReaderScreen } from './components/ImportedBookReaderScreen';
-import { BlogScreen } from './components/BlogScreen';
+import { PublicBlogScreen } from './components/PublicBlogScreen';
+import { PricingScreen } from './components/PricingScreen';
+import { ResourcesScreen } from './components/ResourcesScreen';
 import { AdminConsoleScreen } from './components/AdminConsoleScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AppShell, type ProfileSectionId } from './components/AppShell';
@@ -125,7 +127,7 @@ const SEEK_SETTLE_MS = 2500;
 
 // Desktop chrome (docs/信息架构-导航重构.md §4.1): immersive task views own the
 // whole width, so the Sidebar and the primary tabs step aside. Panel-style sub
-// views (blog / discover / report / word book) keep the shell so their
+// views (discover / report / word book) keep the shell so their
 // shortcut entry shows an active state. The set itself lives in `lib/nav.ts`
 // (navigation-model §12.1) so QA and the shell share one definition.
 
@@ -139,7 +141,6 @@ const SUB_LABEL_KEYS: Record<SubRoute['kind'], TranslationKey> = {
   discover: 'topbar.feature.discover',
   reader: 'topbar.feature.reader',
   sentences: 'topbar.feature.sentences',
-  blog: 'topbar.feature.blog',
   book: 'topbar.feature.book',
   'book-series': 'topbar.feature.bookSeries',
   'imported-book': 'topbar.feature.importedBook',
@@ -338,7 +339,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   // Free library articles are local content with their own route, so their
   // words carry a distinct source kind: the favorites "出处" row must be able
-  // to reopen `#/learn/library/<id>` instead of the reading API article route.
+  // to reopen `#/app/content/learn/library/<id>` instead of the reading API article route.
   const handleLibraryArticleWordLookup = useCallback((
     word: string,
     sentence: string,
@@ -2239,23 +2240,15 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     replace({ tab: state.tab, sub: { kind: 'sentences', levelId } });
   };
 
+  // The official blog is a public page (`#/blog`), not an app sub route: leave
+  // the app shell and let the public site's own listener take over. `AppShell`'s
+  // public-hash skip keeps `useNav` from canonicalising this back to `#/app`.
   const handleOpenBlog = () => {
-    openSub({ kind: 'blog' });
-  };
-
-  // Blog list → article is a forward move (J27/N-01): push the slug into the
-  // URL so refresh/share restores the article and `back()` returns to the list.
-  const handleOpenBlogArticle = (slug: string) => {
-    if (!slug) return;
-    openSub({ kind: 'blog', slug });
-  };
-
-  const handleCloseBlog = () => {
-    back();
+    window.location.hash = '#/blog';
   };
 
   // ── Section anchors (D-05) ───────────────────────────────────────────────
-  // `#/content/library` and `#/content/books` are real URLs: the address bar
+  // `#/app/content/library` and `#/app/content/books` are real URLs: the address bar
   // owns the destination, the content page scrolls to the section. Sections
   // mount asynchronously, so the scroll retries briefly instead of polling
   // from the click handler (navigation-model §9).
@@ -2445,7 +2438,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     replace({ tab: 'profile', sub: null });
   };
 
-  // Access guard for a hand-typed #/profile/admin (or a bookmarked /admin):
+  // Access guard for a hand-typed #/app/profile/admin (or a bookmarked /admin):
   // wait one tick for the auth/admin flag, then either render or bounce.
   const adminGuardRef = useRef(false);
   useEffect(() => {
@@ -2478,7 +2471,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     const timer = window.setTimeout(() => {
       adminPathRef.current = true;
       const nextPath = pathname.replace(/\/admin\/?$/, '/');
-      const nextHash = isAdmin ? '#/profile/admin' : '#/profile';
+      const nextHash = isAdmin ? '#/app/profile/admin' : '#/app/profile';
       window.history.replaceState(null, '', `${nextPath}${window.location.search}${nextHash}`);
       replace(parseRoute(nextHash));
       if (!isAdmin) toast.error(t('admin.error.forbidden'));
@@ -3330,15 +3323,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               parentLabel={parentLabel}
             />,
           );
-        case 'blog':
-          return subFrame(
-            <BlogScreen
-              initialSlug={sub.slug}
-              onOpenArticle={handleOpenBlogArticle}
-              onClose={handleCloseBlog}
-              parentLabel={parentLabel}
-            />,
-          );
         case 'book':
           return subFrame(
             <BookReaderScreen
@@ -3501,7 +3485,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         onOpenPlacement={handleOpenPlacementShortcut}
         onOpenAbility={handleOpenAbilityShortcut}
         onOpenProfileSection={handleOpenProfileSection}
-        onOpenBlog={handleOpenBlog}
         onOpenAdmin={handleOpenAdmin}
       >
         {pendingResume && (
@@ -3612,35 +3595,30 @@ function AuthLoadingScreen() {
   );
 }
 
-// ── Public pages (pre-login) ────────────────────────────────────────────────
-// `#/welcome` is the marketing front door for visitors and `#/login` reuses the
-// existing AuthScreen. Both sit outside the `{tab, sub}` nav model: the app's
-// four-tab routes never see them, and a signed-in user keeps landing on Today.
-// A visitor who opens the bare origin is sent to `#/welcome` with replaceState
-// so the marketing page does not leave a phantom history entry behind.
-type PublicView = 'welcome' | 'login';
-
-function readPublicView(hash: string): PublicView | null {
-  const raw = String(hash || '')
-    .trim()
-    .replace(/^#/, '')
-    .split('?')[0]
-    .replace(/\/+$/, '')
-    .toLowerCase();
-  if (raw === 'welcome' || raw === '/welcome') return 'welcome';
-  if (raw === 'login' || raw === '/login') return 'login';
-  return null;
-}
+// ── Public site + login (outside the app shell) ─────────────────────────────
+// Routing contract:
+//   `/` (no hash)            → marketing home (WelcomeScreen)
+//   `#/welcome`              → `/` via replaceState (the old front door)
+//   `#/blog[/<slug>]`        → public blog (list / article)
+//   `#/pricing`              → pricing (beta-free, no invented price)
+//   `#/resources`            → free / public-domain resources
+//   `#/login[?next=...]`     → existing AuthScreen (public)
+//   `#/app...`               → the learning app (AppShell + AuthGate)
+//   anything else            → home (clean the address bar) — never a white screen
+// The public pages never render the app shell and never pass through
+// AppShell/AuthGate; the old in-app blog aliases (`#/<tab>/blog...`,
+// `#/app/<tab>/blog...`) are rewritten to `#/blog...` once.
 
 /**
- * `#/login?next=<hash>` return target (D-09). Only an in-app hash is accepted
- * (`#/...` or a bare `/...`); `http(s)://` is rejected so this can never become
- * an open redirect, and another public page is not a valid destination.
- * Invalid/absent → null (the caller lands on Today).
+ * `#/login?next=<hash>` return target (D-09). Only an app hash is accepted
+ * (`#/app/...`; legacy `#/today` is canonicalised), `http(s)://` is rejected so
+ * this can never become an open redirect, and another public page (blog,
+ * pricing, resources, welcome, login) is not a valid destination.
+ * Invalid/absent → null (the caller lands on `#/app/today`).
  */
 function readLoginNext(): string | null {
   const hash = window.location.hash;
-  if (readPublicView(hash) !== 'login') return null;
+  if (parsePublicRoute(hash)?.view !== 'login') return null;
   const queryIndex = hash.indexOf('?');
   if (queryIndex === -1) return null;
   const candidate = new URLSearchParams(hash.slice(queryIndex + 1)).get('next');
@@ -3649,24 +3627,55 @@ function readLoginNext(): string | null {
     ? candidate
     : candidate.startsWith('/') ? `#${candidate}` : '';
   if (!normalized) return null;
-  if (/^#\/(welcome|login)(?:[/?]|$)/.test(normalized)) return null;
+  if (/^#\/(welcome|login|blog|pricing|resources|dev)(?:[/?]|$)/.test(normalized)) return null;
   const resolved = resolveRoute(normalized);
   if (resolved.kind === 'invalid') return null;
   return resolved.canonical;
 }
 
-function readPublicLocation(): {
+interface PublicLocation {
+  /** Public page to render; `null` means "the app owns this URL". */
   view: PublicView | null;
-  blank: boolean;
+  /** True when the hash is an app URL (including legacy unprefixed spellings). */
+  app: boolean;
+  /** Blog article slug when `view === 'blog'`. */
+  slug: string | null;
+  /** Login return target (`#/app/...`) when `view === 'login'`. */
   next: string | null;
   devUi: boolean;
-} {
+  /** Address-bar rewrite the public router must apply once (`/` or `#/blog...`). */
+  redirect: string | null;
+}
+
+function readPublicLocation(): PublicLocation {
   const hash = window.location.hash;
+  const devUi = isDevUiHash(hash);
+  if (devUi) {
+    return { view: null, app: false, slug: null, next: null, devUi: true, redirect: null };
+  }
+  const publicRoute = parsePublicRoute(hash);
+  if (publicRoute) {
+    return {
+      view: publicRoute.view,
+      app: false,
+      slug: publicRoute.slug ?? null,
+      next: readLoginNext(),
+      devUi: false,
+      redirect: publicRoute.rewrite ? publicRoute.canonical : null,
+    };
+  }
+  if (isAppHash(hash)) {
+    return { view: null, app: true, slug: null, next: null, devUi: false, redirect: null };
+  }
+  // Unknown non-app hash: the public home is the safe fallback. Blank is home
+  // by definition (no rewrite needed); a stray hash is cleaned once.
   return {
-    view: readPublicView(hash),
-    blank: !hash || hash === '#',
-    next: readLoginNext(),
-    devUi: isDevUiHash(hash),
+    view: 'home',
+    app: false,
+    slug: null,
+    next: null,
+    devUi: false,
+    redirect: hash ? '/' : null,
   };
 }
 
@@ -3684,8 +3693,8 @@ function usePublicView() {
   return { ...publicLocation, sync };
 }
 
-// The login view keeps a way back to the marketing page; without it the only
-// exit from #/login would be a successful sign-in or the browser back button.
+// The login view keeps a way back to the marketing page; `#/welcome` is the
+// public alias that the router replaces with `/` (no phantom hash entry).
 function LoginView({ next }: { next: string | null }) {
   const { t } = useI18n();
   const { status } = useAuth();
@@ -3702,18 +3711,18 @@ function LoginView({ next }: { next: string | null }) {
         onGuestContinue={() => {
           // `guest` can use the app right away; `anonymous` (backend session
           // unavailable) would just bounce back to the auth gate, so return to
-          // the public page instead. Keep the `?next=` target when there is one
+          // the public home instead. Keep the `?next=` target when there is one
           // (D-09): a guest opening a deep link should land on it, not Today.
           window.location.hash = status === 'anonymous'
             ? '#/welcome'
-            : (next ?? '#/today');
+            : (next ?? '#/app/today');
         }}
       />
     </div>
   );
 }
 
-// The only switch between the public pages, the auth screen and the app.
+// The only switch between the public site, the auth screen and the app.
 // Session state lives in AuthProvider, so login/signup/logout and global 401s
 // all land here.
 //
@@ -3726,21 +3735,25 @@ function AuthGate() {
   const [showAuth, setShowAuth] = useState(false);
   const {
     view: publicView,
-    blank: blankHash,
+    app,
+    slug: blogSlug,
     next: loginNext,
     devUi,
+    redirect: publicRedirect,
     sync: syncPublicView,
   } = usePublicView();
 
-  // A visitor who opens the bare origin lands on the public welcome page.
-  const defaultWelcome =
-    !publicView && blankHash && (status === 'anonymous' || status === 'guest');
-
+  // One-shot public canonicalisation: `#/welcome` → `/`, old in-app blog →
+  // `#/blog...`, `#/` or a stray hash → `/`. `replaceState` keeps the public
+  // page out of the back history; `sync` re-reads the cleaned URL.
   useEffect(() => {
-    if (!defaultWelcome) return;
-    window.history.replaceState(null, '', '#/welcome');
+    if (!publicRedirect) return;
+    const target = publicRedirect === '/'
+      ? `${window.location.pathname}${window.location.search}`
+      : publicRedirect;
+    window.history.replaceState(window.history.state, '', target);
     syncPublicView();
-  }, [defaultWelcome, syncPublicView]);
+  }, [publicRedirect, syncPublicView]);
 
   // Signing in from #/login lands on the `?next=` target (or Today), never back
   // on the login URL. The `replace` keeps #/login out of the back history.
@@ -3748,7 +3761,7 @@ function AuthGate() {
   // #/login later in the same session — a hand-edited URL — is also redirected.
   useEffect(() => {
     if (status !== 'authenticated' || publicView !== 'login') return;
-    window.history.replaceState(null, '', loginNext ?? '#/today');
+    window.history.replaceState(window.history.state, '', loginNext ?? '#/app/today');
     syncPublicView();
   }, [status, publicView, loginNext, syncPublicView]);
 
@@ -3767,8 +3780,17 @@ function AuthGate() {
     );
   }
 
+  // Public site: the same shell + header/footer for home, blog, pricing and
+  // resources. None of these mount AppShell/AuthGate's app branches, and they
+  // render before the session bootstrap resolves — reading the blog must not
+  // depend on the backend being up. (Only the header CTA adapts once the
+  // session status arrives.)
+  if (publicView === 'home') return <WelcomeScreen />;
+  if (publicView === 'blog') return <PublicBlogScreen slug={blogSlug ?? undefined} />;
+  if (publicView === 'pricing') return <PricingScreen />;
+  if (publicView === 'resources') return <ResourcesScreen />;
+
   if (status === 'loading') return <AuthLoadingScreen />;
-  if (publicView === 'welcome' || defaultWelcome) return <WelcomeScreen />;
   if (publicView === 'login') {
     if (status !== 'authenticated') return <LoginView next={loginNext} />;
     // An authenticated user is still sitting on #/login for one tick while the
@@ -3777,6 +3799,9 @@ function AuthGate() {
     // public hash would make `useNav` treat it as invalid and drop the target.
     return <AuthLoadingScreen />;
   }
+  // `app` is the normal branch; a non-app URL without a public match was
+  // already turned into home above. Keep a safety net instead of a blank page.
+  if (!app) return <WelcomeScreen />;
   if (status === 'anonymous') return <AuthScreen />;
   if (status === 'guest') {
     return (
