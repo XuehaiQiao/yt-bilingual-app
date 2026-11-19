@@ -3505,6 +3505,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         dueCount={reviewStats?.dueNow ?? 0}
         isSub={isSubView}
         isTask={isTaskView}
+        hideWordbook={Boolean(localVideo)}
         subLabel={subLabel}
         onNavigate={navigateTab}
         onRequestLogin={onRequestLogin}

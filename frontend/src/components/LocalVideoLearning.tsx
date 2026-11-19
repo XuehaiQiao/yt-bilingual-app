@@ -3,11 +3,16 @@
 // the transcript renderer and word lookup so the interaction matches the
 // YouTube learning view, while native <video> controls own playback.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Film, Loader2, XCircle } from 'lucide-react';
+import { Film, Loader2, Sparkles, XCircle } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { findActiveIndex, loadTranslationMode, TRANSLATION_MODE_KEY, type TranslationMode } from '../lib/transcript';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { LearningHeader } from './LearningHeader';
+import { ReadingHighlightToggle } from './ReadingHighlight';
+import { LanguagePointToggle } from './ui/LanguagePointToggle';
+import type { InlineLanguagePoint } from './TranscriptBlock';
+import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
+import { processLocalVideo, type LocalVideoProcessed } from '../lib/localVideo';
 import { TranscriptView } from './TranscriptView';
 import type { LocalTranscriptBlock } from '../lib/localMedia';
 
@@ -37,11 +42,67 @@ export function LocalVideoLearning({
     const [currentTime, setCurrentTime] = useState(0);
     const [mediaError, setMediaError] = useState(false);
     const [translationMode, setTranslationMode] = useState<TranslationMode>(loadTranslationMode);
-    const highlight = useReadingHighlights(transcript.map((block) => block.en_text));
+    const [showLanguagePoints, setShowLanguagePoints] = useState<boolean>(loadLanguagePointsEnabled);
+    const [processed, setProcessed] = useState<LocalVideoProcessed | null>(null);
+    const [processing, setProcessing] = useState(false);
+    const [processError, setProcessError] = useState<string | null>(null);
+    const blocks = useMemo<LocalTranscriptBlock[]>(
+        () => (processed
+            ? processed.blocks.map((block) => ({ ...block, highlights: [] as [] }))
+            : transcript),
+        [processed, transcript],
+    );
+    const highlight = useReadingHighlights(blocks.map((block) => block.en_text));
+    const languagePointsByBlock = useMemo(() => {
+        const map: Record<string, InlineLanguagePoint[]> = {};
+        if (!processed) return map;
+        for (const idiom of processed.idioms) {
+            (map[String(idiom.blockId)] ??= []).push({
+                text: idiom.phrase,
+                meaning: idiom.meaning,
+                kind: 'idiom',
+            });
+        }
+        for (const culture of processed.culture) {
+            (map[String(culture.blockId)] ??= []).push({
+                text: culture.term,
+                meaning: culture.note,
+                kind: 'culture',
+            });
+        }
+        return map;
+    }, [processed]);
+    const wordGlossesByBlock = useMemo(() => {
+        const map: Record<string, Record<string, string>> = {};
+        if (!processed) return map;
+        for (const [blockId, entries] of Object.entries(processed.highlights)) {
+            const glosses: Record<string, string> = {};
+            for (const entry of entries) {
+                const word = entry.en_word?.trim().toLowerCase();
+                const gloss = entry.zh_word?.trim();
+                if (word && gloss) glosses[word] = gloss;
+            }
+            if (Object.keys(glosses).length > 0) map[blockId] = glosses;
+        }
+        return map;
+    }, [processed]);
+    const handleAnalyze = async () => {
+        if (processing || blocks.length === 0) return;
+        setProcessing(true);
+        setProcessError(null);
+        try {
+            const result = await processLocalVideo(blocks, highlight.level);
+            setProcessed(result);
+        } catch (error) {
+            setProcessError(error instanceof Error ? error.message : t('localVideo.analysisFailed'));
+        } finally {
+            setProcessing(false);
+        }
+    };
 
     const activeIndex = useMemo(
-        () => findActiveIndex(transcript, currentTime),
-        [transcript, currentTime],
+        () => findActiveIndex(blocks, currentTime),
+        [blocks, currentTime],
     );
 
     useEffect(() => {
@@ -100,7 +161,30 @@ export function LocalVideoLearning({
                 </section>
 
                 <section className="min-w-0 lg:flex-1 flex flex-col border-t lg:border-t-0 lg:border-l border-white/5 bg-[#09090b]">
-                    <div className="flex-none flex items-center gap-2 border-b border-white/5 px-3 py-2">
+                    <div className="flex-none flex flex-wrap items-center gap-2 border-b border-white/5 px-3 py-2">
+                        <button
+                            type="button"
+                            data-testid="local-video-analyze"
+                            onClick={() => { void handleAnalyze(); }}
+                            disabled={processing || blocks.length === 0}
+                            className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/10 px-2.5 text-xs font-medium text-brand-300 transition-colors hover:bg-brand/15 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {processing
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <Sparkles className="h-3.5 w-3.5" />}
+                            {processing ? t('localVideo.analyzing') : t('localVideo.analyze')}
+                        </button>
+                        <ReadingHighlightToggle
+                            testId="local-video-highlight-toggle"
+                            enabled={highlight.enabled}
+                            onChange={highlight.setEnabled}
+                            levelLabel={highlight.levelLabel}
+                        />
+                        <LanguagePointToggle
+                            enabled={showLanguagePoints}
+                            onChange={setShowLanguagePoints}
+                            testId="local-video-language-points-toggle"
+                        />
                         <span className="text-xs font-medium text-zinc-500">{t('transcript.translationLabel')}</span>
                         <div className="inline-flex rounded-lg border border-white/5 bg-zinc-800/80 p-0.5">
                             {(['all', 'hidden'] as const).map((mode) => (
@@ -121,19 +205,30 @@ export function LocalVideoLearning({
                         </div>
                     </div>
 
-                    {transcript.length > 0 ? (
+                    {processError && (
+                        <p className="border-b border-amber-500/15 bg-amber-500/[0.05] px-3 py-1.5 text-xs text-amber-200">
+                            {processError}
+                        </p>
+                    )}
+                    {blocks.length > 0 ? (
                         <div className="flex-1 min-h-0">
                             <TranscriptView
-                                transcript={transcript}
+                                transcript={blocks}
                                 activeIndex={activeIndex}
                                 videoId={`local:${fileName}`}
                                 favorites={[]}
                                 onTranscriptClick={seek}
                                 onToggleFavorite={() => {}}
                                 translationMode={translationMode}
-                                translationPending={transcript.some((block) => block.zh_text.trim().length > 0)}
+                                translationPending={blocks.some((block) => block.zh_text.trim().length > 0)}
                                 onWordLookup={onWordLookup}
                                 isHighlighted={highlight.isHighlighted}
+                                languagePointsByBlock={languagePointsByBlock}
+                                wordGlossesByBlock={wordGlossesByBlock}
+                                showLanguagePoints={showLanguagePoints}
+                                difficultyEnabled={highlight.enabled}
+                                difficultyLevel={highlight.level}
+                                difficultyVersion={highlight.wordLevels.size}
                                 borderLeft={false}
                                 pageScroll={false}
                             />

@@ -88,6 +88,7 @@ import routes_discover
 import routes_events
 import routes_exam
 import routes_library
+import routes_local_video
 import routes_placement
 import routes_quiz
 import routes_reading
@@ -304,6 +305,7 @@ app.include_router(routes_book_import.router)
 # 本地 EPUB 上传（specs/031）：`/api/books/upload*` 与 `/api/books/imported/*/cover`
 # 均需登录；同样要排在公开的 `/api/books/{book_id}` 之前。
 app.include_router(routes_book_upload.router)
+app.include_router(routes_local_video.router)
 app.include_router(routes_books.router)
 
 # 必须最后注册：Starlette 后注册的中间件在最外层，401 响应才能带上 CORS 头，

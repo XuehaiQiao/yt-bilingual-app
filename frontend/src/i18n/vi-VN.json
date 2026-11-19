@@ -1766,5 +1766,8 @@
   "localVideo.pickVideo": "Chọn video",
   "localVideo.pickHint": "Video chỉ phát trong tab này, không tải lên; có thể chọn kèm .srt/.vtt.",
   "localVideo.videoRequired": "Hãy chọn một file video.",
-  "localVideo.fileTooLarge": "Video quá lớn; nên dùng MP4/WebM dưới 4GB."
+  "localVideo.fileTooLarge": "Video quá lớn; nên dùng MP4/WebM dưới 4GB.",
+  "localVideo.analyze": "Dịch AI + điểm ngôn ngữ",
+  "localVideo.analyzing": "Đang dịch và phân tích…",
+  "localVideo.analysisFailed": "Dịch/phân tích phụ đề thất bại; video vẫn phát được."
 }

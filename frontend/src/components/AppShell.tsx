@@ -40,6 +40,8 @@ interface AppShellProps {
   isSub: boolean;
   /** Immersive task: desktop Sidebar + tabs hide so the view is full width. */
   isTask: boolean;
+  /** Local-file playback has its own learning header; avoid a second word-book entry. */
+  hideWordbook?: boolean;
   /** Breadcrumb fragment for the open sub view (e.g. 官方博客). */
   subLabel?: string;
   onNavigate: (tab: TabId) => void;
@@ -69,6 +71,7 @@ export function AppShell({
   dueCount,
   isSub,
   isTask,
+  hideWordbook = false,
   subLabel,
   onNavigate,
   onRequestLogin,
@@ -189,7 +192,7 @@ export function AppShell({
               <Play className="w-3.5 h-3.5 fill-current" />
               <span className="whitespace-nowrap">{t('topbar.startLearning')}</span>
             </button>
-            {!isTask && (
+            {!isTask && !hideWordbook && (
             <button
                 type="button"
                 data-testid="topbar-wordbook"

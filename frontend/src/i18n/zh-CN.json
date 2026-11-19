@@ -1766,5 +1766,8 @@
   "localVideo.pickVideo": "选择视频文件",
   "localVideo.pickHint": "视频只在当前浏览器播放，不上传；可同时选择 .srt/.vtt 字幕。",
   "localVideo.videoRequired": "请选择一个视频文件。",
-  "localVideo.fileTooLarge": "视频文件过大，建议使用 4GB 以内的 MP4/WebM。"
+  "localVideo.fileTooLarge": "视频文件过大，建议使用 4GB 以内的 MP4/WebM。",
+  "localVideo.analyze": "AI 翻译 + 语言点",
+  "localVideo.analyzing": "正在翻译与分析…",
+  "localVideo.analysisFailed": "字幕翻译/分析失败，视频仍可播放。"
 }
