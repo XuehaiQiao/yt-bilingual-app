@@ -45,7 +45,7 @@ import { loadVocabLevel, saveVocabLevel, VOCAB_LEVEL_EVENT, VOCAB_LEVELS, type V
 import { LanguageSettingsModal } from './LanguageSettingsModal';
 import { ModelBar } from './ModelBar';
 import { PwaInstallButton } from './PwaInstallButton';
-import { VocabAxis } from './VocabAxis';
+import { VocabAxis } from './ui/Axis';
 import { Button } from './ui/Button';
 
 export interface AccountUser {

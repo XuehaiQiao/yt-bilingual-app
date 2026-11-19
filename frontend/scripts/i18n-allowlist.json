@@ -75,32 +75,32 @@
     {
       "key": "home.vocabLevel.liftoff.label",
       "reason": "CEFR 等级 A1，标准英文缩写",
-      "path": "src/components/VocabAxis.tsx"
+      "path": "src/components/ui/Axis.tsx"
     },
     {
       "key": "home.vocabLevel.orbit.label",
       "reason": "CEFR 等级 A2，标准英文缩写",
-      "path": "src/components/VocabAxis.tsx"
+      "path": "src/components/ui/Axis.tsx"
     },
     {
       "key": "home.vocabLevel.moonwalk.label",
       "reason": "CEFR 等级 B1，标准英文缩写",
-      "path": "src/components/VocabAxis.tsx"
+      "path": "src/components/ui/Axis.tsx"
     },
     {
       "key": "home.vocabLevel.interstellar.label",
       "reason": "CEFR 等级 B2，标准英文缩写",
-      "path": "src/components/VocabAxis.tsx"
+      "path": "src/components/ui/Axis.tsx"
     },
     {
       "key": "home.vocabLevel.deep-space.label",
       "reason": "CEFR 等级 C1，标准英文缩写",
-      "path": "src/components/VocabAxis.tsx"
+      "path": "src/components/ui/Axis.tsx"
     },
     {
       "key": "home.vocabLevel.supernova.label",
       "reason": "CEFR 等级 C2，标准英文缩写",
-      "path": "src/components/VocabAxis.tsx"
+      "path": "src/components/ui/Axis.tsx"
     },
     {
       "key": "vocab.phrases.source.ecdict",
