@@ -261,11 +261,14 @@ export function BooksSection({
                     setImportOpen(false);
                     setInitialImportUrl('');
                 }}
-                onImported={(bookId) => {
+                onImported={(bookId, options) => {
                     setImportOpen(false);
                     setInitialImportUrl('');
                     setImportedToken((value) => value + 1);
-                    onOpenImportedBook(bookId);
+                    // A link import keeps its original "jump into the book"
+                    // behavior; a local upload stays on the shelf so the new
+                    // "本地" card (and its cover) is visible right away.
+                    if (options?.openAfterImport) onOpenImportedBook(bookId);
                 }}
                 onRequestLogin={onRequestLogin}
             />

@@ -13,6 +13,7 @@ import {
     ChevronRight,
     ExternalLink,
     Globe2,
+    HardDrive,
     Languages,
     Loader2,
     RefreshCw,
@@ -95,18 +96,27 @@ const ErrorPanel = ({
 
 const SourceBadge = ({ sourceType }: { sourceType: string }) => {
     const { t } = useI18n();
+    const isLocal = sourceType === 'local_epub';
     return (
         <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
-                sourceType === 'gutenberg'
-                    ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
-                    : 'border-violet-500/20 bg-violet-500/10 text-violet-300'
+                isLocal
+                    ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                    : sourceType === 'gutenberg'
+                      ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
+                      : 'border-violet-500/20 bg-violet-500/10 text-violet-300'
             }`}
         >
-            <Globe2 className="h-3.5 w-3.5" />
-            {sourceType === 'gutenberg'
-                ? t('importedBooks.sourceGutenberg')
-                : t('importedBooks.sourceStandardEbooks')}
+            {isLocal ? (
+                <HardDrive className="h-3.5 w-3.5" />
+            ) : (
+                <Globe2 className="h-3.5 w-3.5" />
+            )}
+            {isLocal
+                ? t('importedBooks.sourceLocal')
+                : sourceType === 'gutenberg'
+                  ? t('importedBooks.sourceGutenberg')
+                  : t('importedBooks.sourceStandardEbooks')}
         </span>
     );
 };
@@ -486,26 +496,33 @@ export function ImportedBookReaderScreen({
                                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
                                     <span>
                                         {t('importedBooks.reader.source', {
-                                            source: detail.source.provider,
+                                            source:
+                                                detail.sourceType === 'local_epub'
+                                                    ? t('importedBooks.sourceLocal')
+                                                    : detail.source.provider,
                                         })}
                                     </span>
                                     <span className="inline-flex items-center gap-1 text-[11px] text-zinc-600">
                                         <BookOpen className="h-3.5 w-3.5" />
-                                        {t('importedBooks.reader.originalHint')}
+                                        {detail.sourceType === 'local_epub'
+                                            ? t('importedBooks.reader.localHint')
+                                            : t('importedBooks.reader.originalHint')}
                                     </span>
                                 </div>
-                                <div className="mt-3 flex flex-wrap items-center gap-2">
-                                    <a
-                                        href={detail.sourceUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        data-testid="imported-book-source-link"
-                                        className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
-                                    >
-                                        <ExternalLink className="h-3.5 w-3.5" />
-                                        {t('importedBooks.reader.sourceLink')}
-                                    </a>
-                                </div>
+                                {detail.sourceType !== 'local_epub' && (
+                                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                                        <a
+                                            href={detail.sourceUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            data-testid="imported-book-source-link"
+                                            className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
+                                        >
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                            {t('importedBooks.reader.sourceLink')}
+                                        </a>
+                                    </div>
+                                )}
                                 {deleteError && (
                                     <p
                                         data-testid="imported-book-delete-error"
@@ -736,9 +753,11 @@ export function ImportedBookReaderScreen({
                                         </span>
                                     </div>
                                     <p className="mt-1 text-[11px] text-zinc-500">
-                                        {chapter.source.degraded
-                                            ? t('importedBooks.reader.sourceDegraded')
-                                            : t('importedBooks.reader.sourceLive')}
+                                        {chapter.sourceType === 'local_epub'
+                                            ? t('importedBooks.reader.localHint')
+                                            : chapter.source.degraded
+                                              ? t('importedBooks.reader.sourceDegraded')
+                                              : t('importedBooks.reader.sourceLive')}
                                     </p>
 
                                     {translateNotice && (

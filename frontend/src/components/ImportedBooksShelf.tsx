@@ -1,19 +1,23 @@
 // "My imported books" shelf on the content page.
 //
 // Sits next to the curated public-domain series. Each card shows the source
-// (Gutenberg / Standard Ebooks), chapter count, cached translation count and the
-// locally saved reading position. Opening one goes to the imported-book reader.
+// (Gutenberg / Standard Ebooks / local EPUB), chapter count, cached translation
+// count and the locally saved reading position. Local uploads show their cover
+// when the backend exposes one, and fall back to the book glyph. Opening a card
+// goes to the imported-book reader.
 import { useEffect, useState } from 'react';
 import {
     AlertCircle,
     BookOpen,
     Globe2,
+    HardDrive,
     RefreshCw,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import {
     fetchImportedBooks,
     getImportedBookProgress,
+    importedBookCoverUrl,
     type ImportedBookSummary,
 } from '../lib/importedBooks';
 import { Badge } from './ui/Badge';
@@ -22,6 +26,23 @@ import { Card } from './ui/Card';
 interface ImportedBooksShelfProps {
     refreshToken: number;
     onOpenBook: (bookId: string) => void;
+}
+
+/** Cover tile for a local EPUB; a failed image falls back to the glyph. */
+function ShelfCover({ src }: { src: string }) {
+    const [failed, setFailed] = useState(false);
+    if (failed) return <BookOpen className="h-5 w-5" aria-hidden="true" />;
+    return (
+        <img
+            data-testid="imported-book-cover"
+            src={src}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={() => setFailed(true)}
+            className="h-full w-full object-cover"
+        />
+    );
 }
 
 export function ImportedBooksShelf({ refreshToken, onOpenBook }: ImportedBooksShelfProps) {
@@ -122,6 +143,8 @@ export function ImportedBooksShelf({ refreshToken, onOpenBook }: ImportedBooksSh
                     <div className="flex gap-3 snap-x snap-mandatory pb-1">
                         {books.map((book) => {
                             const progress = getImportedBookProgress(book.bookId);
+                            const cover = importedBookCoverUrl(book.coverUrl);
+                            const isLocal = book.sourceType === 'local_epub';
                             return (
                                 <Card
                                     key={book.bookId}
@@ -133,14 +156,24 @@ export function ImportedBooksShelf({ refreshToken, onOpenBook }: ImportedBooksSh
                                     className="group shrink-0 w-[220px] sm:w-[256px] snap-start p-4"
                                 >
                                     <div className="flex items-start justify-between gap-2">
-                                        <span className="flex h-11 w-14 shrink-0 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
-                                            <BookOpen className="h-5 w-5" />
+                                        <span className="flex h-11 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
+                                            {cover ? (
+                                                <ShelfCover key={cover} src={cover} />
+                                            ) : (
+                                                <BookOpen className="h-5 w-5" />
+                                            )}
                                         </span>
-                                        <Badge tone="neutral" icon={<Globe2 />}>
-                                            {book.sourceType === 'gutenberg'
-                                                ? t('importedBooks.sourceGutenberg')
-                                                : t('importedBooks.sourceStandardEbooks')}
-                                        </Badge>
+                                        {isLocal ? (
+                                            <Badge tone="brand" icon={<HardDrive />}>
+                                                {t('importedBooks.sourceLocal')}
+                                            </Badge>
+                                        ) : (
+                                            <Badge tone="neutral" icon={<Globe2 />}>
+                                                {book.sourceType === 'gutenberg'
+                                                    ? t('importedBooks.sourceGutenberg')
+                                                    : t('importedBooks.sourceStandardEbooks')}
+                                            </Badge>
+                                        )}
                                     </div>
                                     <h5 className="mt-3 line-clamp-2 min-h-[2.6em] break-words text-[14px] font-semibold leading-snug text-zinc-100">
                                         {book.title}
