@@ -53,9 +53,9 @@ export function isTabId(value: unknown): value is TabId {
 }
 
 /** A tab-level section that owns its own URL (D-05). */
-export type SectionAnchor = 'library' | 'books';
+export type SectionAnchor = 'library' | 'books' | 'sentence-packs';
 
-export const SECTION_ANCHORS: readonly SectionAnchor[] = ['library', 'books'];
+export const SECTION_ANCHORS: readonly SectionAnchor[] = ['library', 'books', 'sentence-packs'];
 
 export function isSectionAnchor(value: unknown): value is SectionAnchor {
   return typeof value === 'string' && (SECTION_ANCHORS as readonly string[]).includes(value);

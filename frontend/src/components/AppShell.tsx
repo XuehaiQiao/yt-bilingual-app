@@ -46,7 +46,6 @@ interface AppShellProps {
   /** Word-book entry + saved-word count, shown in the top bar and Sidebar. */
   onOpenWordbook: () => void;
   wordbookCount: number;
-  onOpenReport: () => void;
   onOpenHistory: () => void;
   onOpenSentences: () => void;
   onOpenLibrary: () => void;
@@ -68,7 +67,6 @@ export function AppShell({
   onStartLearning,
   onOpenWordbook,
   wordbookCount,
-  onOpenReport,
   onOpenHistory,
   onOpenSentences,
   onOpenLibrary,
@@ -95,9 +93,6 @@ export function AppShell({
           state={state}
           dueCount={dueCount}
           onNavigate={onNavigate}
-          onOpenWordbook={onOpenWordbook}
-          wordbookCount={wordbookCount}
-          onOpenReport={onOpenReport}
           onOpenHistory={onOpenHistory}
           onOpenSentences={onOpenSentences}
           onOpenLibrary={onOpenLibrary}

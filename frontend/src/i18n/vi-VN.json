@@ -1675,5 +1675,6 @@
   "novel.entry.chapterAria": "Chọn chương",
   "novel.entry.chapterOption": "Chương {{chapter}}",
   "novel.entry.guestHint": "Đăng nhập để tạo khóa học",
-  "novel.entry.loading": "Đang tạo… 30 giây"
+  "novel.entry.loading": "Đang tạo… 30 giây",
+  "sidebar.group.history": "Lịch sử"
 }

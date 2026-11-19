@@ -472,7 +472,7 @@ export function ContentScreen({
                         </Card>
                         {/* SentencePacks is already a card with its own heading;
                             keep it as the grid cell to avoid nesting two cards. */}
-                        <div className="min-w-0">
+                        <div className="min-w-0" data-testid="content-sentence-packs">
                             <SentencePacks onSelectLevel={onOpenSentences} />
                         </div>
                     </div>

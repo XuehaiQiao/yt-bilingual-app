@@ -1675,5 +1675,6 @@
   "novel.entry.chapterAria": "选择章节",
   "novel.entry.chapterOption": "第 {{chapter}} 章",
   "novel.entry.guestHint": "登录后可生成课程",
-  "novel.entry.loading": "正在生成…约 30 秒"
+  "novel.entry.loading": "正在生成…约 30 秒",
+  "sidebar.group.history": "历史"
 }

@@ -76,7 +76,6 @@ import {
   loadModel,
   saveVocabLevel,
   vocabLevelFromCefr,
-  VOCAB_LEVELS,
   VOCAB_LEVEL_EVENT,
   type VocabLevelId,
 } from './lib/settings';
@@ -2264,7 +2263,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   }, []);
 
   const anchorTestId = (anchor: SectionAnchor) => (
-    anchor === 'library' ? 'content-library' : 'content-books'
+    anchor === 'library' ? 'content-library'
+      : anchor === 'books' ? 'content-books'
+        : 'content-sentence-packs'
   );
 
   useEffect(() => {
@@ -2294,12 +2295,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const handleOpenLibraryShortcut = () => openSectionAnchor('library');
   const handleOpenBooksShortcut = () => openSectionAnchor('books');
 
-  // Sentence packs start at the learner's current vocabulary band (the six
-  // CEFR stops map onto the five packs; C2 shares the last one).
+  // The sidebar sentence entry is a content door, not a direct lesson: open
+  // the Content tab and scroll to the sentence-packs section. Selecting a
+  // level there still opens the sentence view.
   const handleOpenSentencesShortcut = () => {
-    const index = VOCAB_LEVELS.findIndex(level => level.id === loadVocabLevel());
-    const levelId = Math.min(5, Math.max(1, (index < 0 ? 0 : index) + 1));
-    handleOpenSentences(levelId);
+    openSectionAnchor('sentence-packs');
   };
 
   // Desktop top-bar shortcut: Content page, paste input focused.
@@ -3384,7 +3384,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         onStartLearning={focusContentComposer}
         onOpenWordbook={handleOpenWordbookRoute}
         wordbookCount={vocabularyFavoriteCount}
-        onOpenReport={handleOpenReport}
         onOpenHistory={handleOpenHistoryShortcut}
         onOpenSentences={handleOpenSentencesShortcut}
         onOpenLibrary={handleOpenLibraryShortcut}

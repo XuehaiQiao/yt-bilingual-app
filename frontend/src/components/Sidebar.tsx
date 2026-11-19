@@ -8,7 +8,6 @@
 import { useState } from 'react';
 import {
   BookOpen,
-  CalendarRange,
   ChevronLeft,
   ChevronRight,
   Compass,
@@ -18,7 +17,6 @@ import {
   Newspaper,
   Settings,
   ShieldCheck,
-  BookMarked,
   UserRound,
   type LucideIcon,
 } from 'lucide-react';
@@ -35,8 +33,6 @@ import type { TranslationKey } from '../i18n';
 import { LanguageMenu } from './LanguageMenu';
 
 export type SidebarQuickId =
-  | 'vocabulary'
-  | 'report'
   | 'history'
   | 'sentences'
   | 'library'
@@ -49,10 +45,6 @@ interface SidebarProps {
   state: NavState;
   dueCount: number;
   onNavigate: (tab: TabId) => void;
-  onOpenWordbook: () => void;
-  /** Saved vocabulary count shown on the 单词本 shortcut. */
-  wordbookCount: number;
-  onOpenReport: () => void;
   onOpenHistory: () => void;
   /** Opens the sentence packs at the learner's current vocabulary band. */
   onOpenSentences: () => void;
@@ -83,9 +75,6 @@ export function Sidebar({
   state,
   dueCount,
   onNavigate,
-  onOpenWordbook,
-  wordbookCount,
-  onOpenReport,
   onOpenHistory,
   onOpenSentences,
   onOpenLibrary,
@@ -113,25 +102,13 @@ export function Sidebar({
 
   const subKind = state.sub?.kind ?? null;
   const activeQuick: SidebarQuickId | null =
-    subKind === 'vocabulary' ? 'vocabulary'
-      : subKind === 'report' ? 'report'
-        : subKind === 'sentences' ? 'sentences'
-          : subKind === 'discover' ? 'discover'
-            : subKind === 'blog' ? 'blog'
-              : subKind === 'admin' ? 'admin'
-                : null;
+    subKind === 'sentences' ? 'sentences'
+      : subKind === 'discover' ? 'discover'
+        : subKind === 'blog' ? 'blog'
+          : subKind === 'admin' ? 'admin'
+            : null;
 
   const quickGroups: QuickGroup[] = [
-    {
-      id: 'learn',
-      labelKey: 'sidebar.group.learn',
-      items: [
-        { id: 'vocabulary', icon: BookMarked, labelKey: 'sidebar.wordbook', onClick: onOpenWordbook, count: wordbookCount },
-        { id: 'report', icon: CalendarRange, labelKey: 'sidebar.report', onClick: onOpenReport },
-        { id: 'history', icon: History, labelKey: 'sidebar.history', onClick: onOpenHistory },
-        { id: 'sentences', icon: GraduationCap, labelKey: 'sidebar.sentences', onClick: onOpenSentences },
-      ],
-    },
     {
       id: 'content',
       labelKey: 'sidebar.group.content',
@@ -139,7 +116,15 @@ export function Sidebar({
         { id: 'library', icon: Library, labelKey: 'sidebar.library', onClick: onOpenLibrary },
         { id: 'books', icon: BookOpen, labelKey: 'sidebar.books', onClick: onOpenBooks },
         { id: 'discover', icon: Compass, labelKey: 'sidebar.discover', onClick: onOpenDiscover },
+        { id: 'sentences', icon: GraduationCap, labelKey: 'sidebar.sentences', onClick: onOpenSentences },
         { id: 'blog', icon: Newspaper, labelKey: 'sidebar.blog', onClick: onOpenBlog },
+      ],
+    },
+    {
+      id: 'history',
+      labelKey: 'sidebar.group.history',
+      items: [
+        { id: 'history', icon: History, labelKey: 'sidebar.history', onClick: onOpenHistory },
       ],
     },
   ];
@@ -161,19 +146,6 @@ export function Sidebar({
         ? 'bg-white/[0.07] text-zinc-50'
         : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'
     }`;
-
-  const renderCount = (count: number, testId: string, compact: boolean) =>
-    count > 0 ? (
-      <span
-        data-testid={testId}
-        aria-label={t('sidebar.wordbookCountAria', { count })}
-        className={`min-w-[16px] h-4 px-1 rounded-full bg-amber-500/15 border border-amber-500/20 text-amber-300 text-[9px] font-semibold tabular-nums flex items-center justify-center ${
-          compact ? 'absolute -top-1 -right-1.5' : 'ml-auto shrink-0'
-        }`}
-      >
-        {formatDueBadge(count)}
-      </span>
-    ) : null;
 
   const renderBadge = (count: number, testId: string, compact: boolean) =>
     count > 0 ? (
@@ -301,7 +273,7 @@ export function Sidebar({
                           type="button"
                           data-testid={`sidebar-quick-${item.id}`}
                           aria-current={active ? 'page' : undefined}
-                          aria-label={item.count ? t('sidebar.wordbookCountAria', { count: item.count }) : label}
+                          aria-label={label}
                           title={label}
                           onClick={item.onClick}
                           className={navButtonClass(active)}
@@ -311,12 +283,10 @@ export function Sidebar({
                               className={`w-[18px] h-[18px] ${active ? 'text-brand-400' : 'text-zinc-500'}`}
                               aria-hidden="true"
                             />
-                            {collapsed && item.count != null && renderCount(item.count, `sidebar-quick-${item.id}-count`, true)}
                           </span>
                           {!collapsed && (
                             <span className="min-w-0 truncate text-sm font-medium">{label}</span>
                           )}
-                          {!collapsed && item.count != null && renderCount(item.count, `sidebar-quick-${item.id}-count`, false)}
                         </button>
                       </li>
                     );

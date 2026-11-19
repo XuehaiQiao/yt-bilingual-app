@@ -259,8 +259,8 @@ try {
       await page.waitForSelector('[data-testid="content-rail-report-link"]');
       await page.click('[data-testid="content-rail-report-link"]');
       await waitHash(page, '#/content/report');
-      await page.waitForSelector('[data-testid="report-close"]');
-      await page.click('[data-testid="report-close"]');
+      await page.waitForSelector('[data-testid="report-back"]');
+      await page.click('[data-testid="report-back"]');
       await waitHash(page, '#/content');
     } finally {
       await page.close();
