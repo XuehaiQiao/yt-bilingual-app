@@ -880,10 +880,10 @@
   "reader.error.unavailable": "Tính năng đọc bài viết tạm thời không khả dụng (có thể cơ sở dữ liệu chưa được nâng cấp), vui lòng thử lại sau.",
   "reader.error.badResponse": "Máy chủ trả về dữ liệu bài viết không thể phân tích.",
   "reader.error.unknown": "Thao tác thất bại, vui lòng thử lại.",
-  "reading.highlight.toggle": "Tô sáng từ mới",
+  "reading.highlight.toggle": "Đánh dấu độ khó",
   "reading.highlight.hint": "Tô sáng các từ khó hơn mức {{level}}; khi tắt vẫn có thể bấm từ để tra.",
   "reading.highlight.hintMax": "C2 là mức cao nhất, không tô sáng thêm; khi tắt vẫn có thể bấm từ để tra.",
-  "reading.highlight.offHint": "Đã tắt tô sáng; vẫn có thể bấm từ để tra.",
+  "reading.highlight.offHint": "Đã tắt đánh dấu độ khó; vẫn có thể chạm từ để tra.",
   "blog.eyebrow": "LINGUATREK · Kênh chính thức",
   "blog.title": "Blog chính thức",
   "blog.subtitle": "Ý tưởng sản phẩm, phương pháp học và cập nhật phiên bản. Bài viết bằng tiếng Trung; giao diện hỗ trợ tiếng Trung và tiếng Việt.",
@@ -1753,5 +1753,7 @@
   "sidebar.group.history": "Lịch sử",
   "sidebar.submenu.action": "Thao tác nhanh",
   "sidebar.submenu.section": "Trong trang này",
-  "sidebar.submenu.page": "Trang riêng"
+  "sidebar.submenu.page": "Trang riêng",
+  "transcript.teachingHighlight": "Điểm dạy học",
+  "transcript.teachingHighlightHint": "Từ/cụm từ trọng tâm do AI chọn cho đoạn này, có chú thích; chạm cụm từ để tra."
 }

@@ -880,10 +880,10 @@
   "reader.error.unavailable": "读文章功能暂时不可用（可能数据库未迁移），请稍后重试。",
   "reader.error.badResponse": "服务端返回了无法解析的文章数据。",
   "reader.error.unknown": "操作失败，请重试。",
-  "reading.highlight.toggle": "标亮生词",
+  "reading.highlight.toggle": "难度标亮",
   "reading.highlight.hint": "标亮高于「{{level}}」的词；关闭后仍可点词查词。",
   "reading.highlight.hintMax": "C2 是最高档，不再额外标亮；关闭后仍可点词查词。",
-  "reading.highlight.offHint": "已关闭标亮，点词查词仍可用。",
+  "reading.highlight.offHint": "已关闭难度标亮，点词查词仍可用。",
   "blog.eyebrow": "LINGUATREK · 官方频道",
   "blog.title": "官方博客",
   "blog.subtitle": "产品想法、学习方法与版本更新。文章为中文，界面支持中文与越南语。",
@@ -1753,5 +1753,7 @@
   "sidebar.group.history": "历史",
   "sidebar.submenu.action": "快捷操作",
   "sidebar.submenu.section": "本页区块",
-  "sidebar.submenu.page": "独立页面"
+  "sidebar.submenu.page": "独立页面",
+  "transcript.teachingHighlight": "教学高亮",
+  "transcript.teachingHighlightHint": "AI 选出的本段重点词/短语，带中文注释；点词组可查词。"
 }

@@ -84,8 +84,14 @@ export const HighlightedText: React.FC<{
             parts.push(renderPlain(text.slice(currentIndex, match.index), `text-${i}`));
         }
         const phrase = text.slice(match.index, match.index + match.length);
+        // Teaching highlights use one frozen amber recipe, matching the
+        // reading difficulty mark; sentence-pack chunks keep their own
+        // CHUNK_STYLE colours in SentenceText instead of this component.
         const clickProps = {
-            className: cn(match.color, onWordClick && "cursor-pointer hover:bg-white/10 rounded-sm"),
+            className: cn(
+                'bg-amber-400/[0.08] underline decoration-amber-400/50 decoration-dotted decoration-1 underline-offset-[3px]',
+                onWordClick && 'cursor-pointer hover:bg-white/10 rounded-sm',
+            ),
             onClick: onWordClick ? (e: React.MouseEvent) => { e.stopPropagation(); onWordClick(phrase, e); } : undefined,
         };
         // Annotation rendered as ruby above the word instead of inline
@@ -94,7 +100,7 @@ export const HighlightedText: React.FC<{
             match.annotation ? (
                 <ruby key={`hl-${i}`} {...clickProps} data-word-hit={onWordClick ? phrase : undefined}>
                     {phrase}
-                    <rt className="text-[10px] font-medium text-purple-300/90 select-none">{match.annotation}</rt>
+                    <rt className="text-[10px] font-medium text-amber-300/90 select-none">{match.annotation}</rt>
                 </ruby>
             ) : (
                 <span key={`hl-${i}`} {...clickProps} data-word-hit={onWordClick ? phrase : undefined}>{phrase}</span>

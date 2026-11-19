@@ -2,7 +2,7 @@ import { apiFetch } from './lib/api';
 import { CourseApiError, COURSE_MVP_LESSON_ID, generateCourse, isCourseAbortError } from './lib/course';
 import { lazy, Suspense, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, BookOpenCheck } from 'lucide-react';
+import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, BookOpenCheck, Highlighter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -2833,6 +2833,15 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             </button>
           ))}
         </div>
+
+        <span
+          data-testid="teaching-highlight-legend"
+          title={t('transcript.teachingHighlightHint')}
+          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-2.5 text-xs font-medium text-amber-200/90"
+        >
+          <Highlighter className="h-3.5 w-3.5" aria-hidden="true" />
+          {t('transcript.teachingHighlight')}
+        </span>
 
         <div className="w-px h-4 bg-white/10 shrink-0" />
 

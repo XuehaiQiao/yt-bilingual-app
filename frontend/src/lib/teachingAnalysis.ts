@@ -16,7 +16,7 @@ import type { VocabLevelId } from './settings';
 
 /** Frozen backend recipe (backend/translate.py HIGHLIGHT_COLOR). */
 export const TEACHING_HIGHLIGHT_COLOR =
-    'text-purple-400 border-b border-dashed border-purple-400';
+    'bg-amber-400/[0.08] underline decoration-amber-400/50 decoration-dotted decoration-1 underline-offset-[3px]';
 
 export interface TeachingHighlight {
     en_word: string;
@@ -156,7 +156,9 @@ function normalizeHighlights(raw: unknown): Record<string, TeachingHighlight[]> 
             entries.push({
                 en_word: enWord,
                 zh_word: text(highlight.zh_word),
-                color: text(highlight.color) || TEACHING_HIGHLIGHT_COLOR,
+                // Ignore cached/server colours: the teaching-highlight recipe is frozen
+                // and must match the reading difficulty mark.
+                color: TEACHING_HIGHLIGHT_COLOR,
             });
         }
         if (entries.length > 0) result[blockId] = entries;
@@ -254,7 +256,7 @@ export function applyTeachingAnalysisHighlights<T extends HighlightableBlock>(
                 .map((entry) => ({
                     en_word: entry.en_word,
                     zh_word: typeof entry.zh_word === 'string' ? entry.zh_word : '',
-                    color: entry.color || TEACHING_HIGHLIGHT_COLOR,
+                    color: TEACHING_HIGHLIGHT_COLOR,
                 }))
             : [];
         if (sameHighlights(block.highlights, mapped)) return block;

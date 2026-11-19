@@ -21,7 +21,7 @@ from config import DEFAULT_MODEL
 UNTRANSLATED_MARKER = "[未翻译]"
 
 # 高亮颜色是前端冻结的配方；模型漏返/写错时用默认值补齐。
-HIGHLIGHT_COLOR = "text-purple-400 border-b border-dashed border-purple-400"
+HIGHLIGHT_COLOR = "bg-amber-400/[0.08] underline decoration-amber-400/50 decoration-dotted decoration-1 underline-offset-[3px]"
 
 # prompt 版本（specs/012 §5.9）：按结构变更递增，写入缓存 payload 供追溯；
 # **不进缓存路径/键**（换 prompt 不自动重译、不重复付费）。
