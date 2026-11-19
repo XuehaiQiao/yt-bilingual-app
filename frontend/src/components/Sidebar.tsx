@@ -1,27 +1,27 @@
-// Desktop navigation rail (≥lg). P0 asks for a real three-pane shell: a fixed
-// 240px sidebar that also carries the "shortcut" destinations the old top bar
-// could not fit. Collapsing to 72px (icons + tooltips) keeps the main region
-// wide for the learning workspace; the choice is persisted in localStorage.
+// Desktop navigation rail (≥lg): four expandable browse pages, their second
+// level destinations, a pinned official-blog / admin strip and the user card.
 //
-// Everything here routes through the same App callbacks as the top tabs, so a
-// shortcut is a second door to an existing view — never a new screen.
+// The four first-level rows still navigate exactly like the top tabs; the
+// chevron beside each row is a separate disclosure button, so expanding a
+// group never changes the page and navigating never toggles the group. Every
+// child is a second door to an existing route / scroll target — the route
+// model itself is untouched (see lib/nav.ts and navigation-model.md).
+//
+// Collapsing to 72px keeps only the first-level icons (plus the pinned
+// blog/admin icons): children and chevrons are removed from the DOM, while the
+// per-tab expanded state stays remembered for the next uncollapsed render. The
+// choice is persisted in localStorage.
 import { useState } from 'react';
 import {
-  BookOpen,
   ChevronLeft,
   ChevronRight,
-  Compass,
-  GraduationCap,
-  History,
-  Library,
   Newspaper,
   Settings,
   ShieldCheck,
   UserRound,
-  type LucideIcon,
 } from 'lucide-react';
 import type { NavState, TabId } from '../lib/nav';
-import { formatDueBadge, NAV_TABS } from '../lib/navTabs';
+import { formatDueBadge, NAV_TABS, type NavTabDef } from '../lib/navTabs';
 import { useAuth } from '../lib/auth';
 import { displayUsername, usernameInitial } from '../lib/username';
 import {
@@ -32,54 +32,81 @@ import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { LanguageMenu } from './LanguageMenu';
 
-export type SidebarQuickId =
-  | 'history'
-  | 'sentences'
-  | 'library'
-  | 'books'
-  | 'discover'
-  | 'blog'
-  | 'admin';
+/** Scroll destinations inside the 我的 page (each maps to a section testid). */
+export type ProfileSectionId = 'account' | 'balance' | 'settings' | 'about';
 
 interface SidebarProps {
   state: NavState;
   dueCount: number;
   onNavigate: (tab: TabId) => void;
+  /** Content · start learning: jump to Content and focus the paste composer. */
+  onStartLearning: () => void;
+  /** History · recent learning: Today tab, scrolled to the recent list. */
   onOpenHistory: () => void;
-  /** Opens the sentence packs at the learner's current vocabulary band. */
   onOpenSentences: () => void;
   onOpenLibrary: () => void;
   onOpenBooks: () => void;
   onOpenDiscover: () => void;
+  /** History · weekly report. */
+  onOpenReport: () => void;
+  /** Practice · today's review. */
+  onOpenReview: () => void;
+  /** Practice · exam practice. */
+  onOpenExam: () => void;
+  /** Practice · placement test. */
+  onOpenPlacement: () => void;
+  /** Profile · ability profile. */
+  onOpenAbility: () => void;
+  /** Profile · scroll to a section of the 我的 page (navigating there first). */
+  onOpenProfileSection: (section: ProfileSectionId) => void;
+  /** Pinned bottom strip (official blog; admin console only for admins). */
   onOpenBlog: () => void;
   onOpenAdmin: () => void;
   onRequestLogin?: () => void;
 }
 
-interface QuickItemDef {
-  id: SidebarQuickId;
-  icon: LucideIcon;
-  labelKey: TranslationKey;
-  onClick: () => void;
-  /** Optional count badge (word book only today). */
-  count?: number;
-}
-
-interface QuickGroup {
+interface SidebarSubItemDef {
   id: string;
   labelKey: TranslationKey;
-  items: QuickItemDef[];
+  active: boolean;
+  onSelect: () => void;
+  /**
+   * Test id used by the pre-expandable rail. Kept as a thin compatibility
+   * alias so the existing navigation e2e (check-nav-e2e.mjs) keeps passing.
+   */
+  legacyQuickId?: string;
 }
+
+interface SidebarGroupDef {
+  tab: NavTabDef;
+  items: SidebarSubItemDef[];
+}
+
+// Owner order for the expanded desktop rail: content, history, practice,
+// profile. The visible tab strip / mobile bottom bar keep their own order; a
+// sidebar row is still a second door to the same tab root.
+const SIDEBAR_TAB_ORDER: readonly TabId[] = ['content', 'today', 'practice', 'profile'];
+
+const SIDEBAR_TABS: readonly NavTabDef[] = SIDEBAR_TAB_ORDER
+  .map((id) => NAV_TABS.find((tab) => tab.id === id))
+  .filter((tab): tab is NavTabDef => Boolean(tab));
 
 export function Sidebar({
   state,
   dueCount,
   onNavigate,
+  onStartLearning,
   onOpenHistory,
   onOpenSentences,
   onOpenLibrary,
   onOpenBooks,
   onOpenDiscover,
+  onOpenReport,
+  onOpenReview,
+  onOpenExam,
+  onOpenPlacement,
+  onOpenAbility,
+  onOpenProfileSection,
   onOpenBlog,
   onOpenAdmin,
   onRequestLogin,
@@ -87,10 +114,19 @@ export function Sidebar({
   const { t } = useI18n();
   const { status, user, isAdmin } = useAuth();
   const [collapsed, setCollapsed] = useState<boolean>(loadSidebarCollapsed);
+  // Per-tab disclosure state. `undefined` means "follow the current tab", so
+  // the active page starts expanded and a manual toggle wins for that tab.
+  const [expandedGroups, setExpandedGroups] = useState<Partial<Record<TabId, boolean>>>({});
+  // Which 我的 section was last picked. The three lower sections are scroll
+  // targets, not routes, so they cannot derive an active state from NavState.
+  const [profileSection, setProfileSection] = useState<ProfileSectionId | null>(null);
 
   const isGuest = status === 'guest';
   const displayName = displayUsername(user?.username, user?.email);
   const initial = usernameInitial(displayName);
+  const subKind = state.sub?.kind ?? null;
+  const profileRoot = state.tab === 'profile' && !state.sub;
+  const activeProfileSection = profileRoot ? profileSection ?? 'account' : null;
 
   const toggle = () => {
     setCollapsed(prev => {
@@ -100,43 +136,148 @@ export function Sidebar({
     });
   };
 
-  const subKind = state.sub?.kind ?? null;
-  const activeQuick: SidebarQuickId | null =
-    subKind === 'sentences' ? 'sentences'
-      : subKind === 'discover' ? 'discover'
-        : subKind === 'blog' ? 'blog'
-          : subKind === 'admin' ? 'admin'
-            : null;
+  const isExpanded = (tab: TabId) => expandedGroups[tab] ?? state.tab === tab;
 
-  const quickGroups: QuickGroup[] = [
+  const toggleExpanded = (tab: TabId) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [tab]: !(prev[tab] ?? state.tab === tab),
+    }));
+  };
+
+  const handleParentNavigate = (tab: TabId) => {
+    setProfileSection(null);
+    onNavigate(tab);
+  };
+
+  const handleProfileSection = (section: ProfileSectionId) => {
+    setProfileSection(section);
+    onOpenProfileSection(section);
+  };
+
+  const selectShortcut = (action: () => void) => {
+    setProfileSection(null);
+    action();
+  };
+
+  const contentItems: SidebarSubItemDef[] = [
     {
-      id: 'content',
-      labelKey: 'sidebar.group.content',
-      items: [
-        { id: 'library', icon: Library, labelKey: 'sidebar.library', onClick: onOpenLibrary },
-        { id: 'books', icon: BookOpen, labelKey: 'sidebar.books', onClick: onOpenBooks },
-        { id: 'discover', icon: Compass, labelKey: 'sidebar.discover', onClick: onOpenDiscover },
-        { id: 'sentences', icon: GraduationCap, labelKey: 'sidebar.sentences', onClick: onOpenSentences },
-        { id: 'blog', icon: Newspaper, labelKey: 'sidebar.blog', onClick: onOpenBlog },
-      ],
+      id: 'start',
+      labelKey: 'content.startTitle',
+      active: state.tab === 'content' && !state.sub && !state.anchor,
+      onSelect: () => selectShortcut(onStartLearning),
     },
     {
-      id: 'history',
-      labelKey: 'sidebar.group.history',
-      items: [
-        { id: 'history', icon: History, labelKey: 'sidebar.history', onClick: onOpenHistory },
-      ],
+      id: 'library',
+      labelKey: 'sidebar.library',
+      active: state.tab === 'content' && !state.sub && state.anchor === 'library',
+      onSelect: () => selectShortcut(onOpenLibrary),
+      legacyQuickId: 'library',
+    },
+    {
+      id: 'books',
+      labelKey: 'sidebar.books',
+      active: state.tab === 'content' && !state.sub && state.anchor === 'books',
+      onSelect: () => selectShortcut(onOpenBooks),
+      legacyQuickId: 'books',
+    },
+    {
+      id: 'discover',
+      labelKey: 'sidebar.discover',
+      active: state.tab === 'content' && subKind === 'discover',
+      onSelect: () => selectShortcut(onOpenDiscover),
+      legacyQuickId: 'discover',
+    },
+    {
+      id: 'sentences',
+      labelKey: 'sidebar.sentences',
+      active: state.tab === 'content' && !state.sub && state.anchor === 'sentence-packs',
+      onSelect: () => selectShortcut(onOpenSentences),
+      legacyQuickId: 'sentences',
     },
   ];
-  if (isAdmin) {
-    quickGroups.push({
-      id: 'manage',
-      labelKey: 'sidebar.group.manage',
-      items: [
-        { id: 'admin', icon: ShieldCheck, labelKey: 'sidebar.admin', onClick: onOpenAdmin },
-      ],
-    });
-  }
+
+  const historyItems: SidebarSubItemDef[] = [
+    {
+      id: 'recent',
+      labelKey: 'sidebar.history',
+      active: state.tab === 'today' && !state.sub,
+      onSelect: () => selectShortcut(onOpenHistory),
+      legacyQuickId: 'history',
+    },
+    {
+      id: 'report',
+      labelKey: 'sidebar.report',
+      active: state.tab === 'today' && subKind === 'report',
+      onSelect: () => selectShortcut(onOpenReport),
+    },
+  ];
+
+  const practiceItems: SidebarSubItemDef[] = [
+    {
+      id: 'review',
+      labelKey: 'review.title',
+      active: state.tab === 'practice' && subKind === 'review',
+      onSelect: () => selectShortcut(onOpenReview),
+    },
+    {
+      id: 'exam',
+      labelKey: 'practice.exam.title',
+      active: state.tab === 'practice' && subKind === 'exam',
+      onSelect: () => selectShortcut(onOpenExam),
+    },
+    {
+      id: 'placement',
+      labelKey: 'practice.placement.title',
+      active: state.tab === 'practice' && subKind === 'placement',
+      onSelect: () => selectShortcut(onOpenPlacement),
+    },
+  ];
+
+  const profileItems: SidebarSubItemDef[] = [
+    {
+      id: 'account',
+      labelKey: 'sidebar.sub.account',
+      active: activeProfileSection === 'account',
+      onSelect: () => handleProfileSection('account'),
+    },
+    {
+      id: 'balance',
+      labelKey: 'sidebar.sub.balance',
+      active: activeProfileSection === 'balance',
+      onSelect: () => handleProfileSection('balance'),
+    },
+    {
+      id: 'settings',
+      labelKey: 'sidebar.sub.settings',
+      active: activeProfileSection === 'settings',
+      onSelect: () => handleProfileSection('settings'),
+    },
+    {
+      id: 'about',
+      labelKey: 'sidebar.sub.about',
+      active: activeProfileSection === 'about',
+      onSelect: () => handleProfileSection('about'),
+    },
+    {
+      id: 'ability',
+      labelKey: 'ability.title',
+      active: state.tab === 'profile' && subKind === 'ability',
+      onSelect: () => selectShortcut(onOpenAbility),
+    },
+  ];
+
+  const itemGroups: Record<TabId, SidebarSubItemDef[]> = {
+    content: contentItems,
+    today: historyItems,
+    practice: practiceItems,
+    profile: profileItems,
+  };
+
+  const groups: SidebarGroupDef[] = SIDEBAR_TABS.map((tab) => ({
+    tab,
+    items: itemGroups[tab.id],
+  }));
 
   const navButtonClass = (active: boolean) =>
     `relative flex w-full items-center rounded-xl transition-colors duration-200 ${
@@ -145,6 +286,13 @@ export function Sidebar({
       active
         ? 'bg-white/[0.07] text-zinc-50'
         : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'
+    }`;
+
+  const subItemClass = (active: boolean) =>
+    `flex w-full items-center gap-2 rounded-lg px-2.5 h-8 text-left text-[13px] font-medium transition-colors duration-200 ${
+      active
+        ? 'bg-white/[0.06] text-zinc-100'
+        : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
     }`;
 
   const renderBadge = (count: number, testId: string, compact: boolean) =>
@@ -177,7 +325,7 @@ export function Sidebar({
         <button
           type="button"
           data-testid="sidebar-brand"
-          onClick={() => onNavigate('today')}
+          onClick={() => handleParentNavigate('today')}
           aria-label={t('brand.fullName')}
           title={t('brand.fullName')}
           className={`rounded-[10px] overflow-hidden ring-1 ring-white/10 cursor-pointer flex-shrink-0 focus-visible:outline-none ${
@@ -211,91 +359,147 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* Scrollable destinations; the user card stays pinned below. */}
+      {/* Scrollable browse pages; the blog/admin strip and user card stay pinned. */}
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar px-2 py-3">
         <nav aria-label={t('nav.aria.primary')}>
           <ul className="flex flex-col gap-1">
-            {NAV_TABS.map(tab => {
+            {groups.map(({ tab, items }) => {
               const Icon = tab.icon;
               const active = state.tab === tab.id;
               const label = t(tab.labelKey);
+              const open = isExpanded(tab.id);
+              const submenuId = `sidebar-submenu-${tab.id}`;
               return (
-                <li key={tab.id}>
-                  <button
-                    type="button"
-                    data-testid={`sidebar-nav-${tab.id}`}
-                    aria-current={active ? 'page' : undefined}
-                    aria-label={label}
-                    title={label}
-                    onClick={() => onNavigate(tab.id)}
-                    className={navButtonClass(active)}
-                  >
-                    <span className={collapsed ? 'relative' : 'relative shrink-0'}>
-                      <Icon
-                        className={`w-[18px] h-[18px] ${active ? 'text-brand-400' : 'text-zinc-500'}`}
-                        aria-hidden="true"
-                      />
-                      {tab.id === 'practice' && collapsed && renderBadge(dueCount, 'sidebar-practice-badge', true)}
-                    </span>
+                <li key={tab.id} data-testid={`sidebar-group-${tab.id}`} data-expanded={open ? 'true' : 'false'}>
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      data-testid={`sidebar-nav-${tab.id}`}
+                      aria-current={active ? 'page' : undefined}
+                      aria-label={label}
+                      title={label}
+                      onClick={() => handleParentNavigate(tab.id)}
+                      className={`group flex h-10 min-w-0 flex-1 items-center rounded-xl transition-colors duration-200 ${
+                        collapsed ? 'justify-center' : 'gap-3 px-3'
+                      } ${
+                        active
+                          ? 'bg-white/[0.07] text-zinc-50'
+                          : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5'
+                      }`}
+                    >
+                      <span className={collapsed ? 'relative' : 'relative shrink-0'}>
+                        <Icon
+                          className={`w-[18px] h-[18px] ${active ? 'text-brand-400' : 'text-zinc-500'}`}
+                          aria-hidden="true"
+                        />
+                        {tab.id === 'practice' && collapsed && renderBadge(dueCount, 'sidebar-practice-badge', true)}
+                      </span>
+                      {!collapsed && (
+                        <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">{label}</span>
+                      )}
+                      {tab.id === 'practice' && !collapsed && renderBadge(dueCount, 'sidebar-practice-badge', false)}
+                    </button>
                     {!collapsed && (
-                      <span className="min-w-0 truncate text-sm font-medium">{label}</span>
+                      <button
+                        type="button"
+                        data-testid={`sidebar-expand-${tab.id}`}
+                        aria-expanded={open}
+                        aria-controls={submenuId}
+                        aria-label={open
+                          ? t('sidebar.submenu.collapse', { label })
+                          : t('sidebar.submenu.expand', { label })}
+                        title={open
+                          ? t('sidebar.submenu.collapse', { label })
+                          : t('sidebar.submenu.expand', { label })}
+                        onClick={() => toggleExpanded(tab.id)}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-600 hover:text-zinc-200 hover:bg-white/5 transition-colors"
+                      >
+                        <ChevronRight
+                          className={`w-3.5 h-3.5 transition-transform duration-200 ease-apple ${
+                            open ? 'rotate-90' : ''
+                          }`}
+                          aria-hidden="true"
+                        />
+                      </button>
                     )}
-                    {tab.id === 'practice' && !collapsed && renderBadge(dueCount, 'sidebar-practice-badge', false)}
-                  </button>
+                  </div>
+                  {!collapsed && open && (
+                    <ul
+                      id={submenuId}
+                      data-testid={submenuId}
+                      className="mt-1 ml-[26px] flex flex-col gap-0.5 border-l border-white/5 pl-2"
+                    >
+                      {items.map((item) => (
+                        <li
+                          key={item.id}
+                          data-testid={item.legacyQuickId ? `sidebar-quick-${item.legacyQuickId}` : undefined}
+                        >
+                          <button
+                            type="button"
+                            data-testid={`sidebar-sub-${item.id}`}
+                            aria-current={item.active ? 'page' : undefined}
+                            onClick={item.onSelect}
+                            className={subItemClass(item.active)}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`h-1 w-1 shrink-0 rounded-full ${
+                                item.active ? 'bg-brand-400' : 'bg-zinc-700'
+                              }`}
+                            />
+                            <span className="min-w-0 truncate">{t(item.labelKey)}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               );
             })}
           </ul>
         </nav>
+      </div>
 
-        <div className="mt-4 border-t border-white/5 pt-3">
-          {!collapsed && (
-            <p className="px-3 pb-1.5 text-[10px] font-medium text-zinc-600">{t('sidebar.quick')}</p>
+      {/* Pinned global entries: official blog, then admin console (admins only). */}
+      <div className="flex-none border-t border-white/5 px-2 py-2">
+        <nav aria-label={t('sidebar.fixed')} className="flex flex-col gap-0.5">
+          <button
+            type="button"
+            data-testid="sidebar-blog"
+            aria-current={subKind === 'blog' ? 'page' : undefined}
+            aria-label={t('sidebar.blog')}
+            title={t('sidebar.blog')}
+            onClick={() => selectShortcut(onOpenBlog)}
+            className={navButtonClass(subKind === 'blog')}
+          >
+            <Newspaper
+              className={`w-[18px] h-[18px] ${subKind === 'blog' ? 'text-brand-400' : 'text-zinc-500'}`}
+              aria-hidden="true"
+            />
+            {!collapsed && (
+              <span className="min-w-0 truncate text-sm font-medium">{t('sidebar.blog')}</span>
+            )}
+          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              data-testid="sidebar-admin"
+              aria-current={subKind === 'admin' ? 'page' : undefined}
+              aria-label={t('sidebar.admin')}
+              title={t('sidebar.admin')}
+              onClick={() => selectShortcut(onOpenAdmin)}
+              className={navButtonClass(subKind === 'admin')}
+            >
+              <ShieldCheck
+                className={`w-[18px] h-[18px] ${subKind === 'admin' ? 'text-brand-400' : 'text-zinc-500'}`}
+                aria-hidden="true"
+              />
+              {!collapsed && (
+                <span className="min-w-0 truncate text-sm font-medium">{t('sidebar.admin')}</span>
+              )}
+            </button>
           )}
-          <div className="flex flex-col gap-3">
-            {quickGroups.map((group, groupIndex) => (
-              <section
-                key={group.id}
-                aria-label={t(group.labelKey)}
-                className={collapsed && groupIndex > 0 ? 'border-t border-white/5 pt-2' : undefined}
-              >
-                {!collapsed && (
-                  <p className="px-3 pb-1 text-[10px] font-medium text-zinc-600">{t(group.labelKey)}</p>
-                )}
-                <ul className="flex flex-col gap-0.5">
-                  {group.items.map(item => {
-                    const Icon = item.icon;
-                    const label = t(item.labelKey);
-                    const active = activeQuick === item.id;
-                    return (
-                      <li key={item.id}>
-                        <button
-                          type="button"
-                          data-testid={`sidebar-quick-${item.id}`}
-                          aria-current={active ? 'page' : undefined}
-                          aria-label={label}
-                          title={label}
-                          onClick={item.onClick}
-                          className={navButtonClass(active)}
-                        >
-                          <span className={collapsed ? 'relative' : 'relative shrink-0'}>
-                            <Icon
-                              className={`w-[18px] h-[18px] ${active ? 'text-brand-400' : 'text-zinc-500'}`}
-                              aria-hidden="true"
-                            />
-                          </span>
-                          {!collapsed && (
-                            <span className="min-w-0 truncate text-sm font-medium">{label}</span>
-                          )}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        </div>
+        </nav>
       </div>
 
       {/* Pinned footer: account + language + settings. */}
@@ -305,7 +509,7 @@ export function Sidebar({
             <button
               type="button"
               data-testid="sidebar-user"
-              onClick={() => (isGuest ? onRequestLogin?.() : onNavigate('profile'))}
+              onClick={() => (isGuest ? onRequestLogin?.() : handleParentNavigate('profile'))}
               aria-label={t('topbar.accountAria')}
               title={isGuest ? t('sidebar.loginHint') : displayName || t('topbar.accountAria')}
               className="w-9 h-9 rounded-full bg-zinc-800/80 border border-white/10 flex items-center justify-center text-xs font-semibold text-zinc-200 hover:border-white/20 hover:bg-zinc-700/80 transition-colors"
@@ -316,7 +520,7 @@ export function Sidebar({
             <button
               type="button"
               data-testid="sidebar-settings"
-              onClick={() => onNavigate('profile')}
+              onClick={() => handleParentNavigate('profile')}
               aria-label={t('profile.settings')}
               title={t('profile.settings')}
               className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-400 hover:text-zinc-100 transition-colors"
@@ -329,7 +533,7 @@ export function Sidebar({
             <button
               type="button"
               data-testid="sidebar-user"
-              onClick={() => (isGuest ? onRequestLogin?.() : onNavigate('profile'))}
+              onClick={() => (isGuest ? onRequestLogin?.() : handleParentNavigate('profile'))}
               aria-label={t('topbar.accountAria')}
               title={isGuest ? t('sidebar.loginHint') : user?.email || displayName}
               className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/5 transition-colors"
@@ -354,7 +558,7 @@ export function Sidebar({
               <button
                 type="button"
                 data-testid="sidebar-settings"
-                onClick={() => onNavigate('profile')}
+                onClick={() => handleParentNavigate('profile')}
                 aria-label={t('profile.settings')}
                 title={t('profile.settings')}
                 className="ml-auto inline-flex items-center justify-center w-9 h-9 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-400 hover:text-zinc-100 transition-colors"

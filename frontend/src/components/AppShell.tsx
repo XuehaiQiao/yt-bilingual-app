@@ -18,10 +18,13 @@ import { useI18n } from '../i18n/I18nProvider';
 import { BottomBar } from './BottomBar';
 import { LanguageMenu } from './LanguageMenu';
 import { ModelBar } from './ModelBar';
-import { Sidebar } from './Sidebar';
+import { Sidebar, type ProfileSectionId } from './Sidebar';
 import { TAB_SUBTITLE_KEYS } from '../lib/navTabs';
 import { TopBarTabs } from './TopBarTabs';
 import type { TranslationKey } from '../i18n';
+
+/** Re-exported so App can type the 我的 scroll callback without importing Sidebar. */
+export type { ProfileSectionId };
 
 const TAB_LABEL_KEYS: Record<TabId, TranslationKey> = {
   today: 'nav.today',
@@ -51,6 +54,12 @@ interface AppShellProps {
   onOpenLibrary: () => void;
   onOpenBooks: () => void;
   onOpenDiscover: () => void;
+  onOpenReport: () => void;
+  onOpenReview: () => void;
+  onOpenExam: () => void;
+  onOpenPlacement: () => void;
+  onOpenAbility: () => void;
+  onOpenProfileSection: (section: ProfileSectionId) => void;
   onOpenBlog: () => void;
   onOpenAdmin: () => void;
   children: ReactNode;
@@ -72,6 +81,12 @@ export function AppShell({
   onOpenLibrary,
   onOpenBooks,
   onOpenDiscover,
+  onOpenReport,
+  onOpenReview,
+  onOpenExam,
+  onOpenPlacement,
+  onOpenAbility,
+  onOpenProfileSection,
   onOpenBlog,
   onOpenAdmin,
   children,
@@ -93,11 +108,18 @@ export function AppShell({
           state={state}
           dueCount={dueCount}
           onNavigate={onNavigate}
+          onStartLearning={onStartLearning}
           onOpenHistory={onOpenHistory}
           onOpenSentences={onOpenSentences}
           onOpenLibrary={onOpenLibrary}
           onOpenBooks={onOpenBooks}
           onOpenDiscover={onOpenDiscover}
+          onOpenReport={onOpenReport}
+          onOpenReview={onOpenReview}
+          onOpenExam={onOpenExam}
+          onOpenPlacement={onOpenPlacement}
+          onOpenAbility={onOpenAbility}
+          onOpenProfileSection={onOpenProfileSection}
           onOpenBlog={onOpenBlog}
           onOpenAdmin={onOpenAdmin}
           onRequestLogin={onRequestLogin}

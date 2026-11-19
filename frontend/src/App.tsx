@@ -39,7 +39,7 @@ import { ImportedBookReaderScreen } from './components/ImportedBookReaderScreen'
 import { BlogScreen } from './components/BlogScreen';
 import { AdminConsoleScreen } from './components/AdminConsoleScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
-import { AppShell } from './components/AppShell';
+import { AppShell, type ProfileSectionId } from './components/AppShell';
 import { LearningHeader } from './components/LearningHeader';
 import { TodayScreen } from './components/TodayScreen';
 import { CourseScreen } from './components/CourseScreen';
@@ -155,6 +155,13 @@ const PARENT_LABEL_KEYS: Record<TabId, TranslationKey> = {
   content: 'nav.content',
   practice: 'nav.practice',
   profile: 'nav.profile',
+};
+
+/** Sections of the 我的 page the desktop sidebar can scroll to. */
+const PROFILE_SECTION_TESTIDS: Record<Exclude<ProfileSectionId, 'account'>, string> = {
+  balance: 'account-balance',
+  settings: 'account-settings',
+  about: 'account-about',
 };
 
 function formatClock(seconds: number): string {
@@ -2252,14 +2259,48 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // owns the destination, the content page scrolls to the section. Sections
   // mount asynchronously, so the scroll retries briefly instead of polling
   // from the click handler (navigation-model §9).
-  const scrollToPageAnchor = useCallback((testId: string, attempts = 0) => {
-    const element = document.querySelector(`[data-page-scroll] [data-testid="${testId}"]`);
+  const scrollToPageAnchor = useCallback((testId: string, attempts = 0, fallbackTestId?: string) => {
+    const findTarget = () => {
+      const primary = document.querySelector(`[data-page-scroll] [data-testid="${testId}"]`);
+      if (primary) return primary;
+      return fallbackTestId
+        ? document.querySelector(`[data-page-scroll] [data-testid="${fallbackTestId}"]`)
+        : null;
+    };
+    const element = findTarget();
     if (element instanceof HTMLElement) {
       const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       element.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      // Async sections change height after the first scroll (sentence packs
+      // load an empty card, the report rail settles …), which can leave the
+      // target above the viewport. Re-align once after the layout settles; a
+      // target already parked at the top is left alone.
+      if (attempts === 0) {
+        window.setTimeout(() => {
+          const target = findTarget();
+          const scroller = target?.closest('[data-page-scroll]');
+          if (!(target instanceof HTMLElement) || !(scroller instanceof HTMLElement)) return;
+          const offset = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+          if (offset < -8 || offset > 160) {
+            target.scrollIntoView({
+              behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+              block: 'start',
+            });
+          }
+        }, 450);
+      }
       return;
     }
-    if (attempts < 12) window.setTimeout(() => scrollToPageAnchor(testId, attempts + 1), 100);
+    if (attempts < 12) {
+      window.setTimeout(() => scrollToPageAnchor(testId, attempts + 1, fallbackTestId), 100);
+    }
+  }, []);
+
+  const scrollPageToTop = useCallback(() => {
+    const scroller = document.querySelector('[data-page-scroll]');
+    if (!(scroller instanceof HTMLElement)) return;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    scroller.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
   }, []);
 
   const anchorTestId = (anchor: SectionAnchor) => (
@@ -2275,12 +2316,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const handleOpenHistoryShortcut = () => {
     // Today's history list has no URL anchor (P2): scroll after the tab renders.
+    // The old `today-history-list` wrapper was replaced by the unified
+    // recent-learning card, so fall back to `recent-learning` when absent.
     if (state.tab === 'today' && !state.sub) {
-      scrollToPageAnchor('today-history-list');
+      scrollToPageAnchor('today-history-list', 0, 'recent-learning');
       return;
     }
     go('today');
-    window.setTimeout(() => scrollToPageAnchor('today-history-list'), 100);
+    window.setTimeout(
+      () => scrollToPageAnchor('today-history-list', 0, 'recent-learning'),
+      100,
+    );
   };
 
   const openSectionAnchor = (anchor: SectionAnchor) => {
@@ -2300,6 +2346,66 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // level there still opens the sentence view.
   const handleOpenSentencesShortcut = () => {
     openSectionAnchor('sentence-packs');
+  };
+
+  // ── Desktop sidebar second-level entries ─────────────────────────────────
+  // Each child forces its owning tab before opening, so the expanded group and
+  // the source tab in the URL agree. The route model is unchanged: tab root
+  // (replace) → existing sub view (push).
+  const openSubFromTab = (tab: TabId, sub: SubRoute) => {
+    if (state.tab !== tab) go(tab);
+    openSub(sub);
+  };
+
+  const handleOpenDiscoverShortcut = () => {
+    if (!requireAccount()) return;
+    // A sidebar entry never replays a topic handed over earlier.
+    setDiscoverInitialQuery(null);
+    openSubFromTab('content', { kind: 'discover' });
+  };
+
+  const handleOpenReportShortcut = () => {
+    if (!requireAccount()) return;
+    openSubFromTab('today', { kind: 'report' });
+  };
+
+  const handleOpenReviewShortcut = () => {
+    if (!requireAccount()) return;
+    openSubFromTab('practice', { kind: 'review' });
+  };
+
+  const handleOpenExamShortcut = () => {
+    if (!requireAccount()) return;
+    openSubFromTab('practice', { kind: 'exam' });
+  };
+
+  const handleOpenPlacementShortcut = () => {
+    const view = placementProfile ? 'profile' : 'intro';
+    if (state.tab === 'practice' && state.sub?.kind === 'placement') {
+      replace({ tab: 'practice', sub: { kind: 'placement', view } });
+      return;
+    }
+    openSubFromTab('practice', { kind: 'placement', view });
+  };
+
+  const handleOpenAbilityShortcut = () => {
+    openSubFromTab('profile', { kind: 'ability' });
+  };
+
+  const handleOpenProfileSection = (section: ProfileSectionId) => {
+    const scroll = () => {
+      if (section === 'account') {
+        scrollPageToTop();
+        return;
+      }
+      scrollToPageAnchor(PROFILE_SECTION_TESTIDS[section]);
+    };
+    if (state.tab === 'profile' && !state.sub) {
+      scroll();
+      return;
+    }
+    go('profile');
+    window.setTimeout(scroll, 100);
   };
 
   // Desktop top-bar shortcut: Content page, paste input focused.
@@ -3388,7 +3494,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         onOpenSentences={handleOpenSentencesShortcut}
         onOpenLibrary={handleOpenLibraryShortcut}
         onOpenBooks={handleOpenBooksShortcut}
-        onOpenDiscover={handleOpenDiscover}
+        onOpenDiscover={handleOpenDiscoverShortcut}
+        onOpenReport={handleOpenReportShortcut}
+        onOpenReview={handleOpenReviewShortcut}
+        onOpenExam={handleOpenExamShortcut}
+        onOpenPlacement={handleOpenPlacementShortcut}
+        onOpenAbility={handleOpenAbilityShortcut}
+        onOpenProfileSection={handleOpenProfileSection}
         onOpenBlog={handleOpenBlog}
         onOpenAdmin={handleOpenAdmin}
       >

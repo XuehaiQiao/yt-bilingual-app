@@ -385,7 +385,11 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   );
 
   const settingsSection = (
-    <section aria-label={t('account.settings.title')} className="mt-8">
+    <section
+      aria-label={t('account.settings.title')}
+      data-testid="account-settings"
+      className="mt-8"
+    >
       <CardTitle icon={<Languages className="w-5 h-5" />}>{t('account.settings.title')}</CardTitle>
       <div className="mt-3 divide-y divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40">
         <SettingRow
@@ -478,7 +482,11 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   );
 
   const aboutSection = (
-    <section aria-label={t('account.about.title')} className="mt-8">
+    <section
+      aria-label={t('account.about.title')}
+      data-testid="account-about"
+      className="mt-8"
+    >
       <CardTitle icon={<FileText className="w-5 h-5" />}>{t('account.about.title')}</CardTitle>
       <div className="mt-3 divide-y divide-white/5 rounded-2xl border border-white/5 bg-zinc-900/40 overflow-hidden">
         <SettingRow icon={<FileText className="w-4 h-4" />} label={t('account.about.version')}>
