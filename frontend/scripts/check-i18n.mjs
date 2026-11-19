@@ -147,8 +147,9 @@ const keyReference = (key) => new RegExp(`(['"\`])${escapeRegExp(key)}\\1`);
 /**
  * Validate allowlist data: reasons required, live entries need an existing
  * rendering path, no duplicates, no unknown keys. Also proves dead keys are
- * still unreferenced by live TS/TSX code (the pinned InputScreen.tsx is the
- * only allowed exception).
+ * still unreferenced by live TS/TSX code. `deadKeys` is empty after QA-X-25
+ * (2026-11-19); `entry.path` remains supported for a temporary pinned
+ * component when a dead key must stay for tsc's TranslationKey type.
  * @returns {{problems: string[], keys: Set<string>, liveCount: number, deadCount: number}}
  */
 export function validateAllowlist({ data, base, sourceFiles, rootDir = root }) {
@@ -190,9 +191,9 @@ export function validateAllowlist({ data, base, sourceFiles, rootDir = root }) {
     }
   }
 
-  // Dead keys must not be referenced by live code. The one allowed exception is
-  // the pinned dead component (`entry.path`), which keeps tsc's TranslationKey
-  // type happy until QA-X-25 removes it.
+  // Dead keys must not be referenced by live code. `deadKeys` is empty after
+  // QA-X-25; the optional `entry.path` pin is kept for a future temporary
+  // dead component that must exist until its removal lands.
   const sourceText = new Map(sourceFiles.map((file) => [file, readFileSync(file, 'utf8')]));
   for (const entry of dead) {
     if (!entry || typeof entry.key !== 'string') continue;
@@ -241,7 +242,7 @@ export function run({ rootDir = root } = {}) {
 
   if (allowlist.deadCount > 0) {
     warnings.push(
-      `${allowlist.deadCount} dead zh-CN keys are CJK-exempt (0 live refs or only the pinned dead InputScreen.tsx); see scripts/i18n-allowlist.json — remove with QA-X-25`,
+      `${allowlist.deadCount} dead zh-CN keys are CJK-exempt (0 live refs); see scripts/i18n-allowlist.json — remove them or prove the pin`,
     );
   }
 
@@ -259,6 +260,7 @@ export function run({ rootDir = root } = {}) {
 function main() {
   const result = run();
   const cjkCount = result.total - result.liveCount - result.deadCount;
+  const deadNote = result.deadCount > 0 ? ` + ${result.deadCount} dead keys` : '';
   for (const warning of result.warnings) console.warn(`WARN ${warning}`);
   for (const problem of result.problems) console.error(`ERR  ${problem}`);
   if (result.problems.length > 0) {
@@ -267,7 +269,7 @@ function main() {
   }
   console.log(
     `i18n check passed: ${result.total} keys × ${1 + OTHERS.length} languages, placeholders aligned, no CJK in ${OTHERS.join(', ')}, ` +
-      `zh-CN CJK ${cjkCount}/${result.total} (${result.liveCount} English-safe allowlisted + ${result.deadCount} dead keys), ` +
+      `zh-CN CJK ${cjkCount}/${result.total} (${result.liveCount} English-safe allowlisted${deadNote}), ` +
       `V-06 ${result.v06Count}/${result.v06Count} translated + ${result.adjudicatedCount} adjudicated.`,
   );
 }

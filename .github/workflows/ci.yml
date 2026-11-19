@@ -73,3 +73,25 @@ jobs:
 
       - name: i18n check
         run: npm run check:i18n
+
+  # W5b 扫描（report-only）。基线见
+  # docs/design-governance/reports/ui-baseline-2026-11-19.md。
+  # 故意不接 --fail：存量基线（约 846 行 token 命中）远未清零，接阻断会必红；
+  # 按 design-gate.md §4.3 的节奏，先本地绿 → CI 只报告 → 清理后再阻断。
+  # `|| true` 只用于「不阻断」，扫描失败/脚本报错仍会留在日志里供排查。
+  design-scan:
+    name: design scan (report-only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Token scan (report only)
+        run: node scripts/check-design-tokens.mjs --baseline || true
+
+      - name: Selector scan (report only)
+        run: node scripts/check-ui-selectors.mjs --baseline || true

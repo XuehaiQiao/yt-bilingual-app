@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "notes": "zh-CN 值允许不含 CJK 的白名单（V-06 / QA-X-17 / 设计 QA 附录 A.3）。每条必须有 reason；live 键填 path（渲染来源，存在性由 check-i18n.mjs 校验）。deadKeys 是已确认无活代码引用的键：9 条原先仅被死代码 src/components/InputScreen.tsx 引用，该文件已随 B2 删除；5 条全仓 0 引用；均保留键结构，随 QA-X-25 清理。",
+  "notes": "zh-CN 值允许不含 CJK 的白名单（V-06 / QA-X-17 / 设计 QA 附录 A.3）。每条必须有 reason；live 键填 path（渲染来源，存在性由 check-i18n.mjs 校验）。deadKeys 是已确认无活代码引用的 CJK 豁免键：QA-X-25 已于 2026-11-19 清空——14 个死键已从 zh-CN/vi-VN 删除，当前 1677 键、0 条 deadKeys；该数组保留给未来的死键扫描。",
   "allowlist": [
     {
       "key": "brand.engine",
@@ -108,62 +108,5 @@
       "path": "src/components/VocabularyBookScreen.tsx"
     }
   ],
-  "deadKeys": [
-    {
-      "key": "common.back",
-      "reason": "死键：全仓 0 引用；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "common.thumbnailAlt",
-      "reason": "死键：全仓 0 引用；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "home.heroTitle",
-      "reason": "死键：全仓 0 引用（旧首页 hero 已移除）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "home.heroSubtitle",
-      "reason": "死键：全仓 0 引用（旧首页 hero 已移除）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "share.source.video",
-      "reason": "死键：全仓 0 引用（分享卡改用 share.source.local 等）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "common.notRecorded",
-      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "common.noSessions",
-      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "common.studiedTimes",
-      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "common.watchedPercent",
-      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "home.continueLearning",
-      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "home.continueEmpty",
-      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "home.localShows",
-      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "home.subscriptions",
-      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    },
-    {
-      "key": "home.latestVideos",
-      "reason": "死键：全仓 0 引用（InputScreen.tsx 已在 B2 删除，无任何 import）；保留仅为维持 1691 键结构，随 QA-X-25 清理"
-    }
-  ]
+  "deadKeys": []
 }

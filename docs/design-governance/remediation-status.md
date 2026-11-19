@@ -13,15 +13,26 @@
 | 工作流 | 状态 | 证据 / 仍未关 |
 |---|---|---|
 | W1 导航 B0 | ✅ 已实现 | `nav.ts/useNav/App` 全前缀、push/back、锚点、login next；`check-nav` 12/12、`check-nav-e2e` 10/10。**N-01 仍剩 BlogScreen 不接受 slug，深链显示列表；N-08 阅读器列表→文章未动** |
-| W2 V-06 | ✅ 默认可见 31 键已中文化 + CJK 规则 + 负例 | `check:i18n` 绿；31/31 + `sentences.day`；14 个死键仍在白名单（InputScreen 未删），待 QA-X-25 清理 |
+| W2 V-06 | ✅ 默认可见 31 键已中文化 + CJK 规则 + 负例；QA-X-25 死键已清理 | `check:i18n` 绿；31/31 + `sentences.day`；14 个死键已从 zh/vi 删除、`deadKeys=[]`、**1677** 键 |
 | W3-B1 基座 | ✅ | tokens/index.css/lib/`ui/Button`/AccountScreen 最小切片；tsc/build/ESLint 绿 |
 | W3-B4-P0 三态 | ✅ | 新 `ui/StateView`；TodayScreen/ContentScreen/RecentLearning/TodayWorkbench 失败→错误面板+重试；Playwright 32/32 |
 | W4 L-01 | ✅ | 移动学习页单滚动；删 52vh/内层滚动/pb-[45vh]；375/390/430 Playwright 200/200；桌面回归通过 |
-| W5 门禁加固 | 🟡 文档/脚本已交付 | 证据绑 SHA、`scripts/gate-receipt.mjs`（report-only，自测 42/42）、G1/G2/G4 扩面、QA-X-02 全 14 浮层、NAV-21/X-29/30/31、QA 119 条；**仍未落地**：`/dev/ui` 矩阵、浏览器对比度实测、token/selector 自动扫描 |
+| W5 门禁加固 | 🟡 文档/脚本已交付 | 证据绑 SHA、`scripts/gate-receipt.mjs`（report-only，自测 42/42）、G1/G2/G4 扩面、QA-X-02 全 14 浮层、NAV-21/X-29/30/31、QA 119 条；`token/selector` 扫描已接 CI **report-only**（`design-scan`）；**仍未落地**：`/dev/ui` 矩阵、浏览器对比度实测 |
 
-**当前仍未关闭的 P0**：N-01（博客 slug）、I-01（失败当空态）、I-02（频道弹窗键盘）、L-01（移动双滚动）。N-02/N-03/N-18 已由 W1 覆盖（需以 e2e 为准）；V-06 默认可见键已关闭，死键清理是上线前收尾项（旧 QA-X-25，已迁出）。
+### 2026-11-19 收尾复测（QA-X-25 / 屏级覆盖 / CI）
 
-**下一批**：W4 + W3-B2/B4-P0（可并行，文件边界需约定）；W5 的 `/dev/ui` 矩阵、浏览器对比度实测、token/selector 自动扫描随 W3/发布前 QA 收尾；完成后重新跑门禁 3/4 验收。
+> 快照：工作区 `HEAD 38e362d` + 并行分工的未提交 UI 改动｜`npm run check:i18n` 绿｜`npx tsc -b` + `npx vite build` 绿｜**未 git 提交**。
+
+| 项 | 结果 | 证据 |
+|---|---|---|
+| QA-X-25 死键 | ✅ 14 个死键从 `zh-CN`/`vi-VN` 同步删除；allowlist `deadKeys=[]`；全仓 0 代码引用（仅 2 处历史文档提及 `home.hero*`） | `npm run check:i18n`：**1677** 键（21 白名单 + 0 死键）；`node --test scripts/check-i18n.test.mjs` 12/12 |
+| 屏级覆盖（A2 口径，27 canonical） | ❌ **21/27 = 77.8%**；剩余 6 条：`#/profile`（axis）、`#/content/reader`（分栏 + canvas + switch）、`#/content/sentences`（canvas）、`#/content/book`、`#/content/imported-book`、`#/learn/library`（ReadingHighlight switch） | `reports/coverage-2026-11-19.md` |
+| 元素口径（A2 596 固定分母） | 590/596 = 99.0%；Menu/Table/chip/公开页已迁，剩 switch 1、axis 1、banner 2、canvas 1、分栏 1 | 同上 |
+| CI | ✅ 新增 `design-scan` **report-only** job（两个 W5b 脚本 `--baseline || true`）；未接 `--fail`，避免 846 行存量基线必红；backend/frontend job 未改 | `.github/workflows/ci.yml`；YAML 解析通过；本地两脚本退出码 0 |
+
+**当前仍未关闭的 P0**：N-01（博客 slug）、I-01（失败当空态）、I-02（频道弹窗键盘）、L-01（移动双滚动）——以各自 handoff 的最新证据为准。N-02/N-03/N-18 已由 W1 覆盖（需以 e2e 为准）；V-06 默认可见键已关闭；QA-X-25 死键已清理（`check:i18n` 1677 键）。**屏级覆盖 21/27 未达 80%，是收尾项，不是已关闭。**
+
+**下一批**：屏级覆盖从 77.8% 补到 ≥80%——剩余 axis（`VocabAxis`）、canvas（`ShareCardDialog`）、分栏（`ReaderScreen` 双语双栏）、ReadingHighlight switch 4 类（A4 已裁为保留/后续，不重复造共享件）；`/dev/ui` 矩阵与浏览器对比度随并行分工收口；完成后重跑门禁 3/4 验收。
 
 ---
 
@@ -71,6 +82,8 @@
 ---
 
 ## 3. 剩余工作（W1–W5，按 W0 交接口径）
+
+> 本节是 W0 写作时快照，勿据此判当前完成。2026-11-19 的最新状态见文首「执行更新」与「收尾复测」：W1/W2/W4、V-06/QA-X-25 已关闭；屏级覆盖 21/27，剩余 4 类实例。
 
 | 工作流 | 状态（W0 写作时） | 说明 |
 |---|---|---|
@@ -192,4 +205,4 @@ git log --oneline -1     # 仍为 5996289（W0 未提交）
 3. **A4 自查脚本未接 CI**：行号存在/唯一目前是人工可跑脚本；W5 已落地 `gate-receipt`（report-only，未接 CI）。
 4. **QA 计数 115 是文档口径**：§4.2 的 `grep` 只匹配主表行；附录 E 的 ID 用反引号包裹，不计入。不要把 E.2/E.3 的追溯行当成执行项。
 5. **旧 IA 表保留为历史**：§7.2/§7.3/§8.2 仍含旧 URL 示例，但已有「已废止」块；实现时只能引用 navigation-model，不能以旧表为准。
-6. **V-06 仍未关闭**：31+1 键未中文化、CI 规则未接；`check:i18n` 现在仍绿是「测不出」，不是「已修好」。
+6. **V-06 已关闭（2026-11-19 收尾）**：31+1 键中文化、CI CJK 规则已接；QA-X-25 的 14 个死键已删，`check:i18n` **1677** 键。屏级覆盖仍未达标（21/27），见顶部收尾复测。

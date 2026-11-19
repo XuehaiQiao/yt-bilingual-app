@@ -6,11 +6,33 @@
 //   node --test scripts/check-i18n.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkLanguage, checkV06, checkZhCjk, placeholder, validateAllowlist } from './check-i18n.mjs';
 
 const frontendRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+// QA-X-25: these were confirmed dead (0 live refs) and deleted from both
+// dictionaries on 2026-11-19. Keep the list so a regression that re-adds one
+// without a caller fails loudly.
+const REMOVED_DEAD_KEYS = [
+  'common.back',
+  'common.thumbnailAlt',
+  'home.heroTitle',
+  'home.heroSubtitle',
+  'share.source.video',
+  'common.notRecorded',
+  'common.noSessions',
+  'common.studiedTimes',
+  'common.watchedPercent',
+  'home.continueLearning',
+  'home.continueEmpty',
+  'home.localShows',
+  'home.subscriptions',
+  'home.latestVideos',
+];
 
 test('negative: a plain-English zh-CN value without an allowlist entry is rejected', () => {
   const problems = checkZhCjk({
@@ -105,4 +127,39 @@ test('negative: an allowlist entry needs a reason, a live path, and no duplicate
   assert.ok(result.problems.some((problem) => problem.includes('live key "brand.engine" needs a rendering path')));
   assert.ok(result.problems.some((problem) => problem.includes('"demo.english" path does not reference the key')));
   assert.ok(result.problems.some((problem) => problem.includes('duplicate key "brand.engine"')));
+});
+
+test('QA-X-25: the 14 dead keys are gone from zh-CN and vi-VN', () => {
+  const zh = JSON.parse(readFileSync(resolve(frontendRoot, 'src/i18n/zh-CN.json'), 'utf8'));
+  const vi = JSON.parse(readFileSync(resolve(frontendRoot, 'src/i18n/vi-VN.json'), 'utf8'));
+  for (const key of REMOVED_DEAD_KEYS) {
+    assert.ok(!(key in zh), `${key} is still in zh-CN.json`);
+    assert.ok(!(key in vi), `${key} is still in vi-VN.json`);
+  }
+});
+
+test('QA-X-25: the allowlist deadKeys list is empty', () => {
+  const data = JSON.parse(readFileSync(resolve(frontendRoot, 'scripts/i18n-allowlist.json'), 'utf8'));
+  assert.ok(Array.isArray(data.deadKeys), 'deadKeys must stay an array for the guard');
+  assert.equal(data.deadKeys.length, 0);
+});
+
+test('negative: a dead key referenced by live source is rejected', () => {
+  const dir = mkdtempSync(resolve(tmpdir(), 'i18n-dead-'));
+  const liveFile = resolve(dir, 'Live.tsx');
+  writeFileSync(liveFile, "export const label = 'demo.dead';\n");
+  try {
+    const result = validateAllowlist({
+      data: { allowlist: [], deadKeys: [{ key: 'demo.dead', reason: 'test fixture' }] },
+      base: { 'demo.dead': '死键' },
+      sourceFiles: [liveFile],
+      rootDir: dir,
+    });
+    assert.ok(
+      result.problems.some((problem) => problem.includes('dead key "demo.dead" is referenced by live code')),
+      result.problems.join('\n'),
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
