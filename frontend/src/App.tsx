@@ -3390,7 +3390,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onRead={handleStartRead}
             onOpenLibraryVideo={(id) => { void handleOpenLibraryVideo(id); }}
             onOpenLibraryArticle={(id) => { void handleOpenLibraryArticle(id); }}
-            onOpenBook={(id) => openSub({ kind: 'book', bookId: id })}
             onOpenBookSeries={(id) => openSub({ kind: 'book-series', seriesId: id })}
             onOpenImportedBook={(id) => openSub({ kind: 'imported-book', bookId: id })}
             bookImportSeed={bookImportSeed}

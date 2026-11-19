@@ -60,7 +60,6 @@ interface ContentScreenProps {
     onRead: (value: string) => void;
     onOpenLibraryVideo: (id: string) => void;
     onOpenLibraryArticle: (id: string) => void;
-    onOpenBook: (id: string) => void;
     onOpenBookSeries: (id: string) => void;
     onOpenImportedBook: (id: string) => void;
     /** A public-domain book link handed over from the article reader. */
@@ -87,7 +86,6 @@ export function ContentScreen({
     onRead,
     onOpenLibraryVideo,
     onOpenLibraryArticle,
-    onOpenBook,
     onOpenBookSeries,
     onOpenImportedBook,
     bookImportSeed,
@@ -488,7 +486,6 @@ export function ContentScreen({
                 {/* Public-domain books: 3 launch series, source fetched on demand. */}
                 <section data-testid="content-books">
                     <BooksSection
-                        onOpenBook={onOpenBook}
                         onOpenSeries={onOpenBookSeries}
                         onOpenImportedBook={onOpenImportedBook}
                         onRequestLogin={onRequestLogin}

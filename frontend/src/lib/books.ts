@@ -13,6 +13,18 @@ export type BookStatus = 'available' | 'coming_soon';
 /** Paragraph completeness of one chapter translation (`missing` is the old default). */
 export type BookTranslationStatus = 'cached' | 'partial' | 'missing';
 
+/** Source-site cover for a catalog book, when the provider exposes one. */
+export function bookCoverUrl(book: Pick<BookSummary, 'gutenbergId' | 'sourceUrl'>): string | null {
+    if (typeof book.gutenbergId === 'number' && book.gutenbergId > 0) {
+        return `https://www.gutenberg.org/cache/epub/${book.gutenbergId}/pg${book.gutenbergId}.cover.medium.jpg`;
+    }
+    const standard = /standardebooks\.org\/ebooks\/([^/]+)\/([^/]+)/i.exec(book.sourceUrl);
+    if (standard) {
+        return `https://standardebooks.org/ebooks/${standard[1]}/${standard[2]}/downloads/cover.jpg`;
+    }
+    return null;
+}
+
 export interface BookSummary {
     id: string;
     seriesId: string;
