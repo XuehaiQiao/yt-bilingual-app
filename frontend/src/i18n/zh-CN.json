@@ -1753,5 +1753,7 @@
   "sidebar.group.history": "历史",
   "sidebar.submenu.action": "快捷操作",
   "sidebar.submenu.section": "本页区块",
-  "sidebar.submenu.page": "独立页面"
+  "sidebar.submenu.page": "独立页面",
+  "reading.languagePoints.toggle": "语言点",
+  "reading.languagePoints.hint": "用下划线标出习语、固定搭配和文化点；关闭后仍可在语言点面板查看。"
 }

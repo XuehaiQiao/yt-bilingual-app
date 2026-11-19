@@ -2,7 +2,7 @@ import { apiFetch } from './lib/api';
 import { CourseApiError, COURSE_MVP_LESSON_ID, generateCourse, isCourseAbortError } from './lib/course';
 import { lazy, Suspense, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, BookOpenCheck, Highlighter } from 'lucide-react';
+import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, BookOpenCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -18,6 +18,11 @@ import { isAppHash, isDevUiHash, parsePublicRoute, parseRoute, resolveRoute, TAS
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
 import { TranscriptView } from './components/TranscriptView';
+import type { InlineLanguagePoint } from './components/TranscriptBlock';
+import { ReadingHighlightToggle } from './components/ReadingHighlight';
+import { LanguagePointToggle } from './components/ui/LanguagePointToggle';
+import { useReadingHighlights } from './lib/useReadingHighlights';
+import { loadLanguagePointsEnabled } from './lib/highlightLayers';
 import { TeachingNotesPanel, type TeachingNotesStatus } from './components/TeachingNotesPanel';
 import { addFavorite, fetchFavorites, removeFavorite, type FavoriteDraft, type FavoriteItem } from './lib/favorites';
 import { ChannelVideoList } from './components/ChannelVideoList';
@@ -512,6 +517,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // endpoint copy, so the payload can win without an extra request while a
   // level switch still triggers a fresh lookup.
   const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
+  const [showLanguagePoints, setShowLanguagePoints] = useState<boolean>(loadLanguagePointsEnabled);
   const [payloadTeachingAnalysis, setPayloadTeachingAnalysis] = useState<{
     analysis: TeachingAnalysis;
     level: VocabLevelId;
@@ -1776,6 +1782,24 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     [transcript, teachingAnalysis, teachingHighlightsAuthoritative],
   );
 
+  const videoHighlight = useReadingHighlights(displayTranscript.map((item) => item.en_text));
+
+  const languagePointsByBlock = useMemo(() => {
+    const map: Record<string, InlineLanguagePoint[]> = {};
+    const push = (blockId: number | string, point: InlineLanguagePoint) => {
+      if (!point.text.trim()) return;
+      const key = String(blockId);
+      (map[key] ??= []).push(point);
+    };
+    for (const idiom of teachingAnalysis?.idioms ?? []) {
+      push(idiom.blockId, { text: idiom.phrase, meaning: idiom.meaning, kind: 'idiom' });
+    }
+    for (const culture of teachingAnalysis?.culture ?? []) {
+      push(culture.blockId, { text: culture.term, meaning: culture.note, kind: 'culture' });
+    }
+    return map;
+  }, [teachingAnalysis]);
+
   // Active sentence index — TranscriptView depends on this, not on raw
   // 100ms time ticks, so the 400+ sentence list re-renders only when the
   // spoken sentence actually changes.
@@ -2834,14 +2858,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           ))}
         </div>
 
-        <span
-          data-testid="difficulty-highlight-legend"
-          title={t('reading.highlight.toggle')}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-2.5 text-xs font-medium text-amber-200/90"
-        >
-          <Highlighter className="h-3.5 w-3.5" aria-hidden="true" />
-          {t('reading.highlight.toggle')}
-        </span>
+        <ReadingHighlightToggle
+          enabled={videoHighlight.enabled}
+          onChange={videoHighlight.setEnabled}
+          levelLabel={videoHighlight.levelLabel}
+          testId="video-highlight-toggle"
+        />
+        <LanguagePointToggle
+          enabled={showLanguagePoints}
+          onChange={setShowLanguagePoints}
+          testId="video-language-points-toggle"
+        />
 
         <div className="w-px h-4 bg-white/10 shrink-0" />
 
@@ -3017,6 +3044,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           translationMode={translationMode}
           dictation={dictationMode}
           onWordLookup={handleWordLookup}
+          isHighlighted={videoHighlight.isHighlighted}
+          languagePointsByBlock={languagePointsByBlock}
+          showLanguagePoints={showLanguagePoints}
+          difficultyEnabled={videoHighlight.enabled}
+          difficultyLevel={videoHighlight.level}
+          difficultyVersion={videoHighlight.wordLevels.size}
           borderLeft={isTranscriptExpanded}
           uiLanguage={language}
           pageScroll={pageScroll}

@@ -1753,5 +1753,7 @@
   "sidebar.group.history": "Lịch sử",
   "sidebar.submenu.action": "Thao tác nhanh",
   "sidebar.submenu.section": "Trong trang này",
-  "sidebar.submenu.page": "Trang riêng"
+  "sidebar.submenu.page": "Trang riêng",
+  "reading.languagePoints.toggle": "Điểm ngôn ngữ",
+  "reading.languagePoints.hint": "Gạch chân thành ngữ, cụm cố định và điểm văn hóa; tắt vẫn xem được trong bảng điểm ngôn ngữ."
 }

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { TranscriptBlock } from './TranscriptBlock';
-import { useReadingHighlights } from '../lib/useReadingHighlights';
 import type { TranslationMode } from '../lib/transcript';
 
 interface TranscriptItem {
@@ -29,6 +28,12 @@ interface TranscriptViewProps {
     translationMode?: TranslationMode;
     dictation?: boolean;
     onWordLookup?: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
+    isHighlighted?: (word: string) => boolean;
+    languagePointsByBlock?: Record<string, import('./TranscriptBlock').InlineLanguagePoint[]>;
+    showLanguagePoints?: boolean;
+    difficultyEnabled?: boolean;
+    difficultyLevel?: string;
+    difficultyVersion?: number;
     /** Draw the hairline divider on the left edge — only when the transcript
      *  is a right-hand pane. A stacked transcript (under the video) has no
      *  left edge to divide, so the video view passes false there. */
@@ -79,13 +84,16 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
     translationMode,
     dictation,
     onWordLookup,
+    isHighlighted,
+    languagePointsByBlock,
+    showLanguagePoints = true,
+    difficultyEnabled = true,
+    difficultyLevel = '',
+    difficultyVersion = 0,
     borderLeft = true,
     uiLanguage,
     pageScroll = false,
 }) => {
-    // Video uses the same CEFR difficulty mark as the readers; the AI
-    // teaching highlights are no longer painted in the transcript.
-    const highlight = useReadingHighlights(transcript.map((item) => item.en_text));
     const containerRef = useRef<HTMLDivElement>(null);
     const lastUserScrollRef = useRef(0);
     // The page scroller is not known until layout exists; keep it in a ref so
@@ -235,7 +243,12 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
                                 translationMode={translationMode}
                                 dictation={dictation}
                                 onWordLookup={onWordLookup}
-                                isHighlighted={highlight.isHighlighted}
+                                isHighlighted={isHighlighted}
+                                languagePoints={languagePointsByBlock?.[String(item.id)]}
+                                showLanguagePoints={showLanguagePoints}
+                                difficultyEnabled={difficultyEnabled}
+                                difficultyLevel={difficultyLevel}
+                                difficultyVersion={difficultyVersion}
                                 uiLanguage={uiLanguage}
                             />
                         </div>
