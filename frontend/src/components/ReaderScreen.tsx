@@ -14,7 +14,7 @@
 //   - scrolling records the paragraph near the top of the viewport and saves
 //     it (throttled/debounced), so leaving and re-entering resumes in place;
 //   - word lookup reuses the app-wide WordPopover through `onWordLookup`.
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
     AlertCircle,
     ArrowLeft,
@@ -33,6 +33,9 @@ import {
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { LanguagePointToggle } from './ui/LanguagePointToggle';
+import type { InlineLanguagePoint } from './TranscriptBlock';
+import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { ShareCardDialog } from './ShareCardDialog';
@@ -242,6 +245,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const [articleLoading, setArticleLoading] = useState(false);
     const [articleError, setArticleError] = useState<number | null>(null);
     const [showTranslations, setShowTranslations] = useState(true);
+    const [showLanguagePoints, setShowLanguagePoints] = useState<boolean>(loadLanguagePointsEnabled);
     const [translating, setTranslating] = useState(false);
     const [translateError, setTranslateError] = useState<number | null>(null);
     const [currentIdx, setCurrentIdx] = useState(0);
@@ -259,6 +263,17 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const highlight = useReadingHighlights(
         article ? article.paragraphs.map((paragraph) => paragraph.text) : [],
     );
+    const languagePointsByParagraph = useMemo(() => {
+        const map: Record<number, InlineLanguagePoint[]> = {};
+        for (const point of article?.languagePoints ?? []) {
+            (map[point.blockId] ??= []).push({
+                text: point.text,
+                meaning: point.meaning,
+                kind: point.kind,
+            });
+        }
+        return map;
+    }, [article?.languagePoints]);
 
     const mountedRef = useRef(true);
     const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -270,6 +285,8 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const pollTimerRef = useRef<number | null>(null);
     const rafRef = useRef<number | null>(null);
     const saveErrorToastRef = useRef(false);
+    // Avoid retrying a failed language-point fetch on every article object update.
+    const analysisRequestedRef = useRef<string | null>(null);
 
     const loadList = useCallback(async () => {
         setListLoading(true);
@@ -360,8 +377,13 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         lastSavedIdxRef.current = null;
         restoreIdxRef.current = null;
         saveErrorToastRef.current = false;
+        analysisRequestedRef.current = null;
         try {
-            const detail = await getArticle(articleId, targetLang);
+            const detail = await getArticle(
+                articleId,
+                targetLang,
+                !isGuest && showLanguagePoints ? highlight.level : null,
+            );
             if (!mountedRef.current || selectedIdRef.current !== articleId) return;
             setArticle(detail);
             const maxIdx = Math.max(0, detail.paragraphs.length - 1);
@@ -380,7 +402,28 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                 setArticleLoading(false);
             }
         }
-    }, [flushProgress, targetLang]);
+    }, [flushProgress, highlight.level, isGuest, showLanguagePoints, targetLang]);
+
+    // Turn the optional language-point layer on (or change the CEFR stop)
+    // without reopening the article. The request is cached per content/level
+    // and only runs for signed-in readers.
+    useEffect(() => {
+        const articleId = selectedIdRef.current;
+        if (!articleId || !article || isGuest || !showLanguagePoints) return;
+        if (article.analysisLevel === highlight.level) return;
+        const attemptKey = `${articleId}:${highlight.level}`;
+        if (analysisRequestedRef.current === attemptKey) return;
+        analysisRequestedRef.current = attemptKey;
+        let cancelled = false;
+        getArticle(articleId, targetLang, highlight.level)
+            .then((detail) => {
+                if (!cancelled && selectedIdRef.current === articleId) setArticle(detail);
+            })
+            .catch(() => {
+                // Language points are an enhancement; reading stays usable.
+            });
+        return () => { cancelled = true; };
+    }, [article, highlight.level, isGuest, showLanguagePoints, targetLang]);
 
     // Favorites "出处" jump: open the requested article instead of the list.
     // App remounts this screen when a different target arrives, so this runs
@@ -520,14 +563,18 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
 
     const refreshTranslations = useCallback(async (articleId: string) => {
         try {
-            const detail = await getArticle(articleId, targetLang);
+            const detail = await getArticle(
+                articleId,
+                targetLang,
+                !isGuest && showLanguagePoints ? highlight.level : null,
+            );
             if (mountedRef.current && selectedIdRef.current === articleId) {
                 setArticle(detail);
             }
         } catch {
             // Best-effort polling: the translate call itself reports failures.
         }
-    }, [targetLang]);
+    }, [highlight.level, isGuest, showLanguagePoints, targetLang]);
 
     const handleTranslate = useCallback(async () => {
         const current = article;
@@ -1066,6 +1113,13 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                         levelLabel={highlight.levelLabel}
                     />
                 )}
+                {article && !isGuest && (
+                    <LanguagePointToggle
+                        enabled={showLanguagePoints}
+                        onChange={setShowLanguagePoints}
+                        testId="reader-language-points-toggle"
+                    />
+                )}
                 {article && translationToggle}
             </div>
 
@@ -1196,6 +1250,8 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                                         <ReadingHighlight
                                                             text={paragraph.text}
                                                             isHighlighted={highlight.isHighlighted}
+                                                            languagePoints={languagePointsByParagraph[paragraph.idx]}
+                                                            showLanguagePoints={showLanguagePoints}
                                                             onWordClick={(word, e) => onWordLookup(
                                                                 word,
                                                                 paragraph.text,

@@ -103,6 +103,13 @@ export interface BookChapterSource {
     degraded: boolean;
 }
 
+export interface BookLanguagePoint {
+    blockId: number;
+    text: string;
+    meaning: string;
+    kind: 'idiom' | 'culture';
+}
+
 export interface BookChapter {
     bookId: string;
     bookTitle: string;
@@ -129,6 +136,8 @@ export interface BookChapter {
     missingTranslations: number;
     translated: boolean;
     translatedChapters: number;
+    languagePoints: BookLanguagePoint[];
+    analysisLevel: string | null;
 }
 
 /** POST translate response: the full chapter plus the cost/cache metadata. */
@@ -360,6 +369,20 @@ function asBookChapter(data: unknown, fallbackChapter: number): BookChapter {
     const translatedCount = parsed.filter((paragraph) => Boolean(paragraph.zh?.trim())).length;
     const missingTranslations = asNumber(data.missingTranslations)
         ?? parsed.length - translatedCount;
+    const languagePoints: BookLanguagePoint[] = [];
+    for (const [rawKey, kind] of [['idioms', 'idiom'], ['culture', 'culture']] as const) {
+        const raw = data[rawKey];
+        if (!Array.isArray(raw)) continue;
+        for (const entry of raw) {
+            if (!isRecord(entry)) continue;
+            const blockId = asNumber(entry.blockId);
+            const text = asString(kind === 'idiom' ? entry.phrase : entry.term);
+            const meaning = asString(kind === 'idiom' ? entry.meaning : entry.note);
+            if (blockId !== null && text?.trim() && meaning?.trim()) {
+                languagePoints.push({ blockId, text: text.trim(), meaning: meaning.trim(), kind });
+            }
+        }
+    }
     const derivedStatus: BookTranslationStatus = missingTranslations <= 0
         ? 'cached'
         : translatedCount === 0
@@ -395,6 +418,8 @@ function asBookChapter(data: unknown, fallbackChapter: number): BookChapter {
         missingTranslations,
         translated: data.translated === true,
         translatedChapters: asNumber(data.translatedChapters) ?? 0,
+        languagePoints,
+        analysisLevel: asString(data.analysisLevel),
     };
 }
 
@@ -402,8 +427,10 @@ export async function fetchBookChapter(
     bookId: string,
     n: number,
     targetLang: LanguageCode = getRuntimeTargetLang(),
+    level?: string | null,
 ): Promise<BookChapter> {
-    const query = `?targetLang=${encodeURIComponent(targetLang)}`;
+    const levelQuery = level ? `&level=${encodeURIComponent(level)}` : '';
+    const query = `?targetLang=${encodeURIComponent(targetLang)}${levelQuery}`;
     const response = await apiFetch(`/api/books/${encodeURIComponent(bookId)}/chapters/${n}${query}`, {
         cache: 'no-store',
     });

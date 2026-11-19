@@ -45,6 +45,14 @@ export interface ArticleParagraph {
     translationFailed: boolean;
 }
 
+/** Language point attached by the optional teaching-analysis pass. */
+export interface ArticleLanguagePoint {
+    blockId: number;
+    text: string;
+    meaning: string;
+    kind: 'idiom' | 'culture';
+}
+
 export interface ArticleStats {
     total: number;
     translated: number;
@@ -64,6 +72,8 @@ export interface ArticleDetail {
     paragraphs: ArticleParagraph[];
     progress: ArticleProgress | null;
     stats: ArticleStats;
+    languagePoints: ArticleLanguagePoint[];
+    analysisLevel: string | null;
 }
 
 /** `POST /api/article/import` — URL or pasted body, exactly one of them. */
@@ -216,6 +226,27 @@ function parseArticleDetail(value: unknown): ArticleDetail {
             translated: derivedTranslated,
             untranslated: Math.max(0, paragraphs.length - derivedTranslated),
         };
+    const languagePoints: ArticleLanguagePoint[] = [];
+    const idioms = Array.isArray(value.idioms) ? value.idioms : [];
+    for (const entry of idioms) {
+        if (!isRecord(entry)) continue;
+        const blockId = asNumber(entry.blockId);
+        const phrase = asText(entry.phrase).trim();
+        const meaning = asText(entry.meaning).trim();
+        if (Number.isInteger(blockId) && phrase && meaning) {
+            languagePoints.push({ blockId, text: phrase, meaning, kind: 'idiom' });
+        }
+    }
+    const culture = Array.isArray(value.culture) ? value.culture : [];
+    for (const entry of culture) {
+        if (!isRecord(entry)) continue;
+        const blockId = asNumber(entry.blockId);
+        const term = asText(entry.term).trim();
+        const note = asText(entry.note).trim();
+        if (Number.isInteger(blockId) && term && note) {
+            languagePoints.push({ blockId, text: term, meaning: note, kind: 'culture' });
+        }
+    }
     return {
         articleId,
         title: asText(value.title),
@@ -228,6 +259,8 @@ function parseArticleDetail(value: unknown): ArticleDetail {
         paragraphs,
         progress: parseProgress(value.progress),
         stats,
+        languagePoints,
+        analysisLevel: asNullableText(value.analysisLevel),
     };
 }
 
@@ -347,8 +380,13 @@ export function importArticle(input: ImportArticleInput): Promise<ImportedArticl
 }
 
 /** Article detail for one target language, including existing translations. */
-export function getArticle(articleId: string, targetLang: LanguageCode | string): Promise<ArticleDetail> {
-    const path = `/api/article/${encodeURIComponent(articleId)}?targetLang=${encodeURIComponent(targetLang)}`;
+export function getArticle(
+    articleId: string,
+    targetLang: LanguageCode | string,
+    level?: string | null,
+): Promise<ArticleDetail> {
+    const levelQuery = level ? `&level=${encodeURIComponent(level)}` : '';
+    const path = `/api/article/${encodeURIComponent(articleId)}?targetLang=${encodeURIComponent(targetLang)}${levelQuery}`;
     return requestJson(path, undefined, parseArticleDetail);
 }
 

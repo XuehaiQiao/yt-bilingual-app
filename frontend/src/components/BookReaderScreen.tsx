@@ -24,6 +24,10 @@ import {
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { LanguagePointToggle } from './ui/LanguagePointToggle';
+import type { InlineLanguagePoint } from './TranscriptBlock';
+import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
+import { useAuth } from '../lib/auth';
 import { SubHeader } from './ui/SubHeader';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
@@ -175,10 +179,13 @@ export function BookReaderScreen({
     const [detailRetry, setDetailRetry] = useState(0);
     const [chapterNumber, setChapterNumber] = useState<number | null>(null);
     const [chapter, setChapter] = useState<BookChapter | null>(null);
+    const { status } = useAuth();
+    const canAnalyze = status === 'authenticated';
     const [chapterLoading, setChapterLoading] = useState(false);
     const [chapterError, setChapterError] = useState<TranslationKey | null>(null);
     const [chapterRetry, setChapterRetry] = useState(0);
     const [showTranslations, setShowTranslations] = useState(true);
+    const [showLanguagePoints, setShowLanguagePoints] = useState<boolean>(loadLanguagePointsEnabled);
     const [translating, setTranslating] = useState(false);
     const [translateError, setTranslateError] = useState<TranslationKey | null>(null);
     const [translateNotice, setTranslateNotice] = useState<'done' | 'partial' | null>(null);
@@ -186,6 +193,17 @@ export function BookReaderScreen({
     const highlight = useReadingHighlights(
         chapter ? chapter.paragraphs.map((paragraph) => paragraph.en) : [],
     );
+    const languagePointsByParagraph = useMemo(() => {
+        const map: Record<number, InlineLanguagePoint[]> = {};
+        for (const point of chapter?.languagePoints ?? []) {
+            (map[point.blockId] ??= []).push({
+                text: point.text,
+                meaning: point.meaning,
+                kind: point.kind,
+            });
+        }
+        return map;
+    }, [chapter?.languagePoints]);
     const scrollRef = useRef<HTMLDivElement>(null);
     const saveTimerRef = useRef<number | null>(null);
     const pendingScrollRef = useRef<number | null>(null);
@@ -252,7 +270,7 @@ export function BookReaderScreen({
         setTranslating(false);
         setTranslateError(null);
         setTranslateNotice(null);
-    }, [bookId, chapterNumber, language]);
+    }, [bookId, chapterNumber, language, canAnalyze, showLanguagePoints, highlight.level]);
 
     // A language switch drops the old-language chapter before the refetch so
     // stale translations never flash under the new language.
@@ -297,7 +315,12 @@ export function BookReaderScreen({
     useEffect(() => {
         if (chapterNumber === null) return;
         const controller = new AbortController();
-        fetchBookChapter(bookId, chapterNumber, language)
+        fetchBookChapter(
+            bookId,
+            chapterNumber,
+            language,
+            canAnalyze && showLanguagePoints ? highlight.level : null,
+        )
             .then((payload) => {
                 if (controller.signal.aborted) return;
                 chapterLanguageRef.current = language;
@@ -316,7 +339,7 @@ export function BookReaderScreen({
                 if (!controller.signal.aborted) setChapterLoading(false);
             });
         return () => controller.abort();
-    }, [bookId, chapterNumber, chapterRetry, language]);
+    }, [bookId, chapterNumber, chapterRetry, language, canAnalyze, showLanguagePoints, highlight.level]);
 
     // First open of an untranslated chapter: translate it automatically. Only
     // one automatic call per (book, chapter, language); switching chapter and
@@ -632,6 +655,13 @@ export function BookReaderScreen({
                                             onChange={highlight.setEnabled}
                                             levelLabel={highlight.levelLabel}
                                         />
+                                        {canAnalyze && (
+                                            <LanguagePointToggle
+                                                enabled={showLanguagePoints}
+                                                onChange={setShowLanguagePoints}
+                                                testId="book-language-points-toggle"
+                                            />
+                                        )}
                                         <span className={`min-w-0 text-[11px] ${
                                             translateNotice === 'done' ? 'text-emerald-400/90' : 'text-zinc-600'
                                         }`}>
@@ -798,6 +828,8 @@ export function BookReaderScreen({
                                                                 <ReadingHighlight
                                                                     text={paragraph.en}
                                                                     isHighlighted={highlight.isHighlighted}
+                                                                    languagePoints={languagePointsByParagraph[paragraph.index]}
+                                                                    showLanguagePoints={showLanguagePoints}
                                                                     onWordClick={(word, event) =>
                                                                         onWordLookup(word, paragraph.en, paragraph.index, event, {
                                                                             id: bookId,

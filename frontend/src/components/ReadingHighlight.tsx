@@ -9,24 +9,32 @@
 import { Highlighter } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { Switch } from './ui/Switch';
-import { ClickableWords, type WordClickHandler } from './TranscriptBlock';
+import { MarkedWords, type InlineLanguagePoint, type WordClickHandler } from './TranscriptBlock';
 
 interface ReadingHighlightProps {
     text: string;
     onWordClick: WordClickHandler;
     /** From `useReadingHighlights`; absent/false = plain clickable text. */
     isHighlighted?: (word: string) => boolean;
+    /** Idiom / fixed-expression / culture spans for this paragraph. */
+    languagePoints?: InlineLanguagePoint[];
+    /** Independent language-point underline switch. */
+    showLanguagePoints?: boolean;
 }
 
 export const ReadingHighlight: React.FC<ReadingHighlightProps> = ({
     text,
     onWordClick,
     isHighlighted,
+    languagePoints,
+    showLanguagePoints = true,
 }) => (
-    <ClickableWords
+    <MarkedWords
         text={text}
         onWordClick={onWordClick}
         isHighlighted={isHighlighted}
+        languagePoints={languagePoints}
+        showLanguagePoints={showLanguagePoints}
     />
 );
 

@@ -48,6 +48,80 @@ export const ClickableWords: React.FC<{
     </>
 );
 
+/** Difficulty background + language-point underline over one sentence. */
+export const MarkedWords: React.FC<{
+    text: string;
+    onWordClick?: WordClickHandler;
+    isHighlighted?: (word: string) => boolean;
+    languagePoints?: InlineLanguagePoint[];
+    showLanguagePoints?: boolean;
+}> = ({ text, onWordClick, isHighlighted, languagePoints, showLanguagePoints = true }) => {
+    const marked = useMemo(() => {
+        if (!onWordClick) return <span>{text}</span>;
+        if (!showLanguagePoints || !languagePoints?.length) {
+            return <ClickableWords text={text} onWordClick={onWordClick} isHighlighted={isHighlighted} />;
+        }
+        const ranges: Array<{ point: InlineLanguagePoint; index: number; length: number }> = [];
+        let lastEnd = 0;
+        const candidates = languagePoints
+            .map((point) => ({ point, index: text.indexOf(point.text) }))
+            .filter((item) => item.index !== -1 && item.point.text.trim().length > 0)
+            .sort((a, b) => a.index - b.index);
+        for (const candidate of candidates) {
+            if (candidate.index < lastEnd) continue;
+            ranges.push({ ...candidate, length: candidate.point.text.length });
+            lastEnd = candidate.index + candidate.point.text.length;
+        }
+        if (ranges.length === 0) {
+            return <ClickableWords text={text} onWordClick={onWordClick} isHighlighted={isHighlighted} />;
+        }
+        const parts: React.ReactNode[] = [];
+        let cursor = 0;
+        ranges.forEach((range, i) => {
+            if (range.index > cursor) {
+                parts.push(
+                    <ClickableWords
+                        key={`gap-${i}`}
+                        text={text.slice(cursor, range.index)}
+                        onWordClick={onWordClick}
+                        isHighlighted={isHighlighted}
+                    />,
+                );
+            }
+            const phrase = text.slice(range.index, range.index + range.length);
+            parts.push(
+                <span
+                    key={`point-${i}`}
+                    data-language-point={range.point.kind}
+                    data-word-hit={phrase}
+                    title={range.point.meaning || phrase}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onWordClick(phrase, e);
+                    }}
+                    className="cursor-help rounded-sm underline decoration-sky-400/70 decoration-2 underline-offset-4 transition-colors hover:bg-white/10"
+                >
+                    {phrase}
+                </span>,
+            );
+            cursor = range.index + range.length;
+        });
+        if (cursor < text.length) {
+            parts.push(
+                <ClickableWords
+                    key="gap-end"
+                    text={text.slice(cursor)}
+                    onWordClick={onWordClick}
+                    isHighlighted={isHighlighted}
+                />,
+            );
+        }
+        return parts;
+    }, [isHighlighted, languagePoints, onWordClick, showLanguagePoints, text]);
+    return <>{marked}</>;
+};
+
+
 export const HighlightedText: React.FC<{
     text: string;
     highlights: Array<{ word: string; color: string; annotation?: string }>;
@@ -153,7 +227,7 @@ interface TranscriptBlockProps {
     uiLanguage?: LanguageCode;
 }
 
-const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, isActive, isFavorited, onToggleFavorite, translationMode = 'active', dictation = false, onWordLookup, isHighlighted, languagePoints, showLanguagePoints = true, difficultyEnabled = true, difficultyLevel = '', difficultyVersion = 0 }) => {
+const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, isActive, isFavorited, onToggleFavorite, translationMode = 'active', dictation = false, onWordLookup, isHighlighted, languagePoints, showLanguagePoints = true }) => {
     const { t } = useI18n();
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -173,74 +247,7 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
     }, [dictation, enText]);
     const blurred = dictation && !revealed;
 
-    // Language points are priority spans over the word-level difficulty layer:
-    // they get an underline and their internal words drop the amber background.
-    // Gaps between spans remain ordinary ClickableWords, so word lookup still
-    // works everywhere else.
-    const markedText = useMemo(() => {
-        if (!showLanguagePoints || !languagePoints?.length || !onWordLookup) {
-            return onWordLookup && !blurred ? (
-                <ClickableWords text={enText} onWordClick={(word, e) => onWordLookup(word, enText, start, e)} isHighlighted={isHighlighted} />
-            ) : <span>{enText}</span>;
-        }
-        const ranges: Array<{ point: InlineLanguagePoint; index: number; length: number }> = [];
-        let lastEnd = 0;
-        const candidates = languagePoints
-            .map((point) => ({ point, index: enText.indexOf(point.text) }))
-            .filter((item) => item.index !== -1 && item.point.text.trim().length > 0)
-            .sort((a, b) => a.index - b.index);
-        for (const candidate of candidates) {
-            if (candidate.index < lastEnd) continue;
-            ranges.push({ ...candidate, length: candidate.point.text.length });
-            lastEnd = candidate.index + candidate.point.text.length;
-        }
-        if (ranges.length === 0) {
-            return <ClickableWords text={enText} onWordClick={(word, e) => onWordLookup(word, enText, start, e)} isHighlighted={isHighlighted} />;
-        }
-        const parts: React.ReactNode[] = [];
-        let cursor = 0;
-        ranges.forEach((range, i) => {
-            if (range.index > cursor) {
-                const gap = enText.slice(cursor, range.index);
-                parts.push(
-                    <ClickableWords
-                        key={`gap-${i}`}
-                        text={gap}
-                        onWordClick={(word, e) => onWordLookup(word, enText, start, e)}
-                        isHighlighted={isHighlighted}
-                    />,
-                );
-            }
-            const phrase = enText.slice(range.index, range.index + range.length);
-            parts.push(
-                <span
-                    key={`point-${i}`}
-                    data-language-point={range.point.kind}
-                    data-word-hit={phrase}
-                    title={range.point.meaning || phrase}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onWordLookup(phrase, enText, start, e);
-                    }}
-                    className="cursor-help rounded-sm underline decoration-sky-400/70 decoration-2 underline-offset-4 transition-colors hover:bg-white/10"
-                >
-                    {phrase}
-                </span>,
-            );
-            cursor = range.index + range.length;
-        });
-        if (cursor < enText.length) {
-            parts.push(
-                <ClickableWords
-                    key="gap-end"
-                    text={enText.slice(cursor)}
-                    onWordClick={(word, e) => onWordLookup(word, enText, start, e)}
-                    isHighlighted={isHighlighted}
-                />,
-            );
-        }
-        return parts;
-    }, [blurred, enText, isHighlighted, languagePoints, onWordLookup, showLanguagePoints, start, difficultyEnabled, difficultyLevel, difficultyVersion]);
+    // Difficulty background + language-point underline are shared with readers.
 
     return (
         <div
@@ -305,7 +312,17 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
                             blurred && "blur-[6px] select-none opacity-60 hover:opacity-80 cursor-pointer"
                         )}
                     >
-                        {markedText}
+                        {blurred ? (
+                            <span>{enText}</span>
+                        ) : (
+                            <MarkedWords
+                                text={enText}
+                                onWordClick={onWordLookup ? (word, e) => onWordLookup(word, enText, start, e) : undefined}
+                                isHighlighted={isHighlighted}
+                                languagePoints={languagePoints}
+                                showLanguagePoints={showLanguagePoints}
+                            />
+                        )}
                     </p>
                     <div className={cn(
                         "grid transition-[grid-template-rows,opacity,margin] duration-300 ease-apple",
