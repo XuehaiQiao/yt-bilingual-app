@@ -1718,5 +1718,8 @@
   "novel.entry.chapterOption": "第 {{chapter}} 章",
   "novel.entry.guestHint": "登录后可生成课程",
   "novel.entry.loading": "正在生成…约 30 秒",
-  "sidebar.group.history": "历史"
+  "sidebar.group.history": "历史",
+  "sidebar.submenu.action": "快捷操作",
+  "sidebar.submenu.section": "本页区块",
+  "sidebar.submenu.page": "独立页面"
 }

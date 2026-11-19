@@ -11,11 +11,14 @@
 // blog/admin icons): children and chevrons are removed from the DOM, while the
 // per-tab expanded state stays remembered for the next uncollapsed render. The
 // choice is persisted in localStorage.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  ArrowUpRight,
   ChevronLeft,
   ChevronRight,
+  CornerDownRight,
   Newspaper,
+  Play,
   Settings,
   ShieldCheck,
   UserRound,
@@ -64,8 +67,11 @@ interface SidebarProps {
   onRequestLogin?: () => void;
 }
 
+type SidebarSubItemKind = 'action' | 'section' | 'page';
+
 interface SidebarSubItemDef {
   id: string;
+  kind: SidebarSubItemKind;
   labelKey: TranslationKey;
   active: boolean;
   onSelect: () => void;
@@ -90,6 +96,12 @@ const SIDEBAR_TABS: readonly NavTabDef[] = SIDEBAR_TAB_ORDER
   .map((id) => NAV_TABS.find((tab) => tab.id === id))
   .filter((tab): tab is NavTabDef => Boolean(tab));
 
+const SUBMENU_KINDS = [
+  { kind: 'action', labelKey: 'sidebar.submenu.action' },
+  { kind: 'section', labelKey: 'sidebar.submenu.section' },
+  { kind: 'page', labelKey: 'sidebar.submenu.page' },
+] as const;
+
 export function Sidebar({
   state,
   dueCount,
@@ -112,9 +124,9 @@ export function Sidebar({
   const { t } = useI18n();
   const { status, user, isAdmin } = useAuth();
   const [collapsed, setCollapsed] = useState<boolean>(loadSidebarCollapsed);
-  // Per-tab disclosure state. `undefined` means "follow the current tab", so
-  // the active page starts expanded and a manual toggle wins for that tab.
-  const [expandedGroups, setExpandedGroups] = useState<Partial<Record<TabId, boolean>>>({});
+  // Single-open accordion. Navigating opens the destination; the chevron alone
+  // can close/reopen it, so at most one group is expanded at a time.
+  const [openTab, setOpenTab] = useState<TabId | null>(state.tab);
   // Which 我的 section was last picked. The three lower sections are scroll
   // targets, not routes, so they cannot derive an active state from NavState.
   const [profileSection, setProfileSection] = useState<ProfileSectionId | null>(null);
@@ -134,17 +146,21 @@ export function Sidebar({
     });
   };
 
-  const isExpanded = (tab: TabId) => expandedGroups[tab] ?? state.tab === tab;
+  useEffect(() => {
+    // A route change (top tab, child route or browser back) opens exactly the
+    // destination group; a manual collapse of the same tab is not overwritten.
+    setOpenTab(state.tab);
+  }, [state.tab]);
+
+  const isExpanded = (tab: TabId) => openTab === tab;
 
   const toggleExpanded = (tab: TabId) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [tab]: !(prev[tab] ?? state.tab === tab),
-    }));
+    setOpenTab(prev => (prev === tab ? null : tab));
   };
 
   const handleParentNavigate = (tab: TabId) => {
     setProfileSection(null);
+    setOpenTab(tab);
     onNavigate(tab);
   };
 
@@ -161,12 +177,14 @@ export function Sidebar({
   const contentItems: SidebarSubItemDef[] = [
     {
       id: 'start',
+      kind: 'action',
       labelKey: 'content.startTitle',
       active: state.tab === 'content' && !state.sub && !state.anchor,
       onSelect: () => selectShortcut(onStartLearning),
     },
     {
       id: 'library',
+      kind: 'section',
       labelKey: 'sidebar.library',
       active: state.tab === 'content' && !state.sub && state.anchor === 'library',
       onSelect: () => selectShortcut(onOpenLibrary),
@@ -174,6 +192,7 @@ export function Sidebar({
     },
     {
       id: 'books',
+      kind: 'section',
       labelKey: 'sidebar.books',
       active: state.tab === 'content' && !state.sub && state.anchor === 'books',
       onSelect: () => selectShortcut(onOpenBooks),
@@ -181,6 +200,7 @@ export function Sidebar({
     },
     {
       id: 'discover',
+      kind: 'page',
       labelKey: 'sidebar.discover',
       active: state.tab === 'content' && subKind === 'discover',
       onSelect: () => selectShortcut(onOpenDiscover),
@@ -188,6 +208,7 @@ export function Sidebar({
     },
     {
       id: 'sentences',
+      kind: 'section',
       labelKey: 'sidebar.sentences',
       active: state.tab === 'content' && !state.sub && state.anchor === 'sentence-packs',
       onSelect: () => selectShortcut(onOpenSentences),
@@ -198,6 +219,7 @@ export function Sidebar({
   const historyItems: SidebarSubItemDef[] = [
     {
       id: 'recent',
+      kind: 'section',
       labelKey: 'sidebar.history',
       active: state.tab === 'today' && !state.sub,
       onSelect: () => selectShortcut(onOpenHistory),
@@ -205,6 +227,7 @@ export function Sidebar({
     },
     {
       id: 'report',
+      kind: 'page',
       labelKey: 'sidebar.report',
       active: state.tab === 'today' && subKind === 'report',
       onSelect: () => selectShortcut(onOpenReport),
@@ -214,18 +237,21 @@ export function Sidebar({
   const practiceItems: SidebarSubItemDef[] = [
     {
       id: 'review',
+      kind: 'page',
       labelKey: 'review.title',
       active: state.tab === 'practice' && subKind === 'review',
       onSelect: () => selectShortcut(onOpenReview),
     },
     {
       id: 'exam',
+      kind: 'page',
       labelKey: 'practice.exam.title',
       active: state.tab === 'practice' && subKind === 'exam',
       onSelect: () => selectShortcut(onOpenExam),
     },
     {
       id: 'placement',
+      kind: 'page',
       labelKey: 'practice.placement.title',
       active: state.tab === 'practice' && subKind === 'placement',
       onSelect: () => selectShortcut(onOpenPlacement),
@@ -235,30 +261,35 @@ export function Sidebar({
   const profileItems: SidebarSubItemDef[] = [
     {
       id: 'account',
+      kind: 'section',
       labelKey: 'sidebar.sub.account',
       active: activeProfileSection === 'account',
       onSelect: () => handleProfileSection('account'),
     },
     {
       id: 'balance',
+      kind: 'section',
       labelKey: 'sidebar.sub.balance',
       active: activeProfileSection === 'balance',
       onSelect: () => handleProfileSection('balance'),
     },
     {
       id: 'settings',
+      kind: 'section',
       labelKey: 'sidebar.sub.settings',
       active: activeProfileSection === 'settings',
       onSelect: () => handleProfileSection('settings'),
     },
     {
       id: 'about',
+      kind: 'section',
       labelKey: 'sidebar.sub.about',
       active: activeProfileSection === 'about',
       onSelect: () => handleProfileSection('about'),
     },
     {
       id: 'ability',
+      kind: 'page',
       labelKey: 'ability.title',
       active: state.tab === 'profile' && subKind === 'ability',
       onSelect: () => selectShortcut(onOpenAbility),
@@ -422,34 +453,56 @@ export function Sidebar({
                     )}
                   </div>
                   {!collapsed && open && (
-                    <ul
+                    <div
                       id={submenuId}
                       data-testid={submenuId}
-                      className="mt-1 ml-[26px] flex flex-col gap-0.5 border-l border-white/5 pl-2"
+                      className="mt-1 ml-[26px] border-l border-white/5 pl-2"
                     >
-                      {items.map((item) => (
-                        <li
-                          key={item.id}
-                          data-testid={item.legacyQuickId ? `sidebar-quick-${item.legacyQuickId}` : undefined}
-                        >
-                          <button
-                            type="button"
-                            data-testid={`sidebar-sub-${item.id}`}
-                            aria-current={item.active ? 'page' : undefined}
-                            onClick={item.onSelect}
-                            className={subItemClass(item.active)}
-                          >
-                            <span
-                              aria-hidden="true"
-                              className={`h-1 w-1 shrink-0 rounded-full ${
-                                item.active ? 'bg-brand-400' : 'bg-zinc-700'
-                              }`}
-                            />
-                            <span className="min-w-0 truncate">{t(item.labelKey)}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                      {SUBMENU_KINDS.map(({ kind, labelKey }) => {
+                        const kindItems = items.filter(item => item.kind === kind);
+                        if (kindItems.length === 0) return null;
+                        return (
+                          <div key={kind} className="mb-1.5 last:mb-0">
+                            <p className="px-2.5 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
+                              {t(labelKey)}
+                            </p>
+                            <ul className="flex flex-col gap-0.5">
+                              {kindItems.map((item) => {
+                                const SubIcon = item.kind === 'page'
+                                  ? ArrowUpRight
+                                  : item.kind === 'action' ? Play : CornerDownRight;
+                                return (
+                                  <li
+                                    key={item.id}
+                                    data-testid={item.legacyQuickId ? `sidebar-quick-${item.legacyQuickId}` : undefined}
+                                  >
+                                    <button
+                                      type="button"
+                                      data-testid={`sidebar-sub-${item.id}`}
+                                      data-kind={item.kind}
+                                      aria-current={item.active ? 'page' : undefined}
+                                      onClick={item.onSelect}
+                                      className={subItemClass(item.active)}
+                                    >
+                                      <SubIcon
+                                        aria-hidden="true"
+                                        className={`h-3.5 w-3.5 shrink-0 ${
+                                          item.active ? 'text-brand-400' : 'text-zinc-600'
+                                        }`}
+                                      />
+                                      <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
+                                      {item.kind === 'page' && (
+                                        <ChevronRight className="h-3 w-3 shrink-0 text-zinc-700" aria-hidden="true" />
+                                      )}
+                                    </button>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </li>
               );
