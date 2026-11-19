@@ -21,6 +21,8 @@ import { BookImportDialog } from './BookImportDialog';
 import { ImportedBooksShelf } from './ImportedBooksShelf';
 import { Badge } from './ui/Badge';
 import { Card } from './ui/Card';
+import { CollectionCard } from './ui/CollectionCard';
+import { ShelfSection } from './ui/ShelfSection';
 
 interface BooksSectionProps {
     onOpenBook: (bookId: string) => void;
@@ -35,7 +37,6 @@ interface BooksSectionProps {
 
 function BookCard({
     book,
-    totalBooks,
     onOpen,
 }: {
     book: BookSummary;
@@ -44,42 +45,29 @@ function BookCard({
 }) {
     const { t, formatNumber } = useI18n();
     return (
-        <Card
-            variant="interactive"
-            padding="none"
+        <CollectionCard
             testId={`book-card-${book.id}`}
             ariaLabel={t('books.openBook', { title: book.titleZh })}
             onClick={() => onOpen(book.id)}
-            className="group shrink-0 w-[220px] sm:w-[256px] snap-start p-4"
-        >
-            <div className="flex items-start justify-between gap-2">
-                <span className="w-11 h-14 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
-                    <BookOpen className="w-5 h-5" />
-                </span>
-                <Badge tone="success" icon={<Globe2 />}>
-                    {t('books.badgeShort')}
-                </Badge>
-            </div>
-            <h4 className="mt-3 min-h-[2.6em] text-[14px] font-semibold leading-snug text-zinc-100 line-clamp-2 break-words">
-                {book.titleZh}
-            </h4>
-            <p className="mt-0.5 truncate text-[11px] text-zinc-500">{book.title}</p>
-            <p className="mt-1 truncate text-[11px] text-zinc-500">{book.author}</p>
-            <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-zinc-500">
-                <span className="tabular-nums">
-                    {book.translatedChapters > 0
-                        ? t('books.translatedChapters', {
-                              translated: formatNumber(book.translatedChapters),
-                              total: formatNumber(book.totalChapters),
-                          })
-                        : t('books.originalReadable')}
-                </span>
-                <Badge tone="neutral">{book.level}</Badge>
-            </div>
-            <p className="mt-1 text-[10px] text-zinc-600">
-                {t('books.seriesTotal', { count: formatNumber(totalBooks) })}
-            </p>
-        </Card>
+            visual={<BookOpen className="h-9 w-9 text-brand-300" aria-hidden="true" />}
+            badge={<Badge tone="success" icon={<Globe2 />}>{t('books.badgeShort')}</Badge>}
+            title={book.titleZh}
+            subtitle={`${book.title} · ${book.author}`}
+            meta={(
+                <>
+                    <span className="tabular-nums">
+                        {book.translatedChapters > 0
+                            ? t('books.translatedChapters', {
+                                  translated: formatNumber(book.translatedChapters),
+                                  total: formatNumber(book.totalChapters),
+                              })
+                            : t('books.originalReadable')}
+                    </span>
+                    <Badge tone="neutral">{book.level}</Badge>
+                </>
+            )}
+            className="w-full"
+        />
     );
 }
 
@@ -121,8 +109,8 @@ function SeriesGroup({
                 </button>
             </div>
 
-            <div className="mt-2.5 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto custom-scrollbar">
-                <div className="flex gap-3 snap-x snap-mandatory pb-1">
+            <div className="mt-2.5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {available.map((book) => (
                         <BookCard
                             key={book.id}
@@ -136,7 +124,7 @@ function SeriesGroup({
                             type="button"
                             data-testid={`books-coming-soon-${series.id}`}
                             onClick={() => onOpenSeries(series.id)}
-                            className="group shrink-0 w-[180px] snap-start text-left rounded-2xl border border-dashed border-white/10 bg-zinc-900/20 p-4 hover:border-white/20 hover:bg-zinc-900/40 transition-colors cursor-pointer"
+                            className="group min-w-0 w-full text-left rounded-2xl border border-dashed border-white/10 bg-zinc-900/20 p-4 hover:border-white/20 hover:bg-zinc-900/40 transition-colors cursor-pointer"
                         >
                             <span className="w-11 h-14 rounded-lg bg-zinc-800/60 border border-white/5 text-zinc-500 flex items-center justify-center">
                                 <BookMarked className="w-5 h-5" />
@@ -231,23 +219,16 @@ export function BooksSection({
     };
 
     return (
-        <section data-testid="books-section" className="min-w-0">
-            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-                <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <BookMarked className="w-4 h-4 text-blue-400 shrink-0" />
-                        <h3 className="text-[17px] font-semibold tracking-tight text-zinc-100">
-                            {t('books.title')}
-                        </h3>
-                        <Badge tone="neutral">{t('books.badge')}</Badge>
-                    </div>
-                    <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 break-words">
-                        {t('books.subtitle')}
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
+        <ShelfSection
+            icon={BookMarked}
+            title={t('books.title')}
+            hint={t('books.subtitle')}
+            testId="books-section"
+            actions={(
+                <>
+                    <Badge tone="neutral">{t('books.badge')}</Badge>
                     {data && (
-                        <span className="text-[11px] text-zinc-500 tabular-nums">
+                        <span className="text-[11px] text-fg-muted tabular-nums">
                             {t('books.counts', {
                                 series: formatNumber(data.counts.series),
                                 books: formatNumber(data.counts.availableBooks),
@@ -265,14 +246,14 @@ export function BooksSection({
                             }
                             setImportOpen(true);
                         }}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-500/15 hover:text-blue-200"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/10 px-2.5 text-xs font-medium text-brand-300 transition-colors hover:bg-brand/15 hover:text-brand-400"
                     >
                         <BookPlus className="h-3.5 w-3.5" />
                         {t('importedBooks.importButton')}
                     </button>
-                </div>
-            </div>
-
+                </>
+            )}
+        >
             {isGuest && (
                 <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
                     {t('importedBooks.guestHint')}
@@ -352,6 +333,6 @@ export function BooksSection({
                 }}
                 onRequestLogin={onRequestLogin}
             />
-        </section>
+        </ShelfSection>
     );
 }

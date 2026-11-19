@@ -34,6 +34,7 @@ import { HomeRecommendations } from './HomeRecommendations';
 import { EmptyState, ErrorPanel, LoadingState, RefreshingState } from './ui/StateView';
 import { PageHeader } from './ui/PageHeader';
 import { Card, SectionHeader } from './ui/Card';
+import { ShelfSection } from './ui/ShelfSection';
 import { ListRow } from './ui/ListRow';
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
@@ -460,16 +461,14 @@ export function ContentScreen({
                 <section data-testid="content-materials">
                     <SectionHeader title={t('content.materials')} />
                     <div className="mt-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-6">
-                        <Card className="min-w-0">
-                            <div className="flex items-center justify-between gap-2 mb-3">
-                                <h3 className="flex items-center gap-2 text-sm font-semibold tracking-tight text-zinc-100">
-                                    <Tv className="w-4 h-4 text-blue-400" />
-                                    {t('content.showsTitle')}
-                                </h3>
-                                <span className="text-[11px] text-zinc-500">{t('content.showsHint')}</span>
-                            </div>
+                        <ShelfSection
+                            icon={Tv}
+                            title={t('content.showsTitle')}
+                            hint={t('content.showsHint')}
+                            testId="content-local-shows"
+                        >
                             <ShowBrowser onSelectEpisode={onSelectEpisode} isLoading={busy} />
-                        </Card>
+                        </ShelfSection>
                         {/* SentencePacks is already a card with its own heading;
                             keep it as the grid cell to avoid nesting two cards. */}
                         <div className="min-w-0" data-testid="content-sentence-packs">

@@ -1,8 +1,9 @@
 import { apiFetch } from '../lib/api';
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, BookOpen, Tv, Loader2 } from 'lucide-react';
+import { ChevronLeft, BookOpen, Tv, Loader2 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { Segmented } from './ui/Segmented';
+import { CollectionCard } from './ui/CollectionCard';
 
 interface Show {
     id: string;
@@ -108,31 +109,24 @@ export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoa
 
             {/* Show List */}
             {!selectedShow && (
-                <div className="grid gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {shows.map(show => (
-                        <button
+                        <CollectionCard
                             key={show.id}
+                            testId={`local-show-card-${show.id}`}
+                            ariaLabel={showTitle(show)}
                             onClick={() => handleShowSelect(show)}
-                            className="flex items-center gap-4 p-3 rounded-xl bg-zinc-800/30 hover:bg-zinc-800/60 border border-white/5 hover:border-white/10 transition-colors cursor-pointer group text-left"
-                        >
-                            {show.thumbnail && (
-                                <img
-                                    src={show.thumbnail}
-                                    alt={show.title}
-                                    className="w-16 h-24 object-cover rounded-lg flex-shrink-0"
-                                />
-                            )}
-                            <div className="flex-1 min-w-0">
-                                <h4 className="text-white font-medium text-base group-hover:text-white transition-colors">
-                                    {showTitle(show)}
-                                </h4>
-                                <p className="text-zinc-400 text-sm mt-0.5">{show.title}</p>
-                                <p className="text-zinc-500 text-xs mt-2">
+                            visual={show.thumbnail
+                                ? <img src={show.thumbnail} alt={show.title} className="h-full w-full object-cover" />
+                                : <Tv className="h-8 w-8 text-zinc-600" aria-hidden="true" />}
+                            title={showTitle(show)}
+                            subtitle={show.title}
+                            meta={(
+                                <span className="tabular-nums">
                                     {t('shows.seasonsEpisodes', { seasons: Object.keys(show.seasons_available).length, episodes: show.total_episodes })}
-                                </p>
-                            </div>
-                            <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-zinc-300 transition-colors flex-shrink-0" />
-                        </button>
+                                </span>
+                            )}
+                        />
                     ))}
                 </div>
             )}
