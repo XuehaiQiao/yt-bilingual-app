@@ -482,6 +482,40 @@ def _candidate_words_for_blocks(blocks: list[dict], level: str) -> dict[str, lis
             candidates[block_id] = selected
     return candidates
 
+
+def _cache_has_empty_glosses(cached: dict, normalized: list[dict], level: str) -> bool:
+    """True for an old v4 row generated before translations existed.
+
+    A cache row produced from a partially translated article can contain
+    candidate entries with empty ``zh_word``. It must not win forever: one
+    regeneration after translations land is enough. ``glossAttempted`` marks
+    the regenerated row so a model that genuinely cannot gloss a word does not
+    cause an endless retry loop.
+    """
+    if not isinstance(cached, dict):
+        return False
+    if cached.get("analysisVersion") != ANALYSIS_VERSION:
+        return False
+    if cached.get("glossAttempted") is True:
+        return False
+    candidates = _candidate_words_for_blocks(normalized, level)
+    if not candidates:
+        return False
+    highlights = cached.get("highlights")
+    if not isinstance(highlights, dict):
+        return True
+    for block in normalized:
+        allowed = {word.casefold() for word in candidates.get(str(block.get("id")), [])}
+        for entry in highlights.get(str(block.get("id")), []) or []:
+            if (
+                isinstance(entry, dict)
+                and str(entry.get("en_word", "")).casefold() in allowed
+                and isinstance(entry.get("zh_word"), str)
+                and entry["zh_word"].strip()
+            ):
+                return False
+    return True
+
 def build_prompt(
     blocks: list[dict],
     level: str,
@@ -737,7 +771,7 @@ async def ensure_analysis(
     cached = await asyncio.to_thread(
         load_cached, content_hash_value, canonical_level, lang
     )
-    if cached is not None:
+    if cached is not None and not _cache_has_empty_glosses(cached, normalized, canonical_level):
         return cached
 
     # 2) 同 key 串行化；拿到锁后重查，第二个并发请求直接复用第一个的结果。
@@ -746,7 +780,7 @@ async def ensure_analysis(
         cached = await asyncio.to_thread(
             load_cached, content_hash_value, canonical_level, lang
         )
-        if cached is not None:
+        if cached is not None and not _cache_has_empty_glosses(cached, normalized, canonical_level):
             return cached
 
         # 只有真的要走模型才占一条「教学分析」日配额（缓存命中的上面已返回）。
@@ -771,6 +805,7 @@ async def ensure_analysis(
         merged = _merge_parts(parts)
         payload = {
             "analysisVersion": ANALYSIS_VERSION,
+            "glossAttempted": True,
             "level": canonical_level,
             "targetLang": lang,
             "contentHash": content_hash_value,
