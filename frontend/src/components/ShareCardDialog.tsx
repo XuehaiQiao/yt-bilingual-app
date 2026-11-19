@@ -5,13 +5,11 @@
 // "download PNG" / "copy text". Everything is local: no request is made here,
 // so the card works for guests and offline (after the app shell has loaded).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Copy, Download, Loader2, RefreshCw, X } from 'lucide-react';
+import { Copy, Download, Loader2, X } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { toast } from '../lib/toast';
 import {
-    CARD_HEIGHT,
-    CARD_WIDTH,
     buildShareText,
     canvasToPngBlob,
     copyShareText,
@@ -23,6 +21,7 @@ import {
     type ShareCardMeta,
 } from '../lib/shareCard';
 import { Dialog } from './ui/Dialog';
+import { ShareCardCanvas, type ShareCardCanvasStatus } from './ui/ShareCardCanvas';
 
 const KIND_LABEL: Record<ShareCardKind, TranslationKey> = {
     sentence: 'share.label.sentence',
@@ -30,8 +29,6 @@ const KIND_LABEL: Record<ShareCardKind, TranslationKey> = {
     article: 'share.label.article',
     selection: 'share.label.selection',
 };
-
-type DialogStatus = 'idle' | 'loading' | 'ready' | 'error' | 'empty';
 
 interface ShareCardDialogProps {
     isOpen: boolean;
@@ -65,7 +62,7 @@ export const ShareCardDialog: React.FC<ShareCardDialogProps> = ({ isOpen, data, 
         canvasRef.current = node;
         setCanvasMounted(Boolean(node));
     }, []);
-    const [status, setStatus] = useState<DialogStatus>('idle');
+    const [status, setStatus] = useState<ShareCardCanvasStatus>('idle');
     const [meta, setMeta] = useState<ShareCardMeta | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [attempt, setAttempt] = useState(0);
@@ -209,48 +206,15 @@ export const ShareCardDialog: React.FC<ShareCardDialogProps> = ({ isOpen, data, 
                 </div>
 
                 <div className="px-4 py-4 sm:px-6 sm:py-5">
-                    <div className="relative mx-auto flex justify-center">
-                        <canvas
-                            ref={setCanvasRef}
-                            width={CARD_WIDTH}
-                            height={CARD_HEIGHT}
-                            data-testid="share-card-preview"
-                            data-share-state={status}
-                            data-truncated={meta?.quoteTruncated ? 'true' : 'false'}
-                            data-translation-truncated={meta?.translationTruncated ? 'true' : 'false'}
-                            data-lines={meta?.quoteLines ?? 0}
-                            role="img"
-                            aria-label={t('share.previewAlt')}
-                            className="block h-auto w-auto max-w-full rounded-xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/50"
-                            style={{ maxHeight: '52vh' }}
-                        />
-
-                        {status === 'loading' && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-zinc-950/55 backdrop-blur-[2px]">
-                                <Loader2 className="w-6 h-6 text-zinc-400 animate-spin" />
-                                <p className="text-xs text-zinc-400">{t('share.generating')}</p>
-                            </div>
-                        )}
-
-                        {(status === 'error' || status === 'empty') && (
-                            <div
-                                data-testid="share-card-error"
-                                role="alert"
-                                className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl bg-zinc-950/80 px-5 text-center backdrop-blur-[2px]"
-                            >
-                                <AlertCircle className="w-6 h-6 text-amber-400" />
-                                <p className="text-sm leading-relaxed text-zinc-300">
-                                    {status === 'empty' ? t('share.error.empty') : (error ?? t('share.error.generate'))}
-                                </p>
-                                {status === 'error' && (
-                                    <button type="button" data-testid="share-card-retry" onClick={retry} className={secondaryButton}>
-                                        <RefreshCw className="w-4 h-4" />
-                                        {t('common.retry')}
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    <ShareCardCanvas
+                        canvasRef={setCanvasRef}
+                        status={status}
+                        meta={meta}
+                        error={error}
+                        onRetry={retry}
+                        ariaLabel={t('share.previewAlt')}
+                        retryButtonClassName={secondaryButton}
+                    />
                 </div>
 
                 <div className="sticky bottom-0 z-10 flex flex-col-reverse gap-2 border-t border-line-subtle bg-surface/95 px-6 py-4 backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-end">
