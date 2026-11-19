@@ -31,6 +31,7 @@
 - recommend.py       规则推荐：画像区间 + 已看历史 + 人工精选池（V1）
 - routes_recommend.py GET /api/recommendations（游客可用）
 - routes_blog.py     官方博客：只读 content/blog/*.md + 安全 Markdown + RSS（V1）
+- routes_book_import.py / routes_book_upload.py 我的书：公版书链接导入 / 本地 EPUB 上传（需登录）
 - routes_admin.py    后台止血台：只读聚合用户/花费/任务/健康（需管理员，M1 ⑥）
 - reports.py         观看事件 + 周报 SQL 聚合（M5）
 - placement.py       定位测题库抽样 / 加权评分 / CEFR 区间 / 画像（M4）
@@ -53,8 +54,9 @@
   /api/auth、/health 同列）：不需要登录，中间件也不为它们创建游客身份、
   不下发 `ln_guest`；博客只来自仓库内 Markdown，免费资源库只来自仓库内 JSON，
   公版书只存书目与中译文，英文原文按请求从公版源实时抓取。
-  其中 `/api/books/import*` 与 `/api/books/imported*` 是**登录用户**的导入
-  功能（路由内 401），沿用公开前缀只是为了避免给这两个端点签发游客 Cookie。
+  其中 `/api/books/import*`、`/api/books/upload*` 与 `/api/books/imported*` 是
+  **登录用户**的导入/上传功能（路由内 401），沿用公开前缀只是为了避免给这些
+  端点签发游客 Cookie。
 
 Starlette 里后注册的中间件更靠外层，所以 CORS 放在文件最后注册。
 """
@@ -77,6 +79,7 @@ import routes_admin
 import routes_auth
 import routes_blog
 import routes_book_import
+import routes_book_upload
 import routes_books
 import routes_content
 import routes_course
@@ -298,6 +301,9 @@ app.include_router(routes_library.router)
 # 先注册「我的导入」：`GET /api/books/imported` 必须排在公开的
 # `GET /api/books/{book_id}` 之前，否则会被当成 book_id="imported" 吞掉。
 app.include_router(routes_book_import.router)
+# 本地 EPUB 上传（specs/031）：`/api/books/upload*` 与 `/api/books/imported/*/cover`
+# 均需登录；同样要排在公开的 `/api/books/{book_id}` 之前。
+app.include_router(routes_book_upload.router)
 app.include_router(routes_books.router)
 
 # 必须最后注册：Starlette 后注册的中间件在最外层，401 响应才能带上 CORS 头，

@@ -17,6 +17,9 @@ google-genai>=1.0.0
 httpx>=0.28.1
 yt-dlp>=2024.0.0
 python-dotenv>=1.0.0
+# multipart/form-data parsing for FastAPI UploadFile/Form — required by local
+# EPUB upload (POST /api/books/upload, /api/books/upload/preview).
+python-multipart>=0.0.9
 
 # Database migrations (baseline users/sessions + learning_events). Alembic pulls
 # SQLAlchemy>=2.0; application code still uses plain sqlite3. Commands run from

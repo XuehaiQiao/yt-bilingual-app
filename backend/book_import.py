@@ -37,6 +37,11 @@ SSRF 边界：
 ``BookImportUnavailable``（路由 503，提示先跑迁移）。原文永远不进数据库：
 ``chapters_json`` 只有章节标题/顺序/可选章节地址，``imported_book_translations``
 只存译文。
+
+本地 EPUB（specs/031，``source_type='local_epub'``）复用同一张表，但正文与
+封面落在账号私有目录（``local_epub.py``）：``chapters_json`` 为 v2，章节带
+``file``（``chapters/0001.json``）而不是 ``url``；读章读文件，删除时连同目录
+一起清理。两种来源共用同一个按章翻译/配额/缓存路径。
 """
 from __future__ import annotations
 
@@ -60,6 +65,7 @@ import books
 import config
 import languages
 import llm
+import local_epub
 from ai import ledger, quota
 
 logger = logging.getLogger("linguatrek.book_import")
@@ -85,10 +91,14 @@ _TRANSLATION_MAX_CHARS = 16000
 
 SOURCE_TYPE_GUTENBERG = "gutenberg"
 SOURCE_TYPE_STANDARD_EBOOKS = "standard_ebooks"
+# 本地 EPUB（specs/031）：章节正文落在账号私有目录，读取时读文件而不是抓源站。
+SOURCE_TYPE_LOCAL_EPUB = "local_epub"
 PROVIDERS = {
     SOURCE_TYPE_GUTENBERG: "Project Gutenberg",
     SOURCE_TYPE_STANDARD_EBOOKS: "Standard Ebooks",
+    SOURCE_TYPE_LOCAL_EPUB: "Local EPUB",
 }
+LOCAL_SOURCE_PREFIX = "local://"
 
 # 用户可提交的主机（严格白名单）。镜像只供内部回退，不在其中。
 _GUTENBERG_USER_HOSTS = frozenset({"www.gutenberg.org", "gutenberg.org"})
@@ -234,6 +244,8 @@ class ChapterRef:
     n: int
     title: str
     url: str | None = None
+    # 仅 local_epub：章节 JSON 在书目录下的相对路径（服务端生成，客户端不可传）。
+    file: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1565,6 +1577,13 @@ def _decode_chapters(raw: str) -> dict:
         raise BookImportUnavailable("导入书的章节索引损坏。") from exc
     if not isinstance(data, dict) or not isinstance(data.get("chapters"), list):
         raise BookImportUnavailable("导入书的章节索引损坏。")
+    provider = data.get("provider")
+    # 旧版 v1 的 provider 存的是展示名（如 "Project Gutenberg"），不能当
+    # source_type 校验；只有本地书用固定标记 "local_epub" 区分。
+    is_local = provider == SOURCE_TYPE_LOCAL_EPUB
+    chapter_limit = (
+        local_epub.max_chapters() if is_local else MAX_CHAPTERS
+    )
     chapters: list[ChapterRef] = []
     for index, entry in enumerate(data["chapters"]):
         if not isinstance(entry, dict):
@@ -1572,6 +1591,7 @@ def _decode_chapters(raw: str) -> dict:
         number = entry.get("n")
         title = entry.get("title")
         url = entry.get("url")
+        file = entry.get("file")
         if (
             not isinstance(number, int)
             or isinstance(number, bool)
@@ -1579,8 +1599,20 @@ def _decode_chapters(raw: str) -> dict:
             or not isinstance(title, str)
             or not title.strip()
             or len(title) > MAX_TITLE_CHARS
-            or len(chapters) >= MAX_CHAPTERS
+            or len(chapters) >= chapter_limit
         ):
+            raise BookImportUnavailable("导入书的章节索引损坏。")
+        if is_local:
+            # 本地书：只允许服务端生成的 chapters/<n>.json，绝不接受任意路径。
+            if url not in (None, ""):
+                raise BookImportUnavailable("导入书含非法章节地址。")
+            if not local_epub.is_valid_chapter_file(file, number):
+                raise BookImportUnavailable("导入书含非法章节地址。")
+            chapters.append(
+                ChapterRef(n=number, title=title.strip(), url=None, file=file)
+            )
+            continue
+        if file is not None:
             raise BookImportUnavailable("导入书的章节索引损坏。")
         if url is not None and (
             not isinstance(url, str) or not is_allowed_fetch_url(url)
@@ -1594,7 +1626,7 @@ def _decode_chapters(raw: str) -> dict:
     return {
         "chapters": chapters,
         "textUrl": data.get("textUrl") if isinstance(data.get("textUrl"), str) else None,
-        "provider": data.get("provider") if isinstance(data.get("provider"), str) else None,
+        "provider": provider if isinstance(provider, str) else None,
     }
 
 
@@ -1749,6 +1781,8 @@ def _book_payload(
     conn: sqlite3.Connection, book: dict, lang: str, *, include_chapters: bool
 ) -> dict:
     chapters: list[ChapterRef] = book["_chapters"]["chapters"]
+    source_type = book["sourceType"]
+    is_local = source_type == SOURCE_TYPE_LOCAL_EPUB
     translations = _translation_map(conn, book["bookId"], lang)
     chapter_payload = []
     complete = 0
@@ -1767,18 +1801,28 @@ def _book_payload(
                 ),
             }
         )
+    cover_url = None
+    if is_local:
+        try:
+            if local_epub.has_cover(book["userId"], book["bookId"]):
+                cover_url = f"/api/books/imported/{book['bookId']}/cover"
+        except local_epub.LocalEpubError:
+            cover_url = None
     payload = {
         "bookId": book["bookId"],
-        "sourceType": book["sourceType"],
+        "sourceType": source_type,
+        # 本地书不暴露 local:// 标识，也没有可访问的外链。
         "source": {
-            "provider": PROVIDERS[book["sourceType"]],
-            "url": book["sourceUrl"],
+            "provider": PROVIDERS[source_type],
+            "url": None if is_local else book["sourceUrl"],
         },
-        "sourceUrl": book["sourceUrl"],
+        "sourceUrl": None if is_local else book["sourceUrl"],
         "externalId": book["externalId"],
         "title": book["title"],
         "author": book["author"],
         "language": book["language"],
+        "local": is_local,
+        "coverUrl": cover_url,
         "chapterCount": len(chapters),
         "translatedChapters": complete,
         "targetLang": lang,
@@ -1822,6 +1866,93 @@ def find_imported_by_ref(user_id: str, ref: SourceRef, lang: str = "zh-CN") -> d
             return None
         payload = _book_payload(conn, book, lang, include_chapters=True)
         payload["reused"] = True
+        return payload
+    except sqlite3.OperationalError as exc:
+        _translate_db_error(exc)
+        raise
+    finally:
+        conn.close()
+
+
+def _local_ref(sha256: str) -> SourceRef:
+    """本地 EPUB 的幂等键：同用户同 SHA-256 = 同一本书。"""
+    if not isinstance(sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", sha256):
+        raise BookImportError("文件校验值非法。")
+    canonical = f"{LOCAL_SOURCE_PREFIX}{sha256}"
+    return SourceRef(
+        source_type=SOURCE_TYPE_LOCAL_EPUB,
+        external_id=f"epub:{sha256}",
+        canonical_url=canonical,
+        provider=PROVIDERS[SOURCE_TYPE_LOCAL_EPUB],
+        submitted_url=canonical,
+    )
+
+
+def find_local_book(user_id: str, sha256: str, lang: str = "zh-CN") -> dict | None:
+    """上传确认前查重：同账号同 SHA-256 已导入则直接返回（不占日限）。"""
+    ref = _local_ref(sha256)
+    conn = _connect()
+    try:
+        book = _find_book_by_ref(conn, user_id, ref)
+        if book is None:
+            return None
+        return _book_payload(conn, book, lang, include_chapters=True)
+    except sqlite3.OperationalError as exc:
+        _translate_db_error(exc)
+        raise
+    finally:
+        conn.close()
+
+
+def create_local_book(
+    user_id: str,
+    book_id: str,
+    *,
+    sha256: str,
+    title: str,
+    author: str | None,
+    language: str,
+    chapters_json: str,
+    lang: str = "zh-CN",
+) -> dict:
+    """写入本地 EPUB 书目行（章节正文已在调用方落盘）。
+
+    调用方负责在失败时清理刚落盘的目录；并发唯一约束冲突由数据库兜底。
+    """
+    ref = _local_ref(sha256)
+    conn = _connect()
+    try:
+        now = now_ms()
+        try:
+            with conn:
+                conn.execute(
+                    "INSERT INTO imported_books "
+                    "(id, user_id, source_type, source_url, external_id, title, "
+                    "author, language, chapters_json, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        book_id,
+                        user_id,
+                        ref.source_type,
+                        ref.canonical_url,
+                        ref.external_id,
+                        title,
+                        author,
+                        language,
+                        chapters_json,
+                        now,
+                        now,
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise BookImportUnavailable(
+                "这本书正在导入中，请稍后刷新「我的书」查看。"
+            ) from exc
+        book = _fetch_owned_book(conn, user_id, book_id)
+        if book is None:  # pragma: no cover - 刚插入必然存在
+            raise BookImportUnavailable("导入失败：书目未写入数据库。")
+        payload = _book_payload(conn, book, lang, include_chapters=True)
+        payload["reused"] = False
         return payload
     except sqlite3.OperationalError as exc:
         _translate_db_error(exc)
@@ -1921,10 +2052,16 @@ def get_imported_book(user_id: str, book_id: str, lang: str = "zh-CN") -> dict:
 def delete_imported_book(user_id: str, book_id: str) -> None:
     conn = _connect()
     try:
+        book = _fetch_owned_book(conn, user_id, book_id)
+        if book is None:
+            raise ImportedBookNotFound("书不存在。")
+        if book["sourceType"] == SOURCE_TYPE_LOCAL_EPUB:
+            # 先清本地目录：删不掉就报错且保留书目，用户可重试，绝不假成功。
+            try:
+                local_epub.delete_book(user_id, book_id)
+            except local_epub.LocalEpubError as exc:
+                raise BookImportUnavailable(exc.detail) from exc
         with conn:
-            book = _fetch_owned_book(conn, user_id, book_id)
-            if book is None:
-                raise ImportedBookNotFound("书不存在。")
             conn.execute(
                 "DELETE FROM imported_book_translations WHERE book_id = ?", (book_id,)
             )
@@ -1944,8 +2081,16 @@ def delete_imported_book(user_id: str, book_id: str) -> None:
 # ---------------------------------------------------------------------------
 
 def fetch_chapter_paragraphs(book: dict, chapter: ChapterRef) -> list[str]:
-    """按书目来源抓取某一章原文；失败抛 BookSourceError（路由 503）。"""
+    """按书目来源取某一章原文；失败抛 BookSourceError（路由 503）。"""
     ref = _ref_from_book(book)
+    if ref.source_type == SOURCE_TYPE_LOCAL_EPUB:
+        # 本地书：正文按章读账号私有目录，绝不按客户端路径拼接。
+        if not isinstance(chapter.file, str):
+            raise BookImportUnavailable("本地章节索引损坏，请重新导入这本书。")
+        try:
+            return local_epub.read_chapter(book["userId"], book["bookId"], chapter.n)
+        except local_epub.LocalEpubError as exc:
+            raise BookImportUnavailable(exc.detail) from exc
     if ref.source_type == SOURCE_TYPE_GUTENBERG:
         text, _ = _fetch_gutenberg_text(ref)
         chapters = split_gutenberg_chapters(text)
@@ -1966,11 +2111,14 @@ def fetch_chapter_paragraphs(book: dict, chapter: ChapterRef) -> list[str]:
 
 
 def _chapter_source_meta(book: dict, chapter: ChapterRef, fetched_at: float) -> dict:
+    is_local = book["sourceType"] == SOURCE_TYPE_LOCAL_EPUB
     return {
         "provider": PROVIDERS[book["sourceType"]],
-        "url": chapter.url or book["sourceUrl"],
+        # 本地书没有可访问的外链，也不把 local://<sha256> 暴露给前端。
+        "url": None if is_local else (chapter.url or book["sourceUrl"]),
         "fetchedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(fetched_at)),
         "degraded": False,
+        "local": is_local,
     }
 
 
@@ -2009,13 +2157,14 @@ def build_chapter_payload(
             paragraphs.append({"index": index, "en": en, "zh": value})
         translated = missing == 0 and bool(paragraphs)
         source = _chapter_source_meta(book, chapter, fetched_at)
+        is_local = book["sourceType"] == SOURCE_TYPE_LOCAL_EPUB
         return {
             "bookId": book_id,
             "title": book["title"],
             "author": book["author"],
             "sourceType": book["sourceType"],
             "source": source,
-            "sourceUrl": book["sourceUrl"],
+            "sourceUrl": None if is_local else book["sourceUrl"],
             "chapter": number,
             "chapterTitle": chapter.title,
             "chapterCount": len(chapters),
@@ -2350,12 +2499,15 @@ __all__ = [
     "ImportedBookNotFound",
     "InvalidBookUrl",
     "PreparedBook",
+    "SOURCE_TYPE_LOCAL_EPUB",
     "SourceRef",
     "UnsupportedBookSource",
     "build_chapter_payload",
+    "create_local_book",
     "delete_imported_book",
     "fetch_chapter_paragraphs",
     "find_imported_by_ref",
+    "find_local_book",
     "get_imported_book",
     "import_book",
     "is_allowed_fetch_url",

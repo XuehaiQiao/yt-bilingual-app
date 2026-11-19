@@ -101,6 +101,15 @@ def user_history_dir(user_id: str, target_lang: str | None = None) -> str:
     return _language_dir(os.path.join(user_data_dir(user_id), "history"), target_lang)
 
 
+def user_books_dir(user_id: str) -> str:
+    """某个用户「本地 EPUB」的私有书库目录（specs/031）。
+
+    ``<USER_DATA_DIR>/<user_id>/imported-books/``；每本书一个由服务端生成的
+    ``epub-<uuid>`` 子目录。路径只由本模块拼接，客户端不参与。
+    """
+    return os.path.join(user_data_dir(user_id), "imported-books")
+
+
 def _history_root() -> str:
     """当前身份（用户/游客）的 history 根目录（zh-CN 兼容位）。"""
     user_id = current_user_id.get()
