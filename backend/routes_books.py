@@ -154,7 +154,21 @@ async def _attach_chapter_analysis(
         teaching_analysis.normalize_level(level)
     except teaching_analysis.AnalysisInvalidRequest as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    wrapper = {"transcript": payload.get("paragraphs") or []}
+    paragraphs = payload.get("paragraphs") or []
+    if (
+        int(payload.get("missingTranslations") or 0) > 0
+        or not paragraphs
+        or any(
+            not isinstance(paragraph, dict)
+            or not isinstance(paragraph.get("zh"), str)
+            or not paragraph["zh"].strip()
+            for paragraph in paragraphs
+        )
+    ):
+        # Do not cache empty contextual glosses for a chapter that is still
+        # being auto-translated; the next open/fetch generates them properly.
+        return payload
+    wrapper = {"transcript": paragraphs}
     analysis = await teaching_analysis.attach_to_payload(
         wrapper,
         level=level,

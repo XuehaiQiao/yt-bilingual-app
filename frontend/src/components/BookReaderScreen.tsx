@@ -263,6 +263,22 @@ export function BookReaderScreen({
                 })),
             }));
             setTranslateNotice(result.outcome === 'partial' ? 'partial' : 'done');
+            // Analysis is intentionally skipped while the chapter is still
+            // untranslated; once translation lands, fetch the enriched chapter
+            // so the contextual ruby glosses can appear without a reload.
+            if (canAnalyze && (showLanguagePoints || highlight.enabled)) {
+                try {
+                    const enriched = await fetchBookChapter(
+                        bookId,
+                        target,
+                        language,
+                        highlight.level,
+                    );
+                    if (token === translateTokenRef.current) setChapter(enriched);
+                } catch {
+                    // Enhancement only; the translated chapter remains usable.
+                }
+            }
         } catch (error) {
             if (token !== translateTokenRef.current) return;
             console.error('Failed to translate book chapter:', error);
@@ -275,7 +291,7 @@ export function BookReaderScreen({
                 setTranslating(false);
             }
         }
-    }, [bookId, language]);
+    }, [bookId, canAnalyze, highlight.enabled, highlight.level, language, showLanguagePoints]);
 
     // Switching chapter (or target language) invalidates the in-flight
     // translation and clears its transient status.

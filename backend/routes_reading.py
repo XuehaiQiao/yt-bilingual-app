@@ -144,7 +144,19 @@ async def _attach_article_analysis(
         teaching_analysis.normalize_level(level)
     except teaching_analysis.AnalysisInvalidRequest as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    wrapper = {"transcript": payload.get("paragraphs") or []}
+    paragraphs = payload.get("paragraphs") or []
+    # A newly imported article may still be translating. Analysing now would
+    # cache contextual glosses with empty zh_word; wait for the translation to
+    # finish, then a normal refresh generates the analysis against real text.
+    if not paragraphs or any(
+        not isinstance(paragraph, dict)
+        or not isinstance(paragraph.get("translation"), str)
+        or not paragraph["translation"].strip()
+        or paragraph["translation"].strip() == "[未翻译]"
+        for paragraph in paragraphs
+    ):
+        return payload
+    wrapper = {"transcript": paragraphs}
     analysis = await teaching_analysis.attach_to_payload(
         wrapper,
         level=level,
