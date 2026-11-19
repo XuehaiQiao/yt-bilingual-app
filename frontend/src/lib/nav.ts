@@ -26,6 +26,9 @@
 //   #/<tab>/vocabulary                                    word book (单词本)
 //   #/<tab>/ability                                       ability profile
 //   #/profile/admin                                       admin console (fixed, D-10)
+//   #/dev/ui                                              component matrix (dev/admin only;
+//                                                          not part of NavState — see
+//                                                          `isDevUiHash` below)
 //
 // `<tab>` is the *source* tab (where the learner came from), not an ownership
 // claim: the same screen opened from Today and from Content keeps different
@@ -451,6 +454,21 @@ export function backLabelFor(state: NavState): TranslationKey {
   if (state.sub?.kind === 'reader' && state.sub.articleId) return 'reader.backToList';
   if (state.sub?.kind === 'blog' && state.sub.slug) return 'blog.backToList';
   return 'nav.back';
+}
+
+/**
+ * Dev-only component matrix hash (`#/dev/ui`).
+ *
+ * Deliberately NOT a `NavState` / `SubRoute`: the matrix is a pre-auth
+ * diagnostics surface, never reachable from product navigation, and `App`'s
+ * dev gate decides whether to mount it (`import.meta.env.DEV` or admin).
+ * Keeping it out of the route model also keeps `parseRoute`'s contract
+ * ("invalid → Today") intact for every normal screen.
+ */
+export function isDevUiHash(hash: string): boolean {
+  const raw = String(hash ?? '').trim();
+  if (!raw.startsWith('#')) return false;
+  return /^#\/dev\/ui\/?(?:\?.*)?$/.test(raw);
 }
 
 /**

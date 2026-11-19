@@ -1,6 +1,6 @@
 import { apiFetch } from './lib/api';
 import { CourseApiError, COURSE_MVP_LESSON_ID, generateCourse, isCourseAbortError } from './lib/course';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Star, ChevronDown, Loader2, XCircle, Repeat, Keyboard, EyeOff, PanelRightOpen, PanelRightClose, AlertTriangle, Play, Pause, GraduationCap, BookOpenCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,7 +14,7 @@ import { getLanguageMeta, getRuntimeTargetLang } from './i18n';
 import type { TranslationKey } from './i18n';
 import { ModelProvider } from './lib/model';
 import { useNav } from './lib/useNav';
-import { parseRoute, resolveRoute, TASK_SUB_KINDS, toHash, type SectionAnchor, type SubRoute, type TabId } from './lib/nav';
+import { isDevUiHash, parseRoute, resolveRoute, TASK_SUB_KINDS, toHash, type SectionAnchor, type SubRoute, type TabId } from './lib/nav';
 import { VideoPlayer } from './components/VideoPlayer';
 import { LocalEpisodeStage } from './components/LocalEpisodeStage';
 import { TranscriptView } from './components/TranscriptView';
@@ -102,6 +102,10 @@ import { getProgress, saveProgress } from './lib/progress';
 import { getProfile, type PlacementProfile } from './lib/placement';
 import { fetchLibraryArticle, fetchLibraryVideo, type LibraryArticle } from './lib/library';
 import ReactMarkdown from 'react-markdown';
+
+// Dev-only component matrix (QA-X-31). Lazy so the chunk is never part of the
+// app's first screen; `AuthGate` decides whether it may mount at all.
+const DevUIScreen = lazy(() => import('./components/DevUIScreen'));
 
 interface TranscriptItem {
   id: number;
@@ -3540,9 +3544,19 @@ function readLoginNext(): string | null {
   return resolved.canonical;
 }
 
-function readPublicLocation(): { view: PublicView | null; blank: boolean; next: string | null } {
+function readPublicLocation(): {
+  view: PublicView | null;
+  blank: boolean;
+  next: string | null;
+  devUi: boolean;
+} {
   const hash = window.location.hash;
-  return { view: readPublicView(hash), blank: !hash || hash === '#', next: readLoginNext() };
+  return {
+    view: readPublicView(hash),
+    blank: !hash || hash === '#',
+    next: readLoginNext(),
+    devUi: isDevUiHash(hash),
+  };
 }
 
 function usePublicView() {
@@ -3596,10 +3610,16 @@ function LoginView({ next }: { next: string | null }) {
 // top bar offers "游客 · 登录保存". Clicking it overlays the auth screen instead
 // of replacing the app, so a guest who changes their mind keeps their video.
 function AuthGate() {
-  const { status } = useAuth();
+  const { status, isAdmin } = useAuth();
   const { t } = useI18n();
   const [showAuth, setShowAuth] = useState(false);
-  const { view: publicView, blank: blankHash, next: loginNext, sync: syncPublicView } = usePublicView();
+  const {
+    view: publicView,
+    blank: blankHash,
+    next: loginNext,
+    devUi,
+    sync: syncPublicView,
+  } = usePublicView();
 
   // A visitor who opens the bare origin lands on the public welcome page.
   const defaultWelcome =
@@ -3620,6 +3640,21 @@ function AuthGate() {
     window.history.replaceState(null, '', loginNext ?? '#/today');
     syncPublicView();
   }, [status, publicView, loginNext, syncPublicView]);
+
+  // ⛔ Dev-only component matrix. Not a `NavState`: the normal route model
+  // never sees it, it has no navigation entry, and a deep link is the only
+  // way in. Development builds open it for any auth state (so the matrix can
+  // be reviewed offline); a production build requires the authenticated
+  // admin flag. Every other status falls through to the normal auth/app
+  // switch below, which treats the hash as an invalid route (no data leak).
+  const devUiAllowed = devUi && (import.meta.env.DEV || isAdmin);
+  if (devUiAllowed && (import.meta.env.DEV || status !== 'loading')) {
+    return (
+      <Suspense fallback={<AuthLoadingScreen />}>
+        <DevUIScreen />
+      </Suspense>
+    );
+  }
 
   if (status === 'loading') return <AuthLoadingScreen />;
   if (publicView === 'welcome' || defaultWelcome) return <WelcomeScreen />;
