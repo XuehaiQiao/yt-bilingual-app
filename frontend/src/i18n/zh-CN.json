@@ -1753,7 +1753,5 @@
   "sidebar.group.history": "历史",
   "sidebar.submenu.action": "快捷操作",
   "sidebar.submenu.section": "本页区块",
-  "sidebar.submenu.page": "独立页面",
-  "transcript.teachingHighlight": "教学高亮",
-  "transcript.teachingHighlightHint": "AI 选出的本段重点词/短语，带中文注释；点词组可查词。"
+  "sidebar.submenu.page": "独立页面"
 }

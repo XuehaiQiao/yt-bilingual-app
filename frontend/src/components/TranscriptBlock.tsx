@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Star, Languages } from 'lucide-react';
 import { isUntranslated, type TranslationMode } from '../lib/transcript';
 import { cleanReadingWord } from '../lib/useReadingHighlights';
@@ -133,11 +133,13 @@ interface TranscriptBlockProps {
     translationMode?: TranslationMode;
     dictation?: boolean;
     onWordLookup?: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
+    /** CEFR difficulty highlight callback, shared with the readers. */
+    isHighlighted?: (word: string) => boolean;
     /** Forces a re-render of this memoized block when the UI language changes. */
     uiLanguage?: LanguageCode;
 }
 
-const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, highlights, isActive, isFavorited, onToggleFavorite, translationMode = 'active', dictation = false, onWordLookup }) => {
+const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, isActive, isFavorited, onToggleFavorite, translationMode = 'active', dictation = false, onWordLookup, isHighlighted }) => {
     const { t } = useI18n();
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -156,9 +158,6 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
         setRevealed(false);
     }, [dictation, enText]);
     const blurred = dictation && !revealed;
-
-    const enHighlights = useMemo(() => highlights.map(h => ({ word: h.en_word, color: h.color, annotation: h.zh_word })), [highlights]);
-    const zhHighlights = useMemo(() => highlights.map(h => ({ word: h.zh_word, color: h.color })), [highlights]);
 
     return (
         <div
@@ -223,11 +222,15 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
                             blurred && "blur-[6px] select-none opacity-60 hover:opacity-80 cursor-pointer"
                         )}
                     >
-                        <HighlightedText
-                            text={enText}
-                            highlights={enHighlights}
-                            onWordClick={!blurred && onWordLookup ? (word, e) => onWordLookup(word, enText, start, e) : undefined}
-                        />
+                        {!blurred && onWordLookup ? (
+                            <ClickableWords
+                                text={enText}
+                                onWordClick={(word, e) => onWordLookup(word, enText, start, e)}
+                                isHighlighted={isHighlighted}
+                            />
+                        ) : (
+                            <span>{enText}</span>
+                        )}
                     </p>
                     <div className={cn(
                         "grid transition-[grid-template-rows,opacity,margin] duration-300 ease-apple",
@@ -244,7 +247,7 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
                                     "text-[15px] leading-relaxed transition-colors duration-300 ease-apple",
                                     isActive ? "text-zinc-400" : "text-zinc-500"
                                 )}>
-                                    <HighlightedText text={zhText} highlights={zhHighlights} />
+                                    {zhText}
                                 </p>
                             )}
                         </div>

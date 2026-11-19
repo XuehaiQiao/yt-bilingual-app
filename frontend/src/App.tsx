@@ -2835,12 +2835,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         </div>
 
         <span
-          data-testid="teaching-highlight-legend"
-          title={t('transcript.teachingHighlightHint')}
+          data-testid="difficulty-highlight-legend"
+          title={t('reading.highlight.toggle')}
           className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-2.5 text-xs font-medium text-amber-200/90"
         >
           <Highlighter className="h-3.5 w-3.5" aria-hidden="true" />
-          {t('transcript.teachingHighlight')}
+          {t('reading.highlight.toggle')}
         </span>
 
         <div className="w-px h-4 bg-white/10 shrink-0" />

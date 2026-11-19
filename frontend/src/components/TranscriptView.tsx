@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { TranscriptBlock } from './TranscriptBlock';
+import { useReadingHighlights } from '../lib/useReadingHighlights';
 import type { TranslationMode } from '../lib/transcript';
 
 interface TranscriptItem {
@@ -82,6 +83,9 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
     uiLanguage,
     pageScroll = false,
 }) => {
+    // Video uses the same CEFR difficulty mark as the readers; the AI
+    // teaching highlights are no longer painted in the transcript.
+    const highlight = useReadingHighlights(transcript.map((item) => item.en_text));
     const containerRef = useRef<HTMLDivElement>(null);
     const lastUserScrollRef = useRef(0);
     // The page scroller is not known until layout exists; keep it in a ref so
@@ -231,6 +235,7 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
                                 translationMode={translationMode}
                                 dictation={dictation}
                                 onWordLookup={onWordLookup}
+                                isHighlighted={highlight.isHighlighted}
                                 uiLanguage={uiLanguage}
                             />
                         </div>

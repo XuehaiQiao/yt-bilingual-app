@@ -1753,7 +1753,5 @@
   "sidebar.group.history": "Lịch sử",
   "sidebar.submenu.action": "Thao tác nhanh",
   "sidebar.submenu.section": "Trong trang này",
-  "sidebar.submenu.page": "Trang riêng",
-  "transcript.teachingHighlight": "Điểm dạy học",
-  "transcript.teachingHighlightHint": "Từ/cụm từ trọng tâm do AI chọn cho đoạn này, có chú thích; chạm cụm từ để tra."
+  "sidebar.submenu.page": "Trang riêng"
 }
