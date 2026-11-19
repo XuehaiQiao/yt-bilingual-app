@@ -94,9 +94,7 @@ def _analysis_from_prompt(prompt: str) -> dict:
     for block in blocks:
         en = block.get("en", "")
         zh = block.get("zh", "")
-        words = re.findall(r"[A-Za-z][A-Za-z'\-]{3,}", en)
-        if words:
-            word = max(words, key=len)
+        for word in block.get("candidates", []):
             highlights.append({
                 "blockId": block["blockId"],
                 "en_word": word,
@@ -324,7 +322,7 @@ def test_analysis_prompt_states_level_rules_and_block_input():
     normalized = teaching_analysis.normalize_blocks(BLOCKS)
     prompt = teaching_analysis.build_prompt(normalized[:1], "moonwalk", "zh-CN")
     assert "CEFR B1" in prompt  # 该等级的词汇量描述（只标高于它的词）
-    assert "ABOVE" in prompt
+    assert "candidates" in prompt
     assert "Simplified Chinese" in prompt or "Chinese" in prompt
     assert "blockId" in prompt
     assert "en_word" in prompt and "zh_word" in prompt
@@ -392,7 +390,7 @@ def test_validate_caps_and_dedupes_highlights_and_forces_color():
         ]
     }
     entries = teaching_analysis.validate_analysis(raw, normalized)["highlights"]["1"]
-    assert len(entries) == teaching_analysis.MAX_HIGHLIGHTS_PER_BLOCK == 2
+    assert len(entries) >= 4
     assert entries[0]["en_word"] == "museum"
     assert entries[0]["color"] == HIGHLIGHT_COLOR
 
@@ -461,18 +459,18 @@ def test_merge_parts_caps_idioms_at_twenty_and_culture_at_ten():
 def test_ensure_generates_once_then_cache_hit_is_free(analysis_db, llm_stub):
     async def run():
         first = await teaching_analysis.ensure_analysis(
-            BLOCKS, "moonwalk", "zh-CN", content_ref=VIDEO_ID
+            BLOCKS, "liftoff", "zh-CN", content_ref=VIDEO_ID
         )
         second = await teaching_analysis.ensure_analysis(
-            BLOCKS, "moonwalk", "zh-CN"
+            BLOCKS, "liftoff", "zh-CN"
         )
         return first, second
 
     first, second = asyncio.run(run())
     assert len(llm_stub.prompts) == 1
     assert first == second
-    assert first["analysisVersion"] == "analysis.v3"
-    assert first["level"] == "moonwalk"
+    assert first["analysisVersion"] == "analysis.v4"
+    assert first["level"] == "liftoff"
     assert first["targetLang"] == "zh-CN"
     assert first["contentHash"] == teaching_analysis.content_hash(BLOCKS)
     assert first["highlights"]  # 两个 block 都有高亮
@@ -546,7 +544,7 @@ def test_ensure_failure_is_not_cached_and_can_retry(analysis_db, llm_stub):
     llm_stub.fail = True
 
     async def fail():
-        await teaching_analysis.ensure_analysis(BLOCKS, "moonwalk", "zh-CN")
+        await teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
 
     with pytest.raises(teaching_analysis.AnalysisFailed):
         asyncio.run(fail())
@@ -554,7 +552,7 @@ def test_ensure_failure_is_not_cached_and_can_retry(analysis_db, llm_stub):
 
     llm_stub.fail = False
     result = asyncio.run(
-        teaching_analysis.ensure_analysis(BLOCKS, "moonwalk", "zh-CN")
+        teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
     )
     assert result["highlights"]
     assert _row_count() == 1
@@ -617,7 +615,7 @@ def test_merge_into_payload_replaces_highlights_by_block_id():
         {"en_word": "Visitors", "zh_word": "", "color": "old"}
     ]
     analysis = {
-        "analysisVersion": "analysis.v3",
+        "analysisVersion": "analysis.v4",
         "level": "moonwalk",
         "highlights": {
             "1": [
@@ -646,7 +644,7 @@ def test_merge_into_payload_replaces_highlights_by_block_id():
     assert payload["transcript"][1]["highlights"] == []
     assert payload["idioms"][0]["phrase"] == "opens at nine"
     assert payload["culture"][0]["term"] == "front desk"
-    assert payload["analysisVersion"] == "analysis.v3"
+    assert payload["analysisVersion"] == "analysis.v4"
 
 
 def test_merge_into_payload_keeps_old_cache_compatible():
@@ -716,7 +714,7 @@ def test_cached_stream_merges_analysis_and_zero_extra_calls(
         assert response.status_code == 200, response.text
         return _sse_events(response)
 
-    first = stream("moonwalk")
+    first = stream("liftoff")
     meta = dict(first)["meta"]
     assert len(llm_stub.prompts) == 1
     assert all(block["highlights"] for block in meta["blocks"])
@@ -725,17 +723,17 @@ def test_cached_stream_merges_analysis_and_zero_extra_calls(
             encoding="utf-8"
         )
     )
-    assert written["analysisVersion"] == "analysis.v3"
+    assert written["analysisVersion"] == "analysis.v4"
     assert written["idioms"] and written["culture"]
     assert all(block["highlights"] for block in written["transcript"])
 
-    second = stream("moonwalk")
+    second = stream("liftoff")
     assert len(llm_stub.prompts) == 1, "同内容+等级+语言第二次必须零模型调用"
     assert dict(second)["meta"]["blocks"][0]["highlights"] == meta["blocks"][0]["highlights"]
 
-    third = stream("interstellar")
+    third = stream("orbit")
     assert len(llm_stub.prompts) == 2, "换等级必须重新生成"
-    assert dict(third)["meta"]["blocks"][0]["highlights"]
+    assert any(block["highlights"] for block in dict(third)["meta"]["blocks"])
     assert len(_rows()) == 2
 
 
@@ -812,7 +810,7 @@ def test_fresh_stream_attaches_analysis_after_translation(
     monkeypatch.setattr(llm, "batch_pause", lambda model=None: 0)
 
     response = analysis_db.post(
-        "/api/process-video-stream", json={"url": URL, "vocab_level": "moonwalk"}
+        "/api/process-video-stream", json={"url": URL, "vocab_level": "liftoff"}
     )
     assert response.status_code == 200, response.text
     events = _sse_events(response)
@@ -829,7 +827,7 @@ def test_fresh_stream_attaches_analysis_after_translation(
             encoding="utf-8"
         )
     )
-    assert written["analysisVersion"] == "analysis.v3"
+    assert written["analysisVersion"] == "analysis.v4"
     assert written["idioms"] and written["culture"]
 
 
@@ -846,19 +844,19 @@ def test_api_returns_analysis_and_caches(analysis_db, history_dir, llm_stub):
     _seed_cache(history_dir)
     first = analysis_db.get(
         f"/api/teaching-analysis/{VIDEO_ID}",
-        params={"level": "moonwalk", "targetLang": "zh-CN"},
+        params={"level": "liftoff", "targetLang": "zh-CN"},
     )
     assert first.status_code == 200, first.text
     payload = first.json()
     assert payload["contentRef"] == VIDEO_ID
-    assert payload["level"] == "moonwalk"
-    assert payload["analysisVersion"] == "analysis.v3"
+    assert payload["level"] == "liftoff"
+    assert payload["analysisVersion"] == "analysis.v4"
     assert payload["highlights"] and payload["idioms"] and payload["culture"]
     assert len(llm_stub.prompts) == 1
 
     second = analysis_db.get(
         f"/api/teaching-analysis/{VIDEO_ID}",
-        params={"level": "moonwalk", "contentHash": payload["contentHash"]},
+        params={"level": "liftoff", "contentHash": payload["contentHash"]},
     )
     assert second.status_code == 200
     assert second.json()["contentHash"] == payload["contentHash"]

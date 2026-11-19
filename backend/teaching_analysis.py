@@ -47,6 +47,7 @@ import uuid
 import config
 import languages
 import llm
+import vocabulary
 from ai import quota
 from translate import (
     HIGHLIGHT_COLOR,
@@ -58,7 +59,7 @@ logger = logging.getLogger("linguatrek.teaching_analysis")
 
 # prompt/校验口径版本：缓存键的一部分；改 prompt 或校验规则时递增，旧分析
 # 自动失效重生成（旧行保留，便于回滚/排查）。
-ANALYSIS_VERSION = "analysis.v3"
+ANALYSIS_VERSION = "analysis.v4"
 
 # 账本/配额功能名（ai/ledger.KNOWN_FEATURES / ai/quota._FEATURE_LIMIT_ATTRS）。
 FEATURE = "analysis"
@@ -72,11 +73,33 @@ INDEX_CONTENT_REF = "ix_content_teaching_analysis_ref"
 MAX_BLOCKS_PER_CALL = 200
 MAX_IDIOMS = 20
 MAX_CULTURE = 10
-MAX_HIGHLIGHTS_PER_BLOCK = 2
+MAX_HIGHLIGHTS_PER_BLOCK = 20
 MAX_QUOTE_CHARS = 400
 MAX_MEANING_CHARS = 300
 MAX_NOTE_CHARS = 500
 MAX_PHRASE_CHARS = 120
+MAX_CANDIDATES_PER_BLOCK = 20
+MAX_CANDIDATE_WORDS = 100
+
+# Mirror the frontend slider → CEFR word-rank threshold (useReadingHighlights).
+_VOCAB_LEVEL_RANK = {
+    "liftoff": 0,
+    "orbit": 1,
+    "moonwalk": 2,
+    "interstellar": 3,
+    "deep-space": 4,
+    "supernova": 6,
+}
+_WORD_LEVEL_RANK = {
+    "A1": 0,
+    "A2": 1,
+    "B1": 2,
+    "B2": 3,
+    "C1": 4,
+    "C1+": 5,
+    "C2": 6,
+}
+_CANDIDATE_WORD_RE = re.compile(r"[A-Za-z][A-Za-z'\-]*")
 
 # CEFR 高亮档（前端 VocabLevelId）。旧版本存的考试 id 映射到新档位，保证
 # 手工/旧客户端传 cet4 之类也能命中缓存，而不是另起一套 level 值。
@@ -279,7 +302,7 @@ def _block_index(normalized: list[dict]) -> dict[str, tuple[int, dict]]:
     return {str(block["id"]): (index, block) for index, block in enumerate(normalized)}
 
 
-def _clean_highlights(raw, normalized, index) -> dict[str, list[dict]]:
+def _clean_highlights(raw, normalized, index, candidates: dict[str, list[str]] | None = None) -> dict[str, list[dict]]:
     """校验高亮：en 必须是原文子串、zh 必须是译文子串（否则置空保留 en）。"""
     grouped: dict[str, list[dict]] = {}
     seen: set[tuple[str, str, str]] = set()
@@ -296,6 +319,10 @@ def _clean_highlights(raw, normalized, index) -> dict[str, list[dict]]:
         if not (zh_word and block["zh"] and _substring(zh_word, block["zh"])):
             zh_word = ""  # 译文缺失/变化：只保留英文高亮，不编造中文
         key = str(block["id"])
+        if candidates is not None:
+            allowed = {word.casefold() for word in candidates.get(key, [])}
+            if en_word.casefold() not in allowed:
+                continue
         dedupe = (key, en_word.casefold(), zh_word.casefold())
         if dedupe in seen:
             continue
@@ -357,7 +384,7 @@ def _clean_points(raw, key: str, normalized, index) -> list[dict]:
     return [point for _, point in points]
 
 
-def validate_analysis(raw, normalized: list[dict]) -> dict:
+def validate_analysis(raw, normalized: list[dict], candidates: dict[str, list[str]] | None = None) -> dict:
     """把模型 JSON 校验成可落盘的 ``{highlights, idioms, culture}``。
 
     非法条目丢弃（不抛异常）；但如果返回的 JSON 连一个可识别字段都没有，
@@ -368,7 +395,7 @@ def validate_analysis(raw, normalized: list[dict]) -> dict:
         raise AnalysisFailed("模型返回格式非法。")
     index = _block_index(normalized)
     return {
-        "highlights": _clean_highlights(data.get("highlights"), normalized, index),
+        "highlights": _clean_highlights(data.get("highlights"), normalized, index, candidates),
         "idioms": _clean_points(data.get("idioms"), "idioms", normalized, index),
         "culture": _clean_points(data.get("culture"), "culture", normalized, index),
     }
@@ -399,12 +426,79 @@ def _merge_parts(parts: list[dict]) -> dict:
 # Prompt
 # ---------------------------------------------------------------------------
 
-def build_prompt(blocks: list[dict], level: str, target_lang: str) -> str:
-    """生成一次教学分析的 prompt（严格 JSON；只标高于等级的内容）。"""
+
+def _candidate_words_for_blocks(blocks: list[dict], level: str) -> dict[str, list[str]]:
+    """Return the words above the selected CEFR threshold, per block.
+
+    This is the same selection rule as the frontend difficulty layer, moved to
+    the server so the AI gets an explicit candidate list instead of choosing
+    its own two words. Each word is resolved once per analysis (batched by 100
+    through ``vocabulary.level_for_words``).
+    """
+    threshold = _VOCAB_LEVEL_RANK.get(level, 2)
+    if threshold >= 6:
+        return {}
+    word_to_blocks: dict[str, list[str]] = {}
+    block_words: dict[str, list[str]] = {}
+    for block in blocks:
+        block_id = str(block.get("id"))
+        words: list[str] = []
+        seen: set[str] = set()
+        for raw in _clean_text(block.get("en")).split():
+            token = re.sub(r"^[^A-Za-z0-9']+|[^A-Za-z0-9']+$", "", raw)
+            if len(token) < 2 or not re.search(r"[A-Za-z]", token):
+                continue
+            key = token.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            words.append(token)
+        block_words[block_id] = words
+        for word in words:
+            word_to_blocks.setdefault(word.casefold(), []).append(block_id)
+
+    unique = sorted(word_to_blocks)
+    levels: dict[str, str | None] = {}
+    for start in range(0, len(unique), MAX_CANDIDATE_WORDS):
+        chunk = unique[start:start + MAX_CANDIDATE_WORDS]
+        try:
+            levels.update(
+                {key.casefold(): value for key, value in vocabulary.level_for_words(chunk).items()}
+            )
+        except vocabulary.VocabularyError:
+            return {}
+    candidates: dict[str, list[str]] = {}
+    for block in blocks:
+        block_id = str(block.get("id"))
+        selected: list[str] = []
+        for word in block_words.get(block_id, []):
+            rank = _WORD_LEVEL_RANK.get((levels.get(word.casefold()) or "").upper())
+            if rank is None or rank <= threshold:
+                continue
+            selected.append(word)
+            if len(selected) >= MAX_CANDIDATES_PER_BLOCK:
+                break
+        if selected:
+            candidates[block_id] = selected
+    return candidates
+
+def build_prompt(
+    blocks: list[dict],
+    level: str,
+    target_lang: str,
+    candidates: dict[str, list[str]] | None = None,
+) -> str:
+    """生成一次教学分析的 prompt（严格 JSON；候选词逐个给语境释义）。"""
     target_name = languages.prompt_name(target_lang)
     level_desc = config.VOCAB_LEVELS.get(level, "")
+    candidates = candidates if candidates is not None else _candidate_words_for_blocks(blocks, level)
     payload = [
-        {"blockId": block["id"], "en": block["en"], "zh": block["zh"]}
+        {
+            "blockId": block["id"],
+            "en": block["en"],
+            "zh": block["zh"],
+            "candidates": candidates.get(str(block["id"]), []),
+        }
         for block in blocks
     ]
     return f"""
@@ -415,10 +509,11 @@ LEARNER LEVEL (highlighting threshold): {level}
 {level_desc}
 
 For the blocks below, produce:
-1. "highlights": 0-2 words or short phrases per block that are likely ABOVE the
-   learner's level, with the contextual Chinese gloss (zh_word) copied from
-   the translation when possible. Skip basic everyday words. These entries are
-   used only for words already marked by the CEFR difficulty layer.
+1. "highlights": for every word in that block's "candidates" list, return
+   exactly one entry with that exact English word and its contextual Chinese
+   gloss (zh_word) copied from the translation when possible. Do not add words
+   that are not in the candidates list; if no natural gloss exists, keep the
+   entry with an empty zh_word.
 2. "idioms": interesting idioms / phrasal verbs / fixed expressions that are
    actually used in the text. At most 20 in total.
 3. "culture": culture-specific references, allusions, customs, brands, places,
@@ -570,16 +665,17 @@ async def _generate_one_batch(
     user_id: str | None,
 ) -> tuple[dict, str]:
     """生成并校验单批分析；按降级链尝试候选模型，全部失败抛 AnalysisFailed。"""
-    prompt = build_prompt(batch, level, target_lang)
-    candidates = quota.degradation_chain(feature=FEATURE, preferred_model=model)
-    if not candidates:
+    candidates = _candidate_words_for_blocks(batch, level)
+    prompt = build_prompt(batch, level, target_lang, candidates)
+    models = quota.degradation_chain(feature=FEATURE, preferred_model=model)
+    if not models:
         raise AnalysisFailed("当前没有可用模型，教学分析已跳过。")
     last_error: Exception | None = None
-    for candidate in candidates:
+    for candidate in models:
         try:
             with llm.usage_scope(FEATURE, user_id, target_lang=target_lang):
                 raw = await llm.generate_json_async(prompt, model=candidate)
-            data = validate_analysis(raw, batch)
+            data = validate_analysis(raw, batch, candidates)
             return data, candidate
         except Exception as exc:  # noqa: BLE001 - 逐个候选降级，全失败才报错
             last_error = exc
