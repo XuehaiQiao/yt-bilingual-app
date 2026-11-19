@@ -31,6 +31,7 @@ import {
     type LibraryVideoSummary,
 } from '../lib/library';
 import { Tabs, tabPanelProps } from './ui/Tabs';
+import { FilterChip } from './ui/FilterChip';
 
 interface LibrarySectionProps {
     /** Open a pre-built video (App loads blocks and enters the video view). */
@@ -342,28 +343,20 @@ export function LibrarySection({ onOpenVideo, onOpenArticle }: LibrarySectionPro
                         const count = level === 'ALL' ? videos.length : levelCounts[level] ?? 0;
                         const label = level === 'ALL' ? t('library.filter.all') : level;
                         return (
-                            <button
+                            <FilterChip
                                 key={level}
-                                type="button"
-                                data-testid={`library-level-${level}`}
-                                aria-pressed={active}
-                                aria-label={
+                                selected={active}
+                                count={formatNumber(count)}
+                                ariaLabel={
                                     level === 'ALL'
                                         ? t('library.filter.allChipAria', { count: formatNumber(count) })
                                         : t('library.filter.chipAria', { level, count: formatNumber(count) })
                                 }
+                                testId={`library-level-${level}`}
                                 onClick={() => setLevelFilter(level)}
-                                className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors ${
-                                    active
-                                        ? 'border-transparent bg-zinc-100 text-zinc-900'
-                                        : 'border-white/5 bg-zinc-900/60 text-zinc-400 hover:border-white/10 hover:text-zinc-200'
-                                }`}
                             >
-                                <span>{label}</span>
-                                <span className={`tabular-nums ${active ? 'text-zinc-500' : 'text-zinc-600'}`}>
-                                    {formatNumber(count)}
-                                </span>
-                            </button>
+                                {label}
+                            </FilterChip>
                         );
                     })}
                 </div>

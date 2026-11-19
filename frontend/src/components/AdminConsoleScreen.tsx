@@ -61,6 +61,17 @@ import { toast } from '../lib/toast';
 import { Dialog } from './ui/Dialog';
 import { BackButton } from './ui/BackButton';
 import { Tabs, tabPanelProps } from './ui/Tabs';
+import { Switch } from './ui/Switch';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHeader,
+  TableHeaderCell,
+  TableMessageRow,
+  TableRow,
+} from './ui/Table';
 import {
   AdminApiError,
   adjustAdminUserCredits,
@@ -1020,105 +1031,102 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
                   retryLabel={t('admin.retry')}
                 />
               ) : (
-                <div className="rounded-2xl border border-white/5 bg-zinc-900/40 overflow-hidden">
-                  <div className="overflow-x-auto custom-scrollbar">
-                    <table data-testid="admin-users-table" className="w-full min-w-[900px] text-left text-sm">
-                      <thead className="bg-zinc-900/60 text-[11px] font-medium text-zinc-500">
-                        <tr>
-                          <th scope="col" className="px-4 py-2.5 whitespace-nowrap">{t('admin.users.username')}</th>
-                          <th scope="col" className="px-4 py-2.5 whitespace-nowrap">{t('admin.users.email')}</th>
-                          <th scope="col" className="px-4 py-2.5 whitespace-nowrap text-right">{t('admin.users.credits')}</th>
-                          <th scope="col" className="px-4 py-2.5 whitespace-nowrap">{t('admin.users.status')}</th>
-                          <th scope="col" className="px-4 py-2.5 whitespace-nowrap">{t('admin.users.createdAt')}</th>
-                          <th scope="col" className="px-4 py-2.5 whitespace-nowrap text-right">{t('admin.users.actions')}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {userRows.map((row) => {
-                          const banned = row.status === 'banned';
-                          const self = isSelf(row);
-                          return (
-                            <tr
-                              key={row.userId || row.id}
-                              data-testid="admin-user-row"
-                              data-email={row.email}
-                              data-status={banned ? 'banned' : 'active'}
-                              className="text-zinc-300"
-                            >
-                              <td className="px-4 py-2.5 whitespace-nowrap">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="max-w-[12rem] truncate font-medium text-zinc-200" title={displayUsername(row.username, row.email)}>
-                                    {displayUsername(row.username, row.email)}
+                <div className="rounded-card border border-line-subtle bg-surface/40 overflow-hidden">
+                  <Table
+                    testId="admin-users-table"
+                    minWidth={900}
+                    caption={t('admin.users.title')}
+                  >
+                    <TableHeader>
+                      <tr>
+                        <TableHeaderCell nowrap>{t('admin.users.username')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.users.email')}</TableHeaderCell>
+                        <TableHeaderCell numeric nowrap>{t('admin.users.credits')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.users.status')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.users.createdAt')}</TableHeaderCell>
+                        <TableHeaderCell align="right" nowrap>{t('admin.users.actions')}</TableHeaderCell>
+                      </tr>
+                    </TableHeader>
+                    <TableBody>
+                      {userRows.map((row) => {
+                        const banned = row.status === 'banned';
+                        const self = isSelf(row);
+                        return (
+                          <TableRow
+                            key={row.userId || row.id}
+                            data-testid="admin-user-row"
+                            data-email={row.email}
+                            data-status={banned ? 'banned' : 'active'}
+                          >
+                            <TableCell nowrap>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="max-w-[12rem] truncate font-medium text-fg-primary" title={displayUsername(row.username, row.email)}>
+                                  {displayUsername(row.username, row.email)}
+                                </span>
+                                {self && (
+                                  <span className="text-micro font-medium px-1.5 py-0.5 rounded-full bg-surface-2/80 border border-line-subtle text-fg-secondary">
+                                    {t('admin.users.you')}
                                   </span>
-                                  {self && (
-                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-zinc-800/80 border border-white/5 text-zinc-400">
-                                      {t('admin.users.you')}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="mt-0.5 font-mono text-[10px] text-zinc-600">{row.id}</p>
-                              </td>
-                              <td className="px-4 py-2.5 whitespace-nowrap">
-                                <span className="block max-w-[18rem] truncate text-zinc-400" title={row.email}>{row.email}</span>
-                              </td>
-                              <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums">
-                                {formatNumber(row.credits ?? 0)}
-                              </td>
-                              <td className="px-4 py-2.5 whitespace-nowrap">
-                                <StatusBadge banned={banned} />
-                              </td>
-                              <td className="px-4 py-2.5 whitespace-nowrap text-xs text-zinc-400 tabular-nums">
-                                {row.createdAt > 0 ? formatDate(row.createdAt, { dateStyle: 'medium' }) : '—'}
-                              </td>
-                              <td className="px-4 py-2.5 whitespace-nowrap">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <button
-                                    type="button"
-                                    data-testid="admin-user-credit"
-                                    onClick={() => setCreditTarget(row)}
-                                    className={`${COMPACT_BUTTON} bg-zinc-800/60 hover:bg-zinc-700/60 border-white/5 text-zinc-300 hover:text-zinc-100`}
-                                  >
-                                    <Coins className="w-3.5 h-3.5" />
-                                    {t('admin.users.adjustCredits')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    data-testid="admin-user-status"
-                                    onClick={() => setStatusTarget(row)}
-                                    disabled={self && !banned}
-                                    title={self && !banned ? t('admin.users.selfHint') : undefined}
-                                    aria-label={self && !banned ? t('admin.users.selfHint') : undefined}
-                                    className={`${COMPACT_BUTTON} ${
-                                      banned
-                                        ? 'bg-emerald-500/10 hover:bg-emerald-500/15 border-emerald-500/20 text-emerald-400'
-                                        : 'bg-red-500/10 hover:bg-red-500/15 border-red-500/20 text-red-400'
-                                    }`}
-                                  >
-                                    {banned ? <LockOpen className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
-                                    {banned ? t('admin.users.unban') : t('admin.users.ban')}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        {!usersLoading && userRows.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="px-4 py-10 text-center text-sm text-zinc-500">
-                              {search ? t('admin.users.noMatch') : t('admin.users.empty')}
-                            </td>
-                          </tr>
-                        )}
-                        {usersLoading && userRows.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="px-4 py-10 text-center">
-                              <Loader2 className="w-5 h-5 text-zinc-500 animate-spin inline-block" />
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                                )}
+                              </div>
+                              <p className="mt-0.5 font-mono text-micro text-fg-muted">{row.id}</p>
+                            </TableCell>
+                            <TableCell nowrap muted>
+                              <span className="block max-w-[18rem] truncate" title={row.email}>{row.email}</span>
+                            </TableCell>
+                            <TableCell numeric nowrap>
+                              {formatNumber(row.credits ?? 0)}
+                            </TableCell>
+                            <TableCell nowrap>
+                              <StatusBadge banned={banned} />
+                            </TableCell>
+                            <TableCell nowrap muted className="text-caption tabular-nums">
+                              {row.createdAt > 0 ? formatDate(row.createdAt, { dateStyle: 'medium' }) : '—'}
+                            </TableCell>
+                            <TableCell align="right" nowrap>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  data-testid="admin-user-credit"
+                                  onClick={() => setCreditTarget(row)}
+                                  className={`${COMPACT_BUTTON} bg-zinc-800/60 hover:bg-zinc-700/60 border-white/5 text-zinc-300 hover:text-zinc-100`}
+                                >
+                                  <Coins className="w-3.5 h-3.5" />
+                                  {t('admin.users.adjustCredits')}
+                                </button>
+                                <button
+                                  type="button"
+                                  data-testid="admin-user-status"
+                                  onClick={() => setStatusTarget(row)}
+                                  disabled={self && !banned}
+                                  title={self && !banned ? t('admin.users.selfHint') : undefined}
+                                  aria-label={self && !banned ? t('admin.users.selfHint') : undefined}
+                                  className={`${COMPACT_BUTTON} ${
+                                    banned
+                                      ? 'bg-emerald-500/10 hover:bg-emerald-500/15 border-emerald-500/20 text-emerald-400'
+                                      : 'bg-red-500/10 hover:bg-red-500/15 border-red-500/20 text-red-400'
+                                  }`}
+                                >
+                                  {banned ? <LockOpen className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+                                  {banned ? t('admin.users.unban') : t('admin.users.ban')}
+                                </button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {!usersLoading && userRows.length === 0 && (
+                        <TableMessageRow colSpan={6}>
+                          {search ? t('admin.users.noMatch') : t('admin.users.empty')}
+                        </TableMessageRow>
+                      )}
+                      {usersLoading && userRows.length === 0 && (
+                        <TableMessageRow colSpan={6}>
+                          <Loader2 className="w-5 h-5 text-fg-muted animate-spin inline-block" />
+                        </TableMessageRow>
+                      )}
+                    </TableBody>
+                  </Table>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 px-4 py-2.5">
                     <p data-testid="admin-users-page" className="text-[11px] text-zinc-500 tabular-nums">
                       {usersPage
@@ -1206,29 +1214,18 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
                       >
                         {maintenanceDraft ? t('admin.settings.maintenanceOn') : t('admin.settings.maintenanceOff')}
                       </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={maintenanceDraft}
-                        aria-label={t('admin.settings.maintenance')}
-                        data-testid="admin-settings-maintenance"
-                        disabled={!settings || settingsLoading || settingsSaving}
-                        onClick={() => {
-                          setMaintenanceDraft((current) => !current);
+                      <Switch
+                        checked={maintenanceDraft}
+                        onChange={(next) => {
+                          setMaintenanceDraft(next);
                           setSettingsSaved(false);
                         }}
-                        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors disabled:opacity-50 ${
-                          maintenanceDraft
-                            ? 'bg-amber-500/80 border-amber-400/40'
-                            : 'bg-zinc-700/80 border-white/5'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-5 w-5 rounded-full bg-zinc-100 shadow transition-transform duration-200 ease-apple ${
-                            maintenanceDraft ? 'translate-x-[22px]' : 'translate-x-0.5'
-                          }`}
-                        />
-                      </button>
+                        ariaLabel={t('admin.settings.maintenance')}
+                        tone="warning"
+                        loading={settingsSaving}
+                        disabled={!settings || settingsLoading}
+                        testId="admin-settings-maintenance"
+                      />
                     </div>
                   </div>
                   {maintenanceDraft && (
@@ -1369,60 +1366,58 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
                     retryLabel={t('admin.retry')}
                   />
                 ) : (
-                  <div className="rounded-2xl border border-white/5 bg-zinc-900/40 overflow-hidden">
-                    <div className="overflow-x-auto custom-scrollbar">
-                      <table data-testid="admin-usage-table" className="w-full min-w-[640px] text-left text-sm">
-                        <thead className="bg-zinc-900/60 text-[11px] font-medium text-zinc-500">
-                          <tr>
-                            <th scope="col" className="px-4 py-2.5 whitespace-nowrap">{t('admin.table.day')}</th>
-                            <th scope="col" className="px-4 py-2.5 whitespace-nowrap">{t('admin.table.feature')}</th>
-                            <th scope="col" className="px-4 py-2.5 whitespace-nowrap text-right">{t('admin.table.calls')}</th>
-                            <th scope="col" className="px-4 py-2.5 whitespace-nowrap text-right">{t('admin.table.inputTokens')}</th>
-                            <th scope="col" className="px-4 py-2.5 whitespace-nowrap text-right">{t('admin.table.outputTokens')}</th>
-                            <th scope="col" className="px-4 py-2.5 whitespace-nowrap text-right">{t('admin.table.cost')}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                          {usageRows.map((row) => (
-                            <tr key={`${row.day}:${row.feature}`} className="text-zinc-300">
-                              <td className="px-4 py-2.5 whitespace-nowrap tabular-nums text-zinc-400">{row.day}</td>
-                              <td className="px-4 py-2.5 whitespace-nowrap">{featureLabel(row.feature, t)}</td>
-                              <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums">{formatNumber(row.calls)}</td>
-                              <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-zinc-400">{formatNumber(row.inputTokens)}</td>
-                              <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-zinc-400">{formatNumber(row.outputTokens)}</td>
-                              <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums">{usd(row.costUsd)}</td>
-                            </tr>
-                          ))}
-                          {!usageLoading && usageRows.length === 0 && (
-                            <tr>
-                              <td colSpan={6} className="px-4 py-10 text-center text-sm text-zinc-500">
-                                {t('admin.usage.empty')}
-                              </td>
-                            </tr>
-                          )}
-                          {usageLoading && usageRows.length === 0 && (
-                            <tr>
-                              <td colSpan={6} className="px-4 py-10 text-center">
-                                <Loader2 className="w-5 h-5 text-zinc-500 animate-spin inline-block" />
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                        {usage && usageRows.length > 0 && (
-                          <tfoot className="bg-zinc-900/60 text-zinc-300">
-                            <tr>
-                              <td className="px-4 py-2.5 text-[11px] font-medium text-zinc-500" colSpan={2}>
-                                {t('admin.usage.total')}
-                              </td>
-                              <td className="px-4 py-2.5 text-right tabular-nums">{formatNumber(usage.totals.calls)}</td>
-                              <td className="px-4 py-2.5 text-right tabular-nums text-zinc-400">{formatNumber(usage.totals.inputTokens)}</td>
-                              <td className="px-4 py-2.5 text-right tabular-nums text-zinc-400">{formatNumber(usage.totals.outputTokens)}</td>
-                              <td className="px-4 py-2.5 text-right tabular-nums">{usd(usage.totals.costUsd)}</td>
-                            </tr>
-                          </tfoot>
+                  <div className="rounded-card border border-line-subtle bg-surface/40 overflow-hidden">
+                    <Table
+                      testId="admin-usage-table"
+                      minWidth={640}
+                      caption={t('admin.usage.title')}
+                    >
+                      <TableHeader>
+                        <tr>
+                          <TableHeaderCell nowrap>{t('admin.table.day')}</TableHeaderCell>
+                          <TableHeaderCell nowrap>{t('admin.table.feature')}</TableHeaderCell>
+                          <TableHeaderCell numeric nowrap>{t('admin.table.calls')}</TableHeaderCell>
+                          <TableHeaderCell numeric nowrap>{t('admin.table.inputTokens')}</TableHeaderCell>
+                          <TableHeaderCell numeric nowrap>{t('admin.table.outputTokens')}</TableHeaderCell>
+                          <TableHeaderCell numeric nowrap>{t('admin.table.cost')}</TableHeaderCell>
+                        </tr>
+                      </TableHeader>
+                      <TableBody>
+                        {usageRows.map((row) => (
+                          <TableRow key={`${row.day}:${row.feature}`}>
+                            <TableCell nowrap muted className="text-caption tabular-nums">{row.day}</TableCell>
+                            <TableCell nowrap>{featureLabel(row.feature, t)}</TableCell>
+                            <TableCell numeric nowrap>{formatNumber(row.calls)}</TableCell>
+                            <TableCell numeric nowrap muted>{formatNumber(row.inputTokens)}</TableCell>
+                            <TableCell numeric nowrap muted>{formatNumber(row.outputTokens)}</TableCell>
+                            <TableCell numeric nowrap>{usd(row.costUsd)}</TableCell>
+                          </TableRow>
+                        ))}
+                        {!usageLoading && usageRows.length === 0 && (
+                          <TableMessageRow colSpan={6}>
+                            {t('admin.usage.empty')}
+                          </TableMessageRow>
                         )}
-                      </table>
-                    </div>
+                        {usageLoading && usageRows.length === 0 && (
+                          <TableMessageRow colSpan={6}>
+                            <Loader2 className="w-5 h-5 text-fg-muted animate-spin inline-block" />
+                          </TableMessageRow>
+                        )}
+                      </TableBody>
+                      {usage && usageRows.length > 0 && (
+                        <TableFooter>
+                          <tr>
+                            <TableCell colSpan={2} className="text-micro font-medium text-fg-muted">
+                              {t('admin.usage.total')}
+                            </TableCell>
+                            <TableCell numeric>{formatNumber(usage.totals.calls)}</TableCell>
+                            <TableCell numeric muted>{formatNumber(usage.totals.inputTokens)}</TableCell>
+                            <TableCell numeric muted>{formatNumber(usage.totals.outputTokens)}</TableCell>
+                            <TableCell numeric>{usd(usage.totals.costUsd)}</TableCell>
+                          </tr>
+                        </TableFooter>
+                      )}
+                    </Table>
                   </div>
                 )}
               </div>

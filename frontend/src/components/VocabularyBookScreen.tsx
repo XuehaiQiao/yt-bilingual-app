@@ -68,6 +68,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { VocabPagination } from './VocabPagination';
 import { SubHeader } from './ui/SubHeader';
 import { Tabs, tabPanelProps, type TabItem } from './ui/Tabs';
+import { FilterChip } from './ui/FilterChip';
 import type { TranslationKey } from '../i18n';
 
 interface VocabularyBookScreenProps {
@@ -625,29 +626,6 @@ export function VocabularyBookScreen({
         );
     };
 
-    /** Shared chip recipe for phrase filters and the CEFR level filters. */
-    const filterChip = (
-        selected: boolean,
-        label: string,
-        testId: string,
-        onClick: () => void,
-    ) => (
-        <button
-            key={testId}
-            type="button"
-            data-testid={testId}
-            aria-pressed={selected}
-            onClick={onClick}
-            className={`inline-flex h-8 shrink-0 items-center rounded-lg border px-2.5 text-xs font-medium transition-colors ${
-                selected
-                    ? 'border-blue-500/20 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'
-                    : 'border-white/5 bg-zinc-800/60 text-zinc-400 hover:bg-zinc-700/60 hover:text-zinc-100'
-            }`}
-        >
-            {label}
-        </button>
-    );
-
     const renderMine = () => (
         <div data-testid="vocab-mine-panel" className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -927,32 +905,42 @@ export function VocabularyBookScreen({
                 <div className="flex flex-col gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
                         <span className="mr-1 text-[11px] text-zinc-500">{t('vocab.phrases.filter.level')}</span>
-                        {filterChip(
-                            phraseLevel === '',
-                            t('vocab.phrases.filter.all'),
-                            'phrase-level-all',
-                            () => setPhraseLevel(''),
-                        )}
-                        {PHRASE_LEVELS.map((level) => filterChip(
-                            phraseLevel === level,
-                            level,
-                            `phrase-level-${level}`,
-                            () => setPhraseLevel(level),
+                        <FilterChip
+                            selected={phraseLevel === ''}
+                            testId="phrase-level-all"
+                            onClick={() => setPhraseLevel('')}
+                        >
+                            {t('vocab.phrases.filter.all')}
+                        </FilterChip>
+                        {PHRASE_LEVELS.map((level) => (
+                            <FilterChip
+                                key={level}
+                                selected={phraseLevel === level}
+                                testId={`phrase-level-${level}`}
+                                onClick={() => setPhraseLevel(level)}
+                            >
+                                {level}
+                            </FilterChip>
                         ))}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                         <span className="mr-1 text-[11px] text-zinc-500">{t('vocab.phrases.filter.type')}</span>
-                        {filterChip(
-                            phraseType === '',
-                            t('vocab.phrases.filter.all'),
-                            'phrase-type-all',
-                            () => setPhraseType(''),
-                        )}
-                        {PHRASE_TYPES.map((type) => filterChip(
-                            phraseType === type,
-                            t(PHRASE_TYPE_LABEL_KEYS[type]),
-                            `phrase-type-${type}`,
-                            () => setPhraseType(type),
+                        <FilterChip
+                            selected={phraseType === ''}
+                            testId="phrase-type-all"
+                            onClick={() => setPhraseType('')}
+                        >
+                            {t('vocab.phrases.filter.all')}
+                        </FilterChip>
+                        {PHRASE_TYPES.map((type) => (
+                            <FilterChip
+                                key={type}
+                                selected={phraseType === type}
+                                testId={`phrase-type-${type}`}
+                                onClick={() => setPhraseType(type)}
+                            >
+                                {t(PHRASE_TYPE_LABEL_KEYS[type])}
+                            </FilterChip>
                         ))}
                     </div>
                 </div>
@@ -1275,24 +1263,29 @@ export function VocabularyBookScreen({
                             <span className="mr-1 text-[11px] text-zinc-500">
                                 {t('vocab.cefr.filter.level')}
                             </span>
-                            {filterChip(
-                                listLevel === '',
-                                t('vocab.cefr.filter.all'),
-                                'vocab-level-all',
-                                () => selectListLevel(''),
-                            )}
+                            <FilterChip
+                                selected={listLevel === ''}
+                                testId="vocab-level-all"
+                                onClick={() => selectListLevel('')}
+                            >
+                                {t('vocab.cefr.filter.all')}
+                            </FilterChip>
                             {VOCABULARY_CEFR_LEVELS.map((level) => {
                                 const count = activeList?.byLevel?.[level];
-                                return filterChip(
-                                    listLevel === level,
-                                    count != null
-                                        ? t('vocab.cefr.levelCount', {
-                                            level,
-                                            count: formatNumber(count),
-                                        })
-                                        : level,
-                                    `vocab-level-${level}`,
-                                    () => selectListLevel(level),
+                                return (
+                                    <FilterChip
+                                        key={level}
+                                        selected={listLevel === level}
+                                        testId={`vocab-level-${level}`}
+                                        onClick={() => selectListLevel(level)}
+                                    >
+                                        {count != null
+                                            ? t('vocab.cefr.levelCount', {
+                                                level,
+                                                count: formatNumber(count),
+                                            })
+                                            : level}
+                                    </FilterChip>
                                 );
                             })}
                         </div>
