@@ -2,7 +2,7 @@
 // Lives outside the components so both can import it without tripping the
 // react-refresh "only export components" rule.
 import type { LucideIcon } from 'lucide-react';
-import { Dumbbell, Library, Sun, UserRound } from 'lucide-react';
+import { Dumbbell, History, Library, UserRound } from 'lucide-react';
 import type { TabId } from './nav';
 import type { TranslationKey } from '../i18n';
 
@@ -18,7 +18,7 @@ export interface NavTabDef {
 export const NAV_TABS: readonly NavTabDef[] = [
   { id: 'content', icon: Library, labelKey: 'nav.content' },
   { id: 'practice', icon: Dumbbell, labelKey: 'nav.practice' },
-  { id: 'today', icon: Sun, labelKey: 'nav.today' },
+  { id: 'today', icon: History, labelKey: 'nav.today' },
   { id: 'profile', icon: UserRound, labelKey: 'nav.profile' },
 ];
 
