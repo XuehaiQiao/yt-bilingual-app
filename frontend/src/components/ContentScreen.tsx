@@ -324,7 +324,7 @@ export function ContentScreen({
                                 className="mt-3 gap-3"
                                 onClick={() => onLoadHistory(latestHistory.filename)}
                                 leading={
-                                    <span className="relative w-20 aspect-video rounded-lg overflow-hidden bg-zinc-800">
+                                    <span className="relative block w-20 aspect-video rounded-lg overflow-hidden bg-zinc-800">
                                         {latestHistory.metadata?.thumbnail && (
                                             <img src={latestHistory.metadata.thumbnail} alt="" className="w-full h-full object-cover" />
                                         )}
@@ -596,7 +596,7 @@ export function ContentScreen({
                                                 className="gap-3"
                                                 onClick={() => estimate(`https://youtube.com/watch?v=${update.videoId}`)}
                                                 leading={
-                                                    <span className="relative w-24 aspect-video overflow-hidden rounded-lg bg-zinc-800">
+                                                    <span className="relative block w-24 aspect-video overflow-hidden rounded-lg bg-zinc-800">
                                                         {update.thumbnail && <img src={update.thumbnail} className="w-full h-full object-cover" alt="" />}
                                                     </span>
                                                 }
