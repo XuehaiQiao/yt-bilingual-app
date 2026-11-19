@@ -26,6 +26,7 @@ interface TranscriptViewProps {
     onTranscriptClick: (time: number) => void;
     onToggleFavorite: (item: TranscriptItem) => void;
     translationMode?: TranslationMode;
+    translationPending?: boolean;
     dictation?: boolean;
     onWordLookup?: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
     isHighlighted?: (word: string) => boolean;
@@ -83,6 +84,7 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
     onTranscriptClick,
     onToggleFavorite,
     translationMode,
+    translationPending = true,
     dictation,
     onWordLookup,
     isHighlighted,
@@ -243,6 +245,7 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
                                 isFavorited={favorites.includes(`${videoId}-${item.id}`)}
                                 onToggleFavorite={() => onToggleFavorite(item)}
                                 translationMode={translationMode}
+                                translationPending={translationPending}
                                 dictation={dictation}
                                 onWordLookup={onWordLookup}
                                 isHighlighted={isHighlighted}

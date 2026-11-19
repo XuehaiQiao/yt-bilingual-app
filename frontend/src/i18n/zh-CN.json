@@ -1754,5 +1754,17 @@
   "sidebar.submenu.section": "本页区块",
   "sidebar.submenu.page": "独立页面",
   "reading.languagePoints.toggle": "语言点",
-  "reading.languagePoints.hint": "用下划线标出习语、固定搭配和文化点；关闭后仍可在语言点面板查看。"
+  "reading.languagePoints.hint": "用下划线标出习语、固定搭配和文化点；关闭后仍可在语言点面板查看。",
+  "localVideo.open": "打开本地视频",
+  "localVideo.feature": "本地视频",
+  "localVideo.noSubtitle": "未加载字幕",
+  "localVideo.noSubtitleHint": "选择视频时一并选择同名 SRT/VTT 字幕，即可逐句对照。",
+  "localVideo.noTranscript": "无字幕",
+  "localVideo.cues": "{{count}} 句",
+  "localVideo.parsing": "正在解析字幕…",
+  "localVideo.unsupported": "浏览器无法播放这个视频编码；请转换为 MP4（H.264）或 WebM。",
+  "localVideo.pickVideo": "选择视频文件",
+  "localVideo.pickHint": "视频只在当前浏览器播放，不上传；可同时选择 .srt/.vtt 字幕。",
+  "localVideo.videoRequired": "请选择一个视频文件。",
+  "localVideo.fileTooLarge": "视频文件过大，建议使用 4GB 以内的 MP4/WebM。"
 }

@@ -1754,5 +1754,17 @@
   "sidebar.submenu.section": "Trong trang này",
   "sidebar.submenu.page": "Trang riêng",
   "reading.languagePoints.toggle": "Điểm ngôn ngữ",
-  "reading.languagePoints.hint": "Gạch chân thành ngữ, cụm cố định và điểm văn hóa; tắt vẫn xem được trong bảng điểm ngôn ngữ."
+  "reading.languagePoints.hint": "Gạch chân thành ngữ, cụm cố định và điểm văn hóa; tắt vẫn xem được trong bảng điểm ngôn ngữ.",
+  "localVideo.open": "Mở video cục bộ",
+  "localVideo.feature": "Video cục bộ",
+  "localVideo.noSubtitle": "Chưa có phụ đề",
+  "localVideo.noSubtitleHint": "Chọn video cùng file SRT/VTT cùng tên để xem từng câu.",
+  "localVideo.noTranscript": "Không có phụ đề",
+  "localVideo.cues": "{{count}} câu",
+  "localVideo.parsing": "Đang phân tích phụ đề…",
+  "localVideo.unsupported": "Trình duyệt không phát được codec này; hãy chuyển sang MP4 (H.264) hoặc WebM.",
+  "localVideo.pickVideo": "Chọn video",
+  "localVideo.pickHint": "Video chỉ phát trong tab này, không tải lên; có thể chọn kèm .srt/.vtt.",
+  "localVideo.videoRequired": "Hãy chọn một file video.",
+  "localVideo.fileTooLarge": "Video quá lớn; nên dùng MP4/WebM dưới 4GB."
 }

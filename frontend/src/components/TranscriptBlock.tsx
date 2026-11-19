@@ -233,6 +233,8 @@ interface TranscriptBlockProps {
     isFavorited?: boolean;
     onToggleFavorite?: (e: React.MouseEvent) => void;
     translationMode?: TranslationMode;
+    /** False when the source has no translation at all (browser-local video). */
+    translationPending?: boolean;
     dictation?: boolean;
     onWordLookup?: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
     /** CEFR difficulty highlight callback, shared with the readers. */
@@ -251,7 +253,7 @@ interface TranscriptBlockProps {
     uiLanguage?: LanguageCode;
 }
 
-const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, isActive, isFavorited, onToggleFavorite, translationMode = 'all', dictation = false, onWordLookup, isHighlighted, languagePoints, wordGlosses, showLanguagePoints = true }) => {
+const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, isActive, isFavorited, onToggleFavorite, translationMode = 'all', translationPending = true, dictation = false, onWordLookup, isHighlighted, languagePoints, wordGlosses, showLanguagePoints = true }) => {
     const { t } = useI18n();
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -355,9 +357,11 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
                     )}>
                         <div className="overflow-hidden min-h-0">
                             {isUntranslated(zhText) ? (
-                                <p className="text-[15px] leading-relaxed text-zinc-600 animate-pulse">
-                                    {t('transcript.translatingLine')}
-                                </p>
+                                translationPending ? (
+                                    <p className="text-[15px] leading-relaxed text-zinc-600 animate-pulse">
+                                        {t('transcript.translatingLine')}
+                                    </p>
+                                ) : null
                             ) : (
                                 // 中文字号略大于 text-sm：汉字在小字号低对比度下比拉丁字母更难读
                                 <p className={cn(
@@ -388,6 +392,7 @@ export const TranscriptBlock = React.memo(TranscriptBlockInner, (prev, next) =>
     prev.isActive === next.isActive &&
     prev.isFavorited === next.isFavorited &&
     prev.translationMode === next.translationMode &&
+    prev.translationPending === next.translationPending &&
     prev.dictation === next.dictation &&
     prev.showLanguagePoints === next.showLanguagePoints &&
     prev.languagePoints === next.languagePoints &&

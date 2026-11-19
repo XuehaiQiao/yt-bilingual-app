@@ -13,6 +13,7 @@ import {
     BookOpen,
     CalendarRange,
     Compass,
+    FolderOpen,
     Newspaper,
     Play,
     Rss,
@@ -36,7 +37,7 @@ import { PageHeader } from './ui/PageHeader';
 import { Card, SectionHeader } from './ui/Card';
 import { ShelfSection } from './ui/ShelfSection';
 import { ListRow } from './ui/ListRow';
-import { describeApiError } from '../lib/toast';
+import { describeApiError, toast } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 
 const PAGE_PAD = 'pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10';
@@ -70,6 +71,7 @@ interface ContentScreenProps {
     onOpenSentences: (levelId: number) => void;
     onOpenBlog: () => void;
     onOpenReport: () => void;
+    onOpenLocalVideo: (video: File, subtitle: File | null) => void;
     onLoadHistory: (filename: string) => void;
     onRequestLogin: () => void;
 }
@@ -95,11 +97,13 @@ export function ContentScreen({
     onOpenSentences,
     onOpenBlog,
     onOpenReport,
+    onOpenLocalVideo,
     onLoadHistory,
     onRequestLogin,
 }: ContentScreenProps) {
     const { t, formatNumber } = useI18n();
     const estimateRef = useRef<EstimateDialogHandle>(null);
+    const localVideoInputRef = useRef<HTMLInputElement>(null);
     // Right rail: the last opened item and this week's three facts. Each block
     // owns one async state (IX-01) — a failed read is an error panel with a
     // retry, never the "暂无记录 / 本周还没有数据" empty copy.
@@ -120,6 +124,23 @@ export function ContentScreen({
     const hasSubscriptions = subscriptions.length > 0;
     const visibleUpdates = hasSubscriptions ? channelUpdates : [];
     const showUpdatesLoading = hasSubscriptions && updatesState === 'loading';
+    const handleLocalVideoFiles = (files: FileList | null) => {
+        const list = Array.from(files ?? []);
+        const video = list.find((file) =>
+            file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v|ogv)$/i.test(file.name),
+        );
+        const subtitle = list.find((file) => /\.(srt|vtt)$/i.test(file.name)) ?? null;
+        if (!video) {
+            toast.error(t('localVideo.videoRequired'));
+            return;
+        }
+        if (video.size > 4 * 1024 * 1024 * 1024) {
+            toast.error(t('localVideo.fileTooLarge'));
+            return;
+        }
+        onOpenLocalVideo(video, subtitle);
+    };
+
     const retryHistory = useCallback(() => {
         setHistoryState('loading');
         setHistoryReloadToken((token) => token + 1);
@@ -464,6 +485,31 @@ export function ContentScreen({
                             title={t('content.showsTitle')}
                             hint={t('content.showsHint')}
                             testId="content-local-shows"
+                            actions={(
+                                <>
+                                    <input
+                                        ref={localVideoInputRef}
+                                        type="file"
+                                        multiple
+                                        accept="video/*,.mp4,.webm,.mov,.m4v,.ogv,.srt,.vtt"
+                                        data-testid="local-video-input"
+                                        className="sr-only"
+                                        onChange={(event) => {
+                                            handleLocalVideoFiles(event.target.files);
+                                            event.target.value = '';
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        data-testid="local-video-open"
+                                        onClick={() => localVideoInputRef.current?.click()}
+                                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/10 px-2.5 text-xs font-medium text-brand-300 transition-colors hover:bg-brand/15"
+                                    >
+                                        <FolderOpen className="h-3.5 w-3.5" />
+                                        {t('localVideo.open')}
+                                    </button>
+                                </>
+                            )}
                         >
                             <ShowBrowser onSelectEpisode={onSelectEpisode} isLoading={busy} />
                         </ShelfSection>

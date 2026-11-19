@@ -48,6 +48,8 @@ import { AdminConsoleScreen } from './components/AdminConsoleScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AppShell, type ProfileSectionId } from './components/AppShell';
 import { LearningHeader } from './components/LearningHeader';
+import { LocalVideoLearning } from './components/LocalVideoLearning';
+import { buildLocalTranscript, type LocalTranscriptBlock } from './lib/localMedia';
 import { TodayScreen } from './components/TodayScreen';
 import { CourseScreen } from './components/CourseScreen';
 import { ContentScreen } from './components/ContentScreen';
@@ -209,6 +211,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
+  const [localVideo, setLocalVideo] = useState<{
+    videoUrl: string;
+    fileName: string;
+    subtitleName?: string;
+    transcript: LocalTranscriptBlock[];
+  } | null>(null);
   const [summary, setSummary] = useState<string>('');
   const [metadata, setMetadata] = useState<any>(null);
   const isLocalSubtitle = Boolean(metadata?.is_local_subtitle);
@@ -3183,7 +3191,47 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     />
   );
 
+  const handleOpenLocalVideo = useCallback(async (video: File, subtitle: File | null) => {
+    const videoUrl = URL.createObjectURL(video);
+    setLocalVideo((previous) => {
+      if (previous) URL.revokeObjectURL(previous.videoUrl);
+      return { videoUrl, fileName: video.name, subtitleName: subtitle?.name, transcript: [] };
+    });
+    if (subtitle) {
+      try {
+        const transcript = buildLocalTranscript(await subtitle.text());
+        setLocalVideo((current) => current && current.videoUrl === videoUrl
+          ? { ...current, transcript }
+          : current);
+      } catch {
+        // The video remains playable; the transcript panel explains the miss.
+      }
+    }
+  }, []);
+
+  const closeLocalVideo = useCallback(() => {
+    setLocalVideo((previous) => {
+      if (previous) URL.revokeObjectURL(previous.videoUrl);
+      return null;
+    });
+  }, []);
+
   const renderView = () => {
+    if (localVideo && state.tab === 'content' && !state.sub) {
+      return (
+        <LocalVideoLearning
+          videoUrl={localVideo.videoUrl}
+          fileName={localVideo.fileName}
+          subtitleName={localVideo.subtitleName}
+          transcript={localVideo.transcript}
+          wordbookCount={vocabularyFavoriteCount}
+          onOpenWordbook={handleOpenWordbookRoute}
+          onClose={closeLocalVideo}
+          onWordLookup={handleWordLookup}
+        />
+      );
+    }
+
     // The comprehension quiz is an overlay of the learning view, not a route
     // (IA §7.1). It wins while open; closing it re-renders the video.
     if (quizOpen && quizLesson) {
@@ -3388,6 +3436,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenSentences={handleOpenSentences}
             onOpenBlog={handleOpenBlog}
             onOpenReport={handleOpenReport}
+            onOpenLocalVideo={handleOpenLocalVideo}
             onLoadHistory={(filename) => { void handleLoadHistory(filename); }}
             onRequestLogin={() => onRequestLogin?.()}
           />
