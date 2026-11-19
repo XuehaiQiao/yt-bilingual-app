@@ -251,7 +251,7 @@ interface TranscriptBlockProps {
     uiLanguage?: LanguageCode;
 }
 
-const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, isActive, isFavorited, onToggleFavorite, translationMode = 'active', dictation = false, onWordLookup, isHighlighted, languagePoints, wordGlosses, showLanguagePoints = true }) => {
+const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, isActive, isFavorited, onToggleFavorite, translationMode = 'all', dictation = false, onWordLookup, isHighlighted, languagePoints, wordGlosses, showLanguagePoints = true }) => {
     const { t } = useI18n();
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -261,7 +261,7 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
 
     // Per-sentence override on top of the global mode (null = follow mode)
     const [overrideShow, setOverrideShow] = useState<boolean | null>(null);
-    const modeDefault = translationMode === 'all' || (translationMode === 'active' && isActive);
+    const modeDefault = translationMode === 'all';
     const showTranslation = overrideShow !== null ? overrideShow : modeDefault;
 
     // Dictation mode: English stays blurred until the learner reveals it

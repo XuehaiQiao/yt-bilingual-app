@@ -156,6 +156,8 @@ const SUB_LABEL_KEYS: Record<SubRoute['kind'], TranslationKey> = {
 };
 
 /** Parent tab name for every sub-view back control's aria label. */
+const SHOW_COURSE_GENERATION = false;
+
 const PARENT_LABEL_KEYS: Record<TabId, TranslationKey> = {
   today: 'nav.today',
   content: 'nav.content',
@@ -250,7 +252,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     return () => media.removeEventListener?.('change', onChange);
   }, []);
   const isTranscriptExpanded = transcriptLayout === 'split' && !isCompactViewport;
-  const [pipWindow, setPipWindow] = useState<Window | null>(null);
   const fullscreenWrapperRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [seekCommand, setSeekCommand] = useState<{ time: number, timestamp: number } | null>(null);
@@ -591,55 +592,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setTranslationProgress(null);
   };
 
-  const togglePipMode = async () => {
-    if (pipWindow) {
-      pipWindow.close();
-      return;
-    }
-
-    if (!('documentPictureInPicture' in window)) {
-      toast.error(t('errors.noPip'));
-      return;
-    }
-
-    try {
-      const dpip = (window as any).documentPictureInPicture;
-      const newPipWindow = await dpip.requestWindow({
-        width: 450,
-        height: 800
-      });
-
-      // Copy styles
-      [...document.styleSheets].forEach((styleSheet) => {
-        try {
-          if (styleSheet.href) {
-            const newLinkEl = document.createElement('link');
-            newLinkEl.rel = 'stylesheet';
-            newLinkEl.href = styleSheet.href;
-            newPipWindow.document.head.appendChild(newLinkEl);
-          } else if (styleSheet.cssRules) {
-            const newStyleEl = document.createElement('style');
-            [...styleSheet.cssRules].forEach((cssRule) => {
-              newStyleEl.appendChild(document.createTextNode(cssRule.cssText));
-            });
-            newPipWindow.document.head.appendChild(newStyleEl);
-          }
-        } catch (e) {
-          console.warn('Cannot copy stylesheet rules due to CORS', e);
-        }
-      });
-
-      newPipWindow.addEventListener('pagehide', () => {
-        setPipWindow(null);
-      });
-
-      newPipWindow.document.body.className = "bg-zinc-950 overflow-hidden m-0 p-0 h-screen flex flex-col";
-      setPipWindow(newPipWindow);
-    } catch (err) {
-      console.error(err);
-      toast.error(t('errors.pipFailed'));
-    }
-  };
 
   // Local subtitle playback timer
   const subtitleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -2848,7 +2800,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         <div className="inline-flex items-center rounded-lg bg-zinc-800/80 p-0.5 border border-white/5">
           {([
             { key: 'all', label: t('transcript.mode.all') },
-            { key: 'active', label: t('transcript.mode.active') },
             { key: 'hidden', label: t('transcript.mode.hidden') },
           ] as { key: TranslationMode; label: string }[]).map(opt => (
             <button
@@ -2961,7 +2912,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         {/* Course generation (specs/030). The source is this video's processed
             bilingual subtitles, so the button is shown on YouTube/library
             videos only (local episodes have no generate contract). */}
-        {!isLocalSubtitle && (
+        {SHOW_COURSE_GENERATION && !isLocalSubtitle && (
           <button
             type="button"
             data-testid="course-generate-button"
@@ -2994,10 +2945,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         </span>
 
         {/* Transcript placement toggle: tucked under the media ↔ docked right */}
-        {!pipWindow && (
-          <button
-            type="button"
-            data-testid="transcript-layout-toggle"
+        <button
+          type="button"
+          data-testid="transcript-layout-toggle"
             onClick={() => setTranscriptLayout(prev => (prev === 'split' ? 'stacked' : 'split'))}
             aria-pressed={isTranscriptExpanded}
             title={isTranscriptExpanded
@@ -3009,8 +2959,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               ? <PanelRightClose className="w-3.5 h-3.5" />
               : <PanelRightOpen className="w-3.5 h-3.5" />}
             <span>{isTranscriptExpanded ? t('transcript.layout.collapse') : t('transcript.layout.expand')}</span>
-          </button>
-        )}
+        </button>
       </div>
 
       {/* Streaming translation progress */}
@@ -3113,9 +3062,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         parentLabel={parentLabel}
         wordbookCount={vocabularyFavoriteCount}
         onOpenWordbook={handleOpenWordbookRoute}
-        showPip={Boolean(videoId) && transcript.length > 0 && !quizOpen}
-        pipActive={Boolean(pipWindow)}
-        onTogglePip={() => { void togglePipMode(); }}
       />
       <div
         ref={fullscreenWrapperRef}
@@ -3128,14 +3074,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         <div
           data-testid="video-column"
           style={{ '--left-w': `${leftRatio}%` } as React.CSSProperties}
-          className={`w-full max-md:h-auto md:h-full ${
-            pipWindow ? 'md:w-full' : 'md:w-[var(--left-w)]'
-          } flex flex-col min-w-0 shrink-0`}
+          className="w-full max-md:h-auto md:h-full md:w-[var(--left-w)] flex flex-col min-w-0 shrink-0"
         >
           {mediaStage}
           {!isLocalSubtitle && channelBar}
 
-          {pipWindow || isTranscriptExpanded ? (
+          {isTranscriptExpanded ? (
             <div
               data-testid="summary-panel"
               className="p-6 bg-zinc-900/60 backdrop-blur-xl border-t border-white/5 md:flex-1 md:min-h-0 md:overflow-y-auto custom-scrollbar"
@@ -3152,15 +3096,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           )}
         </div>
 
-        {pipWindow ? (
-          createPortal(
-            <div className="w-full h-full flex flex-col relative bg-[#09090b]">
-              {renderTranscriptContent(false)}
-            </div>,
-            pipWindow.document.body
-          )
-        ) : (
-          <>
             {/* Draggable split: desktop only. Drag changes the left column
                 percentage within [MIN, MAX]; double-click or Home/End restore. */}
             <div
@@ -3208,9 +3143,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                 </div>
               )}
             </div>
-          </>
-        )}
-
         {/* Drag shield: covers the video iframe (which would otherwise swallow
             pointermove) and suppresses text selection while dragging. */}
         {isResizing && createPortal(

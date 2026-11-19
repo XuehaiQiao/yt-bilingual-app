@@ -8,15 +8,15 @@ export const isUntranslated = (zh?: string): boolean =>
 
 // Global display policy for the Chinese translation line.
 //   all    — every sentence shows its translation
-//   active — only the currently playing sentence shows it (best for learning)
 //   hidden — translations hidden unless toggled per sentence
-export type TranslationMode = 'all' | 'active' | 'hidden';
+export type TranslationMode = 'all' | 'hidden';
 
 export const TRANSLATION_MODE_KEY = 'yt_bilingual_translation_mode';
 
 export function loadTranslationMode(): TranslationMode {
     const saved = localStorage.getItem(TRANSLATION_MODE_KEY);
-    return saved === 'all' || saved === 'active' || saved === 'hidden' ? saved : 'active';
+    // 'active' was removed; old saved values fall back to the visible mode.
+    return saved === 'all' || saved === 'hidden' ? saved : 'all';
 }
 
 // Lookahead so the highlight moves slightly before the rigid timestamp

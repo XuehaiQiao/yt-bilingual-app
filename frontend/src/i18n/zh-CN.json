@@ -305,7 +305,6 @@
   "channel.reprocess": "重新处理",
   "transcript.translationLabel": "译文",
   "transcript.mode.all": "全显",
-  "transcript.mode.active": "当前句",
   "transcript.mode.hidden": "隐藏",
   "transcript.dictation": "听写模式",
   "transcript.dictationTitle": "听写模式：隐藏英文原文，先听后看，点击句子揭示",

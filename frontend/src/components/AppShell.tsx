@@ -189,20 +189,22 @@ export function AppShell({
               <Play className="w-3.5 h-3.5 fill-current" />
               <span className="whitespace-nowrap">{t('topbar.startLearning')}</span>
             </button>
+            {!isTask && (
             <button
-              type="button"
-              data-testid="topbar-wordbook"
-              onClick={onOpenWordbook}
-              aria-label={t('topbar.wordbook', { count: wordbookCount })}
-              title={t('topbar.wordbook', { count: wordbookCount })}
-              className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
-            >
-              <BookMarked className="w-4 h-4 text-amber-400/90" aria-hidden="true" />
-              <span className="hidden lg:inline text-xs font-medium whitespace-nowrap">{t('vocab.title')}</span>
-              <span className="text-[11px] font-medium tabular-nums text-zinc-400">
-                {wordbookCount > 99 ? '99+' : wordbookCount}
-              </span>
-            </button>
+                type="button"
+                data-testid="topbar-wordbook"
+                onClick={onOpenWordbook}
+                aria-label={t('topbar.wordbook', { count: wordbookCount })}
+                title={t('topbar.wordbook', { count: wordbookCount })}
+                className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-zinc-300 hover:text-zinc-100 transition-colors shrink-0"
+              >
+                <BookMarked className="w-4 h-4 text-amber-400/90" aria-hidden="true" />
+                <span className="hidden lg:inline text-xs font-medium whitespace-nowrap">{t('vocab.title')}</span>
+                <span className="text-[11px] font-medium tabular-nums text-zinc-400">
+                  {wordbookCount > 99 ? '99+' : wordbookCount}
+                </span>
+              </button>
+            )}
             <div className="hidden md:block">
               <ModelBar compact />
             </div>
