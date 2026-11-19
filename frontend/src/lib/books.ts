@@ -94,6 +94,8 @@ export interface BookChapterParagraph {
     index: number;
     en: string;
     zh: string | null;
+    /** Contextual glosses from the optional analysis, keyed by lower-case word. */
+    glosses: Record<string, string>;
 }
 
 export interface BookChapterSource {
@@ -359,7 +361,16 @@ function asBookChapter(data: unknown, fallbackChapter: number): BookChapter {
         const en = asString(entry.en);
         const zh = entry.zh === null ? null : asString(entry.zh);
         if (index === null || !en || (entry.zh !== null && typeof zh !== 'string')) return null;
-        return { index, en, zh };
+        const glosses: Record<string, string> = {};
+        if (Array.isArray((entry as Record<string, unknown>).highlights)) {
+            for (const raw of (entry as Record<string, unknown>).highlights as unknown[]) {
+                if (!isRecord(raw)) continue;
+                const word = asString(raw.en_word)?.trim().toLowerCase();
+                const gloss = asString(raw.zh_word)?.trim();
+                if (word && gloss) glosses[word] = gloss;
+            }
+        }
+        return { index, en, zh, glosses };
     });
     if (paragraphs.some((entry): entry is null => entry === null)) {
         throw new BooksApiError('章节段落数据格式不正确', 0);

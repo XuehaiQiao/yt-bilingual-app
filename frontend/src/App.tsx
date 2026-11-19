@@ -1784,6 +1784,20 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const videoHighlight = useReadingHighlights(displayTranscript.map((item) => item.en_text));
 
+  const wordGlossesByBlock = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {};
+    for (const [blockId, entries] of Object.entries(teachingAnalysis?.highlights ?? {})) {
+      const glosses: Record<string, string> = {};
+      for (const entry of entries) {
+        const word = entry.en_word?.trim().toLowerCase();
+        const gloss = entry.zh_word?.trim();
+        if (word && gloss) glosses[word] = gloss;
+      }
+      if (Object.keys(glosses).length > 0) map[blockId] = glosses;
+    }
+    return map;
+  }, [teachingAnalysis]);
+
   const languagePointsByBlock = useMemo(() => {
     const map: Record<string, InlineLanguagePoint[]> = {};
     const push = (blockId: number | string, point: InlineLanguagePoint) => {
@@ -3046,6 +3060,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           onWordLookup={handleWordLookup}
           isHighlighted={videoHighlight.isHighlighted}
           languagePointsByBlock={languagePointsByBlock}
+          wordGlossesByBlock={wordGlossesByBlock}
           showLanguagePoints={showLanguagePoints}
           difficultyEnabled={videoHighlight.enabled}
           difficultyLevel={videoHighlight.level}

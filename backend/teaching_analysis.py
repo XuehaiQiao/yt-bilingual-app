@@ -1,7 +1,8 @@
-"""AI 教学分析：习语（idiom）/ 文化点（culture）。
+"""AI 教学分析：语境释义（highlight）/ 习语（idiom）/ 文化点（culture）。
 
-视频字幕的内联高亮已改为前端 CEFR「难度标亮」，本模块不再生成
-``highlights``；``analysis.v2`` 起只生成习语/文化点，旧 v1 缓存自然失效。
+``analysis.v3`` 恢复 ``highlights``，但它们的用途是给**基础层已标出的
+高于当前 CEFR 的词**提供当下语境的中文释义；前端不会把 AI 选出的词当作
+高亮依据，也不会让不在基础层的词显示释义。
 
 背景（specs/028）：旧翻译调用在每一批 prompt 里顺带要求模型为每个 block 生成
 ``highlights``——同一视频每翻一次、每换一批都要重复生成同样的教学内容，成本
@@ -20,9 +21,12 @@
 
 校验闸（只保留可核对的条目，不编造）：
 
-1. ``idioms[].quote`` / ``culture[].quote`` 必须是该 block 英文原文的子串；
-2. 指向未知 block、空字段、重复条目的习语/文化点直接丢弃；
-3. 单内容最多 20 条习语、10 条文化点；不再生成字幕高亮。
+1. ``highlights[].en_word`` 必须是该 block 英文原文的子串；
+2. ``highlights[].zh_word`` 必须是该 block 目标语言译文的子串——找不到就
+   置空但保留 ``en_word``（译文变化时英文高亮仍可用）；
+3. ``idioms[].quote`` / ``culture[].quote`` 必须是该 block 英文原文的子串；
+4. 指向未知 block、空字段、重复条目的高亮/习语/文化点直接丢弃；
+5. 单内容最多 20 条习语、10 条文化点；每 block 最多 2 条高亮。
 
 幂等/并发：进程内按 ``(hash, level, lang, version)`` 加锁，同 key 并发只跑
 一次模型；**只有全部批次成功才写缓存**，失败不落半成品、下次可重试。
@@ -45,6 +49,7 @@ import languages
 import llm
 from ai import quota
 from translate import (
+    HIGHLIGHT_COLOR,
     UNTRANSLATED_MARKER,
     payload_target_lang,
 )
@@ -53,7 +58,7 @@ logger = logging.getLogger("linguatrek.teaching_analysis")
 
 # prompt/校验口径版本：缓存键的一部分；改 prompt 或校验规则时递增，旧分析
 # 自动失效重生成（旧行保留，便于回滚/排查）。
-ANALYSIS_VERSION = "analysis.v2"
+ANALYSIS_VERSION = "analysis.v3"
 
 # 账本/配额功能名（ai/ledger.KNOWN_FEATURES / ai/quota._FEATURE_LIMIT_ATTRS）。
 FEATURE = "analysis"
@@ -67,6 +72,7 @@ INDEX_CONTENT_REF = "ix_content_teaching_analysis_ref"
 MAX_BLOCKS_PER_CALL = 200
 MAX_IDIOMS = 20
 MAX_CULTURE = 10
+MAX_HIGHLIGHTS_PER_BLOCK = 2
 MAX_QUOTE_CHARS = 400
 MAX_MEANING_CHARS = 300
 MAX_NOTE_CHARS = 500
@@ -225,7 +231,7 @@ def _iter_items(raw, key: str) -> list:
     """从模型 JSON 里取出某个列表；也接受按 block id 的字典形式。
 
     兼容三种形状：``[item, ...]``、``{"<blockId>": [item, ...]}``，以及整份
-    返回对象 ``{"idioms": [...], "culture": [...]}``（调用方通常已取出字段，
+    返回对象 ``{"highlights": [...], "idioms": [...]}``（调用方通常已取出字段，
     但保留整份对象也能解析）。
     """
     if isinstance(raw, list):
@@ -255,7 +261,7 @@ def _extract_object(raw: str) -> dict:
     """解析模型返回的 JSON 对象；拆掉模型偶尔包的一层外壳。"""
     data = json.loads(raw)
     if isinstance(data, list):
-        data = {"idioms": data}
+        data = {"highlights": data}
     if not isinstance(data, dict):
         raise AnalysisFailed("模型返回的不是 JSON 对象。")
     if not any(key in data for key in ("highlights", "idioms", "culture")):
@@ -264,16 +270,46 @@ def _extract_object(raw: str) -> dict:
             if isinstance(nested, dict):
                 data = nested
                 break
-    # Legacy highlight-only payloads are accepted but ignored by
-    # validate_analysis; they must not make an old cache/user retry fail.
     if not any(key in data for key in ("highlights", "idioms", "culture")):
-        raise AnalysisFailed("模型返回的 JSON 缺少 idioms/culture。")
+        raise AnalysisFailed("模型返回的 JSON 缺少 highlights/idioms/culture。")
     return data
 
 
 def _block_index(normalized: list[dict]) -> dict[str, tuple[int, dict]]:
     return {str(block["id"]): (index, block) for index, block in enumerate(normalized)}
 
+
+def _clean_highlights(raw, normalized, index) -> dict[str, list[dict]]:
+    """校验高亮：en 必须是原文子串、zh 必须是译文子串（否则置空保留 en）。"""
+    grouped: dict[str, list[dict]] = {}
+    seen: set[tuple[str, str, str]] = set()
+    for item in _iter_items(raw, "highlights"):
+        block_id = item.get("blockId", item.get("block_id", item.get("id")))
+        entry = index.get(str(block_id))
+        if entry is None:
+            continue
+        _, block = entry
+        en_word = _clean_text(item.get("en_word", item.get("en")))
+        zh_word = _clean_text(item.get("zh_word", item.get("zh")))
+        if not en_word or not _substring(en_word, block["en"]):
+            continue
+        if not (zh_word and block["zh"] and _substring(zh_word, block["zh"])):
+            zh_word = ""  # 译文缺失/变化：只保留英文高亮，不编造中文
+        key = str(block["id"])
+        dedupe = (key, en_word.casefold(), zh_word.casefold())
+        if dedupe in seen:
+            continue
+        bucket = grouped.setdefault(key, [])
+        if len(bucket) >= MAX_HIGHLIGHTS_PER_BLOCK:
+            continue
+        seen.add(dedupe)
+        bucket.append({
+            "en_word": en_word,
+            "zh_word": zh_word,
+            # 颜色是前端冻结配方，不信任模型（避免 class 注入/漂移）。
+            "color": HIGHLIGHT_COLOR,
+        })
+    return grouped
 
 
 def _clean_points(raw, key: str, normalized, index) -> list[dict]:
@@ -322,26 +358,49 @@ def _clean_points(raw, key: str, normalized, index) -> list[dict]:
 
 
 def validate_analysis(raw, normalized: list[dict]) -> dict:
-    """把模型 JSON 校验成可落盘的 ``{highlights: {}, idioms, culture}``。
+    """把模型 JSON 校验成可落盘的 ``{highlights, idioms, culture}``。
 
-    ``analysis.v2`` 起不再生成 highlights；字段保留为空对象，兼容旧客户端/
-    旧缓存读取方。非法习语/文化点丢弃；如果返回的 JSON 连一个可识别字段都没有，
-    由 :func:`_extract_object` 判失败（不把纯垃圾当「内容本来就没有语言点」缓存）。
+    非法条目丢弃（不抛异常）；但如果返回的 JSON 连一个可识别字段都没有，
+    由 :func:`_extract_object` 判失败（不把纯垃圾当「内容本来就没高亮」缓存）。
     """
     data = _extract_object(raw) if isinstance(raw, str) else raw
     if not isinstance(data, dict):
         raise AnalysisFailed("模型返回格式非法。")
     index = _block_index(normalized)
     return {
-        "highlights": {},
+        "highlights": _clean_highlights(data.get("highlights"), normalized, index),
         "idioms": _clean_points(data.get("idioms"), "idioms", normalized, index),
         "culture": _clean_points(data.get("culture"), "culture", normalized, index),
     }
 
 
+def _merge_parts(parts: list[dict]) -> dict:
+    """合并多批结果（长内容分批）：高亮按 block 合并，习语/文化点全局上限。"""
+    highlights: dict[str, list[dict]] = {}
+    idioms: list[dict] = []
+    culture: list[dict] = []
+    for part in parts:
+        for block_id, entries in (part.get("highlights") or {}).items():
+            bucket = highlights.setdefault(block_id, [])
+            for entry in entries:
+                if len(bucket) >= MAX_HIGHLIGHTS_PER_BLOCK:
+                    break
+                bucket.append(entry)
+        idioms.extend(part.get("idioms") or [])
+        culture.extend(part.get("culture") or [])
+    return {
+        "highlights": highlights,
+        "idioms": idioms[:MAX_IDIOMS],
+        "culture": culture[:MAX_CULTURE],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Prompt
+# ---------------------------------------------------------------------------
 
 def build_prompt(blocks: list[dict], level: str, target_lang: str) -> str:
-    """Prompt for analysis.v2: language points only, no inline highlights."""
+    """生成一次教学分析的 prompt（严格 JSON；只标高于等级的内容）。"""
     target_name = languages.prompt_name(target_lang)
     level_desc = config.VOCAB_LEVELS.get(level, "")
     payload = [
@@ -349,22 +408,26 @@ def build_prompt(blocks: list[dict], level: str, target_lang: str) -> str:
         for block in blocks
     ]
     return f"""
-You are an expert English-{target_name} teacher preparing a language-points
-guide for one piece of content (a video transcript, article or book chapter).
+You are an expert English-{target_name} teacher preparing a study guide for one
+piece of content (a video transcript, article or book chapter).
 
-LEARNER LEVEL (CEFR context): {level}
+LEARNER LEVEL (highlighting threshold): {level}
 {level_desc}
 
 For the blocks below, produce:
-1. "idioms": interesting idioms / phrasal verbs / fixed expressions that are
+1. "highlights": 0-2 words or short phrases per block that are likely ABOVE the
+   learner's level, with the contextual Chinese gloss (zh_word) copied from
+   the translation when possible. Skip basic everyday words. These entries are
+   used only for words already marked by the CEFR difficulty layer.
+2. "idioms": interesting idioms / phrasal verbs / fixed expressions that are
    actually used in the text. At most 20 in total.
-2. "culture": culture-specific references, allusions, customs, brands, places,
+3. "culture": culture-specific references, allusions, customs, brands, places,
    people or wordplay a learner may not know. At most 10 in total.
 
-Do not return "highlights": inline difficulty marking is handled separately, so
-any teaching-highlight data would be ignored.
-
 HARD RULES (entries that break them are discarded):
+- "en_word" must be copied exactly from that block's English text (a substring).
+- "zh_word" must be copied exactly from that block's {target_name} translation
+  (a substring). If no natural match exists, use "" — never invent one.
 - "quote" must be copied exactly from that block's English text (a substring).
 - "blockId" must be one of the ids given below.
 - Write meanings/notes in {target_name}; keep them short.
@@ -373,6 +436,10 @@ HARD RULES (entries that break them are discarded):
 
 Return ONLY one JSON object, no prose and no markdown fence:
 {{
+  "highlights": [
+    {{"blockId": <id>, "en_word": "<exact English substring>",
+      "zh_word": "<exact {target_name} substring or empty string>"}}
+  ],
   "idioms": [
     {{"blockId": <id>, "phrase": "<English idiom/phrase>",
       "meaning": "<short {target_name} meaning>", "quote": "<exact English substring>"}}
@@ -387,23 +454,6 @@ Blocks:
 {json.dumps(payload, ensure_ascii=False)}
 """.strip()
 
-
-def _merge_parts(parts: list[dict]) -> dict:
-    """Merge batched results: idioms/culture only, with global caps.
-
-    ``analysis.v2`` no longer produces highlights; the empty ``highlights``
-    object keeps the response/payload shape compatible with older clients.
-    """
-    idioms: list[dict] = []
-    culture: list[dict] = []
-    for part in parts:
-        idioms.extend(part.get("idioms") or [])
-        culture.extend(part.get("culture") or [])
-    return {
-        "highlights": {},
-        "idioms": idioms[:MAX_IDIOMS],
-        "culture": culture[:MAX_CULTURE],
-    }
 
 # ---------------------------------------------------------------------------
 # SQLite 缓存（表由 Alembic 0020 创建，运行时不建表）
@@ -568,7 +618,7 @@ async def ensure_analysis(
 ) -> dict:
     """确保一份内容在某等级/语言下的教学分析（缓存命中零模型调用）。
 
-    返回 payload：``{highlights: {}, idioms, culture, analysisVersion, level,
+    返回 payload：``{highlights, idioms, culture, analysisVersion, level,
     targetLang, contentHash, model, createdAt}``。失败抛
     :class:`TeachingAnalysisError`（缓存表缺失 = AnalysisUnavailable），不写
     半成品；配额超限抛 ``ai.ledger.QuotaExceeded``（429 语义）。
@@ -680,6 +730,29 @@ def _block_zh(block: dict) -> str:
     )
 
 
+def _sanitize_highlights_for_block(raw, block: dict) -> list[dict]:
+    en_text = _block_en(block)
+    zh_text = _block_zh(block)
+    if zh_text == UNTRANSLATED_MARKER:
+        zh_text = ""
+    cleaned: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for item in raw if isinstance(raw, list) else []:
+        if not isinstance(item, dict):
+            continue
+        en_word = _clean_text(item.get("en_word"))
+        zh_word = _clean_text(item.get("zh_word"))
+        if not en_word or not _substring(en_word, en_text):
+            continue
+        if not (zh_word and zh_text and _substring(zh_word, zh_text)):
+            zh_word = ""
+        dedupe = (en_word.casefold(), zh_word.casefold())
+        if dedupe in seen or len(cleaned) >= MAX_HIGHLIGHTS_PER_BLOCK:
+            continue
+        seen.add(dedupe)
+        cleaned.append({"en_word": en_word, "zh_word": zh_word, "color": HIGHLIGHT_COLOR})
+    return cleaned
+
 
 def _sanitize_points_for_payload(points, index: dict[str, dict], key: str) -> list[dict]:
     cleaned: list[dict] = []
@@ -717,7 +790,8 @@ def _sanitize_points_for_payload(points, index: dict[str, dict], key: str) -> li
 def merge_into_payload(payload: dict, analysis: dict | None) -> bool:
     """把分析结果合并进字幕缓存 payload（按 block id；新字段向后兼容）。
 
-    - 清空 transcript 上的旧 highlights（v2 不再生成内联教学高亮）；
+    - 只覆盖分析里出现的 block；没有分析的 block 保留原有 highlights
+      （旧缓存自带高亮时不因升级而丢失）；
     - ``idioms`` / ``culture`` / ``analysisVersion`` 写在 payload 顶层；
     - 合并前按当前英文/译文再校验一次（译文变化/内容被替换时丢弃失效条目）。
 
@@ -729,12 +803,18 @@ def merge_into_payload(payload: dict, analysis: dict | None) -> bool:
     if not index:
         return False
     transcript = payload.get("transcript")
-    # analysis.v2 no longer owns transcript highlights; clear any legacy v1
-    # payload highlights so the frontend's CEFR difficulty mark is the only
-    # inline marking.
-    for block in transcript if isinstance(transcript, list) else []:
-        if isinstance(block, dict):
-            block["highlights"] = []
+    highlights = analysis.get("highlights")
+    if isinstance(highlights, dict):
+        # 分析对该内容的所有 block 负责：没有条目的 block 写空列表，清掉旧
+        # 翻译缓存里可能残留的（旧等级）高亮，避免等级切换后串档。
+        for block in transcript:
+            if not isinstance(block, dict):
+                continue
+            block_id = block.get("id")
+            if block_id is None:
+                block_id = block.get("idx", block.get("index"))
+            raw = highlights.get(str(block_id)) or []
+            block["highlights"] = _sanitize_highlights_for_block(raw, block)
     payload["idioms"] = _sanitize_points_for_payload(
         analysis.get("idioms"), index, "idioms"
     )

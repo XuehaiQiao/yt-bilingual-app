@@ -246,7 +246,22 @@ export function BookReaderScreen({
             // reset effect bumped the token, so this result is stale.
             if (token !== translateTokenRef.current) return;
             chapterLanguageRef.current = language;
-            setChapter(result);
+            // The translation POST returns paragraphs without the optional
+            // analysis fields; keep the glosses/language points already
+            // loaded for this chapter instead of dropping the gloss layer.
+            setChapter((previous) => ({
+                ...result,
+                languagePoints: result.languagePoints.length > 0
+                    ? result.languagePoints
+                    : (previous?.languagePoints ?? []),
+                analysisLevel: result.analysisLevel ?? previous?.analysisLevel ?? null,
+                paragraphs: result.paragraphs.map((paragraph, index) => ({
+                    ...paragraph,
+                    glosses: Object.keys(paragraph.glosses ?? {}).length > 0
+                        ? paragraph.glosses
+                        : (previous?.paragraphs[index]?.glosses ?? {}),
+                })),
+            }));
             setTranslateNotice(result.outcome === 'partial' ? 'partial' : 'done');
         } catch (error) {
             if (token !== translateTokenRef.current) return;
@@ -319,7 +334,7 @@ export function BookReaderScreen({
             bookId,
             chapterNumber,
             language,
-            canAnalyze && showLanguagePoints ? highlight.level : null,
+            canAnalyze && (showLanguagePoints || highlight.enabled) ? highlight.level : null,
         )
             .then((payload) => {
                 if (controller.signal.aborted) return;
@@ -339,7 +354,7 @@ export function BookReaderScreen({
                 if (!controller.signal.aborted) setChapterLoading(false);
             });
         return () => controller.abort();
-    }, [bookId, chapterNumber, chapterRetry, language, canAnalyze, showLanguagePoints, highlight.level]);
+    }, [bookId, chapterNumber, chapterRetry, language, canAnalyze, showLanguagePoints, highlight.enabled, highlight.level]);
 
     // First open of an untranslated chapter: translate it automatically. Only
     // one automatic call per (book, chapter, language); switching chapter and
@@ -830,6 +845,7 @@ export function BookReaderScreen({
                                                                     isHighlighted={highlight.isHighlighted}
                                                                     languagePoints={languagePointsByParagraph[paragraph.index]}
                                                                     showLanguagePoints={showLanguagePoints}
+                                                                    wordGlosses={paragraph.glosses}
                                                                     onWordClick={(word, event) =>
                                                                         onWordLookup(word, paragraph.en, paragraph.index, event, {
                                                                             id: bookId,

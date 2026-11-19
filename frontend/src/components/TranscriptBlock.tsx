@@ -21,14 +21,32 @@ const cleanWord = (token: string) => cleanReadingWord(token);
 export const ClickableWords: React.FC<{
     text: string;
     onWordClick: WordClickHandler;
-    /** Optional reading-difficulty emphasis (amber underline/background). */
+    /** Optional reading-difficulty emphasis (amber background). */
     isHighlighted?: (word: string) => boolean;
-}> = ({ text, onWordClick, isHighlighted }) => (
+    /** Contextual Chinese gloss for a word already marked by the base layer. */
+    glossForWord?: (word: string) => string | null | undefined;
+}> = ({ text, onWordClick, isHighlighted, glossForWord }) => (
     <>
         {text.split(/(\s+)/).map((token, i) => {
             const word = cleanWord(token);
             if (!word || /^\s+$/.test(token)) return <span key={i}>{token}</span>;
             const highlighted = isHighlighted?.(word) ?? false;
+            const gloss = highlighted ? glossForWord?.(word) : null;
+            if (gloss) {
+                return (
+                    <ruby
+                        key={i}
+                        data-word-hit={word}
+                        data-highlight="1"
+                        data-gloss={gloss}
+                        onClick={(e) => { e.stopPropagation(); onWordClick(word, e); }}
+                        className="cursor-pointer rounded-sm bg-amber-400/15 text-amber-50 transition-colors hover:bg-white/10"
+                    >
+                        {token}
+                        <rt className="text-[10px] font-medium text-amber-300/90 select-none">{gloss}</rt>
+                    </ruby>
+                );
+            }
             return (
                 <span
                     key={i}
@@ -55,11 +73,12 @@ export const MarkedWords: React.FC<{
     isHighlighted?: (word: string) => boolean;
     languagePoints?: InlineLanguagePoint[];
     showLanguagePoints?: boolean;
-}> = ({ text, onWordClick, isHighlighted, languagePoints, showLanguagePoints = true }) => {
+    glossForWord?: (word: string) => string | null | undefined;
+}> = ({ text, onWordClick, isHighlighted, languagePoints, showLanguagePoints = true, glossForWord }) => {
     const marked = useMemo(() => {
         if (!onWordClick) return <span>{text}</span>;
         if (!showLanguagePoints || !languagePoints?.length) {
-            return <ClickableWords text={text} onWordClick={onWordClick} isHighlighted={isHighlighted} />;
+            return <ClickableWords text={text} onWordClick={onWordClick} isHighlighted={isHighlighted} glossForWord={glossForWord} />;
         }
         const ranges: Array<{ point: InlineLanguagePoint; index: number; length: number }> = [];
         let lastEnd = 0;
@@ -73,7 +92,7 @@ export const MarkedWords: React.FC<{
             lastEnd = candidate.index + candidate.point.text.length;
         }
         if (ranges.length === 0) {
-            return <ClickableWords text={text} onWordClick={onWordClick} isHighlighted={isHighlighted} />;
+            return <ClickableWords text={text} onWordClick={onWordClick} isHighlighted={isHighlighted} glossForWord={glossForWord} />;
         }
         const parts: React.ReactNode[] = [];
         let cursor = 0;
@@ -85,6 +104,7 @@ export const MarkedWords: React.FC<{
                         text={text.slice(cursor, range.index)}
                         onWordClick={onWordClick}
                         isHighlighted={isHighlighted}
+                        glossForWord={glossForWord}
                     />,
                 );
             }
@@ -113,11 +133,12 @@ export const MarkedWords: React.FC<{
                     text={text.slice(cursor)}
                     onWordClick={onWordClick}
                     isHighlighted={isHighlighted}
+                    glossForWord={glossForWord}
                 />,
             );
         }
         return parts;
-    }, [isHighlighted, languagePoints, onWordClick, showLanguagePoints, text]);
+    }, [glossForWord, isHighlighted, languagePoints, onWordClick, showLanguagePoints, text]);
     return <>{marked}</>;
 };
 
@@ -217,6 +238,8 @@ interface TranscriptBlockProps {
     isHighlighted?: (word: string) => boolean;
     /** Idiom / fixed-expression / culture spans for this block. */
     languagePoints?: InlineLanguagePoint[];
+    /** Contextual Chinese glosses keyed by lower-case English word. */
+    wordGlosses?: Record<string, string>;
     /** Independent visibility switch for the language-point underline layer. */
     showLanguagePoints?: boolean;
     /** Visibility/threshold identity for the difficulty layer (memo contract). */
@@ -227,7 +250,7 @@ interface TranscriptBlockProps {
     uiLanguage?: LanguageCode;
 }
 
-const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, isActive, isFavorited, onToggleFavorite, translationMode = 'active', dictation = false, onWordLookup, isHighlighted, languagePoints, showLanguagePoints = true }) => {
+const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, zhText, isActive, isFavorited, onToggleFavorite, translationMode = 'active', dictation = false, onWordLookup, isHighlighted, languagePoints, wordGlosses, showLanguagePoints = true }) => {
     const { t } = useI18n();
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
@@ -321,6 +344,7 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
                                 isHighlighted={isHighlighted}
                                 languagePoints={languagePoints}
                                 showLanguagePoints={showLanguagePoints}
+                                glossForWord={(word) => wordGlosses?.[word.toLowerCase()]}
                             />
                         )}
                     </p>

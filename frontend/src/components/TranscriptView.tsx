@@ -30,6 +30,7 @@ interface TranscriptViewProps {
     onWordLookup?: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
     isHighlighted?: (word: string) => boolean;
     languagePointsByBlock?: Record<string, import('./TranscriptBlock').InlineLanguagePoint[]>;
+    wordGlossesByBlock?: Record<string, Record<string, string>>;
     showLanguagePoints?: boolean;
     difficultyEnabled?: boolean;
     difficultyLevel?: string;
@@ -86,6 +87,7 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
     onWordLookup,
     isHighlighted,
     languagePointsByBlock,
+    wordGlossesByBlock,
     showLanguagePoints = true,
     difficultyEnabled = true,
     difficultyLevel = '',
@@ -245,6 +247,7 @@ const TranscriptViewInner: React.FC<TranscriptViewProps> = ({
                                 onWordLookup={onWordLookup}
                                 isHighlighted={isHighlighted}
                                 languagePoints={languagePointsByBlock?.[String(item.id)]}
+                                wordGlosses={wordGlossesByBlock?.[String(item.id)]}
                                 showLanguagePoints={showLanguagePoints}
                                 difficultyEnabled={difficultyEnabled}
                                 difficultyLevel={difficultyLevel}

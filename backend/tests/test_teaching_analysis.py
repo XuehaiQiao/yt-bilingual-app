@@ -88,11 +88,21 @@ def analysis_db(client):
 def _analysis_from_prompt(prompt: str) -> dict:
     """按 prompt 里的 Blocks 生成一份合法分析（每条都取自原文/译文）。"""
     blocks = json.loads(prompt.rsplit("Blocks:\n", 1)[-1])
+    highlights: list[dict] = []
     idioms: list[dict] = []
     culture: list[dict] = []
     for block in blocks:
         en = block.get("en", "")
         zh = block.get("zh", "")
+        words = re.findall(r"[A-Za-z][A-Za-z'\-]{3,}", en)
+        if words:
+            word = max(words, key=len)
+            highlights.append({
+                "blockId": block["blockId"],
+                "en_word": word,
+                # 中文译文取前两个字符（一定是子串）；没有译文时留空。
+                "zh_word": zh[:2],
+            })
         parts = en.split()
         if parts:
             idioms.append({
@@ -107,8 +117,7 @@ def _analysis_from_prompt(prompt: str) -> dict:
                 "note": "测试文化点",
                 "quote": en,
             })
-    # analysis.v2 deliberately has no highlights field.
-    return {"idioms": idioms, "culture": culture}
+    return {"highlights": highlights, "idioms": idioms, "culture": culture}
 
 
 class LlmStub:
@@ -315,12 +324,10 @@ def test_analysis_prompt_states_level_rules_and_block_input():
     normalized = teaching_analysis.normalize_blocks(BLOCKS)
     prompt = teaching_analysis.build_prompt(normalized[:1], "moonwalk", "zh-CN")
     assert "CEFR B1" in prompt  # 该等级的词汇量描述（只标高于它的词）
-    assert "language-points" in prompt
+    assert "ABOVE" in prompt
     assert "Simplified Chinese" in prompt or "Chinese" in prompt
     assert "blockId" in prompt
-    assert "en_word" not in prompt and "zh_word" not in prompt
-    assert "Do not return \"highlights\"" in prompt
-    assert "idioms" in prompt and "culture" in prompt
+    assert "en_word" in prompt and "zh_word" in prompt
     assert "quote" in prompt
     assert "never" in prompt.lower()
     assert BLOCKS[0]["en_text"] in prompt
@@ -331,7 +338,7 @@ def test_analysis_prompt_states_level_rules_and_block_input():
 # 5. 校验闸
 # ---------------------------------------------------------------------------
 
-def test_validate_ignores_legacy_highlights():
+def test_validate_drops_invalid_highlights_and_blanks_ang_mismatch():
     normalized = teaching_analysis.normalize_blocks(BLOCKS)
     raw = json.dumps({
         "highlights": [
@@ -348,11 +355,22 @@ def test_validate_ignores_legacy_highlights():
         ]
     }, ensure_ascii=False)
     result = teaching_analysis.validate_analysis(raw, normalized)
-    assert result["highlights"] == {}
-    assert result["idioms"] == [] and result["culture"] == []
+    entries = result["highlights"]["1"]
+    assert entries[0] == {
+        "en_word": "museum",
+        "zh_word": "博物馆",
+        "color": HIGHLIGHT_COLOR,
+    }
+    assert len(entries) == 1
+    tickets = result["highlights"]["2"]
+    assert tickets == [{
+        "en_word": "tickets",
+        "zh_word": "",
+        "color": HIGHLIGHT_COLOR,
+    }]
 
 
-def test_validate_ignores_legacy_highlights_case():
+def test_validate_highlights_is_case_sensitive_like_old_translation():
     """与旧翻译高亮校验口径一致：大小写不同不算原文子串，丢弃。"""
     normalized = teaching_analysis.normalize_blocks(BLOCKS)
     result = teaching_analysis.validate_analysis(
@@ -362,7 +380,7 @@ def test_validate_ignores_legacy_highlights_case():
     assert result["highlights"] == {}
 
 
-def test_validate_ignores_legacy_highlight_caps():
+def test_validate_caps_and_dedupes_highlights_and_forces_color():
     normalized = teaching_analysis.normalize_blocks(BLOCKS)
     raw = {
         "highlights": [
@@ -373,7 +391,10 @@ def test_validate_ignores_legacy_highlight_caps():
             {"blockId": 1, "en_word": "morning", "zh_word": "早上"},
         ]
     }
-    assert teaching_analysis.validate_analysis(raw, normalized)["highlights"] == {}
+    entries = teaching_analysis.validate_analysis(raw, normalized)["highlights"]["1"]
+    assert len(entries) == teaching_analysis.MAX_HIGHLIGHTS_PER_BLOCK == 2
+    assert entries[0]["en_word"] == "museum"
+    assert entries[0]["color"] == HIGHLIGHT_COLOR
 
 
 def test_validate_drops_idioms_and_culture_without_source_quote():
@@ -404,7 +425,7 @@ def test_validate_drops_idioms_and_culture_without_source_quote():
     assert [item["term"] for item in result["culture"]] == ["front desk"]
 
 
-def test_validate_ignores_legacy_grouped_highlights():
+def test_validate_accepts_highlights_grouped_by_block_id():
     normalized = teaching_analysis.normalize_blocks(BLOCKS)
     raw = {
         "highlights": {
@@ -413,7 +434,7 @@ def test_validate_ignores_legacy_grouped_highlights():
         }
     }
     result = teaching_analysis.validate_analysis(raw, normalized)
-    assert result["highlights"] == {}
+    assert set(result["highlights"]) == {"1", "2"}
 
 
 def test_merge_parts_caps_idioms_at_twenty_and_culture_at_ten():
@@ -450,11 +471,11 @@ def test_ensure_generates_once_then_cache_hit_is_free(analysis_db, llm_stub):
     first, second = asyncio.run(run())
     assert len(llm_stub.prompts) == 1
     assert first == second
-    assert first["analysisVersion"] == "analysis.v2"
+    assert first["analysisVersion"] == "analysis.v3"
     assert first["level"] == "moonwalk"
     assert first["targetLang"] == "zh-CN"
     assert first["contentHash"] == teaching_analysis.content_hash(BLOCKS)
-    assert first["highlights"] == {}  # analysis.v2 no longer emits inline highlights
+    assert first["highlights"]  # 两个 block 都有高亮
     assert first["idioms"] and first["culture"]
     assert _row_count() == 1
 
@@ -535,7 +556,7 @@ def test_ensure_failure_is_not_cached_and_can_retry(analysis_db, llm_stub):
     result = asyncio.run(
         teaching_analysis.ensure_analysis(BLOCKS, "moonwalk", "zh-CN")
     )
-    assert result["highlights"] == {}
+    assert result["highlights"]
     assert _row_count() == 1
 
 
@@ -586,7 +607,7 @@ def test_cache_hit_does_not_consume_quota(analysis_db, llm_stub, monkeypatch):
 # 8. 合并进 payload
 # ---------------------------------------------------------------------------
 
-def test_merge_into_payload_clears_legacy_highlights():
+def test_merge_into_payload_replaces_highlights_by_block_id():
     payload = {
         "videoId": VIDEO_ID,
         "transcript": copy.deepcopy(BLOCKS),
@@ -596,7 +617,7 @@ def test_merge_into_payload_clears_legacy_highlights():
         {"en_word": "Visitors", "zh_word": "", "color": "old"}
     ]
     analysis = {
-        "analysisVersion": "analysis.v2",
+        "analysisVersion": "analysis.v3",
         "level": "moonwalk",
         "highlights": {
             "1": [
@@ -616,12 +637,16 @@ def test_merge_into_payload_clears_legacy_highlights():
     }
     assert teaching_analysis.merge_into_payload(payload, analysis) is True
 
-    assert payload["transcript"][0]["highlights"] == []
-    # v2 clears all legacy highlights.
+    assert payload["transcript"][0]["highlights"] == [{
+        "en_word": "museum",
+        "zh_word": "博物馆",
+        "color": HIGHLIGHT_COLOR,
+    }]
+    # 分析覆盖后旧等级残留被清空，非法条目被丢弃。
     assert payload["transcript"][1]["highlights"] == []
     assert payload["idioms"][0]["phrase"] == "opens at nine"
     assert payload["culture"][0]["term"] == "front desk"
-    assert payload["analysisVersion"] == "analysis.v2"
+    assert payload["analysisVersion"] == "analysis.v3"
 
 
 def test_merge_into_payload_keeps_old_cache_compatible():
@@ -694,23 +719,23 @@ def test_cached_stream_merges_analysis_and_zero_extra_calls(
     first = stream("moonwalk")
     meta = dict(first)["meta"]
     assert len(llm_stub.prompts) == 1
-    assert not any(block["highlights"] for block in meta["blocks"])
+    assert all(block["highlights"] for block in meta["blocks"])
     written = json.loads(
         (history_dir / f"Test_Channel_20240101_{VIDEO_ID}.json").read_text(
             encoding="utf-8"
         )
     )
-    assert written["analysisVersion"] == "analysis.v2"
+    assert written["analysisVersion"] == "analysis.v3"
     assert written["idioms"] and written["culture"]
-    assert not any(block["highlights"] for block in written["transcript"])
+    assert all(block["highlights"] for block in written["transcript"])
 
     second = stream("moonwalk")
     assert len(llm_stub.prompts) == 1, "同内容+等级+语言第二次必须零模型调用"
-    assert dict(second)["meta"]["blocks"][0]["highlights"] == meta["blocks"][0]["highlights"] == []
+    assert dict(second)["meta"]["blocks"][0]["highlights"] == meta["blocks"][0]["highlights"]
 
     third = stream("interstellar")
     assert len(llm_stub.prompts) == 2, "换等级必须重新生成"
-    assert dict(third)["meta"]["blocks"][0]["highlights"] == []
+    assert dict(third)["meta"]["blocks"][0]["highlights"]
     assert len(_rows()) == 2
 
 
@@ -795,7 +820,7 @@ def test_fresh_stream_attaches_analysis_after_translation(
     assert names[0] == "meta" and names[-1] == "done"
     assert names.count("batch") >= 2, "翻译批次之后应再推一次带高亮的分析合并事件"
     last_batch = [data for name, data in events if name == "batch"][-1]
-    assert not any(block["highlights"] for block in last_batch["blocks"])
+    assert all(block["highlights"] for block in last_batch["blocks"])
     assert len(translation_calls) == 1
     assert len(llm_stub.prompts) == 1
 
@@ -804,7 +829,7 @@ def test_fresh_stream_attaches_analysis_after_translation(
             encoding="utf-8"
         )
     )
-    assert written["analysisVersion"] == "analysis.v2"
+    assert written["analysisVersion"] == "analysis.v3"
     assert written["idioms"] and written["culture"]
 
 
@@ -827,8 +852,8 @@ def test_api_returns_analysis_and_caches(analysis_db, history_dir, llm_stub):
     payload = first.json()
     assert payload["contentRef"] == VIDEO_ID
     assert payload["level"] == "moonwalk"
-    assert payload["analysisVersion"] == "analysis.v2"
-    assert payload["highlights"] == {} and payload["idioms"] and payload["culture"]
+    assert payload["analysisVersion"] == "analysis.v3"
+    assert payload["highlights"] and payload["idioms"] and payload["culture"]
     assert len(llm_stub.prompts) == 1
 
     second = analysis_db.get(

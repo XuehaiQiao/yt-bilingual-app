@@ -20,6 +20,8 @@ interface ReadingHighlightProps {
     languagePoints?: InlineLanguagePoint[];
     /** Independent language-point underline switch. */
     showLanguagePoints?: boolean;
+    /** Contextual glosses keyed by lower-case word. */
+    wordGlosses?: Record<string, string>;
 }
 
 export const ReadingHighlight: React.FC<ReadingHighlightProps> = ({
@@ -28,6 +30,7 @@ export const ReadingHighlight: React.FC<ReadingHighlightProps> = ({
     isHighlighted,
     languagePoints,
     showLanguagePoints = true,
+    wordGlosses,
 }) => (
     <MarkedWords
         text={text}
@@ -35,6 +38,7 @@ export const ReadingHighlight: React.FC<ReadingHighlightProps> = ({
         isHighlighted={isHighlighted}
         languagePoints={languagePoints}
         showLanguagePoints={showLanguagePoints}
+        glossForWord={(word) => wordGlosses?.[word.toLowerCase()]}
     />
 );
 

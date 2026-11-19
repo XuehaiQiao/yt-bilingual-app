@@ -36,6 +36,8 @@ export interface ArticleSummary {
 /** One paragraph of `GET /api/article/{id}`. */
 export interface ArticleParagraph {
     idx: number;
+    /** Contextual glosses from the optional analysis, keyed by lower-case word. */
+    glosses: Record<string, string>;
     text: string;
     /** `null` until the paragraph has been translated into `targetLang`. */
     translation: string | null;
@@ -188,8 +190,18 @@ function parseParagraph(value: unknown): ArticleParagraph | null {
     if (!isRecord(value)) return null;
     const idx = value.idx;
     if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0) return null;
+    const glosses: Record<string, string> = {};
+    if (Array.isArray(value.highlights)) {
+        for (const entry of value.highlights) {
+            if (!isRecord(entry)) continue;
+            const word = asText(entry.en_word).trim().toLowerCase();
+            const gloss = asText(entry.zh_word).trim();
+            if (word && gloss) glosses[word] = gloss;
+        }
+    }
     return {
         idx,
+        glosses,
         text: asText(value.text),
         translation: asNullableText(value.translation),
         translationModel: asNullableText(value.translationModel),

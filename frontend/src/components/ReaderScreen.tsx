@@ -382,7 +382,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
             const detail = await getArticle(
                 articleId,
                 targetLang,
-                !isGuest && showLanguagePoints ? highlight.level : null,
+                !isGuest && (showLanguagePoints || highlight.enabled) ? highlight.level : null,
             );
             if (!mountedRef.current || selectedIdRef.current !== articleId) return;
             setArticle(detail);
@@ -409,7 +409,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     // and only runs for signed-in readers.
     useEffect(() => {
         const articleId = selectedIdRef.current;
-        if (!articleId || !article || isGuest || !showLanguagePoints) return;
+        if (!articleId || !article || isGuest || (!showLanguagePoints && !highlight.enabled)) return;
         if (article.analysisLevel === highlight.level) return;
         const attemptKey = `${articleId}:${highlight.level}`;
         if (analysisRequestedRef.current === attemptKey) return;
@@ -423,7 +423,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                 // Language points are an enhancement; reading stays usable.
             });
         return () => { cancelled = true; };
-    }, [article, highlight.level, isGuest, showLanguagePoints, targetLang]);
+    }, [article, highlight.enabled, highlight.level, isGuest, showLanguagePoints, targetLang]);
 
     // Favorites "出处" jump: open the requested article instead of the list.
     // App remounts this screen when a different target arrives, so this runs
@@ -566,7 +566,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
             const detail = await getArticle(
                 articleId,
                 targetLang,
-                !isGuest && showLanguagePoints ? highlight.level : null,
+                !isGuest && (showLanguagePoints || highlight.enabled) ? highlight.level : null,
             );
             if (mountedRef.current && selectedIdRef.current === articleId) {
                 setArticle(detail);
@@ -1252,6 +1252,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                                             isHighlighted={highlight.isHighlighted}
                                                             languagePoints={languagePointsByParagraph[paragraph.idx]}
                                                             showLanguagePoints={showLanguagePoints}
+                                                            wordGlosses={paragraph.glosses}
                                                             onWordClick={(word, e) => onWordLookup(
                                                                 word,
                                                                 paragraph.text,
