@@ -92,7 +92,9 @@ export function buildLocalTranscript(text: string): LocalTranscriptBlock[] {
 export type LocalSubtitleFileError = 'format' | 'read' | 'empty';
 
 export type LocalSubtitleFileResult =
-    | { ok: true; transcript: LocalTranscriptBlock[] }
+    // `text` is the raw SRT/VTT, persisted so a saved episode can rebuild the
+    // transcript next time without asking for the file again.
+    | { ok: true; transcript: LocalTranscriptBlock[]; text: string }
     | { ok: false; reason: LocalSubtitleFileError };
 
 const SUBTITLE_EXTENSION_RE = /\.(srt|vtt)$/i;
@@ -111,5 +113,5 @@ export async function readLocalSubtitleFile(file: File): Promise<LocalSubtitleFi
     }
     const transcript = buildLocalTranscript(text);
     if (transcript.length === 0) return { ok: false, reason: 'empty' };
-    return { ok: true, transcript };
+    return { ok: true, transcript, text };
 }

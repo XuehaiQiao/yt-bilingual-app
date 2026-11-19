@@ -28,6 +28,7 @@ import type { EstimateDialogHandle } from './EstimateDialog';
 import { EstimateDialog } from './EstimateDialog';
 import { StartLearning } from './StartLearning';
 import { ShowBrowser } from './ShowBrowser';
+import { LocalVideoShelf } from './LocalVideoShelf';
 import { SentencePacks } from './SentencePacks';
 import { LibrarySection } from './LibrarySection';
 import { BooksSection } from './BooksSection';
@@ -38,9 +39,18 @@ import { Card, SectionHeader } from './ui/Card';
 import { ShelfSection } from './ui/ShelfSection';
 import { ListRow } from './ui/ListRow';
 import { describeApiError, toast } from '../lib/toast';
+import {
+    canPersistLocalVideoHandles,
+    isSupportedLocalVideoFile,
+    pickLocalVideoHandle,
+    readLocalVideoFromHandle,
+    type LocalVideoOpenMeta,
+    type LocalVideoRecord,
+} from '../lib/localVideoLibrary';
 import { useI18n } from '../i18n/I18nProvider';
 
 const PAGE_PAD = 'pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10';
+const MAX_LOCAL_VIDEO_BYTES = 4 * 1024 * 1024 * 1024;
 
 interface ChannelUpdate {
     videoId: string;
@@ -71,7 +81,9 @@ interface ContentScreenProps {
     onOpenSentences: (levelId: number) => void;
     onOpenBlog: () => void;
     onOpenReport: () => void;
-    onOpenLocalVideo: (video: File, subtitle: File | null) => void;
+    onOpenLocalVideo: (video: File, subtitle: File | null, meta?: LocalVideoOpenMeta) => void;
+    /** Bumped after a local session closes so the saved shelf reloads. */
+    localVideoLibraryRevision: number;
     onLoadHistory: (filename: string) => void;
     onRequestLogin: () => void;
 }
@@ -98,6 +110,7 @@ export function ContentScreen({
     onOpenBlog,
     onOpenReport,
     onOpenLocalVideo,
+    localVideoLibraryRevision,
     onLoadHistory,
     onRequestLogin,
 }: ContentScreenProps) {
@@ -134,11 +147,80 @@ export function ContentScreen({
             toast.error(t('localVideo.videoRequired'));
             return;
         }
-        if (video.size > 4 * 1024 * 1024 * 1024) {
+        if (video.size > MAX_LOCAL_VIDEO_BYTES) {
             toast.error(t('localVideo.fileTooLarge'));
             return;
         }
         onOpenLocalVideo(video, subtitle);
+    };
+
+    /** Picker-only validation: the fallback input keeps its wider behaviour. */
+    const acceptPickedVideo = (file: File): boolean => {
+        if (!isSupportedLocalVideoFile(file)) {
+            toast.error(t('localVideo.unsupportedType'));
+            return false;
+        }
+        if (file.size > MAX_LOCAL_VIDEO_BYTES) {
+            toast.error(t('localVideo.fileTooLarge'));
+            return false;
+        }
+        return true;
+    };
+
+    // Secure context: ask Chromium for a real FileSystemFileHandle so the row
+    // can reopen this exact file next visit. Anywhere else the old input is
+    // used, with an explicit notice that the choice will not be remembered.
+    const openVideoPicker = async () => {
+        if (!canPersistLocalVideoHandles()) {
+            toast.info(t('localVideo.fallbackNotice'));
+            localVideoInputRef.current?.click();
+            return;
+        }
+        try {
+            const handle = await pickLocalVideoHandle();
+            if (!handle) return;
+            const result = await readLocalVideoFromHandle(handle);
+            if (!result.ok) {
+                toast.error(result.reason === 'permission'
+                    ? t('localVideo.permissionDenied')
+                    : t('localVideo.fileLost'));
+                return;
+            }
+            if (!acceptPickedVideo(result.file)) return;
+            onOpenLocalVideo(result.file, null, { fileHandle: handle });
+        } catch (error) {
+            // An API that exists but fails (blocked frame, policy) must not be a
+            // dead end: say so and fall back to the plain file input.
+            console.error('Failed to open the system video picker:', error);
+            toast.error(t('localVideo.pickerFailed'));
+            localVideoInputRef.current?.click();
+        }
+    };
+
+    const openSavedRecord = async (record: LocalVideoRecord) => {
+        if (!record.fileHandle) {
+            toast.error(t('localVideo.handleUnavailable'));
+            return;
+        }
+        const result = await readLocalVideoFromHandle(record.fileHandle);
+        if (!result.ok) {
+            const message = result.reason === 'permission'
+                ? t('localVideo.permissionDenied')
+                : result.reason === 'unsupported'
+                    ? t('localVideo.handleUnavailable')
+                    : t('localVideo.fileLost');
+            // The toast action runs in a fresh click, so Chromium can prompt
+            // again and the refreshed picker updates the same record.
+            toast.error(message, {
+                action: {
+                    label: t('localVideo.reselect'),
+                    onClick: () => { void openVideoPicker(); },
+                },
+            });
+            return;
+        }
+        if (!acceptPickedVideo(result.file)) return;
+        onOpenLocalVideo(result.file, null, { fileHandle: record.fileHandle, record });
     };
 
     const retryHistory = useCallback(() => {
@@ -502,7 +584,7 @@ export function ContentScreen({
                                     <button
                                         type="button"
                                         data-testid="local-video-open"
-                                        onClick={() => localVideoInputRef.current?.click()}
+                                        onClick={() => { void openVideoPicker(); }}
                                         className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/10 px-2.5 text-xs font-medium text-brand-300 transition-colors hover:bg-brand/15"
                                     >
                                         <FolderOpen className="h-3.5 w-3.5" />
@@ -512,6 +594,10 @@ export function ContentScreen({
                             )}
                         >
                             <ShowBrowser onSelectEpisode={onSelectEpisode} isLoading={busy} />
+                            <LocalVideoShelf
+                                revision={localVideoLibraryRevision}
+                                onOpen={(record) => { void openSavedRecord(record); }}
+                            />
                         </ShelfSection>
                         {/* SentencePacks is already a card with its own heading;
                             keep it as the grid cell to avoid nesting two cards. */}

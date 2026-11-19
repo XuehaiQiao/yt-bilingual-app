@@ -49,7 +49,14 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { AppShell, type ProfileSectionId } from './components/AppShell';
 import { LearningHeader } from './components/LearningHeader';
 import { LocalVideoLearning } from './components/LocalVideoLearning';
-import { readLocalSubtitleFile, type LocalTranscriptBlock } from './lib/localMedia';
+import { buildLocalTranscript, readLocalSubtitleFile, type LocalTranscriptBlock } from './lib/localMedia';
+import {
+  buildLocalVideoId,
+  getLocalVideo,
+  putLocalVideo,
+  type LocalVideoOpenMeta,
+  type LocalVideoRecord,
+} from './lib/localVideoLibrary';
 import { TodayScreen } from './components/TodayScreen';
 import { CourseScreen } from './components/CourseScreen';
 import { ContentScreen } from './components/ContentScreen';
@@ -216,7 +223,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     fileName: string;
     subtitleName?: string;
     transcript: LocalTranscriptBlock[];
+    /** Present only for a session backed by a saved file handle. */
+    recordId?: string;
+    /** Saved playback position, applied once the video metadata is known. */
+    initialTime: number;
   } | null>(null);
+  // Bumped after a local video session closes so the Content shelf re-reads
+  // the cover/progress/subtitle written while the player was open.
+  const [localVideoLibraryRevision, setLocalVideoLibraryRevision] = useState(0);
+  const localVideoPatchQueue = useRef<Promise<void>>(Promise.resolve());
+  const localVideoLatestTime = useRef(0);
+  const localVideoProgressSavedAt = useRef(0);
   const [summary, setSummary] = useState<string>('');
   const [metadata, setMetadata] = useState<any>(null);
   const isLocalSubtitle = Boolean(metadata?.is_local_subtitle);
@@ -3191,47 +3208,181 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     />
   );
 
-  const handleOpenLocalVideo = useCallback(async (video: File, subtitle: File | null) => {
+  // Record writes go through one queue: progress, cover and subtitle can land
+  // in the same second and a naive read-modify-write would drop one of them.
+  const patchLocalVideoRecord = useCallback((id: string, patch: Partial<LocalVideoRecord>) => {
+    localVideoPatchQueue.current = localVideoPatchQueue.current
+      .catch(() => {})
+      .then(async () => {
+        try {
+          const current = await getLocalVideo(id);
+          if (!current) return;
+          await putLocalVideo({ ...current, ...patch });
+        } catch (error) {
+          console.warn('Failed to update the local video record:', error);
+        }
+      });
+  }, []);
+
+  // Playback progress is throttled to one write every few seconds; pause,
+  // close and tab-switch force one final write.
+  const saveLocalVideoProgress = useCallback((seconds: number, force = false) => {
+    if (!Number.isFinite(seconds)) return;
+    localVideoLatestTime.current = seconds;
+    const recordId = localVideo?.recordId;
+    if (!recordId) return;
+    const now = Date.now();
+    if (!force && now - localVideoProgressSavedAt.current < 4000) return;
+    localVideoProgressSavedAt.current = now;
+    void patchLocalVideoRecord(recordId, { progress: seconds });
+  }, [localVideo?.recordId, patchLocalVideoRecord]);
+
+  const handleLocalVideoMetadata = useCallback((duration: number) => {
+    const recordId = localVideo?.recordId;
+    if (!recordId || !Number.isFinite(duration) || duration <= 0) return;
+    void patchLocalVideoRecord(recordId, { duration });
+  }, [localVideo?.recordId, patchLocalVideoRecord]);
+
+  const handleLocalVideoCover = useCallback((coverDataUrl: string) => {
+    const recordId = localVideo?.recordId;
+    if (!recordId) return;
+    void patchLocalVideoRecord(recordId, { coverDataUrl });
+  }, [localVideo?.recordId, patchLocalVideoRecord]);
+
+  const handleOpenLocalVideo = useCallback(async (
+    video: File,
+    subtitle: File | null,
+    meta?: LocalVideoOpenMeta,
+  ) => {
+    // A saved row keeps its id so a moved/edited file updates that row instead
+    // of creating a duplicate; a fresh picker choice uses the file fingerprint.
+    const recordId = meta?.record?.id
+      ?? (meta?.fileHandle ? buildLocalVideoId(video) : undefined);
+    let existing = meta?.record;
+    if (recordId) {
+      try {
+        const stored = await getLocalVideo(recordId);
+        if (stored) existing = stored;
+      } catch (error) {
+        console.warn('Failed to read the saved local video record:', error);
+      }
+    }
+    // Subtitle text is enough to rebuild the transcript: no second file pick.
+    const restoredTranscript = existing?.subtitleText
+      ? buildLocalTranscript(existing.subtitleText)
+      : [];
+    const initialTime = Number.isFinite(existing?.progress) ? (existing?.progress ?? 0) : 0;
     const videoUrl = URL.createObjectURL(video);
+    localVideoLatestTime.current = initialTime;
+    localVideoProgressSavedAt.current = 0;
     setLocalVideo((previous) => {
       if (previous) URL.revokeObjectURL(previous.videoUrl);
-      return { videoUrl, fileName: video.name, subtitleName: subtitle?.name, transcript: [] };
+      return {
+        videoUrl,
+        fileName: video.name,
+        subtitleName: restoredTranscript.length > 0 ? existing?.subtitleName : undefined,
+        transcript: restoredTranscript,
+        recordId,
+        initialTime,
+      };
     });
+    if (recordId && meta?.fileHandle) {
+      try {
+        await putLocalVideo({
+          id: recordId,
+          name: video.name,
+          size: video.size,
+          lastModified: video.lastModified,
+          fileHandle: meta.fileHandle,
+          coverDataUrl: existing?.coverDataUrl,
+          duration: existing?.duration ?? 0,
+          progress: initialTime,
+          subtitleName: restoredTranscript.length > 0 ? existing?.subtitleName : undefined,
+          subtitleText: restoredTranscript.length > 0 ? existing?.subtitleText : undefined,
+          lastOpenedAt: Date.now(),
+        });
+      } catch (error) {
+        console.error('Failed to save the local video record:', error);
+        toast.error(t('localVideo.librarySaveFailed'));
+      }
+    }
     if (!subtitle) return;
     const result = await readLocalSubtitleFile(subtitle);
     setLocalVideo((current) => {
       if (!current || current.videoUrl !== videoUrl) return current;
-      // A subtitle that yields no usable cues must not leave the panel stuck on
-      // "parsing": fall back to the empty state, where it can be replaced.
-      return result.ok
-        ? { ...current, subtitleName: subtitle.name, transcript: result.transcript }
+      if (result.ok) {
+        return { ...current, subtitleName: subtitle.name, transcript: result.transcript };
+      }
+      // A newly picked broken subtitle must not discard a remembered one.
+      return restoredTranscript.length > 0
+        ? current
         : { ...current, subtitleName: undefined, transcript: [] };
     });
-    if (!result.ok) {
+    if (result.ok) {
+      if (recordId) {
+        void patchLocalVideoRecord(recordId, {
+          subtitleName: subtitle.name,
+          subtitleText: result.text,
+        });
+      }
+    } else {
       toast.error(result.reason === 'empty'
         ? t('localVideo.subtitleEmpty')
         : t('localVideo.subtitleReadFailed'));
     }
-  }, [t]);
+  }, [t, patchLocalVideoRecord]);
 
   // Subtitle chosen inside the player: swap the transcript in place. The video
-  // URL/state is untouched, so playback position and play state survive.
+  // URL/state is untouched, so playback position and play state survive. The
+  // raw text is persisted so a saved episode reopens with the same cues.
   const handleLoadLocalSubtitle = async (file: File) => {
+    const recordId = localVideo?.recordId;
     const result = await readLocalSubtitleFile(file);
     if (result.ok) {
       setLocalVideo((current) => (current
         ? { ...current, subtitleName: file.name, transcript: result.transcript }
         : current));
+      if (recordId) {
+        void patchLocalVideoRecord(recordId, {
+          subtitleName: file.name,
+          subtitleText: result.text,
+        });
+      }
     }
     return result;
   };
 
   const closeLocalVideo = useCallback(() => {
+    const recordId = localVideo?.recordId;
+    const finalTime = localVideoLatestTime.current;
     setLocalVideo((previous) => {
       if (previous) URL.revokeObjectURL(previous.videoUrl);
       return null;
     });
-  }, []);
+    if (!recordId) {
+      setLocalVideoLibraryRevision((revision) => revision + 1);
+      return;
+    }
+    // Save one last time, then bump the revision so the remounted Content
+    // shelf reads the fresh cover/progress instead of the stale row.
+    localVideoPatchQueue.current = localVideoPatchQueue.current
+      .catch(() => {})
+      .then(async () => {
+        try {
+          const current = await getLocalVideo(recordId);
+          if (current) {
+            await putLocalVideo({
+              ...current,
+              progress: finalTime,
+              lastOpenedAt: Date.now(),
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to save the final local video position:', error);
+        }
+      })
+      .finally(() => setLocalVideoLibraryRevision((revision) => revision + 1));
+  }, [localVideo?.recordId]);
 
   const renderView = () => {
     if (localVideo && state.tab === 'content' && !state.sub) {
@@ -3241,11 +3392,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           fileName={localVideo.fileName}
           subtitleName={localVideo.subtitleName}
           transcript={localVideo.transcript}
+          initialTime={localVideo.initialTime}
           wordbookCount={vocabularyFavoriteCount}
           onOpenWordbook={handleOpenWordbookRoute}
           onClose={closeLocalVideo}
           onWordLookup={handleWordLookup}
           onLoadSubtitle={handleLoadLocalSubtitle}
+          onCaptureCover={handleLocalVideoCover}
+          onProgress={(seconds) => saveLocalVideoProgress(seconds)}
+          onPersist={(seconds) => saveLocalVideoProgress(seconds, true)}
+          onMetadata={handleLocalVideoMetadata}
         />
       );
     }
@@ -3455,6 +3611,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onOpenBlog={handleOpenBlog}
             onOpenReport={handleOpenReport}
             onOpenLocalVideo={handleOpenLocalVideo}
+            localVideoLibraryRevision={localVideoLibraryRevision}
             onLoadHistory={(filename) => { void handleLoadHistory(filename); }}
             onRequestLogin={() => onRequestLogin?.()}
           />

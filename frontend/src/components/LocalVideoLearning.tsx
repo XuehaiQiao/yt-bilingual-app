@@ -22,12 +22,22 @@ interface LocalVideoLearningProps {
     fileName: string;
     subtitleName?: string;
     transcript: LocalTranscriptBlock[];
+    /** Saved playback position; re-applied once the metadata is known. */
+    initialTime?: number;
     wordbookCount: number;
     onOpenWordbook: () => void;
     onClose: () => void;
     onWordLookup: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
     /** Swap the subtitle without remounting the video (loaded later or replaced). */
     onLoadSubtitle: (file: File) => Promise<LocalSubtitleFileResult>;
+    /** First decoded frame as a small JPEG; omitted when capture fails. */
+    onCaptureCover?: (coverDataUrl: string) => void;
+    /** Throttled playback position while the video is running. */
+    onProgress?: (seconds: number) => void;
+    /** Forced save on pause / close / tab switch. */
+    onPersist?: (seconds: number) => void;
+    /** Real duration once metadata arrives (persisted for progress display). */
+    onMetadata?: (duration: number) => void;
 }
 
 export function LocalVideoLearning({
@@ -35,15 +45,31 @@ export function LocalVideoLearning({
     fileName,
     subtitleName,
     transcript,
+    initialTime,
     wordbookCount,
     onOpenWordbook,
     onClose,
     onWordLookup,
     onLoadSubtitle,
+    onCaptureCover,
+    onProgress,
+    onPersist,
+    onMetadata,
 }: LocalVideoLearningProps) {
     const { t } = useI18n();
     const videoRef = useRef<HTMLVideoElement>(null);
     const subtitleInputRef = useRef<HTMLInputElement>(null);
+    // Persistence callbacks are read through a ref so the unmount cleanup does
+    // not re-subscribe (and never fires for an identity change mid-session).
+    const persistenceRef = useRef({ onCaptureCover, onProgress, onPersist, onMetadata });
+    persistenceRef.current = { onCaptureCover, onProgress, onPersist, onMetadata };
+    const latestTimeRef = useRef(0);
+    const lastReportedAtRef = useRef(0);
+    const coverCapturedRef = useRef(false);
+    const coverTimerRef = useRef<number | null>(null);
+    const coverSeekRef = useRef(false);
+    const disposedRef = useRef(false);
+    const restoredRef = useRef(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [mediaError, setMediaError] = useState(false);
     const [translationMode, setTranslationMode] = useState<TranslationMode>(loadTranslationMode);
@@ -159,6 +185,150 @@ export function LocalVideoLearning({
         setCurrentTime(video.currentTime);
     };
 
+    /** Time updates are noisy; persist at most once every two seconds. */
+    const reportProgress = (time: number, force = false) => {
+        const now = performance.now();
+        if (!force && now - lastReportedAtRef.current < 2000) return;
+        lastReportedAtRef.current = now;
+        persistenceRef.current.onProgress?.(time);
+    };
+
+    const handleLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+        const video = event.currentTarget;
+        if (Number.isFinite(video.duration) && video.duration > 0) {
+            persistenceRef.current.onMetadata?.(video.duration);
+        }
+        // Resume the saved position only once, and never past the real end.
+        if (restoredRef.current) return;
+        restoredRef.current = true;
+        const saved = initialTime ?? 0;
+        if (!Number.isFinite(saved) || saved <= 0) return;
+        if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+        const target = Math.min(saved, Math.max(0, video.duration - 0.25));
+        if (target <= 0) return;
+        try {
+            video.currentTime = target;
+            latestTimeRef.current = target;
+            setCurrentTime(target);
+        } catch {
+            // A seek before the media is seekable must not break playback; the
+            // video simply starts at 0 and progress is saved from there.
+        }
+    };
+
+    const handleLoadedData = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+        if (coverCapturedRef.current) return;
+        const video = event.currentTarget;
+        if (!video.videoWidth || !video.videoHeight) return;
+        // At `loadeddata` the first paused frame at t=0 is often a black
+        // placeholder: Chromium only presents a decoded frame after a seek or
+        // playback. Wait for a presented frame (rVFC) and, when the video is
+        // still sitting at 0, nudge it 200ms in so the cover is a real frame.
+        const capture = () => {
+            coverSeekRef.current = false;
+            if (coverCapturedRef.current || disposedRef.current) return;
+            if (!video.videoWidth || !video.videoHeight) return;
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 320;
+                canvas.height = 180;
+                const context = canvas.getContext('2d');
+                if (!context) return;
+                // Fill 320×180 (center-crop) so every cover has the same shape.
+                const scale = Math.max(320 / video.videoWidth, 180 / video.videoHeight);
+                const drawWidth = video.videoWidth * scale;
+                const drawHeight = video.videoHeight * scale;
+                context.drawImage(
+                    video,
+                    (320 - drawWidth) / 2,
+                    (180 - drawHeight) / 2,
+                    drawWidth,
+                    drawHeight,
+                );
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+                if (!dataUrl.startsWith('data:image/jpeg')) return;
+                coverCapturedRef.current = true;
+                persistenceRef.current.onCaptureCover?.(dataUrl);
+            } catch (error) {
+                // No fake cover: the shelf shows its film placeholder instead.
+                console.warn('Local video cover capture failed:', error);
+            }
+        };
+        const scheduleCapture = () => {
+            coverSeekRef.current = false;
+            if (typeof video.requestVideoFrameCallback === 'function') {
+                video.requestVideoFrameCallback(() => capture());
+            }
+            // Fallback for browsers without rVFC or without a presented frame.
+            coverTimerRef.current = window.setTimeout(capture, 900);
+        };
+
+        const needsFrameSeek = video.paused
+            && video.currentTime < 0.05
+            && Number.isFinite(video.duration)
+            && video.duration > 0.3;
+        if (!needsFrameSeek) {
+            scheduleCapture();
+            return;
+        }
+        coverSeekRef.current = true;
+        const onSeeked = () => {
+            video.removeEventListener('seeked', onSeeked);
+            scheduleCapture();
+        };
+        video.addEventListener('seeked', onSeeked, { once: true });
+        try {
+            // A tiny, invisible nudge: playback still reads 00:00 in the
+            // controls, and a saved cover stops being a black rectangle.
+            video.currentTime = Math.min(0.2, video.duration / 4);
+        } catch {
+            video.removeEventListener('seeked', onSeeked);
+            scheduleCapture();
+        }
+        coverTimerRef.current = window.setTimeout(capture, 1800);
+    };
+
+    const persistNow = (time: number) => {
+        latestTimeRef.current = time;
+        persistenceRef.current.onPersist?.(time);
+    };
+
+    // Closing the player and switching tabs both unmount this view; a hidden
+    // tab can also happen before the unmount. Both must save the position.
+    useEffect(() => {
+        // StrictMode runs mount → cleanup → mount in development; a fresh
+        // effect must clear the disposed flag so cover capture still works.
+        disposedRef.current = false;
+        const persist = () => {
+            const video = videoRef.current;
+            const time = video && Number.isFinite(video.currentTime)
+                ? video.currentTime
+                : latestTimeRef.current;
+            persistenceRef.current.onPersist?.(time);
+        };
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') persist();
+        };
+        window.addEventListener('pagehide', persist);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        return () => {
+            window.removeEventListener('pagehide', persist);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            disposedRef.current = true;
+            if (coverTimerRef.current !== null) {
+                window.clearTimeout(coverTimerRef.current);
+                coverTimerRef.current = null;
+            }
+            persist();
+        };
+    }, []);
+
+    const handleClose = () => {
+        const video = videoRef.current;
+        persistNow(video && Number.isFinite(video.currentTime) ? video.currentTime : latestTimeRef.current);
+        onClose();
+    };
+
     return (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <input
@@ -177,7 +347,7 @@ export function LocalVideoLearning({
             <LearningHeader
                 title={fileName}
                 featureLabel={t('localVideo.feature')}
-                onBack={onClose}
+                onBack={handleClose}
                 parentLabel={t('nav.content')}
                 wordbookCount={wordbookCount}
                 onOpenWordbook={onOpenWordbook}
@@ -200,7 +370,19 @@ export function LocalVideoLearning({
                                 playsInline
                                 preload="metadata"
                                 className="h-full w-full object-contain"
-                                onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+                                onLoadedMetadata={handleLoadedMetadata}
+                                onLoadedData={handleLoadedData}
+                                onTimeUpdate={(event) => {
+                                    const time = event.currentTarget.currentTime;
+                                    // The cover-capture nudge is not user progress.
+                                    if (!coverSeekRef.current) {
+                                        latestTimeRef.current = time;
+                                        reportProgress(time);
+                                    }
+                                    setCurrentTime(time);
+                                }}
+                                onPause={(event) => persistNow(event.currentTarget.currentTime)}
+                                onEnded={(event) => persistNow(event.currentTarget.currentTime)}
                                 onError={() => setMediaError(true)}
                             />
                         )}
