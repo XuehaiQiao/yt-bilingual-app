@@ -34,17 +34,17 @@ export const ClickableWords: React.FC<{
             const gloss = highlighted ? glossForWord?.(word) : null;
             if (gloss) {
                 return (
-                    <ruby
+                    <span
                         key={i}
                         data-word-hit={word}
                         data-highlight="1"
                         data-gloss={gloss}
+                        aria-label={`${word}: ${gloss}`}
                         onClick={(e) => { e.stopPropagation(); onWordClick(word, e); }}
-                        className="cursor-pointer rounded-sm bg-amber-400/15 text-amber-50 transition-colors hover:bg-white/10"
+                        className="gloss-word cursor-pointer rounded-sm bg-amber-400/15 text-amber-50 transition-colors hover:bg-white/10"
                     >
                         {token}
-                        <rt className="text-[10px] font-medium text-amber-300/90 select-none">{gloss}</rt>
-                    </ruby>
+                    </span>
                 );
             }
             return (
