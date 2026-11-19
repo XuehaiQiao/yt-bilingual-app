@@ -8,6 +8,7 @@
 // the article and book readers; it persists through the hook.
 import { Highlighter } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
+import { Switch } from './ui/Switch';
 import { ClickableWords, type WordClickHandler } from './TranscriptBlock';
 
 interface ReadingHighlightProps {
@@ -50,39 +51,33 @@ export const ReadingHighlightToggle: React.FC<ReadingHighlightToggleProps> = ({
         : levelLabel === 'C2'
             ? t('reading.highlight.hintMax')
             : t('reading.highlight.hint', { level: levelLabel });
+    const label = t('reading.highlight.toggle');
 
     return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            aria-label={t('reading.highlight.toggle')}
+        // The shared `ui/Switch` is the control; the surrounding pill is its
+        // label, so the old testid element stays one clickable target (and the
+        // readers' acceptance selectors keep working). Amber is the reading
+        // highlight accent (docs/design-governance/design-system/components.md
+        // C13); `ui/Switch` exposes that warm track as its `warning` tone.
+        <label
             data-testid={testId}
             data-enabled={enabled ? '1' : '0'}
             title={hint}
-            onClick={() => onChange(!enabled)}
-            className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${
+            className={`inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-2 text-[11px] font-medium transition-colors ${
                 enabled
                     ? 'border-amber-400/25 bg-amber-400/10 text-amber-200 hover:bg-amber-400/15'
                     : 'border-white/5 bg-zinc-800/60 text-zinc-400 hover:text-zinc-200'
             }`}
         >
-            <Highlighter className="h-3.5 w-3.5" />
-            <span>{t('reading.highlight.toggle')}</span>
-            <span
-                aria-hidden="true"
-                className={`relative inline-flex h-3 w-5 shrink-0 items-center rounded-full transition-colors ${
-                    enabled ? 'bg-amber-400/80' : 'bg-zinc-600'
-                }`}
-            >
-                <span
-                    className={`absolute h-2 w-2 rounded-full transition-transform ${
-                        enabled
-                            ? 'translate-x-[0.65rem] bg-zinc-950'
-                            : 'translate-x-0.5 bg-zinc-300'
-                    }`}
-                />
-            </span>
-        </button>
+            <Highlighter aria-hidden="true" className="h-3.5 w-3.5" />
+            <span>{label}</span>
+            <Switch
+                checked={enabled}
+                onChange={onChange}
+                ariaLabel={label}
+                tone="warning"
+                className="ml-0.5"
+            />
+        </label>
     );
 };
