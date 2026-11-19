@@ -1245,7 +1245,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                                         data-lookup-context={paragraph.text}
                                                         data-lookup-start={paragraph.idx}
                                                         lang={article.lang || undefined}
-                                                        className="pr-8 text-base sm:text-[17px] leading-relaxed text-zinc-200 break-words"
+                                                        className="ruby-safe-line pr-8 text-base sm:text-[17px] text-zinc-200 break-words"
                                                     >
                                                         <ReadingHighlight
                                                             text={paragraph.text}

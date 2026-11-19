@@ -120,37 +120,21 @@ ruby rt {
   letter-spacing: 0;
 }
 
-/* Contextual gloss: hover-only, deliberately outside the line box so adding
-   glosses never changes line height or causes a reflow while reading. */
+/* Contextual gloss: visible ruby annotation. Reading paragraphs reserve a
+   stable line box via .ruby-safe-line so the annotation never reflows text. */
 .gloss-word {
   position: relative;
+  white-space: nowrap;
 }
-.gloss-word::after {
-  content: attr(data-gloss);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 5px);
-  transform: translateX(-50%);
-  max-width: 16rem;
-  width: max-content;
-  padding: 3px 7px;
-  border-radius: 6px;
-  border: 1px solid rgba(251, 191, 36, 0.28);
-  background: rgba(24, 24, 27, 0.97);
-  color: #fde68a;
-  font-size: 11px;
-  line-height: 1.35;
+.gloss-word rt {
+  color: #fcd34d;
+  font-size: 10px;
+  line-height: 1;
   font-weight: 500;
-  white-space: normal;
-  text-align: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 120ms ease;
-  z-index: 80;
+  white-space: nowrap;
 }
-.gloss-word:hover::after,
-.gloss-word:focus-visible::after {
-  opacity: 1;
+.ruby-safe-line {
+  line-height: 1.9 !important;
 }
 
 /* Vibrancy materials: saturate() makes background color bleed through the

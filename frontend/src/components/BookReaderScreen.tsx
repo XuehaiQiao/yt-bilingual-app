@@ -854,7 +854,7 @@ export function BookReaderScreen({
                                                                 data-lookup-context={paragraph.en}
                                                                 data-lookup-start={paragraph.index}
                                                                 lang="en"
-                                                                className="text-base leading-relaxed text-zinc-200 break-words"
+                                                                className="ruby-safe-line text-base text-zinc-200 break-words"
                                                             >
                                                                 <ReadingHighlight
                                                                     text={paragraph.en}

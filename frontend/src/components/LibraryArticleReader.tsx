@@ -170,7 +170,7 @@ export function LibraryArticleReader({ article, onClose, parentLabel, onWordLook
                                             data-lookup-context={paragraph.en}
                                             data-lookup-start={index}
                                             lang="en"
-                                            className="text-base sm:text-[17px] leading-relaxed text-zinc-200 break-words"
+                                            className="ruby-safe-line text-base sm:text-[17px] text-zinc-200 break-words"
                                         >
                                             <ReadingHighlight
                                                 text={paragraph.en}

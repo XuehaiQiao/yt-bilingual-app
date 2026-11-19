@@ -34,7 +34,7 @@ export const ClickableWords: React.FC<{
             const gloss = highlighted ? glossForWord?.(word) : null;
             if (gloss) {
                 return (
-                    <span
+                    <ruby
                         key={i}
                         data-word-hit={word}
                         data-highlight="1"
@@ -44,7 +44,8 @@ export const ClickableWords: React.FC<{
                         className="gloss-word cursor-pointer rounded-sm bg-amber-400/15 text-amber-50 transition-colors hover:bg-white/10"
                     >
                         {token}
-                    </span>
+                        <rt className="text-[10px] font-medium text-amber-300/90 select-none">{gloss}</rt>
+                    </ruby>
                 );
             }
             return (
@@ -330,7 +331,7 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
                         onClick={blurred ? (e) => { e.stopPropagation(); setRevealed(true); } : undefined}
                         title={blurred ? t('transcript.revealOriginal') : undefined}
                         className={cn(
-                            "text-base leading-relaxed tracking-normal transition-[filter,opacity,color] duration-300 ease-apple",
+                            "ruby-safe-line text-base tracking-normal transition-[filter,opacity,color] duration-300 ease-apple",
                             isActive ? "text-zinc-50" : "text-zinc-400",
                             blurred && "blur-[6px] select-none opacity-60 hover:opacity-80 cursor-pointer"
                         )}
