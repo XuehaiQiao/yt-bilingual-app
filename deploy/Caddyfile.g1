@@ -1,0 +1,123 @@
+# =============================================================================
+# 语途（LinguaTrek）G1 生产 Caddy 配置 —— linguatrekai.online
+#
+# 适用：VPS 裸机 / systemd 方式。Caddy 终止 TLS、直接服务 frontend/dist，
+#       并把 /api/* 反代到 127.0.0.1:8000（uvicorn 单 worker）。
+#
+# Docker 方式不要用本文件：容器内已由 deploy/serve.py 服务静态文件与 SPA
+# fallback，宿主机 Caddy 只需全量反代，见 deploy/Caddyfile.g1.proxy。
+#
+# 安装（完整步骤见 docs/部署执行手册-linguatrekai.online.md）：
+#   sudo cp deploy/Caddyfile.g1 /etc/caddy/Caddyfile
+#   sudo chown root:caddy /etc/caddy/Caddyfile
+#   sudo chmod 640 /etc/caddy/Caddyfile
+#   sudo caddy validate --config /etc/caddy/Caddyfile \
+#        --envfile /etc/caddy/g1.env
+#   sudo systemctl reload caddy
+#
+# G1 Basic Auth 账号来自环境变量（由 systemd EnvironmentFile 注入），
+# 本文件不写任何明文密码/哈希：
+#   G1_BASIC_AUTH_USER=<网关用户名>
+#   G1_BASIC_AUTH_HASH=<caddy hash-password 的输出，整行 $2a$...>
+#
+# 注意：Caddy 官方 systemd 单元通常带 --environ，会把进程环境打印进 journal。
+# 安装时用 drop-in 去掉 --environ，否则 G1 哈希会进日志；见执行手册 §6.3。
+#
+# Cloudflare：首次签发证书先设 DNS only（灰云）；橙云默认 100s 空闲超时，
+# 必须确认后端 SSE 15s 心跳已生效并实测 30 分钟长流。G1 建议先灰云。
+# =============================================================================
+{
+	# ACME 账号邮箱（证书到期提醒）。如不使用，删除本行也可。
+	email {$ACME_EMAIL:ops@linguatrekai.online}
+}
+
+# www 301 到主域。不要在这里加 Basic Auth：先让浏览器拿到跳转，再在主域认证。
+www.linguatrekai.online {
+	header Strict-Transport-Security "max-age=15552000; includeSubDomains"
+	header -Server
+	redir https://linguatrekai.online{uri} permanent
+}
+
+linguatrekai.online {
+	encode zstd gzip
+
+	# 安全头。逐行写、不用 header {} 块：Caddy 的 header 块会延迟到响应末尾，
+	# Basic Auth 在认证失败时直接写 401，可能拿不到块里的头；逐行写法在
+	# 200 与 401 响应上都生效（本机 Caddy 2.11.9 实测）。
+	header Strict-Transport-Security "max-age=15552000; includeSubDomains"
+	header X-Content-Type-Options "nosniff"
+	header Referrer-Policy "strict-origin-when-cross-origin"
+	header Permissions-Policy "camera=(), microphone=(), geolocation=()"
+	# CSP 与当前前端依赖一致：
+	# - react-youtube 需要从 www.youtube.com / s.ytimg.com 加载 iframe API；
+	# - framer-motion 使用内联样式，style-src 必须允许 'unsafe-inline'；
+	# - PWA service worker 需要 worker-src 'self'。
+	# 若以后启用博客 Giscus（VITE_GISCUS_* 构建期变量），还需把
+	# https://giscus.app 加进 script-src 与 frame-src；当前未启用，不提前放宽。
+	header Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://s.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.ytimg.com https://*.ytimg.com https://*.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self'; font-src 'self' data:; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
+	# 尽量去掉 Server 头；401 由 Basic Auth 直接返回时 Caddy 仍可能补回
+	# Server: Caddy，属于低风险信息暴露，不作为验收失败项（见执行手册）。
+	header -Server
+
+	# 带内容哈希的构建产物可以长缓存；入口 HTML 与 SW 必须每次回源。
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	@entry path / /index.html /sw.js /manifest.webmanifest
+	header @entry Cache-Control "no-cache"
+
+	# 健康探针必须在 Basic Auth 之外：负载均衡/巡检/容器健康检查都不带凭据。
+	# 只豁免精确路径 /healthz 与 /health；其它路径仍受保护。
+	# ACME HTTP-01 挑战路径也豁免，避免证书续期被认证挡住（Caddy 通常内部处理）。
+	@protected not path /healthz /health /.well-known/acme-challenge/*
+	basic_auth @protected {
+		{$G1_BASIC_AUTH_USER} {$G1_BASIC_AUTH_HASH}
+
+		# 一人一账号（推荐）时，注释上面一行，取消下面一行，并把账号写进
+		# /etc/caddy/g1-users.caddy（root:caddy 640，每行 "用户名 bcrypt哈希"）：
+		# import /etc/caddy/g1-users.caddy
+	}
+
+	# 健康检查也走后端（它们不在 /api 下），且不经过 Basic Auth。
+	handle /healthz {
+		reverse_proxy 127.0.0.1:8000
+	}
+	handle /health {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# SSE 关键：关闭反向代理缓冲（flush_interval -1），读写超时拉长到 24h。
+	# 后端每 15s 发一行 `: ping` 心跳（SSE_HEARTBEAT_INTERVAL，默认 15）。
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000 {
+			flush_interval -1
+			transport http {
+				read_timeout 24h
+				response_header_timeout 24h
+			}
+		}
+	}
+
+	# SPA fallback：深链刷新返回 index.html。
+	handle {
+		root * /srv/ln/current/frontend/dist
+		try_files {path} /index.html
+		file_server
+	}
+
+	# 访问日志默认写 stdout，由 journald 收集（journalctl -u caddy）。
+	# Caddy 默认会脱敏 Authorization/Cookie；这里再删除下载 URL 里的 token 等
+	# 查询参数，避免一次性下载令牌进入日志。
+	log {
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					delete token
+					delete access_token
+					delete api_key
+				}
+			}
+		}
+	}
+}

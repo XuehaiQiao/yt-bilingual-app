@@ -7,6 +7,7 @@
 | `backup.sh` | 离机备份：优先 `sqlite3 .backup` 做 WAL 安全快照（无 sqlite3 时退化为文件复制并警告），打包 `app.db` + `users/` + 配置键名到 `backups/linguatrek-backup-YYYYmmdd-HHMMSS.tar.gz`，默认保留 7 份（`--keep N`）。不备份 `.env`、不打印密钥。用法与定时任务见 [docs/运行手册.md](../docs/运行手册.md) |
 | `restore.sh` | 从备份包恢复并校验：`SHA256SUMS` + `PRAGMA integrity_check` + 表清单/用户数/`users` 文件数/聚合哈希；默认恢复到临时目录，拒绝非空目标（`--force` 会把旧数据移到 `.pre-restore-*`） |
 | `restore_drill.sh` | 恢复演练：备份 → 临时恢复 → 与源数据对比（表/用户/文件/哈希）→ 清理；输出 PASS/FAIL + 耗时，退出码非 0 即失败。支持 `--data-dir`、`--keep-temp` |
+| `preflight-production.sh` | 生产上线只读预检：DNS、22/80/443 TCP、HTTPS、`/healthz`、安全头、www 301、G1 401/200；`--netrc` 可验证带凭据的 200。不 SSH、不写服务器、不执行部署；离线时明确失败。用法见 [部署执行手册](../docs/部署执行手册-linguatrekai.online.md) |
 | `check-alerts.py` | `/healthz` 外部巡检 → 飞书 P0（M5，specs/035）：连续 N 次失败才告警，计数/重复间隔存 `data/alerts/health_state.json`；`--dry-run` 只看不写、`--self-test` 离线验证 payload/签名、`--event backup_failed ...` 主动上报其它事件。cron 模板见 `deploy/alert-check.cron`；不打印 webhook/secret |
 | `verify-difficulty.mjs` | CEFR M2 前端验收（specs/026）：Playwright 打开 `APP_URL`（默认 `http://127.0.0.1:5199`），mock `/api/content/difficulty/batch`，断言「为你推荐 / 免费资源」卡片显示难度徽章与「生词约 X%」，且用户可见文案不含「个性化」；截图写 `data/reports/difficulty-web.png`。需先 `npm ci`（playwright + 系统 Chrome channel）并启动前端 dev server |
 | `build_books.py` | 构建期生成公版书中文译文（一次性）：读 `content/books/books.json`，按 `sourceUrl` 抓取 Project Gutenberg 原文（主站维护时回退 PGLAF 镜像），用 `backend/llm.py` 分批翻译并写 `content/books/<book>/chapters/<n>.zh.json`；**只写中译文，不存英文原文**，记录 prompt 版本/模型/生成时间。默认跳过完整译文，`--force` 重译、`--only`/`--chapters` 限定范围、`--dry-run` 只看计划（需 .env 模型 Key） |
