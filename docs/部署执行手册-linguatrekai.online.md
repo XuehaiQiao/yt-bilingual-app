@@ -1,7 +1,7 @@
 # 部署执行手册 —— linguatrekai.online（G1 邀请制）
 
 > 适用对象：本次 G1 海外 VPS 上线（域名 `linguatrekai.online`，VPS `43.245.199.136`）。
-> 本手册只覆盖**部署层**（DNS、系统、Docker/裸机、Caddy、TLS、Basic Auth、备份、告警、验收、回滚），不改业务代码，不改
+> 本手册只覆盖**部署层**（DNS、系统、Docker/裸机、Caddy、TLS、访问控制、备份、告警、验收、回滚），不改业务代码，不改
 > [项目提案-上线功能.md](./项目提案-上线功能.md) / [上线前任务清单-web.md](./上线前任务清单-web.md) 的决策。
 >
 > **执行状态说明**：本手册由 M6a 编写，作者**没有 SSH 登录、没有部署服务器**（无凭据）。
@@ -20,7 +20,7 @@
 | 域名 | `linguatrekai.online` | `www` 需要 301 到主域 |
 | VPS IPv4 | `43.245.199.136` | GigsGigsCloud HKG-Global-K03，2 vCPU / 4 GB / 50 GB，香港 |
 | 应用 | FastAPI 单 worker + SQLite + React `frontend/dist` | 同域部署；不要多 worker/多副本 |
-| 访问控制 | G1：Caddy Basic Auth（外层）+ 应用内邀请码；公开注册关闭 | 两层串联，不是二选一 |
+| 访问控制 | G1：应用内邀请码；公开注册关闭；Caddy 层无认证（网关已于 2026-11-20 移除） | 不再有网关账号，一人一邀请码 |
 | 本次 DNS 实测（2026-11-20） | `dig @1.1.1.1` → `43.245.199.136`（主域与 www 都是） | 公网解析已指向 VPS |
 | 本机 resolver（作者环境） | 主域 `198.18.0.70`、www `198.18.0.74` | `198.18.0.0/15` 常见于代理 fake-IP，**不代表 DNS 未生效** |
 | SSH 认证 | 未知 | 先确认 provider 控制台/默认账号，不要反复试密码 |
@@ -55,7 +55,7 @@
 - 不承诺“按顺序执行一定全绿”。DNS 传播、机房网络、Cloudflare、证书签发、模型 Key、飞书机器人权限都可能失败。
 - 不承诺 SSH 可用、provider 防火墙已放行、目标 OS 是 Ubuntu；这些必须现场确认。
 - 不承诺 SSE 30 分钟、本地视频文件句柄、402、导出/删除已经通过；它们是**验收项**，不是已知结果。
-- 不在本手册写任何真实密码、API Key、webhook、证书私钥或 Basic Auth 哈希。
+- 不在本手册写任何真实密码、API Key、webhook、证书私钥或邀请码明文。
 
 ### 0.4 开始前必须准备好的东西
 
@@ -64,7 +64,7 @@
 - [ ] 一个可用的 SSH 入口（密钥优先；不知道认证方式就先走控制台）
 - [ ] `ADMIN_EMAILS` 要用的邮箱（必须真实可登录；G1 期间管理员要靠它进后台生成邀请码）
 - [ ] 至少一个模型 Key：`DEEPSEEK_API_KEY`；越南语目标再准备 `QWEN_API_KEY`
-- [ ] G1 网关账号方案：一人一账号（推荐）或一个共享账号；强密码写进密码管理器
+- [ ] G1 邀请码方案：管理员邮箱 + 一次性邀请码（每人一码，30 天有效）；网关账号已不需要
 - [ ] 飞书群 + 自定义机器人（可选，但上线前建议有；没有就至少接一个外部 uptime）
 - [ ] 离机备份目标（对象存储/S3 兼容/另一台机器，自行选择；本手册不绑定供应商）
 
@@ -95,7 +95,6 @@ git describe --tags --always
 | `ADMIN_EMAILS` | 管理员邮箱 | 应用 env（600） |
 | `INVITE_CODE_PEPPER` | 邀请码 HMAC pepper | 应用 env（600），`openssl rand -hex 32` |
 | `EVENTS_PSEUDONYM_SALT` | 学习事件假名盐 | 应用 env（600），`openssl rand -hex 32` |
-| `G1_BASIC_AUTH_USER` / `G1_BASIC_AUTH_HASH` | Caddy 网关 | `/etc/caddy/g1.env`（600 root） |
 | `FEISHU_WEBHOOK_URL` / `FEISHU_WEBHOOK_SECRET` | 飞书告警 | 应用 env（600） |
 | 对象存储凭据 | 离机备份 | `rclone config` 的受保护配置，不进仓库 |
 
@@ -104,8 +103,8 @@ git describe --tags --always
 - 不要设置 `API_AUTH_KEY`：它会拦截所有 `/api`（含 `/api/auth/*`），浏览器登录直接 401。
 - 不要设置 `VITE_API_KEY`：会被打进前端 bundle，等于公开密钥。
 - 不要在 shell 历史里 `export DEEPSEEK_API_KEY=sk-...`；用编辑器/`read -rsp` 写 env 文件。
-- 不要把 `.env`、`data/`、`history/`、`subtitles/`、证书私钥、Basic Auth 哈希提交/截图/发群。
-- 不要在 G1 期间打开 `REGISTRATION_OPEN=true`；摘除 Basic Auth 不等于开放注册。
+- 不要把 `.env`、`data/`、`history/`、`subtitles/`、证书私钥、邀请码明文提交/截图/发群。
+- 不要打开 `REGISTRATION_OPEN=true`；网关已摘除，但注册仍必须邀请制，开放公开注册要单独评审。
 
 ---
 
@@ -622,7 +621,7 @@ ssh <host> "sudo ln -sfn /srv/ln/releases/$STAMP /srv/ln/current && sudo systemc
 
 ---
 
-## 6. Caddy、TLS 与 G1 Basic Auth
+## 6. Caddy、TLS 与访问控制（无网关认证）
 
 ### 6.1 安装 Caddy
 
@@ -633,7 +632,7 @@ curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
   | sudo tee /etc/apt/sources.list.d/caddy-stable.list
 sudo apt update && sudo apt install -y caddy
-caddy version          # 建议 >= 2.8；本手册的 basic_auth 语法按 2.8+ 写
+caddy version          # 建议 >= 2.8（当前生产 2.11.9）
 ```
 
 官方说明：<https://caddyserver.com/docs/install#debian-ubuntu-raspbian>。
@@ -652,8 +651,8 @@ caddy version          # 建议 >= 2.8；本手册的 basic_auth 语法按 2.8+ 
 - HSTS/CSP/X-Content-Type-Options/Referrer-Policy/Permissions-Policy；
 - `frontend/dist` 静态 + SPA fallback（仅 `.g1`）；
 - `/api/*` SSE `flush_interval -1` + 24h 超时；
-- `/healthz`、`/health` 绕过 Basic Auth；
-- 其余路径（含 `/`、`/api/*`）受 Basic Auth 保护；
+- 无 Caddy 层认证：`/`、`/api/*` 直接到应用，访问控制由应用内邀请码负责；
+- `/healthz`、`/health` 直通后端（`.g1` 裸机模板用 handle 单独转发）；
 - 访问日志删除下载 URL 的 `token`/`access_token`/`api_key` 查询参数。
 
 先备份系统自带配置：
@@ -676,45 +675,37 @@ sudo chmod 640 /etc/caddy/Caddyfile
 
 > Caddy 服务通常以 `caddy` 用户运行，所以配置必须对 `caddy` 组可读；不要用 600 root 把服务读不到。
 
-### 6.3 生成 G1 凭据并注入 Caddy
+### 6.3 访问控制与 `/etc/caddy/g1.env`
 
-**不要**在本文件或任何文档写明文密码/哈希。用 Caddy 自己生成 bcrypt：
+**G1 只用应用内邀请码，不再有网关账号。** 2026-11-20 起线上 Caddy 只做 TLS + 反代：
+不要执行 `caddy hash-password`，不要建 `/etc/caddy/g1-users.caddy`，也不要给任何人发
+g1 账号/密码。访问控制由应用层负责（`REGISTRATION_OPEN=false` +
+`INVITE_SIGNUP_ENABLED=true`，注册必须带一次性邀请码，见 §9.3）。
 
-```bash
-sudo caddy hash-password
-# 按提示输入网关密码（TTY 下不回显），复制输出的整行 $2a$...
-```
-
-> 交互式读取不会把密码写进 shell history。不要用 `--plaintext '密码'`，那会进 history。
-
-创建 `/etc/caddy/g1.env`：
-
-```bash
-sudo install -m 600 -o root -g root /dev/null /etc/caddy/g1.env
-sudo "${EDITOR:-vi}" /etc/caddy/g1.env
-```
-
-内容示例（值替换为你的）：
+`/etc/caddy/g1.env` 只需一项：
 
 ```ini
 ACME_EMAIL=ops@linguatrekai.online
-G1_BASIC_AUTH_USER=alice
-G1_BASIC_AUTH_HASH=$2a$14$REPLACE_WITH_YOUR_OWN_HASH
 ```
 
-- `ACME_EMAIL` 可换成你实际收证书提醒的邮箱；不填也有默认占位。
-- `G1_BASIC_AUTH_HASH` 必须是完整哈希；`$` 在 systemd EnvironmentFile 中是字面量，不需要转义。
-- 文件权限 600 root；systemd 以 root 读取 EnvironmentFile，然后以 caddy 用户运行 Caddy，caddy 进程不需要读该文件。
+```bash
+sudo install -m 600 -o root -g root /dev/null /etc/caddy/g1.env
+sudo "${EDITOR:-vi}" /etc/caddy/g1.env   # 只写 ACME_EMAIL
+sudo chown root:root /etc/caddy/g1.env && sudo chmod 600 /etc/caddy/g1.env
+```
 
-Caddy 官方 systemd 单元通常带 `--environ`，会把进程环境（含 G1 哈希）打印进 journal。**必须**用 drop-in
-去掉它，并加载 env：
+- 文件权限 600 root；systemd 以 root 读取 EnvironmentFile，再以 caddy 用户运行 Caddy。
+- 不要再往里加任何凭据型环境变量（网关用户名/哈希之类）。
+
+Caddy 官方 systemd 单元通常带 `--environ`，会把进程环境打印进 journal。建议用 drop-in
+去掉它并加载 env：
 
 ```bash
 sudo install -d -m 755 /etc/systemd/system/caddy.service.d
 sudo tee /etc/systemd/system/caddy.service.d/10-g1-env.conf >/dev/null <<'EOF'
 [Service]
 EnvironmentFile=/etc/caddy/g1.env
-# 清空官方 ExecStart 里的 --environ，避免把 G1 哈希写进日志
+# 清空官方 ExecStart 里的 --environ，避免把进程环境写进日志
 ExecStart=
 ExecStart=/usr/bin/caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
 EOF
@@ -733,9 +724,8 @@ caddy version
 sudo caddy validate --config /etc/caddy/Caddyfile --envfile /etc/caddy/g1.env
 ```
 
-> `caddy validate` 在 env 变量为空/缺失时也可能返回 “Valid configuration”，因为空的
-> `basic_auth` 块仍能通过适配；不要只看 validate。必须再按 §6.5 实测 401/200。
-> 如果 Caddy 版本没有 `--envfile`，升级到 2.8+ 或改用系统 `EnvironmentFile` + `systemctl` 验证。
+> `caddy validate` 只保证语法与适配通过，不代表线上行为正确；必须再按 §6.5 实测
+> 200 / `/healthz` / www 301 与邀请码注册闸门。
 
 ### 6.4 启动/重载与证书
 
@@ -758,116 +748,69 @@ curl -sSI https://linguatrekai.online/ | head -20
 curl -sSI https://www.linguatrekai.online/ | head -8
 ```
 
-### 6.5 验证 401 / 200 / health
-
-无凭据：
+### 6.5 验证 200 / health / www 301 / 邀请码
 
 ```bash
 curl -sSI https://linguatrekai.online/ | head -20
-# 期望 HTTP/1.1 401、WWW-Authenticate: Basic、HSTS/CSP 等安全头
+# 期望 200，且没有 WWW-Authenticate；带 HSTS/CSP 等安全头
 
 curl -sSI https://linguatrekai.online/healthz | head -20
-# 期望 200，且没有 WWW-Authenticate
+# 期望 200（JSON），且没有 WWW-Authenticate
 
 curl -sSI https://linguatrekai.online/health | head -20
-# 期望 200，且没有 WWW-Authenticate
+# 期望 200
 
 curl -sSI https://www.linguatrekai.online/ | head -10
 # 期望 301，Location: https://linguatrekai.online/...
 ```
 
-带凭据（推荐 netrc，避免密码进 history）：
+注册闸门（公开只读 + 一次无码注册）：
 
 ```bash
-install -m 600 /dev/null ~/.ln-g1.netrc
-"${EDITOR:-vi}" ~/.ln-g1.netrc
+curl -sS https://linguatrekai.online/api/auth/registration; echo
+# 期望 registrationOpen=false、inviteRequired=true
+
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"noinvite-<时间戳>@example.invalid","password":"<一次性强密码>","username":"noinvite"}' \
+  https://linguatrekai.online/api/auth/signup
+# 期望 403，响应 code=invite_required；不要用真实邀请码做这一步
 ```
 
-内容：
+> 网关已移除，浏览器不再弹认证框；"退出登录"只影响应用会话。
 
-```text
-machine linguatrekai.online
-  login alice
-  password <你的网关密码>
-```
+### 6.6 多人访问（一人一邀请码）
+
+不再有网关账号。按人发码：
+
+1. 管理员用 `ADMIN_EMAILS` 里的邮箱登录；
+2. `POST /api/admin/invites`（见 §9.3）为每人生成一次性邀请码（默认 30 天 / 1 次）；
+3. 撤销：撤销该码或等它过期；已登录会话另算，必要时封禁账号。
+
+> 邀请码明文只在创建响应出现一次；通过密码管理器/一次性渠道发出，不要写进文档、群或仓库。
+
+### 6.7 G2：摘除 Basic Auth（2026-11-20 已完成）
+
+线上已按本节摘掉网关，**不是**打开 `REGISTRATION_OPEN=true`：
+
+- `/etc/caddy/Caddyfile` 删掉路径豁免规则与认证块，保留 TLS、安全头、`reverse_proxy`、
+  SSE 超时、日志脱敏、www 301、health 路径；
+- `/etc/caddy/g1.env` 只留 `ACME_EMAIL`（600 root），网关凭据变量已删除；
+- 回滚备份：`/etc/caddy/Caddyfile.with-basic-auth.bak`（600 root），**不要删**；
+- drop-in `10-g1-env.conf` 可保留（只加载 `ACME_EMAIL`，不再有凭据）；
+- `REGISTRATION_OPEN` 保持 `false`，验证见 §6.5。
+
+若确实要恢复网关（需单独评审，不要在开放注册的同一天做）：
 
 ```bash
-curl --netrc-file ~/.ln-g1.netrc -sSI https://linguatrekai.online/ | head -10
-# 期望 200
-
-curl --netrc-file ~/.ln-g1.netrc -sS https://linguatrekai.online/api/models | head -c 300; echo
-# 期望 200 + 模型 JSON
-```
-
-> 浏览器首次访问会弹 Basic Auth；登录应用不会清除网关凭据。G1 文案要说明：
-> “关闭浏览器/清除站点数据才可能退出网关”，且共用电脑有风险。
-
-### 6.6 多人账号（推荐一人一账号）
-
-当前模板用两个环境变量支持一个共享账号。要按人建号：
-
-1. `sudo caddy hash-password` 为每个人生成哈希；
-2. 创建 `/etc/caddy/g1-users.caddy`：
-
-```bash
-sudo install -m 640 -o root -g caddy /dev/null /etc/caddy/g1-users.caddy
-sudo "${EDITOR:-vi}" /etc/caddy/g1-users.caddy
-```
-
-内容（每行 `用户名 哈希`）：
-
-```text
-alice $2a$14$...
-bob   $2a$14$...
-```
-
-3. 在 `/etc/caddy/Caddyfile` 的 `basic_auth @protected` 块中，注释掉
-   `{$G1_BASIC_AUTH_USER} {$G1_BASIC_AUTH_HASH}`，取消注释
-   `import /etc/caddy/g1-users.caddy`；
-4. `sudo caddy validate ...`、`sudo systemctl reload caddy`；
-5. 撤销某人：从 include 文件删行 + reload；已登录的应用会话仍有效，必要时应用内封禁/删会话。
-
-> include 文件必须对 caddy 组可读（640 root:caddy），不能 600 root；否则 Caddy 启动/重载会读不到。
-
-### 6.7 G2：摘除 Basic Auth（本轮不开放公开注册）
-
-G2 在这里指“摘掉网关”，**不是**打开 `REGISTRATION_OPEN=true`。
-
-切换前：
-
-```bash
-sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.g1.bak-$(date +%Y%m%d-%H%M%S)
-```
-
-换成不带 Basic Auth 的现有示例：
-
-```bash
-# Docker
-sudo cp /srv/ln/app/deploy/Caddyfile.proxy /etc/caddy/Caddyfile
-# 裸机
-# sudo cp /srv/ln/app/deploy/Caddyfile /etc/caddy/Caddyfile
-sudo chown root:caddy /etc/caddy/Caddyfile
-sudo chmod 640 /etc/caddy/Caddyfile
-sudo caddy validate --config /etc/caddy/Caddyfile
+sudo cp /etc/caddy/Caddyfile.with-basic-auth.bak /etc/caddy/Caddyfile
+# 同时把两个网关凭据变量恢复进 /etc/caddy/g1.env（600 root）
+sudo caddy validate --config /etc/caddy/Caddyfile --envfile /etc/caddy/g1.env
 sudo systemctl reload caddy
 ```
 
-然后：
-
-- 移除/停用 drop-in `10-g1-env.conf`（否则 `--environ` 覆盖仍生效，且无谓加载 hash）：
-  ```bash
-  sudo rm /etc/systemd/system/caddy.service.d/10-g1-env.conf
-  sudo systemctl daemon-reload
-  sudo systemctl restart caddy
-  ```
-- `REGISTRATION_OPEN` 保持 `false`，重启应用后确认：
-  ```bash
-  curl -sS https://linguatrekai.online/api/auth/registration | python3 -m json.tool
-  # 期望 registrationOpen=false、inviteRequired=true
-  ```
-- 无凭据首页应 200；登录/邀请码注册仍按应用层规则。
-- 回滚：把 `Caddyfile.g1.bak-*` 复制回去，恢复 drop-in（或重新创建），`systemctl daemon-reload && systemctl restart caddy`。
-- 不要和“开放公开注册”同一天做；G2 摘网关需要单独评审与验证。
+- 回滚后必须先验证 401/200、healthz 与 SSE，再对外；
+- 不要在 G1 第一天同时改 Cloudflare 规则、Caddy 配置和模型 Key。
 
 ### 6.8 Cloudflare 与 SSE 注意
 
@@ -1064,7 +1007,7 @@ sudo systemctl restart linguatrek
 
 ### 8.3 发一条测试消息
 
-需要管理员账号（`ADMIN_EMAILS` 中的邮箱）且通过 G1 网关。用 netrc + cookie：
+需要管理员账号（`ADMIN_EMAILS` 中的邮箱）。用 cookie：
 
 ```bash
 BASE=https://linguatrekai.online
@@ -1074,11 +1017,11 @@ install -m 600 /dev/null /tmp/ln-login.json
 "${EDITOR:-vi}" /tmp/ln-login.json
 # 内容：{"email":"your-admin@example.com","password":"..."}
 
-curl --netrc-file ~/.ln-g1.netrc -c /tmp/ln.cookie -D /tmp/ln-login.headers \
+curl -c /tmp/ln.cookie -D /tmp/ln-login.headers \
   -H 'Content-Type: application/json' --data @/tmp/ln-login.json \
   "$BASE/api/auth/login"
 
-curl --netrc-file ~/.ln-g1.netrc -b /tmp/ln.cookie \
+curl -b /tmp/ln.cookie \
   -X POST "$BASE/api/admin/alerts/test" \
   -H 'Content-Type: application/json' -d '{"level":"P1"}'
 
@@ -1137,12 +1080,15 @@ cd backend && venv/bin/python -m pytest tests/test_alerts.py tests/test_alerts_i
 ```bash
 cd /srv/ln/app
 DOMAIN=linguatrekai.online EXPECTED_IP=43.245.199.136 \
-  PREFLIGHT_NETRC="$HOME/.ln-g1.netrc" \
   ./scripts/preflight-production.sh
 ```
 
-脚本只做读取：DNS、22/80/443 TCP、HTTPS、`/healthz`、安全头、www 301、G1 401/200。
-不会 SSH、不会重启、不会改服务器。没有网络时会明确 `FAIL` 并返回非 0。
+脚本只做读取：DNS、22/80/443 TCP、HTTPS、首页 200、`/healthz`、安全头、www 301、
+注册闸门（`/api/auth/registration` 的 `registrationOpen=false`、无邀请码注册必须 403
+`invite_required`）。不会 SSH、不会重启、不会改服务器。没有网络时会明确 `FAIL` 并返回非 0。
+
+> 唯一的 POST 是"故意不带邀请码"的注册探测：服务端在写库前拒绝，不会创建账号，
+> 也不消耗邀请码。
 
 ### 9.2 HTTPS / 证书 / 安全头
 
@@ -1150,7 +1096,7 @@ DOMAIN=linguatrekai.online EXPECTED_IP=43.245.199.136 \
 BASE=https://linguatrekai.online
 
 curl -sSI --max-time 10 "$BASE/" | sed -n '1,20p'
-# 期望 401 + WWW-Authenticate + HSTS + CSP + X-Content-Type-Options + Referrer-Policy
+# 期望 200（无 WWW-Authenticate）+ HSTS + CSP + X-Content-Type-Options + Referrer-Policy
 
 curl -sSI --max-time 10 "$BASE/healthz" | sed -n '1,20p'
 # 期望 200，且没有 WWW-Authenticate
@@ -1160,19 +1106,16 @@ openssl s_client -connect linguatrekai.online:443 -servername linguatrekai.onlin
 # 记录到期日；应 > 30 天
 ```
 
-### 9.3 账号：401 / 登录 / 邀请码注册
+### 9.3 账号：登录 / 邀请码注册
 
 ```bash
 BASE=https://linguatrekai.online
 
-# 1) 无网关凭据 -> 401
+# 1) 首页无认证 -> 200（无 WWW-Authenticate）
 curl -sSI "$BASE/" | grep -iE 'HTTP/|www-authenticate'
 
-# 2) 带网关凭据 -> 200
-curl --netrc-file ~/.ln-g1.netrc -sSI "$BASE/" | head -5
-
-# 3) 注册开关（公开只读，但仍在网关后）
-curl --netrc-file ~/.ln-g1.netrc -sS "$BASE/api/auth/registration" | python3 -m json.tool
+# 2) 注册开关（公开只读）
+curl -sS "$BASE/api/auth/registration" | python3 -m json.tool
 # 期望 registrationOpen=false、inviteRequired=true
 ```
 
@@ -1180,11 +1123,11 @@ curl --netrc-file ~/.ln-g1.netrc -sS "$BASE/api/auth/registration" | python3 -m 
 
 ```bash
 # 登录（密码放 600 临时文件，见 §8.3）
-curl --netrc-file ~/.ln-g1.netrc -c /tmp/ln.admin.cookie \
+curl -c /tmp/ln.admin.cookie \
   -H 'Content-Type: application/json' --data @/tmp/ln-login.json \
   "$BASE/api/auth/login"
 
-curl --netrc-file ~/.ln-g1.netrc -b /tmp/ln.admin.cookie \
+curl -b /tmp/ln.admin.cookie \
   -X POST "$BASE/api/admin/invites" \
   -H 'Content-Type: application/json' \
   -d '{"count":1,"label":"smoke"}' \
@@ -1200,7 +1143,7 @@ chmod 600 /tmp/ln-invite.code
 ```bash
 # 用编辑器创建 /tmp/ln-signup.json：
 # {"email":"smoke-<时间戳>@example.com","password":"<一次性强密码>","username":"smoke<时间戳>","inviteCode":"<上一步邀请码>"}
-curl --netrc-file ~/.ln-g1.netrc -c /tmp/ln.smoke.cookie -D /tmp/ln.smoke.headers \
+curl -c /tmp/ln.smoke.cookie -D /tmp/ln.smoke.headers \
   -H 'Content-Type: application/json' --data @/tmp/ln-signup.json \
   "$BASE/api/auth/signup"
 
@@ -1211,7 +1154,7 @@ grep -i '^set-cookie' /tmp/ln.smoke.headers
 再测无邀请码注册被拒（用另一个一次性邮箱）：
 
 ```bash
-curl --netrc-file ~/.ln-g1.netrc -sS -o /dev/null -w '%{http_code}\n' \
+curl -sS -o /dev/null -w '%{http_code}\n' \
   -H 'Content-Type: application/json' \
   -d '{"email":"noinvite-<时间戳>@example.com","password":"<一次性强密码>","username":"noinvite"}' \
   "$BASE/api/auth/signup"
@@ -1222,12 +1165,12 @@ curl --netrc-file ~/.ln-g1.netrc -sS -o /dev/null -w '%{http_code}\n' \
 
 ### 9.4 SSE 30 分钟长流
 
-需要一条真实 YouTube 视频 + 测试账号 cookie + 网关 netrc。先用短视频确认事件格式，再跑 30 分钟：
+需要一条真实 YouTube 视频 + 测试账号 cookie。先用短视频确认事件格式，再跑 30 分钟：
 
 ```bash
 BASE=https://linguatrekai.online
 
-curl --netrc-file ~/.ln-g1.netrc -N --max-time 2400 \
+curl -N --max-time 2400 \
   -b /tmp/ln.smoke.cookie \
   -X POST "$BASE/api/process-video-stream" \
   -H 'Content-Type: application/json' \
@@ -1273,18 +1216,18 @@ App 的本地视频库使用 `FileSystemFileHandle`（IndexedDB 持久化），�
 BASE=https://linguatrekai.online
 
 # 1) 测试账号 user id（用 smoke cookie）
-curl --netrc-file ~/.ln-g1.netrc -sS -b /tmp/ln.smoke.cookie "$BASE/api/auth/me" \
+curl -sS -b /tmp/ln.smoke.cookie "$BASE/api/auth/me" \
   | tee /tmp/ln-me.json | python3 -m json.tool
 USER_ID=$(python3 -c 'import json; print(json.load(open("/tmp/ln-me.json"))["user"]["id"])')
 
 # 2) 管理员扣掉 $2.00（管理员 cookie；金额是字符串）
-curl --netrc-file ~/.ln-g1.netrc -b /tmp/ln.admin.cookie \
+curl -b /tmp/ln.admin.cookie \
   -X POST "$BASE/api/admin/users/$USER_ID/balance" \
   -H 'Content-Type: application/json' \
   -d '{"amountUsd":"2.00","direction":"deduct","reason":"smoke 402"}'
 
 # 3) 用一个新词触发查词（避免缓存命中）
-curl --netrc-file ~/.ln-g1.netrc -b /tmp/ln.smoke.cookie \
+curl -b /tmp/ln.smoke.cookie \
   -X POST "$BASE/api/define" \
   -H 'Content-Type: application/json' \
   -d '{"word":"smoke402xyz","targetLang":"zh-CN"}'
@@ -1304,7 +1247,7 @@ install -m 600 /dev/null /tmp/ln-export.json
 "${EDITOR:-vi}" /tmp/ln-export.json
 # {"password":"<smoke 账号密码>"}
 
-curl --netrc-file ~/.ln-g1.netrc -b /tmp/ln.smoke.cookie \
+curl -b /tmp/ln.smoke.cookie \
   -X POST "$BASE/api/account/export" \
   -H 'Content-Type: application/json' --data @/tmp/ln-export.json \
   | tee /tmp/ln-export-job.json
@@ -1318,7 +1261,7 @@ python3 -m json.tool /tmp/ln-export-job.json
 ```bash
 JOB=$(python3 -c 'import json; print(json.load(open("/tmp/ln-export-job.json"))["jobId"])')
 TOKEN=$(python3 -c 'import json; print(json.load(open("/tmp/ln-export-job.json"))["downloadToken"])')
-curl --netrc-file ~/.ln-g1.netrc -b /tmp/ln.smoke.cookie \
+curl -b /tmp/ln.smoke.cookie \
   -o /tmp/ln-export.zip "$BASE/api/account/export/$JOB?token=$TOKEN"
 unzip -l /tmp/ln-export.zip | head
 ```
@@ -1330,7 +1273,7 @@ install -m 600 /dev/null /tmp/ln-delete.json
 "${EDITOR:-vi}" /tmp/ln-delete.json
 # {"password":"<smoke 账号密码>","username":"<smoke 用户名>","confirm":"DELETE","reason":"smoke"}
 
-curl --netrc-file ~/.ln-g1.netrc -b /tmp/ln.smoke.cookie \
+curl -b /tmp/ln.smoke.cookie \
   -X POST "$BASE/api/account/deletion" \
   -H 'Content-Type: application/json' --data @/tmp/ln-delete.json \
   -D /tmp/ln-delete.headers | python3 -m json.tool
@@ -1344,7 +1287,7 @@ install -m 600 /dev/null /tmp/ln-login-smoke.json
 "${EDITOR:-vi}" /tmp/ln-login-smoke.json
 # 内容：{"email":"<smoke 邮箱>","password":"<smoke 密码>"}
 
-curl --netrc-file ~/.ln-g1.netrc -c /tmp/ln.smoke.cookie \
+curl -c /tmp/ln.smoke.cookie \
   -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
   --data @/tmp/ln-login-smoke.json
 
@@ -1352,7 +1295,7 @@ install -m 600 /dev/null /tmp/ln-delete-cancel.json
 "${EDITOR:-vi}" /tmp/ln-delete-cancel.json
 # 内容：{"password":"<smoke 密码>"}
 
-curl --netrc-file ~/.ln-g1.netrc -b /tmp/ln.smoke.cookie \
+curl -b /tmp/ln.smoke.cookie \
   -X POST "$BASE/api/account/deletion/cancel" \
   -H 'Content-Type: application/json' --data @/tmp/ln-delete-cancel.json
 ```
@@ -1364,7 +1307,7 @@ curl --netrc-file ~/.ln-g1.netrc -b /tmp/ln.smoke.cookie \
 - 管理员登录后打开后台，确认用户列表、邀请码、余额/用量可见；
 - `POST /api/admin/alerts/test` 返回 `sent`（见 §8.3）；
 - 检查 `/healthz` 的 `version` 是否与 `APP_VERSION` 一致；
-- 检查日志无 API Key、cookie、webhook、Basic Auth 明文。
+- 检查日志无 API Key、cookie、webhook、密码或邀请码明文。
 
 ### 9.9 验收记录表
 
@@ -1373,8 +1316,8 @@ curl --netrc-file ~/.ln-g1.netrc -b /tmp/ln.smoke.cookie \
 | 公网 DNS 主域/www | `dig @1.1.1.1` |  |  |
 | 80/443/22 | `nc`/preflight |  |  |
 | HTTPS 证书 | `curl -sSI` + `openssl x509 -dates` |  |  |
-| G1 401 / 200 | curl 无/有 netrc |  |  |
-| `/healthz` 免认证 200 | curl |  |  |
+| 首页无认证 200 | `curl -I` |  |  |
+| `/healthz` 200 | curl |  |  |
 | 安全头 | curl -I |  |  |
 | www 301 | curl -I |  |  |
 | 邀请码注册 | curl + 管理员 |  |  |
@@ -1426,8 +1369,9 @@ sudo caddy validate --config /etc/caddy/Caddyfile --envfile /etc/caddy/g1.env
 sudo systemctl restart caddy
 ```
 
-- 如果是 G2 摘除后回滚，恢复 `10-g1-env.conf` drop-in 并 `daemon-reload`；
-- 回滚后必须重测 401/200、healthz、SSE（至少短流）。
+- 若回滚到摘网关前的配置（`Caddyfile.with-basic-auth.bak`），需同时恢复 drop-in 与
+  `/etc/caddy/g1.env` 里的凭据变量，再 `daemon-reload`（详见 §6.7）；
+- 回滚后必须重测 200、healthz、SSE（至少短流）。
 
 ### 10.4 数据库
 
@@ -1441,18 +1385,17 @@ sudo systemctl restart caddy
 ## 11. 安全与运维纪律
 
 1. **密钥不进 shell history**：用编辑器/`read -rsp`/600 临时文件；不要 `export KEY=...`。
-2. **env 文件 600**：应用 env、`/etc/caddy/g1.env`、netrc、导出 token 临时文件。
-3. **Caddy 配置 640 root:caddy**；include 的用户文件 640 root:caddy；只有系统读取的 env 才 600 root。
-4. **去掉 `--environ`**：否则 Caddy 启动会把环境（含 G1 哈希）写 journal；用 `systemctl cat caddy` 复核。
+2. **env 文件 600**：应用 env、`/etc/caddy/g1.env`（只有 `ACME_EMAIL`）、导出 token 临时文件。
+3. **Caddy 配置 640 root:caddy**；只有系统读取的 env（`/etc/caddy/g1.env`）才 600 root。
+4. **保留 `--environ` 的移除**：否则 Caddy 启动会把进程环境写 journal；用 `systemctl cat caddy` 复核。
 5. **日志脱敏**：Caddy 默认脱敏 Authorization/Cookie；本手册的 log filter 还删除导出 token 查询参数；
    仍不要把完整日志发群。
 6. **Cloudflare 先灰云**；橙云要单独验证 SSE、TLS 模式、缓存规则。
 7. **Docker 防火墙**：只发布 `127.0.0.1:8000`；UFW 不能完全保护 Docker 端口，绝不 `0.0.0.0:8000`。
 8. **SSH**：只开密钥登录；保留 provider 控制台/VNC 作为救援；不要在聊天里发私钥。
 9. **备份**：目录 700、文件 600；离机桶私有；定期 restore drill；备份内含 PII/口令哈希。
-10. **G1 凭据撤销**：从 Caddy 删除账号 + reload；应用会话是另一层，必要时封禁/删会话；
-    浏览器可能缓存 Basic Auth，撤销后用户可能仍带旧凭据直到关闭浏览器/清除站点数据。
-11. **管理员不是网关账号**：`/api/admin/*` 仍由应用层 `ADMIN_EMAILS` 校验；不要把管理员密码发给测试用户。
+10. **邀请码撤销**：用管理员接口撤销或让它过期；应用会话是另一层，必要时封禁/删会话。
+11. **管理员权限在应用层**：`/api/admin/*` 由 `ADMIN_EMAILS` 校验；不要把管理员密码发给测试用户。
 12. **每日巡检**：`/healthz`、磁盘 `df -h`、备份日志、Caddy 证书到期、飞书告警是否可达。
 
 ---
@@ -1467,7 +1410,7 @@ sudo systemctl restart caddy
 | Docker 安装/构建/运行 | **未在本机验证**（本机 daemon 未运行） | 目标机 `docker compose build`、`up -d` |
 | Caddy 实际版本/证书签发 | **未在目标机验证** | `caddy version`、`journalctl -u caddy` |
 | `Caddyfile.g1` / `.g1.proxy` 语法 | 本机 Caddy 2.11.9 `validate` 通过 | 目标机再 `caddy validate` |
-| Basic Auth 401/200、healthz 绕过、www 301 | 本机 Caddy 行为测试通过（假上游） | 目标机 curl 实测 |
+| 首页 200、`/healthz` 200、www 301（无网关认证） | 2026-11-20 目标机 curl 实测通过 | 换域名/换机后重测 |
 | SSE 30 分钟 | **未验证** | §9.4 |
 | 本地视频文件句柄 | **未验证** | Chromium HTTPS 实测 |
 | 402 / 导出 / 删除 | **未验证** | §9.6–9.7 |
@@ -1482,13 +1425,13 @@ sudo systemctl restart caddy
 
 | 文件 | 用途 |
 |---|---|
-| `deploy/Caddyfile.g1` | G1 裸机：静态 `frontend/dist` + `/api` 反代 + Basic Auth + health 绕过 + www 301 |
-| `deploy/Caddyfile.g1.proxy` | G1 Docker：全量反代 + Basic Auth + health 绕过 + www 301 |
-| `deploy/Caddyfile` / `deploy/Caddyfile.proxy` | 原有不带 Basic Auth 的示例；G2 摘网关时复用 |
+| `deploy/Caddyfile.g1` | G1 裸机：静态 `frontend/dist` + `/api` 反代 + health 直通 + www 301（无网关认证） |
+| `deploy/Caddyfile.g1.proxy` | G1 Docker：全量反代 + health 直通 + www 301（无网关认证） |
+| `deploy/Caddyfile` / `deploy/Caddyfile.proxy` | 原有示例（同样无网关认证）；保留作参考 |
 | `deploy/production.env.example` | 本次 `linguatrekai.online` 的生产 env 模板（无密钥） |
 | `deploy/linguatrek.env.example` | 通用生产 env 模板（保留） |
 | `.env.example` | 本地开发模板；末尾有生产入口说明 |
-| `scripts/preflight-production.sh` | 只读预检：DNS/端口/HTTPS/healthz/安全头/www/401 |
+| `scripts/preflight-production.sh` | 只读预检：DNS/端口/HTTPS/首页 200/healthz/安全头/www 301/注册闸门（无邀请码注册必须 403） |
 | `deploy/linguatrek.service` | 裸机 systemd 单 worker |
 | `deploy/backup.cron` / `deploy/alert-check.cron` | 裸机备份/巡检 cron |
 | `scripts/backup.sh` / `restore.sh` / `restore_drill.sh` | 备份/恢复/演练 |

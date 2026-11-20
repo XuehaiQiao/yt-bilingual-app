@@ -13,8 +13,9 @@
 #        --envfile /etc/caddy/g1.env
 #   sudo systemctl reload caddy
 #
-# Basic Auth 环境变量、Cloudflare 灰云/橙云、SSE 长超时说明与 deploy/Caddyfile.g1
-# 相同；改一处安全头/认证规则时请同步另一份。
+# 访问控制只在应用内（邀请码注册，REGISTRATION_OPEN=false）；Caddy 层不做认证，
+# 不要再加认证块。Cloudflare 灰云/橙云、SSE 长超时说明见 deploy/Caddyfile.g1；
+# 改安全头请同步另一份。
 # =============================================================================
 {
 	email {$ACME_EMAIL:ops@linguatrekai.online}
@@ -29,24 +30,13 @@ www.linguatrekai.online {
 linguatrekai.online {
 	encode zstd gzip
 
-	# 逐行写安全头，保证 Basic Auth 的 401 响应也带 HSTS/CSP 等；原因见
-	# deploy/Caddyfile.g1 的注释。
+	# 逐行写安全头（HSTS/CSP 等）；原因见 deploy/Caddyfile.g1 的注释。
 	header Strict-Transport-Security "max-age=15552000; includeSubDomains"
 	header X-Content-Type-Options "nosniff"
 	header Referrer-Policy "strict-origin-when-cross-origin"
 	header Permissions-Policy "camera=(), microphone=(), geolocation=()"
 	header Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://s.ytimg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://i.ytimg.com https://*.ytimg.com https://*.googleusercontent.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com; connect-src 'self'; font-src 'self' data:; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
 	header -Server
-
-	# 健康探针豁免 Basic Auth；其余路径（页面、静态资源、/api）都要求网关凭据。
-	@protected not path /healthz /health /.well-known/acme-challenge/*
-	basic_auth @protected {
-		{$G1_BASIC_AUTH_USER} {$G1_BASIC_AUTH_HASH}
-
-		# 一人一账号：注释上一行，取消下一行，账号写入
-		# /etc/caddy/g1-users.caddy（root:caddy 640，每行 "用户名 bcrypt哈希"）。
-		# import /etc/caddy/g1-users.caddy
-	}
 
 	# 全量反代；容器内已经处理静态文件、SPA fallback 与缓存头。
 	# SSE 必须 flush_interval -1 + 长超时，不能只依赖后端心跳。
