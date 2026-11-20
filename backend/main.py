@@ -8,6 +8,10 @@
 - routes_auth.py     注册 / 登录 / 登出 / 当前用户
 - account.py         用户名 / 余额调账 / 用户页摘要 / app_settings + 维护模式
 - routes_account.py  PATCH /api/user/profile、GET /api/user/summary（需登录）
+- account_lifecycle.py 删除冷静期 / 硬删除 / 管理员审计（specs/033）
+- account_export.py  数据导出 ZIP / 限流 / 下载 token / 过期清理（specs/033）
+- routes_account_lifecycle.py /api/account/*（删除/导出；pending 账号可用）
+- routes_admin_lifecycle.py  /api/admin/deletion-requests、/api/admin/audit
 - auth_lockout.py    登录失败锁定（账号 + IP，进程内存）
 - storage.py         当前用户的数据根目录（ContextVar，多用户隔离 + 按目标语言分目录）
 - languages.py       目标语言注册表（targetLang 校验/NFC/prompt 语言名）
@@ -75,7 +79,9 @@ import observability
 import ratelimit
 import routes_ability
 import routes_account
+import routes_account_lifecycle
 import routes_admin
+import routes_admin_lifecycle
 import routes_auth
 import routes_blog
 import routes_book_import
@@ -150,6 +156,18 @@ def _is_public_api_path(path: str) -> bool:
 
 # 维护模式白名单：认证（让管理员/用户能登录）、后台（管理员处置）、健康探针
 # 不受影响；其余 /api/* 一律 503（管理员本人不受影响，见中间件）。
+# 删除冷静期白名单：只允许认证与账号生命周期（取消/导出）；登录路由必须放行，
+# 否则用户无法回来取消。其它 /api/*（含 AI/写学习数据）一律 403。
+_PENDING_EXEMPT_PREFIXES = ("/api/auth/", "/api/account/")
+_PENDING_EXEMPT_EXACT = {"/api/auth", "/api/account"}
+
+
+def _is_pending_exempt(path: str) -> bool:
+    if path in _PENDING_EXEMPT_EXACT:
+        return True
+    return any(path.startswith(prefix) for prefix in _PENDING_EXEMPT_PREFIXES)
+
+
 _MAINTENANCE_EXEMPT_PREFIXES = ("/api/auth/", "/api/admin/")
 _MAINTENANCE_EXEMPT_EXACT = {
     "/api/auth",
@@ -196,6 +214,22 @@ async def resolve_identity(request, call_next):
                 content={"detail": "账号已被停用"},
                 headers={"Cache-Control": "no-store"},
             )
+
+    if (
+        user
+        and (user.get("status") or account.STATUS_ACTIVE)
+        == account.STATUS_DELETION_PENDING
+        and _is_api_path(path)
+        and not _is_pending_exempt(path)
+    ):
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": "账号正在删除冷静期，仅可取消删除或导出数据。",
+                "code": "account_pending_deletion",
+            },
+            headers={"Cache-Control": "no-store"},
+        )
 
     if (
         _is_api_path(path)
@@ -280,7 +314,9 @@ async def structured_access_log(request, call_next):
 
 app.include_router(routes_auth.router)
 app.include_router(routes_account.router)
+app.include_router(routes_account_lifecycle.router)
 app.include_router(routes_admin.router)
+app.include_router(routes_admin_lifecycle.router)
 app.include_router(routes_videos.router)
 app.include_router(routes_content.router)
 app.include_router(routes_difficulty.router)

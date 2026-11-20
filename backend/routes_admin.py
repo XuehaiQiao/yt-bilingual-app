@@ -35,6 +35,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import AliasChoices, BaseModel, Field
 
 import account
+import account_lifecycle
 import behavior_events
 import config
 import guest
@@ -102,6 +103,27 @@ class InviteCreateRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # 身份
 # ---------------------------------------------------------------------------
+
+def _audit(
+    request: Request,
+    actor_id: str,
+    action: str,
+    *,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    detail: object | None = None,
+) -> None:
+    """既有管理台写操作的最小审计；迁移缺失时降级为日志，不影响原功能。"""
+    account_lifecycle.write_audit(
+        actor_id,
+        action,
+        target_type=target_type,
+        target_id=target_id,
+        detail=detail,
+        request_id=getattr(request.state, "request_id", None),
+        required=False,
+    )
+
 
 def require_admin(request: Request) -> dict:
     """登录 + 管理员校验；未登录 401、非管理员 403（不泄露管理员名单）。"""
@@ -745,6 +767,7 @@ def admin_events(
 def admin_adjust_credits(
     user_id: str,
     payload: CreditAdjustRequest,
+    request: Request,
     user: dict = Depends(require_admin),
 ):
     """手动调余额：delta 非 0、-100000..100000，reason 1–200 字。
@@ -771,6 +794,14 @@ def admin_adjust_credits(
             status_code=503,
             detail="数据库未迁移（credit_transactions 缺失），请先执行 alembic upgrade head。",
         )
+    _audit(
+        request,
+        user["id"],
+        "admin.user.credits_adjust",
+        target_type="user",
+        target_id=user_id,
+        detail={"delta": delta, "reason": reason, "credits": credits},
+    )
     return {"credits": credits}
 
 
@@ -778,6 +809,7 @@ def admin_adjust_credits(
 def admin_patch_user(
     user_id: str,
     payload: UserPatchRequest,
+    request: Request,
     user: dict = Depends(require_admin),
 ):
     """封禁/解封用户（只允许 status；isAdmin 不实现）。
@@ -809,6 +841,14 @@ def admin_patch_user(
         raise HTTPException(
             status_code=400, detail="不能封禁最后一个管理员。"
         )
+    _audit(
+        request,
+        user["id"],
+        "admin.user.status_update",
+        target_type="user",
+        target_id=user_id,
+        detail={"status": status},
+    )
     return {"user": updated}
 
 
@@ -848,6 +888,7 @@ def admin_list_invites(
 
 @router.post("/invites")
 def admin_create_invites(
+    request: Request,
     payload: InviteCreateRequest | None = None,
     user: dict = Depends(require_admin),
 ):
@@ -874,12 +915,25 @@ def admin_create_invites(
             detail="数据库繁忙，请稍后重试。",
             headers={"Retry-After": "5"},
         ) from exc
+    _audit(
+        request,
+        user["id"],
+        "admin.invite.create",
+        target_type="invite_batch",
+        detail={
+            "count": len(codes),
+            "label": payload.label,
+            "maxUses": payload.max_uses,
+            "expiresInDays": payload.expires_in_days,
+        },
+    )
     return {"codes": codes, "config": invites.registration_status()}
 
 
 @router.post("/invites/{invite_id}/revoke")
 def admin_revoke_invite(
     invite_id: str,
+    request: Request,
     user: dict = Depends(require_admin),
 ):
     """撤销邀请码（幂等）；已注册账号不受影响。"""
@@ -900,13 +954,22 @@ def admin_revoke_invite(
             detail="数据库繁忙，请稍后重试。",
             headers={"Retry-After": "5"},
         ) from exc
+    _audit(
+        request,
+        user["id"],
+        "admin.invite.revoke",
+        target_type="invite",
+        target_id=invite_id,
+        detail={"result": result},
+    )
     return result
 
 
 @router.put("/settings")
 def admin_update_settings(
     payload: SettingsUpdateRequest,
-    _user: dict = Depends(require_admin),
+    request: Request,
+    user: dict = Depends(require_admin),
 ):
     """按字段 upsert 维护模式/公告并返回当前值。
 
@@ -932,9 +995,21 @@ def admin_update_settings(
             )
         kwargs["announcement"] = payload.announcement
     try:
-        return account.update_settings(**kwargs)
+        current = account.update_settings(**kwargs)
     except account.SettingsUnavailable:
         raise HTTPException(
             status_code=503,
             detail="数据库未迁移（app_settings 缺失），请先执行 alembic upgrade head。",
         )
+    _audit(
+        request,
+        user["id"],
+        "admin.settings.update",
+        target_type="app_settings",
+        detail={
+            "fields": sorted(fields),
+            "maintenanceMode": kwargs.get("maintenance_mode"),
+            "announcementChanged": "announcement" in fields,
+        },
+    )
+    return current

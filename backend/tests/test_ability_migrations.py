@@ -20,7 +20,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0023_invite_registration"
+HEAD = "0024_account_lifecycle"
 BEFORE = "0013_user_profile"
 
 

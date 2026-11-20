@@ -13,7 +13,7 @@
 |---|---|
 | `main.py` | 应用装配：CORS、可选 `X-API-Key` 部署闸门、身份中间件（会话 → 登录用户；否则 `ln_guest` → 隔离游客目录，首次访问下发 Cookie；含 429 限速、封禁账号 403、维护模式 503）、结构化访问日志（request_id + 一行 JSON）、挂载路由模块、`/health`（存活）与 `/healthz`（就绪：DB/迁移/版本）。**不放业务逻辑** |
 | `observability.py` | 可观测性（M1c）：`JsonFormatter`、请求级 `request_id` ContextVar、访问日志中间件（只记 method/path/status/duration_ms/request_id/user_id，**不记 query/body/header**）、未处理异常兜底（带 request_id + 堆栈）、只读 `/healthz` 快照（SQLite `mode=ro` + Alembic `ScriptDirectory`/`MigrationContext`） |
-| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/ABILITY/EXAM/COURSE/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*` / `READING_*` / `AI_DAILY_QUOTA_READING_BATCHES` / `RATE_LIMIT_READING_PER_MINUTE` / `AI_DAILY_QUOTA_ANALYSIS` / `AI_DAILY_QUOTA_COURSE_GENERATION` / `COURSE_NOVEL_CACHE_SECONDS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`）、`BLOG_DIR`（官方博客 Markdown 目录，默认 `content/blog`）、`COURSE_DIR`（课程 MVP 课程包，默认 `content/course`）、`ADMIN_EMAILS`（后台管理员邮箱，逗号分隔、大小写不敏感，默认空 = 无管理员） |
+| `config.py` | 所有配置：`.env` 加载、数据目录（HISTORY/SUBTITLES/SENTENCES/PLACEMENT/ABILITY/EXAM/COURSE/DATA/USER_DATA/AUTH_DB）、安全开关（`CORS_ORIGINS` / `API_AUTH_KEY` / `BROWSER_UI` / `COOKIE_SECURE`）、安全最小集（`RATE_LIMIT_*` / `AUTH_LOCK_*` / `LLM_MAX_CONCURRENCY` / `PREFETCH_CACHE_*` / `FETCH_TIMEOUT_SECONDS` / `MAX_TRANSCRIPT_BLOCKS` / `MAX_FETCH_BYTES` / `MAX_CHANNEL_VIDEOS` / `DISCOVER_*` / `READING_*` / `AI_DAILY_QUOTA_READING_BATCHES` / `RATE_LIMIT_READING_PER_MINUTE` / `AI_DAILY_QUOTA_ANALYSIS` / `AI_DAILY_QUOTA_COURSE_GENERATION` / `COURSE_NOVEL_CACHE_SECONDS`）、SSE 心跳间隔（`SSE_HEARTBEAT_SECONDS`）、可观测性（`APP_VERSION` / `LOG_LEVEL` / `LOG_JSON`）、`MODEL_CATALOG`（可选模型清单：provider / 端点 / Key 环境变量 / 价格 / 批间节奏；Gemini 三档标注为仅海外；Qwen 走 `base_url_env`）、`DEFAULT_MODEL`（全局兜底，默认 `deepseek-chat`）、`TARGET_LANG_MODEL_ROUTES`（按目标语言的模型路线，`MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` 可覆盖）、`DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN`、`resolve_model`（未知/缺省 → 全局默认）、`VOCAB_LEVELS`（词汇水平→prompt 描述）、`CURATED_CONTENT_PATH`（人工精选推荐池，默认 `content/curated.json`）、`BLOG_DIR`（官方博客 Markdown 目录，默认 `content/blog`）、`COURSE_DIR`（课程 MVP 课程包，默认 `content/course`）、`ADMIN_EMAILS`（后台管理员邮箱，逗号分隔、大小写不敏感，默认空 = 无管理员）、`EXPORTS_DIR`（导出临时目录，默认 `DATA_DIR/exports`）、`EXPORT_MAX_BYTES`（默认 200MB）、`EXPORT_TTL_HOURS`（默认 24） |
 | `languages.py` | **目标语言注册表（P0）**：`zh-CN` / `vi-VN` 的 prompt 语言名、展示名、本地词典开关；`resolve_target_lang()` 缺省 zh-CN、非法抛 `UnsupportedLanguage`（路由转 400）；`normalize()` 做 NFC（越南语组合字符比较/缓存键）；新增语言只改这里 + `config.TARGET_LANG_MODEL_ROUTES` |
 | `auth_db.py` | 用户与会话 SQLite：建表/补列、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users` 自 0013 起带 `username` / `credits` / `status`；`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `invites.py` | **邀请码（M1 G1 / specs/032）**：12 位 Crockford Base32（≈60 bit）生成、归一化、HMAC-SHA256 摘要（不存明文）；管理员创建/分页状态过滤/幂等撤销；`BEGIN IMMEDIATE` 内「校验/占码 → 建 user → redemption → session」，失败整笔回滚不消耗码；创建/撤销写结构化审计日志（不含明文）；表由 `0023_invite_registration` 创建 |
@@ -23,6 +23,11 @@
 | `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。功能枚举 `translate` / `summary` / `define` / `local_show` / `quiz` / `reading` / `books` / `analysis` / `course_generation`。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额** |
 | `routes_auth.py` | `/api/auth/signup`（`username` 必填/旧客户端回落 email 前缀；`REGISTRATION_OPEN=false` 时 `inviteCode` 必填，错误带稳定 `code`）、`/api/auth/registration`（公开注册开关只读）、`/api/auth/login`（封禁账号 403）、`/api/auth/logout`、`/api/auth/me`（user 带 username/credits/status；游客返回 `{user:null,guest:true}`）、`/api/auth/claim-guest`（登录后幂等认领游客数据）；`ln_session` Cookie、登录失败短窗限流与 `auth_lockout` 接入（锁定统一 429 + `Retry-After`） |
 | `routes_account.py` | 用户页数据（specs/023）：`PATCH /api/user/profile`（改用户名）、`GET /api/user/summary`（用户信息/余额/本月花费/今日分钟/版本）；均需登录，游客 403 |
+| `account_lifecycle.py` | **账号删除生命周期（M2a / specs/033）**：删除申请（密码+用户名+`DELETE`，7 天冷静期）、立即删会话、取消、到期硬删除（sessions → 业务表 → 文件 → users 最后）、`user_id_hash` 审计、最后管理员保护、密码确认限流、路径/符号链接校验；文件删除失败标 `failed` 可重试 |
+| `account_export.py` | **数据导出（M2a / specs/033）**：1 次/24h、3 次/30 天、单任务并发、密码确认；后台 daemon 线程生成 ZIP（profile/billing/ai-usage/learning/review/activity/practice/assessment/reading/books/courses + README/manifest SHA256），200MB 上限、24h 过期、token 只存 hash、下载/删除/清理 |
+| `routes_account_lifecycle.py` | `/api/account/*`（需登录；`deletion_pending` 仍可用）：删除状态/提交/取消、导出创建/列表/下载/删除；错误带稳定 `code` |
+| `routes_admin_lifecycle.py` | `/api/admin/deletion-requests*`、`/api/admin/deletions` 别名、`/api/admin/audit`（需 `ADMIN_EMAILS`） |
+| `run_due_deletions.py` | 到期删除安全脚本：默认 dry-run 列出，`--confirm` 才执行；`--cleanup-exports` 可顺带清理过期导出 ZIP；逐条失败不中断、非 0 退出 |
 | `guest.py` | 游客态（M1 ⑧）：32 字节随机 `ln_guest` Cookie（服务端只存 sha256）、`data/guests/<sha256>/` 隔离目录、游客累计试译上限、登录后把 `history/` / `favorites.json` / `subscriptions.json` 幂等合并到用户目录（同 videoId / 同收藏指纹 / 同订阅键去重，用户数据优先）。**不建表、不新增迁移** |
 | `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；游客 → `data/guests/<sha256(ln_guest)>/`；两者都没有（脚本/测试）→ 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取。`favorites_file()` / `favorites_tombstones_file()` 是收藏主文件与删除墓碑的**唯一入口**（按用户隔离、不按语言分文件） |
 | `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」；端点支持 `base_url` 或 `base_url_env`（Qwen 等区域端点由环境变量给，不写死）。`is_available` 同时检查 Key 与必需端点；`resolve_model_for_target(requested, target_lang)` 按「用户选择 → 该语言首选 → 该语言路线 → 全局默认 → 目录首个可用」解析，未配 Key 的候选自动跳过。**SDK 调用是同步阻塞的**：async 代码必须用 `generate_json_async` / `generate_text_async`（内含全局并发闸 + `asyncio.to_thread`）；同步 `generate()` 只给脚本/测试。`concurrency_snapshot()` 暴露并发闸峰值/等待直方图。`usage_scope(feature, user_id, target_lang=…)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关） |
@@ -71,7 +76,7 @@
 | `routes_library.py` | 本地免费资源库 HTTP 路由（**公开只读，无需登录**）：`GET /api/library`、`GET /api/library/videos/{id}`、`GET /api/library/articles/{id}`；只读 `content/library/*.json`（预生成双语字幕块 + 原创双语短文），不连数据库、不 import `llm`、不写状态；未知/缺失 404、内容损坏 503；见 [specs/024](../specs/024-free-library/spec.md) 与 `content/library/README.md` |
 | `routes_admin.py` | 后台管理 HTTP 路由（**需登录 + 管理员**）：只读止血台（M1 ⑥：`GET /api/admin/stats`、`/users`、`/usage`、`/health`，连接 `PRAGMA query_only=ON`）+ 运营写操作（specs/023：`POST /users/{id}/credits`、`PATCH /users/{id}`、`GET/PUT /settings`）+ 邀请码（specs/032：`GET/POST /invites`、`POST /invites/{id}/revoke`，明文仅创建响应一次）；管理员由 `config.ADMIN_EMAILS` 决定；限速 30 次/分钟 |
 | `requirements.txt` | Python 依赖（`argon2-cffi` 用于密码哈希、`alembic` 用于数据库迁移、`fsrs==6.3.3` 用于 FSRS-6 复习调度、`trafilatura` 用于文章正文抽取、`python-multipart` 用于本地 EPUB 上传表单、`pytest` 用于离线测试/CI；faster-whisper、readability-lxml/bs4 为可选，见文件内注释） |
-| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）、`0012_exam.py`（`exam_sessions` / `exam_answers` + 未提交会话部分唯一索引）、`0013_user_profile.py`（`users.username/credits/status` + 旧用户 username 回填 + `credit_transactions` + `app_settings`）、`0014_ability.py`（`user_skill_profiles` / `skill_evidence` + `placement_answers.elapsed_ms` + 旧画像 seed）、`0015_assessment_sessions.py`（自评/后续测试会话 + 幂等键 + 部分唯一索引）、`0016_content_difficulty.py`（内容难度向量 `content_difficulty`）、`0017_behavior_events.py`（`learning_events` 加 `client_event_id` + 部分唯一索引，行为埋点幂等）、`0018_imported_books.py`（用户导入公版书 `imported_books` + 按章译文 `imported_book_translations`，UNIQUE(user_id, source_type, external_id)）、`0019_book_chapter_translations.py`（内置公版书按需翻译的全局译文缓存）、`0020_content_teaching_analysis.py`（AI 教学分析全局缓存；唯一键 `content_hash + level + target_lang + analysis_version`）、`0021_course_mvp.py`（课程 MVP：`course_attempts` 进度 + `course_events` 埋点 + 同用户同课程唯一 `in_progress` 部分唯一索引）、`0022_generated_courses.py`（课程生成缓存：`generated_courses` + 7 列唯一缓存键 + 归属索引）、`0023_invite_registration.py`（邀请码 `invite_codes` + 兑换 `invite_redemptions` + 唯一/查询索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
+| `alembic.ini` / `migrations/` | 数据库迁移：`migrations/versions/0001_baseline.py`（users/sessions）、`0002_learning_events.py`（事件表）、`0003_cost_ledger.py`（`ai_usage` / `ai_quota`）、`0004_target_lang.py`（`ai_usage.target_lang`，可空、默认 zh-CN、不改旧数据）、`0005_jobs.py`（任务表 `jobs` + 用户/时间索引 + 未完成任务的部分唯一索引）、`0006_review_engine.py`（`word_states` / `review_logs` / `word_sources` + 复习索引）、`0007_quiz.py`（`content_items` / `questions` / `attempts` + 理解题索引）、`0008_weekly_report.py`（`watch_events` / `weekly_reports` + 观看事件索引）、`0009_placement.py`（`placement_sessions` / `placement_answers` / `user_profiles` + 未完成会话部分唯一索引）、`0010_discover.py`（`discover_queries` 检索词审计 + 24h 缓存，`UNIQUE(query_hash,target_lang)`）、`0011_reading.py`（`articles` / `article_paragraphs` / `article_translations` / `article_progress` + 用户时间索引与同用户同 URL 部分唯一索引）、`0012_exam.py`（`exam_sessions` / `exam_answers` + 未提交会话部分唯一索引）、`0013_user_profile.py`（`users.username/credits/status` + 旧用户 username 回填 + `credit_transactions` + `app_settings`）、`0014_ability.py`（`user_skill_profiles` / `skill_evidence` + `placement_answers.elapsed_ms` + 旧画像 seed）、`0015_assessment_sessions.py`（自评/后续测试会话 + 幂等键 + 部分唯一索引）、`0016_content_difficulty.py`（内容难度向量 `content_difficulty`）、`0017_behavior_events.py`（`learning_events` 加 `client_event_id` + 部分唯一索引，行为埋点幂等）、`0018_imported_books.py`（用户导入公版书 `imported_books` + 按章译文 `imported_book_translations`，UNIQUE(user_id, source_type, external_id)）、`0019_book_chapter_translations.py`（内置公版书按需翻译的全局译文缓存）、`0020_content_teaching_analysis.py`（AI 教学分析全局缓存；唯一键 `content_hash + level + target_lang + analysis_version`）、`0021_course_mvp.py`（课程 MVP：`course_attempts` 进度 + `course_events` 埋点 + 同用户同课程唯一 `in_progress` 部分唯一索引）、`0022_generated_courses.py`（课程生成缓存：`generated_courses` + 7 列唯一缓存键 + 归属索引）、`0023_invite_registration.py`（邀请码 `invite_codes` + 兑换 `invite_redemptions` + 唯一/查询索引）、`0024_account_lifecycle.py`（删除申请 `account_deletion_requests` + 导出任务 `data_export_jobs` + 审计 `admin_audit_log`，含 pending/active 部分唯一索引）；命令与约定见 [migrations/README.md](migrations/README.md) |
 
 ## 用户体系与多用户数据隔离
 
@@ -102,6 +107,7 @@
 ```
 data/                                  # DATA_DIR（gitignore）
 ├── app.db                             # AUTH_DB_PATH 默认值；users + sessions + learning_events（Alembic 管）
+├── exports/<user_id>/<job>.zip        # EXPORTS_DIR（M2a）；24h 临时导出，gitignore
 ├── guests/<sha256>/                   # GUEST_DATA_DIR（M1 ⑧）；布局与下面用户目录一致
 │   ├── history/                       # 游客自己的视频/剧集缓存 + dictionary_cache.json
 │   ├── favorites.json
@@ -114,7 +120,7 @@ data/                                  # DATA_DIR（gitignore）
     └── subscriptions.json
 ```
 
-- `users(id, email, password_hash, created_at, username, credits, status)`：email 统一小写；密码只存 Argon2id 哈希；`username` 是显示名（不唯一，旧用户回填 email 前缀）；`credits` 是管理员手动发放的余额（默认 0）；`status` 是 `active`/`banned`。
+- `users(id, email, password_hash, created_at, username, credits, status)`：email 统一小写；密码只存 Argon2id 哈希；`username` 是显示名（不唯一，旧用户回填 email 前缀）；`credits` 是管理员手动发放的余额（默认 0）；`status` 是 `active`/`banned`/`deletion_pending`（后者由删除申请写入；管理员 PATCH 仍只能 active/banned）。
 - `invite_codes(id, code_hash, code_prefix, label, max_uses, used_count, expires_at_ms, revoked_at_ms, revoked_by, created_by, created_at_ms, last_used_at_ms)`：邀请码只存 HMAC-SHA256 摘要；`code_prefix` 仅供管理台辨认；`invite_redemptions(invite_id, user_id, redeemed_at_ms)` 记录成功兑换，`UNIQUE(invite_id,user_id)` 防重复。两表由 `0023_invite_registration` 创建。
 - `credit_transactions(id, user_id, delta, reason, admin_id, created_at)`：余额变动流水（append-only，`(user_id, created_at)` 索引）；`app_settings(key, value, updated_at)`：维护模式 / 公告。
 - `sessions(token_hash, user_id, expires_at, created_at)`：Cookie 里是 `secrets.token_urlsafe(32)` 的随机 token，库里只存 sha256。
@@ -1064,7 +1070,7 @@ venv/bin/python -m pytest tests/test_course_generation.py -q   # 31 个离线用
 |---|---|
 | `users.username` | TEXT 可空；新注册必填（旧客户端回落 email 前缀）；**不唯一**（显示名）；迁移回填旧用户为 `@` 前缀 |
 | `users.credits` | INTEGER NOT NULL DEFAULT 0；管理员手动发放/扣减，不允许负余额 |
-| `users.status` | TEXT NOT NULL DEFAULT 'active'；`active` / `banned` |
+| `users.status` | TEXT NOT NULL DEFAULT 'active'；`active` / `banned` / `deletion_pending`（后者只由删除申请写入） |
 | `credit_transactions` | `id` TEXT PK、`user_id`、`delta` INTEGER、`reason` TEXT、`admin_id` TEXT 可空、`created_at`（毫秒）；索引 `(user_id, created_at)`；append-only |
 | `app_settings` | `key` TEXT PK、`value` TEXT 可空、`updated_at` INTEGER（秒）；存 `maintenance_mode`（`0`/`1`）与 `announcement`（字符串或 NULL） |
 
@@ -1129,6 +1135,64 @@ venv/bin/python -m pytest tests -q                                              
 显示余额 100 → 封禁后旧会话与登录 403 → 维护模式普通用户 503、管理员 200。
 
 
+
+## 账号删除 / 数据导出（M2a，specs/033）
+
+> 规格：[specs/033-account-lifecycle](../specs/033-account-lifecycle/spec.md)。
+> 本轮**只做后端 + 迁移 + 测试**，前端账号页/管理台按钮在 M2b。
+
+### 状态与访问控制
+
+- 删除申请把 `users.status` 改为 `deletion_pending`，立即删除全部会话；登录仍放行
+  （用于取消/导出），但除 `/api/auth/*`、`/api/account/*` 外的 `/api/*` 返回
+  **403 `account_pending_deletion`**；`/health` 不受影响。
+- `POST /api/auth/claim-guest` 会写学习数据，pending 时路由内也 403。
+- 7 天冷静期内可取消（密码）→ `active`；到期由管理员
+  `POST /api/admin/deletion-requests/{id}/execute` 或脚本
+  `backend/run_due_deletions.py --confirm` 执行。默认未到期 409；用户书面要求
+  立即删除时管理员可传 `force=true` 并填原因。
+
+### 硬删除范围与顺序
+
+- 顺序：sessions → 业务表 → `data/users/<id>/` + `data/exports/<id>/` → users 最后；
+  阶段 1/3 用 SQLite 事务，文件阶段失败把申请标 `failed`、保留 users，可重试。
+- 业务表覆盖：`ai_usage/ai_quota`、`learning_events`（user_id + pseudonym 双口径）、
+  `watch_events/weekly_reports`、复习三表、理解题/attempts、考试、定位/能力、阅读
+  （含无 user_id 的段落/译文按 article_id 删）、导入书（译文按 book_id 删）、
+  `course_*`、`generated_courses`（按 `owner_user_id`，它是用户私有生成内容）、
+  `jobs/discover_queries/credit_transactions/invite_redemptions/data_export_jobs`。
+- **不删**：`content_teaching_analysis`/`content_difficulty`（公共缓存，无可靠
+  user_id）、`book_chapter_translations`、`data/subtitles/`、`data/ecdict.db`、
+  `data/guests/<hash>/` 与游客归属行（`guest:<sha256>` 的 ai_usage/ai_quota/
+  watch_events/placement/assessment/user_profiles；无 user→guest 映射）、
+  `backups/` 与离机副本、日志。
+- 删除后旧 Cookie `/api/auth/me` 返回游客态、旧密码 401；备份最长 30 天残留，
+  文案必须披露。
+
+### 数据导出
+
+- `POST /api/account/export`：密码确认 → 202 `{jobId,downloadToken,...}`；24h 内
+  1 次、30 天内 3 次；同一用户仅 1 个 queued/running；每次创建的任务（含 failed）
+  都计入配额。
+- ZIP 到 `data/exports/<user_id>/<job_id>.zip`（0700/0600），200MB 上限；24h 过期；
+  `GET /api/account/export/{id}?token=` 凭会话 + token 流式下载；`GET
+  /api/account/exports` 脱敏列表；`DELETE` 幂等删临时文件。
+- 内容：profile、billing（旧流水 + 新账本表若存在）、ai-usage（无 prompt）、
+  learning（history/favorites/subscriptions）、review、activity、practice、
+  assessment、reading、books（元数据 + 上传 EPUB 解析后章节/封面）、courses +
+  `README.md`/`manifest.json`（每文件 SHA256、范围、排除项）。
+- 排除：密码哈希、会话/Cookie/token、他人数据、公共缓存/词典、备份、日志、
+  管理员审计、模型 prompt。
+- token 只存 sha256；`file_path` 只存相对路径；下载/删除走 realpath 校验；ZIP
+  条目拒绝绝对路径与 `..`；路径不接受客户端输入。
+
+### 管理端
+
+- `GET /api/admin/deletion-requests`（别名 `/api/admin/deletions`）、
+  `POST /api/admin/deletion-requests/{id}/execute`（`confirm=DELETE` + reason）、
+  `GET /api/admin/audit`；均仅 `ADMIN_EMAILS`。
+- 既有调余额/封禁/邀请码/设置写操作在 0024 迁移存在时补写 `admin_audit_log`；
+  旧库未迁移时降级为日志，不阻断原功能。
 
 ## 后台止血台（M1 ⑥，只读聚合）
 
@@ -1259,7 +1323,7 @@ venv/bin/python -m pytest tests/test_i18n_target_lang.py -q   # 目标语言 P0�
 
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）；`0010_discover` 建内容发现缓存/审计表 `discover_queries`（V1，见上文「内容发现」）；`0011_reading` 建读文章四表；`0012_exam` 建考试练习两表（V2，见上文「考试练习」）；`0013_user_profile` 给 `users` 加 `username`/`credits`/`status`（旧用户 username 回填 email 前缀）、建余额流水 `credit_transactions` 与应用设置 `app_settings`（V1 用户需求 1–3，见上文「用户资料、余额与后台设置」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）；`0010_discover` 建内容发现缓存/审计表 `discover_queries`（V1，见上文「内容发现」）；`0011_reading` 建读文章四表；`0012_exam` 建考试练习两表（V2，见上文「考试练习」）；`0013_user_profile` 给 `users` 加 `username`/`credits`/`status`（旧用户 username 回填 email 前缀）、建余额流水 `credit_transactions` 与应用设置 `app_settings`（V1 用户需求 1–3，见上文「用户资料、余额与后台设置」）；`0024_account_lifecycle` 建删除申请 `account_deletion_requests`、导出任务 `data_export_jobs`、管理员审计 `admin_audit_log`（M2a，见上文「账号删除 / 数据导出」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 

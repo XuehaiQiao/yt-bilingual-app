@@ -199,7 +199,7 @@ def test_migration_0023_preserves_users_and_downgrades_cleanly(tmp_path):
             "'legacy', 0, 'active')"
         )
         conn.commit()
-    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade 0023")
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head（含 0023）")
     assert {"invite_codes", "invite_redemptions"} <= table_names(db)
     with sqlite3.connect(db) as conn:
         assert conn.execute("SELECT email FROM users").fetchone()[0] == "legacy@example.com"

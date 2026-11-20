@@ -367,7 +367,21 @@ def delete_session(token: str) -> None:
         )
 
 
-def delete_user_sessions(user_id: str) -> None:
-    """删除某用户的全部会话（改密/封禁等场景备用）。"""
-    with _db() as conn:
-        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+def delete_user_sessions(
+    user_id: str, conn: sqlite3.Connection | None = None
+) -> int:
+    """删除某用户的全部会话，返回删除行数（M2a 删除申请/硬删除用）。
+
+    传入 ``conn`` 时在调用方事务内执行（删除申请要与 users.status/审计同事务）；
+    不传则自己开短事务。历史调用方忽略返回值即可。
+    """
+    if conn is not None:
+        cursor = conn.execute(
+            "DELETE FROM sessions WHERE user_id = ?", (user_id,)
+        )
+        return max(0, int(cursor.rowcount or 0))
+    with _db() as own_conn:
+        cursor = own_conn.execute(
+            "DELETE FROM sessions WHERE user_id = ?", (user_id,)
+        )
+        return max(0, int(cursor.rowcount or 0))

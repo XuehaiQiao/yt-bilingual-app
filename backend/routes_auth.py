@@ -363,6 +363,18 @@ def claim_guest(request: Request, response: Response):
     user = getattr(request.state, "user", None)
     if not user:
         raise HTTPException(status_code=401, detail="未登录")
+    if (
+        user.get("status") or account.STATUS_ACTIVE
+    ) == account.STATUS_DELETION_PENDING:
+        # 冷静期只允许取消/导出；认领会写学习数据，必须阻断。
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": "账号正在删除冷静期，仅可取消删除或导出数据。",
+                "code": "account_pending_deletion",
+            },
+            headers={"Cache-Control": "no-store"},
+        )
 
     token = request.cookies.get(guest.COOKIE_NAME)
     empty = {

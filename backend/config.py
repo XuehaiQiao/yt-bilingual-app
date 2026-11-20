@@ -117,6 +117,9 @@ CURATED_SUBTITLES_DIR = os.environ.get(
 DATA_DIR = os.environ.get("DATA_DIR", os.path.join(_BACKEND_DIR, "..", "data"))
 AUTH_DB_PATH = os.environ.get("AUTH_DB_PATH", os.path.join(DATA_DIR, "app.db"))
 USER_DATA_DIR = os.environ.get("USER_DATA_DIR", os.path.join(DATA_DIR, "users"))
+# 账号数据导出 ZIP 的临时目录（M2a，见 account_export.py）：默认
+# data/exports/<user_id>/<job_id>.zip；24h 后由清理逻辑删除，不随备份保留。
+EXPORTS_DIR = os.environ.get("EXPORTS_DIR", os.path.join(DATA_DIR, "exports"))
 
 # 游客态（M1 ⑧，见 guest.py）：游客目录 = GUEST_DATA_DIR/<sha256(ln_guest)>。
 # 不建表、不新增迁移；目录名就是游客身份，与其他游客/登录用户完全隔离。
@@ -548,6 +551,11 @@ if AI_MODEL_REGION not in ("auto", "cn", "global"):
 #   define        /api/define，按登录用户
 #   discover      /api/discover，按登录用户
 #   admin         /api/admin/*，按登录用户（后台止血台，30 次/分钟）
+# 数据导出（M2a，见 account_export.py）：ZIP 大小硬上限 200MB；临时文件
+# 保留 24 小时。超过上限的导出标记 failed，不生成半成品。
+EXPORT_MAX_BYTES = _int_env("EXPORT_MAX_BYTES", 200 * 1024 * 1024)
+EXPORT_TTL_HOURS = _int_env("EXPORT_TTL_HOURS", 24)
+
 # 公版书源站抓取：响应体上限、超时与进程内缓存 TTL（秒）。正常请求**每次都
 # 抓取**；缓存只在源站故障时用于降级，**绝不落盘**；见 books.py。
 MAX_BOOK_SOURCE_BYTES = _int_env("MAX_BOOK_SOURCE_BYTES", 2 * 1024 * 1024)

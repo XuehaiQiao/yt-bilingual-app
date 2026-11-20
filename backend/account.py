@@ -51,7 +51,14 @@ _USERNAME_RE = re.compile(r"^[A-Za-z0-9_\-\u3400-\u4dbf\u4e00-\u9fff]+$")
 # --- 账号状态 ---------------------------------------------------------------
 STATUS_ACTIVE = "active"
 STATUS_BANNED = "banned"
+# M2a 删除冷静期：提交删除申请后 users.status 立即改为该值；登录仍允许，
+# 但除 /api/auth/*、/api/account/* 外的 /api 请求由 main.py 身份中间件 403。
+# 它**不是**管理员可设置的状态（见 STATUSES 与 routes_admin.PATCH 校验）。
+STATUS_DELETION_PENDING = "deletion_pending"
+# 管理员 PATCH /users/{id} 允许的状态（只支持封禁/解封）。
 STATUSES = (STATUS_ACTIVE, STATUS_BANNED)
+# 数据库里 users.status 的合法值全集（含删除冷静期；由 account_lifecycle 写入）。
+ALL_STATUSES = (STATUS_ACTIVE, STATUS_BANNED, STATUS_DELETION_PENDING)
 
 # --- 余额调账 ---------------------------------------------------------------
 MAX_CREDIT_DELTA = 100_000

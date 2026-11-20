@@ -31,6 +31,8 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 import account  # noqa: E402
+import account_export  # noqa: E402
+import account_lifecycle  # noqa: E402
 import config  # noqa: E402
 import discover  # noqa: E402
 import jobs  # noqa: E402
@@ -61,6 +63,8 @@ def isolated_data(tmp_path, monkeypatch):
     data_dir = tmp_path / "data"
     monkeypatch.setattr(config, "DATA_DIR", str(data_dir), raising=False)
     monkeypatch.setattr(config, "USER_DATA_DIR", str(data_dir / "users"), raising=False)
+    # 导出临时文件（M2a）也必须在 tmp 下，绝不能写到仓库的 data/exports/。
+    monkeypatch.setattr(config, "EXPORTS_DIR", str(data_dir / "exports"), raising=False)
     monkeypatch.setattr(config, "AUTH_DB_PATH", str(data_dir / "app.db"), raising=False)
     # 游客目录（M1 ⑧）也必须在 tmp_path 下，绝不能写到仓库的 data/guests/。
     monkeypatch.setattr(config, "GUEST_DATA_DIR", str(data_dir / "guests"), raising=False)
@@ -88,6 +92,9 @@ def isolated_data(tmp_path, monkeypatch):
     # 安全最小集的进程内状态：限速计数与 LLM 并发闸统计按用例隔离。
     ratelimit.reset_rate_limits()
     llm.reset_concurrency_gate()
+    # 账号生命周期（M2a）的进程内密码失败限流/导出生成标记按用例隔离。
+    account_lifecycle.reset_password_throttle()
+    account_export.reset_export_state()
 
     # 维护模式的 5 秒进程内缓存也属于模块级全局状态。
     account.reset_settings_cache()
@@ -110,6 +117,8 @@ def isolated_data(tmp_path, monkeypatch):
     llm.reset_concurrency_gate()
     local_dict.reset()
     account.reset_settings_cache()
+    account_lifecycle.reset_password_throttle()
+    account_export.reset_export_state()
 
 
 @pytest.fixture(autouse=True)
