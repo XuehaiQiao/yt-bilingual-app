@@ -514,19 +514,31 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
           <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0" />
         </button>
 
-        {/* Privacy/terms have no page yet: say so instead of inventing a URL. */}
-        <div className="flex items-center justify-between gap-3 p-4">
+        {/* The two legal pages are real public routes (M4): plain anchors leave
+            the app shell the same way the blog entry does. */}
+        <a
+          href="#/privacy"
+          data-testid="account-privacy"
+          className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors"
+        >
           <span className="flex min-w-0 items-center gap-3">
             <ShieldCheck className="w-4 h-4 text-zinc-500 shrink-0" />
-            <span className="text-sm font-medium text-zinc-200">{t('account.about.legal')}</span>
+            <span className="text-sm font-medium text-zinc-200">{t('account.about.privacy')}</span>
           </span>
-          <span
-            data-testid="account-legal-pending"
-            className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800/70 border border-white/5 text-zinc-500 shrink-0"
-          >
-            {t('account.about.legalPending')}
+          <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0" />
+        </a>
+
+        <a
+          href="#/terms"
+          data-testid="account-terms"
+          className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-white/[0.03] transition-colors"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
+            <span className="text-sm font-medium text-zinc-200">{t('account.about.terms')}</span>
           </span>
-        </div>
+          <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0" />
+        </a>
       </div>
     </section>
   );

@@ -516,7 +516,12 @@ export function LocalVideoLearning({
                                     : <FileText className="h-4 w-4" />}
                                 {subtitleLoading ? t('localVideo.readingSubtitle') : t('localVideo.loadSubtitle')}
                             </button>
-                            <p className="text-[11px] text-zinc-600">{t('localVideo.subtitleLocalOnly')}</p>
+                            <p
+                                data-testid="local-video-ai-disclosure"
+                                className="text-[11px] text-zinc-600"
+                            >
+                                {t('localVideo.subtitleAiDisclosure')}
+                            </p>
                         </div>
                     )}
                 </section>

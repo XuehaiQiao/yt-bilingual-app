@@ -21,6 +21,21 @@ import { PublicShell } from './ui/PublicShell';
 type AuthMode = 'login' | 'signup';
 
 /**
+ * Short, non-legalistic G1 facts shown on the signup tab (M4). They live next to
+ * the submit button instead of only inside the privacy policy, because these
+ * are the conditions a new account actually accepts: invite-only, no email
+ * verification, no self-service reset, the 7-day deletion cooldown and the
+ * fact that local-video subtitle text is sent to an AI model.
+ */
+const SIGNUP_DISCLOSURE_KEYS: readonly TranslationKey[] = [
+    'auth.signup.disclosure.invite',
+    'auth.signup.disclosure.noEmail',
+    'auth.signup.disclosure.noRecovery',
+    'auth.signup.disclosure.deletion',
+    'auth.signup.disclosure.subtitles',
+];
+
+/**
  * Login / signup gate. One page, two tabs, one submit path: the AuthProvider
  * owns the request and flips the shell to the app once the backend answers
  * with `{ user }` and the httpOnly session cookie.
@@ -416,6 +431,46 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
                             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
                             <span>{error}</span>
                         </p>
+                    )}
+
+                    {mode === 'signup' && (
+                        <section
+                            data-testid="auth-signup-disclosure"
+                            aria-label={t('auth.signup.disclosure.title')}
+                            className="rounded-control-lg border border-line-subtle bg-surface-2/40 p-3 text-caption leading-relaxed text-fg-secondary"
+                        >
+                            <p className="font-semibold text-fg-primary">
+                                {t('auth.signup.disclosure.title')}
+                            </p>
+                            <ul className="mt-2 space-y-1.5">
+                                {SIGNUP_DISCLOSURE_KEYS.map((key) => (
+                                    <li key={key} className="flex gap-2">
+                                        <span
+                                            aria-hidden="true"
+                                            className="mt-[0.55em] h-1 w-1 shrink-0 rounded-full bg-fg-muted"
+                                        />
+                                        <span>{t(key)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <p className="mt-2.5">{t('auth.signup.disclosure.legal')}</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <a
+                                    href="#/privacy"
+                                    data-testid="auth-privacy-link"
+                                    className="font-medium text-brand-300 underline underline-offset-2 transition-colors hover:text-brand-400"
+                                >
+                                    {t('welcome.footer.privacy')}
+                                </a>
+                                <a
+                                    href="#/terms"
+                                    data-testid="auth-terms-link"
+                                    className="font-medium text-brand-300 underline underline-offset-2 transition-colors hover:text-brand-400"
+                                >
+                                    {t('welcome.footer.terms')}
+                                </a>
+                            </div>
+                        </section>
                     )}
 
                     <Button

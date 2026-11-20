@@ -41,6 +41,8 @@
 //   #/blog[/<slug>]      official blog (list / article)
 //   #/pricing            pricing page (no real price yet)
 //   #/resources          free / public-domain resources
+//   #/privacy            privacy policy (M4, public, no session required)
+//   #/terms              terms of service (M4, public, no session required)
 //   #/login[?next=...]   existing auth screen (public)
 // The legacy in-app blog URLs (`#/<tab>/blog...`, `#/app/<tab>/blog...`) are
 // recognised as public-blog aliases and redirected to `#/blog...`.
@@ -481,7 +483,7 @@ export function backLabelFor(state: NavState): TranslationKey {
 
 // ── Public site (outside AppShell/AuthGate) ────────────────────────────────
 
-export type PublicView = 'home' | 'blog' | 'pricing' | 'resources' | 'login';
+export type PublicView = 'home' | 'blog' | 'pricing' | 'resources' | 'privacy' | 'terms' | 'login';
 
 export interface PublicRoute {
   view: PublicView;
@@ -525,6 +527,14 @@ export function parsePublicRoute(hash: string): PublicRoute | null {
   }
   if (head === 'resources' && rest.length === 0) {
     return { view: 'resources', canonical: '#/resources', rewrite: false };
+  }
+  // Legal pages are real public destinations (M4). They never carry a slug and
+  // never require a session; a deep link must survive a refresh.
+  if (head === 'privacy' && rest.length === 0) {
+    return { view: 'privacy', canonical: '#/privacy', rewrite: false };
+  }
+  if (head === 'terms' && rest.length === 0) {
+    return { view: 'terms', canonical: '#/terms', rewrite: false };
   }
 
   const blog = parseBlogAlias(segments);

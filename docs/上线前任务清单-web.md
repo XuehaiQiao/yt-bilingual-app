@@ -24,7 +24,7 @@
 
 | 问题 | 结论 | 依据（摘要） |
 |---|---|---|
-| 能否**邀请制内测**？ | **完成 P0 后可以**。当前还不能直接发邀请：隐私政策/使用协议仍显示“即将上线”，无找回密码/改密/删号，生产备份与告警尚未验证 | `PublicFooter` 的 `ComingSoon`；`AccountScreen` 的 `account.about.legalPending`；`routes_auth.py` / `routes_account.py` 端点清单 |
+| 能否**邀请制内测**？ | **完成 P0 后可以；法务/文案最小集已落地（M4，2026-11-20）**：隐私政策/使用协议已是真实公开页，本地视频文案已修正，注册页已披露邀请制/无邮箱验证/冷静期/字幕送 LLM。仍缺真实可收信联系渠道（P1-03）、法务复核，生产备份与告警尚未验证 | `PrivacyPolicyScreen.tsx` / `TermsScreen.tsx`；`npm run check:legal` 11/11；`AuthScreen.tsx` 的 `auth-signup-disclosure`；`routes_auth.py` / `routes_account.py` 端点清单 |
 | 能否**公开免费注册**？ | **不能**。缺邮箱验证或可持续邀请码、找回密码、改密、删除账号、会话吊销、CSRF/Origin 校验、注册开关、监控告警、完整 QA | 见 P1/P2 优先级任务；当前 `signup` 只要邮箱格式合法即可创建账号 |
 | 能否**收费**？ | **不能**。没有支付、税务、退款、订阅、发票、对账；定价页明确写“内测免费，定价即将公布” | `PricingScreen.tsx` 与 `zh-CN.json` 的 `public.pricing.*`；仓库内无支付代码 |
 | 当前测试是否全绿？ | **未知，本文不声称全绿**。2026-11-20 实测 `pytest --collect-only` 收集 **1122** 项；本文没有运行全量测试 | 本地命令见 §8 C-1；CI 只在 push/PR 时跑 |
@@ -104,10 +104,10 @@ G1 允许带以下风险上线，但必须在发布记录里写明并指定复�
 | 3 | 会话 Cookie `ln_session`：HttpOnly、SameSite=Lax、Path=/、30 天；`Secure` 由 `COOKIE_SECURE` 控制 | `routes_auth.py` 的 `set_session_cookie`；`config.py` | 生产必须 HTTPS + `COOKIE_SECURE=1` |
 | 4 | `auth_db.delete_user_sessions()` 已定义，但仓库内没有调用方 | `auth_db.py`；全仓 grep | 改密/封禁/删号后“踢掉所有设备”尚未接线 |
 | 5 | 游客态：`ln_guest` + `data/guests/<sha256>/`；游客可访问大多数 `/api/*`，有更紧限速；`GUEST_MAX_TRANSLATED_VIDEOS=1` | `main.py` 身份中间件；`guest.py`；`config.py` | G1 必须用网关/邀请码挡住站外访问，否则游客可绕过“邀请” |
-| 6 | 本地视频：视频文件不上传；浏览器解析出的字幕块会 `POST /api/local-video/process`，由后端调用 LLM 翻译/分析 | `backend/routes_local_video.py` 文件头；`frontend/src/lib/localVideoLibrary.ts` | 必须在隐私政策/界面披露“字幕文本会送 LLM”；当前 UI 写“字幕只在本地读取，不会上传”容易误解 |
+| 6 | 本地视频：视频文件不上传；浏览器解析出的字幕块会 `POST /api/local-video/process`，由后端调用 LLM 翻译/分析 | `backend/routes_local_video.py` 文件头；`frontend/src/lib/localVideoLibrary.ts` | **已于 2026-11-20（M4）修正**：界面使用 `localVideo.subtitleAiDisclosure`（字幕文本送 AI、视频文件不上传），隐私政策第 4/7 节同步披露；旧 key/旧文案已删除 |
 | 7 | 本地视频句柄依赖 `showOpenFilePicker` + 安全上下文；普通 `http://192.168.x.x` 回退 `<input type=file>`，不能持久化句柄 | `frontend/src/lib/localVideoLibrary.ts` 的 `canPersistLocalVideoHandles` / `pickLocalVideoHandle` | 生产必须 HTTPS；非安全上下文要有清晰回退提示 |
 | 8 | 课程生成入口已隐藏：`const SHOW_COURSE_GENERATION = false` | `frontend/src/App.tsx` | 发版前回归确认没有别的入口暴露；不要把它当“已删除” |
-| 9 | 公开页脚把隐私政策/使用协议渲染为 `ComingSoon`（“即将上线”）；账户页也显示 `account.about.legalPending` | `frontend/src/components/PublicFooter.tsx`；`AccountScreen.tsx`；`zh-CN.json` | G1 前必须替换为真实页面，否则不能发邀请 |
+| 9 | **已修复（M4，2026-11-20）**：隐私政策/使用协议是真实公开页（`#/privacy`、`#/terms`），页脚/账户页/注册页均可跳转；`ComingSoon` 与 `legalPending` 已移除 | `PublicFooter.tsx`；`AccountScreen.tsx`；`PrivacyPolicyScreen.tsx` / `TermsScreen.tsx`；`npm run check:legal` | 页面可达性已验收；仍待法务复核与 P1-03 联系渠道 |
 | 10 | 定价页明确“内测免费，定价即将公布”“本页不展示未经确认的价格” | `PricingScreen.tsx`；`zh-CN.json` 的 `public.pricing.*` | 在 G3 前保持真实；不得为了收费提前改价而不接支付 |
 | 11 | 管理员：`ADMIN_EMAILS` 环境变量；`/api/admin/*` 提供只读统计 + 调额度/封禁/维护模式/公告；公告字段存在后台，但未找到前台展示入口 | `config.py`；`routes_admin.py`；`AdminConsoleScreen.tsx` | G1 需要管理员止血；公告要能在用户侧看到，不能只存后台 |
 | 12 | 健康检查：`GET /health` 只探活；`GET /healthz` 只读检查 DB 可读 + Alembic 版本 + uptime，不检查磁盘 | `backend/main.py`；`observability.py` | 监控需要补磁盘/5xx/LLM 花费告警，不能只看 `/health` |
@@ -144,11 +144,11 @@ G1 允许带以下风险上线，但必须在发布记录里写明并指定复�
 
 | ID | 优先级 | 阻塞 Gate | 执行动作 | 验收证据 / 命令 | 依赖 | 工时(h) | 状态 |
 |---|---|---|---|---|---|---|---|
-| **P1-01** | P0 阻塞 | G1 | 上线**隐私政策**公开页（`#/privacy`）：账号数据（邮箱、密码哈希、用户名）、学习记录、日志/IP、Cookie（`ln_session`/`ln_guest`）、IndexedDB 本地视频元数据与字幕文本、AI 处理（字幕文本送模型）、第三方模型提供商、跨境传输、保留期限、删除/导出方式、联系方式、生效日期 | 浏览器打开 `#/privacy` 200 且有内容；页脚/账户页链接可达；`grep -R "comingSoon"` 无隐私项；截图归档 | P0-01 | 8 | [ ] |
-| **P1-02** | P0 阻塞 | G1 | 上线**使用协议/服务条款**（免费内测版）：服务内容、禁止行为、内容版权、免责、服务变更/终止、争议解决、联系方式 | 浏览器打开 `#/terms` 200；页脚/账户页链接可达；法务/负责人确认记录 | P1-01 | 6 | [ ] |
+| **P1-01** | P0 阻塞 | G1 | 上线**隐私政策**公开页（`#/privacy`）：账号数据（邮箱、密码哈希、用户名）、学习记录、日志/IP、Cookie（`ln_session`/`ln_guest`）、IndexedDB 本地视频元数据与字幕文本、AI 处理（字幕文本送模型）、第三方模型提供商、跨境传输、保留期限、删除/导出方式、联系方式、生效日期 | **2026-11-20 M4 已实现**：`PrivacyPolicyScreen.tsx` + `LegalDocument.tsx`；`npm run check:legal` 11/11（公开直达/刷新/游客/匿名/页脚/账户/注册入口/375/1440/中越）；截图 `/tmp/legal-pages-shots/`。仍待法务复核与 P1-03 联系渠道 | P0-01 | 8 | [ ] |
+| **P1-02** | P0 阻塞 | G1 | 上线**使用协议/服务条款**（免费内测版）：服务内容、禁止行为、内容版权、免责、服务变更/终止、争议解决、联系方式 | **2026-11-20 M4 已实现**：`TermsScreen.tsx`，页脚/账户页可达，不写具体法院（以运营者所在地法律规定为准）；`npm run check:legal` 11/11；截图 `/tmp/legal-pages-shots/`。仍待法务/负责人确认 | P1-01 | 6 | [ ] |
 | **P1-03** | P0 阻塞 | G1 | 设置**真实可收信的联系邮箱/投诉渠道**（如 `support@`），在页脚、隐私政策、使用协议、账户页出现；配置转发/值班 | `mailto:` 链接点击可用；从外部邮箱发信并收到；自动回复/工单编号；`§7` 第 15 条 | P0-04 | 1 | [ ] |
 | **P1-04** | P0 阻塞 | G1 | 数据删除 SOP（人工）：收到请求 → 核验身份 → 删除 `users` 行、`sessions`、`data/users/<id>/`、对应游客目录（如已认领）→ 记录；明确备份保留期与“备份中的副本到期删除” | staging 造测试账号 → 按 SOP 删除 → 登录 401、目录不存在、DB 无行；`§8 C-6`；删除记录归档 | P1-01 | 4 | [ ] |
-| **P1-05** | P0 阻塞 | G1 | **字幕送 LLM 披露**：隐私政策写明“视频文件不上传；字幕文本会发送给模型提供商做翻译/分析”；修正本地视频 UI 文案（当前 `localVideo.subtitleLocalOnly` 写“字幕只在本地读取，不会上传”，与后端送 LLM 的事实不一致） | `grep -n "subtitleLocalOnly" frontend/src/i18n/zh-CN.json` 新文案；浏览器本地视频页可见；隐私政策对应段落截图 | P1-01 | 4 | [ ] |
+| **P1-05** | P0 阻塞 | G1 | **字幕送 LLM 披露**：隐私政策写明“视频文件不上传；字幕文本会发送给模型提供商做翻译/分析”；修正本地视频 UI 文案（当前 `localVideo.subtitleLocalOnly` 写“字幕只在本地读取，不会上传”，与后端送 LLM 的事实不一致） | **2026-11-20 已修复**：`localVideo.subtitleAiDisclosure` + `LocalVideoLearning.tsx`；`grep -R "subtitleLocalOnly" frontend/src` 为空；浏览器本地视频页与隐私政策截图（`/tmp/legal-pages-shots/local-video-disclosure-zh-1440.png`、`privacy-zh-1440.png`） | P1-01 | 4 | [x] |
 | **P1-06** | P0 阻塞 | G1 | 版权/内容声明：YouTube 仅嵌入官方播放器、不下载/不重传视频画面；如启用无字幕 ASR，会下载音频做本地转写，需一并披露；字幕抓取需评估 YouTube ToS；公版书来源；本地文件由用户自担版权；提供侵权投诉/下架渠道；“仅供个人学习”声明 | 使用协议/隐私政策/页脚中的声明；投诉邮箱可收信；负责人签字确认已知 ToS 风险 | P1-02/P1-03 | 4 | [ ] |
 | **P1-07** | P0 阻塞 | G1 | 托管地/ICP/跨境决策：服务器在境外则记录“不适用 ICP”及跨境传输披露；在境内则先完成 ICP 备案与内容合规评估（备案可能需数周，T-7 前必须启动）；确认 YouTube 在目标地区的可达性；列出第三方服务清单（模型/字幕/邮件/备份）及数据流向 | 决策记录（地区/供应商/备案号或“不适用”理由）；部署区域截图；`§9` 复核 | P0-01 | 2 | [ ] |
 | **P1-08** | P1 应做 | G2 | 数据导出：提供自助 JSON 导出或后台导出工具，覆盖 history/favorites/subscriptions/placement 等用户可见数据；导出文件不含他人数据 | staging 账号导出 → 文件可解压/可读；字段清单与隐私政策一致；再导入/核对条数 | P1-01/P1-04 | 8 | [ ] |
@@ -259,7 +259,7 @@ G1 允许带以下风险上线，但必须在发布记录里写明并指定复�
 | **P8-03** | P1 应做 | G2 | 博客/RSS：`/api/blog/feed.xml` 已有；验证绝对链接、标题/日期、订阅入口；公开页脚/导航链接可达 | `curl /api/blog/feed.xml` 为 RSS；订阅器可读；链接正确；`§8 C-3` | P8-01 | 2 | [ ] |
 | **P8-04** | P0 阻塞 | G1 | 定价页真实性：G1/G2 保持“内测免费/定价即将公布”；不展示未经确认的价格；没有支付入口；如写“不会自动扣款”必须有依据 | 浏览器 `#/pricing` 文案；`grep` 无虚构价格/支付按钮；负责人确认 | P0-01 | 1 | [ ] |
 | **P8-05** | P0 阻塞 | G1 | 联系/反馈/公告：页脚/账户页有联系邮箱；用户可见公告（维护、无找回、额度变化）；后台 `announcement` 目前只在管理台，需要前台展示 | 公告在用户侧可见；反馈入口可用；邮件可收；`§7` 第 15 条 | P1-03/P2-11 | 3 | [ ] |
-| **P8-06** | P0 阻塞 | G1 | 法务链接替换：`PublicFooter` 的 `ComingSoon` 改成 `#/privacy`、`#/terms`；`AccountScreen` 的 `legalPending` 改成真实链接；全站无“即将上线”法务文案 | `grep -R "ComingSoon" frontend/src` 与 `grep -R "legalPending" frontend/src` 仅剩非用户可见；浏览器页脚/账户页可跳转；截图 | P1-01/P1-02 | 2 | [ ] |
+| **P8-06** | P0 阻塞 | G1 | 法务链接替换：`PublicFooter` 的 `ComingSoon` 改成 `#/privacy`、`#/terms`；`AccountScreen` 的 `legalPending` 改成真实链接；全站无“即将上线”法务文案 | **2026-11-20 已完成**：页脚/账户页/注册页均为真实链接；`grep -R "ComingSoon" frontend/src` 与 `grep -R "legalPending" frontend/src` 均无用户可见残留；`npm run check:legal` 11/11；截图 `/tmp/legal-pages-shots/` | P1-01/P1-02 | 2 | [x] |
 
 ### 4.10 P9 · 发布日
 
@@ -384,6 +384,7 @@ G1 允许带以下风险上线，但必须在发布记录里写明并指定复�
 (cd frontend && npm run check:nav)
 (cd frontend && npm run check:public)
 (cd frontend && npm run check:blog)
+(cd frontend && npm run check:legal)
 ```
 
 - 2026-11-20 实测 `pytest --collect-only` 为 **1122** 项；本文**没有**运行全量测试，不能据此说全绿。

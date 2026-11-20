@@ -14,7 +14,8 @@
 //   4. garbage is marked `invalid` and falls back to `#/app/today`;
 //   5. `parentOf` gives the deep-link back target, `backLabelFor` the aria key;
 //   6. the public routes (home, `#/welcome` → `/`, `#/blog[/slug]`, `#/pricing`,
-//      `#/resources`, `#/login`) are parsed by `parsePublicRoute`, the legacy
+//      `#/resources`, `#/privacy`, `#/terms`, `#/login`) are parsed by
+//      `parsePublicRoute`, the legacy
 //      in-app blog URLs redirect to `#/blog...`, and `isAppHash` separates app
 //      URLs from the public site.
 //
@@ -289,15 +290,21 @@ check('public blog list/article and legacy in-app aliases', () => {
   }
 });
 
-check('public pricing / resources / login', () => {
+check('public pricing / resources / privacy / terms / login', () => {
   const pricing = parsePublicRoute('#/pricing');
   assert.deepEqual(pricing, { view: 'pricing', canonical: '#/pricing', rewrite: false });
   const resources = parsePublicRoute('#/resources');
   assert.deepEqual(resources, { view: 'resources', canonical: '#/resources', rewrite: false });
+  const privacy = parsePublicRoute('#/privacy');
+  assert.deepEqual(privacy, { view: 'privacy', canonical: '#/privacy', rewrite: false });
+  const terms = parsePublicRoute('#/terms');
+  assert.deepEqual(terms, { view: 'terms', canonical: '#/terms', rewrite: false });
   const login = parsePublicRoute('#/login?next=%23%2Fapp%2Ftoday');
   assert.equal(login?.view, 'login');
   assert.equal(login.rewrite, false);
   assert.equal(parsePublicRoute('#/pricing/foo'), null);
+  assert.equal(parsePublicRoute('#/privacy/foo'), null);
+  assert.equal(parsePublicRoute('#/terms/foo'), null);
   assert.equal(parsePublicRoute('#/login/extra'), null);
 });
 
@@ -305,7 +312,7 @@ check('isAppHash separates the app from the public site', () => {
   for (const hash of ['#/app', '#/app/today', '#/app/content/library', '#/today', '#/content/report', '#/learn/youtube/v', '#/lesson/x', '#admin', '#/admin']) {
     assert.equal(isAppHash(hash), true, `${hash} should be app-owned`);
   }
-  for (const hash of ['', '#/', '#/welcome', '#/blog', '#/blog/x', '#/pricing', '#/resources', '#/login', '#/nonsense']) {
+  for (const hash of ['', '#/', '#/welcome', '#/blog', '#/blog/x', '#/pricing', '#/resources', '#/privacy', '#/terms', '#/login', '#/nonsense']) {
     assert.equal(isAppHash(hash), false, `${hash} should not be app-owned`);
   }
   // Legacy in-app blog aliases belong to the public site, not the app.
@@ -314,7 +321,7 @@ check('isAppHash separates the app from the public site', () => {
 });
 
 check('isPublicHash keeps useNav away from public URLs', () => {
-  for (const hash of ['', '#', '#/', '#/welcome', '#/blog', '#/blog/x', '#/app/blog/x', '#/today/blog/x', '#/pricing', '#/resources', '#/login?next=x']) {
+  for (const hash of ['', '#', '#/', '#/welcome', '#/blog', '#/blog/x', '#/app/blog/x', '#/today/blog/x', '#/pricing', '#/resources', '#/privacy', '#/terms', '#/login?next=x']) {
     assert.equal(isPublicHash(hash), true, `${hash} should be public`);
   }
   for (const hash of ['#/app/today', '#/today', '#/content/report', '#/nonsense', '#/learn/youtube/v']) {

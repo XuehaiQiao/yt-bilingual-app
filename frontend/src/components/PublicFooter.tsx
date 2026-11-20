@@ -1,32 +1,16 @@
-// Shared public-site footer (home / blog / pricing / resources).
+// Shared public-site footer (home / blog / pricing / resources / legal pages).
 //
 // Same slots as the old welcome footer: brand + tagline, the public
-// destinations, the not-yet-shipped legal pages shown as disabled
-// "coming soon" items (never dead links) and the repository link. Public pages
-// render this inside `PublicShell`'s `footer` slot.
+// destinations (blog, pricing, resources, the real privacy/terms pages) and the
+// repository link. Every entry is a real destination: the M4 legal links
+// replaced the old disabled "coming soon" placeholders, so the footer no longer
+// advertises an unshipped page. Public pages render this inside
+// `PublicShell`'s `footer` slot.
 import { ArrowUpRight, Github } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { PublicContainer } from './ui/PublicShell';
 
 const GITHUB_URL = 'https://github.com/XuehaiQiao/yt-bilingual-app';
-
-function ComingSoon({ label, testId }: { label: string; testId: string }) {
-  const { t } = useI18n();
-  return (
-    <span
-      data-testid={testId}
-      data-coming-soon="true"
-      aria-disabled="true"
-      title={t('welcome.footer.comingSoon')}
-      className="inline-flex items-center gap-2 text-ui text-fg-muted cursor-default select-none"
-    >
-      {label}
-      <span className="rounded-full border border-line-subtle bg-surface-2/60 px-1.5 py-0.5 text-micro font-medium text-fg-muted">
-        {t('welcome.footer.comingSoon')}
-      </span>
-    </span>
-  );
-}
 
 export function PublicFooter() {
   const { t } = useI18n();
@@ -53,7 +37,6 @@ export function PublicFooter() {
             aria-label={t('welcome.footer.aria')}
             className="flex flex-wrap items-center gap-x-6 gap-y-3"
           >
-            <ComingSoon label={t('welcome.footer.about')} testId="welcome-about" />
             <a
               href="#/blog"
               data-testid="public-footer-blog"
@@ -75,8 +58,20 @@ export function PublicFooter() {
             >
               {t('welcome.nav.resources')}
             </a>
-            <ComingSoon label={t('welcome.footer.privacy')} testId="welcome-privacy" />
-            <ComingSoon label={t('welcome.footer.terms')} testId="welcome-terms" />
+            <a
+              href="#/privacy"
+              data-testid="public-footer-privacy"
+              className="text-ui text-fg-secondary transition-colors hover:text-fg-primary"
+            >
+              {t('welcome.footer.privacy')}
+            </a>
+            <a
+              href="#/terms"
+              data-testid="public-footer-terms"
+              className="text-ui text-fg-secondary transition-colors hover:text-fg-primary"
+            >
+              {t('welcome.footer.terms')}
+            </a>
             <a
               href={GITHUB_URL}
               target="_blank"

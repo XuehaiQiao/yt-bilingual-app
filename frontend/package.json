@@ -16,7 +16,8 @@
     "check:public": "node scripts/check-public-routes.mjs",
     "check:invite": "node scripts/check-invite-registration.mjs",
     "check:account": "node scripts/check-account-lifecycle.mjs",
-    "check:balance": "node scripts/check-balance-billing.mjs"
+    "check:balance": "node scripts/check-balance-billing.mjs",
+    "check:legal": "node scripts/check-legal-pages.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

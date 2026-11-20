@@ -49,6 +49,8 @@ import { ImportedBookReaderScreen } from './components/ImportedBookReaderScreen'
 import { PublicBlogScreen } from './components/PublicBlogScreen';
 import { PricingScreen } from './components/PricingScreen';
 import { ResourcesScreen } from './components/ResourcesScreen';
+import { PrivacyPolicyScreen } from './components/PrivacyPolicyScreen';
+import { TermsScreen } from './components/TermsScreen';
 import { AdminConsoleScreen } from './components/AdminConsoleScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AppShell, type ProfileSectionId } from './components/AppShell';
@@ -3930,6 +3932,8 @@ function AuthLoadingScreen() {
 //   `#/blog[/<slug>]`        → public blog (list / article)
 //   `#/pricing`              → pricing (beta-free, no invented price)
 //   `#/resources`            → free / public-domain resources
+//   `#/privacy`              → privacy policy (public, M4)
+//   `#/terms`                → terms of service (public, M4)
 //   `#/login[?next=...]`     → existing AuthScreen (public)
 //   `#/app...`               → the learning app (AppShell + AuthGate)
 //   anything else            → home (clean the address bar) — never a white screen
@@ -3941,7 +3945,7 @@ function AuthLoadingScreen() {
  * `#/login?next=<hash>` return target (D-09). Only an app hash is accepted
  * (`#/app/...`; legacy `#/today` is canonicalised), `http(s)://` is rejected so
  * this can never become an open redirect, and another public page (blog,
- * pricing, resources, welcome, login) is not a valid destination.
+ * pricing, resources, privacy, terms, welcome, login) is not a valid destination.
  * Invalid/absent → null (the caller lands on `#/app/today`).
  */
 function readLoginNext(): string | null {
@@ -3955,7 +3959,7 @@ function readLoginNext(): string | null {
     ? candidate
     : candidate.startsWith('/') ? `#${candidate}` : '';
   if (!normalized) return null;
-  if (/^#\/(welcome|login|blog|pricing|resources|dev)(?:[/?]|$)/.test(normalized)) return null;
+  if (/^#\/(welcome|login|blog|pricing|resources|privacy|terms|dev)(?:[/?]|$)/.test(normalized)) return null;
   const resolved = resolveRoute(normalized);
   if (resolved.kind === 'invalid') return null;
   return resolved.canonical;
@@ -4108,15 +4112,17 @@ function AuthGate() {
     );
   }
 
-  // Public site: the same shell + header/footer for home, blog, pricing and
-  // resources. None of these mount AppShell/AuthGate's app branches, and they
-  // render before the session bootstrap resolves — reading the blog must not
-  // depend on the backend being up. (Only the header CTA adapts once the
-  // session status arrives.)
+  // Public site: the same shell + header/footer for home, blog, pricing,
+  // resources and the two legal pages. None of these mount AppShell/AuthGate's
+  // app branches, and they render before the session bootstrap resolves —
+  // reading the blog or the privacy policy must not depend on the backend being
+  // up. (Only the header CTA adapts once the session status arrives.)
   if (publicView === 'home') return <WelcomeScreen />;
   if (publicView === 'blog') return <PublicBlogScreen slug={blogSlug ?? undefined} />;
   if (publicView === 'pricing') return <PricingScreen />;
   if (publicView === 'resources') return <ResourcesScreen />;
+  if (publicView === 'privacy') return <PrivacyPolicyScreen />;
+  if (publicView === 'terms') return <TermsScreen />;
 
   if (status === 'loading') return <AuthLoadingScreen />;
   if (publicView === 'login') {
