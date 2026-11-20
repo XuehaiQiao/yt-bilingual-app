@@ -313,14 +313,13 @@ def test_estimate_cost_and_models_accept_target_lang(client, monkeypatch):
     assert estimate.status_code == 200
     data = estimate.json()
     assert data["targetLang"] == "vi-VN"
-    assert data["recommendedModel"] == "qwen-flash"
+    # M7a：Qwen 缺可核实单价，越南语路线/默认模型改为有价的 deepseek-chat。
+    assert data["recommendedModel"] == "deepseek-chat"
 
     models = client.get("/api/models", params={"targetLang": "vi-VN"}).json()
     assert models["targetLang"] == "vi-VN"
-    assert models["default"] == "qwen-flash"
-    assert models["recommended"] == [
-        "qwen-flash", "qwen-plus", "deepseek-chat", "gemini-2.5-flash",
-    ]
+    assert models["default"] == "deepseek-chat"
+    assert models["recommended"] == ["deepseek-chat"]
 
     zh_models = client.get("/api/models").json()
     assert zh_models["targetLang"] == "zh-CN"
@@ -443,14 +442,12 @@ def test_vi_dictionary_falls_back_to_deepseek_without_other_keys(client, monkeyp
 
 def test_model_routes_and_key_skipping(monkeypatch):
     assert config.model_route_for("zh-CN") == ["deepseek-chat", "gemini-2.5-flash"]
-    assert config.model_route_for("vi-VN") == [
-        "qwen-flash", "qwen-plus", "deepseek-chat", "gemini-2.5-flash",
-    ]
+    # M7a：缺价 Qwen 从越南语路线移除，只留有可核实单价的 deepseek-chat。
+    assert config.model_route_for("vi-VN") == ["deepseek-chat"]
 
-    # 负责人已提供 Qwen Key：越南语默认 Qwen Flash。
     assert llm.resolve_model_for_target(None, "zh-CN") == "deepseek-chat"
-    assert llm.resolve_model_for_target(None, "vi-VN") == "qwen-flash"
-    # 没有 Qwen Key → Qwen 两档都不可用，落到 DeepSeek
+    assert llm.resolve_model_for_target(None, "vi-VN") == "deepseek-chat"
+    # 没有 Qwen Key → Qwen 两档都不可用，仍落到 DeepSeek
     monkeypatch.delenv("QWEN_API_KEY", raising=False)
     assert llm.is_available("qwen-flash") is False
     assert llm.is_available("qwen-plus") is False

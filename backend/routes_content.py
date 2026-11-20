@@ -7,9 +7,10 @@ import asyncio
 import json
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import AliasChoices, BaseModel, Field
 
+import ai_auth
 import billing
 import guest
 import languages
@@ -17,6 +18,7 @@ import llm
 import local_shows
 import storage
 import teaching_analysis
+from ai.ledger import QuotaExceeded
 from config import SENTENCES_DIR, SUBTITLES_DIR
 from transcripts import group_srt_blocks, parse_srt
 from translate import (
@@ -179,12 +181,16 @@ def _local_summary_label(show_title: str, show_title_zh: str, season: int, episo
 
 
 @router.post("/api/process-subtitle")
-async def process_subtitle(request: SubtitleRequest):
+async def process_subtitle(request: SubtitleRequest, http_request: Request):
     """Process a local SRT subtitle file through the selected model's translation.
 
     目标语言（``targetLang``，缺省 zh-CN）决定：缓存目录、prompt 语言、模型
     路线、账本维度。非中文缓存落在 ``history/<code>/``，中文继续留在根目录。
+
+    M7a：会触发 AI 翻译/分析，仅登录用户可用；游客/匿名 403 login_required。
+    纯缓存命中不调用模型、不扣费，但本入口仍要求登录（统一 AI 入口策略）。
     """
+    user_id = ai_auth.require_ai_user_id(http_request)
     lang = _target_lang_or_400(request.target_lang)
     # 模型按目标语言路线解析；显式选择且可用时优先，没配 Key 的候选自动跳过。
     model = llm.resolve_model_for_target(request.model, lang)
@@ -221,7 +227,7 @@ async def process_subtitle(request: SubtitleRequest):
                 cached_data["model"] = model
             cached_data = await retranslate_marked_blocks(
                 cached_data, cache_path, model=model, feature="local_show",
-                target_lang=lang,
+                user_id=user_id, target_lang=lang,
             )
             # 教学分析：按内容+等级+语言合并高亮/习语/文化点（命中缓存零模型）。
             await teaching_analysis.attach_to_payload(
@@ -230,7 +236,7 @@ async def process_subtitle(request: SubtitleRequest):
                 target_lang=lang,
                 content_ref=cached_data.get("videoId") or "",
                 model=model,
-                user_id=storage.active_identity(),
+                user_id=user_id,
             )
             # 缓存里可能没有 YouTube 映射（老缓存，或 episodes.json 后来才补上）：
             # 每次命中都从映射现取，只改返回的 payload，不重写缓存文件。
@@ -303,7 +309,8 @@ async def process_subtitle(request: SubtitleRequest):
             try:
                 # 本地剧集翻译单独归到 local_show：账本要能回答「花在哪个功能」。
                 batch_result = await process_llm_batch(
-                    batch, model=model, feature="local_show", target_lang=lang
+                    batch, model=model, feature="local_show", user_id=user_id,
+                    target_lang=lang,
                 )
                 processed_blocks.extend(batch_result)
                 # 批间停顿按 provider 的限流节奏走（Gemini 4s / DeepSeek 1s），
@@ -312,8 +319,9 @@ async def process_subtitle(request: SubtitleRequest):
                 success = True
                 break
             except Exception as e:
-                if isinstance(e, billing.BillingError):
-                    raise  # 402/409 不能被当成可重试的限流错误
+                if isinstance(e, (billing.BillingError, QuotaExceeded)):
+                    # 402/403/429/503 是硬闸，不能被当成可重试的模型失败。
+                    raise
                 error_msg = str(e).lower()
                 if "429" in error_msg or "quota" in error_msg or "exhausted" in error_msg:
                     if attempt < max_retries - 1:
@@ -362,7 +370,7 @@ async def process_subtitle(request: SubtitleRequest):
             target_lang=lang,
             content_ref=result_payload.get("videoId") or "",
             model=model,
-            user_id=storage.active_identity(),
+            user_id=user_id,
         )
 
     # Only cache if all batches succeeded (no mock fallback)

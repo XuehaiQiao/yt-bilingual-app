@@ -32,6 +32,7 @@ from pathlib import Path
 
 import pytest
 
+import billing
 import book_translation
 import books
 import config
@@ -372,6 +373,17 @@ def test_get_untranslated_chapter_marks_missing(public_client):
     assert "no-store" in response.headers.get("cache-control", "")
 
 
+def test_get_with_level_requires_login_but_plain_get_is_public(public_client):
+    """M7a：纯读取公开；带 ?level= 会生成教学分析 → 游客 403 login_required。"""
+    plain = public_client.get("/api/books/test-book/chapters/1")
+    assert plain.status_code == 200
+    assert plain.json()["translationStatus"] == "cached"
+
+    generated = public_client.get("/api/books/test-book/chapters/1?level=orbit")
+    assert generated.status_code == 403, generated.text
+    assert generated.json()["code"] == "login_required"
+
+
 def test_get_uses_bundled_translation_and_keeps_original_text(public_client):
     response = public_client.get("/api/books/test-book/chapters/1")
     assert response.status_code == 200, response.text
@@ -410,9 +422,9 @@ def test_get_invalid_target_language_is_400(public_client):
 
 
 def test_post_translates_missing_paragraphs_and_writes_global_cache(
-    public_client, llm_stub
+    logged_in_client, llm_stub
 ):
-    response = public_client.post("/api/books/test-book/chapters/2/translate")
+    response = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["cached"] is False
@@ -447,12 +459,12 @@ def test_post_translates_missing_paragraphs_and_writes_global_cache(
     assert int(row["updated_at"]) >= int(row["created_at"])
 
 
-def test_get_after_post_automatically_returns_translation(public_client, llm_stub):
+def test_get_after_post_automatically_returns_translation(logged_in_client, llm_stub):
     assert (
-        public_client.post("/api/books/test-book/chapters/2/translate").status_code
+        logged_in_client.post("/api/books/test-book/chapters/2/translate").status_code
         == 200
     )
-    response = public_client.get("/api/books/test-book/chapters/2")
+    response = logged_in_client.get("/api/books/test-book/chapters/2")
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["translationStatus"] == "cached"
@@ -464,13 +476,13 @@ def test_get_after_post_automatically_returns_translation(public_client, llm_stu
     ]
 
 
-def test_second_post_is_cached_without_model_call_or_new_row(public_client, llm_stub):
-    first = public_client.post("/api/books/test-book/chapters/2/translate")
+def test_second_post_is_cached_without_model_call_or_new_row(logged_in_client, llm_stub):
+    first = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert first.status_code == 200
     calls_after_first = len(llm_stub.calls)
     created_at = _cache_rows()[0]["created_at"]
 
-    second = public_client.post("/api/books/test-book/chapters/2/translate")
+    second = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert second.status_code == 200, second.text
     payload = second.json()
     assert payload["cached"] is True
@@ -482,29 +494,33 @@ def test_second_post_is_cached_without_model_call_or_new_row(public_client, llm_
     assert rows[0]["created_at"] == created_at
 
 
-def test_translate_is_public_and_does_not_issue_guest_cookie(make_client, llm_stub):
+def test_translate_requires_login_but_cached_read_stays_public(
+    make_client, llm_stub
+):
+    """M7a：未登录不能触发 AI 翻译（403 login_required），但已缓存章节仍可公开读。"""
     with make_client() as client:
         response = client.post("/api/books/test-book/chapters/2/translate")
-        assert response.status_code == 200, response.text
-        assert "ln_guest" not in response.headers.get("set-cookie", "")
-        second = client.post("/api/books/test-book/chapters/2/translate")
-        assert second.json()["cached"] is True
+        assert response.status_code == 403, response.text
+        assert response.json()["code"] == "login_required"
+        assert llm_stub.calls == []
+        assert _cache_rows() == []
+        # 公开只读路径不因「未登录」被拦，也不签发游客 Cookie。
         read = client.get("/api/books/test-book/chapters/2")
         assert read.status_code == 200
         assert "ln_guest" not in read.headers.get("set-cookie", "")
 
 
 def test_translate_only_fills_missing_paragraphs_of_partial_chapter(
-    public_client, llm_stub
+    logged_in_client, llm_stub
 ):
-    before = public_client.get("/api/books/test-book/chapters/4").json()
+    before = logged_in_client.get("/api/books/test-book/chapters/4").json()
     assert before["translationStatus"] == "partial"
     assert [item["zh"] for item in before["paragraphs"]] == [
         "第四章第一段译文。",
         None,
     ]
 
-    response = public_client.post("/api/books/test-book/chapters/4/translate")
+    response = logged_in_client.post("/api/books/test-book/chapters/4/translate")
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["status"] == "done"
@@ -525,11 +541,11 @@ def test_translate_only_fills_missing_paragraphs_of_partial_chapter(
 
 
 def test_model_output_is_aligned_by_idx_when_shuffled_with_extra_items(
-    public_client, llm_stub
+    logged_in_client, llm_stub
 ):
     llm_stub.shuffle = True
     llm_stub.extra = True
-    response = public_client.post("/api/books/test-book/chapters/2/translate")
+    response = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert response.status_code == 200, response.text
     payload = response.json()
     assert [item["zh"] for item in payload["paragraphs"]] == [
@@ -540,10 +556,10 @@ def test_model_output_is_aligned_by_idx_when_shuffled_with_extra_items(
 
 
 def test_model_missing_paragraph_stays_null_and_retry_only_fills_it(
-    public_client, llm_stub
+    logged_in_client, llm_stub
 ):
     llm_stub.drop = {1}
-    first = public_client.post("/api/books/test-book/chapters/2/translate")
+    first = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert first.status_code == 200, first.text
     payload = first.json()
     assert payload["status"] == "partial"
@@ -554,7 +570,7 @@ def test_model_missing_paragraph_stays_null_and_retry_only_fills_it(
     assert len(llm_stub.calls) == 1
 
     llm_stub.drop = set()
-    second = public_client.post("/api/books/test-book/chapters/2/translate")
+    second = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert second.status_code == 200, second.text
     assert second.json()["status"] == "done"
     assert len(llm_stub.calls) == 2
@@ -564,38 +580,38 @@ def test_model_missing_paragraph_stays_null_and_retry_only_fills_it(
     assert _cache_paragraphs(2) == ["译文段落 0", "译文段落 1"]
 
 
-def test_llm_total_failure_is_502_without_half_written_row(public_client, llm_stub):
+def test_llm_total_failure_is_502_without_half_written_row(logged_in_client, llm_stub):
     llm_stub.fail = True
-    response = public_client.post("/api/books/test-book/chapters/2/translate")
+    response = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert response.status_code == 502, response.text
     assert "重试" in response.json()["detail"]
     assert _cache_rows() == []
-    assert public_client.get("/api/books/test-book/chapters/2").json()[
+    assert logged_in_client.get("/api/books/test-book/chapters/2").json()[
         "translationStatus"
     ] == "missing"
 
     llm_stub.fail = False
-    retry = public_client.post("/api/books/test-book/chapters/2/translate")
+    retry = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert retry.status_code == 200, retry.text
     assert retry.json()["status"] == "done"
     assert len(_cache_rows()) == 1
 
 
-def test_llm_invalid_json_is_502(public_client, llm_stub):
+def test_llm_invalid_json_is_502(logged_in_client, llm_stub):
     llm_stub.reply = "这不是 JSON"
-    response = public_client.post("/api/books/test-book/chapters/2/translate")
+    response = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert response.status_code == 502
     assert _cache_rows() == []
 
 
 def test_source_failure_is_503_without_model_call_or_cache(
-    public_client, llm_stub, monkeypatch
+    logged_in_client, llm_stub, monkeypatch
 ):
     def _fail(url, timeout=None):
         raise books.BookSourceUnavailable("源站超时")
 
     monkeypatch.setattr(books, "fetch_source_text", _fail)
-    response = public_client.post("/api/books/test-book/chapters/2/translate")
+    response = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert response.status_code == 503
     assert response.headers.get("retry-after") == "60"
     assert llm_stub.calls == []
@@ -607,8 +623,8 @@ def test_source_failure_is_503_without_model_call_or_cache(
 # ---------------------------------------------------------------------------
 
 
-def test_vietnamese_translation_is_stored_separately(public_client, llm_stub):
-    response = public_client.post(
+def test_vietnamese_translation_is_stored_separately(logged_in_client, llm_stub):
+    response = logged_in_client.post(
         "/api/books/test-book/chapters/2/translate?lang=vi-VN"
     )
     assert response.status_code == 200, response.text
@@ -623,10 +639,10 @@ def test_vietnamese_translation_is_stored_separately(public_client, llm_stub):
     # 两种语言各自一行；中文仍是未翻译。
     rows = _cache_rows()
     assert [(row["target_lang"]) for row in rows] == ["vi-VN"]
-    zh = public_client.get("/api/books/test-book/chapters/2")
+    zh = logged_in_client.get("/api/books/test-book/chapters/2")
     assert zh.json()["translationStatus"] == "missing"
 
-    vi = public_client.get("/api/books/test-book/chapters/2?lang=vi-VN")
+    vi = logged_in_client.get("/api/books/test-book/chapters/2?lang=vi-VN")
     assert vi.json()["translationStatus"] == "cached"
     assert [item["zh"] for item in vi.json()["paragraphs"]] == [
         "Bản dịch đoạn 0",
@@ -634,7 +650,7 @@ def test_vietnamese_translation_is_stored_separately(public_client, llm_stub):
     ]
 
 
-def test_vietnamese_output_with_cjk_is_rejected(public_client, llm_stub):
+def test_vietnamese_output_with_cjk_is_rejected(logged_in_client, llm_stub):
     llm_stub.reply = json.dumps(
         {
             "translations": [
@@ -644,22 +660,22 @@ def test_vietnamese_output_with_cjk_is_rejected(public_client, llm_stub):
         },
         ensure_ascii=False,
     )
-    response = public_client.post(
+    response = logged_in_client.post(
         "/api/books/test-book/chapters/2/translate?lang=vi-VN"
     )
     assert response.status_code == 502
     assert _cache_rows() == []
 
 
-def test_post_invalid_target_language_is_400(public_client):
-    response = public_client.post(
+def test_post_invalid_target_language_is_400(logged_in_client):
+    response = logged_in_client.post(
         "/api/books/test-book/chapters/2/translate?targetLang=xx-XX"
     )
     assert response.status_code == 400
 
 
-def test_post_accepts_target_lang_in_json_body(public_client, llm_stub):
-    response = public_client.post(
+def test_post_accepts_target_lang_in_json_body(logged_in_client, llm_stub):
+    response = logged_in_client.post(
         "/api/books/test-book/chapters/2/translate",
         json={"targetLang": "vi-VN"},
     )
@@ -680,10 +696,12 @@ def test_concurrent_requests_call_model_only_once(isolated_book_translation, llm
         manifest = books.load_manifest()
         return await asyncio.gather(
             book_translation.translate_chapter(
-                manifest, "test-book", 2, "zh-CN", rate_limit_key="ip:testclient"
+                manifest, "test-book", 2, "zh-CN",
+                rate_limit_key="ip:testclient", user_id="concurrent-user",
             ),
             book_translation.translate_chapter(
-                manifest, "test-book", 2, "zh-CN", rate_limit_key="ip:testclient"
+                manifest, "test-book", 2, "zh-CN",
+                rate_limit_key="ip:testclient", user_id="concurrent-user",
             ),
         )
 
@@ -704,22 +722,22 @@ def test_concurrent_requests_call_model_only_once(isolated_book_translation, llm
 
 
 def test_daily_rate_limit_per_ip_and_cache_hit_is_free(
-    public_client, llm_stub, monkeypatch
+    logged_in_client, llm_stub, monkeypatch
 ):
     monkeypatch.setattr(config, "RATE_LIMIT_BOOK_TRANSLATE_PER_DAY", 2)
     assert (
-        public_client.post("/api/books/test-book/chapters/2/translate").status_code
+        logged_in_client.post("/api/books/test-book/chapters/2/translate").status_code
         == 200
     )
     # 缓存命中不占日限。
-    cached = public_client.post("/api/books/test-book/chapters/2/translate")
+    cached = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert cached.status_code == 200
     assert cached.json()["cached"] is True
     assert (
-        public_client.post("/api/books/test-book/chapters/3/translate").status_code
+        logged_in_client.post("/api/books/test-book/chapters/3/translate").status_code
         == 200
     )
-    limited = public_client.post("/api/books/test-book/chapters/4/translate")
+    limited = logged_in_client.post("/api/books/test-book/chapters/4/translate")
     assert limited.status_code == 429, limited.text
     assert "每 IP 每天 2 章" in limited.json()["detail"]
     assert limited.headers.get("retry-after")
@@ -730,19 +748,19 @@ def test_daily_rate_limit_per_ip_and_cache_hit_is_free(
 
 
 def test_oversized_chapter_is_413_without_calling_model(
-    public_client, llm_stub, monkeypatch
+    logged_in_client, llm_stub, monkeypatch
 ):
     monkeypatch.setattr(config, "MAX_BOOK_TRANSLATE_CHARS", 10)
-    response = public_client.post("/api/books/test-book/chapters/2/translate")
+    response = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert response.status_code == 413
     assert llm_stub.calls == []
     assert _cache_rows() == []
 
 
-def test_translate_timeout_is_504(public_client, llm_stub, monkeypatch):
+def test_translate_timeout_is_504(logged_in_client, llm_stub, monkeypatch):
     monkeypatch.setattr(config, "BOOK_TRANSLATE_TIMEOUT_SECONDS", 0.3)
     llm_stub.delay = 2.0
-    response = public_client.post("/api/books/test-book/chapters/2/translate")
+    response = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert response.status_code == 504, response.text
     assert response.headers.get("retry-after")
     assert _cache_rows() == []
@@ -771,11 +789,14 @@ def test_translation_cost_goes_to_usage_ledger_and_cache_hit_is_free(
         )
         return text, {"input_tokens": 120, "output_tokens": 60}
 
-    # 走真实 llm.generate -> _record_usage 链路，只替换 provider 传输层。
+    # 走真实 llm.generate -> 预占/结算链路，只替换 provider 传输层。
     monkeypatch.setattr(llm, "_generate_openai_compatible", fake_provider)
 
+    balance_before = billing.get_balance(logged_in_client.user_id)["balanceMicroUsd"]
     first = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert first.status_code == 200, first.text
+    balance_after = billing.get_balance(logged_in_client.user_id)["balanceMicroUsd"]
+    assert balance_after < balance_before, "M7a：登录用户触发书籍翻译必须扣余额"
     rows = _usage_rows()
     assert len(rows) == 1
     feature, calls, target_lang, user_id, input_tokens, output_tokens = rows[0]
@@ -789,17 +810,21 @@ def test_translation_cost_goes_to_usage_ledger_and_cache_hit_is_free(
     assert second.status_code == 200
     assert second.json()["cached"] is True
     assert len(_usage_rows()) == 1  # 缓存命中不记账
+    assert (
+        billing.get_balance(logged_in_client.user_id)["balanceMicroUsd"]
+        == balance_after
+    ), "缓存命中不得再扣费"
 
 
 def test_no_english_source_is_persisted_to_db_or_books_dir(
-    public_client, llm_stub, isolated_book_translation
+    logged_in_client, llm_stub, isolated_book_translation
 ):
     files_before = sorted(
         str(path.relative_to(isolated_book_translation))
         for path in isolated_book_translation.rglob("*")
         if path.is_file()
     )
-    response = public_client.post("/api/books/test-book/chapters/2/translate")
+    response = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert response.status_code == 200
 
     db_bytes = Path(config.AUTH_DB_PATH).read_bytes()
@@ -820,9 +845,11 @@ def test_no_english_source_is_persisted_to_db_or_books_dir(
 
 
 def test_get_keeps_working_without_cache_table_and_post_explains_migration(
-    public_client,
+    public_client, logged_in_client,
 ):
-    Path(config.AUTH_DB_PATH).unlink()
+    # 只删译文缓存表（整库删掉会连会话表一起没了，M7a 的登录态读不了）。
+    with sqlite3.connect(config.AUTH_DB_PATH) as conn:
+        conn.execute("DROP TABLE book_chapter_translations")
     read = public_client.get("/api/books/test-book/chapters/2")
     assert read.status_code == 200
     assert read.json()["translationStatus"] == "missing"
@@ -830,17 +857,17 @@ def test_get_keeps_working_without_cache_table_and_post_explains_migration(
     assert bundled.status_code == 200
     assert bundled.json()["translationStatus"] == "cached"
 
-    response = public_client.post("/api/books/test-book/chapters/2/translate")
+    response = logged_in_client.post("/api/books/test-book/chapters/2/translate")
     assert response.status_code == 503
     assert "0019_book_chapter_translations" in response.json()["detail"]
 
 
-def test_unknown_book_or_chapter_is_404(public_client):
+def test_unknown_book_or_chapter_is_404(public_client, logged_in_client):
     for path in (
         "/api/books/no-such-book/chapters/1/translate",
         "/api/books/test-book/chapters/99/translate",
     ):
-        assert public_client.post(path).status_code == 404, path
+        assert logged_in_client.post(path).status_code == 404, path
     for path in (
         "/api/books/no-such-book/chapters/1",
         "/api/books/test-book/chapters/99",

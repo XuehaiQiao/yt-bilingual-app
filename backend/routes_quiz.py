@@ -25,6 +25,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import AliasChoices, BaseModel, Field
 
+import ai_auth
 import quiz
 from ai import quota
 
@@ -67,14 +68,11 @@ class AnswerRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _require_login(request: Request) -> dict:
-    """理解题必须归属登录账号；游客/未登录 403。"""
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(
-            status_code=403,
-            detail="理解题需要登录后使用（答题记录不跨设备同步）。",
-        )
-    return user
+    """理解题（AI 出题）必须归属登录账号；游客/未登录 403 login_required。"""
+    return ai_auth.require_ai_user(
+        request,
+        detail="理解题需要登录后使用（答题记录不跨设备同步）。",
+    )
 
 
 def _raise_quiz_error(exc: Exception) -> None:
@@ -106,10 +104,9 @@ async def start_lesson(payload: StartLessonRequest, request: Request):
         return await quiz.start_lesson(
             user["id"], payload.kind, payload.content_ref, payload.target_lang
         )
-    except quota.QuotaExceeded as exc:
-        raise HTTPException(
-            status_code=getattr(exc, "status_code", 429), detail=str(exc)
-        ) from exc
+    except quota.QuotaExceeded:
+        # 429 + code=quota_exceeded 由 main.py 统一映射（M7a 稳定错误码）。
+        raise
     except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
         _raise_quiz_error(exc)
         raise  # pragma: no cover - _raise_quiz_error 必抛

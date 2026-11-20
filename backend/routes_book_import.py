@@ -40,6 +40,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import AliasChoices, BaseModel, Field
 
 import book_import
+import ai_auth
 import languages
 import ratelimit
 import config
@@ -62,14 +63,11 @@ class TranslateRequest(BaseModel):
 
 
 def _require_login(request: Request) -> dict:
-    """导入公版书必须归属登录账号；游客/未登录 401。"""
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="导入公版书需要登录（「我的书」与译文缓存保存在账号下）。",
-        )
-    return user
+    """导入公版书/翻译必须归属登录账号；游客/未登录 403 login_required。"""
+    return ai_auth.require_ai_user(
+        request,
+        detail="导入公版书需要登录（「我的书」与译文缓存保存在账号下）。",
+    )
 
 
 def _target_lang_or_400(raw: str | None) -> str:
@@ -82,9 +80,8 @@ def _target_lang_or_400(raw: str | None) -> str:
 def _raise_book_error(exc: Exception, *, chapter: bool = False) -> None:
     """领域错误 → HTTP。读章的源站失败给 503（可重试），预览/导入给 422。"""
     if isinstance(exc, quota.QuotaExceeded):
-        raise HTTPException(
-            status_code=getattr(exc, "status_code", 429), detail=str(exc)
-        ) from exc
+        # 429 + code=quota_exceeded 由 main.py 统一映射（M7a）。
+        raise exc
     if isinstance(exc, languages.UnsupportedLanguage):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if isinstance(exc, book_import.BookSourceError):

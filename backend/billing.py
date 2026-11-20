@@ -151,6 +151,47 @@ class BillingUnavailable(BillingError):
     code = "billing_unavailable"
 
 
+class LoginRequired(BillingError):
+    """AI 调用没有登录用户（游客/匿名）：M7a 起一律拒绝，路由转 403。
+
+    用 403 而不是 401：前端全局把 401 当成「会话过期」直接登出；游客本来
+    就没有会话，正确的交互是弹登录框，而不是把已经登录的异常态误判为掉线。
+    """
+
+    status_code = 403
+    code = "login_required"
+
+    def __init__(self, detail: str | None = None) -> None:
+        super().__init__(
+            detail
+            or "AI 功能需要登录后使用；游客可以继续阅读已缓存的公开内容。"
+        )
+
+    def payload(self) -> dict:
+        return {"detail": str(self), "code": self.code}
+
+
+class ModelUnpriced(BillingError):
+    """模型没有可核实单价：严格计费下禁止调用（HTTP 503）。"""
+
+    status_code = 503
+    code = "model_unpriced"
+
+    def __init__(self, model_id: str | None = None) -> None:
+        self.model_id = model_id
+        super().__init__(
+            f"模型 {model_id or 'unknown'} 没有可核实单价，已暂停使用；"
+            "请联系管理员补价（model_prices）后再试。"
+        )
+
+    def payload(self) -> dict:
+        return {
+            "detail": str(self),
+            "code": self.code,
+            "modelId": self.model_id,
+        }
+
+
 class BillingConflict(BillingError):
     """幂等键冲突或 hold 状态不允许该操作（HTTP 409）。"""
 
@@ -405,17 +446,100 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_model_prices_model_effective
     ON model_prices(model_id, effective_from_ms);
 CREATE INDEX IF NOT EXISTS ix_model_prices_provider
     ON model_prices(provider, effective_from_ms);
+
+-- M7a：严格计费要求每笔 AI 调用都能结算，所以兼容路径也建出 0003 的账本表
+-- （旧库已经有同表时 CREATE IF NOT EXISTS 是 no-op；缺的计费列下面补）。
+CREATE TABLE IF NOT EXISTS ai_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT,
+    feature TEXT NOT NULL,
+    model_id TEXT NOT NULL,
+    provider TEXT,
+    input_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    calls INTEGER NOT NULL DEFAULT 0,
+    est_cost_usd FLOAT NOT NULL DEFAULT 0,
+    occurred_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    usage_date TEXT NOT NULL,
+    target_lang TEXT DEFAULT 'zh-CN',
+    cost_micro_usd INTEGER,
+    input_price_micro_usd_per_mtok INTEGER,
+    output_price_micro_usd_per_mtok INTEGER,
+    price_version TEXT,
+    price_source TEXT,
+    token_source TEXT,
+    billable INTEGER,
+    billing_status TEXT,
+    hold_id TEXT,
+    request_id TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_ai_usage_user_day ON ai_usage(user_id, usage_date);
+CREATE INDEX IF NOT EXISTS ix_ai_usage_feature_day ON ai_usage(feature, usage_date);
+CREATE INDEX IF NOT EXISTS ix_ai_usage_day ON ai_usage(usage_date);
+
+CREATE TABLE IF NOT EXISTS ai_quota (
+    user_id TEXT NOT NULL,
+    day TEXT NOT NULL,
+    feature TEXT NOT NULL,
+    used_units INTEGER NOT NULL DEFAULT 0,
+    limit_units INTEGER NOT NULL,
+    PRIMARY KEY (user_id, day, feature)
+);
 """
+
+# 未跑 0025 的旧库可能已经有 0003 的 ai_usage（缺 target_lang/计费列）：
+# ``CREATE TABLE IF NOT EXISTS`` 不会补列，这里按迁移同口径逐列 ALTER。
+_COMPAT_AI_USAGE_COLUMNS = (
+    ("target_lang", "TEXT DEFAULT 'zh-CN'"),
+    ("cost_micro_usd", "INTEGER"),
+    ("input_price_micro_usd_per_mtok", "INTEGER"),
+    ("output_price_micro_usd_per_mtok", "INTEGER"),
+    ("price_version", "TEXT"),
+    ("price_source", "TEXT"),
+    ("token_source", "TEXT"),
+    ("billable", "INTEGER"),
+    ("billing_status", "TEXT"),
+    ("hold_id", "TEXT"),
+    ("request_id", "TEXT"),
+)
+
+# 与迁移 0025 同一批价格快照（保持唯一键 id 一致，迁移库上是 INSERT OR IGNORE
+# no-op）。生产仍应先跑 `alembic upgrade head`；这里只是让「未迁移但已注册」
+# 的部署/测试不会因为缺价而把所有 AI 调用 503 掉。
+_COMPAT_PRICE_SEEDS = (
+    (
+        "mp-20261120-deepseek-chat",
+        "deepseek-chat",
+        "DeepSeek",
+        300_000,
+        1_200_000,
+        "https://api-docs.deepseek.com/quick_start/pricing",
+        "2026-11-20.official.1",
+    ),
+    (
+        "mp-20261120-gemini-25-flash",
+        "gemini-2.5-flash",
+        "Google",
+        300_000,
+        2_500_000,
+        "https://ai.google.dev/gemini-api/docs/pricing",
+        "2026-11-20.official.1",
+    ),
+)
+_PRICE_EFFECTIVE_FROM_MS = 1_795_132_800_000
 
 _COMPAT_LOCK = threading.Lock()
 
 
 def ensure_schema_compat() -> bool:
-    """保证开户事务需要的金额表存在（幂等）。
+    """保证开户/计费需要的表存在（幂等）。
 
     只在**注册**路径调用：生产库应已跑迁移；未跑迁移的旧部署/测试库也能
     「建用户 + 发 $2 + 写流水 + 建会话」整笔事务完成，不会出现「用户建了但
-    余额表不存在」。幂等：``CREATE TABLE IF NOT EXISTS`` + 索引同名。
+    余额表不存在」。M7a 起同时补 ``ai_usage``/``ai_quota`` 与价格 seed：
+    严格计费要求「每笔调用都可结算」，不能因为未迁移就退化成免费调用。
+    幂等：``CREATE TABLE IF NOT EXISTS`` + 同名索引 + ``INSERT OR IGNORE``。
     """
     with _COMPAT_LOCK:
         conn = _connect()
@@ -426,6 +550,33 @@ def ensure_schema_compat() -> bool:
                     "INTEGER NOT NULL DEFAULT 0"
                 )
             conn.executescript(_COMPAT_SCHEMA_SQL)
+            if _table_exists(conn, "ai_usage"):
+                existing = _columns(conn, "ai_usage")
+                for name, column_type in _COMPAT_AI_USAGE_COLUMNS:
+                    if name not in existing:
+                        conn.execute(
+                            f"ALTER TABLE ai_usage ADD COLUMN {name} {column_type}"
+                        )
+            if _table_exists(conn, "model_prices"):
+                for seed in _COMPAT_PRICE_SEEDS:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO model_prices ("
+                        "id, model_id, provider, effective_from_ms, "
+                        "input_micro_usd_per_mtok, output_micro_usd_per_mtok, "
+                        "source_kind, source_ref, verified_at_ms, price_version) "
+                        "VALUES (?, ?, ?, ?, ?, ?, 'official_page', ?, ?, ?)",
+                        (
+                            seed[0],
+                            seed[1],
+                            seed[2],
+                            _PRICE_EFFECTIVE_FROM_MS,
+                            seed[3],
+                            seed[4],
+                            seed[5],
+                            _PRICE_EFFECTIVE_FROM_MS,
+                            seed[6],
+                        ),
+                    )
             conn.commit()
         finally:
             conn.close()
@@ -948,6 +1099,21 @@ def max_price_for_models(model_ids) -> dict | None:
         ):
             best = price
     return best
+
+
+def strict_mode() -> bool:
+    """严格计费是否生效（M7a；默认开，``BILLING_STRICT=0`` 仅作回滚逃生门）。
+
+    严格模式下：没有登录用户拒绝（403 login_required）；没有可核实单价拒绝
+    （503 model_unpriced）；不允许 ``billable=0`` 的免费账号调用。非严格模式
+    只保留给「迁移前旧部署/脚本」临时回滚，生产不得关闭。
+    """
+    return bool(getattr(config, "BILLING_STRICT", True))
+
+
+def is_priced(model_id: str | None) -> bool:
+    """模型是否有可核实单价（严格模式下选路/降级链只允许 priced 模型）。"""
+    return price_for_model(model_id) is not None
 
 
 # ---------------------------------------------------------------------------

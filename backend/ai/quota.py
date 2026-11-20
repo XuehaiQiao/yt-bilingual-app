@@ -258,23 +258,29 @@ def degradation_chain(
     ``feature`` 仅作调用方语义标注（不同功能可传入不同首选模型）；链的组成
     完全由 ``preferred_model`` / ``DEFAULT_MODEL``、Key 可用性与价格决定。
     返回空列表表示当前一个可用模型都没有（调用方应走 mock/规则兜底）。
+
+    M7a 严格计费：自动候选只收「有可核实单价」的模型（``llm.is_usable``），
+    缺价模型不会因为免费而混进降级链。**用户显式选择**的缺价模型仍放在链首，
+    由 ``llm._billing_begin`` 返回 503 ``model_unpriced``（不静默换模型）。
     """
     catalog = config.MODEL_CATALOG
-    available = [model_id for model_id in catalog if llm.is_available(model_id)]
-    if not available:
-        return []
-
-    current: str | None = None
+    available = [model_id for model_id in catalog if llm.is_usable(model_id)]
+    explicit_unpriced: str | None = None
     if (
         preferred_model
         and preferred_model in catalog
         and llm.is_available(preferred_model)
+        and preferred_model not in available
     ):
-        current = preferred_model
+        explicit_unpriced = preferred_model
+
+    current: str | None = explicit_unpriced
     if current is None and config.DEFAULT_MODEL in available:
         current = config.DEFAULT_MODEL
-    if current is None:
+    if current is None and available:
         current = min(available, key=_first_available_key)
+    if current is None:
+        return []
 
     chain = [current]
     current_provider = _provider(current)

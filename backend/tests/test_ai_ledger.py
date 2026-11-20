@@ -269,6 +269,8 @@ def _install_fake_catalog(monkeypatch):
     monkeypatch.setattr(llm, "DEFAULT_MODEL", "premium", raising=False)
     for env in ("TEST_PREMIUM_KEY", "TEST_CHEAP_KEY", "TEST_OTHER_KEY", "TEST_GOOGLE_KEY"):
         monkeypatch.setenv(env, "test-key")
+    # 假目录只验证「降级链组成」；严格计费的价格过滤在 M7a 的专门用例里测。
+    monkeypatch.setattr(config, "BILLING_STRICT", False, raising=False)
     return fake
 
 
@@ -378,6 +380,9 @@ def test_process_llm_batch_blocks_model_when_quota_exceeded(ledger_db, monkeypat
 # ---------------------------------------------------------------------------
 
 def test_llm_usage_hook_records_usage(ledger_db, monkeypatch):
+    # 这里测的是 ai_usage 记录 hook（非真实账号），关掉严格计费只走记账。
+    monkeypatch.setattr(config, "BILLING_STRICT", False, raising=False)
+
     def fake_openai(prompt, spec, json_mode):
         return "hello", {"input_tokens": 1200, "output_tokens": 340}
 

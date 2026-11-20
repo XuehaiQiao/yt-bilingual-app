@@ -31,6 +31,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import AliasChoices, BaseModel, Field
 
+import ai_auth
 import languages
 import reading
 import teaching_analysis
@@ -59,14 +60,11 @@ class ProgressRequest(BaseModel):
 
 
 def _require_login(request: Request) -> dict:
-    """读文章必须归属登录账号；游客/未登录 403。"""
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(
-            status_code=403,
-            detail="读文章需要登录后使用（文章与阅读进度保存在账号下）。",
-        )
-    return user
+    """读文章/翻译必须归属登录账号；游客/未登录 403 login_required。"""
+    return ai_auth.require_ai_user(
+        request,
+        detail="读文章需要登录后使用（文章与阅读进度保存在账号下）。",
+    )
 
 
 def _target_lang_or_400(raw: str | None) -> str:
@@ -78,9 +76,9 @@ def _target_lang_or_400(raw: str | None) -> str:
 
 def _raise_reading_error(exc: Exception) -> None:
     if isinstance(exc, quota.QuotaExceeded):
-        raise HTTPException(
-            status_code=getattr(exc, "status_code", 429), detail=str(exc)
-        ) from exc
+        # 429 + code=quota_exceeded 由 main.py 统一映射；不在这里转 HTTPException，
+        # 否则前端拿不到稳定 code（M7a）。
+        raise exc
     if isinstance(exc, languages.UnsupportedLanguage):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if isinstance(exc, reading.ReadingError):

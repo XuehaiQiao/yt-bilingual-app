@@ -23,6 +23,7 @@ import re
 
 from fastapi import APIRouter, HTTPException, Request
 
+import ai_auth
 import storage
 import teaching_analysis
 import translate
@@ -49,13 +50,9 @@ class AnalysisContentNotFound(teaching_analysis.TeachingAnalysisError):
 
 def _require_login(request: Request) -> dict:
     """教学分析有 AI 成本，只对登录用户开放（缓存命中也不向游客暴露）。"""
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(
-            status_code=403,
-            detail="教学分析需要登录后使用。",
-        )
-    return user
+    return ai_auth.require_ai_user(
+        request, detail="教学分析需要登录后使用。"
+    )
 
 
 def _history_path(content_ref: str, target_lang: str) -> str | None:
@@ -124,10 +121,9 @@ async def get_teaching_analysis(
             content_hash=contentHash,
             user_id=user["id"],
         )
-    except QuotaExceeded as exc:
-        raise HTTPException(
-            status_code=getattr(exc, "status_code", 429), detail=str(exc)
-        ) from exc
+    except QuotaExceeded:
+        # 429 + code=quota_exceeded 由 main.py 统一映射（M7a 稳定错误码）。
+        raise
     except teaching_analysis.TeachingAnalysisError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return {

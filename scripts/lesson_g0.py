@@ -44,6 +44,9 @@ for path in [str(BACKEND)] + [item for item in reversed(_EXTRA_PATHS) if item]:
     if path and Path(path).is_dir() and path not in sys.path:
         sys.path.insert(0, path)
 
+# 离线课程生成脚本没有真实账号/余额：走「只记账、不扣余额」的旧口径（M7a 严格
+# 计费只针对线上登录用户的 AI 调用）。若想模拟严格计费，显式设 BILLING_STRICT=1。
+os.environ.setdefault("BILLING_STRICT", "0")
 import config  # noqa: E402
 import llm  # noqa: E402
 from ai import ledger, quota  # noqa: E402

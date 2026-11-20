@@ -10,7 +10,7 @@
 4. 步骤/产出：合法更新、非法步骤 400、完成后 409、wordCount、2000 字符上限；
 5. 完成：未答完/无产出 409、8 题评分、混合对错评分、重复完成幂等；
 6. 事件：写入 204、非法 event/step/payload/超 2KB 400、跨用户 404；
-7. 权限：游客 401；
+7. 权限：游客 403 login_required；
 8. 迁移 0021：两张表/列/索引/部分唯一约束；head 已更新到 0022。
 
 所有用例离线：数据库在 conftest 的 tmp_path 下通过真实 Alembic CLI 迁移；
@@ -592,10 +592,10 @@ def test_event_payload_must_be_object(course_client):
 
 
 # ---------------------------------------------------------------------------
-# 7. 权限：游客 401
+# 7. 权限：游客 403 login_required（M7a 统一 403，不用 401）
 # ---------------------------------------------------------------------------
 
-def test_guest_gets_401_on_all_course_endpoints(guest_client):
+def test_guest_gets_403_on_all_course_endpoints(guest_client):
     endpoints = [
         ("GET", "/api/course/lessons"),
         ("GET", f"/api/course/lessons/{LESSON_ID}"),
@@ -610,7 +610,8 @@ def test_guest_gets_401_on_all_course_endpoints(guest_client):
     for method, url in endpoints:
         kwargs = {"json": {}} if method == "POST" else {}
         response = guest_client.request(method, url, **kwargs)
-        assert response.status_code == 401, (method, url, response.text)
+        assert response.status_code == 403, (method, url, response.text)
+        assert response.json().get("code") == "login_required"
 
 
 # ---------------------------------------------------------------------------

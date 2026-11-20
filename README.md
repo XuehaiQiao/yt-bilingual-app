@@ -109,6 +109,8 @@ cd frontend && npm run dev
 
 Open **http://localhost:5173**, paste a YouTube link, set your level on the axis, and press **Start Learning**.
 
+> **Every AI call requires an account and is billed to that account's balance (M7a).** Guests get `403 {code:"login_required"}` for translation, summaries, dictionary lookups, teaching analysis, quizzes and book/article translation; logged-in calls are reserved and settled against the balance. A model without a verifiable price is rejected with `503 {code:"model_unpriced"}` and is never called. Cached public content stays free to read — pure reads never trigger AI.
+
 ### Configuration
 
 | Variable | Where | Purpose |
@@ -116,6 +118,8 @@ Open **http://localhost:5173**, paste a YouTube link, set your level on the axis
 | `DEEPSEEK_API_KEY` | `.env` | **Required.** Key for the default model `deepseek-chat` (translation, summaries, dictionary). |
 | `GEMINI_API_KEY` | `.env` | Optional, overseas only. Unlocks the Gemini tiers in the model picker; unavailable/incompatible in mainland China. |
 | `DEFAULT_MODEL` | `.env` | Optional. Overrides the default model id (`deepseek-chat`); unknown values fall back to `deepseek-chat`. |
+| `BILLING_STRICT` | `.env` | Strict billing (M7a): **default `1`**. Every AI call must have a logged-in user and a verifiable price; guests get 403 `login_required`, unpriced models 503 `model_unpriced`. `0` is rollback-only. |
+| `MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` | `.env` | Per-language model routes. Only include models with a verifiable price — Qwen currently lacks one, so the Vietnamese route is `deepseek-chat`. |
 | `WHISPER_MODEL` | `.env` | Whisper size for the no-captions ASR fallback (`base` default). |
 | `CORS_ORIGINS` | `.env` | Comma-separated allowed origins — set before deploying publicly. |
 | `API_AUTH_KEY` | `.env` | Optional X-API-Key gate for mobile/internal clients. **Do not set it for a public browser deployment** — it also blocks `/api/auth/*`, so logins fail with 401. |

@@ -48,6 +48,7 @@ from pydantic import AliasChoices, BaseModel, Field
 
 import course
 import course_generator
+import ai_auth
 import languages
 from ai import quota
 
@@ -119,14 +120,14 @@ class EventRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _require_login(request: Request) -> dict:
-    """课程学习必须归属登录账号；游客/未登录 401。"""
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="课程学习需要登录（学习进度保存在账号下）。",
-        )
-    return user
+    """课程学习/生成必须归属登录账号；游客/未登录 403 login_required。
+
+    M7a 统一用 403 而不是 401：前端全局把 401 当成会话过期并登出。
+    """
+    return ai_auth.require_ai_user(
+        request,
+        detail="课程学习需要登录（学习进度保存在账号下）。",
+    )
 
 
 def _raise_course_error(exc: Exception) -> None:
@@ -177,10 +178,9 @@ async def course_generate(payload: GenerateCourseRequest, request: Request):
             level=payload.level,
             target_lang=payload.target_lang,
         )
-    except quota.QuotaExceeded as exc:
-        raise HTTPException(
-            status_code=getattr(exc, "status_code", 429), detail=str(exc)
-        ) from exc
+    except quota.QuotaExceeded:
+        # 429 + code=quota_exceeded 由 main.py 统一映射（M7a 稳定错误码）。
+        raise
     except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
         _raise_generation_error(exc)
         raise  # pragma: no cover - _raise_generation_error 必抛

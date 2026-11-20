@@ -403,7 +403,7 @@ sudo -u ln "${EDITOR:-vi}" .env
 | `DEFAULT_MODEL` | `deepseek-chat` |
 | `DEEPSEEK_API_KEY` | 你的 Key |
 | `MODEL_ROUTE_ZH_CN` | `deepseek-chat` |
-| `MODEL_ROUTE_VI_VN` | `qwen-flash,qwen-plus,deepseek-chat`（有 Qwen Key 才生效） |
+| `MODEL_ROUTE_VI_VN` | `deepseek-chat`（M7a：Qwen 缺可核实单价，已从路线移除） |
 | `QWEN_BASE_URL` | 香港/海外 VPS 用国际站；Key 必须同站 |
 | `FEISHU_*` | 先留空/关闭，等 §8 再开 |
 | `APP_VERSION` | 可填本次 commit/tag，便于 healthz 核对 |

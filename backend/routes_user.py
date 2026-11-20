@@ -15,7 +15,7 @@ import tempfile
 import threading
 import time
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import AliasChoices, BaseModel, Field
 
 try:  # Unix 下用 fcntl 做跨进程文件锁；Windows 退化为进程内线程锁。
@@ -23,12 +23,12 @@ try:  # Unix 下用 fcntl 做跨进程文件锁；Windows 退化为进程内线�
 except ImportError:  # pragma: no cover - 项目只在 macOS/Linux 上跑
     fcntl = None
 
+import ai_auth
 import languages
 import llm
 import local_dict
 import storage
 from ai import quota
-from ai.ledger import QuotaExceeded
 from config import DEFAULT_MODEL, MODEL_CATALOG, model_route_for, resolve_model
 
 router = APIRouter()
@@ -157,7 +157,8 @@ def _dict_model_candidates() -> list:
     ordered = [resolve_model(None), DICT_MODEL, DICT_FALLBACK_MODEL]
     ordered += [m for m in MODEL_CATALOG if m not in ordered]
     deduped = list(dict.fromkeys(ordered))  # DICT_FALLBACK_MODEL 现在是 DEFAULT_MODEL 的别名，去重
-    return [m for m in deduped if llm.is_available(m)]
+    # M7a：自动候选只收有可核实单价的模型；显式选择走 _dict_models_for_request。
+    return [m for m in deduped if llm.is_usable(m)]
 
 
 def _dict_candidates_for_target(target_lang: str | None = None) -> list:
@@ -176,7 +177,7 @@ def _dict_candidates_for_target(target_lang: str | None = None) -> list:
     ordered += [DICT_MODEL, DICT_FALLBACK_MODEL]
     ordered += list(MODEL_CATALOG)
     deduped = list(dict.fromkeys(ordered))
-    return [m for m in deduped if llm.is_available(m)]
+    return [m for m in deduped if llm.is_usable(m)]
 
 
 def _dict_models_for_request(preferred: str | None, target_lang: str | None = None) -> list:
@@ -242,7 +243,14 @@ def _load_dict_cache(target_lang: str | None = None) -> dict:
 
 
 @router.post("/api/define")
-async def define_word(request: DefineRequest):
+async def define_word(request: DefineRequest, http_request: Request):
+    """查词（会触发 AI）：M7a 起仅登录用户可用；游客/匿名 403 login_required。
+
+    缓存/本地词典命中时不调用模型、不扣费，但仍要求登录（统一 AI 入口策略，
+    前端 M7b 也据此在打开词典前先弹登录）。
+    """
+    user = ai_auth.require_ai_user(http_request)
+    user_id = str(user["id"])
     lang = _target_lang_or_400(request.target_lang)
     word = request.word.strip()
     if not word or len(word) > 100:
@@ -305,17 +313,12 @@ Rules for "senses":
     # `_dict_models_for_request()` 原候选链兜底，而不是挤掉候选链首位。
     preferred = request.model if request.model in MODEL_CATALOG else None
 
-    # AI 硬闸：词典是每用户 200 次/日的第三层配额之一；超限返回 429（前端提示
+    # AI 硬闸：词典是每用户 200 次/日的第三层配额之一；超限 429（前端提示
     # 「今天的 AI 额度用完了」）。预算超限（BudgetExceeded 是其子类）同走这里。
-    # 目标语言只进账本维度，不拆限额。
-    # 游客同样记账（guest:<sha256>）：配额/全站日预算都算得到匿名用量。
-    user_id = storage.active_identity()
-    try:
-        quota.check_and_consume_quota(user_id, "define", target_lang=lang)
-    except QuotaExceeded as e:
-        raise HTTPException(
-            status_code=getattr(e, "status_code", 429), detail=str(e)
-        ) from e
+    # 目标语言只进账本维度，不拆限额；配额异常由 main.py 统一映射成
+    # code=quota_exceeded/budget_exceeded（M7a 稳定错误码）。
+    # 账本归属必须是真实登录用户（M7a：游客在没有 user 时已在上方 403）。
+    quota.check_and_consume_quota(user_id, "define", target_lang=lang)
 
     for model_id in _dict_models_for_request(preferred, lang):
         try:

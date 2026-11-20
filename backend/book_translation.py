@@ -505,17 +505,20 @@ async def _call_llm(prompt: str, model: str) -> str:
 async def _translate_batch(
     batch: Sequence[tuple[int, str]],
     lang: str,
+    user_id: str,
     candidates: Sequence[str],
 ) -> tuple[dict[int, str], str | None, str | None]:
-    """按降级链翻译一批；返回 ``({idx: 译文}, 实际模型, 最后错误)``。"""
+    """按降级链翻译一批；返回 ``({idx: 译文}, 实际模型, 最后错误)``。
+
+    ``user_id`` 必须是触发本次翻译的登录用户（M7a）：账本/预占/结算都归他，
+    不再把公版书翻译记成匿名或 ``billable=0``。
+    """
     expected = {idx for idx, _ in batch}
     prompt = _build_translation_prompt(batch, lang)
     last_error: str | None = None
     for candidate in candidates:
         try:
-            # 账本归属：公开路由没有游客身份时记匿名（user_id=NULL），
-            # 已登录用户则回落到 storage.active_identity() 的用户 id。
-            with llm.usage_scope(FEATURE, None, target_lang=lang):
+            with llm.usage_scope(FEATURE, user_id, target_lang=lang):
                 raw = await _call_llm(prompt, candidate)
             parsed = _parse_translation_json(raw, expected, lang)
             if parsed:
@@ -620,6 +623,7 @@ async def translate_chapter(
     lang: str,
     *,
     rate_limit_key: str | None = None,
+    user_id: str,
 ) -> dict:
     """翻译一章的缺失段落并写全局缓存；返回完整章节 payload + ``cached`` 标记。
 
@@ -694,7 +698,7 @@ async def translate_chapter(
         for position, batch in enumerate(batches):
             used_batches += 1
             translations, used_model, error = await _translate_batch(
-                batch, lang, candidates
+                batch, lang, user_id, candidates
             )
             last_error = error or last_error
             batch_indices = {idx for idx, _ in batch}
@@ -770,6 +774,7 @@ async def translate_chapter_with_timeout(
     lang: str,
     *,
     rate_limit_key: str | None = None,
+    user_id: str,
 ) -> dict:
     """``translate_chapter`` + 整章超时（路由统一调用；超时抛 504 语义错误）。"""
     timeout = translate_timeout_seconds()
@@ -781,6 +786,7 @@ async def translate_chapter_with_timeout(
                 number,
                 lang,
                 rate_limit_key=rate_limit_key,
+                user_id=user_id,
             ),
             timeout=timeout,
         )

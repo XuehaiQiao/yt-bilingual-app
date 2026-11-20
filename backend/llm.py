@@ -153,11 +153,18 @@ def _billing_chain(feature: str, model_key: str) -> list[str]:
 
 
 def _billing_begin(scope: dict | None, model_key: str, prompt: str) -> dict:
-    """调用前预占余额（M3a）。
+    """调用前预占余额（M3a；M7a 起默认严格）。
 
-    返回状态字典供 :func:`_billing_finish` / :func:`_billing_abort` 使用；任何
-    「计费不可用」都降级为 ``degraded=True``（照常调用、账本标未计费），但
-    **余额不足会抛 402**（由路由/全局处理器映射，不允许回落到 mock）。
+    返回状态字典供 :func:`_billing_finish` / :func:`_billing_abort` 使用。
+    严格模式（``config.BILLING_STRICT``，默认开）：
+
+    - 没有登录 user（游客/匿名但带了 feature scope）→ 403 ``login_required``；
+    - 计费表未迁移 → 503 ``billing_unavailable``；
+    - 模型没有可核实单价 → 503 ``model_unpriced``（**绝不** billable=0 继续调）；
+    - 余额不足 → 402（路由/全局处理器映射）。
+
+    非严格模式只保留旧的降级行为（缺价/游客 billable=0），作为迁移前旧部署的
+    临时回滚逃生门，生产不得关闭。
     """
     state: dict = {
         "enabled": False,
@@ -167,31 +174,44 @@ def _billing_begin(scope: dict | None, model_key: str, prompt: str) -> dict:
         "request_id": None,
         "schema": True,
         "degraded": False,
+        "strict": billing.strict_mode(),
         "feature": None,
         "target_lang": None,
     }
     if not getattr(config, "AI_USAGE_LOGGING", True):
         return state
     if not scope or not scope.get("feature"):
+        # 脚本/旧调用没有声明 scope：不记账（不是用户请求，路由鉴权已另行负责）。
         return state
+    strict = state["strict"]
     state["feature"] = scope["feature"]
     state["target_lang"] = scope.get("target_lang")
     user = _billing_user(scope)
     if not user:
-        # 游客/匿名：没有余额账户，只记账不扣费（日配额/全站预算仍然生效）。
+        if strict:
+            # 游客/匿名不允许调用 AI：403 而不是 401（见 ai_auth.py 说明）。
+            raise billing.LoginRequired()
+        # 非严格（回滚）：游客/匿名只记账不扣费（旧行为）。
         state["enabled"] = True
         return state
     state["user"] = user
     state["request_id"] = observability.current_request_id()
     try:
         if not billing.schema_ready():
+            if strict:
+                raise billing.BillingUnavailable(
+                    "计费表未就绪（未运行 `alembic upgrade head` / 0025），"
+                    "严格计费已拒绝本次 AI 调用。"
+                )
             state["schema"] = False
             return state
         state["enabled"] = True
         price = billing.price_for_model(model_key)
         state["price"] = price
         if price is None:
-            # 缺价模型：billable=0，不预占、不扣余额；仍记录 token/上界成本。
+            if strict:
+                raise billing.ModelUnpriced(model_key)
+            # 非严格（回滚）：缺价模型 billable=0，不预占、不扣余额。
             logger.warning(
                 "模型 %s 没有可核实单价：本次调用不扣余额（billable=0）；"
                 "请在 model_prices 补价。",
@@ -216,18 +236,22 @@ def _billing_begin(scope: dict | None, model_key: str, prompt: str) -> dict:
                     state["feature"],
                 )
         return state
-    except billing.InsufficientBalance:
-        # 402 必须让用户看到，不能降级成 mock。
+    except billing.BalanceNotFound as exc:
+        # 用户行/余额行不存在（脚本/测试/已删除账号）：生产登录用户不该出现。
+        if strict:
+            raise billing.BillingUnavailable(
+                "账户余额记录不存在，暂时无法进行计费调用；请联系管理员。"
+            ) from exc
+        state["degraded"] = True
+        return state
+    except billing.BillingError:
+        # 402 / 403 / 503 必须让用户看到，不能降级成 mock 或免费调用。
         raise
-    except billing.BillingUnavailable as exc:
-        logger.warning("余额表不可用（未迁移 0025？），本次调用按未计费处理：%s", exc)
-        state["degraded"] = True
-        return state
-    except billing.BalanceNotFound:
-        # 用户行不存在（脚本/测试/已删除）：没有余额账户，按未计费处理。
-        state["degraded"] = True
-        return state
-    except Exception:  # noqa: BLE001 - 账务故障不能把 AI 功能打死
+    except Exception:  # noqa: BLE001 - 账务故障不能把 AI 功能打死（仅非严格）
+        if strict:
+            raise billing.BillingUnavailable(
+                "计费预占失败，严格计费已拒绝本次 AI 调用。"
+            )
         logger.exception("预占余额失败（按未计费继续，已记录 hold 状态）：user=%r", user)
         state["degraded"] = True
         return state
@@ -421,9 +445,24 @@ def is_available(model: str | None) -> bool:
     return True
 
 
+def is_usable(model: str | None) -> bool:
+    """**严格计费下**可参与自动选路/降级链的模型。
+
+    = Key/端点可用 + 有可核实单价（``model_prices``/目录价）。没有单价的模型
+    只能在用户显式选择时由 ``_billing_begin`` 拒绝（503 ``model_unpriced``），
+    不允许悄悄进入自动候选链变成「免费调用」。
+    """
+    if not is_available(model):
+        return False
+    if not billing.strict_mode():
+        return True
+    model_key = model if model in MODEL_CATALOG else DEFAULT_MODEL
+    return billing.is_priced(model_key)
+
+
 def recommended_models_for_target(target_lang: str | None = None) -> list[str]:
-    """某目标语言路线中「Key/端点已配置」的模型 id 序列（保持路线顺序）。"""
-    return [mid for mid in config.model_route_for(target_lang) if is_available(mid)]
+    """某目标语言路线中「Key/端点已配置且（严格计费下）有价」的模型 id 序列。"""
+    return [mid for mid in config.model_route_for(target_lang) if is_usable(mid)]
 
 
 def resolve_model_for_target(
@@ -431,12 +470,13 @@ def resolve_model_for_target(
 ) -> str:
     """按目标语言解析要用的模型（specs/012 §5.5）。
 
-    1. ``requested`` 在目录里且可用 → 用它（用户显式选择优先）；
-    2. 该语言首选（``DEFAULT_MODEL_<LANG>``）可用 → 用它；
-    3. 该语言路线里第一个可用模型；
-    4. ``DEFAULT_MODEL``（全局兜底）可用 → 用它；
-    5. 目录里第一个可用模型；
-    6. 全不可用 → 返回 ``DEFAULT_MODEL``，让调用层抛出清晰的「未配置 Key」错误，
+    1. ``requested`` 在目录里且可用 → 用它（用户显式选择优先；显式选了缺价
+       模型时由计费层 503 ``model_unpriced``，不静默换成别的模型）；
+    2. 该语言首选（``DEFAULT_MODEL_<LANG>``）可用且有价 → 用它；
+    3. 该语言路线里第一个可用且有价的模型；
+    4. ``DEFAULT_MODEL``（全局兜底）可用且有价 → 用它；
+    5. 目录里第一个可用且有价的模型；
+    6. 全不可用 → 返回 ``DEFAULT_MODEL``，让调用层抛出清晰的「未配置 Key/缺价」错误，
        **不假装成功**。
     """
     if requested and requested in MODEL_CATALOG and is_available(requested):
@@ -444,18 +484,18 @@ def resolve_model_for_target(
 
     lang = languages.normalize_code(target_lang) or languages.DEFAULT_TARGET_LANG
     lang_default = config.default_model_for_target(lang)
-    if lang_default in MODEL_CATALOG and is_available(lang_default):
+    if lang_default in MODEL_CATALOG and is_usable(lang_default):
         return lang_default
 
     for model_id in config.model_route_for(lang):
-        if is_available(model_id):
+        if is_usable(model_id):
             return model_id
 
-    if is_available(config.DEFAULT_MODEL):
+    if is_usable(config.DEFAULT_MODEL):
         return config.DEFAULT_MODEL
 
     for model_id in MODEL_CATALOG:
-        if is_available(model_id):
+        if is_usable(model_id):
             return model_id
 
     return config.DEFAULT_MODEL
@@ -522,9 +562,14 @@ def _generate_openai_compatible(prompt: str, spec: dict, json_mode: bool) -> tup
 def generate(prompt: str, model: str | None = None, *, json_mode: bool = False) -> str:
     """按模型的 kind 分派；调用失败直接抛异常，由上层决定降级策略。
 
-    M3a：真实账号在调用前预占余额、调用后按 provider usage 结算；余额不足抛
-    :class:`billing.InsufficientBalance`（402），**不会被降级链当成模型失败**。
-    缺价模型 ``billable=0``：不预占、不扣余额，只记用量。
+    M3a/M7a：调用前预占余额、调用后按 provider usage 结算。严格模式（默认）下：
+
+    - 没有登录 user → 403 ``login_required``；
+    - 模型没有可核实单价 → 503 ``model_unpriced``（不调用 provider）；
+    - 余额不足 → 402 ``insufficient_balance``。
+
+    这些异常都**不会被降级链当成模型失败**。``BILLING_STRICT=0`` 仅作迁移前
+    旧部署的回滚逃生门（缺价/游客 billable=0，只记用量）。
     """
     spec = _spec(model)
     kind = spec.get("kind", "google")

@@ -44,6 +44,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, Field
 
+import ai_auth
 import book_translation
 import books
 import languages
@@ -147,9 +148,8 @@ async def _attach_chapter_analysis(
     """
     if not level:
         return payload
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(status_code=403, detail="教学分析需要登录后使用。")
+    # 教学分析会调用 AI：M7a 起只有登录用户可用（403 login_required）。
+    user = ai_auth.require_ai_user(request)
     try:
         teaching_analysis.normalize_level(level)
     except teaching_analysis.AnalysisInvalidRequest as exc:
@@ -244,6 +244,8 @@ async def translate_book_chapter(
     目标语言优先取查询参数 ``lang`` / ``targetLang``，其次取 JSON body 的
     ``targetLang`` / ``target_lang``；都缺省按 ``zh-CN``。
     """
+    # 会触发 AI 翻译：M7a 起仅登录用户可用（游客/匿名 403 login_required）。
+    user_id = ai_auth.require_ai_user_id(request)
     raw_lang = lang if lang is not None else targetLang
     if raw_lang is None and payload is not None:
         raw_lang = payload.target_lang
@@ -256,6 +258,7 @@ async def translate_book_chapter(
             number,
             resolved,
             rate_limit_key=_rate_limit_key(request),
+            user_id=user_id,
         )
     except books.BookNotFound:
         raise HTTPException(status_code=404, detail="章节不存在或尚未导入。") from None

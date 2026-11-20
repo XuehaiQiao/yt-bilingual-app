@@ -4,16 +4,16 @@
 
 1. 首次访问 `/api/auth/me` 下发 `ln_guest`（32 字节随机、httpOnly、SameSite=Lax、
    30 天），返回 `{user:null, guest:true}`；再次访问不换 Cookie；
-2. 游客估价/查词可用，写入 `data/guests/<sha256>/`，不写旧 `HISTORY_DIR`、
-   不写任何用户目录；目录名是 sha256(token) 而不是 token 原文；
+2. 游客估价可用；**所有会触发 AI 的入口（查词/视频/字幕/本地视频/书籍翻译）
+   M7a 起一律 403 `login_required`**：游客不再产生 AI 缓存/AI 账本；
 3. 游客之间数据隔离；非法形状/伪造的 `ln_guest` 不会变成有效身份，也读不到
    别人的数据；
-4. 游客更紧的限速（估价/处理/查词各自单独配置）与累计「1 个视频」试译上限：
-   新视频 403 提示登录，已缓存视频仍可打开；
+4. 游客更紧的限速（估价等）仍生效；AI 入口的登录闸先于限速（403 而不是 429）；
 5. 登录后 `POST /api/auth/claim-guest` 合并 history / favorites / subscriptions：
    同 videoId、同收藏指纹、同订阅键去重且用户数据优先；游客目录删除、Cookie
-   清除；重复 claim 幂等（claimed=false、计数全 0）；
-6. 游客的 AI 用量归属 `guest:<sha256>`（计入配额/全站预算，不匿名绕过）。
+   清除；重复 claim 幂等（claimed=false、计数全 0）；合并的是游客**历史上**
+   已落盘的数据（M7a 之后游客不再新增 AI 缓存）；
+6. 游客调用 AI 不产生任何用量归属（不再有 `guest:<sha256>` 的 AI 账本行）。
 
 全部离线：字幕/元数据/LLM 全部 monkeypatch；目录与数据库都在 tmp_path。
 """
@@ -89,6 +89,33 @@ def _install_video_fakes(monkeypatch):
         lambda prompt, model=None: json.dumps(TRANSLATION_PAYLOAD, ensure_ascii=False),
     )
     monkeypatch.setattr(llm, "generate_text", lambda prompt, model=None: "游客总结")
+
+
+def _seed_guest_history(guest_client, video_id: str = VIDEO_ID) -> Path:
+    """直接给游客目录写一份历史缓存（模拟 M7a 之前游客已落盘的数据）。"""
+    history = _guest_dir(guest_client) / "history"
+    history.mkdir(parents=True, exist_ok=True)
+    path = history / f"Guest_20260101_{video_id}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "videoId": video_id,
+                "metadata": METADATA,
+                "transcript": [],
+                "summary": "",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _assert_login_required(response):
+    assert response.status_code == 403, response.text
+    body = response.json()
+    assert body.get("code") == "login_required", body
+    return body
 
 
 def _install_define_fakes(monkeypatch):
@@ -212,17 +239,19 @@ def test_invalid_or_forged_guest_cookie_is_replaced_and_isolated(make_client):
 # 2. 写入位置 / 游客隔离
 # ---------------------------------------------------------------------------
 
-def test_guest_define_writes_under_guests_and_not_legacy_dir(make_client, monkeypatch):
+def test_guest_define_is_rejected_and_writes_nothing(make_client, monkeypatch):
+    """M7a：查词会触发 AI，游客一律 403 login_required；不写缓存/不调模型。"""
+    calls: list[str] = []
     _install_define_fakes(monkeypatch)
+    monkeypatch.setattr(
+        llm, "generate_json", lambda prompt, model=None: calls.append("called")
+    )
     with make_client() as client:
         client.get("/api/auth/me")
         response = client.post("/api/define", json={"word": "guestword"})
-        assert response.status_code == 200, response.text
-
-        cache_file = _guest_dir(client) / "history" / "dictionary_cache.json"
-        assert cache_file.exists(), "游客查词缓存必须落在 data/guests/<sha256>/"
-        assert "guestword" in json.loads(cache_file.read_text(encoding="utf-8"))
-
+        _assert_login_required(response)
+        assert calls == []
+        assert not (_guest_dir(client) / "history" / "dictionary_cache.json").exists()
         # 不能写共享回落目录，也不能写任何用户目录
         assert list(Path(config.HISTORY_DIR).glob("*.json")) == []
         user_root = Path(config.USER_DATA_DIR)
@@ -230,16 +259,9 @@ def test_guest_define_writes_under_guests_and_not_legacy_dir(make_client, monkey
 
 
 def test_guest_and_user_data_are_isolated(make_client, monkeypatch):
-    _install_video_fakes(monkeypatch)
     with make_client() as guest_client:
         guest_client.get("/api/auth/me")
-        # 换游客专属限速，避免下面的两段请求撞到默认 2 次/分钟
-        monkeypatch.setattr(
-            config, "RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE", 10, raising=False
-        )
-        ratelimit.reset_rate_limits()
-        processed = guest_client.post("/api/process-video", json={"url": VALID_URL})
-        assert processed.status_code == 200, processed.text
+        _seed_guest_history(guest_client)
         guest_files = list((_guest_dir(guest_client) / "history").glob("*.json"))
         assert len(guest_files) == 1
 
@@ -293,19 +315,18 @@ def test_guest_estimate_is_available_and_rate_limited(make_client, monkeypatch):
         assert int(second.headers["Retry-After"]) >= 1
 
 
-def test_guest_define_is_rate_limited(make_client, monkeypatch):
+def test_guest_define_is_403_before_rate_limit(make_client, monkeypatch):
+    """认证先于限流（M7a）：连续请求都是 403 login_required，不会变成 429。"""
     _install_define_fakes(monkeypatch)
     monkeypatch.setattr(config, "RATE_LIMIT_GUEST_DEFINE_PER_MINUTE", 1, raising=False)
     ratelimit.reset_rate_limits()
     with make_client() as client:
         client.get("/api/auth/me")
-        assert client.post("/api/define", json={"word": "guestword"}).status_code == 200
-        limited = client.post("/api/define", json={"word": "another"})
-        assert limited.status_code == 429
-        assert int(limited.headers["Retry-After"]) >= 1
+        _assert_login_required(client.post("/api/define", json={"word": "guestword"}))
+        _assert_login_required(client.post("/api/define", json={"word": "another"}))
 
 
-def test_guest_process_video_is_rate_limited(make_client, monkeypatch):
+def test_guest_process_video_is_403_before_rate_limit(make_client, monkeypatch):
     _install_video_fakes(monkeypatch)
     monkeypatch.setattr(
         config, "RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE", 1, raising=False
@@ -313,34 +334,45 @@ def test_guest_process_video_is_rate_limited(make_client, monkeypatch):
     ratelimit.reset_rate_limits()
     with make_client() as client:
         client.get("/api/auth/me")
-        assert client.post("/api/process-video", json={"url": VALID_URL}).status_code == 200
-        limited = client.post("/api/process-video", json={"url": OTHER_URL})
-        assert limited.status_code == 429
-        assert int(limited.headers["Retry-After"]) >= 1
+        _assert_login_required(
+            client.post("/api/process-video", json={"url": VALID_URL})
+        )
+        _assert_login_required(
+            client.post("/api/process-video", json={"url": OTHER_URL})
+        )
 
 
-def test_guest_can_translate_one_video_then_must_login(make_client, monkeypatch):
+def test_guest_ai_entries_all_return_403_login_required(make_client, monkeypatch):
+    """M7a：所有 AI 入口对游客都是 403 login_required（不是 401、不是 429）。"""
     _install_video_fakes(monkeypatch)
-    monkeypatch.setattr(
-        config, "RATE_LIMIT_GUEST_PROCESS_VIDEO_PER_MINUTE", 10, raising=False
-    )
-    monkeypatch.setattr(config, "GUEST_MAX_TRANSLATED_VIDEOS", 1, raising=False)
     ratelimit.reset_rate_limits()
     with make_client() as client:
         client.get("/api/auth/me")
-
-        first = client.post("/api/process-video", json={"url": VALID_URL})
-        assert first.status_code == 200, first.text
-        assert guest.count_translated_videos(_guest_hash(client)) == 1
-
-        second = client.post("/api/process-video", json={"url": OTHER_URL})
-        assert second.status_code == 403
-        assert "登录" in second.json()["detail"]
-        assert second.headers.get("X-Guest-Limit") == "translate"
-
-        # 已试译的视频仍能打开（命中缓存，不再花钱/不再拦）
-        cached = client.post("/api/process-video", json={"url": VALID_URL})
-        assert cached.status_code == 200, cached.text
+        _assert_login_required(
+            client.post("/api/process-video", json={"url": VALID_URL})
+        )
+        _assert_login_required(
+            client.post("/api/process-video-stream", json={"url": VALID_URL})
+        )
+        _assert_login_required(
+            client.post("/api/define", json={"word": "guestword"})
+        )
+        _assert_login_required(
+            client.post(
+                "/api/process-subtitle",
+                json={"show_id": "x", "season": 1, "episode": 1},
+            )
+        )
+        _assert_login_required(
+            client.post(
+                "/api/local-video/process",
+                json={"blocks": [{"id": 1, "start": 0, "end": 1, "en": "hi"}]},
+            )
+        )
+        _assert_login_required(
+            client.post("/api/books/test-book/chapters/2/translate")
+        )
+        assert guest.count_translated_videos(_guest_hash(client)) == 0
 
 
 def test_guest_translation_cap_counts_youtube_and_local_episode_files(
@@ -363,22 +395,20 @@ def test_guest_translation_cap_counts_youtube_and_local_episode_files(
             guest.ensure_can_translate(_guest_hash(client))
 
 
-def test_guest_usage_is_attributed_to_hashed_guest_identity(make_client, monkeypatch):
-    _install_define_fakes(monkeypatch)
-    captured: dict[str, str] = {}
+def test_guest_ai_call_never_reaches_quota_or_ledger(make_client, monkeypatch):
+    """M7a：游客在鉴权层就被拦下，不会扣配额、不会产生 guest 账本行。"""
+    captured: list = []
 
-    def fake_quota(user_id, feature, units=1, **kwargs):
-        captured["user_id"] = user_id
-        captured["feature"] = feature
-        return {"allowed": True, "feature": feature}
+    def fake_quota(*args, **kwargs):
+        captured.append((args, kwargs))
+        raise AssertionError("游客不应进入配额/计费层")
 
     monkeypatch.setattr(routes_user.quota, "check_and_consume_quota", fake_quota)
     with make_client() as client:
         client.get("/api/auth/me")
         response = client.post("/api/define", json={"word": "guestword"})
-        assert response.status_code == 200, response.text
-        assert captured["user_id"] == guest.guest_id(_guest_hash(client))
-        assert guest.parse_guest_id(captured["user_id"]) == _guest_hash(client)
+        _assert_login_required(response)
+        assert captured == []
 
 
 # ---------------------------------------------------------------------------
@@ -407,7 +437,7 @@ def test_claim_merges_data_and_clears_guest(make_client, monkeypatch):
             "/api/subscriptions",
             json={"subscriptions": [{"id": "chan-1", "name": "Channel One"}]},
         ).status_code == 200
-        assert client.post("/api/process-video", json={"url": VALID_URL}).status_code == 200
+        _seed_guest_history(client)
         guest_history_files = list((Path(config.GUEST_DATA_DIR) / guest_hash / "history").glob("*.json"))
         assert len(guest_history_files) == 1
 
@@ -473,7 +503,7 @@ def test_claim_dedupes_by_video_id_and_favorite_fingerprint_with_user_priority(
         assert first_favorite.status_code == 201
         second_favorite = client.post("/api/favorites", json=OTHER_FAVORITE)
         assert second_favorite.status_code == 201
-        assert client.post("/api/process-video", json={"url": VALID_URL}).status_code == 200
+        _seed_guest_history(client)
         guest_history_file = next(
             (Path(config.GUEST_DATA_DIR) / guest_hash / "history").glob("*.json")
         )

@@ -51,9 +51,11 @@
 - 无会话、有合法 `ln_guest` → 游客，数据写 `data/guests/<sha256>/`；
 - 都没有 → 中间件下发新的 32 字节随机 `ln_guest`，本请求即游客（所以
   `GET /api/auth/me` 首次访问就能返回 `{user:null, guest:true}`）；
-- 除认证路由自己要求的登录（如 `claim-guest`）外，`/api/*` 均允许游客访问；
-  游客的估价/处理/查词走更紧的进程内限速（见 ratelimit.py），翻译总量也
-  有累计上限（见 routes_videos.py / routes_content.py）。
+- 除认证路由自己要求的登录（如 `claim-guest`）外，纯读取 `/api/*` 允许游客
+  访问；**所有会触发 AI 的入口（查词/视频/字幕/本地视频/书籍翻译）游客一律
+  403 `login_required`**（M7a，specs/036）：中间件在认证后、限流前统一拦，
+  路由里的 `ai_auth.require_ai_user` 是第二道防线。游客的估价仍走更紧的
+  进程内限速（见 ratelimit.py）。
 - `/api/blog/*`、`/api/library/*`、`/api/books*` 是**公开只读**内容（与
   /api/auth、/health 同列）：不需要登录，中间件也不为它们创建游客身份、
   不下发 `ln_guest`；博客只来自仓库内 Markdown，免费资源库只来自仓库内 JSON，
@@ -64,6 +66,7 @@
 
 Starlette 里后注册的中间件更靠外层，所以 CORS 放在文件最后注册。
 """
+import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -78,6 +81,7 @@ import events
 import guest
 import observability
 import ratelimit
+from ai.ledger import QuotaExceeded
 import routes_ability
 import routes_account
 import routes_account_lifecycle
@@ -144,6 +148,26 @@ async def billing_error_handler(_request, exc: billing.BillingError):
     )
 
 
+@app.exception_handler(QuotaExceeded)
+async def quota_exceeded_handler(_request, exc: QuotaExceeded):
+    """配额/预算超限统一映射（M7a）：429 + 稳定 ``code``。
+
+    ``code=quota_exceeded``（功能日配额）/``budget_exceeded``（用户/全站日预算）
+    与 402 ``insufficient_balance`` 是三个独立语义，前端 M7b 直接读 code。
+    以前各路由各自转 HTTPException，响应体只有中文 detail，前端无法稳定判断。
+    """
+    payload = (
+        exc.payload()
+        if hasattr(exc, "payload")
+        else {"detail": str(exc), "code": "quota_exceeded"}
+    )
+    return JSONResponse(
+        status_code=int(getattr(exc, "status_code", 429)),
+        content=payload,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 def _is_api_path(path: str) -> bool:
     return path == "/api" or path.startswith("/api/")
 
@@ -166,6 +190,41 @@ _PUBLIC_API_EXACT = frozenset(
         "/api/content/difficulty",
     }
 )
+
+
+# M7a：会调用大模型的入口（游客/匿名必须在**路由解析/限流之前** 403）。
+# 这里的路径判定只做「明显会生成」的入口；路由内的 ai_auth.require_ai_user
+# 是第二道防线（覆盖未来新增入口与 GET 触发生成的场景）。
+_AI_GATE_EXACT = frozenset(
+    {
+        "/api/define",
+        "/api/process-video",
+        "/api/process-video-stream",
+        "/api/process-subtitle",
+        "/api/local-video/process",
+    }
+)
+_AI_BOOK_TRANSLATE_RE = re.compile(r"^/api/books/[^/]+/chapters/[^/]+/translate$")
+_AI_BOOK_CHAPTER_RE = re.compile(r"^/api/books/[^/]+/chapters/[^/]+$")
+
+
+def _is_ai_generation_request(request) -> bool:
+    """请求是否会触发 AI 生成（仅用于登录闸；缓存/公开读不在其中）。"""
+    path = request.url.path
+    if request.method == "OPTIONS":
+        return False
+    if path in _AI_GATE_EXACT:
+        return True
+    if request.method == "POST" and _AI_BOOK_TRANSLATE_RE.match(path):
+        return True
+    # 公版书章节 GET 默认只读；显式带 ?level= 才生成教学分析。
+    if (
+        request.method == "GET"
+        and _AI_BOOK_CHAPTER_RE.match(path)
+        and request.query_params.get("level")
+    ):
+        return True
+    return False
 
 
 def _is_public_api_path(path: str) -> bool:
@@ -261,6 +320,16 @@ async def resolve_identity(request, call_next):
         return JSONResponse(
             status_code=503,
             content={"detail": "系统维护中，请稍后重试。"},
+            headers={"Cache-Control": "no-store"},
+        )
+
+    # 认证先于限流（M7a / 项目提案 §5.5）：游客/匿名访问 AI 生成入口一律 403
+    # login_required，不再先消耗限速额度、也不会变成 429。不用 401：前端把 401
+    # 当成会话过期并登出。
+    if user is None and _is_ai_generation_request(request):
+        return JSONResponse(
+            status_code=403,
+            content=billing.LoginRequired().payload(),
             headers={"Cache-Control": "no-store"},
         )
 

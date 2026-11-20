@@ -7,6 +7,8 @@
 
 > **默认模型是 `deepseek-chat`**（DeepSeek，国内可直连，大陆首发商用默认）；Gemini 三档保留在 `MODEL_CATALOG` 里作为**海外可选**（大陆不可用/不合规）。默认模型可用环境变量 `DEFAULT_MODEL` 覆盖（必须是目录里的 id，非法值回落 `deepseek-chat`），`/api/models` 的 `default` 字段与 `resolve_model(None)` 都跟随它。
 
+> **AI 必须登录 + 必须扣余额（M7a，specs/036）**：所有会触发 AI 的入口（`/api/define`、`/api/process-video*`、`/api/process-subtitle`、`/api/local-video/process`、`POST /api/books/…/translate`、discover/reading/lesson/course/teaching-analysis、导入书翻译）对游客/匿名一律 **403 `{code:"login_required"}`**（不用 401）。登录用户每次真实模型调用都绑定 `user_id` 并预占/结算余额；模型缺可核实单价 → **503 `{code:"model_unpriced"}`** 且不调用厂商；余额不足 402、日配额/预算 429（稳定 `code`）。纯缓存读取（公开书章节、游客已落盘的历史）不会触发 AI，也不扣费。
+
 ## 文件说明
 
 | 文件 | 职责 |
@@ -19,7 +21,8 @@
 | `auth_db.py` | 用户与会话 SQLite：建表/补列、Argon2id 密码哈希/校验、会话 token（库里只存 sha256）、过期清理、登录失败常量时间处理。`users` 自 0013 起带 `username` / `credits` / `status`，0025 起带整数 `balance_micro_usd`（旧 `credits` 冻结，不参与扣费）；`create_user_with_bonus()` 在同一 `BEGIN IMMEDIATE` 事务里建用户 + 发 $2.00 + 写 `signup_bonus` 流水 + 建会话；`users`/`sessions` 的建表是**兼容路径**，新表一律走 Alembic |
 | `invites.py` | **邀请码（M1 G1 / specs/032）**：12 位 Crockford Base32（≈60 bit）生成、归一化、HMAC-SHA256 摘要（不存明文）；管理员创建/分页状态过滤/幂等撤销；`BEGIN IMMEDIATE` 内「校验/占码 → 建 user(含 $2.00 开户余额 + `signup_bonus` 流水) → redemption → session」，失败整笔回滚不消耗码、不发余额；创建/撤销写结构化审计日志（不含明文）；表由 `0023_invite_registration` 创建 |
 | `account.py` | 账号资料与运营设置（specs/023）：用户名 2–24 字符校验、`PATCH /api/user/profile` 的落库、余额原子调账（`BEGIN IMMEDIATE` + `credit_transactions` 流水、不允许负余额）、封禁/解封规则（不能封自己/最后一个管理员）、`app_settings` 读写与**维护模式 5 秒进程内缓存**、用户页摘要（本月 AI 花费 / 今日分钟 / 版本） |
-| `billing.py` | **余额与 AI 计费（M3a / specs/034）**：金额一律整数 µUSD；`get_balance`/`available`（账面 − active holds）、管理员 `topup`/`deduct`（美元字符串 ≤6 位小数、±$100、幂等键、禁止负余额、写 `account_ledger`）、`reserve`/`settle`/`release`/`expire_stale_holds`（调用前预占、调用后按 usage 结算、失败释放、结算失败保留 hold 可重试）、`price_for_model`（`model_prices` 优先，`MODEL_CATALOG` 标 `catalog_unverified` 兜底，缺价 `billable=0` 不扣）、`billing_summary` 与迁移 0025 的兼容建表；overrun 时额外触发飞书 P1（M5）。402 语义见 `main.py` 异常处理器 |
+| `ai_auth.py` | **AI 入口登录闸（M7a / specs/036）**：`require_ai_user(request)` / `require_ai_user_id(request)` 返回登录 user（用于账本归属），游客/匿名抛 `billing.LoginRequired`（403 `login_required`，由全局异常处理器映射）。只给「会触发 AI 的入口」用；纯缓存/原文 GET 不调用它 |
+| `billing.py` | **余额与 AI 计费（M3a/M7a / specs/034、036）**：金额一律整数 µUSD；`get_balance`/`available`（账面 − active holds）、管理员 `topup`/`deduct`（美元字符串 ≤6 位小数、±$100、幂等键、禁止负余额、写 `account_ledger`）、`reserve`/`settle`/`release`/`expire_stale_holds`（调用前预占、调用后按 usage 结算、失败释放、结算失败保留 hold 可重试）、`price_for_model`（`model_prices` 优先，`MODEL_CATALOG` 标 `catalog_unverified` 兜底；严格模式下缺价即 `ModelUnpriced` 503，不再 `billable=0` 放行）、`billing_summary` 与迁移 0025 的兼容建表（M7a 起兼容路径同时补 `ai_usage`/`ai_quota` + 价格 seed，未迁移库也不会退化成免费调用）；overrun 时额外触发飞书 P1（M5）。402/403/503 语义见 `main.py` 异常处理器 |
 | `events.py` | 学习事件日志（append-only）：`emit_event()` 单条追加（失败只记日志、不阻断主流程）、`query_events()` 只读查询（仅开发/测试，不挂 HTTP 端点）、`pseudonym_for()` 假名化、`schema_status()` 迁移自检。**只有 INSERT/SELECT** |
 | `jobs.py` | 任务表 `jobs` 的读写层 + 单进程执行互斥（M1 ⑤）：`create_or_reuse`（同 user+kind+content_ref+targetLang 的未完成 job 复用，进程内锁 + 部分唯一索引兜底幂等）、`get`、`update_progress/mark_running/mark_done/mark_failed/settle_interrupted`（cursor 只增不减）、`try_acquire/release/is_active`（同一 job 同时只允许一条流生成，第二个请求 409/SSE error，杜绝重复付费）。表缺失（旧库没跑 0005）时全部降级为 no-op，只告警一次，视频处理照常 |
 | `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。功能枚举 `translate` / `summary` / `define` / `local_show` / `quiz` / `reading` / `books` / `analysis` / `course_generation`。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额**。0025 起 `ai_usage` 带计费快照列（`cost_micro_usd`/`price_version`/`price_source`/`token_source`/`billable`/`billing_status`/`hold_id`/`request_id`），`insert_usage()` 支持在调用方事务内写入；`record_usage(raise_on_failure=True)` 是计费严格模式 |
@@ -32,7 +35,7 @@
 | `run_due_deletions.py` | 到期删除安全脚本：默认 dry-run 列出，`--confirm` 才执行；`--cleanup-exports` 可顺带清理过期导出 ZIP；逐条失败不中断、非 0 退出 |
 | `guest.py` | 游客态（M1 ⑧）：32 字节随机 `ln_guest` Cookie（服务端只存 sha256）、`data/guests/<sha256>/` 隔离目录、游客累计试译上限、登录后把 `history/` / `favorites.json` / `subscriptions.json` 幂等合并到用户目录（同 videoId / 同收藏指纹 / 同订阅键去重，用户数据优先）。**不建表、不新增迁移** |
 | `storage.py` | 当前请求的数据根目录：登录用户 → `data/users/<user_id>/`；游客 → `data/guests/<sha256(ln_guest)>/`；两者都没有（脚本/测试）→ 回落 `config.HISTORY_DIR`。`history_dir(target_lang)` / `dictionary_cache_file(target_lang)` 是语言路径的**唯一入口**：`zh-CN`（缺省）→ `history/` 根目录，其他语言 → `history/<code>/`；所有用户数据路径必须从这里取。`favorites_file()` / `favorites_tombstones_file()` 是收藏主文件与删除墓碑的**唯一入口**（按用户隔离、不按语言分文件） |
-| `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」；端点支持 `base_url` 或 `base_url_env`（Qwen 等区域端点由环境变量给，不写死）。`is_available` 同时检查 Key 与必需端点；`resolve_model_for_target(requested, target_lang)` 按「用户选择 → 该语言首选 → 该语言路线 → 全局默认 → 目录首个可用」解析，未配 Key 的候选自动跳过。**SDK 调用是同步阻塞的**：async 代码必须用 `generate_json_async` / `generate_text_async`（内含全局并发闸 + `asyncio.to_thread`）；同步 `generate()` 只给脚本/测试。`concurrency_snapshot()` 暴露并发闸峰值/等待直方图。`usage_scope(feature, user_id, target_lang=…)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关）。M3a 起 `generate()` 同时是计费收口：真实账号调用前 `billing.reserve` 预占、成功后按 usage 结算/失败释放；缺价模型 `billable=0` 不扣；余额不足抛 `InsufficientBalance`（402，降级链会 re-raise） |
+| `llm.py` | 统一大模型调用层：按 `MODEL_CATALOG` 的 `kind` 分派「Google 官方 SDK」或「OpenAI 兼容 `<base_url>/chat/completions`」；端点支持 `base_url` 或 `base_url_env`（Qwen 等区域端点由环境变量给，不写死）。`is_available` 同时检查 Key 与必需端点；`resolve_model_for_target(requested, target_lang)` 按「用户选择 → 该语言首选 → 该语言路线 → 全局默认 → 目录首个可用」解析，未配 Key 的候选自动跳过。**SDK 调用是同步阻塞的**：async 代码必须用 `generate_json_async` / `generate_text_async`（内含全局并发闸 + `asyncio.to_thread`）；同步 `generate()` 只给脚本/测试。`concurrency_snapshot()` 暴露并发闸峰值/等待直方图。`usage_scope(feature, user_id, target_lang=…)` 声明调用归属后，成功调用会按 provider usage 写进 `ai_usage`（签名不变，`AI_USAGE_LOGGING=0` 可关）。M3a/M7a 起 `generate()` 同时是计费收口：严格模式（`BILLING_STRICT=1`，默认）下没有登录 user 抛 `LoginRequired`（403）、缺价模型抛 `ModelUnpriced`（503，**不调用 provider**）、余额不足抛 `InsufficientBalance`（402）；真实账号调用前 `billing.reserve` 预占、成功后按 usage 结算/失败释放。降级链会 re-raise 这些计费异常，不会回落 mock |
 | `ratelimit.py` | 进程内固定窗口限速（M1 ⑦）：注册/登录按 IP、估价/处理/查词/发现按用户；游客（M1 ⑧）同桶但更紧上限、键为 `guest:<sha256>`；超限 429 + `Retry-After`；不依赖 Redis。桶与上限见下文「安全最小集」 |
 | `auth_lockout.py` | 登录失败锁定（M1 ⑦ 残余项）：账号 + IP 双维度连续失败锁定；锁定期间正确密码也 429 + `Retry-After`；成功登录清零；只存进程内存与邮箱哈希，不存明文 |
 | `transcripts.py` | 拿到"待翻译的句子"：YouTube 字幕抓取（失败→清晰中文错误）、切句算法、SRT/VTT 解析、yt-dlp 元数据、Whisper 本地转写兜底（可选依赖）。字幕抓取先 `list()` 探测轨道（手动 en 优先，其次自动生成的 en/en-US/en-GB/en-orig 等前缀码），API 失败再用 yt-dlp 下载自动字幕 VTT 回退；返回值带 `subtitle_source` / `auto_generated`。抓取带超时 / 响应体大小 / 字幕块数上限（`_BoundedSession`，M1 ⑦ 残余项）；这些函数是同步阻塞实现，async 调用方负责放进线程 |
@@ -1299,11 +1302,12 @@ data/users/<user_id>/history/                     # zh-CN 兼容位（长期保�
 | 语言 | 代码默认路线 | 环境变量覆盖 |
 |---|---|---|
 | `zh-CN` | `deepseek-chat` → `gemini-2.5-flash` | `MODEL_ROUTE_ZH_CN` |
-| `vi-VN` | `gemini-2.5-flash` → `qwen-plus` → `deepseek-chat` | `MODEL_ROUTE_VI_VN` |
+| `vi-VN` | `deepseek-chat` | `MODEL_ROUTE_VI_VN` |
 
-- 每语言首选用 `DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN` 覆盖；全局兜底仍是 `DEFAULT_MODEL`。
-- `qwen-plus` 用 `QWEN_API_KEY` + `QWEN_BASE_URL`（国际站/大陆站端点不同，**代码不写死**）；缺任一视为不可用并跳过。
-- 大陆部署不配 `GEMINI_API_KEY` → Gemini 自动跳过，路线落到 Qwen/DeepSeek；Gemini 不进大陆降级链（降级链逻辑见 `ai/quota.py`）。
+- **M7a：路线里只能放有可核实单价的模型**（`model_prices` 有价，或目录 `in/out` 有值）。Qwen Flash/Plus 缺官方价，已从越南语路线移除；补齐官方价后再加回。
+- 每语言首选用 `DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN` 覆盖；全局兜底仍是 `DEFAULT_MODEL`。越南语默认 `deepseek-chat`（prompt 语言仍是越南语）。
+- `qwen-*` 用 `QWEN_API_KEY` + `QWEN_BASE_URL`（国际站/大陆站端点不同，**代码不写死**）；缺任一视为不可用并跳过。当前即使配置了 Key，严格计费也会因缺价返回 503。
+- 大陆部署不配 `GEMINI_API_KEY` → Gemini 自动跳过；Gemini 不进大陆降级链（降级链逻辑见 `ai/quota.py`）。自动候选链只收 priced 模型，避免「免费调用未定价模型」。
 
 ### 词典策略
 

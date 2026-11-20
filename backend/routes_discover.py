@@ -28,6 +28,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import AliasChoices, BaseModel, Field
 
 import discover
+import ai_auth
 import languages
 
 router = APIRouter(tags=["discover"])
@@ -43,11 +44,10 @@ class DiscoverRequest(BaseModel):
 
 
 def _require_login(request: Request) -> dict:
-    """内容发现需要登录用户；游客/未登录 403（不消耗游客试用额度）。"""
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(status_code=403, detail="内容发现需要登录后使用。")
-    return user
+    """内容发现（AI 改写/重排）需要登录用户；游客/未登录 403 login_required。"""
+    return ai_auth.require_ai_user(
+        request, detail="内容发现需要登录后使用。"
+    )
 
 
 @router.post("/api/discover")

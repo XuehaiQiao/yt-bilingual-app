@@ -18,6 +18,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+import ai_auth
 import billing
 import languages
 import teaching_analysis
@@ -64,6 +65,8 @@ def _hash_blocks(blocks: list[dict]) -> str:
 @router.post("/api/local-video/process")
 async def process_local_video(payload: LocalVideoRequest, request: Request):
     """Translate local subtitle blocks and optionally attach language points."""
+    # M7a：本地视频字幕翻译/分析都会调用 AI，仅登录用户可用。
+    user_id = ai_auth.require_ai_user_id(request)
     blocks = payload.blocks
     if not blocks:
         raise HTTPException(status_code=400, detail="字幕为空。")
@@ -95,9 +98,6 @@ async def process_local_video(payload: LocalVideoRequest, request: Request):
     except languages.UnsupportedLanguage as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    user = getattr(request.state, "user", None)
-    user_id = user.get("id") if isinstance(user, dict) else None
-
     translated: list[dict] = []
     try:
         for start in range(0, len(normalized), TRANSLATE_BATCH):
@@ -112,8 +112,9 @@ async def process_local_video(payload: LocalVideoRequest, request: Request):
             translated.extend(result)
     except billing.BillingError:
         raise  # 402/409 交给全局处理器（前端读 code=insufficient_balance）
-    except QuotaExceeded as exc:
-        raise HTTPException(status_code=429, detail="翻译额度不足，请稍后再试。") from exc
+    except QuotaExceeded:
+        # 429 + code=quota_exceeded 由 main.py 统一映射（M7a 稳定错误码）。
+        raise
     except Exception as exc:  # noqa: BLE001 - model pipeline has its own fallbacks
         logger.exception("local subtitle translation failed")
         raise HTTPException(status_code=502, detail="字幕翻译暂时不可用。") from exc

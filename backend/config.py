@@ -324,7 +324,9 @@ def resolve_model(model: str | None) -> str:
 # 大陆部署不配 GEMINI_API_KEY 时 Gemini 自动跳过，路线落到 Qwen/DeepSeek；
 # 这里**不把 Gemini 写进任何降级链**（降级链见 ai/quota.py，另按地域过滤）。
 DEFAULT_MODEL_ZH_CN_FALLBACK = "deepseek-chat"
-DEFAULT_MODEL_VI_VN_FALLBACK = "qwen-flash"
+# M7a：越南语默认也走有可核实单价的 deepseek-chat。Qwen（Flash/Plus）目前没有
+# 可核实的官方价，严格计费下禁止调用；补齐 model_prices 后才允许放进路线。
+DEFAULT_MODEL_VI_VN_FALLBACK = "deepseek-chat"
 
 
 def _model_route_from_env(name: str, default: list[str]) -> list[str]:
@@ -344,15 +346,16 @@ def _model_route_from_env(name: str, default: list[str]) -> list[str]:
 
 
 TARGET_LANG_MODEL_ROUTES: dict[str, list[str]] = {
-    # 中文：默认 DeepSeek（大陆可直连）；Gemini 仅作为海外部署的可选后续候选。
+    # 中文：默认 DeepSeek（大陆可直连）；Gemini 2.5 Flash 有可核实单价，
+    # 作为海外部署的后续候选保留。
     "zh-CN": _model_route_from_env(
         "MODEL_ROUTE_ZH_CN", ["deepseek-chat", "gemini-2.5-flash"]
     ),
-    # 越南语：Qwen Flash 默认（负责人 2026-11-15）→ Qwen Plus → DeepSeek → Gemini。
-    # 站点：阿里云百炼国内站（该 Key 只在 dashscope.aliyuncs.com 有效）。
+    # 越南语（M7a）：Qwen Flash/Plus 在 model_prices 里没有可核实单价，严格
+    # 计费下不能调用，默认路线改为 deepseek-chat（prompt 语言仍是越南语）。
+    # 补齐 Qwen 官方价（model_prices）后可再用 MODEL_ROUTE_VI_VN 加回去。
     "vi-VN": _model_route_from_env(
-        "MODEL_ROUTE_VI_VN",
-        ["qwen-flash", "qwen-plus", "deepseek-chat", "gemini-2.5-flash"],
+        "MODEL_ROUTE_VI_VN", ["deepseek-chat"]
     ),
 }
 
@@ -556,9 +559,11 @@ BILLING_MAX_RESERVE_MICRO_USD = _int_env("BILLING_MAX_RESERVE_MICRO_USD", 500_00
 # 预占租约：超过该秒数仍 active 的 hold 视为过期（进程崩溃兜底，后台清理）。
 BILLING_HOLD_TTL_SECONDS = _int_env("BILLING_HOLD_TTL_SECONDS", 1800)
 
-# 严格计费：1 = 有价模型结算失败时把异常抛给调用方；默认 0 = 保留 hold 并告警，
-# 不让用户已经拿到的模型结果因为账务写库失败而丢掉（见 specs/034 §7）。
-BILLING_STRICT = _bool_env("BILLING_STRICT", False)
+# 严格计费（M7a）：1 = 生产默认。没有登录用户拒绝（403 login_required）、
+# 模型没有可核实单价拒绝（503 model_unpriced）、结算失败保留 hold + 告警，
+# 不允许 billable=0 的免费账号调用。0 只作为「迁移前旧部署」临时回滚逃生门，
+# 生产环境必须保持 1（见 specs/036-ai-login-billing）。
+BILLING_STRICT = _bool_env("BILLING_STRICT", True)
 
 # 每次模型调用的输出 token 上界（用于预占，取保守高值；不影响真实生成上限）。
 BILLING_FEATURE_OUTPUT_TOKENS = {
@@ -571,6 +576,7 @@ BILLING_FEATURE_OUTPUT_TOKENS = {
     "books": 2_000,
     "analysis": 1_500,
     "course_generation": 4_000,
+    "discover": 1_000,
 }
 BILLING_DEFAULT_OUTPUT_TOKENS = 2_000
 

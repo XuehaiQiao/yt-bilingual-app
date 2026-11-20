@@ -257,7 +257,9 @@ def test_define_cache_is_shared_across_models(client, history_dir, monkeypatch):
 # /api/define 的缺省模型语义（P1）：没带 model → 候选链首位 = DEFAULT_MODEL
 # ---------------------------------------------------------------------------
 
-def test_define_default_candidate_chain_starts_with_default_model():
+def test_define_default_candidate_chain_starts_with_default_model(monkeypatch):
+    # 这条只验证候选链顺序/去重（没有建计费库）；价格过滤在 M7a 专门用例里测。
+    monkeypatch.setattr(config, "BILLING_STRICT", False, raising=False)
     candidates = routes_user._dict_model_candidates()
 
     assert candidates[0] == config.resolve_model(None) == config.DEFAULT_MODEL
@@ -270,6 +272,7 @@ def test_define_default_candidate_chain_starts_with_default_model():
 
 def test_define_default_chain_skips_default_without_key(monkeypatch):
     """默认模型没配 Key 时跳过它，而不是让查词 502。"""
+    monkeypatch.setattr(config, "BILLING_STRICT", False, raising=False)
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
 
     candidates = routes_user._dict_model_candidates()
@@ -323,16 +326,20 @@ def test_define_reports_actual_model_after_fallback(client, monkeypatch):
     assert data["modelName"] == config.MODEL_CATALOG[config.DEFAULT_MODEL]["name"]
 
 
-def test_define_default_failure_falls_back_to_dict_model(client, monkeypatch):
-    """默认模型失败时继续沿候选链走，`DICT_MODEL` 仍作为后续候选。"""
+def test_define_default_failure_falls_back_to_next_priced_model(client, monkeypatch):
+    """默认模型失败时继续沿候选链走；M7a 起只落到有可核实单价的模型。
+
+    ``DICT_MODEL``（gemini-3.5-flash-lite）没有单价，严格计费下不参与自动
+    候选链；后续候选是同样有官方价的 gemini-2.5-flash。
+    """
     calls = []
     _fake_generate_json(monkeypatch, calls, fail_models={config.DEFAULT_MODEL})
 
     response = client.post("/api/define", json={"word": "dictfallback"})
 
     assert response.status_code == 200
-    assert calls[:2] == [config.DEFAULT_MODEL, routes_user.DICT_MODEL]
-    assert response.json()["model"] == routes_user.DICT_MODEL
+    assert calls[:2] == [config.DEFAULT_MODEL, "gemini-2.5-flash"]
+    assert response.json()["model"] == "gemini-2.5-flash"
 
 
 def test_define_cached_hit_does_not_claim_a_model(client, history_dir, monkeypatch):

@@ -405,7 +405,11 @@ def test_invite_signup_grants_bonus_and_keeps_invite_on_conflict(
 
 
 def test_signup_bonus_without_migration_uses_compat_schema(make_client):
-    """未跑迁移的旧库/测试库也能整笔开户（兼容路径），生产仍应先迁移。"""
+    """未跑迁移的旧库/测试库也能整笔开户 + 严格计费可用（兼容路径）。
+
+    M7a 起兼容建表同时补 ai_usage/ai_quota 与价格 seed：严格计费不能因为
+    「没跑迁移」退化成免费调用。生产仍应先跑 `alembic upgrade head`。
+    """
     with make_client() as client:
         response = client.post(
             "/api/auth/signup",
@@ -418,8 +422,9 @@ def test_signup_bonus_without_migration_uses_compat_schema(make_client):
     assert _ledger_rows(db, user_id) == [
         ("signup_bonus", BONUS, BONUS, f"signup_bonus:{user_id}")
     ]
-    # 兼容建表不启用计费（没有 ai_usage 计费列 → schema_ready False）。
-    assert billing.schema_ready() is False
+    # M7a：兼容建表后计费可用，且 deepseek-chat 有 seed 价（严格计费不会 503）。
+    assert billing.schema_ready() is True
+    assert billing.price_for_model("deepseek-chat") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -775,29 +780,27 @@ def test_llm_generate_reserves_and_settles(client_upgraded, billing_db, monkeypa
     assert hold[0] == "settled" and hold[1] is not None
 
 
-def test_llm_generate_unpriced_model_not_charged(
+def test_llm_generate_unpriced_model_is_rejected_and_not_called(
     client_upgraded, billing_db, monkeypatch
 ):
+    """M7a：没有可核实单价的模型必须 503 model_unpriced，且**不调用 provider**。"""
     user_id = client_upgraded.user_id
-    monkeypatch.setattr(
-        llm,
-        "_generate_openai_compatible",
-        _fake_provider({"input_tokens": 1000, "output_tokens": 500}),
-    )
+    calls: list[str] = []
+
+    def _fake(prompt, spec, json_mode):
+        calls.append(spec.get("model_id", "?"))
+        return '{"ok": true}', {"input_tokens": 1000, "output_tokens": 500}
+
+    monkeypatch.setattr(llm, "_generate_openai_compatible", _fake)
     with llm.usage_scope("define", user_id, target_lang="zh-CN"):
-        llm.generate("hello", model="qwen-flash")
+        with pytest.raises(billing.ModelUnpriced) as excinfo:
+            llm.generate("hello", model="qwen-flash")
+    assert excinfo.value.code == "model_unpriced"
+    assert excinfo.value.status_code == 503
+    assert calls == [], "缺价模型不得真正调用厂商"
     assert _balance(billing_db, user_id) == BONUS
     assert _rows(billing_db, "SELECT COUNT(*) FROM credit_holds") == [(0,)]
-    row = _rows(
-        billing_db,
-        "SELECT cost_micro_usd, billable, billing_status, price_source, "
-        "est_cost_usd FROM ai_usage WHERE user_id = ?",
-        (user_id,),
-    )[0]
-    assert row[0] is None and row[1] == 0
-    assert row[2] == "unbilled" and row[3] == "ceiling_unknown"
-    # 上界估算仍写入 est_cost_usd（分析/日预算用），但明确未扣余额。
-    assert row[4] > 0
+    assert _rows(billing_db, "SELECT COUNT(*) FROM ai_usage") == [(0,)]
 
 
 def test_llm_generate_provider_failure_releases_hold(
@@ -845,24 +848,41 @@ def test_llm_settle_failure_keeps_hold(client_upgraded, billing_db, monkeypatch)
     )[0][:3] == ("settle_failed", 1, 900)
 
 
-def test_llm_generate_without_account_is_not_billed(billing_db, monkeypatch):
-    """游客/匿名（user_id 为空或 guest: 前缀）没有余额账户：只记账、不扣费。"""
+def test_llm_generate_without_login_user_is_rejected(billing_db, monkeypatch):
+    """M7a：游客/匿名（user_id 为空或 guest: 前缀）不得调用 AI → 403 login_required。"""
+    calls: list[str] = []
+
+    def _fake(prompt, spec, json_mode):
+        calls.append(spec.get("model_id", "?"))
+        return '{"ok": true}', {"input_tokens": 1000, "output_tokens": 500}
+
+    monkeypatch.setattr(llm, "_generate_openai_compatible", _fake)
+    for identity in (None, "guest:" + "a" * 64):
+        with llm.usage_scope("define", identity):
+            with pytest.raises(billing.LoginRequired) as excinfo:
+                llm.generate("hello", model="deepseek-chat")
+        assert excinfo.value.code == "login_required"
+        assert excinfo.value.status_code == 403
+    assert calls == []
+    assert _rows(billing_db, "SELECT COUNT(*) FROM ai_usage") == [(0,)]
+    assert _rows(billing_db, "SELECT COUNT(*) FROM credit_holds") == [(0,)]
+
+
+def test_llm_non_strict_rollback_still_unbilled(billing_db, monkeypatch):
+    """``BILLING_STRICT=0`` 只是回滚逃生门：旧行为 billable=0 仍可复现。"""
+    monkeypatch.setattr(config, "BILLING_STRICT", False, raising=False)
     monkeypatch.setattr(
         llm,
         "_generate_openai_compatible",
         _fake_provider({"input_tokens": 1000, "output_tokens": 500}),
     )
-    for identity in (None, "guest:" + "a" * 64):
-        with llm.usage_scope("define", identity):
-            llm.generate("hello", model="deepseek-chat")
+    with llm.usage_scope("define", "guest:" + "a" * 64):
+        llm.generate("hello", model="deepseek-chat")
     rows = _rows(
         billing_db,
         "SELECT billable, billing_status, price_source, cost_micro_usd FROM ai_usage",
     )
-    assert len(rows) == 2
-    for row in rows:
-        assert row == (0, "unbilled", "no_account", None)
-    assert _rows(billing_db, "SELECT COUNT(*) FROM credit_holds") == [(0,)]
+    assert rows == [(0, "unbilled", "no_account", None)]
 
 
 def test_price_versioning_new_row_wins(client_upgraded, billing_db):
@@ -986,8 +1006,19 @@ def test_billing_summary_counts_unbilled_rows(client_upgraded, billing_db, monke
     )
     with llm.usage_scope("define", user_id):
         llm.generate("priced", model="deepseek-chat")
-    with llm.usage_scope("define", user_id):
-        llm.generate("unpriced", model="qwen-flash")
+    # M7a：缺价模型不再能产生调用；这里直接构造一条历史/遗留的未计费行，
+    # 验证汇总仍把「未计费」单独统计（对账口径不能丢）。
+    ledger.record_usage(
+        user_id,
+        "define",
+        "qwen-flash",
+        10,
+        5,
+        price_source="ceiling_unknown",
+        token_source="estimated",
+        billable=0,
+        billing_status="unbilled",
+    )
 
     body = billing.billing_summary()
     assert body["totals"]["billedCostMicroUsd"] == 900

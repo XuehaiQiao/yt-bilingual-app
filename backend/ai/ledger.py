@@ -56,6 +56,8 @@ KNOWN_FEATURES = (
     "analysis",
     # 课程生成（course_generator.py；YouTube 字幕/公版小说 → 12 分钟课，specs/030）。
     "course_generation",
+    # 内容发现（discover.py；意图改写/重排，M7a 起纳入预占/结算）。
+    "discover",
 )
 FEATURE_LABELS = {
     "translate": "翻译",
@@ -67,6 +69,7 @@ FEATURE_LABELS = {
     "books": "公版书",
     "analysis": "教学分析",
     "course_generation": "课程生成",
+    "discover": "内容发现",
 }
 
 # 目录里一个已知价都没有时的保守兜底（非官方报价，只在异常配置下使用）。
@@ -110,6 +113,20 @@ class QuotaExceeded(RuntimeError):
                 f"本次需 {units}），明天 0 点恢复；复习与本地词典不受影响。"
             )
         super().__init__(message)
+
+    def payload(self) -> dict:
+        """统一错误体（M7a）：前端按 ``code`` 识别，不解析中文。
+
+        功能日配额 → ``quota_exceeded``；用户/全站日预算 → ``budget_exceeded``
+        （两者都是 429，但用户可采取的动作不同）。
+        """
+        return {
+            "detail": str(self),
+            "code": "quota_exceeded" if self.scope == "feature" else "budget_exceeded",
+            "scope": self.scope,
+            "feature": self.feature,
+            "day": self.day,
+        }
 
 
 def now_ms() -> int:

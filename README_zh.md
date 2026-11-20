@@ -120,7 +120,11 @@ cd frontend && npm run dev
 | `CORS_ORIGINS` | `.env` | 允许的跨域来源（逗号分隔）——公网部署前务必设置。 |
 | `API_AUTH_KEY` | `.env` | 可选的 `X-API-Key` 门禁，仅供移动端/内部客户端。**公网浏览器多用户部署不要设**——它会连 `/api/auth/*` 一起拦，登录会 401。 |
 | `VITE_API_BASE` / `VITE_API_KEY` | 前端环境 | 让 Web 端指向远程后端 / 发送其 API key。 |
+| `BILLING_STRICT` | `.env` | 严格计费（M7a）：**默认 1**。AI 调用必须有登录用户 + 可核实单价，预占/结算扣余额；游客 403 `login_required`，缺价 503 `model_unpriced`。0 仅作迁移前回滚逃生门。 |
+| `MODEL_ROUTE_ZH_CN` / `MODEL_ROUTE_VI_VN` | `.env` | 按目标语言的模型路线，**只能含有可核实单价的模型**（Qwen 缺价，越南语默认已改为 `deepseek-chat`）。 |
 | `HISTORY_DIR` / `SUBTITLES_DIR` | 环境变量 | 自定义 JSON 缓存 / 本地剧集字幕目录。 |
+
+> **AI 必须登录 + 必须扣余额（M7a）。** 翻译、总结、查词、教学分析、出题、课程生成、文章/书籍翻译等所有会调用大模型的功能都只对登录用户开放：游客/匿名请求统一返回 403 `{code:"login_required"}`（不是 401，前端不会因此登出）。登录后每次真实调用都会绑定账号并预占/结算余额；模型没有可核实单价时返回 503 `{code:"model_unpriced"}` 且不会调用厂商。已缓存的公开内容（公版书章节、历史字幕）仍可免费阅读，纯读取不触发 AI、不扣费。
 
 ### 部署
 

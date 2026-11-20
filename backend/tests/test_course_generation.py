@@ -9,7 +9,7 @@
    校验失败重试 1 次后 502 且不落库；
 5. 缓存：同源同等级/语言第二次 `cached:true` 零模型调用、不占配额；等级隔离；
 6. 并发：同 key 两个请求只调用一次模型（进程内单飞）；
-7. 权限：游客 401、别人的生成课程 404/列表不泄露、attempt 可指向生成课程；
+7. 权限：游客 403 login_required、别人的生成课程 404/列表不泄露、attempt 可指向生成课程；
 8. 配额：`feature=course_generation` 日限额 429；
 9. API：缺参/非法等级/chapter 400、源未就绪 409、生成失败 502、详情脱敏。
 
@@ -830,7 +830,8 @@ def test_generate_requires_login(gen_client, make_client, llm_stub):
             "/api/course/generate",
             json={"sourceKind": "youtube", "videoId": VIDEO_ID},
         )
-    assert response.status_code == 401
+    assert response.status_code == 403
+    assert response.json().get("code") == "login_required"
     assert llm_stub.calls == 0
 
 

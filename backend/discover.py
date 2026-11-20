@@ -31,6 +31,7 @@ import time
 import unicodedata
 from typing import Any
 
+import billing
 import config
 import llm
 import storage
@@ -589,7 +590,12 @@ def _intent_prompt(query: str) -> str:
 
 
 async def _rewrite_queries(
-    query: str, model: str | None, deadline: float
+    query: str,
+    model: str | None,
+    deadline: float,
+    *,
+    user_id: str,
+    target_lang: str,
 ) -> tuple[list[str], bool]:
     """LLM 意图改写；不可用/超时/JSON 非法/不足 2 个 → 降级为原 query。"""
     if not model or not llm.is_available(model):
@@ -600,7 +606,13 @@ async def _rewrite_queries(
     if timeout <= 0:
         return [query], True
     try:
-        raw = await asyncio.wait_for(_call_llm(_intent_prompt(query), model), timeout=timeout)
+        with llm.usage_scope("discover", user_id, target_lang=target_lang):
+            raw = await asyncio.wait_for(
+                _call_llm(_intent_prompt(query), model), timeout=timeout
+            )
+    except billing.BillingError:
+        # 402/403/503 是计费硬闸，不能降级成「无账本的免费调用」。
+        raise
     except Exception as exc:  # noqa: BLE001 - 意图解析失败不能阻断搜索
         logger.warning("内容发现意图改写失败（降级为原 query）：%s", type(exc).__name__)
         return [query], True
@@ -819,7 +831,13 @@ def _fill_rule_candidates(
 
 
 async def _rerank(
-    query: str, candidates: list[dict], model: str | None, deadline: float
+    query: str,
+    candidates: list[dict],
+    model: str | None,
+    deadline: float,
+    *,
+    user_id: str,
+    target_lang: str,
 ) -> tuple[list[dict], bool]:
     """LLM 重排；任何失败都退化为规则排序 + 模板理由（``degraded=True``）。"""
     if not candidates:
@@ -834,9 +852,13 @@ async def _rerank(
     if timeout <= 0:
         return [_rule_candidate(candidate) for candidate in _rule_ranked(candidates)[:target_count]], True
     try:
-        raw = await asyncio.wait_for(
-            _call_llm(_rerank_prompt(query, candidates), model), timeout=timeout
-        )
+        with llm.usage_scope("discover", user_id, target_lang=target_lang):
+            raw = await asyncio.wait_for(
+                _call_llm(_rerank_prompt(query, candidates), model), timeout=timeout
+            )
+    except billing.BillingError:
+        # 计费硬闸必须上抛（路由/全局处理器映射 402/403/503）。
+        raise
     except Exception as exc:  # noqa: BLE001 - 重排失败不能阻断候选
         logger.warning("内容发现重排失败（降级为规则排序）：%s", type(exc).__name__)
         return [_rule_candidate(candidate) for candidate in _rule_ranked(candidates)[:target_count]], True
@@ -935,7 +957,13 @@ async def discover(
     model = llm.resolve_model_for_target(None, target_lang)
 
     # 2. LLM 意图改写（失败降级为原 query，但继续搜索）。
-    queries, intent_degraded = await _rewrite_queries(normalized, model, deadline)
+    queries, intent_degraded = await _rewrite_queries(
+        normalized,
+        model,
+        deadline,
+        user_id=user_id or "",
+        target_lang=target_lang,
+    )
 
     # 3. 并行搜索 + 去重/直播/时长过滤。
     groups, search_failures, search_timeouts = await _search_queries(queries, deadline)
@@ -967,7 +995,12 @@ async def discover(
 
     # 5. LLM 重排（失败规则排序）；top 10 内取 3–5 个。
     selected, rerank_degraded = await _rerank(
-        normalized, with_captions, model, deadline
+        normalized,
+        with_captions,
+        model,
+        deadline,
+        user_id=user_id or "",
+        target_lang=target_lang,
     )
     degraded = (
         intent_degraded

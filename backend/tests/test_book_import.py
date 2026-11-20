@@ -672,7 +672,8 @@ def test_import_endpoints_require_login(make_client, method, path):
     with make_client() as client:
         kwargs = {"json": {"url": GUTENBERG_URL}} if method == "post" else {}
         response = getattr(client, method)(path, **kwargs)
-    assert response.status_code == 401
+    assert response.status_code == 403
+    assert response.json().get("code") == "login_required"
     assert "登录" in response.json()["detail"]
 
 
@@ -971,7 +972,8 @@ def test_translate_invalid_target_lang_is_400(book_client, web):
 def test_translate_requires_login(make_client):
     with make_client() as client:
         response = client.post("/api/books/imported/abc/chapters/1/translate", json={})
-    assert response.status_code == 401
+    assert response.status_code == 403
+    assert response.json().get("code") == "login_required"
 
 
 # ---------------------------------------------------------------------------
