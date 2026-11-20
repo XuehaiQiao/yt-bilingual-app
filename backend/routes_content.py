@@ -10,6 +10,7 @@ import os
 from fastapi import APIRouter, HTTPException
 from pydantic import AliasChoices, BaseModel, Field
 
+import billing
 import guest
 import languages
 import llm
@@ -311,6 +312,8 @@ async def process_subtitle(request: SubtitleRequest):
                 success = True
                 break
             except Exception as e:
+                if isinstance(e, billing.BillingError):
+                    raise  # 402/409 不能被当成可重试的限流错误
                 error_msg = str(e).lower()
                 if "429" in error_msg or "quota" in error_msg or "exhausted" in error_msg:
                     if attempt < max_retries - 1:

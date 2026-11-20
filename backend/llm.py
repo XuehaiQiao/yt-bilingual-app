@@ -28,8 +28,11 @@ import time
 
 import httpx
 
+import billing
 import config
 import languages
+import observability
+import storage
 from ai import ledger
 from config import DEFAULT_MODEL, MODEL_CATALOG
 
@@ -91,38 +94,271 @@ def _estimate_tokens(text: str) -> int:
     return max(1, len(text) // 2) if text else 0
 
 
-def _record_usage(model_key: str, spec: dict, usage: dict | None, prompt: str, text: str) -> None:
-    """把一次成功调用的 usage 写进账本（失败只记日志）。"""
-    if not getattr(config, "AI_USAGE_LOGGING", True):
-        return
-    scope = _USAGE_CONTEXT.get()
-    if not scope or not scope.get("feature"):
-        return
+def _estimate_usage(usage: dict | None, prompt: str, text: str) -> tuple[int, int, str]:
+    """provider usage → ``(input_tokens, output_tokens, token_source)``。
 
+    provider 没回 usage 时按「2 字符/token」保守估算并如实标记：``provider``
+    （全部来自 provider）/``mixed``（缺一部分）/``estimated``（全部估算）/
+    ``unknown``（连内容都没有）。
+    """
     input_tokens = int((usage or {}).get("input_tokens") or 0)
     output_tokens = int((usage or {}).get("output_tokens") or 0)
-    estimated = False
+    estimated_in = False
+    estimated_out = False
     if input_tokens <= 0 and prompt:
         input_tokens = _estimate_tokens(prompt)
-        estimated = True
+        estimated_in = True
     if output_tokens <= 0 and text:
         output_tokens = _estimate_tokens(text)
-        estimated = True
-    if estimated:
-        logger.debug("provider 未返回完整 usage，按字符数保守估算 tokens 后记账。")
+        estimated_out = True
+    if estimated_in or estimated_out:
+        logger.debug(
+            "provider 未返回完整 usage，按字符数保守估算 tokens（in=%s out=%s）。",
+            estimated_in,
+            estimated_out,
+        )
+    if estimated_in and estimated_out:
+        return input_tokens, output_tokens, "estimated"
+    if estimated_in or estimated_out:
+        return input_tokens, output_tokens, "mixed"
+    if input_tokens or output_tokens:
+        return input_tokens, output_tokens, "provider"
+    return input_tokens, output_tokens, "unknown"
 
+
+def _billing_user(scope: dict | None) -> str | None:
+    """计费归属的真实账号 id；游客``guest:<sha256>``/匿名返回 None（不计费）。"""
+    candidate = (scope or {}).get("user_id")
+    if candidate is None:
+        candidate = storage.active_identity()
+    if not isinstance(candidate, str) or not candidate:
+        return None
+    if candidate.startswith("guest:"):
+        return None
+    return candidate
+
+
+def _billing_chain(feature: str, model_key: str) -> list[str]:
+    """候选降级链（预占按链上最高价，防切到更贵模型时超支）。"""
     try:
+        from ai import quota  # 延迟导入：quota 依赖 llm（避免模块级环）
+
+        chain = quota.degradation_chain(feature, preferred_model=model_key)
+    except Exception:  # noqa: BLE001 - 链只影响预占大小，不能挡住模型调用
+        return [model_key]
+    if model_key not in chain:
+        chain = [model_key, *chain]
+    return chain
+
+
+def _billing_begin(scope: dict | None, model_key: str, prompt: str) -> dict:
+    """调用前预占余额（M3a）。
+
+    返回状态字典供 :func:`_billing_finish` / :func:`_billing_abort` 使用；任何
+    「计费不可用」都降级为 ``degraded=True``（照常调用、账本标未计费），但
+    **余额不足会抛 402**（由路由/全局处理器映射，不允许回落到 mock）。
+    """
+    state: dict = {
+        "enabled": False,
+        "user": None,
+        "hold": None,
+        "price": None,
+        "request_id": None,
+        "schema": True,
+        "degraded": False,
+        "feature": None,
+        "target_lang": None,
+    }
+    if not getattr(config, "AI_USAGE_LOGGING", True):
+        return state
+    if not scope or not scope.get("feature"):
+        return state
+    state["feature"] = scope["feature"]
+    state["target_lang"] = scope.get("target_lang")
+    user = _billing_user(scope)
+    if not user:
+        # 游客/匿名：没有余额账户，只记账不扣费（日配额/全站预算仍然生效）。
+        state["enabled"] = True
+        return state
+    state["user"] = user
+    state["request_id"] = observability.current_request_id()
+    try:
+        if not billing.schema_ready():
+            state["schema"] = False
+            return state
+        state["enabled"] = True
+        price = billing.price_for_model(model_key)
+        state["price"] = price
+        if price is None:
+            # 缺价模型：billable=0，不预占、不扣余额；仍记录 token/上界成本。
+            logger.warning(
+                "模型 %s 没有可核实单价：本次调用不扣余额（billable=0）；"
+                "请在 model_prices 补价。",
+                model_key,
+            )
+            return state
+        estimate = billing.estimate_reserve(
+            state["feature"], len(prompt or ""), _billing_chain(state["feature"], model_key)
+        )
+        state["estimate"] = estimate
+        if estimate["amountMicroUsd"] > 0:
+            state["hold"] = billing.reserve(
+                user,
+                estimate["amountMicroUsd"],
+                feature=state["feature"],
+                request_id=state["request_id"],
+            )
+            if estimate.get("capped"):
+                logger.warning(
+                    "单次预占达到上限 $0.50（%s）：实际用量可能超过预占，"
+                    "结算允许 overrun。",
+                    state["feature"],
+                )
+        return state
+    except billing.InsufficientBalance:
+        # 402 必须让用户看到，不能降级成 mock。
+        raise
+    except billing.BillingUnavailable as exc:
+        logger.warning("余额表不可用（未迁移 0025？），本次调用按未计费处理：%s", exc)
+        state["degraded"] = True
+        return state
+    except billing.BalanceNotFound:
+        # 用户行不存在（脚本/测试/已删除）：没有余额账户，按未计费处理。
+        state["degraded"] = True
+        return state
+    except Exception:  # noqa: BLE001 - 账务故障不能把 AI 功能打死
+        logger.exception("预占余额失败（按未计费继续，已记录 hold 状态）：user=%r", user)
+        state["degraded"] = True
+        return state
+
+
+def _billing_abort(state: dict, *, reason: str) -> None:
+    """调用失败：释放预占（不扣余额）。释放失败只告警，hold 会在 TTL 后过期。"""
+    hold = state.get("hold")
+    if not hold or not hold.get("id"):
+        return
+    try:
+        billing.release(hold["id"], reason=reason)
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "释放预占失败（hold 会在 %s 秒后过期）：hold=%r",
+            int(getattr(config, "BILLING_HOLD_TTL_SECONDS", 1800)),
+            hold.get("id"),
+        )
+
+
+def _billing_finish(
+    state: dict,
+    model_key: str,
+    spec: dict,
+    usage: dict | None,
+    prompt: str,
+    text: str,
+) -> None:
+    """调用成功：按真实用量结算（或按未计费落账）；失败只告警不影响返回。"""
+    if not state.get("enabled"):
+        return
+    feature = state.get("feature")
+    if not feature:
+        return
+    input_tokens, output_tokens, token_source = _estimate_usage(usage, prompt, text)
+    user = state.get("user")
+    hold = state.get("hold")
+    price = state.get("price")
+
+    if user and hold and price:
+        actual = billing.token_cost_micro_usd(input_tokens, output_tokens, price)
+        payload = {
+            "feature": feature,
+            "model_id": model_key,
+            "provider": spec.get("provider"),
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "calls": 1,
+            "occurred_at": ledger.now_ms(),
+            "target_lang": state.get("target_lang"),
+            "token_source": token_source,
+            "request_id": state.get("request_id"),
+        }
+        try:
+            billing.settle(hold["id"], actual, usage=payload)
+            return
+        except Exception:  # noqa: BLE001 - 结算失败保留 hold + 告警，不能丢扣费
+            logger.exception(
+                "AI 计费结算失败（保留 hold 待重试，账本按 settle_failed 落一条）："
+                "hold=%r user=%r actual_micro_usd=%s",
+                hold.get("id"),
+                user,
+                actual,
+            )
+            try:
+                ledger.record_usage(
+                    user,
+                    feature,
+                    model_key,
+                    input_tokens,
+                    output_tokens,
+                    provider=spec.get("provider"),
+                    target_lang=state.get("target_lang"),
+                    cost_micro_usd=actual,
+                    input_price_micro_usd_per_mtok=price[
+                        "inputMicroUsdPerMtok"
+                    ],
+                    output_price_micro_usd_per_mtok=price[
+                        "outputMicroUsdPerMtok"
+                    ],
+                    price_version=price["priceVersion"],
+                    price_source="settle_failed",
+                    token_source=token_source,
+                    billable=1,
+                    billing_status="settle_failed",
+                    hold_id=hold.get("id"),
+                    request_id=state.get("request_id"),
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception("结算失败后的兜底用量写入也失败（hold 仍在）。")
+            return
+
+    # 未计费路径（缺价 / 游客 / 匿名 / 降级）：照常记用量，明确标 billable=0。
+    if not state.get("schema"):
+        # 未迁移 0025：保持旧口径（只写基础列），不假装计费字段存在。
         ledger.record_usage(
-            scope.get("user_id"),
-            scope["feature"],
+            user,
+            feature,
             model_key,
             input_tokens,
             output_tokens,
             provider=spec.get("provider"),
-            target_lang=scope.get("target_lang"),
+            target_lang=state.get("target_lang"),
         )
-    except Exception:  # noqa: BLE001 - 记账失败绝不能影响本次生成
-        logger.exception("AI usage 记账失败（已忽略，不影响模型返回）。")
+        return
+
+    price_source = "ceiling_unknown"
+    extra: dict = {}
+    if price is not None:
+        price_source = "billing_unavailable" if state.get("degraded") else "unbilled"
+        extra = {
+            "input_price_micro_usd_per_mtok": price["inputMicroUsdPerMtok"],
+            "output_price_micro_usd_per_mtok": price["outputMicroUsdPerMtok"],
+            "price_version": price["priceVersion"],
+        }
+    elif user is None:
+        price_source = "no_account"
+    ledger.record_usage(
+        user,
+        feature,
+        model_key,
+        input_tokens,
+        output_tokens,
+        provider=spec.get("provider"),
+        target_lang=state.get("target_lang"),
+        price_source=price_source,
+        token_source=token_source,
+        billable=0,
+        billing_status="unbilled",
+        request_id=state.get("request_id"),
+        **extra,
+    )
 
 
 def _spec(model: str | None) -> dict:
@@ -272,19 +508,30 @@ def _generate_openai_compatible(prompt: str, spec: dict, json_mode: bool) -> tup
 
 
 def generate(prompt: str, model: str | None = None, *, json_mode: bool = False) -> str:
-    """按模型的 kind 分派；调用失败直接抛异常，由上层决定降级策略。"""
+    """按模型的 kind 分派；调用失败直接抛异常，由上层决定降级策略。
+
+    M3a：真实账号在调用前预占余额、调用后按 provider usage 结算；余额不足抛
+    :class:`billing.InsufficientBalance`（402），**不会被降级链当成模型失败**。
+    缺价模型 ``billable=0``：不预占、不扣余额，只记用量。
+    """
     spec = _spec(model)
     kind = spec.get("kind", "google")
-    if kind == "google":
-        text, usage = _generate_google(prompt, spec, json_mode)
-    elif kind == "openai_compatible":
-        text, usage = _generate_openai_compatible(prompt, spec, json_mode)
-    else:
-        raise ModelUnavailable(f"未知的 provider kind: {kind}")
-
     # 账本用目录 id 定价（model_key）；真实厂商模型名在 spec["model_id"]。
     model_key = model if model in MODEL_CATALOG else DEFAULT_MODEL
-    _record_usage(model_key, spec, usage, prompt, text)
+    scope = _USAGE_CONTEXT.get()
+    state = _billing_begin(scope, model_key, prompt)
+    try:
+        if kind == "google":
+            text, usage = _generate_google(prompt, spec, json_mode)
+        elif kind == "openai_compatible":
+            text, usage = _generate_openai_compatible(prompt, spec, json_mode)
+        else:
+            raise ModelUnavailable(f"未知的 provider kind: {kind}")
+    except BaseException as exc:
+        _billing_abort(state, reason=f"provider_error:{type(exc).__name__}")
+        raise
+
+    _billing_finish(state, model_key, spec, usage, prompt, text)
     return text
 
 

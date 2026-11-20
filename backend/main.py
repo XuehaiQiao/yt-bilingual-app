@@ -72,6 +72,7 @@ from fastapi.responses import JSONResponse
 
 import account
 import auth_db
+import billing
 import config
 import events
 import guest
@@ -121,6 +122,26 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(billing.BillingError)
+async def billing_error_handler(_request, exc: billing.BillingError):
+    """计费域异常统一映射（M3a）：余额不足 402、未迁移 503、冲突 409、404。
+
+    402 响应体固定包含 ``code=insufficient_balance`` 与
+    ``balanceMicroUsd`` / ``requiredMicroUsd``（前端 M3b 直接读，不解析中文）。
+    余额（402）与日配额/预算（429）语义独立，不要混成 500。
+    """
+    payload = (
+        exc.payload()
+        if hasattr(exc, "payload")
+        else {"detail": str(exc), "code": getattr(exc, "code", "billing_error")}
+    )
+    return JSONResponse(
+        status_code=int(getattr(exc, "status_code", 500)),
+        content=payload,
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 def _is_api_path(path: str) -> bool:

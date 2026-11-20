@@ -1527,6 +1527,7 @@ async def _translate_batch(
             last_error = "模型返回的译文为空或格式非法。"
             logger.warning("读文章翻译：模型 %s 返回内容无法解析。", candidate)
         except Exception as exc:  # noqa: BLE001 - 逐个降级，全部失败标未翻译
+            quota.rethrow_billing_error(exc)  # 402 不能被标成未翻译
             last_error = f"{type(exc).__name__}: {exc}"
             logger.warning("读文章翻译失败（%s）：%s", candidate, exc)
     return {}, None, last_error

@@ -829,6 +829,7 @@ async def _generate_questions(
             last_error = str(exc)
             logger.warning("理解题生成解析失败（第 %s 次）：%s", attempt, exc)
         except Exception as exc:  # noqa: BLE001 - 模型/网络错误不阻断主流程
+            quota.rethrow_billing_error(exc)  # 402 不能被当成模型失败重试
             last_error = f"模型调用失败：{exc}"
             logger.warning("理解题生成失败（第 %s 次）：%s", attempt, exc)
 

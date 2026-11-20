@@ -30,6 +30,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 
+import billing
 import config
 import languages
 import llm
@@ -78,6 +79,17 @@ class BudgetExceeded(QuotaExceeded):
                 "明天 0 点恢复）；复习与本地词典不受影响。"
             ),
         )
+
+
+def rethrow_billing_error(exc: BaseException) -> None:
+    """候选降级/重试循环里用：计费域异常（402 等）不能被当成模型失败吞掉。
+
+    用法：``except Exception as exc: quota.rethrow_billing_error(exc)`` 放在
+    ``except`` 的第一行。降级链只该处理「模型失败」，余额不足要让用户看到 402，
+    而不是悄悄回落到 mock/占位文案。
+    """
+    if isinstance(exc, billing.BillingError):
+        raise exc
 
 
 def limit_for(feature: str) -> int:
@@ -139,6 +151,10 @@ def check_and_consume_quota(
 
     ``target_lang`` 只随结果/账本记录，**不拆限额**（P0 仍按
     ``(user_id, day, feature)`` 计数，见规格 §5.5「成本与配额」）。
+
+    M3a 起在扣日配额/预算**之前**先做一次余额可用性预检查（402）：余额连「输出
+    上界 × 候选链最高价」都付不起时直接 402，避免先扣掉日额度却调用不了模型。
+    余额为 0 且配额也用尽时优先返 402（用户可行动）；全站预算仍是 429（系统保护）。
     """
     resolved_lang = languages.normalize_code(target_lang) or languages.DEFAULT_TARGET_LANG
     global _warned_missing_tables
@@ -147,6 +163,18 @@ def check_and_consume_quota(
         return ledger.check_and_consume_quota(
             user_id, feature, units, day=day, target_lang=resolved_lang
         )
+
+    # 402 先于 429：余额可用性（不写库、不占 hold；未迁移/无价模型直接放行）。
+    try:
+        billing.ensure_affordable(
+            user_id, feature, model_ids=degradation_chain(feature)
+        )
+    except billing.InsufficientBalance:
+        raise
+    except billing.BillingUnavailable:
+        logger.debug("计费表未就绪，跳过余额预检查（按旧行为继续）。")
+    except sqlite3.OperationalError as exc:
+        logger.debug("余额预检查读库失败（按旧行为继续）：%s", exc)
 
     try:
         ensure_within_budget(user_id, day)
@@ -281,4 +309,5 @@ __all__ = [
     "ensure_within_budget",
     "is_domestic_region",
     "limit_for",
+    "rethrow_billing_error",
 ]

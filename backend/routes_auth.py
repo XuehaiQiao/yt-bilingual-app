@@ -32,6 +32,7 @@ Cookie：`ln_session`，httpOnly、SameSite=Lax、Path=/、Max-Age 30 天；
 """
 import logging
 import re
+import sqlite3
 import threading
 import time
 
@@ -281,11 +282,24 @@ def signup(credentials: Credentials, response: Response):
         return {"user": _public_user(user)}
 
     # ── 公开注册（REGISTRATION_OPEN=true 且没有邀请码） ────────────────
+    # M3a：建用户 + $2.00 开户奖励 + 流水 + 会话在**同一事务**（specs/034）；
+    # 失败整笔回滚，不会留下「有账号没余额」的半成品。
     try:
-        user = auth_db.create_user(email, credentials.password, username=username)
+        user, token = auth_db.create_user_with_bonus(
+            email, credentials.password, username=username
+        )
     except auth_db.EmailExistsError:
         raise HTTPException(status_code=409, detail="邮箱已注册。")
-    token = auth_db.create_session(user["id"])
+    except sqlite3.OperationalError as exc:
+        logger.warning("注册失败：数据库写锁繁忙/不可用：%s", exc)
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": "注册请求繁忙，请稍后重试。",
+                "code": "registration_busy",
+            },
+            headers={"Cache-Control": "no-store", "Retry-After": "5"},
+        )
     set_session_cookie(response, token)
     return {"user": _public_user(user)}
 

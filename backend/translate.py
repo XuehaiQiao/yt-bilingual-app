@@ -339,6 +339,7 @@ async def process_llm_batch(
                 print(f"Model {model} failed; degraded to {candidate} for this batch.")
             return processed_blocks
         except Exception as e:  # noqa: BLE001 - 逐个降级，全部失败才 mock
+            quota.rethrow_billing_error(e)  # 402 不能被降级成 mock
             last_error = e
             print(f"LLM call failed with {candidate}: {e}")
             index += 1
@@ -438,6 +439,7 @@ async def summarize_video_transcript(
             with llm.usage_scope(feature, user_id, target_lang=lang):
                 return await llm.generate_text_async(summary_prompt, model=candidate)
         except Exception as e:  # noqa: BLE001 - 逐个降级，全部失败给占位文案
+            quota.rethrow_billing_error(e)  # 402 不能被占位文案吞掉
             last_error = e
             print(f"Summary Gen Error ({candidate}): {e}")
 
@@ -515,6 +517,7 @@ async def retranslate_marked_blocks(
                 await asyncio.sleep(llm.batch_pause(model))
                 break
             except Exception as e:
+                quota.rethrow_billing_error(e)  # 402 不能被当成限流重试/回落
                 error_msg = str(e).lower()
                 if "429" in error_msg or "quota" in error_msg or "exhausted" in error_msg:
                     if attempt < max_retries - 1:
@@ -582,6 +585,7 @@ async def _stream_translate(
                 if j < len(result):
                     transcript[idx] = result[j]
         except Exception as e:
+            quota.rethrow_billing_error(e)  # 402 不能被静默跳过当前批次
             print(f"Streaming batch failed (blocks stay marked for retry): {e}")
 
         done += len(batch_indices)

@@ -20,7 +20,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0024_account_lifecycle"
+HEAD = "0025_balance_cost"
 BEFORE = "0013_user_profile"
 
 

@@ -945,8 +945,8 @@ def _delete_business_rows(
         (user_id,),
     )
 
-    # 2) AI 用量 / 配额。
-    for table in ("ai_usage", "ai_quota"):
+    # 2) AI 用量 / 配额 / 余额流水与预占（M3a；余额属个人数据，随账号删除）。
+    for table in ("ai_usage", "ai_quota", "account_ledger", "credit_holds"):
         _count_delete(
             conn,
             counts,

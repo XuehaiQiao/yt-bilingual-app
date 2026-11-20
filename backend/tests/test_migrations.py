@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0024_account_lifecycle"
+HEAD = "0025_balance_cost"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -82,6 +82,8 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "generated_courses",
         "invite_codes", "invite_redemptions",
         "account_deletion_requests", "data_export_jobs", "admin_audit_log",
+        # M3a：余额 / 流水 / 预占 / 价格表。
+        "account_ledger", "credit_holds", "model_prices",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD
@@ -127,6 +129,7 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "username",
         "credits",
         "status",
+        "balance_micro_usd",
     ]
     assert users["id"]["pk"] == 1
     assert users["id"]["notnull"] == 0  # 与 auth_db.py 的 `id TEXT PRIMARY KEY` 一致
@@ -139,6 +142,33 @@ def test_upgrade_head_from_empty_db(tmp_path):
     assert str(users["credits"]["default"]) == "0"
     assert users["status"]["notnull"] == 1
     assert "active" in str(users["status"]["default"])
+    # 0025：余额列为整数 µUSD、非空、默认 0（旧 credits 保留冻结）。
+    assert users["balance_micro_usd"]["type"].upper() == "INTEGER"
+    assert users["balance_micro_usd"]["notnull"] == 1
+    assert str(users["balance_micro_usd"]["default"]) == "0"
+
+    # 0025：ai_usage 的计费快照列（历史行由迁移标 legacy）。
+    usage_columns = columns(db, "ai_usage")
+    for name in (
+        "cost_micro_usd",
+        "input_price_micro_usd_per_mtok",
+        "output_price_micro_usd_per_mtok",
+        "price_version",
+        "price_source",
+        "token_source",
+        "billable",
+        "billing_status",
+        "hold_id",
+        "request_id",
+    ):
+        assert name in usage_columns, name
+
+    # 0025：三张新表的索引（幂等键唯一 / 用户+状态 / 模型+生效时间）。
+    assert "ux_account_ledger_idempotency" in index_names(db, "account_ledger")
+    assert "ix_account_ledger_user_created" in index_names(db, "account_ledger")
+    assert "ix_credit_holds_user_status" in index_names(db, "credit_holds")
+    assert "ix_credit_holds_status_expires" in index_names(db, "credit_holds")
+    assert "ux_model_prices_model_effective" in index_names(db, "model_prices")
 
     sessions = columns(db, "sessions")
     assert list(sessions) == ["token_hash", "user_id", "expires_at", "created_at"]
@@ -204,6 +234,17 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "created_at",
         "usage_date",
         "target_lang",
+        # 0025_balance_cost：计费快照列（全部可空；历史行 billing_status='legacy'）。
+        "cost_micro_usd",
+        "input_price_micro_usd_per_mtok",
+        "output_price_micro_usd_per_mtok",
+        "price_version",
+        "price_source",
+        "token_source",
+        "billable",
+        "billing_status",
+        "hold_id",
+        "request_id",
     ]
     assert usage["id"]["pk"] == 1
     assert usage["feature"]["notnull"] == 1

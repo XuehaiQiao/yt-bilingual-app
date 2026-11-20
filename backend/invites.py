@@ -565,6 +565,14 @@ def register_with_invite(
     # 低频注册顺便清理过期会话（独立连接，别持有邀请码事务锁）。
     auth_db.cleanup_expired_sessions(force=True)
 
+    # M3a：开户事务要写 users.balance_micro_usd + account_ledger（$2.00）。
+    # 迁移 0025 是 schema 真源；这里的兼容建表只为「旧部署/测试库不跑迁移」也能
+    # 整笔开户（幂等，已迁移库是 no-op），绝不在事务外单独补发余额。
+    from billing import ensure_schema_compat, signup_balance_micro_usd, write_signup_bonus
+
+    ensure_schema_compat()
+    bonus = signup_balance_micro_usd()
+
     conn = _connect()
     try:
         _require_tables(conn)
@@ -577,12 +585,15 @@ def register_with_invite(
             try:
                 conn.execute(
                     "INSERT INTO users "
-                    "(id, email, password_hash, created_at, username, credits, status) "
-                    "VALUES (?, ?, ?, ?, ?, 0, 'active')",
-                    (user_id, email, password_hash, now_seconds, username),
+                    "(id, email, password_hash, created_at, username, credits, "
+                    "status, balance_micro_usd) "
+                    "VALUES (?, ?, ?, ?, ?, 0, 'active', ?)",
+                    (user_id, email, password_hash, now_seconds, username, bonus),
                 )
             except sqlite3.IntegrityError as exc:
                 raise auth_db.EmailExistsError(email) from exc
+            # 开户赠送与建用户同一事务：失败整笔回滚，邀请码不会被单独消耗。
+            write_signup_bonus(conn, user_id, now_ms_value=now)
             conn.execute(
                 f"INSERT INTO {_REDEMPTIONS} "
                 "(id, invite_id, user_id, redeemed_at_ms) VALUES (?, ?, ?, ?)",
@@ -613,6 +624,7 @@ def register_with_invite(
             "email": email,
             "username": username,
             "credits": 0,
+            "balance_micro_usd": bonus,
             "status": "active",
             "created_at": now_seconds,
             "invite_prefix": redeemed["code_prefix"],

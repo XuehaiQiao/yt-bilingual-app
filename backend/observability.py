@@ -140,6 +140,11 @@ def _duration_ms(started: float) -> float:
     return round((time.perf_counter() - started) * 1000, 2)
 
 
+def current_request_id() -> str | None:
+    """当前请求的 request_id（不在请求上下文时为 None）；账本关联用。"""
+    return _request_id_ctx.get()
+
+
 def _request_id_from(raw: str | None) -> str:
     candidate = (raw or "").strip()
     if _REQUEST_ID_RE.fullmatch(candidate):

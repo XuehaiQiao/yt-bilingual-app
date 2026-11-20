@@ -533,6 +533,47 @@ AI_DAILY_QUOTA_COURSE_GENERATION = _int_env(
 AI_DAILY_BUDGET_USER_USD = _float_env("AI_DAILY_BUDGET_USER_USD", 1.0)
 AI_DAILY_BUDGET_GLOBAL_USD = _float_env("AI_DAILY_BUDGET_GLOBAL_USD", 20.0)
 
+# --- 余额与 AI 计费（M3a，见 billing.py / specs/034-balance-billing） ---
+#
+# 金额单位：**整数微美元（µUSD，1 USD = 1,000,000 µUSD）**。金额列一律 INTEGER，
+# 禁止把美元浮点写进 SQLite 金额列；美元只出现在 API 入参/出参字符串里。
+MICRO_USD_PER_USD = 1_000_000
+
+# 新用户开户赠送 $2.00（2,000,000 µUSD）。0 = 不发（仅测试/特殊部署）。
+SIGNUP_BONUS_MICRO_USD = _int_env("SIGNUP_BONUS_MICRO_USD", 2_000_000)
+
+# 管理员单次充/扣上限 ±$100.00；扣减后不得为负。
+MAX_ADMIN_BALANCE_DELTA_MICRO_USD = _int_env(
+    "MAX_ADMIN_BALANCE_DELTA_MICRO_USD", 100_000_000
+)
+
+# 预占安全边际（百分比，默认 +20%）：实际按 token 结算，预占只防超支。
+BILLING_RESERVE_MARGIN_PERCENT = _float_env("BILLING_RESERVE_MARGIN_PERCENT", 20.0)
+
+# 单次预占上限 $0.50；超过则按上限预占（结算仍按实际用量，允许 overrun）。
+BILLING_MAX_RESERVE_MICRO_USD = _int_env("BILLING_MAX_RESERVE_MICRO_USD", 500_000)
+
+# 预占租约：超过该秒数仍 active 的 hold 视为过期（进程崩溃兜底，后台清理）。
+BILLING_HOLD_TTL_SECONDS = _int_env("BILLING_HOLD_TTL_SECONDS", 1800)
+
+# 严格计费：1 = 有价模型结算失败时把异常抛给调用方；默认 0 = 保留 hold 并告警，
+# 不让用户已经拿到的模型结果因为账务写库失败而丢掉（见 specs/034 §7）。
+BILLING_STRICT = _bool_env("BILLING_STRICT", False)
+
+# 每次模型调用的输出 token 上界（用于预占，取保守高值；不影响真实生成上限）。
+BILLING_FEATURE_OUTPUT_TOKENS = {
+    "translate": 2_000,
+    "summary": 1_500,
+    "define": 800,
+    "local_show": 2_000,
+    "quiz": 2_000,
+    "reading": 2_000,
+    "books": 2_000,
+    "analysis": 1_500,
+    "course_generation": 4_000,
+}
+BILLING_DEFAULT_OUTPUT_TOKENS = 2_000
+
 # 降级链地域口径：auto（默认，按 DEFAULT_MODEL 判断）/ cn（排除 Google）/ global。
 # 大陆默认模型是 deepseek-chat → auto 即 cn，Gemini 不会进入默认降级链。
 AI_MODEL_REGION = os.environ.get("AI_MODEL_REGION", "auto").strip().lower() or "auto"

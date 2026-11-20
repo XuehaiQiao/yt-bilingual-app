@@ -335,6 +335,7 @@ Rules for "senses":
             used_model = model_id
             break
         except Exception as e:
+            quota.rethrow_billing_error(e)  # 402 不能被当成查词失败
             print(f"Dictionary lookup failed for '{word}' with {model_id}: {e}")
 
     if result is None:

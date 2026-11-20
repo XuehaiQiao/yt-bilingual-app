@@ -47,7 +47,7 @@ from tests.migration_utils import (
 
 TEMPLATE_DB = "book-translation-template"
 SOURCE_URL = "https://www.gutenberg.org/cache/epub/999/pg999.txt"
-HEAD = "0024_account_lifecycle"
+HEAD = "0025_balance_cost"
 
 # 四个章节：1 有完整本地中译；2/3 完全未译；4 只有第一段本地中译。
 SOURCE = """*** START OF THE PROJECT GUTENBERG EBOOK TEST BOOK ***

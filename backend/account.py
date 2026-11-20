@@ -38,6 +38,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import auth_db
+import billing
 import config
 
 logger = logging.getLogger("linguatrek.account")
@@ -267,7 +268,12 @@ def adjust_credits(
     reason: str,
     admin_id: str | None = None,
 ) -> int:
-    """原子调账：更新余额并追加流水，返回新余额。
+    """原子调账旧 ``users.credits``（**deprecated**，旧单位，不再作为扣费依据）。
+
+    M3a 起余额统一走 :mod:`billing`（整数 µUSD、``account_ledger``、402 语义）：
+    新管理台请调用 ``POST /api/admin/users/{id}/balance``。本函数仅为旧接口/
+    旧测试兼容保留：只改 ``credits`` 与 ``credit_transactions``，**不影响**
+    ``balance_micro_usd``，也不会让 AI 调用可用。
 
     - 正向发放/负向扣减都走 ``BEGIN IMMEDIATE``，并发调账不会丢更新；
     - 扣减后 < 0 → :class:`InsufficientCredits`，余额与流水都不写；
@@ -518,13 +524,56 @@ def _today_minutes(user_id: str) -> tuple[float, bool]:
         conn.close()
 
 
+def _balance_block(user_id: str, user: dict) -> tuple[dict, bool]:
+    """用户摘要里的余额字段（整数 µUSD + 美元字符串）；表缺失时降级。
+
+    返回 ``(字段 dict, 是否降级)``。``user`` 里旧 ``credits`` 仍带上（冻结的
+    旧单位，前端只作「历史演示额度」展示）；余额才是扣费依据。
+    """
+    legacy_credits = int(user.get("credits") or 0)
+    try:
+        balance = billing.get_balance(user_id)
+    except Exception as exc:  # noqa: BLE001 - 余额读失败只降级，不让摘要 500
+        logger.warning("用户余额读取失败（按 0 降级）：%s", exc)
+        raw = int(user.get("balance_micro_usd") or 0)
+        return (
+            {
+                "balanceMicroUsd": raw,
+                "balanceUsd": billing.format_usd(raw),
+                "availableMicroUsd": raw,
+                "availableUsd": billing.format_usd(raw),
+                "activeHoldsMicroUsd": 0,
+                "creditsLegacy": legacy_credits,
+            },
+            True,
+        )
+    return (
+        {
+            "balanceMicroUsd": balance["balanceMicroUsd"],
+            "balanceUsd": balance["balanceUsd"],
+            "availableMicroUsd": balance["availableMicroUsd"],
+            "availableUsd": balance["availableUsd"],
+            "activeHoldsMicroUsd": balance["activeHoldsMicroUsd"],
+            "creditsLegacy": legacy_credits,
+        },
+        False,
+    )
+
+
 def build_summary(user_id: str) -> dict:
-    """``GET /api/user/summary`` 的响应体；数字无数据时为 0。"""
+    """``GET /api/user/summary`` 的响应体；数字无数据时为 0。
+
+    M3a 新增（顶层，不改变 ``user`` 对象既有字段）：``balanceMicroUsd`` /
+    ``balanceUsd`` / ``availableMicroUsd`` / ``availableUsd`` /
+    ``activeHoldsMicroUsd`` / ``creditsLegacy``。``credits`` 仍是旧单位，
+    **不参与扣费**，也不与 µUSD 做 1:1 折算。
+    """
     user = auth_db.get_user_by_id(user_id)
     if user is None:
         raise UserNotFound(user_id)
     month_spend, spend_degraded = _month_spend_usd(user_id)
     minutes, usage_degraded = _today_minutes(user_id)
+    balance_fields, balance_degraded = _balance_block(user_id, user)
     return {
         "user": {
             "id": user["id"],
@@ -534,8 +583,9 @@ def build_summary(user_id: str) -> dict:
             "memberSince": int(user["created_at"] or 0) * 1000,
             "status": user["status"],
         },
+        **balance_fields,
         "monthSpendUsd": month_spend,
         "usageToday": {"minutes": minutes},
         "version": config.APP_VERSION,
-        "preliminary": bool(spend_degraded or usage_degraded),
+        "preliminary": bool(spend_degraded or usage_degraded or balance_degraded),
     }

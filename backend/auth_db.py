@@ -116,6 +116,12 @@ def _ensure_user_profile_columns(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'"
         )
+    # 0025（M3a）：余额列。旧部署不跑迁移也要能读余额/开户（迁移仍是真源）。
+    if "balance_micro_usd" not in columns:
+        conn.execute(
+            "ALTER TABLE users ADD COLUMN balance_micro_usd "
+            "INTEGER NOT NULL DEFAULT 0"
+        )
     # 旧行回填显示名（与 0013 迁移同一口径）；新库/新用户不受影响。
     conn.execute(
         "UPDATE users SET username = CASE "
@@ -204,14 +210,21 @@ def _verify_dummy_password(password: str) -> None:
 # 用户
 # ---------------------------------------------------------------------------
 
-_USER_FIELDS = "id, email, password_hash, username, credits, status, created_at"
+_USER_FIELDS = (
+    "id, email, password_hash, username, credits, status, created_at, "
+    "balance_micro_usd"
+)
 
 
 def create_user(email: str, password: str, username: str | None = None) -> dict:
     """创建用户并返回用户行；邮箱重复抛 EmailExistsError。
 
     ``username`` 省略时回落 email 前缀（旧客户端/测试兼容；新注册的严格校验
-    在 ``routes_auth.signup`` 里做）。余额默认 0、状态默认 active。
+    在 ``routes_auth.signup`` 里做）。
+
+    这是**不带开户奖励**的底层建号（测试/脚本/旧路径）。需要 $2.00 开户奖励
+    与同一事务流水的注册路径请用 :func:`create_user_with_bonus`（公开注册）
+    或 ``invites.register_with_invite``（邀请码注册）。
     """
     email = normalize_email(email)
     user_id = uuid.uuid4().hex
@@ -239,6 +252,97 @@ def create_user(email: str, password: str, username: str | None = None) -> dict:
         "status": "active",
         "created_at": created_at,
     }
+
+
+def create_user_with_bonus(
+    email: str,
+    password: str,
+    username: str | None = None,
+    *,
+    with_session: bool = True,
+) -> tuple[dict, str | None]:
+    """公开注册的原子开户：建用户 + 发 $2.00 + 写流水（+ 建会话）。
+
+    与 ``invites.register_with_invite`` 同一口径（项目提案 §5.3）：用户行、
+    ``users.balance_micro_usd``、``account_ledger(signup_bonus)``、会话都在
+    **同一个 ``BEGIN IMMEDIATE`` 事务**里提交；任何一步失败整笔回滚，不会出现
+    「用户建了但余额没发」或「会话无效」。
+
+    密码哈希在事务外算好（Argon2 慢，不能持有 SQLite 写锁）。返回
+    ``(user, token|None)``；邮箱重复抛 :class:`EmailExistsError`。
+    若数据库还没跑到 0025，``billing.ensure_schema_compat()`` 会先幂等补表
+    （旧部署/测试兼容；生产仍应先跑迁移）。
+    """
+    from billing import ensure_schema_compat, signup_balance_micro_usd
+
+    email = normalize_email(email)
+    user_id = uuid.uuid4().hex
+    created_at = int(time.time())
+    password_hash = hash_password(password)
+    if username is None:
+        username = email_prefix_username(email)
+    bonus = signup_balance_micro_usd()
+    token = secrets.token_urlsafe(32) if with_session else None
+    if with_session:
+        # 低频注册顺便清过期会话（独立连接，别持有开户事务的写锁）。
+        cleanup_expired_sessions(force=True)
+
+    # 先保证金额表存在（幂等；已迁移库是 no-op）。
+    ensure_schema_compat()
+
+    from billing import write_signup_bonus
+
+    now_ms = int(time.time() * 1000)
+    conn = _connect()
+    try:
+        conn.isolation_level = None
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute(
+                "INSERT INTO users "
+                "(id, email, password_hash, created_at, username, credits, "
+                "status, balance_micro_usd) "
+                "VALUES (?, ?, ?, ?, ?, 0, 'active', ?)",
+                (user_id, email, password_hash, created_at, username, bonus),
+            )
+            write_signup_bonus(conn, user_id, now_ms_value=now_ms)
+            if token is not None:
+                expires_at = created_at + SESSION_MAX_AGE
+                conn.execute(
+                    "INSERT INTO sessions "
+                    "(token_hash, user_id, expires_at, created_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (hash_token(token), user_id, expires_at, created_at),
+                )
+            conn.execute("COMMIT")
+        except sqlite3.IntegrityError as exc:
+            try:
+                conn.execute("ROLLBACK")
+            except sqlite3.Error:
+                pass
+            if "users.email" in str(exc) or "UNIQUE" in str(exc).upper():
+                raise EmailExistsError(email) from exc
+            raise
+        except Exception:
+            try:
+                conn.execute("ROLLBACK")
+            except sqlite3.Error:
+                pass
+            raise
+    finally:
+        conn.close()
+    return (
+        {
+            "id": user_id,
+            "email": email,
+            "username": username,
+            "credits": 0,
+            "balance_micro_usd": bonus,
+            "status": "active",
+            "created_at": created_at,
+        },
+        token,
+    )
 
 
 def get_user_by_email(email: str) -> dict | None:
@@ -287,6 +391,7 @@ def authenticate(email: str, password: str) -> dict | None:
         "email": user["email"],
         "username": user["username"],
         "credits": user["credits"],
+        "balance_micro_usd": user.get("balance_micro_usd"),
         "status": user["status"],
     }
 
@@ -335,7 +440,7 @@ def get_session(token: str) -> dict | None:
     with _db() as conn:
         row = conn.execute(
             "SELECT s.user_id, s.expires_at, u.email, u.username, u.credits, "
-            "u.status "
+            "u.status, u.balance_micro_usd "
             "FROM sessions s JOIN users u ON u.id = s.user_id "
             "WHERE s.token_hash = ?",
             (token_hash,),
@@ -353,6 +458,7 @@ def get_session(token: str) -> dict | None:
         "email": row["email"],
         "username": row["username"],
         "credits": row["credits"],
+        "balance_micro_usd": row["balance_micro_usd"],
         "status": row["status"],
     }
 

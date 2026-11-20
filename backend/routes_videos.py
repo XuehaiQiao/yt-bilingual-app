@@ -27,6 +27,7 @@ from config import (
 import guest
 import jobs
 import languages
+import billing
 import llm
 import local_shows
 import storage
@@ -379,6 +380,8 @@ async def process_video(request: VideoRequest):
                 success = True
                 break  # Break out of retry loop
             except Exception as e:
+                if isinstance(e, billing.BillingError):
+                    raise  # 402/409 不能被当成可重试的限流错误
                 error_msg = str(e).lower()
                 if "429" in error_msg or "quota" in error_msg or "exhausted" in error_msg:
                     if attempt < max_retries - 1:
@@ -702,7 +705,13 @@ async def _guarded_stream(events, *, lang: str, job_id: str | None, acquire_job:
         print(f"Stream processing error: {exc}")
         if owns_job and job_id:
             jobs.mark_failed(job_id, str(exc))
-        yield _sse("error", {"detail": f"处理失败：{exc}", "targetLang": lang})
+        # 流已开始（HTTP 200）后无法改状态码：计费/配额错误把稳定 code 放进
+        # error 事件，前端据此显示「余额不足/额度用完」而不是泛化失败。
+        if isinstance(exc, billing.BillingError) and hasattr(exc, "payload"):
+            payload = {**exc.payload(), "targetLang": lang}
+        else:
+            payload = {"detail": f"处理失败：{exc}", "targetLang": lang}
+        yield _sse("error", payload)
     finally:
         if owns_job and job_id:
             # 正常结束（done）/显式失败（failed）不会被覆盖；只有断线/取消

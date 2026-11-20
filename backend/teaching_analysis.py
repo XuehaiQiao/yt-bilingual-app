@@ -712,6 +712,7 @@ async def _generate_one_batch(
             data = validate_analysis(raw, batch, candidates)
             return data, candidate
         except Exception as exc:  # noqa: BLE001 - 逐个候选降级，全失败才报错
+            quota.rethrow_billing_error(exc)  # 402 不能被降级链吞掉
             last_error = exc
             logger.warning("教学分析失败（%s）：%s", candidate, exc)
     raise AnalysisFailed(f"教学分析生成失败：{last_error}")

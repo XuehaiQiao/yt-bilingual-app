@@ -18,6 +18,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+import billing
 import languages
 import teaching_analysis
 import translate
@@ -109,6 +110,8 @@ async def process_local_video(payload: LocalVideoRequest, request: Request):
                 target_lang=lang,
             )
             translated.extend(result)
+    except billing.BillingError:
+        raise  # 402/409 交给全局处理器（前端读 code=insufficient_balance）
     except QuotaExceeded as exc:
         raise HTTPException(status_code=429, detail="翻译额度不足，请稍后再试。") from exc
     except Exception as exc:  # noqa: BLE001 - model pipeline has its own fallbacks

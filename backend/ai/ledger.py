@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import sqlite3
 import time
 from datetime import datetime, timezone as dt_timezone
@@ -290,21 +291,77 @@ def _require_db() -> str:
 # 账本：只追加
 # ---------------------------------------------------------------------------
 
-_INSERT_USAGE_SQL = (
-    "INSERT INTO ai_usage ("
-    "user_id, feature, model_id, provider, input_tokens, output_tokens, calls, "
-    "est_cost_usd, occurred_at, created_at, usage_date, target_lang"
-    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+# 0025 引入的计费快照列（可选）。写入时按「字段存在才写」构造 INSERT；
+# 旧库缺列会降级省略该列并告警一次，保证升级顺序不会让成本账本整条丢数据。
+_USAGE_BILLING_FIELDS = (
+    "cost_micro_usd",
+    "input_price_micro_usd_per_mtok",
+    "output_price_micro_usd_per_mtok",
+    "price_version",
+    "price_source",
+    "token_source",
+    "billable",
+    "billing_status",
+    "hold_id",
+    "request_id",
 )
 
-# 0003 时代（未跑 0004_target_lang）的旧库：没有 target_lang 列也能记账。
-# 升级顺序问题不该让账本整条丢数据（与「表未迁移 fail-open」同一口径）。
-_INSERT_USAGE_SQL_WITHOUT_LANG = (
-    "INSERT INTO ai_usage ("
-    "user_id, feature, model_id, provider, input_tokens, output_tokens, calls, "
-    "est_cost_usd, occurred_at, created_at, usage_date"
-    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+_UNSET = object()
+
+# SQLite 的两种缺列报错：
+#   table ai_usage has no column named cost_micro_usd
+#   no such column: ai_usage.cost_micro_usd
+_MISSING_COLUMN_RE = re.compile(
+    r"(?:no column named\s+|no such column:\s*)(?:ai_usage\.)?([A-Za-z_][A-Za-z0-9_]*)"
 )
+
+
+def insert_usage(
+    conn: sqlite3.Connection,
+    fields: dict,
+    *,
+    allow_legacy: bool = False,
+) -> int:
+    """在**调用方事务内**插入一条 ai_usage，返回 rowid。
+
+    与 :func:`record_usage` 分开：计费结算要求「写用量 + 扣余额 + 写流水」在
+    同一个事务里（项目提案 §5.8.2），不能各自开连接。``allow_legacy=True``
+    时遇到旧库缺列会自动省略该列（升级顺序兼容）；计费路径必须传 ``False``
+    ——缺列说明迁移没跑完，不能假装记账成功。
+    """
+    columns = list(fields)
+    dropped: set[str] = set()
+    while True:
+        sql = (
+            f"INSERT INTO ai_usage ({', '.join(columns)}) "
+            f"VALUES ({', '.join('?' for _ in columns)})"
+        )
+        try:
+            cursor = conn.execute(sql, [fields[name] for name in columns])
+            break
+        except sqlite3.OperationalError as exc:
+            if not allow_legacy:
+                raise
+            match = _MISSING_COLUMN_RE.search(str(exc))
+            if match is None:
+                raise
+            name = match.group(1)
+            if name not in columns:
+                raise
+            columns.remove(name)
+            dropped.add(name)
+            if not columns:
+                raise
+    for name in dropped:
+        key = f"usage_column:{name}"
+        if key not in _warned:
+            _warned.add(key)
+            logger.warning(
+                "ai_usage.%s 列不存在（数据库未迁移到最新版本），本次记账省略该列；"
+                "请运行 `alembic upgrade head`。",
+                name,
+            )
+    return int(cursor.lastrowid)
 
 
 def record_usage(
@@ -318,8 +375,19 @@ def record_usage(
     occurred_at: int | None = None,
     provider: str | None = None,
     target_lang: str | None = None,
+    cost_micro_usd: object = _UNSET,
+    input_price_micro_usd_per_mtok: object = _UNSET,
+    output_price_micro_usd_per_mtok: object = _UNSET,
+    price_version: object = _UNSET,
+    price_source: object = _UNSET,
+    token_source: object = _UNSET,
+    billable: object = _UNSET,
+    billing_status: object = _UNSET,
+    hold_id: object = _UNSET,
+    request_id: object = _UNSET,
+    raise_on_failure: bool = False,
 ) -> dict | None:
-    """追加一条 AI 用量记录，返回落库行；**任何失败只记日志并返回 None**。
+    """追加一条 AI 用量记录，返回落库行；默认**任何失败只记日志并返回 None**。
 
     参数：
     - ``user_id``：归属用户；``None`` 时回落到当前请求 ContextVar，仍为空则
@@ -330,7 +398,14 @@ def record_usage(
     - ``calls``：本次 API 调用次数（默认 1）；
     - ``occurred_at``：毫秒时间戳，缺省服务端当前时间；
     - ``provider``：缺省从目录读，目录外记 ``unknown``；
-    - ``target_lang``：目标语言（账本维度，缺省 ``zh-CN``）；**不拆配额限额**。
+    - ``target_lang``：目标语言（账本维度，缺省 ``zh-CN``）；**不拆配额限额**；
+    - ``cost_micro_usd`` 等 0025 计费快照字段：不传则不写这些列（旧口径）；
+    - ``raise_on_failure``：计费严格模式用；True 时写库失败向上抛，调用方
+      决定保留 hold / 告警（默认 False 仍保持「记账不阻断主流程」）。
+
+    缺价模型（目录里没有单价）仍会写 ``est_cost_usd`` 的**上界估算**（沿用
+    ``price_for`` 的已知最贵口径），但调用方应同时传 ``billable=0`` 与
+    ``billing_status='unbilled'``，表示这笔成本**没有**从用户余额扣除。
     """
     if feature not in KNOWN_FEATURES:
         logger.warning("record_usage 收到未知 feature=%r（已丢弃；见 KNOWN_FEATURES）。", feature)
@@ -347,63 +422,62 @@ def record_usage(
     created = now_ms()
     usage_date = day_of(occurred)
     resolved_provider = provider or provider_for(model_id)
-    cost = estimate_cost_usd(model_id, tokens_in, tokens_out)
+
+    # est_cost_usd：有精确整数成本时由 cost_micro_usd 派生；否则沿用地目录价
+    # 估算（缺价按「已知最贵」上界，只用于分析/日预算，不作为扣费依据）。
+    if cost_micro_usd is not _UNSET and cost_micro_usd is not None:
+        cost = round(int(cost_micro_usd) / 1_000_000, 6)
+    else:
+        cost = estimate_cost_usd(model_id, tokens_in, tokens_out)
+
+    fields: dict = {
+        "user_id": resolved_user,
+        "feature": feature,
+        "model_id": model_id or "unknown",
+        "provider": resolved_provider,
+        "input_tokens": tokens_in,
+        "output_tokens": tokens_out,
+        "calls": call_count,
+        "est_cost_usd": cost,
+        "occurred_at": occurred,
+        "created_at": created,
+        "usage_date": usage_date,
+        "target_lang": resolved_lang,
+    }
+    for name, value in (
+        ("cost_micro_usd", cost_micro_usd),
+        ("input_price_micro_usd_per_mtok", input_price_micro_usd_per_mtok),
+        ("output_price_micro_usd_per_mtok", output_price_micro_usd_per_mtok),
+        ("price_version", price_version),
+        ("price_source", price_source),
+        ("token_source", token_source),
+        ("billable", billable),
+        ("billing_status", billing_status),
+        ("hold_id", hold_id),
+        ("request_id", request_id),
+    ):
+        if value is not _UNSET:
+            fields[name] = value
 
     try:
         _require_db()
         conn = _connect()
         try:
-            params = (
-                resolved_user,
-                feature,
-                model_id or "unknown",
-                resolved_provider,
-                tokens_in,
-                tokens_out,
-                call_count,
-                cost,
-                occurred,
-                created,
-                usage_date,
-            )
-            try:
-                cursor = conn.execute(_INSERT_USAGE_SQL, (*params, resolved_lang))
-            except sqlite3.OperationalError as exc:
-                message = str(exc).lower()
-                if "no such column" not in message and "no column named" not in message:
-                    raise
-                # 未跑 0004_target_lang 的旧库：无列也落账，不丢成本数据。
-                if "target_lang" not in _warned:
-                    _warned.add("target_lang")
-                    logger.warning(
-                        "ai_usage.target_lang 列不存在（未跑 0004_target_lang 迁移），"
-                        "本次记账省略语言维度；请运行 `alembic upgrade head`。"
-                    )
-                cursor = conn.execute(_INSERT_USAGE_SQL_WITHOUT_LANG, params)
+            row_id = insert_usage(conn, fields, allow_legacy=True)
             conn.commit()
-            return {
-                "id": int(cursor.lastrowid),
-                "user_id": resolved_user,
-                "feature": feature,
-                "model_id": model_id or "unknown",
-                "provider": resolved_provider,
-                "input_tokens": tokens_in,
-                "output_tokens": tokens_out,
-                "calls": call_count,
-                "est_cost_usd": cost,
-                "occurred_at": occurred,
-                "created_at": created,
-                "usage_date": usage_date,
-                "target_lang": resolved_lang,
-            }
+            return {"id": row_id, **fields}
         finally:
             conn.close()
     except Exception:  # noqa: BLE001 - 记账失败绝不能阻断翻译/查词主流程
         logger.exception(
-            "ai_usage 写入失败（已忽略，不阻断主流程）：feature=%r model=%r",
+            "ai_usage 写入失败（已忽略，不阻断主流程；raise_on_failure=%s）："
+            "feature=%r model=%r",
+            raise_on_failure,
             feature,
             model_id,
         )
+        if raise_on_failure:
+            raise
         return None
 
 

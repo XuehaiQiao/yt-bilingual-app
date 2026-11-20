@@ -629,7 +629,11 @@ def test_admin_existing_writes_are_audited(migrated, admin_client):
 
 def test_migration_0024_schema_downgrade_and_reupgrade(tmp_path):
     db = tmp_path / "app.db"
-    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    # 只测 0024 自身（0025 的余额列另有 tests/test_balance_billing.py）：
+    # 显式升到 0024，避免 `downgrade -1` 在 head 前进后被解读成回滚 0025。
+    assert_alembic_ok(
+        run_alembic(db, "upgrade", "0024_account_lifecycle"), "upgrade 0024"
+    )
     assert revision(db) == "0024_account_lifecycle"
 
     assert {
@@ -796,13 +800,17 @@ def test_migration_0024_schema_downgrade_and_reupgrade(tmp_path):
         assert conn.execute("SELECT email FROM users WHERE id='legacy'").fetchone()[0] == (
             "legacy@example.com"
         )
-    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "re-upgrade head")
+    assert_alembic_ok(
+        run_alembic(db, "upgrade", "0024_account_lifecycle"), "re-upgrade 0024"
+    )
     assert revision(db) == "0024_account_lifecycle"
     assert {"account_deletion_requests", "data_export_jobs", "admin_audit_log"} <= (
         table_names(db)
     )
     # 重复 upgrade 是 no-op。
-    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head again")
+    assert_alembic_ok(
+        run_alembic(db, "upgrade", "0024_account_lifecycle"), "upgrade 0024 again"
+    )
 
 
 def test_due_execution_without_force(migrated, admin_client):

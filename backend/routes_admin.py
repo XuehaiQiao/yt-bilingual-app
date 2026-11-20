@@ -31,12 +31,13 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import AliasChoices, BaseModel, Field
 
 import account
 import account_lifecycle
 import behavior_events
+import billing
 import config
 import guest
 import invites
@@ -61,6 +62,28 @@ class CreditAdjustRequest(BaseModel):
 
     delta: int | None = None
     reason: str | None = None
+
+
+class BalanceAdjustRequest(BaseModel):
+    """``POST /users/{id}/balance``：美元字符串（或整数 µUSD）+ 方向 + 原因 + 幂等键。
+
+    金额一律用 **字符串/整数** 传：JSON 浮点会丢精度，``billing.parse_usd_amount``
+    只接受最多 6 位小数的字符串；``direction`` 缺省 ``credit``（充值）。
+    """
+
+    amount_usd: object = Field(
+        default=None, validation_alias=AliasChoices("amountUsd", "amount_usd")
+    )
+    amount_micro_usd: object = Field(
+        default=None,
+        validation_alias=AliasChoices("amountMicroUsd", "amount_micro_usd"),
+    )
+    direction: object = None
+    reason: object = None
+    idempotency_key: object = Field(
+        default=None,
+        validation_alias=AliasChoices("idempotencyKey", "idempotency_key"),
+    )
 
 
 class UserPatchRequest(BaseModel):
@@ -458,6 +481,9 @@ def build_users(limit: int = 50, offset: int = 0, search: str = "") -> dict:
         selected = "id, email, created_at"
         if has_profile:
             selected += ", username, credits, status"
+        has_balance = "balance_micro_usd" in user_columns
+        if has_balance:
+            selected += ", balance_micro_usd"
         try:
             rows = conn.execute(
                 f"SELECT {selected} FROM users"
@@ -519,6 +545,9 @@ def build_users(limit: int = 50, offset: int = 0, search: str = "") -> dict:
                 )
                 if value and (last_active is None or value > last_active):
                     last_active = value
+            balance_micro = (
+                int(row["balance_micro_usd"] or 0) if has_balance else 0
+            )
             users.append(
                 {
                     "id": user_id[:8],
@@ -526,6 +555,9 @@ def build_users(limit: int = 50, offset: int = 0, search: str = "") -> dict:
                     "email": row["email"],
                     "username": row["username"] if has_profile else None,
                     "credits": int(row["credits"] or 0) if has_profile else 0,
+                    # M3a：余额（整数 µUSD + 美元字符串）；credits 是冻结的旧单位。
+                    "balanceMicroUsd": balance_micro,
+                    "balanceUsd": billing.format_usd(balance_micro),
                     "status": (
                         row["status"] or account.STATUS_ACTIVE
                     ) if has_profile else account.STATUS_ACTIVE,
@@ -768,13 +800,21 @@ def admin_adjust_credits(
     user_id: str,
     payload: CreditAdjustRequest,
     request: Request,
+    response: Response,
     user: dict = Depends(require_admin),
 ):
-    """手动调余额：delta 非 0、-100000..100000，reason 1–200 字。
+    """**DEPRECATED**：旧单位 ``users.credits`` 调账（M3a 起不再作为扣费依据）。
 
-    原子更新 users.credits 并追加 credit_transactions；扣减后余额 < 0 拒绝
+    新管理台请用 ``POST /api/admin/users/{id}/balance``（整数 µUSD、幂等键、
+    402 语义）。本端点仅为旧前端/旧测试兼容保留：只改 ``credits`` 与
+    ``credit_transactions``，**不影响** ``balance_micro_usd``，也不会让 AI
+    调用可用。delta 非 0、-100000..100000，reason 1–200 字；扣减后 < 0 拒绝
     （400），用户不存在 404，未迁移 503。返回 ``{"credits": 新余额}``。
     """
+    response.headers["Deprecation"] = "true"
+    response.headers["Link"] = (
+        f'</api/admin/users/{user_id}/balance>; rel="successor-version"'
+    )
     try:
         delta, reason = account.validate_adjustment(payload.delta, payload.reason)
     except account.InvalidAdjustment as exc:
@@ -803,6 +843,158 @@ def admin_adjust_credits(
         detail={"delta": delta, "reason": reason, "credits": credits},
     )
     return {"credits": credits}
+
+
+@router.post("/users/{user_id}/balance")
+def admin_adjust_balance(
+    user_id: str,
+    payload: BalanceAdjustRequest,
+    request: Request,
+    user: dict = Depends(require_admin),
+):
+    """M3a 管理台充值/扣减（整数 µUSD 落库，美元字符串入参最多 6 位小数）。
+
+    - 金额二选一：``amountUsd``（如 ``"2.00"``）或 ``amountMicroUsd``（整数）；
+    - ``direction``：``credit``（默认，充值）/ ``debit``（扣减）；单次 ±$100；
+    - ``reason`` 必填（1–200 字）；``idempotencyKey`` 可选，重复请求返回原结果；
+    - 扣成负数 400；用户不存在 404；未迁移 503。
+    """
+    limit = int(
+        getattr(config, "MAX_ADMIN_BALANCE_DELTA_MICRO_USD", 100_000_000)
+    )
+    try:
+        key = billing.validate_idempotency_key(payload.idempotency_key)
+        reason = billing.validate_reason(payload.reason)
+        if payload.amount_micro_usd is not None:
+            raw = payload.amount_micro_usd
+            if isinstance(raw, bool) or not isinstance(raw, int):
+                raise billing.InvalidBillingRequest(
+                    "amountMicroUsd 必须是整数微美元（1 USD = 1,000,000 µUSD）。"
+                )
+            if raw <= 0:
+                raise billing.InvalidBillingRequest("金额必须大于 0。")
+            if raw > limit:
+                raise billing.InvalidBillingRequest(
+                    f"单次金额不能超过 ${billing.format_usd(limit)}。"
+                )
+            amount = int(raw)
+        elif payload.amount_usd is not None:
+            amount = billing.parse_usd_amount(
+                payload.amount_usd, max_abs_micro_usd=limit
+            )
+        else:
+            raise billing.InvalidBillingRequest(
+                "请提供 amountUsd（美元字符串）或 amountMicroUsd（整数微美元）。"
+            )
+
+        direction = payload.direction if payload.direction is not None else "credit"
+        if not isinstance(direction, str):
+            raise billing.InvalidBillingRequest("direction 必须是字符串。")
+        direction = direction.strip().lower()
+        if direction in ("credit", "topup", "add", "increase"):
+            result = billing.topup(
+                user_id,
+                amount,
+                reason,
+                actor_id=user["id"],
+                idempotency_key=key,
+            )
+        elif direction in ("debit", "deduct", "subtract"):
+            result = billing.deduct(
+                user_id,
+                amount,
+                reason,
+                actor_id=user["id"],
+                idempotency_key=key,
+            )
+        else:
+            raise billing.InvalidBillingRequest(
+                "direction 只支持 credit（充值）或 debit（扣减）。"
+            )
+    except billing.InvalidBillingRequest as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except billing.BalanceNotFound:
+        raise HTTPException(status_code=404, detail="用户不存在。")
+    except billing.BillingConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except billing.BillingUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+    balance = billing.get_balance(user_id)
+    _audit(
+        request,
+        user["id"],
+        "admin.user.balance_adjust",
+        target_type="user",
+        target_id=user_id,
+        detail={
+            "deltaMicroUsd": result["deltaMicroUsd"],
+            "kind": result["kind"],
+            "reason": reason,
+            "balanceMicroUsd": balance["balanceMicroUsd"],
+            "ledgerId": result["ledgerId"],
+            "replayed": result["replayed"],
+        },
+    )
+    return {
+        "userId": user_id,
+        "ledgerId": result["ledgerId"],
+        "kind": result["kind"],
+        "deltaMicroUsd": result["deltaMicroUsd"],
+        "replayed": result["replayed"],
+        "balanceMicroUsd": balance["balanceMicroUsd"],
+        "balanceUsd": balance["balanceUsd"],
+        "availableMicroUsd": balance["availableMicroUsd"],
+        "availableUsd": balance["availableUsd"],
+    }
+
+
+@router.get("/users/{user_id}/ledger")
+def admin_user_ledger(
+    user_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    user: dict = Depends(require_admin),
+):
+    """某用户的资金流水（倒序）+ 当前余额；管理台用户详情用。"""
+    try:
+        return billing.ledger_entries(user_id, limit=limit, offset=offset)
+    except billing.BalanceNotFound:
+        raise HTTPException(status_code=404, detail="用户不存在。")
+    except billing.BillingUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@router.get("/billing/summary")
+def admin_billing_summary(
+    from_: str | None = Query(default=None, alias="from"),
+    to: str | None = Query(default=None, alias="to"),
+    user: dict = Depends(require_admin),
+):
+    """计费汇总（按天/模型/功能）：真实扣费 µUSD、未计费条数、价格表、hold 余额。
+
+    参数 ``from`` / ``to`` 是 ``usage_date`` 的 ``YYYY-MM-DD``（含 to 当天）。
+    与旧 ``/usage`` 的区别：这里 ``billedCostMicroUsd`` 是**真实扣费**，
+    ``estimatedCostUsd`` 才是旧的目录价估算（不是账单）。
+    """
+    parsed = {}
+    for label, value in (("from", from_), ("to", to)):
+        if value is None:
+            parsed[label] = None
+            continue
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"{label} 需要 YYYY-MM-DD 格式。"
+            ) from exc
+        parsed[label] = value
+    try:
+        return billing.billing_summary(
+            day_from=parsed["from"], day_to=parsed["to"]
+        )
+    except billing.BillingUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
 
 
 @router.patch("/users/{user_id}")
