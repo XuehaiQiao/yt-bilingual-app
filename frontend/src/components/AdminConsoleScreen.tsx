@@ -28,13 +28,14 @@ import {
 import {
   Activity,
   AlertCircle,
+  ArrowDownRight,
+  ArrowUpRight,
   Ban,
   CalendarClock,
   Check,
   ChevronLeft,
   ChevronRight,
   CircleCheck,
-  Coins,
   Copy,
   Database,
   DollarSign,
@@ -53,21 +54,24 @@ import {
   ShieldCheck,
   Trash2,
   SlidersHorizontal,
+  Receipt,
   TriangleAlert,
   UserPlus,
   UserRound,
   Users,
+  Wallet,
   Wrench,
   XCircle,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
-import { getLanguageMeta, type TranslationKey } from '../i18n';
+import type { TranslationKey } from '../i18n';
 import { useAuth } from '../lib/auth';
 import { displayUsername } from '../lib/username';
 import { toast } from '../lib/toast';
 import { Dialog } from './ui/Dialog';
 import { BackButton } from './ui/BackButton';
 import { Tabs, tabPanelProps } from './ui/Tabs';
+import { Segmented } from './ui/Segmented';
 import { Switch } from './ui/Switch';
 import {
   Table,
@@ -81,16 +85,18 @@ import {
 } from './ui/Table';
 import {
   AdminApiError,
-  adjustAdminUserCredits,
+  adjustAdminUserBalance,
   createAdminInvites,
   executeAdminDeletion,
   fetchAdminAudit,
+  fetchAdminBillingSummary,
   fetchAdminDeletionRequests,
   fetchAdminHealth,
   fetchAdminInvites,
   fetchAdminSettings,
   fetchAdminStats,
   fetchAdminUsage,
+  fetchAdminUserLedger,
   fetchAdminUsers,
   revokeAdminInvite,
   saveAdminSettings,
@@ -116,11 +122,25 @@ import {
   type AdminUsersPage,
   type AdminRegistrationConfig,
 } from '../lib/admin';
+import {
+  MAX_ADMIN_BALANCE_DELTA_MICRO_USD,
+  createIdempotencyKey,
+  formatMicroUsd,
+  formatMicroUsdAmount,
+  formatUsdNumber,
+  parseUsdStringToMicroUsd,
+  type AdminBalanceAdjustResult,
+  type AdminBalanceDirection,
+  type AdminBillingGroupRow,
+  type AdminBillingModelRow,
+  type AdminBillingSummary,
+  type AdminLedgerPage,
+} from '../lib/billing';
 import { DELETE_CONFIRM_WORD, lifecycleErrorKey } from '../lib/accountLifecycle';
 import { LanguageMenu } from './LanguageMenu';
 
 const PAGE_SIZE = 20;
-const MAX_CREDIT_DELTA = 100_000;
+const LEDGER_PAGE_SIZE = 50;
 const MAX_ANNOUNCEMENT_CHARS = 2000;
 const INVITE_PAGE_SIZE = 20;
 const DELETION_PAGE_SIZE = 20;
@@ -144,6 +164,7 @@ const SUCCESS_BUTTON =
 type AdminTab =
   | 'overview'
   | 'users'
+  | 'billing'
   | 'invites'
   | 'deletions'
   | 'audit'
@@ -157,6 +178,7 @@ const TABS: ReadonlyArray<{
 }> = [
   { id: 'overview', labelKey: 'admin.tab.overview', icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
   { id: 'users', labelKey: 'admin.tab.users', icon: <Users className="w-3.5 h-3.5" /> },
+  { id: 'billing', labelKey: 'admin.tab.billing', icon: <Wallet className="w-3.5 h-3.5" /> },
   { id: 'invites', labelKey: 'admin.tab.invites', icon: <Ticket className="w-3.5 h-3.5" /> },
   { id: 'deletions', labelKey: 'admin.tab.deletions', icon: <CalendarClock className="w-3.5 h-3.5" /> },
   { id: 'audit', labelKey: 'admin.tab.audit', icon: <ScrollText className="w-3.5 h-3.5" /> },
@@ -171,11 +193,45 @@ const FEATURE_LABEL_KEYS: Record<string, TranslationKey> = {
   local_show: 'admin.feature.local_show',
   quiz: 'admin.feature.quiz',
   reading: 'admin.feature.reading',
+  books: 'admin.feature.books',
+  analysis: 'admin.feature.analysis',
+  course_generation: 'admin.feature.course_generation',
 };
 
 function featureLabel(feature: string, t: (key: TranslationKey) => string): string {
   const key = FEATURE_LABEL_KEYS[feature];
   return key ? t(key) : feature;
+}
+
+/** Local `YYYY-MM-DD` for a day offset from today (billing summary range). */
+function dayString(offsetDays = 0): string {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+const LEDGER_KIND_KEYS: Record<string, TranslationKey> = {
+  signup_bonus: 'admin.ledger.kind.signup_bonus',
+  signup_bonus_backfill: 'admin.ledger.kind.signup_bonus_backfill',
+  admin_topup: 'admin.ledger.kind.admin_topup',
+  admin_deduct: 'admin.ledger.kind.admin_deduct',
+  ai_settle: 'admin.ledger.kind.ai_settle',
+  ai_refund: 'admin.ledger.kind.ai_refund',
+  adjustment: 'admin.ledger.kind.adjustment',
+  legacy_snapshot: 'admin.ledger.kind.legacy_snapshot',
+};
+
+function ledgerKindLabel(kind: string, t: (key: TranslationKey) => string): string {
+  const key = LEDGER_KIND_KEYS[kind];
+  return key ? t(key) : kind;
+}
+
+/** Full ids never render in the console; support only needs a stable prefix. */
+function shortId(value: string | null | undefined): string | null {
+  const text = (value ?? '').trim();
+  return text ? text.slice(0, 8) : null;
 }
 
 function formatBytes(value: number, formatNumber: (value: number) => string): string {
@@ -202,20 +258,14 @@ function formatUptime(seconds: number, formatNumber: (value: number) => string):
   return `${formatNumber(days)}d ${formatNumber(hours % 24)}h`;
 }
 
-/** Locale-aware `$` formatter keeping the tiny AI estimates legible. */
+/**
+ * Locale-aware `$` formatter for the legacy float estimates (admin overview).
+ * Ledger/balance money goes through `formatMicroUsd` instead: those values are
+ * integers and must never be formatted from a float.
+ */
 function useUsdFormatter(): (value: number) => string {
   const { language } = useI18n();
-  return useMemo(() => {
-    const locale = getLanguageMeta(language).locale;
-    const formatter = new Intl.NumberFormat(locale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    });
-    return (value: number): string => {
-      if (!Number.isFinite(value)) return '$0.00';
-      return `$${formatter.format(value)}`;
-    };
-  }, [language]);
+  return useMemo(() => (value: number) => formatUsdNumber(value, language), [language]);
 }
 
 function fallbackErrorText(error: unknown, fallback: string): string {
@@ -332,60 +382,105 @@ function StatusBadge({ banned }: { banned: boolean }) {
   );
 }
 
-interface CreditDialogProps {
+interface BalanceDialogProps {
   target: AdminUserRow;
   onClose: () => void;
-  onSaved: (userId: string, credits: number) => void;
+  onSaved: (result: AdminBalanceAdjustResult) => void;
   onAuthError: () => void;
 }
 
 /**
- * Manual balance adjustment (`POST /api/admin/users/{id}/credits`).
- * A signed integer keeps the + / - cases in one field; the backend remains the
- * authority on range, reason length and the "balance cannot go negative" rule.
+ * Manual micro-USD balance adjustment (M3b / specs/034).
+ *
+ * The admin types the exact USD string (≤6 decimals, ≤$100), picks a
+ * direction, and gives a required reason; the frontend generates the
+ * idempotency key so a network retry replays the original ledger row instead
+ * of charging twice. All validation is mirrored client-side for fast feedback,
+ * but the backend remains the authority (400 / 402 / 409 stay readable).
  */
-function CreditDialog({ target, onClose, onSaved, onAuthError }: CreditDialogProps) {
-  const { t, formatNumber } = useI18n();
-  const [deltaText, setDeltaText] = useState('');
+function BalanceDialog({ target, onClose, onSaved, onAuthError }: BalanceDialogProps) {
+  const { t, language, formatNumber } = useI18n();
+  const [amountText, setAmountText] = useState('');
+  const [direction, setDirection] = useState<AdminBalanceDirection>('credit');
   const [reasonText, setReasonText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState(() => createIdempotencyKey());
+  // One key per (direction, amount, reason) signature: retrying the exact same
+  // values reuses it (server replays), editing any value starts a fresh one.
+  const lastSignatureRef = useRef('');
   const name = displayUsername(target.username, target.email);
+  const currentBook = target.balanceMicroUsd ?? 0;
+  const legacyCredits = target.credits ?? 0;
 
-  const validate = (): { delta: number; reason: string } | null => {
-    const delta = Number(deltaText);
-    if (
-      deltaText.trim() === ''
-      || !Number.isInteger(delta)
-      || delta === 0
-      || Math.abs(delta) > MAX_CREDIT_DELTA
-    ) {
-      setError(t('admin.credit.error.delta'));
+  const amountMicro = parseUsdStringToMicroUsd(amountText);
+  const previewMicro = amountMicro === null
+    ? null
+    : direction === 'credit'
+      ? currentBook + amountMicro
+      : currentBook - amountMicro;
+
+  const validate = (): { amountUsd: string; reason: string } | null => {
+    const amountUsd = amountText.trim();
+    const micro = parseUsdStringToMicroUsd(amountUsd);
+    if (micro === null || micro > MAX_ADMIN_BALANCE_DELTA_MICRO_USD) {
+      setError(t('admin.balance.error.amount'));
       return null;
     }
     const reason = reasonText.trim();
-    if (reason.length < 1 || reason.length > 200) {
-      setError(t('admin.credit.error.reason'));
+    if (reason.length < 1 || Array.from(reason).length > 200) {
+      setError(t('admin.balance.error.reason'));
       return null;
     }
-    return { delta, reason };
+    if (direction === 'debit' && micro > currentBook) {
+      setError(t('admin.balance.error.negative'));
+      return null;
+    }
+    return { amountUsd, reason };
   };
 
   const submit = async () => {
     if (saving) return;
     const values = validate();
     if (!values) return;
+    const signature = `${direction}:${values.amountUsd}:${values.reason}`;
+    let key = idempotencyKey;
+    if (lastSignatureRef.current !== signature) {
+      key = createIdempotencyKey();
+      lastSignatureRef.current = signature;
+      setIdempotencyKey(key);
+    }
     setSaving(true);
     setError(null);
     try {
-      const result = await adjustAdminUserCredits(target.userId, values.delta, values.reason);
-      onSaved(target.userId, result.credits);
+      const result = await adjustAdminUserBalance(target.userId, {
+        amountUsd: values.amountUsd,
+        direction,
+        reason: values.reason,
+        idempotencyKey: key,
+      });
+      onSaved(result);
     } catch (err) {
       if (err instanceof AdminApiError && (err.status === 401 || err.status === 403)) {
         onAuthError();
         return;
       }
-      const message = fallbackErrorText(err, t('admin.credit.error.failed'));
+      let message: string;
+      if (err instanceof AdminApiError) {
+        if (err.status === 400) {
+          message = /负数/.test(err.message)
+            ? t('admin.balance.error.negative')
+            : t('admin.balance.error.invalid');
+        } else if (err.status === 402) {
+          message = t('admin.balance.error.insufficient');
+        } else if (err.status === 409) {
+          message = t('admin.balance.error.conflict');
+        } else {
+          message = err.message || t('admin.balance.error.failed');
+        }
+      } else {
+        message = fallbackErrorText(err, t('admin.balance.error.failed'));
+      }
       setError(message);
       toast.error(message);
     } finally {
@@ -399,19 +494,19 @@ function CreditDialog({ target, onClose, onSaved, onAuthError }: CreditDialogPro
       onClose={onClose}
       title={
         <span className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 text-zinc-400"><Coins className="w-5 h-5" /></span>
-          <span className="truncate">{t('admin.credit.title')}</span>
+          <span className="shrink-0 text-zinc-400"><Wallet className="w-5 h-5" /></span>
+          <span className="truncate">{t('admin.balance.title')}</span>
         </span>
       }
-      size="sm"
+      size="md"
       loading={saving}
-      initialFocus='[data-testid="admin-credit-delta"]'
-      testId="admin-credit-dialog"
+      initialFocus='[data-testid="admin-balance-amount"]'
+      testId="admin-balance-dialog"
       footer={
         <>
           <button
             type="button"
-            data-testid="admin-credit-cancel"
+            data-testid="admin-balance-cancel"
             onClick={onClose}
             disabled={saving}
             className={SECONDARY_BUTTON}
@@ -420,38 +515,82 @@ function CreditDialog({ target, onClose, onSaved, onAuthError }: CreditDialogPro
           </button>
           <button
             type="button"
-            data-testid="admin-credit-submit"
+            data-testid="admin-balance-submit"
             onClick={() => { void submit(); }}
             disabled={saving}
             className={PRIMARY_BUTTON}
           >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Coins className="w-4 h-4" />}
-            {saving ? t('admin.credit.saving') : t('admin.credit.submit')}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
+            {saving ? t('admin.balance.saving') : t('admin.balance.submit')}
           </button>
         </>
       }
     >
       <p className="text-sm leading-relaxed text-zinc-400">
-        {t('admin.credit.desc', { name })}
+        {t('admin.balance.desc', { name })}
       </p>
 
-      <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/5 bg-zinc-800/30 px-3 py-2.5">
-        <span className="text-xs text-zinc-500">{t('admin.credit.current')}</span>
-        <span data-testid="admin-credit-current" className="text-sm font-semibold text-zinc-100 tabular-nums">
-          {formatNumber(target.credits ?? 0)}
-        </span>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-white/5 bg-zinc-800/30 px-3 py-2.5">
+          <p className="text-[11px] text-zinc-500">{t('admin.balance.book')}</p>
+          <p
+            data-testid="admin-balance-book"
+            className={`mt-0.5 text-sm font-semibold tabular-nums ${
+              currentBook < 0 ? 'text-red-400' : 'text-zinc-100'
+            }`}
+          >
+            {formatMicroUsd(currentBook, language)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-zinc-800/30 px-3 py-2.5">
+          <p className="text-[11px] text-zinc-500">{t('admin.balance.legacyLabel')}</p>
+          <p className="mt-0.5 text-sm font-semibold tabular-nums text-zinc-400">
+            {formatNumber(legacyCredits)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <span className="text-xs font-medium text-zinc-400">{t('admin.balance.direction')}</span>
+        <div className="mt-1.5">
+          <Segmented
+            options={[
+              {
+                value: 'credit',
+                label: t('admin.balance.credit'),
+                icon: <ArrowUpRight className="w-3.5 h-3.5" />,
+                testId: 'admin-balance-direction-credit',
+              },
+              {
+                value: 'debit',
+                label: t('admin.balance.debit'),
+                icon: <ArrowDownRight className="w-3.5 h-3.5" />,
+                testId: 'admin-balance-direction-debit',
+              },
+            ]}
+            value={direction}
+            onChange={(value) => {
+              setDirection(value as AdminBalanceDirection);
+              if (error) setError(null);
+            }}
+            layoutId="admin-balance-direction"
+            ariaLabel={t('admin.balance.direction')}
+            fullWidth
+            testId="admin-balance-direction"
+          />
+        </div>
       </div>
 
       <label className="mt-4 block">
-        <span className="text-xs font-medium text-zinc-400">{t('admin.credit.delta')}</span>
+        <span className="text-xs font-medium text-zinc-400">{t('admin.balance.amount')}</span>
         <input
-          data-testid="admin-credit-delta"
-          type="number"
-          step={1}
-          inputMode="numeric"
-          value={deltaText}
+          data-testid="admin-balance-amount"
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          value={amountText}
           onChange={(event) => {
-            setDeltaText(event.target.value);
+            setAmountText(event.target.value);
             if (error) setError(null);
           }}
           onKeyDown={(event) => {
@@ -460,19 +599,19 @@ function CreditDialog({ target, onClose, onSaved, onAuthError }: CreditDialogPro
               void submit();
             }
           }}
-          placeholder="+100 / -100"
+          placeholder="2.00"
           aria-invalid={error ? true : undefined}
-          className="mt-1.5 h-10 w-full rounded-xl bg-zinc-800/50 border border-white/10 px-3 text-sm text-zinc-100 outline-none focus-visible:border-brand/60 focus-visible:ring-2 focus-visible:ring-brand/15"
+          className="mt-1.5 h-10 w-full rounded-xl bg-zinc-800/50 border border-white/10 px-3 text-sm text-zinc-100 tabular-nums placeholder:text-zinc-600 outline-none focus-visible:border-brand/60 focus-visible:ring-2 focus-visible:ring-brand/15"
         />
         <span className="mt-1 block text-[11px] leading-relaxed text-zinc-500">
-          {t('admin.credit.deltaHint')}
+          {t('admin.balance.amountHint')}
         </span>
       </label>
 
       <label className="mt-4 block">
-        <span className="text-xs font-medium text-zinc-400">{t('admin.credit.reason')}</span>
+        <span className="text-xs font-medium text-zinc-400">{t('admin.balance.reason')}</span>
         <input
-          data-testid="admin-credit-reason"
+          data-testid="admin-balance-reason"
           type="text"
           maxLength={200}
           value={reasonText}
@@ -486,18 +625,60 @@ function CreditDialog({ target, onClose, onSaved, onAuthError }: CreditDialogPro
               void submit();
             }
           }}
-          placeholder={t('admin.credit.reasonPlaceholder')}
+          placeholder={t('admin.balance.reasonPlaceholder')}
           className="mt-1.5 h-10 w-full rounded-xl bg-zinc-800/50 border border-white/10 px-3 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus-visible:border-brand/60 focus-visible:ring-2 focus-visible:ring-brand/15"
         />
         <span className="mt-1 block text-[11px] leading-relaxed text-zinc-500">
-          {t('admin.credit.reasonHint')}
+          {t('admin.balance.reasonHint')}
         </span>
       </label>
+
+      {previewMicro !== null && (
+        <p
+          data-testid="admin-balance-preview"
+          className="mt-3 rounded-xl border border-white/5 bg-zinc-800/20 px-3 py-2 text-xs text-zinc-400 tabular-nums"
+        >
+          {t('admin.balance.preview', { balance: formatMicroUsd(previewMicro, language) })}
+        </p>
+      )}
+
+      <div className="mt-3 rounded-xl border border-white/5 bg-zinc-800/20 px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] text-zinc-500">{t('admin.balance.idempotency')}</span>
+          <button
+            type="button"
+            data-testid="admin-balance-regenerate-key"
+            onClick={() => {
+              const next = createIdempotencyKey();
+              setIdempotencyKey(next);
+              lastSignatureRef.current = '';
+            }}
+            disabled={saving}
+            className="text-[11px] font-medium text-blue-300 hover:text-blue-200 disabled:opacity-50"
+          >
+            {t('admin.balance.regenerate')}
+          </button>
+        </div>
+        <code
+          data-testid="admin-balance-idempotency"
+          className="mt-0.5 block truncate font-mono text-[11px] text-zinc-500"
+          title={idempotencyKey}
+        >
+          {idempotencyKey}
+        </code>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
+          {t('admin.balance.idempotencyHint')}
+        </p>
+      </div>
+
+      <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
+        {t('admin.balance.note')}
+      </p>
 
       {error && (
         <p
           role="alert"
-          data-testid="admin-credit-error"
+          data-testid="admin-balance-error"
           className="mt-4 flex items-start gap-1.5 text-xs text-red-400 leading-relaxed"
         >
           <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
@@ -505,6 +686,671 @@ function CreditDialog({ target, onClose, onSaved, onAuthError }: CreditDialogPro
         </p>
       )}
     </Dialog>
+  );
+}
+
+interface LedgerDialogProps {
+  target: AdminUserRow;
+  /** Bumped after a balance adjustment so the open ledger refetches. */
+  refreshNonce: number;
+  onClose: () => void;
+  onAuthError: () => void;
+}
+
+/**
+ * Per-user `account_ledger` (newest first, 50/page). Shows time, kind, signed
+ * amount, balance after, reason and operator prefix. The idempotency key is
+ * never rendered.
+ */
+function LedgerDialog({ target, refreshNonce, onClose, onAuthError }: LedgerDialogProps) {
+  const { t, language, formatNumber, formatDate } = useI18n();
+  const [page, setPage] = useState<AdminLedgerPage | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const requestRef = useRef(0);
+
+  const load = useCallback(async (nextOffset: number) => {
+    const requestId = ++requestRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchAdminUserLedger(target.userId, {
+        limit: LEDGER_PAGE_SIZE,
+        offset: nextOffset,
+      });
+      if (requestId !== requestRef.current) return;
+      setPage(data);
+    } catch (err) {
+      if (requestId !== requestRef.current) return;
+      if (err instanceof AdminApiError && (err.status === 401 || err.status === 403)) {
+        onAuthError();
+        return;
+      }
+      setError(fallbackErrorText(err, t('admin.ledger.loadError')));
+    } finally {
+      if (requestId === requestRef.current) setLoading(false);
+    }
+  }, [onAuthError, t, target.userId]);
+
+  useEffect(() => {
+    void load(offset);
+  }, [load, offset, refreshNonce]);
+
+  const name = displayUsername(target.username, target.email);
+  const entries = page?.entries ?? [];
+  const total = page?.total ?? 0;
+  const bookMicro = page?.balanceMicroUsd ?? target.balanceMicroUsd ?? 0;
+  const availableMicro = page?.availableMicroUsd ?? bookMicro;
+  const holdsMicro = page?.activeHoldsMicroUsd ?? 0;
+  const legacyCredits = target.credits ?? 0;
+  const from = entries.length > 0 ? offset + 1 : 0;
+  const to = offset + entries.length;
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-zinc-400"><Receipt className="w-5 h-5" /></span>
+          <span className="truncate">{t('admin.ledger.title')}</span>
+        </span>
+      }
+      description={t('admin.ledger.subtitle')}
+      size="lg"
+      testId="admin-ledger-dialog"
+      footer={
+        <button type="button" data-testid="admin-ledger-close" onClick={onClose} className={SECONDARY_BUTTON}>
+          {t('common.close')}
+        </button>
+      }
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-zinc-100" title={name}>{name}</p>
+          <p className="truncate text-xs text-zinc-500" title={target.email}>{target.email}</p>
+        </div>
+        <p
+          data-testid="admin-ledger-total"
+          className="text-[11px] text-zinc-500 tabular-nums"
+        >
+          {t('admin.ledger.total', { total: formatNumber(total) })}
+        </p>
+      </div>
+
+      <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="rounded-xl border border-white/5 bg-zinc-800/30 px-3 py-2 min-w-0">
+          <dt className="text-[11px] text-zinc-500">{t('admin.balance.available')}</dt>
+          <dd
+            data-testid="admin-ledger-available"
+            className={`mt-0.5 truncate text-sm font-semibold tabular-nums ${
+              availableMicro < 0 ? 'text-red-400' : 'text-zinc-100'
+            }`}
+          >
+            {formatMicroUsd(availableMicro, language)}
+          </dd>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-zinc-800/30 px-3 py-2 min-w-0">
+          <dt className="text-[11px] text-zinc-500">{t('admin.balance.book')}</dt>
+          <dd
+            data-testid="admin-ledger-book"
+            className={`mt-0.5 truncate text-sm font-semibold tabular-nums ${
+              bookMicro < 0 ? 'text-red-400' : 'text-zinc-100'
+            }`}
+          >
+            {formatMicroUsd(bookMicro, language)}
+          </dd>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-zinc-800/30 px-3 py-2 min-w-0">
+          <dt className="text-[11px] text-zinc-500">{t('account.balance.holds')}</dt>
+          <dd
+            data-testid="admin-ledger-holds"
+            className="mt-0.5 truncate text-sm font-semibold tabular-nums text-amber-300"
+          >
+            {formatMicroUsd(holdsMicro, language)}
+          </dd>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-zinc-800/30 px-3 py-2 min-w-0">
+          <dt className="text-[11px] text-zinc-500">{t('admin.balance.legacyLabel')}</dt>
+          <dd className="mt-0.5 truncate text-sm font-semibold tabular-nums text-zinc-400">
+            {formatNumber(legacyCredits)}
+          </dd>
+        </div>
+      </dl>
+
+      {error ? (
+        <div className="mt-3">
+          <ErrorBanner
+            message={error}
+            onRetry={() => { void load(offset); }}
+            retryLabel={t('admin.retry')}
+          />
+        </div>
+      ) : (
+        <div className="mt-3 rounded-card border border-line-subtle bg-surface/40 overflow-hidden">
+          <Table testId="admin-ledger-table" minWidth={820} caption={t('admin.ledger.title')}>
+            <TableHeader>
+              <tr>
+                <TableHeaderCell nowrap>{t('admin.ledger.time')}</TableHeaderCell>
+                <TableHeaderCell nowrap>{t('admin.ledger.kind')}</TableHeaderCell>
+                <TableHeaderCell numeric nowrap>{t('admin.ledger.amount')}</TableHeaderCell>
+                <TableHeaderCell numeric nowrap>{t('admin.ledger.balanceAfter')}</TableHeaderCell>
+                <TableHeaderCell nowrap>{t('admin.ledger.reason')}</TableHeaderCell>
+                <TableHeaderCell nowrap>{t('admin.ledger.actor')}</TableHeaderCell>
+              </tr>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => {
+                const positive = entry.deltaMicroUsd > 0;
+                const created = entry.createdAtMs > 0
+                  ? formatDate(entry.createdAtMs, { dateStyle: 'medium', timeStyle: 'short' })
+                  : '—';
+                return (
+                  <TableRow
+                    key={entry.id}
+                    data-testid="admin-ledger-row"
+                    data-kind={entry.kind}
+                    data-delta-micro-usd={entry.deltaMicroUsd}
+                  >
+                    <TableCell nowrap muted className="text-caption tabular-nums">{created}</TableCell>
+                    <TableCell nowrap>{ledgerKindLabel(entry.kind, t)}</TableCell>
+                    <TableCell numeric nowrap>
+                      <span
+                        className={`font-medium tabular-nums ${
+                          positive ? 'text-emerald-400' : 'text-red-400'
+                        }`}
+                        title={`${entry.deltaMicroUsd} µUSD`}
+                      >
+                        {positive ? '+' : ''}{formatMicroUsd(entry.deltaMicroUsd, language)}
+                      </span>
+                      <span className="ml-1 text-micro text-fg-muted tabular-nums">
+                        {formatMicroUsdAmount(entry.deltaMicroUsd, language)} µUSD
+                      </span>
+                    </TableCell>
+                    <TableCell numeric nowrap>
+                      {formatMicroUsd(entry.balanceAfterMicroUsd, language)}
+                    </TableCell>
+                    <TableCell muted>
+                      <span className="block max-w-[16rem] truncate" title={entry.reason ?? undefined}>
+                        {entry.reason || '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell nowrap muted className="font-mono text-caption">
+                      {shortId(entry.actorId) ?? t('admin.ledger.system')}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {!loading && entries.length === 0 && (
+                <TableMessageRow colSpan={6} testId="admin-ledger-empty">
+                  {t('admin.ledger.empty')}
+                </TableMessageRow>
+              )}
+              {loading && entries.length === 0 && (
+                <TableMessageRow colSpan={6}>
+                  <Loader2 className="w-5 h-5 text-fg-muted animate-spin inline-block" />
+                </TableMessageRow>
+              )}
+            </TableBody>
+          </Table>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 px-4 py-2.5">
+            <p data-testid="admin-ledger-page" className="text-[11px] text-zinc-500 tabular-nums">
+              {t('admin.ledger.page', {
+                from: formatNumber(from),
+                to: formatNumber(to),
+                total: formatNumber(total),
+              })}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                data-testid="admin-ledger-prev"
+                className={SECONDARY_BUTTON}
+                disabled={loading || offset <= 0}
+                onClick={() => setOffset((current) => Math.max(0, current - LEDGER_PAGE_SIZE))}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                {t('admin.ledger.prev')}
+              </button>
+              <button
+                type="button"
+                data-testid="admin-ledger-next"
+                className={SECONDARY_BUTTON}
+                disabled={loading || to >= total}
+                onClick={() => setOffset((current) => current + LEDGER_PAGE_SIZE)}
+              >
+                {t('admin.ledger.next')}
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Dialog>
+  );
+}
+
+interface BillingGroupTableProps {
+  testId: string;
+  caption: string;
+  firstHeader: string;
+  rows: AdminBillingGroupRow[];
+  labelOf: (row: AdminBillingGroupRow) => string;
+  subLabelOf?: (row: AdminBillingGroupRow) => string | null;
+}
+
+/** Shared byDay / byModel / byFeature table: rows, calls, cost, unbilled rows. */
+function BillingGroupTable({
+  testId,
+  caption,
+  firstHeader,
+  rows,
+  labelOf,
+  subLabelOf,
+}: BillingGroupTableProps) {
+  const { t, language, formatNumber } = useI18n();
+  return (
+    <div className="rounded-card border border-line-subtle bg-surface/40 overflow-hidden">
+      <Table testId={testId} minWidth={720} caption={caption}>
+        <TableHeader>
+          <tr>
+            <TableHeaderCell nowrap>{firstHeader}</TableHeaderCell>
+            <TableHeaderCell numeric nowrap>{t('admin.billing.groupRows')}</TableHeaderCell>
+            <TableHeaderCell numeric nowrap>{t('admin.billing.calls')}</TableHeaderCell>
+            <TableHeaderCell numeric nowrap>{t('admin.billing.costShort')}</TableHeaderCell>
+            <TableHeaderCell numeric nowrap>{t('admin.billing.unbilled')}</TableHeaderCell>
+          </tr>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => {
+            const sub = subLabelOf?.(row) ?? null;
+            return (
+              <TableRow key={row.key} data-testid={`${testId}-row`}>
+                <TableCell nowrap>
+                  <span className="font-medium text-fg-primary">{labelOf(row)}</span>
+                  {sub && <span className="ml-1.5 text-caption text-fg-muted">{sub}</span>}
+                </TableCell>
+                <TableCell numeric nowrap>{formatNumber(row.rows)}</TableCell>
+                <TableCell numeric nowrap>{formatNumber(row.calls)}</TableCell>
+                <TableCell numeric nowrap>
+                  <span>{formatMicroUsd(row.costMicroUsd, language)}</span>
+                  <span className="ml-1 text-micro text-fg-muted tabular-nums">
+                    {formatMicroUsdAmount(row.costMicroUsd, language)} µUSD
+                  </span>
+                </TableCell>
+                <TableCell
+                  numeric
+                  nowrap
+                  className={row.unbilledRows > 0 ? 'text-amber-400' : 'text-fg-muted'}
+                >
+                  {formatNumber(row.unbilledRows)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+          {rows.length === 0 && (
+            <TableMessageRow colSpan={5}>{t('admin.billing.empty')}</TableMessageRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+interface BillingPanelProps {
+  /** Bumped by the console refresh button to refetch the current range. */
+  refreshNonce: number;
+  onAuthError: () => void;
+}
+
+/**
+ * Billing / AI-cost summary tab (M3b / specs/034).
+ *
+ * Shows real money deducted (`account_ledger.ai_settle`, billed µUSD), token
+ * volumes, unpriced (billable=0) rows, legacy historical rows, settlement
+ * failures, active holds, the balance↔ledger reconciliation, and the current
+ * price table. Money is always formatted from integer µUSD.
+ */
+function BillingPanel({ refreshNonce, onAuthError }: BillingPanelProps) {
+  const { t, language, formatNumber, formatDate } = useI18n();
+  const [from, setFrom] = useState(() => dayString(-29));
+  const [to, setTo] = useState(() => dayString(0));
+  const [range, setRange] = useState(() => ({ from: dayString(-29), to: dayString(0) }));
+  const [summary, setSummary] = useState<AdminBillingSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const requestRef = useRef(0);
+
+  const load = useCallback(async (nextRange: { from: string; to: string }) => {
+    const requestId = ++requestRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchAdminBillingSummary(nextRange);
+      if (requestId !== requestRef.current) return;
+      setSummary(data);
+    } catch (err) {
+      if (requestId !== requestRef.current) return;
+      if (err instanceof AdminApiError && (err.status === 401 || err.status === 403)) {
+        onAuthError();
+        return;
+      }
+      setError(fallbackErrorText(err, t('admin.billing.loadError')));
+    } finally {
+      if (requestId === requestRef.current) setLoading(false);
+    }
+  }, [onAuthError, t]);
+
+  useEffect(() => {
+    void load(range);
+  }, [load, range, refreshNonce]);
+
+  const totals = summary?.totals;
+  const reconcileDiff = summary
+    ? summary.balances.totalMicroUsd - summary.balances.ledgerDeltaMicroUsd
+    : 0;
+  const reconciled = reconcileDiff === 0;
+
+  return (
+    <section
+      {...tabPanelProps('admin', 'billing')}
+      data-testid="admin-panel-billing"
+      className="mt-6"
+    >
+      <SectionTitle
+        id="admin-billing-title"
+        title={t('admin.billing.title')}
+        subtitle={t('admin.billing.subtitle')}
+        action={
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="block min-w-0">
+              <span className="block text-[11px] text-zinc-500">{t('admin.billing.from')}</span>
+              <input
+                data-testid="admin-billing-from"
+                type="date"
+                value={from}
+                onChange={(event) => setFrom(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    setRange({ from, to });
+                  }
+                }}
+                className="mt-1 h-9 rounded-xl bg-zinc-800/60 border border-white/5 px-3 text-sm text-zinc-200 tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+              />
+            </label>
+            <label className="block min-w-0">
+              <span className="block text-[11px] text-zinc-500">{t('admin.billing.to')}</span>
+              <input
+                data-testid="admin-billing-to"
+                type="date"
+                value={to}
+                onChange={(event) => setTo(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    setRange({ from, to });
+                  }
+                }}
+                className="mt-1 h-9 rounded-xl bg-zinc-800/60 border border-white/5 px-3 text-sm text-zinc-200 tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+              />
+            </label>
+            <button
+              type="button"
+              data-testid="admin-billing-apply"
+              onClick={() => setRange({ from, to })}
+              disabled={loading || !from || !to}
+              className={SECONDARY_BUTTON}
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              {t('admin.billing.apply')}
+            </button>
+          </div>
+        }
+      />
+
+      <div
+        data-testid="admin-billing-topup-note"
+        className="mt-3 rounded-2xl border border-blue-500/15 bg-blue-500/[0.04] px-4 py-3 text-xs leading-relaxed text-zinc-400"
+      >
+        {t('admin.billing.topupNote')}
+      </div>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-500">
+        {t('admin.billing.unitNote')}
+      </p>
+
+      {error ? (
+        <div className="mt-3">
+          <ErrorBanner
+            message={error}
+            onRetry={() => { void load(range); }}
+            retryLabel={t('admin.retry')}
+          />
+        </div>
+      ) : loading && !summary ? (
+        <p className="mt-3 inline-flex items-center gap-2 text-xs text-zinc-500">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          {t('admin.billing.loading')}
+        </p>
+      ) : summary && totals ? (
+        <>
+          <p data-testid="admin-billing-range" className="mt-3 text-[11px] text-zinc-500 tabular-nums">
+            {t('admin.billing.range', {
+              from: summary.from ?? '—',
+              to: summary.to ?? '—',
+            })}
+          </p>
+
+          <div className="mt-3 grid grid-cols-2 xl:grid-cols-4 gap-3">
+            <StatCard
+              icon={<Wallet className="w-4 h-4" />}
+              label={t('admin.billing.billed')}
+              value={formatMicroUsd(totals.billedCostMicroUsd, language)}
+              hint={`${formatMicroUsdAmount(totals.billedCostMicroUsd, language)} µUSD · ${t('admin.billing.estimated')}: ${formatUsdNumber(totals.estimatedCostUsd, language)}`}
+              testId="admin-billing-billed"
+            />
+            <StatCard
+              icon={<Receipt className="w-4 h-4" />}
+              label={t('admin.billing.rows')}
+              value={formatNumber(totals.rows)}
+              hint={`${t('admin.billing.calls')}: ${formatNumber(totals.calls)}`}
+              testId="admin-billing-rows"
+            />
+            <StatCard
+              icon={<ArrowDownRight className="w-4 h-4" />}
+              label={t('admin.billing.inputTokens')}
+              value={formatNumber(totals.inputTokens)}
+              hint={`${t('admin.billing.outputTokens')}: ${formatNumber(totals.outputTokens)}`}
+              testId="admin-billing-input-tokens"
+            />
+            <StatCard
+              icon={<ArrowUpRight className="w-4 h-4" />}
+              label={t('admin.billing.outputTokens')}
+              value={formatNumber(totals.outputTokens)}
+              hint={`${formatNumber(totals.inputTokens)} / ${formatNumber(totals.outputTokens)} tokens`}
+              testId="admin-billing-output-tokens"
+            />
+            <StatCard
+              icon={<AlertCircle className="w-4 h-4" />}
+              label={t('admin.billing.unbilled')}
+              value={formatNumber(totals.unbilledRows)}
+              hint={`${t('admin.billing.legacy')}: ${formatNumber(totals.legacyRows)}`}
+              danger={totals.unbilledRows > 0}
+              testId="admin-billing-unbilled"
+            />
+            <StatCard
+              icon={<TriangleAlert className="w-4 h-4" />}
+              label={t('admin.billing.settleFailed')}
+              value={formatNumber(totals.settleFailedRows)}
+              hint={t('admin.billing.settleFailedHint')}
+              danger={totals.settleFailedRows > 0}
+              testId="admin-billing-settle-failed"
+            />
+            <StatCard
+              icon={<Receipt className="w-4 h-4" />}
+              label={t('admin.billing.holds')}
+              value={formatMicroUsd(summary.holds.activeMicroUsd, language)}
+              hint={`${t('admin.billing.holdsHint', {
+                count: formatNumber(summary.holds.activeCount),
+              })} · ${formatMicroUsdAmount(summary.holds.activeMicroUsd, language)} µUSD`}
+              testId="admin-billing-holds"
+            />
+            <StatCard
+              icon={<Users className="w-4 h-4" />}
+              label={t('admin.billing.balances')}
+              value={formatMicroUsd(summary.balances.totalMicroUsd, language)}
+              hint={`${t('admin.billing.balancesHint', {
+                users: formatNumber(summary.balances.usersWithBalance),
+              })} · ${t('admin.billing.ledgerDelta')}: ${formatMicroUsd(summary.balances.ledgerDeltaMicroUsd, language)}`}
+              testId="admin-billing-balances"
+            />
+          </div>
+
+          <p
+            data-testid="admin-billing-reconcile"
+            data-ok={reconciled ? 'true' : 'false'}
+            className={`mt-2 text-[11px] leading-relaxed tabular-nums ${
+              reconciled ? 'text-emerald-400' : 'text-amber-400'
+            }`}
+          >
+            {reconciled
+              ? t('admin.billing.reconcileOk')
+              : t('admin.billing.reconcileBad', {
+                diff: formatMicroUsd(reconcileDiff, language),
+              })}
+          </p>
+
+          {summary.unpricedModels.length > 0 ? (
+            <div
+              data-testid="admin-billing-unpriced"
+              className="mt-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3"
+            >
+              <p className="flex items-center gap-2 text-sm font-medium text-amber-200">
+                <TriangleAlert className="w-4 h-4 shrink-0" />
+                {t('admin.billing.unpricedTitle')}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-200/80">
+                {t('admin.billing.unpricedHint')}
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {summary.unpricedModels.map((model) => (
+                  <li
+                    key={model}
+                    data-testid="admin-billing-unpriced-model"
+                    className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 font-mono text-[11px] text-amber-200"
+                  >
+                    {model}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p data-testid="admin-billing-no-unpriced" className="mt-3 text-[11px] text-zinc-500">
+              {t('admin.billing.noUnpriced')}
+            </p>
+          )}
+
+          {totals.rows === 0 ? (
+            <p
+              data-testid="admin-billing-empty"
+              className="mt-6 rounded-2xl border border-white/5 bg-zinc-900/40 px-4 py-6 text-center text-sm text-zinc-500"
+            >
+              {t('admin.billing.empty')}
+            </p>
+          ) : (
+            <div className="mt-6 grid grid-cols-1 gap-6">
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-200">{t('admin.billing.byModel')}</h3>
+                <div className="mt-2">
+                  <BillingGroupTable
+                    testId="admin-billing-models"
+                    caption={t('admin.billing.byModel')}
+                    firstHeader={t('admin.billing.model')}
+                    rows={summary.byModel}
+                    labelOf={(row) => row.key}
+                    subLabelOf={(row) => (row as AdminBillingModelRow).provider}
+                  />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-200">{t('admin.billing.byFeature')}</h3>
+                <div className="mt-2">
+                  <BillingGroupTable
+                    testId="admin-billing-features"
+                    caption={t('admin.billing.byFeature')}
+                    firstHeader={t('admin.billing.feature')}
+                    rows={summary.byFeature}
+                    labelOf={(row) => featureLabel(row.key, t)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {summary.byDay.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-zinc-200">{t('admin.billing.byDay')}</h3>
+              <div className="mt-2">
+                <BillingGroupTable
+                  testId="admin-billing-days"
+                  caption={t('admin.billing.byDay')}
+                  firstHeader={t('admin.billing.day')}
+                  rows={summary.byDay}
+                  labelOf={(row) => row.key}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-zinc-200">{t('admin.billing.pricesTitle')}</h3>
+            <p className="mt-1 text-[11px] text-zinc-500">{t('admin.billing.unitNote')}</p>
+            <div className="mt-2 rounded-card border border-line-subtle bg-surface/40 overflow-hidden">
+              <Table testId="admin-billing-prices" minWidth={760} caption={t('admin.billing.pricesTitle')}>
+                <TableHeader>
+                  <tr>
+                    <TableHeaderCell nowrap>{t('admin.billing.model')}</TableHeaderCell>
+                    <TableHeaderCell nowrap>{t('admin.billing.provider')}</TableHeaderCell>
+                    <TableHeaderCell numeric nowrap>{t('admin.billing.priceInput')}</TableHeaderCell>
+                    <TableHeaderCell numeric nowrap>{t('admin.billing.priceOutput')}</TableHeaderCell>
+                    <TableHeaderCell nowrap>{t('admin.billing.priceVersion')}</TableHeaderCell>
+                    <TableHeaderCell nowrap>{t('admin.billing.priceSource')}</TableHeaderCell>
+                    <TableHeaderCell nowrap>{t('admin.billing.priceVerified')}</TableHeaderCell>
+                  </tr>
+                </TableHeader>
+                <TableBody>
+                  {summary.prices.map((price) => (
+                    <TableRow key={`${price.modelId}-${price.priceVersion}`} data-testid="admin-billing-price-row">
+                      <TableCell nowrap className="font-mono text-caption">{price.modelId}</TableCell>
+                      <TableCell nowrap muted>{price.provider}</TableCell>
+                      <TableCell numeric nowrap>
+                        {formatMicroUsdAmount(price.inputMicroUsdPerMtok, language)}
+                      </TableCell>
+                      <TableCell numeric nowrap>
+                        {formatMicroUsdAmount(price.outputMicroUsdPerMtok, language)}
+                      </TableCell>
+                      <TableCell nowrap muted className="font-mono text-caption">{price.priceVersion}</TableCell>
+                      <TableCell nowrap muted>{price.sourceKind}</TableCell>
+                      <TableCell nowrap muted className="text-caption tabular-nums">
+                        {price.verifiedAtMs > 0
+                          ? formatDate(price.verifiedAtMs, { dateStyle: 'medium' })
+                          : '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {summary.prices.length === 0 && (
+                    <TableMessageRow colSpan={7} testId="admin-billing-prices-empty">
+                      {t('admin.billing.pricesEmpty')}
+                    </TableMessageRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </>
+      ) : null}
+    </section>
   );
 }
 
@@ -1330,7 +2176,7 @@ export interface AdminConsoleScreenProps {
 }
 
 export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminConsoleScreenProps) {
-  const { t, formatNumber, formatDate } = useI18n();
+  const { t, language, formatNumber, formatDate } = useI18n();
   const { user, isAdmin } = useAuth();
   const usd = useUsdFormatter();
 
@@ -1385,8 +2231,13 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
   const [search, setSearch] = useState('');
   const [offset, setOffset] = useState(0);
 
-  const [creditTarget, setCreditTarget] = useState<AdminUserRow | null>(null);
+  const [balanceTarget, setBalanceTarget] = useState<AdminUserRow | null>(null);
   const [statusTarget, setStatusTarget] = useState<AdminUserRow | null>(null);
+  // Ledger dialog for one user; the nonce refetches it after a successful
+  // balance adjustment without closing/reopening the dialog.
+  const [ledgerTarget, setLedgerTarget] = useState<{ row: AdminUserRow; nonce: number } | null>(null);
+  // Billing tab owns its data; the console refresh button bumps this nonce.
+  const [billingNonce, setBillingNonce] = useState(0);
 
   const usersRequestRef = useRef(0);
   const invitesRequestRef = useRef(0);
@@ -1595,6 +2446,7 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
   const refreshActive = () => {
     if (tab === 'overview') void loadStats();
     else if (tab === 'users') void loadUsers(offset, search);
+    else if (tab === 'billing') setBillingNonce((current) => current + 1);
     else if (tab === 'invites') void loadInvites(inviteOffset, inviteStatus);
     else if (tab === 'deletions') void loadDeletions(deletionOffset, deletionFilter);
     else if (tab === 'audit') void loadAudit(auditOffset);
@@ -1609,27 +2461,51 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
     ? statsLoading
     : tab === 'users'
       ? usersLoading
-      : tab === 'invites'
-        ? invitesLoading
-        : tab === 'deletions'
-          ? deletionLoading
-          : tab === 'audit'
-            ? auditLoading
-            : tab === 'settings'
-              ? settingsLoading
-              : usageLoading || healthLoading;
+      : tab === 'billing'
+        ? false
+        : tab === 'invites'
+          ? invitesLoading
+          : tab === 'deletions'
+            ? deletionLoading
+            : tab === 'audit'
+              ? auditLoading
+              : tab === 'settings'
+                ? settingsLoading
+                : usageLoading || healthLoading;
 
-  const handleCreditsSaved = (userId: string, credits: number) => {
+  const handleBalanceSaved = (result: AdminBalanceAdjustResult) => {
+    const delta = `${result.deltaMicroUsd > 0 ? '+' : ''}${formatMicroUsd(result.deltaMicroUsd, language)}`;
     setUsersPage((previous) => (previous
       ? {
         ...previous,
-        users: previous.users.map((row) => (row.userId === userId ? { ...row, credits } : row)),
+        users: previous.users.map((row) => (row.userId === result.userId
+          ? {
+            ...row,
+            balanceMicroUsd: result.balanceMicroUsd,
+            balanceUsd: result.balanceUsd,
+          }
+          : row)),
       }
       : previous));
-    setCreditTarget(null);
-    toast.success(t('admin.credit.success', { credits: formatNumber(credits) }));
+    setBalanceTarget(null);
+    toast.success(t('admin.balance.success', {
+      available: formatMicroUsd(result.availableMicroUsd, language),
+      delta,
+    }));
+    if (result.replayed) toast.info(t('admin.balance.replayed'));
     void loadUsers(offset, search);
     void loadStats();
+    if (tab === 'billing') setBillingNonce((current) => current + 1);
+    setLedgerTarget((previous) => (previous && previous.row.userId === result.userId
+      ? {
+        row: {
+          ...previous.row,
+          balanceMicroUsd: result.balanceMicroUsd,
+          balanceUsd: result.balanceUsd,
+        },
+        nonce: previous.nonce + 1,
+      }
+      : previous));
   };
 
   const handleStatusSaved = (userId: string, status: AdminUserStatus) => {
@@ -1945,7 +2821,7 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
                       <tr>
                         <TableHeaderCell nowrap>{t('admin.users.username')}</TableHeaderCell>
                         <TableHeaderCell nowrap>{t('admin.users.email')}</TableHeaderCell>
-                        <TableHeaderCell numeric nowrap>{t('admin.users.credits')}</TableHeaderCell>
+                        <TableHeaderCell numeric nowrap>{t('admin.users.balance')}</TableHeaderCell>
                         <TableHeaderCell nowrap>{t('admin.users.status')}</TableHeaderCell>
                         <TableHeaderCell nowrap>{t('admin.users.createdAt')}</TableHeaderCell>
                         <TableHeaderCell align="right" nowrap>{t('admin.users.actions')}</TableHeaderCell>
@@ -1979,7 +2855,25 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
                               <span className="block max-w-[18rem] truncate" title={row.email}>{row.email}</span>
                             </TableCell>
                             <TableCell numeric nowrap>
-                              {formatNumber(row.credits ?? 0)}
+                              <span
+                                data-testid="admin-user-balance"
+                                data-balance-micro-usd={row.balanceMicroUsd ?? 0}
+                                className={`font-medium tabular-nums ${
+                                  (row.balanceMicroUsd ?? 0) < 0 ? 'text-red-400' : 'text-fg-primary'
+                                }`}
+                              >
+                                {formatMicroUsd(row.balanceMicroUsd ?? 0, language)}
+                              </span>
+                              {(row.credits ?? 0) > 0 && (
+                                <p
+                                  data-testid="admin-user-legacy-credits"
+                                  className="mt-0.5 text-micro text-fg-muted tabular-nums"
+                                >
+                                  {t('admin.users.legacyCredits', {
+                                    credits: formatNumber(row.credits ?? 0),
+                                  })}
+                                </p>
+                              )}
                             </TableCell>
                             <TableCell nowrap>
                               <StatusBadge banned={banned} />
@@ -1991,12 +2885,21 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
                               <div className="flex items-center justify-end gap-1.5">
                                 <button
                                   type="button"
-                                  data-testid="admin-user-credit"
-                                  onClick={() => setCreditTarget(row)}
+                                  data-testid="admin-user-balance-adjust"
+                                  onClick={() => setBalanceTarget(row)}
+                                  className={`${COMPACT_BUTTON} bg-amber-500/10 hover:bg-amber-500/15 border-amber-500/20 text-amber-300`}
+                                >
+                                  <Wallet className="w-3.5 h-3.5" />
+                                  {t('admin.users.adjustBalance')}
+                                </button>
+                                <button
+                                  type="button"
+                                  data-testid="admin-user-ledger"
+                                  onClick={() => setLedgerTarget({ row, nonce: 0 })}
                                   className={`${COMPACT_BUTTON} bg-zinc-800/60 hover:bg-zinc-700/60 border-white/5 text-zinc-300 hover:text-zinc-100`}
                                 >
-                                  <Coins className="w-3.5 h-3.5" />
-                                  {t('admin.users.adjustCredits')}
+                                  <Receipt className="w-3.5 h-3.5" />
+                                  {t('admin.users.ledger')}
                                 </button>
                                 <button
                                   type="button"
@@ -2068,6 +2971,11 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
               )}
             </div>
           </section>
+        )}
+
+        {/* ── Billing / AI cost summary (M3b / specs/034) ──────────────── */}
+        {tab === 'billing' && (
+          <BillingPanel refreshNonce={billingNonce} onAuthError={deny} />
         )}
 
         {/* ── Invite codes (M1 G1) ─────────────────────────────────────── */}
@@ -3025,11 +3933,19 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
           onAuthError={deny}
         />
       )}
-      {creditTarget && (
-        <CreditDialog
-          target={creditTarget}
-          onClose={() => setCreditTarget(null)}
-          onSaved={handleCreditsSaved}
+      {balanceTarget && (
+        <BalanceDialog
+          target={balanceTarget}
+          onClose={() => setBalanceTarget(null)}
+          onSaved={handleBalanceSaved}
+          onAuthError={deny}
+        />
+      )}
+      {ledgerTarget && (
+        <LedgerDialog
+          target={ledgerTarget.row}
+          refreshNonce={ledgerTarget.nonce}
+          onClose={() => setLedgerTarget(null)}
           onAuthError={deny}
         />
       )}

@@ -1,4 +1,9 @@
-import { apiFetch } from './lib/api';
+import {
+  apiFetch,
+  notifyInsufficientBalance,
+  subscribeToInsufficientBalance,
+  type InsufficientBalanceNotice,
+} from './lib/api';
 import { CourseApiError, COURSE_MVP_LESSON_ID, generateCourse, isCourseAbortError } from './lib/course';
 import { lazy, Suspense, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -64,6 +69,7 @@ import { PracticeScreen } from './components/PracticeScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { VocabularyBookScreen } from './components/VocabularyBookScreen';
 import { toast, describeApiError } from './lib/toast';
+import { formatMicroUsd } from './lib/billing';
 import { getReviewStats, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
@@ -223,6 +229,14 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const onAccountPage = state.tab === 'profile' && !state.sub;
 
   const [videoId, setVideoId] = useState('');
+  // M3b / specs/034: a 402 from any AI call (HTTP status or the SSE `error`
+  // event) surfaces as one persistent shell banner with a link to the account
+  // page. 402 is a billing state: it never signs the user out (only 401 does).
+  const [insufficientBalance, setInsufficientBalance] = useState<InsufficientBalanceNotice | null>(null);
+  useEffect(
+    () => subscribeToInsufficientBalance((notice) => setInsufficientBalance(notice)),
+    [],
+  );
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [localVideo, setLocalVideo] = useState<{
@@ -1204,8 +1218,34 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           case 'summary':
             setSummary(evt.data.summary || '');
             break;
-          case 'error':
-            throw new Error(evt.data.detail || t('errors.processFailed'));
+          case 'error': {
+            // The stream is already HTTP 200, so billing/quota failures arrive
+            // as a stable `code` in the event. Surface the shortfall banner and
+            // throw readable copy instead of the generic processing failure.
+            const data = evt.data || {};
+            if (data.code === 'insufficient_balance') {
+              notifyInsufficientBalance({
+                balanceMicroUsd: typeof data.balanceMicroUsd === 'number' ? data.balanceMicroUsd : undefined,
+                availableMicroUsd: typeof data.availableMicroUsd === 'number' ? data.availableMicroUsd : undefined,
+                requiredMicroUsd: typeof data.requiredMicroUsd === 'number' ? data.requiredMicroUsd : undefined,
+              });
+              throw new Error(t('billing.insufficient.short', {
+                available: formatMicroUsd(
+                  typeof data.availableMicroUsd === 'number'
+                    ? data.availableMicroUsd
+                    : typeof data.balanceMicroUsd === 'number'
+                      ? data.balanceMicroUsd
+                      : 0,
+                  language,
+                ),
+                required: formatMicroUsd(
+                  typeof data.requiredMicroUsd === 'number' ? data.requiredMicroUsd : 0,
+                  language,
+                ),
+              }));
+            }
+            throw new Error(data.detail || t('errors.processFailed'));
+          }
           case 'done':
             setTranslationProgress(null);
             finishJob({ jobId: evt.data.jobId, videoId: evt.data.videoId || id });
@@ -3712,6 +3752,48 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         onOpenProfileSection={handleOpenProfileSection}
         onOpenAdmin={handleOpenAdmin}
       >
+        {insufficientBalance && !onAccountPage && status === 'authenticated' && (
+          <div
+            data-testid="insufficient-balance-banner"
+            role="alert"
+            aria-label={t('billing.insufficient.bannerAria')}
+            className="flex-none flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 bg-amber-500/10 border-b border-amber-500/20"
+          >
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+            <span className="min-w-0 flex-1 text-xs leading-relaxed text-amber-200">
+              {t('billing.insufficient.banner', {
+                available: formatMicroUsd(
+                  insufficientBalance.availableMicroUsd
+                    ?? insufficientBalance.balanceMicroUsd
+                    ?? 0,
+                  language,
+                ),
+                required: formatMicroUsd(insufficientBalance.requiredMicroUsd ?? 0, language),
+              })}
+            </span>
+            <button
+              type="button"
+              data-testid="insufficient-balance-banner-action"
+              onClick={() => {
+                setInsufficientBalance(null);
+                go('profile');
+              }}
+              className="inline-flex items-center h-7 px-2.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-[11px] font-medium text-amber-100 transition-colors shrink-0"
+            >
+              {t('billing.insufficient.bannerAction')}
+            </button>
+            <button
+              type="button"
+              data-testid="insufficient-balance-banner-dismiss"
+              onClick={() => setInsufficientBalance(null)}
+              aria-label={t('billing.insufficient.bannerDismiss')}
+              title={t('billing.insufficient.bannerDismiss')}
+              className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-amber-300/70 hover:text-amber-100 hover:bg-amber-500/20 transition-colors shrink-0"
+            >
+              ×
+            </button>
+          </div>
+        )}
         {pendingDeletion && !onAccountPage && (
           <div
             data-testid="account-pending-banner"

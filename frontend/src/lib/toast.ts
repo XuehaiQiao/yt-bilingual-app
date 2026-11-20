@@ -4,7 +4,8 @@
 //
 // Rules live here (A2 C8 / A3 IX-08) so the renderer stays a dumb view:
 // per-type lifetime, same-key dedupe window, long/actionable error persistence.
-import { t, type TranslationKey } from '../i18n';
+import { t, getRuntimeLanguage, type TranslationKey } from '../i18n';
+import { formatMicroUsd } from './billing';
 
 export type ToastType = 'error' | 'success' | 'info';
 
@@ -129,8 +130,30 @@ export async function describeApiError(resOrErr: Response | unknown): Promise<st
         if (body?.code && typeof body.code === 'string') {
             const key = API_ERROR_KEYS[body.code];
             if (key) return t(key);
+            // 402 is a billing state with machine-readable amounts; render the
+            // localized shortfall instead of the backend's Chinese `detail`
+            // (the backend copy is still a fallback if amounts are missing).
+            if (body.code === 'insufficient_balance') {
+                return t('billing.insufficient.short', {
+                    available: formatMicroUsd(
+                        typeof body.availableMicroUsd === 'number'
+                            ? body.availableMicroUsd
+                            : typeof body.balanceMicroUsd === 'number'
+                                ? body.balanceMicroUsd
+                                : 0,
+                        getRuntimeLanguage(),
+                    ),
+                    required: formatMicroUsd(
+                        typeof body.requiredMicroUsd === 'number' ? body.requiredMicroUsd : 0,
+                        getRuntimeLanguage(),
+                    ),
+                });
+            }
         }
         if (body?.detail && typeof body.detail === 'string') return body.detail;
+        // Never reduce a billing/quota state to "server error" copy.
+        if (resOrErr.status === 402) return t('billing.insufficient.noDetails');
+        if (resOrErr.status === 429) return t('errors.tooManyRequests');
         return t('errors.httpStatus', { status: resOrErr.status });
     }
     if (resOrErr instanceof TypeError) {

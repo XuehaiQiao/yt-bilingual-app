@@ -22,6 +22,7 @@ import {
   Gauge,
   Languages,
   Loader2,
+  Lock,
   LogOut,
   Pencil,
   RefreshCw,
@@ -34,7 +35,6 @@ import {
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/I18nProvider';
-import { getLanguageMeta, type LanguageCode } from '../i18n';
 import type { PlacementProfile } from '../lib/placement';
 import { useInstallPrompt, useOnlineStatus } from '../lib/pwa';
 import { BackButton } from './ui/BackButton';
@@ -42,6 +42,7 @@ import { PageHeader } from './ui/PageHeader';
 import { toast, describeApiError } from '../lib/toast';
 import { displayUsername, usernameInitial, usernameProblem } from '../lib/username';
 import { loadVocabLevel, saveVocabLevel, VOCAB_LEVEL_EVENT, VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
+import { formatMicroUsd, formatUsdNumber } from '../lib/billing';
 import { LanguageSettingsModal } from './LanguageSettingsModal';
 import { AccountDataSection, PendingDeletionCard } from './AccountDataSection';
 import { ModelBar } from './ModelBar';
@@ -60,6 +61,15 @@ export interface AccountUser {
 
 interface AccountSummary {
   user: AccountUser;
+  /** Book balance in integer µUSD (M3a / specs/034). */
+  balanceMicroUsd?: number;
+  balanceUsd?: string;
+  /** Book balance minus active call holds. */
+  availableMicroUsd?: number;
+  availableUsd?: string;
+  activeHoldsMicroUsd?: number;
+  /** Frozen pre-M3 `users.credits` unit — history only, never a bill. */
+  creditsLegacy?: number;
   monthSpendUsd: number;
   usageToday: { minutes: number };
   version: string;
@@ -91,21 +101,6 @@ interface AccountScreenProps {
 
 const ROW_BUTTON =
   'inline-flex items-center gap-2 h-8 px-2.5 rounded-lg text-sm font-medium text-zinc-300 hover:text-zinc-100 hover:bg-white/5 transition-colors shrink-0';
-
-/**
- * `$0.0042` for tiny estimates, `$1.20` otherwise. The fraction digits are
- * pinned explicitly: `formatNumber` uses Intl's default ceiling of 3 digits,
- * which would round the ledger's 6-decimal estimates to `$0.004`.
- */
-function formatUsd(value: number, language: LanguageCode): string {
-  if (!Number.isFinite(value)) return '$0.00';
-  const digits = value !== 0 && Math.abs(value) < 0.01 ? 4 : 2;
-  const number = new Intl.NumberFormat(getLanguageMeta(language).locale, {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(value);
-  return `$${number}`;
-}
 
 function CardTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -591,7 +586,11 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
     );
   }
 
-  const credits = summary?.user.credits ?? 0;
+  const balanceMicro = summary?.balanceMicroUsd ?? 0;
+  const availableMicro = summary?.availableMicroUsd ?? balanceMicro;
+  const holdsMicro = summary?.activeHoldsMicroUsd ?? 0;
+  const creditsLegacy = summary?.creditsLegacy ?? summary?.user.credits ?? 0;
+  const negative = Boolean(summary) && (balanceMicro < 0 || availableMicro < 0);
   const monthSpend = summary?.monthSpendUsd ?? 0;
   const minutes = summary?.usageToday.minutes ?? 0;
 
@@ -749,7 +748,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
 
         {!isPendingDeletion && libraryRows}
 
-        {/* ── Balance card: credits / month spend / today's minutes ────── */}
+        {/* ── Balance card (M3b / specs/034): micro-USD balance + usage ── */}
         {!isPendingDeletion && (
         <motion.section
           initial={{ opacity: 0, y: 8 }}
@@ -761,64 +760,143 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
           <CardTitle icon={<Wallet className="w-5 h-5" />}>{t('account.balance.title')}</CardTitle>
           <div
             data-testid="account-balance"
-            className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-px rounded-2xl border border-white/5 bg-white/5 overflow-hidden"
+            data-negative={negative ? 'true' : undefined}
+            className={`mt-3 rounded-2xl border bg-zinc-900/40 overflow-hidden ${
+              negative ? 'border-red-500/30' : 'border-white/5'
+            }`}
           >
-            <div className="bg-zinc-900/60 p-4 min-w-0">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
-                <Coins className="w-3.5 h-3.5 text-amber-400/80" />
-                {t('account.balance.credits')}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-white/5">
+              {/* Available balance = book balance − active call holds. */}
+              <div className="bg-zinc-900/60 p-4 sm:p-5 min-w-0">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+                  <Wallet className={`w-3.5 h-3.5 ${negative ? 'text-red-400' : 'text-blue-400/80'}`} />
+                  {t('account.balance.available')}
+                </div>
+                <p
+                  data-testid="account-balance-available"
+                  className={`mt-1.5 text-3xl font-semibold tracking-tight tabular-nums break-words ${
+                    negative ? 'text-red-400' : 'text-zinc-50'
+                  }`}
+                >
+                  {!summary ? '—' : formatMicroUsd(availableMicro, language)}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+                  {t('account.balance.availableHint')}
+                </p>
+                <p className="mt-2 text-xs text-zinc-500 tabular-nums">
+                  {t('account.balance.book')}{' '}
+                  <span
+                    data-testid="account-balance-book"
+                    className={`font-medium ${negative ? 'text-red-300' : 'text-zinc-200'}`}
+                  >
+                    {!summary ? '—' : formatMicroUsd(balanceMicro, language)}
+                  </span>
+                </p>
+                {summary && holdsMicro > 0 && (
+                  <p
+                    data-testid="account-balance-holds"
+                    className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-300 tabular-nums"
+                  >
+                    <Lock className="w-3 h-3" />
+                    {t('account.balance.holdsValue', {
+                      amount: formatMicroUsd(holdsMicro, language),
+                    })}
+                  </p>
+                )}
+                {summary && holdsMicro > 0 && (
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-500">
+                    {t('account.balance.holdsHint')}
+                  </p>
+                )}
               </div>
-              <p
-                data-testid="account-credits"
-                className="mt-1.5 text-2xl font-semibold tracking-tight text-zinc-100 tabular-nums break-words"
-              >
-                {!summary ? '—' : formatNumber(credits)}
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
-                {t('account.balance.creditsHint')}
-              </p>
+
+              {/* Month AI spend + today's learning (the summary's existing fields). */}
+              <div className="bg-zinc-900/60 p-4 sm:p-5 min-w-0 grid grid-cols-2 gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+                    <Coins className="w-3.5 h-3.5 text-amber-400/80" />
+                    {t('account.balance.monthSpend')}
+                  </div>
+                  <p
+                    data-testid="account-month-spend"
+                    className="mt-1.5 text-xl font-semibold tracking-tight text-zinc-100 tabular-nums break-words"
+                  >
+                    {!summary ? '—' : formatUsdNumber(monthSpend, language)}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+                    {t('account.balance.monthSpendHint')}
+                  </p>
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+                    <Clock className="w-3.5 h-3.5 text-emerald-400/80" />
+                    {t('account.balance.today')}
+                  </div>
+                  <p
+                    data-testid="account-today-minutes"
+                    className="mt-1.5 text-xl font-semibold tracking-tight text-zinc-100 tabular-nums break-words"
+                  >
+                    {!summary
+                      ? '—'
+                      : t('account.balance.minutes', {
+                        minutes: formatNumber(Number(minutes.toFixed(1))),
+                      })}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+                    {t('account.balance.todayHint')}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="bg-zinc-900/60 p-4 min-w-0">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
-                <Wallet className="w-3.5 h-3.5 text-blue-400/80" />
-                {t('account.balance.monthSpend')}
-              </div>
-              <p
-                data-testid="account-month-spend"
-                className="mt-1.5 text-2xl font-semibold tracking-tight text-zinc-100 tabular-nums break-words"
+
+            {/* Zero / negative balance: say exactly what happens on the next AI call. */}
+            {summary && availableMicro <= 0 && (
+              <div
+                role="status"
+                data-testid="account-balance-low"
+                className={`flex items-start gap-2.5 border-t px-4 py-3 sm:px-5 ${
+                  negative
+                    ? 'border-red-500/20 bg-red-500/[0.06]'
+                    : 'border-amber-500/20 bg-amber-500/[0.06]'
+                }`}
               >
-                {!summary ? '—' : formatUsd(monthSpend, language)}
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
-                {t('account.balance.monthSpendHint')}
-              </p>
-            </div>
-            <div className="bg-zinc-900/60 p-4 min-w-0">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
-                <Clock className="w-3.5 h-3.5 text-emerald-400/80" />
-                {t('account.balance.today')}
+                <AlertCircle
+                  className={`w-4 h-4 mt-0.5 shrink-0 ${negative ? 'text-red-400' : 'text-amber-400'}`}
+                />
+                <p
+                  className={`text-xs leading-relaxed ${
+                    negative ? 'text-red-200/90' : 'text-amber-200/90'
+                  }`}
+                >
+                  {negative ? t('account.balance.overrun') : t('account.balance.zero')}
+                </p>
               </div>
-              <p
-                data-testid="account-today-minutes"
-                className="mt-1.5 text-2xl font-semibold tracking-tight text-zinc-100 tabular-nums break-words"
-              >
-                {!summary
-                  ? '—'
-                  : t('account.balance.minutes', {
-                    minutes: formatNumber(Number(minutes.toFixed(1))),
-                  })}
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
-                {t('account.balance.todayHint')}
-              </p>
+            )}
+
+            <div
+              data-testid="account-balance-note"
+              className="border-t border-white/5 bg-zinc-900/30 px-4 py-3 sm:px-5"
+            >
+              <ul className="list-disc space-y-1 pl-4 text-[11px] leading-relaxed text-zinc-500">
+                <li>{t('account.balance.grant')}</li>
+                <li>{t('account.balance.topup')}</li>
+                <li>{t('account.balance.nonRefundable')}</li>
+              </ul>
+              {creditsLegacy > 0 && (
+                <p
+                  data-testid="account-balance-legacy"
+                  className="mt-2 border-t border-white/5 pt-2 text-[11px] leading-relaxed text-zinc-500"
+                >
+                  {t('account.balance.legacy', { credits: formatNumber(creditsLegacy) })}
+                </p>
+              )}
+              {summary?.preliminary && (
+                <p data-testid="account-preliminary" className="mt-1 text-[11px] leading-relaxed text-amber-400/80">
+                  {t('account.balance.preliminary')}
+                </p>
+              )}
             </div>
           </div>
-          <p data-testid="account-balance-note" className="mt-2 text-[11px] leading-relaxed text-zinc-500">
-            {t('account.balance.adminNote')}
-            {summary?.preliminary && (
-              <span data-testid="account-preliminary"> {t('account.balance.preliminary')}</span>
-            )}
-          </p>
         </motion.section>
         )}
 

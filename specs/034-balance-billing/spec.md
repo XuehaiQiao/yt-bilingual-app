@@ -1,10 +1,11 @@
 # 034 — 余额与 AI 成本（M3a 后端）
 
-> 状态：**M3a 后端 + 迁移 + 规格 + 测试已实现** ｜ 2026-11-20
+> 状态：**M3a 后端 + 迁移 + M3b 前端 + 规格 + 测试已实现** ｜ 2026-11-20
 > 依赖：001 用户体系、010 多模型、013/014/019/028/029/030 等 AI 调用方、021 后台、
 > 023 用户资料、032 注册、033 账号删除；权威设计见
 > `docs/项目提案-上线功能.md` §5（另见 §5.2/5.3/5.6/5.7/5.8/5.11）
-> 范围：后端、Alembic 迁移、规格、测试；**不含前端 UI（M3b）**、支付、M4 法务、M5 飞书
+> 范围：后端、Alembic 迁移、**前端 UI（M3b）**、规格、测试；不含支付、M4 法务、M5 飞书。
+> 前端实现细节见 §15。
 > 一句话：给每个账号一个整数微美元余额（新用户 $2.00），每次真实模型调用前预占、
 > 调用后按 provider token 用量结算并写流水；缺价模型只记账不扣钱；余额不足 402。
 
@@ -28,7 +29,7 @@
 
 ## 2. 非目标（M3a 不做）
 
-- 不做前端 UI / 管理台按钮（M3b）；不做支付、充值码、发票、退款流程。
+- 不做支付、充值码、发票、退款流程（M3b 前端已在 §15 落地，用户仍不能自助充值）。
 - 不做 M4 文案/法务、M5 飞书告警、多 worker/分布式锁（SQLite 单写进程）。
 - 不改 SQLite 架构（仍单文件 + WAL）、不引入 Redis/消息队列。
 - 不删除旧 `users.credits` / `credit_transactions`；旧 `POST /api/admin/users/{id}/credits`
@@ -358,3 +359,41 @@ cd backend
   402；`/api/teaching-analysis/*` 单独调用会 402。
 - SSE 流已开始后余额不足只能发 `error` 事件（HTTP 200），流开始前仍返回 402。
 - 缺价模型（qwen / Gemini 3.x）暂不扣费，补齐官方价前 $2 余额不约束这些模型。
+
+## 15. M3b 前端实现（2026-11-20）
+
+代码路径：
+
+| 文件 | 职责 |
+|---|---|
+| `frontend/src/lib/billing.ts` | 整数 µUSD ↔ USD 的唯一格式化/解析入口（2–6 位小数、无浮点误差）；金额输入精确解析（≤6 位）；管理员幂等键 UUID；余额/流水/计费汇总类型 |
+| `frontend/src/lib/api.ts` | `apiFetch` 在 402 `insufficient_balance` 时向全局发布可用/所需余额；402 **不触发** 401 登出；SSE 场景由 `notifyInsufficientBalance()` 复用同一通道 |
+| `frontend/src/App.tsx` | 应用壳的余额不足横幅（可用/本次需要 + 「查看账户余额」入口 + 关闭）；SSE `error` 事件的 `code=insufficient_balance` 同走该通道 |
+| `frontend/src/lib/toast.ts` | `describeApiError` 把 402 映射为本地化「余额不足」文案（带金额），429 保留配额文案，均不退化成「HTTP 402 / 服务器错误」 |
+| `frontend/src/components/AccountScreen.tsx` | 余额卡：可用余额（主）、账面余额、active holds（>0）、本月 AI 花费、今日学习；`$0.00` / 负余额（overrun）/ 旧 credits（历史演示额度）说明；「内测赠送 $2.00 / 联系管理员充值 / 不可购买提现」三条说明 |
+| `frontend/src/components/AdminConsoleScreen.tsx` | 用户列表余额列 + 旧额标记；「调整余额」对话框（USD 字符串、方向、原因、前端 UUID 幂等键、确认、预览）；用户流水对话框（最近 50 条、分页、类型/金额/调整后余额/原因/操作者，不渲染幂等键）；新增「计费」标签页（日期范围、真实扣费 µUSD/USD、token、未计费/legacy/settle_failed、hold、余额↔流水对账、无价格模型提示、当前价格表） |
+| `frontend/src/i18n/zh-CN.json` / `vi-VN.json` | 全部新增文案中越双语，无硬编码中文 |
+| `frontend/scripts/check-balance-billing.mjs` | Playwright 验收（stub API、真实 Chromium）：账户余额四态、402 HTTP/SSE、429、管理台调额成功/校验/400/402/409、流水分页、计费汇总、375/1440 无横向溢出、中越文案 |
+
+设计约束：
+
+- 用户不能自助充值：账户页与管理台都明确「联系管理员」，前端不提供支付入口。
+- 管理台旧 `credits` 调额按钮隐藏；旧接口与客户端函数保留（`adjustAdminUserCredits` 标注 deprecated），不参与 AI 扣费。
+- 金额一律从整数 µUSD 格式化；`monthSpendUsd` / `estimatedCostUsd` 等旧浮点仅作「估算/分析」并按旧口径展示，不用于余额。
+- 402 与 429 语义分离：402 显示余额不足横幅/文案，429 显示原有配额文案。
+
+验收：
+
+```bash
+cd frontend
+npx tsc -b
+npm run build
+npm run check:i18n
+APP_URL=http://127.0.0.1:5173 npm run check:balance
+# 截图：/tmp/balance-billing-shots/
+```
+
+已知 API 字段差异（前端按实际代码适配）：
+
+- `GET /api/user/summary` 只有 `monthSpendUsd`（本月估算）与 `usageToday.minutes`，**没有**按用户的「今日 AI 花费」字段；账户页展示现有的本月花费 + 今日学习分钟。
+- `GET /api/admin/billing/summary` 的 `byDay` / `byModel` / `byFeature` 只有 `costMicroUsd` / `calls` / `rows` / `unbilledRows`，**没有**分组 token；token 合计只在 `totals.inputTokens/outputTokens` 提供，管理台按该口径展示。

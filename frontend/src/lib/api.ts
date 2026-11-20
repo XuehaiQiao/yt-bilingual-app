@@ -115,6 +115,49 @@ export function subscribeToUnauthorized(listener: UnauthorizedListener): () => v
     };
 }
 
+// ── Insufficient balance (402, M3b / specs/034) ─────────────────────────
+//
+// 402 is a billing state, not an auth state: it must never sign the user out
+// (only 401 does). Every AI call funnels through `apiFetch`, so this is the one
+// place that can surface the shortfall for all of them. The app shell listens
+// once and renders a persistent banner with a link to the account page; call
+// sites still get their normal Response and can show inline copy.
+
+export interface InsufficientBalanceNotice {
+    /** HTTP status (always 402; carried so callers can log the shape). */
+    status: number;
+    balanceMicroUsd?: number;
+    availableMicroUsd?: number;
+    requiredMicroUsd?: number;
+}
+
+type InsufficientBalanceListener = (notice: InsufficientBalanceNotice) => void;
+
+let insufficientBalanceListeners: InsufficientBalanceListener[] = [];
+
+export function subscribeToInsufficientBalance(
+    listener: InsufficientBalanceListener,
+): () => void {
+    insufficientBalanceListeners.push(listener);
+    return () => {
+        insufficientBalanceListeners = insufficientBalanceListeners.filter(l => l !== listener);
+    };
+}
+
+/** Fan out a 402 shortfall (also used for the SSE `error` event path). */
+export function notifyInsufficientBalance(
+    notice: Omit<InsufficientBalanceNotice, 'status'> & { status?: number },
+): void {
+    const payload: InsufficientBalanceNotice = { ...notice, status: notice.status ?? 402 };
+    insufficientBalanceListeners.slice().forEach((listener) => {
+        try {
+            listener(payload);
+        } catch {
+            // A broken listener must never mask the response itself.
+        }
+    });
+}
+
 // `/api/auth/*` owns its own 401s (wrong password, not logged in yet).
 // Excluding them keeps the auth screen from triggering a logout loop.
 function isAuthEndpoint(path: string): boolean {
@@ -161,6 +204,25 @@ export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
                     // A broken listener must never mask the response itself.
                 }
             });
+        }
+        // 402 is not a session problem: no logout, no 500 copy. Only the
+        // billing code is surfaced; other 402s stay with their call site.
+        if (res.status === 402 && !isAuthEndpoint(path)) {
+            const body = await res.clone().json().catch(() => null);
+            if (body?.code === 'insufficient_balance') {
+                notifyInsufficientBalance({
+                    status: res.status,
+                    balanceMicroUsd: typeof body.balanceMicroUsd === 'number'
+                        ? body.balanceMicroUsd
+                        : undefined,
+                    availableMicroUsd: typeof body.availableMicroUsd === 'number'
+                        ? body.availableMicroUsd
+                        : undefined,
+                    requiredMicroUsd: typeof body.requiredMicroUsd === 'number'
+                        ? body.requiredMicroUsd
+                        : undefined,
+                });
+            }
         }
         return res;
     });

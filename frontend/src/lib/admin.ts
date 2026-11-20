@@ -5,6 +5,12 @@
 // only writes the console performs. Every call goes through `apiFetch`, so the
 // httpOnly session cookie and the shared 401 handling apply unchanged.
 import { apiFetch } from './api';
+import type {
+  AdminBalanceAdjustResult,
+  AdminBalanceDirection,
+  AdminBillingSummary,
+  AdminLedgerPage,
+} from './billing';
 
 export interface AdminUsersStats {
   total: number;
@@ -42,8 +48,15 @@ export interface AdminUserRow {
   email: string;
   /** Display name; null for accounts created before usernames existed. */
   username: string | null;
-  /** Manually credited balance (integer). */
+  /**
+   * Frozen pre-M3 balance in the legacy `credits` unit (display as history
+   * only; never a billing amount). `balanceMicroUsd` is the real balance.
+   */
   credits: number;
+  /** Real AI balance in integer µUSD (M3a). */
+  balanceMicroUsd?: number;
+  /** Same value as a USD string, for debugging; the UI formats from µUSD. */
+  balanceUsd?: string;
   status: AdminUserStatus;
   /** Epoch milliseconds. */
   createdAt: number;
@@ -317,11 +330,12 @@ export function fetchAdminHealth(): Promise<AdminHealth> {
 }
 
 /**
- * Manually adjust a user's balance (specs/023 §5).
+ * @deprecated M3b — legacy `credits` unit (`POST .../credits`).
  *
- * `delta` is a non-zero integer (+credit / -debit); the backend rejects a
- * debit that would push the balance below zero with 400. `reason` is stored
- * in the append-only `credit_transactions` ledger.
+ * Kept only for old callers/tests: the backend still accepts it for
+ * compatibility, but it does **not** touch `balance_micro_usd` and therefore
+ * cannot pay for AI calls. The console uses
+ * {@link adjustAdminUserBalance} instead.
  */
 export function adjustAdminUserCredits(
   userId: string,
@@ -335,6 +349,75 @@ export function adjustAdminUserCredits(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ delta, reason }),
     },
+  );
+}
+
+/**
+ * Manual micro-USD balance adjustment (M3b, `POST /api/admin/users/{id}/balance`).
+ *
+ * Exactly one of `amountUsd` (string, ≤6 decimals) / `amountMicroUsd` is sent;
+ * the console always sends the USD string so the admin types what the user
+ * owes/paid. `idempotencyKey` makes a retried request replay the original
+ * ledger row instead of charging twice. The backend owns the ±$100 cap, the
+ * "reason required" rule and the "cannot debit below zero" check (400/409).
+ */
+export function adjustAdminUserBalance(
+  userId: string,
+  input: {
+    amountUsd?: string;
+    amountMicroUsd?: number;
+    direction: AdminBalanceDirection;
+    reason: string;
+    idempotencyKey?: string;
+  },
+): Promise<AdminBalanceAdjustResult> {
+  return requestJson<AdminBalanceAdjustResult>(
+    `/api/admin/users/${encodeURIComponent(userId)}/balance`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...(input.amountUsd !== undefined ? { amountUsd: input.amountUsd } : {}),
+        ...(input.amountMicroUsd !== undefined
+          ? { amountMicroUsd: input.amountMicroUsd }
+          : {}),
+        direction: input.direction,
+        reason: input.reason,
+        ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+      }),
+    },
+  );
+}
+
+/** A user's append-only balance ledger, newest first (limit ≤ 100). */
+export function fetchAdminUserLedger(
+  userId: string,
+  options: { limit?: number; offset?: number } = {},
+): Promise<AdminLedgerPage> {
+  const params = new URLSearchParams();
+  if (options.limit != null) params.set('limit', String(options.limit));
+  if (options.offset != null) params.set('offset', String(options.offset));
+  const query = params.toString();
+  return requestJson<AdminLedgerPage>(
+    `/api/admin/users/${encodeURIComponent(userId)}/ledger${query ? `?${query}` : ''}`,
+  );
+}
+
+/**
+ * Billing/cost summary (`GET /api/admin/billing/summary`).
+ *
+ * `from` / `to` are `usage_date` days (`YYYY-MM-DD`, inclusive). Money is
+ * returned as integer µUSD plus a display string; the UI formats from µUSD.
+ */
+export function fetchAdminBillingSummary(
+  options: { from?: string; to?: string } = {},
+): Promise<AdminBillingSummary> {
+  const params = new URLSearchParams();
+  if (options.from) params.set('from', options.from);
+  if (options.to) params.set('to', options.to);
+  const query = params.toString();
+  return requestJson<AdminBillingSummary>(
+    `/api/admin/billing/summary${query ? `?${query}` : ''}`,
   );
 }
 
