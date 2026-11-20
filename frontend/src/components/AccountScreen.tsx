@@ -43,6 +43,7 @@ import { toast, describeApiError } from '../lib/toast';
 import { displayUsername, usernameInitial, usernameProblem } from '../lib/username';
 import { loadVocabLevel, saveVocabLevel, VOCAB_LEVEL_EVENT, VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
 import { LanguageSettingsModal } from './LanguageSettingsModal';
+import { AccountDataSection, PendingDeletionCard } from './AccountDataSection';
 import { ModelBar } from './ModelBar';
 import { PwaInstallButton } from './PwaInstallButton';
 import { VocabAxis } from './ui/Axis';
@@ -208,6 +209,10 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   const [isSavingName, setIsSavingName] = useState(false);
 
   const isAuthenticated = status === 'authenticated';
+  // 7-day deletion cooldown (specs/033): the account is signed in but every
+  // business endpoint answers 403 `account_pending_deletion`, so the page swaps
+  // the balance/library for the cooldown card + export, never the guest card.
+  const isPendingDeletion = isAuthenticated && user?.status === 'deletion_pending';
   const currentName = displayUsername(
     summary?.user.username ?? user?.username,
     summary?.user.email ?? user?.email,
@@ -216,7 +221,9 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   const memberSince = summary?.user.memberSince ?? 0;
 
   const loadSummary = useCallback(async () => {
-    if (status !== 'authenticated') return;
+    // Pending accounts cannot read /api/user/summary (403 by contract); skip
+    // the request instead of flashing a "forbidden" banner on every visit.
+    if (status !== 'authenticated' || isPendingDeletion) return;
     setIsLoading(true);
     setLoadError(null);
     setForbidden(false);
@@ -235,7 +242,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [status, t]);
+  }, [status, isPendingDeletion, t]);
 
   useEffect(() => {
     void loadSummary();
@@ -532,7 +539,10 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   // Guest / session-expired: the summary endpoint is 403 by contract. The
   // page still offers the word book, settings and about; the account header offers
   // login instead of an error banner.
-  if (!isAuthenticated || forbidden) {
+  // The summary endpoint is 403 for guests and for `deletion_pending`
+  // accounts. Only the former is a login gate; the pending case keeps the
+  // page and shows the cooldown card (below) instead of the guest card.
+  if (!isAuthenticated || (forbidden && !isPendingDeletion)) {
     return (
       <div
         data-testid="account-screen"
@@ -593,6 +603,8 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
     >
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {pageChrome}
+
+        {isPendingDeletion && <PendingDeletionCard />}
 
         {/* ── Header: avatar + display name + email + member since ─────── */}
         <header className="mt-5 flex items-start gap-4">
@@ -735,9 +747,10 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
           </section>
         )}
 
-        {libraryRows}
+        {!isPendingDeletion && libraryRows}
 
         {/* ── Balance card: credits / month spend / today's minutes ────── */}
+        {!isPendingDeletion && (
         <motion.section
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -807,9 +820,12 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
             )}
           </p>
         </motion.section>
+        )}
 
         {settingsSection}
         {aboutSection}
+
+        <AccountDataSection pending={isPendingDeletion} />
 
         {/* ── Actions ──────────────────────────────────────────────────── */}
         <section className="mt-8 space-y-3">

@@ -214,6 +214,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const { state, go, open, replace, back, openAnchor } = useNav();
   // Sub-view back controls name the source tab as the parent (NM §5.1).
   const parentLabel = t(PARENT_LABEL_KEYS[state.tab]);
+  // Account in the 7-day deletion cooldown (specs/033): `/api/auth/me` carries
+  // `user.status`, so the shell can explain every business 403 without polling.
+  // The account page renders its own cooldown card, so the banner is hidden
+  // only there.
+  const pendingDeletion =
+    status === 'authenticated' && user?.status === 'deletion_pending';
+  const onAccountPage = state.tab === 'profile' && !state.sub;
 
   const [videoId, setVideoId] = useState('');
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
@@ -3057,27 +3064,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{node}</div>
   );
 
-  // Admin console is its own full-page shell: no consumer top bar / bottom
-  // bar. A non-admin hand-typed URL is bounced by the guard effect above; the
-  // placeholder avoids flashing the console while that tick runs.
-  if (sub?.kind === 'admin') {
-    return (
-      <div
-        data-testid="app-shell"
-        className="h-screen w-full flex flex-col bg-[#09090b] overflow-hidden text-zinc-100 selection:bg-purple-500/30"
-        style={{ height: '100dvh' }}
-      >
-        {isAdmin ? (
-          <AdminConsoleScreen onClose={handleCloseAdmin} parentLabel={t('nav.profile')} onDenied={handleAdminDenied} />
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
-          </div>
-        )}
-      </div>
-    );
-  }
-
   const learningView = (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <LearningHeader
@@ -3665,6 +3651,32 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
   };
 
+  // Admin console is its own full-page shell: no consumer top bar / bottom
+  // bar. A non-admin hand-typed URL is bounced by the guard effect above; the
+  // placeholder avoids flashing the console while that tick runs.
+  //
+  // IMPORTANT: this return must stay after every hook in this component. When
+  // it lived higher, navigating profile → admin (the real entry button) changed
+  // the hook count between renders and React threw "Rendered fewer hooks than
+  // expected", unmounting the whole shell (a blank page).
+  if (sub?.kind === 'admin') {
+    return (
+      <div
+        data-testid="app-shell"
+        className="h-screen w-full flex flex-col bg-[#09090b] overflow-hidden text-zinc-100 selection:bg-purple-500/30"
+        style={{ height: '100dvh' }}
+      >
+        {isAdmin ? (
+          <AdminConsoleScreen onClose={handleCloseAdmin} parentLabel={t('nav.profile')} onDenied={handleAdminDenied} />
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const subLabel = state.sub
     ? (state.sub.kind === 'learn' ? featureLabel : t(SUB_LABEL_KEYS[state.sub.kind]))
     : undefined;
@@ -3700,6 +3712,27 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         onOpenProfileSection={handleOpenProfileSection}
         onOpenAdmin={handleOpenAdmin}
       >
+        {pendingDeletion && !onAccountPage && (
+          <div
+            data-testid="account-pending-banner"
+            role="status"
+            aria-label={t('account.pending.bannerAria')}
+            className="flex-none flex flex-wrap items-center gap-2 px-3 sm:px-4 py-2 bg-red-500/10 border-b border-red-500/20"
+          >
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
+            <span className="min-w-0 flex-1 text-xs leading-relaxed text-red-200">
+              {t('account.pending.banner')}
+            </span>
+            <button
+              type="button"
+              data-testid="account-pending-banner-action"
+              onClick={() => go('profile')}
+              className="inline-flex items-center h-7 px-2.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-[11px] font-medium text-red-100 transition-colors shrink-0"
+            >
+              {t('account.pending.bannerAction')}
+            </button>
+          </div>
+        )}
         {pendingResume && (
           <div
             data-testid="resume-banner"

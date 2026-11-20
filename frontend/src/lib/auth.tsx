@@ -50,6 +50,17 @@ interface AuthContextValue {
         inviteCode?: string,
     ) => Promise<void>;
     logout: () => Promise<void>;
+    /**
+     * Local-only reset after the server already revoked every session (account
+     * deletion submission). Never calls `/api/auth/logout`: that endpoint would
+     * 401 with the cleared cookie and show a misleading error toast.
+     */
+    clearSession: () => void;
+    /**
+     * Re-read `GET /api/auth/me` so `user.status` follows the server (e.g.
+     * `deletion_pending` → `active` after cancelling a deletion).
+     */
+    refreshSession: () => Promise<void>;
     /** Rename the signed-in user (`PATCH /api/user/profile`); updates context. */
     updateUsername: (username: string) => Promise<AuthUser>;
 }
@@ -316,8 +327,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [applyAuthState]);
 
+    // Account lifecycle (M2b): once a deletion request is accepted the backend
+    // has already deleted every session row and cleared the cookie, so this is
+    // purely the local half of that sign-out.
+    const clearSession = useCallback(() => {
+        setDataRevision((revision) => revision + 1);
+        setIsAdmin(false);
+        applyAuthState('anonymous', null);
+    }, [applyAuthState]);
+
+    // Used after cancelling a deletion: `/api/auth/me` carries `status`, which
+    // drives the restricted banner; a failure keeps the current state (a stale
+    // banner is recoverable, a spurious sign-out is not).
+    const refreshSession = useCallback(async () => {
+        try {
+            const res = await apiFetch('/api/auth/me');
+            if (res.status === 401) {
+                setIsAdmin(false);
+                applyAuthState('anonymous', null);
+                return;
+            }
+            if (!res.ok) return;
+            const data = (await res.json().catch(() => null)) as UserPayload | null;
+            if (!data?.guest && data?.user?.email) {
+                setIsAdmin(data.isAdmin === true);
+                applyAuthState('authenticated', data.user);
+            }
+        } catch {
+            // Keep the current session; the next navigation retries.
+        }
+    }, [applyAuthState]);
+
     return (
-        <AuthContext.Provider value={{ status, user, isAdmin, dataRevision, login, signup, logout, updateUsername }}>
+        <AuthContext.Provider value={{
+            status,
+            user,
+            isAdmin,
+            dataRevision,
+            login,
+            signup,
+            logout,
+            clearSession,
+            refreshSession,
+            updateUsername,
+        }}>
             {children}
         </AuthContext.Provider>
     );

@@ -121,6 +121,16 @@ function isAuthEndpoint(path: string): boolean {
     return path === '/api/auth' || path.startsWith('/api/auth/');
 }
 
+// Account lifecycle password confirmations also answer 401 — with
+// `code: "password_invalid"`, not an expired session (specs/033 §9). Firing the
+// global unauthorized hook on that would sign the user out for mistyping a
+// password; a genuine missing session still answers `auth_required` and does
+// sign out. The body is only read for 401s on this prefix.
+async function isPasswordRejection(response: Response): Promise<boolean> {
+    const body = await response.clone().json().catch(() => null);
+    return body?.code === 'password_invalid';
+}
+
 // fetch() wrapper that attaches the optional VITE_API_KEY as X-API-Key,
 // matching the backend's API_AUTH_KEY protection for public deployments.
 // `credentials: 'include'` makes the browser send/receive the httpOnly
@@ -138,8 +148,12 @@ export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
         ...resolvedInit,
         credentials: 'include',
         headers,
-    }).then((res) => {
+    }).then(async (res) => {
         if (res.status === 401 && !isAuthEndpoint(path)) {
+            const isAccountPath = path === '/api/account' || path.startsWith('/api/account/');
+            if (isAccountPath && await isPasswordRejection(res)) {
+                return res;
+            }
             unauthorizedListeners.slice().forEach((listener) => {
                 try {
                     listener();

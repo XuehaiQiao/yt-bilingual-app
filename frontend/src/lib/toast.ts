@@ -4,7 +4,7 @@
 //
 // Rules live here (A2 C8 / A3 IX-08) so the renderer stays a dumb view:
 // per-type lifetime, same-key dedupe window, long/actionable error persistence.
-import { t } from '../i18n';
+import { t, type TranslationKey } from '../i18n';
 
 export type ToastType = 'error' | 'success' | 'info';
 
@@ -112,10 +112,24 @@ declare global {
     }
 }
 
+/**
+ * Stable backend error codes that have local copy. Only codes carrying a
+ * user-facing meaning belong here; everything else keeps the server's `detail`
+ * (validation errors, invite codes, …) so support copy is never swallowed.
+ */
+const API_ERROR_KEYS: Record<string, TranslationKey> = {
+    // Account in the 7-day deletion cooldown: business APIs answer 403.
+    account_pending_deletion: 'errors.accountPendingDeletion',
+};
+
 /** Extract a human-readable message from a fetch Response / Error. */
 export async function describeApiError(resOrErr: Response | unknown): Promise<string> {
     if (resOrErr instanceof Response) {
         const body = await resOrErr.json().catch(() => null);
+        if (body?.code && typeof body.code === 'string') {
+            const key = API_ERROR_KEYS[body.code];
+            if (key) return t(key);
+        }
         if (body?.detail && typeof body.detail === 'string') return body.detail;
         return t('errors.httpStatus', { status: resOrErr.status });
     }

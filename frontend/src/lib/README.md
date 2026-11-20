@@ -5,7 +5,7 @@
 | 模块 | 职责 |
 |---|---|
 | `api.ts` | `API_BASE`（`VITE_API_BASE` 可覆盖）与 `apiFetch`（自动带 `X-API-Key`、`credentials: include`、按端点注入 `targetLang`；非 auth 端点 401 广播给认证层） |
-| `auth.tsx` | 认证状态：`AuthProvider`/`useAuth`（含 `isAdmin`，来自 `/api/auth/me`）、启动 `GET /api/auth/me`、login/signup（注册带用户名与可选邀请码）/logout、`updateUsername`（`PATCH /api/user/profile`）、`fetchRegistrationConfig`（`GET /api/auth/registration`）、`AuthRequestError`（保留 HTTP 状态与稳定 `code`）、全局 401 回登录页 |
+| `auth.tsx` | 认证状态：`AuthProvider`/`useAuth`（含 `isAdmin`，来自 `/api/auth/me`）、启动 `GET /api/auth/me`、login/signup（注册带用户名与可选邀请码）/logout、`clearSession`（删除申请成功后仅清本地态，不再请求 logout）、`refreshSession`（取消删除后刷新 `user.status`）、`updateUsername`（`PATCH /api/user/profile`）、`fetchRegistrationConfig`（`GET /api/auth/registration`）、`AuthRequestError`（保留 HTTP 状态与稳定 `code`）、全局 401 回登录页 |
 | `username.ts` | 显示名规则（specs/023）：2–24 个字符、中文/英文/数字/下划线/连字符、首尾不能空白；`usernameProblem`（返回首个不满足的 i18n key）、`displayUsername`（无用户名回落邮箱前缀）、`usernameInitial`（头像首字母）。与后端 `account.validate_username` 保持同步 |
 | `transcript.ts` | 字幕核心逻辑：`findActiveIndex`（当前句判定，含 0.8s 前瞻）、SSE 流解析（`consumeSseStream`）、`[未翻译]` 标记判定、译文显示模式（全显/当前句/隐藏）持久化 |
 | `sentences.ts` | 句子精背：类型、拉取、四色语块配色、按册×天的背诵/复习进度持久化 |
@@ -32,8 +32,9 @@
 | `blog.ts` | 官方博客客户端（specs/020）：`/api/blog/posts`、`/api/blog/posts/{slug}`、`/api/blog/feed.xml` 的类型与 `listBlogPosts/getBlogPost/blogFeedUrl`；只读公开接口，失败抛带状态码的 `BlogApiError`；前端用 Markdown 字段配合 `react-markdown`，不注入后端 HTML |
 | `library.ts` | 本地免费资源库客户端（user request #11）：`/api/library`、`/api/library/videos/{id}`、`/api/library/articles/{id}` 的类型与 `fetchLibraryIndex/fetchLibraryVideo/fetchLibraryArticle`；公开只读、不触发估价/处理/翻译；只校验并透传后端字段，失败抛带 HTTP 状态的 `LibraryApiError` |
 | `tts.ts` | 浏览器朗读（speechSynthesis，偏好英语音色） |
-| `admin.ts` | 管理控制台客户端（specs/021 + 023 + 032）：`fetchAdminStats/fetchAdminUsers/fetchAdminUsage/fetchAdminHealth`、`fetchAdminSettings/saveAdminSettings`、`adjustAdminUserCredits/updateAdminUserStatus`、`fetchAdminInvites/createAdminInvites/revokeAdminInvite` 与全部响应类型；所有调用走 `apiFetch`（带 credentials），失败抛带 HTTP 状态的 `AdminApiError`；写操作只在用户显式点击后调用 |
-| `toast.ts` | 轻提示总线 + `describeApiError`（把后端/网络错误转成可读中文） |
+| `admin.ts` | 管理控制台客户端（specs/021 + 023 + 032 + 033）：`fetchAdminStats/fetchAdminUsers/fetchAdminUsage/fetchAdminHealth`、`fetchAdminSettings/saveAdminSettings`、`adjustAdminUserCredits/updateAdminUserStatus`、`fetchAdminInvites/createAdminInvites/revokeAdminInvite`、`fetchAdminDeletionRequests/executeAdminDeletion`（`confirm=DELETE` + 原因 + 冷静期未满需 `force`）、`fetchAdminAudit` 与全部响应类型；所有调用走 `apiFetch`（带 credentials），失败抛带 HTTP 状态与稳定 `code` 的 `AdminApiError`；写操作只在用户显式点击后调用 |
+| `accountLifecycle.ts` | 账号生命周期客户端（specs/033 / M2b）：`fetchDeletionState/requestDeletion/cancelDeletion`、`fetchExports/createExport/downloadExport/deleteExport`；`LifecycleApiError` 保留 HTTP 状态/稳定 `code`/`Retry-After`，`lifecycleErrorText` + `formatRetryAfter` 映射中越文案；下载 token 只出现在 202 响应，按 tab 存 `sessionStorage`（刷新可续，关标签即失效）；错误码中文回退仅 zh-CN |
+| `toast.ts` | 轻提示总线 + `describeApiError`（把后端/网络错误转成可读文案；`account_pending_deletion` 等稳定 `code` 走 i18n，其余保留后端 `detail`） |
 | `jobs.ts` | 断线续传（M1 ⑤）：`sessionStorage` 里保存 `jobId`/游标（key `yt_bilingual_pending_job`）、`GET /api/jobs/{id}` 查询状态、`recordJobMeta/recordJobProgress/finishJob` 三个 SSE 事件钩子；刷新后「先查状态、可续才带 `jobId + from` 重连」的判定也在这里 |
 
 约定：localStorage key 全部带 `yt_bilingual_` 或 `sentence-` 前缀；新增持久化跟随此约定。

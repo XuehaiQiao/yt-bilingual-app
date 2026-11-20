@@ -29,6 +29,7 @@ import {
   Activity,
   AlertCircle,
   Ban,
+  CalendarClock,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -45,10 +46,12 @@ import {
   Megaphone,
   Plus,
   RefreshCw,
+  ScrollText,
   Search,
   Server,
   Ticket,
   ShieldCheck,
+  Trash2,
   SlidersHorizontal,
   TriangleAlert,
   UserPlus,
@@ -80,6 +83,9 @@ import {
   AdminApiError,
   adjustAdminUserCredits,
   createAdminInvites,
+  executeAdminDeletion,
+  fetchAdminAudit,
+  fetchAdminDeletionRequests,
   fetchAdminHealth,
   fetchAdminInvites,
   fetchAdminSettings,
@@ -89,6 +95,13 @@ import {
   revokeAdminInvite,
   saveAdminSettings,
   updateAdminUserStatus,
+  type AdminAuditEntry,
+  type AdminAuditPage,
+  type AdminDeletionExecuteResult,
+  type AdminDeletionRequestRow,
+  type AdminDeletionRequestStatus,
+  type AdminDeletionRequestsPage,
+  type AdminDeletionStatusFilter,
   type AdminHealth,
   type AdminInviteGenerated,
   type AdminInvitePage,
@@ -103,12 +116,15 @@ import {
   type AdminUsersPage,
   type AdminRegistrationConfig,
 } from '../lib/admin';
+import { DELETE_CONFIRM_WORD, lifecycleErrorKey } from '../lib/accountLifecycle';
 import { LanguageMenu } from './LanguageMenu';
 
 const PAGE_SIZE = 20;
 const MAX_CREDIT_DELTA = 100_000;
 const MAX_ANNOUNCEMENT_CHARS = 2000;
 const INVITE_PAGE_SIZE = 20;
+const DELETION_PAGE_SIZE = 20;
+const AUDIT_PAGE_SIZE = 20;
 const MAX_INVITE_LABEL_CHARS = 120;
 const MAX_INVITE_COUNT = 10;
 const MAX_INVITE_USES = 10;
@@ -125,7 +141,14 @@ const DANGER_BUTTON =
 const SUCCESS_BUTTON =
   'inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 text-sm font-medium text-emerald-400 transition-colors disabled:opacity-50 disabled:pointer-events-none';
 
-type AdminTab = 'overview' | 'users' | 'invites' | 'settings' | 'ops';
+type AdminTab =
+  | 'overview'
+  | 'users'
+  | 'invites'
+  | 'deletions'
+  | 'audit'
+  | 'settings'
+  | 'ops';
 
 const TABS: ReadonlyArray<{
   id: AdminTab;
@@ -135,6 +158,8 @@ const TABS: ReadonlyArray<{
   { id: 'overview', labelKey: 'admin.tab.overview', icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
   { id: 'users', labelKey: 'admin.tab.users', icon: <Users className="w-3.5 h-3.5" /> },
   { id: 'invites', labelKey: 'admin.tab.invites', icon: <Ticket className="w-3.5 h-3.5" /> },
+  { id: 'deletions', labelKey: 'admin.tab.deletions', icon: <CalendarClock className="w-3.5 h-3.5" /> },
+  { id: 'audit', labelKey: 'admin.tab.audit', icon: <ScrollText className="w-3.5 h-3.5" /> },
   { id: 'settings', labelKey: 'admin.tab.settings', icon: <SlidersHorizontal className="w-3.5 h-3.5" /> },
   { id: 'ops', labelKey: 'admin.tab.ops', icon: <Activity className="w-3.5 h-3.5" /> },
 ];
@@ -1003,6 +1028,298 @@ function InviteRevokeDialog({ target, onClose, onRevoked, onAuthError }: InviteR
   );
 }
 
+
+// ── Deletion requests + audit (M2b / specs/033) ─────────────────────────────
+
+const DELETION_STATUS_KEY: Record<AdminDeletionRequestStatus, TranslationKey> = {
+  pending: 'admin.deletions.status.pending',
+  cancelled: 'admin.deletions.status.cancelled',
+  completed: 'admin.deletions.status.completed',
+  failed: 'admin.deletions.status.failed',
+};
+
+const DELETION_STATUS_CLASSES: Record<AdminDeletionRequestStatus, string> = {
+  pending: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
+  cancelled: 'bg-zinc-800/70 text-zinc-400 border-white/5',
+  completed: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
+  failed: 'bg-red-500/10 text-red-400 border-red-500/20',
+};
+
+const DELETION_FILTERS: ReadonlyArray<AdminDeletionStatusFilter> = [
+  'all',
+  'pending',
+  'failed',
+  'completed',
+  'cancelled',
+];
+
+const DELETION_FILTER_KEY: Record<AdminDeletionStatusFilter, TranslationKey> = {
+  all: 'admin.deletions.filter.all',
+  pending: 'admin.deletions.filter.pending',
+  failed: 'admin.deletions.filter.failed',
+  completed: 'admin.deletions.filter.completed',
+  cancelled: 'admin.deletions.filter.cancelled',
+};
+
+function DeletionStatusBadge({ status }: { status: AdminDeletionRequestStatus }) {
+  const { t } = useI18n();
+  return (
+    <span
+      data-testid="admin-deletion-status-badge"
+      data-status={status}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${DELETION_STATUS_CLASSES[status]}`}
+    >
+      {t(DELETION_STATUS_KEY[status])}
+    </span>
+  );
+}
+
+/** Keep enough identity for support without exposing the full address. */
+function maskEmail(email: string): string {
+  const at = email.indexOf('@');
+  if (at <= 0) return '***';
+  const local = email.slice(0, at);
+  const domain = email.slice(at);
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}***${domain}`;
+}
+
+type TFunc = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
+function describeDeletionFailure(error: unknown, t: TFunc): string {
+  if (error instanceof AdminApiError) {
+    // Cooldown not elapsed: the actionable copy is the force hint, not the
+    // generic backend sentence.
+    if (error.code === 'deletion_not_due') return t('admin.deletions.notDueHint');
+    const key = lifecycleErrorKey(error.code);
+    if (key) return t(key);
+    if (error.message) return error.message;
+  }
+  if (error instanceof TypeError) return t('account.errors.network');
+  return t('account.errors.generic');
+}
+
+const AUDIT_ACTION_KEYS: Record<string, TranslationKey> = {
+  'account.deletion.request': 'admin.audit.action.accountDeletionRequest',
+  'account.deletion.cancel': 'admin.audit.action.accountDeletionCancel',
+  'account.deletion.execute.completed': 'admin.audit.action.accountDeletionExecuteCompleted',
+  'account.deletion.execute.failed': 'admin.audit.action.accountDeletionExecuteFailed',
+  'account.export.request': 'admin.audit.action.accountExportRequest',
+  'admin.user.credits_adjust': 'admin.audit.action.adminUserCreditsAdjust',
+  'admin.user.status_update': 'admin.audit.action.adminUserStatusUpdate',
+  'admin.invite.create': 'admin.audit.action.adminInviteCreate',
+  'admin.invite.revoke': 'admin.audit.action.adminInviteRevoke',
+  'admin.settings.update': 'admin.audit.action.adminSettingsUpdate',
+};
+
+function auditActionLabel(action: string, t: TFunc): string {
+  const key = AUDIT_ACTION_KEYS[action];
+  return key ? t(key) : action;
+}
+
+/** The audit row has no `result` column: a failed action name or detail says it. */
+function auditFailed(entry: AdminAuditEntry): boolean {
+  if (entry.action.includes('failed')) return true;
+  const detail = entry.detail;
+  if (detail && typeof detail === 'object' && 'ok' in detail) {
+    return (detail as { ok?: unknown }).ok === false;
+  }
+  return false;
+}
+
+function auditDetailText(entry: AdminAuditEntry): string {
+  if (!entry.detail) return '';
+  if (typeof entry.detail === 'string') return entry.detail;
+  try {
+    return JSON.stringify(entry.detail);
+  } catch {
+    return '';
+  }
+}
+
+interface ExecuteDeletionDialogProps {
+  target: AdminDeletionRequestRow;
+  onClose: () => void;
+  onExecuted: (result: AdminDeletionExecuteResult) => void;
+  onAuthError: () => void;
+}
+
+function ExecuteDeletionDialog({
+  target,
+  onClose,
+  onExecuted,
+  onAuthError,
+}: ExecuteDeletionDialogProps) {
+  const { t, formatDate } = useI18n();
+  const [reason, setReason] = useState('');
+  const [confirmText, setConfirmText] = useState('');
+  const [force, setForce] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const reasonOk = reason.trim().length > 0;
+  const confirmOk = confirmText.trim() === DELETE_CONFIRM_WORD;
+
+  const submit = async () => {
+    if (saving) return;
+    if (!reasonOk) {
+      setError(t('admin.deletions.reasonRequired'));
+      return;
+    }
+    if (!confirmOk) {
+      setError(t('admin.deletions.confirmRequired'));
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await executeAdminDeletion(target.id, {
+        confirm: confirmText,
+        reason: reason.trim(),
+        force,
+      });
+      onExecuted(result);
+    } catch (err) {
+      if (err instanceof AdminApiError && (err.status === 401 || err.status === 403)) {
+        onAuthError();
+        return;
+      }
+      setError(describeDeletionFailure(err, t));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const identity = target.user
+    ? displayUsername(target.user.username, target.user.email)
+    : `${target.userIdHash.slice(0, 12)}…`;
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-red-400"><Trash2 className="w-5 h-5" /></span>
+          <span className="truncate">{t('admin.deletions.executeTitle')}</span>
+        </span>
+      }
+      size="md"
+      loading={saving}
+      testId="admin-deletion-dialog"
+      initialFocus='[data-testid="admin-deletion-reason"]'
+      footer={
+        <>
+          <button
+            type="button"
+            data-testid="admin-deletion-cancel"
+            onClick={onClose}
+            disabled={saving}
+            className={SECONDARY_BUTTON}
+          >
+            {t('admin.cancel')}
+          </button>
+          <button
+            type="button"
+            data-testid="admin-deletion-submit"
+            onClick={() => { void submit(); }}
+            disabled={saving || !reasonOk || !confirmOk}
+            className={DANGER_BUTTON}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            {saving ? t('admin.deletions.submitting') : t('admin.deletions.submit')}
+          </button>
+        </>
+      }
+    >
+      <p className="text-sm leading-relaxed text-zinc-300">{t('admin.deletions.executeDesc')}</p>
+      <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-amber-300/90">
+        <TriangleAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        <span>{t('admin.deletions.caution')}</span>
+      </p>
+
+      <div className="mt-4 rounded-xl border border-white/5 bg-zinc-800/40 px-3 py-2">
+        <p className="text-sm font-medium text-zinc-100 break-all">{identity}</p>
+        <p className="mt-0.5 text-[11px] text-zinc-500 tabular-nums">
+          {t('admin.deletions.dueAt')}: {formatDate(target.dueAt, { dateStyle: 'medium', timeStyle: 'short' })}
+          {' · '}
+          {target.overdue ? t('admin.deletions.dueOverdue') : t('admin.deletions.dueFuture')}
+        </p>
+        <p className="mt-0.5 font-mono text-[11px] text-zinc-600 break-all">{target.id}</p>
+      </div>
+
+      <label className="mt-4 block">
+        <span className="text-xs font-medium text-zinc-400">{t('admin.deletions.reason')}</span>
+        <textarea
+          data-testid="admin-deletion-reason"
+          value={reason}
+          rows={3}
+          maxLength={200}
+          onChange={(event) => {
+            setReason(event.target.value);
+            if (error) setError(null);
+          }}
+          placeholder={t('admin.deletions.reasonPlaceholder')}
+          className="mt-1 w-full resize-y rounded-xl bg-zinc-800/50 border border-white/10 px-3 py-2 text-sm leading-relaxed text-zinc-100 placeholder:text-zinc-600 outline-none focus-visible:border-brand/60 focus-visible:ring-2 focus-visible:ring-brand/15"
+        />
+      </label>
+
+      <label className="mt-3 block">
+        <span className="text-xs font-medium text-zinc-400">{t('admin.deletions.confirm')}</span>
+        <input
+          data-testid="admin-deletion-confirm"
+          type="text"
+          autoComplete="off"
+          value={confirmText}
+          onChange={(event) => {
+            setConfirmText(event.target.value);
+            if (error) setError(null);
+          }}
+          placeholder={DELETE_CONFIRM_WORD}
+          className="mt-1 w-full rounded-xl bg-zinc-800/50 border border-white/10 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus-visible:border-brand/60 focus-visible:ring-2 focus-visible:ring-brand/15"
+        />
+        <span className="mt-1 block text-[11px] text-zinc-500">{t('admin.deletions.confirmHint')}</span>
+      </label>
+
+      <div className="mt-3 rounded-xl border border-amber-500/15 bg-amber-500/[0.05] p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-amber-200">{t('admin.deletions.force')}</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">{t('admin.deletions.forceHint')}</p>
+          </div>
+          <Switch
+            checked={force}
+            onChange={(next) => {
+              setForce(next);
+              if (error) setError(null);
+            }}
+            ariaLabel={t('admin.deletions.force')}
+            tone="warning"
+            disabled={saving}
+            testId="admin-deletion-force"
+          />
+        </div>
+        {!target.overdue && (
+          <p data-testid="admin-deletion-not-due" className="mt-2 text-[11px] leading-relaxed text-amber-300/90">
+            {t('admin.deletions.notDueHint')}
+          </p>
+        )}
+      </div>
+
+      {error && (
+        <p
+          role="alert"
+          data-testid="admin-deletion-error"
+          className="mt-3 flex items-start gap-1.5 text-xs leading-relaxed text-red-400"
+        >
+          <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span>{error}</span>
+        </p>
+      )}
+    </Dialog>
+  );
+}
+
 export interface AdminConsoleScreenProps {
   /** Leave the console — App returns to the account page or home. */
   onClose: () => void;
@@ -1039,6 +1356,18 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
   const [inviteCreateOpen, setInviteCreateOpen] = useState(false);
   const [inviteRevokeTarget, setInviteRevokeTarget] = useState<AdminInviteRow | null>(null);
 
+  const [deletionPage, setDeletionPage] = useState<AdminDeletionRequestsPage | null>(null);
+  const [deletionError, setDeletionError] = useState<string | null>(null);
+  const [deletionLoading, setDeletionLoading] = useState(true);
+  const [deletionFilter, setDeletionFilter] = useState<AdminDeletionStatusFilter>('all');
+  const [deletionOffset, setDeletionOffset] = useState(0);
+  const [executeTarget, setExecuteTarget] = useState<AdminDeletionRequestRow | null>(null);
+
+  const [auditPage, setAuditPage] = useState<AdminAuditPage | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [auditLoading, setAuditLoading] = useState(true);
+  const [auditOffset, setAuditOffset] = useState(0);
+
   const [health, setHealth] = useState<AdminHealth | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
@@ -1061,6 +1390,8 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
 
   const usersRequestRef = useRef(0);
   const invitesRequestRef = useRef(0);
+  const deletionsRequestRef = useRef(0);
+  const auditRequestRef = useRef(0);
   const deniedRef = useRef(false);
   const onDeniedRef = useRef(onDenied);
 
@@ -1199,6 +1530,45 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
     }
   }, [describeError, t]);
 
+  const loadDeletions = useCallback(async (
+    nextOffset: number,
+    nextStatus: AdminDeletionStatusFilter,
+  ) => {
+    const requestId = ++deletionsRequestRef.current;
+    setDeletionLoading(true);
+    setDeletionError(null);
+    try {
+      const page = await fetchAdminDeletionRequests({
+        limit: DELETION_PAGE_SIZE,
+        offset: nextOffset,
+        status: nextStatus,
+      });
+      if (requestId !== deletionsRequestRef.current) return;
+      setDeletionPage(page);
+    } catch (error) {
+      if (requestId !== deletionsRequestRef.current) return;
+      setDeletionError(describeError(error, t('admin.deletions.loadError')));
+    } finally {
+      if (requestId === deletionsRequestRef.current) setDeletionLoading(false);
+    }
+  }, [describeError, t]);
+
+  const loadAudit = useCallback(async (nextOffset: number) => {
+    const requestId = ++auditRequestRef.current;
+    setAuditLoading(true);
+    setAuditError(null);
+    try {
+      const page = await fetchAdminAudit({ limit: AUDIT_PAGE_SIZE, offset: nextOffset });
+      if (requestId !== auditRequestRef.current) return;
+      setAuditPage(page);
+    } catch (error) {
+      if (requestId !== auditRequestRef.current) return;
+      setAuditError(describeError(error, t('admin.audit.loadError')));
+    } finally {
+      if (requestId === auditRequestRef.current) setAuditLoading(false);
+    }
+  }, [describeError, t]);
+
   useEffect(() => {
     void loadStats();
     void loadUsage();
@@ -1214,10 +1584,20 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
     void loadInvites(inviteOffset, inviteStatus);
   }, [loadInvites, inviteOffset, inviteStatus]);
 
+  useEffect(() => {
+    void loadDeletions(deletionOffset, deletionFilter);
+  }, [loadDeletions, deletionOffset, deletionFilter]);
+
+  useEffect(() => {
+    void loadAudit(auditOffset);
+  }, [loadAudit, auditOffset]);
+
   const refreshActive = () => {
     if (tab === 'overview') void loadStats();
     else if (tab === 'users') void loadUsers(offset, search);
     else if (tab === 'invites') void loadInvites(inviteOffset, inviteStatus);
+    else if (tab === 'deletions') void loadDeletions(deletionOffset, deletionFilter);
+    else if (tab === 'audit') void loadAudit(auditOffset);
     else if (tab === 'settings') void loadSettings();
     else {
       void loadUsage();
@@ -1231,9 +1611,13 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
       ? usersLoading
       : tab === 'invites'
         ? invitesLoading
-        : tab === 'settings'
-          ? settingsLoading
-          : usageLoading || healthLoading;
+        : tab === 'deletions'
+          ? deletionLoading
+          : tab === 'audit'
+            ? auditLoading
+            : tab === 'settings'
+              ? settingsLoading
+              : usageLoading || healthLoading;
 
   const handleCreditsSaved = (userId: string, credits: number) => {
     setUsersPage((previous) => (previous
@@ -1280,6 +1664,16 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
       toast.success(t('admin.invites.revokeSuccess', { prefix: invite.prefix }));
     }
     void loadInvites(inviteOffset, inviteStatus);
+  };
+
+  const handleDeletionExecuted = () => {
+    setExecuteTarget(null);
+    toast.success(t('admin.deletions.success'));
+    // Refresh both tabs: an executed request leaves `pending`, and the audit
+    // list gains the completion row.
+    void loadDeletions(deletionOffset, deletionFilter);
+    setAuditOffset(0);
+    void loadAudit(0);
   };
 
   const saveSettings = async () => {
@@ -1335,6 +1729,8 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
   const healthy = health?.health.status === 'ok';
   const userRows = usersPage?.users ?? [];
   const inviteRows = invitesPage?.invites ?? [];
+  const deletionRows = deletionPage?.requests ?? [];
+  const auditRows = auditPage?.entries ?? [];
   const inviteCounts = invitesPage?.counts;
   const inviteFilterCount = (status: AdminInviteStatusFilter): number => {
     if (!inviteCounts) return 0;
@@ -1884,6 +2280,328 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
           </section>
         )}
 
+        {/* ── Deletion requests (M2b / specs/033) ──────────────────────── */}
+        {tab === 'deletions' && (
+          <section
+            {...tabPanelProps('admin', 'deletions')}
+            data-testid="admin-panel-deletions"
+            className="mt-6"
+          >
+            <SectionTitle
+              id="admin-deletions-title"
+              title={t('admin.deletions.title')}
+              subtitle={t('admin.deletions.subtitle')}
+              action={deletionLoading ? (
+                <Loader2 className="w-4 h-4 text-zinc-500 animate-spin" />
+              ) : undefined}
+            />
+            <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-zinc-500">
+              <TriangleAlert className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-400/80" />
+              <span>{t('admin.deletions.caution')}</span>
+            </p>
+
+            <div
+              className="mt-3 flex flex-wrap items-center gap-2"
+              aria-label={t('admin.deletions.status')}
+              data-testid="admin-deletions-filters"
+            >
+              {DELETION_FILTERS.map((filter) => {
+                const selected = deletionFilter === filter;
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    data-testid={`admin-deletions-filter-${filter}`}
+                    aria-pressed={selected}
+                    onClick={() => {
+                      setDeletionFilter(filter);
+                      setDeletionOffset(0);
+                    }}
+                    className={`${COMPACT_BUTTON} ${
+                      selected
+                        ? 'bg-blue-500/15 border-blue-500/30 text-blue-300'
+                        : 'bg-zinc-800/60 border-white/5 text-zinc-400 hover:text-zinc-100'
+                    }`}
+                  >
+                    {t(DELETION_FILTER_KEY[filter])}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3">
+              {deletionError ? (
+                <ErrorBanner
+                  message={deletionError}
+                  onRetry={() => { void loadDeletions(deletionOffset, deletionFilter); }}
+                  retryLabel={t('admin.retry')}
+                />
+              ) : (
+                <div className="rounded-card border border-line-subtle bg-surface/40 overflow-hidden">
+                  <Table
+                    testId="admin-deletions-table"
+                    minWidth={880}
+                    caption={t('admin.deletions.title')}
+                  >
+                    <TableHeader>
+                      <tr>
+                        <TableHeaderCell nowrap>{t('admin.deletions.user')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.deletions.requestedAt')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.deletions.dueAt')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.deletions.status')}</TableHeaderCell>
+                        <TableHeaderCell align="right" nowrap>{t('admin.deletions.actions')}</TableHeaderCell>
+                      </tr>
+                    </TableHeader>
+                    <TableBody>
+                      {deletionRows.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          data-testid="admin-deletion-row"
+                          data-status={row.status}
+                          data-request-id={row.id}
+                          data-overdue={row.overdue ? 'true' : 'false'}
+                        >
+                          <TableCell nowrap>
+                            <span className="block max-w-[14rem] truncate font-medium text-fg-primary">
+                              {row.user
+                                ? displayUsername(row.user.username, row.user.email)
+                                : t('admin.deletions.identityMissing')}
+                            </span>
+                            <p className="mt-0.5 font-mono text-micro text-fg-muted">
+                              {row.user ? maskEmail(row.user.email) : `${row.userIdHash.slice(0, 12)}…`}
+                            </p>
+                          </TableCell>
+                          <TableCell nowrap muted className="text-caption tabular-nums">
+                            {formatDate(row.requestedAt, { dateStyle: 'medium', timeStyle: 'short' })}
+                          </TableCell>
+                          <TableCell nowrap className="text-caption tabular-nums">
+                            <span className={row.overdue ? 'text-amber-300' : 'text-fg-secondary'}>
+                              {formatDate(row.dueAt, { dateStyle: 'medium' })}
+                            </span>
+                            <span className="ml-1.5 text-micro text-fg-muted">
+                              {row.overdue ? t('admin.deletions.dueOverdue') : t('admin.deletions.dueFuture')}
+                            </span>
+                          </TableCell>
+                          <TableCell nowrap>
+                            <DeletionStatusBadge status={row.status} />
+                          </TableCell>
+                          <TableCell align="right" nowrap>
+                            {row.status === 'pending' || row.status === 'failed' ? (
+                              <button
+                                type="button"
+                                data-testid="admin-deletion-execute"
+                                onClick={() => setExecuteTarget(row)}
+                                className={`${COMPACT_BUTTON} bg-red-500/10 hover:bg-red-500/15 border-red-500/20 text-red-400`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                {t('admin.deletions.execute')}
+                              </button>
+                            ) : (
+                              <span className="text-caption text-fg-muted">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {!deletionLoading && deletionRows.length === 0 && (
+                        <TableMessageRow colSpan={5} testId="admin-deletions-empty">
+                          {deletionFilter === 'all'
+                            ? t('admin.deletions.empty')
+                            : t('admin.deletions.emptyFilter')}
+                        </TableMessageRow>
+                      )}
+                      {deletionLoading && deletionRows.length === 0 && (
+                        <TableMessageRow colSpan={5}>
+                          <Loader2 className="w-5 h-5 text-fg-muted animate-spin inline-block" />
+                        </TableMessageRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 px-4 py-2.5">
+                    <p data-testid="admin-deletions-page" className="text-[11px] text-zinc-500 tabular-nums">
+                      {deletionPage
+                        ? t('admin.deletions.page', {
+                          from: deletionRows.length > 0 ? formatNumber(deletionPage.offset + 1) : '0',
+                          to: formatNumber(deletionPage.offset + deletionRows.length),
+                          total: formatNumber(deletionPage.total),
+                        })
+                        : '—'}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        data-testid="admin-deletions-prev"
+                        className={SECONDARY_BUTTON}
+                        disabled={deletionLoading || deletionOffset <= 0}
+                        onClick={() => setDeletionOffset((current) => Math.max(0, current - DELETION_PAGE_SIZE))}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        {t('admin.deletions.prev')}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="admin-deletions-next"
+                        className={SECONDARY_BUTTON}
+                        disabled={deletionLoading || !(deletionPage?.hasMore ?? false)}
+                        onClick={() => setDeletionOffset((current) => current + DELETION_PAGE_SIZE)}
+                      >
+                        {t('admin.deletions.next')}
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── Audit (M2b / specs/033) ──────────────────────────────────── */}
+        {tab === 'audit' && (
+          <section
+            {...tabPanelProps('admin', 'audit')}
+            data-testid="admin-panel-audit"
+            className="mt-6"
+          >
+            <SectionTitle
+              id="admin-audit-title"
+              title={t('admin.audit.title')}
+              subtitle={t('admin.audit.subtitle')}
+              action={auditLoading ? (
+                <Loader2 className="w-4 h-4 text-zinc-500 animate-spin" />
+              ) : undefined}
+            />
+
+            <div className="mt-3">
+              {auditError ? (
+                <ErrorBanner
+                  message={auditError}
+                  onRetry={() => { void loadAudit(auditOffset); }}
+                  retryLabel={t('admin.retry')}
+                />
+              ) : (
+                <div className="rounded-card border border-line-subtle bg-surface/40 overflow-hidden">
+                  <Table
+                    testId="admin-audit-table"
+                    minWidth={820}
+                    caption={t('admin.audit.title')}
+                  >
+                    <TableHeader>
+                      <tr>
+                        <TableHeaderCell nowrap>{t('admin.audit.time')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.audit.actor')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.audit.action')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.audit.target')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.audit.result')}</TableHeaderCell>
+                      </tr>
+                    </TableHeader>
+                    <TableBody>
+                      {auditRows.map((entry) => {
+                        const failed = auditFailed(entry);
+                        const detail = auditDetailText(entry);
+                        return (
+                          <TableRow
+                            key={entry.id}
+                            data-testid="admin-audit-row"
+                            data-action={entry.action}
+                            data-result={failed ? 'failed' : 'ok'}
+                          >
+                            <TableCell nowrap muted className="text-caption tabular-nums">
+                              {formatDate(entry.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}
+                            </TableCell>
+                            <TableCell nowrap>
+                              <span
+                                className="font-mono text-micro text-fg-secondary"
+                                title={entry.actorId}
+                              >
+                                {entry.actorId ? `${entry.actorId.slice(0, 8)}…` : '—'}
+                              </span>
+                            </TableCell>
+                            <TableCell nowrap>
+                              <span
+                                className="text-ui text-fg-primary"
+                                title={detail || entry.action}
+                              >
+                                {auditActionLabel(entry.action, t)}
+                              </span>
+                              <p className="mt-0.5 font-mono text-micro text-fg-muted" title={entry.action}>
+                                {entry.action}
+                              </p>
+                            </TableCell>
+                            <TableCell muted>
+                              <span className="block max-w-[18rem] truncate font-mono text-micro" title={entry.targetId ?? ''}>
+                                {entry.targetType || '—'}
+                                {entry.targetId ? ` · ${entry.targetId.slice(0, 12)}…` : ''}
+                              </span>
+                              {entry.requestId && (
+                                <span className="mt-0.5 block font-mono text-micro text-fg-muted" title={entry.requestId}>
+                                  {t('admin.audit.requestId')}: {entry.requestId.slice(0, 12)}…
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell nowrap>
+                              <span
+                                className={`inline-flex items-center gap-1 text-[11px] font-medium ${
+                                  failed ? 'text-red-400' : 'text-emerald-400'
+                                }`}
+                              >
+                                {failed ? <XCircle className="w-3.5 h-3.5" /> : <CircleCheck className="w-3.5 h-3.5" />}
+                                {failed ? t('admin.audit.failed') : t('admin.audit.ok')}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {!auditLoading && auditRows.length === 0 && (
+                        <TableMessageRow colSpan={5} testId="admin-audit-empty">
+                          {t('admin.audit.empty')}
+                        </TableMessageRow>
+                      )}
+                      {auditLoading && auditRows.length === 0 && (
+                        <TableMessageRow colSpan={5}>
+                          <Loader2 className="w-5 h-5 text-fg-muted animate-spin inline-block" />
+                        </TableMessageRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 px-4 py-2.5">
+                    <p data-testid="admin-audit-page" className="text-[11px] text-zinc-500 tabular-nums">
+                      {auditPage
+                        ? t('admin.audit.page', {
+                          from: auditRows.length > 0 ? formatNumber(auditPage.offset + 1) : '0',
+                          to: formatNumber(auditPage.offset + auditRows.length),
+                          total: formatNumber(auditPage.total),
+                        })
+                        : '—'}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        data-testid="admin-audit-prev"
+                        className={SECONDARY_BUTTON}
+                        disabled={auditLoading || auditOffset <= 0}
+                        onClick={() => setAuditOffset((current) => Math.max(0, current - AUDIT_PAGE_SIZE))}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        {t('admin.audit.prev')}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="admin-audit-next"
+                        className={SECONDARY_BUTTON}
+                        disabled={auditLoading || !(auditPage?.hasMore ?? false)}
+                        onClick={() => setAuditOffset((current) => current + AUDIT_PAGE_SIZE)}
+                      >
+                        {t('admin.audit.next')}
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* ── Settings ─────────────────────────────────────────────────── */}
         {tab === 'settings' && (
           <section
@@ -2296,6 +3014,14 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
           target={inviteRevokeTarget}
           onClose={() => setInviteRevokeTarget(null)}
           onRevoked={handleInviteRevoked}
+          onAuthError={deny}
+        />
+      )}
+      {executeTarget && (
+        <ExecuteDeletionDialog
+          target={executeTarget}
+          onClose={() => setExecuteTarget(null)}
+          onExecuted={handleDeletionExecuted}
           onAuthError={deny}
         />
       )}

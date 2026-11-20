@@ -211,32 +211,78 @@ export interface AdminUpdatedUser {
 
 export class AdminApiError extends Error {
   readonly status: number;
+  /** Stable backend error code (e.g. `deletion_not_due`); absent on old routes. */
+  readonly code?: string;
+  /** Seconds from `Retry-After` (password/export rate limits). */
+  readonly retryAfter?: number;
 
-  constructor(message: string, status: number) {
+  constructor(
+    message: string,
+    status: number,
+    options: { code?: string; retryAfter?: number } = {},
+  ) {
     super(message);
     this.name = 'AdminApiError';
     this.status = status;
+    this.code = options.code;
+    this.retryAfter = options.retryAfter;
   }
 }
 
-async function readError(response: Response): Promise<string> {
+interface AdminErrorInfo {
+  message: string;
+  code?: string;
+  retryAfter?: number;
+}
+
+async function readError(response: Response): Promise<AdminErrorInfo> {
+  const headerRetry = Number(response.headers.get('Retry-After'));
   try {
-    const data = (await response.json()) as { detail?: unknown };
-    if (typeof data?.detail === 'string' && data.detail.trim()) return data.detail;
+    const data = (await response.json()) as {
+      detail?: unknown;
+      code?: unknown;
+      retryAfter?: unknown;
+    };
+    const info: AdminErrorInfo = {
+      message: response.statusText || `HTTP ${response.status}`,
+      code: typeof data?.code === 'string' ? data.code : undefined,
+      retryAfter:
+        typeof data?.retryAfter === 'number' && data.retryAfter > 0
+          ? data.retryAfter
+          : Number.isFinite(headerRetry) && headerRetry > 0
+            ? headerRetry
+            : undefined,
+    };
+    if (typeof data?.detail === 'string' && data.detail.trim()) {
+      return { ...info, message: data.detail };
+    }
     if (Array.isArray(data?.detail) && data.detail.length > 0) {
       // FastAPI validation errors: keep the first human-readable message.
       const first = data.detail[0] as { msg?: unknown } | null;
-      if (first && typeof first.msg === 'string' && first.msg.trim()) return first.msg;
+      if (first && typeof first.msg === 'string' && first.msg.trim()) {
+        return { ...info, message: first.msg };
+      }
     }
+    return info;
   } catch {
     // Non-JSON error body: fall through to the status text.
+    return {
+      message: response.statusText || `HTTP ${response.status}`,
+      retryAfter:
+        Number.isFinite(headerRetry) && headerRetry > 0 ? headerRetry : undefined,
+    };
   }
-  return response.statusText || `HTTP ${response.status}`;
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await apiFetch(path, init);
-  if (!response.ok) throw new AdminApiError(await readError(response), response.status);
+  if (!response.ok) {
+    const info = await readError(response);
+    throw new AdminApiError(info.message, response.status, {
+      code: info.code,
+      retryAfter: info.retryAfter,
+    });
+  }
   try {
     return (await response.json()) as T;
   } catch {
@@ -349,4 +395,122 @@ export function revokeAdminInvite(inviteId: string): Promise<AdminInviteRevoked>
     `/api/admin/invites/${encodeURIComponent(inviteId)}/revoke`,
     { method: 'POST' },
   );
+}
+
+
+// ── Account lifecycle (M2b / specs/033): deletion requests + audit ─────────
+
+export type AdminDeletionRequestStatus = 'pending' | 'cancelled' | 'completed' | 'failed';
+export type AdminDeletionStatusFilter = AdminDeletionRequestStatus | 'all';
+
+/** Present only while the user row still exists; `null` after a hard delete. */
+export interface AdminDeletionRequestUser {
+  userId: string;
+  email: string;
+  username: string | null;
+  status: string;
+}
+
+export interface AdminDeletionRequestRow {
+  id: string;
+  status: AdminDeletionRequestStatus;
+  requestedAt: number;
+  dueAt: number;
+  verifiedVia: string;
+  reason: string | null;
+  completedAt: number | null;
+  counts: Record<string, number> | null;
+  error: string | null;
+  /** sha256(user_id) — the only identity left after a completed deletion. */
+  userIdHash: string;
+  operatorId: string | null;
+  /** pending && dueAt <= serverTime. */
+  overdue: boolean;
+  user: AdminDeletionRequestUser | null;
+}
+
+export interface AdminDeletionRequestsPage {
+  requests: AdminDeletionRequestRow[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+  serverTime: number;
+}
+
+export interface AdminDeletionExecuteResult {
+  status: 'completed';
+  userIdHash: string;
+  counts: Record<string, number>;
+  request: AdminDeletionRequestRow | { id: string; status: string };
+}
+
+export interface AdminAuditEntry {
+  id: number;
+  actorId: string;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  detail: Record<string, unknown> | string | null;
+  requestId: string | null;
+  createdAt: number;
+}
+
+export interface AdminAuditPage {
+  entries: AdminAuditEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+export function fetchAdminDeletionRequests(options: {
+  status?: AdminDeletionStatusFilter;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<AdminDeletionRequestsPage> {
+  const params = new URLSearchParams();
+  if (options.status) params.set('status', options.status);
+  if (options.limit != null) params.set('limit', String(options.limit));
+  if (options.offset != null) params.set('offset', String(options.offset));
+  const query = params.toString();
+  return requestJson<AdminDeletionRequestsPage>(
+    `/api/admin/deletion-requests${query ? `?${query}` : ''}`,
+  );
+}
+
+/**
+ * `POST /api/admin/deletion-requests/{id}/execute` — hard delete.
+ * Backend requires `confirm: "DELETE"`, a 1–200 char reason and `force` when
+ * the cooldown has not elapsed (409 `deletion_not_due`).
+ */
+export function executeAdminDeletion(
+  requestId: string,
+  input: { confirm: string; reason: string; force?: boolean },
+): Promise<AdminDeletionExecuteResult> {
+  return requestJson<AdminDeletionExecuteResult>(
+    `/api/admin/deletion-requests/${encodeURIComponent(requestId)}/execute`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        confirm: input.confirm,
+        reason: input.reason,
+        force: input.force === true,
+      }),
+    },
+  );
+}
+
+export function fetchAdminAudit(options: {
+  action?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<AdminAuditPage> {
+  const params = new URLSearchParams();
+  if (options.action) params.set('action', options.action);
+  if (options.limit != null) params.set('limit', String(options.limit));
+  if (options.offset != null) params.set('offset', String(options.offset));
+  const query = params.toString();
+  return requestJson<AdminAuditPage>(`/api/admin/audit${query ? `?${query}` : ''}`);
 }
