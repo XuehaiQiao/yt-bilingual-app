@@ -33,6 +33,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
+import alerts
 import config
 
 REQUEST_ID_HEADER = "X-Request-ID"
@@ -199,7 +200,7 @@ async def record_request(request, call_next):
     try:
         try:
             response = await call_next(request)
-        except Exception:
+        except Exception as exc:
             duration_ms = _duration_ms(started)
             error_logger.exception(
                 "未处理的异常：%s %s",
@@ -207,6 +208,20 @@ async def record_request(request, call_next):
                 request.url.path,
                 extra={"request_id": request_id},
             )
+            # 飞书 P0（M5）：未处理 5xx 立刻告警。告警本身不抛异常、不阻塞
+            # 请求；同一 method+path+异常类型 5 分钟内去重，避免同一异常刷屏。
+            # 这里再包一层 try/except，保证告警故障绝不会递归成第二个 5xx。
+            try:
+                alerts.notify_http_5xx(
+                    method=request.method,
+                    path=request.url.path,
+                    request_id=request_id,
+                    error_type=type(exc).__name__,
+                )
+            except Exception as alert_exc:  # noqa: BLE001 - 告警失败不影响错误响应
+                error_logger.warning(
+                    "发送 5xx 告警失败（已忽略）：%s", type(alert_exc).__name__
+                )
             _emit_access(
                 _access_payload(request, request_id, 500, duration_ms)
             )

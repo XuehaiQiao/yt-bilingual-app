@@ -7,6 +7,7 @@
 | `backup.sh` | 离机备份：优先 `sqlite3 .backup` 做 WAL 安全快照（无 sqlite3 时退化为文件复制并警告），打包 `app.db` + `users/` + 配置键名到 `backups/linguatrek-backup-YYYYmmdd-HHMMSS.tar.gz`，默认保留 7 份（`--keep N`）。不备份 `.env`、不打印密钥。用法与定时任务见 [docs/运行手册.md](../docs/运行手册.md) |
 | `restore.sh` | 从备份包恢复并校验：`SHA256SUMS` + `PRAGMA integrity_check` + 表清单/用户数/`users` 文件数/聚合哈希；默认恢复到临时目录，拒绝非空目标（`--force` 会把旧数据移到 `.pre-restore-*`） |
 | `restore_drill.sh` | 恢复演练：备份 → 临时恢复 → 与源数据对比（表/用户/文件/哈希）→ 清理；输出 PASS/FAIL + 耗时，退出码非 0 即失败。支持 `--data-dir`、`--keep-temp` |
+| `check-alerts.py` | `/healthz` 外部巡检 → 飞书 P0（M5，specs/035）：连续 N 次失败才告警，计数/重复间隔存 `data/alerts/health_state.json`；`--dry-run` 只看不写、`--self-test` 离线验证 payload/签名、`--event backup_failed ...` 主动上报其它事件。cron 模板见 `deploy/alert-check.cron`；不打印 webhook/secret |
 | `verify-difficulty.mjs` | CEFR M2 前端验收（specs/026）：Playwright 打开 `APP_URL`（默认 `http://127.0.0.1:5199`），mock `/api/content/difficulty/batch`，断言「为你推荐 / 免费资源」卡片显示难度徽章与「生词约 X%」，且用户可见文案不含「个性化」；截图写 `data/reports/difficulty-web.png`。需先 `npm ci`（playwright + 系统 Chrome channel）并启动前端 dev server |
 | `build_books.py` | 构建期生成公版书中文译文（一次性）：读 `content/books/books.json`，按 `sourceUrl` 抓取 Project Gutenberg 原文（主站维护时回退 PGLAF 镜像），用 `backend/llm.py` 分批翻译并写 `content/books/<book>/chapters/<n>.zh.json`；**只写中译文，不存英文原文**，记录 prompt 版本/模型/生成时间。默认跳过完整译文，`--force` 重译、`--only`/`--chapters` 限定范围、`--dry-run` 只看计划（需 .env 模型 Key） |
 | `verify-books.mjs` | 公版书前端验收（Playwright，全 API mock）：3 个系列、39 本书、章节切换、译文切换、点词查词、游客可用、375px 无横向溢出、中/越 UI；截图写 `/tmp/books-shots/`。用法：`APP_URL=http://127.0.0.1:5199 node verify-books.mjs`（需先 `npm ci`） |

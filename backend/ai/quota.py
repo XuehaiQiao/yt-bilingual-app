@@ -30,6 +30,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 
+import alerts
 import billing
 import config
 import languages
@@ -121,6 +122,9 @@ def ensure_within_budget(user_id: str | None, day: str | None = None) -> None:
     user_limit = _float_config("AI_DAILY_BUDGET_USER_USD")
     if user_id and user_limit > 0:
         spend = ledger.daily_spend(user_id, day)
+        # 飞书 P1（M5，specs/035）：日预算跨过 50/80/100% 时告警（每档每天一次）；
+        # 告警不改变 429 语义，也不抛异常。
+        alerts.check_budget_threshold("user", spend, user_limit, day=day)
         if spend >= user_limit:
             raise BudgetExceeded(
                 "user", day=day, spend_usd=spend, limit_usd=user_limit, user_id=user_id
@@ -129,6 +133,7 @@ def ensure_within_budget(user_id: str | None, day: str | None = None) -> None:
     global_limit = _float_config("AI_DAILY_BUDGET_GLOBAL_USD")
     if global_limit > 0:
         spend = ledger.global_daily_spend(day)
+        alerts.check_budget_threshold("global", spend, global_limit, day=day)
         if spend >= global_limit:
             raise BudgetExceeded("global", day=day, spend_usd=spend, limit_usd=global_limit)
 

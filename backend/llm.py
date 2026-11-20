@@ -28,6 +28,7 @@ import time
 
 import httpx
 
+import alerts
 import billing
 import config
 import languages
@@ -283,7 +284,7 @@ def _billing_finish(
         try:
             billing.settle(hold["id"], actual, usage=payload)
             return
-        except Exception:  # noqa: BLE001 - 结算失败保留 hold + 告警，不能丢扣费
+        except Exception as exc:  # noqa: BLE001 - 结算失败保留 hold + 告警，不能丢扣费
             logger.exception(
                 "AI 计费结算失败（保留 hold 待重试，账本按 settle_failed 落一条）："
                 "hold=%r user=%r actual_micro_usd=%s",
@@ -291,6 +292,17 @@ def _billing_finish(
                 user,
                 actual,
             )
+            # 飞书 P0（M5）：结算写库失败是数据/资金风险，立即告警；告警本身
+            # 不抛异常，也不改变「保留 hold + 兜底落 settle_failed」的处理。
+            try:
+                alerts.notify_billing_settle_failed(
+                    hold_id=str(hold.get("id") or ""),
+                    user_id=user if isinstance(user, str) else str(user or ""),
+                    actual_micro_usd=actual,
+                    error_type=type(exc).__name__,
+                )
+            except Exception:  # noqa: BLE001
+                logger.warning("发送结算失败告警失败（已忽略）。")
             try:
                 ledger.record_usage(
                     user,
@@ -529,9 +541,19 @@ def generate(prompt: str, model: str | None = None, *, json_mode: bool = False) 
             raise ModelUnavailable(f"未知的 provider kind: {kind}")
     except BaseException as exc:
         _billing_abort(state, reason=f"provider_error:{type(exc).__name__}")
+        # 飞书 P1（M5）：只统计真正的模型失败；余额不足/取消不算 provider 故障。
+        if not isinstance(exc, (billing.InsufficientBalance, asyncio.CancelledError)):
+            try:
+                alerts.record_llm_outcome(False, model=model_key)
+            except Exception:  # noqa: BLE001 - 告警计数绝不能影响调用
+                pass
         raise
 
     _billing_finish(state, model_key, spec, usage, prompt, text)
+    try:
+        alerts.record_llm_outcome(True, model=model_key)
+    except Exception:  # noqa: BLE001
+        pass
     return text
 
 

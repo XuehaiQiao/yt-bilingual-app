@@ -32,16 +32,19 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, Field
 
 import account
 import account_lifecycle
+import alerts
 import behavior_events
 import billing
 import config
 import guest
 import invites
 import observability
+import ratelimit
 
 logger = logging.getLogger("linguatrek.admin")
 
@@ -51,6 +54,13 @@ _MAX_SEARCH_CHARS = 100
 _MAX_ERROR_CHARS = 500
 _MAX_FAILED_JOBS = 10
 _MAX_ANNOUNCEMENT_CHARS = 2000
+
+
+class AlertTestRequest(BaseModel):
+    """``POST /alerts/test``：可选自定义文案与级别（默认 P1，不 @ 人）。"""
+
+    message: str | None = None
+    level: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -1205,3 +1215,51 @@ def admin_update_settings(
         },
     )
     return current
+
+
+@router.post("/alerts/test")
+def admin_alert_test(
+    request: Request,
+    payload: AlertTestRequest | None = None,
+    user: dict = Depends(require_admin),
+):
+    """发一条飞书 ``test`` 消息（管理员手工验证 webhook / 签名是否可用）。
+
+    - 只有管理员可调用（普通用户 403、游客 401）；
+    - 专用限流 ``RATE_LIMIT_ADMIN_ALERT_TEST_PER_MINUTE``（默认 3 次/分钟）；
+    - 测试消息绕过 5 分钟去重、P1 聚合与维护模式静默，同步返回真实发送结果；
+    - 未开启 / 未配置 webhook 时返回 200 + ``status=disabled|not_configured``，
+      不伪造成功；响应里不含 webhook/secret。
+    """
+    retry_after = ratelimit.consume(
+        "admin_alert_test",
+        f"user:{user['id']}",
+        config.RATE_LIMIT_ADMIN_ALERT_TEST_PER_MINUTE,
+    )
+    if retry_after is not None:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "detail": f"测试消息过于频繁，请 {retry_after} 秒后再试。",
+                "retryAfter": retry_after,
+            },
+            headers={"Retry-After": str(retry_after), "Cache-Control": "no-store"},
+        )
+
+    level = ((payload.level if payload else None) or "P1").strip().upper()
+    if level not in ("P0", "P1", "P2"):
+        raise HTTPException(status_code=400, detail="level 必须是 P0/P1/P2。")
+    message = ((payload.message if payload else None) or "").strip()[:200]
+
+    result = alerts.send_test(message, level=level, sync=True)
+    result["enabled"] = bool(getattr(config, "FEISHU_ALERTS_ENABLED", False))
+    result["configured"] = bool(getattr(config, "FEISHU_WEBHOOK_URL", ""))
+    result["ok"] = result.get("sent") is True
+    _audit(
+        request,
+        user["id"],
+        "admin.alert.test",
+        target_type="alerts",
+        detail={"level": level, "status": result.get("status"), "sent": result["ok"]},
+    )
+    return result

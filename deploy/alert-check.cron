@@ -1,0 +1,31 @@
+# =============================================================================
+# 语途（LinguaTrek）/healthz 巡检 → 飞书告警（M5，specs/035-feishu-alerts）
+#
+# 脚本：scripts/check-alerts.py
+#   - 每 2 分钟 GET http://127.0.0.1:8000/healthz（本机，不走公网）
+#   - 连续 --threshold 2 次失败（503 / degraded / 连接失败）→ 飞书 P0
+#   - 连续失败计数与重复告警间隔存 DATA_DIR/alerts/health_state.json
+#   - 输出一行 JSON 到 check.log；不在响应里/日志里打印 webhook/secret
+#
+# 安装（VPS 裸机 / systemd 方式）：
+#   sudo install -m 644 deploy/alert-check.cron /etc/cron.d/linguatrek-alert
+#   sudo mkdir -p /srv/ln/data/alerts && sudo chown ln:ln /srv/ln/data/alerts
+#   sudo -u ln /srv/ln/current/backend/venv/bin/python \
+#        /srv/ln/current/scripts/check-alerts.py --dry-run   # 先手工验证
+#
+# 注意：
+#   - cron 不继承 systemd 的 EnvironmentFile，所以下面用 sh 先 source
+#     /etc/linguatrek/env（该文件权限应为 600、属主 ln），再执行脚本；
+#   - 必须开 FEISHU_ALERTS_ENABLED=true 且配好 FEISHU_WEBHOOK_URL，否则脚本
+#     只记录日志、不会发送；
+#   - Docker 方式没有宿主机 cron：在宿主机用同一脚本探测映射端口即可
+#     （例如把 --url 换成 http://127.0.0.1:8000/healthz，或放到容器外监控）。
+#   - 备份失败等其它事件可复用同一脚本主动上报：
+#       ... check-alerts.py --event backup_failed --level P1 --summary "..."
+# =============================================================================
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# 每 2 分钟（cron 最小粒度 1 分钟；2 分钟足够避免探活抖动，又不至于太慢）
+*/2 * * * * ln mkdir -p /srv/ln/data/alerts && sh -c 'set -a; . /etc/linguatrek/env; set +a; exec /srv/ln/current/backend/venv/bin/python /srv/ln/current/scripts/check-alerts.py' >> /srv/ln/data/alerts/check.log 2>&1

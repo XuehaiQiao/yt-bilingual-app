@@ -47,6 +47,7 @@ import time
 import uuid
 from decimal import Decimal, InvalidOperation
 
+import alerts
 import auth_db
 import config
 import languages
@@ -1339,6 +1340,17 @@ def settle(
                 separators=(",", ":"),
             )
         )
+        # 飞书 P1（M5）：结算实际成本超过预占。告警按用户进入 15 分钟聚合，
+        # 失败只记日志，不影响结算结果（余额/流水/返回口径都不变）。
+        try:
+            alerts.notify_billing_overrun(
+                hold_id=hold_id,
+                user_id=user_id,
+                reserved_micro_usd=reserved,
+                actual_micro_usd=actual,
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("发送 overrun 告警失败（已忽略）。")
     return {
         "holdId": hold_id,
         "status": HOLD_SETTLED,

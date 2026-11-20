@@ -740,3 +740,60 @@ DISCOVER_INTENT_TIMEOUT_SECONDS = _float_env("DISCOVER_INTENT_TIMEOUT_SECONDS", 
 DISCOVER_SEARCH_TIMEOUT_SECONDS = _float_env("DISCOVER_SEARCH_TIMEOUT_SECONDS", 8.0)
 DISCOVER_CAPTION_TIMEOUT_SECONDS = _float_env("DISCOVER_CAPTION_TIMEOUT_SECONDS", 2.0)
 DISCOVER_RERANK_TIMEOUT_SECONDS = _float_env("DISCOVER_RERANK_TIMEOUT_SECONDS", 8.0)
+
+
+# --- 飞书告警（M5，见 alerts.py / specs/035-feishu-alerts）--- 只增不改。
+#
+# 默认关闭：FEISHU_ALERTS_ENABLED=false 时 alerts.notify() 直接返回 disabled，
+# 不建线程、不读维护模式、不发网络请求。真实 webhook/secret **只放 env**，
+# 不写仓库、不进日志、不进测试快照。
+FEISHU_ALERTS_ENABLED = _bool_env("FEISHU_ALERTS_ENABLED", False)
+FEISHU_WEBHOOK_URL = os.environ.get("FEISHU_WEBHOOK_URL", "").strip()
+FEISHU_WEBHOOK_SECRET = os.environ.get("FEISHU_WEBHOOK_SECRET", "").strip()
+
+# 最低发送级别：P2（默认，全发）/ P1（只发 P0+P1）/ P0（只发 P0）。
+# 非法值回落 P2。用于「先只收最紧急的」过渡期，不影响告警内容。
+FEISHU_ALERT_LEVEL = os.environ.get("FEISHU_ALERT_LEVEL", "P2").strip().upper() or "P2"
+if FEISHU_ALERT_LEVEL not in ("P0", "P1", "P2"):
+    print(f"⚠️  FEISHU_ALERT_LEVEL={FEISHU_ALERT_LEVEL!r} 无效，使用默认值 P2。")
+    FEISHU_ALERT_LEVEL = "P2"
+
+# P0 时 @ 负责人：飞书 open_id（ou_xxx）或 all；留空 = 不 @。
+# 自定义机器人是否支持 @ 取决于群权限，发送失败只记日志，不影响消息正文。
+FEISHU_AT_USER_ID = os.environ.get("FEISHU_AT_USER_ID", "").strip()
+
+# 消息形态：text（默认，纯文本，@ 兼容性最好）/ card（富文本卡片）。
+FEISHU_ALERT_MESSAGE_FORMAT = (
+    os.environ.get("FEISHU_ALERT_MESSAGE_FORMAT", "text").strip().lower() or "text"
+)
+if FEISHU_ALERT_MESSAGE_FORMAT not in ("text", "card"):
+    print(
+        f"⚠️  FEISHU_ALERT_MESSAGE_FORMAT={FEISHU_ALERT_MESSAGE_FORMAT!r} 无效，"
+        "使用默认值 text。"
+    )
+    FEISHU_ALERT_MESSAGE_FORMAT = "text"
+
+# 发送超时（秒；默认 5，代码夹在 3–5）。只作用于后台发送线程 / 巡检脚本，
+# 不在请求内等待；超时按失败处理（只记日志）。
+FEISHU_ALERT_TIMEOUT_SECONDS = min(
+    max(_float_env("FEISHU_ALERT_TIMEOUT_SECONDS", 5.0), 3.0), 5.0
+)
+
+# 去重：同一 event+key 在该窗口内只接受一次（秒，默认 300 = 5 分钟；0=关闭）。
+ALERT_DEDUPE_SECONDS = _int_env("ALERT_DEDUPE_SECONDS", 300)
+# P1 聚合窗口（秒，默认 900 = 15 分钟）：窗口内多条 P1 合并成一条。
+ALERT_P1_AGGREGATE_SECONDS = _int_env("ALERT_P1_AGGREGATE_SECONDS", 900)
+# 环境标签，进消息正文（prod / staging / dev），避免把测试告警当生产。
+ALERT_ENV = os.environ.get("ALERT_ENV", "dev").strip() or "dev"
+# P2 每日摘要的发送整点（服务器本地时区，0–23，默认 9 点）。
+ALERT_DAILY_DIGEST_HOUR = _bounded_int_env("ALERT_DAILY_DIGEST_HOUR", 9, 0, 23)
+# 管理员测试端点（POST /api/admin/alerts/test）专用限流：次/分钟/管理员。
+RATE_LIMIT_ADMIN_ALERT_TEST_PER_MINUTE = _int_env(
+    "RATE_LIMIT_ADMIN_ALERT_TEST_PER_MINUTE", 3
+)
+
+if FEISHU_ALERTS_ENABLED and not FEISHU_WEBHOOK_URL:
+    print(
+        "⚠️  FEISHU_ALERTS_ENABLED=1 但 FEISHU_WEBHOOK_URL 为空："
+        "告警只记录判定结果/日志，不会发送到飞书。"
+    )

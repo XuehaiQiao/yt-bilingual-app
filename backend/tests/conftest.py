@@ -33,6 +33,7 @@ if str(BACKEND_DIR) not in sys.path:
 import account  # noqa: E402
 import account_export  # noqa: E402
 import account_lifecycle  # noqa: E402
+import alerts  # noqa: E402
 import config  # noqa: E402
 import discover  # noqa: E402
 import jobs  # noqa: E402
@@ -74,6 +75,12 @@ def isolated_data(tmp_path, monkeypatch):
     # 自行 monkeypatch 回 false，绝不把生产默认改成 true。
     monkeypatch.setattr(config, "REGISTRATION_OPEN", True, raising=False)
     monkeypatch.setattr(config, "INVITE_SIGNUP_ENABLED", True, raising=False)
+    # 飞书告警（M5）：默认关闭 + 空 webhook，任何用例都不会真的发消息；
+    # 需要测发送的用例自己 monkeypatch 配置并注入假 transport。
+    monkeypatch.setattr(config, "FEISHU_ALERTS_ENABLED", False, raising=False)
+    monkeypatch.setattr(config, "FEISHU_WEBHOOK_URL", "", raising=False)
+    monkeypatch.setattr(config, "FEISHU_WEBHOOK_SECRET", "", raising=False)
+    alerts.reset_state()
     # 邀请码测试统一用空 pepper（生产由 env 决定）；避免本机 .env 影响摘要。
     monkeypatch.setattr(config, "INVITE_CODE_PEPPER", "", raising=False)
 
@@ -119,6 +126,7 @@ def isolated_data(tmp_path, monkeypatch):
     account.reset_settings_cache()
     account_lifecycle.reset_password_throttle()
     account_export.reset_export_state()
+    alerts.reset_state()
 
 
 @pytest.fixture(autouse=True)
@@ -144,6 +152,12 @@ def offline_guard(monkeypatch):
     monkeypatch.setattr(discover, "_search_ytdlp", _blocked)
     monkeypatch.setattr(discover, "_probe_caption", _blocked)
     monkeypatch.setattr(discover, "_call_llm", _blocked_async)
+
+    # 飞书告警的默认传输也换成断言：即使某用例误开告警，也不会真的连网。
+    def _blocked_transport(*args, **kwargs):
+        raise AssertionError("离线测试中禁止真实外部调用")
+
+    monkeypatch.setattr(alerts, "_default_transport", _blocked_transport)
 
 
 @contextlib.contextmanager
