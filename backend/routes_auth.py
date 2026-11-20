@@ -2,10 +2,13 @@
 
 契约（前端并行开发，不要改字段与状态码）：
 
-- POST /api/auth/signup  {"email","password","username"?} -> 201
+- POST /api/auth/signup  {"email","password","username"?,"inviteCode"?} -> 201
   {"user":{"id","email","username","credits","status"}} + Cookie
   新客户端必须带 username（2–24 字符，中文/英文/数字/下划线/连字符）；
   完全不传该字段的旧客户端回落 email 前缀（兼容，不校验长度/字符集）。
+  `REGISTRATION_OPEN=false`（默认）时 `inviteCode` 必填；错误响应带稳定
+  `code`：`invite_required` / `invite_invalid` / `registration_closed`；
+  公开注册开启后缺省不要求邀请码，但传了非法码仍拒绝（见 specs/032）。
 - POST /api/auth/login   {"email","password"} -> 200 同上 user + Cookie；
   已封禁账号密码正确时 403 {"detail":"账号已被停用"}
 - POST /api/auth/logout                        -> 200 {"ok": true} + 清除 Cookie
@@ -15,6 +18,10 @@
                                                   "merged":{history,favorites,subscriptions},
                                                   "skipped":{...},"guestFiles":int}
                                                   未登录 -> 401 {"detail":"未登录"}
+- GET  /api/auth/registration                   -> 200 {registrationOpen,
+                                                  inviteSignupEnabled, inviteRequired,
+                                                  registrationClosed}
+                                                  公开只读；注册页据此决定是否显示邀请码。
 
 Cookie：`ln_session`，httpOnly、SameSite=Lax、Path=/、Max-Age 30 天；
 `Secure` 由 `COOKIE_SECURE=1` 控制（本地 HTTP 默认关）。游客 Cookie `ln_guest`
@@ -29,13 +36,15 @@ import threading
 import time
 
 from fastapi import APIRouter, HTTPException, Request, Response
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from pydantic import AliasChoices, BaseModel, Field
 
 import account
 import auth_db
 import auth_lockout
 import config
 import guest
+import invites
 import ability
 import placement
 
@@ -69,6 +78,12 @@ class Credentials(BaseModel):
     # pydantic 的 422。缺省 None 用于识别「旧客户端完全没传 username」；
     # 传了 null/空串按非法 400。
     username: object = None
+    # 邀请码（camelCase 契约；同时接受 snake_case 便于脚本/旧测试）。同样用
+    # object 识别「没传」与「传了 null/数字」，不允许非字符串静默通过。
+    invite_code: object = Field(
+        default=None,
+        validation_alias=AliasChoices("inviteCode", "invite_code"),
+    )
 
 
 def _client_ip(request: Request) -> str:
@@ -164,6 +179,21 @@ def _public_user(user: dict) -> dict:
     return account.public_user(user)
 
 
+def _signup_error(status_code: int, code: str, detail: str) -> JSONResponse:
+    """注册错误统一带稳定 `code`（前端据此做 i18n，不解析中文文案）。"""
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": detail, "code": code},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.get("/registration")
+def registration():
+    """公开注册能力：前端只在 `inviteRequired` 时强制邀请码。"""
+    return invites.registration_status()
+
+
 @router.post("/signup", status_code=201)
 def signup(credentials: Credentials, response: Response):
     email = _validate_signup(credentials.email, credentials.password)
@@ -177,6 +207,80 @@ def signup(credentials: Credentials, response: Response):
             raise HTTPException(status_code=400, detail=str(exc))
     else:
         username = auth_db.email_prefix_username(email)
+
+    # ── 注册开关 / 邀请码（specs/032） ──────────────────────────────────
+    # 完全关闭：REGISTRATION_OPEN=false 且 INVITE_SIGNUP_ENABLED=false。
+    if not config.REGISTRATION_OPEN and not config.INVITE_SIGNUP_ENABLED:
+        return _signup_error(
+            403, "registration_closed", "注册暂未开放，请稍后再试。"
+        )
+
+    invite_present = "invite_code" in credentials.model_fields_set
+    invite_code = credentials.invite_code
+    if invite_present:
+        if invite_code is None:
+            invite_present = False
+        else:
+            try:
+                normalized = invites.normalize_code(invite_code)
+            except invites.InviteError:
+                return _signup_error(
+                    400, "invite_invalid", "邀请码格式不正确。"
+                )
+            if not normalized:
+                invite_present = False
+            else:
+                invite_code = normalized
+
+    if not config.REGISTRATION_OPEN and not invite_present:
+        return _signup_error(
+            403,
+            "invite_required",
+            "本次内测为邀请制，请填写邀请码。",
+        )
+
+    if invite_present:
+        # Argon2 在事务外算好；事务内只做短写（见 invites.register_with_invite）。
+        password_hash = auth_db.hash_password(credentials.password)
+        try:
+            user, token = invites.register_with_invite(
+                email, password_hash, username, invite_code
+            )
+        except invites.InviteError as exc:
+            # 真实原因只进服务端日志；对外统一文案，避免泄露码是否存在。
+            logger.info("注册邀请码校验失败：reason=%s", exc.reason)
+            return _signup_error(
+                403,
+                "invite_invalid",
+                "邀请码无效或不可用，请向邀请人确认。",
+            )
+        except invites.InviteUnavailable:
+            logger.warning("注册失败：邀请码表不存在（未跑 0023 迁移）")
+            return _signup_error(
+                503,
+                "registration_unavailable",
+                "注册服务暂不可用：请先运行数据库迁移。",
+            )
+        except invites.InviteBusy:
+            logger.warning("注册失败：SQLite 写锁繁忙")
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "注册请求繁忙，请稍后重试。",
+                    "code": "registration_busy",
+                },
+                headers={
+                    "Cache-Control": "no-store",
+                    "Retry-After": "5",
+                },
+            )
+        except auth_db.EmailExistsError:
+            # 事务已回滚，邀请码没有被消耗。
+            raise HTTPException(status_code=409, detail="邮箱已注册。")
+        set_session_cookie(response, token)
+        return {"user": _public_user(user)}
+
+    # ── 公开注册（REGISTRATION_OPEN=true 且没有邀请码） ────────────────
     try:
         user = auth_db.create_user(email, credentials.password, username=username)
     except auth_db.EmailExistsError:

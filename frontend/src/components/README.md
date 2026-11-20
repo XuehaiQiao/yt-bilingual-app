@@ -5,7 +5,7 @@
 | 组件 | 用在哪 | 职责 |
 |---|---|---|
 | `ui/StateView.tsx` | 全局 | 异步状态统一视图（C10）：`EmptyState` / `LoadingState` / `ErrorPanel` / `Skeleton`；`page(py-16)/card(py-10)/inline(py-3)` 三档；失败只渲染错误面板 + 重试（`ErrorPanel level=inline` 也用于「保留旧数据 + 刷新失败」），空态只来自成功且为空；错误面板 `role=alert`、加载块 `aria-busy` |
-| `AuthScreen.tsx` | 未登录 | 登录/注册门禁：单页两个 tab、邮箱+密码（注册含必填用户名 2–24 字与可选确认密码）、用户名/表单行内错误；成功后由 `AuthProvider` 切进应用 |
+| `AuthScreen.tsx` | 未登录 | 登录/注册门禁：单页两个 tab、邮箱+密码（注册含必填用户名 2–24 字与可选确认密码）、邀请码（`REGISTRATION_OPEN=false` 时必填，可从 `?invite=` 预填）、内测/无找回密码提示、用户名/表单行内错误；成功后由 `AuthProvider` 切进应用 |
 | `AppShell.tsx` | 全局 | 应用外壳：≥lg 为 `[Sidebar 240/72][TopBar + Main]` 三栏，md–lg 保留 top tabs，<md 仅精简顶栏 + bottom bar；沉浸式任务子视图（视频/阅读/句子精背/复习/考试/定位）隐藏侧栏与主导航，内容占满宽度 |
 | `Sidebar.tsx` | 桌面（≥lg） | 左侧导航栏：品牌、四个一级页（图标+文字+练习到期徽章）、分组快捷入口（学习/内容/管理）、底部账号卡片 + 语言/设置；可折叠为 72px 图标栏（aria-label/title 提示），状态持久化在 `localStorage`；空白页签不在此出现，快捷入口全部复用 App 既有路由 |
 | `TopBarTabs.tsx` | md–lg | 四个一级页文字 tab（桌面 ≥lg 由 Sidebar 承担，二者不重复） |
@@ -40,7 +40,7 @@
 | `PricingScreen.tsx` | 公开站 | `#/pricing` 定价页：只陈述「内测免费 / 定价即将公布」，不编造任何价格或扣款承诺；登录/进入学习 CTA |
 | `ResourcesScreen.tsx` | 公开站 | `#/resources` 资源页：官方博客、应用内免费库 + Project Gutenberg / Standard Ebooks / LibriVox 合法外链（新标签页），明确版权归权利人 |
 | `AccountScreen.tsx` | 用户页 | 登录用户的账号页（specs/023）：头像占位（首字母）+ 用户名内联改名（`PATCH /api/user/profile`）、邮箱、注册日期；余额卡（`credits` / 本月 AI 花费 `monthSpendUsd` / 今日学习分钟，附「额度由管理员发放」）；设置（界面/翻译语言复用 `LanguageSettingsModal`、默认模型复用 `ModelBar`、高亮难度内联 `VocabAxis`（选择即保存，首次按能力档案高带预填）、安装到桌面复用 `PwaInstallButton`）；关于（版本号、官方博客入口、隐私/协议占位不造假链接）；退出登录与仅管理员可见的「管理控制台」入口（打开独立整页控制台）；游客显示登录提示；中越双语与 375px |
-| `AdminConsoleScreen.tsx` | 管理控制台 | 独立整页管理员控制台（specs/021 + 023）：概览（总用户/近 7 天新增/今日活跃/游客/今日 AI 花费/失败任务）、用户（搜索、每页 20 条分页、调余额、封禁/解封，不能操作自己/最后一个管理员）、设置（维护模式开关 + 公告，公开公告条待接入）、用量与健康（按天×功能、迁移版本/磁盘/最近 failed jobs）；仅管理员可进，非管理员被 toast 拦回首页；中越双语；表格各自横向滚动，375px 不撑破页面 |
+| `AdminConsoleScreen.tsx` | 管理控制台 | 独立整页管理员控制台（specs/021 + 023 + 032）：概览（总用户/近 7 天新增/今日活跃/游客/今日 AI 花费/失败任务）、用户（搜索、每页 20 条分页、调余额、封禁/解封，不能操作自己/最后一个管理员）、邀请码（生成并显示一次明文/复制、状态筛选/分页、撤销、公开注册状态只读）、设置（维护模式开关 + 公告，公开公告条待接入）、用量与健康（按天×功能、迁移版本/磁盘/最近 failed jobs）；仅管理员可进，非管理员被 toast 拦回首页；中越双语；表格各自横向滚动，375px 不撑破页面 |
 | `EstimateDialog.tsx` | 首页 / 内容发现 | 共用的处理前估价流程：`/api/estimate-cost` loading 覆盖层 → `ModelSelectionModal` → 确认后交给调用方开始处理；首页链接输入与发现页候选点击都走它 |
 | `ReportScreen.tsx` | 本周报告 | 本周报告全屏视图（M5 / specs/015）：周一到今天日期范围、三个数字（无答题显示「暂无」）、一句事实/下一步/连续天数、证据句子与「回看 mm:ss」、明日到期词入口；加载/错误/空数据态，中越双语、375px 单列 |
 | `SentenceText.tsx` | 句子精背 | seg 渲染：四色语块 + ruby 注音 + 逐词可点 |

@@ -469,6 +469,43 @@ def _float_env(name: str, default: float) -> float:
     return value
 
 
+def _bool_env(name: str, default: bool = False) -> bool:
+    """读布尔环境变量：1/true/yes/on 为真，0/false/no/off 为假；缺失用默认值。"""
+    raw = os.environ.get(name, "").strip().lower()
+    if not raw:
+        return default
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    if raw in ("0", "false", "no", "off"):
+        return False
+    print(f"⚠️  {name}={raw!r} 无效，使用默认值 {default}。")
+    return default
+
+
+def _bounded_int_env(name: str, default: int, minimum: int, maximum: int) -> int:
+    """读整数环境变量并夹在 [minimum, maximum]；用于邀请码默认参数。"""
+    value = _int_env(name, default)
+    if value < minimum or value > maximum:
+        clamped = min(max(value, minimum), maximum)
+        print(f"⚠️  {name}={value} 超出范围 {minimum}–{maximum}，按 {clamped} 使用。")
+        return clamped
+    return value
+
+
+# --- 邀请/注册开关（M1 G1 邀请制，见 invites.py / specs/032-invite-registration） ---
+# REGISTRATION_OPEN=false（默认）：公开注册关闭，必须持有效邀请码；true = G2
+# 公开注册开启（邀请码变成可选，若提供仍校验）。INVITE_SIGNUP_ENABLED=false
+# 与 REGISTRATION_OPEN=false 同时成立时完全关闭新账号创建（登录不受影响）。
+REGISTRATION_OPEN = _bool_env("REGISTRATION_OPEN", False)
+INVITE_SIGNUP_ENABLED = _bool_env("INVITE_SIGNUP_ENABLED", True)
+# 管理员未显式指定时的邀请码默认值；单次创建仍会校验 1–90 天 / 1–10 次。
+INVITE_CODE_TTL_DAYS = _bounded_int_env("INVITE_CODE_TTL_DAYS", 30, 1, 90)
+INVITE_CODE_MAX_USES = _bounded_int_env("INVITE_CODE_MAX_USES", 1, 1, 10)
+# 可选的服务端 pepper：参与 HMAC-SHA256（库里仍只存 SHA-256 摘要）。轮换会让
+# 所有旧码失效；为空时用同一算法但不加 pepper，适合本地/测试。
+INVITE_CODE_PEPPER = os.environ.get("INVITE_CODE_PEPPER", "")
+
+
 # 免费额度（每日，0 = 关闭该功能）。翻译按「批」计：1 批 ≤20 个字幕块 ≈ 2 分钟
 # 视频，60 批 ≈ 120 分钟；本地剧集同理，单独一行便于运营区分功能成本。
 AI_DAILY_QUOTA_TRANSLATE_BATCHES = _int_env("AI_DAILY_QUOTA_TRANSLATE_BATCHES", 60)

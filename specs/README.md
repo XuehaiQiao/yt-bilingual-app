@@ -41,3 +41,7 @@
 | [026](./026-content-difficulty/spec.md) | CEFR 能力标定 M2：内容难度向量 | 自建频表（wordfreq 派生，CC BY-SA）+ 0 LLM 规则管线 `difficulty.v1` + `content_difficulty` 表/API + 100 条回填（供给 gate 已开）+ 推荐 match_score 与生词桶徽章 | 已实现（后端 + 内容 + 最小前端） |
 | [027](./027-behavior-events/spec.md) | CEFR 能力标定 M2：学习行为埋点 | lookup / replay / rate / visibility 四类事件复用 `learning_events`；eventId 幂等、同词 60s 去重、批量 ≤20、限流、管理员只读；前端静默上报 | 已实现（后端 + 前端） |
 | [028](./028-teaching-analysis/spec.md) | AI 教学分析拆出翻译并按内容+等级缓存 | 翻译只返回译文；高亮/习语/文化点按 `content_hash + CEFR 档 + target_lang` 独立生成并全局缓存，同内容同档后续零调用；题目仍走 `/api/lesson/*` | 已实现（后端 + 视频学习页前端） |
+| [029](./029-course-mvp/spec.md) | 课程 MVP 垂直切片 | 一课 12 分钟 S0–S5 学习流程、attempt 进度/答案/评分/事件；登录用户、题目脱敏、越权 404 | 已实现（后端 + 前端） |
+| [030](./030-course-generation/spec.md) | 课程生成（YouTube / 公版小说） | 已有字幕或 Gutenberg #1342 切章 → 一次 LLM 生成整课 → 严格校验 → 按内容+等级+语言缓存 | 已实现，推迟到上线后 |
+| [031](./031-local-epub-upload/spec.md) | 本地 EPUB 上传 | 登录用户上传无 DRM、有使用权的 EPUB → 私有章节/封面 → 现有导入书阅读器 | M1 已实现（后端 + 前端） |
+| [032](./032-invite-registration/spec.md) | 邀请/注册开关（G1） | 公开注册默认关闭；邀请码限次/限时/可撤销；注册与换码同事务；管理台生成/列表/撤销；中越文案 | 已实现（后端 + 前端 + 管理台） |

@@ -38,6 +38,7 @@ import account
 import behavior_events
 import config
 import guest
+import invites
 import observability
 
 logger = logging.getLogger("linguatrek.admin")
@@ -77,6 +78,25 @@ class SettingsUpdateRequest(BaseModel):
 
     maintenance_mode: bool | None = None
     announcement: str | None = None
+
+
+class InviteCreateRequest(BaseModel):
+    """``POST /invites``：全部可选；默认 1 个、1 次、30 天（specs/032）。
+
+    ``label`` 用 object 让非字符串走 400 而不是 pydantic 422；``count`` /
+    ``maxUses`` / ``expiresInDays`` 的边界由 ``invites.create_invites`` 统一校验。
+    """
+
+    count: object = None
+    label: object = None
+    max_uses: object = Field(
+        default=None,
+        validation_alias=AliasChoices("maxUses", "max_uses"),
+    )
+    expires_in_days: object = Field(
+        default=None,
+        validation_alias=AliasChoices("expiresInDays", "expires_in_days"),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -796,6 +816,91 @@ def admin_patch_user(
 def admin_get_settings(_user: dict = Depends(require_admin)):
     """当前应用设置：``{maintenance_mode: bool, announcement: str|null}``。"""
     return account.get_settings()
+
+
+# ---------------------------------------------------------------------------
+# 邀请码（M1 G1 邀请制 / specs/032）
+# ---------------------------------------------------------------------------
+
+@router.get("/invites")
+def admin_list_invites(
+    status: str = Query(default=invites.STATUS_ALL),
+    limit: int = Query(default=invites.LIST_LIMIT_DEFAULT, ge=1, le=invites.LIST_LIMIT_MAX),
+    offset: int = Query(default=0, ge=0),
+    _user: dict = Depends(require_admin),
+):
+    """邀请码列表：只返回前缀/label/状态/用量/时间；不返回明文或哈希。
+
+    ``status`` 支持 all/active/used/expired/revoked；返回 counts 与公开注册
+    开关状态，供管理台只读展示。表未迁移返回 503。
+    """
+    try:
+        result = invites.list_invites(status=status, limit=limit, offset=offset)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except invites.InviteUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="邀请码表未迁移，请先执行 alembic upgrade head（0023）。",
+        ) from exc
+    return {**result, "config": invites.registration_status()}
+
+
+@router.post("/invites")
+def admin_create_invites(
+    payload: InviteCreateRequest | None = None,
+    user: dict = Depends(require_admin),
+):
+    """生成 1–10 个邀请码；明文只在本次响应出现一次，之后无法找回。"""
+    payload = payload or InviteCreateRequest()
+    try:
+        codes = invites.create_invites(
+            user["id"],
+            count=1 if payload.count is None else payload.count,
+            label=payload.label,
+            max_uses=payload.max_uses,
+            expires_in_days=payload.expires_in_days,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except invites.InviteUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="邀请码表未迁移，请先执行 alembic upgrade head（0023）。",
+        ) from exc
+    except invites.InviteBusy as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="数据库繁忙，请稍后重试。",
+            headers={"Retry-After": "5"},
+        ) from exc
+    return {"codes": codes, "config": invites.registration_status()}
+
+
+@router.post("/invites/{invite_id}/revoke")
+def admin_revoke_invite(
+    invite_id: str,
+    user: dict = Depends(require_admin),
+):
+    """撤销邀请码（幂等）；已注册账号不受影响。"""
+    try:
+        result = invites.revoke_invite(invite_id, user["id"])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except invites.InviteNotFound as exc:
+        raise HTTPException(status_code=404, detail="邀请码不存在。") from exc
+    except invites.InviteUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="邀请码表未迁移，请先执行 alembic upgrade head（0023）。",
+        ) from exc
+    except invites.InviteBusy as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="数据库繁忙，请稍后重试。",
+            headers={"Retry-After": "5"},
+        ) from exc
+    return result
 
 
 @router.put("/settings")

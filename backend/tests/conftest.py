@@ -65,6 +65,13 @@ def isolated_data(tmp_path, monkeypatch):
     # 游客目录（M1 ⑧）也必须在 tmp_path 下，绝不能写到仓库的 data/guests/。
     monkeypatch.setattr(config, "GUEST_DATA_DIR", str(data_dir / "guests"), raising=False)
     monkeypatch.setattr(config, "COOKIE_SECURE", False, raising=False)
+    # 生产默认 REGISTRATION_OPEN=false（G1 邀请制）；测试夹具显式打开公开注册，
+    # 让既有用例继续用「直接 signup」登录。邀请/关闭场景由规格 032 的测试
+    # 自行 monkeypatch 回 false，绝不把生产默认改成 true。
+    monkeypatch.setattr(config, "REGISTRATION_OPEN", True, raising=False)
+    monkeypatch.setattr(config, "INVITE_SIGNUP_ENABLED", True, raising=False)
+    # 邀请码测试统一用空 pepper（生产由 env 决定）；避免本机 .env 影响摘要。
+    monkeypatch.setattr(config, "INVITE_CODE_PEPPER", "", raising=False)
 
     # 本地词典也隔离：默认指向不存在的临时路径。否则只要本机下载过
     # data/ecdict.db，查词就会命中本地词典，让「走 LLM」的用例失去意义。

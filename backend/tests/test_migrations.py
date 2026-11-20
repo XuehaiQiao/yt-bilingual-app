@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0022_generated_courses"
+HEAD = "0023_invite_registration"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -80,6 +80,7 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "content_teaching_analysis",
         "course_attempts", "course_events",
         "generated_courses",
+        "invite_codes", "invite_redemptions",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD

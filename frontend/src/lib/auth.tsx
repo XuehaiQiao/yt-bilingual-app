@@ -43,7 +43,12 @@ interface AuthContextValue {
     /** Bumped after a successful guest claim so data-loading effects refetch. */
     dataRevision: number;
     login: (email: string, password: string) => Promise<void>;
-    signup: (email: string, password: string, username?: string) => Promise<void>;
+    signup: (
+        email: string,
+        password: string,
+        username?: string,
+        inviteCode?: string,
+    ) => Promise<void>;
     logout: () => Promise<void>;
     /** Rename the signed-in user (`PATCH /api/user/profile`); updates context. */
     updateUsername: (username: string) => Promise<AuthUser>;
@@ -53,6 +58,63 @@ interface UserPayload {
     user?: AuthUser | null;
     guest?: boolean;
     isAdmin?: boolean;
+}
+
+/** Public registration switches (`GET /api/auth/registration`, specs/032). */
+export interface RegistrationConfig {
+    registrationOpen: boolean;
+    inviteSignupEnabled: boolean;
+    inviteRequired: boolean;
+    registrationClosed: boolean;
+}
+
+/** Conservative fallback: G1 production default is invite-only. */
+export const DEFAULT_REGISTRATION_CONFIG: RegistrationConfig = {
+    registrationOpen: false,
+    inviteSignupEnabled: true,
+    inviteRequired: true,
+    registrationClosed: false,
+};
+
+/**
+ * Fetch the public registration switches. Failures fall back to the G1
+ * default (invite required) so the form never silently offers open signup
+ * against a closed backend.
+ */
+export async function fetchRegistrationConfig(): Promise<RegistrationConfig> {
+    try {
+        const res = await apiFetch('/api/auth/registration');
+        if (!res.ok) return DEFAULT_REGISTRATION_CONFIG;
+        const data = (await res.json().catch(() => null)) as Partial<RegistrationConfig> | null;
+        if (!data || typeof data.registrationOpen !== 'boolean') {
+            return DEFAULT_REGISTRATION_CONFIG;
+        }
+        return {
+            registrationOpen: data.registrationOpen,
+            inviteSignupEnabled: data.inviteSignupEnabled !== false,
+            inviteRequired: data.inviteRequired === true,
+            registrationClosed: data.registrationClosed === true,
+        };
+    } catch {
+        return DEFAULT_REGISTRATION_CONFIG;
+    }
+}
+
+/**
+ * Auth request error that keeps the HTTP status and the backend's stable
+ * `code` (`invite_required` / `invite_invalid` / `registration_closed`), so
+ * the auth screen can show localized copy instead of parsing Chinese text.
+ */
+export class AuthRequestError extends Error {
+    readonly status: number;
+    readonly code?: string;
+
+    constructor(message: string, status: number, code?: string) {
+        super(message);
+        this.name = 'AuthRequestError';
+        this.status = status;
+        this.code = code;
+    }
 }
 
 interface ClaimPayload {
@@ -65,14 +127,6 @@ interface ClaimPayload {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-async function readUser(res: Response): Promise<AuthUser> {
-    const data = (await res.json().catch(() => null)) as UserPayload | null;
-    if (!data?.user?.email) {
-        throw new Error(t('errors.missingUser'));
-    }
-    return data.user;
-}
 
 /**
  * Owns the session state. Mount it once, above the app shell:
@@ -185,17 +239,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: string,
         password: string,
         username?: string,
+        inviteCode?: string,
     ) => {
+        const body: Record<string, string> = { email, password };
+        // Signup carries the display name (specs/023); login does not.
+        if (username !== undefined) body.username = username;
+        const trimmedInvite = inviteCode?.trim();
+        if (trimmedInvite) body.inviteCode = trimmedInvite;
         const res = await apiFetch(path, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // Signup carries the display name (specs/023); login does not.
-            body: JSON.stringify(username === undefined
-                ? { email, password }
-                : { email, password, username }),
+            body: JSON.stringify(body),
         });
-        if (!res.ok) throw new Error(await describeApiError(res));
-        const nextUser = await readUser(res);
+        const payload = (await res.json().catch(() => null)) as
+            | (UserPayload & { detail?: unknown; code?: unknown })
+            | null;
+        if (!res.ok) {
+            const message = typeof payload?.detail === 'string' && payload.detail.trim()
+                ? payload.detail
+                : t('errors.httpStatus', { status: res.status });
+            throw new AuthRequestError(
+                message,
+                res.status,
+                typeof payload?.code === 'string' ? payload.code : undefined,
+            );
+        }
+        const nextUser = payload?.user;
+        if (!nextUser?.email) throw new Error(t('errors.missingUser'));
         await claimGuest();
         setDataRevision((revision) => revision + 1);
         applyAuthState('authenticated', nextUser);
@@ -210,8 +280,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     const signup = useCallback(
-        (email: string, password: string, username?: string) =>
-            authenticate('/api/auth/signup', email, password, username),
+        (email: string, password: string, username?: string, inviteCode?: string) =>
+            authenticate('/api/auth/signup', email, password, username, inviteCode),
         [authenticate],
     );
 

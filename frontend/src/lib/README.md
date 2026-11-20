@@ -5,7 +5,7 @@
 | 模块 | 职责 |
 |---|---|
 | `api.ts` | `API_BASE`（`VITE_API_BASE` 可覆盖）与 `apiFetch`（自动带 `X-API-Key`、`credentials: include`、按端点注入 `targetLang`；非 auth 端点 401 广播给认证层） |
-| `auth.tsx` | 认证状态：`AuthProvider`/`useAuth`（含 `isAdmin`，来自 `/api/auth/me`）、启动 `GET /api/auth/me`、login/signup（注册带用户名）/logout、`updateUsername`（`PATCH /api/user/profile`）、全局 401 回登录页 |
+| `auth.tsx` | 认证状态：`AuthProvider`/`useAuth`（含 `isAdmin`，来自 `/api/auth/me`）、启动 `GET /api/auth/me`、login/signup（注册带用户名与可选邀请码）/logout、`updateUsername`（`PATCH /api/user/profile`）、`fetchRegistrationConfig`（`GET /api/auth/registration`）、`AuthRequestError`（保留 HTTP 状态与稳定 `code`）、全局 401 回登录页 |
 | `username.ts` | 显示名规则（specs/023）：2–24 个字符、中文/英文/数字/下划线/连字符、首尾不能空白；`usernameProblem`（返回首个不满足的 i18n key）、`displayUsername`（无用户名回落邮箱前缀）、`usernameInitial`（头像首字母）。与后端 `account.validate_username` 保持同步 |
 | `transcript.ts` | 字幕核心逻辑：`findActiveIndex`（当前句判定，含 0.8s 前瞻）、SSE 流解析（`consumeSseStream`）、`[未翻译]` 标记判定、译文显示模式（全显/当前句/隐藏）持久化 |
 | `sentences.ts` | 句子精背：类型、拉取、四色语块配色、按册×天的背诵/复习进度持久化 |
@@ -32,7 +32,7 @@
 | `blog.ts` | 官方博客客户端（specs/020）：`/api/blog/posts`、`/api/blog/posts/{slug}`、`/api/blog/feed.xml` 的类型与 `listBlogPosts/getBlogPost/blogFeedUrl`；只读公开接口，失败抛带状态码的 `BlogApiError`；前端用 Markdown 字段配合 `react-markdown`，不注入后端 HTML |
 | `library.ts` | 本地免费资源库客户端（user request #11）：`/api/library`、`/api/library/videos/{id}`、`/api/library/articles/{id}` 的类型与 `fetchLibraryIndex/fetchLibraryVideo/fetchLibraryArticle`；公开只读、不触发估价/处理/翻译；只校验并透传后端字段，失败抛带 HTTP 状态的 `LibraryApiError` |
 | `tts.ts` | 浏览器朗读（speechSynthesis，偏好英语音色） |
-| `admin.ts` | 管理控制台客户端（specs/021 + 023）：`fetchAdminStats/fetchAdminUsers/fetchAdminUsage/fetchAdminHealth`、`fetchAdminSettings/saveAdminSettings`、`adjustAdminUserCredits/updateAdminUserStatus` 与全部响应类型；所有调用走 `apiFetch`（带 credentials），失败抛带 HTTP 状态的 `AdminApiError`；写操作只在用户显式点击后调用 |
+| `admin.ts` | 管理控制台客户端（specs/021 + 023 + 032）：`fetchAdminStats/fetchAdminUsers/fetchAdminUsage/fetchAdminHealth`、`fetchAdminSettings/saveAdminSettings`、`adjustAdminUserCredits/updateAdminUserStatus`、`fetchAdminInvites/createAdminInvites/revokeAdminInvite` 与全部响应类型；所有调用走 `apiFetch`（带 credentials），失败抛带 HTTP 状态的 `AdminApiError`；写操作只在用户显式点击后调用 |
 | `toast.ts` | 轻提示总线 + `describeApiError`（把后端/网络错误转成可读中文） |
 | `jobs.ts` | 断线续传（M1 ⑤）：`sessionStorage` 里保存 `jobId`/游标（key `yt_bilingual_pending_job`）、`GET /api/jobs/{id}` 查询状态、`recordJobMeta/recordJobProgress/finishJob` 三个 SSE 事件钩子；刷新后「先查状态、可续才带 `jobId + from` 重连」的判定也在这里 |
 

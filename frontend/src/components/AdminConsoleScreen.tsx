@@ -34,6 +34,7 @@ import {
   ChevronRight,
   CircleCheck,
   Coins,
+  Copy,
   Database,
   DollarSign,
   HardDrive,
@@ -42,9 +43,11 @@ import {
   Loader2,
   LockOpen,
   Megaphone,
+  Plus,
   RefreshCw,
   Search,
   Server,
+  Ticket,
   ShieldCheck,
   SlidersHorizontal,
   TriangleAlert,
@@ -52,6 +55,7 @@ import {
   UserRound,
   Users,
   Wrench,
+  XCircle,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { getLanguageMeta, type TranslationKey } from '../i18n';
@@ -75,26 +79,40 @@ import {
 import {
   AdminApiError,
   adjustAdminUserCredits,
+  createAdminInvites,
   fetchAdminHealth,
+  fetchAdminInvites,
   fetchAdminSettings,
   fetchAdminStats,
   fetchAdminUsage,
   fetchAdminUsers,
+  revokeAdminInvite,
   saveAdminSettings,
   updateAdminUserStatus,
   type AdminHealth,
+  type AdminInviteGenerated,
+  type AdminInvitePage,
+  type AdminInviteRow,
+  type AdminInviteStatus,
+  type AdminInviteStatusFilter,
   type AdminSettings,
   type AdminStats,
   type AdminUsage,
   type AdminUserRow,
   type AdminUserStatus,
   type AdminUsersPage,
+  type AdminRegistrationConfig,
 } from '../lib/admin';
 import { LanguageMenu } from './LanguageMenu';
 
 const PAGE_SIZE = 20;
 const MAX_CREDIT_DELTA = 100_000;
 const MAX_ANNOUNCEMENT_CHARS = 2000;
+const INVITE_PAGE_SIZE = 20;
+const MAX_INVITE_LABEL_CHARS = 120;
+const MAX_INVITE_COUNT = 10;
+const MAX_INVITE_USES = 10;
+const MAX_INVITE_DAYS = 90;
 
 const PRIMARY_BUTTON =
   'inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform,opacity] duration-200 ease-apple disabled:opacity-50 disabled:pointer-events-none';
@@ -107,7 +125,7 @@ const DANGER_BUTTON =
 const SUCCESS_BUTTON =
   'inline-flex items-center justify-center gap-2 h-10 px-5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 text-sm font-medium text-emerald-400 transition-colors disabled:opacity-50 disabled:pointer-events-none';
 
-type AdminTab = 'overview' | 'users' | 'settings' | 'ops';
+type AdminTab = 'overview' | 'users' | 'invites' | 'settings' | 'ops';
 
 const TABS: ReadonlyArray<{
   id: AdminTab;
@@ -116,6 +134,7 @@ const TABS: ReadonlyArray<{
 }> = [
   { id: 'overview', labelKey: 'admin.tab.overview', icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
   { id: 'users', labelKey: 'admin.tab.users', icon: <Users className="w-3.5 h-3.5" /> },
+  { id: 'invites', labelKey: 'admin.tab.invites', icon: <Ticket className="w-3.5 h-3.5" /> },
   { id: 'settings', labelKey: 'admin.tab.settings', icon: <SlidersHorizontal className="w-3.5 h-3.5" /> },
   { id: 'ops', labelKey: 'admin.tab.ops', icon: <Activity className="w-3.5 h-3.5" /> },
 ];
@@ -562,6 +581,428 @@ function StatusDialog({ target, onClose, onSaved, onAuthError }: StatusDialogPro
   );
 }
 
+// ── Invite codes (M1 G1 / specs/032) ───────────────────────────────────────
+
+const INVITE_STATUS_KEY: Record<AdminInviteStatus, TranslationKey> = {
+  active: 'admin.invites.status.active',
+  used: 'admin.invites.status.used',
+  expired: 'admin.invites.status.expired',
+  revoked: 'admin.invites.status.revoked',
+};
+
+const INVITE_STATUS_CLASSES: Record<AdminInviteStatus, string> = {
+  active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  used: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  expired: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  revoked: 'bg-red-500/10 text-red-400 border-red-500/20',
+};
+
+const INVITE_FILTERS: ReadonlyArray<AdminInviteStatusFilter> = [
+  'all',
+  'active',
+  'used',
+  'expired',
+  'revoked',
+];
+
+function inviteFilterKey(status: AdminInviteStatusFilter): TranslationKey {
+  return status === 'all' ? 'admin.invites.status.all' : INVITE_STATUS_KEY[status];
+}
+
+function InviteStatusBadge({ status }: { status: AdminInviteStatus }) {
+  const { t } = useI18n();
+  return (
+    <span
+      data-testid="admin-invite-status-badge"
+      data-status={status}
+      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${INVITE_STATUS_CLASSES[status]}`}
+    >
+      {t(INVITE_STATUS_KEY[status])}
+    </span>
+  );
+}
+
+function registrationLabel(
+  config: AdminRegistrationConfig | null,
+  t: (key: TranslationKey) => string,
+): string {
+  if (!config) return '—';
+  if (config.registrationClosed) return t('admin.invites.registrationClosed');
+  if (config.registrationOpen) return t('admin.invites.registrationOpen');
+  return t('admin.invites.registrationInviteOnly');
+}
+
+interface InviteCreateDialogProps {
+  onClose: () => void;
+  onCreated: (codes: AdminInviteGenerated[]) => void;
+  onAuthError: () => void;
+}
+
+/**
+ * Generate dialog: the plaintext codes exist only in this component's state.
+ * Closing it is irreversible (the backend stores hashes only); the warning is
+ * deliberately repeated above the list and on the done action.
+ */
+function InviteCreateDialog({ onClose, onCreated, onAuthError }: InviteCreateDialogProps) {
+  const { t } = useI18n();
+  const [countText, setCountText] = useState('1');
+  const [label, setLabel] = useState('');
+  const [maxUsesText, setMaxUsesText] = useState('1');
+  const [expiresText, setExpiresText] = useState('30');
+  const [generated, setGenerated] = useState<AdminInviteGenerated[] | null>(null);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const validate = (): {
+    count: number;
+    label?: string;
+    maxUses: number;
+    expiresInDays: number;
+  } | null => {
+    const parseBounded = (raw: string, min: number, max: number): number | null => {
+      if (raw.trim() === '') return null;
+      const value = Number(raw);
+      if (!Number.isInteger(value) || value < min || value > max) return null;
+      return value;
+    };
+    const count = parseBounded(countText, 1, MAX_INVITE_COUNT);
+    if (count === null) {
+      setError(t('admin.invites.error.count'));
+      return null;
+    }
+    const maxUses = parseBounded(maxUsesText, 1, MAX_INVITE_USES);
+    if (maxUses === null) {
+      setError(t('admin.invites.error.maxUses'));
+      return null;
+    }
+    const expiresInDays = parseBounded(expiresText, 1, MAX_INVITE_DAYS);
+    if (expiresInDays === null) {
+      setError(t('admin.invites.error.expires'));
+      return null;
+    }
+    const trimmedLabel = label.trim();
+    if (Array.from(trimmedLabel).length > MAX_INVITE_LABEL_CHARS) {
+      setError(t('admin.invites.error.label'));
+      return null;
+    }
+    return {
+      count,
+      maxUses,
+      expiresInDays,
+      ...(trimmedLabel ? { label: trimmedLabel } : {}),
+    };
+  };
+
+  const generate = async () => {
+    if (saving) return;
+    const values = validate();
+    if (!values) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await createAdminInvites(values);
+      if (!result.codes?.length) {
+        setError(t('admin.invites.error.emptyCodes'));
+        return;
+      }
+      setGenerated(result.codes);
+      onCreated(result.codes);
+    } catch (err) {
+      if (err instanceof AdminApiError && (err.status === 401 || err.status === 403)) {
+        onAuthError();
+        return;
+      }
+      const message = fallbackErrorText(err, t('admin.invites.createError'));
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      toast.success(t('admin.invites.copied'));
+    } catch {
+      toast.error(t('admin.invites.copyFailed'));
+    }
+  };
+
+  const showingResult = generated !== null;
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-zinc-400"><Ticket className="w-5 h-5" /></span>
+          <span className="truncate">
+            {showingResult ? t('admin.invites.createdTitle') : t('admin.invites.createTitle')}
+          </span>
+        </span>
+      }
+      size="md"
+      loading={saving}
+      initialFocus='[data-testid="admin-invite-count"]'
+      testId="admin-invite-create-dialog"
+      footer={showingResult ? (
+        <button
+          type="button"
+          data-testid="admin-invite-done"
+          onClick={onClose}
+          className={PRIMARY_BUTTON}
+        >
+          {t('admin.invites.done')}
+        </button>
+      ) : (
+        <>
+          <button
+            type="button"
+            data-testid="admin-invite-cancel"
+            onClick={onClose}
+            disabled={saving}
+            className={SECONDARY_BUTTON}
+          >
+            {t('admin.cancel')}
+          </button>
+          <button
+            type="button"
+            data-testid="admin-invite-generate"
+            onClick={() => { void generate(); }}
+            disabled={saving}
+            className={PRIMARY_BUTTON}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {saving ? t('admin.invites.creating') : t('admin.invites.create')}
+          </button>
+        </>
+      )}
+    >
+      {showingResult ? (
+        <>
+          <p
+            data-testid="admin-invite-created-warning"
+            className="flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2.5 text-xs leading-relaxed text-amber-300/90"
+          >
+            <TriangleAlert className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>{t('admin.invites.createdWarning')}</span>
+          </p>
+          <div className="mt-3 space-y-2">
+            {generated.map((item) => (
+              <div
+                key={item.id}
+                data-testid="admin-invite-generated-row"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-zinc-900/70 px-3 py-2.5"
+              >
+                <div className="min-w-0">
+                  <code
+                    data-testid="admin-invite-code"
+                    className="block break-all font-mono text-sm tracking-wide text-zinc-100"
+                  >
+                    {item.code}
+                  </code>
+                  <p className="mt-1 text-[11px] text-zinc-500">
+                    {item.label ? `${item.label} · ` : ''}
+                    {t('admin.invites.maxUses')} {item.maxUses}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  data-testid="admin-invite-copy"
+                  onClick={() => { void copyCode(item.code); }}
+                  className={`${COMPACT_BUTTON} bg-zinc-800/70 hover:bg-zinc-700/70 border-white/10 text-zinc-300 hover:text-zinc-100`}
+                >
+                  {copiedCode === item.code ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedCode === item.code ? t('admin.invites.copied') : t('admin.invites.copy')}
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-sm leading-relaxed text-zinc-400">
+            {t('admin.invites.createDesc')}
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-xs font-medium text-zinc-400">{t('admin.invites.count')}</span>
+              <input
+                data-testid="admin-invite-count"
+                type="number"
+                min={1}
+                max={MAX_INVITE_COUNT}
+                step={1}
+                inputMode="numeric"
+                value={countText}
+                onChange={(event) => {
+                  setCountText(event.target.value);
+                  if (error) setError(null);
+                }}
+                className="mt-1 w-full rounded-xl bg-zinc-800/50 border border-white/10 px-3 py-2 text-sm text-zinc-100 outline-none focus-visible:border-brand/60 focus-visible:ring-2 focus-visible:ring-brand/15"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-zinc-400">{t('admin.invites.maxUses')}</span>
+              <input
+                data-testid="admin-invite-max-uses"
+                type="number"
+                min={1}
+                max={MAX_INVITE_USES}
+                step={1}
+                inputMode="numeric"
+                value={maxUsesText}
+                onChange={(event) => {
+                  setMaxUsesText(event.target.value);
+                  if (error) setError(null);
+                }}
+                className="mt-1 w-full rounded-xl bg-zinc-800/50 border border-white/10 px-3 py-2 text-sm text-zinc-100 outline-none focus-visible:border-brand/60 focus-visible:ring-2 focus-visible:ring-brand/15"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-zinc-400">{t('admin.invites.expiresInDays')}</span>
+              <input
+                data-testid="admin-invite-expires-days"
+                type="number"
+                min={1}
+                max={MAX_INVITE_DAYS}
+                step={1}
+                inputMode="numeric"
+                value={expiresText}
+                onChange={(event) => {
+                  setExpiresText(event.target.value);
+                  if (error) setError(null);
+                }}
+                className="mt-1 w-full rounded-xl bg-zinc-800/50 border border-white/10 px-3 py-2 text-sm text-zinc-100 outline-none focus-visible:border-brand/60 focus-visible:ring-2 focus-visible:ring-brand/15"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-zinc-400">{t('admin.invites.label')}</span>
+              <input
+                data-testid="admin-invite-label"
+                type="text"
+                maxLength={MAX_INVITE_LABEL_CHARS}
+                value={label}
+                onChange={(event) => {
+                  setLabel(event.target.value);
+                  if (error) setError(null);
+                }}
+                placeholder={t('admin.invites.labelPlaceholder')}
+                className="mt-1 w-full rounded-xl bg-zinc-800/50 border border-white/10 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus-visible:border-brand/60 focus-visible:ring-2 focus-visible:ring-brand/15"
+              />
+            </label>
+          </div>
+          {error && (
+            <p
+              role="alert"
+              data-testid="admin-invite-error"
+              className="mt-3 flex items-start gap-1.5 text-xs leading-relaxed text-red-400"
+            >
+              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </p>
+          )}
+        </>
+      )}
+    </Dialog>
+  );
+}
+
+interface InviteRevokeDialogProps {
+  target: AdminInviteRow;
+  onClose: () => void;
+  onRevoked: (invite: AdminInviteRow, alreadyRevoked: boolean) => void;
+  onAuthError: () => void;
+}
+
+function InviteRevokeDialog({ target, onClose, onRevoked, onAuthError }: InviteRevokeDialogProps) {
+  const { t } = useI18n();
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await revokeAdminInvite(target.id);
+      onRevoked(result.invite, result.alreadyRevoked);
+    } catch (err) {
+      if (err instanceof AdminApiError && (err.status === 401 || err.status === 403)) {
+        onAuthError();
+        return;
+      }
+      const message = fallbackErrorText(err, t('admin.invites.revokeError'));
+      setError(message);
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-red-400"><XCircle className="w-5 h-5" /></span>
+          <span className="truncate">{t('admin.invites.revokeTitle')}</span>
+        </span>
+      }
+      size="sm"
+      loading={saving}
+      initialFocus='[data-testid="admin-invite-revoke-cancel"]'
+      testId="admin-invite-revoke-dialog"
+      footer={
+        <>
+          <button
+            type="button"
+            data-testid="admin-invite-revoke-cancel"
+            onClick={onClose}
+            disabled={saving}
+            className={SECONDARY_BUTTON}
+          >
+            {t('admin.cancel')}
+          </button>
+          <button
+            type="button"
+            data-testid="admin-invite-revoke-confirm"
+            onClick={() => { void submit(); }}
+            disabled={saving}
+            className={DANGER_BUTTON}
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+            {t('admin.invites.revoke')}
+          </button>
+        </>
+      }
+    >
+      <p className="text-sm leading-relaxed text-zinc-300">
+        {t('admin.invites.revokeDesc')}
+      </p>
+      <p className="mt-3 rounded-xl border border-white/5 bg-zinc-800/40 px-3 py-2 font-mono text-sm text-zinc-200">
+        {target.prefix}
+        {target.label ? ` · ${target.label}` : ''}
+      </p>
+      {error && (
+        <p
+          role="alert"
+          data-testid="admin-invite-revoke-error"
+          className="mt-4 flex items-start gap-1.5 text-xs leading-relaxed text-red-400"
+        >
+          <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span>{error}</span>
+        </p>
+      )}
+    </Dialog>
+  );
+}
+
 export interface AdminConsoleScreenProps {
   /** Leave the console — App returns to the account page or home. */
   onClose: () => void;
@@ -590,6 +1031,14 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
   const [usersError, setUsersError] = useState<string | null>(null);
   const [usersLoading, setUsersLoading] = useState(true);
 
+  const [invitesPage, setInvitesPage] = useState<AdminInvitePage | null>(null);
+  const [invitesError, setInvitesError] = useState<string | null>(null);
+  const [invitesLoading, setInvitesLoading] = useState(true);
+  const [inviteStatus, setInviteStatus] = useState<AdminInviteStatusFilter>('all');
+  const [inviteOffset, setInviteOffset] = useState(0);
+  const [inviteCreateOpen, setInviteCreateOpen] = useState(false);
+  const [inviteRevokeTarget, setInviteRevokeTarget] = useState<AdminInviteRow | null>(null);
+
   const [health, setHealth] = useState<AdminHealth | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
@@ -611,6 +1060,7 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
   const [statusTarget, setStatusTarget] = useState<AdminUserRow | null>(null);
 
   const usersRequestRef = useRef(0);
+  const invitesRequestRef = useRef(0);
   const deniedRef = useRef(false);
   const onDeniedRef = useRef(onDenied);
 
@@ -726,6 +1176,29 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
     }
   }, [describeError, t]);
 
+  const loadInvites = useCallback(async (
+    nextOffset: number,
+    nextStatus: AdminInviteStatusFilter,
+  ) => {
+    const requestId = ++invitesRequestRef.current;
+    setInvitesLoading(true);
+    setInvitesError(null);
+    try {
+      const page = await fetchAdminInvites({
+        limit: INVITE_PAGE_SIZE,
+        offset: nextOffset,
+        status: nextStatus,
+      });
+      if (requestId !== invitesRequestRef.current) return;
+      setInvitesPage(page);
+    } catch (error) {
+      if (requestId !== invitesRequestRef.current) return;
+      setInvitesError(describeError(error, t('admin.invites.loadError')));
+    } finally {
+      if (requestId === invitesRequestRef.current) setInvitesLoading(false);
+    }
+  }, [describeError, t]);
+
   useEffect(() => {
     void loadStats();
     void loadUsage();
@@ -737,9 +1210,14 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
     void loadUsers(offset, search);
   }, [loadUsers, offset, search]);
 
+  useEffect(() => {
+    void loadInvites(inviteOffset, inviteStatus);
+  }, [loadInvites, inviteOffset, inviteStatus]);
+
   const refreshActive = () => {
     if (tab === 'overview') void loadStats();
     else if (tab === 'users') void loadUsers(offset, search);
+    else if (tab === 'invites') void loadInvites(inviteOffset, inviteStatus);
     else if (tab === 'settings') void loadSettings();
     else {
       void loadUsage();
@@ -751,9 +1229,11 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
     ? statsLoading
     : tab === 'users'
       ? usersLoading
-      : tab === 'settings'
-        ? settingsLoading
-        : usageLoading || healthLoading;
+      : tab === 'invites'
+        ? invitesLoading
+        : tab === 'settings'
+          ? settingsLoading
+          : usageLoading || healthLoading;
 
   const handleCreditsSaved = (userId: string, credits: number) => {
     setUsersPage((previous) => (previous
@@ -782,6 +1262,24 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
       { name: displayUsername(target?.username, target?.email) },
     ));
     void loadUsers(offset, search);
+  };
+
+  const handleInvitesCreated = () => {
+    // New codes are active; switch to "全部" so the admin sees them even if a
+    // different status filter was active before opening the dialog.
+    setInviteStatus('all');
+    setInviteOffset(0);
+    void loadInvites(0, 'all');
+  };
+
+  const handleInviteRevoked = (invite: AdminInviteRow, alreadyRevoked: boolean) => {
+    setInviteRevokeTarget(null);
+    if (alreadyRevoked) {
+      toast.info(t('admin.invites.revokeAlready'));
+    } else {
+      toast.success(t('admin.invites.revokeSuccess', { prefix: invite.prefix }));
+    }
+    void loadInvites(inviteOffset, inviteStatus);
   };
 
   const saveSettings = async () => {
@@ -836,6 +1334,16 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
   const failedJobs = health?.failedJobs ?? [];
   const healthy = health?.health.status === 'ok';
   const userRows = usersPage?.users ?? [];
+  const inviteRows = invitesPage?.invites ?? [];
+  const inviteCounts = invitesPage?.counts;
+  const inviteFilterCount = (status: AdminInviteStatusFilter): number => {
+    if (!inviteCounts) return 0;
+    if (status === 'all') {
+      return inviteCounts.active + inviteCounts.used + inviteCounts.expired + inviteCounts.revoked;
+    }
+    return inviteCounts[status];
+  };
+  const inviteConfig = invitesPage?.config ?? null;
 
   return (
     <div
@@ -1156,6 +1664,216 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
                         onClick={() => setOffset((current) => current + PAGE_SIZE)}
                       >
                         {t('admin.users.next')}
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── Invite codes (M1 G1) ─────────────────────────────────────── */}
+        {tab === 'invites' && (
+          <section
+            {...tabPanelProps('admin', 'invites')}
+            data-testid="admin-panel-invites"
+            className="mt-6"
+          >
+            <SectionTitle
+              id="admin-invites-title"
+              title={t('admin.invites.title')}
+              subtitle={t('admin.invites.subtitle')}
+              action={
+                <button
+                  type="button"
+                  data-testid="admin-invite-create"
+                  onClick={() => setInviteCreateOpen(true)}
+                  className={PRIMARY_BUTTON}
+                >
+                  <Plus className="w-4 h-4" />
+                  {t('admin.invites.generate')}
+                </button>
+              }
+            />
+
+            <div
+              data-testid="admin-invites-registration"
+              className="mt-3 flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-blue-500/15 bg-blue-500/[0.04] p-4"
+            >
+              <div className="flex min-w-0 items-start gap-2.5">
+                <Ticket className="mt-0.5 w-4 h-4 shrink-0 text-blue-400" />
+                <div className="min-w-0">
+                  <p
+                    data-testid="admin-invites-registration-state"
+                    className="text-sm font-medium text-zinc-100"
+                  >
+                    {registrationLabel(inviteConfig, t)}
+                  </p>
+                  <p className="mt-1 max-w-2xl text-xs leading-relaxed text-zinc-500">
+                    {t('admin.invites.configHint')}
+                  </p>
+                </div>
+              </div>
+              {inviteConfig && (
+                <span className="inline-flex shrink-0 items-center rounded-full border border-white/5 bg-zinc-900/60 px-2 py-0.5 text-[11px] text-zinc-400">
+                  {inviteConfig.registrationOpen
+                    ? 'REGISTRATION_OPEN=true'
+                    : inviteConfig.registrationClosed
+                      ? 'INVITE_SIGNUP_ENABLED=false'
+                      : 'REGISTRATION_OPEN=false'}
+                </span>
+              )}
+            </div>
+
+            <div
+              className="mt-3 flex flex-wrap items-center gap-2"
+              aria-label={t('admin.invites.statusFilterAria')}
+              data-testid="admin-invites-filters"
+            >
+              {INVITE_FILTERS.map((filter) => {
+                const selected = inviteStatus === filter;
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    data-testid={`admin-invites-filter-${filter}`}
+                    aria-pressed={selected}
+                    onClick={() => {
+                      setInviteStatus(filter);
+                      setInviteOffset(0);
+                    }}
+                    className={`${COMPACT_BUTTON} ${
+                      selected
+                        ? 'bg-blue-500/15 border-blue-500/30 text-blue-300'
+                        : 'bg-zinc-800/60 border-white/5 text-zinc-400 hover:text-zinc-100'
+                    }`}
+                  >
+                    {t(inviteFilterKey(filter))}
+                    <span className="tabular-nums text-[11px] opacity-70">
+                      {formatNumber(inviteFilterCount(filter))}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3">
+              {invitesError ? (
+                <ErrorBanner
+                  message={invitesError}
+                  onRetry={() => { void loadInvites(inviteOffset, inviteStatus); }}
+                  retryLabel={t('admin.retry')}
+                />
+              ) : (
+                <div className="rounded-card border border-line-subtle bg-surface/40 overflow-hidden">
+                  <Table
+                    testId="admin-invites-table"
+                    minWidth={880}
+                    caption={t('admin.invites.title')}
+                  >
+                    <TableHeader>
+                      <tr>
+                        <TableHeaderCell nowrap>{t('admin.invites.prefix')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.invites.label')}</TableHeaderCell>
+                        <TableHeaderCell numeric nowrap>{t('admin.invites.usage')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.invites.status')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.invites.expires')}</TableHeaderCell>
+                        <TableHeaderCell nowrap>{t('admin.invites.created')}</TableHeaderCell>
+                        <TableHeaderCell align="right" nowrap>{t('admin.invites.actions')}</TableHeaderCell>
+                      </tr>
+                    </TableHeader>
+                    <TableBody>
+                      {inviteRows.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          data-testid="admin-invite-row"
+                          data-status={row.status}
+                          data-prefix={row.prefix}
+                        >
+                          <TableCell nowrap>
+                            <span className="font-mono text-sm font-medium text-fg-primary">{row.prefix}…</span>
+                            <p className="mt-0.5 font-mono text-micro text-fg-muted">{row.id.slice(0, 12)}</p>
+                          </TableCell>
+                          <TableCell muted>
+                            <span className="block max-w-[16rem] truncate" title={row.label ?? ''}>
+                              {row.label || '—'}
+                            </span>
+                          </TableCell>
+                          <TableCell numeric nowrap>
+                            <span title={row.lastUsedAt ? t('admin.invites.lastUsed') : undefined}>
+                              {formatNumber(row.usedCount)} / {formatNumber(row.maxUses)}
+                            </span>
+                          </TableCell>
+                          <TableCell nowrap>
+                            <InviteStatusBadge status={row.status} />
+                          </TableCell>
+                          <TableCell nowrap muted className="text-caption tabular-nums">
+                            {row.expiresAt
+                              ? formatDate(row.expiresAt, { dateStyle: 'medium' })
+                              : t('admin.invites.neverExpires')}
+                          </TableCell>
+                          <TableCell nowrap muted className="text-caption tabular-nums">
+                            {row.createdAt > 0 ? formatDate(row.createdAt, { dateStyle: 'medium' }) : '—'}
+                          </TableCell>
+                          <TableCell align="right" nowrap>
+                            <button
+                              type="button"
+                              data-testid="admin-invite-revoke"
+                              onClick={() => setInviteRevokeTarget(row)}
+                              disabled={row.status === 'revoked'}
+                              className={`${COMPACT_BUTTON} bg-red-500/10 hover:bg-red-500/15 border-red-500/20 text-red-400`}
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              {t('admin.invites.revoke')}
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {!invitesLoading && inviteRows.length === 0 && (
+                        <TableMessageRow colSpan={7}>
+                          {inviteStatus === 'all'
+                            ? t('admin.invites.empty')
+                            : t('admin.invites.emptyFilter')}
+                        </TableMessageRow>
+                      )}
+                      {invitesLoading && inviteRows.length === 0 && (
+                        <TableMessageRow colSpan={7}>
+                          <Loader2 className="w-5 h-5 text-fg-muted animate-spin inline-block" />
+                        </TableMessageRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 px-4 py-2.5">
+                    <p data-testid="admin-invites-page" className="text-[11px] text-zinc-500 tabular-nums">
+                      {invitesPage
+                        ? t('admin.invites.page', {
+                          from: inviteRows.length > 0 ? formatNumber(invitesPage.offset + 1) : '0',
+                          to: formatNumber(invitesPage.offset + inviteRows.length),
+                          total: formatNumber(invitesPage.total),
+                        })
+                        : '—'}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        data-testid="admin-invites-prev"
+                        className={SECONDARY_BUTTON}
+                        disabled={invitesLoading || inviteOffset <= 0}
+                        onClick={() => setInviteOffset((current) => Math.max(0, current - INVITE_PAGE_SIZE))}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        {t('admin.invites.prev')}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="admin-invites-next"
+                        className={SECONDARY_BUTTON}
+                        disabled={invitesLoading || !(invitesPage?.hasMore ?? false)}
+                        onClick={() => setInviteOffset((current) => current + INVITE_PAGE_SIZE)}
+                      >
+                        {t('admin.invites.next')}
                         <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
@@ -1566,6 +2284,21 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
         </p>
       </div>
 
+      {inviteCreateOpen && (
+        <InviteCreateDialog
+          onClose={() => setInviteCreateOpen(false)}
+          onCreated={handleInvitesCreated}
+          onAuthError={deny}
+        />
+      )}
+      {inviteRevokeTarget && (
+        <InviteRevokeDialog
+          target={inviteRevokeTarget}
+          onClose={() => setInviteRevokeTarget(null)}
+          onRevoked={handleInviteRevoked}
+          onAuthError={deny}
+        />
+      )}
       {creditTarget && (
         <CreditDialog
           target={creditTarget}

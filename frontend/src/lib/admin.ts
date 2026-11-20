@@ -121,6 +121,84 @@ export interface AdminSettingsPatch {
   announcement?: string | null;
 }
 
+// ── Invite codes (specs/032 / M1 G1 invite-only registration) ──────────────
+
+export type AdminInviteStatus = 'active' | 'used' | 'expired' | 'revoked';
+export type AdminInviteStatusFilter = AdminInviteStatus | 'all';
+
+export interface AdminInviteRow {
+  id: string;
+  /** First 6 characters of the normalized code; enough to tell codes apart. */
+  prefix: string;
+  label: string | null;
+  maxUses: number;
+  usedCount: number;
+  status: AdminInviteStatus;
+  createdBy: string;
+  /** Epoch milliseconds. */
+  createdAt: number;
+  /** Epoch milliseconds; null = never expires. */
+  expiresAt: number | null;
+  revokedAt: number | null;
+  revokedBy: string | null;
+  lastUsedAt: number | null;
+}
+
+export interface AdminInviteCounts {
+  active: number;
+  used: number;
+  expired: number;
+  revoked: number;
+}
+
+export interface AdminInvitePage {
+  invites: AdminInviteRow[];
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+  status: AdminInviteStatusFilter;
+  counts: AdminInviteCounts;
+  config: AdminRegistrationConfig;
+}
+
+/** Server-side registration switches (read-only in the console). */
+export interface AdminRegistrationConfig {
+  registrationOpen: boolean;
+  inviteSignupEnabled: boolean;
+  inviteRequired: boolean;
+  registrationClosed: boolean;
+}
+
+/** One generated code — `code` is plaintext and only returned once. */
+export interface AdminInviteGenerated {
+  id: string;
+  code: string;
+  prefix: string;
+  label: string | null;
+  maxUses: number;
+  usedCount: number;
+  createdAt: number;
+  expiresAt: number | null;
+}
+
+export interface AdminInvitesCreated {
+  codes: AdminInviteGenerated[];
+  config: AdminRegistrationConfig;
+}
+
+export interface AdminInviteCreateInput {
+  count?: number;
+  label?: string;
+  maxUses?: number;
+  expiresInDays?: number;
+}
+
+export interface AdminInviteRevoked {
+  invite: AdminInviteRow;
+  alreadyRevoked: boolean;
+}
+
 /** `PATCH /api/admin/users/{id}` response user (full id). */
 export interface AdminUpdatedUser {
   id: string;
@@ -239,4 +317,36 @@ export function saveAdminSettings(patch: AdminSettingsPatch): Promise<AdminSetti
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
   });
+}
+
+
+export function fetchAdminInvites(options: {
+  status?: AdminInviteStatusFilter;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<AdminInvitePage> {
+  const params = new URLSearchParams();
+  if (options.status) params.set('status', options.status);
+  if (options.limit != null) params.set('limit', String(options.limit));
+  if (options.offset != null) params.set('offset', String(options.offset));
+  const query = params.toString();
+  return requestJson<AdminInvitePage>(`/api/admin/invites${query ? `?${query}` : ''}`);
+}
+
+/** Generate 1–10 invites; the plaintext `code` is only in this response. */
+export function createAdminInvites(
+  input: AdminInviteCreateInput,
+): Promise<AdminInvitesCreated> {
+  return requestJson<AdminInvitesCreated>('/api/admin/invites', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
+export function revokeAdminInvite(inviteId: string): Promise<AdminInviteRevoked> {
+  return requestJson<AdminInviteRevoked>(
+    `/api/admin/invites/${encodeURIComponent(inviteId)}/revoke`,
+    { method: 'POST' },
+  );
 }

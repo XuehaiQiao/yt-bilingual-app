@@ -1,8 +1,15 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { AlertCircle, Lock, LogIn, Mail, UserPlus, UserRound } from 'lucide-react';
-import { useAuth } from '../lib/auth';
+import { AlertCircle, Lock, LogIn, Mail, Ticket, UserPlus, UserRound } from 'lucide-react';
+import {
+    AuthRequestError,
+    DEFAULT_REGISTRATION_CONFIG,
+    fetchRegistrationConfig,
+    useAuth,
+    type RegistrationConfig,
+} from '../lib/auth';
 import { describeApiError } from '../lib/toast';
+import type { TranslationKey } from '../i18n';
 import { useI18n } from '../i18n/I18nProvider';
 import { usernameProblem } from '../lib/username';
 import { cn } from '../lib/cn';
@@ -48,6 +55,39 @@ const FIELD_INPUT =
     // suppression only applies inside that shell (A2 T-12 exception).
     'min-w-0 flex-1 border-none bg-transparent text-body text-fg-primary outline-none focus:outline-none placeholder:text-fg-secondary sm:text-ui';
 
+/** Read `?invite=` from the path query or the hash query (`#/login?invite=`). */
+function inviteFromUrl(): string {
+    if (typeof window === 'undefined') return '';
+    const fromParams = (params: URLSearchParams): string => params.get('invite')?.trim() ?? '';
+    const search = fromParams(new URLSearchParams(window.location.search));
+    if (search) return search;
+    const hash = window.location.hash;
+    const queryIndex = hash.indexOf('?');
+    if (queryIndex === -1) return '';
+    return fromParams(new URLSearchParams(hash.slice(queryIndex + 1)));
+}
+
+/** Map a backend signup failure to localized copy (stable codes, not text). */
+function authErrorKey(error: AuthRequestError): TranslationKey | null {
+    switch (error.code) {
+        case 'invite_required':
+            return 'auth.error.inviteRequired';
+        case 'invite_invalid':
+            return 'auth.error.inviteInvalid';
+        case 'registration_closed':
+            return 'auth.error.registrationClosed';
+        case 'registration_unavailable':
+            return 'auth.error.registrationUnavailable';
+        case 'registration_busy':
+            return 'auth.error.registrationBusy';
+        default:
+            break;
+    }
+    if (error.status === 409) return 'auth.error.emailTaken';
+    if (error.status === 429) return 'auth.error.rateLimited';
+    return null;
+}
+
 export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
     const { login, signup } = useAuth();
     const { t } = useI18n();
@@ -60,6 +100,22 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
     const [error, setError] = useState<string | null>(null);
     const [usernameError, setUsernameError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [inviteCode, setInviteCode] = useState('');
+    const [registration, setRegistration] = useState<RegistrationConfig>(DEFAULT_REGISTRATION_CONFIG);
+
+    // Public switch + one-time URL prefill (`?invite=...`). The backend remains
+    // the authority: the client-side check only avoids a pointless request.
+    useEffect(() => {
+        let cancelled = false;
+        const prefill = inviteFromUrl();
+        if (prefill) setInviteCode((current) => (current ? current : prefill));
+        void fetchRegistrationConfig().then((next) => {
+            if (!cancelled) setRegistration(next);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const switchMode = (next: AuthMode) => {
         if (next === mode) return;
@@ -80,6 +136,14 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
             return;
         }
         if (mode === 'signup') {
+            if (registration.registrationClosed) {
+                setError(t('auth.error.registrationClosed'));
+                return;
+            }
+            if (registration.inviteRequired && !inviteCode.trim()) {
+                setError(t('auth.error.inviteRequired'));
+                return;
+            }
             // The display name is required for new accounts (specs/023); the
             // rule lives here so the error appears under the field instead of
             // only surfacing as a generic server message.
@@ -101,11 +165,17 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
             if (mode === 'login') {
                 await login(trimmedEmail, password);
             } else {
-                await signup(trimmedEmail, password, username);
+                await signup(
+                    trimmedEmail,
+                    password,
+                    username,
+                    inviteCode.trim() || undefined,
+                );
             }
             // Success: the provider switches the shell away from this screen.
         } catch (err) {
-            setError(await describeApiError(err));
+            const key = err instanceof AuthRequestError ? authErrorKey(err) : null;
+            setError(key ? t(key) : await describeApiError(err));
         } finally {
             setIsSubmitting(false);
         }
@@ -168,6 +238,27 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
                 </motion.div>
 
                 <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
+                    {mode === 'signup' && (
+                        <div
+                            data-testid={registration.registrationClosed
+                                ? 'auth-registration-closed'
+                                : 'auth-invite-notice'}
+                            className={cn(
+                                'flex items-start gap-2 rounded-control-lg border p-3 text-caption leading-relaxed',
+                                registration.registrationClosed
+                                    ? 'border-danger/25 bg-danger/5 text-danger-fg'
+                                    : 'border-line-subtle bg-surface-2/60 text-fg-secondary',
+                            )}
+                        >
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span>
+                                {registration.registrationClosed
+                                    ? t('auth.registrationClosedNotice')
+                                    : t('auth.inviteNotice')}
+                            </span>
+                        </div>
+                    )}
+
                     <div>
                         <label htmlFor="auth-email" className="text-caption font-medium text-fg-secondary">
                             {t('auth.email')}
@@ -188,6 +279,46 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
                             />
                         </div>
                     </div>
+
+                    {mode === 'signup' && !registration.registrationClosed && (
+                        <div>
+                            <label htmlFor="auth-invite" className="text-caption font-medium text-fg-secondary">
+                                {t('auth.invite')}{' '}
+                                <span className="text-fg-muted">
+                                    {registration.inviteRequired
+                                        ? t('auth.required')
+                                        : t('auth.optional')}
+                                </span>
+                            </label>
+                            <div className={fieldShell(false)}>
+                                <Ticket className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
+                                <input
+                                    id="auth-invite"
+                                    data-testid="auth-invite"
+                                    name="inviteCode"
+                                    type="text"
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                    required={registration.inviteRequired}
+                                    value={inviteCode}
+                                    onChange={(event) => {
+                                        setInviteCode(event.target.value.toUpperCase());
+                                        if (error) setError(null);
+                                    }}
+                                    placeholder={t('auth.invitePlaceholder')}
+                                    className={FIELD_INPUT}
+                                />
+                            </div>
+                            <p
+                                data-testid="auth-invite-hint"
+                                className="mt-1.5 text-caption leading-relaxed text-fg-secondary"
+                            >
+                                {registration.inviteRequired
+                                    ? t('auth.inviteHintRequired')
+                                    : t('auth.inviteHintOptional')}
+                            </p>
+                        </div>
+                    )}
 
                     {mode === 'signup' && (
                         <div>
@@ -293,10 +424,15 @@ export const AuthScreen = ({ onGuestContinue }: AuthScreenProps) => {
                         size="lg"
                         fullWidth
                         loading={isSubmitting}
+                        disabled={mode === 'signup' && registration.registrationClosed}
                         testId="auth-submit"
                         iconLeft={mode === 'login' ? <LogIn /> : <UserPlus />}
                     >
-                        {mode === 'login' ? t('auth.submit.login') : t('auth.submit.signup')}
+                        {mode === 'login'
+                            ? t('auth.submit.login')
+                            : registration.registrationClosed
+                                ? t('auth.submit.closed')
+                                : t('auth.submit.signup')}
                     </Button>
                 </form>
 
