@@ -14,6 +14,7 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { Dialog } from './components/ui/Dialog';
 import { BackButton } from './components/ui/BackButton';
 import { AuthProvider, useAuth } from './lib/auth';
+import { allowAi } from './lib/aiGate';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import { getLanguageMeta, getRuntimeTargetLang } from './i18n';
 import type { TranslationKey } from './i18n';
@@ -230,6 +231,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     status === 'authenticated' && user?.status === 'deletion_pending';
   const onAccountPage = state.tab === 'profile' && !state.sub;
 
+  // M7b: every AI entry (process / define / translate / analysis) is an account
+  // feature. Guests keep all cache reads but are sent through the existing
+  // `onRequestLogin` overlay instead of starting a request the backend 403s.
+  // Logged-in users pass through; a session anomaly still surfaces the backend
+  // copy via `describeApiError` (403 never signs anyone out — only 401 does).
+  const requireAi = useCallback(
+    () => allowAi(status !== 'authenticated', onRequestLogin),
+    [status, onRequestLogin],
+  );
+
   const [videoId, setVideoId] = useState('');
   // M3b / specs/034: a 402 from any AI call (HTTP status or the SSE `error`
   // event) surfaces as one persistent shell banner with a link to the account
@@ -367,8 +378,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const [wordLookup, setWordLookup] = useState<WordLookupTarget | null>(null);
 
   const handleWordLookup = useCallback((word: string, sentence: string, start: number, e: React.MouseEvent) => {
+    // A dictionary lookup is an AI call (`/api/define`): guests get the login
+    // prompt before the card (and its request) ever opens.
+    if (!requireAi()) return;
     setWordLookup({ word, context: sentence, start, x: e.clientX, y: e.clientY });
-  }, []);
+  }, [requireAi]);
 
   // Reading lookups carry the article id/title so the star in the dictionary
   // card saves the word under that article (and the favorites "出处" row can
@@ -381,6 +395,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     sourceId?: string,
     sourceTitle?: string,
   ) => {
+    if (!requireAi()) return;
     setWordLookup({
       word,
       context: sentence,
@@ -389,7 +404,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       y: e.clientY,
       ...(sourceId ? { sourceId, sourceTitle, sourceKind: 'article' as const } : {}),
     });
-  }, []);
+  }, [requireAi]);
 
   // Free library articles are local content with their own route, so their
   // words carry a distinct source kind: the favorites "出处" row must be able
@@ -402,6 +417,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     sourceId?: string,
     sourceTitle?: string,
   ) => {
+    if (!requireAi()) return;
     setWordLookup({
       word,
       context: sentence,
@@ -410,7 +426,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       y: e.clientY,
       ...(sourceId ? { sourceId, sourceTitle, sourceKind: 'library_article' as const } : {}),
     });
-  }, []);
+  }, [requireAi]);
 
   // Public-domain books and imported books pass their id/title through the
   // reader, so a saved word can jump back to the exact book (书籍 source).
@@ -421,6 +437,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     e: React.MouseEvent,
     source?: { id: string; title?: string },
   ) => {
+    if (!requireAi()) return;
     setWordLookup({
       word,
       context: sentence,
@@ -429,7 +446,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       y: e.clientY,
       ...(source?.id ? { sourceId: source.id, sourceTitle: source.title, sourceKind: 'book' as const } : {}),
     });
-  }, []);
+  }, [requireAi]);
 
   const handleImportedBookWordLookup = useCallback((
     word: string,
@@ -438,6 +455,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     e: React.MouseEvent,
     source?: { id: string; title?: string },
   ) => {
+    if (!requireAi()) return;
     setWordLookup({
       word,
       context: sentence,
@@ -446,7 +464,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       y: e.clientY,
       ...(source?.id ? { sourceId: source.id, sourceTitle: source.title, sourceKind: 'imported_book' as const } : {}),
     });
-  }, []);
+  }, [requireAi]);
 
   // The article reader recognises public-domain book links and hands them here:
   // switch to the content page and open the book-import dialog prefilled.
@@ -1108,6 +1126,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     url: string,
     resume?: { jobId?: string; from?: number },
   ) => {
+    // Processing = translation + summary generation, so this is the AI entry
+    // behind every "start learning" composer. Guard before the estimate/process
+    // pipeline so a guest never sends the request.
+    if (!requireAi()) return;
     pauseSubtitleTimer();
     resetTeachingAnalysis();
     // A fresh stream only proves a cache once the backend writes the payload
@@ -1246,6 +1268,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                 ),
               }));
             }
+            // M7a: the stream is already HTTP 200, so account/quota failures
+            // arrive as stable codes too; map them before the raw detail.
+            if (data.code === 'login_required') throw new Error(t('errors.loginRequired'));
+            if (data.code === 'model_unpriced') throw new Error(t('errors.modelUnpriced'));
+            if (data.code === 'quota_exceeded') throw new Error(t('errors.quotaExceeded'));
             throw new Error(data.detail || t('errors.processFailed'));
           }
           case 'done':
@@ -1286,8 +1313,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       // Try loading from history cache first (already processed episodes).
       // Like any other history load, pass the global model so a cache with
       // untranslated blocks repairs itself with the model the user picked.
+      // Guests only ever read the cache: no model parameter (no repair), and a
+      // cache miss becomes the login prompt instead of `/api/process-subtitle`.
       const cacheFilename = `${showId}_S${season.toString().padStart(2, '0')}E${episode.toString().padStart(2, '0')}.json`;
-      const savedModel = loadModel();
+      const savedModel = status === 'authenticated' ? loadModel() : '';
       const modelQuery = savedModel ? `?model=${encodeURIComponent(savedModel)}` : '';
       const cacheResponse = await apiFetch(`/api/history/${cacheFilename}${modelQuery}`);
       if (getRuntimeTargetLang() !== requestedTargetLang) return;
@@ -1303,6 +1332,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         capturePayloadTeachingAnalysis(data);
         setCurrentTime(0);
         setQuizCacheReady(true);
+      } else if (status !== 'authenticated') {
+        // Guest + uncached episode: the only way forward would be an AI
+        // translation, which is account-only. Show the unified prompt instead.
+        requireAi();
+        return;
       } else {
         setLoadingState('processing');
         // Not yet processed — run the full processing pipeline
@@ -1342,8 +1376,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     const requestedTargetLang = getRuntimeTargetLang();
     try {
       // Pass the last picked model so repairing a partially translated cache
-      // retries with the provider the user actually chose.
-      const savedModel = loadModel();
+      // retries with the provider the user actually chose. Guests read the
+      // cache as-is (no model ⇒ no repair) — they may watch what already exists
+      // but must never trigger a new translation.
+      const savedModel = status === 'authenticated' ? loadModel() : '';
       const query = savedModel ? `?model=${encodeURIComponent(savedModel)}` : '';
       const response = await apiFetch(`/api/history/${filename}${query}`);
       if (!response.ok) throw new Error(await describeApiError(response));
@@ -3430,6 +3466,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           onProgress={(seconds) => saveLocalVideoProgress(seconds)}
           onPersist={(seconds) => saveLocalVideoProgress(seconds, true)}
           onMetadata={handleLocalVideoMetadata}
+          isGuest={status !== 'authenticated'}
+          onRequestLogin={onRequestLogin}
         />
       );
     }
@@ -3571,6 +3609,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               parentLabel={parentLabel}
               onOpenSeries={(seriesId) => openSub({ kind: 'book-series', seriesId })}
               onWordLookup={handleBookWordLookup}
+              onRequestLogin={onRequestLogin}
             />,
           );
         case 'book-series':

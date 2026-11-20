@@ -7,6 +7,7 @@
 // The exam card moved to 练习; the model bar moved to the app chrome.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../lib/api';
+import { allowAi } from '../lib/aiGate';
 import type { HistoryItem } from './ChannelVideoList';
 import type { PlacementProfile } from '../lib/placement';
 import type { ReviewStats } from '../lib/review';
@@ -84,6 +85,12 @@ export function TodayScreen({
 }: TodayScreenProps) {
     const { t } = useI18n();
     const estimateRef = useRef<EstimateDialogHandle>(null);
+    // M7b: the estimate call is part of the AI processing pipeline; guests get
+    // the shared login prompt and no `/api/estimate-cost` request.
+    const estimate = useCallback((url: string) => {
+        if (!allowAi(isGuest, onRequestLogin)) return;
+        estimateRef.current?.estimate(url);
+    }, [isGuest, onRequestLogin]);
     // One async state per block (IX-01): a failed read is an error with a
     // retry, never the "从第一个视频开始 / 暂无记录" empty branch.
     const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -209,7 +216,7 @@ export function TodayScreen({
         <div className="mt-4 sm:mt-5">
             <StartLearning
                 variant="primary"
-                onEstimate={(url) => estimateRef.current?.estimate(url)}
+                onEstimate={estimate}
                 onSearch={onSearch}
                 onRead={onRead}
             />
@@ -282,7 +289,7 @@ export function TodayScreen({
                         <StartLearning
                             variant="compact"
                             hint={t('today.newContent')}
-                            onEstimate={(url) => estimateRef.current?.estimate(url)}
+                            onEstimate={estimate}
                             onSearch={onSearch}
                             onRead={onRead}
                         />

@@ -7,6 +7,7 @@
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { toast } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import { ModelSelectionModal, type EstimationData } from './ModelSelectionModal';
 import { useModel } from '../lib/model';
@@ -50,6 +51,18 @@ export const EstimateDialog = forwardRef<EstimateDialogHandle, EstimateDialogPro
             try {
                 const response = await apiFetch(`/api/estimate-cost?url=${encodeURIComponent(targetUrl)}`);
                 if (!response.ok) {
+                    // A session anomaly answered 403 `login_required` (M7b):
+                    // show readable copy and stop. Falling through to
+                    // `onStart` would fire the process call despite the gate.
+                    if (response.status === 403) {
+                        const body = (await response.json().catch(() => null)) as { code?: unknown } | null;
+                        if (body?.code === 'login_required') {
+                            if (requestId === requestIdRef.current) {
+                                toast.info(t('errors.loginRequired'));
+                            }
+                            return;
+                        }
+                    }
                     throw new Error('Failed to estimate cost');
                 }
                 const data = (await response.json()) as EstimationData;
@@ -66,7 +79,7 @@ export const EstimateDialog = forwardRef<EstimateDialogHandle, EstimateDialogPro
                 busyRef.current = false;
                 if (requestId === requestIdRef.current) setIsEstimating(false);
             }
-        }, [onStart]);
+        }, [onStart, t]);
 
         useImperativeHandle(ref, () => ({
             estimate: (url: string) => {

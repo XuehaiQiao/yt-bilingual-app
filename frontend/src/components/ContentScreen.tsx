@@ -21,6 +21,7 @@ import {
     Youtube,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { allowAi } from '../lib/aiGate';
 import { blogFeedUrl } from '../lib/blog';
 import { progressPercent } from '../lib/progress';
 import type { HistoryItem } from './ChannelVideoList';
@@ -325,8 +326,11 @@ export function ContentScreen({
     }, [subscriptions, updatesReloadToken]);
 
     const estimate = useCallback((url: string) => {
+        // `/api/estimate-cost` precedes the AI processing pipeline and is also
+        // account-only (M7b): a guest gets the login prompt, not a request.
+        if (!allowAi(isGuest, onRequestLogin)) return;
         estimateRef.current?.estimate(url);
-    }, []);
+    }, [isGuest, onRequestLogin]);
 
     // Discovery needs an account (403 by contract): prompt before entering
     // the screen instead of letting the guest hit an empty search page.

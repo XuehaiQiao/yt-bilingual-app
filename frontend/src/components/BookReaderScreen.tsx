@@ -27,6 +27,7 @@ import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
 import { LanguagePointToggle } from './ui/LanguagePointToggle';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
+import { allowAi } from '../lib/aiGate';
 import { useAuth } from '../lib/auth';
 import { SubHeader } from './ui/SubHeader';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
@@ -48,6 +49,8 @@ interface BookReaderScreenProps {
     /** Parent screen name for the back control's aria label. */
     parentLabel?: string;
     onOpenSeries: (seriesId: string) => void;
+    /** M7b: generation/analysis are account-only; reading stays public. */
+    onRequestLogin?: () => void;
     onWordLookup: (
         word: string,
         context: string,
@@ -65,8 +68,19 @@ const errorKey = (status: number, fallback: TranslationKey): TranslationKey => {
 
 // The backend's on-demand translation has documented failure semantics; map
 // them onto localized reasons instead of leaking the server's Chinese detail.
-const translateErrorKey = (status: number): TranslationKey => {
+const translateErrorKey = (error: unknown): TranslationKey => {
+    const status = error instanceof BooksApiError ? error.status : -1;
+    const code = error instanceof BooksApiError ? error.code : undefined;
+    // Stable M7a/M3b codes first: these are states, not generic transport errors.
+    if (code === 'login_required') return 'books.reader.loginRequired';
+    if (code === 'model_unpriced') return 'errors.modelUnpriced';
+    if (code === 'quota_exceeded') return 'errors.quotaExceeded';
+    if (status === 402) return 'billing.insufficient.noDetails';
     switch (status) {
+        case 401:
+        case 403:
+            // M7a: guests/expired sessions answer 403 `login_required`.
+            return 'books.reader.loginRequired';
         case 400:
             return 'books.reader.translateUnsupported';
         case 404:
@@ -170,6 +184,7 @@ export function BookReaderScreen({
     onClose,
     parentLabel,
     onOpenSeries,
+    onRequestLogin,
     onWordLookup,
 }: BookReaderScreenProps) {
     const { t, language, formatNumber } = useI18n();
@@ -233,6 +248,9 @@ export function BookReaderScreen({
      * the reader renders the new translation immediately without a refetch.
      */
     const runTranslation = useCallback(async () => {
+        // Generate-chapter translation is an AI call (M7b): guests keep reading
+        // the source / cached translation, but this button only opens login.
+        if (!allowAi(!canAnalyze, onRequestLogin)) return;
         const target = chapterNumberRef.current;
         if (target === null || translatingRef.current) return;
         const token = ++translateTokenRef.current;
@@ -283,7 +301,7 @@ export function BookReaderScreen({
             if (token !== translateTokenRef.current) return;
             console.error('Failed to translate book chapter:', error);
             setTranslateError(
-                translateErrorKey(error instanceof BooksApiError ? error.status : -1),
+                translateErrorKey(error),
             );
         } finally {
             if (token === translateTokenRef.current) {
@@ -291,7 +309,7 @@ export function BookReaderScreen({
                 setTranslating(false);
             }
         }
-    }, [bookId, canAnalyze, highlight.enabled, highlight.level, language, showLanguagePoints]);
+    }, [bookId, canAnalyze, highlight.enabled, highlight.level, language, onRequestLogin, showLanguagePoints]);
 
     // Switching chapter (or target language) invalidates the in-flight
     // translation and clears its transient status.
@@ -377,6 +395,9 @@ export function BookReaderScreen({
     // coming back re-evaluates, and a `cached` chapter never calls the model.
     useEffect(() => {
         if (!chapter || chapterLoading) return;
+        // Never auto-translate for guests: opening a chapter is a read, not an
+        // AI entry. The manual button explains the login requirement instead.
+        if (!canAnalyze) return;
         if (chapterLanguageRef.current !== language) return;
         const needsTranslation = chapter.translationStatus !== 'cached'
             || chapter.missingTranslations > 0;
@@ -385,7 +406,7 @@ export function BookReaderScreen({
         if (autoTranslateRef.current === key) return;
         autoTranslateRef.current = key;
         void runTranslation();
-    }, [bookId, chapter, chapterLoading, language, runTranslation]);
+    }, [bookId, canAnalyze, chapter, chapterLoading, language, runTranslation]);
 
     // Restore the paragraph from localStorage once the chapter is painted.
     useEffect(() => {
@@ -819,6 +840,14 @@ export function BookReaderScreen({
                                                         total: formatNumber(chapter.totalChapters),
                                                     })}
                                             </p>
+                                            {!canAnalyze && (
+                                                <p
+                                                    data-testid="book-guest-translate-hint"
+                                                    className="mt-1.5 text-[11px] leading-relaxed text-amber-200/60"
+                                                >
+                                                    {t('books.reader.guestTranslateHint')}
+                                                </p>
+                                            )}
                                         </div>
                                     )}
 

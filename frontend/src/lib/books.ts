@@ -154,22 +154,32 @@ export interface BookChapterTranslation extends BookChapter {
 
 export class BooksApiError extends Error {
     readonly status: number;
+    /** Stable backend `code` (`login_required`, `model_unpriced`, …). */
+    readonly code?: string;
 
-    constructor(message: string, status: number) {
+    constructor(message: string, status: number, code?: string) {
         super(message);
         this.name = 'BooksApiError';
         this.status = status;
+        this.code = code;
     }
 }
 
-async function readError(response: Response): Promise<string> {
+async function readApiError(response: Response): Promise<BooksApiError> {
+    let detail = '';
+    let code: string | undefined;
     try {
-        const data = (await response.json()) as { detail?: unknown };
-        if (typeof data?.detail === 'string' && data.detail.trim()) return data.detail;
+        const data = (await response.json()) as { detail?: unknown; code?: unknown };
+        if (typeof data?.detail === 'string' && data.detail.trim()) detail = data.detail;
+        if (typeof data?.code === 'string') code = data.code;
     } catch {
         // Non-JSON error body: fall through to the status text.
     }
-    return response.statusText || `HTTP ${response.status}`;
+    return new BooksApiError(
+        detail || response.statusText || `HTTP ${response.status}`,
+        response.status,
+        code,
+    );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -304,7 +314,7 @@ function asIndex(value: unknown): BooksIndex | null {
 
 export async function fetchBooksIndex(signal?: AbortSignal): Promise<BooksIndex> {
     const response = await apiFetch('/api/books', signal ? { signal } : undefined);
-    if (!response.ok) throw new BooksApiError(await readError(response), response.status);
+    if (!response.ok) throw await readApiError(response);
     const payload = asIndex(await response.json());
     if (!payload) throw new BooksApiError('公版书数据格式不正确', 0);
     return payload;
@@ -312,7 +322,7 @@ export async function fetchBooksIndex(signal?: AbortSignal): Promise<BooksIndex>
 
 export async function fetchBook(bookId: string): Promise<BookDetail> {
     const response = await apiFetch(`/api/books/${encodeURIComponent(bookId)}`);
-    if (!response.ok) throw new BooksApiError(await readError(response), response.status);
+    if (!response.ok) throw await readApiError(response);
     const data = (await response.json()) as unknown;
     if (!isRecord(data)) throw new BooksApiError('公版书数据格式不正确', 0);
     const summary = asBookSummary(data);
@@ -445,7 +455,7 @@ export async function fetchBookChapter(
     const response = await apiFetch(`/api/books/${encodeURIComponent(bookId)}/chapters/${n}${query}`, {
         cache: 'no-store',
     });
-    if (!response.ok) throw new BooksApiError(await readError(response), response.status);
+    if (!response.ok) throw await readApiError(response);
     return asBookChapter(await response.json(), n);
 }
 
@@ -470,7 +480,7 @@ export async function translateBookChapter(
             cache: 'no-store',
         },
     );
-    if (!response.ok) throw new BooksApiError(await readError(response), response.status);
+    if (!response.ok) throw await readApiError(response);
     const data = (await response.json()) as unknown;
     const chapter = asBookChapter(data, n);
     const record = isRecord(data) ? data : {};

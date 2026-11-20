@@ -196,7 +196,9 @@ export function isEpubFile(file: Pick<File, 'name' | 'type'>): boolean {
 }
 
 function localEpubCodeFromStatus(status: number, detail: string): LocalEpubErrorCode {
-    if (status === 401) return 'unauthorized';
+    // M7a: account-only entry points answer 403 `login_required` (401 is
+    // reserved for a genuinely missing session). Both mean "go log in".
+    if (status === 401 || status === 403) return 'unauthorized';
     if (status === 413) return 'tooLarge';
     if (status === 415) return 'notEpub';
     if (status === 429) return 'rateLimited';

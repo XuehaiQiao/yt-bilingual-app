@@ -12,10 +12,11 @@ import { ReadingHighlightToggle } from './ReadingHighlight';
 import { LanguagePointToggle } from './ui/LanguagePointToggle';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
-import { processLocalVideo, type LocalVideoProcessed } from '../lib/localVideo';
+import { allowAi } from '../lib/aiGate';
+import { LocalVideoApiError, processLocalVideo, type LocalVideoProcessed } from '../lib/localVideo';
 import { TranscriptView } from './TranscriptView';
 import type { LocalSubtitleFileError, LocalSubtitleFileResult, LocalTranscriptBlock } from '../lib/localMedia';
-import { toast } from '../lib/toast';
+import { describeApiError, toast } from '../lib/toast';
 
 interface LocalVideoLearningProps {
     videoUrl: string;
@@ -38,6 +39,10 @@ interface LocalVideoLearningProps {
     onPersist?: (seconds: number) => void;
     /** Real duration once metadata arrives (persisted for progress display). */
     onMetadata?: (duration: number) => void;
+    /** M7b: guests may play local video, but the AI translation/analysis button is account-only. */
+    isGuest: boolean;
+    /** Existing app auth overlay entry (never a second auth surface). */
+    onRequestLogin?: () => void;
 }
 
 export function LocalVideoLearning({
@@ -55,6 +60,8 @@ export function LocalVideoLearning({
     onProgress,
     onPersist,
     onMetadata,
+    isGuest,
+    onRequestLogin,
 }: LocalVideoLearningProps) {
     const { t } = useI18n();
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -123,6 +130,9 @@ export function LocalVideoLearning({
     }, [processed]);
     const handleAnalyze = async () => {
         if (processing || blocks.length === 0) return;
+        // AI translation + language points are account-only (M7b): prompt first
+        // so a guest never reaches `/api/local-video/process`.
+        if (!allowAi(isGuest, onRequestLogin)) return;
         const epoch = analysisEpoch.current;
         setProcessing(true);
         setProcessError(null);
@@ -131,7 +141,15 @@ export function LocalVideoLearning({
             if (epoch === analysisEpoch.current) setProcessed(result);
         } catch (error) {
             if (epoch === analysisEpoch.current) {
-                setProcessError(error instanceof Error ? error.message : t('localVideo.analysisFailed'));
+                // A logged-in 403 (session anomaly) still shows readable copy;
+                // it never triggers the global sign-out (only 401 does).
+                setProcessError(
+                    error instanceof LocalVideoApiError || error instanceof TypeError
+                        ? await describeApiError(error)
+                        : error instanceof Error
+                            ? error.message
+                            : t('localVideo.analysisFailed'),
+                );
             }
         } finally {
             setProcessing(false);
@@ -432,11 +450,13 @@ export function LocalVideoLearning({
                             onChange={highlight.setEnabled}
                             levelLabel={highlight.levelLabel}
                         />
-                        <LanguagePointToggle
-                            enabled={showLanguagePoints}
-                            onChange={setShowLanguagePoints}
-                            testId="local-video-language-points-toggle"
-                        />
+                        {!isGuest && (
+                            <LanguagePointToggle
+                                enabled={showLanguagePoints}
+                                onChange={setShowLanguagePoints}
+                                testId="local-video-language-points-toggle"
+                            />
+                        )}
                         <span className="text-xs font-medium text-zinc-500">{t('transcript.translationLabel')}</span>
                         <div className="inline-flex rounded-lg border border-white/5 bg-zinc-800/80 p-0.5">
                             {(['all', 'hidden'] as const).map((mode) => (

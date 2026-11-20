@@ -21,6 +21,24 @@ export interface LocalVideoProcessed {
     analysisError: string | null;
 }
 
+/**
+ * Failed `/api/local-video/process` call. Carries the HTTP status and stable
+ * backend `code` so the UI can map `login_required` / `model_unpriced` /
+ * `insufficient_balance` / `quota_exceeded` to localized copy instead of
+ * leaking the backend's Chinese detail.
+ */
+export class LocalVideoApiError extends Error {
+    readonly status: number;
+    readonly code?: string;
+
+    constructor(message: string, status: number, code?: string) {
+        super(message);
+        this.name = 'LocalVideoApiError';
+        this.status = status;
+        this.code = code;
+    }
+}
+
 export async function processLocalVideo(
     blocks: LocalTranscriptBlock[],
     level: string,
@@ -43,13 +61,19 @@ export async function processLocalVideo(
     });
     if (!response.ok) {
         let detail = '';
+        let code: string | undefined;
         try {
-            const payload = await response.json() as { detail?: unknown };
+            const payload = await response.json() as { detail?: unknown; code?: unknown };
             detail = typeof payload.detail === 'string' ? payload.detail : '';
+            code = typeof payload.code === 'string' ? payload.code : undefined;
         } catch {
             // Keep the status fallback.
         }
-        throw new Error(detail || `HTTP ${response.status}`);
+        throw new LocalVideoApiError(
+            detail || `HTTP ${response.status}`,
+            response.status,
+            code,
+        );
     }
     const data = await response.json() as Partial<LocalVideoProcessed>;
     if (!Array.isArray(data.blocks)) throw new Error('invalid local video response');

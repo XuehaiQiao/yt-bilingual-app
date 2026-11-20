@@ -21,6 +21,8 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
+import { useAuth } from '../lib/auth';
+import { allowAi } from '../lib/aiGate';
 import type { TranslationKey } from '../i18n';
 import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
@@ -56,7 +58,7 @@ interface ImportedBookReaderScreenProps {
 
 const errorKey = (status: number, fallback: TranslationKey): TranslationKey => {
     if (status === 0) return 'importedBooks.reader.network';
-    if (status === 401) return 'importedBooks.reader.loginRequired';
+    if (status === 401 || status === 403) return 'importedBooks.reader.loginRequired';
     if (status === 404) return 'importedBooks.reader.notFound';
     return fallback;
 };
@@ -129,6 +131,8 @@ export function ImportedBookReaderScreen({
     onRequestLogin,
 }: ImportedBookReaderScreenProps) {
     const { t, formatNumber } = useI18n();
+    const { status } = useAuth();
+    const canTranslate = status === 'authenticated';
     const [detail, setDetail] = useState<ImportedBookDetail | null>(null);
     const [detailLoading, setDetailLoading] = useState(true);
     const [detailError, setDetailError] = useState<TranslationKey | null>(null);
@@ -346,6 +350,8 @@ export function ImportedBookReaderScreen({
 
     const handleTranslate = async () => {
         if (!chapter || translating) return;
+        // Manual chapter translation is the only AI entry of this reader (M7b).
+        if (!allowAi(!canTranslate, onRequestLogin)) return;
         setTranslating(true);
         setTranslateError(null);
         setTranslateNotice(null);
@@ -360,7 +366,13 @@ export function ImportedBookReaderScreen({
             setChapterLoading(true);
             setChapterRetry((value) => value + 1);
         } catch (error) {
-            if (error instanceof ImportedBooksApiError && error.status === 401) {
+            if (
+                error instanceof ImportedBooksApiError
+                && (error.status === 401 || error.status === 403)
+            ) {
+                // Readable copy, never a silent no-op: a logged-in session can
+                // also receive 403 login_required (M7a) without being signed out.
+                setTranslateError(t('errors.loginRequired'));
                 onRequestLogin();
                 return;
             }

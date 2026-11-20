@@ -156,7 +156,9 @@ export function BookImportDialog({
     );
 
     const handleFailure = (failure: unknown) => {
-        if (failure instanceof ImportedBooksApiError && failure.status === 401) {
+        if (failure instanceof ImportedBooksApiError
+            && (failure.status === 401 || failure.status === 403)) {
+            if (failure.status === 403) toast.info(t('errors.loginRequired'));
             onClose();
             onRequestLogin();
             return;
@@ -226,7 +228,7 @@ export function BookImportDialog({
             if (controller.signal.aborted) return;
             if (failure instanceof LocalEpubError && failure.code === 'cancelled') return;
             if (
-                (failure instanceof LocalEpubError && failure.status === 401) ||
+                (failure instanceof LocalEpubError && (failure.status === 401 || failure.status === 403)) ||
                 (failure instanceof LocalEpubError && failure.code === 'unauthorized')
             ) {
                 onClose();
@@ -306,7 +308,7 @@ export function BookImportDialog({
             if (controller.signal.aborted) return;
             if (failure instanceof LocalEpubError && failure.code === 'cancelled') return;
             if (
-                (failure instanceof LocalEpubError && failure.status === 401) ||
+                (failure instanceof LocalEpubError && (failure.status === 401 || failure.status === 403)) ||
                 (failure instanceof LocalEpubError && failure.code === 'unauthorized')
             ) {
                 onClose();

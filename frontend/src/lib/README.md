@@ -5,6 +5,7 @@
 | 模块 | 职责 |
 |---|---|
 | `api.ts` | `API_BASE`（`VITE_API_BASE` 可覆盖）与 `apiFetch`（自动带 `X-API-Key`、`credentials: include`、按端点注入 `targetLang`；非 auth 端点 401 广播给认证层） |
+| `aiGate.ts` | M7b 游客 AI 门禁：`allowAi(blocked, onRequestLogin)` 统一判定；游客直接打开现有登录浮层（无登录入口时退回可读 toast），调用方据此在发请求前返回。仅登录用户可触发估价/处理/查词/翻译/分析，`403 login_required` 不登出 |
 | `auth.tsx` | 认证状态：`AuthProvider`/`useAuth`（含 `isAdmin`，来自 `/api/auth/me`）、启动 `GET /api/auth/me`、login/signup（注册带用户名与可选邀请码）/logout、`clearSession`（删除申请成功后仅清本地态，不再请求 logout）、`refreshSession`（取消删除后刷新 `user.status`）、`updateUsername`（`PATCH /api/user/profile`）、`fetchRegistrationConfig`（`GET /api/auth/registration`）、`AuthRequestError`（保留 HTTP 状态与稳定 `code`）、全局 401 回登录页 |
 | `username.ts` | 显示名规则（specs/023）：2–24 个字符、中文/英文/数字/下划线/连字符、首尾不能空白；`usernameProblem`（返回首个不满足的 i18n key）、`displayUsername`（无用户名回落邮箱前缀）、`usernameInitial`（头像首字母）。与后端 `account.validate_username` 保持同步 |
 | `transcript.ts` | 字幕核心逻辑：`findActiveIndex`（当前句判定，含 0.8s 前瞻）、SSE 流解析（`consumeSseStream`）、`[未翻译]` 标记判定、译文显示模式（全显/当前句/隐藏）持久化 |

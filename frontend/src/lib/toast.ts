@@ -121,7 +121,40 @@ declare global {
 const API_ERROR_KEYS: Record<string, TranslationKey> = {
     // Account in the 7-day deletion cooldown: business APIs answer 403.
     account_pending_deletion: 'errors.accountPendingDeletion',
+    // M7a account-only AI gate: business AI endpoints answer 403 (never 401, so
+    // a guest/anomalous session is never signed out). Readable, actionable copy.
+    login_required: 'errors.loginRequired',
+    // A model without a price row cannot be billed; only an admin can fix it.
+    model_unpriced: 'errors.modelUnpriced',
+    // Daily AI quota (429). 402 keeps its own amount-based copy.
+    quota_exceeded: 'errors.quotaExceeded',
 };
+
+interface CodedApiError {
+    status?: number;
+    code?: string;
+}
+
+/** Library errors (local video / books) carry status + stable code too. */
+function asCodedApiError(value: unknown): CodedApiError | null {
+    if (!value || typeof value !== 'object') return null;
+    const record = value as Record<string, unknown>;
+    const status = typeof record.status === 'number' ? record.status : undefined;
+    const code = typeof record.code === 'string' ? record.code : undefined;
+    if (status === undefined && code === undefined) return null;
+    return { status, code };
+}
+
+function messageForCode(code: string | undefined, status: number | undefined): string | null {
+    if (code) {
+        const key = API_ERROR_KEYS[code];
+        if (key) return t(key);
+        if (code === 'insufficient_balance') return t('billing.insufficient.noDetails');
+    }
+    if (status === 402) return t('billing.insufficient.noDetails');
+    if (status === 429) return t('errors.tooManyRequests');
+    return null;
+}
 
 /** Extract a human-readable message from a fetch Response / Error. */
 export async function describeApiError(resOrErr: Response | unknown): Promise<string> {
@@ -155,6 +188,15 @@ export async function describeApiError(resOrErr: Response | unknown): Promise<st
         if (resOrErr.status === 402) return t('billing.insufficient.noDetails');
         if (resOrErr.status === 429) return t('errors.tooManyRequests');
         return t('errors.httpStatus', { status: resOrErr.status });
+    }
+    // Error instances thrown by API clients (localVideo, books, …) keep the
+    // status/code, so billing/auth/quota states still get localized copy.
+    const coded = asCodedApiError(resOrErr);
+    if (coded) {
+        const mapped = messageForCode(coded.code, coded.status);
+        if (mapped) return mapped;
+        if (resOrErr instanceof Error && resOrErr.message) return resOrErr.message;
+        return t('errors.httpStatus', { status: coded.status ?? 0 });
     }
     if (resOrErr instanceof TypeError) {
         // fetch network-level failure
