@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Download } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
-import { useInstallPrompt, useOnlineStatus } from '../lib/pwa';
+import { canOfferInstall, useInstallPrompt, useOnlineStatus } from '../lib/pwa';
 import { Dialog } from './ui/Dialog';
 
 /**
@@ -15,14 +15,19 @@ import { Dialog } from './ui/Dialog';
  * offers no install path (Firefox desktop, in-app browsers, …). Home and the
  * auth screen place it in the normal document flow — never over a card, which
  * would make part of the page unclickable on a 375px phone.
+ *
+ * It is also hidden until the third recorded page load: the install ask is
+ * useful once the learner has actually come back (report 1.3.3). The count is
+ * written once per page load in `main.tsx`.
  */
 export function PwaInstallButton({ wrapperClassName = '' }: { wrapperClassName?: string }) {
   const { t } = useI18n();
   const online = useOnlineStatus();
   const { canInstall, isIos, isStandalone, promptInstall } = useInstallPrompt();
   const [showIosHelp, setShowIosHelp] = useState(false);
+  const [installEligible] = useState(() => canOfferInstall());
 
-  if (isStandalone || !online) return null;
+  if (!installEligible || isStandalone || !online) return null;
   if (!canInstall && !isIos) return null;
 
   const handleClick = async () => {

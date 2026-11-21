@@ -314,6 +314,10 @@ const TranscriptBlockInner: React.FC<TranscriptBlockProps> = ({ start, enText, z
                     </div>
 
                     <button
+                        data-testid="favorite-toggle"
+                        aria-label={isFavorited ? t('dictionary.removeFavorite') : t('dictionary.addFavorite')}
+                        aria-pressed={Boolean(isFavorited)}
+                        title={isFavorited ? t('dictionary.removeFavorite') : t('dictionary.addFavorite')}
                         onClick={(e) => {
                             e.stopPropagation();
                             onToggleFavorite?.(e);

@@ -216,6 +216,8 @@ export function TodayScreen({
         <div className="mt-4 sm:mt-5">
             <StartLearning
                 variant="primary"
+                isGuest={isGuest}
+                onRequestLogin={onRequestLogin}
                 onEstimate={estimate}
                 onSearch={onSearch}
                 onRead={onRead}
@@ -289,6 +291,8 @@ export function TodayScreen({
                         <StartLearning
                             variant="compact"
                             hint={t('today.newContent')}
+                            isGuest={isGuest}
+                            onRequestLogin={onRequestLogin}
                             onEstimate={estimate}
                             onSearch={onSearch}
                             onRead={onRead}

@@ -117,7 +117,7 @@ export const ShowBrowser: React.FC<ShowBrowserProps> = ({ onSelectEpisode, isLoa
                             ariaLabel={showTitle(show)}
                             onClick={() => handleShowSelect(show)}
                             visual={show.thumbnail
-                                ? <img src={show.thumbnail} alt={show.title} className="h-full w-full object-cover" />
+                                ? <img src={show.thumbnail} alt={show.title} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                                 : <Tv className="h-8 w-8 text-zinc-600" aria-hidden="true" />}
                             title={showTitle(show)}
                             subtitle={show.title}

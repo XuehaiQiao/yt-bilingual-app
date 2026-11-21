@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X, Volume2, Star, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Volume2, Star, Loader2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiFetch } from '../lib/api';
 import { loadModel } from '../lib/settings';
@@ -100,6 +100,10 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
     const [definition, setDefinition] = useState<WordDefinition | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showAllSenses, setShowAllSenses] = useState(false);
+    // Report 1.2.3: a failed lookup must offer one action instead of a dead
+    // end. Bumping this re-runs the same request for the same word/context.
+    const [lookupAttempt, setLookupAttempt] = useState(0);
+    const [retrying, setRetrying] = useState(false);
     // Pointer-dwell state for hover switching. `hoverKeyRef` is the word (or
     // empty area) the pointer is currently over; the timer only fires once the
     // pointer has stayed on the same new word for the full debounce window.
@@ -120,13 +124,18 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
                 });
                 if (!res.ok) throw new Error(await describeApiError(res));
                 const data = await res.json();
+                // A local-dictionary/cache hit arrives as a normal success
+                // payload; keep it exactly as the server sent it (no invented
+                // browser dictionary fallback).
                 if (!cancelled) setDefinition(data);
             } catch (e) {
                 if (!cancelled) setError(await describeApiError(e));
+            } finally {
+                if (!cancelled) setRetrying(false);
             }
         })();
         return () => { cancelled = true; };
-    }, [word, context]);
+    }, [word, context, lookupAttempt]);
 
     const clearHoverTimer = useCallback(() => {
         if (hoverTimerRef.current != null) {
@@ -267,7 +276,10 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
                         </button>
                         {definition && (
                             <button
+                                data-testid="word-popover-favorite"
                                 onClick={() => onToggleFavorite(definition)}
+                                aria-label={isFavorited ? t('dictionary.removeFavorite') : t('dictionary.addFavorite')}
+                                aria-pressed={isFavorited}
                                 className={`p-1.5 rounded-lg transition-colors hover:bg-white/5 ${isFavorited ? 'text-amber-400' : 'text-zinc-500 hover:text-amber-400'}`}
                                 title={isFavorited ? t('dictionary.removeFavorite') : t('dictionary.addFavorite')}
                             >
@@ -286,7 +298,27 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
                     </div>
                 )}
 
-                {error && <p className="py-3 text-sm text-red-400">{error}</p>}
+                {error && (
+                    <div data-testid="word-popover-error" className="py-2 space-y-2">
+                        <p role="alert" className="text-sm leading-relaxed text-red-400">{error}</p>
+                        <button
+                            type="button"
+                            data-testid="word-popover-retry"
+                            disabled={retrying}
+                            aria-busy={retrying}
+                            onClick={() => {
+                                setRetrying(true);
+                                setLookupAttempt(attempt => attempt + 1);
+                            }}
+                            className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg bg-zinc-800/80 hover:bg-zinc-700/80 border border-white/5 text-xs font-medium text-zinc-200 transition-colors disabled:opacity-60 disabled:cursor-wait"
+                        >
+                            {retrying
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <RefreshCw className="w-3.5 h-3.5" />}
+                            {t('common.retry')}
+                        </button>
+                    </div>
+                )}
 
                 {definition && (
                     <div className="space-y-2 mt-1">

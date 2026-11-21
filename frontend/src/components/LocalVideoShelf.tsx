@@ -146,6 +146,8 @@ export function LocalVideoShelf({ revision, onOpen }: LocalVideoShelfProps) {
                                                         src={record.coverDataUrl}
                                                         alt=""
                                                         draggable={false}
+                                                        loading="lazy"
+                                                        decoding="async"
                                                         data-testid={`local-video-cover-${record.id}`}
                                                         className="absolute inset-0 h-full w-full object-cover"
                                                     />

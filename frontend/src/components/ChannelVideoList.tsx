@@ -105,6 +105,8 @@ export const ChannelVideoList: React.FC<ChannelVideoListProps> = ({ isOpen, onCl
                                     <img
                                         src={video.metadata.thumbnail}
                                         alt={video.metadata.title}
+                                        loading="lazy"
+                                        decoding="async"
                                         className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-[1.04] transition-[transform,opacity] duration-300 ease-apple"
                                     />
                                 ) : (

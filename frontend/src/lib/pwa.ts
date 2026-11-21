@@ -7,6 +7,46 @@
 // and only falls back to its cache when offline.
 import { useCallback, useEffect, useState } from 'react';
 
+// Install entry timing: the browser install button is useful only after the
+// learner has come back a couple of times (report 1.3.3). Counting happens
+// once per page load, not per rendered route, so SPA navigation cannot inflate
+// it. localStorage is also what makes "third visit" survive a restart.
+export const VISIT_COUNT_KEY = 'yt_bilingual_visit_count';
+export const INSTALL_MIN_VISITS = 3;
+
+function readVisitCount(): number {
+  try {
+    const raw = window.localStorage.getItem(VISIT_COUNT_KEY);
+    const parsed = raw === null ? 0 : Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  } catch {
+    // Private mode / storage disabled: no history to count, so no install
+    // prompt (the rest of the app keeps working).
+    return 0;
+  }
+}
+
+/** Count one page load and return the new total. */
+export function recordAppVisit(): number {
+  const next = readVisitCount() + 1;
+  try {
+    window.localStorage.setItem(VISIT_COUNT_KEY, String(next));
+  } catch {
+    // Storage unavailable: return the in-memory count for this load only.
+  }
+  return next;
+}
+
+/** Total page loads recorded on this browser (0 when storage is blocked). */
+export function getAppVisitCount(): number {
+  return readVisitCount();
+}
+
+/** Install entry is offered from the third recorded visit onwards. */
+export function canOfferInstall(): boolean {
+  return getAppVisitCount() >= INSTALL_MIN_VISITS;
+}
+
 export interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
   readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;

@@ -93,7 +93,7 @@ export const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
                         <div className="flex gap-4">
                             <div className="w-32 aspect-video bg-zinc-900 rounded-lg overflow-hidden shrink-0 border border-white/5">
                                 {estimationData.metadata?.thumbnail ? (
-                                    <img src={estimationData.metadata.thumbnail} className="w-full h-full object-cover" alt="thumbnail" />
+                                    <img src={estimationData.metadata.thumbnail} loading="lazy" decoding="async" className="w-full h-full object-cover" alt="thumbnail" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-xs text-zinc-500">{t('common.noThumbnail')}</div>
                                 )}

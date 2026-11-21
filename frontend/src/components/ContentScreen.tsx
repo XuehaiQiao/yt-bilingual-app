@@ -364,6 +364,8 @@ export function ContentScreen({
                     <StartLearning
                         variant="primary"
                         disabled={busy}
+                        isGuest={isGuest}
+                        onRequestLogin={onRequestLogin}
                         onEstimate={estimate}
                         onSearch={onSearch}
                         onRead={onRead}
@@ -432,7 +434,7 @@ export function ContentScreen({
                                 leading={
                                     <span className="relative block w-20 aspect-video rounded-lg overflow-hidden bg-zinc-800">
                                         {latestHistory.metadata?.thumbnail && (
-                                            <img src={latestHistory.metadata.thumbnail} alt="" className="w-full h-full object-cover" />
+                                            <img src={latestHistory.metadata.thumbnail} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                         )}
                                         {latestProgress !== null && (
                                             <span className="absolute bottom-0 inset-x-0 h-1 bg-black/60">
@@ -729,7 +731,7 @@ export function ContentScreen({
                                                 onClick={() => estimate(`https://youtube.com/watch?v=${update.videoId}`)}
                                                 leading={
                                                     <span className="relative block w-24 aspect-video overflow-hidden rounded-lg bg-zinc-800">
-                                                        {update.thumbnail && <img src={update.thumbnail} className="w-full h-full object-cover" alt="" />}
+                                                        {update.thumbnail && <img src={update.thumbnail} loading="lazy" decoding="async" className="w-full h-full object-cover" alt="" />}
                                                     </span>
                                                 }
                                                 title={update.title}

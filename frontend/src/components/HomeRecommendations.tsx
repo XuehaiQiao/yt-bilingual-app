@@ -190,6 +190,7 @@ export function HomeRecommendations({ onSelect }: HomeRecommendationsProps) {
                                             src={item.thumbnail}
                                             alt=""
                                             loading="lazy"
+                                            decoding="async"
                                             className="relative w-full h-full object-cover"
                                             onError={(event) => {
                                                 event.currentTarget.style.display = 'none';

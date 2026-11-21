@@ -9,7 +9,7 @@
 // Only the presentation differs between the two variants; the mode, submit
 // and keyboard behaviour are shared.
 import React, { useState } from 'react';
-import { ArrowRight, BookOpen, ChevronDown, Link2, Loader2, Search } from 'lucide-react';
+import { ArrowRight, BookOpen, ChevronDown, Link2, Loader2, Lock, Search } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 
@@ -29,6 +29,10 @@ interface StartLearningProps {
   hint?: string;
   /** Initial mode; YouTube is the documented default. */
   defaultMode?: StartMode;
+  /** Guest pre-hint: tell visitors AI needs an account *before* they press it. */
+  isGuest?: boolean;
+  /** Opens the app's existing login overlay from that pre-hint. */
+  onRequestLogin?: () => void;
   /** Secondary entries rendered under the primary input (发现 / 读文章). */
   children?: React.ReactNode;
 }
@@ -75,6 +79,8 @@ export function StartLearning({
   disabled = false,
   hint,
   defaultMode = 'youtube',
+  isGuest = false,
+  onRequestLogin,
   children,
 }: StartLearningProps) {
   const { t } = useI18n();
@@ -119,6 +125,32 @@ export function StartLearning({
     </div>
   );
 
+  // Report 1.1.2: a guest should learn that AI needs an account before typing
+  // and pressing the button — not after the request is refused. This is a
+  // notice, not a gate: the input stays usable and public/cached content is
+  // still browsable. Clicking the entry opens the existing login overlay.
+  const guestNotice = isGuest ? (
+    <div
+      data-testid="guest-ai-notice"
+      role="note"
+      className="mb-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200/90"
+    >
+      <Lock className="w-3.5 h-3.5 shrink-0 text-amber-300" aria-hidden="true" />
+      <span className="min-w-0 flex-1">{t('guest.aiEntryNotice')}</span>
+      {onRequestLogin && (
+        <button
+          type="button"
+          data-testid="guest-ai-login"
+          onClick={onRequestLogin}
+          className="inline-flex shrink-0 items-center gap-1 h-6 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-[11px] font-medium text-amber-100 transition-colors"
+        >
+          {t('guest.aiEntryLogin')}
+          <ArrowRight className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  ) : null;
+
   const field = (extraClassName: string) =>
     isRead ? (
       <textarea
@@ -156,6 +188,7 @@ export function StartLearning({
       <div className="rounded-2xl border border-white/5 bg-zinc-900/40 p-3 sm:p-3.5">
         {hint && <p className="mb-2 text-[11px] font-medium text-zinc-500">{hint}</p>}
         {modePicker}
+        {guestNotice}
         <form onSubmit={submit} className="flex items-start gap-2">
           <span className="mt-2 text-zinc-500 shrink-0">{meta.icon}</span>
           {field('')}
@@ -184,6 +217,7 @@ export function StartLearning({
       </div>
       <div className="mt-4 w-full">
         {modePicker}
+        {guestNotice}
         <form onSubmit={submit}>
           <div
             className={`flex gap-2 bg-zinc-900/60 p-1.5 pl-4 sm:pl-5 border border-white/5 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/15 transition-[border-color,box-shadow] duration-200 ease-apple ${

@@ -90,6 +90,8 @@ function LocalPreviewCover({ src }: { src: string }) {
             data-testid="local-epub-cover"
             src={src}
             alt=""
+            loading="lazy"
+            decoding="async"
             onError={() => setFailed(true)}
             className="h-full w-full object-cover"
         />

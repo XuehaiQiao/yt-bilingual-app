@@ -38,6 +38,7 @@ function ShelfCover({ src }: { src: string }) {
             src={src}
             alt=""
             loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             onError={() => setFailed(true)}
             className="h-full w-full object-cover"

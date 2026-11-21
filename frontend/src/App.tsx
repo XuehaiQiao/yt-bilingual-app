@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AuthScreen } from './components/AuthScreen';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { Dialog } from './components/ui/Dialog';
+import { ErrorPanel } from './components/ui/StateView';
 import { BackButton } from './components/ui/BackButton';
 import { AuthProvider, useAuth } from './lib/auth';
 import { allowAi } from './lib/aiGate';
@@ -148,6 +149,114 @@ interface TranscriptItem {
 // tick is treated as a user drag (CEFR M2 #7 video_replay).
 const SEEK_SETTLE_MS = 2500;
 
+// Bounded automatic reconnect for the SSE subtitle stream (report 1.2.2).
+// Only a stream that already recorded a jobId + cursor can reconnect: the
+// backend `POST /api/process-video-stream {jobId, from}` resumes the same job
+// from its cache, so retrying never starts a second job and never re-charges
+// already translated blocks. 3 attempts, 1s → 2s → 4s.
+const MAX_STREAM_RECONNECTS = 3;
+const STREAM_RECONNECT_BASE_MS = 1000;
+
+/**
+ * A subtitle-stream failure carrying the two decisions the reconnect loop
+ * needs: whether another attempt can help, and (for the recovery panel) which
+ * readable state the user is in. Internal only; never rendered raw.
+ */
+class StreamProcessError extends Error {
+  readonly status?: number;
+  readonly code?: string;
+  readonly retryable: boolean;
+  /** Short, user-facing reason (e.g. "该视频无字幕") when the backend sent one. */
+  readonly userDetail?: string;
+
+  constructor(
+    message: string,
+    options: { status?: number; code?: string; retryable: boolean; userDetail?: string },
+  ) {
+    super(message);
+    this.name = 'StreamProcessError';
+    this.status = options.status;
+    this.code = options.code;
+    this.retryable = options.retryable;
+    this.userDetail = options.userDetail;
+  }
+}
+
+/**
+ * Keep the readable half of a backend failure detail, drop the technical half.
+ * The backend's SSE copy sometimes appends an ASR exception, a `pip install`
+ * hint or another backend-only instruction; the recovery panel must not show
+ * those. Returns null when nothing user-safe remains.
+ */
+function sanitizeProcessFailureDetail(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  let text = raw.trim();
+  if (!text) return null;
+  // "… 提示：安装本地转写组件（pip install …）" — the reason is before 提示.
+  text = text.split(/提示[：:]/)[0].trim();
+  // Parenthesized install/backend/exception hints are not user copy.
+  text = text.replace(/[（(][^）)]*(?:backend|pip|环境|安装|faster-whisper|whisper|traceback|exception)[^）)]*[）)]/gi, '').trim();
+  // "该视频无字幕，本地转写也失败了:<exception>" — keep the readable head.
+  const colon = text.search(/[:：]/);
+  if (colon > 0) {
+    const head = text.slice(0, colon).trim();
+    const tail = text.slice(colon + 1).trim();
+    if (tail.length > 24 || /(?:error|exception|traceback|\.py\b|https?:|http\s*\d|status\s*\d)/i.test(tail)) {
+      text = head;
+    }
+  }
+  text = text.replace(/\s+/g, ' ').trim();
+  if (!text) return null;
+  // Never surface raw transport/status/stack strings.
+  if (/(?:traceback|exception|https?:\/\/|\.py\b|status\s*\d{3}|http\s*\d{3})/i.test(text)) return null;
+  return text.length > 140 ? `${text.slice(0, 137).trimEnd()}…` : text;
+}
+
+function readableProcessFailureDetail(error: unknown): string | null {
+  return error instanceof StreamProcessError ? (error.userDetail ?? null) : null;
+}
+
+/**
+ * 5xx / timeout / conflict are transient. Every other 4xx is a parameter,
+ * content, auth or billing state and must not be retried (402/403/429 are
+ * explicitly in that set).
+ */
+function isRetryableStreamStatus(status: number): boolean {
+  if (status >= 500) return true;
+  return status === 408 || status === 409 || status === 425;
+}
+
+function isAbortError(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && (error as { name?: unknown }).name === 'AbortError');
+}
+
+function isRetryableStreamError(error: unknown): boolean {
+  if (error instanceof StreamProcessError) return error.retryable;
+  if (isAbortError(error)) return false;
+  // fetch TypeError / a body that closed before `done`: transient.
+  return true;
+}
+
+// These failures already have a dedicated, localized UI (balance banner +
+// toast, login copy, quota copy). They keep that existing treatment instead of
+// opening the generic recovery panel, and none of them is retryable.
+const DEDICATED_AI_FAILURE_CODES = new Set([
+  'insufficient_balance',
+  'login_required',
+  'quota_exceeded',
+  'model_unpriced',
+]);
+
+function isDedicatedAiFailure(error: unknown): boolean {
+  if (!(error instanceof StreamProcessError)) return false;
+  if (error.status === 402 || error.status === 403 || error.status === 429) return true;
+  return typeof error.code === 'string' && DEDICATED_AI_FAILURE_CODES.has(error.code);
+}
+
+function waitForReconnect(ms: number): Promise<void> {
+  return new Promise((resolve) => { window.setTimeout(resolve, ms); });
+}
+
 // Desktop chrome (docs/信息架构-导航重构.md §4.1): immersive task views own the
 // whole width, so the Sidebar and the primary tabs step aside. Panel-style sub
 // views (discover / report / word book) keep the shell so their
@@ -251,6 +360,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     [],
   );
   const [loadingState, setLoadingState] = useState<'processing' | 'loading' | 'asr' | null>(null);
+  // Auto-reconnect status ("第 1/3 次") while the SSE stream is being resumed.
+  const [streamReconnect, setStreamReconnect] = useState<{ attempt: number; max: number } | null>(null);
+  // A processing failure that outlived retries: the recovery panel keeps the
+  // URL so 重试 can resume the same job and 更换内容 can return to the composer.
+  const [processFailure, setProcessFailure] = useState<{
+    url: string;
+    videoId: string;
+    titleKey: TranslationKey;
+    detail?: string;
+  } | null>(null);
   const [transcript, setTranscript] = useState<TranscriptItem[]>([]);
   const [localVideo, setLocalVideo] = useState<{
     videoUrl: string;
@@ -656,6 +775,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     streamAbortRef.current?.abort();
     streamAbortRef.current = null;
     setTranslationProgress(null);
+    // An explicit stop must also stop the reconnect loop; its delay checks
+    // `signal.aborted` and returns without another request.
+    setStreamReconnect(null);
   };
 
 
@@ -921,24 +1043,27 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         // 服务端按内容指纹去重时可能返回另一个已有 id；按 id 去重避免重复卡片。
         return next.filter((fav, index) => next.findIndex(other => other.id === fav.id) === index);
       });
+      // 轻提示 + 图标状态（star fill）双反馈；同一动作 5s 内去重，避免连点刷屏。
+      toast.success(t('vocab.toast.added'), { dedupeKey: 'favorites:added' });
     } catch (err) {
       setFavorites(prev => prev.filter(f => f.id !== optimistic.id));
       toast.error(await describeApiError(err));
     }
-  }, []);
+  }, [t]);
 
   const removeFavoriteOptimistically = useCallback(async (id: string) => {
     const removed = favorites.find(f => f.id === id);
     setFavorites(prev => prev.filter(f => f.id !== id));
     try {
       await removeFavorite(id);
+      toast.success(t('vocab.toast.removed'), { dedupeKey: 'favorites:removed' });
     } catch (err) {
       if (removed) {
         setFavorites(prev => (prev.some(f => f.id === id) ? prev : [...prev, removed]));
       }
       toast.error(await describeApiError(err));
     }
-  }, [favorites]);
+  }, [favorites, t]);
 
   const toggleFavorite = useCallback((draft: FavoriteDraft) => {
     // Guests may sample the app but not save: prompt to log in instead of
@@ -1153,149 +1278,279 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     streamAbortRef.current = controller;
 
     setLoadingState('processing');
+    setStreamReconnect(null);
+    setProcessFailure(null);
     // Capture the target for this stream: late events from the previous
     // language must never be painted into the new-language UI (spec §5.3).
     const requestedTargetLang = getRuntimeTargetLang();
 
+    // `resumeTarget` is the *only* way a retry can continue an existing job:
+    // jobId + the last cursor persisted from `meta`/`batch`. A stream that has
+    // not produced a jobId yet is never auto-retried (there is nothing safe to
+    // resume). `streamJobId` also guards against resuming a stale job from a
+    // previous video in the same tab.
+    let streamJobId: string | null = resume?.jobId ?? null;
+    let resumeTarget: { jobId: string; from: number } | null = resume?.jobId
+      ? { jobId: resume.jobId, from: resume.from ?? 0 }
+      : null;
+    let reconnects = 0;
+
     try {
-      const response = await apiFetch('/api/process-video-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url,
-          model: model || undefined,
-          vocab_level: loadVocabLevel(),
-          // 续传：jobId + 最后收到的 block 游标（后端据此只补未翻译的句子）。
-          ...(resume?.jobId ? { jobId: resume.jobId, from: resume.from ?? 0 } : {}),
-        }),
-        signal: controller.signal,
-      });
-
-      if (!response.ok || !response.body) {
-        throw new Error(await describeApiError(response));
-      }
-
-      await consumeSseStream(response.body, (evt) => {
-        if (typeof evt.data?.targetLang === 'string' && evt.data.targetLang !== requestedTargetLang) {
-          return;
-        }
-        switch (evt.event) {
-          case 'meta': {
-            const blocks = evt.data.blocks || [];
-            setTranscript(blocks);
-            setMetadata(evt.data.metadata || null);
-            setSummary('');
-            setVideoId(evt.data.videoId || id);
-            setCurrentTime(0);
-            setLoadingState(null); // English is visible — drop the overlay
-            // Reused caches are already on disk; a `cached:false` stream waits
-            // for `done` before the quiz entry becomes available.
-            if (evt.data.cached === true) setQuizCacheReady(true);
-            // M1 ⑤：记住 jobId 与游标，刷新/断线后从这里续传（服务端提供
-            // jobId 时才有；纯缓存秒开没有生成任务，不会留下记录）。
-            recordJobMeta(evt.data, {
+      while (true) {
+        try {
+          const response = await apiFetch('/api/process-video-stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
               url,
-              videoId: evt.data.videoId || id,
-              targetLang: requestedTargetLang,
+              model: model || undefined,
+              vocab_level: loadVocabLevel(),
+              // 续传：jobId + 最后收到的 block 游标（后端据此只补未翻译的句子，
+              // 不会重建任务或重复计费）。
+              ...(resumeTarget ? { jobId: resumeTarget.jobId, from: resumeTarget.from } : {}),
+            }),
+            signal: controller.signal,
+          });
+
+          if (!response.ok || !response.body) {
+            // Keep the stable code (e.g. `model_unpriced` on a 503) so a
+            // config/billing failure is not mistaken for a transient 5xx.
+            const body = await response.clone().json().catch(() => null) as {
+              code?: unknown;
+              detail?: unknown;
+            } | null;
+            const code = typeof body?.code === 'string' ? body.code : undefined;
+            const message = await describeApiError(response);
+            const readableContentError = response.status === 400
+              || response.status === 404
+              || response.status === 409
+              || response.status === 410
+              || response.status === 422;
+            throw new StreamProcessError(message, {
+              status: response.status,
+              code,
+              retryable: isRetryableStreamStatus(response.status)
+                && !(code && DEDICATED_AI_FAILURE_CODES.has(code)),
+              // Content/parameter errors carry a user-facing backend reason
+              // (e.g. “该视频没有可用字幕”). 5xx/network copy stays generic.
+              userDetail: readableContentError
+                ? sanitizeProcessFailureDetail(body?.detail) ?? undefined
+                : undefined,
             });
-            const metaCursor = typeof evt.data.cursor === 'number' ? evt.data.cursor : 0;
-            const metaTotal = typeof evt.data.total === 'number' ? evt.data.total : blocks.length;
-            const untranslated = blocks.filter((b: TranscriptItem) => isUntranslated(b.zh_text)).length;
-            setTranslationProgress(
-              untranslated > 0
-                // 续传时从「已翻 N 句」接着显示，进度条不会从中途归零。
-                ? (metaCursor > 0 ? { done: metaCursor, total: metaTotal } : { done: 0, total: untranslated })
-                : null,
-            );
-            if (evt.data.resumed === true) {
-              toast.info(t('jobs.resumedHint', { done: metaCursor, total: metaTotal }));
-            }
-            if (pendingSeekRef.current != null) {
-              const resumeAt = pendingSeekRef.current;
-              pendingSeekRef.current = null;
-              setTimeout(() => setSeekCommand({ time: resumeAt, timestamp: Date.now() }), 1000);
-            }
-            // The URL now points at the learning view (push once).
-            open({
-              kind: 'learn',
-              source: 'youtube',
-              videoId: evt.data.videoId || id,
-            });
-            break;
           }
-          case 'batch': {
-            const byId = new Map<number, TranscriptItem>((evt.data.blocks || []).map((b: TranscriptItem) => [b.id, b]));
-            setTranscript(prev => prev.map(b => byId.get(b.id) ?? b));
-            if (evt.data.progress) setTranslationProgress(prev => ({ ...prev, ...evt.data.progress }));
-            // 批次游标落 sessionStorage：刷新后从这里继续，不重复付费。
-            recordJobProgress(evt.data);
-            break;
-          }
-          case 'stage':
-            if (evt.data.stage === 'asr') {
-              // Pre-meta: still in the loading overlay, switch its copy
-              setLoadingState('asr');
-            } else {
-              setTranslationProgress(prev => prev ? { ...prev, stage: evt.data.stage } : { done: 0, total: 0, stage: evt.data.stage });
+
+          let sawDone = false;
+          await consumeSseStream(response.body, (evt) => {
+            if (typeof evt.data?.targetLang === 'string' && evt.data.targetLang !== requestedTargetLang) {
+              return;
             }
-            break;
-          case 'summary':
-            setSummary(evt.data.summary || '');
-            break;
-          case 'error': {
-            // The stream is already HTTP 200, so billing/quota failures arrive
-            // as a stable `code` in the event. Surface the shortfall banner and
-            // throw readable copy instead of the generic processing failure.
-            const data = evt.data || {};
-            if (data.code === 'insufficient_balance') {
-              notifyInsufficientBalance({
-                balanceMicroUsd: typeof data.balanceMicroUsd === 'number' ? data.balanceMicroUsd : undefined,
-                availableMicroUsd: typeof data.availableMicroUsd === 'number' ? data.availableMicroUsd : undefined,
-                requiredMicroUsd: typeof data.requiredMicroUsd === 'number' ? data.requiredMicroUsd : undefined,
-              });
-              throw new Error(t('billing.insufficient.short', {
-                available: formatMicroUsd(
-                  typeof data.availableMicroUsd === 'number'
-                    ? data.availableMicroUsd
-                    : typeof data.balanceMicroUsd === 'number'
-                      ? data.balanceMicroUsd
-                      : 0,
-                  language,
-                ),
-                required: formatMicroUsd(
-                  typeof data.requiredMicroUsd === 'number' ? data.requiredMicroUsd : 0,
-                  language,
-                ),
-              }));
+            switch (evt.event) {
+              case 'meta': {
+                const blocks = evt.data.blocks || [];
+                // A reconnect replays the cached full transcript. Replacing by
+                // id (never appending) is what keeps resumed blocks unique.
+                setTranscript(blocks);
+                setMetadata(evt.data.metadata || null);
+                setSummary('');
+                setVideoId(evt.data.videoId || id);
+                // An automatic reconnect must not reset the learner's playback
+                // position; a fresh open (or manual resume) keeps the old reset.
+                const autoReconnect = reconnects > 0;
+                if (!autoReconnect) setCurrentTime(0);
+                setLoadingState(null); // English is visible — drop the overlay
+                if (typeof evt.data.jobId === 'string' && evt.data.jobId) {
+                  streamJobId = evt.data.jobId;
+                }
+                // Reused caches are already on disk; a `cached:false` stream
+                // waits for `done` before the quiz entry becomes available.
+                if (evt.data.cached === true) setQuizCacheReady(true);
+                // M1 ⑤：记住 jobId 与游标，刷新/断线后从这里续传（服务端提供
+                // jobId 时才有；纯缓存秒开没有生成任务，不会留下记录）。
+                recordJobMeta(evt.data, {
+                  url,
+                  videoId: evt.data.videoId || id,
+                  targetLang: requestedTargetLang,
+                });
+                const metaCursor = typeof evt.data.cursor === 'number' ? evt.data.cursor : 0;
+                const metaTotal = typeof evt.data.total === 'number' ? evt.data.total : blocks.length;
+                const untranslated = blocks.filter((b: TranscriptItem) => isUntranslated(b.zh_text)).length;
+                setTranslationProgress(
+                  untranslated > 0
+                    // 续传时从「已翻 N 句」接着显示，进度条不会从中途归零。
+                    ? (metaCursor > 0 ? { done: metaCursor, total: metaTotal } : { done: 0, total: untranslated })
+                    : null,
+                );
+                if (evt.data.resumed === true) {
+                  toast.info(t('jobs.resumedHint', { done: metaCursor, total: metaTotal }));
+                }
+                setStreamReconnect(null);
+                if (pendingSeekRef.current != null) {
+                  const resumeAt = pendingSeekRef.current;
+                  pendingSeekRef.current = null;
+                  setTimeout(() => setSeekCommand({ time: resumeAt, timestamp: Date.now() }), 1000);
+                }
+                // The URL now points at the learning view (push once). A
+                // reconnect is already on that URL, so don't push a duplicate.
+                if (!autoReconnect) {
+                  open({
+                    kind: 'learn',
+                    source: 'youtube',
+                    videoId: evt.data.videoId || id,
+                  });
+                }
+                break;
+              }
+              case 'batch': {
+                const byId = new Map<number, TranscriptItem>((evt.data.blocks || []).map((b: TranscriptItem) => [b.id, b]));
+                setTranscript(prev => prev.map(b => byId.get(b.id) ?? b));
+                if (evt.data.progress) setTranslationProgress(prev => ({ ...prev, ...evt.data.progress }));
+                // 批次游标落 sessionStorage：刷新后从这里继续，不重复付费。
+                recordJobProgress(evt.data);
+                break;
+              }
+              case 'stage':
+                if (evt.data.stage === 'asr') {
+                  // Pre-meta: still in the loading overlay, switch its copy
+                  setLoadingState('asr');
+                } else {
+                  setTranslationProgress(prev => prev ? { ...prev, stage: evt.data.stage } : { done: 0, total: 0, stage: evt.data.stage });
+                }
+                break;
+              case 'summary':
+                setSummary(evt.data.summary || '');
+                break;
+              case 'error': {
+                // The stream is already HTTP 200, so billing/quota failures arrive
+                // as a stable `code` in the event. Surface the shortfall banner and
+                // throw readable copy instead of the generic processing failure.
+                const data = evt.data || {};
+                if (data.code === 'insufficient_balance') {
+                  notifyInsufficientBalance({
+                    balanceMicroUsd: typeof data.balanceMicroUsd === 'number' ? data.balanceMicroUsd : undefined,
+                    availableMicroUsd: typeof data.availableMicroUsd === 'number' ? data.availableMicroUsd : undefined,
+                    requiredMicroUsd: typeof data.requiredMicroUsd === 'number' ? data.requiredMicroUsd : undefined,
+                  });
+                  throw new StreamProcessError(t('billing.insufficient.short', {
+                    available: formatMicroUsd(
+                      typeof data.availableMicroUsd === 'number'
+                        ? data.availableMicroUsd
+                        : typeof data.balanceMicroUsd === 'number'
+                          ? data.balanceMicroUsd
+                          : 0,
+                      language,
+                    ),
+                    required: formatMicroUsd(
+                      typeof data.requiredMicroUsd === 'number' ? data.requiredMicroUsd : 0,
+                      language,
+                    ),
+                  }), { code: 'insufficient_balance', retryable: false });
+                }
+                // M7a: the stream is already HTTP 200, so account/quota failures
+                // arrive as stable codes too; map them before the raw detail.
+                const message = data.code === 'login_required'
+                  ? t('errors.loginRequired')
+                  : data.code === 'model_unpriced'
+                    ? t('errors.modelUnpriced')
+                    : data.code === 'quota_exceeded'
+                      ? t('errors.quotaExceeded')
+                      : (data.detail || t('errors.processFailed'));
+                throw new StreamProcessError(message, {
+                  code: typeof data.code === 'string' ? data.code : undefined,
+                  retryable: false,
+                  // Keep “该视频无字幕…” but strip ASR/exception/install tails.
+                  userDetail: sanitizeProcessFailureDetail(data.detail) ?? undefined,
+                });
+              }
+              case 'done':
+                sawDone = true;
+                setTranslationProgress(null);
+                finishJob({ jobId: evt.data.jobId, videoId: evt.data.videoId || id });
+                // Fresh generation persisted its cache by now.
+                setQuizCacheReady(true);
+                break;
             }
-            // M7a: the stream is already HTTP 200, so account/quota failures
-            // arrive as stable codes too; map them before the raw detail.
-            if (data.code === 'login_required') throw new Error(t('errors.loginRequired'));
-            if (data.code === 'model_unpriced') throw new Error(t('errors.modelUnpriced'));
-            if (data.code === 'quota_exceeded') throw new Error(t('errors.quotaExceeded'));
-            throw new Error(data.detail || t('errors.processFailed'));
+          });
+          if (!sawDone) {
+            // The connection closed without the terminal event: this is the
+            // exact interruption the automatic reconnect exists for.
+            throw new StreamProcessError('stream ended before done', { retryable: true });
           }
-          case 'done':
+          setTranslationProgress(null);
+          setStreamReconnect(null);
+          break;
+        } catch (error: any) {
+          // An explicit stop / replacing submit aborts the controller: never
+          // retry, and never pop a recovery panel for a user action.
+          if (controller.signal.aborted || isAbortError(error)) {
             setTranslationProgress(null);
-            finishJob({ jobId: evt.data.jobId, videoId: evt.data.videoId || id });
-            // Fresh generation persisted its cache by now.
-            setQuizCacheReady(true);
-            break;
+            setStreamReconnect(null);
+            return;
+          }
+
+          const pending = loadPendingJob();
+          const canReconnect = Boolean(
+            streamJobId
+            && pending
+            && pending.jobId === streamJobId
+            && pending.videoId === id
+            && Number.isFinite(pending.cursor)
+            && reconnects < MAX_STREAM_RECONNECTS
+            && isRetryableStreamError(error),
+          );
+          if (!canReconnect) {
+            console.error(error);
+            setStreamReconnect(null);
+            setTranslationProgress(null);
+            if (isDedicatedAiFailure(error)) {
+              // Existing billing/auth/quota UX (banner + toast) is the right
+              // recovery path for these; a generic "video failed" panel would
+              // hide the actionable reason. Use the original localized message
+              // (a 429 body may carry the quota split, not just a status).
+              toast.error(error instanceof StreamProcessError
+                ? error.message
+                : await describeApiError(error));
+            } else {
+              setProcessFailure({
+                url,
+                videoId: id,
+                titleKey: 'errors.processFailed',
+                detail: readableProcessFailureDetail(error) ?? undefined,
+              });
+            }
+            return;
+          }
+
+          reconnects += 1;
+          setStreamReconnect({ attempt: reconnects, max: MAX_STREAM_RECONNECTS });
+          await waitForReconnect(STREAM_RECONNECT_BASE_MS * 2 ** (reconnects - 1));
+          if (controller.signal.aborted) {
+            setTranslationProgress(null);
+            setStreamReconnect(null);
+            return;
+          }
+          const latest = loadPendingJob();
+          // The record can disappear while backing off (another tab finished);
+          // stop instead of inventing a resume target.
+          if (!latest || !latest.jobId || latest.videoId !== id || latest.jobId !== streamJobId) {
+            setStreamReconnect(null);
+            setTranslationProgress(null);
+            if (isDedicatedAiFailure(error)) {
+              toast.error(error instanceof StreamProcessError
+                ? error.message
+                : await describeApiError(error));
+            } else {
+              setProcessFailure({
+                url,
+                videoId: id,
+                titleKey: 'errors.processFailed',
+                detail: readableProcessFailureDetail(error) ?? undefined,
+              });
+            }
+            return;
+          }
+          resumeTarget = { jobId: latest.jobId, from: latest.cursor };
         }
-      });
-      setTranslationProgress(null);
-    } catch (error: any) {
-      if (error?.name === 'AbortError') {
-        setTranslationProgress(null);
-        return;
       }
-      console.error(error);
-      toast.error(await describeApiError(error));
-      // 进度已经落盘：告诉用户刷新能接着看，而不是从头再花一次钱。
-      if (loadPendingJob()?.videoId === id) {
-        toast.info(t('jobs.interruptedHint'));
-      }
-      setTranslationProgress(null);
     } finally {
       setLoadingState(null);
     }
@@ -3090,6 +3345,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             </div>
           )}
           <button
+            data-testid="translation-stop"
             onClick={() => {
               cancelTranslationStream();
               toast.info(t('transcript.stopToast'));
@@ -3877,6 +4133,69 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               aria-label={t('common.close')}
               title={t('common.close')}
               className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-blue-300/70 hover:text-blue-100 hover:bg-blue-500/20 transition-colors shrink-0"
+            >
+              ×
+            </button>
+          </div>
+        )}
+        {streamReconnect && (
+          <div
+            data-testid="stream-reconnect-banner"
+            role="status"
+            aria-live="polite"
+            className="flex-none flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-xs text-blue-200"
+          >
+            <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-blue-300" aria-hidden="true" />
+            <span className="min-w-0 flex-1 leading-relaxed">
+              {t('jobs.reconnecting', { attempt: streamReconnect.attempt, max: streamReconnect.max })}
+            </span>
+          </div>
+        )}
+        {processFailure && (
+          <div
+            data-testid="process-failure-banner"
+            className="flex-none flex items-start gap-2 px-3 sm:px-4 py-2 bg-red-500/10 border-b border-red-500/20"
+          >
+            <ErrorPanel
+              level="inline"
+              title={t(processFailure.titleKey)}
+              detail={processFailure.detail
+                ? `${processFailure.detail} ${t('jobs.failedPanelKeep')}`
+                : t('jobs.failedPanelHint')}
+              onRetry={() => {
+                const target = processFailure;
+                if (!target) return;
+                const pending = loadPendingJob();
+                setProcessFailure(null);
+                void handleUrlSubmit(
+                  target.url,
+                  pending && pending.videoId === target.videoId
+                    ? { jobId: pending.jobId, from: pending.cursor }
+                    : undefined,
+                );
+              }}
+              retryLabel={t('common.retry')}
+              retryTestId="process-failure-retry"
+              secondary={{
+                label: t('jobs.changeContent'),
+                onClick: () => {
+                  setProcessFailure(null);
+                  go('content');
+                  window.setTimeout(() => {
+                    document.querySelector<HTMLInputElement>('[data-testid="video-url-input"]')?.focus();
+                  }, 60);
+                },
+              }}
+              testId="process-failure-panel"
+              className="min-w-0 flex-1"
+            />
+            <button
+              type="button"
+              data-testid="process-failure-dismiss"
+              onClick={() => setProcessFailure(null)}
+              aria-label={t('common.close')}
+              title={t('common.close')}
+              className="inline-flex items-center justify-center w-7 h-7 mt-0.5 rounded-lg text-red-300/70 hover:text-red-100 hover:bg-red-500/20 transition-colors shrink-0"
             >
               ×
             </button>

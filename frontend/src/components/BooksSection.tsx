@@ -54,6 +54,7 @@ function SeriesCard({
                     src={cover}
                     alt=""
                     loading="lazy"
+                    decoding="async"
                     referrerPolicy="no-referrer"
                     onError={() => setCoverFailed(true)}
                     className="h-full w-full object-contain p-2"
