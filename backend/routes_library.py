@@ -1,6 +1,6 @@
 """本地免费资源库（content/library，用户需求 #11）。
 
-公开只读、无需登录、**运行时不调用任何大模型**：
+公开只读、无需登录；**读/播放不触发模型调用**：
 
 - ``GET /api/library``：视频 + 文章清单（首页「免费资源」窗用）；
 - ``GET /api/library/videos/{id}``：视频元数据 + 预生成双语字幕块；
@@ -10,9 +10,19 @@
 视频**不下载视频文件**：只存字幕块与元数据，播放仍走 YouTube 嵌入；路径见
 ``content/library/README.md``。
 
-本模块刻意不 import ``llm``、不连数据库、不写任何状态：读文件 → 校验 → JSON。
-错误语义：
+教学分析（specs/028；specs/024 2026-11-22 修订）：两个详情端点额外接受可选
+``level``（028 高亮档 ``liftoff…supernova``，非法 400）与可选 ``targetLang``
+（缺省 ``zh-CN``，非法 400）。**只有显式传 ``level`` 才动分析**：
 
+- 登录用户：缓存命中免费；未命中按既有 ``feature=analysis`` 配额/余额生成，
+  失败静默跳过（不阻断播放）；
+- 游客：只读全局分析缓存，**绝不生成**；未命中就保持「没有分析」；
+- 不带 ``level``：行为与改动前完全一致（没有分析字段、不读分析表）。
+
+为保持「读路径零导入依赖」，``teaching_analysis`` / ``ai_auth`` 在需要分析时
+才延迟 import；普通读取仍然只读文件 → 校验 → JSON。错误语义：
+
+- 400：``level`` / ``targetLang`` 非法；
 - 404：id 形状非法、id 不存在、对应文件缺失；
 - 503：清单/内容目录缺失，或某条内容字段损坏（宁可不发，也不把半条资源交给前端）。
 
@@ -27,7 +37,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 import config
@@ -324,6 +334,145 @@ def _article_summary(article: dict) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# 教学分析（specs/028；specs/024 2026-11-22 修订）
+# ---------------------------------------------------------------------------
+
+def analysis_blocks(kind: str, payload: dict) -> list[dict]:
+    """payload → 教学分析输入的 block 视图（预热脚本复用同一口径）。
+
+    视频直接用预生成的 ``blocks``（``id/en_text/zh_text`` 已经齐全）；文章段落
+    JSON 只有 ``{en, zh}``，这里按 **0 起段落下标** 补 ``id``——与阅读器
+    ``paragraphs[].idx`` 同口径，``idioms``/``culture`` 的 ``blockId`` 也用它。
+    传给 analysis 时字段名转换成 ``en_text/zh_text``（``normalize_blocks`` 也接受
+    ``en/zh``，但统一成字幕块形状便于合并高亮）。
+    """
+    if kind == "videos":
+        blocks = payload.get("blocks")
+        if not isinstance(blocks, list):
+            return []
+        return [block for block in blocks if isinstance(block, dict)]
+    paragraphs = payload.get("paragraphs")
+    if not isinstance(paragraphs, list):
+        return []
+    blocks: list[dict] = []
+    for index, paragraph in enumerate(paragraphs):
+        if not isinstance(paragraph, dict):
+            continue
+        blocks.append(
+            {
+                "id": index,
+                "en_text": paragraph.get("en") or "",
+                "zh_text": paragraph.get("zh") or "",
+            }
+        )
+    return blocks
+
+
+def load_payload(kind: str, entry_id: str) -> dict:
+    """读并校验一条资源，返回与详情端点同形的 payload（详情端点与预热脚本共用）。"""
+    data = _load_entry(kind, entry_id)
+    try:
+        return _video(data, entry_id) if kind == "videos" else _article(data, entry_id)
+    except LibraryUnavailable as exc:
+        is_video = kind == "videos"
+        label = "视频" if is_video else "文章"
+        logger.warning("校验免费%s失败（%s）：%s", label, entry_id, exc)
+        raise HTTPException(
+            status_code=503,
+            detail=f"{label}内容损坏，暂时无法打开。",
+        ) from exc
+
+
+def _analysis_params(
+    level: str | None, target_lang: str | None
+) -> tuple[str | None, str | None]:
+    """解析可选的 ``level`` / ``targetLang``；非法值 400（与 specs/028 同枚举）。
+
+    - 两个参数都没给：返回 ``(None, None)``，读路径保持完全不变；
+    - ``level`` 为空串按「没传」处理（不触发分析）；
+    - ``targetLang`` 缺省为 ``zh-CN``（``languages.resolve_target_lang`` 口径）。
+    """
+    if level is None and target_lang is None:
+        return None, None
+    import teaching_analysis  # 延迟 import：普通读取不引入分析/数据库依赖
+
+    try:
+        canonical_level = None
+        if isinstance(level, str) and level.strip():
+            canonical_level = teaching_analysis.normalize_level(level)
+        lang = teaching_analysis.canonical_target_lang(target_lang)
+    except teaching_analysis.AnalysisInvalidRequest as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return canonical_level, lang
+
+
+def _private_json(payload: dict) -> JSONResponse:
+    """带分析的响应不进入共享缓存：同 URL 对游客/登录用户返回形状不同。"""
+    return JSONResponse(content=payload, headers={"Cache-Control": "private, no-store"})
+
+
+async def _attach_analysis(
+    payload: dict,
+    *,
+    kind: str,
+    entry_id: str,
+    level: str,
+    target_lang: str,
+    request: Request,
+) -> dict:
+    """把当前档位/语言的教学分析合并进 payload（失败静默，绝不阻断读取）。
+
+    - 登录用户走 ``attach_to_payload``：缓存命中零模型调用；未命中按
+      ``feature=analysis`` 配额/余额生成，失败/超限都不报错（只是没有分析）；
+    - 游客走 ``attach_cached_to_payload``：只读全局缓存，不调模型、不占配额。
+    """
+    import ai_auth
+    import teaching_analysis
+
+    blocks = analysis_blocks(kind, payload)
+    if not blocks:
+        return payload
+    wrapper = {"transcript": blocks}
+    user = ai_auth.ai_user(request)
+    if user is not None:
+        analysis = await teaching_analysis.attach_to_payload(
+            wrapper,
+            level=level,
+            target_lang=target_lang,
+            content_ref=f"library:{entry_id}",
+            user_id=str(user["id"]),
+        )
+    else:
+        try:
+            analysis = teaching_analysis.attach_cached_to_payload(
+                wrapper, level=level, target_lang=target_lang
+            )
+        except teaching_analysis.TeachingAnalysisError as exc:
+            # 分析是增强：0020 表缺失/坏行不影响免费资源读取。
+            logger.warning("免费资源分析缓存读取失败（%s）：%s", entry_id, exc)
+            analysis = None
+    if analysis is None:
+        return payload
+    if wrapper.get("analysisVersion") != teaching_analysis.ANALYSIS_VERSION:
+        # 版本闸：旧版本分析不得混进当前 payload。
+        return payload
+
+    if kind == "articles":
+        # 分析块是「段落下标 + en_text/zh_text」的视图，高亮要写回段落本体。
+        paragraphs = payload.get("paragraphs") or []
+        for block in blocks:
+            index = block.get("id")
+            if isinstance(index, int) and 0 <= index < len(paragraphs):
+                paragraphs[index]["highlights"] = block.get("highlights") or []
+
+    payload["idioms"] = wrapper.get("idioms") or []
+    payload["culture"] = wrapper.get("culture") or []
+    payload["analysisVersion"] = teaching_analysis.ANALYSIS_VERSION
+    payload["analysisLevel"] = analysis.get("level") or level
+    return payload
+
+
 def _load_videos(ids: list[str]) -> list[dict]:
     videos = []
     for entry_id in ids:
@@ -388,24 +537,54 @@ def get_library():
 
 
 @router.get("/api/library/videos/{video_id}")
-def get_library_video(video_id: str):
-    """单个视频：元数据 + 预生成双语字幕块；公开、无需登录、不调用模型。"""
-    data = _load_entry("videos", video_id)
-    try:
-        payload = _video(data, video_id)
-    except LibraryUnavailable as exc:
-        logger.warning("校验免费视频失败（%s）：%s", video_id, exc)
-        raise HTTPException(status_code=503, detail="视频内容损坏，暂时无法打开。") from exc
-    return _json(payload, max_age=3600)
+async def get_library_video(
+    video_id: str,
+    request: Request,
+    level: str | None = None,
+    targetLang: str | None = None,
+):
+    """单个视频：元数据 + 预生成双语字幕块；公开、无需登录。
+
+    显式传 ``level`` 时附带教学分析（登录按需生成、游客只读缓存）；不带
+    ``level`` 时行为与改动前完全一致（不读分析表、不调模型）。
+    """
+    analysis_level, target_lang = _analysis_params(level, targetLang)
+    payload = load_payload("videos", video_id)
+    if analysis_level is None:
+        return _json(payload, max_age=3600)
+    payload = await _attach_analysis(
+        payload,
+        kind="videos",
+        entry_id=video_id,
+        level=analysis_level,
+        target_lang=target_lang or "zh-CN",
+        request=request,
+    )
+    return _private_json(payload)
 
 
 @router.get("/api/library/articles/{article_id}")
-def get_library_article(article_id: str):
-    """单篇原创文章：标题 + 逐段中英 + 等级；公开、无需登录、不调用模型。"""
-    data = _load_entry("articles", article_id)
-    try:
-        payload = _article(data, article_id)
-    except LibraryUnavailable as exc:
-        logger.warning("校验免费文章失败（%s）：%s", article_id, exc)
-        raise HTTPException(status_code=503, detail="文章内容损坏，暂时无法打开。") from exc
-    return _json(payload, max_age=3600)
+async def get_library_article(
+    article_id: str,
+    request: Request,
+    level: str | None = None,
+    targetLang: str | None = None,
+):
+    """单篇文章：标题 + 逐段中英 + 等级；公开、无需登录。
+
+    显式传 ``level`` 时附带教学分析（登录按需生成、游客只读缓存）；分析高亮
+    写在 ``paragraphs[].highlights``，``idioms``/``culture`` 在 payload 顶层。
+    """
+    analysis_level, target_lang = _analysis_params(level, targetLang)
+    payload = load_payload("articles", article_id)
+    if analysis_level is None:
+        return _json(payload, max_age=3600)
+    payload = await _attach_analysis(
+        payload,
+        kind="articles",
+        entry_id=article_id,
+        level=analysis_level,
+        target_lang=target_lang or "zh-CN",
+        request=request,
+    )
+    return _private_json(payload)
