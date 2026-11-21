@@ -8,7 +8,8 @@
 
 - ``POST /api/review/words``           加词（幂等，不重置进度）
 - ``PATCH /api/review/words``          标记 / 撤销「已掌握」（幂等 upsert）
-- ``GET  /api/review/words``           列出词状态；``?mastered=1`` = 已掌握列表
+- ``GET  /api/review/words``           列出词状态；``?mastered=1`` = 已掌握列表，
+  ``?state=`` 按状态筛选
 - ``GET  /api/review/queue``           到期词 + 新词队列
 - ``POST /api/review/answer``          作答（again/hard/good/easy）
 - ``GET  /api/review/stats``           今日到期/已复习/新词/连续天数
@@ -139,6 +140,16 @@ def _raise_review_error(exc: Exception) -> None:
     raise exc
 
 
+def _states_or_400(state: str | None) -> tuple[str, ...] | None:
+    """``?state=new,review`` → 规范化状态 tuple；省略 = None（不过滤）；非法 400。"""
+    if state is None:
+        return None
+    try:
+        return srs.normalize_states(state)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 # ---------------------------------------------------------------------------
 # 加词
 # ---------------------------------------------------------------------------
@@ -208,6 +219,13 @@ def set_review_word_mastered(payload: SetMasteredRequest, request: Request):
 @router.get("/api/review/words")
 def list_review_words(
     request: Request,
+    state: str | None = Query(
+        default=None,
+        description=(
+            "逗号分隔的状态子集（new/learning/review/relearning/suspended）；"
+            "省略 = 不过滤"
+        ),
+    ),
     mastered: str | None = Query(
         default=None,
         description="0=未掌握、1=已掌握；省略 = 不过滤（返回全部词）",
@@ -218,7 +236,10 @@ def list_review_words(
     """列出词状态：缺省全部词，``?mastered=1`` 即登录用户的「已掌握」列表。
 
     - 需登录；游客/未登录 403；
+    - ``state`` 可逗号分隔（``new/learning/review/relearning/suspended`` 的
+      子集，大小写与首尾空白不敏感）；省略 = 不过滤；非法值或空值 **400**；
     - ``mastered`` **只接受 ``0`` / ``1``**（字符串），其它值 400；省略 = 不过滤；
+    - ``state`` 与 ``mastered`` / ``targetLang`` 组合生效（AND）；
     - ``targetLang`` 省略 = 全部语言；``limit`` 1–200（默认 100）；
     - **没有分页/offset**：``limit`` 只截断 ``words``，``total`` 是过滤后的总数
       （不受 ``limit`` 影响）；排序 ``COALESCE(last_reviewed_at, created_at)``
@@ -228,6 +249,7 @@ def list_review_words(
     """
     user = _require_login(request)
     lang = _optional_target_lang_or_400(targetLang)
+    states = _states_or_400(state)
     if mastered is not None and mastered not in ("0", "1"):
         raise HTTPException(status_code=400, detail="mastered 只能是 0 或 1。")
     try:
@@ -235,6 +257,7 @@ def list_review_words(
             user["id"],
             lang,
             None if mastered is None else int(mastered),
+            states=states,
             limit=limit,
             now=srs.now_ms(),
         )

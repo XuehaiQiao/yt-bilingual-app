@@ -43,6 +43,7 @@ import logging
 import os
 import sqlite3
 import uuid
+from collections.abc import Iterable
 from datetime import datetime, timezone
 
 import config
@@ -1043,18 +1044,52 @@ def list_suspended(
     }
 
 
+def normalize_states(states: str | Iterable[str] | None) -> tuple[str, ...] | None:
+    """把 ``state`` 筛选值规范成 ``VALID_STATES`` 的子集（``None`` = 不过滤）。
+
+    - 接受逗号分隔字符串（``new,review``）或字符串序列；``None`` → ``None``；
+    - 每一项去首尾空白 + 小写，空项忽略（``new,`` 等价 ``new``）；
+    - 去重，并按 ``VALID_STATES`` 顺序返回（SQL 占位符参数稳定）；
+    - 出现未知状态 → ``ValueError``；给的值里没有任何有效状态（``state=``）
+      也是 ``ValueError``——省略该参数才表示不过滤。
+    """
+    if states is None:
+        return None
+    if isinstance(states, str):
+        items = states.split(",")
+    else:
+        items = [str(item) for item in states]
+    wanted: set[str] = set()
+    for item in items:
+        token = item.strip().lower()
+        if not token:
+            continue
+        if token not in VALID_STATES:
+            raise ValueError(
+                "state 只能是 " + "/".join(VALID_STATES) + " 的子集（逗号分隔）。"
+            )
+        wanted.add(token)
+    if not wanted:
+        raise ValueError("state 不能为空；省略该参数表示不过滤。")
+    return tuple(state for state in VALID_STATES if state in wanted)
+
+
 def list_words(
     user_id: str,
     target_lang: str | None = None,
     mastered: int | bool | None = None,
     *,
+    states: str | Iterable[str] | None = None,
     limit: int = 100,
     now=None,
 ) -> dict:
-    """列出词状态（默认全部；``mastered=0/1`` 过滤「已掌握」）。
+    """列出词状态（默认全部；``mastered`` / ``states`` 可再收窄）。
 
     - ``mastered=None``：不过滤，返回全部词（含已掌握）；``1`` 只返回已掌握、
       ``0`` 只返回未掌握；只接受 ``0`` / ``1``（布尔也接），其它值 ValueError；
+    - ``states=None``：不过滤；否则只返回这些 ``state`` 的词（合法值见
+      ``VALID_STATES``，规范/校验走 :func:`normalize_states`，与 ``mastered``
+      同时给出时取交集（AND））；
     - ``target_lang=None``：跨语言；给了就只返回该语言；
     - **没有分页/offset**：``limit``（1–200，默认 100）只截断返回列表，
       ``total`` 是过滤后的总数、不受 ``limit`` 影响；
@@ -1073,6 +1108,7 @@ def list_words(
         flag = int(mastered)
     else:
         raise ValueError("mastered 只能是 0 或 1。")
+    state_filter = normalize_states(states)
     now_value = _coerce_ms(now)
     limit_value = max(1, min(int(limit), 200))
     language_clause = " AND target_lang = ?" if lang else ""
@@ -1089,21 +1125,29 @@ def list_words(
             if flag is not None and _has_mastered(conn):
                 mastered_clause = f" AND {MASTERED_COLUMN} = ?"
                 mastered_args = (flag,)
+            state_clause = ""
+            state_args: tuple = ()
+            if state_filter:
+                placeholders = ", ".join("?" for _ in state_filter)
+                state_clause = f" AND state IN ({placeholders})"
+                state_args = state_filter
+            filters_clause = f"{language_clause}{mastered_clause}{state_clause}"
+            filters_args = (*language_args, *mastered_args, *state_args)
             rows = conn.execute(
                 f"SELECT {_word_columns(conn)} FROM word_states "
                 "WHERE user_id = ?"
-                f"{language_clause}{mastered_clause} "
+                f"{filters_clause} "
                 "ORDER BY COALESCE(last_reviewed_at, created_at) DESC, id DESC "
                 "LIMIT ?",
-                (user_id, *language_args, *mastered_args, limit_value),
+                (user_id, *filters_args, limit_value),
             ).fetchall()
             words = [_row_to_word(row) for row in rows]
             _attach_sources(conn, words)
             total = int(
                 conn.execute(
                     "SELECT COUNT(*) AS n FROM word_states WHERE user_id = ?"
-                    f"{language_clause}{mastered_clause}",
-                    (user_id, *language_args, *mastered_args),
+                    f"{filters_clause}",
+                    (user_id, *filters_args),
                 ).fetchone()["n"]
                 or 0
             )

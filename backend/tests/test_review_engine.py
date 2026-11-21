@@ -9,7 +9,8 @@
 4. add_word 幂等（重复添加不重置进度）与来源去重/补充；
 5. 队列：跨用户隔离、targetLang 过滤、到期/新词排序、limit/newLimit；
 6. stats：今日到期/已复习/新词/连续天数（注入时钟跨日）；
-7. API：游客 403、400/404/409/503、删除恢复的 query/body 两种写法；
+7. API：游客 403、400/404/409/503、删除恢复的 query/body 两种写法、
+   ``GET /api/review/words`` 的 ``mastered`` / ``state`` 过滤与校验；
 8. 复习日志快照与 elapsed_ms 落库、换设备登录后队列一致。
 
 所有时间都由测试注入（monkeypatch ``srs.now_ms``），不读真实时钟。
@@ -793,6 +794,199 @@ def test_list_words_validation(review_db):
     )
     assert client.get("/api/review/words", params={"limit": 0}).status_code == 422
     assert client.get("/api/review/words", params={"limit": 201}).status_code == 422
+
+
+def _seed_all_states(client, clock):
+    """造出 5 种 ``state`` 各一个词，返回 ``{state: lemma}``（specs/013 state 筛选）。"""
+    clock["now"] = NOW
+    words = {}
+    assert _add(client, "alpha").status_code == 201  # new：加词不答
+    words["new"] = "alpha"
+
+    clock["now"] += 1000
+    assert _add(client, "bravo").status_code == 201
+    learning = _answer(client, "bravo", "good")
+    assert learning.status_code == 200
+    assert learning.json()["word"]["state"] == "learning"
+    words["learning"] = "bravo"
+
+    clock["now"] += 1000
+    assert _add(client, "charlie").status_code == 201
+    reviewed = _answer(client, "charlie", "easy")  # Easy 直接毕业到 review
+    assert reviewed.status_code == 200
+    assert reviewed.json()["word"]["state"] == "review"
+    words["review"] = "charlie"
+
+    clock["now"] += 1000
+    assert _add(client, "delta").status_code == 201
+    assert _answer(client, "delta", "easy").json()["word"]["state"] == "review"
+    relearning = _answer(client, "delta", "again")  # review 时 Again → relearning
+    assert relearning.status_code == 200
+    assert relearning.json()["word"]["state"] == "relearning"
+    words["relearning"] = "delta"
+
+    clock["now"] += 1000
+    assert _add(client, "echo").status_code == 201
+    suspended = client.post("/api/review/suspend", json={"lemma": "echo"})
+    assert suspended.status_code == 200
+    assert suspended.json()["word"]["state"] == "suspended"
+    words["suspended"] = "echo"
+    clock["now"] += 1000
+    return words
+
+
+def test_list_words_state_filter(review_db, clock):
+    """``?state=`` 合法单值/多值过滤；省略不过滤；形状/total 口径与现有一致。"""
+    client = review_db
+    seeded = _seed_all_states(client, clock)
+    word_keys = {"mastered", "state", "dueAt", "sources"}
+
+    everything = client.get("/api/review/words")
+    assert everything.status_code == 200
+    body = everything.json()
+    assert set(body) == {"targetLang", "now", "total", "words"}  # 返回形状不变
+    assert body["total"] == 5
+    assert {word["lemma"] for word in body["words"]} == set(seeded.values())
+    assert word_keys <= set(body["words"][0])
+
+    def listed(state):
+        response = client.get("/api/review/words", params={"state": state})
+        assert response.status_code == 200, (state, response.text)
+        return response.json()
+
+    # 单值过滤。
+    single = listed("new")
+    assert single["total"] == 1
+    assert [word["lemma"] for word in single["words"]] == ["alpha"]
+    assert single["words"][0]["state"] == "new"
+    suspended = listed("suspended")
+    assert suspended["total"] == 1
+    assert [word["lemma"] for word in suspended["words"]] == [seeded["suspended"]]
+
+    # 多值过滤（子集），排序口径不变：最近更新在前。
+    multi = listed("learning,review")
+    assert multi["total"] == 2
+    assert [word["lemma"] for word in multi["words"]] == ["charlie", "bravo"]
+    assert all(word["state"] in ("learning", "review") for word in multi["words"])
+    every_state = listed(",".join(srs.VALID_STATES))
+    assert every_state["total"] == 5 and len(every_state["words"]) == 5
+
+    # 大小写 / 首尾空白 / 重复项 / 尾逗号都是同一语义。
+    tolerant = listed(" NEW , review, new ,")
+    assert tolerant["total"] == 2
+    assert {word["lemma"] for word in tolerant["words"]} == {"alpha", "charlie"}
+
+    # limit 只截断列表，total 仍是过滤后总数（与 mastered 现有口径一致）。
+    limited = client.get(
+        "/api/review/words", params={"state": "new,learning,review", "limit": 2}
+    ).json()
+    assert limited["total"] == 3
+    assert len(limited["words"]) == 2
+    truncated = client.get(
+        "/api/review/words", params={"state": "learning,review", "limit": 1}
+    ).json()
+    assert truncated["total"] == 2
+    assert [word["lemma"] for word in truncated["words"]] == ["charlie"]
+
+
+def test_list_words_state_validation(review_db):
+    """state 非法值 / 空值 → 400；与 mastered、limit 的校验互不吞掉。"""
+    client = review_db
+    for bad in ("mastered", "due", "new,bogus"):
+        response = client.get("/api/review/words", params={"state": bad})
+        assert response.status_code == 400, (bad, response.text)
+        detail = response.json()["detail"]
+        assert "new" in detail and "suspended" in detail, detail
+    # 显式给了 state 却没有任何有效值：400（省略该参数才表示不过滤）。
+    for empty in ("", " , "):
+        response = client.get("/api/review/words", params={"state": empty})
+        assert response.status_code == 400, (empty, response.text)
+        assert "不能为空" in response.json()["detail"]
+    # 合法 state + 非法 mastered：仍然 400（两个校验都在）。
+    assert (
+        client.get(
+            "/api/review/words", params={"state": "new", "mastered": "2"}
+        ).status_code
+        == 400
+    )
+    assert (
+        client.get("/api/review/words", params={"state": "new", "limit": 0}).status_code
+        == 422
+    )
+
+
+def test_list_words_state_combines_with_mastered_and_lang(review_db, clock):
+    """state 与 mastered / targetLang 组合生效（AND），total 是交集口径。"""
+    client = review_db
+    clock["now"] = NOW
+    # alpha：review 状态 + 已掌握。
+    assert _add(client, "alpha").status_code == 201
+    assert _answer(client, "alpha", "easy").json()["word"]["state"] == "review"
+    assert _master(client, "alpha", True).status_code == 200
+    clock["now"] += 1000
+    # beta：new 状态，未掌握。
+    assert _add(client, "beta").status_code == 201
+    clock["now"] += 1000
+    # gamma：review 状态，未掌握，vi-VN。
+    assert _add(client, "gamma", target="vi-VN").status_code == 201
+    assert _answer(
+        client, "gamma", "easy", target="vi-VN"
+    ).json()["word"]["state"] == "review"
+
+    mastered_review = client.get(
+        "/api/review/words", params={"state": "review", "mastered": "1"}
+    ).json()
+    assert mastered_review["total"] == 1
+    assert [word["lemma"] for word in mastered_review["words"]] == ["alpha"]
+    assert mastered_review["words"][0]["mastered"] is True
+
+    unmastered_review = client.get(
+        "/api/review/words", params={"state": "review", "mastered": "0"}
+    ).json()
+    assert unmastered_review["total"] == 1
+    assert [word["lemma"] for word in unmastered_review["words"]] == ["gamma"]
+
+    # 再叠 targetLang：state 过滤后语言的交集。
+    zh_review = client.get(
+        "/api/review/words",
+        params={"state": "review", "mastered": "0", "targetLang": "zh-CN"},
+    ).json()
+    assert zh_review["total"] == 0 and zh_review["words"] == []
+    vi_review = client.get(
+        "/api/review/words",
+        params={"state": "review", "mastered": "0", "targetLang": "vi-VN"},
+    ).json()
+    assert vi_review["total"] == 1
+    assert [word["lemma"] for word in vi_review["words"]] == ["gamma"]
+
+    # 组合过滤下 total 也不受 limit 影响。
+    limited = client.get(
+        "/api/review/words", params={"state": "review", "limit": 1}
+    ).json()
+    assert limited["total"] == 2 and len(limited["words"]) == 1
+
+
+def test_list_words_state_filter_guest_403(make_client, review_db):
+    """游客/未登录：合法或非法 state 都先被鉴权挡下 → 403（不泄露校验细节）。"""
+    with make_client() as guest:
+        assert guest.get("/api/review/words", params={"state": "new"}).status_code == 403
+        assert (
+            guest.get("/api/review/words", params={"state": "bogus"}).status_code == 403
+        )
+
+
+def test_normalize_states_is_order_stable_and_validates():
+    """srs.normalize_states：None=不过滤；去重/小写/排序稳定；非法值 ValueError。"""
+    assert srs.normalize_states(None) is None
+    assert srs.normalize_states("review,new,review") == ("new", "review")
+    assert srs.normalize_states([" NEW ", "relearning"]) == ("new", "relearning")
+    assert srs.normalize_states(("suspended",)) == ("suspended",)
+    with pytest.raises(ValueError):
+        srs.normalize_states("mastered")
+    with pytest.raises(ValueError):
+        srs.normalize_states("")
+    with pytest.raises(ValueError):
+        srs.normalize_states([])
 
 
 def test_public_word_exposes_mastered_flag():
