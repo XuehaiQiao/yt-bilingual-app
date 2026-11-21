@@ -8,6 +8,11 @@
 > 幂等、周报口径、快照与错误语义。前端 `/features/report/`、邮件送达与退订、
 > 音频切片在后续轮次实现。
 
+> **v1.1 任务 9 增补（2026-11-21，已实现）**：`GET /api/report/week` 支持可选
+> `targetLang`，省略 = 全部语言（旧行为不变）；给定后观看/作答/复习/词状态与
+> 证据都按该语言过滤，使 `dueTomorrow`/`reviewedWords`/`nextStep` 与复习队列同口径。
+> 对应代码：`backend/reports.py`、`backend/routes_events.py`、`frontend/src/lib/api.ts`。
+
 ---
 
 ## 目标
@@ -134,7 +139,7 @@
 
 ---
 
-## `GET /api/report/week?weekStart=YYYY-MM-DD`
+## `GET /api/report/week?weekStart=YYYY-MM-DD&targetLang=zh-CN`
 
 ### 周界
 
@@ -142,6 +147,23 @@
 - `weekStart` 缺省 = 当前 UTC 周的周一；
 - 传任意日期会**归一到所在周的周一**（例：`2026-11-11` → `2026-11-09`）；
 - 格式必须是 `YYYY-MM-DD`，非法 400；`weekEnd` 返回下周一（开区间）。
+
+### 语言口径（v1.1 任务 9）
+
+- `targetLang` 可选（也接受 `target_lang`）；**省略/空串 = 全部语言**，与旧行为完全一致。
+- 给定（canonical 代码，非法 400）后只聚合该语言：
+  - 观看：`watch_events.target_lang`；
+  - 理解题：`attempts` 无 `target_lang` 列，经 `attempts → questions → content_items.target_lang` 关联过滤；
+  - 复习：`review_logs.target_lang`；词状态：`word_states.target_lang`（`new` 与 `dueTomorrow`）；
+  - 证据：答错题与最近观看同样按语言过滤。
+- `fact` / `nextStep` 由过滤后的数字生成，因此 `dueTomorrow` / `reviewedWords` 与
+  `/api/review/queue?targetLang=…` 同口径。
+- `streakDays` 是**跨语言的学习习惯**指标，不随 `targetLang` 过滤。
+- 响应形状不变（不新增语言字段）。
+- 快照仍按 `UNIQUE(user_id, week_start)` 只写首份：首份快照记录当时请求的语言口径；
+  后续不同语言的 GET 返回实时计算结果，但**不覆盖**快照。
+- 前端 `/api/report/week` 在 `TARGET_LANG_QUERY_PATHS` 白名单中，`apiFetch` 自动带
+  当前语言；周报页与首页/内容页的周报卡因此与复习队列一致。
 
 ### 响应
 
@@ -284,6 +306,8 @@ API 一致：数字 block id 返回 int，字符串 id 原样返回。
 - [x] 连续天数跨 watch/quiz/review；UTC 日界。
 - [x] UTC 周一 00:00 左闭右开；`weekStart` 任意日期归一；非法 400。
 - [x] `weekly_reports` 同周只写首份；无数据也写；不同周各一份。
+- [x] （v1.1 任务 9）`targetLang`：省略 = 全部语言（旧行为）；给定后观看/作答/复习/
+  词状态/证据按语言过滤，`dueTomorrow` 与复习队列同口径；`streakDays` 不过滤；非法 400。
 - [x] 未迁移 503；用户/游客隔离；全量离线测试绿（331 个）。
 
 ## 测试

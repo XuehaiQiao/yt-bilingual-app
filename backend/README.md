@@ -46,7 +46,7 @@
 | `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
 | `routes_user.py` | `/api/define`（词典：`targetLang` 决定缓存目录与 prompt 语言；语境缓存 → 本地 ECDICT（**仅 zh-CN**）→「已配 Key 的候选模型」；vi-VN 跳过 ECDICT 直接 LLM，只有 DeepSeek Key 也能查；缺省 `model` 时 zh 候选链首选 `DEFAULT_MODEL`、其他语言首选该语言路线；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；响应带 `targetLang`，可选 `pos_label` / `example_translation`；模型结果写按语言隔离的缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`（M1 ④ 按条 API：POST/GET/DELETE + 旧 PUT 兼容 + `?since=` 增量；文件锁 + 原子写，见下文「收藏按条 API」）、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
 | `srs.py` | **复习调度与词状态读写（M2）**：`review(word_state, rating, now)` 纯函数走 FSRS-6（PyPI `fsrs` 6.3.3，目标保持率 0.9、关闭 fuzz 保证确定性）；`add_word` 幂等建词（重复添加不重置进度，只补来源）；`get_due` 到期词 + 新词队列；`record_answer` 同一事务更新状态并追加 `review_logs` 快照；连续 3 次 `again` 自动 suspend，`set_suspended` 手工暂停/恢复；`get_stats` 今日到期/已复习/新词/连续天数。表由 `0006_review_engine` 创建，运行时不建表；时间全部毫秒 UTC |
-| `routes_review.py` | 复习引擎 HTTP 路由（**需登录，游客 403**）：`POST /api/review/words`、`GET /api/review/queue`、`POST /api/review/answer`、`GET /api/review/stats`、`POST/DELETE /api/review/suspend`；契约与错误语义见下文「复习引擎」与 [specs/013](../specs/013-review-engine/spec.md) |
+| `routes_review.py` | 复习引擎 HTTP 路由（**需登录，游客 403**）：`POST /api/review/words`、`GET /api/review/queue`、`POST /api/review/answer`、`GET /api/review/stats`、`GET /api/review/suspended`（暂停词列表，省略 `targetLang` = 全部语言）、`POST/DELETE /api/review/suspend`；契约与错误语义见下文「复习引擎」与 [specs/013](../specs/013-review-engine/spec.md) |
 | `quiz.py` | **理解题生成与作答（M3）**：读当前用户已有双语字幕缓存（video / local_show，≥8 句）→ 按 `(content_hash, prompt_version)` 缓存出 3 道题 → 两道闸（结构：mcq 4 选 1 / tf 判断；内容：英文题面不混中文、题目与证据句相关）→ 写 `content_items` / `questions` / `attempts` → 返回证据 block 与秒/毫秒时间点；失败重试 1 次，仍失败该题 `rejected`；表由 `0007_quiz` 创建，运行时不建表；作答写 `learning_events(quiz_answer)` |
 | `routes_quiz.py` | 理解题 HTTP 路由（**需登录，游客 403**）：`POST /api/lesson/start`、`GET /api/lesson/{id}/questions`、`POST /api/lesson/answer`、`GET /api/lesson/{id}/result`；契约与错误语义见下文「理解题」与 [specs/014](../specs/014-quiz/spec.md) |
 | `course.py` | **课程（specs/029 + 030）**：静态课程读 `content/course/*.json`（`COURSE_DIR`，schema `linguatrek.course-lesson.v1`），生成课程读 `generated_courses`（只认本人）；两类合并成列表/详情（题目脱敏，不含 `answer`/`explain`）；attempt 开始/恢复（同一用户同一课程唯一 `in_progress`）、首次作答（重复同 choice 幂等、换 choice 409）、步骤/产出保存（≤2000 字符）、完成后按题目数评分、事件写入（≤2KB）；所有查询校验 `user_id` 归属，越权 404；表由 `0021_course_mvp` / `0022_generated_courses` 创建，运行时不建表 |
@@ -56,7 +56,7 @@
 | `routes_teaching_analysis.py` | 教学分析只读端点（**需登录，游客 403**）：`GET /api/teaching-analysis/{content_ref}?level=&targetLang=&contentHash=`；解析已有双语字幕缓存，缓存命中零模型调用，生成走 `feature=analysis` 配额；错误语义 400/403/404/429/502/503；契约见 [specs/028](../specs/028-teaching-analysis/spec.md) |
 | `reports.py` | **观看事件 + 周报聚合（M5）**：`record_watch_events` 批量写 `watch_events`（`UNIQUE(user_id, client_event_id)` 幂等，游客归属 `guest:<sha256>`，0–86400 秒与未来 5 分钟校验）；`week_report` 用 SQL 算 UTC 周「被动学习分钟 / 复习词数 / 理解题正确率」、规则生成事实与下一步、取错题证据或最近观看的 5 秒窗口、算连续学习天数，并把首份结果写 `weekly_reports` 快照（同周不覆盖）；表由 `0008_weekly_report` 创建，运行时不建表；不调用模型 |
 | `behavior_events.py` | **行为埋点写入层（CEFR M2 #7 / specs/027）**：`dict_lookup` / `video_replay` / `playback_rate` / `tab_visibility` 四类事件的批量校验（type/长度/数值范围/批量 ≤20）、`eventId` 幂等（迁移 0017 部分唯一索引）、`dict_lookup` 同词 60s 去重、payload 白名单（不落 context/原文）；复用 append-only 的 `learning_events`，不建新表 |
-| `routes_events.py` | 学习事件与周报 HTTP 路由（**游客可用**）：`POST /api/events`（`watch` → `watch_events`；M2 四类行为事件 → `learning_events`）、`GET /api/report/week`；契约与错误语义见下文「学习事件上报与周报」与 [specs/015](../specs/015-weekly-report/spec.md) / [specs/027](../specs/027-behavior-events/spec.md) |
+| `routes_events.py` | 学习事件与周报 HTTP 路由（**游客可用**）：`POST /api/events`（`watch` → `watch_events`；M2 四类行为事件 → `learning_events`）、`GET /api/report/week`（可选 `targetLang`，省略 = 全部语言；也接受 `target_lang`）；契约与错误语义见下文「学习事件上报与周报」与 [specs/015](../specs/015-weekly-report/spec.md) / [specs/027](../specs/027-behavior-events/spec.md) |
 | `placement.py` | **能力定位测（M4 + M1 + M2 修订）**：读 `content/placement/` 三份旧题库（默认 v1）或 `content/placement/forms/form-{a,b}/` 两套新题库（v2，`PLACEMENT_BANK_VERSION=v2` 启用）；按 sessionId 确定性抽 24+3+5（银行 id/锚题不外发）；词汇识别走 **1PL/Rasch + EAP**（v1 `rasch.eap.v1`；v2 用 `rasch.eap.v2` 的题级 b + 10 道共享锚题 + form offset 占位 0），只给词汇带 ±1 区间；阅读 5 题标 `insufficient`、**不返回 band**；逐题 `elapsedMs` 落 `placement_answers.elapsed_ms`；写 `placement_sessions` / `placement_answers` / `user_profiles`（legacy）并同步 `user_skill_profiles` / `skill_evidence`；重复提交幂等；`GET /profile` 转为 `ability.legacy_profile` shim；表由 `0009` + `0014` 创建；不调用模型 |
 | `routes_placement.py` | 能力定位测 HTTP 路由（**游客可用**）：`GET /api/placement/start`、`POST /api/placement/submit`、`GET /api/placement/profile`、`POST /api/placement/reset`；契约与错误语义见下文「能力定位测与能力画像」与 [specs/016](../specs/016-placement/spec.md) |
 | `assessment.py` | **测量底座（M1/M2 CEFR）**：纯函数 1PL/Rasch + EAP（先验 N(0,1.2)、网格 −4…+4、c=0.15）；输出 θ/SE/95% CI/80% HPD/后验带/±1 带/词汇量 lemma 区间；全对/全错不发散；`estimate()` = `rasch.eap.v1`（带中心 b），`estimate_v2()` = `rasch.eap.v2`（题级 b + 锚题 + form offset，同一 θ 尺度）；不连库、不联网 |
@@ -251,6 +251,7 @@ data/                                  # DATA_DIR（gitignore）
 | `GET /api/review/queue?limit=20&newLimit=10&targetLang=zh-CN` | `limit` 1–100（总条数）、`newLimit` 0–100 | `{targetLang, now, limit, newLimit, counts, due, new, items}`；`due` 按 `due_at` 升序、`new` 按 `created_at` 升序；不返回释义（前端需要时再调 `/api/define`） |
 | `POST /api/review/answer` | `{lemma, rating, targetLang?, elapsedMs?}` | `{status:"ok", word, suspended, autoSuspended, dueAt}`；词不存在 404、已暂停 409、评分非法 400 |
 | `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `{targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, streakDays}` |
+| `GET /api/review/suspended?limit=100&targetLang=` | `limit` 1–200（默认 100）；省略 `targetLang` = 全部语言 | `{targetLang, now, total, words:[word…]}`；按最近更新倒序（`COALESCE(last_reviewed_at, created_at)`），`total` 为不分页总数 |
 | `POST /api/review/suspend` | `{lemma, targetLang?}` | `{status:"ok", suspended:true, word}`；不存在 404 |
 | `DELETE /api/review/suspend?lemma=&targetLang=` | 也接受 JSON body | `{status:"ok", suspended:false, word}`；不存在 404 |
 
@@ -396,8 +397,12 @@ venv/bin/python -m pytest tests -q            # 全量离线（含迁移升级/�
   计入 `duplicated`，不重复计数。
 - 游客可用：无会话时归属 `guest:<sha256>`，游客周报与登录用户、其他游客隔离。
 
-### 周报 `GET /api/report/week?weekStart=YYYY-MM-DD`
+### 周报 `GET /api/report/week?weekStart=YYYY-MM-DD&targetLang=zh-CN`
 
+- 语言口径（v1.1 任务 9）：`targetLang` 可选（也接受 `target_lang`），省略 = 全部语言
+  （旧行为）；给定后观看/作答/复习/词状态与证据按该语言过滤，`dueTomorrow` /
+  `reviewedWords` / `nextStep` 与复习队列同口径；`streakDays` 是跨语言习惯，不随
+  语言过滤。响应形状不变；快照仍按 `(user_id, week_start)` 只写首份。
 - 周界：**UTC 周一 00:00 左闭右开** `[weekStart, weekStart+7d)`；`weekStart`
   缺省本周一，传任意日期归一到所在周周一；非法日期 400。
 - `numbers`：`passiveMinutes`（`watched_seconds` 求和 ÷60，1 位小数）、

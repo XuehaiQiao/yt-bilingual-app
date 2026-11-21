@@ -52,6 +52,20 @@
   zh-CN / vi-VN 均有文案；`check:i18n` 通过。
 - **应当**：难度行缺失/无画像时仍可用：徽章回退编辑等级，不显示生词桶。
 
+## 推荐读带：种子画像与单档回退（v1.1 D8-2，2026-11-21）
+
+- 推荐优先读 `GET /api/ability/profile` 的 `vocabulary.low/high`，用
+  `normalize_band` 限制在 A1–C1（[specs/025](../025-ability/spec.md)）。
+- 旧词汇量回填的种子行**不再出带**（`low/high=null`）；此时用
+  `vocabulary.cefr` 点估计当**单档带** `(point, point)`，例如 `(B1, B1)`，
+  仅当点也在 A1–C1 时生效。C2 点或空点仍回退旧路径（定位测旧快照 / 默认
+  `A2–B1`）。
+- 单档带照常参与 `level_distance` / `content_band_distance` / `match_score`：
+  同档距离 0、相邻一档 1；`basis.source` 仍为 `profile`，`basis.band` 可能
+  呈现为 `B1–B1` 这类单档标签，理由文案沿用原规则（如「适合你的 B1 水平」）。
+- 效果：种子用户不再因为 C2 上界被整条链路推回默认 `A2–B1`；这是
+  「没有区间时宁可用点估计」的降级，不生成新数据、不调用模型。
+
 ## 验收标准
 
 - [ ] 给定 `content/wordlist/frequency_bands.v1.json`，当跑
@@ -83,6 +97,8 @@
 - [ ] 给定可推荐内容 <100 条（供给 gate 关闭），当 `GET /api/recommendations`，
       则完全回退旧的 `level_distance` 规则、不返回 `difficulty`；gate 状态写进
       `docs/reports/content-supply-2026-11-17.json`。
+- [x] （v1.1 D8-2）给定种子画像（`low/high=null`），当 `GET /api/recommendations`，
+      则用词汇点估计当单档带（限 A1–C1），不落入默认 `A2–B1`。
 - [ ] 前端 `npx tsc -b` / `npm run check:i18n` 通过；mock Playwright 断言
       免费资源卡片出现难度徽章与生词桶；推荐卡在 gate 开时才出现。
 
@@ -112,3 +128,4 @@
 |---|---|
 | 2026-11-17 | 首版实现：频表 v1（wordfreq 3.1.1，10k lemma）、迁移 0016、difficulty 规则管线、36 条回填、公开/批量/admin API、推荐 match_score、前端徽章与生词桶 |
 | 2026-11-17 | 内容供给补齐：新增 30 篇 Gutenberg 公版短文（总 64 篇），回填后 `content_difficulty` 可推荐 **100 条**（3 视频 + 67 文章 + 30 curated），供给 gate 开启（`match_v0`），报告见 `docs/reports/content-supply-2026-11-17.json` |
+| 2026-11-21 | v1.1 D8-2：种子画像不出带，推荐改用词汇点估计当单档带（A1–C1），不再回退默认 `A2–B1`（见 [specs/025](../025-ability/spec.md)） |

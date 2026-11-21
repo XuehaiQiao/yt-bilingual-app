@@ -3,6 +3,13 @@
 > 状态：**M1 已实现（后端 + 前端，待集成验收）** ｜ 2026-11-19
 > 依赖：019 读文章、021 后台、公版书导入（`imported_books` / `ImportedBookReader` / `book_import.py`）
 > 目标版本：上线后第一个迭代；不改变现有 Gutenberg / Standard Ebooks 链接导入
+
+> **v1.1 任务 5 增补（2026-11-21，已实现）**：导入书章节接口新增可选
+> `?level=`，按需生成本章教学分析（上下文释义 / 习语 / 文化点），与公版书
+> 共用缓存与计费；详见 §13。对应代码：`backend/routes_book_import.py`、
+> `backend/book_import.py`、`frontend/src/lib/importedBooks.ts`、
+> `frontend/src/components/ImportedBookReaderScreen.tsx`。
+
 > 一句话：登录用户上传自己有权使用的无 DRM EPUB，在「我的书」里按章阅读、点词、翻译。
 
 ## 1. 目标
@@ -182,7 +189,8 @@
 ### 其他
 
 - `GET /api/books/imported`：增加 `sourceType` / `local` 字段
-- `GET /api/books/imported/{id}/chapters/{n}`：按 `sourceType` 分支；本地读文件
+- `GET /api/books/imported/{id}/chapters/{n}`：按 `sourceType` 分支；本地读文件；
+  可选 `?level=` 按需附加教学分析（见 §13）
 - `POST .../translate`：沿用现有翻译与配额
 - `DELETE /api/books/imported/{id}`：删除记录 + 整个本地目录
 - 不需要新迁移；若后续加容量统计再加表/列
@@ -218,7 +226,9 @@
 ## 9. 阅读器兼容
 
 - `ImportedBookReader` 已按 `sourceType`/章节接口读取；新增本地来源只需保证返回形状一致
-- 章节 payload 仍为 `{title, paragraphs:[{index,en,zh}]}`；`zh` 无译文为 null
+- 章节 payload 不带 `level` 时仍为 `{title, paragraphs:[{index,en,zh}]}`；`zh` 无译文为 null；
+  带 `level` 且分析成功时额外返回 `glosses` / `languagePoints` / `analysisVersion` /
+  `analysisLevel`（见 §13）
 - 目录/进度/字体/隐藏中文/点词不区分来源
 - 书名旁显示「本地」徽章；不显示「查看原网页」
 
@@ -232,6 +242,10 @@
 - 权限：A 用户不能读/删 B 用户的书
 - 删除：DB + 章节 + 封面 + 译文全部清理
 - 翻译：本地章节走同一条翻译/配额/缓存路径
+- 章节分析（v1.1 任务 5）：带 `level` 且译文齐全 → `glosses` / `languagePoints` /
+  `analysisLevel`；不带 `level` → 旧形状且不触发生成；未翻译/分析失败 → 200 旧形状；
+  非法 `level` → 400
+- 章节分析缓存命中零模型零扣费（与公版书同缓存键）
 
 ### 前端
 
@@ -239,6 +253,8 @@
 - Playwright：链接页签回归；上传页签选择/拖拽/预览/确认/失败/取消；375/1440
 - 书架显示「本地」；点击进入阅读器；删除确认
 - 键盘：Dialog 焦点、Tabs 方向键、拖拽区可点击选择
+- （v1.1 任务 5）打开章节默认不生成分析；「生成本章词条」按钮点击后才带 `level`，
+  生成期间禁用，失败只显示轻提示、章节照常可读
 
 ### 人工
 
@@ -260,3 +276,49 @@
 2. **文件是否只存在服务器？** 本设计为账号私有服务器存储（可跨设备）；如果只想浏览器本地读，需要另一套 IndexedDB 方案。
 3. **单文件上限 30MB 是否合适？** 含插图的 EPUB 可能更大；V1 只取文本，30MB 足够大多数文字书。
 4. **是否允许非公版的自有文件？** 当前设计允许“自有授权”，靠声明和私有存储；若要坚持只公版，需加白名单/人工审核，成本和可用性都会变差。
+
+## 13. 章节按需教学分析（v1.1 任务 5，2026-11-21）
+
+> 适用于导入书章节接口（Gutenberg / Standard Ebooks 链接导入与本地 EPUB 共用），
+> 不改变 §9 的阅读器默认行为。教学分析本身的口径见
+> [specs/028](../028-teaching-analysis/spec.md)。
+
+### 13.1 API
+
+`GET /api/books/imported/{id}/chapters/{n}?level=<高亮档>&targetLang=<语言>`
+
+- `level` 是**高亮难度档**（specs/004 的档位 id；旧考试 id 会映射），不是 CEFR
+  字母。非法档位 → **400**（`detail` 含「高亮等级」）；需要登录，游客/未登录 **403**。
+- 省略 `level`：不生成、不读分析缓存，响应与旧版完全一致，打开章节零 AI 调用。
+- 带入 `level` 且满足条件时，额外返回：
+  - `paragraphs[].glosses`：`{小写词: 上下文释义}`；原始 `highlights` 不回传；
+  - `languagePoints`：`[{blockId, text, meaning, kind}]`，`kind ∈ {idiom, culture}`，
+    `blockId` 就是段落 `index`（点词/跳转据此对齐）；
+  - `analysisVersion`：分析 schema 版本（当前 `analysis.v4`）；
+  - `analysisLevel`：本次实际使用的档位。
+- 以下情况返回 **200 旧形状**（不新增字段、不写空释义缓存）：
+  本章 `missingTranslations > 0`、段落为空、任一段 `zh` 缺失/为空；
+  分析本身失败也静默兜底，不阻塞读书。
+
+### 13.2 按需与成本
+
+- **打开章节绝不自动生成**：前端只有「生成本章词条」按钮会带 `level`
+  （D5-1；一本 EPUB 可能几十章，逐章生成会瞬间吃光配额）。
+- 生成/读取都走 `teaching_analysis.attach_to_payload`，缓存键
+  `(content_hash, level, target_lang, analysis_version)`，与公版书共用；命中时
+  零模型零扣费。`content_ref` 为 `book:<bookId>:<chapter>`。
+- 计费/配额沿用 specs/028 的 `feature=analysis` 路径；无登录时前端引导登录。
+- 分析失败静默：章节仍可读，前端只显示一行轻提示。
+
+### 13.3 前端
+
+- `fetchImportedChapter(bookId, n, {level, signal})`：不传 `level` 的路径保持原样。
+- 阅读器工具栏新增「生成本章词条」按钮与语言点开关；`languagePoints` 按
+  `blockId` 分组渲染到对应段落，`glosses` 交给 `ReadingHighlight`。
+- 生成期间按钮禁用；切换章节时丢弃迟到的结果；未翻译章节点按钮只得到轻提示。
+
+### 13.4 测试
+
+`backend/tests/test_book_import.py` 新增 5 例（打桩 `attach_to_payload`，不调模型）：
+带 `level` 的分析字段形状、不带 `level` 的旧形状且零调用、未翻译章节跳过、
+分析失败静默、非法 `level` 400。

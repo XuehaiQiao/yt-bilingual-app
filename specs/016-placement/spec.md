@@ -435,3 +435,44 @@ confidence   = clamp(0.10, 0.85, base - penalty)
    68，超出 M2 的 64–66 目标，故本期不这么做。
 5. **行为埋点不在本条**：M2 #7（lookup/replay/rate/visibility）与 M2 #4
    （60 条锚集）仍是后续工作。
+
+---
+
+## 前端修订记录（2026-11-21，v1.1 8-1/8-2）
+
+> 后端契约不变（`placement_answers.elapsed_ms` 与 `validity.answers_too_fast`
+> 在 M1 已存在）；本轮补齐前端两处断点。代码：
+> `frontend/src/components/PlacementScreen.tsx`、`frontend/src/lib/placement.ts`。
+
+### 1. 断点续答（8-2）
+
+- 服务端仍**不保存**进行中会话的答案：`GET /api/placement/start` 只回卷面与
+  `resumed`，因此续答靠前端本地状态。
+- 前端按 `sessionId` 把已答项写进 localStorage：
+  `yt_bilingual_placement_resume:<sessionId>`，结构为
+  `{answers:{itemId: chosenIndex}, elapsedMs:{itemId: ms}}`；不存身份信息。
+- `start` 返回 `resumed:true` 时恢复答案：定位到第一道未答题（全部答完停在最后
+  一题）继续；`reset`/重测时清掉所有同前缀键，提交成功后清掉本会话键。
+- 倒计时与总用时按服务端 `startedAt` 续算（仅续答）：`deadline = startedAt +
+  durationLimitMs`，提交 `durationMs = now - startedAt`（不用前端本次打开
+  的时刻），已花掉的时间不退还；新会话仍从打开时刻起算。
+- localStorage 不可用（隐私模式/配额）只放弃续答，不影响答题与提交。
+
+### 2. 逐题用时上报（8-1）
+
+- 每题从出现到选择的时长记为 `elapsedMs`，随 `POST /api/placement/submit` 的
+  `answers[]` 上报；前端只上报有限且 ≥0 的值（四舍五入为整数毫秒）。
+- 后端把 `elapsedMs` 落 `placement_answers.elapsed_ms`；缺省为 NULL，不因此惩罚
+  该题。负数/非整数/超 24 小时会 **400**（不是静默忽略）。
+- 有了逐题用时后，`breakdown.validity.flags` 的 `answers_too_fast` 分支才可达：
+  在有计时值的真实题目里，过半数 `< 2000ms` 时置该 flag（只影响 validity，
+  不直接改 θ）。
+- 旧客户端不传 `elapsedMs` 时行为不变。
+
+### 验收
+
+- [x] 中途刷新/退出后再次 `start` 复用会话：已答题与逐题用时恢复，从第一道
+  未答题继续。
+- [x] 倒计时按服务端 `startedAt` 续算，不重置 12 分钟；`durationMs` 同步续算。
+- [x] 提交带逐题 `elapsedMs`；全对但秒答会出现 `answers_too_fast`。
+- [x] localStorage 不可用时仍可完成定位测（仅失去续答能力）。

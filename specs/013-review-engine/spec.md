@@ -6,6 +6,12 @@
 > 本规格只冻结**后端契约**：词状态、到期队列、复习作答、暂停/恢复、统计。
 > 4 种卡面、TTS、复习页交互与收藏夹迁移到词状态的界面流程在下一轮实现。
 
+> **v1.1 任务 9 增补（2026-11-21，已实现）**：新增 `GET /api/review/suspended`
+> 暂停词列表端点；复习页补「暂停中 N 个词 → 恢复」入口；语言口径与
+> `/api/review/stats` 对齐。对应代码：`backend/routes_review.py`、`backend/srs.py`、
+> `frontend/src/components/ReviewScreen.tsx`、`frontend/src/lib/review.ts`、
+> `frontend/src/lib/api.ts`。
+
 ---
 
 ## 目标
@@ -81,6 +87,7 @@
 | `GET /api/review/queue?limit=20&newLimit=10&targetLang=zh-CN` | `limit` 1–100（总条数上限）；`newLimit` 0–100 | `200 {targetLang, now, items, due, new, counts}`；`due` 按 `due_at` 升序，`new` 按 `created_at` 升序；`items = due + new` |
 | `POST /api/review/answer` | `{lemma, rating, targetLang?, elapsedMs?}` | `200 {status:"ok", word, suspended, autoSuspended}`；词不存在 **404**，已暂停 **409**，评分非法 **400** |
 | `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `200 {targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, streakDays}`；「今日」按 UTC 日界 |
+| `GET /api/review/suspended?limit=100&targetLang=` | `limit` 1–200（默认 100）；省略 `targetLang` = 全部语言 | `200 {targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序、`id` 兜底；`total` 为不分页总数 |
 | `POST /api/review/suspend` | `{lemma, targetLang?}` | `200 {status:"ok", suspended:true, word}`；不存在 **404**；重复调用幂等 |
 | `DELETE /api/review/suspend?lemma=&targetLang=`（也接受 JSON body） | — | `200 {status:"ok", suspended:false, word}`；不存在 **404** |
 
@@ -88,6 +95,25 @@
 队列项额外带 `sources`，不返回释义（前端需要时再调 `/api/define`，语言由 `targetLang` 决定）。
 
 错误语义：数据库未跑 `0006` 迁移时返回 **503**（`detail` 提示先 `alembic upgrade head`），不静默 500。
+
+### 暂停词列表与恢复（v1.1 任务 9）
+
+- **列表**：`GET /api/review/suspended` 只返回 `state='suspended'` 的词（自动或手工暂停），
+  `targetLang` 缺省 = 全部语言、给定则校验并过滤；`limit` 默认 100、上限 200。
+  响应 `total` 是过滤后的总数（不受 `limit` 影响），`words` 复用公开 `word` 形状。
+- **恢复**：沿用既有 `DELETE /api/review/suspend?lemma=&targetLang=`；恢复后
+  `state` 回 `review`（`reps=0` 时回 `new`）、`due_at=now`、`fail_streak=0`；
+  `reps>0` 保留 stability/difficulty，`reps=0` 的 new 行清空 FSRS 参数。
+- **前端入口**：复习页仅在「今日复习完成 / 今天没有要复习的词」的空态显示
+  「暂停中 N 个词」按钮，条件是 `stats.suspendedWords > 0`；点开 `Dialog`
+  逐行列出 `lemma`、`targetLang`、`failStreak`，每行「恢复」。
+- **恢复交互**：恢复请求带该行自己的 `targetLang`；成功后移除该行并把
+  `stats.suspendedWords` 减 1（不重拉统计）；失败在对话框内联错误，可重试；
+  恢复进行中禁用所有恢复按钮，避免重复提交。
+- **语言口径**：`/api/review/suspended` 已加入前端 `TARGET_LANG_QUERY_PATHS`
+  白名单，`apiFetch` 总是带当前 `targetLang`，因此「暂停中 N 个」的计数与
+  列表严格同口径（不会出现跨语言列表对不上计数）。端点本身仍保留「省略 =
+  全部语言」的后端语义，供直接调用方使用。
 
 ## 验收
 
@@ -97,6 +123,10 @@
 - [x] `add_word` 幂等：重复添加不重置 `reps` / `due_at`，但可补充新来源。
 - [x] 队列跨用户隔离、`targetLang` 过滤、稳定排序、`limit` 与 `newLimit` 生效。
 - [x] 统计：今日到期/今日已复习/新词/连续天数；跨日注入时钟可复现。
+- [x] （v1.1 任务 9）`GET /api/review/suspended`：省略 `targetLang` 覆盖全部语言、给定则过滤；
+  `limit` 默认 100/上限 200；`total` 为过滤后总数；按最近更新倒序。
+- [x] （v1.1 任务 9）复习页暂停词恢复：空态入口、逐行恢复、成功后计数同步、
+  失败可重试；恢复后失败计数清零并回到队列。
 - [x] 游客 403；现有 284 个后端测试保持全绿。
 
 ## 测试

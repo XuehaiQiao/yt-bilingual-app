@@ -7,6 +7,11 @@
 > 12 分钟测成「四项评级」，而是把结果从「手调加权阈值」升级为
 > 「Rasch/EAP 区间估计 + 可解释的证据状态」。
 
+> **v1.1 D8-2 增补（2026-11-21，已实现）**：旧词汇量回填的种子画像不再展示
+> CEFR 区间，只保留点估计；迁移 `0026_seed_band_fix`。详见「种子画像不出带」。
+> 对应代码：`backend/ability.py`、
+> `backend/migrations/versions/0026_seed_band_fix.py`、`backend/recommend.py`。
+
 ---
 
 ## 目标
@@ -117,7 +122,7 @@ validity 记「用时未知」而不惩罚。
 
 - `schemaVersion` / `calibrationVersion` / `primary='vocabulary'`；
 - `vocabulary`：
-  - 有证据：`status='uncalibrated'`、`cefr/low/high/label`、`method`、
+  - 有证据：`status='uncalibrated'`、`cefr/low/high/label`、`method`、`bandSource`、
     `evidenceCount`、`effectiveN`、`precision`、`validity`、`evidenceStrength`、
     `confidence`（deprecated）、`lastEvidenceAt`、`stale`、`estimate`、`note`；
   - 无证据：`status='not_measured'`、`cefr=null`、`estimate=null`；
@@ -171,6 +176,30 @@ validity 记「用时未知」而不惩罚。
 - `answers[].elapsedMs` 落 `placement_answers.elapsed_ms`；
 - 重复提交返回首次结果，且旧版存储结果在响应层会被清洗（阅读带移除）。
 
+## 种子画像不出带（v1.1 D8-2，2026-11-21）
+
+**问题**：迁移 `0014_ability` 把旧 `user_profiles.vocab_estimate` 映射成词汇
+区间。C1 点会算出 `low=B2`、`high=C2`（上界超出题库与展示范围），而推荐侧
+`normalize_band` 只认 A1–C1，整条链路因此拿不到合法带、回退默认 `A2–B1`。
+
+**决策**：种子行只保留点估计（`cefr_point`），**不展示区间**；用户完成一次
+12 分钟定位测后，再由真实题目证据给出区间。
+
+- **迁移 `0026_seed_band_fix`**：对 `details` 含 `"legacy_seed"` 的行清空
+  `cefr_low` / `cefr_high`，不动 `cefr_point` 与 `details`；历史迁移 0014
+  不回改。`downgrade` 不可逆（被删的是错误的 C2 上界，没有可信旧值可写回）。
+- **读取侧兜底**：`ability._display_band` 对 `details.source='legacy_seed'` 的
+  行返回 `(None, None)`；即使库未跑 0026，能力档案也不会再展示假区间。
+- **`GET /api/ability/profile`**：种子行的 `vocabulary.low/high/label` 为
+  `null`；`cefr` 仍返回点带（如 `C1`）；`bandSource='legacy_seed'`；`note`
+  改为「旧版词汇量回填：只有词汇量点估计，没有题目级证据；完成一次 12 分钟
+  定位测可获得词汇区间。」；`estimate`（点估计与词汇量区间）保留。真实证据行
+  的 `bandSource='evidence'`，行为不变。
+- **旧端点 shim `GET /api/placement/profile`**：种子行的 `cefr` /
+  `levelBandLow/High` 为 `null`，`vocabEstimate` 保留。
+- **推荐联动**：种子行无带时用点估计当单档带，规则见
+  [specs/026](../026-content-difficulty/spec.md)「推荐读带」。
+
 ## 内容
 
 - `content/ability/can_do.json`：5 级 × 4 技能 × 2 条 = 40 条，zh + vi，
@@ -189,6 +218,10 @@ validity 记「用时未知」而不惩罚。
 - 8001 临时库实测：旧 shim 无阅读带、`/api/ability/profile` 状态正确、
   self-assess 幂等、can-do 公开 200；
 - 契约 A1–A8 全绿（见 `tests/test_ability_contract.py`）；
+- （v1.1 D8-2）迁移 0026 清空种子行区间；`/api/ability/profile` 的
+  `low/high/label=null` 且 `bandSource='legacy_seed'`；旧 shim 不再输出种子带；
+- （v1.1 D8-2）推荐在种子行无带时使用点估计单档带（`test_recommend.py`），
+  不再整条回退默认 `A2–B1`；
 - `scripts/cat_sim.py` 固定参数产出三列表，仅作设计检查，不对外引用百分比。
 
 ## 已知限制
