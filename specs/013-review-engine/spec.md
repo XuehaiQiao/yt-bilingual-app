@@ -60,6 +60,9 @@
 - `mastered` 是词状态之上的标记，**不是新的 `state` 值**（不改 `state` CHECK）；FSRS 字段照旧保留。
 - `mastered=1` 的词**不进队列、不计 `newWords`/`dueToday`**，也不参与连续天数；统计新增 `masteredWords`。
 - 撤销已掌握不重置 FSRS 参数；同一词再次「加入复习」时强制 `mastered=0`。
+- 登录用户的「已掌握」列表走 `GET /api/review/words?mastered=1`（读同一份
+  `word_states.mastered`）；前端本地镜像只能作乐观缓存，**不得作为已掌握的真相**，
+  否则等于同一语义的第二份数据源。
 
 ### `review_logs`
 
@@ -96,10 +99,11 @@
 | `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `200 {targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, streakDays}`；「今日」按 UTC 日界 |
 | `GET /api/review/suspended?limit=100&targetLang=` | `limit` 1–200（默认 100）；省略 `targetLang` = 全部语言 | `200 {targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序、`id` 兜底；`total` 为不分页总数 |
 | `PATCH /api/review/words` | `{lemma, targetLang?, mastered: boolean, source?}` | `200 {status:"ok", word}`；词不存在则创建（等价 POST），已存在只改 `mastered`，幂等；`mastered=true` 时同时把词从队列移出 |
+| `GET /api/review/words?mastered=&targetLang=&limit=` | `mastered` **只接受 `0` / `1`**（省略 = 不过滤，返回全部词）；`targetLang` 省略 = 全部语言；`limit` 1–200（默认 100，只截断返回列表，**不提供分页/offset**） | `200 {targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序、`id` 兜底；`total` 为过滤后总数（不受 `limit` 影响）；`mastered=1` 即「已掌握」列表 |
 | `POST /api/review/suspend` | `{lemma, targetLang?}` | `200 {status:"ok", suspended:true, word}`；不存在 **404**；重复调用幂等 |
 | `DELETE /api/review/suspend?lemma=&targetLang=`（也接受 JSON body） | — | `200 {status:"ok", suspended:false, word}`；不存在 **404** |
 
-`word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, sources:[{contentRef,sentenceId,createdAt}]}`。
+`word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, mastered, sources:[{contentRef,sentenceId,createdAt}]}`。
 队列项额外带 `sources`，不返回释义（前端需要时再调 `/api/define`，语言由 `targetLang` 决定）。
 
 错误语义：数据库未跑 `0006` 迁移时返回 **503**（`detail` 提示先 `alembic upgrade head`），不静默 500。
@@ -147,6 +151,7 @@
 
 - [x] 队列排除 `mastered=1`；`stats.masteredWords` 与「已掌握」列表数量一致。
 - [x] `PATCH /api/review/words` 幂等：同词两次 `mastered=true` 只一条行；`mastered=false` 可撤销。
+- [x] `GET /api/review/words?mastered=1` 能列出已掌握词、撤销后消失；游客 403；`mastered` 非 0/1 返回 400；`total` 不受 `limit` 影响。
 - [x] 加词入口：词条浮层与收藏行都能加词并带来源；重复点击不重复建行；失败可重试。
 
 ## 测试

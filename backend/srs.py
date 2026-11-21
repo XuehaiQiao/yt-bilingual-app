@@ -1043,6 +1043,83 @@ def list_suspended(
     }
 
 
+def list_words(
+    user_id: str,
+    target_lang: str | None = None,
+    mastered: int | bool | None = None,
+    *,
+    limit: int = 100,
+    now=None,
+) -> dict:
+    """列出词状态（默认全部；``mastered=0/1`` 过滤「已掌握」）。
+
+    - ``mastered=None``：不过滤，返回全部词（含已掌握）；``1`` 只返回已掌握、
+      ``0`` 只返回未掌握；只接受 ``0`` / ``1``（布尔也接），其它值 ValueError；
+    - ``target_lang=None``：跨语言；给了就只返回该语言；
+    - **没有分页/offset**：``limit``（1–200，默认 100）只截断返回列表，
+      ``total`` 是过滤后的总数、不受 ``limit`` 影响；
+    - 排序 ``COALESCE(last_reviewed_at, created_at) DESC, id DESC``（最近更新的
+      在前，与暂停词列表一致）；
+    - 读侧兼容：库未跑 0027（没有 ``mastered`` 列）时 ``mastered=0`` 等价全部词、
+      ``mastered=1`` 返回空列表，不 503。
+    """
+    user_id = _require_user_id(user_id)
+    lang = canonical_target_lang(target_lang) if target_lang else None
+    if mastered is None:
+        flag: int | None = None
+    elif isinstance(mastered, bool):
+        flag = 1 if mastered else 0
+    elif isinstance(mastered, int) and mastered in (0, 1):
+        flag = int(mastered)
+    else:
+        raise ValueError("mastered 只能是 0 或 1。")
+    now_value = _coerce_ms(now)
+    limit_value = max(1, min(int(limit), 200))
+    language_clause = " AND target_lang = ?" if lang else ""
+    language_args: tuple = (lang,) if lang else ()
+
+    conn = _connect()
+    try:
+        if flag == 1 and not _has_mastered(conn):
+            # 旧库不可能有已掌握行：直接空列表，不因缺列 503。
+            total, words = 0, []
+        else:
+            mastered_clause = ""
+            mastered_args: tuple = ()
+            if flag is not None and _has_mastered(conn):
+                mastered_clause = f" AND {MASTERED_COLUMN} = ?"
+                mastered_args = (flag,)
+            rows = conn.execute(
+                f"SELECT {_word_columns(conn)} FROM word_states "
+                "WHERE user_id = ?"
+                f"{language_clause}{mastered_clause} "
+                "ORDER BY COALESCE(last_reviewed_at, created_at) DESC, id DESC "
+                "LIMIT ?",
+                (user_id, *language_args, *mastered_args, limit_value),
+            ).fetchall()
+            words = [_row_to_word(row) for row in rows]
+            _attach_sources(conn, words)
+            total = int(
+                conn.execute(
+                    "SELECT COUNT(*) AS n FROM word_states WHERE user_id = ?"
+                    f"{language_clause}{mastered_clause}",
+                    (user_id, *language_args, *mastered_args),
+                ).fetchone()["n"]
+                or 0
+            )
+    except sqlite3.OperationalError as exc:
+        _translate_db_error(exc)
+        raise
+    finally:
+        conn.close()
+    return {
+        "target_lang": lang,
+        "now": now_value,
+        "total": total,
+        "words": words,
+    }
+
+
 def is_suspended(user_id: str, lemma: str, target_lang: str) -> bool | None:
     """状态查询便捷函数：不存在返回 None。"""
     word = get_word(user_id, lemma, target_lang)

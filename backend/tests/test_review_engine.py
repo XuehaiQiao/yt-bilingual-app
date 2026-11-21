@@ -529,6 +529,7 @@ def test_guest_is_forbidden_on_all_review_endpoints(make_client):
     with make_client() as guest:
         calls = [
             guest.post("/api/review/words", json={"lemma": "hello"}),
+            guest.get("/api/review/words", params={"mastered": "1"}),
             guest.get("/api/review/queue"),
             guest.post(
                 "/api/review/answer", json={"lemma": "hello", "rating": "good"}
@@ -716,6 +717,82 @@ def test_patch_mastered_validation_and_guest(make_client, review_db):
 
     with make_client() as guest:
         assert _master(guest, "hello", True).status_code == 403
+
+
+def test_list_mastered_words_endpoint(review_db, clock):
+    """GET /api/review/words：缺省全部词；?mastered=1 即「已掌握」列表（单一真相）。"""
+    client = review_db
+    clock["now"] = NOW
+    assert _add(client, "alpha").status_code == 201
+    clock["now"] = NOW + 1000  # created_at 决定排序，避免同毫秒按 id
+    assert _add(client, "beta").status_code == 201
+    assert _master(client, "alpha", True).status_code == 200
+
+    listed = client.get("/api/review/words", params={"mastered": "1"})
+    assert listed.status_code == 200, listed.text
+    body = listed.json()
+    assert body["targetLang"] is None
+    assert body["now"] == clock["now"]
+    assert body["total"] == 1
+    assert [word["lemma"] for word in body["words"]] == ["alpha"]
+    word = body["words"][0]
+    assert word["mastered"] is True
+    assert word["state"] == "new"  # 标记不是 state 取值
+    # 复用 to_public_word：与 POST/PATCH 的 word 同形。
+    assert {"id", "lemma", "targetLang", "state", "dueAt", "mastered", "sources"} <= set(
+        word
+    )
+
+    # mastered=0 只返回未掌握；省略 mastered = 不过滤（全部词）。
+    unmastered = client.get("/api/review/words", params={"mastered": "0"}).json()
+    assert unmastered["total"] == 1
+    assert [item["lemma"] for item in unmastered["words"]] == ["beta"]
+    everything = client.get("/api/review/words").json()
+    assert everything["total"] == 2
+    assert [item["lemma"] for item in everything["words"]] == ["beta", "alpha"]
+
+    # 排序：COALESCE(last_reviewed_at, created_at) DESC —— 复习过的词更新更近。
+    clock["now"] = NOW + 10 * MINUTE
+    assert _answer(client, "beta", "good").status_code == 200
+    ordered = client.get("/api/review/words").json()
+    assert [item["lemma"] for item in ordered["words"]] == ["beta", "alpha"]
+
+    # 语言过滤 + limit：limit 只截断列表，total 是过滤后总数。
+    assert _add(client, "hola", target="vi-VN").status_code == 201
+    assert _master(client, "hola", True, target="vi-VN").status_code == 200
+    zh = client.get(
+        "/api/review/words", params={"mastered": "1", "targetLang": "zh-CN"}
+    ).json()
+    assert zh["targetLang"] == "zh-CN"
+    assert zh["total"] == 1 and [item["lemma"] for item in zh["words"]] == ["alpha"]
+    all_langs = client.get("/api/review/words", params={"mastered": "1"}).json()
+    assert all_langs["total"] == 2
+    limited = client.get("/api/review/words", params={"limit": 1}).json()
+    assert limited["total"] == 3 and len(limited["words"]) == 1
+
+    # 撤销标记后从「已掌握」列表消失。
+    assert _master(client, "alpha", False).status_code == 200
+    gone = client.get(
+        "/api/review/words", params={"mastered": "1", "targetLang": "zh-CN"}
+    ).json()
+    assert gone["total"] == 0 and gone["words"] == []
+
+
+def test_list_words_validation(review_db):
+    """mastered 只接受 0/1（其余 400）；limit 越界 422；targetLang 非法 400。"""
+    client = review_db
+    for bad in ("2", "true", "yes", ""):
+        response = client.get("/api/review/words", params={"mastered": bad})
+        assert response.status_code == 400, (bad, response.text)
+        assert "0" in response.json()["detail"] and "1" in response.json()["detail"]
+    assert (
+        client.get(
+            "/api/review/words", params={"mastered": "1", "targetLang": "xx-XX"}
+        ).status_code
+        == 400
+    )
+    assert client.get("/api/review/words", params={"limit": 0}).status_code == 422
+    assert client.get("/api/review/words", params={"limit": 201}).status_code == 422
 
 
 def test_public_word_exposes_mastered_flag():

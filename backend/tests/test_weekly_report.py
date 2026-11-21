@@ -847,6 +847,83 @@ def test_week_report_target_lang_matches_review_queue(report_db, clock):
     assert alias["words"] == zh["words"]
 
 
+def test_week_report_due_excludes_mastered_words(report_db, clock):
+    """已掌握（mastered=1）的到期词不计 dueTomorrow，也不触发「复习 N 个」nextStep。
+
+    口径与 srs 复习队列一致（specs/013 v1.1）：队列不排已掌握词，周报的到期
+    聚合与 nextStep 也必须同口径；撤销标记后立刻恢复。
+    """
+    client = report_db
+    user_id = client.user_id
+    # 本周有一次作答：否则 nextStep 走「先看一个视频」的空态规则，测不到到期分支。
+    _seed_attempt(
+        user_id,
+        suffix="mastered-next",
+        answered_at=_ms(NOW - timedelta(hours=2)),
+        correct=True,
+    )
+    # 两个都到期：dueword 保持未掌握，known 标记已掌握。
+    _seed_word(
+        user_id, "dueword", state="review", due_at=_ms(NOW - timedelta(hours=1))
+    )
+    _seed_word(
+        user_id, "known", state="review", due_at=_ms(NOW - timedelta(hours=1))
+    )
+    marked = client.patch(
+        "/api/review/words", json={"lemma": "known", "mastered": True}
+    )
+    assert marked.status_code == 200, marked.text
+
+    body = client.get("/api/report/week").json()
+    assert body["words"]["dueTomorrow"] == 1
+    assert body["nextStep"] == "复习 1 个到期词"
+    queue = client.get("/api/review/queue?targetLang=zh-CN").json()
+    assert [item["lemma"] for item in queue["due"]] == ["dueword"]
+    # 周报与复习队列同口径：已掌握词不算到期。
+    assert body["words"]["dueTomorrow"] == queue["counts"]["due"] == 1
+
+    # 到期词全部已掌握：dueTomorrow=0，nextStep 不再提「到期词」。
+    assert (
+        client.patch(
+            "/api/review/words", json={"lemma": "dueword", "mastered": True}
+        ).status_code
+        == 200
+    )
+    mastered_only = client.get("/api/report/week").json()
+    assert mastered_only["words"]["dueTomorrow"] == 0
+    assert "到期词" not in mastered_only["nextStep"]
+    assert mastered_only["nextStep"] == "看一个 10 分钟的视频"
+    assert (
+        client.get("/api/review/queue?targetLang=zh-CN").json()["counts"]["due"]
+        == 0
+    )
+
+    # 撤销标记：到期词重新计入，两边同步恢复。
+    assert (
+        client.patch(
+            "/api/review/words", json={"lemma": "dueword", "mastered": False}
+        ).status_code
+        == 200
+    )
+    restored = client.get("/api/report/week").json()
+    assert restored["words"]["dueTomorrow"] == 1
+    assert restored["nextStep"] == "复习 1 个到期词"
+
+
+def test_week_report_works_before_0027_mastered_migration(client, clock):
+    """库停在 0026（没有 mastered 列）：周报照常算到期，不 500/503。"""
+    assert_alembic_ok(
+        run_alembic(config.AUTH_DB_PATH, "upgrade", "0026_seed_band_fix"),
+        "upgrade 0026",
+    )
+    _seed_word(
+        client.user_id, "olddue", state="review", due_at=_ms(NOW - timedelta(hours=1))
+    )
+    response = client.get("/api/report/week")
+    assert response.status_code == 200, response.text
+    assert response.json()["words"]["dueTomorrow"] == 1
+
+
 def test_week_report_target_lang_invalid_400(report_db, clock):
     """非法目标语言 → 400；空串按「全部语言」处理（与复习统计端点一致）。"""
     for query in ("targetLang=xx-YY", "target_lang=xx-YY", "targetLang=zh-XX"):

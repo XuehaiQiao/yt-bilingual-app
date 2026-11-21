@@ -46,7 +46,7 @@
 | `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
 | `routes_user.py` | `/api/define`（词典：`targetLang` 决定缓存目录与 prompt 语言；语境缓存 → 本地 ECDICT（**仅 zh-CN**）→「已配 Key 的候选模型」；vi-VN 跳过 ECDICT 直接 LLM，只有 DeepSeek Key 也能查；缺省 `model` 时 zh 候选链首选 `DEFAULT_MODEL`、其他语言首选该语言路线；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；响应带 `targetLang`，可选 `pos_label` / `example_translation`；模型结果写按语言隔离的缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`（M1 ④ 按条 API：POST/GET/DELETE + 旧 PUT 兼容 + `?since=` 增量；文件锁 + 原子写，见下文「收藏按条 API」）、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
 | `srs.py` | **复习调度与词状态读写（M2）**：`review(word_state, rating, now)` 纯函数走 FSRS-6（PyPI `fsrs` 6.3.3，目标保持率 0.9、关闭 fuzz 保证确定性）；`add_word` 幂等建词（重复添加不重置进度，只补来源）；`get_due` 到期词 + 新词队列；`record_answer` 同一事务更新状态并追加 `review_logs` 快照；连续 3 次 `again` 自动 suspend，`set_suspended` 手工暂停/恢复；`get_stats` 今日到期/已复习/新词/连续天数。表由 `0006_review_engine` 创建，运行时不建表；时间全部毫秒 UTC |
-| `routes_review.py` | 复习引擎 HTTP 路由（**需登录，游客 403**）：`POST /api/review/words`、`GET /api/review/queue`、`POST /api/review/answer`、`GET /api/review/stats`、`GET /api/review/suspended`（暂停词列表，省略 `targetLang` = 全部语言）、`POST/DELETE /api/review/suspend`；契约与错误语义见下文「复习引擎」与 [specs/013](../specs/013-review-engine/spec.md) |
+| `routes_review.py` | 复习引擎 HTTP 路由（**需登录，游客 403**）：`POST /api/review/words`、`PATCH /api/review/words`（标记/撤销「已掌握」，幂等，不存在则建行）、`GET /api/review/words`（缺省全部词；`?mastered=1` = 已掌握列表）、`GET /api/review/queue`、`POST /api/review/answer`、`GET /api/review/stats`、`GET /api/review/suspended`（暂停词列表，省略 `targetLang` = 全部语言）、`POST/DELETE /api/review/suspend`；另**临时承载**单词本的 `GET /api/vocabulary/seen`（见 specs/005 v1.1，等 `routes_vocabulary.py` 的并行改动稳定后搬回）；契约与错误语义见下文「复习引擎」与 [specs/013](../specs/013-review-engine/spec.md) |
 | `quiz.py` | **理解题生成与作答（M3）**：读当前用户已有双语字幕缓存（video / local_show，≥8 句）→ 按 `(content_hash, prompt_version)` 缓存出 3 道题 → 两道闸（结构：mcq 4 选 1 / tf 判断；内容：英文题面不混中文、题目与证据句相关）→ 写 `content_items` / `questions` / `attempts` → 返回证据 block 与秒/毫秒时间点；失败重试 1 次，仍失败该题 `rejected`；表由 `0007_quiz` 创建，运行时不建表；作答写 `learning_events(quiz_answer)` |
 | `routes_quiz.py` | 理解题 HTTP 路由（**需登录，游客 403**）：`POST /api/lesson/start`、`GET /api/lesson/{id}/questions`、`POST /api/lesson/answer`、`GET /api/lesson/{id}/result`；契约与错误语义见下文「理解题」与 [specs/014](../specs/014-quiz/spec.md) |
 | `course.py` | **课程（specs/029 + 030）**：静态课程读 `content/course/*.json`（`COURSE_DIR`，schema `linguatrek.course-lesson.v1`），生成课程读 `generated_courses`（只认本人）；两类合并成列表/详情（题目脱敏，不含 `answer`/`explain`）；attempt 开始/恢复（同一用户同一课程唯一 `in_progress`）、首次作答（重复同 choice 幂等、换 choice 409）、步骤/产出保存（≤2000 字符）、完成后按题目数评分、事件写入（≤2KB）；所有查询校验 `user_id` 归属，越权 404；表由 `0021_course_mvp` / `0022_generated_courses` 创建，运行时不建表 |
@@ -232,7 +232,7 @@ data/                                  # DATA_DIR（gitignore）
 
 | 表 | 内容 |
 |---|---|
-| `word_states` | 每个用户每个词（按 `target_lang` 分开）一条当前状态：`state`（`new` / `learning` / `review` / `relearning` / `suspended`）、`due_at`、`stability` / `difficulty`（FSRS-6）、`reps` / `lapses`、`last_reviewed_at`、`created_at`；内部列 `step`（FSRS 学习/重学子日 step）与 `fail_streak`（连续 Again 计数）。`UNIQUE(user_id, lemma, target_lang)` + `INDEX(user_id, due_at)` |
+| `word_states` | 每个用户每个词（按 `target_lang` 分开）一条当前状态：`state`（`new` / `learning` / `review` / `relearning` / `suspended`）、`due_at`、`stability` / `difficulty`（FSRS-6）、`reps` / `lapses`、`last_reviewed_at`、`created_at`；内部列 `step`（FSRS 学习/重学子日 step）与 `fail_streak`（连续 Again 计数）；`mastered`（迁移 `0027_review_mastered`：0/1「已掌握」标记，**不是新的 `state` 取值**；`mastered=1` 不进队列、不计新词与到期，撤销不重置 FSRS）。`UNIQUE(user_id, lemma, target_lang)` + `INDEX(user_id, due_at)` |
 | `review_logs` | append-only 流水：`rating`（`again` / `hard` / `good` / `easy`）、`state_before` / `state_after`（JSON 快照）、`reviewed_at`、`elapsed_ms`；索引 `(user_id, reviewed_at)` |
 | `word_sources` | 词从哪来：`word_state_id`（FK → `word_states.id`，CASCADE）、`content_ref`（videoId / 剧集 / 文章）、`sentence_id`、`created_at`；索引 `word_state_id` |
 
@@ -253,14 +253,21 @@ data/                                  # DATA_DIR（gitignore）
 | 端点 | 请求 | 成功 |
 |---|---|---|
 | `POST /api/review/words` | `{lemma, targetLang?, source?}`；`source` 可为 `{contentRef,sentenceId}`（也接受 `videoId` / snake_case）或字符串 | `201 {"status":"ok","created":true,"word":{…}}`；已存在 `200 created:false`，**不重置进度**，只补来源 |
+| `PATCH /api/review/words` | `{lemma, targetLang?, mastered: bool, source?}`（specs/013 v1.1「已掌握」） | `200 {"status":"ok","word"}`；词不存在则建行（等价 POST），已存在只改标记，幂等；`mastered:true` 后不进队列、不计 `newWords`/`dueToday`，统计进 `masteredWords`；非法 `mastered` 400 |
+| `GET /api/review/words?mastered=&targetLang=&limit=` | `mastered` 只接受 `0`/`1`（省略 = 不过滤，返回全部词）；`targetLang` 省略 = 全部语言；`limit` 1–200（默认 100） | `{targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序、`id` 兜底；`total` 为过滤后总数（不受 `limit` 影响）；**没有分页/offset**；`mastered=1` = 已掌握列表；非 0/1 400 |
 | `GET /api/review/queue?limit=20&newLimit=10&targetLang=zh-CN` | `limit` 1–100（总条数）、`newLimit` 0–100 | `{targetLang, now, limit, newLimit, counts, due, new, items}`；`due` 按 `due_at` 升序、`new` 按 `created_at` 升序；不返回释义（前端需要时再调 `/api/define`） |
 | `POST /api/review/answer` | `{lemma, rating, targetLang?, elapsedMs?}` | `{status:"ok", word, suspended, autoSuspended, dueAt}`；词不存在 404、已暂停 409、评分非法 400 |
-| `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `{targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, streakDays}` |
+| `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `{targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, masteredWords, streakDays}` |
 | `GET /api/review/suspended?limit=100&targetLang=` | `limit` 1–200（默认 100）；省略 `targetLang` = 全部语言 | `{targetLang, now, total, words:[word…]}`；按最近更新倒序（`COALESCE(last_reviewed_at, created_at)`），`total` 为不分页总数 |
 | `POST /api/review/suspend` | `{lemma, targetLang?}` | `{status:"ok", suspended:true, word}`；不存在 404 |
 | `DELETE /api/review/suspend?lemma=&targetLang=` | 也接受 JSON body | `{status:"ok", suspended:false, word}`；不存在 404 |
+| `GET /api/vocabulary/seen?words=a,b,c` | 需登录；`words` 逗号分隔或重复传参，≤100 | `200 {word: count}`：实时聚合 `learning_events(type='dict_lookup')`，按小写词形归并计数、无记录返回 0；键保留传入词形（specs/005 v1.1「见过次数」）；游客 403、空/超量 422、事件表未迁移 503 |
 
-`word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, sources}`。
+- `GET /api/vocabulary/seen` 属于词表契约，但**当前临时落在 `routes_review.py`**：
+  本轮 `routes_vocabulary.py` 正被并行改动（新增 `/classify`），为免互相覆盖先
+  放在复习路由的相近位置；路径、鉴权与响应形状不变，后续可整段搬回。
+
+`word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, mastered, sources}`。
 数据库未迁移 → **503**；参数错误 → **400**；游客 → **403**。
 
 ### 行为埋点事件（M2 #7 / specs/027）

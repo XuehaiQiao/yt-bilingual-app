@@ -8,6 +8,7 @@
 
 - ``POST /api/review/words``           加词（幂等，不重置进度）
 - ``PATCH /api/review/words``          标记 / 撤销「已掌握」（幂等 upsert）
+- ``GET  /api/review/words``           列出词状态；``?mastered=1`` = 已掌握列表
 - ``GET  /api/review/queue``           到期词 + 新词队列
 - ``POST /api/review/answer``          作答（again/hard/good/easy）
 - ``GET  /api/review/stats``           今日到期/已复习/新词/连续天数
@@ -202,6 +203,51 @@ def set_review_word_mastered(payload: SetMasteredRequest, request: Request):
         raise  # pragma: no cover - _raise_review_error 必抛
 
     return {"status": "ok", "word": srs.to_public_word(word)}
+
+
+@router.get("/api/review/words")
+def list_review_words(
+    request: Request,
+    mastered: str | None = Query(
+        default=None,
+        description="0=未掌握、1=已掌握；省略 = 不过滤（返回全部词）",
+    ),
+    targetLang: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=200),
+):
+    """列出词状态：缺省全部词，``?mastered=1`` 即登录用户的「已掌握」列表。
+
+    - 需登录；游客/未登录 403；
+    - ``mastered`` **只接受 ``0`` / ``1``**（字符串），其它值 400；省略 = 不过滤；
+    - ``targetLang`` 省略 = 全部语言；``limit`` 1–200（默认 100）；
+    - **没有分页/offset**：``limit`` 只截断 ``words``，``total`` 是过滤后的总数
+      （不受 ``limit`` 影响）；排序 ``COALESCE(last_reviewed_at, created_at)``
+      倒序、``id`` 兜底，与暂停词列表一致；
+    - 列表读的是与 ``PATCH`` 同一份 ``word_states.mastered``：前端不需要再用
+      localStorage 镜像当「已掌握」的真相。
+    """
+    user = _require_login(request)
+    lang = _optional_target_lang_or_400(targetLang)
+    if mastered is not None and mastered not in ("0", "1"):
+        raise HTTPException(status_code=400, detail="mastered 只能是 0 或 1。")
+    try:
+        data = srs.list_words(
+            user["id"],
+            lang,
+            None if mastered is None else int(mastered),
+            limit=limit,
+            now=srs.now_ms(),
+        )
+    except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
+        _raise_review_error(exc)
+        raise  # pragma: no cover - _raise_review_error 必抛
+
+    return {
+        "targetLang": data["target_lang"],
+        "now": data["now"],
+        "total": data["total"],
+        "words": [srs.to_public_word(word) for word in data["words"]],
+    }
 
 
 # ---------------------------------------------------------------------------

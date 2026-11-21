@@ -35,6 +35,9 @@
   ``watch_events`` / ``review_logs`` / ``word_states`` 直接有 ``target_lang``；
   ``attempts`` 没有，经 ``questions`` 关联到 ``content_items.target_lang``。
   ``streakDays`` 是跨语言的学习习惯，不随 ``target_lang`` 过滤。
+- **已掌握口径**：``word_states.mastered=1``（迁移 0027）的词不计
+  ``dueTomorrow``，因此也不会触发「复习 N 个到期词」的 nextStep——与
+  ``srs`` 队列（不排已掌握词）同口径。库停在 0026 时列不存在，全视为未掌握。
 - 表缺失（未跑 ``0008_weekly_report``）抛 :class:`ReportUnavailable`，路由
   转 **503**；运行时不建表。
 
@@ -162,6 +165,15 @@ def _require_tables(conn: sqlite3.Connection, tables: tuple[str, ...]) -> None:
             f"数据库缺少表 {missing}（先运行 alembic upgrade head，"
             "周报需要 0008_weekly_report 及更早迁移）。"
         )
+
+
+def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    """表/列是否存在（PRAGMA；表不存在返回 False，不抛异常）。"""
+    try:
+        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    except sqlite3.OperationalError:
+        return False
+    return any(row[1] == column for row in rows)
 
 
 def _raise_unavailable(exc: sqlite3.OperationalError) -> None:
@@ -553,6 +565,14 @@ def _word_aggregate(
     # word_states.target_lang 由 0006_review_engine 创建（非空，默认 zh-CN）；
     # 过滤后 dueTomorrow 与 /api/review/queue 的语言口径一致。
     language_sql, language_args = _language_clause(target_lang)
+    # 已掌握（0027 mastered=1）的词不计到期：复习队列不排它们，周报也不能在
+    # 「复习 N 个到期词」的 nextStep 里把它们算进去（specs/013 v1.1）。库停在
+    # 0026 时没有该列，全视为未掌握，旧库口径不变。
+    mastered_sql = (
+        " AND mastered = 0"
+        if _has_column(conn, "word_states", "mastered")
+        else ""
+    )
     new_row = conn.execute(
         "SELECT COUNT(DISTINCT lemma) AS new_words FROM word_states "
         "WHERE user_id = ? AND created_at >= ? AND created_at < ?"
@@ -560,14 +580,15 @@ def _word_aggregate(
         (identity, start_ms, end_ms, *language_args),
     ).fetchone()
     # dueTomorrow = 到明天结束前所有该复习的词（含已到期未复习的），与
-    # srs.get_stats 的 due_today 口径同源：只算 learning/review/relearning。
+    # srs.get_stats 的 due_today 口径同源：只算 learning/review/relearning，
+    # 并排除 mastered=1。
     today_start = (now_value // MS_PER_DAY) * MS_PER_DAY
     tomorrow_end = today_start + 2 * MS_PER_DAY
     placeholders = ", ".join("?" for _ in DUE_STATES)
     due_row = conn.execute(
         f"SELECT COUNT(*) AS due FROM word_states "
         f"WHERE user_id = ? AND state IN ({placeholders}) AND due_at < ?"
-        f"{language_sql}",
+        f"{language_sql}{mastered_sql}",
         (identity, *DUE_STATES, tomorrow_end, *language_args),
     ).fetchone()
     return {
