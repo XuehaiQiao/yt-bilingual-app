@@ -23,8 +23,10 @@ import hmac
 import json
 import logging
 import os
+import re
 import sqlite3
 import time
+import unicodedata
 from urllib.parse import quote
 
 import config
@@ -273,6 +275,57 @@ def query_events(
     finally:
         conn.close()
     return [_row_to_dict(row) for row in rows]
+
+
+def lookup_counts(user_id: str, words: list[str]) -> dict[str, int]:
+    """按小写词形聚合用户的 ``dict_lookup`` 次数（specs/005 v1.1「见过次数」）。
+
+    - 数据源是 ``learning_events`` 的实时聚合，不建物化表；
+    - 只统计 ``event_type='dict_lookup'``、payload 合法且 ``word`` 非空的行；
+    - 入参词形先归并（NFC + 折叠空白 + 小写，与写入层 ``_as_word`` 一致），
+      大小写 / 多余空白不会把同一个词拆开计数；
+    - 返回 ``{小写词形: 次数}``，**没查过的词也在结果里（0）**，调用方不用补缺省；
+    - 库/表未就绪时抛 ``sqlite3.OperationalError``（路由转 503），不静默返回
+      全 0——「没记录」与「没迁移」必须能区分。
+    """
+    keys: list[str] = []
+    seen: set[str] = set()
+    for word in words:
+        key = normalize_lookup_word(word)
+        if key and key not in seen:
+            seen.add(key)
+            keys.append(key)
+    if not keys:
+        return {}
+
+    _require_db()
+    placeholders = ", ".join("?" for _ in keys)
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT LOWER(json_extract(payload, '$.word')) AS word, "
+            "COUNT(*) AS n FROM learning_events "
+            "WHERE user_id = ? AND event_type = 'dict_lookup' "
+            "AND json_valid(payload) "
+            f"AND LOWER(json_extract(payload, '$.word')) IN ({placeholders}) "
+            "GROUP BY word",
+            (user_id, *keys),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    counts = {key: 0 for key in keys}
+    for row in rows:
+        word = row["word"]
+        if word in counts:
+            counts[word] = int(row["n"] or 0)
+    return counts
+
+
+def normalize_lookup_word(word) -> str:
+    """``dict_lookup`` 的归并键：NFC + 折叠空白 + 小写。"""
+    text = unicodedata.normalize("NFC", str(word))
+    return re.sub(r"\s+", " ", text).strip().lower()
 
 
 def schema_status() -> dict:

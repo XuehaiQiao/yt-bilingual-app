@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0026_seed_band_fix"
+HEAD = "0027_review_mastered"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -358,6 +358,8 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "fail_streak",
         "last_reviewed_at",
         "created_at",
+        # 0027_review_mastered：「已掌握」标记（0/1，默认 0，原地加列不重建表）。
+        "mastered",
     ]
     assert word_states["id"]["pk"] == 1
     assert word_states["id"]["notnull"] == 1
@@ -371,6 +373,9 @@ def test_upgrade_head_from_empty_db(tmp_path):
     assert word_states["last_reviewed_at"]["notnull"] == 0
     assert "zh-CN" in str(word_states["target_lang"]["default"])
     assert "new" in str(word_states["state"]["default"])
+    # 0027：「已掌握」是 0/1 标记，NOT NULL DEFAULT 0（老行自动补 0）。
+    assert word_states["mastered"]["notnull"] == 1
+    assert str(word_states["mastered"]["default"]) == "0"
 
     state_indexes = index_names(db, "word_states")
     assert "ix_word_states_user_due" in state_indexes
@@ -1573,3 +1578,46 @@ def test_exam_downgrade_to_0011_and_back(tmp_path):
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
     assert revision(db) == HEAD
     assert {"exam_sessions", "exam_answers"} <= table_names(db)
+
+
+def test_review_mastered_migration_is_additive_and_idempotent(tmp_path):
+    """0027 原地加列：老行补 0；downgrade 是 no-op（保留列与数据）；再升级幂等。
+
+    「不重建表」的验收方式：新增列后老行仍在、其它列值不变，且降级不删列
+    （回滚到 0026 后旧代码不读该列，读侧也按 0 兼容，删列只会丢用户标记）。
+    """
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    assert "mastered" in columns(db, "word_states")
+
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "INSERT INTO word_states (id, user_id, lemma, target_lang, state, "
+            "due_at, reps, lapses, step, fail_streak, created_at) "
+            "VALUES ('ws-m1', 'u1', 'hello', 'zh-CN', 'new', 1000, 0, 0, 0, 0, 1000)"
+        )
+        assert conn.execute(
+            "SELECT mastered FROM word_states WHERE id = 'ws-m1'"
+        ).fetchone()[0] == 0
+        conn.execute("UPDATE word_states SET mastered = 1 WHERE id = 'ws-m1'")
+
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0026_seed_band_fix"), "downgrade 0026"
+    )
+    assert revision(db) == "0026_seed_band_fix"
+    # no-op：列与用户标记都保留（旧代码不读该列，保留无副作用）。
+    assert "mastered" in columns(db, "word_states")
+    with sqlite3.connect(db) as conn:
+        assert conn.execute(
+            "SELECT mastered FROM word_states WHERE id = 'ws-m1'"
+        ).fetchone()[0] == 1
+
+    # 列已存在时再升级必须跳过，不能报 duplicate column name。
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert revision(db) == HEAD
+    with sqlite3.connect(db) as conn:
+        row = conn.execute(
+            "SELECT lemma, state, due_at, created_at, mastered "
+            "FROM word_states WHERE id = 'ws-m1'"
+        ).fetchone()
+    assert tuple(row) == ("hello", "new", 1000, 1000, 1)

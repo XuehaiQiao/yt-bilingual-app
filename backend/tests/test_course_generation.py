@@ -377,7 +377,7 @@ def _quota_used() -> int:
 def test_migration_0022_table_columns_indexes(tmp_path):
     db = tmp_path / "app.db"
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (0022)")
-    assert revision(db) == "0026_seed_band_fix"
+    assert revision(db) == "0027_review_mastered"
     assert "generated_courses" in table_names(db)
 
     cols = columns(db, "generated_courses")

@@ -567,3 +567,204 @@ def test_restore_accepts_json_body(review_db):
     )
     assert restored.status_code == 200, restored.text
     assert restored.json()["word"]["state"] == "new"
+
+
+# ---------------------------------------------------------------------------
+# 8. 已掌握（mastered，specs/013 v1.1 / 迁移 0027）
+# ---------------------------------------------------------------------------
+
+def _master(client, lemma, mastered, target="zh-CN", source=None):
+    body = {"lemma": lemma, "targetLang": target, "mastered": mastered}
+    if source is not None:
+        body["source"] = source
+    return client.patch("/api/review/words", json=body)
+
+
+def test_mastered_word_leaves_queue_and_stats_count_it(review_db, clock):
+    client = review_db
+    clock["now"] = NOW
+    assert _add(client, "alpha").status_code == 201
+    clock["now"] = NOW + 1000  # created_at 决定新词顺序，避免同毫秒按 id 排序
+    assert _add(client, "beta").status_code == 201
+    assert [item["lemma"] for item in _queue(client).json()["items"]] == [
+        "alpha",
+        "beta",
+    ]
+
+    marked = _master(client, "alpha", True)
+    assert marked.status_code == 200, marked.text
+    body = marked.json()
+    assert body["status"] == "ok"
+    assert body["word"]["mastered"] is True
+    assert body["word"]["state"] == "new"  # 标记不新增 state 取值
+    assert [item["lemma"] for item in _queue(client).json()["items"]] == ["beta"]
+
+    stats = _stats(client).json()
+    assert stats["masteredWords"] == 1
+    assert stats["newWords"] == 1  # alpha 不再算新词
+    assert stats["totalWords"] == 2  # 但仍在生词本里
+
+    # 撤销：回到队列，标记清零，FSRS / reps 不变（这条新词本来也没复习过）。
+    undone = _master(client, "alpha", False)
+    assert undone.status_code == 200, undone.text
+    assert undone.json()["word"]["mastered"] is False
+    assert [item["lemma"] for item in _queue(client).json()["items"]] == [
+        "alpha",
+        "beta",
+    ]
+    assert _stats(client).json()["masteredWords"] == 0
+
+
+def test_mastered_excluded_from_due_queue_without_resetting_fsrs(review_db, clock):
+    client = review_db
+    clock["now"] = NOW
+    assert _add(client, "gamma").status_code == 201
+    assert _answer(client, "gamma", "good").status_code == 200
+
+    clock["now"] = NOW + 60 * MINUTE  # gamma 到期
+    due = _queue(client).json()
+    assert [item["lemma"] for item in due["due"]] == ["gamma"]
+    before = due["due"][0]
+    stats = _stats(client).json()
+    assert stats["dueToday"] == 1 and stats["dueNow"] == 1
+
+    marked = _master(client, "gamma", True).json()["word"]
+    assert marked["mastered"] is True
+    # 标记只加在词状态之上：FSRS 参数与复习进度原样保留。
+    assert marked["reps"] == before["reps"] == 1
+    assert marked["dueAt"] == before["dueAt"]
+    assert marked["stability"] == before["stability"]
+
+    empty = _queue(client).json()
+    assert empty["items"] == [] and empty["due"] == [] and empty["new"] == []
+    stats = _stats(client).json()
+    assert stats["dueToday"] == 0 and stats["dueNow"] == 0
+    assert stats["masteredWords"] == 1
+
+
+def test_patch_mastered_upserts_and_is_idempotent(review_db):
+    client = review_db
+
+    # 词不存在：建行（state=new），不要求先 POST /words。
+    first = _master(client, "fresh", True)
+    assert first.status_code == 200, first.text
+    word = first.json()["word"]
+    assert word["mastered"] is True
+    assert word["state"] == "new"
+    fresh_id = word["id"]
+
+    # 同一个值重复 PATCH：同一行、字段不变。
+    second = _master(client, "fresh", True)
+    assert second.status_code == 200, second.text
+    assert second.json()["word"]["id"] == fresh_id
+    rows = _db_rows(
+        "SELECT id, mastered FROM word_states WHERE lemma = 'fresh'"
+    )
+    assert len(rows) == 1
+    assert rows[0]["mastered"] == 1
+
+    # 撤销：仍只有一行，标记 0，回到（新词）队列。
+    undone = _master(client, "Fresh", False)  # 大小写归一化到同一行
+    assert undone.status_code == 200, undone.text
+    assert undone.json()["word"]["id"] == fresh_id
+    assert undone.json()["word"]["mastered"] is False
+    assert len(_db_rows("SELECT id FROM word_states WHERE lemma = 'fresh'")) == 1
+    assert [item["lemma"] for item in _queue(client).json()["items"]] == ["fresh"]
+
+    # source 可选：带来源只为该词记一条来源，不重复建行。
+    sourced = _master(
+        client, "fresh", True, source={"contentRef": "vid-1", "sentenceId": "s1"}
+    )
+    assert sourced.status_code == 200, sourced.text
+    sources = sourced.json()["word"]["sources"]
+    assert [(s["contentRef"], s["sentenceId"]) for s in sources] == [
+        ("vid-1", "s1")
+    ]
+    assert len(_db_rows("SELECT id FROM word_states WHERE lemma = 'fresh'")) == 1
+
+
+def test_readding_a_mastered_word_clears_the_flag(review_db, clock):
+    client = review_db
+    clock["now"] = NOW
+    assert _add(client, "repeat").status_code == 201
+    assert _master(client, "repeat", True).json()["word"]["mastered"] is True
+    assert _queue(client).json()["items"] == []
+
+    # 再次「加入复习」= 想复习：强制 mastered=0，且仍是幂等（不新建行）。
+    again = _add(client, "repeat")
+    assert again.status_code == 200, again.text
+    body = again.json()
+    assert body["created"] is False
+    assert body["word"]["mastered"] is False
+    assert _db_rows(
+        "SELECT mastered FROM word_states WHERE lemma = 'repeat'"
+    )[0]["mastered"] == 0
+    assert [item["lemma"] for item in _queue(client).json()["items"]] == ["repeat"]
+
+
+def test_patch_mastered_validation_and_guest(make_client, review_db):
+    client = review_db
+    assert _master(client, "", True).status_code == 400
+    assert _master(client, "hello", True, target="xx-XX").status_code == 400
+    assert _master(client, "hello", "yes").status_code == 400
+    assert _master(client, "hello", 1).status_code == 400
+    missing = client.patch("/api/review/words", json={"lemma": "hello"})
+    assert missing.status_code == 400
+    assert _master(
+        client, "hello", True, source=["not", "a", "source"]
+    ).status_code == 400
+
+    with make_client() as guest:
+        assert _master(guest, "hello", True).status_code == 403
+
+
+def test_public_word_exposes_mastered_flag():
+    base = {
+        "id": "w1",
+        "lemma": "hello",
+        "target_lang": "zh-CN",
+        "state": "new",
+        "due_at": NOW,
+        "reps": 0,
+    }
+    assert srs.to_public_word({**base, "mastered": 1})["mastered"] is True
+    assert srs.to_public_word({**base, "mastered": 0})["mastered"] is False
+    # 库停在 0026（内部字典没有该键）也必须是 False，而不是 None/KeyError。
+    assert srs.to_public_word(base)["mastered"] is False
+
+
+def test_mastered_words_do_not_extend_streak(review_db, clock):
+    client = review_db
+    clock["now"] = NOW
+    assert _add(client, "streaky").status_code == 201
+    assert _answer(client, "streaky", "good").status_code == 200
+    assert _stats(client).json()["streakDays"] == 1
+
+    assert _master(client, "streaky", True).status_code == 200
+    stats = _stats(client).json()
+    assert stats["streakDays"] == 0  # 已掌握的词不参与连续天数
+    assert stats["reviewedToday"] == 1  # 历史日志仍在（只是不计入 streak）
+    assert stats["masteredWords"] == 1
+
+
+def test_review_reads_work_before_0027_migration(client, clock):
+    """库停在 0026：读写照常（mastered 读作 False），只有写标记 503 提示升级。"""
+    assert_alembic_ok(
+        run_alembic(config.AUTH_DB_PATH, "upgrade", "0026_seed_band_fix"),
+        "upgrade 0026",
+    )
+    clock["now"] = NOW
+    assert _add(client, "olddb").status_code == 201
+    body = _queue(client).json()
+    assert [item["lemma"] for item in body["items"]] == ["olddb"]
+    assert body["items"][0]["mastered"] is False
+    assert _stats(client).json()["masteredWords"] == 0
+    blocked = _master(client, "olddb", True)
+    assert blocked.status_code == 503
+    assert "0027_review_mastered" in blocked.json()["detail"]
+
+    # 补迁移后标记可用（读侧不需要重连/重启）。
+    assert_alembic_ok(
+        run_alembic(config.AUTH_DB_PATH, "upgrade", "head"), "upgrade head"
+    )
+    assert _master(client, "olddb", True).status_code == 200

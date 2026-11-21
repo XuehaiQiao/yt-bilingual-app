@@ -18,7 +18,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0026_seed_band_fix"
+HEAD = "0027_review_mastered"
 PREVIOUS = "0015_assessment_sessions"
 
 

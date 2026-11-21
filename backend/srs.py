@@ -12,6 +12,9 @@
   :class:`ReviewUnavailable`，路由转 503 并提示先跑迁移，绝不顺手建表/建库。
 - **幂等**：``add_word`` 重复调用不重置进度（reps/due/stability 都不动），只
   补充新来源；suspend / restore 也是幂等的。
+- **已掌握是标记不是状态**：``word_states.mastered``（迁移 0027）是词状态之上
+  的 0/1 标记，不新增 ``state`` 取值；``mastered=1`` 的词不进队列、不计新词，
+  ``set_mastered`` 幂等且不重置 FSRS 参数（撤销不清复习进度）。
 - **可解释**：``review_logs`` 存每次作答前后的完整状态快照（JSON），审计与
   未来重算参数都靠它。
 - **止损**：连续 3 次 ``again`` 自动 ``suspended``；手工恢复会把失败计数清零，
@@ -413,6 +416,8 @@ def _row_to_word(row: sqlite3.Row) -> dict:
     item["lapses"] = int(item.get("lapses") or 0)
     item["step"] = int(item.get("step") or 0)
     item["fail_streak"] = int(item.get("fail_streak") or 0)
+    # 「已掌握」标记：库停在 0026 时 SELECT 用 0 AS mastered 兜底，这里统一成 0/1。
+    item[MASTERED_COLUMN] = 1 if int(item.get(MASTERED_COLUMN) or 0) else 0
     if item.get("stability") is not None:
         item["stability"] = float(item["stability"])
     if item.get("difficulty") is not None:
@@ -445,12 +450,45 @@ _WORD_COLUMNS = (
     "reps, lapses, step, fail_streak, last_reviewed_at, created_at"
 )
 
+# 「已掌握」标记（迁移 0027_review_mastered）。它是词状态之上的标记，不是新的
+# ``state`` 取值；列可能不存在（库停在 0026），所以读写都要先探测列。
+MASTERED_COLUMN = "mastered"
+
+
+def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    """表/列是否存在（PRAGMA；表不存在时返回 False，不抛异常）。"""
+    try:
+        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    except sqlite3.OperationalError:
+        return False
+    return any(row[1] == column for row in rows)
+
+
+def _has_mastered(conn: sqlite3.Connection) -> bool:
+    return _has_column(conn, "word_states", MASTERED_COLUMN)
+
+
+def _word_columns(conn: sqlite3.Connection) -> str:
+    """词状态 SELECT 的列清单。
+
+    未跑 0027 的库没有 ``mastered`` 列：读侧返回 ``0 AS mastered``，让队列 /
+    统计 / 公开形状保持兼容，而不是让整个复习模块 503。
+    """
+    if _has_mastered(conn):
+        return _WORD_COLUMNS + f", {MASTERED_COLUMN}"
+    return _WORD_COLUMNS + f", 0 AS {MASTERED_COLUMN}"
+
+
+def _unmastered_clause(conn: sqlite3.Connection) -> str:
+    """「不是已掌握」过滤；列不存在时全部视为 0，不需要过滤。"""
+    return f" AND {MASTERED_COLUMN} = 0" if _has_mastered(conn) else ""
+
 
 def _fetch_word(
     conn: sqlite3.Connection, user_id: str, lemma: str, target_lang: str
 ) -> sqlite3.Row | None:
     return conn.execute(
-        f"SELECT {_WORD_COLUMNS} FROM word_states "
+        f"SELECT {_word_columns(conn)} FROM word_states "
         "WHERE user_id = ? AND lemma = ? AND target_lang = ?",
         (user_id, lemma, target_lang),
     ).fetchone()
@@ -552,6 +590,14 @@ def add_word(
             if row is None:  # 理论上不会发生；保留明确错误而不是空指针
                 raise ReviewError("创建词状态失败。")
             created = True
+        elif int(row[MASTERED_COLUMN] or 0):
+            # 已掌握的词再次「加入复习」= 用户想复习：强制清掉标记（specs/013
+            # v1.1）。FSRS 参数、reps、due_at 一律不动，只是重新进队列。
+            conn.execute(
+                f"UPDATE word_states SET {MASTERED_COLUMN} = 0 WHERE id = ?",
+                (row["id"],),
+            )
+            row = _fetch_word(conn, user_id, lemma_key, lang)
         if normalized_source is not None:
             _insert_source(conn, row["id"], normalized_source, created_at)
         word = _row_to_word(row)
@@ -591,6 +637,87 @@ def get_word(user_id: str, lemma: str, target_lang: str) -> dict | None:
         conn.close()
 
 
+def set_mastered(
+    user_id: str,
+    lemma: str,
+    target_lang: str,
+    mastered: bool,
+    now=None,
+    source=None,
+) -> dict:
+    """设置 / 撤销「已掌握」标记（upsert，幂等）。
+
+    - 词不存在：建一行 ``state='new'``，``mastered`` 按入参落库（``mastered=1``
+      时因队列过滤不会进复习队列）；
+    - 已存在：**只改标记**，不碰 FSRS 参数 / ``reps`` / ``due_at``（撤销已掌握
+      不重置复习进度）；
+    - 同一个值重复调用幂等：不新建行、不改字段；
+    - ``source`` 可选，形状同 :func:`add_word`，用于记录标记来源。
+
+    返回词字典（含 ``sources`` 与 ``created``）。库未跑 ``0027_review_mastered``
+    迁移时抛 :class:`ReviewUnavailable`（路由 503），不静默吞掉标记。
+    """
+    user_id = _require_user_id(user_id)
+    lemma_key = normalize_lemma(lemma)
+    lang = canonical_target_lang(target_lang)
+    if isinstance(mastered, bool):
+        flag = 1 if mastered else 0
+    elif isinstance(mastered, int) and mastered in (0, 1):
+        flag = int(mastered)
+    else:
+        raise ValueError("mastered 必须是布尔值。")
+    normalized_source = normalize_source(source)
+    now_value = _coerce_ms(now)
+
+    conn = _connect()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        if not _has_mastered(conn):
+            raise ReviewUnavailable(
+                "词状态表缺少 mastered 列（未跑 0027_review_mastered 迁移）。"
+                "请先运行 `backend/venv/bin/alembic upgrade head`。"
+            )
+        row = _fetch_word(conn, user_id, lemma_key, lang)
+        created = False
+        if row is None:
+            word_id = uuid.uuid4().hex
+            conn.execute(
+                "INSERT OR IGNORE INTO word_states "
+                "(id, user_id, lemma, target_lang, state, due_at, stability, "
+                "difficulty, reps, lapses, step, fail_streak, last_reviewed_at, "
+                "created_at, mastered) VALUES (?, ?, ?, ?, 'new', ?, NULL, NULL, "
+                "0, 0, 0, 0, NULL, ?, ?)",
+                (word_id, user_id, lemma_key, lang, now_value, now_value, flag),
+            )
+            row = _fetch_word(conn, user_id, lemma_key, lang)
+            if row is None:  # 理论上不会发生；保留明确错误而不是空指针
+                raise ReviewError("创建词状态失败。")
+            created = True
+        elif int(row[MASTERED_COLUMN] or 0) != flag:
+            conn.execute(
+                f"UPDATE word_states SET {MASTERED_COLUMN} = ? WHERE id = ?",
+                (flag, row["id"]),
+            )
+            row = _fetch_word(conn, user_id, lemma_key, lang)
+        if normalized_source is not None:
+            _insert_source(conn, row["id"], normalized_source, now_value)
+        word = _row_to_word(row)
+        _attach_sources(conn, [word])
+        conn.commit()
+    except sqlite3.OperationalError as exc:
+        conn.rollback()
+        _translate_db_error(exc)
+        raise
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    word["created"] = created
+    return word
+
+
 def _queue_rows(
     conn: sqlite3.Connection,
     user_id: str,
@@ -602,12 +729,14 @@ def _queue_rows(
     state_placeholders = ", ".join("?" for _ in DUE_STATES)
     language_clause = " AND target_lang = ?" if target_lang else ""
     language_args: tuple = (target_lang,) if target_lang else ()
+    # 已掌握的词不进队列（specs/013 v1.1）；列不存在时无需过滤（全视为 0）。
+    mastered_clause = _unmastered_clause(conn)
 
     due_rows = conn.execute(
-        f"SELECT {_WORD_COLUMNS} FROM word_states "
+        f"SELECT {_word_columns(conn)} FROM word_states "
         "WHERE user_id = ? AND state IN "
         f"({state_placeholders}) AND due_at <= ?"
-        f"{language_clause} "
+        f"{language_clause}{mastered_clause} "
         "ORDER BY due_at ASC, created_at ASC, id ASC LIMIT ?",
         (user_id, *DUE_STATES, now, *language_args, limit),
     ).fetchall()
@@ -618,9 +747,9 @@ def _queue_rows(
     new: list[dict] = []
     if take_new > 0:
         new_rows = conn.execute(
-            f"SELECT {_WORD_COLUMNS} FROM word_states "
+            f"SELECT {_word_columns(conn)} FROM word_states "
             "WHERE user_id = ? AND state = 'new' AND due_at <= ?"
-            f"{language_clause} "
+            f"{language_clause}{mastered_clause} "
             "ORDER BY created_at ASC, id ASC LIMIT ?",
             (user_id, now, *language_args, take_new),
         ).fetchall()
@@ -883,7 +1012,7 @@ def list_suspended(
     conn = _connect()
     try:
         rows = conn.execute(
-            f"SELECT {_WORD_COLUMNS} FROM word_states "
+            f"SELECT {_word_columns(conn)} FROM word_states "
             "WHERE user_id = ? AND state = 'suspended'"
             f"{language_clause} "
             "ORDER BY COALESCE(last_reviewed_at, created_at) DESC, id DESC "
@@ -950,8 +1079,12 @@ def get_stats(
     language_clause = " AND target_lang = ?" if lang else ""
     language_args: tuple = (lang,) if lang else ()
     state_placeholders = ", ".join("?" for _ in DUE_STATES)
-
+    # 已掌握的词不进队列、不计 newWords / dueToday，也不参与连续天数
+    # （specs/013 v1.1）；库停在 0026 时列不存在，全视为未掌握。
     conn = _connect()
+    has_mastered = _has_mastered(conn)
+    mastered_clause = _unmastered_clause(conn)
+
     try:
         def count_words(extra: str, *params) -> int:
             row = conn.execute(
@@ -970,12 +1103,14 @@ def get_stats(
             return int(row["n"] or 0)
 
         due_today = count_words(
-            f" AND state IN ({state_placeholders}) AND due_at < ?",
+            f" AND state IN ({state_placeholders}) AND due_at < ?"
+            f"{mastered_clause}",
             *DUE_STATES,
             day_end,
         )
         due_now = count_words(
-            f" AND state IN ({state_placeholders}) AND due_at <= ?",
+            f" AND state IN ({state_placeholders}) AND due_at <= ?"
+            f"{mastered_clause}",
             *DUE_STATES,
             now_value,
         )
@@ -991,16 +1126,30 @@ def get_stats(
             ).fetchone()["n"]
             or 0
         )
-        new_words = count_words(" AND state = 'new'")
+        new_words = count_words(f" AND state = 'new'{mastered_clause}")
         new_today = count_words(" AND created_at >= ? AND created_at < ?", day_start, day_end)
         total_words = count_words("")
         suspended_words = count_words(" AND state = 'suspended'")
+        mastered_words = (
+            count_words(f" AND {MASTERED_COLUMN} = 1") if has_mastered else 0
+        )
 
         # 连续天数：从今天（若今天已复习）或昨天往回数。只取近 400 天，避免全表扫。
+        # 已掌握的词不参与连续天数：它们的作答日志不算「今天复习过」。
+        streak_mastered_clause = (
+            " AND NOT EXISTS ("
+            "SELECT 1 FROM word_states ws "
+            "WHERE ws.user_id = review_logs.user_id "
+            "AND ws.lemma = review_logs.lemma "
+            "AND ws.target_lang = review_logs.target_lang "
+            f"AND ws.{MASTERED_COLUMN} = 1)"
+            if has_mastered
+            else ""
+        )
         streak_rows = conn.execute(
             "SELECT DISTINCT (reviewed_at / ?) AS day FROM review_logs "
             "WHERE user_id = ?"
-            f"{language_clause} AND reviewed_at >= ?",
+            f"{language_clause} AND reviewed_at >= ?{streak_mastered_clause}",
             (MS_PER_DAY, user_id, *language_args, now_value - 400 * MS_PER_DAY),
         ).fetchall()
         review_days = {int(row["day"]) for row in streak_rows}
@@ -1028,6 +1177,7 @@ def get_stats(
         "new_today": new_today,
         "total_words": total_words,
         "suspended_words": suspended_words,
+        "mastered_words": mastered_words,
         "streak_days": streak_days,
     }
 
@@ -1059,6 +1209,8 @@ def to_public_word(word: dict) -> dict:
         "failStreak": word.get("fail_streak"),
         "lastReviewedAt": word.get("last_reviewed_at"),
         "createdAt": word.get("created_at"),
+        # 「已掌握」标记：bool（库停在 0026 时由读侧兜底为 False）。
+        "mastered": bool(word.get(MASTERED_COLUMN)),
         "sources": [
             _public_source(source) for source in (word.get("sources") or [])
         ],
@@ -1093,5 +1245,6 @@ def to_public_stats(stats: dict) -> dict:
         "newToday": stats.get("new_today"),
         "totalWords": stats.get("total_words"),
         "suspendedWords": stats.get("suspended_words"),
+        "masteredWords": stats.get("mastered_words"),
         "streakDays": stats.get("streak_days"),
     }

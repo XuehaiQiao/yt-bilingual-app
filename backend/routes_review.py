@@ -7,11 +7,15 @@
 端点（契约见 specs/013-review-engine/spec.md）：
 
 - ``POST /api/review/words``           加词（幂等，不重置进度）
+- ``PATCH /api/review/words``          标记 / 撤销「已掌握」（幂等 upsert）
 - ``GET  /api/review/queue``           到期词 + 新词队列
 - ``POST /api/review/answer``          作答（again/hard/good/easy）
 - ``GET  /api/review/stats``           今日到期/已复习/新词/连续天数
 - ``POST /api/review/suspend``         手工暂停
 - ``DELETE /api/review/suspend``       手工恢复
+- ``GET  /api/vocabulary/seen``        单词本「见过次数」（本应属词表路由，
+  为避免与并行修改的 ``routes_vocabulary.py`` 冲突临时落在这里；README /
+  前端消费方只看路径，见 specs/005 API 契约）
 
 错误语义：
 
@@ -24,10 +28,12 @@
 from __future__ import annotations
 
 import logging
+import sqlite3
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import AliasChoices, BaseModel, Field
 
+import events
 import srs
 
 logger = logging.getLogger(__name__)
@@ -71,6 +77,23 @@ class SuspendRequest(BaseModel):
         default=None,
         validation_alias=AliasChoices("targetLang", "target_lang"),
     )
+
+
+class SetMasteredRequest(BaseModel):
+    """``PATCH /api/review/words``：标记 / 撤销「已掌握」。
+
+    ``mastered`` 用 ``object`` 接，非法值由路由映射成 400（而不是 pydantic 的
+    422），与复习模块其它参数错误口径一致；``source`` 形状由
+    ``srs.normalize_source`` 校验。
+    """
+
+    lemma: str
+    target_lang: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("targetLang", "target_lang"),
+    )
+    mastered: object = None
+    source: object = None
 
 
 # ---------------------------------------------------------------------------
@@ -149,6 +172,36 @@ def add_review_word(
         "created": created,
         "word": srs.to_public_word(word),
     }
+
+
+@router.patch("/api/review/words")
+def set_review_word_mastered(payload: SetMasteredRequest, request: Request):
+    """标记 / 撤销「已掌握」（specs/013 v1.1，幂等）。
+
+    词不在生词本时**建行**（等价加词）；已存在只改 ``mastered``，FSRS 参数 /
+    ``reps`` / ``dueAt`` 都不动。``mastered=true`` 后该词不进复习队列、不计
+    ``newWords`` / ``dueToday``，统计里出现在 ``masteredWords``。
+    """
+    user = _require_login(request)
+    lang = _target_lang_or_400(payload.target_lang)
+    if not isinstance(payload.mastered, bool):
+        raise HTTPException(
+            status_code=400, detail="mastered 必须是布尔值（true/false）。"
+        )
+    try:
+        word = srs.set_mastered(
+            user["id"],
+            payload.lemma,
+            lang,
+            payload.mastered,
+            now=srs.now_ms(),
+            source=payload.source,
+        )
+    except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
+        _raise_review_error(exc)
+        raise  # pragma: no cover - _raise_review_error 必抛
+
+    return {"status": "ok", "word": srs.to_public_word(word)}
 
 
 # ---------------------------------------------------------------------------
@@ -325,4 +378,85 @@ async def restore_review_suspend(
         "status": "ok",
         "suspended": False,
         "word": srs.to_public_word(word),
+    }
+
+
+# ---------------------------------------------------------------------------
+# 单词本辅助：见过次数（GET /api/vocabulary/seen）
+# ---------------------------------------------------------------------------
+# 归属说明：路径属于「词表」家族（specs/005 API 契约），理想位置是
+# ``routes_vocabulary.py``；本轮那个文件正被并行改动（git diff 可见 classify
+# 端点），为避免互相覆盖先落在这里。路径与契约不变，前端 / README 不受影响；
+# 后续可整段搬回 ``routes_vocabulary.py``。
+#
+# 与词表公开端点不同，这个端点**需登录**（游客 403）：它读的是当前账号自己的
+# learning_events。``/api/vocabulary/`` 在 main.py 属于公开前缀（不签发游客
+# Cookie），所以登录闸在路由里显式做。
+
+MAX_SEEN_WORDS = 100
+
+
+def _parse_seen_words(words: list[str] | None) -> list[str]:
+    """``words=a,b,c`` / 重复 ``words=`` 两种写法都接，保持传入顺序去空串。"""
+    tokens: list[str] = []
+    for raw in words or []:
+        for chunk in str(raw).split(","):
+            token = chunk.strip()
+            if token:
+                tokens.append(token)
+    return tokens
+
+
+@router.get("/api/vocabulary/seen")
+def get_vocabulary_seen(
+    request: Request,
+    words: list[str] | None = Query(
+        None,
+        description="逗号分隔的单词（≤100；也可重复传 words=...）",
+    ),
+):
+    """单词本「见过次数」：按小写词形聚合当前用户的 ``dict_lookup`` 次数。
+
+    - 需登录；游客 403（读的是账号自己的学习事件）；
+    - 每批 ≤100 个词；空参数 / 超量 422；
+    - 返回 ``{word: count}``：键保留传入词形，计数按小写词形归并（大小写 /
+      多余空白的变体合并计数）；没有查词记录的词返回 0 而不是缺省；
+    - 事件表未迁移（库没跑到 0002）返回 503，不静默给全 0。
+    """
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(
+            status_code=403,
+            detail="「见过次数」需要登录后使用（数据归属账号，游客不聚合）。",
+        )
+    tokens = _parse_seen_words(words)
+    if not tokens:
+        raise HTTPException(status_code=422, detail="words 不能为空。")
+    if len(tokens) > MAX_SEEN_WORDS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"words 最多 {MAX_SEEN_WORDS} 个（收到 {len(tokens)} 个）。"
+            ),
+        )
+    try:
+        counts = events.lookup_counts(user["id"], tokens)
+    except sqlite3.OperationalError as exc:
+        detail = str(exc).lower()
+        if (
+            "no such table" in detail
+            or "no such column" in detail
+            or "no such function" in detail
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "学习事件表不存在（先运行 "
+                    "`backend/venv/bin/alembic upgrade head`）。"
+                ),
+            ) from exc
+        raise
+    return {
+        token: counts.get(events.normalize_lookup_word(token), 0)
+        for token in tokens
     }
