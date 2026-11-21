@@ -622,7 +622,7 @@ def test_migration_0021_tables_columns_indexes(tmp_path):
     db = tmp_path / "app.db"
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (0021)")
 
-    assert revision(db) == "0025_balance_cost"
+    assert revision(db) == "0026_seed_band_fix"
     tables = table_names(db)
     assert {"course_attempts", "course_events"} <= tables
 

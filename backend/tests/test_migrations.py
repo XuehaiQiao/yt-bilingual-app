@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0025_balance_cost"
+HEAD = "0026_seed_band_fix"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:

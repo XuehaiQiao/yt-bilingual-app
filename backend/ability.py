@@ -610,6 +610,24 @@ def _evidence_strength(precision: Mapping, validity: Mapping) -> str:
     return "weak"
 
 
+SEED_BAND_NOTE = (
+    "旧版词汇量回填：只有词汇量点估计，没有题目级证据；"
+    "完成一次 12 分钟定位测可获得词汇区间。"
+)
+
+
+def _seed_band(details: Mapping) -> bool:
+    """旧词汇量回填的行（v1.1 D8-2）。这类行只有点估计，不能当区间用。"""
+    return details.get("source") == "legacy_seed"
+
+
+def _display_band(details: Mapping, row: Mapping) -> tuple[str | None, str | None]:
+    """展示用上下带。种子行不出带：C1 点会被推到 C2 上界，整条推荐链路拿不到合法带。"""
+    if _seed_band(details):
+        return None, None
+    return row["cefr_low"], row["cefr_high"]
+
+
 def _vocabulary_payload(
     conn: sqlite3.Connection,
     identity: str,
@@ -649,18 +667,21 @@ def _vocabulary_payload(
     if not isinstance(estimate, dict):
         estimate = None
     count = int(row["evidence_count"] or 0)
+    seeded = _seed_band(details)
+    band_low, band_high = _display_band(details, row)
     note = details.get("note") or VOCABULARY_NOTE.format(count=count)
+    if seeded:
+        note = SEED_BAND_NOTE
     return {
         "status": str(row["status"]),
         "cefr": row["cefr_point"],
-        "low": row["cefr_low"],
-        "high": row["cefr_high"],
+        "low": band_low,
+        "high": band_high,
         "label": (
-            f"{row['cefr_low']}–{row['cefr_high']}"
-            if row["cefr_low"] and row["cefr_high"]
-            else None
+            f"{band_low}–{band_high}" if band_low and band_high else None
         ),
         "method": str(row["method"]),
+        "bandSource": "legacy_seed" if seeded else "evidence",
         "evidenceCount": count,
         "effectiveN": round(float(row["effective_n"] or 0), 3),
         "precision": confidence_parts["precision"],
@@ -979,9 +1000,10 @@ def legacy_profile(identity: str, *, now: int | None = None) -> dict:
         confidence_parts = _confidence_from_details(details, row)
         latest = _latest_placement_breakdown(conn, identity)
         validity = _validity_from_breakdown(latest)
+        band_low, band_high = _display_band(details, row)
         label = (
-            f"{row['cefr_low']}–{row['cefr_high']}"
-            if row["cefr_low"] and row["cefr_high"]
+            f"{band_low}–{band_high}"
+            if band_low and band_high
             else None
         )
         estimate = details.get("estimate") if isinstance(details.get("estimate"), dict) else {}
@@ -993,8 +1015,8 @@ def legacy_profile(identity: str, *, now: int | None = None) -> dict:
         )
         response["profile"] = {
             "cefr": label,
-            "levelBandLow": row["cefr_low"],
-            "levelBandHigh": row["cefr_high"],
+            "levelBandLow": band_low,
+            "levelBandHigh": band_high,
             "vocabEstimate": vocab_estimate,
             "readingEstimate": None,
             "reading_estimate": None,

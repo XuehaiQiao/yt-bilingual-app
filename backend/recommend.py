@@ -381,7 +381,13 @@ def _ability_band(identity: str) -> tuple[tuple[str, str], bool] | None:
         return None
     band = normalize_band(vocabulary.get("low"), vocabulary.get("high"))
     if band is None:
-        return None
+        # 种子画像不出带（v1.1 D8-2）：用点估计当单档带，且 LEVEL_INDEX 只有
+        # A1–C1，C2 点会被挡在外面——不再把用户推回默认 A2–B1。
+        point = vocabulary.get("cefr")
+        if isinstance(point, str) and point in LEVEL_INDEX:
+            band = (point, point)
+        else:
+            return None
     return band, bool(payload.get("preliminary", True))
 
 

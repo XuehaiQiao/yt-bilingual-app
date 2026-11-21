@@ -18,7 +18,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0025_balance_cost"
+HEAD = "0026_seed_band_fix"
 PREVIOUS = "0015_assessment_sessions"
 
 

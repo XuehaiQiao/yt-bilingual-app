@@ -140,6 +140,13 @@ def _insert_placement_sessions(user_id: str, count: int) -> None:
 # 聚合
 # ---------------------------------------------------------------------------
 
+def test_seed_rows_hide_band_but_keep_point():
+    """v1.1 D8-2：旧词汇量回填行只给点估计，不给区间。"""
+    row = {"cefr_point": "C1", "cefr_low": "B2", "cefr_high": "C2"}
+    assert ability._display_band({"source": "legacy_seed"}, row) == (None, None)
+    assert ability._display_band({"source": "placement"}, row) == ("B2", "C2")
+
+
 def test_profile_without_evidence_returns_not_measured(ability_db):
     payload = ability.profile(ability_db.user_id, now=NOW)
     assert payload["primary"] == "vocabulary"

@@ -20,7 +20,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0025_balance_cost"
+HEAD = "0026_seed_band_fix"
 BEFORE = "0013_user_profile"
 
 
@@ -169,6 +169,8 @@ def test_seed_maps_legacy_vocab_estimate_to_band(tmp_path, estimate, expected_ba
     row = dict(zip(conn_description(db), row))
     assert row["skill"] == "vocabulary"
     assert row["cefr_point"] == expected_band
+    # v1.1 D8-2：种子行只留点估计，不再展示区间（C1 曾被推到 C2 上界）。
+    assert row["cefr_low"] is None and row["cefr_high"] is None
     assert row["status"] == "uncalibrated"
     assert row["method"] == "placement"
     assert row["calibration_version"] == "rasch.eap.v1"

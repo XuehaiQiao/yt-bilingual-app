@@ -209,6 +209,21 @@ def test_curated_pool_rejects_bad_content(tmp_path, monkeypatch):
 # 2. 有画像：区间匹配 + 理由 + basis
 # ---------------------------------------------------------------------------
 
+def test_profile_band_uses_point_when_seed_has_no_band(profile_db, monkeypatch):
+    """v1.1 D8-2：种子行不出带时用点估计当单档带，不回退默认 A2–B1。"""
+    import ability
+
+    monkeypatch.setattr(
+        ability,
+        "profile",
+        lambda identity, **kwargs: {
+            "vocabulary": {"cefr": "C1", "low": None, "high": None},
+            "preliminary": True,
+        },
+    )
+    assert recommend.profile_band(profile_db.user_id) == (("C1", "C1"), True)
+
+
 def test_profile_band_matches_and_explains(profile_db):
     _insert_profile(profile_db.user_id, "B1", "B2")
     response = _get(profile_db, "limit=6")
