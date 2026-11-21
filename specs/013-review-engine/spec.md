@@ -97,6 +97,7 @@
 | `GET /api/review/queue?limit=20&newLimit=10&targetLang=zh-CN` | `limit` 1–100（总条数上限）；`newLimit` 0–100 | `200 {targetLang, now, items, due, new, counts}`；`due` 按 `due_at` 升序，`new` 按 `created_at` 升序；`items = due + new` |
 | `POST /api/review/answer` | `{lemma, rating, targetLang?, elapsedMs?}` | `200 {status:"ok", word, suspended, autoSuspended}`；词不存在 **404**，已暂停 **409**，评分非法 **400** |
 | `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `200 {targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, streakDays}`；「今日」按 UTC 日界 |
+| `GET /api/review/words?state=&targetLang=&limit=` | `state` 可逗号分隔（`new/learning/review/relearning/suspended`）；省略=|不过滤 | `200 {targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序；非法 state **400** |
 | `GET /api/review/suspended?limit=100&targetLang=` | `limit` 1–200（默认 100）；省略 `targetLang` = 全部语言 | `200 {targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序、`id` 兜底；`total` 为不分页总数 |
 | `PATCH /api/review/words` | `{lemma, targetLang?, mastered: boolean, source?}` | `200 {status:"ok", word}`；词不存在则创建（等价 POST），已存在只改 `mastered`，幂等；`mastered=true` 时同时把词从队列移出 |
 | `GET /api/review/words?mastered=&targetLang=&limit=` | `mastered` **只接受 `0` / `1`**（省略 = 不过滤，返回全部词）；`targetLang` 省略 = 全部语言；`limit` 1–200（默认 100，只截断返回列表，**不提供分页/offset**） | `200 {targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序、`id` 兜底；`total` 为过滤后总数（不受 `limit` 影响）；`mastered=1` 即「已掌握」列表 |
