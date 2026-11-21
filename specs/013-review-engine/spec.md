@@ -54,6 +54,13 @@
 - `UNIQUE(user_id, lemma, target_lang)`：同用户同语言同一个词只有一条状态。
 - `INDEX (user_id, due_at)`：到期队列主查询路径。
 
+#### 已掌握（v1.1 任务 2，迁移 `0027_review_mastered`）
+
+- 新增列 `mastered INTEGER NOT NULL DEFAULT 0`（0/1），用 `ALTER TABLE ... ADD COLUMN`，**不重建表**。
+- `mastered` 是词状态之上的标记，**不是新的 `state` 值**（不改 `state` CHECK）；FSRS 字段照旧保留。
+- `mastered=1` 的词**不进队列、不计 `newWords`/`dueToday`**，也不参与连续天数；统计新增 `masteredWords`。
+- 撤销已掌握不重置 FSRS 参数；同一词再次「加入复习」时强制 `mastered=0`。
+
 ### `review_logs`
 
 `id`（自增 PK）、`user_id`、`lemma`、`target_lang`、`rating`（`again`/`hard`/`good`/`easy`，CHECK）、`state_before` / `state_after`（JSON 文本快照）、`reviewed_at`（毫秒 UTC）、`elapsed_ms`（可空）。
@@ -88,6 +95,7 @@
 | `POST /api/review/answer` | `{lemma, rating, targetLang?, elapsedMs?}` | `200 {status:"ok", word, suspended, autoSuspended}`；词不存在 **404**，已暂停 **409**，评分非法 **400** |
 | `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `200 {targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, streakDays}`；「今日」按 UTC 日界 |
 | `GET /api/review/suspended?limit=100&targetLang=` | `limit` 1–200（默认 100）；省略 `targetLang` = 全部语言 | `200 {targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序、`id` 兜底；`total` 为不分页总数 |
+| `PATCH /api/review/words` | `{lemma, targetLang?, mastered: boolean, source?}` | `200 {status:"ok", word}`；词不存在则创建（等价 POST），已存在只改 `mastered`，幂等；`mastered=true` 时同时把词从队列移出 |
 | `POST /api/review/suspend` | `{lemma, targetLang?}` | `200 {status:"ok", suspended:true, word}`；不存在 **404**；重复调用幂等 |
 | `DELETE /api/review/suspend?lemma=&targetLang=`（也接受 JSON body） | — | `200 {status:"ok", suspended:false, word}`；不存在 **404** |
 
@@ -95,6 +103,14 @@
 队列项额外带 `sources`，不返回释义（前端需要时再调 `/api/define`，语言由 `targetLang` 决定）。
 
 错误语义：数据库未跑 `0006` 迁移时返回 **503**（`detail` 提示先 `alembic upgrade head`），不静默 500。
+
+### 加入复习入口（v1.1 任务 9）
+
+- **入口**：词条浮层（主入口）与单词本收藏行（次入口）都调用 `POST /api/review/words`，
+  带来源 `source.contentRef` / `source.sentenceId`（收藏里已有的 `meta.source_*` 直接映射）。
+- **交互**：点击即请求，成功 toast「已加入复习」；重复点击幂等（`created:false` 不报错）；
+  失败内联提示可重试；请求中禁用按钮。视频页与阅读页的词条浮层用同一按钮与文案。
+- **文案**：按钮「加入复习」/「已在复习」，不出现「已掌握」以外的能力承诺。
 
 ### 暂停词列表与恢复（v1.1 任务 9）
 
@@ -128,6 +144,10 @@
 - [x] （v1.1 任务 9）复习页暂停词恢复：空态入口、逐行恢复、成功后计数同步、
   失败可重试；恢复后失败计数清零并回到队列。
 - [x] 游客 403；现有 284 个后端测试保持全绿。
+
+- [x] 队列排除 `mastered=1`；`stats.masteredWords` 与「已掌握」列表数量一致。
+- [x] `PATCH /api/review/words` 幂等：同词两次 `mastered=true` 只一条行；`mastered=false` 可撤销。
+- [x] 加词入口：词条浮层与收藏行都能加词并带来源；重复点击不重复建行；失败可重试。
 
 ## 测试
 

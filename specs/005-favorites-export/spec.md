@@ -41,6 +41,15 @@
 - **必须**：加载/空态/错误重试；导出 Anki TSV / CSV 只导出「我的单词」（生词），不再混入句子。
 - **必须**：中越 i18n 文案与 placeholder 对齐；桌面表格化、375px 单列不横向溢出。
 
+### v1.1 交互升级（本轮最小版）
+
+- **必须**：**我已掌握**——词条浮层与「我的单词」行都有「我已掌握」；标记后从「我的单词」移入「已掌握」组（同一页面内切换），可撤销；数据与复习共用 `word_states.mastered`（见 specs/013），不在收藏里另存一份。游客用本地 `localStorage` 忽略表实现同样效果，但**不叫「已掌握」**（叫「我会了」），不上传服务端。
+- **必须**：**来源**——每行显示**最后一次**收藏/加入时的来源链接（`meta.source_kind` + `source_ref` + `source_title`）；同词同来源再次收藏时更新来源与时间，不新增重复行；`context_en/context_zh` 旧数据保留但**不再展示**。
+- **必须**：**排序**——「我的单词」支持按 加入时间 / 见过次数 / 难度 排序（默认加入时间倒序）；难度批量走 `GET /api/vocabulary/level`，见过次数走新增的 `GET /api/vocabulary/seen`。
+- **必须**：**筛选**——类型（词/短语）、来源（按 `source_kind`）、未掌握；与排序可叠加；空结果给空态而不是空白。
+- **必须**：**加词入口**——词条浮层主入口 + 收藏行次入口，调用 `POST /api/review/words` 并带来源；交互与验收见 specs/013。
+- **必须**：三态齐全与错误可重试；i18n 中越对齐；375px 单列不溢出。
+
 ## API 契约
 ### 收藏（M1 ④）
 
@@ -65,6 +74,7 @@
 | `GET /api/vocabulary/phrases?page=1&pageSize=50&q=&level=&type=` | `page≥1`、`pageSize 1–200`、`q` 匹配 headword/中文、`level` A2/B1/B2/C1/C1+、`type` phrasal_verb/idiom/collocation | `200 {items:[{id,headword,type,cefr,translation,example,source}],total,page,pageSize,hasMore}` | `400` level/type 非法；`422` 参数非法；`503` 数据缺失 |
 | `GET /api/vocabulary/phrases/{id}` | — | `200` 短语详情（列表字段 + `license/notes`） | `404` 短语不存在；`503` 数据缺失 |
 | `GET /api/vocabulary/level?words=a,b,c` | ≤100 个词/批 | `200 {word: 'A1'..'C1' \| 'C1+' \| null}`（保留输入大小写） | `422` 空/超量 |
+| `GET /api/vocabulary/seen?words=a,b,c` | 需登录；≤100 个词/批 | `200 {word: count}`：`learning_events(type='dict_lookup')` 实时聚合，按小写词形归并、返回 0 而不是缺省 | `403` 游客；`422` 空/超量 |
 
 - C2 未建模：`available:false`，请求 `/lists/cefr-c2` 返回 `404`；前端不请求。
 - 词表数据来自仓库只读 JSON（`content/wordlist/`、`content/wordlists/`），无数据库迁移、无 LLM 调用。
@@ -85,6 +95,10 @@
 - [x] 短语在 375px 与 1440px 无横向溢出，zh-CN / vi-VN 文案对齐；C2 tab 仍禁用、GRE/CET4/CET6 不受影响。
 - [x] 导出 Anki/CSV 仍可用，导出的范围是「我的单词」。
 - [x] 375px 单列与 1440px 桌面无横向溢出；zh-CN / vi-VN 文案与 placeholder 对齐（`npm run check:i18n`）。
+- [ ] 「我已掌握」：标记后移出我的单词、进已掌握组；撤销恢复；游客只写本地且文案不叫「已掌握」。
+- [ ] 来源显示最后一次来源链接；同词再次收藏更新来源与时间，不产生重复行；旧 `context_*` 不再展示但数据保留。
+- [ ] 排序（时间/次数/难度）与筛选（类型/来源/未掌握）可叠加；见过次数对游客显示「—」。
+- [ ] 加词入口两处可用：带来源、幂等、成功/失败反馈；加入后复习队列出现该词。
 
 ## 边界与非目标
 - C2 词表尚未建模：不拿 GRE 或频表冒充 C2，也不展示空表当数据。
@@ -92,3 +106,4 @@
 - 不内置复习/间隔重复（导出到 Anki 承担复习；应用内复习属 specs/013）。
 - 导出是一次性文件下载，不做云同步。
 - 仍用每用户 JSON 文件存收藏（不建 `favorites` 表、不改 Alembic）。
+- 本轮最小版**不做**：收藏释义指针化（只存 word、渲染查词典缓存）、`word_seen` 物化表、内置词表全量补释义、`favorites.json` → `word_states` 迁移——留作完整版（计划 §3.4），需要单独评审。
