@@ -7,8 +7,8 @@ import { describeApiError, toast } from '../lib/toast';
 import { speak } from '../lib/tts';
 import type { FavoriteSourceKind } from '../lib/favorites';
 import { useAuth } from '../lib/auth';
-import { addWord, setWordMastered, ReviewApiError } from '../lib/review';
-import { hasMasteryHint, masteryScope, writeMasteryHint } from '../lib/wordMastery';
+import { addWord, getMasteredWords, setWordMastered, ReviewApiError } from '../lib/review';
+import { normalizeMasteryWord, readGuestMastered, writeGuestMastered } from '../lib/wordMastery';
 import { useI18n } from '../i18n/I18nProvider';
 import { Button } from './ui/Button';
 
@@ -119,9 +119,8 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
     onRequestLogin,
 }) => {
     const { t, targetLang } = useI18n();
-    const { status, user } = useAuth();
+    const { status } = useAuth();
     const isGuest = status === 'guest';
-    const mastery = masteryScope(isGuest, user?.id);
     const [definition, setDefinition] = useState<WordDefinition | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showAllSenses, setShowAllSenses] = useState(false);
@@ -176,14 +175,49 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
         setMasteredError(null);
     }, [word, context]);
 
-    // The mastered mark is keyed by the lemma (what the review API stores), so
-    // apply the local mirror once /api/define reveals it.
+    // Mastered set for this card: guests read the local 「我会了」 table once;
+    // signed-in users read the server's authoritative mastered list once per
+    // opened card (no local mirror — the same GET feeds the word book). A
+    // hover-switch only recomputes membership from this set, not another GET.
+    const [masteredLemmas, setMasteredLemmas] = useState<Set<string> | null>(
+        () => (isGuest ? readGuestMastered() : null),
+    );
+
     useEffect(() => {
-        if (!definition) return;
-        setMastered(hasMasteryHint(mastery, definition.lemma || definition.word || word));
-        // `mastery.key` is the stable identity of the storage scope.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [definition, word, mastery.key]);
+        if (isGuest) {
+            setMasteredLemmas(readGuestMastered());
+            return;
+        }
+        let cancelled = false;
+        // A failed read keeps every word unmarked; it is not a user-facing
+        // error (the write path surfaces its own failure inline).
+        getMasteredWords(200, targetLang)
+            .then((data) => {
+                if (cancelled) return;
+                setMasteredLemmas(new Set(data.words.map((item) => normalizeMasteryWord(item.lemma))));
+            })
+            .catch(() => {
+                if (!cancelled) setMasteredLemmas(new Set());
+            });
+        return () => { cancelled = true; };
+    }, [isGuest, targetLang]);
+
+    // Apply the set once the definition reveals the lemma the API keys on.
+    useEffect(() => {
+        if (!definition || !masteredLemmas) return;
+        const lemma = (definition.lemma || definition.word || word).trim();
+        if (!lemma) return;
+        setMastered(masteredLemmas.has(normalizeMasteryWord(lemma)));
+    }, [definition, word, masteredLemmas]);
+
+    const writeMasteredSet = (lemma: string, masteredNext: boolean) => {
+        setMasteredLemmas((prev) => {
+            const next = new Set(prev ?? []);
+            if (masteredNext) next.add(normalizeMasteryWord(lemma));
+            else next.delete(normalizeMasteryWord(lemma));
+            return next;
+        });
+    };
 
     const clearHoverTimer = useCallback(() => {
         if (hoverTimerRef.current != null) {
@@ -268,7 +302,7 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
             setReviewPhase('added');
             // specs/013: re-adding a tracked word forces mastered=0 server-side.
             setMastered(false);
-            writeMasteryHint(mastery, reviewLemma, false);
+            writeMasteredSet(reviewLemma, false);
             toast.success(t('vocab.review.toast.added'), { dedupeKey: 'review:word-added' });
         } catch (caught) {
             setReviewPhase('idle');
@@ -283,21 +317,26 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
         const next = !mastered;
         // Guest: local ignore table only (文案「我会了」), never uploaded.
         if (isGuest) {
-            writeMasteryHint(mastery, reviewLemma, next);
+            writeGuestMastered(reviewLemma, next);
+            writeMasteredSet(reviewLemma, next);
             setMastered(next);
             return;
         }
         setMasteredSaving(true);
         setMasteredError(null);
         try {
-            await setWordMastered({
+            const result = await setWordMastered({
                 lemma: reviewLemma,
                 mastered: next,
                 targetLang,
                 source: { contentRef: sourceContentRef, sentenceId: sourceSentenceId },
             });
-            writeMasteryHint(mastery, reviewLemma, next);
-            setMastered(next);
+            // The PATCH response is authoritative for the post-write mark; keep
+            // the per-card set in sync so a hover-switch back to this word
+            // recomputes the same state without another GET.
+            const confirmed = result.word.mastered === true;
+            writeMasteredSet(reviewLemma, confirmed);
+            setMastered(confirmed);
             toast.success(
                 next ? t('vocab.review.toast.mastered') : t('vocab.review.toast.unmastered'),
                 { dedupeKey: 'review:word-mastered' },

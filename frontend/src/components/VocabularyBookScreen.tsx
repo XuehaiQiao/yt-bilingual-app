@@ -66,15 +66,9 @@ import {
     type VocabularyList,
     type VocabularyPage,
 } from '../lib/vocabulary';
-import { addWord, setWordMastered } from '../lib/review';
+import { addWord, getMasteredWords, setWordMastered } from '../lib/review';
 import { fetchSeenCounts } from '../lib/vocabSeen';
-import {
-    masteryScope,
-    normalizeMasteryWord,
-    readMasteryHints,
-    writeMasteryHint,
-    type MasteryScope,
-} from '../lib/wordMastery';
+import { normalizeMasteryWord, readGuestMastered, writeGuestMastered } from '../lib/wordMastery';
 import { describeApiError, toast } from '../lib/toast';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/I18nProvider';
@@ -84,6 +78,7 @@ import { Tabs, tabPanelProps, type TabItem } from './ui/Tabs';
 import { FilterChip } from './ui/FilterChip';
 import { Segmented } from './ui/Segmented';
 import { Button } from './ui/Button';
+import { ErrorPanel, LoadingState } from './ui/StateView';
 import { Badge } from './ui/Badge';
 import type { TranslationKey } from '../i18n';
 
@@ -220,9 +215,8 @@ export function VocabularyBookScreen({
     onRequestLogin,
 }: VocabularyBookScreenProps) {
     const { t, formatDate, formatNumber, targetLang } = useI18n();
-    const { status, user } = useAuth();
+    const { status } = useAuth();
     const isGuest = status === 'guest';
-    const mastery: MasteryScope = masteryScope(isGuest, user?.id);
     const reduceMotion = useReducedMotion() ?? false;
 
     const myWords = useMemo(
@@ -277,15 +271,23 @@ export function VocabularyBookScreen({
     );
 
     // ── v1.1 word book: 我的单词 / 已掌握, sorting, filters, seen counts ────
-    // The mastered set is a local mirror (per user): guests write the local
-    // ignore table (「我会了」); signed-in users update it only after PATCH
-    // succeeds (see lib/wordMastery.ts).
+    // Mastered marks have exactly one source of truth per account type:
+    //   * guest — the local 「我会了」 table (wordMastery.ts, never uploaded);
+    //   * signed-in — `GET /api/review/words?mastered=1`, fetched when the mine
+    //     tab opens and then updated locally from each PATCH response (no
+    //     localStorage mirror for signed-in users).
     const [mineGroup, setMineGroup] = useState<MineGroup>('learning');
     const [mineSort, setMineSort] = useState<MineSort>('added');
     const [mineType, setMineType] = useState<MineType>('');
     const [mineSource, setMineSource] = useState<'' | FavoriteSourceKind>('');
     const [mineUnmastered, setMineUnmastered] = useState(false);
-    const [masteredWords, setMasteredWords] = useState<Set<string>>(() => readMasteryHints(mastery));
+    const [guestMastered, setGuestMastered] = useState<Set<string>>(() => readGuestMastered());
+    const [serverMastered, setServerMastered] = useState<Set<string>>(() => new Set());
+    const [masteredPhase, setMasteredPhase] = useState<Phase>('idle');
+    // True once the signed-in list has loaded at least once; keeps stale rows
+    // visible while a retry is in flight (and lets a failed retry stay inline).
+    const [masteredReady, setMasteredReady] = useState(false);
+    const [masteredNonce, setMasteredNonce] = useState(0);
     const [reviewedWords, setReviewedWords] = useState<Set<string>>(() => new Set());
     const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
     const [pendingMasteredId, setPendingMasteredId] = useState<string | null>(null);
@@ -295,12 +297,38 @@ export function VocabularyBookScreen({
     const [seenCounts, setSeenCounts] = useState<Record<string, number>>({});
     const [seenPhase, setSeenPhase] = useState<SeenPhase>('idle');
 
-    // Account switch (guest claim) must swap the local mirror, never mix them.
+    const masteredWords = isGuest ? guestMastered : serverMastered;
+
+    // Guest marks come from the local table; re-read on an account switch so a
+    // guest claim never mixes the two sources.
     useEffect(() => {
-        setMasteredWords(readMasteryHints(mastery));
-        // `mastery.key` is the stable identity of the storage scope.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mastery.key]);
+        if (!isGuest) return;
+        setGuestMastered(readGuestMastered());
+    }, [isGuest]);
+
+    // Signed-in 已掌握 group: fetch the server list when the mine tab opens
+    // (and on retry). Actions afterwards update `serverMastered` from the PATCH
+    // response instead of refetching — one authoritative source, no reload.
+    useEffect(() => {
+        if (!activeIsMine || isGuest) {
+            setMasteredPhase('idle');
+            return;
+        }
+        let cancelled = false;
+        setMasteredPhase('loading');
+        getMasteredWords(200, targetLang)
+            .then((data) => {
+                if (cancelled) return;
+                setServerMastered(new Set(data.words.map((word) => normalizeMasteryWord(word.lemma))));
+                setMasteredReady(true);
+                setMasteredPhase('ready');
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setMasteredPhase('error');
+            });
+        return () => { cancelled = true; };
+    }, [activeIsMine, isGuest, targetLang, masteredNonce]);
 
     const myWordLemmas = useMemo(
         () => Array.from(new Set(myWords.map((fav) => fav.en_text.trim()).filter(Boolean))),
@@ -341,6 +369,30 @@ export function VocabularyBookScreen({
     );
     const learningCount = myWords.length - masteredCount;
     const masteredGroupLabel = isGuest ? t('vocab.review.guestMaster') : t('vocab.mine.mastered');
+    // Hide the counts until the signed-in list has loaded: a failed GET must
+    // not render "已掌握 0" as if that were the answer (G3).
+    const masteredKnown = isGuest || masteredReady;
+
+    /** Single local write path for the mastered mark (guest table or server set). */
+    const writeMasteredState = (lemma: string, mastered: boolean) => {
+        const key = normalizeMasteryWord(lemma);
+        if (isGuest) {
+            writeGuestMastered(lemma, mastered);
+            setGuestMastered((prev) => {
+                const next = new Set(prev);
+                if (mastered) next.add(key);
+                else next.delete(key);
+                return next;
+            });
+            return;
+        }
+        setServerMastered((prev) => {
+            const next = new Set(prev);
+            if (mastered) next.add(key);
+            else next.delete(key);
+            return next;
+        });
+    };
 
     const mineSourceKinds = useMemo(() => {
         const present = new Set(myWords.map((fav) => resolveFavoriteSource(fav).kind));
@@ -426,14 +478,7 @@ export function VocabularyBookScreen({
             setReviewedWords((prev) => new Set(prev).add(key));
             // specs/013: adding an already-tracked word forces mastered=0, so a
             // mastered favorite returns to 我的单词 instead of staying hidden.
-            if (masteredWords.has(key)) {
-                writeMasteryHint(mastery, lemma, false);
-                setMasteredWords((prev) => {
-                    const next = new Set(prev);
-                    next.delete(key);
-                    return next;
-                });
-            }
+            if (masteredWords.has(key)) writeMasteredState(lemma, false);
             toast.success(
                 result.created ? t('vocab.review.toast.added') : t('vocab.review.toast.already'),
                 { dedupeKey: 'review:fav-added' },
@@ -454,31 +499,20 @@ export function VocabularyBookScreen({
         const next = !masteredWords.has(key);
         // Guests: local ignore table only (文案「我会了」), no upload.
         if (isGuest) {
-            writeMasteryHint(mastery, lemma, next);
-            setMasteredWords((prev) => {
-                const updated = new Set(prev);
-                if (next) updated.add(key);
-                else updated.delete(key);
-                return updated;
-            });
+            writeMasteredState(lemma, next);
             return;
         }
         setPendingMasteredId(fav.id);
         setRowError(null);
         try {
-            await setWordMastered({
+            const result = await setWordMastered({
                 lemma,
                 mastered: next,
                 targetLang,
                 source: reviewSourceFor(fav),
             });
-            writeMasteryHint(mastery, lemma, next);
-            setMasteredWords((prev) => {
-                const updated = new Set(prev);
-                if (next) updated.add(key);
-                else updated.delete(key);
-                return updated;
-            });
+            // The PATCH response is authoritative for the post-write mark.
+            writeMasteredState(lemma, result.word.mastered === true);
             toast.success(
                 next ? t('vocab.review.toast.mastered') : t('vocab.review.toast.unmastered'),
                 { dedupeKey: 'review:fav-mastered' },
@@ -942,7 +976,9 @@ export function VocabularyBookScreen({
                                 label: (
                                     <>
                                         {t('vocab.mine.group.learning')}
-                                        <span className="ml-1 text-micro tabular-nums">{formatNumber(learningCount)}</span>
+                                        {masteredKnown && (
+                                            <span className="ml-1 text-micro tabular-nums">{formatNumber(learningCount)}</span>
+                                        )}
                                     </>
                                 ),
                             },
@@ -952,7 +988,9 @@ export function VocabularyBookScreen({
                                 label: (
                                     <>
                                         {masteredGroupLabel}
-                                        <span className="ml-1 text-micro tabular-nums">{formatNumber(masteredCount)}</span>
+                                        {masteredKnown && (
+                                            <span className="ml-1 text-micro tabular-nums">{formatNumber(masteredCount)}</span>
+                                        )}
                                     </>
                                 ),
                             },
@@ -1030,8 +1068,44 @@ export function VocabularyBookScreen({
                 </div>
             </div>
 
+            {/* The signed-in mastered list is a separate async read: a failure
+                must not silently relabel mastered words as unmastered. */}
+            {!isGuest && masteredPhase === 'error' && mineGroup === 'learning' && (
+                <ErrorPanel
+                    level="inline"
+                    title={t('vocab.mine.mastered.error')}
+                    detail={t('vocab.mine.mastered.errorHint')}
+                    onRetry={() => setMasteredNonce((value) => value + 1)}
+                    retryLabel={t('common.retry')}
+                    testId="vocab-mastered-stale"
+                    retryTestId="vocab-mastered-stale-retry"
+                />
+            )}
+
             {myWords.length === 0
                 ? emptyState(t('vocab.empty.mine'), t('vocab.empty.mineHint'), Star, 'vocab-mine-empty')
+                : mineGroup === 'mastered' && !isGuest && !masteredReady && masteredPhase !== 'ready'
+                    ? masteredPhase === 'error'
+                        ? (
+                            <ErrorPanel
+                                level="card"
+                                title={t('vocab.mine.mastered.error')}
+                                detail={t('vocab.mine.mastered.errorHint')}
+                                onRetry={() => setMasteredNonce((value) => value + 1)}
+                                retryLabel={t('common.retry')}
+                                testId="vocab-mastered-error"
+                                retryTestId="vocab-mastered-retry"
+                            />
+                        )
+                        : (
+                            <LoadingState
+                                kind="skeleton"
+                                rows={3}
+                                label={t('vocab.mine.mastered.loading')}
+                                testId="vocab-mastered-loading"
+                                className={`${CARD} px-4 py-6`}
+                            />
+                        )
                 : mineRows.length === 0
                     ? mineGroup === 'mastered'
                         ? emptyState(

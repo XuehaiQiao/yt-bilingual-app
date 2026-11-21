@@ -259,3 +259,24 @@ export function setWordMastered(input: SetWordMasteredInput): Promise<SetWordMas
         body: JSON.stringify({ ...wordPayload(input), mastered: input.mastered }),
     });
 }
+
+/** `GET /api/review/words?mastered=1` — the authoritative mastered list. */
+export interface ReviewWordList {
+    targetLang: string | null;
+    now: number;
+    /** Filtered total; not affected by `limit` (there is no offset paging). */
+    total: number;
+    words: ReviewWord[];
+}
+
+/**
+ * List the signed-in user's mastered words (specs/013 §v1.1). This is the only
+ * source of truth for the word book's 已掌握 group — there is deliberately no
+ * localStorage mirror for signed-in users anymore. `limit` is 1–200 and only
+ * truncates `words`; `total` still counts every mastered word.
+ */
+export function getMasteredWords(limit = 200, targetLang?: string): Promise<ReviewWordList> {
+    const params = new URLSearchParams({ mastered: '1', limit: String(limit) });
+    if (targetLang) params.set('targetLang', targetLang);
+    return request<ReviewWordList>(`/api/review/words?${params.toString()}`);
+}
