@@ -68,6 +68,65 @@ type ConfirmKind = 'exit' | 'submit' | 'retest';
 
 const DEFAULT_DURATION_LIMIT_MS = 12 * 60 * 1000;
 
+/**
+ * Resume state, keyed by session id (v1.1 8-2). The backend never stores
+ * in-progress answers, so without this a refresh wiped them and reset the
+ * 12-minute clock. Only answers/elapsed times are stored — never identity.
+ */
+const RESUME_KEY_PREFIX = 'yt_bilingual_placement_resume:';
+
+interface PlacementResumeState {
+    answers: Record<string, number>;
+    elapsedMs: Record<string, number>;
+}
+
+function readResumeState(sessionId: string): PlacementResumeState | null {
+    try {
+        const raw = localStorage.getItem(`${RESUME_KEY_PREFIX}${sessionId}`);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as Partial<PlacementResumeState>;
+        if (!parsed?.answers || typeof parsed.answers !== 'object') return null;
+        return {
+            answers: parsed.answers,
+            elapsedMs:
+                parsed.elapsedMs && typeof parsed.elapsedMs === 'object'
+                    ? parsed.elapsedMs
+                    : {},
+        };
+    } catch {
+        return null;
+    }
+}
+
+function writeResumeState(sessionId: string, state: PlacementResumeState): void {
+    try {
+        localStorage.setItem(`${RESUME_KEY_PREFIX}${sessionId}`, JSON.stringify(state));
+    } catch {
+        /* private mode / quota: resume is best-effort, never a hard failure */
+    }
+}
+
+function clearResumeState(sessionId: string): void {
+    try {
+        localStorage.removeItem(`${RESUME_KEY_PREFIX}${sessionId}`);
+    } catch {
+        /* ignore */
+    }
+}
+
+function clearAllResumeStates(): void {
+    try {
+        const keys: string[] = [];
+        for (let i = 0; i < localStorage.length; i += 1) {
+            const key = localStorage.key(i);
+            if (key?.startsWith(RESUME_KEY_PREFIX)) keys.push(key);
+        }
+        for (const key of keys) localStorage.removeItem(key);
+    } catch {
+        /* ignore */
+    }
+}
+
 const PRIMARY_BUTTON =
     'inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-zinc-100 text-zinc-900 text-sm font-semibold hover:bg-white active:scale-[0.98] transition-[background-color,transform] duration-200 ease-apple disabled:opacity-50 disabled:active:scale-100';
 const SECONDARY_BUTTON =
@@ -159,6 +218,9 @@ export function PlacementScreen({
     const sessionRef = useRef<PlacementStart | null>(null);
     const indexRef = useRef(0);
     const answersRef = useRef<Record<string, number>>({});
+    const elapsedRef = useRef<Record<string, number>>({});
+    /** When the current item first appeared; per-item elapsedMs source. */
+    const itemShownAtRef = useRef(0);
     const selectedRef = useRef<number | null>(null);
     const deadlineRef = useRef(0);
     const attemptStartedRef = useRef(0);
@@ -199,25 +261,42 @@ export function PlacementScreen({
             if (!Array.isArray(data.items) || data.items.length === 0) {
                 throw new Error(t('placement.errors.empty'));
             }
-            sessionRef.current = data;
-            indexRef.current = 0;
-            answersRef.current = {};
-            selectedRef.current = null;
-            deadlineRef.current =
-                Date.now() +
-                (Number.isFinite(data.durationLimitMs) && data.durationLimitMs > 0
+            if (options?.resetFirst) clearAllResumeStates();
+            const limitMs =
+                Number.isFinite(data.durationLimitMs) && data.durationLimitMs > 0
                     ? data.durationLimitMs
-                    : DEFAULT_DURATION_LIMIT_MS);
-            attemptStartedRef.current = Date.now();
+                    : DEFAULT_DURATION_LIMIT_MS;
+            // 续答：服务端只回卷面不回答案，本地按 sessionId 恢复（v1.1 8-2）。
+            const saved = data.resumed ? readResumeState(data.sessionId) : null;
+            const restoredAnswers = saved?.answers ?? {};
+            sessionRef.current = data;
+            const firstUnanswered = data.items.findIndex(
+                item => !(item.itemId in restoredAnswers),
+            );
+            indexRef.current =
+                firstUnanswered < 0
+                    ? Math.max(0, data.items.length - 1)
+                    : firstUnanswered;
+            answersRef.current = restoredAnswers;
+            elapsedRef.current = saved?.elapsedMs ?? {};
+            selectedRef.current = null;
+            // 续答用服务端 startedAt 续算，不把已经花掉的时间还回去。
+            deadlineRef.current = data.resumed
+                ? Number(data.startedAt) + limitMs
+                : Date.now() + limitMs;
+            attemptStartedRef.current = data.resumed
+                ? Number(data.startedAt)
+                : Date.now();
+            itemShownAtRef.current = Date.now();
             submittedRef.current = false;
             autoSubmitRef.current = false;
             setSession(data);
-            setIndex(0);
-            setAnswers({});
+            setIndex(indexRef.current);
+            setAnswers(restoredAnswers);
             setSelected(null);
             setResult(null);
             setTimedOut(false);
-            setRemainingMs(deadlineRef.current - Date.now());
+            setRemainingMs(Math.max(0, deadlineRef.current - Date.now()));
             setConfirm(null);
             setPhase('quiz');
         } catch (err) {
@@ -251,6 +330,7 @@ export function PlacementScreen({
                 answers: Object.entries(answersRef.current).map(([itemId, chosenIndex]) => ({
                     itemId,
                     chosenIndex,
+                    elapsedMs: elapsedRef.current[itemId],
                 })),
                 durationMs,
             });
@@ -258,6 +338,7 @@ export function PlacementScreen({
                 throw new Error(t('placement.errors.result'));
             }
             submittedRef.current = true;
+            clearResumeState(current.sessionId);
             setResult(payload);
             setConfirm(null);
             if (payload.profile) {
@@ -305,8 +386,15 @@ export function PlacementScreen({
         if (!current || submittingRef.current) return;
         const item = current.items[indexRef.current];
         if (!item) return;
+        const elapsed = Math.max(0, Date.now() - itemShownAtRef.current);
         const nextAnswers = { ...answersRef.current, [item.itemId]: choice };
+        const nextElapsed = { ...elapsedRef.current, [item.itemId]: elapsed };
         answersRef.current = nextAnswers;
+        elapsedRef.current = nextElapsed;
+        writeResumeState(current.sessionId, {
+            answers: nextAnswers,
+            elapsedMs: nextElapsed,
+        });
         setAnswers(nextAnswers);
         selectedRef.current = null;
         setSelected(null);
@@ -316,6 +404,7 @@ export function PlacementScreen({
         }
         indexRef.current += 1;
         setIndex(indexRef.current);
+        itemShownAtRef.current = Date.now();
     }, [submitPaper]);
 
     const chooseOption = useCallback((optionIndex: number) => {

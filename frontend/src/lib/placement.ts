@@ -153,6 +153,8 @@ export interface PlacementResetResponse {
 export interface PlacementAnswerInput {
     itemId: string;
     chosenIndex: number;
+    /** Per-item time in ms (v1.1 8-1); enables the backend's "answered too fast" gate. */
+    elapsedMs?: number;
 }
 
 export interface SubmitPlacementInput {
@@ -198,7 +200,13 @@ export function submitPlacement({
 }: SubmitPlacementInput): Promise<PlacementResult> {
     const body: Record<string, unknown> = {
         sessionId,
-        answers: answers.map(({ itemId, chosenIndex }) => ({ itemId, chosenIndex })),
+        answers: answers.map(({ itemId, chosenIndex, elapsedMs }) => ({
+            itemId,
+            chosenIndex,
+            ...(typeof elapsedMs === 'number' && Number.isFinite(elapsedMs) && elapsedMs >= 0
+                ? { elapsedMs: Math.round(elapsedMs) }
+                : {}),
+        })),
     };
     if (typeof durationMs === 'number' && Number.isFinite(durationMs) && durationMs >= 0) {
         body.durationMs = Math.round(durationMs);
