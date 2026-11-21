@@ -28,6 +28,13 @@
 - ``streakDays``：有任意 watch / quiz / review 的 UTC 日连续天数；今天没有
   记录时从昨天往回数（与 ``srs.get_stats`` 的连续天数口径一致），最多回溯
   400 天。
+- **语言口径**：``week_report`` 可传 ``target_lang``（可选）。省略 / ``None``
+  = 全部语言（旧行为不变）；给定后观看 / 作答 / 复习 / 词状态聚合与证据都按
+  该语言过滤，``dueTomorrow`` / ``reviewedWords`` / ``nextStep`` 因此与
+  ``/api/review/queue?targetLang=…`` 同口径。列分布（PRAGMA 核实）：
+  ``watch_events`` / ``review_logs`` / ``word_states`` 直接有 ``target_lang``；
+  ``attempts`` 没有，经 ``questions`` 关联到 ``content_items.target_lang``。
+  ``streakDays`` 是跨语言的学习习惯，不随 ``target_lang`` 过滤。
 - 表缺失（未跑 ``0008_weekly_report``）抛 :class:`ReportUnavailable`，路由
   转 **503**；运行时不建表。
 
@@ -433,9 +440,28 @@ def _date_to_ms(value: date) -> int:
 # 聚合
 # ---------------------------------------------------------------------------
 
+def _language_clause(
+    target_lang: str | None, *, column: str = "target_lang"
+) -> tuple[str, tuple]:
+    """可选语言过滤片段：``None`` = 全部语言（返回空串，SQL 保持旧行为）。
+
+    这里只拼参数、不校验；``target_lang`` 必须已经是 canonical code（路由用
+    ``languages.resolve_target_lang`` 校验，非法 400）。
+    """
+    if target_lang is None:
+        return "", ()
+    return f" AND {column} = ?", (target_lang,)
+
+
 def _watch_aggregate(
-    conn: sqlite3.Connection, identity: str, start_ms: int, end_ms: int
+    conn: sqlite3.Connection,
+    identity: str,
+    start_ms: int,
+    end_ms: int,
+    target_lang: str | None = None,
 ) -> dict:
+    # watch_events.target_lang 由 0008_weekly_report 创建（非空，默认 zh-CN）。
+    language_sql, language_args = _language_clause(target_lang)
     row = conn.execute(
         "SELECT COALESCE(SUM(watched_seconds), 0) AS seconds, "
         "COUNT(DISTINCT CASE WHEN watched_seconds > 0 THEN content_ref END) "
@@ -444,8 +470,9 @@ def _watch_aggregate(
         "THEN content_ref END) AS videos, "
         "COUNT(DISTINCT CASE WHEN watched_seconds > 0 AND kind = 'local_show' "
         "THEN content_ref END) AS shows "
-        "FROM watch_events WHERE user_id = ? AND occurred_at >= ? AND occurred_at < ?",
-        (identity, start_ms, end_ms),
+        "FROM watch_events WHERE user_id = ? AND occurred_at >= ? AND occurred_at < ?"
+        f"{language_sql}",
+        (identity, start_ms, end_ms, *language_args),
     ).fetchone()
     return {
         "seconds": int(row["seconds"] or 0),
@@ -456,13 +483,37 @@ def _watch_aggregate(
 
 
 def _attempt_aggregate(
-    conn: sqlite3.Connection, identity: str, start_ms: int, end_ms: int
+    conn: sqlite3.Connection,
+    identity: str,
+    start_ms: int,
+    end_ms: int,
+    target_lang: str | None = None,
 ) -> dict:
-    row = conn.execute(
-        "SELECT COUNT(*) AS attempts, COALESCE(SUM(is_correct), 0) AS correct "
-        "FROM attempts WHERE user_id = ? AND answered_at >= ? AND answered_at < ?",
-        (identity, start_ms, end_ms),
-    ).fetchone()
+    """理解题作答聚合；``target_lang`` 非空时只算该语言的题。
+
+    ``attempts`` 表**没有** ``target_lang`` 列（0007_quiz 只存 ``question_id``，
+    PRAGMA 已核实）。语言归属在题目所属的 ``content_items.target_lang`` 上，
+    所以按语言过滤时经 ``attempts → questions → content_items`` 关联；不传
+    语言时保持原来的单表查询，旧行为与性能都不变。
+    """
+    if target_lang is None:
+        row = conn.execute(
+            "SELECT COUNT(*) AS attempts, COALESCE(SUM(is_correct), 0) AS correct "
+            "FROM attempts WHERE user_id = ? AND answered_at >= ? AND answered_at < ?",
+            (identity, start_ms, end_ms),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            "SELECT COUNT(*) AS attempts, "
+            "COALESCE(SUM(a.is_correct), 0) AS correct "
+            "FROM attempts a "
+            "JOIN questions q ON q.id = a.question_id "
+            "JOIN content_items ci ON ci.id = q.content_item_id "
+            "AND ci.user_id = a.user_id "
+            "WHERE a.user_id = ? AND a.answered_at >= ? AND a.answered_at < ? "
+            "AND ci.target_lang = ?",
+            (identity, start_ms, end_ms, target_lang),
+        ).fetchone()
     return {
         "attempts": int(row["attempts"] or 0),
         "correct": int(row["correct"] or 0),
@@ -470,12 +521,19 @@ def _attempt_aggregate(
 
 
 def _review_aggregate(
-    conn: sqlite3.Connection, identity: str, start_ms: int, end_ms: int
+    conn: sqlite3.Connection,
+    identity: str,
+    start_ms: int,
+    end_ms: int,
+    target_lang: str | None = None,
 ) -> dict:
+    # review_logs.target_lang 由 0006_review_engine 创建（非空，默认 zh-CN）。
+    language_sql, language_args = _language_clause(target_lang)
     row = conn.execute(
         "SELECT COUNT(DISTINCT lemma) AS words, COUNT(*) AS reviews "
-        "FROM review_logs WHERE user_id = ? AND reviewed_at >= ? AND reviewed_at < ?",
-        (identity, start_ms, end_ms),
+        "FROM review_logs WHERE user_id = ? AND reviewed_at >= ? AND reviewed_at < ?"
+        f"{language_sql}",
+        (identity, start_ms, end_ms, *language_args),
     ).fetchone()
     return {
         "words": int(row["words"] or 0),
@@ -490,11 +548,16 @@ def _word_aggregate(
     end_ms: int,
     now_value: int,
     reviewed_words: int,
+    target_lang: str | None = None,
 ) -> dict:
+    # word_states.target_lang 由 0006_review_engine 创建（非空，默认 zh-CN）；
+    # 过滤后 dueTomorrow 与 /api/review/queue 的语言口径一致。
+    language_sql, language_args = _language_clause(target_lang)
     new_row = conn.execute(
         "SELECT COUNT(DISTINCT lemma) AS new_words FROM word_states "
-        "WHERE user_id = ? AND created_at >= ? AND created_at < ?",
-        (identity, start_ms, end_ms),
+        "WHERE user_id = ? AND created_at >= ? AND created_at < ?"
+        f"{language_sql}",
+        (identity, start_ms, end_ms, *language_args),
     ).fetchone()
     # dueTomorrow = 到明天结束前所有该复习的词（含已到期未复习的），与
     # srs.get_stats 的 due_today 口径同源：只算 learning/review/relearning。
@@ -503,8 +566,9 @@ def _word_aggregate(
     placeholders = ", ".join("?" for _ in DUE_STATES)
     due_row = conn.execute(
         f"SELECT COUNT(*) AS due FROM word_states "
-        f"WHERE user_id = ? AND state IN ({placeholders}) AND due_at < ?",
-        (identity, *DUE_STATES, tomorrow_end),
+        f"WHERE user_id = ? AND state IN ({placeholders}) AND due_at < ?"
+        f"{language_sql}",
+        (identity, *DUE_STATES, tomorrow_end, *language_args),
     ).fetchone()
     return {
         "new": int(new_row["new_words"] or 0),
@@ -691,8 +755,15 @@ def _public_block_id(value):
 
 
 def _wrong_attempt_evidence(
-    conn: sqlite3.Connection, identity: str, start_ms: int, end_ms: int
+    conn: sqlite3.Connection,
+    identity: str,
+    start_ms: int,
+    end_ms: int,
+    target_lang: str | None = None,
 ) -> dict | None:
+    # 证据与数字同语言口径：给了 target_lang 就只看该语言的错题（content_items
+    # 本来就为取 kind/content_ref 而 JOIN，直接多一个条件即可）。
+    language_sql, language_args = _language_clause(target_lang, column="ci.target_lang")
     row = conn.execute(
         "SELECT a.id AS attempt_id, a.answered_at, q.id AS question_id, "
         "q.evidence_block_id, q.evidence_start, q.evidence_end, "
@@ -703,9 +774,10 @@ def _wrong_attempt_evidence(
         "AND ci.user_id = a.user_id "
         "WHERE a.user_id = ? AND a.answered_at >= ? AND a.answered_at < ? "
         "AND a.is_correct = 0 "
-        "AND q.evidence_start IS NOT NULL AND q.evidence_end IS NOT NULL "
+        "AND q.evidence_start IS NOT NULL AND q.evidence_end IS NOT NULL"
+        f"{language_sql} "
         "ORDER BY a.answered_at DESC, a.id DESC LIMIT 1",
-        (identity, start_ms, end_ms),
+        (identity, start_ms, end_ms, *language_args),
     ).fetchone()
     if row is None:
         return None
@@ -741,14 +813,20 @@ def _wrong_attempt_evidence(
 
 
 def _recent_watch_evidence(
-    conn: sqlite3.Connection, identity: str, start_ms: int, end_ms: int
+    conn: sqlite3.Connection,
+    identity: str,
+    start_ms: int,
+    end_ms: int,
+    target_lang: str | None = None,
 ) -> dict | None:
+    language_sql, language_args = _language_clause(target_lang)
     row = conn.execute(
         "SELECT content_ref, kind, target_lang, watched_seconds, "
         "position_seconds, occurred_at FROM watch_events "
-        "WHERE user_id = ? AND occurred_at >= ? AND occurred_at < ? "
+        "WHERE user_id = ? AND occurred_at >= ? AND occurred_at < ?"
+        f"{language_sql} "
         "ORDER BY occurred_at DESC, id DESC LIMIT 1",
-        (identity, start_ms, end_ms),
+        (identity, start_ms, end_ms, *language_args),
     ).fetchone()
     if row is None:
         return None
@@ -861,13 +939,18 @@ def _persist_snapshot(
     return bool(cursor.rowcount)
 
 
-def week_report(identity: str, week_start=None, *, now=None) -> dict:
+def week_report(
+    identity: str, week_start=None, *, now=None, target_lang: str | None = None
+) -> dict:
     """生成某一 UTC 周的事实周报，并写首份快照（同周不覆盖）。
 
     参数：
     - ``identity``：登录用户 id 或游客 ``guest:<sha256>``；
     - ``week_start``：``YYYY-MM-DD``；任意日期归一到所在周周一，缺省本周一；
-    - ``now``：毫秒时间戳/aware datetime，缺省 :func:`now_ms`（测试注入）。
+    - ``now``：毫秒时间戳/aware datetime，缺省 :func:`now_ms`（测试注入）；
+    - ``target_lang``：已校验的 canonical 语言代码；``None`` = 全部语言
+      （旧行为）。给了就只聚合该语言的观看/作答/复习/词状态与证据，使
+      ``dueTomorrow`` / ``reviewedWords`` / ``nextStep`` 与复习队列同口径。
     """
     if not isinstance(identity, str) or not identity.strip():
         raise ReportError("缺少周报身份。")
@@ -882,18 +965,28 @@ def week_report(identity: str, week_start=None, *, now=None) -> dict:
         _require_tables(conn, ("watch_events", "weekly_reports"))
         tables = _table_names(conn)
 
-        watch = _watch_aggregate(conn, identity, start_ms, end_ms)
+        watch = _watch_aggregate(conn, identity, start_ms, end_ms, target_lang)
         if "attempts" in tables:
-            quiz_stats = _attempt_aggregate(conn, identity, start_ms, end_ms)
+            quiz_stats = _attempt_aggregate(
+                conn, identity, start_ms, end_ms, target_lang
+            )
         else:
             quiz_stats = {"attempts": 0, "correct": 0}
         if "review_logs" in tables:
-            review = _review_aggregate(conn, identity, start_ms, end_ms)
+            review = _review_aggregate(
+                conn, identity, start_ms, end_ms, target_lang
+            )
         else:
             review = {"words": 0, "reviews": 0}
         if "word_states" in tables:
             words = _word_aggregate(
-                conn, identity, start_ms, end_ms, now_value, review["words"]
+                conn,
+                identity,
+                start_ms,
+                end_ms,
+                now_value,
+                review["words"],
+                target_lang,
             )
         else:
             words = {"new": 0, "reviewed": review["words"], "due_tomorrow": 0}
@@ -903,12 +996,17 @@ def week_report(identity: str, week_start=None, *, now=None) -> dict:
             if quiz_stats["attempts"]
             else None
         )
+        # 连续学习天数是跨语言的「习惯」指标，不随 target_lang 过滤。
         streak = _streak_days(conn, identity, now_value, tables)
         evidence = None
         if "attempts" in tables and "questions" in tables and "content_items" in tables:
-            evidence = _wrong_attempt_evidence(conn, identity, start_ms, end_ms)
+            evidence = _wrong_attempt_evidence(
+                conn, identity, start_ms, end_ms, target_lang
+            )
         if evidence is None:
-            evidence = _recent_watch_evidence(conn, identity, start_ms, end_ms)
+            evidence = _recent_watch_evidence(
+                conn, identity, start_ms, end_ms, target_lang
+            )
 
         report = {
             "version": REPORT_VERSION,

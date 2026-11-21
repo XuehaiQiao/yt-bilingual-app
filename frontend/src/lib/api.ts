@@ -28,6 +28,10 @@ const TARGET_LANG_QUERY_PATHS = new Set([
     // otherwise a zh-CN user sees "3 suspended" and a list built across all
     // languages.
     '/api/review/suspended',
+    // Weekly report's dueTomorrow / reviewedWords / nextStep must use the same
+    // language scope as the review deck (v1.1), otherwise the report can say
+    // "review 1 due word" while the zh-CN queue is empty.
+    '/api/report/week',
 ]);
 // History detail/delete share the prefix; shows processed is the only
 // language-scoped endpoint under /api/shows.

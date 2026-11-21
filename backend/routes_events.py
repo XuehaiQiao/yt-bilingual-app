@@ -5,7 +5,9 @@
 - ``POST /api/events``：批量上报观看事件（``type=watch``，单次最多 50 条）与
   CEFR M2 行为事件（``dict_lookup`` / ``video_replay`` / ``playback_rate`` /
   ``tab_visibility``，单次最多 20 条；见 specs/027）；
-- ``GET  /api/report/week?weekStart=YYYY-MM-DD``：本周事实周报。
+- ``GET  /api/report/week?weekStart=YYYY-MM-DD&targetLang=zh-CN``：本周事实
+  周报；``targetLang``（也接受 ``target_lang``）可选，省略 = 全部语言（旧
+  行为），给了就只聚合该语言，使 dueTomorrow 等与复习队列同口径。
 
 两者都**游客可用**：登录用户归属 ``users.id``，游客归属
 ``guest:<sha256>``（见 ``guest.guest_id``）。watch 事件写 ``watch_events``，
@@ -26,6 +28,7 @@ from pydantic import BaseModel
 
 import behavior_events
 import guest
+import languages
 import reports
 
 router = APIRouter(tags=["reports"])
@@ -66,6 +69,21 @@ def _raise_report_error(exc: Exception) -> None:
     ):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     raise exc
+
+
+def _optional_target_lang_or_400(raw: str | None) -> str | None:
+    """周报语言口径：省略 / 空串 = 全部语言（旧行为）；给了就校验，非法 400。
+
+    与 ``GET /api/review/stats`` 的可选 ``targetLang`` 语义一致；校验复用
+    ``languages.resolve_target_lang``（``srs.canonical_target_lang`` 亦包它），
+    返回 canonical code（``zh`` / ``zh-cn`` 等都归一到 ``zh-CN``）。
+    """
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        return None
+    try:
+        return languages.resolve_target_lang(raw)
+    except languages.UnsupportedLanguage as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _split_events(raw_events: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -164,12 +182,19 @@ def report_events(payload: EventsRequest, request: Request):
 def get_week_report(
     request: Request,
     weekStart: str | None = Query(default=None),
+    targetLang: str | None = Query(default=None),
+    target_lang: str | None = Query(default=None),
 ):
-    """本周事实周报（UTC 周一为界；weekStart 任意日期会归一到所在周周一）。"""
+    """本周事实周报（UTC 周一为界；weekStart 任意日期会归一到所在周周一）。
+
+    ``targetLang`` / ``target_lang`` 可选：省略 = 全部语言（旧行为），给了
+    就只聚合该语言，dueTomorrow / reviewedWords / nextStep 与复习队列同口径。
+    """
     identity, _guest_hash = _identity(request)
+    lang = _optional_target_lang_or_400(targetLang or target_lang)
     try:
         return reports.week_report(
-            identity, weekStart, now=reports.now_ms()
+            identity, weekStart, now=reports.now_ms(), target_lang=lang
         )
     except Exception as exc:  # noqa: BLE001
         _raise_report_error(exc)

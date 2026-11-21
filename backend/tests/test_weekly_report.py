@@ -211,6 +211,7 @@ def _seed_word(
     state: str = "review",
     due_at: int,
     created_at: int | None = None,
+    target_lang: str = "zh-CN",
 ) -> None:
     created_at = _ms(MONDAY) if created_at is None else created_at
     conn = _db()
@@ -219,22 +220,36 @@ def _seed_word(
             "INSERT INTO word_states (id, user_id, lemma, target_lang, state, "
             "due_at, stability, difficulty, reps, lapses, step, fail_streak, "
             "last_reviewed_at, created_at) "
-            "VALUES (?, ?, ?, 'zh-CN', ?, ?, NULL, NULL, 0, 0, 0, 0, NULL, ?)",
-            (f"ws-{lemma}", user_id, lemma, state, due_at, created_at),
+            "VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, 0, 0, 0, NULL, ?)",
+            (
+                f"ws-{target_lang}-{lemma}",
+                user_id,
+                lemma,
+                target_lang,
+                state,
+                due_at,
+                created_at,
+            ),
         )
         conn.commit()
     finally:
         conn.close()
 
 
-def _seed_review(user_id: str, lemma: str, *, reviewed_at: int) -> None:
+def _seed_review(
+    user_id: str,
+    lemma: str,
+    *,
+    reviewed_at: int,
+    target_lang: str = "zh-CN",
+) -> None:
     conn = _db()
     try:
         conn.execute(
             "INSERT INTO review_logs (user_id, lemma, target_lang, rating, "
             "state_before, state_after, reviewed_at, elapsed_ms) "
-            "VALUES (?, ?, 'zh-CN', 'good', '{}', '{}', ?, 900)",
-            (user_id, lemma, reviewed_at),
+            "VALUES (?, ?, ?, 'good', '{}', '{}', ?, 900)",
+            (user_id, lemma, target_lang, reviewed_at),
         )
         conn.commit()
     finally:
@@ -720,6 +735,143 @@ def test_next_step_accuracy_rule(report_db, clock):
     assert body["quiz"] == {"attempts": 5, "correct": 1}
     assert body["numbers"]["quizAccuracy"] == 0.2
     assert body["nextStep"] == "再做一次理解练习，答错的句子回听一遍"
+
+
+def test_week_report_target_lang_matches_review_queue(report_db, clock):
+    """v1.1 任务 9：周报按 targetLang 过滤，dueTomorrow 与复习队列同口径。
+
+    构造「全语言 1 个到期、zh-CN 0 个」：唯一到期词只属于 vi-VN；另有 zh-CN
+    新词（不进 dueTomorrow）。观看 / 作答 / 复习各放两种语言，确认三个数字
+    也跟随语言口径。
+    """
+    user_id = report_db.user_id
+    response = _post(
+        report_db,
+        [
+            _watch("lang-zh-watch", content_ref="vid-zh", watched_seconds=600),
+            _watch(
+                "lang-vi-watch",
+                content_ref="vid-vi",
+                target_lang="vi-VN",
+                watched_seconds=300,
+            ),
+        ],
+    )
+    assert response.status_code == 200, response.text
+
+    # 作答：zh-CN 错 1 题、vi-VN 对 1 题（全语言 1/2）。
+    _seed_attempt(
+        user_id,
+        suffix="lang-zh",
+        content_ref="vid-zh",
+        answered_at=_ms(NOW - timedelta(hours=1)),
+        correct=False,
+    )
+    _seed_attempt(
+        user_id,
+        suffix="lang-vi",
+        content_ref="vid-vi",
+        target_lang="vi-VN",
+        answered_at=_ms(NOW - timedelta(minutes=50)),
+        correct=True,
+    )
+    # 到期词只在 vi-VN：全语言 dueTomorrow=1，zh-CN=0。
+    _seed_word(
+        user_id,
+        "gamma",
+        state="review",
+        due_at=_ms(NOW - timedelta(hours=1)),
+        target_lang="vi-VN",
+    )
+    # zh-CN 只有一个新词（state=new 不计入 dueTomorrow）。
+    _seed_word(
+        user_id,
+        "delta",
+        state="new",
+        due_at=_ms(NOW + timedelta(hours=1)),
+    )
+    # 本周复习：只有一条 vi-VN。
+    _seed_review(
+        user_id,
+        "beta",
+        reviewed_at=_ms(NOW - timedelta(hours=3)),
+        target_lang="vi-VN",
+    )
+
+    # 省略 targetLang：全部语言（旧行为），那个 vi 到期词被算进去。
+    body = report_db.get("/api/report/week").json()
+    assert body["words"]["dueTomorrow"] == 1
+    assert body["words"]["new"] == 2
+    assert body["words"]["reviewed"] == 1
+    assert body["numbers"]["reviewedWords"] == 1
+    assert body["numbers"]["passiveMinutes"] == 15.0
+    assert body["nextStep"] == "复习 1 个到期词"
+
+    # 复习队列 zh-CN 是空的 —— 这正是修复前周报与队列口径冲突的场景。
+    queue_zh = report_db.get("/api/review/queue?targetLang=zh-CN")
+    assert queue_zh.status_code == 200, queue_zh.text
+    assert queue_zh.json()["counts"]["due"] == 0
+
+    # targetLang=zh-CN：dueTomorrow=0，nextStep 不再提那个 vi 词。
+    zh = report_db.get("/api/report/week?targetLang=zh-CN").json()
+    assert zh["numbers"] == {
+        "passiveMinutes": 10.0,
+        "reviewedWords": 0,
+        "quizAccuracy": 0.0,
+    }
+    assert zh["quiz"] == {"attempts": 1, "correct": 0}
+    assert zh["words"] == {"new": 1, "reviewed": 0, "dueTomorrow": 0}
+    assert "到期词" not in zh["nextStep"]
+    assert zh["nextStep"] == "把本周遇到的生词加进复习"
+    # 同一份数据在复习队列里 zh-CN 也没有到期词 → 两处同口径。
+    assert queue_zh.json()["counts"]["due"] == zh["words"]["dueTomorrow"]
+
+    # snake_case 别名同样生效；vi-VN 只看 vi 的到期词与数字。
+    queue_vi = report_db.get("/api/review/queue?targetLang=vi-VN")
+    assert queue_vi.status_code == 200, queue_vi.text
+    assert queue_vi.json()["counts"]["due"] == 1
+    vi = report_db.get("/api/report/week?target_lang=vi-VN").json()
+    assert vi["numbers"] == {
+        "passiveMinutes": 5.0,
+        "reviewedWords": 1,
+        "quizAccuracy": 1.0,
+    }
+    assert vi["quiz"] == {"attempts": 1, "correct": 1}
+    # gamma 本周才入库（created_at=周一），所以 vi-VN 的 new 也是 1。
+    assert vi["words"] == {"new": 1, "reviewed": 1, "dueTomorrow": 1}
+    assert vi["words"]["dueTomorrow"] == queue_vi.json()["counts"]["due"]
+    assert vi["nextStep"] == "复习 1 个到期词"
+
+    # 语言别名按注册表归一（zh → zh-CN），不会按未知语言算成 0。
+    alias = report_db.get("/api/report/week?targetLang=zh").json()
+    assert alias["words"] == zh["words"]
+
+
+def test_week_report_target_lang_invalid_400(report_db, clock):
+    """非法目标语言 → 400；空串按「全部语言」处理（与复习统计端点一致）。"""
+    for query in ("targetLang=xx-YY", "target_lang=xx-YY", "targetLang=zh-XX"):
+        response = report_db.get(f"/api/report/week?{query}")
+        assert response.status_code == 400, (query, response.text)
+        assert "不支持的语言代码" in response.json()["detail"], response.json()
+
+    response = report_db.get("/api/report/week?targetLang=")
+    assert response.status_code == 200, response.text
+    # 空串 = 全部语言：与省略参数等价（没有数据时三个数字都是空值）。
+    assert response.json()["numbers"] == {
+        "passiveMinutes": 0.0,
+        "reviewedWords": 0,
+        "quizAccuracy": None,
+    }
+    # 非法语言在聚合前就被拒绝，不会因为库为空而误报成功。
+    conn = _db()
+    try:
+        snapshot_count = conn.execute(
+            "SELECT COUNT(*) FROM weekly_reports WHERE user_id = ?",
+            (report_db.user_id,),
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    assert snapshot_count == 1  # 只有上面那次空串请求写了快照
 
 
 def test_report_user_isolation(report_db, make_client, clock):
