@@ -1,6 +1,6 @@
 # 规格：高亮难度轴
 
-**状态：** 已实现 ｜ **对应代码：** `frontend/src/components/VocabAxis.tsx`、`frontend/src/components/ReadingHighlight.tsx`、`frontend/src/lib/settings.ts`、`frontend/src/lib/useReadingHighlights.ts`、四个阅读器（`ReaderScreen`/`LibraryArticleReader`/`BookReaderScreen`/`ImportedBookReaderScreen`）、`backend/config.py`（`VOCAB_LEVELS`）、`backend/word_rules.py`（标亮候选规则的单一来源）、`backend/routes_vocabulary.py`（`POST /api/vocabulary/classify`）
+**状态：** 已实现 ｜ **对应代码：** `frontend/src/components/VocabAxis.tsx`、`frontend/src/components/ReadingHighlight.tsx`、`frontend/src/lib/settings.ts`、`frontend/src/lib/useReadingHighlights.ts`、`frontend/src/lib/ignoredWords.ts`（已掌握/本地忽略的单一来源 store）、四个阅读器（`ReaderScreen`/`LibraryArticleReader`/`BookReaderScreen`/`ImportedBookReaderScreen`）、`backend/config.py`（`VOCAB_LEVELS`）、`backend/word_rules.py`（标亮候选规则的单一来源）、`backend/routes_vocabulary.py`（`POST /api/vocabulary/classify`）
 
 ---
 
@@ -20,6 +20,7 @@
 - **必须**：首次进入且**从未保存过**滑条时，按能力档案区间的高带预填一次（A1→A1…C2→C2）；已有保存值绝不覆盖；无档案/游客保持默认 A2 且不报错。
 - **必须**：文章/免费文章/公版书/导入书的英文段落按同一阈值标亮高于当前档的词（A1<A2<B1<B2<C1<C1+<C2；C2 不额外标亮，未知/非法词不猜等级）；阅读工具栏「标亮生词」开关默认开、localStorage 记忆；API 失败静默无高亮，不阻断阅读与点词。
 - **必须**（v1.1 完整版）：**已掌握不标**——登录用户标亮前排除 `word_states.mastered=1` 的词；游客用本地忽略表（`localStorage`，文案「忽略此词」，不叫「已掌握」、不上传）。过滤只作用于渲染层，不改变 classify 的等级/专名规则；标记/撤销后，新打开的内容立即生效（已打开页面在下次重算时生效，写进实现说明）。
+  - **实现说明**（2026-11-22）：`frontend/src/lib/ignoredWords.ts` 是唯一来源——登录态从 `GET /api/review/words?mastered=1&limit=200` 读（失败静默空集、不阻塞标亮），游客读 `wordMastery` 本地表（`yt_bilingual_guest_mastered_words`，不上传）；`useReadingHighlights` 的 `isHighlighted` 先按 casefold 排除该集合。已打开页面通过 `useSyncExternalStore` 订阅该 store，标记/撤销后立即重算（优于「下次重算」）；新打开的内容在阅读器挂载时刷新一次列表。词卡「我已掌握」成功后 `addIgnored`、撤销 `removeIgnored`；游客词卡文案为「忽略此词」。
 - **必须**：**标亮候选只认一个来源**——后端 `backend/word_rules.py`：非句首首字母大写的 token 视为专名不标；内置常见专名名单（后端唯一一份）任何位置不标；其余按 CEFR 阈值判定。视频学习页与四个阅读器、导入书共用同一规则，同一词在不同界面标亮结果必须一致。
 - **必须**：前端通过 `POST /api/vocabulary/classify` 批量取判定：入参 `{items:[{text, sentenceStart?, hasLowercase?, hasNonInitialCapital?}]}`（后两项是该 token 在**同一文本**内的观察事实），出参 `{items:[{text, level, proper}]}`（保留原词形，非法 token `level=null`）；**前端不得再维护第二份专名名单或第二套大小写规则**，判定只看后端；游客可用，失败静默（与现 level API 同样的降级）。
 - **必须**：**句首专名兜底**——同一文本（章节/字幕流）内某 token **从未以小写出现**、且**至少一次以首字母大写出现在非句首**时，判为专名，即使它出现在句首（例：Oz 里的 `Toto`）。前端只提供上述两条观察事实，最终判定仍由 `word_rules` 完成。
@@ -35,9 +36,10 @@
 - [x] 专名名单只存在于后端；前端无第二份名单（`grep` 可证）。
 - [x] `classify`：批量保留原词形、返回 `level/proper`；非法 token 返回 `null` 不报错；游客可用。
 - [x] 同一段文本在视频页与阅读页的标亮集合一致（同一规则、同一阈值）。
-- [ ] 已掌握（登录）与本地忽略（游客）的词不再标亮；撤销后重新标亮；游客本地表不上传、换设备不生效。
+- [x] 已掌握（登录）与本地忽略（游客）的词不再标亮；撤销后重新标亮；游客本地表不上传、换设备不生效（实现：`frontend/src/lib/ignoredWords.ts` + `useReadingHighlights.ts` + `WordPopover.tsx`；验收脚本 `scripts/mastered-filter-acceptance.mjs`）。
 
 ## 边界与非目标
 - 高亮难度只影响"挑哪些词标亮/高亮"，不影响翻译本身，也不是能力评级或内容推荐依据。
 - 已缓存视频的高亮不会因改难度而重算（按视频缓存）；阅读标亮按当前档位即时重算。
 - 已知限制：只出现在句首、且全文从未出现非句首大写的专名仍无法判定（词形信息边界，不假装解决）；同一词形若在文中另处小写出现，非句首大写实例可能多标（方向是多标，不偏漏标）。
+- 已知限制（v1.1）：游客点词查词属于 AI 入口，仍先弹登录（M7b 门禁未改），所以游客词卡里的「忽略此词」当前进不去；游客的本地忽略表由单词本「我会了」写入，标亮过滤同样生效。匹配只做 casefold，不做词形还原——已掌握 `begin` 不会自动排除原文里的 `began`（前端不另造词形规则）。

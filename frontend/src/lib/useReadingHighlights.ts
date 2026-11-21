@@ -26,6 +26,13 @@
 //   - the classify cache key is the original word form + `sentenceStart` + the
 //     two corpus facts (the backend rule is positional and corpus-level), so a
 //     cached answer is never reused for a text with different observations.
+//   - already-known words are not marked (specs/004 v1.1 「已掌握不标」): before
+//     a word is marked, `lib/ignoredWords.ts` is asked whether it is in the
+//     signed-in mastered list or the guest local ignore table. That filter is
+//     render-only — the classify request, the proper-noun list and the CEFR
+//     threshold are untouched, and the token can still be clicked for lookup.
+//     The store is subscribed through `useIgnoredWords`, so mastering/undoing a
+//     word re-renders this text and recomputes the marks without a new request.
 //
 // Known limitation (kept, not "solved"): a proper noun that only ever appears
 // at a sentence start, and never capitalised outside a sentence start, cannot
@@ -48,6 +55,7 @@ import {
     VOCAB_LEVELS,
     type VocabLevelId,
 } from './settings';
+import { getIgnoredSnapshot, useIgnoredWords, refreshIgnored } from './ignoredWords';
 
 /** localStorage key for the per-reader "标亮生词" switch (default on). */
 export const READING_HIGHLIGHT_KEY = 'yt_bilingual_reading_highlight';
@@ -222,6 +230,20 @@ export interface ReadingHighlights {
  * to call while an article/chapter is still loading (`texts` empty).
  */
 export function useReadingHighlights(texts: readonly string[]): ReadingHighlights {
+    // Already-known words (signed-in mastered list / guest local ignore table).
+    // Subscribing here is what makes a freshly mastered word lose its mark on
+    // the current page: the snapshot change re-renders this hook and
+    // `isHighlighted` re-checks the set. It never re-runs the classify request.
+    const ignored = useIgnoredWords();
+    // Newly opened content must reflect marks made elsewhere in the app (the
+    // word book's guest table, a signed-in word-book PATCH) without a reload:
+    // re-read the list once per reader mount. The very first boot is already
+    // covered by the store's own auth-mode read, so a not-yet-loaded signed-in
+    // list is skipped rather than duplicated.
+    useEffect(() => {
+        if (!getIgnoredSnapshot().loaded) return;
+        void refreshIgnored();
+    }, []);
     const [level, setLevel] = useState<VocabLevelId>(loadVocabLevel);
     const [enabled, setEnabledState] = useState<boolean>(loadReadingHighlightEnabled);
     // Bumped after a lookup finishes; the derived maps below depend on it even
@@ -325,10 +347,15 @@ export function useReadingHighlights(texts: readonly string[]): ReadingHighlight
     // 专名判断已经由后端 classify 完成，这里只按「小写词形是否在本文里被判
     // 为可标亮」查。若先按小写缓存查 level，句首的 London 会借到 london 的
     // 等级被误标——所以由 highlightable 集合统一收口。
+    //
+    // 已忽略 / 已掌握的词（specs/004 v1.1）在渲染层排除：先查 ignored 集合，
+    // 命中就返回 false。字词仍可点击查词；classify 的等级与专名规则不变。
     const isHighlighted = (word: string) => {
         if (!enabled || failed) return false;
         const form = cleanReadingWord(word.trim()).toLowerCase();
-        return form.length >= 2 && highlightable.has(form);
+        if (form.length < 2) return false;
+        if (ignored.words.has(form)) return false;
+        return highlightable.has(form);
     };
 
     return { enabled, setEnabled, level, levelLabel, wordLevels, isHighlighted };

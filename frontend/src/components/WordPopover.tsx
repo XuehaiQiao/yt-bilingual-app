@@ -7,8 +7,13 @@ import { describeApiError, toast } from '../lib/toast';
 import { speak } from '../lib/tts';
 import type { FavoriteSourceKind } from '../lib/favorites';
 import { useAuth } from '../lib/auth';
-import { addWord, getMasteredWords, setWordMastered, ReviewApiError } from '../lib/review';
-import { normalizeMasteryWord, readGuestMastered, writeGuestMastered } from '../lib/wordMastery';
+import { addWord, setWordMastered, ReviewApiError } from '../lib/review';
+import {
+    addIgnored,
+    normalizeIgnoredWord,
+    removeIgnored,
+    useIgnoredWords,
+} from '../lib/ignoredWords';
 import { useI18n } from '../i18n/I18nProvider';
 import { Button } from './ui/Button';
 
@@ -121,13 +126,17 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
     const { t, targetLang } = useI18n();
     const { status } = useAuth();
     const isGuest = status === 'guest';
+    // One shared store for "already known" words (specs/004 v1.1): guests read
+    // their local ignore table, signed-in users the server mastered list. The
+    // reading highlight layer subscribes to the same store, so a mark here
+    // makes the word stop being highlighted immediately.
+    const ignored = useIgnoredWords();
     const [definition, setDefinition] = useState<WordDefinition | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showAllSenses, setShowAllSenses] = useState(false);
     // Review deck (specs/005 / specs/013 v1.1): add + mastered entry points.
     const [reviewPhase, setReviewPhase] = useState<'idle' | 'saving' | 'added'>('idle');
     const [reviewError, setReviewError] = useState<string | null>(null);
-    const [mastered, setMastered] = useState(false);
     const [masteredSaving, setMasteredSaving] = useState(false);
     const [masteredError, setMasteredError] = useState<string | null>(null);
     // Report 1.2.3: a failed lookup must offer one action instead of a dead
@@ -168,56 +177,13 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
     }, [word, context, lookupAttempt]);
 
     // A different word/context starts a fresh review card: forget the last
-    // action's transient state but keep the mastered mark.
+    // action's transient state. The mastered/ignored mark itself lives in the
+    // shared store, so it is recomputed from the new lemma below.
     useEffect(() => {
         setReviewPhase('idle');
         setReviewError(null);
         setMasteredError(null);
     }, [word, context]);
-
-    // Mastered set for this card: guests read the local 「我会了」 table once;
-    // signed-in users read the server's authoritative mastered list once per
-    // opened card (no local mirror — the same GET feeds the word book). A
-    // hover-switch only recomputes membership from this set, not another GET.
-    const [masteredLemmas, setMasteredLemmas] = useState<Set<string> | null>(
-        () => (isGuest ? readGuestMastered() : null),
-    );
-
-    useEffect(() => {
-        if (isGuest) {
-            setMasteredLemmas(readGuestMastered());
-            return;
-        }
-        let cancelled = false;
-        // A failed read keeps every word unmarked; it is not a user-facing
-        // error (the write path surfaces its own failure inline).
-        getMasteredWords(200, targetLang)
-            .then((data) => {
-                if (cancelled) return;
-                setMasteredLemmas(new Set(data.words.map((item) => normalizeMasteryWord(item.lemma))));
-            })
-            .catch(() => {
-                if (!cancelled) setMasteredLemmas(new Set());
-            });
-        return () => { cancelled = true; };
-    }, [isGuest, targetLang]);
-
-    // Apply the set once the definition reveals the lemma the API keys on.
-    useEffect(() => {
-        if (!definition || !masteredLemmas) return;
-        const lemma = (definition.lemma || definition.word || word).trim();
-        if (!lemma) return;
-        setMastered(masteredLemmas.has(normalizeMasteryWord(lemma)));
-    }, [definition, word, masteredLemmas]);
-
-    const writeMasteredSet = (lemma: string, masteredNext: boolean) => {
-        setMasteredLemmas((prev) => {
-            const next = new Set(prev ?? []);
-            if (masteredNext) next.add(normalizeMasteryWord(lemma));
-            else next.delete(normalizeMasteryWord(lemma));
-            return next;
-        });
-    };
 
     const clearHoverTimer = useCallback(() => {
         if (hoverTimerRef.current != null) {
@@ -279,6 +245,17 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
     // dictionary's lemma over the surface form when it is available.
     const reviewLemma = (definition?.lemma || definition?.word || word).trim();
 
+    // Marked/ignored membership comes from the shared store (single source).
+    // Exact casefolded match, the same rule the reading highlight filter uses.
+    const mastered = reviewLemma.length > 0
+        && ignored.words.has(normalizeIgnoredWord(reviewLemma));
+
+    // Guests see 「忽略此词」 (their mark is local-only and never uploaded); the
+    // matched pair for signed-in users stays 「我已掌握」/「撤销」.
+    const masteredLabel = mastered
+        ? (isGuest ? t('reading.ignoreWordUndo') : t('vocab.review.undo'))
+        : (isGuest ? t('reading.ignoreWord') : t('vocab.review.master'));
+
     const openLogin = () => {
         if (onRequestLogin) onRequestLogin();
         else toast.info(t('guest.loginToSave'));
@@ -300,9 +277,9 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
                 source: { contentRef: sourceContentRef, sentenceId: sourceSentenceId },
             });
             setReviewPhase('added');
-            // specs/013: re-adding a tracked word forces mastered=0 server-side.
-            setMastered(false);
-            writeMasteredSet(reviewLemma, false);
+            // specs/013: re-adding a tracked word forces mastered=0 server-side,
+            // so it leaves the shared ignored set and becomes markable again.
+            removeIgnored(reviewLemma);
             toast.success(t('vocab.review.toast.added'), { dedupeKey: 'review:word-added' });
         } catch (caught) {
             setReviewPhase('idle');
@@ -315,11 +292,17 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
     const handleToggleMastered = async () => {
         if (masteredSaving || !reviewLemma) return;
         const next = !mastered;
-        // Guest: local ignore table only (文案「我会了」), never uploaded.
+        // Guest: the local ignore table only (文案「忽略此词」), never uploaded.
+        // `addIgnored`/`removeIgnored` persist to that table and notify the
+        // highlight layer, so the mark takes effect on the current page now.
         if (isGuest) {
-            writeGuestMastered(reviewLemma, next);
-            writeMasteredSet(reviewLemma, next);
-            setMastered(next);
+            if (next) {
+                addIgnored(reviewLemma);
+                toast.success(t('reading.ignoreWordToast'), { dedupeKey: 'reading:ignore-word' });
+            } else {
+                removeIgnored(reviewLemma);
+                toast.success(t('reading.ignoreWordUndoToast'), { dedupeKey: 'reading:ignore-word-undo' });
+            }
             return;
         }
         setMasteredSaving(true);
@@ -331,12 +314,11 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
                 targetLang,
                 source: { contentRef: sourceContentRef, sentenceId: sourceSentenceId },
             });
-            // The PATCH response is authoritative for the post-write mark; keep
-            // the per-card set in sync so a hover-switch back to this word
-            // recomputes the same state without another GET.
-            const confirmed = result.word.mastered === true;
-            writeMasteredSet(reviewLemma, confirmed);
-            setMastered(confirmed);
+            // The PATCH response is authoritative for the post-write mark; the
+            // store update then makes the current page re-render immediately
+            // (highlight disappears / returns without a re-classify).
+            if (result.word.mastered === true) addIgnored(reviewLemma);
+            else removeIgnored(reviewLemma);
             toast.success(
                 next ? t('vocab.review.toast.mastered') : t('vocab.review.toast.unmastered'),
                 { dedupeKey: 'review:word-mastered' },
@@ -561,16 +543,12 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
                                 tone="success"
                                 iconLeft={mastered ? <Undo2 /> : <CheckCircle2 />}
                                 loading={masteredSaving}
-                                ariaLabel={mastered
-                                    ? t('vocab.review.undo')
-                                    : isGuest ? t('vocab.review.guestMaster') : t('vocab.review.master')}
+                                ariaLabel={masteredLabel}
                                 testId="word-popover-mastered"
                                 onClick={() => { void handleToggleMastered(); }}
                                 className="[@media(pointer:coarse)]:min-h-11"
                             >
-                                {mastered
-                                    ? t('vocab.review.undo')
-                                    : isGuest ? t('vocab.review.guestMaster') : t('vocab.review.master')}
+                                {masteredLabel}
                             </Button>
                         </div>
                         {reviewError && (

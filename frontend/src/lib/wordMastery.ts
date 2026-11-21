@@ -5,7 +5,7 @@
 // this store: their 已掌握 group is served by
 // `GET /api/review/words?mastered=1` and updated from the PATCH response, so
 // this module must never grow a second mirror for them.
-const GUEST_MASTERED_KEY = 'yt_bilingual_guest_mastered_words';
+export const GUEST_MASTERED_KEY = 'yt_bilingual_guest_mastered_words';
 
 /** Normalize a word for set membership; the same word must match everywhere. */
 export function normalizeMasteryWord(word: string): string {
