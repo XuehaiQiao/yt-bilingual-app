@@ -3753,6 +3753,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                 onClose={handleCloseLibraryArticle}
                 parentLabel={parentLabel}
                 onWordLookup={handleLibraryArticleWordLookup}
+                favorites={favorites}
               />,
             );
           }
@@ -3841,6 +3842,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               initialArticleId={sub.articleId}
               initialImport={readerInitialImport ?? undefined}
               onInitialImportConsumed={() => setReaderInitialImport(null)}
+              favorites={favorites}
             />,
           );
         case 'sentences':
@@ -3866,6 +3868,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onOpenSeries={(seriesId) => openSub({ kind: 'book-series', seriesId })}
               onWordLookup={handleBookWordLookup}
               onRequestLogin={onRequestLogin}
+              favorites={favorites}
             />,
           );
         case 'book-series':
@@ -3887,6 +3890,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               parentLabel={parentLabel}
               onWordLookup={handleImportedBookWordLookup}
               onRequestLogin={() => onRequestLogin?.()}
+              favorites={favorites}
             />,
           );
         case 'vocabulary':

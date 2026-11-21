@@ -13,6 +13,8 @@ import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { SubHeader } from './ui/SubHeader';
+import { ReadingVocabButton } from './ReadingVocabButton';
+import type { FavoriteItem } from '../lib/favorites';
 
 interface LibraryArticleReaderProps {
     article: LibraryArticle;
@@ -32,9 +34,11 @@ interface LibraryArticleReaderProps {
         sourceId?: string,
         sourceTitle?: string,
     ) => void;
+    /** App-owned favorites; the header chip shows the vocabulary count. */
+    favorites: readonly FavoriteItem[];
 }
 
-export function LibraryArticleReader({ article, onClose, parentLabel, onWordLookup }: LibraryArticleReaderProps) {
+export function LibraryArticleReader({ article, onClose, parentLabel, onWordLookup, favorites }: LibraryArticleReaderProps) {
     const { t, formatNumber } = useI18n();
     const [showTranslations, setShowTranslations] = useState(true);
     // Every paragraph has a Chinese translation on disk, so "show translations"
@@ -74,6 +78,7 @@ export function LibraryArticleReader({ article, onClose, parentLabel, onWordLook
                         {t('library.article.badge')}
                     </span>
                 )}
+                actions={<ReadingVocabButton favorites={favorites} />}
                 backTestId="library-article-back"
                 titleAs="p"
             />

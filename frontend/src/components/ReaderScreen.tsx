@@ -41,6 +41,8 @@ import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { ShareCardDialog } from './ShareCardDialog';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { SubHeader } from './ui/SubHeader';
+import { ReadingVocabButton } from './ReadingVocabButton';
+import type { FavoriteItem } from '../lib/favorites';
 import { Segmented } from './ui/Segmented';
 import { classifyPublicDomainBookUrl } from '../lib/publicDomain';
 import type { ShareCardData } from '../lib/shareCard';
@@ -89,6 +91,8 @@ interface ReaderScreenProps {
         sourceId?: string,
         sourceTitle?: string,
     ) => void;
+    /** App-owned favorites; the header chip shows the vocabulary count. */
+    favorites: readonly FavoriteItem[];
 }
 
 type ImportMode = 'url' | 'text';
@@ -215,6 +219,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     onInitialImportConsumed,
     onImportPublicDomainBook,
     onWordLookup,
+    favorites,
 }) => {
     const { t, targetLang, formatNumber } = useI18n();
 
@@ -1097,6 +1102,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                 backLabel={t('reader.backToList')}
                 backTestId="reader-back-list"
                 titleAs="p"
+                actions={<ReadingVocabButton favorites={favorites} />}
             />
             <div
                 data-testid="reader-toolbar"

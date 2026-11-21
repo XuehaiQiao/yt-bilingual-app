@@ -35,6 +35,8 @@ import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { SubHeader } from './ui/SubHeader';
+import { ReadingVocabButton } from './ReadingVocabButton';
+import type { FavoriteItem } from '../lib/favorites';
 import {
     deleteImportedBook,
     fetchImportedBook,
@@ -60,6 +62,8 @@ interface ImportedBookReaderScreenProps {
         source?: { id: string; title?: string },
     ) => void;
     onRequestLogin: () => void;
+    /** App-owned favorites; the header chip shows the vocabulary count. */
+    favorites: readonly FavoriteItem[];
 }
 
 const errorKey = (status: number, fallback: TranslationKey): TranslationKey => {
@@ -135,6 +139,7 @@ export function ImportedBookReaderScreen({
     parentLabel,
     onWordLookup,
     onRequestLogin,
+    favorites,
 }: ImportedBookReaderScreenProps) {
     const { t, formatNumber } = useI18n();
     const { status } = useAuth();
@@ -439,7 +444,7 @@ export function ImportedBookReaderScreen({
             if (!enriched.analysisLevel) {
                 // Silent skip (chapter untranslated / analysis unavailable):
                 // say there is nothing yet without blocking the reading pane.
-                setAnalysisNotice('teachingNotes.empty');
+                setAnalysisNotice('importedBooks.reader.generateAnalysis.empty');
             }
         } catch (error) {
             if (chapterNumberRef.current !== target) return;
@@ -452,7 +457,7 @@ export function ImportedBookReaderScreen({
                 return;
             }
             console.error('Failed to generate imported chapter analysis:', error);
-            setAnalysisNotice('teachingNotes.error');
+            setAnalysisNotice('importedBooks.reader.generateAnalysis.error');
         } finally {
             setGeneratingAnalysis(false);
         }
@@ -494,26 +499,31 @@ export function ImportedBookReaderScreen({
                 meta={detail ? (detail.author || t('importedBooks.unknownAuthor')) : undefined}
                 backTestId="imported-book-reader-back"
                 titleAs="p"
-                actions={detail && (
-                    <button
-                        type="button"
-                        data-testid="imported-book-delete"
-                        onClick={() => {
-                            setDeleteError(null);
-                            setDeleteConfirmOpen(true);
-                        }}
-                        disabled={deleting}
-                        aria-label={t('importedBooks.reader.delete')}
-                        title={t('importedBooks.reader.delete')}
-                        className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control px-2 text-xs font-medium text-fg-muted transition-colors hover:bg-danger/10 hover:text-danger-fg disabled:opacity-40"
-                    >
-                        {deleting ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
+                actions={(
+                    <>
+                        <ReadingVocabButton favorites={favorites} />
+                        {detail && (
+                            <button
+                                type="button"
+                                data-testid="imported-book-delete"
+                                onClick={() => {
+                                    setDeleteError(null);
+                                    setDeleteConfirmOpen(true);
+                                }}
+                                disabled={deleting}
+                                aria-label={t('importedBooks.reader.delete')}
+                                title={t('importedBooks.reader.delete')}
+                                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control px-2 text-xs font-medium text-fg-muted transition-colors hover:bg-danger/10 hover:text-danger-fg disabled:opacity-40"
+                            >
+                                {deleting ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                )}
+                                <span className="hidden sm:inline">{t('importedBooks.reader.delete')}</span>
+                            </button>
                         )}
-                        <span className="hidden sm:inline">{t('importedBooks.reader.delete')}</span>
-                    </button>
+                    </>
                 )}
             />
 
@@ -747,8 +757,8 @@ export function ImportedBookReaderScreen({
                                         <Sparkles className="h-3.5 w-3.5" />
                                     )}
                                     {generatingAnalysis
-                                        ? t('teachingNotes.loading')
-                                        : t('teachingNotes.title')}
+                                        ? t('importedBooks.reader.generateAnalysis.loading')
+                                        : t('importedBooks.reader.generateAnalysis')}
                                 </button>
                                 <span className="min-w-0 flex-1 basis-full text-[11px] leading-relaxed text-zinc-600 sm:basis-0">
                                     {t('importedBooks.reader.translateHint')}

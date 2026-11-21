@@ -30,6 +30,8 @@ import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
 import { allowAi } from '../lib/aiGate';
 import { useAuth } from '../lib/auth';
 import { SubHeader } from './ui/SubHeader';
+import { ReadingVocabButton } from './ReadingVocabButton';
+import type { FavoriteItem } from '../lib/favorites';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import {
@@ -58,6 +60,8 @@ interface BookReaderScreenProps {
         e: React.MouseEvent,
         source?: { id: string; title?: string },
     ) => void;
+    /** App-owned favorites; the header chip shows the vocabulary count. */
+    favorites: readonly FavoriteItem[];
 }
 
 const errorKey = (status: number, fallback: TranslationKey): TranslationKey => {
@@ -186,6 +190,7 @@ export function BookReaderScreen({
     onOpenSeries,
     onRequestLogin,
     onWordLookup,
+    favorites,
 }: BookReaderScreenProps) {
     const { t, language, formatNumber } = useI18n();
     const [detail, setDetail] = useState<BookDetail | null>(null);
@@ -513,16 +518,21 @@ export function BookReaderScreen({
                 meta={detail ? `${detail.author} · ${detail.year}` : undefined}
                 backTestId="book-reader-back"
                 titleAs="p"
-                actions={detail && (
-                    <button
-                        type="button"
-                        data-testid="book-reader-series-link"
-                        onClick={() => onOpenSeries(detail.seriesId)}
-                        className="hidden sm:inline-flex items-center gap-1 h-9 px-2.5 rounded-control text-xs font-medium text-fg-secondary hover:text-fg-primary hover:bg-state-hover transition-colors shrink-0"
-                    >
-                        <Layers className="w-3.5 h-3.5" />
-                        {t('books.reader.series')}
-                    </button>
+                actions={(
+                    <>
+                        <ReadingVocabButton favorites={favorites} />
+                        {detail && (
+                            <button
+                                type="button"
+                                data-testid="book-reader-series-link"
+                                onClick={() => onOpenSeries(detail.seriesId)}
+                                className="hidden sm:inline-flex items-center gap-1 h-9 px-2.5 rounded-control text-xs font-medium text-fg-secondary hover:text-fg-primary hover:bg-state-hover transition-colors shrink-0"
+                            >
+                                <Layers className="w-3.5 h-3.5" />
+                                {t('books.reader.series')}
+                            </button>
+                        )}
+                    </>
                 )}
             />
 

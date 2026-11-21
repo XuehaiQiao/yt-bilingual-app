@@ -127,6 +127,12 @@ export interface DialogProps {
     fullscreen?: boolean;
     /** Bottom sheet below md, centered modal above it. */
     sheet?: boolean;
+    /**
+     * Full-height drawer anchored to an edge of the viewport instead of a
+     * floating card (v1.1 reading word book, D6-1). Keeps the same portal,
+     * overlay, focus trap, scroll lock and reduced-motion contract.
+     */
+    side?: 'right';
     /** Close guard (IX-09/IX-15): return false (or throw) to stay open. */
     onBeforeClose?: () => boolean | Promise<boolean>;
     /** Layout escape hatch only; visuals come from the Dialog contract. */
@@ -156,6 +162,7 @@ export function Dialog({
     loading = false,
     fullscreen = false,
     sheet = false,
+    side,
     onBeforeClose,
     className,
     testId,
@@ -362,13 +369,16 @@ export function Dialog({
         <div
             ref={rootRef}
             className={cn(
-                'fixed inset-0 z-dialog flex justify-center',
+                'fixed inset-0 z-dialog flex',
+                side === 'right' ? 'justify-end' : 'justify-center',
                 closing && 'pointer-events-none',
-                fullscreen
+                side === 'right'
                     ? 'items-stretch'
-                    : sheet
-                      ? 'items-end p-0 sm:items-center sm:p-4'
-                      : 'items-center p-4',
+                    : fullscreen
+                      ? 'items-stretch'
+                      : sheet
+                        ? 'items-end p-0 sm:items-center sm:p-4'
+                        : 'items-center p-4',
             )}
         >
             {!fullscreen && (
@@ -399,15 +409,21 @@ export function Dialog({
                 data-state={closing ? 'closing' : 'open'}
                 className={cn(
                     'relative z-10 flex w-full flex-col overflow-hidden border border-line-strong bg-surface/90 text-fg-primary shadow-elev-3 backdrop-blur-2xl',
-                    fullscreen
-                        ? 'h-full max-h-none max-w-none rounded-none border-0 bg-app shadow-none'
-                        : sheet
-                          ? 'max-h-[90dvh] rounded-t-panel rounded-b-none sm:max-h-[85dvh] sm:rounded-card'
-                          : 'max-h-[85dvh] rounded-card',
-                    !fullscreen && SIZE_CLASSES[size],
+                    side === 'right'
+                        ? 'h-full max-h-none max-w-dialog-sm rounded-none border-y-0 border-r-0'
+                        : fullscreen
+                          ? 'h-full max-h-none max-w-none rounded-none border-0 bg-app shadow-none'
+                          : sheet
+                            ? 'max-h-[90dvh] rounded-t-panel rounded-b-none sm:max-h-[85dvh] sm:rounded-card'
+                            : 'max-h-[85dvh] rounded-card',
+                    !fullscreen && side !== 'right' && SIZE_CLASSES[size],
                     closing
-                        ? 'translate-y-2 opacity-0 transition-[opacity,transform] duration-150 ease-exit'
-                        : !fullscreen && 'animate-[slideUp_0.32s_cubic-bezier(0.25,1,0.5,1)]',
+                        ? side === 'right'
+                            ? 'translate-x-4 opacity-0 transition-[opacity,transform] duration-150 ease-exit'
+                            : 'translate-y-2 opacity-0 transition-[opacity,transform] duration-150 ease-exit'
+                        : side === 'right'
+                          ? 'animate-slide-in-right'
+                          : !fullscreen && 'animate-[slideUp_0.32s_cubic-bezier(0.25,1,0.5,1)]',
                     className,
                 )}
             >
