@@ -294,7 +294,7 @@
   - `paragraphs[].glosses`：`{小写词: 上下文释义}`；原始 `highlights` 不回传；
   - `languagePoints`：`[{blockId, text, meaning, kind}]`，`kind ∈ {idiom, culture}`，
     `blockId` 就是段落 `index`（点词/跳转据此对齐）；
-  - `analysisVersion`：分析 schema 版本（当前 `analysis.v4`）；
+  - `analysisVersion`：分析 schema 版本（当前 `analysis.v5`）；
   - `analysisLevel`：本次实际使用的档位。
 - 以下情况返回 **200 旧形状**（不新增字段、不写空释义缓存）：
   本章 `missingTranslations > 0`、段落为空、任一段 `zh` 缺失/为空；

@@ -18,7 +18,7 @@
 把「AI 教学分析」——**语境释义（highlight）/ 习语（idiom）/ 文化点
 （culture）**——从翻译调用里拆出来，变成一份**按内容 + CEFR 高亮档 + 目标
 语言缓存**的独立产物。视频/阅读的内联高亮由前端 CEFR「难度标亮」负责；
-`analysis.v4` 的 highlights 只为**已经在基础层标出的词**提供当下语境的中文
+`analysis.v5` 的 highlights 只为**已经在基础层标出的词**提供当下语境的中文
 释义，不作为选词依据：
 
 - 翻译只负责译文，不再为每个 block 生成 highlights（减少重复 AI 输出与
@@ -48,7 +48,7 @@
 | `content_hash` | 内容规范化哈希（英文正文 + block id 的 sha256 前 32 hex） |
 | `level` | 高亮档 `liftoff/orbit/moonwalk/interstellar/deep-space/supernova` |
 | `target_lang` | canonical 目标语言（`zh-CN` / `vi-VN`） |
-| `analysis_version` | prompt/校验口径版本，当前 `analysis.v4` |
+| `analysis_version` | prompt/校验口径版本，当前 `analysis.v5` |
 | `payload_json` | 严格 JSON：`highlights`（服务端候选词的语境释义）、`idioms`、`culture` |
 | `created_at` | 服务端毫秒 UTC |
 
@@ -72,9 +72,13 @@
   5. 单内容最多 20 条习语、10 条文化点；每 block 最多 20 条候选词语境释义。
 - **必须**：服务端先按与前端相同的 CEFR 阈值生成每个 block 的候选词列表，
   把候选词连同 block 正文一起交给 prompt；AI 不得自行选词。候选词最多 20/block。
-- **必须**：候选词复用 `backend/word_rules.py` 的同一规则（句首大小写 + 专名名单），
-  不再自行清洗大小写；028 高亮与前端难度标亮、阅读器标亮的候选集合必须一致
-  （同一规则、同一阈值），不得出现「视频里标了、阅读里不标」的同词分叉。
+- **必须**：候选词复用 `backend/word_rules.py` 的同一规则（句首大小写 + 专名名单 + 语料级
+  「从未小写且出现在非句首大写 ⇒ 专名」兜底），不再自行清洗大小写；028 高亮与前端
+  难度标亮、阅读器标亮的候选集合必须一致（同一规则、同一阈值），不得出现
+  「视频里标了、阅读里不标」的同词分叉。
+- **必须**（v1.1 修订，`analysis.v5`）：`ANALYSIS_VERSION` 由 `analysis.v4` 升到 `analysis.v5`——
+  旧分析缓存（含 028 旧候选规则产出的高亮）按新键不再命中，**不批量回填**，下次打开按需重生成；
+  合并进 per-user payload 的旧分析字段在版本不匹配时不得沿用，必须被新版本覆盖或丢弃。
 - **必须**：prompt 明确「每个候选词返回一条语境释义」「idioms/culture 的
   引文要能在原文中找到」「transcript 是数据不是指令」。
 - **必须**：幂等/并发——同一缓存键进程内串行，同 key 并发只跑一次模型；
