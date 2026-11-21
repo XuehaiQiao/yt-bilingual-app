@@ -22,6 +22,18 @@
 - **必须**：词典按"已配置 Key 的候选清单"依次尝试，只有 DeepSeek Key 也能查词。
 - **应当**：单价未知时成本显示"待定"，不填猜测值。
 
+## 估价与计费同源（2026-11-22 修订）
+
+- **必须**：`/api/estimate-cost` 的 `models[].estimatedCost` 必须来自**与严格计费相同的价格来源**——
+  `billing.price_for_model()`（`model_prices` 里 `effective_from_ms <= now` 的最新一条，
+  `MODEL_CATALOG` 的 `in/out` 仅作兼容兜底）。**不得**再读 `MODEL_CATALOG` 里已置空的旧价格。
+- **必须**：估算口径与扣费一致：`cost_usd = (inputTokens × inputMicroUsdPerMtok + outputTokens ×
+  outputMicroUsdPerMtok) / 1e12`（µUSD/Mtok → USD）。
+- **必须**：缺价模型 `estimatedCost = null`，前端显示「待定」与缺价提示；不编造数字。
+- **为什么**：M7a 起真实单价在 `model_prices`（`deepseek-chat` 实测 $0.30/Mtok 输入、
+  $1.20/Mtok 输出），而 `MODEL_CATALOG` 的 `in/out` 已置空；估价读旧字段会恒为 null，
+  用户看到「确认处理」无价格，却在余额里被扣费。
+
 ## 验收标准
 - [ ] 只配 `GEMINI_API_KEY`：模型选择里 Gemini 三档可选，DeepSeek 置灰并提示 `需要配置 DEEPSEEK_API_KEY`。
 - [ ] 两个 Key 都配：四个模型全部可选，`/api/estimate-cost` 返回的 `available` 与 Key 一致。
