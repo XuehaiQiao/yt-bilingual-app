@@ -4,19 +4,32 @@
 
 - 解析 ``content_ref`` 指向的**已有双语字幕缓存**（YouTube videoId 或本地剧集
   ``<show>-S01E01``），拿英文正文 + 现有译文；
-- 按 ``(content_hash, level, target_lang, analysis.v1)`` 取缓存：
+- 按 ``(content_hash, level, target_lang, analysis.v5)`` 取缓存：
   命中直接返回（零模型调用、不占配额）；未命中才调用模型生成并落库；
 - 返回 ``highlights``（按 block id）/ ``idioms`` / ``culture`` /
   ``analysisVersion``。**不生成题目**：题目走既有 ``/api/lesson/*``（quiz.py，
   已按内容+语言缓存）。
 
-权限与成本：分析会产生 AI 成本，因此本端点**需登录**（游客 403），且生成时
-沿用现有三层配额（feature=``analysis``，``AI_DAILY_QUOTA_ANALYSIS``）；缓存
-命中免费。内部翻译/播放链路通过 ``teaching_analysis.attach_to_payload`` 复用
-同一套缓存，不经过本路由。
+权限与成本（specs/028 v1.1 §1.3「访问策略统一」）：
+
+- **缓存命中是只读、公开的**：全局表 ``content_teaching_analysis`` 已有可复用
+  行（``content_hash + level + target_lang + ANALYSIS_VERSION``）时，游客也返回
+  200——零模型调用、不占配额、不写 ``ai_usage``；
+- **只有需要生成时才要求登录**：游客拿不到可复用行 → 403 ``login_required``
+  （specs/036 的稳定错误码）。游客在这里只会看到 200（缓存命中）或 403：
+  参数非法/内容不可见/缓存表缺失都不会被当成「请求有问题」暴露给游客，因为
+  对游客而言下一步永远是同一个动作——登录；
+- 登录用户行为不变：命中免费、未命中按 ``feature=analysis`` 配额生成
+  （``AI_DAILY_QUOTA_ANALYSIS``）；错误语义仍是 400/404/429/502/503；
+- **同一数据源、同一可见性**：合并进 per-user payload 的分析走
+  ``teaching_analysis.attach_to_payload`` → ``ensure_analysis``；本端点的缓存
+  命中探测与它读**同一张全局表、同一个缓存键、同一套可复用判定**（见
+  :func:`_reusable_cached`）。因此游客从视频 payload 能读到的分析，本端点也能
+  读到，不会出现「一条路能读、另一条 403」。
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -49,7 +62,7 @@ class AnalysisContentNotFound(teaching_analysis.TeachingAnalysisError):
 
 
 def _require_login(request: Request) -> dict:
-    """教学分析有 AI 成本，只对登录用户开放（缓存命中也不向游客暴露）。"""
+    """**生成**教学分析必须登录（缓存命中的只读路径不经过这里）。"""
     return ai_auth.require_ai_user(
         request, detail="教学分析需要登录后使用。"
     )
@@ -100,6 +113,74 @@ def _load_blocks(content_ref: str, target_lang: str) -> tuple[str, list[dict]]:
     return ref, transcript
 
 
+def _analysis_response(content_ref: str, analysis: dict, target_lang: str) -> dict:
+    """分析 payload → 端点响应体（缓存命中与生成共用，保证两条路同形）。"""
+    return {
+        "contentRef": content_ref,
+        "level": analysis.get("level"),
+        "targetLang": analysis.get("targetLang", target_lang),
+        "contentHash": analysis.get("contentHash"),
+        "analysisVersion": analysis.get(
+            "analysisVersion", teaching_analysis.ANALYSIS_VERSION
+        ),
+        "highlights": analysis.get("highlights") or {},
+        "idioms": analysis.get("idioms") or [],
+        "culture": analysis.get("culture") or [],
+        "model": analysis.get("model"),
+        "createdAt": analysis.get("createdAt"),
+    }
+
+
+def _reusable_cached(
+    transcript: list[dict], level: str, target_lang: str
+) -> dict | None:
+    """只读探测全局分析缓存；返回可直接对外返回的 payload，未命中 None。
+
+    **零模型调用、不占配额、不写 ``ai_usage``**（只读 SQLite + 纯计算）。
+    判定与 ``teaching_analysis.ensure_analysis`` 的缓存命中完全一致：同一张
+    ``content_teaching_analysis`` 表、同一个缓存键、同一套「可复用」判定
+    （``_cache_is_stale``：旧版本 / 空释义行不算命中——它们会走生成路径，因此
+    游客也看不到「登录用户会被重新生成」的旧行）。合并进 per-user payload 的
+    分析与本端点因此同源、同可见性。
+    """
+    hash_value = teaching_analysis.content_hash_of(transcript)
+    cached = teaching_analysis.load_cached(hash_value, level, target_lang)
+    if not isinstance(cached, dict):
+        return None
+    normalized = teaching_analysis.normalize_blocks(transcript)
+    if teaching_analysis._cache_is_stale(cached, normalized, level):
+        return None
+    return cached
+
+
+def _guest_cached_view(
+    content_ref: str,
+    level: str | None,
+    target_lang: str | None,
+    content_hash: str | None,
+) -> dict | None:
+    """游客的只读路径：能拿到可复用缓存就返回响应体，否则 None（→ 403）。
+
+    游客不生成分析（specs/036），所以这里只做「读内容缓存 → 算哈希 → 查全局
+    分析表」：不调模型、不占配额、不写用量。参数非法/内容不可见/缓存表缺失/
+    缓存未命中一律返回 None，由调用方统一抛 403 ``login_required``——
+    游客的下一步永远是登录，不把「做不到」伪装成 400/404。
+    """
+    try:
+        lang = teaching_analysis.canonical_target_lang(target_lang)
+        analysis_level = teaching_analysis.normalize_level(level)
+        ref, transcript = _load_blocks(content_ref, lang)
+        provided = (content_hash or "").strip()
+        if provided and provided != teaching_analysis.content_hash_of(transcript):
+            return None
+        cached = _reusable_cached(transcript, analysis_level, lang)
+    except teaching_analysis.TeachingAnalysisError:
+        return None
+    if not isinstance(cached, dict):
+        return None
+    return _analysis_response(ref, cached, lang)
+
+
 @router.get("/api/teaching-analysis/{content_ref}")
 async def get_teaching_analysis(
     content_ref: str,
@@ -108,8 +189,18 @@ async def get_teaching_analysis(
     targetLang: str | None = None,
     contentHash: str | None = None,
 ):
-    """读取/生成一份内容的教学分析（登录；缓存命中零模型调用）。"""
-    user = _require_login(request)
+    """读取/生成一份内容的教学分析（缓存命中游客可读；生成需登录）。"""
+    user = ai_auth.ai_user(request)
+    if user is None:
+        # 游客：先试只读的全局缓存命中（specs/028 v1.1 §1.3）。SQLite 读放到
+        # 线程里，与 ensure_analysis 一样不在事件循环里做阻塞 IO。
+        cached_view = await asyncio.to_thread(
+            _guest_cached_view, content_ref, level, targetLang, contentHash
+        )
+        if cached_view is not None:
+            return cached_view
+        # 需要生成 → 登录闸（specs/036：403 + code=login_required）。
+        user = _require_login(request)
     try:
         lang = teaching_analysis.canonical_target_lang(targetLang)
         ref, transcript = _load_blocks(content_ref, lang)
@@ -126,17 +217,4 @@ async def get_teaching_analysis(
         raise
     except teaching_analysis.TeachingAnalysisError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
-    return {
-        "contentRef": ref,
-        "level": analysis.get("level"),
-        "targetLang": analysis.get("targetLang", lang),
-        "contentHash": analysis.get("contentHash"),
-        "analysisVersion": analysis.get(
-            "analysisVersion", teaching_analysis.ANALYSIS_VERSION
-        ),
-        "highlights": analysis.get("highlights") or {},
-        "idioms": analysis.get("idioms") or [],
-        "culture": analysis.get("culture") or [],
-        "model": analysis.get("model"),
-        "createdAt": analysis.get("createdAt"),
-    }
+    return _analysis_response(ref, analysis, lang)
