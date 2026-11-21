@@ -88,6 +88,17 @@ export interface ReviewSuspendResult {
     word: ReviewWord;
 }
 
+/**
+ * Suspended words waiting for a restore (specs/013). `targetLang` stays null
+ * when the request did not scope by language; `total` is the unpaged count.
+ */
+export interface ReviewSuspendedList {
+    targetLang: string | null;
+    now: number;
+    total: number;
+    words: ReviewWord[];
+}
+
 export interface AnswerWordInput {
     lemma: string;
     rating: ReviewRating;
@@ -150,5 +161,28 @@ export function suspendWord(lemma: string): Promise<ReviewSuspendResult> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lemma }),
+    });
+}
+
+/**
+ * Words currently paused (auto-suspended after 3 `again` grades, or manual),
+ * most recently touched first. Omitting `targetLang` covers every language —
+ * the restore dialog lists the word's own language on each row.
+ */
+export function getSuspendedWords(limit = 100): Promise<ReviewSuspendedList> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    return request<ReviewSuspendedList>(`/api/review/suspended?${params.toString()}`);
+}
+
+/**
+ * Put a suspended word back into the queue (idempotent). The server clears its
+ * fail streak; `targetLang` is optional only because the backend falls back to
+ * zh-CN — callers restoring a listed word should pass its own language.
+ */
+export function restoreWord(lemma: string, targetLang?: string): Promise<ReviewSuspendResult> {
+    const params = new URLSearchParams({ lemma });
+    if (targetLang) params.set('targetLang', targetLang);
+    return request<ReviewSuspendResult>(`/api/review/suspend?${params.toString()}`, {
+        method: 'DELETE',
     });
 }

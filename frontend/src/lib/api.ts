@@ -24,6 +24,10 @@ const TARGET_LANG_QUERY_PATHS = new Set([
     // Omitting `targetLang` on the stats endpoint means "all languages"; the
     // home card must match the deck, so it is always injected here.
     '/api/review/stats',
+    // The restore list must cover exactly the words the stats count (v1.1 9),
+    // otherwise a zh-CN user sees "3 suspended" and a list built across all
+    // languages.
+    '/api/review/suspended',
 ]);
 // History detail/delete share the prefix; shows processed is the only
 // language-scoped endpoint under /api/shows.

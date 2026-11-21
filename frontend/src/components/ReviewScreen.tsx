@@ -7,6 +7,7 @@ import {
     Loader2,
     MoreHorizontal,
     Repeat,
+    RotateCcw,
     ShieldAlert,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
@@ -14,10 +15,13 @@ import { loadModel } from '../lib/settings';
 import { describeApiError, toast } from '../lib/toast';
 import { SubHeader } from './ui/SubHeader';
 import { Menu } from './ui/Menu';
+import { Dialog } from './ui/Dialog';
 import {
     answerWord,
     getReviewQueue,
     getReviewStats,
+    getSuspendedWords,
+    restoreWord,
     ReviewApiError,
     suspendWord,
     type ReviewQueue,
@@ -159,6 +163,14 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, parentLabel
     const [menuOpen, setMenuOpen] = useState(false);
     const [session, setSession] = useState<SessionCounts>(EMPTY_SESSION);
 
+    // Restore-paused-words dialog: opened from the empty/done view only.
+    const [suspendedOpen, setSuspendedOpen] = useState(false);
+    const [suspendedList, setSuspendedList] = useState<ReviewWord[]>([]);
+    const [suspendedLoading, setSuspendedLoading] = useState(false);
+    const [suspendedError, setSuspendedError] = useState<string | null>(null);
+    const [restoringId, setRestoringId] = useState<string | null>(null);
+    const restoringRef = useRef(false);
+
     // Definition requests can outlive the card that started them; the token
     // makes the late response drop instead of painting the wrong word.
     const defineTokenRef = useRef(0);
@@ -182,6 +194,9 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, parentLabel
         setAnswerError(null);
         setMenuOpen(false);
         setSession(EMPTY_SESSION);
+        setSuspendedOpen(false);
+        setSuspendedList([]);
+        setSuspendedError(null);
 
         try {
             const nextQueue = await getReviewQueue();
@@ -317,6 +332,44 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, parentLabel
             setSuspendBusy(false);
         }
     };
+
+    // Restore dialog: fetch the paused deck when it opens. The list endpoint is
+    // intentionally not language-scoped — each row carries its own targetLang.
+    const openSuspended = useCallback(async () => {
+        setSuspendedOpen(true);
+        setSuspendedLoading(true);
+        setSuspendedError(null);
+        try {
+            const data = await getSuspendedWords();
+            setSuspendedList(data.words);
+        } catch (err) {
+            setSuspendedList([]);
+            setSuspendedError(await describeApiError(err));
+        } finally {
+            setSuspendedLoading(false);
+        }
+    }, []);
+
+    const handleRestore = useCallback(async (word: ReviewWord) => {
+        if (restoringRef.current) return;
+        restoringRef.current = true;
+        setRestoringId(word.id);
+        setSuspendedError(null);
+        try {
+            await restoreWord(word.lemma, word.targetLang);
+            setSuspendedList(prev => prev.filter(item => item.id !== word.id));
+            // Keep the header count honest without refetching stats.
+            setStats(prev => prev
+                ? { ...prev, suspendedWords: Math.max(0, prev.suspendedWords - 1) }
+                : prev);
+            toast.success(t('review.suspended.restoreSuccess', { word: word.lemma }));
+        } catch (err) {
+            setSuspendedError(await describeApiError(err));
+        } finally {
+            restoringRef.current = false;
+            setRestoringId(null);
+        }
+    }, [t]);
 
     // Keyboard: Space reveals, 1–4 grade. Escape closes the menu or the view.
     // Focused buttons/inputs keep their native key handling.
@@ -558,6 +611,18 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, parentLabel
                         {completed ? t('review.empty.titleDone') : t('review.empty.titleNone')}
                     </h2>
 
+                    {stats !== null && stats.suspendedWords > 0 && (
+                        <button
+                            type="button"
+                            data-testid="review-suspended-open"
+                            onClick={() => void openSuspended()}
+                            className="mt-3 inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors"
+                        >
+                            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                            {t('review.suspended.open', { count: stats.suspendedWords })}
+                        </button>
+                    )}
+
                     {phase === 'done' ? (
                         <>
                             <p className="mt-1 text-sm text-zinc-400">
@@ -756,6 +821,91 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, parentLabel
                 <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
                     {statsRow}
                     {renderBody()}
+                    <Dialog
+                        open={suspendedOpen}
+                        onClose={() => setSuspendedOpen(false)}
+                        title={t('review.suspended.title')}
+                        description={t('review.suspended.description')}
+                        size="sm"
+                        testId="review-suspended-dialog"
+                    >
+                        {suspendedLoading ? (
+                            <div className="flex items-center gap-2 py-6 text-sm text-zinc-400">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                {t('review.suspended.loading')}
+                            </div>
+                        ) : suspendedList.length === 0 ? (
+                            <div className="space-y-3 py-4">
+                                {suspendedError ? (
+                                    <>
+                                        <p className="text-sm text-zinc-300">
+                                            {t('review.suspended.error')}
+                                        </p>
+                                        <p
+                                            data-testid="review-suspended-error"
+                                            className="text-xs text-zinc-500 break-words"
+                                        >
+                                            {suspendedError}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={() => void openSuspended()}
+                                            className={SECONDARY_BUTTON}
+                                        >
+                                            {t('common.retry')}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <p
+                                        data-testid="review-suspended-empty"
+                                        className="text-sm text-zinc-500"
+                                    >
+                                        {t('review.suspended.empty')}
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {suspendedError && (
+                                    <p
+                                        data-testid="review-suspended-error"
+                                        className="text-xs text-red-400 break-words"
+                                    >
+                                        {suspendedError}
+                                    </p>
+                                )}
+                                <ul className="space-y-2" data-testid="review-suspended-list">
+                                    {suspendedList.map(word => (
+                                        <li
+                                            key={word.id}
+                                            className="flex items-center justify-between gap-3 rounded-xl bg-zinc-800/30 border border-white/5 px-3 py-2.5"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-zinc-100 break-words">
+                                                    {word.lemma}
+                                                </p>
+                                                <p className="mt-0.5 text-[11px] text-zinc-500">
+                                                    {word.targetLang} · {t('review.suspended.failStreak', { count: word.failStreak })}
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                data-testid="review-suspended-restore"
+                                                onClick={() => void handleRestore(word)}
+                                                disabled={restoringId !== null}
+                                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors disabled:opacity-50 shrink-0"
+                                            >
+                                                {restoringId === word.id
+                                                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    : <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />}
+                                                {t('review.suspended.restore')}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </Dialog>
                 </div>
             </div>
         </div>
