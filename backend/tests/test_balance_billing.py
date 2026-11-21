@@ -282,7 +282,9 @@ def test_migration_downgrade_keeps_users_and_usage(tmp_path, monkeypatch):
         )
         conn.commit()
 
-    assert_alembic_ok(run_alembic(db, "downgrade", "-1"), "downgrade -1")
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0024_account_lifecycle"), "downgrade 0024"
+    )
     billing.reset_cache()
     assert revision(db) == "0024_account_lifecycle"
     assert "account_ledger" not in table_names(db)
@@ -292,7 +294,7 @@ def test_migration_downgrade_keeps_users_and_usage(tmp_path, monkeypatch):
     ]
 
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head again")
-    assert revision(db) == "0025_balance_cost"
+    assert revision(db) == "0026_seed_band_fix"
     # 回滚后余额列重建为 0，再按 D-3 给 active 用户补发。
     assert _balance(db, "keep") == BONUS
 
