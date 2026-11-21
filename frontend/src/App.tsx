@@ -3910,6 +3910,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onOpenSentencePack={handleOpenFavoriteSentencePack}
               onOpenBook={(bookId) => { setWordLookup(null); openSub({ kind: 'book', bookId }); }}
               onOpenImportedBook={(bookId) => { setWordLookup(null); openSub({ kind: 'imported-book', bookId }); }}
+              onRequestLogin={() => onRequestLogin?.()}
             />,
           );
         default:
@@ -4234,6 +4235,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onToggleFavorite={handleToggleDictFavorite}
             isFavorited={favorites.some(f => f.id === `vocab-${wordLookup.sourceId || videoId}-${wordLookup.word.replace(/\s+/g, '-')}`)}
             onSwitchWord={handleSwitchWord}
+            sourceContentRef={wordLookup.sourceId || videoId}
+            sourceSentenceId={String(wordLookup.start)}
+            onRequestLogin={() => onRequestLogin?.()}
           />
         )}
       </AnimatePresence>

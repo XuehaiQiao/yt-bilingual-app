@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { X, Volume2, Star, Loader2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { X, Volume2, Star, Loader2, ChevronDown, ChevronUp, RefreshCw, Repeat, CheckCircle2, Undo2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiFetch } from '../lib/api';
 import { loadModel } from '../lib/settings';
-import { describeApiError } from '../lib/toast';
+import { describeApiError, toast } from '../lib/toast';
 import { speak } from '../lib/tts';
 import type { FavoriteSourceKind } from '../lib/favorites';
+import { useAuth } from '../lib/auth';
+import { addWord, setWordMastered, ReviewApiError } from '../lib/review';
+import { hasMasteryHint, masteryScope, writeMasteryHint } from '../lib/wordMastery';
 import { useI18n } from '../i18n/I18nProvider';
+import { Button } from './ui/Button';
 
 export interface WordDefinition {
     word: string;
@@ -50,6 +54,12 @@ interface WordPopoverProps {
     isFavorited: boolean;
     /** Retarget an already-open card when the pointer dwells on another word. */
     onSwitchWord: (target: WordLookupTarget) => void;
+    /** Content ref of the lookup (video / article / book id) for word_sources. */
+    sourceContentRef?: string;
+    /** Sentence/block reference of the lookup; transcripts use the start time. */
+    sourceSentenceId?: string;
+    /** Guest gate: open the login overlay instead of calling the review API. */
+    onRequestLogin?: () => void;
 }
 
 const CARD_WIDTH = 320;
@@ -95,11 +105,32 @@ function findLookupWordAt(clientX: number, clientY: number): WordLookupTarget | 
     return null;
 }
 
-export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, onClose, onToggleFavorite, isFavorited, onSwitchWord }) => {
-    const { t } = useI18n();
+export const WordPopover: React.FC<WordPopoverProps> = ({
+    word,
+    context,
+    x,
+    y,
+    onClose,
+    onToggleFavorite,
+    isFavorited,
+    onSwitchWord,
+    sourceContentRef,
+    sourceSentenceId,
+    onRequestLogin,
+}) => {
+    const { t, targetLang } = useI18n();
+    const { status, user } = useAuth();
+    const isGuest = status === 'guest';
+    const mastery = masteryScope(isGuest, user?.id);
     const [definition, setDefinition] = useState<WordDefinition | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showAllSenses, setShowAllSenses] = useState(false);
+    // Review deck (specs/005 / specs/013 v1.1): add + mastered entry points.
+    const [reviewPhase, setReviewPhase] = useState<'idle' | 'saving' | 'added'>('idle');
+    const [reviewError, setReviewError] = useState<string | null>(null);
+    const [mastered, setMastered] = useState(false);
+    const [masteredSaving, setMasteredSaving] = useState(false);
+    const [masteredError, setMasteredError] = useState<string | null>(null);
     // Report 1.2.3: a failed lookup must offer one action instead of a dead
     // end. Bumping this re-runs the same request for the same word/context.
     const [lookupAttempt, setLookupAttempt] = useState(0);
@@ -136,6 +167,23 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
         })();
         return () => { cancelled = true; };
     }, [word, context, lookupAttempt]);
+
+    // A different word/context starts a fresh review card: forget the last
+    // action's transient state but keep the mastered mark.
+    useEffect(() => {
+        setReviewPhase('idle');
+        setReviewError(null);
+        setMasteredError(null);
+    }, [word, context]);
+
+    // The mastered mark is keyed by the lemma (what the review API stores), so
+    // apply the local mirror once /api/define reveals it.
+    useEffect(() => {
+        if (!definition) return;
+        setMastered(hasMasteryHint(mastery, definition.lemma || definition.word || word));
+        // `mastery.key` is the stable identity of the storage scope.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [definition, word, mastery.key]);
 
     const clearHoverTimer = useCallback(() => {
         if (hoverTimerRef.current != null) {
@@ -191,6 +239,74 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
     const handleClose = () => {
         clearHoverTimer();
         onClose();
+    };
+
+    // Review word identity: the server keys word_states by lemma, so prefer the
+    // dictionary's lemma over the surface form when it is available.
+    const reviewLemma = (definition?.lemma || definition?.word || word).trim();
+
+    const openLogin = () => {
+        if (onRequestLogin) onRequestLogin();
+        else toast.info(t('guest.loginToSave'));
+    };
+
+    const handleAddToReview = async () => {
+        if (reviewPhase === 'saving' || !reviewLemma) return;
+        // Guests never reach the 403: the gate is at the entry (G8 / M7b).
+        if (isGuest) {
+            openLogin();
+            return;
+        }
+        setReviewPhase('saving');
+        setReviewError(null);
+        try {
+            await addWord({
+                lemma: reviewLemma,
+                targetLang,
+                source: { contentRef: sourceContentRef, sentenceId: sourceSentenceId },
+            });
+            setReviewPhase('added');
+            // specs/013: re-adding a tracked word forces mastered=0 server-side.
+            setMastered(false);
+            writeMasteryHint(mastery, reviewLemma, false);
+            toast.success(t('vocab.review.toast.added'), { dedupeKey: 'review:word-added' });
+        } catch (caught) {
+            setReviewPhase('idle');
+            setReviewError(caught instanceof ReviewApiError && caught.status === 403
+                ? t('vocab.review.loginHint')
+                : t('vocab.review.error.add'));
+        }
+    };
+
+    const handleToggleMastered = async () => {
+        if (masteredSaving || !reviewLemma) return;
+        const next = !mastered;
+        // Guest: local ignore table only (文案「我会了」), never uploaded.
+        if (isGuest) {
+            writeMasteryHint(mastery, reviewLemma, next);
+            setMastered(next);
+            return;
+        }
+        setMasteredSaving(true);
+        setMasteredError(null);
+        try {
+            await setWordMastered({
+                lemma: reviewLemma,
+                mastered: next,
+                targetLang,
+                source: { contentRef: sourceContentRef, sentenceId: sourceSentenceId },
+            });
+            writeMasteryHint(mastery, reviewLemma, next);
+            setMastered(next);
+            toast.success(
+                next ? t('vocab.review.toast.mastered') : t('vocab.review.toast.unmastered'),
+                { dedupeKey: 'review:word-mastered' },
+            );
+        } catch {
+            setMasteredError(t('vocab.review.error.mastered'));
+        } finally {
+            setMasteredSaving(false);
+        }
     };
 
     // Keep the card inside the viewport. When it sits below the anchor, `top`
@@ -376,6 +492,57 @@ export const WordPopover: React.FC<WordPopoverProps> = ({ word, context, x, y, o
                         )}
                         {definition.lemma && definition.lemma.toLowerCase() !== (definition.word || word).toLowerCase() && (
                             <p className="text-[11px] text-zinc-600">{t('dictionary.lemma', { lemma: definition.lemma })}</p>
+                        )}
+                    </div>
+                )}
+
+                {/* v1.1 review entry points (specs/005 / specs/013 §v1.1):
+                    the dictionary card is the primary "加入复习" entry; the
+                    word-book favorite row is the secondary one. */}
+                {definition && (
+                    <div className="mt-3 border-t border-line-strong pt-3">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <Button
+                                size="sm"
+                                variant={reviewPhase === 'added' ? 'secondary' : 'tinted'}
+                                tone="brand"
+                                iconLeft={reviewPhase === 'added' ? <CheckCircle2 /> : <Repeat />}
+                                loading={reviewPhase === 'saving'}
+                                loadingLabel={t('vocab.review.adding')}
+                                ariaLabel={reviewPhase === 'added' ? t('vocab.review.added') : t('vocab.review.add')}
+                                testId="word-popover-review"
+                                onClick={() => { void handleAddToReview(); }}
+                                className="[@media(pointer:coarse)]:min-h-11"
+                            >
+                                {reviewPhase === 'added' ? t('vocab.review.added') : t('vocab.review.add')}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant={mastered ? 'secondary' : 'tinted'}
+                                tone="success"
+                                iconLeft={mastered ? <Undo2 /> : <CheckCircle2 />}
+                                loading={masteredSaving}
+                                ariaLabel={mastered
+                                    ? t('vocab.review.undo')
+                                    : isGuest ? t('vocab.review.guestMaster') : t('vocab.review.master')}
+                                testId="word-popover-mastered"
+                                onClick={() => { void handleToggleMastered(); }}
+                                className="[@media(pointer:coarse)]:min-h-11"
+                            >
+                                {mastered
+                                    ? t('vocab.review.undo')
+                                    : isGuest ? t('vocab.review.guestMaster') : t('vocab.review.master')}
+                            </Button>
+                        </div>
+                        {reviewError && (
+                            <p data-testid="word-popover-review-error" role="alert" className="mt-2 text-caption leading-relaxed text-danger-fg">
+                                {reviewError}
+                            </p>
+                        )}
+                        {masteredError && (
+                            <p data-testid="word-popover-mastered-error" role="alert" className="mt-2 text-caption leading-relaxed text-danger-fg">
+                                {masteredError}
+                            </p>
                         )}
                     </div>
                 )}

@@ -18,6 +18,7 @@ import {
     BookMarked,
     BookOpen,
     ChevronDown,
+    CheckCircle2,
     Download,
     Eye,
     EyeOff,
@@ -27,10 +28,12 @@ import {
     Info,
     Loader2,
     Play,
+    Repeat,
     Search,
     Star,
     Trash2,
     Tv,
+    Undo2,
     X,
     type LucideIcon,
 } from 'lucide-react';
@@ -63,12 +66,25 @@ import {
     type VocabularyList,
     type VocabularyPage,
 } from '../lib/vocabulary';
-import { describeApiError } from '../lib/toast';
+import { addWord, setWordMastered } from '../lib/review';
+import { fetchSeenCounts } from '../lib/vocabSeen';
+import {
+    masteryScope,
+    normalizeMasteryWord,
+    readMasteryHints,
+    writeMasteryHint,
+    type MasteryScope,
+} from '../lib/wordMastery';
+import { describeApiError, toast } from '../lib/toast';
+import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/I18nProvider';
 import { VocabPagination } from './VocabPagination';
 import { SubHeader } from './ui/SubHeader';
 import { Tabs, tabPanelProps, type TabItem } from './ui/Tabs';
 import { FilterChip } from './ui/FilterChip';
+import { Segmented } from './ui/Segmented';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 import type { TranslationKey } from '../i18n';
 
 interface VocabularyBookScreenProps {
@@ -86,9 +102,15 @@ interface VocabularyBookScreenProps {
     onOpenSentencePack: (levelId: number) => void;
     onOpenBook: (bookId: string) => void;
     onOpenImportedBook: (bookId: string) => void;
+    /** Guest gate for review actions (opens the login overlay, never a 403). */
+    onRequestLogin?: () => void;
 }
 
 type Phase = 'idle' | 'loading' | 'ready' | 'error';
+type MineGroup = 'learning' | 'mastered';
+type MineSort = 'added' | 'seen' | 'level';
+type MineType = '' | 'word' | 'phrase';
+type SeenPhase = 'idle' | 'loading' | 'ready' | 'unavailable';
 
 const MINE_TAB = 'mine';
 const PHRASES_TAB = 'phrases';
@@ -139,6 +161,27 @@ const SOURCE_LABEL_KEYS: Record<FavoriteSourceKind, TranslationKey> = {
     imported_book: 'vocab.source.imported_book',
 };
 
+/** Stable chip order for the source filter (product order, not data order). */
+const SOURCE_KIND_ORDER: readonly FavoriteSourceKind[] = [
+    'video',
+    'local_show',
+    'article',
+    'library_article',
+    'sentence_pack',
+    'book',
+    'imported_book',
+];
+
+/** Words outside the merged CEFR list render C1+ (specs/005), so they sort last. */
+const OFF_LIST_RANK = VOCABULARY_CEFR_LEVELS.length;
+function levelSortRank(word: string, levels: Record<string, string | null>): number {
+    if (!(word in levels)) return Number.POSITIVE_INFINITY; // still loading / failed
+    const level = levels[word];
+    if (!level) return OFF_LIST_RANK; // C1+
+    const index = (VOCABULARY_CEFR_LEVELS as readonly string[]).indexOf(level);
+    return index >= 0 ? index : OFF_LIST_RANK;
+}
+
 const SECONDARY_BUTTON =
     'inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors disabled:opacity-40 disabled:pointer-events-none';
 const DANGER_BUTTON =
@@ -174,8 +217,12 @@ export function VocabularyBookScreen({
     onOpenSentencePack,
     onOpenBook,
     onOpenImportedBook,
+    onRequestLogin,
 }: VocabularyBookScreenProps) {
-    const { t, formatDate, formatNumber } = useI18n();
+    const { t, formatDate, formatNumber, targetLang } = useI18n();
+    const { status, user } = useAuth();
+    const isGuest = status === 'guest';
+    const mastery: MasteryScope = masteryScope(isGuest, user?.id);
     const reduceMotion = useReducedMotion() ?? false;
 
     const myWords = useMemo(
@@ -229,6 +276,221 @@ export function VocabularyBookScreen({
         [myWords],
     );
 
+    // ── v1.1 word book: 我的单词 / 已掌握, sorting, filters, seen counts ────
+    // The mastered set is a local mirror (per user): guests write the local
+    // ignore table (「我会了」); signed-in users update it only after PATCH
+    // succeeds (see lib/wordMastery.ts).
+    const [mineGroup, setMineGroup] = useState<MineGroup>('learning');
+    const [mineSort, setMineSort] = useState<MineSort>('added');
+    const [mineType, setMineType] = useState<MineType>('');
+    const [mineSource, setMineSource] = useState<'' | FavoriteSourceKind>('');
+    const [mineUnmastered, setMineUnmastered] = useState(false);
+    const [masteredWords, setMasteredWords] = useState<Set<string>>(() => readMasteryHints(mastery));
+    const [reviewedWords, setReviewedWords] = useState<Set<string>>(() => new Set());
+    const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
+    const [pendingMasteredId, setPendingMasteredId] = useState<string | null>(null);
+    // Row-level write failure: inline + retryable (IX-02 / specs/013 §v1.1),
+    // never a success-looking state and never a page-level error.
+    const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
+    const [seenCounts, setSeenCounts] = useState<Record<string, number>>({});
+    const [seenPhase, setSeenPhase] = useState<SeenPhase>('idle');
+
+    // Account switch (guest claim) must swap the local mirror, never mix them.
+    useEffect(() => {
+        setMasteredWords(readMasteryHints(mastery));
+        // `mastery.key` is the stable identity of the storage scope.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mastery.key]);
+
+    const myWordLemmas = useMemo(
+        () => Array.from(new Set(myWords.map((fav) => fav.en_text.trim()).filter(Boolean))),
+        [myWords],
+    );
+    // Serialized so the effect only re-runs when the word set itself changes.
+    const seenWordKey = myWordLemmas.join('\u0000');
+
+    // Seen counts only enhance sorting/one column: a missing endpoint (403/404
+    // during the parallel backend build) must not block the list or show an
+    // error. Guests never call it (显示「—」, specs/005 §v1.1).
+    useEffect(() => {
+        if (!activeIsMine || isGuest || myWordLemmas.length === 0) {
+            setSeenPhase('idle');
+            return;
+        }
+        let cancelled = false;
+        setSeenPhase('loading');
+        fetchSeenCounts(myWordLemmas)
+            .then((counts) => {
+                if (cancelled) return;
+                setSeenCounts(counts);
+                setSeenPhase('ready');
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setSeenCounts({});
+                setSeenPhase('unavailable');
+            });
+        return () => { cancelled = true; };
+        // `seenWordKey` captures myWordLemmas; mastery is not part of the request.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeIsMine, isGuest, seenWordKey]);
+
+    const masteredCount = useMemo(
+        () => myWords.filter((fav) => masteredWords.has(normalizeMasteryWord(fav.en_text))).length,
+        [myWords, masteredWords],
+    );
+    const learningCount = myWords.length - masteredCount;
+    const masteredGroupLabel = isGuest ? t('vocab.review.guestMaster') : t('vocab.mine.mastered');
+
+    const mineSourceKinds = useMemo(() => {
+        const present = new Set(myWords.map((fav) => resolveFavoriteSource(fav).kind));
+        return SOURCE_KIND_ORDER.filter((kind) => present.has(kind));
+    }, [myWords]);
+
+    const hasMineFilters = Boolean(mineType || mineSource || (mineGroup === 'learning' && mineUnmastered));
+
+    const mineRows = useMemo(() => {
+        // 类型 filter (词/短语): favorites only store vocabulary rows, so a
+        // multi-word entry is the phrase surface. Single-word rows stay 单词.
+        const isPhrase = (fav: FavoriteItem) => /\s/.test(fav.en_text.trim());
+        const filtered = myWords.filter((fav) => {
+            const isMastered = masteredWords.has(normalizeMasteryWord(fav.en_text));
+            if (mineGroup === 'mastered' ? !isMastered : isMastered) return false;
+            if (mineType === 'word' && isPhrase(fav)) return false;
+            if (mineType === 'phrase' && !isPhrase(fav)) return false;
+            if (mineSource && resolveFavoriteSource(fav).kind !== mineSource) return false;
+            // Guarded by the group filter above; kept explicit for the 未掌握 chip.
+            if (mineGroup === 'learning' && mineUnmastered && isMastered) return false;
+            return true;
+        });
+        const seenOf = (fav: FavoriteItem) => seenCounts[fav.en_text.trim()] ?? -1;
+        return [...filtered].sort((a, b) => {
+            if (mineSort === 'seen') {
+                const bySeen = seenOf(b) - seenOf(a);
+                if (bySeen !== 0) return bySeen;
+            } else if (mineSort === 'level') {
+                const byLevel = levelSortRank(a.en_text.trim(), levels)
+                    - levelSortRank(b.en_text.trim(), levels);
+                if (byLevel !== 0) return byLevel;
+            }
+            // Default: newest added first (and the stable tiebreak for every sort).
+            return (b.added_at || 0) - (a.added_at || 0);
+        });
+    }, [myWords, mineGroup, mineType, mineSource, mineUnmastered, mineSort, masteredWords, seenCounts, levels]);
+
+    const seenTitle = isGuest
+        ? t('vocab.mine.seen.guest')
+        : seenPhase === 'unavailable'
+            ? t('vocab.mine.seen.unavailable')
+            : seenPhase === 'loading'
+                ? t('vocab.mine.seen.loading')
+                : undefined;
+    const seenText = (fav: FavoriteItem): string => {
+        if (isGuest || seenPhase !== 'ready') return '—';
+        const count = seenCounts[fav.en_text.trim()];
+        return typeof count === 'number' ? t('vocab.mine.seen', { count: formatNumber(count) }) : '—';
+    };
+
+    const openLogin = () => {
+        if (onRequestLogin) onRequestLogin();
+        else toast.info(t('guest.loginToSave'));
+    };
+
+    /** Favorite provenance → the review API's `{contentRef, sentenceId}` shape. */
+    const reviewSourceFor = (fav: FavoriteItem) => {
+        const source = resolveFavoriteSource(fav);
+        return {
+            contentRef: source.ref || fav.videoId || undefined,
+            sentenceId: String(fav.start ?? 0),
+        };
+    };
+
+    const handleAddFavoriteToReview = async (fav: FavoriteItem) => {
+        if (pendingReviewId || pendingMasteredId) return;
+        // Guest gate at the entry: never call the endpoint that would 403.
+        if (isGuest) {
+            openLogin();
+            return;
+        }
+        const lemma = fav.en_text.trim();
+        if (!lemma) return;
+        const key = normalizeMasteryWord(lemma);
+        setPendingReviewId(fav.id);
+        setRowError(null);
+        try {
+            const result = await addWord({
+                lemma,
+                targetLang,
+                source: reviewSourceFor(fav),
+            });
+            setReviewedWords((prev) => new Set(prev).add(key));
+            // specs/013: adding an already-tracked word forces mastered=0, so a
+            // mastered favorite returns to 我的单词 instead of staying hidden.
+            if (masteredWords.has(key)) {
+                writeMasteryHint(mastery, lemma, false);
+                setMasteredWords((prev) => {
+                    const next = new Set(prev);
+                    next.delete(key);
+                    return next;
+                });
+            }
+            toast.success(
+                result.created ? t('vocab.review.toast.added') : t('vocab.review.toast.already'),
+                { dedupeKey: 'review:fav-added' },
+            );
+        } catch {
+            // Inline, retryable: the same row button is the retry affordance.
+            setRowError({ id: fav.id, message: t('vocab.review.error.add') });
+        } finally {
+            setPendingReviewId(null);
+        }
+    };
+
+    const handleToggleFavoriteMastered = async (fav: FavoriteItem) => {
+        if (pendingReviewId || pendingMasteredId) return;
+        const lemma = fav.en_text.trim();
+        if (!lemma) return;
+        const key = normalizeMasteryWord(lemma);
+        const next = !masteredWords.has(key);
+        // Guests: local ignore table only (文案「我会了」), no upload.
+        if (isGuest) {
+            writeMasteryHint(mastery, lemma, next);
+            setMasteredWords((prev) => {
+                const updated = new Set(prev);
+                if (next) updated.add(key);
+                else updated.delete(key);
+                return updated;
+            });
+            return;
+        }
+        setPendingMasteredId(fav.id);
+        setRowError(null);
+        try {
+            await setWordMastered({
+                lemma,
+                mastered: next,
+                targetLang,
+                source: reviewSourceFor(fav),
+            });
+            writeMasteryHint(mastery, lemma, next);
+            setMasteredWords((prev) => {
+                const updated = new Set(prev);
+                if (next) updated.add(key);
+                else updated.delete(key);
+                return updated;
+            });
+            toast.success(
+                next ? t('vocab.review.toast.mastered') : t('vocab.review.toast.unmastered'),
+                { dedupeKey: 'review:fav-mastered' },
+            );
+        } catch {
+            setRowError({ id: fav.id, message: t('vocab.review.error.mastered') });
+        } finally {
+            setPendingMasteredId(null);
+        }
+    };
+
+    // ── My words: level fetch after the rows/filters above ────────────────
     useEffect(() => {
         if (!activeIsMine) return;
         const missing = levelWords.filter((word) => !(word in levels));
@@ -334,6 +596,12 @@ export function VocabularyBookScreen({
         setPhraseType('');
         setPhraseRevealed(new Set());
         setPhraseExpanded(new Set());
+        // 我的单词 also starts clean (learning group, default sort, no filters).
+        setMineGroup('learning');
+        setMineSort('added');
+        setMineType('');
+        setMineSource('');
+        setMineUnmastered(false);
     }, [catalogById]);
 
 
@@ -656,11 +924,138 @@ export function VocabularyBookScreen({
                 )}
             </div>
 
+            {/* v1.1 sorting/filtering (specs/005 §v1.1). Group switch stays on
+                this page: 已掌握 rows are the same favorites, just filtered. */}
+            <div className="flex flex-col gap-2 rounded-card border border-line-subtle bg-surface-2/40 px-3 py-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                    <Segmented
+                        size="sm"
+                        ariaLabel={t('vocab.mine.group.label')}
+                        layoutId="vocab-mine-group"
+                        testId="vocab-mine-group"
+                        value={mineGroup}
+                        onChange={(value) => setMineGroup(value as MineGroup)}
+                        options={[
+                            {
+                                value: 'learning',
+                                testId: 'vocab-group-learning',
+                                label: (
+                                    <>
+                                        {t('vocab.mine.group.learning')}
+                                        <span className="ml-1 text-micro tabular-nums">{formatNumber(learningCount)}</span>
+                                    </>
+                                ),
+                            },
+                            {
+                                value: 'mastered',
+                                testId: 'vocab-group-mastered',
+                                label: (
+                                    <>
+                                        {masteredGroupLabel}
+                                        <span className="ml-1 text-micro tabular-nums">{formatNumber(masteredCount)}</span>
+                                    </>
+                                ),
+                            },
+                        ]}
+                    />
+                    <Segmented
+                        size="sm"
+                        ariaLabel={t('vocab.sort.label')}
+                        layoutId="vocab-mine-sort"
+                        testId="vocab-mine-sort"
+                        value={mineSort}
+                        onChange={(value) => setMineSort(value as MineSort)}
+                        options={[
+                            { value: 'added', label: t('vocab.sort.added'), testId: 'vocab-sort-added' },
+                            { value: 'seen', label: t('vocab.sort.seen'), testId: 'vocab-sort-seen' },
+                            { value: 'level', label: t('vocab.sort.level'), testId: 'vocab-sort-level' },
+                        ]}
+                    />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 text-caption text-fg-muted">{t('vocab.filter.type')}</span>
+                    <FilterChip selected={mineType === ''} testId="vocab-filter-type-all" onClick={() => setMineType('')}>
+                        {t('vocab.filter.all')}
+                    </FilterChip>
+                    <FilterChip selected={mineType === 'word'} testId="vocab-filter-type-word" onClick={() => setMineType('word')}>
+                        {t('vocab.filter.word')}
+                    </FilterChip>
+                    <FilterChip selected={mineType === 'phrase'} testId="vocab-filter-type-phrase" onClick={() => setMineType('phrase')}>
+                        {t('vocab.filter.phrase')}
+                    </FilterChip>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 text-caption text-fg-muted">{t('vocab.filter.source')}</span>
+                    <FilterChip selected={mineSource === ''} testId="vocab-filter-source-all" onClick={() => setMineSource('')}>
+                        {t('vocab.filter.all')}
+                    </FilterChip>
+                    {mineSourceKinds.map((kind) => (
+                        <FilterChip
+                            key={kind}
+                            selected={mineSource === kind}
+                            testId={`vocab-filter-source-${kind}`}
+                            onClick={() => setMineSource(kind)}
+                        >
+                            {t(SOURCE_LABEL_KEYS[kind])}
+                        </FilterChip>
+                    ))}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    {mineGroup === 'learning' && (
+                        <FilterChip
+                            selected={mineUnmastered}
+                            testId="vocab-filter-unmastered"
+                            onClick={() => setMineUnmastered((value) => !value)}
+                        >
+                            {t('vocab.filter.unmastered')}
+                        </FilterChip>
+                    )}
+                    {hasMineFilters && (
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            testId="vocab-mine-clear-filters"
+                            onClick={() => {
+                                setMineType('');
+                                setMineSource('');
+                                setMineUnmastered(false);
+                            }}
+                        >
+                            {t('vocab.filter.clear')}
+                        </Button>
+                    )}
+                </div>
+            </div>
+
             {myWords.length === 0
                 ? emptyState(t('vocab.empty.mine'), t('vocab.empty.mineHint'), Star, 'vocab-mine-empty')
-                : (
+                : mineRows.length === 0
+                    ? mineGroup === 'mastered'
+                        ? emptyState(
+                            t('vocab.mine.empty.mastered'),
+                            t('vocab.mine.empty.masteredHint'),
+                            CheckCircle2,
+                            'vocab-mine-mastered-empty',
+                        )
+                        : hasMineFilters
+                            ? emptyState(
+                                t('vocab.mine.empty.filtered'),
+                                t('vocab.mine.empty.filteredHint'),
+                                Search,
+                                'vocab-mine-filtered-empty',
+                            )
+                            : emptyState(
+                                t('vocab.mine.empty.allMastered'),
+                                t('vocab.mine.empty.allMasteredHint'),
+                                CheckCircle2,
+                                'vocab-mine-all-mastered',
+                            )
+                    : (
                     <div data-testid="vocab-mine-list" className={`${CARD} divide-y divide-white/5 overflow-hidden`}>
-                        {myWords.map((fav) => {
+                        {mineRows.map((fav) => {
                             const { ipa, meaning } = splitIpaAndMeaning(fav.zh_text);
                             const isExpanded = Boolean(expanded[fav.id]);
                             const word = fav.en_text.trim();
@@ -669,6 +1064,13 @@ export function VocabularyBookScreen({
                             const levelLabel = level ?? 'C1+';
                             const source = sourceText(fav);
                             const SourceIcon = SOURCE_ICON[source.source.kind];
+                            const masteredKey = normalizeMasteryWord(word);
+                            const isMastered = masteredWords.has(masteredKey);
+                            const isReviewed = reviewedWords.has(masteredKey);
+                            const masterLabel = isMastered
+                                ? t('vocab.review.undo')
+                                : isGuest ? t('vocab.review.guestMaster') : t('vocab.review.master');
+                            const reviewLabel = isReviewed ? t('vocab.review.added') : t('vocab.review.add');
                             const addedAtLabel = fav.added_at
                                 ? formatDate(fav.added_at)
                                 : t('vocab.timeUnknown');
@@ -710,6 +1112,83 @@ export function VocabularyBookScreen({
                                             aria-hidden="true"
                                         />
                                     </button>
+
+                                    {/* Secondary review entry points + provenance.
+                                        The source link reopens the last place the
+                                        word was saved from; seen counts are
+                                        optional data (「—」 when unavailable). */}
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3.5 pb-2.5 sm:px-4">
+                                        <button
+                                            type="button"
+                                            data-testid={`vocab-mine-source-${fav.id}`}
+                                            disabled={!source.canOpen}
+                                            onClick={() => openSource(source.source, fav.start)}
+                                            title={source.canOpen ? source.text : t('vocab.source.unknown')}
+                                            className={`inline-flex min-w-0 max-w-full items-center gap-1.5 text-caption ${
+                                                source.canOpen
+                                                    ? 'text-brand-300 transition-colors hover:text-brand-400'
+                                                    : 'cursor-default text-fg-muted'
+                                            }`}
+                                        >
+                                            <SourceIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                            <span className="min-w-0 truncate">{source.text}</span>
+                                            {source.canOpen && <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />}
+                                        </button>
+                                        <span
+                                            data-testid={`vocab-mine-seen-${fav.id}`}
+                                            className="text-caption tabular-nums text-fg-muted"
+                                            title={seenTitle}
+                                        >
+                                            {seenText(fav)}
+                                        </span>
+                                        {isMastered && (
+                                            <Badge
+                                                tone="success"
+                                                testId={`vocab-mine-mastered-badge-${fav.id}`}
+                                            >
+                                                {masteredGroupLabel}
+                                            </Badge>
+                                        )}
+                                        <span className="ms-auto flex items-center gap-1.5">
+                                            <Button
+                                                size="sm"
+                                                variant={isReviewed ? 'secondary' : 'tinted'}
+                                                tone="brand"
+                                                iconLeft={isReviewed ? <CheckCircle2 /> : <Repeat />}
+                                                loading={pendingReviewId === fav.id}
+                                                disabled={Boolean(pendingReviewId || pendingMasteredId)}
+                                                ariaLabel={reviewLabel}
+                                                testId={`vocab-mine-review-${fav.id}`}
+                                                onClick={() => { void handleAddFavoriteToReview(fav); }}
+                                                className="[@media(pointer:coarse)]:min-h-11"
+                                            >
+                                                {reviewLabel}
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant={isMastered ? 'secondary' : 'tinted'}
+                                                tone="success"
+                                                iconLeft={isMastered ? <Undo2 /> : <CheckCircle2 />}
+                                                loading={pendingMasteredId === fav.id}
+                                                disabled={Boolean(pendingReviewId || pendingMasteredId)}
+                                                ariaLabel={masterLabel}
+                                                testId={`vocab-mine-master-${fav.id}`}
+                                                onClick={() => { void handleToggleFavoriteMastered(fav); }}
+                                                className="[@media(pointer:coarse)]:min-h-11"
+                                            >
+                                                {masterLabel}
+                                            </Button>
+                                        </span>
+                                    </div>
+                                    {rowError?.id === fav.id && (
+                                        <p
+                                            data-testid={`vocab-mine-error-${fav.id}`}
+                                            role="alert"
+                                            className="px-3.5 pb-2 text-caption leading-relaxed text-danger-fg sm:px-4"
+                                        >
+                                            {rowError.message}
+                                        </p>
+                                    )}
 
                                     <AnimatePresence initial={false}>
                                         {isExpanded && (
@@ -764,26 +1243,6 @@ export function VocabularyBookScreen({
                                                     </div>
 
                                                     <div className="min-w-0 space-y-1">
-                                                        <p className="text-[11px] text-zinc-500">{t('vocab.source')}</p>
-                                                        <button
-                                                            type="button"
-                                                            data-testid={`vocab-mine-source-${fav.id}`}
-                                                            disabled={!source.canOpen}
-                                                            onClick={() => openSource(source.source, fav.start)}
-                                                            title={source.canOpen ? source.text : t('vocab.source.unknown')}
-                                                            className={`-mx-1 flex max-w-[calc(100%+0.5rem)] items-center gap-2 rounded-lg px-1 py-0.5 text-left text-xs ${
-                                                                source.canOpen
-                                                                    ? 'text-blue-300 transition-colors hover:bg-blue-500/10 hover:text-blue-200'
-                                                                    : 'cursor-default text-zinc-500'
-                                                            }`}
-                                                        >
-                                                            <SourceIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                                            <span className="min-w-0 truncate">{source.text}</span>
-                                                            {source.canOpen && <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />}
-                                                        </button>
-                                                    </div>
-
-                                                    <div className="min-w-0 space-y-1">
                                                         <p className="text-[11px] text-zinc-500">{t('vocab.addedAt')}</p>
                                                         <p
                                                             data-testid={`vocab-mine-added-${fav.id}`}
@@ -805,18 +1264,6 @@ export function VocabularyBookScreen({
                                                             {t('vocab.delete')}
                                                         </button>
                                                     </div>
-
-                                                    {(fav.context_en || fav.context_zh) && (
-                                                        <div className="min-w-0 space-y-1.5 rounded-xl border border-white/5 bg-zinc-950/30 px-3 py-2 sm:col-span-2">
-                                                            <p className="text-[11px] text-zinc-500">{t('vocab.context')}</p>
-                                                            {fav.context_en && (
-                                                                <p className="break-words text-[13px] leading-relaxed text-zinc-200">{fav.context_en}</p>
-                                                            )}
-                                                            {fav.context_zh && (
-                                                                <p className="break-words text-[13px] leading-relaxed text-zinc-400">{fav.context_zh}</p>
-                                                            )}
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </motion.div>
                                         )}

@@ -36,6 +36,8 @@ export interface ReviewWord {
     lastReviewedAt: number | null;
     createdAt: number;
     sources: ReviewWordSource[];
+    /** v1.1: marked as mastered; excluded from the queue, not a `state` value. */
+    mastered?: boolean;
 }
 
 export interface ReviewQueueCounts {
@@ -184,5 +186,76 @@ export function restoreWord(lemma: string, targetLang?: string): Promise<ReviewS
     if (targetLang) params.set('targetLang', targetLang);
     return request<ReviewSuspendResult>(`/api/review/suspend?${params.toString()}`, {
         method: 'DELETE',
+    });
+}
+
+// ── v1.1: add-to-review entry + "我已掌握" (specs/005 §v1.1 / specs/013 §v1.1) ──
+
+/** Where a word came from; the backend dedupes by content_ref + sentence_id. */
+export interface AddWordSource {
+    contentRef?: string | null;
+    sentenceId?: string | null;
+}
+
+export interface AddWordInput {
+    lemma: string;
+    targetLang?: string;
+    source?: AddWordSource;
+}
+
+export interface AddWordResult {
+    status: 'ok';
+    /** False when the word was already tracked; progress is never reset. */
+    created: boolean;
+    word: ReviewWord;
+}
+
+export interface SetWordMasteredInput {
+    lemma: string;
+    /** True = 已掌握 (leaves the queue); false = undo, FSRS params stay. */
+    mastered: boolean;
+    targetLang?: string;
+    source?: AddWordSource;
+}
+
+export interface SetWordMasteredResult {
+    status: 'ok';
+    word: ReviewWord;
+}
+
+function wordPayload(input: AddWordInput | SetWordMasteredInput): Record<string, unknown> {
+    const body: Record<string, unknown> = { lemma: input.lemma };
+    if (input.targetLang) body.targetLang = input.targetLang;
+    if (input.source && (input.source.contentRef || input.source.sentenceId)) {
+        const source: Record<string, string> = {};
+        if (input.source.contentRef) source.contentRef = input.source.contentRef;
+        if (input.source.sentenceId) source.sentenceId = input.source.sentenceId;
+        body.source = source;
+    }
+    return body;
+}
+
+/**
+ * Add one word to the review deck (idempotent). The backend also clears the
+ * mastered mark when an already-tracked word is added again, so callers must
+ * treat success as "this word is back in the queue".
+ */
+export function addWord(input: AddWordInput): Promise<AddWordResult> {
+    return request<AddWordResult>('/api/review/words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(wordPayload(input)),
+    });
+}
+
+/**
+ * Mark/unmark a word as mastered (idempotent; a missing row is created like
+ * POST). Mastered words leave the queue but keep their FSRS parameters.
+ */
+export function setWordMastered(input: SetWordMasteredInput): Promise<SetWordMasteredResult> {
+    return request<SetWordMasteredResult>('/api/review/words', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...wordPayload(input), mastered: input.mastered }),
     });
 }
