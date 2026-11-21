@@ -228,6 +228,31 @@ def test_three_again_auto_suspends_then_manual_restore(review_db, clock):
     assert resumed.json()["word"]["state"] == "review"
 
 
+def test_suspended_list_exposes_paused_words_for_restore(review_db):
+    client = review_db
+    assert _add(client, "calm").status_code == 201
+    assert _add(client, "trip").status_code == 201
+    for lemma in ("calm", "trip"):
+        assert client.post("/api/review/suspend", json={"lemma": lemma}).status_code == 200
+
+    listed = client.get("/api/review/suspended")
+    assert listed.status_code == 200, listed.text
+    body = listed.json()
+    assert body["total"] == 2
+    assert {word["lemma"] for word in body["words"]} == {"calm", "trip"}
+    assert all(word["state"] == "suspended" for word in body["words"])
+    # 恢复入口需要的字段（前端直接渲染）在列表里就有。
+    assert all("targetLang" in word and "sources" in word for word in body["words"])
+
+    restored = client.delete(
+        "/api/review/suspend", params={"lemma": "calm", "targetLang": "zh-CN"}
+    )
+    assert restored.status_code == 200
+    after = client.get("/api/review/suspended").json()
+    assert [word["lemma"] for word in after["words"]] == ["trip"]
+    assert after["total"] == 1
+
+
 def test_manual_suspend_is_idempotent_and_restore_is_idempotent(review_db):
     client = review_db
     assert _add(client, "calm").status_code == 201

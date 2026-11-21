@@ -241,6 +241,28 @@ def review_stats(
 # 暂停 / 恢复
 # ---------------------------------------------------------------------------
 
+@router.get("/api/review/suspended")
+def list_suspended_review_words(
+    request: Request,
+    targetLang: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=200),
+):
+    """暂停中的词列表（恢复入口用）；省略 targetLang 时覆盖全部语言。"""
+    user = _require_login(request)
+    lang = _optional_target_lang_or_400(targetLang)
+    try:
+        data = srs.list_suspended(user["id"], lang, limit=limit)
+    except Exception as exc:  # noqa: BLE001
+        _raise_review_error(exc)
+        raise  # pragma: no cover
+    return {
+        "targetLang": data["target_lang"],
+        "now": data["now"],
+        "total": data["total"],
+        "words": [srs.to_public_word(word) for word in data["words"]],
+    }
+
+
 @router.post("/api/review/suspend")
 def suspend_review(payload: SuspendRequest, request: Request):
     """手工暂停一个词（幂等）：不进队列，作答返回 409。"""

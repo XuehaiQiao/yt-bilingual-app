@@ -865,6 +865,55 @@ def set_suspended(
     return word
 
 
+def list_suspended(
+    user_id: str,
+    target_lang: str | None = None,
+    *,
+    limit: int = 100,
+    now=None,
+) -> dict:
+    """被暂停的词（自动或手工），最近更新优先；供「恢复」列表用。"""
+    user_id = _require_user_id(user_id)
+    lang = canonical_target_lang(target_lang) if target_lang else None
+    now_value = _coerce_ms(now)
+    limit_value = max(1, min(int(limit), 200))
+    language_clause = " AND target_lang = ?" if lang else ""
+    language_args: tuple = (lang,) if lang else ()
+
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            f"SELECT {_WORD_COLUMNS} FROM word_states "
+            "WHERE user_id = ? AND state = 'suspended'"
+            f"{language_clause} "
+            "ORDER BY COALESCE(last_reviewed_at, created_at) DESC, id DESC "
+            "LIMIT ?",
+            (user_id, *language_args, limit_value),
+        ).fetchall()
+        words = [_row_to_word(row) for row in rows]
+        _attach_sources(conn, words)
+        total = int(
+            conn.execute(
+                "SELECT COUNT(*) AS n FROM word_states "
+                "WHERE user_id = ? AND state = 'suspended'"
+                f"{language_clause}",
+                (user_id, *language_args),
+            ).fetchone()["n"]
+            or 0
+        )
+    except sqlite3.OperationalError as exc:
+        _translate_db_error(exc)
+        raise
+    finally:
+        conn.close()
+    return {
+        "target_lang": lang,
+        "now": now_value,
+        "total": total,
+        "words": words,
+    }
+
+
 def is_suspended(user_id: str, lemma: str, target_lang: str) -> bool | None:
     """状态查询便捷函数：不存在返回 None。"""
     word = get_word(user_id, lemma, target_lang)
