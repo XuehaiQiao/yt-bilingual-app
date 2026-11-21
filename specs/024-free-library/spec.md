@@ -89,6 +89,22 @@ content/library/
   `scripts/reader-layout-test.mjs`。
 - 首页原有「为你推荐」「开始学习」「今日」等区块不动；375px 下卡片单列/横滑。
 
+## 教学分析接入（2026-11-22 追加）
+
+- **必须**：`GET /api/library/videos/{id}` 与 `GET /api/library/articles/{id}` 增加可选 `level`
+  （与 028 同一档位枚举）。带 `level` 时把该内容交给 `teaching_analysis` 合并 highlights/idioms/culture：
+  - **缓存命中**（`content_hash × level × target_lang × analysis_version`）→ 直接合并，零模型调用、不计配额；
+  - **缓存未命中**：登录用户允许按需生成（走现有 `feature=analysis` 配额与余额）；游客**不生成**，
+    payload 保持「没有分析」（用 `attach_cached_to_payload` 只读路径），登录后可获取。
+- **必须**：「免费资源运行时零 LLM」口径修订为：**读/播放不触发模型调用**；生成只发生在登录用户首次
+  打开某档位时的按需生成，或运维预热脚本预先写入全局缓存。
+- **必须**：运维预热脚本 `scripts/warm_library_analysis.py`：对视频/文章按 `level × target_lang`
+  批量调用同一生成路径（需指定计费用户、逐条缓存、可断点续跑、`--dry-run` 打印条数与预估费用）。
+- **成本量级**（实测词数）：55 视频约 65k 词、67 文章约 21k 词；单档单语言全量约 $0.10，
+  中文 6 档约 $0.62，中越 6 档约 $1.24。
+- 前端：免费库视频/文章学习页登录且选档位时请求带 `level`，读 payload 的分析渲染语言点面板；
+  游客同样带 `level`（只读缓存，未命中不显示、不报错）。
+
 ## 验收
 
 - 后端：`py_compile`；`pytest tests/test_library.py` 13 条；全量 pytest 全绿；
