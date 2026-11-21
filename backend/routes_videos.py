@@ -7,6 +7,7 @@ import asyncio
 import contextlib
 import datetime
 import json
+import logging
 import os
 import re
 import time
@@ -18,6 +19,7 @@ from pydantic import AliasChoices, BaseModel, Field
 
 from ai.ledger import QuotaExceeded
 from config import (
+    DEFAULT_MODEL,
     FETCH_TIMEOUT_SECONDS,
     MAX_CHANNEL_VIDEOS,
     MODEL_CATALOG,
@@ -60,6 +62,7 @@ from translate import (
 )
 
 router = APIRouter()
+logger = logging.getLogger("linguatrek.routes_videos")
 
 
 class VideoRequest(BaseModel):
@@ -246,13 +249,29 @@ async def estimate_cost(url: str, targetLang: str | None = None):
     output_tokens = int(word_count * 2.0)  # target-language translation + JSON overhead
 
     def calc_cost(model_id):
-        rates = MODEL_CATALOG[model_id]
-        # 价格未知（None）时不估算：前端显示"待定"，绝不假装知道单价。
-        if rates.get("in") is None or rates.get("out") is None:
+        # 估价与严格计费同源：billing.price_for_model()——价格优先读
+        # model_prices（按 effective_from_ms 取最新），MODEL_CATALOG 的 in/out
+        # 仅作兼容兜底。M7a 起目录里的价格多已置空，若再直接读旧字段，估价会
+        # 恒为 null（前端「待定」），用户却在余额页被真实扣费。
+        try:
+            price = billing.price_for_model(model_id)
+        except Exception as exc:  # noqa: BLE001
+            # 价格表未迁移 / 查询失败：估价按缺价处理，不能让整个接口 500。
+            logger.warning(
+                "估价读取模型价格失败，按缺价处理：model=%s error=%s",
+                model_id,
+                exc,
+            )
             return None
-        in_cost = (input_tokens / 1_000_000) * rates["in"]
-        out_cost = (output_tokens / 1_000_000) * rates["out"]
-        return round(in_cost + out_cost, 6)
+        if price is None:
+            # 无价 → None：前端显示「待定」，绝不编造单价。
+            return None
+        # 口径与扣费一致：µUSD/Mtok × tokens / 1e12 = USD。
+        cost_usd = (
+            input_tokens * int(price["inputMicroUsdPerMtok"])
+            + output_tokens * int(price["outputMicroUsdPerMtok"])
+        ) / 1e12
+        return round(cost_usd, 6)
 
     def model_entry(model_id):
         entry = _model_option(model_id)
@@ -261,12 +280,20 @@ async def estimate_cost(url: str, targetLang: str | None = None):
 
     models = [model_entry(model_id) for model_id in MODEL_CATALOG]
 
+    # 推荐模型要经 llm 的「有价才可用」判断；价格来源故障时同样不能 500，
+    # 回落到配置的默认模型，其余字段照常返回。
+    try:
+        recommended_model = llm.resolve_model_for_target(None, lang)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("估价解析推荐模型失败，回落到默认模型：%s", exc)
+        recommended_model = DEFAULT_MODEL
+
     return {
         "videoId": video_id,
         "metadata": metadata,
         "targetLang": lang,
         # 该目标语言路线中第一个可用的模型；价格未知时不估算（前端显示"待定"）。
-        "recommendedModel": llm.resolve_model_for_target(None, lang),
+        "recommendedModel": recommended_model,
         "transcriptStats": {
             "wordCount": word_count,
             "estimatedInputTokens": input_tokens,
