@@ -4,8 +4,11 @@
 // public-domain site on every chapter open (never stored). AI translation is
 // manual per chapter: the button only appears when no complete translation is
 // cached, shows the daily AI quota hint, and never runs automatically.
+// Teaching analysis (contextual glosses + idioms/culture points, specs/028) is
+// also on demand only: the「生成本章词条」button is the single trigger (D5-1),
+// because an EPUB can have dozens of chapters and opening them must stay free.
 // Reading progress (chapter + paragraph) is saved in localStorage.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     AlertCircle,
     BookOpen,
@@ -25,6 +28,9 @@ import { useAuth } from '../lib/auth';
 import { allowAi } from '../lib/aiGate';
 import type { TranslationKey } from '../i18n';
 import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { LanguagePointToggle } from './ui/LanguagePointToggle';
+import type { InlineLanguagePoint } from './TranscriptBlock';
+import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -143,13 +149,32 @@ export function ImportedBookReaderScreen({
     const [chapterError, setChapterError] = useState<TranslationKey | null>(null);
     const [chapterRetry, setChapterRetry] = useState(0);
     const [showTranslations, setShowTranslations] = useState(true);
+    const [showLanguagePoints, setShowLanguagePoints] = useState<boolean>(
+        loadLanguagePointsEnabled,
+    );
     const [translating, setTranslating] = useState(false);
     const [translateError, setTranslateError] = useState<string | null>(null);
     const [translateNotice, setTranslateNotice] = useState<TranslationKey | null>(null);
+    const [generatingAnalysis, setGeneratingAnalysis] = useState(false);
+    // Silent (non-blocking) outcome of the explicit analysis generation.
+    const [analysisNotice, setAnalysisNotice] = useState<TranslationKey | null>(null);
     // Reading difficulty marks, shared with the article/public-domain readers.
     const highlight = useReadingHighlights(
         chapter ? chapter.paragraphs.map((paragraph) => paragraph.en) : [],
     );
+    // Idioms / culture points attached to the chapter, grouped by paragraph
+    // index (the analysis `blockId` is the paragraph index).
+    const languagePointsByParagraph = useMemo(() => {
+        const map: Record<number, InlineLanguagePoint[]> = {};
+        for (const point of chapter?.languagePoints ?? []) {
+            (map[point.blockId] ??= []).push({
+                text: point.text,
+                meaning: point.meaning,
+                kind: point.kind,
+            });
+        }
+        return map;
+    }, [chapter?.languagePoints]);
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -208,7 +233,7 @@ export function ImportedBookReaderScreen({
     useEffect(() => {
         if (chapterNumber === null) return;
         const controller = new AbortController();
-        fetchImportedChapter(bookId, chapterNumber, controller.signal)
+        fetchImportedChapter(bookId, chapterNumber, { signal: controller.signal })
             .then((payload) => {
                 if (controller.signal.aborted) return;
                 setChapter(payload);
@@ -328,6 +353,7 @@ export function ImportedBookReaderScreen({
         setChapterError(null);
         setTranslateError(null);
         setTranslateNotice(null);
+        setAnalysisNotice(null);
         setChapterLoading(true);
         setChapterNumber(n);
     };
@@ -344,6 +370,7 @@ export function ImportedBookReaderScreen({
     const retryChapter = () => {
         setChapterError(null);
         setChapter(null);
+        setAnalysisNotice(null);
         setChapterLoading(true);
         setChapterRetry((value) => value + 1);
     };
@@ -384,6 +411,50 @@ export function ImportedBookReaderScreen({
             setTranslateError(t('importedBooks.reader.translateFailed'));
         } finally {
             setTranslating(false);
+        }
+    };
+
+    /**
+     * 「生成本章词条」: explicitly request this chapter's teaching analysis.
+     *
+     * This is the only place the reader sends `level` — opening a chapter must
+     * never spend AI quota (D5-1: an EPUB can have dozens of chapters). The
+     * backend reuses the public-domain book cache (content × level × language),
+     * so a second click for the same band is free. Enhancement only: failures
+     * leave the chapter readable and surface a quiet inline hint.
+     */
+    const handleGenerateAnalysis = async () => {
+        if (!chapter || generatingAnalysis) return;
+        if (!allowAi(!canTranslate, onRequestLogin)) return;
+        const target = chapter.chapter;
+        setGeneratingAnalysis(true);
+        setAnalysisNotice(null);
+        try {
+            const enriched = await fetchImportedChapter(bookId, target, {
+                level: highlight.level,
+            });
+            // A chapter switch while the request was in flight: drop the result.
+            if (chapterNumberRef.current !== target) return;
+            setChapter(enriched);
+            if (!enriched.analysisLevel) {
+                // Silent skip (chapter untranslated / analysis unavailable):
+                // say there is nothing yet without blocking the reading pane.
+                setAnalysisNotice('teachingNotes.empty');
+            }
+        } catch (error) {
+            if (chapterNumberRef.current !== target) return;
+            if (
+                error instanceof ImportedBooksApiError
+                && (error.status === 401 || error.status === 403)
+            ) {
+                setAnalysisNotice('errors.loginRequired');
+                onRequestLogin();
+                return;
+            }
+            console.error('Failed to generate imported chapter analysis:', error);
+            setAnalysisNotice('teachingNotes.error');
+        } finally {
+            setGeneratingAnalysis(false);
         }
     };
 
@@ -658,10 +729,41 @@ export function ImportedBookReaderScreen({
                                     onChange={highlight.setEnabled}
                                     levelLabel={highlight.levelLabel}
                                 />
+                                <LanguagePointToggle
+                                    enabled={showLanguagePoints}
+                                    onChange={setShowLanguagePoints}
+                                    testId="imported-book-language-points-toggle"
+                                />
+                                <button
+                                    type="button"
+                                    data-testid="imported-book-generate-analysis"
+                                    onClick={() => void handleGenerateAnalysis()}
+                                    disabled={generatingAnalysis || chapterLoading || !chapter}
+                                    className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg border border-white/5 bg-zinc-800/60 px-2 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-700/60 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                    {generatingAnalysis ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="h-3.5 w-3.5" />
+                                    )}
+                                    {generatingAnalysis
+                                        ? t('teachingNotes.loading')
+                                        : t('teachingNotes.title')}
+                                </button>
                                 <span className="min-w-0 flex-1 basis-full text-[11px] leading-relaxed text-zinc-600 sm:basis-0">
                                     {t('importedBooks.reader.translateHint')}
                                 </span>
                             </div>
+
+                            {analysisNotice && (
+                                <p
+                                    data-testid="imported-book-analysis-notice"
+                                    role="status"
+                                    className="mt-2 text-[11px] leading-relaxed text-zinc-500"
+                                >
+                                    {t(analysisNotice)}
+                                </p>
+                            )}
 
                             {quota && (
                                 <p
@@ -802,6 +904,11 @@ export function ImportedBookReaderScreen({
                                                         <ReadingHighlight
                                                             text={paragraph.en}
                                                             isHighlighted={highlight.isHighlighted}
+                                                            languagePoints={
+                                                                languagePointsByParagraph[paragraph.index]
+                                                            }
+                                                            showLanguagePoints={showLanguagePoints}
+                                                            wordGlosses={paragraph.glosses}
                                                             onWordClick={(word, event) =>
                                                                 onWordLookup(
                                                                     word,

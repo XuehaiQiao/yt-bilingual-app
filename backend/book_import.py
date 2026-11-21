@@ -2182,6 +2182,73 @@ def build_chapter_payload(
         conn.close()
 
 
+def chapter_analysis_fields(wrapper: dict) -> dict:
+    """把 028 教学分析合并后的 wrapper 整理成章节 payload 的增强字段。
+
+    ``wrapper`` 是送进 ``teaching_analysis.attach_to_payload`` 的
+    ``{"transcript": [段落, ...]}``：调用返回后，段落上带按 block 校验过的
+    ``highlights``（``en_word``/``zh_word``），顶层带 ``idioms``/``culture``。
+    这里把结果整理成前端直接可用的形状（缺失时保持空，旧客户端忽略即可）：
+
+    - ``paragraphs``：每段增加 ``glosses``（小写词 → 上下文释义），不回传
+      原始 ``highlights``；
+    - ``languagePoints``：习语/文化点统一成 ``{blockId, text, meaning, kind}``。
+
+    ``blockId`` 就是段落的 ``index``（与公版书同口径），点词/跳转据此对齐。
+    只有显式要求分析的请求才会走到这里（见 ``routes_book_import``）。
+    """
+    paragraphs: list[dict] = []
+    for paragraph in wrapper.get("transcript") or []:
+        if not isinstance(paragraph, dict):
+            continue
+        glosses: dict[str, str] = {}
+        for highlight in paragraph.get("highlights") or []:
+            if not isinstance(highlight, dict):
+                continue
+            word = str(highlight.get("en_word") or "").strip().lower()
+            gloss = str(highlight.get("zh_word") or "").strip()
+            if word and gloss:
+                glosses.setdefault(word, gloss)
+        enriched = {
+            key: value for key, value in paragraph.items() if key != "highlights"
+        }
+        enriched["glosses"] = glosses
+        paragraphs.append(enriched)
+
+    language_points: list[dict] = []
+    for key, kind, text_field, meaning_field in (
+        ("idioms", "idiom", "phrase", "meaning"),
+        ("culture", "culture", "term", "note"),
+    ):
+        raw_points = wrapper.get(key)
+        if not isinstance(raw_points, list):
+            continue
+        for item in raw_points:
+            if not isinstance(item, dict):
+                continue
+            raw_block = item.get("blockId")
+            if isinstance(raw_block, bool):
+                continue
+            if isinstance(raw_block, int):
+                block_id = raw_block
+            else:
+                try:
+                    block_id = int(str(raw_block).strip())
+                except (TypeError, ValueError):
+                    continue
+            text = str(item.get(text_field) or "").strip()
+            meaning = str(item.get(meaning_field) or "").strip()
+            if not text or not meaning:
+                continue
+            language_points.append({
+                "blockId": block_id,
+                "text": text,
+                "meaning": meaning,
+                "kind": kind,
+            })
+    return {"paragraphs": paragraphs, "languagePoints": language_points}
+
+
 # ---------------------------------------------------------------------------
 # 翻译（逐章 / 逐批；缓存命中不重复扣费；失败段留 null 可重试）
 # ---------------------------------------------------------------------------

@@ -15,7 +15,8 @@
    Standard Ebooks 元数据/目录链接/前后附件过滤/无章节报错；
 5. 预览：元数据/章节数/来源；不落库、不返回原文；
 6. 导入：幂等（重复返回已有、不占日限）、每日 10 本上限、跨用户隔离；
-7. 读章：实时抓原文、译文缺失 zh=null、源站失败 503、越界 404；
+7. 读章：实时抓原文、译文缺失 zh=null、源站失败 503、越界 404；显式 ``?level=``
+   时附带教学分析（打桩 ``attach_to_payload``，不调模型），不传 level 保持旧形状；
 8. 翻译：写入缓存、重复不调模型/不扣配额、失败可重试、vi 隔离、配额 429；
 9. 删除：级联删译文、跨用户 404；原文不落库/不落文件；
 10. 路由顺序：``/api/books/imported`` 不被公开的 ``/api/books/{id}`` 吞掉。
@@ -31,6 +32,7 @@ import pytest
 
 import book_import
 import config
+import teaching_analysis
 from ai import quota
 from tests.conftest import (
     SECOND_USER_EMAIL,
@@ -864,6 +866,161 @@ def test_read_chapter_belongs_to_current_user(book_client, second_client, web):
         second_client.get(f"/api/books/imported/{book_id}/chapters/1").status_code
         == 404
     )
+
+
+# ---------------------------------------------------------------------------
+# 读章 + 教学分析（specs/028；显式 level，打桩 attach_to_payload 不调模型）
+# ---------------------------------------------------------------------------
+
+# 形状与 ``teaching_analysis`` 生成的 analysis 一致：highlights 按 block id
+# 分组（block 就是段落 index），idioms/culture 带 blockId + 原文 quote。
+ANALYSIS_STUB = {
+    "analysisVersion": "analysis.test",
+    "level": "orbit",
+    "highlights": {
+        "0": [{"en_word": "truth", "zh_word": "译文段落", "color": "#f59e0b"}],
+    },
+    "idioms": [
+        {
+            "blockId": 0,
+            "phrase": "in want of a wife",
+            "meaning": "想娶个妻子",
+            "quote": "in want of a wife",
+        }
+    ],
+    "culture": [
+        {"blockId": 1, "term": "Bennet", "note": "班纳特", "quote": "Mr. Bennet"}
+    ],
+}
+
+
+@pytest.fixture()
+def analysis_stub(monkeypatch):
+    """打桩 ``teaching_analysis.attach_to_payload``：不调模型/不占分析配额。
+
+    仍然走真实的 ``merge_into_payload``（按当前英文/译文校验条目），因此
+    断言的是真实合并结果，而不是假的 payload。
+    """
+    calls: list[dict] = []
+
+    async def _attach(wrapper, **kwargs):
+        calls.append(kwargs)
+        teaching_analysis.merge_into_payload(wrapper, ANALYSIS_STUB)
+        return ANALYSIS_STUB
+
+    monkeypatch.setattr(teaching_analysis, "attach_to_payload", _attach)
+    return calls
+
+
+def translate_imported_chapter(client, book_id: str) -> None:
+    response = client.post(
+        f"/api/books/imported/{book_id}/chapters/1/translate", json={}
+    )
+    assert response.status_code == 200, response.text
+
+
+def test_read_chapter_with_level_returns_analysis_fields(
+    book_client, web, llm_stub, analysis_stub
+):
+    book_id = import_url(book_client)["bookId"]
+    translate_imported_chapter(book_client, book_id)
+
+    response = book_client.get(
+        f"/api/books/imported/{book_id}/chapters/1?level=orbit"
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+
+    # 段落：释义挂在 glosses 上（以段落 index 对齐），不回传原始 highlights。
+    assert set(payload["paragraphs"][0]) == {"index", "en", "zh", "glosses"}
+    assert payload["paragraphs"][0]["glosses"] == {"truth": "译文段落"}
+    assert payload["paragraphs"][1]["glosses"] == {}
+    assert "highlights" not in payload["paragraphs"][0]
+
+    # 语言点：习语/文化点统一成前端可直接渲染的形状。
+    assert payload["languagePoints"] == [
+        {
+            "blockId": 0,
+            "text": "in want of a wife",
+            "meaning": "想娶个妻子",
+            "kind": "idiom",
+        },
+        {
+            "blockId": 1,
+            "text": "Bennet",
+            "meaning": "班纳特",
+            "kind": "culture",
+        },
+    ]
+    assert payload["analysisVersion"] == "analysis.test"
+    assert payload["analysisLevel"] == "orbit"
+
+    # 复用公版书的调用约定：内容寻址的 content_ref + 当前用户/语言。
+    assert len(analysis_stub) == 1
+    assert analysis_stub[0]["level"] == "orbit"
+    assert analysis_stub[0]["target_lang"] == "zh-CN"
+    assert analysis_stub[0]["content_ref"] == f"book:{book_id}:1"
+    assert analysis_stub[0]["user_id"] == book_client.user_id
+
+
+def test_read_chapter_without_level_keeps_legacy_shape(
+    book_client, web, analysis_stub
+):
+    book_id = import_url(book_client)["bookId"]
+    response = book_client.get(f"/api/books/imported/{book_id}/chapters/1")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert set(payload["paragraphs"][0]) == {"index", "en", "zh"}
+    for key in ("glosses", "languagePoints", "analysisVersion", "analysisLevel"):
+        assert key not in payload
+    # 不带 level 绝不触发生成（打开即生成会瞬间吃掉 EPUB 几十章的配额）。
+    assert analysis_stub == []
+
+
+def test_read_chapter_with_level_skips_untranslated_chapter(
+    book_client, web, analysis_stub
+):
+    book_id = import_url(book_client)["bookId"]
+    response = book_client.get(
+        f"/api/books/imported/{book_id}/chapters/1?level=orbit"
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["translated"] is False
+    assert "glosses" not in payload["paragraphs"][0]
+    assert "languagePoints" not in payload
+    assert analysis_stub == []
+
+
+def test_read_chapter_analysis_failure_is_silent(
+    book_client, web, llm_stub, monkeypatch
+):
+    book_id = import_url(book_client)["bookId"]
+    translate_imported_chapter(book_client, book_id)
+
+    async def _boom(*_args, **_kwargs):
+        raise RuntimeError("模型暂时不可用")
+
+    # 真实的 attach_to_payload 会吞掉 ensure_analysis 的异常：读书不受影响。
+    monkeypatch.setattr(teaching_analysis, "ensure_analysis", _boom)
+
+    response = book_client.get(
+        f"/api/books/imported/{book_id}/chapters/1?level=orbit"
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["translated"] is True
+    assert "glosses" not in payload["paragraphs"][0]
+    assert "languagePoints" not in payload
+
+
+def test_read_chapter_invalid_level_is_400(book_client, web):
+    book_id = import_url(book_client)["bookId"]
+    response = book_client.get(
+        f"/api/books/imported/{book_id}/chapters/1?level=cet4x"
+    )
+    assert response.status_code == 400
+    assert "高亮等级" in response.json()["detail"]
 
 
 # ---------------------------------------------------------------------------

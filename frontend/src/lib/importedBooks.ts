@@ -70,6 +70,20 @@ export interface ImportedChapterParagraph {
     index: number;
     en: string;
     zh: string | null;
+    /**
+     * Contextual glosses from the optional teaching analysis, keyed by
+     * lower-case word. Empty when the chapter was fetched without `level`.
+     */
+    glosses: Record<string, string>;
+}
+
+/** One idiom / culture point from the optional teaching analysis (`?level=`). */
+export interface ImportedLanguagePoint {
+    /** Paragraph `index` the point belongs to (same id space as the analysis). */
+    blockId: number;
+    text: string;
+    meaning: string;
+    kind: 'idiom' | 'culture';
 }
 
 export interface ImportedChapter {
@@ -92,6 +106,10 @@ export interface ImportedChapter {
     translatedChapters: number;
     missingTranslations: number;
     paragraphs: ImportedChapterParagraph[];
+    /** Idioms / culture points from the analysis; empty without `level`. */
+    languagePoints: ImportedLanguagePoint[];
+    /** CEFR band of the attached analysis; null when not generated yet. */
+    analysisLevel: string | null;
     quota: ImportedQuotaInfo;
 }
 
@@ -582,16 +600,71 @@ export async function fetchImportedBook(
     return payload as ImportedBookDetail;
 }
 
+export interface FetchImportedChapterOptions {
+    signal?: AbortSignal;
+    /**
+     * Explicit teaching-analysis band (`liftoff`…`supernova`). Only sent by the
+     * reader's「生成本章词条」button so opening a chapter never spends AI quota
+     * (D5-1: on-demand generation, not "generate on open").
+     */
+    level?: string | null;
+}
+
+/**
+ * Contextual glosses from the optional analysis (`highlights` fallback keeps
+ * older payloads/other readers working).
+ */
+function parseParagraphGlosses(entry: Record<string, unknown>): Record<string, string> {
+    const glosses: Record<string, string> = {};
+    if (isRecord(entry.glosses)) {
+        for (const [word, gloss] of Object.entries(entry.glosses)) {
+            const key = word.trim().toLowerCase();
+            const value = typeof gloss === 'string' ? gloss.trim() : '';
+            if (key && value) glosses[key] = value;
+        }
+    }
+    if (Object.keys(glosses).length === 0 && Array.isArray(entry.highlights)) {
+        for (const item of entry.highlights as unknown[]) {
+            if (!isRecord(item)) continue;
+            const word = (asString(item.en_word) ?? '').trim().toLowerCase();
+            const gloss = (asString(item.zh_word) ?? '').trim();
+            if (word && gloss) glosses[word] = gloss;
+        }
+    }
+    return glosses;
+}
+
+function parseLanguagePoints(value: unknown): ImportedLanguagePoint[] {
+    if (!Array.isArray(value)) return [];
+    const points: ImportedLanguagePoint[] = [];
+    for (const entry of value) {
+        if (!isRecord(entry)) continue;
+        const blockId = asNumber(entry.blockId);
+        const text = (asString(entry.text) ?? '').trim();
+        const meaning = (asString(entry.meaning) ?? '').trim();
+        const kind = entry.kind === 'idiom' || entry.kind === 'culture' ? entry.kind : null;
+        if (blockId === null || !text || !meaning || !kind) continue;
+        points.push({ blockId, text, meaning, kind });
+    }
+    return points;
+}
+
+/**
+ * Read one imported chapter. Without `level` the payload is exactly the legacy
+ * `{index, en, zh}` shape; with it the backend additionally returns contextual
+ * `glosses` and `languagePoints` (specs/028, same cache as public-domain books).
+ */
 export async function fetchImportedChapter(
     bookId: string,
     chapter: number,
-    signal?: AbortSignal,
+    options: FetchImportedChapterOptions = {},
 ): Promise<ImportedChapter> {
     const lang = getRuntimeTargetLang();
+    const levelQuery = options.level ? `&level=${encodeURIComponent(options.level)}` : '';
     const response = await request(
         `/api/books/imported/${encodeURIComponent(bookId)}/chapters/${chapter}` +
-            `?targetLang=${encodeURIComponent(lang)}`,
-        { cache: 'no-store', signal },
+            `?targetLang=${encodeURIComponent(lang)}${levelQuery}`,
+        { cache: 'no-store', signal: options.signal },
     );
     if (!response.ok) {
         throw new ImportedBooksApiError(await readError(response), response.status);
@@ -609,7 +682,7 @@ export async function fetchImportedChapter(
         if (index === null || !en || (entry.zh !== null && typeof zh !== 'string')) {
             throw new ImportedBooksApiError('章节段落格式不正确', 0);
         }
-        paragraphs.push({ index, en, zh });
+        paragraphs.push({ index, en, zh, glosses: parseParagraphGlosses(entry) });
     }
     const source = data.source;
     const quota = parseQuota(data.quota);
@@ -634,6 +707,8 @@ export async function fetchImportedChapter(
         translatedChapters: asNumber(data.translatedChapters) ?? 0,
         missingTranslations: asNumber(data.missingTranslations) ?? 0,
         paragraphs,
+        languagePoints: parseLanguagePoints(data.languagePoints),
+        analysisLevel: asString(data.analysisLevel),
         quota,
     };
 }

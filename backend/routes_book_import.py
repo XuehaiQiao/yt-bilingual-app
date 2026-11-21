@@ -7,6 +7,8 @@
 - ``GET  /api/books/imported``                             当前用户的导入书列表；
 - ``GET  /api/books/imported/{id}``                        详情 + 章节索引；
 - ``GET  /api/books/imported/{id}/chapters/{n}``           **实时抓取**原文 + 已缓存译文；
+  可选 ``?level=``：显式生成/读取该章教学分析（specs/028），额外返回
+  ``glosses`` / ``languagePoints`` / ``analysisLevel``（缓存命中零模型零扣费）；
 - ``POST /api/books/imported/{id}/chapters/{n}/translate`` 按章翻译（AI 配额，缓存幂等）；
 - ``DELETE /api/books/imported/{id}``                      删除书目与译文。
 
@@ -23,7 +25,7 @@
 
 错误语义：
 
-- 400：url 缺失/非 https/带查询串/章节页链接；
+- 400：url 缺失/非 https/带查询串/章节页链接；或 ``level`` 不是支持的高亮档；
 - 401：未登录/游客；
 - 404：书目/章节不存在或不属于当前用户（不泄露存在性）；
 - 422：链接不是白名单公版源、DRM/EPUB、抓取/解析失败（预览/导入）；
@@ -34,6 +36,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, HTTPException, Request
@@ -44,6 +47,7 @@ import ai_auth
 import languages
 import ratelimit
 import config
+import teaching_analysis
 from ai import quota
 
 logger = logging.getLogger("linguatrek.book_import.routes")
@@ -171,18 +175,79 @@ def get_imported_book(book_id: str, request: Request, targetLang: str | None = N
         raise  # pragma: no cover
 
 
+async def _attach_chapter_analysis(
+    payload: dict, user_id: str, lang: str, level: str | None
+) -> dict:
+    """可选：给导入书章节补教学分析（specs/028，与公版书同一份缓存）。
+
+    只有显式传 ``level`` 才执行——导入书可能几十章，不能打开就逐章生成
+    （D5-1：按钮显式按需生成）。调用路径与 ``routes_books`` 的公版书一致：
+    同一个 ``teaching_analysis.attach_to_payload``，缓存键仍是
+    ``(content_hash, level, target_lang, analysis_version)``，命中时零模型
+    零扣费；计费/配额沿用 028 的既有 ``feature=analysis`` 路径。
+
+    与公版书同样的保护：本章译文不齐或内容为空时跳过（不在未翻译章节里
+    缓存空释义）。分析失败由 ``attach_to_payload`` 静默兜底，读书不受影响。
+    """
+    if not level:
+        return payload
+    try:
+        teaching_analysis.normalize_level(level)
+    except teaching_analysis.AnalysisInvalidRequest as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    paragraphs = payload.get("paragraphs") or []
+    if (
+        int(payload.get("missingTranslations") or 0) > 0
+        or not paragraphs
+        or any(
+            not isinstance(paragraph, dict)
+            or not isinstance(paragraph.get("zh"), str)
+            or not paragraph["zh"].strip()
+            for paragraph in paragraphs
+        )
+    ):
+        return payload
+    wrapper = {"transcript": paragraphs}
+    analysis = await teaching_analysis.attach_to_payload(
+        wrapper,
+        level=level,
+        target_lang=lang,
+        content_ref=f"book:{payload.get('bookId') or ''}:{payload.get('chapter')}",
+        user_id=user_id,
+    )
+    if analysis is None:
+        return payload
+    payload.update(book_import.chapter_analysis_fields(wrapper))
+    payload["analysisVersion"] = (
+        wrapper.get("analysisVersion") or teaching_analysis.ANALYSIS_VERSION
+    )
+    payload["analysisLevel"] = analysis.get("level") or level
+    return payload
+
+
 @router.get("/api/books/imported/{book_id}/chapters/{number}")
-def get_imported_book_chapter(
-    book_id: str, number: int, request: Request, targetLang: str | None = None
+async def get_imported_book_chapter(
+    book_id: str,
+    number: int,
+    request: Request,
+    targetLang: str | None = None,
+    level: str | None = None,
 ):
-    """按章实时抓原文；已有译文返回 ``zh``，没有则 ``zh: null``（可手动翻译）。"""
+    """按章实时抓原文；已有译文返回 ``zh``，没有则 ``zh: null``（可手动翻译）。
+
+    可选 ``?level=``（高亮档）：显式生成本章教学分析并附带 ``glosses`` /
+    ``languagePoints``；不传时返回形状与旧版本完全一致。
+    """
     user = _require_login(request)
     lang = _target_lang_or_400(targetLang)
     try:
-        return book_import.build_chapter_payload(user["id"], book_id, number, lang)
+        payload = await asyncio.to_thread(
+            book_import.build_chapter_payload, user["id"], book_id, number, lang
+        )
     except Exception as exc:  # noqa: BLE001
         _raise_book_error(exc, chapter=True)
         raise  # pragma: no cover
+    return await _attach_chapter_analysis(payload, user["id"], lang, level)
 
 
 # ---------------------------------------------------------------------------
