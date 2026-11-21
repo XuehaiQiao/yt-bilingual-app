@@ -51,6 +51,8 @@
 - [x] 无英文语音时禁用并提示；切章/卸载/关闭立刻停止朗读，无残留语音。
 - [x] 高亮不改变原文 DOM 顺序与查词点击；与语言点 ruby、难度标亮可共存。
 - [x] `tsc -b`、`build`、`check:i18n`、`gate-receipt` 通过；1440/375 浏览器实测截图。
+- [ ] 音色菜单列出英文语音、排除 novelty；默认选中 Premium/Enhanced（若已装），否则按 en-US 优先。
+- [ ] 切换音色后当前句按新音色重读；刷新后音色保留；已存音色不存在时回退并提示一次。
 
 ## 5. 实现约束
 
@@ -63,14 +65,25 @@
 - 高亮包装优先不改 `MarkedWords` 的分段结构：在段落外层按句子区间包 `<span data-audio-sentence>`
   或在渲染前把段落拆成句子数组再交给现有渲染；**与语言点/难度高亮组合时要单测/浏览器验证**。
 
-## 6. 风险
+## 6. 音色选择（2026-11-22 追加）
+
+- **必须**：播放条提供「音色」菜单（复用 `components/ui/Menu` 的 `menuitemradio`），列出英文语音：
+  名称 + 地区；排除系统 novelty 音效（Bells/Boing/Bubbles/Cellos/Good News/Bad News/Jester/Organ/
+  Superstar/Trinoids/Whisper/Wobble/Zarvox 等）。
+- **必须**：默认**自动优选**——名字含 `Premium`/`Enhanced`/`Neural`/`Natural` 优先，其次 `Google`，
+  再按 `en-US` → `en-GB` → 其他英文排序；都没有时退回第一个英文语音。
+- **必须**：音色选择持久化（`localStorage`，与语速/模式同层）；切换后当前句按新音色重读，语速不变。
+- **必须**：已保存音色不存在时回退自动优选并轻提示一次，不报错、不静默无声。
+- 说明：音质取决于系统语音，Premium/Enhanced 需用户自行在系统设置下载；本应用不下载语音、不联网取音频。
+
+## 7. 风险
 
 - `speechSynthesis` 在 Chrome/Safari 的 `onend`/`cancel` 行为有差异；必须一次只保留一个
   utterance、切换前 cancel，并处理「cancel 后 onend 仍触发」的竞态。
 - 长段落分句与语音排队可能产生延迟感；不预生成音频。
 - 与 028 语言点 ruby、难度标亮叠加时的行高稳定性：需要 375/1440 实测截图。
 
-## 7. 实现（代码路径）
+## 8. 实现（代码路径）
 
 | 文件 | 作用 |
 |---|---|
