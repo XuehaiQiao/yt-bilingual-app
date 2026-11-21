@@ -15,9 +15,19 @@
 //   - C2 is the highest stop, so at C2 nothing is marked;
 //   - an unavailable API fails silently into "no highlight" — reading is never
 //     blocked and a level is never invented;
-//   - results are cached per lowercase word so switching chapters does not
-//     re-request the same words.
+//   - 缓存仍只按小写词形存词级（切换章节不重查）；但专名与「非句首大写」在
+//     进缓存之前就被过滤掉（见 collectReadingWords / isHighlighted），避免大写
+//     形态借到普通词形的等级（缓存串味）。
+//
+// 标亮最小版（v1.1 任务 3，D3-1）自本版起区分大小写：
+//   - 小写词、以及**句首**首字母大写的词，仍按上面的频率判据判（句首词照常判，
+//     否则句首普通词会被整片放过）；
+//   - 非句首的「首字母大写」token 一律不标（多半是专名），也不送查词级、不进缓存；
+//   - lib/properNouns.ts 的常见人名/地名/缩写名单**任何位置**都不标亮。
+//   - 已知限制：文本按句/段（block）传入，句首专名只能靠上面那份小名单兜底，
+//     名单外的句首专名必然漏判——句首普通词与句首专名在词形上无法区分。
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isProperNoun } from './properNouns';
 import { fetchVocabularyLevels } from './vocabulary';
 import {
     loadVocabLevel,
@@ -46,16 +56,86 @@ export function cleanReadingWord(token: string): string {
     return token.replace(/^[^A-Za-z0-9']+|[^A-Za-z0-9']+$/g, '');
 }
 
-function collectReadingWords(corpus: string): string[] {
+/** Token 的首个字母是否大写（iPhone 这类首字母小写的不算）。 */
+export function startsWithCapitalLetter(token: string): boolean {
+    const first = /[A-Za-z]/.exec(token)?.[0];
+    return first !== undefined && first === first.toUpperCase();
+}
+
+/** 句末标点（后面可再跟收尾引号/括号）：其后的首个实词算「句首」。 */
+const SENTENCE_END_RE = /[.!?…。！？]["'”’)\]}]*$/;
+
+/** 不结束句子的常见缩写，避免把 Mr. Darcy / e.g. this 的后一个词误判成句首。 */
+const NON_TERMINAL_ABBREVIATIONS = new Set([
+    'mr', 'mrs', 'ms', 'dr', 'prof', 'sr', 'jr', 'st', 'vs',
+    'e.g', 'i.e', 'a.m', 'p.m', 'u.s', 'u.k',
+]);
+
+function endsSentence(rawToken: string): boolean {
+    if (!SENTENCE_END_RE.test(rawToken)) return false;
+    // cleanReadingWord 会去掉结尾标点，只留词干。
+    return !NON_TERMINAL_ABBREVIATIONS.has(cleanReadingWord(rawToken).toLowerCase());
+}
+
+/**
+ * 收集需要查词级的「小写词形」集合（已按标亮最小版规则过滤）。
+ *
+ * 规则（v1.1 任务 3，D3-1）：
+ *   - 非句首的「首字母大写」token 不可能是普通小写词，直接跳过——不查词级、
+ *     不进缓存，这同时保证了缓存里不会有专名/大写形态的等级；
+ *   - 句首 token 仍按原频率判据，加入待查集合（否则句首普通词会被整片放过）；
+ *   - 名单内专名任何位置都跳过（句首专名的唯一兜底）。
+ *
+ * 句首判定：每个换行（调用方的句/段 block）算句首；行内第一个实词，以及句末
+ * 标点（. ! ? … 等）后的第一个实词算句首；常见缩写（Mr. 等）不结束句子。
+ *
+ * 已知限制：block 是句级，句子被 block 切断或缩写后接普通词时可能误判句首；
+ * 同一词形若在本文里另有小写/句首出现，它在别处的非句首大写形态仍会被判到
+ * （isHighlighted 拿不到 token 位置）。句首专名若不在名单内，必然漏判。
+ */
+export function collectReadingWords(corpus: string): string[] {
     const words = new Set<string>();
-    for (const raw of corpus.split(/\s+/)) {
-        const token = cleanReadingWord(raw);
-        // Lookup is case-insensitive and only meaningful for words with a
-        // letter; punctuation-only or numeric tokens are skipped.
-        if (token.length < 2 || !/[A-Za-z]/.test(token)) continue;
-        words.add(token.toLowerCase());
+    for (const line of corpus.split('\n')) {
+        let sentenceStart = true;
+        for (const raw of line.split(/\s+/)) {
+            if (!raw) continue;
+            const token = cleanReadingWord(raw);
+            // 只处理有意义（含字母、长度 ≥2）的词；纯数字/标点 token 不改变
+            // 句首状态，除非它本身就是句末标点（下面单独处理）。
+            const isWord = token.length >= 2 && /[A-Za-z]/.test(token);
+            if (isWord && !isProperNoun(token)) {
+                const lower = token.toLowerCase();
+                if (!startsWithCapitalLetter(token) || sentenceStart) {
+                    words.add(lower);
+                }
+            }
+            if (isWord) sentenceStart = false;
+            if (endsSentence(raw)) sentenceStart = true;
+        }
     }
     return Array.from(words);
+}
+
+/**
+ * 纯函数：这个 token 是否**可能**按频率判据判亮（大小写 + 专名规则）。
+ *
+ * 返回 true 只表示「没有被专名/大小写规则挡掉」，真正是否标亮还得看词级
+ * 与阈值。判定顺序：
+ *   1. 少于 2 个字符、或没有字母的 token（数字/标点）不判；
+ *   2. 名单内专名任何位置都不判（句首专名的唯一兜底）；
+ *   3. 非句首的「首字母大写」token 不判。是否算句首由 collectReadingWords
+ *      预先算好：只有「本文里出现过小写形态或句首形态」的词形进入 eligibleWords，
+ *      所以这里等于要求该词形在当前文本里有可按频率判的用法。
+ *
+ * 注意：这里拿不到 token 在句中的位置，若同一词形在本文里另有小写/句首出现，
+ * 它在别处的非句首大写形态也会被判到——这是 block 句级方案的已知残留误差，
+ * 方向是「多标」而不是「漏标」，可接受。
+ */
+export function canJudgeReadingWordCase(token: string, eligibleWords: ReadonlySet<string>): boolean {
+    const word = cleanReadingWord(token.trim());
+    if (word.length < 2 || !/[A-Za-z]/.test(word)) return false;
+    if (isProperNoun(word)) return false;
+    return !startsWithCapitalLetter(word) || eligibleWords.has(word.toLowerCase());
 }
 
 /** Word ranks: A1 < A2 < B1 < B2 < C1 < C1+ < C2. */
@@ -123,6 +203,9 @@ export function useReadingHighlights(texts: readonly string[]): ReadingHighlight
     // is a stable value and keeps the word-list memo from thrashing.
     const corpus = texts.join('\n');
     const words = useMemo(() => collectReadingWords(corpus), [corpus]);
+    // 当前文本里「可以按频率判」的小写词形（小写出现或句首出现）。
+    // isHighlighted 用它挡掉非句首大写 token——即使共享缓存被别的文本喂过。
+    const eligibleWords = useMemo(() => new Set(words), [words]);
     const failed = failedCorpus === corpus;
 
     // The 我的 slider (or another tab) changes the threshold without remounting
@@ -189,9 +272,14 @@ export function useReadingHighlights(texts: readonly string[]): ReadingHighlight
         }
     }
 
+    // 调用方（ClickableWords 等）传进来的是保留原始大小写的 token；这里正用
+    // 大小写做专名/句首判断，小写只用于查词级——不再像以前那样先把大小写丢掉。
+    // 先做大小写/专名判定、再查 level 缓存：缓存只按小写词形存 level，若先查
+    // 缓存，句首的 London 会借到 london 的等级被误标成生词（缓存串味）。
     const isHighlighted = (word: string) => {
         if (!enabled || failed) return false;
-        const value = wordLevels.get(word.trim().toLowerCase());
+        if (!canJudgeReadingWordCase(word, eligibleWords)) return false;
+        const value = wordLevels.get(cleanReadingWord(word.trim()).toLowerCase());
         if (value === undefined) return false;
         const rank = wordRank(value);
         return rank !== null && rank > thresholdRank;
