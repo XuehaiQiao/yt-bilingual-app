@@ -4,12 +4,15 @@
 // are already on disk, so this screen never imports the reading API client.
 // The translation toggle is local state only — there is no "translate this"
 // button, no polling, and no /api/article request.
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Languages } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { LibraryArticle } from '../lib/library';
 import { difficultyBadge, fetchDifficultyBatch, type DifficultyItem } from '../lib/difficulty';
-import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { ReadingHighlightToggle } from './ReadingHighlight';
+import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
+import { ReadingAudioText } from './ReadingAudioText';
+import { useReadingAudio } from '../lib/useReadingAudio';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
 import { SubHeader } from './ui/SubHeader';
@@ -51,6 +54,18 @@ export function LibraryArticleReader({ article, onClose, parentLabel, onWordLook
     const [difficulty, setDifficulty] = useState<DifficultyItem | null>(null);
     // Same threshold + cache as the other three readers (B1 → mark B2+ words).
     const highlight = useReadingHighlights(article.paragraphs.map((paragraph) => paragraph.en));
+    // Listening / shadowing for this article: the shared bar owns playback, the
+    // reader only supplies the paragraph texts and the scroll container.
+    const audioParagraphs = useMemo(
+        () => article.paragraphs.map((paragraph) => paragraph.en),
+        [article.paragraphs],
+    );
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const audio = useReadingAudio({
+        paragraphs: audioParagraphs,
+        scopeKey: `library:${article.id}`,
+        scrollRef,
+    });
 
     useEffect(() => {
         let cancelled = false;
@@ -85,8 +100,11 @@ export function LibraryArticleReader({ article, onClose, parentLabel, onWordLook
                 titleAs="p"
             />
 
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <article className={`mx-auto px-4 sm:px-8 py-6 sm:py-10 ${bilingualReadingWidth(bilingualColumns)}`}>
+            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
+                <article
+                    className={`mx-auto px-4 sm:px-8 py-6 sm:py-10 ${bilingualReadingWidth(bilingualColumns)}`}
+                    style={audio.bottomInset ? { paddingBottom: audio.bottomInset } : undefined}
+                >
                     <header>
                         <h1
                             data-testid="library-article-title"
@@ -158,6 +176,7 @@ export function LibraryArticleReader({ article, onClose, parentLabel, onWordLook
                             onChange={highlight.setEnabled}
                             levelLabel={highlight.levelLabel}
                         />
+                        <ReadingAudioTrigger audio={audio} testId="library-audio-trigger" />
                         <span className="text-[11px] text-zinc-600">{t('library.article.noApiHint')}</span>
                     </div>
 
@@ -179,8 +198,10 @@ export function LibraryArticleReader({ article, onClose, parentLabel, onWordLook
                                             lang="en"
                                             className="ruby-safe-line text-base sm:text-[17px] text-zinc-200 break-words"
                                         >
-                                            <ReadingHighlight
+                                            <ReadingAudioText
                                                 text={paragraph.en}
+                                                paragraphIndex={index}
+                                                active={audio.active}
                                                 isHighlighted={highlight.isHighlighted}
                                                 onWordClick={(word, e) => onWordLookup(
                                                     word,
@@ -208,6 +229,8 @@ export function LibraryArticleReader({ article, onClose, parentLabel, onWordLook
                     </div>
                 </article>
             </div>
+
+            <ReadingAudioBar audio={audio} testIdPrefix="library-audio" />
         </div>
     );
 }

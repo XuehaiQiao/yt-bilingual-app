@@ -1,6 +1,6 @@
 # 037 — 阅读听读 / 跟读模式（四个阅读器 + 句子精背）
 
-> 状态：**待实现** ｜ 2026-11-22 ｜ 需求来源：负责人 2026-11-22「+1 任务：所有阅读加阅读功能」
+> 状态：**已实现**（2026-11-22）｜ 2026-11-22 ｜ 需求来源：负责人 2026-11-22「+1 任务：所有阅读加阅读功能」
 > 一句话：在阅读界面提供**统一的听读播放条**——连续朗读、跟读（一句后暂停）、调速、
 > 上/下一句、当前句高亮；用浏览器语音合成，**零 AI 成本、不录音**。
 
@@ -42,15 +42,15 @@
 
 ## 4. 验收标准
 
-- [ ] 五个界面都有统一入口；打开播放条即出现在统一位置（详情见实现说明），不遮正文关键操作。
-- [ ] 连续模式：一句读完自动下一句；段末自动下一段；暂停可继续；播放中当前句蓝底高亮。
-- [ ] 跟读模式：一句读完**自动停**，显示「再听一遍 / 下一句」；段末不自动跨段。
-- [ ] 语速六档可调，改变后当前句按新速度重读；刷新后语速与模式保留。
-- [ ] 上一句/下一句可跳转；键盘 `Space` / `←` / `→` 在非输入态生效。
-- [ ] 分句：`Mr. Smith`, `e.g.`, `U.S.`, 引号结尾、省略号等不被切错。
-- [ ] 无英文语音时禁用并提示；切章/卸载/关闭立刻停止朗读，无残留语音。
-- [ ] 高亮不改变原文 DOM 顺序与查词点击；与语言点 ruby、难度标亮可共存。
-- [ ] `tsc -b`、`build`、`check:i18n`、`gate-receipt` 通过；1440/375 浏览器实测截图。
+- [x] 五个界面都有统一入口；打开播放条即出现在统一位置（详情见实现说明），不遮正文关键操作。
+- [x] 连续模式：一句读完自动下一句；段末自动下一段；暂停可继续；播放中当前句蓝底高亮。
+- [x] 跟读模式：一句读完**自动停**，显示「再听一遍 / 下一句」；段末不自动跨段。
+- [x] 语速六档可调，改变后当前句按新速度重读；刷新后语速与模式保留。
+- [x] 上一句/下一句可跳转；键盘 `Space` / `←` / `→` 在非输入态生效。
+- [x] 分句：`Mr. Smith`, `e.g.`, `U.S.`, 引号结尾、省略号等不被切错。
+- [x] 无英文语音时禁用并提示；切章/卸载/关闭立刻停止朗读，无残留语音。
+- [x] 高亮不改变原文 DOM 顺序与查词点击；与语言点 ruby、难度标亮可共存。
+- [x] `tsc -b`、`build`、`check:i18n`、`gate-receipt` 通过；1440/375 浏览器实测截图。
 
 ## 5. 实现约束
 
@@ -69,3 +69,17 @@
   utterance、切换前 cancel，并处理「cancel 后 onend 仍触发」的竞态。
 - 长段落分句与语音排队可能产生延迟感；不预生成音频。
 - 与 028 语言点 ruby、难度标亮叠加时的行高稳定性：需要 375/1440 实测截图。
+
+## 7. 实现（代码路径）
+
+| 文件 | 作用 |
+|---|---|
+| `frontend/src/lib/sentenceSplit.ts` | 共享分句：缩写（Mr./Dr./U.S./e.g.）、首字母缩写、引号、省略号、数字；返回原文偏移，渲染可逐字还原 |
+| `frontend/src/lib/useReadingAudio.ts` | 状态机 `idle/playing/paused/waiting/finished/unsupported` + `speechSynthesis` 控制：一次一个 utterance、切换前 cancel、generation 计数器挡住 cancel 后残留的 `onend`、切章/卸载取消、看门狗防“假播放中”；语速/模式存 `yt_bilingual_reading_audio_*` |
+| `frontend/src/components/ReadingAudioBar.tsx` | 统一播放条与入口按钮：播放/暂停、上/下一句、跟读开关、语速菜单、关闭、跟读等待行的「再听一遍 / 下一句」；自量高度供阅读器留出底部内边距；无英文语音时禁用并给明确文案 |
+| `frontend/src/components/ReadingAudioText.tsx` | 段落 → 句子：逐句交给既有 `ReadingHighlight`（难度标亮 + 语言点 ruby + 点词），外层套 `<span data-audio-sentence data-audio-active>`；`AudioSentenceSpan` 供句子精背复用 |
+| `frontend/src/lib/tts.ts` | 抽出 `pickEnglishVoice` / `detectSpeechVoice` 等，供播放条与原有 `speak()` 共用；`speak()` 行为不变 |
+
+接入点：`BookReaderScreen`（工具条 `book-audio-trigger`）、`ImportedBookReaderScreen`（`imported-book-audio-trigger`）、`LibraryArticleReader`（`library-audio-trigger`）、`ReaderScreen`（`reader-audio-trigger`）、`SentenceView`（`sentences-audio-trigger`，保留每行原有朗读按钮）。
+
+验证：`node scripts/reading-audio-acceptance.mjs`（Playwright + 打桩 `speechSynthesis`，覆盖连续/跟读/调速/键盘/关闭/切章/无语音/五界面；截图 `/tmp/reading-audio-*.png`）。

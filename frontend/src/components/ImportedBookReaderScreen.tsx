@@ -27,7 +27,10 @@ import { useI18n } from '../i18n/I18nProvider';
 import { useAuth } from '../lib/auth';
 import { allowAi } from '../lib/aiGate';
 import type { TranslationKey } from '../i18n';
-import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { ReadingHighlightToggle } from './ReadingHighlight';
+import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
+import { ReadingAudioText } from './ReadingAudioText';
+import { useReadingAudio } from '../lib/useReadingAudio';
 import { LanguagePointToggle } from './ui/LanguagePointToggle';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
@@ -187,6 +190,16 @@ export function ImportedBookReaderScreen({
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    // Listening / shadowing for the current imported chapter (shared bar).
+    const audioParagraphs = useMemo(
+        () => chapter?.paragraphs.map((paragraph) => paragraph.en) ?? [],
+        [chapter?.paragraphs],
+    );
+    const audio = useReadingAudio({
+        paragraphs: audioParagraphs,
+        scopeKey: chapter ? `imported:${bookId}:${chapter.chapter}` : `imported:${bookId}:empty`,
+        scrollRef,
+    });
     const saveTimerRef = useRef<number | null>(null);
     const pendingScrollRef = useRef<number | null>(null);
     const chapterNumberRef = useRef<number | null>(null);
@@ -536,7 +549,10 @@ export function ImportedBookReaderScreen({
                 onScroll={handleScroll}
                 className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto custom-scrollbar"
             >
-                <div className={`mx-auto w-full px-4 py-5 sm:px-8 sm:py-8 ${bilingualReadingWidth(bilingualColumns)}`}>
+                <div
+                    className={`mx-auto w-full px-4 py-5 sm:px-8 sm:py-8 ${bilingualReadingWidth(bilingualColumns)}`}
+                    style={audio.bottomInset ? { paddingBottom: audio.bottomInset } : undefined}
+                >
                     {detailLoading && (
                         <div data-testid="imported-book-loading" className="space-y-4">
                             <div className="h-8 w-2/3 animate-pulse rounded bg-zinc-800/70" />
@@ -742,6 +758,7 @@ export function ImportedBookReaderScreen({
                                     onChange={highlight.setEnabled}
                                     levelLabel={highlight.levelLabel}
                                 />
+                                <ReadingAudioTrigger audio={audio} testId="imported-book-audio-trigger" />
                                 <LanguagePointToggle
                                     enabled={showLanguagePoints}
                                     onChange={setShowLanguagePoints}
@@ -914,8 +931,10 @@ export function ImportedBookReaderScreen({
                                                         lang="en"
                                                         className="ruby-safe-line break-words text-base text-zinc-200"
                                                     >
-                                                        <ReadingHighlight
+                                                        <ReadingAudioText
                                                             text={paragraph.en}
+                                                            paragraphIndex={paragraph.index}
+                                                            active={audio.active}
                                                             isHighlighted={highlight.isHighlighted}
                                                             languagePoints={
                                                                 languagePointsByParagraph[paragraph.index]
@@ -993,6 +1012,8 @@ export function ImportedBookReaderScreen({
                     )}
                 </div>
             </div>
+
+            <ReadingAudioBar audio={audio} testIdPrefix="imported-book-audio" />
 
             <ConfirmDialog
                 open={deleteConfirmOpen && detail !== null}

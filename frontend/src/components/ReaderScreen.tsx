@@ -32,7 +32,10 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
-import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { ReadingHighlightToggle } from './ReadingHighlight';
+import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
+import { ReadingAudioText } from './ReadingAudioText';
+import { useReadingAudio } from '../lib/useReadingAudio';
 import { LanguagePointToggle } from './ui/LanguagePointToggle';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
@@ -295,6 +298,23 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const saveErrorToastRef = useRef(false);
     // Avoid retrying a failed language-point fetch on every article object update.
     const analysisRequestedRef = useRef<string | null>(null);
+
+    // Reading audio: one shared bar for the article pane. `scopeKey` follows the
+    // open article, so switching (or closing) it immediately stops the voice.
+    const audioParagraphs = useMemo(
+        () => article?.paragraphs.map((paragraph) => paragraph.text) ?? [],
+        [article?.paragraphs],
+    );
+    const audio = useReadingAudio({
+        paragraphs: audioParagraphs,
+        scopeKey: article ? `reader:${article.articleId}:${article.lang ?? ''}` : 'reader:empty',
+        scrollRef,
+    });
+    // Back to the list = leave the playback surface; the bar must not hover over
+    // the article list, and Space must stop meaning "play" there.
+    useEffect(() => {
+        if (selectedId === null) audio.close();
+    }, [selectedId, audio.close]);
 
     const loadList = useCallback(async () => {
         setListLoading(true);
@@ -1109,7 +1129,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
             />
             <div
                 data-testid="reader-toolbar"
-                className="flex-none flex items-center justify-end gap-2 px-4 sm:px-8 py-2 border-b border-white/5 bg-zinc-950/40"
+                className="flex-none flex flex-wrap items-center justify-end gap-2 px-4 sm:px-8 py-2 border-b border-line-subtle bg-app/40"
             >
                 <span className="hidden sm:inline text-xs text-zinc-500">
                     {t('reader.wordLookupHint')}
@@ -1122,6 +1142,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                         levelLabel={highlight.levelLabel}
                     />
                 )}
+                {article && <ReadingAudioTrigger audio={audio} testId="reader-audio-trigger" />}
                 {article && !isGuest && (
                     <LanguagePointToggle
                         enabled={showLanguagePoints}
@@ -1139,7 +1160,10 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                 data-testid="reader-scroll"
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar"
             >
-                <div className={`mx-auto px-4 sm:px-8 py-6 sm:py-10 ${bilingualReadingWidth(bilingualColumns)}`}>
+                <div
+                    className={`mx-auto px-4 sm:px-8 py-6 sm:py-10 ${bilingualReadingWidth(bilingualColumns)}`}
+                    style={audio.bottomInset ? { paddingBottom: audio.bottomInset } : undefined}
+                >
                     {articleLoading ? (
                         <div
                             data-testid="reader-article-loading"
@@ -1256,8 +1280,10 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                                         lang={article.lang || undefined}
                                                         className="ruby-safe-line pr-8 text-base sm:text-[17px] text-zinc-200 break-words"
                                                     >
-                                                        <ReadingHighlight
+                                                        <ReadingAudioText
                                                             text={paragraph.text}
+                                                            paragraphIndex={paragraph.idx}
+                                                            active={audio.active}
                                                             isHighlighted={highlight.isHighlighted}
                                                             languagePoints={languagePointsByParagraph[paragraph.idx]}
                                                             showLanguagePoints={showLanguagePoints}
@@ -1316,6 +1342,8 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                     )}
                 </div>
             </div>
+
+            <ReadingAudioBar audio={audio} testIdPrefix="reader-audio" />
         </div>
     );
 

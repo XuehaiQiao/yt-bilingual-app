@@ -13,7 +13,8 @@ import { MarkedWords, type InlineLanguagePoint, type WordClickHandler } from './
 
 interface ReadingHighlightProps {
     text: string;
-    onWordClick: WordClickHandler;
+    /** Optional: without it the paragraph renders as plain (unclickable) text. */
+    onWordClick?: WordClickHandler;
     /** From `useReadingHighlights`; absent/false = plain clickable text. */
     isHighlighted?: (word: string) => boolean;
     /** Idiom / fixed-expression / culture spans for this paragraph. */

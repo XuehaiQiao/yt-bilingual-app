@@ -12,6 +12,9 @@ import type { TranslationKey } from '../i18n';
 import { SentenceText } from './SentenceText';
 import { ShareCardDialog } from './ShareCardDialog';
 import { SubHeader } from './ui/SubHeader';
+import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
+import { AudioSentenceSpan } from './ReadingAudioText';
+import { useReadingAudio } from '../lib/useReadingAudio';
 import { Segmented } from './ui/Segmented';
 import type { ShareCardData } from '../lib/shareCard';
 import { speak } from '../lib/tts';
@@ -30,6 +33,10 @@ interface SentenceViewProps {
 }
 
 export const sentenceFavId = (levelId: number, n: number) => `sentence-L${levelId}-${n}`;
+
+/** Search filter shared by the rendered rows and the audio cursor. */
+const sentenceMatches = (sentence: Sentence, query: string) =>
+    !query || (segToPlain(sentence.seg) + ' ' + sentence.zh + ' ' + sentence.seg.map(p => typeof p === 'string' ? '' : p.g).join(' ')).toLowerCase().includes(query);
 
 // Display labels for sentence-pack tags; colors stay in lib/sentences.ts.
 const CHUNK_LABEL: Record<ChunkCat, TranslationKey> = {
@@ -74,8 +81,27 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
     }, [level]);
 
     const q = query.trim().toLowerCase();
-    const matches = (s: Sentence) =>
-        !q || (segToPlain(s.seg) + ' ' + s.zh + ' ' + s.seg.map(p => typeof p === 'string' ? '' : p.g).join(' ')).toLowerCase().includes(q);
+    const matches = (s: Sentence) => sentenceMatches(s, q);
+
+    // The listening cursor runs over the rows that are actually on screen, in
+    // render order, so "next sentence" can never read a filtered-out card.
+    const visibleSentences = useMemo(
+        () => (level ? days.flatMap(({ items }) => items.filter((sentence) => sentenceMatches(sentence, q))) : []),
+        [days, level, q],
+    );
+    const audioIndexBySentence = useMemo(() => {
+        const map = new Map<string, number>();
+        visibleSentences.forEach((sentence, index) => map.set(`${sentence.d}:${sentence.n}`, index));
+        return map;
+    }, [visibleSentences]);
+    const audioParagraphs = useMemo(() => visibleSentences.map((sentence) => segToPlain(sentence.seg)), [visibleSentences]);
+    // Listening / shadowing over the sentence pack: one sentence per "paragraph",
+    // reusing the exact same hook + bar as the four prose readers.
+    const audio = useReadingAudio({
+        paragraphs: audioParagraphs,
+        scopeKey: `sentences:${levelId}:${q}`,
+        scrollRef,
+    });
 
     const doneDays = level ? levelDoneDays(levelId, level.days) : 0;
     void doneTick; // 依赖 doneTick 触发重算
@@ -144,6 +170,7 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                 >
                     <CalendarCheck className="w-3.5 h-3.5" /> {t('sentences.gotoToday')}
                 </button>
+                <ReadingAudioTrigger audio={audio} testId="sentences-audio-trigger" />
 
                 <div className="relative flex-1 min-w-[140px]">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
@@ -234,7 +261,12 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                                                     <div className="flex items-start gap-3">
                                                         <span className="text-[11px] text-zinc-600 tabular-nums pt-2 w-7 shrink-0">{s.n}</span>
                                                         <div className="flex-1 min-w-0">
-                                                            <SentenceText seg={s.seg} context={plain} onWordLookup={onWordLookup} />
+                                                            <AudioSentenceSpan
+                                                                index={audioIndexBySentence.get(`${s.d}:${s.n}`) ?? -1}
+                                                                active={audio.active !== null && audio.active.paragraph === audioIndexBySentence.get(`${s.d}:${s.n}`)}
+                                                            >
+                                                                <SentenceText seg={s.seg} context={plain} onWordLookup={onWordLookup} />
+                                                            </AudioSentenceSpan>
                                                             <p className={`mt-1.5 text-sm text-zinc-400 leading-relaxed transition ${zhHidden ? 'blur-[5px] hover:blur-0' : ''}`}>
                                                                 <span className="text-zinc-600 text-[11px] mr-1.5">{t('sentences.translationMark')}</span>{s.zh}
                                                             </p>
@@ -268,6 +300,8 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                     </div>
                 )}
             </div>
+
+            <ReadingAudioBar audio={audio} testIdPrefix="sentences-audio" />
 
             <ShareCardDialog
                 isOpen={shareData !== null}

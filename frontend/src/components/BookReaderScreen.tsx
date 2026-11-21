@@ -23,7 +23,10 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
-import { ReadingHighlight, ReadingHighlightToggle } from './ReadingHighlight';
+import { ReadingHighlightToggle } from './ReadingHighlight';
+import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
+import { ReadingAudioText } from './ReadingAudioText';
+import { useReadingAudio } from '../lib/useReadingAudio';
 import { LanguagePointToggle } from './ui/LanguagePointToggle';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
@@ -228,6 +231,18 @@ export function BookReaderScreen({
         return map;
     }, [chapter?.languagePoints]);
     const scrollRef = useRef<HTMLDivElement>(null);
+    // Listening / shadowing: the shared bar follows the current chapter. A
+    // chapter (or target-language) switch changes `scopeKey`, which cancels the
+    // voice — no reader-local stop() bookkeeping is needed.
+    const audioParagraphs = useMemo(
+        () => chapter?.paragraphs.map((paragraph) => paragraph.en) ?? [],
+        [chapter?.paragraphs],
+    );
+    const audio = useReadingAudio({
+        paragraphs: audioParagraphs,
+        scopeKey: chapter ? `book:${bookId}:${chapter.chapter}:${language}` : `book:${bookId}:empty`,
+        scrollRef,
+    });
     const saveTimerRef = useRef<number | null>(null);
     const pendingScrollRef = useRef<number | null>(null);
     const chapterNumberRef = useRef<number | null>(null);
@@ -545,7 +560,10 @@ export function BookReaderScreen({
                 onScroll={handleScroll}
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar"
             >
-                <div className={`mx-auto w-full px-4 sm:px-8 py-5 sm:py-8 ${bilingualReadingWidth(bilingualColumns)}`}>
+                <div
+                    className={`mx-auto w-full px-4 sm:px-8 py-5 sm:py-8 ${bilingualReadingWidth(bilingualColumns)}`}
+                    style={audio.bottomInset ? { paddingBottom: audio.bottomInset } : undefined}
+                >
                     {detailLoading && (
                         <div data-testid="book-reader-loading" className="space-y-4">
                             <div className="h-8 w-2/3 rounded bg-zinc-800/70 animate-pulse" />
@@ -720,6 +738,7 @@ export function BookReaderScreen({
                                             onChange={highlight.setEnabled}
                                             levelLabel={highlight.levelLabel}
                                         />
+                                        <ReadingAudioTrigger audio={audio} testId="book-audio-trigger" />
                                         {canAnalyze && (
                                             <LanguagePointToggle
                                                 enabled={showLanguagePoints}
@@ -898,8 +917,10 @@ export function BookReaderScreen({
                                                                 lang="en"
                                                                 className="ruby-safe-line text-base text-zinc-200 break-words"
                                                             >
-                                                                <ReadingHighlight
+                                                                <ReadingAudioText
                                                                     text={paragraph.en}
+                                                                    paragraphIndex={paragraph.index}
+                                                                    active={audio.active}
                                                                     isHighlighted={highlight.isHighlighted}
                                                                     languagePoints={languagePointsByParagraph[paragraph.index]}
                                                                     showLanguagePoints={showLanguagePoints}
@@ -989,6 +1010,8 @@ export function BookReaderScreen({
                     )}
                 </div>
             </div>
+
+            <ReadingAudioBar audio={audio} testIdPrefix="book-audio" />
         </div>
     );
 }
