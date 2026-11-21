@@ -40,10 +40,10 @@ export function DevUIScreen() {
               className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 text-caption"
             >
               <a
-                href="#/app/today"
+                href="#/app/content"
                 className="rounded-control text-brand-300 underline-offset-4 hover:underline"
               >
-                App · Today
+                App · Content
               </a>
               <a
                 href="/"

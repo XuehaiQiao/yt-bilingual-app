@@ -112,7 +112,7 @@ export function useNav(): NavApi {
 
   // First mount: canonicalise whatever the address bar already held. An app
   // URL is already `#/app/...`; a legacy alias is rewritten once; an invalid
-  // hash falls back to `#/app/today` with one toast. A reload keeps its in-app
+  // hash falls back to `#/app/content` with one toast. A reload keeps its in-app
   // depth marker; a fresh deep link has no marker and starts at depth 0.
   // Public hashes never mount AppContent, but guard anyway so a stale mount
   // cannot rewrite the public URL into the app namespace.

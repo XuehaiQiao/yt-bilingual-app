@@ -8,7 +8,7 @@
 // also tells `useNav` whether to rewrite a legacy URL or toast an invalid one).
 //
 // Route table (canonical hrefs, every app URL lives under `#/app`):
-//   #/app  →  #/app/today                                     app entry
+//   #/app  →  #/app/content                                   app entry (D-08)
 //   #/app/today  #/app/content  #/app/practice  #/app/profile first-level tabs
 //   #/app/content/library  #/app/content/books                section anchors (D-05)
 //   #/app/<tab>/review        #/app/<tab>/report              review / weekly report
@@ -55,7 +55,7 @@
 //   #admin / #/admin     → #/app/profile/admin
 //   #/<tab>/admin (≠profile) → #/app/profile/admin
 //
-// Invalid app hashes fall back to `#/app/today` (D-07: the caller toasts once).
+// Invalid app hashes fall back to `#/app/content` (D-07/D-08: the caller toasts once).
 // Unknown non-app hashes are handled by the public site (home) instead.
 import type { TranslationKey } from '../i18n';
 
@@ -132,9 +132,9 @@ export const TASK_SUB_KINDS: ReadonlySet<SubRoute['kind']> = new Set<SubRoute['k
   'course',
 ]);
 
-const FALLBACK: NavState = { tab: 'today', sub: null };
+const FALLBACK: NavState = { tab: 'content', sub: null };
 
-const FALLBACK_HASH = `${APP_ROUTE_PREFIX}/today`;
+const FALLBACK_HASH = `${APP_ROUTE_PREFIX}/content`;
 
 function decode(value: string | undefined): string {
   if (!value) return '';
@@ -369,7 +369,7 @@ export interface ResolvedRoute {
 /**
  * Resolve a location hash into `{ state, canonical, kind }`.
  * `kind` is what lets `useNav` decide "replace the alias once" (legacy) vs
- * "fall back to Today and toast once" (invalid / D-07).
+ * "fall back to Content and toast once" (invalid / D-07).
  */
 export function resolveRoute(hash: string): ResolvedRoute {
   const raw = normalizeHash(hash);
@@ -387,7 +387,7 @@ export function resolveRoute(hash: string): ResolvedRoute {
 
 /**
  * Parse a location hash (or a bare route string) into the nav model.
- * Anything unrecognised falls back to today; use `resolveRoute` when the
+ * Anything unrecognised falls back to Content (D-08); use `resolveRoute` when the
  * caller also needs to know whether the address bar should be rewritten.
  */
 export function parseRoute(hash: string): NavState {
@@ -562,7 +562,7 @@ function parseBlogAlias(segments: string[]): { slug?: string } | null {
 /**
  * True when the hash belongs to the public site (or is blank, which is home).
  * `useNav` skips these in its popstate/hashchange handlers so a public link
- * clicked inside the app is not canonicalised back into `#/app/today`.
+ * clicked inside the app is not canonicalised back into `#/app/content`.
  */
 export function isPublicHash(hash: string): boolean {
   const raw = normalizeHash(hash);
@@ -595,7 +595,7 @@ export function isAppHash(hash: string): boolean {
  * diagnostics surface, never reachable from product navigation, and `App`'s
  * dev gate decides whether to mount it (`import.meta.env.DEV` or admin).
  * Keeping it out of the route model also keeps `parseRoute`'s contract
- * ("invalid → Today") intact for every normal screen.
+ * ("invalid → Content") intact for every normal screen.
  */
 export function isDevUiHash(hash: string): boolean {
   const raw = String(hash ?? '').trim();

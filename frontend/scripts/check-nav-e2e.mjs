@@ -13,7 +13,7 @@
 //   e) word book → article returns to the word book (N-18);
 //   f) old unprefixed URLs (`#/today`, `#/learn/...`, ...) rewrite once to
 //      `#/app/...`;
-//   g) `#/login?next=` only accepts app targets and lands on `#/app/today`
+//   g) `#/login?next=` only accepts app targets and lands on `#/app/content`
 //      otherwise;
 //   h) the app's official-blog entry leaves the shell for the public `#/blog`,
 //      and `#/app/blog...` aliases redirect there too.
@@ -154,6 +154,18 @@ await context.route('**/api/review/stats*', (route) => route.fulfill({
   contentType: 'application/json',
   body: JSON.stringify(REVIEW_STATS),
 }));
+// The account screen fetches its export jobs on mount. The mocked session has
+// no real cookie, so the backend answers 401 and the global handler signs the
+// user out, hiding the app shell from the word-book check (e). Stub the data
+// route: this suite tests routing, not account lifecycle.
+await context.route('**/api/account/exports', (route) => route.fulfill({
+  status: 200,
+  contentType: 'application/json',
+  body: JSON.stringify({
+    jobs: [],
+    limits: { per24h: 1, per30d: 3, ttlHours: 24, maxBytes: 0, concurrentJobs: 1 },
+  }),
+}));
 // A fake course id would otherwise 401 as a guest and sign the mocked session
 // out mid-test; a deterministic 404 keeps the alias check about routing.
 await context.route('**/api/course/**', (route) => route.fulfill({
@@ -163,6 +175,31 @@ await context.route('**/api/course/**', (route) => route.fulfill({
 }));
 
 try {
+  // ── a0) app entry + explicit Today + invalid fallback (D-07/D-08) ───────
+  await check('a0) #/app lands on Content; #/app/today still opens; invalid hash falls back to Content', async () => {
+    const page = await context.newPage();
+    try {
+      await page.goto(`${BASE}/#/app`, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
+      await waitHash(page, '#/app/content');
+      await page.waitForSelector('[data-testid="content-screen"]', { timeout: 20000 });
+
+      // The explicit Today deep link is unchanged: only the default moved.
+      await page.goto(`${BASE}/#/app/today`, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('[data-testid="today-screen"]', { timeout: 20000 });
+      assert.equal(await hashOf(page), '#/app/today');
+
+      // A truly invalid route falls back to Content and says so once (D-07).
+      await page.goto(`${BASE}/#/app/content/nonsense`, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
+      await waitHash(page, '#/app/content');
+      await page.locator('[data-testid="toast"]').first().waitFor({ timeout: 5000 });
+      await page.waitForSelector('[data-testid="content-screen"]', { timeout: 20000 });
+    } finally {
+      await page.close();
+    }
+  });
+
   // ── a) A→B→C then back C→B→A ─────────────────────────────────────────────
   await check('a) A→B→C pushes app frames; back walks C→B→A', async () => {
     const page = await openPage(context, '#/app/content');
@@ -314,14 +351,14 @@ try {
         waitUntil: 'domcontentloaded',
       });
       await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
-      await waitHash(page, '#/app/today');
+      await waitHash(page, '#/app/content');
 
       // A public page is not a valid app return target either.
       await page.goto(`${BASE}/#/login?next=${encodeURIComponent('#/blog')}`, {
         waitUntil: 'domcontentloaded',
       });
       await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
-      await waitHash(page, '#/app/today');
+      await waitHash(page, '#/app/content');
     } finally {
       await page.close();
     }

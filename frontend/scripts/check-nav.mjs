@@ -11,7 +11,7 @@
 //   3. old unprefixed URLs (`#/today`, `#/learn/...`, `#/lesson/...`,
 //      `#/profile/favorites`, `#admin`, `#/<tab>/admin`) still parse and are
 //      marked `legacy`, canonicalising to the `#/app/...` form;
-//   4. garbage is marked `invalid` and falls back to `#/app/today`;
+//   4. garbage is marked `invalid` and falls back to `#/app/content` (D-07/D-08);
 //   5. `parentOf` gives the deep-link back target, `backLabelFor` the aria key;
 //   6. the public routes (home, `#/welcome` → `/`, `#/blog[/slug]`, `#/pricing`,
 //      `#/resources`, `#/privacy`, `#/terms`, `#/login`) are parsed by
@@ -110,11 +110,13 @@ check('every sub kind is tab-prefixed and reversible', () => {
   }
 });
 
-check('#/app is the app entry and defaults to today', () => {
+check('#/app is the app entry and defaults to content (D-08); #/app/today stays available', () => {
   const resolved = resolveRoute('#/app');
-  assert.equal(resolved.canonical, '#/app/today');
+  assert.equal(resolved.canonical, '#/app/content');
   assert.equal(resolved.kind, 'legacy');
-  assert.deepEqual(resolved.state, { tab: 'today', sub: null });
+  assert.deepEqual(resolved.state, { tab: 'content', sub: null });
+  // The explicit Today deep link is unchanged: only the default moved.
+  assert.deepEqual(canonical('#/app/today'), { tab: 'today', sub: null });
 });
 
 function resolvedKind(hash) {
@@ -169,8 +171,8 @@ check('content section anchors stay in the URL', () => {
   }
 });
 
-// ── 3. invalid app routes fall back to Today (D-07) ─────────────────────────
-check('invalid app routes resolve to #/app/today and are marked invalid', () => {
+// ── 3. invalid app routes fall back to Content (D-07/D-08) ─────────────────
+check('invalid app routes resolve to #/app/content and are marked invalid', () => {
   const bad = [
     '#/nonsense',
     '#/app/nonsense',
@@ -190,12 +192,12 @@ check('invalid app routes resolve to #/app/today and are marked invalid', () => 
   for (const hash of bad) {
     const resolved = resolveRoute(hash);
     assert.equal(resolved.kind, 'invalid', `${hash} should be invalid`);
-    assert.equal(resolved.canonical, '#/app/today');
-    assert.deepEqual(resolved.state, { tab: 'today', sub: null });
+    assert.equal(resolved.canonical, '#/app/content');
+    assert.deepEqual(resolved.state, { tab: 'content', sub: null });
   }
   // Empty hash is not an error for AppContent; the public router sends it home.
   assert.equal(resolveRoute('').kind, 'canonical');
-  assert.equal(resolveRoute('').canonical, '#/app/today');
+  assert.equal(resolveRoute('').canonical, '#/app/content');
 });
 
 // ── 4. parentOf / backLabelFor (deep-link fallback, §4) ─────────────────────

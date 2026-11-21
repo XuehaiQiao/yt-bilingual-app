@@ -46,7 +46,7 @@ export function PricingScreen() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a href="#/app/today" data-testid="pricing-cta-enter" className={PRIMARY}>
+              <a href="#/app/content" data-testid="pricing-cta-enter" className={PRIMARY}>
                 {t('public.pricing.cta.enter')}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </a>

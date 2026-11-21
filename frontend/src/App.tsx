@@ -4316,7 +4316,7 @@ function AuthLoadingScreen() {
  * (`#/app/...`; legacy `#/today` is canonicalised), `http(s)://` is rejected so
  * this can never become an open redirect, and another public page (blog,
  * pricing, resources, privacy, terms, welcome, login) is not a valid destination.
- * Invalid/absent → null (the caller lands on `#/app/today`).
+ * Invalid/absent → null (the caller lands on `#/app/content`, D-08).
  */
 function readLoginNext(): string | null {
   const hash = window.location.hash;
@@ -4414,10 +4414,10 @@ function LoginView({ next }: { next: string | null }) {
           // `guest` can use the app right away; `anonymous` (backend session
           // unavailable) would just bounce back to the auth gate, so return to
           // the public home instead. Keep the `?next=` target when there is one
-          // (D-09): a guest opening a deep link should land on it, not Today.
+          // (D-09): a guest opening a deep link should land on it, not Content.
           window.location.hash = status === 'anonymous'
             ? '#/welcome'
-            : (next ?? '#/app/today');
+            : (next ?? '#/app/content');
         }}
       />
     </div>
@@ -4457,13 +4457,13 @@ function AuthGate() {
     syncPublicView();
   }, [publicRedirect, syncPublicView]);
 
-  // Signing in from #/login lands on the `?next=` target (or Today), never back
-  // on the login URL. The `replace` keeps #/login out of the back history.
+  // Signing in from #/login lands on the `?next=` target (or Content), never
+  // back on the login URL. The `replace` keeps #/login out of the back history.
   // `publicView` (not a fresh hash read) is a dependency so that arriving at
   // #/login later in the same session — a hand-edited URL — is also redirected.
   useEffect(() => {
     if (status !== 'authenticated' || publicView !== 'login') return;
-    window.history.replaceState(window.history.state, '', loginNext ?? '#/app/today');
+    window.history.replaceState(window.history.state, '', loginNext ?? '#/app/content');
     syncPublicView();
   }, [status, publicView, loginNext, syncPublicView]);
 
@@ -4498,7 +4498,7 @@ function AuthGate() {
   if (publicView === 'login') {
     if (status !== 'authenticated') return <LoginView next={loginNext} />;
     // An authenticated user is still sitting on #/login for one tick while the
-    // redirect effect above rewrites the hash to `?next=`/Today. Render the
+    // redirect effect above rewrites the hash to `?next=`/Content. Render the
     // quiet loading screen instead of AppContent: mounting the app with a
     // public hash would make `useNav` treat it as invalid and drop the target.
     return <AuthLoadingScreen />;

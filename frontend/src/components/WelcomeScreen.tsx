@@ -4,7 +4,7 @@
 // can return to. It sits outside the app shell and shares `PublicShell`,
 // `PublicHeader` and `PublicFooter` with the blog / pricing / resources pages,
 // so the public site has one header, one footer and one page measure.
-// CTAs point at the app routes (`#/app/today`, `#/app/content`), the public
+// CTAs point at the app routes (`#/app/content`, `#/app/content/library`), the public
 // blog (`#/blog`) and the login page (`#/login`); no app logic is duplicated.
 //
 // Visual rules follow the design system: zinc neutrals through semantic tokens,
@@ -169,7 +169,7 @@ export function WelcomeScreen() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a href="#/app/today" data-testid="welcome-enter" className={HERO_PRIMARY}>
+              <a href="#/app/content" data-testid="welcome-enter" className={HERO_PRIMARY}>
                 {t('welcome.hero.enter')}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </a>

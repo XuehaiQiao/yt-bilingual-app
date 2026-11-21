@@ -73,7 +73,7 @@ export function PublicHeader({ active }: { active?: PublicNavId }) {
           <LanguageMenu />
           {canEnterApp ? (
             <a
-              href="#/app/today"
+              href="#/app/content"
               data-testid="public-header-enter"
               className="inline-flex h-9 items-center gap-1.5 rounded-control px-2 text-caption font-medium text-fg-secondary transition-colors hover:bg-state-hover hover:text-fg-primary sm:px-2.5 sm:text-ui [@media(pointer:coarse)]:min-h-11"
             >

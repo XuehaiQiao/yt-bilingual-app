@@ -196,7 +196,7 @@ try {
       assert.equal(await page.locator('[data-testid="app-shell"]').count(), 0, 'home must not mount the app');
       assert.ok(await page.locator('[data-testid="public-header"]').isVisible());
       assert.ok(await page.locator('[data-testid="public-footer"]').isVisible());
-      assert.equal(await page.locator('[data-testid="welcome-enter"]').getAttribute('href'), '#/app/today');
+      assert.equal(await page.locator('[data-testid="welcome-enter"]').getAttribute('href'), '#/app/content');
       assert.equal(await page.locator('[data-testid="welcome-login"]').getAttribute('href'), '#/login');
       await shot(page, 'home-1440');
     } finally {
@@ -249,7 +249,7 @@ try {
     const page = await guestContext.newPage();
     try {
       for (const [legacy, expected] of [
-        ['#/app', '#/app/today'],
+        ['#/app', '#/app/content'],
         ['#/today', '#/app/today'],
         ['#/content', '#/app/content'],
         ['#/practice', '#/app/practice'],
@@ -308,7 +308,7 @@ try {
       assert.equal(await page.locator('[data-testid="public-nav-pricing"]').getAttribute('href'), '#/pricing');
       assert.equal(await page.locator('[data-testid="public-nav-resources"]').getAttribute('href'), '#/resources');
       // CTA adapts to the session: a guest sees "进入学习".
-      assert.equal(await page.locator('[data-testid="public-header-enter"]').getAttribute('href'), '#/app/today');
+      assert.equal(await page.locator('[data-testid="public-header-enter"]').getAttribute('href'), '#/app/content');
 
       // Clicking the nav goes to the public page with the same header/footer.
       await page.click('[data-testid="public-nav-blog"]');
@@ -343,7 +343,7 @@ try {
       assert.ok(pricingText.includes('内测免费'), 'pricing must say the beta is free');
       assert.ok(pricingText.includes('定价即将公布'), 'pricing must say the price is not published yet');
       assert.ok(!/[¥$€£]\s*\d/.test(pricingText), 'pricing must not invent a monetary amount');
-      assert.equal(await page.locator('[data-testid="pricing-cta-enter"]').getAttribute('href'), '#/app/today');
+      assert.equal(await page.locator('[data-testid="pricing-cta-enter"]').getAttribute('href'), '#/app/content');
       assert.equal(await page.locator('[data-testid="pricing-cta-login"]').getAttribute('href'), '#/login');
       await shot(page, 'pricing-1440');
 
@@ -398,11 +398,11 @@ try {
 
       await page.goto(`${BASE}/#/login?next=${encodeURIComponent('#/blog')}`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
-      await waitHash(page, '#/app/today');
+      await waitHash(page, '#/app/content');
 
       await page.goto(`${BASE}/#/login?next=${encodeURIComponent('https://evil.example/')}`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
-      await waitHash(page, '#/app/today');
+      await waitHash(page, '#/app/content');
     } finally {
       await page.close();
     }

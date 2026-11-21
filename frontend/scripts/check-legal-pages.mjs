@@ -357,7 +357,7 @@ try {
       assert.doesNotMatch(body, /即将上线/, 'privacy: no coming-soon copy');
       assert.equal(await page.locator('a[href^="mailto:"]').count(), 0, 'no mailto link without a real inbox');
 
-      assert.equal(await page.locator('[data-testid="legal-enter"]').getAttribute('href'), '#/app/today');
+      assert.equal(await page.locator('[data-testid="legal-enter"]').getAttribute('href'), '#/app/content');
       assert.equal(await page.locator('[data-testid="legal-back-home"]').getAttribute('href'), '/');
       assert.ok(await page.locator('[data-testid="legal-contact-note"]').isVisible());
 
@@ -456,8 +456,9 @@ try {
       await page.waitForSelector('[data-testid="privacy-screen"]', { timeout: 20000 });
       await page.locator('[data-testid="legal-enter"]').focus();
       await page.keyboard.press('Enter');
-      await waitHash(page, '#/app/today');
+      await waitHash(page, '#/app/content');
       await page.waitForSelector('[data-testid="app-shell"]', { timeout: 20000 });
+      await page.waitForSelector('[data-testid="content-screen"]', { timeout: 20000 });
     } finally {
       await page.close();
     }
