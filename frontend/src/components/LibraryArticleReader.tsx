@@ -36,9 +36,11 @@ interface LibraryArticleReaderProps {
     ) => void;
     /** App-owned favorites; the header chip shows the vocabulary count. */
     favorites: readonly FavoriteItem[];
+    /** Same entry as the video page: navigate to the word-book full page. */
+    onOpenWordbook: () => void;
 }
 
-export function LibraryArticleReader({ article, onClose, parentLabel, onWordLookup, favorites }: LibraryArticleReaderProps) {
+export function LibraryArticleReader({ article, onClose, parentLabel, onWordLookup, favorites, onOpenWordbook }: LibraryArticleReaderProps) {
     const { t, formatNumber } = useI18n();
     const [showTranslations, setShowTranslations] = useState(true);
     // Every paragraph has a Chinese translation on disk, so "show translations"
@@ -78,7 +80,7 @@ export function LibraryArticleReader({ article, onClose, parentLabel, onWordLook
                         {t('library.article.badge')}
                     </span>
                 )}
-                actions={<ReadingVocabButton favorites={favorites} />}
+                actions={<ReadingVocabButton favorites={favorites} onOpenWordbook={onOpenWordbook} />}
                 backTestId="library-article-back"
                 titleAs="p"
             />

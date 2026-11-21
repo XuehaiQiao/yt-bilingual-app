@@ -3754,6 +3754,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                 parentLabel={parentLabel}
                 onWordLookup={handleLibraryArticleWordLookup}
                 favorites={favorites}
+                onOpenWordbook={handleOpenWordbookRoute}
               />,
             );
           }
@@ -3843,6 +3844,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               initialImport={readerInitialImport ?? undefined}
               onInitialImportConsumed={() => setReaderInitialImport(null)}
               favorites={favorites}
+              onOpenWordbook={handleOpenWordbookRoute}
             />,
           );
         case 'sentences':
@@ -3869,6 +3871,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onWordLookup={handleBookWordLookup}
               onRequestLogin={onRequestLogin}
               favorites={favorites}
+              onOpenWordbook={handleOpenWordbookRoute}
             />,
           );
         case 'book-series':
@@ -3891,6 +3894,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onWordLookup={handleImportedBookWordLookup}
               onRequestLogin={() => onRequestLogin?.()}
               favorites={favorites}
+              onOpenWordbook={handleOpenWordbookRoute}
             />,
           );
         case 'vocabulary':

@@ -93,6 +93,8 @@ interface ReaderScreenProps {
     ) => void;
     /** App-owned favorites; the header chip shows the vocabulary count. */
     favorites: readonly FavoriteItem[];
+    /** Same entry as the video page: navigate to the word-book full page. */
+    onOpenWordbook: () => void;
 }
 
 type ImportMode = 'url' | 'text';
@@ -220,6 +222,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     onImportPublicDomainBook,
     onWordLookup,
     favorites,
+    onOpenWordbook,
 }) => {
     const { t, targetLang, formatNumber } = useI18n();
 
@@ -1102,7 +1105,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                 backLabel={t('reader.backToList')}
                 backTestId="reader-back-list"
                 titleAs="p"
-                actions={<ReadingVocabButton favorites={favorites} />}
+                actions={<ReadingVocabButton favorites={favorites} onOpenWordbook={onOpenWordbook} />}
             />
             <div
                 data-testid="reader-toolbar"

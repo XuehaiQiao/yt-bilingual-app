@@ -62,6 +62,8 @@ interface BookReaderScreenProps {
     ) => void;
     /** App-owned favorites; the header chip shows the vocabulary count. */
     favorites: readonly FavoriteItem[];
+    /** Same entry as the video page: navigate to the word-book full page. */
+    onOpenWordbook: () => void;
 }
 
 const errorKey = (status: number, fallback: TranslationKey): TranslationKey => {
@@ -191,6 +193,7 @@ export function BookReaderScreen({
     onRequestLogin,
     onWordLookup,
     favorites,
+    onOpenWordbook,
 }: BookReaderScreenProps) {
     const { t, language, formatNumber } = useI18n();
     const [detail, setDetail] = useState<BookDetail | null>(null);
@@ -520,7 +523,7 @@ export function BookReaderScreen({
                 titleAs="p"
                 actions={(
                     <>
-                        <ReadingVocabButton favorites={favorites} />
+                        <ReadingVocabButton favorites={favorites} onOpenWordbook={onOpenWordbook} />
                         {detail && (
                             <button
                                 type="button"
