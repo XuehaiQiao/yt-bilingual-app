@@ -8,7 +8,6 @@ import { useEffect, useState } from 'react';
 import {
     AlertCircle,
     BookMarked,
-    BookPlus,
     Loader2,
     RefreshCw,
 } from 'lucide-react';
@@ -171,30 +170,9 @@ export function BooksSection({
                             })}
                         </span>
                     )}
-                    <button
-                        type="button"
-                        data-testid="book-import-open"
-                        onClick={() => {
-                            if (isGuest) {
-                                onRequestLogin();
-                                return;
-                            }
-                            setImportOpen(true);
-                        }}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/10 px-2.5 text-xs font-medium text-brand-300 transition-colors hover:bg-brand/15 hover:text-brand-400"
-                    >
-                        <BookPlus className="h-3.5 w-3.5" />
-                        {t('importedBooks.importButton')}
-                    </button>
                 </>
             )}
         >
-            {isGuest && (
-                <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
-                    {t('importedBooks.guestHint')}
-                </p>
-            )}
-
             <div className="mt-3 space-y-6">
                 {loading && <Skeleton />}
 
@@ -245,14 +223,15 @@ export function BooksSection({
                     </span>
                 )}
 
-                {!isGuest && (
-                    <div className="border-t border-white/5 pt-5">
-                        <ImportedBooksShelf
-                            refreshToken={importedToken}
-                            onOpenBook={onOpenImportedBook}
-                        />
-                    </div>
-                )}
+                <div className="border-t border-white/5 pt-5">
+                    <ImportedBooksShelf
+                        refreshToken={importedToken}
+                        onOpenBook={onOpenImportedBook}
+                        isGuest={isGuest}
+                        onRequestLogin={onRequestLogin}
+                        onRequestImport={() => setImportOpen(true)}
+                    />
+                </div>
             </div>
 
             <BookImportDialog

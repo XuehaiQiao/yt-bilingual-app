@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import {
     AlertCircle,
     BookOpen,
+    BookPlus,
     Globe2,
     HardDrive,
     RefreshCw,
@@ -26,6 +27,12 @@ import { Card } from './ui/Card';
 interface ImportedBooksShelfProps {
     refreshToken: number;
     onOpenBook: (bookId: string) => void;
+    /** Guests see the shelf header + import entry, but no account data. */
+    isGuest: boolean;
+    /** Guest clicks the import entry: ask for a login instead of opening it. */
+    onRequestLogin: () => void;
+    /** Signed-in clicks: the dialog itself stays owned by BooksSection. */
+    onRequestImport: () => void;
 }
 
 /** Cover tile for a local EPUB; a failed image falls back to the glyph. */
@@ -46,13 +53,23 @@ function ShelfCover({ src }: { src: string }) {
     );
 }
 
-export function ImportedBooksShelf({ refreshToken, onOpenBook }: ImportedBooksShelfProps) {
+export function ImportedBooksShelf({
+    refreshToken,
+    onOpenBook,
+    isGuest,
+    onRequestLogin,
+    onRequestImport,
+}: ImportedBooksShelfProps) {
     const { t, formatNumber } = useI18n();
     const [books, setBooks] = useState<ImportedBookSummary[] | null>(null);
     const [failed, setFailed] = useState(false);
     const [retryToken, setRetryToken] = useState(0);
 
     useEffect(() => {
+        // The list is account-scoped: a guest session must not call it (that
+        // would surface a 403 error state). Guests only get the hint + entry,
+        // and the view never reads `books` in that branch.
+        if (isGuest) return;
         const controller = new AbortController();
         fetchImportedBooks(controller.signal)
             .then((payload) => {
@@ -67,7 +84,7 @@ export function ImportedBooksShelf({ refreshToken, onOpenBook }: ImportedBooksSh
                 setFailed(true);
             });
         return () => controller.abort();
-    }, [refreshToken, retryToken]);
+    }, [isGuest, refreshToken, retryToken]);
 
     const retry = () => {
         setFailed(false);
@@ -75,19 +92,61 @@ export function ImportedBooksShelf({ refreshToken, onOpenBook }: ImportedBooksSh
         setRetryToken((value) => value + 1);
     };
 
-    return (
-        <div data-testid="imported-books-shelf" className="min-w-0">
-            <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
-                <div className="min-w-0">
-                    <h4 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-zinc-100">
-                        <Globe2 className="h-4 w-4 text-emerald-400" />
-                        {t('importedBooks.title')}
-                    </h4>
+    // Title + the "import a book" entry share one header row. The dialog
+    // itself stays owned by BooksSection (single instance on the page).
+    const header = (
+        <div
+            data-testid="imported-books-header"
+            className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2"
+        >
+            <div className="min-w-0">
+                <h4 className="flex items-center gap-2 text-[15px] font-semibold tracking-tight text-zinc-100">
+                    <Globe2 className="h-4 w-4 text-emerald-400" />
+                    {t('importedBooks.title')}
+                </h4>
+                {!isGuest && (
                     <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
                         {t('importedBooks.subtitle')}
                     </p>
-                </div>
+                )}
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    data-testid="book-import-open"
+                    onClick={() => {
+                        if (isGuest) {
+                            onRequestLogin();
+                            return;
+                        }
+                        onRequestImport();
+                    }}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/10 px-2.5 text-xs font-medium text-brand-300 transition-colors hover:bg-brand/15 hover:text-brand-400"
+                >
+                    <BookPlus className="h-3.5 w-3.5" />
+                    {t('importedBooks.importButton')}
+                </button>
+            </div>
+        </div>
+    );
+
+    if (isGuest) {
+        return (
+            <div data-testid="imported-books-shelf" className="min-w-0">
+                {header}
+                <p
+                    data-testid="imported-books-guest-hint"
+                    className="mt-2.5 text-[11px] leading-relaxed text-zinc-500"
+                >
+                    {t('importedBooks.guestHint')}
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div data-testid="imported-books-shelf" className="min-w-0">
+            {header}
 
             <div className="mt-2.5 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto custom-scrollbar">
                 {books === null && !failed && (
