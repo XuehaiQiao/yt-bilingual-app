@@ -170,9 +170,18 @@ function formatCountdown(ms: number): string {
     return `${minutes}:${seconds}`;
 }
 
-/** `A2–B2` → half-width dash, so the label always line-breaks as one token. */
-function intervalLabel(value: string): string {
-    return value.replace(/[–—]/g, '–');
+/**
+ * `A2–B2` → half-width dash, so the label always line-breaks as one token.
+ *
+ * Returns `null` when there is no interval: seed-only profiles (v1.1 D8-2)
+ * keep a point estimate but no banded evidence, so the backend sends
+ * `cefr: null`. Callers must render the "not measured yet" copy instead of
+ * inventing a band (the old `value.replace(...)` crashed the whole screen).
+ */
+function intervalLabel(value: string | null | undefined): string | null {
+    if (typeof value !== 'string') return null;
+    const label = value.replace(/[–—]/g, '–').trim();
+    return label.length > 0 ? label : null;
 }
 
 export function PlacementScreen({
@@ -511,6 +520,14 @@ export function PlacementScreen({
     const withoutReading = (items: string[]): string[] =>
         items.filter((item) => !/阅读|reading|đọc/i.test(item));
 
+    // Display tokens for the two interval slots. A seed-only profile has a
+    // point estimate but no banded evidence (v1.1 D8-2), and the API sends
+    // `cefr: null` for it — the page shows the "not measured yet" copy rather
+    // than a fabricated band or a crash.
+    const profileInterval = profile ? intervalLabel(profile.cefr) : null;
+    const resultInterval = result ? intervalLabel(result.cefr?.label) : null;
+    const resultPoint = result?.cefr?.point ?? null;
+
     const headerTitle =
         phase === 'quiz'
             ? t('placement.quiz.title')
@@ -649,12 +666,12 @@ export function PlacementScreen({
                     )}
                 </ul>
 
-                {profile && (
+                {profile && profileInterval && (
                     <p
                         data-testid="placement-intro-current"
                         className="mt-5 rounded-xl border border-white/5 bg-zinc-800/30 px-3.5 py-2.5 text-xs leading-relaxed text-zinc-400"
                     >
-                        {t('placement.intro.previous', { level: intervalLabel(profile.cefr) })}
+                        {t('placement.intro.previous', { level: profileInterval })}
                     </p>
                 )}
 
@@ -895,11 +912,13 @@ export function PlacementScreen({
                     data-testid="placement-result-cefr"
                     className="mt-1 text-5xl sm:text-6xl font-semibold tracking-tight text-zinc-50 tabular-nums break-words"
                 >
-                    {intervalLabel(result.cefr.label)}
+                    {resultInterval ?? t('placement.profile.unknownValue')}
                 </p>
                 <p data-testid="placement-result-point" className="mt-2 text-sm text-zinc-400">
                     {t('placement.result.pointLabel')}{' '}
-                    <span className="font-medium text-zinc-200">{result.cefr.point}</span>
+                    <span className="font-medium text-zinc-200">
+                        {resultPoint ?? t('placement.profile.unknownValue')}
+                    </span>
                 </p>
 
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -1182,12 +1201,21 @@ export function PlacementScreen({
                 <>
                     <section className={`${CARD} p-5 sm:p-8 text-center`}>
                         <p className="text-xs font-medium text-zinc-500">{t('placement.profile.vocabOnly')}</p>
-                        <p
-                            data-testid="placement-profile-cefr"
-                            className="mt-1 text-5xl sm:text-6xl font-semibold tracking-tight text-zinc-50 tabular-nums break-words"
-                        >
-                            {intervalLabel(profile.cefr)}
-                        </p>
+                        {profileInterval ? (
+                            <p
+                                data-testid="placement-profile-cefr"
+                                className="mt-1 text-5xl sm:text-6xl font-semibold tracking-tight text-zinc-50 tabular-nums break-words"
+                            >
+                                {profileInterval}
+                            </p>
+                        ) : (
+                            <p
+                                data-testid="placement-profile-cefr-missing"
+                                className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-zinc-400"
+                            >
+                                {t('placement.profile.noInterval')}
+                            </p>
+                        )}
                         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                             <p
                                 data-testid="placement-profile-uncalibrated"
