@@ -1,6 +1,6 @@
 # 规格：高亮难度轴
 
-**状态：** 已实现 ｜ **对应代码：** `frontend/src/components/VocabAxis.tsx`、`frontend/src/components/ReadingHighlight.tsx`、`frontend/src/lib/settings.ts`、`frontend/src/lib/useReadingHighlights.ts`、四个阅读器（`ReaderScreen`/`LibraryArticleReader`/`BookReaderScreen`/`ImportedBookReaderScreen`）、`backend/config.py`（`VOCAB_LEVELS`）、`backend/translate.py`（`process_llm_batch`）
+**状态：** 已实现 ｜ **对应代码：** `frontend/src/components/VocabAxis.tsx`、`frontend/src/components/ReadingHighlight.tsx`、`frontend/src/lib/settings.ts`、`frontend/src/lib/useReadingHighlights.ts`、四个阅读器（`ReaderScreen`/`LibraryArticleReader`/`BookReaderScreen`/`ImportedBookReaderScreen`）、`backend/config.py`（`VOCAB_LEVELS`）、`backend/word_rules.py`（标亮候选规则的单一来源）、`backend/routes_vocabulary.py`（`POST /api/vocabulary/classify`）
 
 ---
 
@@ -19,6 +19,8 @@
 - **必须**：难度传给后端，写进翻译 prompt——只高亮**超出该难度**的词。
 - **必须**：首次进入且**从未保存过**滑条时，按能力档案区间的高带预填一次（A1→A1…C2→C2）；已有保存值绝不覆盖；无档案/游客保持默认 A2 且不报错。
 - **必须**：文章/免费文章/公版书/导入书的英文段落按同一阈值标亮高于当前档的词（A1<A2<B1<B2<C1<C1+<C2；C2 不额外标亮，未知/非法词不猜等级）；阅读工具栏「标亮生词」开关默认开、localStorage 记忆；API 失败静默无高亮，不阻断阅读与点词。
+- **必须**：**标亮候选只认一个来源**——后端 `backend/word_rules.py`：非句首首字母大写的 token 视为专名不标；内置常见专名名单（后端唯一一份）任何位置不标；其余按 CEFR 阈值判定。视频学习页与四个阅读器、导入书共用同一规则，同一词在不同界面标亮结果必须一致。
+- **必须**：前端通过 `POST /api/vocabulary/classify` 批量取判定：入参 `{items:[{text, sentenceStart?}]}`，出参 `{items:[{text, level, proper}]}`（保留原词形，非法 token `level=null`）；**前端不得再维护第二份专名名单或第二套大小写规则**；游客可用，失败静默（与现 level API 同样的降级）。
 
 ## 验收标准
 - [x] 我的·设置显示「高亮难度」六站轴，可点选；选中态有渐变填充与发光光点，并说明不是能力评级。
@@ -27,7 +29,12 @@
 - [x] 选定难度后处理新视频，高亮词量随难度升高而减少。
 - [x] 刷新后难度保持；旧存档（如 `cet6`）能自动落到对应新档。
 - [x] 四个阅读器按阈值标亮、开关持久化、切换档位重算、API 失败不阻塞。
+- [ ] 非句首人名（如 Georgie / Gridley）在视频、公版书、导入书、文章里都不标亮；句首普通词（The / This）照常按阈值判定。
+- [ ] 专名名单只存在于后端；前端无第二份名单（`grep` 可证）。
+- [ ] `classify`：批量保留原词形、返回 `level/proper`；非法 token 返回 `null` 不报错；游客可用。
+- [ ] 同一段文本在视频页与阅读页的标亮集合一致（同一规则、同一阈值）。
 
 ## 边界与非目标
 - 高亮难度只影响"挑哪些词标亮/高亮"，不影响翻译本身，也不是能力评级或内容推荐依据。
 - 已缓存视频的高亮不会因改难度而重算（按视频缓存）；阅读标亮按当前档位即时重算。
+- 已知限制：block 是句/段级，**句首专名无法与普通词区分，必然可能漏判**；同一词形若在文中另处小写出现，非句首大写实例可能多标（方向是多标，不偏漏标）。两条都写进代码注释，不假装解决。
