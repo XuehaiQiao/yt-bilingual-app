@@ -8,13 +8,16 @@
 4. prompt：只标高于等级的词/短语、quote 必须能在原文找到、目标语言名；
 5. 校验闸：en_word/zh_word/quote 子串约束、未知 block 丢弃、译文找不到时
    **整条丢弃**（无释义不标）、颜色强制、单 block ≤20 条、习语 20/文化点 10 上限；
-6. 候选词：非句首专名不入候选、句首普通词保留、与 classify 同源（同一
-   word_rules 规则）；
+6. 候选词：非句首专名不入候选、句首普通词保留、语料级句首专名兜底
+   （Toto 型；长内容分批仍按整篇统计）、与 classify 同源（同一 word_rules
+   规则）；
 7. 缓存：首次生成一次模型调用，第二次命中零调用；等级/语言/内容隔离；
+   旧版本（v4）缓存行/旧版本 payload 不复用；
 8. 并发：同 key 并发只跑一次模型（后到者复用缓存）；
 9. 失败不写半成品、可重试；缺 0020 表时 AnalysisUnavailable（内部静默跳过）；
 10. 合并：按 block id 覆盖 highlights、清掉旧等级残留、idioms/culture/
-   analysisVersion 写进 payload；旧缓存没有分析字段时保持原样；
+   analysisVersion 写进 payload；旧缓存没有分析字段时保持原样；旧版本
+   合并字段（v4）在升级合并时丢弃、旧版本分析不写入；
 11. 端到端：翻译 prompt 不再请求 highlights；流式处理在翻译后合并分析并落盘；
     GET /api/teaching-analysis（登录、缓存命中免费、等级/内容变化重生成）。
 
@@ -364,10 +367,29 @@ def test_candidate_words_exclude_proper_nouns_but_keep_sentence_initial_words():
     assert "the" not in candidates["2"]
 
 
+def test_candidate_words_use_corpus_level_fallback_for_sentence_initial_proper():
+    """specs/004 v1.1：Toto 型（句首出现、全文从未小写、另有非句首大写）不入候选。"""
+    blocks = [{
+        "id": 1,
+        "en_text": (
+            "Toto was a little dog. Dorothy looked at Toto. "
+            "The little dog Toto barked at the visitors."
+        ),
+        "zh_text": "托托是一只小狗。多萝西看着托托。小狗托托对访客叫。",
+    }]
+    normalized = teaching_analysis.normalize_blocks(blocks)
+    candidates = teaching_analysis._candidate_words_for_blocks(normalized, "liftoff")
+    words = candidates.get("1", [])
+    assert "Toto" not in words
+    # 对照：Dorothy 只在句首出现、没有非句首大写实例 → 词形信息不足，仍按普通词。
+    assert "Dorothy" in words
+
+
 def test_candidate_words_match_classify_for_the_same_text(client):
     """候选集合与 POST /api/vocabulary/classify 同源：同一 rule 向量。"""
     text = ("Yesterday Georgie met Gridley in London. "
-            "Visitors can buy tickets at the front desk.")
+            "Visitors can buy tickets at the front desk. "
+            "Toto barked at Georgie, then Toto ran away.")
     normalized = teaching_analysis.normalize_blocks([
         {"id": 1, "en_text": text, "zh_text": "游客在伦敦的前台买票。"}
     ])
@@ -375,8 +397,24 @@ def test_candidate_words_match_classify_for_the_same_text(client):
         normalized, "liftoff"
     ).get("1", [])
 
+    # 与前端 collectReadingTokens 相同的两条语料级事实（观察，不判定）。
+    facts: dict[str, tuple[bool, bool]] = {}
+    for token, sentence_start in word_rules.iter_words(text):
+        key = token.casefold()
+        has_lowercase, has_non_initial_capital = facts.get(key, (False, False))
+        if token[0].islower():
+            has_lowercase = True
+        if token[0].isupper() and not sentence_start:
+            has_non_initial_capital = True
+        facts[key] = (has_lowercase, has_non_initial_capital)
+
     items = [
-        {"text": token, "sentenceStart": sentence_start}
+        {
+            "text": token,
+            "sentenceStart": sentence_start,
+            "hasLowercase": facts[token.casefold()][0],
+            "hasNonInitialCapital": facts[token.casefold()][1],
+        }
         for token, sentence_start in word_rules.iter_words(text)
     ]
     response = client.post("/api/vocabulary/classify", json={"items": items})
@@ -399,6 +437,7 @@ def test_candidate_words_match_classify_for_the_same_text(client):
 
     assert candidates == expected
     assert "Georgie" not in candidates and "Gridley" not in candidates
+    assert "Toto" not in candidates  # 句首 + 非句首大写 + 从未小写 → 专名
     assert "Visitors" in candidates
 
 
@@ -538,13 +577,100 @@ def test_ensure_generates_once_then_cache_hit_is_free(analysis_db, llm_stub):
     first, second = asyncio.run(run())
     assert len(llm_stub.prompts) == 1
     assert first == second
-    assert first["analysisVersion"] == "analysis.v4"
+    assert first["analysisVersion"] == "analysis.v5"
     assert first["level"] == "liftoff"
     assert first["targetLang"] == "zh-CN"
     assert first["contentHash"] == teaching_analysis.content_hash(BLOCKS)
     assert first["highlights"]  # 两个 block 都有高亮
     assert first["idioms"] and first["culture"]
     assert _row_count() == 1
+
+
+def test_ensure_analysis_does_not_hit_rows_from_older_analysis_version(
+    analysis_db, llm_stub
+):
+    """specs/028 v1.1：v4 旧行按新键不命中，不批量回填，按需重生成 v5。"""
+    content_hash_value = teaching_analysis.content_hash(BLOCKS)
+    with sqlite3.connect(config.AUTH_DB_PATH) as conn:
+        conn.execute(
+            "INSERT INTO content_teaching_analysis "
+            "(id, content_ref, content_hash, level, target_lang, analysis_version, "
+            "payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "old-v4-row", VIDEO_ID, content_hash_value, "liftoff", "zh-CN",
+                "analysis.v4",
+                json.dumps({"analysisVersion": "analysis.v4", "highlights": {}}),
+                1,
+            ),
+        )
+    result = asyncio.run(
+        teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
+    )
+    assert result["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION == "analysis.v5"
+    assert len(llm_stub.prompts) == 1
+    # 旧行保留、新行另写（版本是缓存键的一部分），不删除也不回填。
+    assert sorted(row[4] for row in _rows()) == ["analysis.v4", "analysis.v5"]
+
+
+def test_ensure_analysis_regenerates_payload_with_old_version_marker(
+    analysis_db, llm_stub, monkeypatch
+):
+    """缓存键相同但 payload 自检版本不匹配（手工恢复/旧常量）→ 不复用。"""
+    content_hash_value = teaching_analysis.content_hash(BLOCKS)
+    stale = {
+        "analysisVersion": "analysis.v4",
+        "glossAttempted": True,
+        "level": "liftoff",
+        "targetLang": "zh-CN",
+        "contentHash": content_hash_value,
+        "highlights": {"1": [{"en_word": "museum", "zh_word": "旧版释义"}]},
+        "idioms": [],
+        "culture": [],
+        "model": "old-model",
+        "createdAt": 1,
+    }
+    real_load_cached = teaching_analysis.load_cached
+    calls = {"count": 0}
+
+    def fake_load_cached(*args, **kwargs):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return copy.deepcopy(stale)
+        return real_load_cached(*args, **kwargs)
+
+    monkeypatch.setattr(teaching_analysis, "load_cached", fake_load_cached)
+    result = asyncio.run(
+        teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
+    )
+    assert result["analysisVersion"] == "analysis.v5"
+    assert "旧版释义" not in json.dumps(result, ensure_ascii=False)
+    assert len(llm_stub.prompts) == 1
+
+
+def test_ensure_analysis_candidates_use_the_whole_text_across_batches(
+    analysis_db, llm_stub
+):
+    """长内容分批时语料级兜底仍按整篇统计：非句首实例落在另一批也生效。"""
+    blocks = [
+        {
+            "id": i,
+            "en_text": f"This is plain sentence number {i}.",
+            "zh_text": "这是普通句子。",
+        }
+        for i in range(201)
+    ]
+    blocks[0]["en_text"] = "Toto was a little dog."
+    blocks[0]["zh_text"] = "托托是一只小狗。"
+    blocks[200]["en_text"] = "I saw Toto yesterday."
+    blocks[200]["zh_text"] = "我昨天看见了托托。"
+    asyncio.run(teaching_analysis.ensure_analysis(blocks, "liftoff", "zh-CN"))
+    assert len(llm_stub.prompts) == 2, "201 blocks must still run in two batches"
+    first = json.loads(llm_stub.prompts[0].rsplit("Blocks:\n", 1)[-1])
+    second = json.loads(llm_stub.prompts[1].rsplit("Blocks:\n", 1)[-1])
+    assert first[0]["blockId"] == 0 and second[0]["blockId"] == 200
+    # 句首 Toto 在第一批、非句首大写 Toto 在第二批：整篇统计后两批都不候选。
+    assert "Toto" not in first[0]["candidates"]
+    assert "Toto" not in second[0]["candidates"]
 
 
 def test_ensure_level_isolation_regenerates(analysis_db, llm_stub):
@@ -684,7 +810,7 @@ def test_merge_into_payload_replaces_highlights_by_block_id():
         {"en_word": "Visitors", "zh_word": "", "color": "old"}
     ]
     analysis = {
-        "analysisVersion": "analysis.v4",
+        "analysisVersion": "analysis.v5",
         "level": "moonwalk",
         "highlights": {
             "1": [
@@ -713,14 +839,75 @@ def test_merge_into_payload_replaces_highlights_by_block_id():
     assert payload["transcript"][1]["highlights"] == []
     assert payload["idioms"][0]["phrase"] == "opens at nine"
     assert payload["culture"][0]["term"] == "front desk"
-    assert payload["analysisVersion"] == "analysis.v4"
+    assert payload["analysisVersion"] == "analysis.v5"
+
+
+def test_merge_into_payload_drops_stale_v4_fields_before_merging():
+    """payload 带 v4 合并字段时，v5 分析合并前先丢弃旧字段（不得沿用）。"""
+    payload = {
+        "videoId": VIDEO_ID,
+        "analysisVersion": "analysis.v4",
+        "idioms": [
+            {"blockId": 1, "phrase": "old idiom", "meaning": "旧",
+             "quote": "The museum opens at nine"},
+        ],
+        "culture": [
+            {"blockId": 1, "term": "old culture", "note": "旧",
+             "quote": "The museum opens at nine"},
+        ],
+        "transcript": copy.deepcopy(BLOCKS),
+    }
+    payload["transcript"][0]["highlights"] = [
+        {"en_word": "museum", "zh_word": "旧版释义", "color": HIGHLIGHT_COLOR}
+    ]
+    payload["transcript"][1]["highlights"] = [
+        {"en_word": "Visitors", "zh_word": "旧版释义", "color": HIGHLIGHT_COLOR}
+    ]
+    # 新分析没有 highlights 字段：若沿用了旧字段，两个 block 的旧高亮会留下。
+    analysis = {
+        "analysisVersion": "analysis.v5",
+        "idioms": [],
+        "culture": [],
+    }
+    assert teaching_analysis.merge_into_payload(payload, analysis) is True
+    assert payload["analysisVersion"] == "analysis.v5"
+    assert "highlights" not in payload["transcript"][0]
+    assert "highlights" not in payload["transcript"][1]
+    assert payload["idioms"] == [] and payload["culture"] == []
+
+
+def test_merge_into_payload_discards_old_version_analysis():
+    """旧版本分析本身也不得写入/沿用：丢弃旧合并字段并返回 False。"""
+    payload = {
+        "videoId": VIDEO_ID,
+        "analysisVersion": "analysis.v4",
+        "idioms": [
+            {"blockId": 1, "phrase": "old idiom", "meaning": "旧",
+             "quote": "The museum opens at nine"},
+        ],
+        "culture": [],
+        "transcript": copy.deepcopy(BLOCKS),
+    }
+    payload["transcript"][0]["highlights"] = [
+        {"en_word": "museum", "zh_word": "旧版释义", "color": HIGHLIGHT_COLOR}
+    ]
+    stale_analysis = {
+        "analysisVersion": "analysis.v4",
+        "highlights": {"1": [{"en_word": "museum", "zh_word": "仍不该合并"}]},
+        "idioms": [],
+        "culture": [],
+    }
+    assert teaching_analysis.merge_into_payload(payload, stale_analysis) is False
+    assert "analysisVersion" not in payload
+    assert "idioms" not in payload and "culture" not in payload
+    assert "highlights" not in payload["transcript"][0]
 
 
 def test_merge_into_payload_drops_cached_highlights_without_gloss():
     """旧缓存/模型输出里 zh 为空的条目，合并时也整条丢弃（不再渲染无释义高亮）。"""
     payload = {"transcript": copy.deepcopy(BLOCKS)}
     analysis = {
-        "analysisVersion": "analysis.v4",
+        "analysisVersion": "analysis.v5",
         "highlights": {
             "1": [{"en_word": "museum", "zh_word": ""}],
             "2": [
@@ -738,7 +925,7 @@ def test_merge_into_payload_drops_cached_highlights_without_gloss():
         "zh_word": "买票",
         "color": HIGHLIGHT_COLOR,
     }]
-    assert payload["analysisVersion"] == "analysis.v4"
+    assert payload["analysisVersion"] == "analysis.v5"
 
 
 def test_merge_into_payload_keeps_old_cache_compatible():
@@ -817,7 +1004,7 @@ def test_cached_stream_merges_analysis_and_zero_extra_calls(
             encoding="utf-8"
         )
     )
-    assert written["analysisVersion"] == "analysis.v4"
+    assert written["analysisVersion"] == "analysis.v5"
     assert written["idioms"] and written["culture"]
     assert all(block["highlights"] for block in written["transcript"])
 
@@ -921,7 +1108,7 @@ def test_fresh_stream_attaches_analysis_after_translation(
             encoding="utf-8"
         )
     )
-    assert written["analysisVersion"] == "analysis.v4"
+    assert written["analysisVersion"] == "analysis.v5"
     assert written["idioms"] and written["culture"]
 
 
@@ -944,7 +1131,7 @@ def test_api_returns_analysis_and_caches(analysis_db, history_dir, llm_stub):
     payload = first.json()
     assert payload["contentRef"] == VIDEO_ID
     assert payload["level"] == "liftoff"
-    assert payload["analysisVersion"] == "analysis.v4"
+    assert payload["analysisVersion"] == "analysis.v5"
     assert payload["highlights"] and payload["idioms"] and payload["culture"]
     assert len(llm_stub.prompts) == 1
 

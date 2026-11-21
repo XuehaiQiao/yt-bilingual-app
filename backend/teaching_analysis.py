@@ -1,8 +1,9 @@
 """AI 教学分析：语境释义（highlight）/ 习语（idiom）/ 文化点（culture）。
 
-``analysis.v3`` 恢复 ``highlights``，但它们的用途是给**基础层已标出的
+``analysis.v5`` 仍包含 ``highlights``，但它们的用途是给**基础层已标出的
 高于当前 CEFR 的词**提供当下语境的中文释义；前端不会把 AI 选出的词当作
-高亮依据，也不会让不在基础层的词显示释义。
+高亮依据，也不会让不在基础层的词显示释义。v5 只改了候选词规则（语料级
+句首专名兜底），旧键（v4）不命中、下次打开按需重生成。
 
 背景（specs/028）：旧翻译调用在每一批 prompt 里顺带要求模型为每个 block 生成
 ``highlights``——同一视频每翻一次、每换一批都要重复生成同样的教学内容，成本
@@ -60,7 +61,7 @@ logger = logging.getLogger("linguatrek.teaching_analysis")
 
 # prompt/校验口径版本：缓存键的一部分；改 prompt 或校验规则时递增，旧分析
 # 自动失效重生成（旧行保留，便于回滚/排查）。
-ANALYSIS_VERSION = "analysis.v4"
+ANALYSIS_VERSION = "analysis.v5"
 
 # 账本/配额功能名（ai/ledger.KNOWN_FEATURES / ai/quota._FEATURE_LIMIT_ATTRS）。
 FEATURE = "analysis"
@@ -428,6 +429,33 @@ def _merge_parts(parts: list[dict]) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _token_observations(blocks: list[dict]) -> dict[str, tuple[bool, bool]]:
+    """统计**整个分析文本**里每个小写词形的两条观察事实。
+
+    返回 ``{casefold 词形: (has_lowercase, has_non_initial_capital)}``：
+
+    - ``has_lowercase``：该词形是否至少一次以小写开头出现；
+    - ``has_non_initial_capital``：是否至少一次以首字母大写出现在**非句首**。
+
+    统计跨所有 block（整章 / 字幕流 / 整篇文章），而不是逐 block——specs/004
+    的语料级兜底靠的正是「全文从未小写 + 至少一次非句首大写」：某词只在句首
+    大写出现时，仍可由同文本别处的非句首大写实例推断为专名（例：Oz 的
+    ``Toto``）。前端 ``collectReadingTokens`` 在同一遍扫描里统计同样两条事实
+    并随 classify 请求发出；判定仍只在 :mod:`word_rules`。
+    """
+    observations: dict[str, tuple[bool, bool]] = {}
+    for block in blocks:
+        for token, sentence_start in word_rules.iter_words(_clean_text(block.get("en"))):
+            key = token.casefold()
+            has_lowercase, has_non_initial_capital = observations.get(key, (False, False))
+            if token[0].islower():
+                has_lowercase = True
+            if token[0].isupper() and not sentence_start:
+                has_non_initial_capital = True
+            observations[key] = (has_lowercase, has_non_initial_capital)
+    return observations
+
+
 def _candidate_words_for_blocks(blocks: list[dict], level: str) -> dict[str, list[str]]:
     """Return the words above the selected CEFR threshold, per block.
 
@@ -436,12 +464,17 @@ def _candidate_words_for_blocks(blocks: list[dict], level: str) -> dict[str, lis
     its own two words. Tokenization, sentence-start detection and the proper
     noun filter all come from :mod:`word_rules` (specs/028): the same rule now
     drives ``POST /api/vocabulary/classify``, so video and readers cannot
-    diverge on which words are candidates. Each word is resolved once per
-    analysis (batched by 100 through ``vocabulary.level_for_words``).
+    diverge on which words are candidates. The corpus-level facts
+    (``has_lowercase`` / ``has_non_initial_capital``) are collected once over
+    the whole analysis text before the per-block pass, so a proper noun that
+    appears at a sentence start is still recognised (specs/004 v1.1). Each
+    word is resolved once per analysis (batched by 100 through
+    ``vocabulary.level_for_words``).
     """
     threshold = _VOCAB_LEVEL_RANK.get(level, 2)
     if threshold >= 6:
         return {}
+    observations = _token_observations(blocks)
     word_to_blocks: dict[str, list[str]] = {}
     block_words: dict[str, list[str]] = {}
     for block in blocks:
@@ -449,7 +482,15 @@ def _candidate_words_for_blocks(blocks: list[dict], level: str) -> dict[str, lis
         words: list[str] = []
         seen: set[str] = set()
         for token, sentence_start in word_rules.iter_words(_clean_text(block.get("en"))):
-            if word_rules.is_proper_token(token, sentence_start):
+            has_lowercase, has_non_initial_capital = observations.get(
+                token.casefold(), (False, False)
+            )
+            if word_rules.is_proper_token(
+                token,
+                sentence_start=sentence_start,
+                has_lowercase=has_lowercase,
+                has_non_initial_capital=has_non_initial_capital,
+            ):
                 continue
             key = token.casefold()
             if key in seen:
@@ -486,6 +527,21 @@ def _candidate_words_for_blocks(blocks: list[dict], level: str) -> dict[str, lis
     return candidates
 
 
+def _cache_is_stale(cached: dict, normalized: list[dict], level: str) -> bool:
+    """缓存行是否必须丢弃并重生成（旧分析版本 / 旧空释义行）。
+
+    ``load_cached`` 已按 ``ANALYSIS_VERSION`` 过滤缓存键，但键过滤不能替代
+    payload 自检：手工恢复/旧常量写入的 payload 可能版本对不上。版本不匹配
+    的行一律不复用——旧候选规则产出的高亮必须按新版本重生成（specs/028
+    v1.1，不批量回填）。
+    """
+    if not isinstance(cached, dict):
+        return False
+    if cached.get("analysisVersion") != ANALYSIS_VERSION:
+        return True
+    return _cache_has_empty_glosses(cached, normalized, level)
+
+
 def _cache_has_empty_glosses(cached: dict, normalized: list[dict], level: str) -> bool:
     """True for an old v4 row generated before translations existed.
 
@@ -493,7 +549,8 @@ def _cache_has_empty_glosses(cached: dict, normalized: list[dict], level: str) -
     candidate entries with empty ``zh_word``. It must not win forever: one
     regeneration after translations land is enough. ``glossAttempted`` marks
     the regenerated row so a model that genuinely cannot gloss a word does not
-    cause an endless retry loop.
+    cause an endless retry loop. 版本不匹配由 :func:`_cache_is_stale` 处理；
+    本函数只判断当前版本行的空释义。
     """
     if not isinstance(cached, dict):
         return False
@@ -701,9 +758,15 @@ async def _generate_one_batch(
     *,
     model: str | None,
     user_id: str | None,
+    candidates: dict[str, list[str]] | None = None,
 ) -> tuple[dict, str]:
-    """生成并校验单批分析；按降级链尝试候选模型，全部失败抛 AnalysisFailed。"""
-    candidates = _candidate_words_for_blocks(batch, level)
+    """生成并校验单批分析；按降级链尝试候选模型，全部失败抛 AnalysisFailed。
+
+    ``candidates`` 由调用方按**整个分析文本**算好后传入（长内容分批时特别
+    重要：句首专名的非句首大写实例可能落在另一批，逐批统计会分叉）；不传
+    时退回按本批计算，保持纯函数可单测。
+    """
+    candidates = candidates if candidates is not None else _candidate_words_for_blocks(batch, level)
     prompt = build_prompt(batch, level, target_lang, candidates)
     models = quota.degradation_chain(feature=FEATURE, preferred_model=model)
     if not models:
@@ -776,7 +839,7 @@ async def ensure_analysis(
     cached = await asyncio.to_thread(
         load_cached, content_hash_value, canonical_level, lang
     )
-    if cached is not None and not _cache_has_empty_glosses(cached, normalized, canonical_level):
+    if cached is not None and not _cache_is_stale(cached, normalized, canonical_level):
         return cached
 
     # 2) 同 key 串行化；拿到锁后重查，第二个并发请求直接复用第一个的结果。
@@ -785,7 +848,7 @@ async def ensure_analysis(
         cached = await asyncio.to_thread(
             load_cached, content_hash_value, canonical_level, lang
         )
-        if cached is not None and not _cache_has_empty_glosses(cached, normalized, canonical_level):
+        if cached is not None and not _cache_is_stale(cached, normalized, canonical_level):
             return cached
 
         # 只有真的要走模型才占一条「教学分析」日配额（缓存命中的上面已返回）。
@@ -799,10 +862,18 @@ async def ensure_analysis(
 
         parts: list[dict] = []
         used_models: list[str] = []
+        # 候选词按整个文本算一次（语料级兜底跨 block 生效），再按批切片；
+        # 逐批统计会让「非句首大写实例在另一批」的句首专名重新漏判。
+        candidates = _candidate_words_for_blocks(normalized, canonical_level)
         for start in range(0, len(normalized), MAX_BLOCKS_PER_CALL):
             batch = normalized[start:start + MAX_BLOCKS_PER_CALL]
             part, used_model = await _generate_one_batch(
-                batch, canonical_level, lang, model=model, user_id=user_id
+                batch,
+                canonical_level,
+                lang,
+                model=model,
+                user_id=user_id,
+                candidates=candidates,
             )
             parts.append(part)
             used_models.append(used_model)
@@ -924,21 +995,48 @@ def _sanitize_points_for_payload(points, index: dict[str, dict], key: str) -> li
     return cleaned
 
 
+def _drop_merged_analysis_fields(payload: dict) -> None:
+    """清除 payload 里由旧版本分析合并出来的字段（specs/028 v1.1）。
+
+    版本升级后旧分析（含旧候选规则产出的 highlights / idioms / culture）不得
+    沿用：这里只删分析写入的字段，不动英文/译文等翻译内容。调用方随后要么
+    合并同一版本的新分析，要么保持「没有分析字段」的旧形状。
+    """
+    for block in payload.get("transcript") or []:
+        if isinstance(block, dict):
+            block.pop("highlights", None)
+    for key in ("idioms", "culture", "analysisVersion"):
+        payload.pop(key, None)
+
+
 def merge_into_payload(payload: dict, analysis: dict | None) -> bool:
     """把分析结果合并进字幕缓存 payload（按 block id；新字段向后兼容）。
 
-    - 只覆盖分析里出现的 block；没有分析的 block 保留原有 highlights
-      （旧缓存自带高亮时不因升级而丢失）；
+    - 只覆盖分析里出现的 block；**没有分析字段**的旧缓存保留原有 highlights
+      （回退兼容，不阻断播放）；
     - ``idioms`` / ``culture`` / ``analysisVersion`` 写在 payload 顶层；
-    - 合并前按当前英文/译文再校验一次（译文变化/内容被替换时丢弃失效条目）。
+    - 合并前按当前英文/译文再校验一次（译文变化/内容被替换时丢弃失效条目）；
+    - **版本闸**（specs/028 v1.1）：分析版本不是当前 ``ANALYSIS_VERSION`` 时
+      不合并、返回 False；payload 里已有的旧版本合并字段（v4 高亮/习语/文化
+      点/版本号）先丢弃，绝不沿用。新版本分析写入后，版本号强制为当前值。
 
-    返回是否真的合并了字段（None/空分析返回 False）。
+    返回是否真的合并了字段（None/空分析/旧版本分析返回 False）。
     """
     if not isinstance(payload, dict) or not isinstance(analysis, dict):
         return False
     index = _current_block_index(payload)
     if not index:
         return False
+    incoming_version = analysis.get("analysisVersion")
+    if incoming_version is not None and incoming_version != ANALYSIS_VERSION:
+        # 旧版本分析不得写进 payload；已有旧合并字段也一并丢弃（不沿用）。
+        if payload.get("analysisVersion") not in (None, ANALYSIS_VERSION):
+            _drop_merged_analysis_fields(payload)
+        return False
+    if payload.get("analysisVersion") not in (None, ANALYSIS_VERSION):
+        # 新版本分析要完整覆盖旧版本：先清掉旧合并字段，避免「本次分析没有
+        # 条目的 block」继续沿用 v4 候选规则产出的高亮。
+        _drop_merged_analysis_fields(payload)
     transcript = payload.get("transcript")
     highlights = analysis.get("highlights")
     if isinstance(highlights, dict):
@@ -958,7 +1056,7 @@ def merge_into_payload(payload: dict, analysis: dict | None) -> bool:
     payload["culture"] = _sanitize_points_for_payload(
         analysis.get("culture"), index, "culture"
     )
-    payload["analysisVersion"] = analysis.get("analysisVersion") or ANALYSIS_VERSION
+    payload["analysisVersion"] = ANALYSIS_VERSION
     return True
 
 

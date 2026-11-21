@@ -666,6 +666,32 @@ def test_classify_keeps_duplicate_texts_and_rejects_bad_shape(vocab_env, make_cl
     assert wrong_type.status_code == 422
 
 
+def test_classify_accepts_corpus_facts_in_camel_and_snake_case(vocab_env, make_client):
+    """classify 透传两条语料级观察事实（specs/004 v1.1 句首专名兜底）。"""
+    items = [
+        # Toto 型：句首出现，但全文从未小写、且另有非句首大写 → 专名。
+        {"text": "Toto", "sentenceStart": True,
+         "hasLowercase": False, "hasNonInitialCapital": True},
+        # The 型：句首出现但全文有小写 → 普通词（照常返回等级）。
+        {"text": "The", "sentenceStart": True,
+         "hasLowercase": True, "hasNonInitialCapital": True},
+        # 只出现在句首、没有非句首大写 → 词形信息不足，仍按普通词。
+        {"text": "Toto", "sentenceStart": True,
+         "hasLowercase": False, "hasNonInitialCapital": False},
+        # 蛇形入参同样接受。
+        {"text": "Toto", "sentence_start": True,
+         "has_non_initial_capital": True, "has_lowercase": False},
+        # 非句首大写本来就是专名，两条事实不会把它变回普通词。
+        {"text": "Toto", "sentenceStart": False},
+    ]
+    with make_client() as client:
+        response = client.post("/api/vocabulary/classify", json={"items": items})
+    assert response.status_code == 200, response.text
+    proper = [item["proper"] for item in response.json()["items"]]
+    assert proper == [True, False, False, True, True]
+    assert response.json()["items"][1]["level"] == "A1"
+
+
 def test_classify_limit_and_empty_items(vocab_env, make_client):
     ok_items = [{"text": f"w{i}"} for i in range(200)]
     too_many = [{"text": f"w{i}"} for i in range(201)]
@@ -695,25 +721,40 @@ def test_classify_public_endpoint_does_not_issue_guest_cookie(vocab_env, make_cl
 
 
 def test_classify_rule_matches_word_rules_module(vocab_env, make_client):
-    """端点只是 word_rules 的 HTTP 封装：专名判定与纯函数一致。"""
+    """端点只是 word_rules 的 HTTP 封装：专名判定（含语料事实）与纯函数一致。"""
     tokens = [
-        ("George", False),
-        ("George", True),
-        ("London", False),
-        ("The", True),
-        ("museum", False),
+        # (text, sentence_start, has_lowercase, has_non_initial_capital)
+        ("George", False, False, True),
+        ("George", True, True, True),
+        ("Toto", True, False, True),
+        ("Toto", True, False, False),
+        ("London", False, False, False),
+        ("The", True, True, True),
+        ("museum", False, True, False),
     ]
     with make_client() as client:
         response = client.post(
             "/api/vocabulary/classify",
             json={"items": [
-                {"text": text, "sentenceStart": sentence_start}
-                for text, sentence_start in tokens
+                {
+                    "text": text,
+                    "sentenceStart": sentence_start,
+                    "hasLowercase": has_lowercase,
+                    "hasNonInitialCapital": has_non_initial_capital,
+                }
+                for text, sentence_start, has_lowercase, has_non_initial_capital in tokens
             ]},
         )
     assert response.status_code == 200
-    for item, (text, sentence_start) in zip(response.json()["items"], tokens):
-        assert item["proper"] is word_rules.is_proper_token(text, sentence_start)
+    for item, (text, sentence_start, has_lowercase, has_non_initial_capital) in zip(
+        response.json()["items"], tokens
+    ):
+        assert item["proper"] is word_rules.is_proper_token(
+            text,
+            sentence_start=sentence_start,
+            has_lowercase=has_lowercase,
+            has_non_initial_capital=has_non_initial_capital,
+        )
 
 
 # ---------------------------------------------------------------------------

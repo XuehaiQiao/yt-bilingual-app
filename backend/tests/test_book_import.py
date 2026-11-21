@@ -875,7 +875,9 @@ def test_read_chapter_belongs_to_current_user(book_client, second_client, web):
 # 形状与 ``teaching_analysis`` 生成的 analysis 一致：highlights 按 block id
 # 分组（block 就是段落 index），idioms/culture 带 blockId + 原文 quote。
 ANALYSIS_STUB = {
-    "analysisVersion": "analysis.test",
+    # 与 merge_into_payload 的版本闸一致：旧版本分析会被丢弃，因此桩必须
+    # 使用当前 ANALYSIS_VERSION（否则测的就是「旧版本不合并」而不是合并逻辑）。
+    "analysisVersion": teaching_analysis.ANALYSIS_VERSION,
     "level": "orbit",
     "highlights": {
         "0": [{"en_word": "truth", "zh_word": "译文段落", "color": "#f59e0b"}],
@@ -952,7 +954,7 @@ def test_read_chapter_with_level_returns_analysis_fields(
             "kind": "culture",
         },
     ]
-    assert payload["analysisVersion"] == "analysis.test"
+    assert payload["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
     assert payload["analysisLevel"] == "orbit"
 
     # 复用公版书的调用约定：内容寻址的 content_ref + 当前用户/语言。

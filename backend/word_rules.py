@@ -11,7 +11,10 @@
 1. 内置常见专名名单（人名 / 地名 / 国家民族语言 / 机构品牌缩写）**命中即
    不标亮，与出现位置无关**；
 2. 非句首的「首字母大写」token 视为专名，不标亮；
-3. 其余 token 交给 CEFR 阈值判定（前端的难度标亮、028 的候选词）。
+3. **语料级句首兜底**：句首 token 若在同一文本（章节 / 字幕流 / 整篇文章）
+   内**从未以小写出现**、且**至少一次以首字母大写出现在非句首**，也视为
+   专名、不标亮（例：Oz 的 ``Toto``）；
+4. 其余 token 交给 CEFR 阈值判定（前端的难度标亮、028 的候选词）。
 
 收录口径与前端旧名单一致：
 
@@ -25,11 +28,15 @@
 
 已知限制（不假装解决，改规则时请保留本段）：
 
-- **句首专名必漏**：block 是句/段级，句首专名与句首普通词在词形上无法区分；
-  句首专名只能靠上面这份名单兜底，名单外的句首专名必然漏判（会被当成普通
-  词按阈值标亮）。完整句法句首判定不在本规则范围内。
+- **只出现在句首、且全文从未出现非句首大写的专名仍无法判定**：词形本身
+  与句首普通词没有区别，没有足够信息（不假装解决）。上面第 3 条兜底只能
+  救「同文本内另有非句首大写实例」的专名；句首专名若全篇只此一次，仍会
+  被当成普通词按阈值标亮。
 - 同一词形若在文中另处小写/句首出现，非句首大写实例仍可能被判到（调用方
   只能按全词形判断）；误差方向是「多标」而不是「漏标」，可接受。
+- 语料级兜底的代价：某普通词若在全文中**只以大写出现**、且至少一次出现在
+  非句首（例：整章里的称谓 ``Uncle``），也会被当成专名不标亮；这个方向是
+  「少标」。它是救句首专名（Toto 型）的必要代价，本规则接受。
 - 缩写后接普通词可能误判句首（Mr./Mrs./Dr. 等已处理，etc. 等未处理）；
   驼峰词（eBay）首字母小写，按普通词处理。
 """
@@ -105,13 +112,23 @@ def is_listed_proper_noun(token: str) -> bool:
     return word.endswith("'s") and word[:-2] in PROPER_NOUNS
 
 
-def is_proper_token(token: str, sentence_start: bool = False) -> bool:
+def is_proper_token(
+    token: str,
+    *,
+    sentence_start: bool = False,
+    has_lowercase: bool = False,
+    has_non_initial_capital: bool = False,
+) -> bool:
     """这个 token 是否按「专名」处理（专名不参与标亮；规则见模块 docstring）。
 
-    - 名单命中 → 任何位置都是专名（含句首；这是句首专名的唯一兜底）；
+    - 名单命中 → 任何位置都是专名（含句首）；
     - 非句首的「首字母大写」→ 专名；
-    - 句首 token 仍按普通词处理（否则句首普通词会被整片放过）——**句首专名
-      必漏**：句首专名与句首普通词词形上无法区分，名单外的句首专名必然漏判。
+    - 句首 token 只有拿到**语料级观察事实**才可能判专名：同一文本内从未
+      以小写出现（``has_lowercase=False``），且至少一次以首字母大写出现在
+      非句首（``has_non_initial_capital=True``）→ 专名。两条事实由调用方
+      在同一文本的 token 扫描里统计后传入，本函数本身无状态、不跨调用记忆；
+    - **只出现在句首、且全文从未出现非句首大写的专名仍无解**：词形与句首
+      普通词没有区别，只能按普通词处理（不假装解决）；
     - 少于 2 个字符、或没有字母的 token（数字/标点）不算专名。
     """
     word = clean_token(token)
@@ -119,9 +136,12 @@ def is_proper_token(token: str, sentence_start: bool = False) -> bool:
         return False
     if is_listed_proper_noun(word):
         return True
-    if sentence_start:
+    capitalized = "A" <= word[0] <= "Z"
+    if not capitalized:
         return False
-    return "A" <= word[0] <= "Z"
+    if not sentence_start:
+        return True
+    return has_non_initial_capital and not has_lowercase
 
 
 def _ends_sentence(raw_token: str) -> bool:

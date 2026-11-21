@@ -18,18 +18,24 @@
 //     and C2; C2 is the highest stop, so at C2 nothing is marked;
 //   - an unavailable API fails silently into "no highlight" — reading is never
 //     blocked and a level is never invented;
-//   - the classify cache key is the original word form + `sentenceStart` (the
-//     backend rule is positional), so the cache of one reader can be reused by
-//     another without letting a capitalised occurrence borrow the wrong answer.
+//   - the classify request carries `sentenceStart` plus two corpus-level
+//     observation facts per lowercase form (`hasLowercase` /
+//     `hasNonInitialCapital`), collected in the same scan as the tokens. They
+//     are *observations only*: the backend decides `proper` (specs/004 v1.1
+//     句首专名兜底), so the frontend never applies the final rule;
+//   - the classify cache key is the original word form + `sentenceStart` + the
+//     two corpus facts (the backend rule is positional and corpus-level), so a
+//     cached answer is never reused for a text with different observations.
 //
-// Known limitation (kept, not "solved"): a block is a sentence/paragraph and
-// its first token is assumed to start a sentence. A proper noun at the start
-// of a block is indistinguishable from an ordinary capitalised word, so a
-// proper noun at position 0 (and any unlisted one) is necessarily missed by
-// the proper-noun filter (句首专名必漏). The same form appearing elsewhere in
-// lowercase/sentence-start can also make its non-initial capitalised
-// occurrences get marked — the error direction is "extra marks", not "missed
-// words". Both are accepted for the block-level v1 rule.
+// Known limitation (kept, not "solved"): a proper noun that only ever appears
+// at a sentence start, and never capitalised outside a sentence start, cannot
+// be distinguished from an ordinary capitalised word — word-form information
+// is not enough (只出现在句首且无非句首大写的专名仍无解). A form that also
+// appears in lowercase in the same text is treated as an ordinary word, so its
+// capitalised non-initial occurrences may be marked — the error direction is
+// "extra marks", not "missed words". Both are accepted for the block-level
+// rule; the corpus fallback (never lowercase + non-initial capital) fixes the
+// common `Toto` case.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     fetchVocabularyClassify,
@@ -77,31 +83,58 @@ function endsSentence(rawToken: string): boolean {
     return !NON_TERMINAL_ABBREVIATIONS.has(cleanReadingWord(rawToken).toLowerCase());
 }
 
-/** One token as it appeared in the text: original spelling + positional context. */
+/** One token as it appeared in the text: spelling, position and corpus facts. */
 export interface ReadingToken {
     text: string;
     sentenceStart: boolean;
-}
-
-/** classify 缓存键：原词形（保留大小写）+ 是否句首。 */
-function classifyCacheKey(text: string, sentenceStart: boolean): string {
-    return `${sentenceStart ? '1' : '0'}\u0000${text}`;
+    /** 该小写词形在本文里是否至少一次以小写出现。 */
+    hasLowercase: boolean;
+    /** 该词形是否至少一次以首字母大写出现在非句首。 */
+    hasNonInitialCapital: boolean;
 }
 
 /**
- * 收集本文里需要 classify 的 token（原词形 + 句首标记）。
+ * classify 缓存键：原词形（保留大小写）+ 是否句首 + 两条语料级观察事实。
+ *
+ * 后端规则是「位置 + 语料」的：同一词形在另一篇文本里的小写/非句首大写
+ * 分布可能不同，所以缓存键必须带事实，不能让不同文本借到彼此的判定。
+ */
+function classifyCacheKey(token: ReadingToken): string {
+    return [
+        token.sentenceStart ? '1' : '0',
+        token.hasLowercase ? '1' : '0',
+        token.hasNonInitialCapital ? '1' : '0',
+        token.text,
+    ].join('\u0000');
+}
+
+/**
+ * 收集本文里需要 classify 的 token（原词形 + 句首标记 + 两条语料事实）。
  *
  * 句首判定与后端 `word_rules.iter_words` 同一口径：每个换行（调用方的句/段
  * block）算句首；行内第一个实词，以及句末标点（. ! ? … 等）后的第一个实词
  * 算句首；常见缩写（Mr. 等）不结束句子。
  *
+ * 同一遍扫描里按小写词形累计两条观察事实（specs/004 v1.1 句首专名兜底）：
+ *   - `hasLowercase`：该词形至少一次以小写（首字母小写）出现；
+ *   - `hasNonInitialCapital`：该词形至少一次首字母大写且不在句首。
+ * 它们只是**观察事实**，随 classify 请求发给后端；是否专名由
+ * `backend/word_rules.py` 判定，前端不做最终判定。
+ *
  * 只处理「清洗后至少 2 字符且含字母」的 token；纯数字/标点不送判定。
- * 同一 (原词形, sentenceStart) 只保留一次——后端返回专名标记与位置有关，
- * 所以必须在缓存键里带上 sentenceStart。
+ * 同一 (原词形, sentenceStart, 两条事实) 只保留一次。
  */
 export function collectReadingTokens(corpus: string): ReadingToken[] {
-    const tokens: ReadingToken[] = [];
-    const seen = new Set<string>();
+    interface FormFacts {
+        hasLowercase: boolean;
+        hasNonInitialCapital: boolean;
+    }
+    interface Occurrence {
+        text: string;
+        sentenceStart: boolean;
+    }
+    const formFacts = new Map<string, FormFacts>();
+    const occurrences: Occurrence[] = [];
     for (const line of corpus.split('\n')) {
         let sentenceStart = true;
         for (const raw of line.split(/\s+/)) {
@@ -109,15 +142,30 @@ export function collectReadingTokens(corpus: string): ReadingToken[] {
             const token = cleanReadingWord(raw);
             const isWord = token.length >= 2 && /[A-Za-z]/.test(token);
             if (isWord) {
-                const key = classifyCacheKey(token, sentenceStart);
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    tokens.push({ text: token, sentenceStart });
-                }
+                const form = token.toLowerCase();
+                const facts = formFacts.get(form) ?? {
+                    hasLowercase: false,
+                    hasNonInitialCapital: false,
+                };
+                if (/^[a-z]/.test(token)) facts.hasLowercase = true;
+                if (/^[A-Z]/.test(token) && !sentenceStart) facts.hasNonInitialCapital = true;
+                formFacts.set(form, facts);
+                occurrences.push({ text: token, sentenceStart });
                 sentenceStart = false;
             }
             if (endsSentence(raw)) sentenceStart = true;
         }
+    }
+    const tokens: ReadingToken[] = [];
+    const seen = new Set<string>();
+    for (const occurrence of occurrences) {
+        const facts = formFacts.get(occurrence.text.toLowerCase());
+        if (!facts) continue;
+        const token: ReadingToken = { ...occurrence, ...facts };
+        const key = classifyCacheKey(token);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        tokens.push(token);
     }
     return tokens;
 }
@@ -152,7 +200,7 @@ function wordRank(level: string | null): number | null {
     return WORD_LEVEL_RANK[normalized] ?? null;
 }
 
-/** Process-wide cache: (original form, sentenceStart) → backend classification. */
+/** Process-wide cache: (form, position, corpus facts) → backend classification. */
 const classifyCache = new Map<string, VocabularyClassifyResult>();
 
 export interface ReadingHighlights {
@@ -208,7 +256,7 @@ export function useReadingHighlights(texts: readonly string[]): ReadingHighlight
     useEffect(() => {
         if (!enabled || tokens.length === 0 || failed) return;
         const missing = tokens.filter(
-            (token) => !classifyCache.has(classifyCacheKey(token.text, token.sentenceStart)),
+            (token) => !classifyCache.has(classifyCacheKey(token)),
         );
         if (missing.length === 0) return;
 
@@ -219,7 +267,7 @@ export function useReadingHighlights(texts: readonly string[]): ReadingHighlight
                 results.forEach((result, index) => {
                     const token = missing[index];
                     if (!token) return;
-                    classifyCache.set(classifyCacheKey(token.text, token.sentenceStart), {
+                    classifyCache.set(classifyCacheKey(token), {
                         text: token.text,
                         level: result.level,
                         proper: result.proper,
@@ -261,9 +309,7 @@ export function useReadingHighlights(texts: readonly string[]): ReadingHighlight
         const forms = new Set<string>();
         if (!failed) {
             for (const token of tokens) {
-                const result = classifyCache.get(
-                    classifyCacheKey(token.text, token.sentenceStart),
-                );
+                const result = classifyCache.get(classifyCacheKey(token));
                 if (!result) continue;
                 const form = token.text.toLowerCase();
                 if (result.proper) continue;

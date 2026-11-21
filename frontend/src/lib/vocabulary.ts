@@ -301,13 +301,20 @@ export async function fetchVocabularyLevels(
 }
 
 /**
- * One token for `POST /api/vocabulary/classify`: the original spelling plus the
- * caller's positional context. The backend (word_rules.py) owns the proper-noun
- * list and the capitalisation rule, so the frontend never re-implements them.
+ * One token for `POST /api/vocabulary/classify`: the original spelling, the
+ * caller's positional context, and two corpus-level observation facts about
+ * the same lowercase form in this text. The backend (word_rules.py) owns the
+ * proper-noun list and the capitalisation rule (including the corpus-level
+ * sentence-start fallback), so the frontend never re-implements them and
+ * never decides `proper` itself.
  */
 export interface VocabularyClassifyItem {
     text: string;
     sentenceStart: boolean;
+    /** True when this lowercase form appears in lowercase somewhere in the text. */
+    hasLowercase: boolean;
+    /** True when this form appears capitalised at least once outside a sentence start. */
+    hasNonInitialCapital: boolean;
 }
 
 /** One classification result: CEFR level (`null` = invalid token) + proper flag. */
@@ -330,9 +337,9 @@ export const VOCABULARY_CLASSIFY_BATCH_SIZE = 100;
  * `POST /api/vocabulary/classify` keeps the input order and spelling; an
  * invalid token gets `level: null` without failing the request. Results are
  * returned in the same order as `items` (the request carries duplicate texts
- * with different `sentenceStart` values, so callers must map by index, not by
- * text). Batches are ≤100 entries; a failed batch throws so the caller can
- * degrade silently.
+ * with different `sentenceStart` / corpus-fact combinations, so callers must
+ * map by index, not by text). Batches are ≤100 entries; a failed batch throws
+ * so the caller can degrade silently.
  */
 export async function fetchVocabularyClassify(
     items: readonly VocabularyClassifyItem[],
@@ -348,6 +355,8 @@ export async function fetchVocabularyClassify(
                 items: batch.map((item) => ({
                     text: item.text,
                     sentenceStart: item.sentenceStart,
+                    hasLowercase: item.hasLowercase,
+                    hasNonInitialCapital: item.hasNonInitialCapital,
                 })),
             }),
             ...(options.signal ? { signal: options.signal } : {}),

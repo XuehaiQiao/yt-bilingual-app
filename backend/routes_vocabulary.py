@@ -11,7 +11,8 @@
 - ``GET /api/vocabulary/phrases/{id}``：短语详情；
 - ``GET /api/vocabulary/level?words=a,b,c``：词 → A1–C1 / ``C1+`` / ``null``；
 - ``POST /api/vocabulary/classify``：批量标亮判定（CEFR 等级 + 专名），
-  ``{items:[{text, sentenceStart?}]}`` → ``{items:[{text, level, proper}]}``；
+  ``{items:[{text, sentenceStart?, hasLowercase?, hasNonInitialCapital?}]}``
+  → ``{items:[{text, level, proper}]}``；
   规则唯一来源 ``word_rules.py``（specs/004 / 028）。
 
 数据来自 ``content/wordlists/`` 与 ``content/wordlist/`` 的只读 JSON，没有
@@ -36,17 +37,25 @@ CLASSIFY_LEVEL_BATCH = vocabulary.MAX_LEVEL_WORDS
 
 
 class ClassifyItemIn(BaseModel):
-    """单个待判定 token；``sentenceStart`` 由调用方按上下文给出。"""
+    """单个待判定 token；句首与两条语料级观察事实由调用方按上下文给出。"""
 
     text: str
     sentence_start: bool = Field(
         False,
         validation_alias=AliasChoices("sentenceStart", "sentence_start"),
     )
+    has_lowercase: bool = Field(
+        False,
+        validation_alias=AliasChoices("hasLowercase", "has_lowercase"),
+    )
+    has_non_initial_capital: bool = Field(
+        False,
+        validation_alias=AliasChoices("hasNonInitialCapital", "has_non_initial_capital"),
+    )
 
 
 class ClassifyRequest(BaseModel):
-    """批量标亮判定请求体：``{items:[{text, sentenceStart?}]}``（≤200 条）。"""
+    """批量标亮判定请求体：``{items:[{text, sentenceStart?, hasLowercase?, hasNonInitialCapital?}]}``（≤200 条）。"""
 
     items: list[ClassifyItemIn]
 
@@ -159,7 +168,8 @@ def post_vocabulary_classify(body: ClassifyRequest):
     规则唯一来源是 :mod:`word_rules`（specs/004 / 028）：后端教学分析的候选词
     与前端难度标亮都调它，避免视频页与阅读页出现两套名单/两套大小写判断。
 
-    - 入参 ``{items:[{text, sentenceStart?}]}``，最多 200 条（超过 400）；
+    - 入参 ``{items:[{text, sentenceStart?, hasLowercase?, hasNonInitialCapital?}]}``，
+      后两项是同一文本内的语料级观察事实（驼峰/蛇形都接受），最多 200 条（超过 400）；
     - 出参 ``{items:[{text, level, proper}]}``，保持入参顺序与原词形；
     - 非法 token（数字/符号/超长）``level=null``，不报错；
     - 游客可用（``/api/vocabulary/`` 公开前缀），频表缺失仍 503。
@@ -193,7 +203,10 @@ def post_vocabulary_classify(body: ClassifyRequest):
                 "text": item.text,
                 "level": levels.get(str(item.text).strip()),
                 "proper": word_rules.is_proper_token(
-                    item.text, sentence_start=item.sentence_start
+                    item.text,
+                    sentence_start=item.sentence_start,
+                    has_lowercase=item.has_lowercase,
+                    has_non_initial_capital=item.has_non_initial_capital,
                 ),
             }
             for item in body.items

@@ -1,11 +1,13 @@
 """标亮候选规则（word_rules.py）离线单元测试（specs/004 / specs/028）。
 
 覆盖：专名名单（名单命中任何位置）、非句首首字母大写、句首普通词、
-小写词、空/纯数字/标点 token、所有格、句首判定（句末标点 / 不结束句子的
-缩写 / 换行）。
+语料级句首兜底（Toto 型：句首 + 非句首大写 + 从未小写）、小写词、
+空/纯数字/标点 token、所有格、句首判定（句末标点 / 不结束句子的缩写 /
+换行）。
 
 这些向量是「前端 classify 与 028 候选同源」的共同锚点：同一 token +
-sentence_start 在 ``is_proper_token`` 上的结果，就是两个消费方的过滤结果。
+sentence_start + 两条语料事实在 ``is_proper_token`` 上的结果，就是两个
+消费方的过滤结果。
 """
 from __future__ import annotations
 
@@ -28,6 +30,60 @@ def test_sentence_initial_capital_is_not_proper():
     """句首大小写不放行专名判断：The / This 是普通词，仍按阈值判。"""
     assert word_rules.is_proper_token("The", sentence_start=True) is False
     assert word_rules.is_proper_token("This", sentence_start=True) is False
+
+
+def test_corpus_level_sentence_initial_proper_noun_is_proper():
+    """Toto 型：句首出现，但全文从未小写、且至少一次非句首大写 → 专名。"""
+    assert word_rules.is_proper_token(
+        "Toto",
+        sentence_start=True,
+        has_non_initial_capital=True,
+        has_lowercase=False,
+    ) is True
+
+
+def test_sentence_initial_words_seen_in_lowercase_are_not_proper():
+    """The 型：句首出现，但同一文本里另处小写出现过 → 普通词，不按专名放行。"""
+    assert word_rules.is_proper_token(
+        "The",
+        sentence_start=True,
+        has_non_initial_capital=True,
+        has_lowercase=True,
+    ) is False
+    assert word_rules.is_proper_token(
+        "Visitors",
+        sentence_start=True,
+        has_non_initial_capital=True,
+        has_lowercase=True,
+    ) is False
+
+
+def test_sentence_initial_word_without_non_initial_capital_is_not_proper():
+    """只出现在句首、全文没有非句首大写实例 → 词形信息不足，仍按普通词处理。"""
+    assert word_rules.is_proper_token(
+        "Toto",
+        sentence_start=True,
+        has_non_initial_capital=False,
+        has_lowercase=False,
+    ) is False
+    assert word_rules.is_proper_token("Dorothy", sentence_start=True) is False
+
+
+def test_corpus_facts_do_not_override_lowercase_or_listed_rules():
+    """语料事实只影响句首大写分支：小写词/名单外非句首大写结论不变。"""
+    assert word_rules.is_proper_token(
+        "luminous",
+        sentence_start=False,
+        has_non_initial_capital=True,
+        has_lowercase=False,
+    ) is False
+    # 非句首大写本来就是专名，两条事实不会把它变回普通词。
+    assert word_rules.is_proper_token(
+        "Georgie",
+        sentence_start=False,
+        has_lowercase=True,
+        has_non_initial_capital=True,
+    ) is True
 
 
 @pytest.mark.parametrize("sentence_start", [False, True])
