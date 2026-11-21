@@ -12,7 +12,12 @@ export interface FavoriteHighlight {
     color: string;
 }
 
-/** Where a favorite came from (`video` = YouTube). */
+/**
+ * Where a favorite came from (`video` = YouTube). `wordlist` is the built-in
+ * vocabulary / phrase lists in the word book (specs/005 §v1.2): `source_ref` is
+ * the list id (`cefr` / `gre` / `cet4` / `cet6` / `phrases`) and `source_title`
+ * the list label. It has no page to open, so the row's source line stays inert.
+ */
 export type FavoriteSourceKind =
     | 'video'
     | 'local_show'
@@ -20,7 +25,8 @@ export type FavoriteSourceKind =
     | 'sentence_pack'
     | 'library_article'
     | 'book'
-    | 'imported_book';
+    | 'imported_book'
+    | 'wordlist';
 
 /**
  * Provenance of a favorite. Optional because records created before this

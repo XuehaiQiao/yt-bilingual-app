@@ -280,3 +280,59 @@ export function getMasteredWords(limit = 200, targetLang?: string): Promise<Revi
     if (targetLang) params.set('targetLang', targetLang);
     return request<ReviewWordList>(`/api/review/words?${params.toString()}`);
 }
+
+// ── v1.2: word-state filter (specs/005 §v1.2 / specs/013) ──────────────────
+
+/** Every `word_states.state` value, in the backend's canonical order. */
+export const REVIEW_WORD_STATES: readonly ReviewWordState[] = [
+    'new',
+    'learning',
+    'review',
+    'relearning',
+    'suspended',
+];
+
+/** Word-book 状态 chips; `learning` covers FSRS `relearning` as well. */
+export type WordStateFilter = 'new' | 'learning' | 'review' | 'suspended';
+
+export const WORD_STATE_FILTERS: readonly WordStateFilter[] = [
+    'new',
+    'learning',
+    'review',
+    'suspended',
+];
+
+/** The `state` values a single chip maps onto (`learning` ⊇ `relearning`). */
+export const WORD_STATE_FILTER_STATES: Record<WordStateFilter, readonly ReviewWordState[]> = {
+    new: ['new'],
+    learning: ['learning', 'relearning'],
+    review: ['review'],
+    suspended: ['suspended'],
+};
+
+export interface ReviewWordListQuery {
+    /** Narrow to these states; omitted = every state (the endpoint's default). */
+    states?: readonly ReviewWordState[];
+    /** `true` = 已掌握 only, `false` = not mastered; omitted = both. */
+    mastered?: boolean;
+    /** 1–200; truncates `words`, never `total`. */
+    limit?: number;
+    targetLang?: string;
+}
+
+/**
+ * `GET /api/review/words?state=` — one read for the word book's 状态 filter.
+ *
+ * The endpoint needs a signed-in account (403 for guests) and only exists after
+ * the v1.2 backend build: callers must treat 403/404 as "this filter is not
+ * available" and hide the chip group, never as a list error (specs/005 §v1.2).
+ * There is no offset paging; `limit` caps the returned rows at 200.
+ */
+export function listReviewWords(query: ReviewWordListQuery = {}): Promise<ReviewWordList> {
+    const params = new URLSearchParams();
+    if (query.states && query.states.length > 0) params.set('state', query.states.join(','));
+    if (typeof query.mastered === 'boolean') params.set('mastered', query.mastered ? '1' : '0');
+    params.set('limit', String(query.limit ?? 200));
+    if (query.targetLang) params.set('targetLang', query.targetLang);
+    return request<ReviewWordList>(`/api/review/words?${params.toString()}`);
+}

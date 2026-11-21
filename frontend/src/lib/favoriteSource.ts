@@ -21,6 +21,7 @@ const SOURCE_KINDS: readonly FavoriteSourceKind[] = [
     'sentence_pack',
     'book',
     'imported_book',
+    'wordlist',
 ];
 const SENTENCE_PACK_PREFIX = 'sentence-pack-';
 
