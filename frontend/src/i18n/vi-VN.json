@@ -766,6 +766,7 @@
   "placement.profile.reading": "Đọc",
   "placement.profile.unknownValue": "Chưa có",
   "placement.profile.noInterval": "Chưa có khoảng từ vựng (hãy hoàn thành một bài định vị trước)",
+  "placement.profile.noIntervalShort": "Chưa có khoảng",
   "placement.profile.loading": "Đang đọc hồ sơ năng lực…",
   "placement.profile.error": "Không đọc được hồ sơ năng lực",
   "placement.profile.emptyTitle": "Chưa có hồ sơ năng lực",

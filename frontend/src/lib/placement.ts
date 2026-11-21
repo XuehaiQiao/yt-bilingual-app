@@ -49,10 +49,10 @@ export interface PlacementStart {
 
 /** `cefr.label` is the en-dash interval, e.g. `A2–B2`; `point` is the estimate. */
 export interface PlacementCefr {
-    point: string;
-    low: string;
-    high: string;
-    label: string;
+    point: string | null;
+    low: string | null;
+    high: string | null;
+    label: string | null;
 }
 
 export interface PlacementDomainStats {
@@ -90,10 +90,14 @@ export interface PlacementBreakdown {
 
 /** Saved ability profile (`GET /api/placement/profile` → `profile`). */
 export interface PlacementProfile {
-    /** Interval label, e.g. `A2–B2`. */
-    cefr: string;
-    levelBandLow: string;
-    levelBandHigh: string;
+    /**
+     * Interval label, e.g. `A2–B2`. `null` when the saved row has no band — the
+     * 0026 migration strips low/high from `legacy_seed` rows (v1.1 D8-2); the UI
+     * must say "no interval" rather than invent one.
+     */
+    cefr: string | null;
+    levelBandLow: string | null;
+    levelBandHigh: string | null;
     vocabEstimate: number | null;
     readingEstimate: string | null;
     confidence: number;

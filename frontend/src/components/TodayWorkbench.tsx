@@ -241,11 +241,16 @@ export function TodayWorkbench({
                                 <>
                                     <p
                                         data-testid="placement-entry-level"
+                                        data-has-interval={placementProfile.cefr ? 'true' : 'false'}
                                         className="mt-0.5 text-[13px] sm:text-sm leading-relaxed text-zinc-200 break-words"
                                     >
-                                        {t('placement.home.levelLine', {
-                                            level: placementProfile.cefr,
-                                        })}
+                                        {placementProfile.cefr
+                                            ? t('placement.home.levelLine', {
+                                                  level: placementProfile.cefr,
+                                              })
+                                            : /* No saved band (legacy seed, migration 0026):
+                                                 state that plainly; never fall back to A2–B1. */
+                                              t('placement.profile.noInterval')}
                                         <span className="mx-1 text-zinc-600">·</span>
                                         <button
                                             type="button"

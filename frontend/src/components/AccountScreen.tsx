@@ -377,7 +377,9 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
           </span>
           <span className="flex items-center gap-1.5 shrink-0">
             <span data-testid="profile-level-value" className="text-xs text-zinc-500">
-              {placementProfile ? placementProfile.cefr : t('profile.levelEmpty')}
+              {placementProfile
+                ? placementProfile.cefr || t('placement.profile.noIntervalShort')
+                : t('profile.levelEmpty')}
             </span>
             <ChevronRight className="w-4 h-4 text-zinc-600" />
           </span>

@@ -200,9 +200,24 @@ export function PracticeScreen({
                                 <p className="mt-0.5 text-sm text-zinc-400">{t('placement.home.loading')}</p>
                             ) : placementProfile ? (
                                 <>
-                                    <p className="mt-0.5 text-sm text-zinc-200">
-                                        {t('placement.home.levelLine', { level: placementProfile.cefr })}
-                                    </p>
+                                    {placementProfile.cefr ? (
+                                        <p
+                                            data-testid="practice-placement-level"
+                                            className="mt-0.5 text-sm text-fg-primary"
+                                        >
+                                            {t('placement.home.levelLine', { level: placementProfile.cefr })}
+                                        </p>
+                                    ) : (
+                                        /* Legacy seed rows have a point estimate but no
+                                           interval (migration 0026 / D8-2): say so instead
+                                           of rendering "null" or inventing a band. */
+                                        <p
+                                            data-testid="practice-placement-no-interval"
+                                            className="mt-0.5 text-ui leading-relaxed text-fg-secondary"
+                                        >
+                                            {t('placement.profile.noInterval')}
+                                        </p>
+                                    )}
                                     <p className="mt-0.5 text-[11px] text-zinc-500 break-words">
                                         {t('placement.home.meta', {
                                             confidence: CONFIDENCE_KEYS[placementProfile.confidenceLabel]

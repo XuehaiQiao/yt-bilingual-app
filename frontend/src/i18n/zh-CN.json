@@ -766,6 +766,7 @@
   "placement.profile.reading": "阅读",
   "placement.profile.unknownValue": "暂无",
   "placement.profile.noInterval": "暂无词汇区间（先完成一次定位测）",
+  "placement.profile.noIntervalShort": "暂无区间",
   "placement.profile.loading": "正在读取能力画像…",
   "placement.profile.error": "能力画像读取失败",
   "placement.profile.emptyTitle": "还没有能力画像",
