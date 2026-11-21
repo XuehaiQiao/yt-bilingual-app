@@ -25,11 +25,22 @@ import {
     type ReadingAudioController,
 } from '../lib/useReadingAudio';
 import { Button, IconButton } from './ui/Button';
-import { Menu } from './ui/Menu';
+import { Menu, type MenuItem } from './ui/Menu';
 import { Switch } from './ui/Switch';
 
 /** Speed label, e.g. `1.25×` — a number plus a symbol, so it is not translated. */
 const rateLabel = (rate: number) => `${rate}×`;
+
+/**
+ * Menu triggers stay narrow at 375px: the full name lives in the title and the
+ * accessible name, the button shows at most ~16 characters.
+ */
+const SHORT_VOICE_LENGTH = 16;
+const shortVoiceName = (name: string) => (
+    name.length > SHORT_VOICE_LENGTH
+        ? `${name.slice(0, SHORT_VOICE_LENGTH - 1)}…`
+        : name
+);
 
 interface ReadingAudioTriggerProps {
     audio: ReadingAudioController;
@@ -97,26 +108,59 @@ export const ReadingAudioBar: React.FC<ReadingAudioBarProps> = ({
     const playing = audio.state === 'playing' || audio.state === 'waiting';
     const disabled = !audio.supported || !audio.hasContent;
 
+    const voiceRegion = (lang: string) => {
+        const normalized = (lang || '').toLowerCase().replace(/_/g, '-');
+        if (normalized === 'en-us') return t('reading.audio.voiceRegionUS');
+        if (normalized === 'en-gb') return t('reading.audio.voiceRegionGB');
+        return t('reading.audio.voiceRegionOther');
+    };
+    // `voiceURI` is the persisted identity (name fallback) and is what the
+    // picker compares; `description` is spec §6's "region + local/network".
+    const voiceItems: MenuItem[] = audio.voices.map((voice, index) => {
+        const key = voice.voiceURI || voice.name;
+        return {
+            id: key,
+            label: voice.name,
+            description: `${voiceRegion(voice.lang)} · ${voice.localService
+                ? t('reading.audio.voiceLocal')
+                : t('reading.audio.voiceNetwork')}`,
+            checked: key === audio.voiceURI,
+            onSelect: () => audio.setVoice(key),
+            testId: testId(`voice-option-${index}`),
+            data: {
+                'data-voice-uri': key,
+                'data-voice-lang': voice.lang,
+                'data-voice-local': voice.localService ? 'true' : 'false',
+            },
+        };
+    });
+    const voiceMenuDisabled = disabled || audio.voices.length === 0;
+
     const status = !audio.supported
         ? t('reading.audio.unsupported')
         : audio.failure === 'failed'
             ? t('reading.audio.failed')
-            : !audio.hasContent
-                ? t('reading.audio.none')
-                : audio.active
-                    ? t('reading.audio.position', {
-                        paragraph: audio.active.paragraph + 1,
-                        sentence: audio.active.sentence + 1,
-                    })
-                    : t('reading.audio.idle');
-    const hasNotice = !audio.supported || audio.failure === 'failed' || !audio.hasContent;
+            : audio.voiceFallback
+                ? t('reading.audio.voiceFallback', { name: audio.voiceName })
+                : !audio.hasContent
+                    ? t('reading.audio.none')
+                    : audio.active
+                        ? t('reading.audio.position', {
+                            paragraph: audio.active.paragraph + 1,
+                            sentence: audio.active.sentence + 1,
+                        })
+                        : t('reading.audio.idle');
+    const hasNotice = !audio.supported
+        || audio.failure === 'failed'
+        || audio.voiceFallback
+        || !audio.hasContent;
     const statusTone = !audio.supported || audio.failure === 'failed'
         ? 'text-warning-fg'
         : 'text-fg-secondary';
     // A normal position tag is one short line and may truncate; a notice ("no
-    // English voice", "playback failed", "nothing to read") is the actual
-    // message and must stay readable — it takes its own full-width row on a
-    // phone instead of being clipped at 375px.
+    // English voice", "playback failed", "voice fell back", "nothing to read")
+    // is the actual message and must stay readable — it takes its own
+    // full-width row on a phone instead of being clipped at 375px.
     const statusClass = hasNotice
         ? 'order-5 w-full whitespace-normal sm:order-2 sm:w-auto sm:flex-1'
         : 'order-2 min-w-0 flex-1 truncate';
@@ -128,6 +172,7 @@ export const ReadingAudioBar: React.FC<ReadingAudioBarProps> = ({
             data-state={audio.state}
             data-mode={audio.mode}
             data-rate={audio.rate}
+            data-voice-uri={audio.voiceURI}
             role="region"
             aria-label={t('reading.audio.barLabel')}
             className="fixed inset-x-0 bottom-0 z-chrome px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
@@ -181,7 +226,7 @@ export const ReadingAudioBar: React.FC<ReadingAudioBarProps> = ({
                 {/* Secondary controls. On a 375px phone the row cannot hold the
                     transport, the position and these at once; the group takes a
                     second row there (`order` keeps the close button on row one). */}
-                <div className="order-4 flex w-full shrink-0 items-center gap-x-3 gap-y-1.5 sm:order-3 sm:w-auto">
+                <div className="order-4 flex w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 sm:order-3 sm:w-auto">
                     <label className="inline-flex shrink-0 items-center gap-1.5">
                         <span className="text-micro font-medium text-fg-secondary">
                             {t('reading.audio.shadow')}
@@ -222,6 +267,38 @@ export const ReadingAudioBar: React.FC<ReadingAudioBarProps> = ({
                                 className="inline-flex h-control-xs shrink-0 items-center justify-center rounded-control border border-line-subtle bg-surface-2/60 px-2 text-micro font-medium tabular-nums text-fg-strong transition-colors hover:bg-surface-3/60 disabled:pointer-events-none disabled:opacity-50 [@media(pointer:coarse)]:min-h-11"
                             >
                                 {rateLabel(audio.rate)}
+                            </button>
+                        )}
+                    />
+
+                    {/* Voice picker (specs/037 §6). The Menu owns roving focus,
+                        Escape and focus return; this file only maps the ranked
+                        voices to `menuitemradio` rows. More than 50 voices scroll
+                        inside the popup (`max-h` + overflow) instead of growing.
+                        `flex-1` below sm widens the anchor to the full row so the
+                        19rem popup opens leftwards inside the 375px viewport. */}
+                    <Menu
+                        ariaLabel={t('reading.audio.voice')}
+                        align="end"
+                        menuTestId={testId('voice-menu')}
+                        popupClassName="w-[19rem]"
+                        className="min-w-0 flex-1 sm:flex-none"
+                        items={voiceItems}
+                        disabled={voiceMenuDisabled}
+                        trigger={({ triggerRef, triggerProps }) => (
+                            <button
+                                ref={triggerRef}
+                                type="button"
+                                {...triggerProps}
+                                data-testid={testId('voice')}
+                                data-voice-uri={audio.voiceURI}
+                                data-voice-name={audio.voiceName}
+                                aria-label={`${t('reading.audio.voice')}: ${audio.voiceName || t('reading.audio.voiceNone')}`}
+                                title={audio.voiceName || t('reading.audio.voiceNone')}
+                                disabled={voiceMenuDisabled}
+                                className="inline-flex h-control-xs max-w-40 shrink-0 items-center justify-center truncate rounded-control border border-line-subtle bg-surface-2/60 px-2 text-micro font-medium text-fg-strong transition-colors hover:bg-surface-3/60 disabled:pointer-events-none disabled:opacity-50 [@media(pointer:coarse)]:min-h-11"
+                            >
+                                {shortVoiceName(audio.voiceName) || t('reading.audio.voice')}
                             </button>
                         )}
                     />

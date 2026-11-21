@@ -9,7 +9,7 @@
 //          playing → (mode=shadow) waiting → playing …
 //          playing → finished (end of scope) / unsupported (no voice) / idle
 //
-// Engine rules that make it reliable (specs/037 §6):
+// Engine rules that make it reliable (specs/037 §3, §7):
 //   - exactly ONE utterance is alive at a time; every state change cancels the
 //     previous one before speaking;
 //   - a generation counter is bumped on every cancel, and `onend`/`onerror`
@@ -22,21 +22,27 @@
 //   - a watchdog turns a silently-dead engine into an explicit failure state
 //     instead of a bar stuck on "playing".
 //
-// Rate and mode persist in localStorage under the app-wide `yt_bilingual_`
-// prefix. The current *position* is deliberately NOT persisted (specs/037
-// non-goals: no reading-position memory).
+// Rate, mode and voice persist in localStorage under the app-wide
+// `yt_bilingual_` prefix. The voice is resolved by `rankEnglishVoices`
+// (Premium/Enhanced first, specs/037 §6) unless the learner picked one; a
+// stored voice that has since been uninstalled falls back to the ranking and
+// reports that once instead of failing silently. The current *position* is
+// deliberately NOT persisted (specs/037 non-goals: no reading-position memory).
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { splitSentences } from './sentenceSplit';
 import {
     TTS_LANG,
     detectSpeechVoice,
     hasSpeechSynthesis,
+    listVoices,
     pickEnglishVoice,
+    rankEnglishVoices,
     type SpeechVoiceAvailability,
 } from './tts';
 
 export const READING_AUDIO_RATE_KEY = 'yt_bilingual_reading_audio_rate';
 export const READING_AUDIO_MODE_KEY = 'yt_bilingual_reading_audio_mode';
+export const READING_AUDIO_VOICE_KEY = 'yt_bilingual_reading_voice';
 
 /** The six speed steps (specs/037 §1.3). */
 export const READING_AUDIO_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
@@ -81,6 +87,16 @@ export interface ReadingAudioController {
     /** `failed` = playback started but the engine reported an error. */
     failure: 'missing-voice' | 'failed' | null;
     voice: SpeechVoiceAvailability;
+    /** Ranked English voices offered by the picker (novelty voices excluded). */
+    voices: SpeechSynthesisVoice[];
+    /** Persisted selection: `voiceURI`, or the name when a voice has no URI. */
+    voiceURI: string;
+    /** Display name of the selected voice; `''` until the engine reports one. */
+    voiceName: string;
+    /** Pick another voice; re-reads the current sentence when playback is live. */
+    setVoice: (voiceURI: string) => void;
+    /** True when a stored voice was gone and the automatic pick took over. */
+    voiceFallback: boolean;
     active: ReadingAudioPosition | null;
     /** True while the bar is on screen and something can be read. */
     hasContent: boolean;
@@ -136,12 +152,46 @@ function storeRate(rate: ReadingAudioRate) {
     }
 }
 
+function readStoredVoice(): string | null {
+    try {
+        return window.localStorage.getItem(READING_AUDIO_VOICE_KEY)?.trim() || null;
+    } catch {
+        return null;
+    }
+}
+
+/** Persisted identity: `voiceURI` when the engine gives one, the name otherwise. */
+function voiceKey(voice: SpeechSynthesisVoice): string {
+    return voice.voiceURI || voice.name;
+}
+
+function storeVoice(voice: SpeechSynthesisVoice) {
+    try {
+        window.localStorage.setItem(READING_AUDIO_VOICE_KEY, voiceKey(voice));
+    } catch {
+        /* private mode / quota: the in-memory preference still applies */
+    }
+}
+
+/** Match a stored `voiceURI` OR name against the current ranked voices. */
+function findVoice(voices: SpeechSynthesisVoice[], key: string): SpeechSynthesisVoice | undefined {
+    return voices.find((voice) => voiceKey(voice) === key || voice.voiceURI === key || voice.name === key);
+}
+
 /** Text fields own their keystrokes; Space/←/→ must not be hijacked there. */
 function isTextEntryTarget(target: EventTarget | null): boolean {
     if (!(target instanceof HTMLElement)) return false;
     const tag = target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
     return target.isContentEditable || Boolean(target.closest('[contenteditable="true"]'));
+}
+
+/**
+ * A focus inside the shared `Menu` belongs to the menu: Space activates the
+ * focused `menuitemradio`, so the bar's media keys must stay out of the way.
+ */
+function isMenuTarget(target: EventTarget | null): boolean {
+    return target instanceof Element && Boolean(target.closest('[role="menu"]'));
 }
 
 export function useReadingAudio({ paragraphs, scopeKey, scrollRef }: UseReadingAudioOptions): ReadingAudioController {
@@ -155,7 +205,10 @@ export function useReadingAudio({ paragraphs, scopeKey, scrollRef }: UseReadingA
     const [mode, setModeState] = useState<ReadingAudioMode>(readStoredMode);
     const [rate, setRateState] = useState<ReadingAudioRate>(readStoredRate);
     const [active, setActive] = useState<ReadingAudioPosition | null>(null);
-    const [voice, setVoice] = useState<SpeechVoiceAvailability>(() => detectSpeechVoice());
+    const [voiceAvailability, setVoiceAvailability] = useState<SpeechVoiceAvailability>(() => detectSpeechVoice());
+    const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() => rankEnglishVoices(listVoices()));
+    const [selectedVoice, setSelectedVoice] = useState<{ uri: string; name: string }>({ uri: '', name: '' });
+    const [voiceFallback, setVoiceFallback] = useState(false);
     const [failure, setFailure] = useState<'missing-voice' | 'failed' | null>(null);
     const [barHeight, setBarHeightState] = useState(0);
 
@@ -166,9 +219,26 @@ export function useReadingAudio({ paragraphs, scopeKey, scrollRef }: UseReadingA
     const rateRef = useRef<ReadingAudioRate>(rate);
     const cursorRef = useRef<ReadingAudioPosition | null>(null);
     const sentencesRef = useRef(sentences);
+    const voicesRef = useRef<SpeechSynthesisVoice[]>(voices);
+    const selectedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+    const voiceKeyRef = useRef('');
     const generationRef = useRef(0);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
     const watchdogRef = useRef<number | null>(null);
+
+    /** Adopt a voice, persist it, and optionally report a fallback. */
+    const applyVoice = useCallback((voice: SpeechSynthesisVoice, fallback: boolean) => {
+        const key = voiceKey(voice);
+        selectedVoiceRef.current = voice;
+        voiceKeyRef.current = key;
+        setSelectedVoice((previous) => (
+            previous.uri === key && previous.name === voice.name
+                ? previous
+                : { uri: key, name: voice.name }
+        ));
+        storeVoice(voice);
+        if (fallback) setVoiceFallback(true);
+    }, []);
 
     useEffect(() => {
         sentencesRef.current = sentences;
@@ -242,13 +312,13 @@ export function useReadingAudio({ paragraphs, scopeKey, scrollRef }: UseReadingA
             return;
         }
         if (!hasSpeechSynthesis()) {
-            setVoice('missing');
+            setVoiceAvailability('missing');
             setFailure('missing-voice');
             setPhase('unsupported');
             return;
         }
         if (detectSpeechVoice() === 'missing') {
-            setVoice('missing');
+            setVoiceAvailability('missing');
             setFailure('missing-voice');
             setPhase('unsupported');
             return;
@@ -262,7 +332,9 @@ export function useReadingAudio({ paragraphs, scopeKey, scrollRef }: UseReadingA
         const utterance = new SpeechSynthesisUtterance(sentence.text);
         utterance.lang = TTS_LANG;
         utterance.rate = rateRef.current;
-        const selected = pickEnglishVoice();
+        // The picker's selection wins; before the engine has reported voices,
+        // fall back to the same ranking so the first play is not silent-default.
+        const selected = selectedVoiceRef.current ?? pickEnglishVoice();
         if (selected) utterance.voice = selected;
 
         const settle = () => {
@@ -303,6 +375,9 @@ export function useReadingAudio({ paragraphs, scopeKey, scrollRef }: UseReadingA
         utteranceRef.current = utterance;
         setCursor(position);
         setFailure(null);
+        // The fallback notice is a one-shot: once a sentence actually starts,
+        // the learner has seen it and the status line goes back to position.
+        setVoiceFallback(false);
         setPhase('playing');
         try {
             window.speechSynthesis.speak(utterance);
@@ -323,7 +398,7 @@ export function useReadingAudio({ paragraphs, scopeKey, scrollRef }: UseReadingA
         }, Math.max(15_000, sentence.text.length * 220));
     }, [cancelUtterance, clearWatchdog, nextPosition, setCursor, setPhase]);
 
-    const supported = voice !== 'missing' && failure !== 'missing-voice';
+    const supported = voiceAvailability !== 'missing' && failure !== 'missing-voice';
     const hasContent = sentences.some((group) => group.length > 0);
 
     const play = useCallback(() => {
@@ -397,6 +472,26 @@ export function useReadingAudio({ paragraphs, scopeKey, scrollRef }: UseReadingA
         }
     }, [speakAt]);
 
+    /**
+     * Pick a voice (specs/037 §6). Cancel first so the old voice cannot finish
+     * into the new selection; when a sentence is live, re-read it from the top
+     * at the current rate. Paused/idle only changes the next playback, it never
+     * starts speaking on its own.
+     */
+    const selectVoice = useCallback((nextVoiceURI: string) => {
+        const target = findVoice(voicesRef.current, nextVoiceURI);
+        if (!target) return;
+        if (voiceKeyRef.current === voiceKey(target)) return;
+        const wasLive = stateRef.current === 'playing' || stateRef.current === 'waiting';
+        cancelUtterance();
+        applyVoice(target, false);
+        setVoiceFallback(false);
+        if (wasLive) {
+            const position = cursorRef.current;
+            if (position) speakAt(position);
+        }
+    }, [applyVoice, cancelUtterance, speakAt]);
+
     const stop = useCallback(() => {
         cancelUtterance();
         setCursor(null);
@@ -450,29 +545,59 @@ export function useReadingAudio({ paragraphs, scopeKey, scrollRef }: UseReadingA
         }
     }, [clearWatchdog]);
 
-    // Voices load asynchronously in Chrome (`voiceschanged`); re-check so a
-    // late "no English voice" becomes the disabled state instead of a silent
-    // no-op on the first play.
+    // Voices load asynchronously in Chrome (`voiceschanged`); every refresh
+    // re-ranks them, re-checks "no English voice", and resolves the stored
+    // selection:
+    //   - still installed → keep it;
+    //   - gone / never matched → automatic pick, and when a stored choice was
+    //     actually lost, report that once (specs/037 §6: no silent failure);
+    //   - no voices yet → leave the stored value alone and wait for the event.
     useEffect(() => {
         if (!hasSpeechSynthesis()) {
-            setVoice('missing');
+            setVoiceAvailability('missing');
+            setVoices([]);
+            voicesRef.current = [];
             return;
         }
-        const refresh = () => setVoice(detectSpeechVoice());
+        const refresh = () => {
+            const ranked = rankEnglishVoices(listVoices());
+            voicesRef.current = ranked;
+            setVoices(ranked);
+            setVoiceAvailability(detectSpeechVoice());
+
+            const current = selectedVoiceRef.current;
+            if (current && ranked.some((voice) => voiceKey(voice) === voiceKeyRef.current)) return;
+            if (current) {
+                // The selected voice disappeared mid-session (uninstalled).
+                if (ranked[0]) applyVoice(ranked[0], true);
+                return;
+            }
+
+            const stored = readStoredVoice();
+            const storedMatch = stored ? findVoice(ranked, stored) : undefined;
+            if (storedMatch) {
+                applyVoice(storedMatch, false);
+                return;
+            }
+            // Voices have not arrived yet: keep the stored value for later.
+            if (ranked.length === 0) return;
+            applyVoice(ranked[0], Boolean(stored));
+        };
         refresh();
         const synth = window.speechSynthesis;
         synth.addEventListener?.('voiceschanged', refresh);
         return () => synth.removeEventListener?.('voiceschanged', refresh);
-    }, []);
+    }, [applyVoice]);
 
     // Keyboard: once the bar is on screen it behaves like a media player.
-    // Text fields keep their own Space/arrows (typing must never be hijacked).
+    // Text fields own their Space/arrows, and the shared Menu owns keys while
+    // focus is inside its popup (Space activates a menuitemradio).
     useEffect(() => {
         if (!isOpen) return;
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.defaultPrevented) return;
             if (event.altKey || event.ctrlKey || event.metaKey) return;
-            if (isTextEntryTarget(event.target)) return;
+            if (isTextEntryTarget(event.target) || isMenuTarget(event.target)) return;
             if (event.code === 'Space') {
                 event.preventDefault();
                 if (event.repeat) return;
@@ -517,7 +642,12 @@ export function useReadingAudio({ paragraphs, scopeKey, scrollRef }: UseReadingA
         rate,
         supported,
         failure,
-        voice,
+        voice: voiceAvailability,
+        voices,
+        voiceURI: selectedVoice.uri,
+        voiceName: selectedVoice.name,
+        setVoice: selectVoice,
+        voiceFallback,
         active,
         hasContent,
         bottomInset: isOpen ? barHeight + 16 : 0,

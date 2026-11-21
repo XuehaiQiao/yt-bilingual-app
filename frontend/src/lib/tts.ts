@@ -9,6 +9,12 @@
 //     plus explicit control over the utterance (`onend` / `onerror`, cancel
 //     before switching), so the voice helpers below are exported instead of
 //     duplicating the "prefer a native English voice" rule in a second place.
+//
+// Preference is decided in exactly one place (`rankEnglishVoices`, specs/037
+// §6): Premium / Enhanced / Neural / Natural first, then Google / Siri, then
+// the rest; inside a tier en-US → en-GB → other English, then name. macOS
+// ships Samantha (compact) as the system default, which is why "first English
+// voice" is not good enough — the ranking makes an installed Premium voice win.
 export const TTS_LANG = 'en-US';
 
 /** True when this environment can synthesise speech at all. */
@@ -28,9 +34,81 @@ export function listVoices(): SpeechSynthesisVoice[] {
     }
 }
 
+/**
+ * System novelty voices — sound effects, not speech. They are tagged `en-US`
+ * on macOS (Bells, Boing, …) and would otherwise win the "first English
+ * voice" race and read a whole book in chimes.
+ */
+const NOVELTY_VOICES = [
+    'Bells',
+    'Boing',
+    'Bubbles',
+    'Cellos',
+    'Good News',
+    'Bad News',
+    'Jester',
+    'Organ',
+    'Superstar',
+    'Trinoids',
+    'Whisper',
+    'Wobble',
+    'Zarvox',
+    'Bahh',
+] as const;
+
+/** Installed quality markers (macOS `Ava (Premium)`, Chrome `… (Natural)`). */
+const PREMIUM_VOICE = /premium|enhanced|neural|natural/i;
+/** Vendor quality tiers below Premium: Google / Siri voices are usually neural. */
+const BRANDED_VOICE = /google|siri/i;
+
+function isEnglishVoice(voice: SpeechSynthesisVoice): boolean {
+    return typeof voice.lang === 'string' && voice.lang.toLowerCase().startsWith('en');
+}
+
+function isNoveltyVoice(voice: SpeechSynthesisVoice): boolean {
+    const name = (voice.name ?? '').toLowerCase();
+    return NOVELTY_VOICES.some((novelty) => name.includes(novelty.toLowerCase()));
+}
+
+function voiceTier(voice: SpeechSynthesisVoice): number {
+    const name = voice.name ?? '';
+    if (PREMIUM_VOICE.test(name)) return 0;
+    if (BRANDED_VOICE.test(name)) return 1;
+    return 2;
+}
+
+/** en-US → en-GB → any other English locale. */
+function localeRank(lang: string): number {
+    const normalized = (lang ?? '').toLowerCase().replace(/_/g, '-');
+    if (normalized === 'en-us') return 0;
+    if (normalized === 'en-gb') return 1;
+    return 2;
+}
+
+/**
+ * English voices a reader may use, best first (specs/037 §6):
+ *   1. name marks Premium / Enhanced / Neural / Natural;
+ *   2. name marks Google / Siri;
+ *   3. everything else;
+ * within a tier en-US → en-GB → other English, then name. Novelty voices are
+ * dropped and the input array is never mutated. Pure — exported for tests.
+ */
+export function rankEnglishVoices(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice[] {
+    return (voices ?? [])
+        .filter((voice) => isEnglishVoice(voice) && !isNoveltyVoice(voice))
+        .sort((a, b) => voiceTier(a) - voiceTier(b)
+            || localeRank(a.lang) - localeRank(b.lang)
+            || a.name.localeCompare(b.name, 'en'));
+}
+
 /** Prefer a native English voice; `undefined` = let the engine choose. */
 export function pickEnglishVoice(voices: SpeechSynthesisVoice[] = listVoices()): SpeechSynthesisVoice | undefined {
-    return voices.find((voice) => voice.lang?.toLowerCase().startsWith('en'));
+    return rankEnglishVoices(voices)[0];
+}
+
+/** Ranked English voices for a picker; `[]` when the engine has none yet. */
+export function listEnglishVoices(): SpeechSynthesisVoice[] {
+    return rankEnglishVoices(listVoices());
 }
 
 /**
