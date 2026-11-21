@@ -15,6 +15,7 @@ import { ReadingAudioText } from './ReadingAudioText';
 import { useReadingAudio } from '../lib/useReadingAudio';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
+import type { InlineLanguagePoint } from './TranscriptBlock';
 import { SubHeader } from './ui/SubHeader';
 import { ReadingVocabButton } from './ReadingVocabButton';
 import type { FavoriteItem } from '../lib/favorites';
@@ -41,9 +42,29 @@ interface LibraryArticleReaderProps {
     favorites: readonly FavoriteItem[];
     /** Same entry as the video page: navigate to the word-book full page. */
     onOpenWordbook: () => void;
+    /**
+     * Teaching analysis merged into the article payload (specs/028 × 024),
+     * keyed by paragraph index. Optional: without it the reader behaves
+     * exactly as before (difficulty marks + clickable words only).
+     */
+    languagePointsByBlock?: Record<string, InlineLanguagePoint[]>;
+    /** Contextual glosses keyed by lower-case word, per paragraph index. */
+    wordGlossesByBlock?: Record<string, Record<string, string>>;
+    /** Shared language-point switch from 我的 (defaults to on). */
+    showLanguagePoints?: boolean;
 }
 
-export function LibraryArticleReader({ article, onClose, parentLabel, onWordLookup, favorites, onOpenWordbook }: LibraryArticleReaderProps) {
+export function LibraryArticleReader({
+    article,
+    onClose,
+    parentLabel,
+    onWordLookup,
+    favorites,
+    onOpenWordbook,
+    languagePointsByBlock,
+    wordGlossesByBlock,
+    showLanguagePoints = true,
+}: LibraryArticleReaderProps) {
     const { t, formatNumber } = useI18n();
     const [showTranslations, setShowTranslations] = useState(true);
     // Every paragraph has a Chinese translation on disk, so "show translations"
@@ -203,6 +224,9 @@ export function LibraryArticleReader({ article, onClose, parentLabel, onWordLook
                                                 paragraphIndex={index}
                                                 active={audio.active}
                                                 isHighlighted={highlight.isHighlighted}
+                                                languagePoints={languagePointsByBlock?.[String(index)]}
+                                                wordGlosses={wordGlossesByBlock?.[String(index)]}
+                                                showLanguagePoints={showLanguagePoints}
                                                 onWordClick={(word, e) => onWordLookup(
                                                     word,
                                                     paragraph.en,

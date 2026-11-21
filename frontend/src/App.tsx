@@ -125,7 +125,7 @@ import {
 } from './lib/layout';
 import { getProgress, saveProgress } from './lib/progress';
 import { getProfile, type PlacementProfile } from './lib/placement';
-import { fetchLibraryArticle, fetchLibraryVideo, type LibraryArticle } from './lib/library';
+import { fetchLibraryArticle, fetchLibraryVideo, type LibraryArticle, type LibraryVideo } from './lib/library';
 import ReactMarkdown from 'react-markdown';
 
 // Dev-only component matrix (QA-X-31). Lazy so the chunk is never part of the
@@ -1675,7 +1675,31 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Both entries leave the normal learning pipeline untouched: the video path
   // only reads pre-built blocks and enters the existing player, the article
   // path only renders a local payload. Neither calls estimate/process/define.
-  const applyLibraryVideo = (data: Awaited<ReturnType<typeof fetchLibraryVideo>>) => {
+  //
+  // Teaching analysis (specs/028 × 024) arrives inside the same payload: the
+  // open request carries the current highlight level, and the backend merges
+  // the cached row (guests) or generates one (signed-in). There is no second
+  // endpoint call; a payload without analysis is an enhancement miss, never an
+  // error.
+  const libraryAnalysisLevelRef = useRef<VocabLevelId | null>(null);
+  const libraryLoadedAuthRef = useRef<string | null>(null);
+  const libraryFetchSeqRef = useRef(0);
+
+  const applyLibraryAnalysis = useCallback((analysis: TeachingAnalysis | null | undefined) => {
+    if (analysis) {
+      setTeachingAnalysis(analysis);
+      setTeachingHighlightsAuthoritative(true);
+      setTeachingNotesStatus('ready');
+      return;
+    }
+    setTeachingAnalysis(null);
+    setTeachingHighlightsAuthoritative(false);
+    // Guests can sign in to get the analysis; signed-in users without one keep
+    // the existing "no language points yet" empty state (never an error).
+    setTeachingNotesStatus(status === 'authenticated' ? 'empty' : 'login');
+  }, [status]);
+
+  const applyLibraryVideo = useCallback((data: LibraryVideo, level: VocabLevelId) => {
     resetTeachingAnalysis();
     setTranscript(data.blocks);
     setSummary('');
@@ -1694,7 +1718,81 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setCurrentTime(0);
     setSeekCommand(null);
     setLocalVideoError(false);
-  };
+    libraryAnalysisLevelRef.current = level;
+    libraryLoadedAuthRef.current = status;
+    applyLibraryAnalysis(data.analysis);
+  }, [applyLibraryAnalysis, resetTeachingAnalysis, status]);
+
+  const applyLibraryArticle = useCallback((data: LibraryArticle, level: VocabLevelId) => {
+    resetTeachingAnalysis();
+    setLibraryArticle(data);
+    libraryAnalysisLevelRef.current = level;
+    libraryLoadedAuthRef.current = status;
+    applyLibraryAnalysis(data.analysis);
+  }, [applyLibraryAnalysis, resetTeachingAnalysis, status]);
+
+  // The level changed while a free-library item is open: reload the same item
+  // with the new level (the payload's analysis is level-specific). Only the
+  // analysis is swapped — the transcript/article payload stays untouched, so
+  // playback, scroll position and the audio bar are not reset by a level
+  // switch. A failure must not blank the item: the reader/player keeps the
+  // current content and the panel offers a retry (signed-in) or stays quiet
+  // (guest).
+  const refreshLibraryAnalysis = useCallback(async (itemId: string, level: VocabLevelId) => {
+    const articleOpen = libraryArticle !== null;
+    if (!articleOpen && !isLibraryVideo) return;
+    const seq = ++libraryFetchSeqRef.current;
+    libraryAnalysisLevelRef.current = level;
+    setTeachingAnalysis(null);
+    setTeachingHighlightsAuthoritative(false);
+    setTeachingNotesStatus('loading');
+    try {
+      if (articleOpen) {
+        const data = await fetchLibraryArticle(itemId, { level, targetLang });
+        if (seq !== libraryFetchSeqRef.current) return;
+        applyLibraryAnalysis(data.analysis);
+      } else {
+        const data = await fetchLibraryVideo(itemId, { level, targetLang });
+        if (seq !== libraryFetchSeqRef.current) return;
+        applyLibraryAnalysis(data.analysis);
+      }
+    } catch (error) {
+      if (seq !== libraryFetchSeqRef.current) return;
+      console.warn('Failed to refresh free library analysis:', error);
+      setTeachingAnalysis(null);
+      setTeachingHighlightsAuthoritative(false);
+      setTeachingNotesStatus(status === 'authenticated' ? 'error' : 'idle');
+    }
+  }, [applyLibraryAnalysis, isLibraryVideo, libraryArticle, status, targetLang]);
+
+  useEffect(() => {
+    if (!isLearningView) {
+      libraryAnalysisLevelRef.current = null;
+      return;
+    }
+    const sub = state.sub;
+    if (!sub || sub.kind !== 'learn' || sub.source !== 'library' || !sub.itemId) return;
+    if (!isLibraryVideo && libraryArticle === null) return;
+    if (libraryAnalysisLevelRef.current === vocabLevel) return;
+    void refreshLibraryAnalysis(sub.itemId, vocabLevel);
+  }, [isLearningView, state.sub, vocabLevel, isLibraryVideo, libraryArticle, refreshLibraryAnalysis]);
+
+  // A guest can sign in from the panel's hint (specs/028: generation requires
+  // an account). Re-read the item once auth changes so a cached/generated
+  // analysis appears without closing and reopening the video/article.
+  useEffect(() => {
+    if (!isLearningView) {
+      libraryLoadedAuthRef.current = null;
+      return;
+    }
+    if (!isLibraryVideo && libraryArticle === null) return;
+    if (status === 'loading') return;
+    if (libraryLoadedAuthRef.current === null || libraryLoadedAuthRef.current === status) return;
+    libraryLoadedAuthRef.current = status;
+    const sub = state.sub;
+    if (!sub || sub.kind !== 'learn' || sub.source !== 'library' || !sub.itemId) return;
+    void refreshLibraryAnalysis(sub.itemId, vocabLevel);
+  }, [status, isLearningView, isLibraryVideo, libraryArticle, state.sub, vocabLevel, refreshLibraryAnalysis]);
 
   const handleOpenLibraryVideo = async (id: string) => {
     setWordLookup(null);
@@ -1702,9 +1800,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setLibraryArticle(null);
     setQuizCacheReady(false);
     setLoadingState('loading');
+    const level = loadVocabLevel();
     try {
-      const data = await fetchLibraryVideo(id);
-      applyLibraryVideo(data);
+      const data = await fetchLibraryVideo(id, { level, targetLang });
+      applyLibraryVideo(data, level);
       open({ kind: 'learn', source: 'library', itemId: id });
     } catch (error) {
       console.error('Failed to load free library video:', error);
@@ -1717,11 +1816,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const handleOpenLibraryArticle = async (id: string) => {
     setWordLookup(null);
     setSelectedChannel(null);
-    resetTeachingAnalysis();
     setLoadingState('loading');
+    const level = loadVocabLevel();
     try {
-      const data = await fetchLibraryArticle(id);
-      setLibraryArticle(data);
+      const data = await fetchLibraryArticle(id, { level, targetLang });
+      applyLibraryArticle(data, level);
       open({ kind: 'learn', source: 'library', itemId: id });
     } catch (error) {
       console.error('Failed to load free library article:', error);
@@ -1740,17 +1839,18 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // toast instead of silently re-billing.
   const restoreLearnRoute = async (sub: Extract<SubRoute, { kind: 'learn' }>) => {
     resetTeachingAnalysis();
+    const level = loadVocabLevel();
     if (sub.source === 'library' && sub.itemId) {
       try {
-        const data = await fetchLibraryVideo(sub.itemId);
-        applyLibraryVideo(data);
+        const data = await fetchLibraryVideo(sub.itemId, { level, targetLang });
+        applyLibraryVideo(data, level);
         return;
       } catch {
         // Not a library video — try the original article payload.
       }
       try {
-        const article = await fetchLibraryArticle(sub.itemId);
-        setLibraryArticle(article);
+        const article = await fetchLibraryArticle(sub.itemId, { level, targetLang });
+        applyLibraryArticle(article, level);
         return;
       } catch (error) {
         console.error('Failed to restore library item:', error);
@@ -1994,12 +2094,15 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   }, [useSubtitleTimer, startSubtitleTimer, videoId]);
 
   // ── Teaching analysis: load once per content + level + target language ───
-  // Free-library videos/articles are pre-built payloads with no analysis row;
-  // every other learning view (YouTube video, local episode) is eligible.
+  // Free-library videos/articles carry their analysis inside the item payload
+  // (specs/024 × 028), so this endpoint path only serves YouTube videos and
+  // local episodes. The guard below keeps the library's payload-owned analysis
+  // from being wiped when this effect re-runs.
   const teachingAnalysisContentRef =
     videoId && !isLibraryVideo && !libraryArticle ? videoId : '';
 
   useEffect(() => {
+    if (isLibraryVideo || libraryArticle !== null) return;
     if (!teachingAnalysisContentRef || transcript.length === 0) {
       setTeachingAnalysis(null);
       setTeachingHighlightsAuthoritative(false);
@@ -2087,6 +2190,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     translationProgress,
     quizCacheReady,
     teachingNotesRetry,
+    isLibraryVideo,
+    libraryArticle,
   ]);
 
   // Endpoint highlights override the translation payload's old highlights;
@@ -2164,8 +2269,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   }, [transcript, seekTo]);
 
   const handleTeachingNotesRetry = useCallback(() => {
+    // Free-library analysis comes from the item payload, so retrying means
+    // refetching that payload at the current level (not the endpoint path).
+    const sub = state.sub;
+    if (sub?.kind === 'learn' && sub.source === 'library' && sub.itemId
+      && (isLibraryVideo || libraryArticle !== null)) {
+      void refreshLibraryAnalysis(sub.itemId, vocabLevel);
+      return;
+    }
     setTeachingNotesRetry((previous) => previous + 1);
-  }, []);
+  }, [isLibraryVideo, libraryArticle, refreshLibraryAnalysis, state.sub, vocabLevel]);
 
   const toggleLoop = useCallback(() => {
     setLoopEnabled(prev => {
@@ -3755,6 +3868,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                 onWordLookup={handleLibraryArticleWordLookup}
                 favorites={favorites}
                 onOpenWordbook={handleOpenWordbookRoute}
+                languagePointsByBlock={languagePointsByBlock}
+                wordGlossesByBlock={wordGlossesByBlock}
+                showLanguagePoints={showLanguagePoints}
               />,
             );
           }

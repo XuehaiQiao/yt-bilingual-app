@@ -5,6 +5,20 @@
 // YouTube embed); articles are original English texts with a Chinese
 // translation per paragraph. Everything here is public and needs no login.
 import { apiFetch } from './api';
+import {
+    teachingAnalysisFromPayload,
+    type TeachingAnalysis,
+    type TeachingHighlight,
+} from './teachingAnalysis';
+
+/** Optional analysis request (specs/028 × 024). Omitting it keeps the old call. */
+export interface LibraryFetchOptions {
+    /** CEFR highlight level (`liftoff`…`supernova`, specs/028 enum). */
+    level?: string;
+    /** Target language of the analysis cache (e.g. `zh-CN`, `vi-VN`). */
+    targetLang?: string;
+    signal?: AbortSignal;
+}
 
 export interface LibraryVideoSummary {
     id: string;
@@ -53,6 +67,13 @@ export interface LibraryVideo extends LibraryVideoSummary {
     thumbnail?: string;
     license?: string;
     blocks: LibraryBlock[];
+    /**
+     * Merged teaching analysis (specs/028) when the backend attached one to the
+     * payload. `null` = no cached analysis (guest cache miss / generation
+     * failed); the page treats that as "enhancement unavailable", never an
+     * error.
+     */
+    analysis?: TeachingAnalysis | null;
 }
 
 export interface LibraryArticleParagraph {
@@ -72,6 +93,8 @@ export interface LibraryArticle extends LibraryArticleSummary {
     sourceUrl?: string;
     publicDomainBasis?: string;
     paragraphs: LibraryArticleParagraph[];
+    /** See `LibraryVideo.analysis`; highlights are keyed by paragraph index. */
+    analysis?: TeachingAnalysis | null;
 }
 
 export class LibraryApiError extends Error {
@@ -170,6 +193,89 @@ function asParagraph(value: unknown): LibraryArticleParagraph | null {
     return { en, zh };
 }
 
+// ── Teaching analysis attached to a free-library payload (specs/028 × 024) ──
+//
+// With `?level=` the backend merges the cached (or on-demand generated)
+// analysis into the same payload: highlights per block + top-level
+// idioms/culture. The client keeps that merged copy so the page can paint the
+// language-point panel and the contextual ruby without a second request.
+// Payloads without analysis fields produce `null` (an enhancement miss, not an
+// error).
+
+function asTeachingHighlight(value: unknown): TeachingHighlight | null {
+    const highlight = asHighlight(value);
+    if (!highlight) return null;
+    return { en_word: highlight.en_word, zh_word: highlight.zh_word, color: highlight.color };
+}
+
+function highlightEntries(value: unknown): TeachingHighlight[] {
+    if (!Array.isArray(value)) return [];
+    return value
+        .map(asTeachingHighlight)
+        .filter((item): item is TeachingHighlight => item !== null);
+}
+
+function videoAnalysis(raw: Record<string, unknown>, video: LibraryVideo): TeachingAnalysis | null {
+    const fromPayload = teachingAnalysisFromPayload(raw);
+    if (!fromPayload) return null;
+    const highlights: Record<string, TeachingHighlight[]> = {};
+    for (const block of video.blocks) {
+        const entries = highlightEntries(block.highlights);
+        if (entries.length > 0) highlights[String(block.id)] = entries;
+    }
+    return {
+        ...fromPayload,
+        contentRef: fromPayload.contentRef || video.id,
+        highlights,
+    };
+}
+
+/**
+ * Article analysis keyed by paragraph index (0-based), matching both the
+ * backend merge contract (`paragraphs[i].highlights`, `blockId` = paragraph
+ * index) and how `LibraryArticleReader` addresses its paragraphs.
+ */
+function articleAnalysis(raw: Record<string, unknown>, article: LibraryArticle): TeachingAnalysis | null {
+    const fromPayload = teachingAnalysisFromPayload(raw);
+    if (!fromPayload) return null;
+    const rawParagraphs = Array.isArray(raw.paragraphs) ? raw.paragraphs : [];
+    const highlights: Record<string, TeachingHighlight[]> = {};
+    rawParagraphs.forEach((item, index) => {
+        if (!isRecord(item)) return;
+        const entries = highlightEntries(item.highlights);
+        if (entries.length > 0) highlights[String(index)] = entries;
+    });
+    return {
+        ...fromPayload,
+        contentRef: fromPayload.contentRef || article.id,
+        level: typeof raw.analysisLevel === 'string' ? raw.analysisLevel : fromPayload.level,
+        highlights,
+    };
+}
+
+function libraryQuery(options?: LibraryFetchOptions): string {
+    if (!options) return '';
+    const params = new URLSearchParams();
+    if (options.level) params.set('level', options.level);
+    if (options.targetLang) params.set('targetLang', options.targetLang);
+    const query = params.toString();
+    return query ? `?${query}` : '';
+}
+
+/**
+ * `init` for the optional analysis request. A `level` request may generate and
+ * bill server-side, so it must not be served from the browser's HTTP cache: a
+ * guest visit can otherwise pin the analysis-less 200 for an hour. Without
+ * options the call keeps the old shape (no query, default fetch init).
+ */
+function libraryInit(options?: LibraryFetchOptions): RequestInit | undefined {
+    if (!options) return undefined;
+    const init: RequestInit = {};
+    if (options.signal) init.signal = options.signal;
+    if (options.level || options.targetLang) init.cache = 'no-store';
+    return Object.keys(init).length > 0 ? init : undefined;
+}
+
 export async function fetchLibraryIndex(): Promise<LibraryIndex> {
     const response = await apiFetch('/api/library');
     if (!response.ok) throw new LibraryApiError(await readError(response), response.status);
@@ -203,8 +309,14 @@ export async function fetchLibraryIndex(): Promise<LibraryIndex> {
     };
 }
 
-export async function fetchLibraryVideo(id: string): Promise<LibraryVideo> {
-    const response = await apiFetch(`/api/library/videos/${encodeURIComponent(id)}`);
+export async function fetchLibraryVideo(
+    id: string,
+    options?: LibraryFetchOptions,
+): Promise<LibraryVideo> {
+    const response = await apiFetch(
+        `/api/library/videos/${encodeURIComponent(id)}${libraryQuery(options)}`,
+        libraryInit(options),
+    );
     if (!response.ok) throw new LibraryApiError(await readError(response), response.status);
     const data = (await response.json()) as unknown;
     const summary = asVideoSummary(data);
@@ -215,7 +327,7 @@ export async function fetchLibraryVideo(id: string): Promise<LibraryVideo> {
     if (blocks.some((item): item is null => item === null)) {
         throw new LibraryApiError('视频字幕数据格式不正确', 0);
     }
-    return {
+    const video: LibraryVideo = {
         ...summary,
         youtubeId: typeof data.youtubeId === 'string' ? data.youtubeId : '',
         free: data.free === true,
@@ -224,10 +336,17 @@ export async function fetchLibraryVideo(id: string): Promise<LibraryVideo> {
         license: typeof data.license === 'string' ? data.license : undefined,
         blocks: blocks as LibraryBlock[],
     };
+    return { ...video, analysis: videoAnalysis(data, video) };
 }
 
-export async function fetchLibraryArticle(id: string): Promise<LibraryArticle> {
-    const response = await apiFetch(`/api/library/articles/${encodeURIComponent(id)}`);
+export async function fetchLibraryArticle(
+    id: string,
+    options?: LibraryFetchOptions,
+): Promise<LibraryArticle> {
+    const response = await apiFetch(
+        `/api/library/articles/${encodeURIComponent(id)}${libraryQuery(options)}`,
+        libraryInit(options),
+    );
     if (!response.ok) throw new LibraryApiError(await readError(response), response.status);
     const data = (await response.json()) as unknown;
     const summary = asArticleSummary(data);
@@ -238,7 +357,7 @@ export async function fetchLibraryArticle(id: string): Promise<LibraryArticle> {
     if (paragraphs.some((item): item is null => item === null)) {
         throw new LibraryApiError('文章段落数据格式不正确', 0);
     }
-    return {
+    const article: LibraryArticle = {
         ...summary,
         author: typeof data.author === 'string' ? data.author : '',
         license: typeof data.license === 'string' ? data.license : '',
@@ -255,4 +374,5 @@ export async function fetchLibraryArticle(id: string): Promise<LibraryArticle> {
         publicDomainBasis: typeof data.publicDomainBasis === 'string' ? data.publicDomainBasis : undefined,
         paragraphs: paragraphs as LibraryArticleParagraph[],
     };
+    return { ...article, analysis: articleAnalysis(data, article) };
 }
