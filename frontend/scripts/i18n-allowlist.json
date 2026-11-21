@@ -25,7 +25,7 @@
     {
       "key": "vocab.col.level",
       "reason": "CEFR 列表头，标准英文缩写",
-      "path": "src/components/VocabularyBookScreen.tsx"
+      "path": "src/components/VocabularyRows.tsx"
     },
     {
       "key": "reader.import.urlPlaceholder",

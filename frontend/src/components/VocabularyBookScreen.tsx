@@ -1,14 +1,18 @@
 // 单词本 (word book) — full-page replacement for the old favorites modal.
 //
 // Two halves, one route (`#/app/profile/vocabulary`):
-//   1. 我的单词 — saved vocabulary favorites (sentences / share cards excluded),
+//   1. 我的单词 — saved vocabulary favorites that are **not** marked 已掌握,
 //      one line by default; expanding reveals the CEFR level (batched /level
 //      lookup; off-list words read C1+), provenance, saved time and delete.
-//   2. 词表 — 短语 + one merged CEFR 词表 (A1–C1) + GRE/CET4/CET6 from
+//   2. 词表 — 已掌握 (its own tab, same table as the built-in lists) + 短语 +
+//      one merged CEFR 词表 (A1–C1) + GRE/CET4/CET6 from
 //      `/api/vocabulary/lists`, with server-side search, 50-per-page pagination
 //      and a global "hide Chinese" switch (persisted; hidden rows reveal their
 //      translation on tap). The merged CEFR tab adds level chips whose counts
 //      come from the catalog's `byLevel`; the old per-level A1–C1 tabs are gone.
+//
+// 已掌握 and 我的单词 are mutually exclusive lists (specs/005 §v1.1): a mastered
+// word lives exclusively in the 已掌握 tab and never in 我的单词.
 //
 // C2 is intentionally not modelled by the backend (`available:false`): it is
 // explained inside the CEFR tab instead of getting its own disabled tab.
@@ -73,13 +77,13 @@ import { describeApiError, toast } from '../lib/toast';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/I18nProvider';
 import { VocabPagination } from './VocabPagination';
+import { LevelBadge, WordTable, type WordTableRow } from './VocabularyRows';
 import { SubHeader } from './ui/SubHeader';
 import { Tabs, tabPanelProps, type TabItem } from './ui/Tabs';
 import { FilterChip } from './ui/FilterChip';
 import { Segmented } from './ui/Segmented';
-import { Button } from './ui/Button';
+import { Button, IconButton } from './ui/Button';
 import { ErrorPanel, LoadingState } from './ui/StateView';
-import { Badge } from './ui/Badge';
 import type { TranslationKey } from '../i18n';
 
 interface VocabularyBookScreenProps {
@@ -102,16 +106,17 @@ interface VocabularyBookScreenProps {
 }
 
 type Phase = 'idle' | 'loading' | 'ready' | 'error';
-type MineGroup = 'learning' | 'mastered';
 type MineSort = 'added' | 'seen' | 'level';
 type MineType = '' | 'word' | 'phrase';
 type SeenPhase = 'idle' | 'loading' | 'ready' | 'unavailable';
 
 const MINE_TAB = 'mine';
+/** 已掌握 is a word list of its own, not a segment inside 我的单词 (specs/005). */
+const MASTERED_TAB = 'mastered';
 const PHRASES_TAB = 'phrases';
 /** Merged CEFR list id (`GET /api/vocabulary/lists/cefr`); A1–C1 in one tab. */
 const CEFR_TAB = 'cefr';
-/** Product order: 我的单词 / 短语 / CEFR 词表 / GRE / CET4 / CET6. */
+/** Product order: 我的单词 / 已掌握 / 短语 / CEFR 词表 / GRE / CET4 / CET6. */
 const LIST_TAB_IDS = [CEFR_TAB, 'gre', 'cet4', 'cet6'] as const;
 const FALLBACK_LABELS: Record<string, string> = {
     cefr: 'CEFR 词表',
@@ -183,24 +188,6 @@ const DANGER_BUTTON =
     'inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 text-xs font-medium text-red-400 transition-colors';
 const CARD = 'rounded-2xl border border-white/5 bg-zinc-900/40';
 
-function levelBadgeClass(level: string): string {
-    return level === 'C1+'
-        ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
-        : 'bg-blue-500/10 text-blue-300 border-blue-500/20';
-}
-
-function LevelBadge({ level, testId, title }: { level: string; testId?: string; title?: string }) {
-    return (
-        <span
-            data-testid={testId}
-            title={title}
-            className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums ${levelBadgeClass(level)}`}
-        >
-            {level}
-        </span>
-    );
-}
-
 export function VocabularyBookScreen({
     favorites,
     onBack,
@@ -255,8 +242,9 @@ export function VocabularyBookScreen({
         [catalog],
     );
     const activeIsMine = activeTab === MINE_TAB;
+    const activeIsMastered = activeTab === MASTERED_TAB;
     const activeIsCefr = activeTab === CEFR_TAB;
-    const activeList = activeIsMine ? null : catalogById.get(activeTab) ?? null;
+    const activeList = activeIsMine || activeIsMastered ? null : catalogById.get(activeTab) ?? null;
     const activeUnavailable = activeList?.available === false;
 
     // ── My words: expand + batched CEFR lookup ────────────────────────────
@@ -265,34 +253,35 @@ export function VocabularyBookScreen({
     const [levelPhase, setLevelPhase] = useState<Phase>('idle');
     const [levelError, setLevelError] = useState('');
     const [levelNonce, setLevelNonce] = useState(0);
-    const levelWords = useMemo(
-        () => Array.from(new Set(myWords.map((fav) => fav.en_text.trim()).filter(Boolean))),
-        [myWords],
-    );
 
     // ── v1.1 word book: 我的单词 / 已掌握, sorting, filters, seen counts ────
     // Mastered marks have exactly one source of truth per account type:
     //   * guest — the local 「我会了」 table (wordMastery.ts, never uploaded);
-    //   * signed-in — `GET /api/review/words?mastered=1`, fetched when the mine
-    //     tab opens and then updated locally from each PATCH response (no
+    //   * signed-in — `GET /api/review/words?mastered=1`, fetched when 我的单词
+    //     or 已掌握 opens and then updated locally from each PATCH response (no
     //     localStorage mirror for signed-in users).
-    const [mineGroup, setMineGroup] = useState<MineGroup>('learning');
     const [mineSort, setMineSort] = useState<MineSort>('added');
     const [mineType, setMineType] = useState<MineType>('');
     const [mineSource, setMineSource] = useState<'' | FavoriteSourceKind>('');
-    const [mineUnmastered, setMineUnmastered] = useState(false);
     const [guestMastered, setGuestMastered] = useState<Set<string>>(() => readGuestMastered());
     const [serverMastered, setServerMastered] = useState<Set<string>>(() => new Set());
+    // Display casing for mastered words that have no favorite record: the review
+    // API returns the lemma, and the local table stores the normalized form.
+    const [masteredLabels, setMasteredLabels] = useState<Record<string, string>>({});
     const [masteredPhase, setMasteredPhase] = useState<Phase>('idle');
     // True once the signed-in list has loaded at least once; keeps stale rows
     // visible while a retry is in flight (and lets a failed retry stay inline).
     const [masteredReady, setMasteredReady] = useState(false);
     const [masteredNonce, setMasteredNonce] = useState(0);
+    // 已掌握 is client paged (50/page): the API caps the list at 200 and has no
+    // offset paging, so pages are a view concern only.
+    const [masteredPage, setMasteredPage] = useState(1);
     const [reviewedWords, setReviewedWords] = useState<Set<string>>(() => new Set());
     const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
     const [pendingMasteredId, setPendingMasteredId] = useState<string | null>(null);
     // Row-level write failure: inline + retryable (IX-02 / specs/013 §v1.1),
-    // never a success-looking state and never a page-level error.
+    // never a success-looking state and never a page-level error. Keyed by
+    // favorite id, or `mastered:<normalized word>` for a mastered row.
     const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
     const [seenCounts, setSeenCounts] = useState<Record<string, number>>({});
     const [seenPhase, setSeenPhase] = useState<SeenPhase>('idle');
@@ -306,11 +295,11 @@ export function VocabularyBookScreen({
         setGuestMastered(readGuestMastered());
     }, [isGuest]);
 
-    // Signed-in 已掌握 group: fetch the server list when the mine tab opens
+    // Signed-in 已掌握 list: fetch the server list when 我的单词 or 已掌握 opens
     // (and on retry). Actions afterwards update `serverMastered` from the PATCH
     // response instead of refetching — one authoritative source, no reload.
     useEffect(() => {
-        if (!activeIsMine || isGuest) {
+        if ((!activeIsMine && !activeIsMastered) || isGuest) {
             setMasteredPhase('idle');
             return;
         }
@@ -320,6 +309,9 @@ export function VocabularyBookScreen({
             .then((data) => {
                 if (cancelled) return;
                 setServerMastered(new Set(data.words.map((word) => normalizeMasteryWord(word.lemma))));
+                setMasteredLabels(Object.fromEntries(
+                    data.words.map((word) => [normalizeMasteryWord(word.lemma), word.lemma.trim()]),
+                ));
                 setMasteredReady(true);
                 setMasteredPhase('ready');
             })
@@ -328,7 +320,7 @@ export function VocabularyBookScreen({
                 setMasteredPhase('error');
             });
         return () => { cancelled = true; };
-    }, [activeIsMine, isGuest, targetLang, masteredNonce]);
+    }, [activeIsMine, activeIsMastered, isGuest, targetLang, masteredNonce]);
 
     const myWordLemmas = useMemo(
         () => Array.from(new Set(myWords.map((fav) => fav.en_text.trim()).filter(Boolean))),
@@ -363,12 +355,14 @@ export function VocabularyBookScreen({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeIsMine, isGuest, seenWordKey]);
 
+    // 我的单词 count: favorites that are not mastered. The two tabs partition
+    // the word surface, so a mastered favorite is never counted twice.
     const masteredCount = useMemo(
         () => myWords.filter((fav) => masteredWords.has(normalizeMasteryWord(fav.en_text))).length,
         [myWords, masteredWords],
     );
     const learningCount = myWords.length - masteredCount;
-    const masteredGroupLabel = isGuest ? t('vocab.review.guestMaster') : t('vocab.mine.mastered');
+    const masteredTabLabel = isGuest ? t('vocab.review.guestMaster') : t('vocab.mine.mastered');
     // Hide the counts until the signed-in list has loaded: a failed GET must
     // not render "已掌握 0" as if that were the answer (G3).
     const masteredKnown = isGuest || masteredReady;
@@ -376,6 +370,10 @@ export function VocabularyBookScreen({
     /** Single local write path for the mastered mark (guest table or server set). */
     const writeMasteredState = (lemma: string, mastered: boolean) => {
         const key = normalizeMasteryWord(lemma);
+        if (mastered) {
+            const label = lemma.trim();
+            setMasteredLabels((prev) => (prev[key] === label ? prev : { ...prev, [key]: label }));
+        }
         if (isGuest) {
             writeGuestMastered(lemma, mastered);
             setGuestMastered((prev) => {
@@ -399,20 +397,64 @@ export function VocabularyBookScreen({
         return SOURCE_KIND_ORDER.filter((kind) => present.has(kind));
     }, [myWords]);
 
-    const hasMineFilters = Boolean(mineType || mineSource || (mineGroup === 'learning' && mineUnmastered));
+    const hasMineFilters = Boolean(mineType || mineSource);
+
+    /** Newest favorite per normalized word: the mastered row's IPA/meaning. */
+    const favoriteByWord = useMemo(() => {
+        const map = new Map<string, FavoriteItem>();
+        // `myWords` is newest-first, so the first hit is the latest record.
+        for (const fav of myWords) {
+            const key = normalizeMasteryWord(fav.en_text);
+            if (key && !map.has(key)) map.set(key, fav);
+        }
+        return map;
+    }, [myWords]);
+
+    /**
+     * 已掌握 rows: the mastered set (server for signed-in, local for guests)
+     * enriched with the favorite's word casing + `/ipa/ 释义`; a mastered word
+     * without a favorite keeps the lemma and renders `—` for both. Sorted by
+     * word so client paging is stable across re-renders.
+     */
+    const masteredRows = useMemo(() => {
+        const rows: Array<{ key: string; word: string; phonetic: string; translation: string }> = [];
+        for (const key of masteredWords) {
+            const fav = favoriteByWord.get(key);
+            const word = fav ? fav.en_text.trim() : (masteredLabels[key] ?? key).trim();
+            if (!word) continue;
+            const split = fav ? splitIpaAndMeaning(fav.zh_text) : { ipa: null, meaning: '' };
+            rows.push({
+                key,
+                word,
+                phonetic: split.ipa || '—',
+                translation: split.meaning || '—',
+            });
+        }
+        rows.sort((a, b) => (
+            a.word.toLowerCase().localeCompare(b.word.toLowerCase()) || a.word.localeCompare(b.word)
+        ));
+        return rows;
+    }, [masteredWords, favoriteByWord, masteredLabels]);
+
+    // The CEFR lookup covers only the rows the active tab shows; levels already
+    // fetched are cached in `levels` and never re-requested.
+    const levelWords = useMemo(() => {
+        const words = activeIsMastered
+            ? masteredRows.map((row) => row.word)
+            : myWordLemmas;
+        return Array.from(new Set(words.filter(Boolean)));
+    }, [activeIsMastered, masteredRows, myWordLemmas]);
 
     const mineRows = useMemo(() => {
         // 类型 filter (词/短语): favorites only store vocabulary rows, so a
         // multi-word entry is the phrase surface. Single-word rows stay 单词.
         const isPhrase = (fav: FavoriteItem) => /\s/.test(fav.en_text.trim());
         const filtered = myWords.filter((fav) => {
-            const isMastered = masteredWords.has(normalizeMasteryWord(fav.en_text));
-            if (mineGroup === 'mastered' ? !isMastered : isMastered) return false;
+            // 已掌握 rows live in their own tab only (mutually exclusive lists).
+            if (masteredWords.has(normalizeMasteryWord(fav.en_text))) return false;
             if (mineType === 'word' && isPhrase(fav)) return false;
             if (mineType === 'phrase' && !isPhrase(fav)) return false;
             if (mineSource && resolveFavoriteSource(fav).kind !== mineSource) return false;
-            // Guarded by the group filter above; kept explicit for the 未掌握 chip.
-            if (mineGroup === 'learning' && mineUnmastered && isMastered) return false;
             return true;
         });
         const seenOf = (fav: FavoriteItem) => seenCounts[fav.en_text.trim()] ?? -1;
@@ -428,7 +470,7 @@ export function VocabularyBookScreen({
             // Default: newest added first (and the stable tiebreak for every sort).
             return (b.added_at || 0) - (a.added_at || 0);
         });
-    }, [myWords, mineGroup, mineType, mineSource, mineUnmastered, mineSort, masteredWords, seenCounts, levels]);
+    }, [myWords, mineType, mineSource, mineSort, masteredWords, seenCounts, levels]);
 
     const seenTitle = isGuest
         ? t('vocab.mine.seen.guest')
@@ -524,9 +566,45 @@ export function VocabularyBookScreen({
         }
     };
 
-    // ── My words: level fetch after the rows/filters above ────────────────
+    /**
+     * 已掌握 row action: move a word back by clearing its mastered mark.
+     * Optimistic (the row leaves the table now), rolled back with an inline
+     * row error if the write fails — same feedback model as the mine rows.
+     */
+    const handleMasteredRowUndo = async (row: { key: string; word: string }) => {
+        if (pendingReviewId || pendingMasteredId) return;
+        const lemma = row.word.trim();
+        if (!lemma) return;
+        const fav = favoriteByWord.get(row.key);
+        setRowError(null);
+        writeMasteredState(lemma, false);
+        // Guests only write the local table; there is nothing to PATCH.
+        if (isGuest) {
+            toast.success(t('vocab.review.toast.unmastered'), { dedupeKey: 'review:fav-mastered' });
+            return;
+        }
+        setPendingMasteredId(`mastered:${row.key}`);
+        try {
+            const result = await setWordMastered({
+                lemma,
+                mastered: false,
+                targetLang,
+                ...(fav ? { source: reviewSourceFor(fav) } : {}),
+            });
+            // The PATCH response is authoritative for the post-write mark.
+            writeMasteredState(lemma, result.word.mastered === true);
+            toast.success(t('vocab.review.toast.unmastered'), { dedupeKey: 'review:fav-mastered' });
+        } catch {
+            writeMasteredState(lemma, true); // roll the row back into the table
+            setRowError({ id: `mastered:${row.key}`, message: t('vocab.review.error.mastered') });
+        } finally {
+            setPendingMasteredId(null);
+        }
+    };
+
+    // ── My words / 已掌握: level fetch after the rows above ────────────────
     useEffect(() => {
-        if (!activeIsMine) return;
+        if (!activeIsMine && !activeIsMastered) return;
         const missing = levelWords.filter((word) => !(word in levels));
         if (missing.length === 0) return;
         let cancelled = false;
@@ -544,7 +622,7 @@ export function VocabularyBookScreen({
                 setLevelPhase('error');
             });
         return () => { cancelled = true; };
-    }, [activeIsMine, levelWords, levels, levelNonce]);
+    }, [activeIsMine, activeIsMastered, levelWords, levels, levelNonce]);
 
     const toggleExpanded = useCallback((id: string) => {
         setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -630,12 +708,11 @@ export function VocabularyBookScreen({
         setPhraseType('');
         setPhraseRevealed(new Set());
         setPhraseExpanded(new Set());
-        // 我的单词 also starts clean (learning group, default sort, no filters).
-        setMineGroup('learning');
+        // 我的单词 and 已掌握 also restart clean (first page, default sort, no filters).
+        setMasteredPage(1);
         setMineSort('added');
         setMineType('');
         setMineSource('');
-        setMineUnmastered(false);
     }, [catalogById]);
 
 
@@ -660,10 +737,10 @@ export function VocabularyBookScreen({
     // A new list/page/search/level starts with every row's translation collapsed.
     useEffect(() => {
         setRevealed(new Set());
-    }, [activeTab, page, debouncedQuery, listLevel]);
+    }, [activeTab, page, masteredPage, debouncedQuery, listLevel]);
 
     useEffect(() => {
-        if (activeIsMine || activeUnavailable || activeTab === PHRASES_TAB) {
+        if (activeIsMine || activeIsMastered || activeUnavailable || activeTab === PHRASES_TAB) {
             setListData(null);
             setListPhase('idle');
             return;
@@ -852,35 +929,61 @@ export function VocabularyBookScreen({
         return { source, text: t('vocab.source.unknown'), canOpen: false };
     }, [t]);
 
-    const mineTabCount = myWords.length;
+    const renderTabPanel = () => {
+        if (activeIsMine) return renderMine();
+        if (activeIsMastered) return renderMastered();
+        if (activeTab === PHRASES_TAB) return renderPhrases();
+        return renderList();
+    };
+
+    // The header total follows the active surface: it used to show the built-in
+    // list total on every tab (「共 0 词」 on 我的单词/短语/已掌握). `null` means
+    // "not known yet", so a failed or in-flight read never renders a fake 0 (G3).
+    const headerTotalLabel = activeIsMine
+        ? (masteredKnown ? t('vocab.total', { count: formatNumber(learningCount) }) : null)
+        : activeIsMastered
+            ? (masteredKnown ? t('vocab.total', { count: formatNumber(masteredRows.length) }) : null)
+            : activeTab === PHRASES_TAB
+                ? (phraseData ? phraseTotalLabel : null)
+                : (listData ? totalLabel : null);
 
     const renderHeader = () => (
         <SubHeader
             title={t('vocab.title')}
             onBack={onBack}
             parentLabel={parentLabel}
-            meta={<span data-testid="vocab-total">{totalLabel}</span>}
+            meta={headerTotalLabel != null
+                ? <span data-testid="vocab-total">{headerTotalLabel}</span>
+                : undefined}
             backTestId="vocab-back"
         />
     );
 
     const renderTabs = () => {
-        const tabs: string[] = [MINE_TAB, PHRASES_TAB, ...LIST_TAB_IDS];
+        const tabs: string[] = [MINE_TAB, MASTERED_TAB, PHRASES_TAB, ...LIST_TAB_IDS];
         const items: TabItem[] = tabs.map((id) => {
             const entry = catalogById.get(id);
             const unavailable = entry?.available === false;
             const label = id === MINE_TAB
                 ? t('vocab.tab.mine')
-                : id === PHRASES_TAB
-                    ? t('vocab.tab.phrases')
-                    : id === CEFR_TAB
-                        ? t('vocab.tab.cefr')
-                        : (entry?.label || FALLBACK_LABELS[id] || id);
+                : id === MASTERED_TAB
+                    ? masteredTabLabel
+                    : id === PHRASES_TAB
+                        ? t('vocab.tab.phrases')
+                        : id === CEFR_TAB
+                            ? t('vocab.tab.cefr')
+                            : (entry?.label || FALLBACK_LABELS[id] || id);
             const count = id === MINE_TAB
-                ? mineTabCount
-                : typeof entry?.count === 'number' && !unavailable
-                    ? entry.count
-                    : null;
+                // Hidden until the signed-in mastered read succeeds: an unknown
+                // mastered set must not be counted as learning words.
+                ? (masteredKnown ? learningCount : null)
+                : id === MASTERED_TAB
+                    // The whole mastered collection, not just mastered favorites:
+                    // unknown until the signed-in GET succeeds (never a fake 0).
+                    ? (masteredKnown ? masteredWords.size : null)
+                    : typeof entry?.count === 'number' && !unavailable
+                        ? entry.count
+                        : null;
             return {
                 id,
                 label,
@@ -958,44 +1061,12 @@ export function VocabularyBookScreen({
                 )}
             </div>
 
-            {/* v1.1 sorting/filtering (specs/005 §v1.1). Group switch stays on
-                this page: 已掌握 rows are the same favorites, just filtered. */}
+            {/* v1.1 sorting/filtering (specs/005 §v1.1). 已掌握 is a word list of
+                its own tab now, so 我的单词 only lists the learning rows — the
+                old in-page 学习/已掌握 segment is gone and the 未掌握 chip would
+                be a no-op here. */}
             <div className="flex flex-col gap-2 rounded-card border border-line-subtle bg-surface-2/40 px-3 py-2.5">
                 <div className="flex flex-wrap items-center gap-2">
-                    <Segmented
-                        size="sm"
-                        ariaLabel={t('vocab.mine.group.label')}
-                        layoutId="vocab-mine-group"
-                        testId="vocab-mine-group"
-                        value={mineGroup}
-                        onChange={(value) => setMineGroup(value as MineGroup)}
-                        options={[
-                            {
-                                value: 'learning',
-                                testId: 'vocab-group-learning',
-                                label: (
-                                    <>
-                                        {t('vocab.mine.group.learning')}
-                                        {masteredKnown && (
-                                            <span className="ml-1 text-micro tabular-nums">{formatNumber(learningCount)}</span>
-                                        )}
-                                    </>
-                                ),
-                            },
-                            {
-                                value: 'mastered',
-                                testId: 'vocab-group-mastered',
-                                label: (
-                                    <>
-                                        {masteredGroupLabel}
-                                        {masteredKnown && (
-                                            <span className="ml-1 text-micro tabular-nums">{formatNumber(masteredCount)}</span>
-                                        )}
-                                    </>
-                                ),
-                            },
-                        ]}
-                    />
                     <Segmented
                         size="sm"
                         ariaLabel={t('vocab.sort.label')}
@@ -1041,17 +1112,8 @@ export function VocabularyBookScreen({
                     ))}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                    {mineGroup === 'learning' && (
-                        <FilterChip
-                            selected={mineUnmastered}
-                            testId="vocab-filter-unmastered"
-                            onClick={() => setMineUnmastered((value) => !value)}
-                        >
-                            {t('vocab.filter.unmastered')}
-                        </FilterChip>
-                    )}
-                    {hasMineFilters && (
+                {hasMineFilters && (
+                    <div className="flex flex-wrap items-center gap-2">
                         <Button
                             size="sm"
                             variant="ghost"
@@ -1059,18 +1121,17 @@ export function VocabularyBookScreen({
                             onClick={() => {
                                 setMineType('');
                                 setMineSource('');
-                                setMineUnmastered(false);
                             }}
                         >
                             {t('vocab.filter.clear')}
                         </Button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
-            {/* The signed-in mastered list is a separate async read: a failure
-                must not silently relabel mastered words as unmastered. */}
-            {!isGuest && masteredPhase === 'error' && mineGroup === 'learning' && (
+            {/* The signed-in mastered list is a separate async read: until it
+                succeeds, mastered words would show up here as unmastered. */}
+            {!isGuest && masteredPhase === 'error' && (
                 <ErrorPanel
                     level="inline"
                     title={t('vocab.mine.mastered.error')}
@@ -1084,49 +1145,20 @@ export function VocabularyBookScreen({
 
             {myWords.length === 0
                 ? emptyState(t('vocab.empty.mine'), t('vocab.empty.mineHint'), Star, 'vocab-mine-empty')
-                : mineGroup === 'mastered' && !isGuest && !masteredReady && masteredPhase !== 'ready'
-                    ? masteredPhase === 'error'
-                        ? (
-                            <ErrorPanel
-                                level="card"
-                                title={t('vocab.mine.mastered.error')}
-                                detail={t('vocab.mine.mastered.errorHint')}
-                                onRetry={() => setMasteredNonce((value) => value + 1)}
-                                retryLabel={t('common.retry')}
-                                testId="vocab-mastered-error"
-                                retryTestId="vocab-mastered-retry"
-                            />
-                        )
-                        : (
-                            <LoadingState
-                                kind="skeleton"
-                                rows={3}
-                                label={t('vocab.mine.mastered.loading')}
-                                testId="vocab-mastered-loading"
-                                className={`${CARD} px-4 py-6`}
-                            />
-                        )
                 : mineRows.length === 0
-                    ? mineGroup === 'mastered'
+                    ? hasMineFilters
                         ? emptyState(
-                            t('vocab.mine.empty.mastered'),
-                            t('vocab.mine.empty.masteredHint'),
-                            CheckCircle2,
-                            'vocab-mine-mastered-empty',
+                            t('vocab.mine.empty.filtered'),
+                            t('vocab.mine.empty.filteredHint'),
+                            Search,
+                            'vocab-mine-filtered-empty',
                         )
-                        : hasMineFilters
-                            ? emptyState(
-                                t('vocab.mine.empty.filtered'),
-                                t('vocab.mine.empty.filteredHint'),
-                                Search,
-                                'vocab-mine-filtered-empty',
-                            )
-                            : emptyState(
-                                t('vocab.mine.empty.allMastered'),
-                                t('vocab.mine.empty.allMasteredHint'),
-                                CheckCircle2,
-                                'vocab-mine-all-mastered',
-                            )
+                        : emptyState(
+                            t('vocab.mine.empty.allMastered'),
+                            t('vocab.mine.empty.allMasteredHint'),
+                            CheckCircle2,
+                            'vocab-mine-all-mastered',
+                        )
                     : (
                     <div data-testid="vocab-mine-list" className={`${CARD} divide-y divide-white/5 overflow-hidden`}>
                         {mineRows.map((fav) => {
@@ -1139,11 +1171,10 @@ export function VocabularyBookScreen({
                             const source = sourceText(fav);
                             const SourceIcon = SOURCE_ICON[source.source.kind];
                             const masteredKey = normalizeMasteryWord(word);
-                            const isMastered = masteredWords.has(masteredKey);
                             const isReviewed = reviewedWords.has(masteredKey);
-                            const masterLabel = isMastered
-                                ? t('vocab.review.undo')
-                                : isGuest ? t('vocab.review.guestMaster') : t('vocab.review.master');
+                            // Marking a word mastered moves it to the 已掌握 tab;
+                            // undoing from there is the only reverse direction.
+                            const masterLabel = isGuest ? t('vocab.review.guestMaster') : t('vocab.review.master');
                             const reviewLabel = isReviewed ? t('vocab.review.added') : t('vocab.review.add');
                             const addedAtLabel = fav.added_at
                                 ? formatDate(fav.added_at)
@@ -1215,14 +1246,6 @@ export function VocabularyBookScreen({
                                         >
                                             {seenText(fav)}
                                         </span>
-                                        {isMastered && (
-                                            <Badge
-                                                tone="success"
-                                                testId={`vocab-mine-mastered-badge-${fav.id}`}
-                                            >
-                                                {masteredGroupLabel}
-                                            </Badge>
-                                        )}
                                         <span className="ms-auto flex items-center gap-1.5">
                                             <Button
                                                 size="sm"
@@ -1240,9 +1263,9 @@ export function VocabularyBookScreen({
                                             </Button>
                                             <Button
                                                 size="sm"
-                                                variant={isMastered ? 'secondary' : 'tinted'}
+                                                variant="tinted"
                                                 tone="success"
-                                                iconLeft={isMastered ? <Undo2 /> : <CheckCircle2 />}
+                                                iconLeft={<CheckCircle2 />}
                                                 loading={pendingMasteredId === fav.id}
                                                 disabled={Boolean(pendingReviewId || pendingMasteredId)}
                                                 ariaLabel={masterLabel}
@@ -1720,6 +1743,139 @@ export function VocabularyBookScreen({
         );
     };
 
+    /**
+     * 已掌握 — a word list of its own (specs/005 §v1.1), rendered with the same
+     * three-column table as the built-in lists: word + IPA / translation / CEFR
+     * badge, honouring the global hide-Chinese switch, client paged 50/page
+     * (the review API caps the mastered list at 200 and has no offset paging).
+     */
+    const renderMastered = () => {
+        const ready = isGuest || masteredReady;
+        const failed = !isGuest && masteredPhase === 'error';
+        const pages = Math.max(1, Math.ceil(masteredRows.length / VOCABULARY_PAGE_SIZE));
+        const currentPage = Math.min(Math.max(1, masteredPage), pages);
+        const start = (currentPage - 1) * VOCABULARY_PAGE_SIZE;
+        const tableRows: WordTableRow[] = masteredRows
+            .slice(start, start + VOCABULARY_PAGE_SIZE)
+            .map((row) => {
+                const rowLevel = levels[row.word] ?? null;
+                return {
+                    key: row.key,
+                    word: row.word,
+                    phonetic: row.phonetic,
+                    translation: row.translation,
+                    level: rowLevel,
+                    levelTitle: rowLevel ? `CEFR ${rowLevel}` : undefined,
+                    revealed: revealed.has(row.word),
+                    onActivate: hideChinese ? () => toggleReveal(row.word) : undefined,
+                    action: (
+                        <IconButton
+                            size="sm"
+                            ariaLabel={`${t('vocab.review.undo')} ${row.word}`}
+                            testId={`vocab-mastered-undo-${row.key}`}
+                            onClick={() => { void handleMasteredRowUndo(row); }}
+                        >
+                            <Undo2 className="h-4 w-4" aria-hidden="true" />
+                        </IconButton>
+                    ),
+                    error: rowError?.id === `mastered:${row.key}`
+                        ? { message: rowError.message, testId: `vocab-mastered-error-${row.key}` }
+                        : undefined,
+                };
+            });
+
+        return (
+            <div data-testid="vocab-mastered-panel" className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        data-testid="vocab-hide-toggle"
+                        data-scope="mastered"
+                        aria-pressed={hideChinese}
+                        onClick={toggleHideChinese}
+                        title={hideChinese ? t('vocab.show') : t('vocab.hide')}
+                        className={`inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors ${
+                            hideChinese
+                                ? 'border-brand/20 bg-brand/10 text-brand-300 hover:bg-brand/15'
+                                : 'border-line-subtle bg-surface-2/60 text-fg-strong hover:bg-surface-3/60 hover:text-fg-primary'
+                        }`}
+                    >
+                        {hideChinese ? <Eye className="h-4 w-4" aria-hidden="true" /> : <EyeOff className="h-4 w-4" aria-hidden="true" />}
+                        {hideChinese ? t('vocab.show') : t('vocab.hide')}
+                    </button>
+                </div>
+
+                {hideChinese && (
+                    <p className="text-micro leading-relaxed text-fg-muted">{t('vocab.hint.hide')}</p>
+                )}
+
+                {/* Keep stale rows on a failed refresh; a first-load failure is an
+                    error panel with retry, never an empty state (G3 / IX-01). */}
+                {failed && ready && (
+                    <ErrorPanel
+                        level="inline"
+                        title={t('vocab.mine.mastered.error')}
+                        detail={t('vocab.mine.mastered.errorHint')}
+                        onRetry={() => setMasteredNonce((value) => value + 1)}
+                        retryLabel={t('common.retry')}
+                        testId="vocab-mastered-stale"
+                        retryTestId="vocab-mastered-stale-retry"
+                    />
+                )}
+
+                {failed && !ready ? (
+                    <ErrorPanel
+                        level="card"
+                        title={t('vocab.mine.mastered.error')}
+                        detail={t('vocab.mine.mastered.errorHint')}
+                        onRetry={() => setMasteredNonce((value) => value + 1)}
+                        retryLabel={t('common.retry')}
+                        testId="vocab-mastered-error"
+                        retryTestId="vocab-mastered-retry"
+                    />
+                ) : !ready ? (
+                    <LoadingState
+                        kind="skeleton"
+                        rows={4}
+                        label={t('vocab.mine.mastered.loading')}
+                        testId="vocab-mastered-loading"
+                        className={`${CARD} px-4 py-6`}
+                    />
+                ) : masteredRows.length === 0 ? (
+                    emptyState(
+                        t('vocab.mine.empty.mastered'),
+                        t('vocab.mine.empty.masteredHint'),
+                        CheckCircle2,
+                        'vocab-mastered-empty',
+                    )
+                ) : (
+                    <>
+                        <span
+                            data-testid="vocab-mastered-total"
+                            className="text-xs text-fg-muted tabular-nums"
+                        >
+                            {t('vocab.total', { count: formatNumber(masteredRows.length) })}
+                        </span>
+                        <WordTable
+                            rows={tableRows}
+                            hideChinese={hideChinese}
+                            className={CARD}
+                            listTestId="vocab-mastered-list"
+                            testIdPrefix="vocab-mastered"
+                        />
+                        <VocabPagination
+                            scope="vocab"
+                            page={currentPage}
+                            pages={pages}
+                            hasMore={currentPage < pages}
+                            onChange={setMasteredPage}
+                        />
+                    </>
+                )}
+            </div>
+        );
+    };
+
     const renderList = () => {
         const label = activeIsCefr
             ? t('vocab.tab.cefr')
@@ -1772,7 +1928,7 @@ export function VocabularyBookScreen({
                 </div>
 
                 {hideChinese && (
-                    <p className="text-[11px] leading-relaxed text-zinc-500">{t('vocab.hint.hide')}</p>
+                    <p className="text-micro leading-relaxed text-fg-muted">{t('vocab.hint.hide')}</p>
                 )}
 
                 {activeIsCefr && (
@@ -1857,68 +2013,22 @@ export function VocabularyBookScreen({
                         )
                     ) : (
                         <>
-                            <div data-testid="vocab-word-list" className={`${CARD} overflow-hidden`}>
-                                <div className="hidden grid-cols-[minmax(0,1.15fr)_minmax(0,1.55fr)_auto] gap-3 border-b border-white/5 px-4 py-2 text-[11px] font-medium text-zinc-500 md:grid">
-                                    <span>{t('vocab.col.word')}</span>
-                                    <span>{t('vocab.col.translation')}</span>
-                                    <span className="text-right">{t('vocab.col.level')}</span>
-                                </div>
-                                <div className="divide-y divide-white/5">
-                                    {listData.items.map((item, index) => {
-                                        const isRevealed = revealed.has(item.word);
-                                        const translationHidden = hideChinese && !isRevealed;
-                                        return (
-                                            <button
-                                                key={`${item.word}-${index}`}
-                                                type="button"
-                                                data-testid="vocab-list-row"
-                                                data-word={item.word}
-                                                aria-pressed={hideChinese ? isRevealed : undefined}
-                                                title={hideChinese
-                                                    ? (isRevealed ? t('vocab.tapHide') : t('vocab.tapReveal'))
-                                                    : undefined}
-                                                onClick={hideChinese ? () => toggleReveal(item.word) : undefined}
-                                                className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 px-4 py-2.5 text-left transition-colors md:grid-cols-[minmax(0,1.15fr)_minmax(0,1.55fr)_auto] md:gap-y-0 ${
-                                                    hideChinese ? 'cursor-pointer hover:bg-white/[0.03]' : 'cursor-default'
-                                                }`}
-                                            >
-                                                <span className="flex min-w-0 items-baseline gap-2">
-                                                    <span data-testid="vocab-list-word" className="min-w-0 truncate text-[15px] font-semibold text-zinc-100">
-                                                        {item.word}
-                                                    </span>
-                                                    {item.phonetic && (
-                                                        <span className="min-w-0 truncate text-xs text-zinc-500">
-                                                            {item.phonetic}
-                                                        </span>
-                                                    )}
-                                                </span>
-                                                <span className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:col-start-2 md:row-start-1">
-                                                    {translationHidden ? null : (
-                                                        <span
-                                                            data-testid="vocab-list-translation"
-                                                            className="block truncate text-sm text-zinc-400"
-                                                        >
-                                                            {item.translation || '—'}
-                                                        </span>
-                                                    )}
-                                                </span>
-                                                <span className="col-start-2 row-start-1 flex items-center justify-end gap-2 md:col-start-3">
-                                                    {hideChinese && (
-                                                        isRevealed
-                                                            ? <Eye className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
-                                                            : <EyeOff className="h-3.5 w-3.5 text-zinc-600" aria-hidden="true" />
-                                                    )}
-                                                    <LevelBadge
-                                                        testId="vocab-list-level"
-                                                        level={item.cefrLevel || '—'}
-                                                        title={item.cefrLevel ? `CEFR ${item.cefrLevel}` : undefined}
-                                                    />
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                            {/* Same table component as 已掌握 (VocabularyRows). */}
+                            <WordTable
+                                rows={listData.items.map((item, index) => ({
+                                    key: `${item.word}-${index}`,
+                                    word: item.word,
+                                    phonetic: item.phonetic,
+                                    translation: item.translation,
+                                    level: item.cefrLevel,
+                                    levelTitle: item.cefrLevel ? `CEFR ${item.cefrLevel}` : undefined,
+                                    revealed: revealed.has(item.word),
+                                    onActivate: hideChinese ? () => toggleReveal(item.word) : undefined,
+                                }))}
+                                hideChinese={hideChinese}
+                                className={CARD}
+                                listTestId="vocab-word-list"
+                            />
 
                             <VocabPagination
                                 scope="vocab"
@@ -1965,7 +2075,7 @@ export function VocabularyBookScreen({
                 )}
                 {renderTabs()}
                 <div {...tabPanelProps('vocab', activeTab)}>
-                    {activeIsMine ? renderMine() : activeTab === PHRASES_TAB ? renderPhrases() : renderList()}
+                    {renderTabPanel()}
                 </div>
             </div>
             </div>
