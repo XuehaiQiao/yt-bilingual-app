@@ -305,6 +305,9 @@ async def process_video(request: VideoRequest, http_request: Request):
                 print(f"Cached payload language mismatch, reprocessing: {cached_path}")
             else:
                 cached_data = stamp_payload_language(cached_data, lang)
+                # specs/028 v1.1：旧版本分析字段先丢弃；下面的 attach_to_payload
+                # 会按当前版本重新命中/生成（失败则保持「没有分析」）。
+                teaching_analysis.drop_stale_merged_analysis(cached_data)
                 repaired = any(needs_retranslation(b.get("zh_text", "")) for b in cached_data.get("transcript", []))
                 cached_data = await retranslate_marked_blocks(
                     cached_data, cached_path, model=model, user_id=user_id,
@@ -620,7 +623,11 @@ def _load_cached_payload(video_id: str, lang: str) -> tuple[str | None, dict | N
         return cached_path, None
     if not payload.get("transcript"):
         return cached_path, None
-    return cached_path, stamp_payload_language(payload, lang)
+    payload = stamp_payload_language(payload, lang)
+    # specs/028 v1.1：旧版本合并的分析字段不随缓存返回（后续 attach_to_payload
+    # 会用当前版本重新命中/生成；失败也保持「没有分析」，不出现旧 v4 内容）。
+    teaching_analysis.drop_stale_merged_analysis(payload)
+    return cached_path, payload
 
 
 def _load_job_or_http(job_id: str, *, user_id: str | None = None) -> dict:
@@ -1406,6 +1413,9 @@ async def get_history(
     user_id = str(user["id"]) if user else None
     if isinstance(data, dict) and data.get("transcript"):
         data = stamp_payload_language(data, lang)
+        # specs/028 v1.1：旧版本（如 analysis.v4）合并的分析字段一律丢弃，游客
+        # 也一样——不能让 payload 显示旧分析、端点却按当前版本 403。
+        teaching_analysis.drop_stale_merged_analysis(data)
         if user_id:
             chosen_model = llm.resolve_model_for_target(model, lang)
             repaired = any(
@@ -1438,6 +1448,20 @@ async def get_history(
                     model=chosen_model,
                     user_id=user_id,
                 )
+        elif level:
+            # 游客：只读合并当前版本的缓存命中（零模型、零配额）；未命中就保持
+            # 「没有分析」，与只读端点同一可见性（specs/028 v1.1 §1.3）。
+            try:
+                teaching_analysis.normalize_level(level)
+            except teaching_analysis.AnalysisInvalidRequest as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            try:
+                teaching_analysis.attach_cached_to_payload(
+                    data, level=level, target_lang=lang
+                )
+            except teaching_analysis.TeachingAnalysisError:
+                # 分析是增强：0020 表缺失/坏行不影响缓存读取。
+                pass
         _bump_study(data, file_path)
     # 本地剧集缓存：从 episodes.json 现取 YouTube 映射补进返回的 metadata，
     # 与 process-subtitle 缓存命中的行为一致；不写回缓存文件，避免映射更新后

@@ -215,6 +215,9 @@ async def process_subtitle(request: SubtitleRequest, http_request: Request):
             print(f"Cached payload language mismatch, reprocessing: {cache_filename}")
         else:
             cached_data = stamp_payload_language(cached_data, lang)
+            # specs/028 v1.1：旧版本合并的分析字段不随缓存返回；下面的
+            # attach_to_payload 会用当前版本重新命中/生成（失败也保持「没有分析」）。
+            teaching_analysis.drop_stale_merged_analysis(cached_data)
             # 缓存里记录的 `model` 是「生成这批翻译时实际使用的模型」，命中时
             # 原样返回，供历史列表显示，不因这次请求换了模型而覆盖。
             # 旧缓存（本字段出现之前生成）没有记录：不臆测当时用的模型；只有

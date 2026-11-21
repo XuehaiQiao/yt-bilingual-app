@@ -23,9 +23,9 @@
   （``AI_DAILY_QUOTA_ANALYSIS``）；错误语义仍是 400/404/429/502/503；
 - **同一数据源、同一可见性**：合并进 per-user payload 的分析走
   ``teaching_analysis.attach_to_payload`` → ``ensure_analysis``；本端点的缓存
-  命中探测与它读**同一张全局表、同一个缓存键、同一套可复用判定**（见
-  :func:`_reusable_cached`）。因此游客从视频 payload 能读到的分析，本端点也能
-  读到，不会出现「一条路能读、另一条 403」。
+  命中探测复用 ``teaching_analysis.reusable_cached_analysis``——同一张全局表、
+  同一个缓存键、同一套可复用判定。因此游客从视频 payload 能读到的分析，本端点
+  也能读到，不会出现「一条路能读、另一条 403」。
 """
 from __future__ import annotations
 
@@ -131,28 +131,6 @@ def _analysis_response(content_ref: str, analysis: dict, target_lang: str) -> di
     }
 
 
-def _reusable_cached(
-    transcript: list[dict], level: str, target_lang: str
-) -> dict | None:
-    """只读探测全局分析缓存；返回可直接对外返回的 payload，未命中 None。
-
-    **零模型调用、不占配额、不写 ``ai_usage``**（只读 SQLite + 纯计算）。
-    判定与 ``teaching_analysis.ensure_analysis`` 的缓存命中完全一致：同一张
-    ``content_teaching_analysis`` 表、同一个缓存键、同一套「可复用」判定
-    （``_cache_is_stale``：旧版本 / 空释义行不算命中——它们会走生成路径，因此
-    游客也看不到「登录用户会被重新生成」的旧行）。合并进 per-user payload 的
-    分析与本端点因此同源、同可见性。
-    """
-    hash_value = teaching_analysis.content_hash_of(transcript)
-    cached = teaching_analysis.load_cached(hash_value, level, target_lang)
-    if not isinstance(cached, dict):
-        return None
-    normalized = teaching_analysis.normalize_blocks(transcript)
-    if teaching_analysis._cache_is_stale(cached, normalized, level):
-        return None
-    return cached
-
-
 def _guest_cached_view(
     content_ref: str,
     level: str | None,
@@ -161,19 +139,19 @@ def _guest_cached_view(
 ) -> dict | None:
     """游客的只读路径：能拿到可复用缓存就返回响应体，否则 None（→ 403）。
 
-    游客不生成分析（specs/036），所以这里只做「读内容缓存 → 算哈希 → 查全局
-    分析表」：不调模型、不占配额、不写用量。参数非法/内容不可见/缓存表缺失/
-    缓存未命中一律返回 None，由调用方统一抛 403 ``login_required``——
-    游客的下一步永远是登录，不把「做不到」伪装成 400/404。
+    游客不生成分析（specs/036），所以这里只做「读内容缓存 → 只读探测全局分析
+    缓存」：不调模型、不占配额、不写用量。判定复用
+    ``teaching_analysis.reusable_cached_analysis``（与 payload 合并同一套口径）。
+    参数非法/内容不可见/缓存表缺失/缓存未命中一律返回 None，由调用方统一抛
+    403 ``login_required``——游客的下一步永远是登录，不把「做不到」伪装成
+    400/404。
     """
     try:
         lang = teaching_analysis.canonical_target_lang(target_lang)
-        analysis_level = teaching_analysis.normalize_level(level)
         ref, transcript = _load_blocks(content_ref, lang)
-        provided = (content_hash or "").strip()
-        if provided and provided != teaching_analysis.content_hash_of(transcript):
-            return None
-        cached = _reusable_cached(transcript, analysis_level, lang)
+        cached = teaching_analysis.reusable_cached_analysis(
+            transcript, level, lang, content_hash=content_hash
+        )
     except teaching_analysis.TeachingAnalysisError:
         return None
     if not isinstance(cached, dict):

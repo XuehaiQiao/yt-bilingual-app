@@ -1005,7 +1005,7 @@ def _drop_merged_analysis_fields(payload: dict) -> None:
     for block in payload.get("transcript") or []:
         if isinstance(block, dict):
             block.pop("highlights", None)
-    for key in ("idioms", "culture", "analysisVersion"):
+    for key in ("idioms", "culture", "analysisVersion", "analysisLevel"):
         payload.pop(key, None)
 
 
@@ -1058,6 +1058,89 @@ def merge_into_payload(payload: dict, analysis: dict | None) -> bool:
     )
     payload["analysisVersion"] = ANALYSIS_VERSION
     return True
+
+
+def drop_stale_merged_analysis(payload) -> bool:
+    """丢弃 payload 里版本 ≠ 当前 ``ANALYSIS_VERSION`` 的分析合并字段。
+
+    specs/028 v1.1：**读缓存的路径**（``GET /api/history``、视频/本地剧集缓存
+    命中、SSE 续传）在把 payload 交给前端之前必须调用本函数——旧版本（如
+    ``analysis.v4``）合并进来的 ``analysisVersion`` / ``idioms`` / ``culture``
+    与按 block 的 ``highlights`` 一律删除，绝不把旧分析当成当前分析返回。
+    删除后调用方可以再用 :func:`attach_cached_to_payload` 合并当前版本的缓存
+    命中，或者保持「没有分析」的旧形状；两条路都与只读端点
+    （``GET /api/teaching-analysis/{ref}``）的可见性一致。
+
+    ``analysisVersion`` 缺失的 payload（028 之前的老翻译缓存，只有翻译期遗留
+    highlights）不算分析合并，原样保留（高亮不回退、不阻断播放）。
+
+    返回是否真的丢弃了字段。
+    """
+    if not isinstance(payload, dict):
+        return False
+    version = payload.get("analysisVersion")
+    if version is None or version == ANALYSIS_VERSION:
+        return False
+    _drop_merged_analysis_fields(payload)
+    return True
+
+
+def reusable_cached_analysis(
+    blocks,
+    level=None,
+    target_lang=None,
+    *,
+    content_hash: str | None = None,
+) -> dict | None:
+    """只读探测全局分析缓存：命中当前版本返回 payload，否则 ``None``。
+
+    **零模型调用、不占配额、不写 ``ai_usage``**。可复用判定与
+    :func:`ensure_analysis` 的缓存命中完全一致——同一张
+    ``content_teaching_analysis`` 表、同一 ``(content_hash, level, target_lang,
+    ANALYSIS_VERSION)`` 键、同一 ``_cache_is_stale`` 口径——因此「合并进
+    payload 的分析」与「只读端点返回的分析」必然同源、同可见性。
+
+    参数非法抛 :class:`AnalysisInvalidRequest`（``content_hash`` 传了但与内容
+    不一致同样 400）；缓存表缺失抛 :class:`AnalysisUnavailable`。
+    """
+    normalized = normalize_blocks(blocks)
+    if not normalized:
+        return None
+    canonical_level = normalize_level(level)
+    lang = canonical_target_lang(target_lang)
+    hash_value = content_hash_of(normalized)
+    if content_hash:
+        provided = str(content_hash).strip()
+        if provided and provided != hash_value:
+            raise AnalysisInvalidRequest("contentHash 与内容不一致，请重新获取内容。")
+    cached = load_cached(hash_value, canonical_level, lang)
+    if not isinstance(cached, dict):
+        return None
+    if _cache_is_stale(cached, normalized, canonical_level):
+        return None
+    return cached
+
+
+def attach_cached_to_payload(payload, *, level=None, target_lang=None) -> dict | None:
+    """只读：全局缓存命中就把当前版本分析合并进 payload；未命中返回 ``None``。
+
+    与 :func:`attach_to_payload` 的区别是**绝不生成**（不调模型、不占配额、
+    不写用量），只做缓存命中的合并。给「读已有 payload」的路径用（游客打开
+    历史缓存、本地剧集缓存命中）：命中就把当前版本分析补进去，未命中保持
+    「没有分析」，从而与只读端点同可见性——绝不会出现旧版本分析或一条路能读
+    一条 403。
+    """
+    if not isinstance(payload, dict):
+        return None
+    analysis = reusable_cached_analysis(
+        payload.get("transcript"),
+        level if level is not None else payload.get("analysisLevel"),
+        target_lang if target_lang is not None else payload_target_lang(payload),
+    )
+    if analysis is None:
+        return None
+    merge_into_payload(payload, analysis)
+    return analysis
 
 
 async def attach_to_payload(
