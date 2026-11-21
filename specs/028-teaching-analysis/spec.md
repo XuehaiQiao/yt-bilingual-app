@@ -90,9 +90,12 @@
   表缺失时分析静默跳过（视频处理照常），公共 API 返回 503。
 - **必须**：公开只读端点 `GET /api/teaching-analysis/{content_ref}`：
   `level`（缺省 orbit）、`targetLang`（缺省 zh-CN）、可选
-  `contentHash`（与实际内容不一致 → 400）。**需登录**（分析有 AI 成本），
-  生成时走现有配额 `feature=analysis`（`AI_DAILY_QUOTA_ANALYSIS`，默认 30），
-  缓存命中免费。
+  `contentHash`（与实际内容不一致 → 400）。
+- **必须**（v1.1 §1.3 访问策略统一）：**缓存命中对游客开放**（只读、零模型调用、
+  不计配额），**只有需要生成时才要求登录**（游客 → 403 `login_required`）。
+  合并进 per-user payload 的读路径与上述端点使用**同一数据源与同一可见性**，
+  不得出现「一条路能读、另一条要登录」。生成仍走现有配额
+  `feature=analysis`（`AI_DAILY_QUOTA_ANALYSIS`，默认 30）。
 - **应当**：文章 `GET /api/article/{id}?level=`、书籍章节
   `GET /api/books/{id}/chapters/{n}?level=` 可选附带分析（显式传 `level`
   才执行，普通阅读不产生额外 AI 成本；书籍章节要求登录）。
@@ -108,7 +111,7 @@
   idioms: [{blockId, phrase, meaning, quote}],
   culture: [{blockId, term, note, quote}], model, createdAt}`
 - 400：level 非法 / targetLang 不支持 / `contentHash` 与内容不一致；
-- 403：游客/未登录；
+- 403：游客且缓存未命中（需要生成分析）；缓存命中时游客返回 200；
 - 404：该语言下没有该内容缓存；
 - 429：教学分析日配额/预算用完；
 - 502：模型失败或返回无法校验（不写缓存，可重试）；
