@@ -38,6 +38,7 @@ export const ReadingHighlight: React.FC<ReadingHighlightProps> = ({
         isHighlighted={isHighlighted}
         languagePoints={languagePoints}
         showLanguagePoints={showLanguagePoints}
+        hoverSurface="text"
         glossForWord={(word) => wordGlosses?.[word.toLowerCase()]}
     />
 );

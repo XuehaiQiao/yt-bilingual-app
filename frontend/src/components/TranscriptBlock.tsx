@@ -17,6 +17,11 @@ export type WordClickHandler = (word: string, e: React.MouseEvent) => void;
 /** Strip leading/trailing punctuation for dictionary lookup. */
 const cleanWord = (token: string) => cleanReadingWord(token);
 
+/** Hover feedback for a word/language point: `block` paints the old grey
+ *  surface (video transcript), `text` only shifts text/underline colour (reading
+ *  views, where a grey block reads as a thicker line). */
+export type HoverSurface = 'block' | 'text';
+
 /** Render plain text with each word clickable for dictionary lookup. */
 export const ClickableWords: React.FC<{
     text: string;
@@ -25,13 +30,16 @@ export const ClickableWords: React.FC<{
     isHighlighted?: (word: string) => boolean;
     /** Contextual Chinese gloss for a word already marked by the base layer. */
     glossForWord?: (word: string) => string | null | undefined;
-}> = ({ text, onWordClick, isHighlighted, glossForWord }) => (
+    /** See `HoverSurface`; defaults to the video-transcript grey block. */
+    hoverSurface?: HoverSurface;
+}> = ({ text, onWordClick, isHighlighted, glossForWord, hoverSurface = 'block' }) => (
     <>
         {text.split(/(\s+)/).map((token, i) => {
             const word = cleanWord(token);
             if (!word || /^\s+$/.test(token)) return <span key={i}>{token}</span>;
             const highlighted = isHighlighted?.(word) ?? false;
             const gloss = highlighted ? glossForWord?.(word) : null;
+            const textHover = hoverSurface === 'text';
             if (gloss) {
                 return (
                     <ruby
@@ -41,7 +49,10 @@ export const ClickableWords: React.FC<{
                         data-gloss={gloss}
                         aria-label={`${word}: ${gloss}`}
                         onClick={(e) => { e.stopPropagation(); onWordClick(word, e); }}
-                        className="gloss-word cursor-pointer rounded-sm bg-amber-400/15 text-amber-50 transition-colors hover:bg-white/10"
+                        className={cn(
+                            'gloss-word cursor-pointer rounded-sm bg-amber-400/15 text-amber-50 transition-colors',
+                            textHover ? 'hover:text-amber-100' : 'hover:bg-white/10',
+                        )}
                     >
                         {token}
                         <rt className="text-[10px] font-medium text-amber-300/90 select-none">{gloss}</rt>
@@ -55,9 +66,11 @@ export const ClickableWords: React.FC<{
                     data-highlight={highlighted ? '1' : undefined}
                     onClick={(e) => { e.stopPropagation(); onWordClick(word, e); }}
                     className={cn(
-                        'cursor-pointer rounded-sm transition-colors hover:bg-white/10',
+                        'cursor-pointer transition-colors',
+                        highlighted && 'rounded-sm bg-amber-400/15 text-amber-50',
                         highlighted
-                            && 'rounded-sm bg-amber-400/15 text-amber-50',
+                            ? textHover ? 'hover:text-amber-100' : 'hover:bg-white/10'
+                            : textHover ? 'hover:text-zinc-50' : 'rounded-sm hover:bg-white/10',
                     )}
                 >
                     {token}
@@ -75,11 +88,13 @@ export const MarkedWords: React.FC<{
     languagePoints?: InlineLanguagePoint[];
     showLanguagePoints?: boolean;
     glossForWord?: (word: string) => string | null | undefined;
-}> = ({ text, onWordClick, isHighlighted, languagePoints, showLanguagePoints = true, glossForWord }) => {
+    /** See `HoverSurface`; defaults to the video-transcript grey block. */
+    hoverSurface?: HoverSurface;
+}> = ({ text, onWordClick, isHighlighted, languagePoints, showLanguagePoints = true, glossForWord, hoverSurface = 'block' }) => {
     const marked = useMemo(() => {
         if (!onWordClick) return <span>{text}</span>;
         if (!showLanguagePoints || !languagePoints?.length) {
-            return <ClickableWords text={text} onWordClick={onWordClick} isHighlighted={isHighlighted} glossForWord={glossForWord} />;
+            return <ClickableWords text={text} onWordClick={onWordClick} isHighlighted={isHighlighted} glossForWord={glossForWord} hoverSurface={hoverSurface} />;
         }
         const ranges: Array<{ point: InlineLanguagePoint; index: number; length: number }> = [];
         let lastEnd = 0;
@@ -93,7 +108,7 @@ export const MarkedWords: React.FC<{
             lastEnd = candidate.index + candidate.point.text.length;
         }
         if (ranges.length === 0) {
-            return <ClickableWords text={text} onWordClick={onWordClick} isHighlighted={isHighlighted} glossForWord={glossForWord} />;
+            return <ClickableWords text={text} onWordClick={onWordClick} isHighlighted={isHighlighted} glossForWord={glossForWord} hoverSurface={hoverSurface} />;
         }
         const parts: React.ReactNode[] = [];
         let cursor = 0;
@@ -106,24 +121,43 @@ export const MarkedWords: React.FC<{
                         onWordClick={onWordClick}
                         isHighlighted={isHighlighted}
                         glossForWord={glossForWord}
+                        hoverSurface={hoverSurface}
                     />,
                 );
             }
             const phrase = text.slice(range.index, range.index + range.length);
+            const meaning = range.point.meaning?.trim();
+            // Always-visible ruby annotation (same rendering as the difficulty
+            // gloss above), not a native `title` tooltip: the meaning must be
+            // readable without hovering. The underline layer stays on the base.
+            // Each base word is its own nowrap span: Chrome breaks a multi-word
+            // ruby base mid-word when the phrase does not fit the line, while
+            // spans keep the break opportunities at the spaces (the phrase can
+            // still wrap; only the annotation itself is nowrap).
             parts.push(
-                <span
+                <ruby
                     key={`point-${i}`}
                     data-language-point={range.point.kind}
                     data-word-hit={phrase}
-                    title={range.point.meaning || phrase}
+                    aria-label={meaning ? `${phrase}: ${meaning}` : undefined}
                     onClick={(e) => {
                         e.stopPropagation();
                         onWordClick(phrase, e);
                     }}
-                    className="cursor-help rounded-sm underline decoration-sky-400/70 decoration-2 underline-offset-4 transition-colors hover:bg-white/10"
+                    className={cn(
+                        'language-point cursor-pointer underline decoration-sky-400/70 decoration-2 underline-offset-4 transition-colors',
+                        hoverSurface === 'text'
+                            ? 'hover:text-sky-100 hover:decoration-sky-300'
+                            : 'rounded-sm hover:bg-white/10',
+                    )}
                 >
-                    {phrase}
-                </span>,
+                    {phrase.split(/(\s+)/).map((part, partIndex) => (
+                        part.trim() === ''
+                            ? <span key={partIndex}>{part}</span>
+                            : <span key={partIndex} className="language-point-word">{part}</span>
+                    ))}
+                    {meaning ? <rt className="select-none text-sky-400">{meaning}</rt> : null}
+                </ruby>,
             );
             cursor = range.index + range.length;
         });
@@ -135,11 +169,12 @@ export const MarkedWords: React.FC<{
                     onWordClick={onWordClick}
                     isHighlighted={isHighlighted}
                     glossForWord={glossForWord}
+                    hoverSurface={hoverSurface}
                 />,
             );
         }
         return parts;
-    }, [glossForWord, isHighlighted, languagePoints, onWordClick, showLanguagePoints, text]);
+    }, [glossForWord, hoverSurface, isHighlighted, languagePoints, onWordClick, showLanguagePoints, text]);
     return <>{marked}</>;
 };
 

@@ -133,6 +133,21 @@ ruby rt {
   font-weight: 500;
   white-space: nowrap;
 }
+
+/* Language points (idiom / fixed expression / culture): always-visible ruby
+   gloss with the same geometry as the difficulty gloss, but sky to match the
+   language-point underline. Only the annotation is kept on one line; each
+   base word is nowrap (so Chrome never breaks a word in half) while the
+   spaces between the words remain ordinary line-break opportunities. */
+.language-point-word {
+  white-space: nowrap;
+}
+.language-point rt {
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 500;
+  white-space: nowrap;
+}
 .ruby-safe-line {
   line-height: 1.9 !important;
 }
