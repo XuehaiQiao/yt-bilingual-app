@@ -23,10 +23,10 @@
 
 1. ``highlights[].en_word`` 必须是该 block 英文原文的子串；
 2. ``highlights[].zh_word`` 必须是该 block 目标语言译文的子串——找不到就
-   置空但保留 ``en_word``（译文变化时英文高亮仍可用）；
+   **整条丢弃**（无释义不标）；不得返回「有高亮、无释义」的条目；
 3. ``idioms[].quote`` / ``culture[].quote`` 必须是该 block 英文原文的子串；
 4. 指向未知 block、空字段、重复条目的高亮/习语/文化点直接丢弃；
-5. 单内容最多 20 条习语、10 条文化点；每 block 最多 2 条高亮。
+5. 单内容最多 20 条习语、10 条文化点；每 block 最多 20 条候选词语境释义。
 
 幂等/并发：进程内按 ``(hash, level, lang, version)`` 加锁，同 key 并发只跑
 一次模型；**只有全部批次成功才写缓存**，失败不落半成品、下次可重试。
@@ -48,6 +48,7 @@ import config
 import languages
 import llm
 import vocabulary
+import word_rules
 from ai import quota
 from translate import (
     HIGHLIGHT_COLOR,
@@ -99,8 +100,6 @@ _WORD_LEVEL_RANK = {
     "C1+": 5,
     "C2": 6,
 }
-_CANDIDATE_WORD_RE = re.compile(r"[A-Za-z][A-Za-z'\-]*")
-
 # CEFR 高亮档（前端 VocabLevelId）。旧版本存的考试 id 映射到新档位，保证
 # 手工/旧客户端传 cet4 之类也能命中缓存，而不是另起一套 level 值。
 LEVEL_IDS = ("liftoff", "orbit", "moonwalk", "interstellar", "deep-space", "supernova")
@@ -303,7 +302,7 @@ def _block_index(normalized: list[dict]) -> dict[str, tuple[int, dict]]:
 
 
 def _clean_highlights(raw, normalized, index, candidates: dict[str, list[str]] | None = None) -> dict[str, list[dict]]:
-    """校验高亮：en 必须是原文子串、zh 必须是译文子串（否则置空保留 en）。"""
+    """校验高亮：en 必须是原文子串、zh 必须是译文子串；zh 缺失 → 整条丢弃。"""
     grouped: dict[str, list[dict]] = {}
     seen: set[tuple[str, str, str]] = set()
     for item in _iter_items(raw, "highlights"):
@@ -316,8 +315,10 @@ def _clean_highlights(raw, normalized, index, candidates: dict[str, list[str]] |
         zh_word = _clean_text(item.get("zh_word", item.get("zh")))
         if not en_word or not _substring(en_word, block["en"]):
             continue
+        # 无释义不标（specs/028）：译文缺失/变化时整条丢弃，不返回
+        # 「有高亮、无释义」的条目。
         if not (zh_word and block["zh"] and _substring(zh_word, block["zh"])):
-            zh_word = ""  # 译文缺失/变化：只保留英文高亮，不编造中文
+            continue
         key = str(block["id"])
         if candidates is not None:
             allowed = {word.casefold() for word in candidates.get(key, [])}
@@ -432,8 +433,11 @@ def _candidate_words_for_blocks(blocks: list[dict], level: str) -> dict[str, lis
 
     This is the same selection rule as the frontend difficulty layer, moved to
     the server so the AI gets an explicit candidate list instead of choosing
-    its own two words. Each word is resolved once per analysis (batched by 100
-    through ``vocabulary.level_for_words``).
+    its own two words. Tokenization, sentence-start detection and the proper
+    noun filter all come from :mod:`word_rules` (specs/028): the same rule now
+    drives ``POST /api/vocabulary/classify``, so video and readers cannot
+    diverge on which words are candidates. Each word is resolved once per
+    analysis (batched by 100 through ``vocabulary.level_for_words``).
     """
     threshold = _VOCAB_LEVEL_RANK.get(level, 2)
     if threshold >= 6:
@@ -444,9 +448,8 @@ def _candidate_words_for_blocks(blocks: list[dict], level: str) -> dict[str, lis
         block_id = str(block.get("id"))
         words: list[str] = []
         seen: set[str] = set()
-        for raw in _clean_text(block.get("en")).split():
-            token = re.sub(r"^[^A-Za-z0-9']+|[^A-Za-z0-9']+$", "", raw)
-            if len(token) < 2 or not re.search(r"[A-Za-z]", token):
+        for token, sentence_start in word_rules.iter_words(_clean_text(block.get("en"))):
+            if word_rules.is_proper_token(token, sentence_start):
                 continue
             key = token.casefold()
             if key in seen:
@@ -545,9 +548,9 @@ LEARNER LEVEL (highlighting threshold): {level}
 For the blocks below, produce:
 1. "highlights": for every word in that block's "candidates" list, return
    exactly one entry with that exact English word and its contextual Chinese
-   gloss (zh_word) copied from the translation when possible. Do not add words
-   that are not in the candidates list; if no natural gloss exists, keep the
-   entry with an empty zh_word.
+   gloss (zh_word) copied from the translation. Do not add words that are not
+   in the candidates list; if no natural gloss exists, omit that word — entries
+   without a verifiable zh_word are discarded.
 2. "idioms": interesting idioms / phrasal verbs / fixed expressions that are
    actually used in the text. At most 20 in total.
 3. "culture": culture-specific references, allusions, customs, brands, places,
@@ -556,7 +559,8 @@ For the blocks below, produce:
 HARD RULES (entries that break them are discarded):
 - "en_word" must be copied exactly from that block's English text (a substring).
 - "zh_word" must be copied exactly from that block's {target_name} translation
-  (a substring). If no natural match exists, use "" — never invent one.
+  (a substring). If no natural match exists, omit the whole entry — never
+  invent a gloss and never return an entry with an empty zh_word.
 - "quote" must be copied exactly from that block's English text (a substring).
 - "blockId" must be one of the ids given below.
 - Write meanings/notes in {target_name}; keep them short.
@@ -567,7 +571,7 @@ Return ONLY one JSON object, no prose and no markdown fence:
 {{
   "highlights": [
     {{"blockId": <id>, "en_word": "<exact English substring>",
-      "zh_word": "<exact {target_name} substring or empty string>"}}
+      "zh_word": "<exact {target_name} substring>"}}
   ],
   "idioms": [
     {{"blockId": <id>, "phrase": "<English idiom/phrase>",
@@ -863,6 +867,7 @@ def _block_zh(block: dict) -> str:
 
 
 def _sanitize_highlights_for_block(raw, block: dict) -> list[dict]:
+    """把一份分析高亮收窄到当前 block；zh 不可核对 → 整条丢弃（无释义不标）。"""
     en_text = _block_en(block)
     zh_text = _block_zh(block)
     if zh_text == UNTRANSLATED_MARKER:
@@ -877,7 +882,7 @@ def _sanitize_highlights_for_block(raw, block: dict) -> list[dict]:
         if not en_word or not _substring(en_word, en_text):
             continue
         if not (zh_word and zh_text and _substring(zh_word, zh_text)):
-            zh_word = ""
+            continue
         dedupe = (en_word.casefold(), zh_word.casefold())
         if dedupe in seen or len(cleaned) >= MAX_HIGHLIGHTS_PER_BLOCK:
             continue

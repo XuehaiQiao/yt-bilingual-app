@@ -7,13 +7,15 @@
 3. 等级/语言归一化：六档 + 旧考试 id 映射、非法值 400、默认档 orbit；
 4. prompt：只标高于等级的词/短语、quote 必须能在原文找到、目标语言名；
 5. 校验闸：en_word/zh_word/quote 子串约束、未知 block 丢弃、译文找不到时
-   zh_word 置空但保留 en、颜色强制、单 block ≤2 条、习语 20/文化点 10 上限；
-6. 缓存：首次生成一次模型调用，第二次命中零调用；等级/语言/内容隔离；
-7. 并发：同 key 并发只跑一次模型（后到者复用缓存）；
-8. 失败不写半成品、可重试；缺 0020 表时 AnalysisUnavailable（内部静默跳过）；
-9. 合并：按 block id 覆盖 highlights、清掉旧等级残留、idioms/culture/
+   **整条丢弃**（无释义不标）、颜色强制、单 block ≤20 条、习语 20/文化点 10 上限；
+6. 候选词：非句首专名不入候选、句首普通词保留、与 classify 同源（同一
+   word_rules 规则）；
+7. 缓存：首次生成一次模型调用，第二次命中零调用；等级/语言/内容隔离；
+8. 并发：同 key 并发只跑一次模型（后到者复用缓存）；
+9. 失败不写半成品、可重试；缺 0020 表时 AnalysisUnavailable（内部静默跳过）；
+10. 合并：按 block id 覆盖 highlights、清掉旧等级残留、idioms/culture/
    analysisVersion 写进 payload；旧缓存没有分析字段时保持原样；
-10. 端到端：翻译 prompt 不再请求 highlights；流式处理在翻译后合并分析并落盘；
+11. 端到端：翻译 prompt 不再请求 highlights；流式处理在翻译后合并分析并落盘；
     GET /api/teaching-analysis（登录、缓存命中免费、等级/内容变化重生成）。
 
 全部离线：LLM 全部 monkeypatch；数据库在 conftest 的 tmp_path 下用真实
@@ -36,6 +38,7 @@ import storage
 import teaching_analysis
 import translate
 import routes_videos
+import word_rules
 from tests.migration_utils import (
     assert_alembic_ok,
     columns,
@@ -333,10 +336,78 @@ def test_analysis_prompt_states_level_rules_and_block_input():
 
 
 # ---------------------------------------------------------------------------
-# 5. 校验闸
+# 5. 候选词（word_rules 单一规则）
 # ---------------------------------------------------------------------------
 
-def test_validate_drops_invalid_highlights_and_blanks_ang_mismatch():
+def test_candidate_words_exclude_proper_nouns_but_keep_sentence_initial_words():
+    """非句首专名不入候选；句首大写普通词照常按等级入选（liftoff）。"""
+    blocks = [
+        {
+            "id": 1,
+            "en_text": "I saw Georgie and Gridley near the river.",
+            "zh_text": "我在河边看见了乔治和格里德利。",
+        },
+        {
+            "id": 2,
+            "en_text": "Visitors can buy tickets at the front desk.",
+            "zh_text": "游客可以在前台买票。",
+        },
+    ]
+    normalized = teaching_analysis.normalize_blocks(blocks)
+    candidates = teaching_analysis._candidate_words_for_blocks(normalized, "liftoff")
+    # Georgie / Gridley 是 C1+（高于 A1），若没有专名规则会入选；
+    # 现在它们是非句首专名 → 不入候选。
+    assert "Georgie" not in candidates.get("1", [])
+    assert "Gridley" not in candidates.get("1", [])
+    assert candidates["2"][0] == "Visitors"  # 句首大写普通词保留
+    assert "tickets" in candidates["2"]
+    assert "the" not in candidates["2"]
+
+
+def test_candidate_words_match_classify_for_the_same_text(client):
+    """候选集合与 POST /api/vocabulary/classify 同源：同一 rule 向量。"""
+    text = ("Yesterday Georgie met Gridley in London. "
+            "Visitors can buy tickets at the front desk.")
+    normalized = teaching_analysis.normalize_blocks([
+        {"id": 1, "en_text": text, "zh_text": "游客在伦敦的前台买票。"}
+    ])
+    candidates = teaching_analysis._candidate_words_for_blocks(
+        normalized, "liftoff"
+    ).get("1", [])
+
+    items = [
+        {"text": token, "sentenceStart": sentence_start}
+        for token, sentence_start in word_rules.iter_words(text)
+    ]
+    response = client.post("/api/vocabulary/classify", json={"items": items})
+    assert response.status_code == 200, response.text
+    classified = response.json()["items"]
+
+    expected: list[str] = []
+    seen: set[str] = set()
+    for item in classified:
+        rank = teaching_analysis._WORD_LEVEL_RANK.get(
+            str(item.get("level") or "").upper()
+        )
+        if item.get("proper") or rank is None or rank <= 0:  # liftoff 阈值 = A1
+            continue
+        key = str(item["text"]).casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        expected.append(item["text"])
+
+    assert candidates == expected
+    assert "Georgie" not in candidates and "Gridley" not in candidates
+    assert "Visitors" in candidates
+
+
+# ---------------------------------------------------------------------------
+# 6. 校验闸
+# ---------------------------------------------------------------------------
+
+def test_validate_drops_highlights_without_a_matching_gloss():
+    """specs/028：zh_word 在译文里找不到 → 整条丢弃（无释义不标）。"""
     normalized = teaching_analysis.normalize_blocks(BLOCKS)
     raw = json.dumps({
         "highlights": [
@@ -344,8 +415,10 @@ def test_validate_drops_invalid_highlights_and_blanks_ang_mismatch():
             {"blockId": 1, "en_word": "museum", "zh_word": "博物馆"},
             # en 不在原文 → 丢
             {"blockId": 1, "en_word": "castle", "zh_word": "城堡"},
-            # zh 不在译文 → 保留 en、zh 置空
+            # zh 不在译文 → 整条丢（旧行为是置空保留 en）
             {"blockId": 2, "en_word": "tickets", "zh_word": "门票"},
+            # 空 zh → 丢
+            {"blockId": 1, "en_word": "morning", "zh_word": ""},
             # 未知 block → 丢
             {"blockId": 99, "en_word": "tickets", "zh_word": "门票"},
             # 空 en → 丢
@@ -353,19 +426,15 @@ def test_validate_drops_invalid_highlights_and_blanks_ang_mismatch():
         ]
     }, ensure_ascii=False)
     result = teaching_analysis.validate_analysis(raw, normalized)
-    entries = result["highlights"]["1"]
-    assert entries[0] == {
-        "en_word": "museum",
-        "zh_word": "博物馆",
-        "color": HIGHLIGHT_COLOR,
+    # 只有 block 1 的 museum 通过校验；block 2 没有任何可核对释义 → 不出现。
+    assert result["highlights"] == {
+        "1": [{
+            "en_word": "museum",
+            "zh_word": "博物馆",
+            "color": HIGHLIGHT_COLOR,
+        }]
     }
-    assert len(entries) == 1
-    tickets = result["highlights"]["2"]
-    assert tickets == [{
-        "en_word": "tickets",
-        "zh_word": "",
-        "color": HIGHLIGHT_COLOR,
-    }]
+    assert "2" not in result["highlights"]
 
 
 def test_validate_highlights_is_case_sensitive_like_old_translation():
@@ -428,7 +497,7 @@ def test_validate_accepts_highlights_grouped_by_block_id():
     raw = {
         "highlights": {
             "1": [{"en_word": "museum", "zh_word": "博物馆"}],
-            "2": [{"en_word": "tickets", "zh_word": "门票"}],
+            "2": [{"en_word": "tickets", "zh_word": "买票"}],
         }
     }
     result = teaching_analysis.validate_analysis(raw, normalized)
@@ -453,7 +522,7 @@ def test_merge_parts_caps_idioms_at_twenty_and_culture_at_ten():
 
 
 # ---------------------------------------------------------------------------
-# 6/7. ensure：缓存、等级/语言/内容隔离、并发
+# 7/8. ensure：缓存、等级/语言/内容隔离、并发
 # ---------------------------------------------------------------------------
 
 def test_ensure_generates_once_then_cache_hit_is_free(analysis_db, llm_stub):
@@ -602,7 +671,7 @@ def test_cache_hit_does_not_consume_quota(analysis_db, llm_stub, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# 8. 合并进 payload
+# 9/10. 合并进 payload
 # ---------------------------------------------------------------------------
 
 def test_merge_into_payload_replaces_highlights_by_block_id():
@@ -647,6 +716,31 @@ def test_merge_into_payload_replaces_highlights_by_block_id():
     assert payload["analysisVersion"] == "analysis.v4"
 
 
+def test_merge_into_payload_drops_cached_highlights_without_gloss():
+    """旧缓存/模型输出里 zh 为空的条目，合并时也整条丢弃（不再渲染无释义高亮）。"""
+    payload = {"transcript": copy.deepcopy(BLOCKS)}
+    analysis = {
+        "analysisVersion": "analysis.v4",
+        "highlights": {
+            "1": [{"en_word": "museum", "zh_word": ""}],
+            "2": [
+                {"en_word": "Visitors", "zh_word": ""},
+                {"en_word": "tickets", "zh_word": "买票"},
+            ],
+        },
+        "idioms": [],
+        "culture": [],
+    }
+    assert teaching_analysis.merge_into_payload(payload, analysis) is True
+    assert payload["transcript"][0]["highlights"] == []
+    assert payload["transcript"][1]["highlights"] == [{
+        "en_word": "tickets",
+        "zh_word": "买票",
+        "color": HIGHLIGHT_COLOR,
+    }]
+    assert payload["analysisVersion"] == "analysis.v4"
+
+
 def test_merge_into_payload_keeps_old_cache_compatible():
     """没有分析结果时旧 payload 原样返回（不凭空加字段/不清旧高亮）。"""
     payload = {"transcript": copy.deepcopy(BLOCKS)}
@@ -671,7 +765,7 @@ def test_attach_to_payload_skips_when_table_missing(client):
 
 
 # ---------------------------------------------------------------------------
-# 9. 翻译只负责译文
+# 10. 翻译只负责译文
 # ---------------------------------------------------------------------------
 
 def test_translation_prompt_no_longer_requests_highlights(monkeypatch):
@@ -698,7 +792,7 @@ def test_translation_prompt_no_longer_requests_highlights(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# 10. 端到端：缓存视频流 / 新视频流 / API
+# 11. 端到端：缓存视频流 / 新视频流 / API
 # ---------------------------------------------------------------------------
 
 def test_cached_stream_merges_analysis_and_zero_extra_calls(

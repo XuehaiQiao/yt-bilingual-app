@@ -6,6 +6,8 @@
 //   GET /api/vocabulary/phrases?page&pageSize&q&level&type → paged phrases
 //   GET /api/vocabulary/phrases/{id}               → one phrase (+ notes/license)
 //   GET /api/vocabulary/level?words=a,b,c          → word → A1–C1 / C1+ / null
+//   POST /api/vocabulary/classify                  → batch highlight classification
+//                                                    (level + proper noun flag)
 //
 // The UI's word-book shows one merged `cefr` list (A1–C1, filterable by level);
 // the backend also keeps the legacy per-level ids (`cefr-a1`…) for older
@@ -296,4 +298,77 @@ export async function fetchVocabularyLevels(
         }
     }
     return levels;
+}
+
+/**
+ * One token for `POST /api/vocabulary/classify`: the original spelling plus the
+ * caller's positional context. The backend (word_rules.py) owns the proper-noun
+ * list and the capitalisation rule, so the frontend never re-implements them.
+ */
+export interface VocabularyClassifyItem {
+    text: string;
+    sentenceStart: boolean;
+}
+
+/** One classification result: CEFR level (`null` = invalid token) + proper flag. */
+export interface VocabularyClassifyResult {
+    text: string;
+    level: string | null;
+    proper: boolean;
+}
+
+/**
+ * Batch size for classify requests. The endpoint accepts ≤200 tokens, but a
+ * reader sends one batch per 100 to keep each request small (and to match the
+ * existing highlight acceptance harness's batch expectations).
+ */
+export const VOCABULARY_CLASSIFY_BATCH_SIZE = 100;
+
+/**
+ * Batched highlight classification (specs/004 / 028).
+ *
+ * `POST /api/vocabulary/classify` keeps the input order and spelling; an
+ * invalid token gets `level: null` without failing the request. Results are
+ * returned in the same order as `items` (the request carries duplicate texts
+ * with different `sentenceStart` values, so callers must map by index, not by
+ * text). Batches are ≤100 entries; a failed batch throws so the caller can
+ * degrade silently.
+ */
+export async function fetchVocabularyClassify(
+    items: readonly VocabularyClassifyItem[],
+    options: { signal?: AbortSignal } = {},
+): Promise<VocabularyClassifyResult[]> {
+    const results: VocabularyClassifyResult[] = [];
+    for (let index = 0; index < items.length; index += VOCABULARY_CLASSIFY_BATCH_SIZE) {
+        const batch = items.slice(index, index + VOCABULARY_CLASSIFY_BATCH_SIZE);
+        const response = await apiFetch('/api/vocabulary/classify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                items: batch.map((item) => ({
+                    text: item.text,
+                    sentenceStart: item.sentenceStart,
+                })),
+            }),
+            ...(options.signal ? { signal: options.signal } : {}),
+        });
+        if (!response.ok) throw new Error(await errorDetail(response));
+        const data = await response.json().catch(() => null);
+        if (!isRecord(data) || !Array.isArray(data.items) || data.items.length !== batch.length) {
+            throw new Error('Invalid classify response');
+        }
+        for (let offset = 0; offset < batch.length; offset += 1) {
+            const raw = data.items[offset];
+            if (!isRecord(raw)) throw new Error('Invalid classify response');
+            const level = typeof raw.level === 'string' && raw.level.trim()
+                ? raw.level.trim()
+                : null;
+            results.push({
+                text: typeof raw.text === 'string' ? raw.text : batch[offset].text,
+                level,
+                proper: raw.proper === true,
+            });
+        }
+    }
+    return results;
 }

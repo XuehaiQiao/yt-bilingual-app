@@ -5,30 +5,36 @@
 // words that deserve attention. It is not an ability rating and it never
 // decides what content is recommended.
 //
-// Contract:
+// Contract (specs/004 + specs/028, v2):
 //   - the selected `VocabLevelId` maps to a CEFR threshold (A1…C2);
-//   - every word's level comes from GET /api/vocabulary/level (batched ≤100 by
-//     lib/vocabulary.ts). A word whose rank is above the threshold is marked;
-//   - `null` from the API means "not a valid English word" (numbers, names,
-//     typos) — it is not guessed into C1+; a returned `C1+` is treated as the
-//     rank between C1 and C2;
-//   - C2 is the highest stop, so at C2 nothing is marked;
+//   - every token is classified by `POST /api/vocabulary/classify` (batched by
+//     lib/vocabulary.ts). The backend is the single source of the proper-noun
+//     list and of the capitalisation rule: a token is marked only when
+//     `proper === false` and its level rank is above the threshold;
+//   - the frontend must not keep a second proper-noun list or a second
+//     capitalisation rule (the old frontend proper-noun module was deleted);
+//   - `null` level means "not a valid English word" (numbers, garbage) — it is
+//     not guessed into C1+; a returned `C1+` is treated as the rank between C1
+//     and C2; C2 is the highest stop, so at C2 nothing is marked;
 //   - an unavailable API fails silently into "no highlight" — reading is never
 //     blocked and a level is never invented;
-//   - 缓存仍只按小写词形存词级（切换章节不重查）；但专名与「非句首大写」在
-//     进缓存之前就被过滤掉（见 collectReadingWords / isHighlighted），避免大写
-//     形态借到普通词形的等级（缓存串味）。
+//   - the classify cache key is the original word form + `sentenceStart` (the
+//     backend rule is positional), so the cache of one reader can be reused by
+//     another without letting a capitalised occurrence borrow the wrong answer.
 //
-// 标亮最小版（v1.1 任务 3，D3-1）自本版起区分大小写：
-//   - 小写词、以及**句首**首字母大写的词，仍按上面的频率判据判（句首词照常判，
-//     否则句首普通词会被整片放过）；
-//   - 非句首的「首字母大写」token 一律不标（多半是专名），也不送查词级、不进缓存；
-//   - lib/properNouns.ts 的常见人名/地名/缩写名单**任何位置**都不标亮。
-//   - 已知限制：文本按句/段（block）传入，句首专名只能靠上面那份小名单兜底，
-//     名单外的句首专名必然漏判——句首普通词与句首专名在词形上无法区分。
+// Known limitation (kept, not "solved"): a block is a sentence/paragraph and
+// its first token is assumed to start a sentence. A proper noun at the start
+// of a block is indistinguishable from an ordinary capitalised word, so a
+// proper noun at position 0 (and any unlisted one) is necessarily missed by
+// the proper-noun filter (句首专名必漏). The same form appearing elsewhere in
+// lowercase/sentence-start can also make its non-initial capitalised
+// occurrences get marked — the error direction is "extra marks", not "missed
+// words". Both are accepted for the block-level v1 rule.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isProperNoun } from './properNouns';
-import { fetchVocabularyLevels } from './vocabulary';
+import {
+    fetchVocabularyClassify,
+    type VocabularyClassifyResult,
+} from './vocabulary';
 import {
     loadVocabLevel,
     VOCAB_LEVEL_EVENT,
@@ -56,12 +62,6 @@ export function cleanReadingWord(token: string): string {
     return token.replace(/^[^A-Za-z0-9']+|[^A-Za-z0-9']+$/g, '');
 }
 
-/** Token 的首个字母是否大写（iPhone 这类首字母小写的不算）。 */
-export function startsWithCapitalLetter(token: string): boolean {
-    const first = /[A-Za-z]/.exec(token)?.[0];
-    return first !== undefined && first === first.toUpperCase();
-}
-
 /** 句末标点（后面可再跟收尾引号/括号）：其后的首个实词算「句首」。 */
 const SENTENCE_END_RE = /[.!?…。！？]["'”’)\]}]*$/;
 
@@ -77,65 +77,49 @@ function endsSentence(rawToken: string): boolean {
     return !NON_TERMINAL_ABBREVIATIONS.has(cleanReadingWord(rawToken).toLowerCase());
 }
 
+/** One token as it appeared in the text: original spelling + positional context. */
+export interface ReadingToken {
+    text: string;
+    sentenceStart: boolean;
+}
+
+/** classify 缓存键：原词形（保留大小写）+ 是否句首。 */
+function classifyCacheKey(text: string, sentenceStart: boolean): string {
+    return `${sentenceStart ? '1' : '0'}\u0000${text}`;
+}
+
 /**
- * 收集需要查词级的「小写词形」集合（已按标亮最小版规则过滤）。
+ * 收集本文里需要 classify 的 token（原词形 + 句首标记）。
  *
- * 规则（v1.1 任务 3，D3-1）：
- *   - 非句首的「首字母大写」token 不可能是普通小写词，直接跳过——不查词级、
- *     不进缓存，这同时保证了缓存里不会有专名/大写形态的等级；
- *   - 句首 token 仍按原频率判据，加入待查集合（否则句首普通词会被整片放过）；
- *   - 名单内专名任何位置都跳过（句首专名的唯一兜底）。
+ * 句首判定与后端 `word_rules.iter_words` 同一口径：每个换行（调用方的句/段
+ * block）算句首；行内第一个实词，以及句末标点（. ! ? … 等）后的第一个实词
+ * 算句首；常见缩写（Mr. 等）不结束句子。
  *
- * 句首判定：每个换行（调用方的句/段 block）算句首；行内第一个实词，以及句末
- * 标点（. ! ? … 等）后的第一个实词算句首；常见缩写（Mr. 等）不结束句子。
- *
- * 已知限制：block 是句级，句子被 block 切断或缩写后接普通词时可能误判句首；
- * 同一词形若在本文里另有小写/句首出现，它在别处的非句首大写形态仍会被判到
- * （isHighlighted 拿不到 token 位置）。句首专名若不在名单内，必然漏判。
+ * 只处理「清洗后至少 2 字符且含字母」的 token；纯数字/标点不送判定。
+ * 同一 (原词形, sentenceStart) 只保留一次——后端返回专名标记与位置有关，
+ * 所以必须在缓存键里带上 sentenceStart。
  */
-export function collectReadingWords(corpus: string): string[] {
-    const words = new Set<string>();
+export function collectReadingTokens(corpus: string): ReadingToken[] {
+    const tokens: ReadingToken[] = [];
+    const seen = new Set<string>();
     for (const line of corpus.split('\n')) {
         let sentenceStart = true;
         for (const raw of line.split(/\s+/)) {
             if (!raw) continue;
             const token = cleanReadingWord(raw);
-            // 只处理有意义（含字母、长度 ≥2）的词；纯数字/标点 token 不改变
-            // 句首状态，除非它本身就是句末标点（下面单独处理）。
             const isWord = token.length >= 2 && /[A-Za-z]/.test(token);
-            if (isWord && !isProperNoun(token)) {
-                const lower = token.toLowerCase();
-                if (!startsWithCapitalLetter(token) || sentenceStart) {
-                    words.add(lower);
+            if (isWord) {
+                const key = classifyCacheKey(token, sentenceStart);
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    tokens.push({ text: token, sentenceStart });
                 }
+                sentenceStart = false;
             }
-            if (isWord) sentenceStart = false;
             if (endsSentence(raw)) sentenceStart = true;
         }
     }
-    return Array.from(words);
-}
-
-/**
- * 纯函数：这个 token 是否**可能**按频率判据判亮（大小写 + 专名规则）。
- *
- * 返回 true 只表示「没有被专名/大小写规则挡掉」，真正是否标亮还得看词级
- * 与阈值。判定顺序：
- *   1. 少于 2 个字符、或没有字母的 token（数字/标点）不判；
- *   2. 名单内专名任何位置都不判（句首专名的唯一兜底）；
- *   3. 非句首的「首字母大写」token 不判。是否算句首由 collectReadingWords
- *      预先算好：只有「本文里出现过小写形态或句首形态」的词形进入 eligibleWords，
- *      所以这里等于要求该词形在当前文本里有可按频率判的用法。
- *
- * 注意：这里拿不到 token 在句中的位置，若同一词形在本文里另有小写/句首出现，
- * 它在别处的非句首大写形态也会被判到——这是 block 句级方案的已知残留误差，
- * 方向是「多标」而不是「漏标」，可接受。
- */
-export function canJudgeReadingWordCase(token: string, eligibleWords: ReadonlySet<string>): boolean {
-    const word = cleanReadingWord(token.trim());
-    if (word.length < 2 || !/[A-Za-z]/.test(word)) return false;
-    if (isProperNoun(word)) return false;
-    return !startsWithCapitalLetter(word) || eligibleWords.has(word.toLowerCase());
+    return tokens;
 }
 
 /** Word ranks: A1 < A2 < B1 < B2 < C1 < C1+ < C2. */
@@ -168,8 +152,8 @@ function wordRank(level: string | null): number | null {
     return WORD_LEVEL_RANK[normalized] ?? null;
 }
 
-/** Process-wide cache: word → A1…C1 / C1+ / null. Shared across readers. */
-const wordLevelCache = new Map<string, string | null>();
+/** Process-wide cache: (original form, sentenceStart) → backend classification. */
+const classifyCache = new Map<string, VocabularyClassifyResult>();
 
 export interface ReadingHighlights {
     /** Switch state (persisted; default on). */
@@ -179,7 +163,7 @@ export interface ReadingHighlights {
     level: VocabLevelId;
     /** Display label of the current stop, e.g. `B1`. */
     levelLabel: string;
-    /** Word → API level (`A1`…`C2` / `C1+` / null) for the current text. */
+    /** Lower-case form → API level for the judged (non-proper) words in this text. */
     wordLevels: ReadonlyMap<string, string | null>;
     /** True when this rendered word is above the current threshold. */
     isHighlighted: (word: string) => boolean;
@@ -192,20 +176,18 @@ export interface ReadingHighlights {
 export function useReadingHighlights(texts: readonly string[]): ReadingHighlights {
     const [level, setLevel] = useState<VocabLevelId>(loadVocabLevel);
     const [enabled, setEnabledState] = useState<boolean>(loadReadingHighlightEnabled);
-    // Bumped after a lookup finishes; the word map itself is derived from the
-    // shared cache below (no setState-in-effect cascade for cached words).
-    const [, bumpCacheVersion] = useState(0);
+    // Bumped after a lookup finishes; the derived maps below depend on it even
+    // though the shared cache itself is a module-level map (no setState-in-
+    // effect cascade for already cached words).
+    const [cacheVersion, bumpCacheVersion] = useState(0);
     // The corpus that failed lookup, so a failure paints no marks but a new
     // text (or turning the switch back on) retries instead of staying broken.
     const [failedCorpus, setFailedCorpus] = useState<string | null>(null);
 
     // Join first: callers usually build the array inline, but the join result
-    // is a stable value and keeps the word-list memo from thrashing.
+    // is a stable value and keeps the token-list memo from thrashing.
     const corpus = texts.join('\n');
-    const words = useMemo(() => collectReadingWords(corpus), [corpus]);
-    // 当前文本里「可以按频率判」的小写词形（小写出现或句首出现）。
-    // isHighlighted 用它挡掉非句首大写 token——即使共享缓存被别的文本喂过。
-    const eligibleWords = useMemo(() => new Set(words), [words]);
+    const tokens = useMemo(() => collectReadingTokens(corpus), [corpus]);
     const failed = failedCorpus === corpus;
 
     // The 我的 slider (or another tab) changes the threshold without remounting
@@ -224,17 +206,25 @@ export function useReadingHighlights(texts: readonly string[]): ReadingHighlight
     }, []);
 
     useEffect(() => {
-        if (!enabled || words.length === 0 || failed) return;
-        const missing = words.filter((word) => !wordLevelCache.has(word));
+        if (!enabled || tokens.length === 0 || failed) return;
+        const missing = tokens.filter(
+            (token) => !classifyCache.has(classifyCacheKey(token.text, token.sentenceStart)),
+        );
         if (missing.length === 0) return;
 
         const controller = new AbortController();
         let cancelled = false;
-        fetchVocabularyLevels(missing, { signal: controller.signal })
-            .then((fetched) => {
-                for (const [word, value] of Object.entries(fetched)) {
-                    wordLevelCache.set(word.toLowerCase(), value);
-                }
+        fetchVocabularyClassify(missing, { signal: controller.signal })
+            .then((results) => {
+                results.forEach((result, index) => {
+                    const token = missing[index];
+                    if (!token) return;
+                    classifyCache.set(classifyCacheKey(token.text, token.sentenceStart), {
+                        text: token.text,
+                        level: result.level,
+                        proper: result.proper,
+                    });
+                });
                 if (cancelled) return;
                 setFailedCorpus(null);
                 bumpCacheVersion((version) => version + 1);
@@ -249,7 +239,7 @@ export function useReadingHighlights(texts: readonly string[]): ReadingHighlight
             cancelled = true;
             controller.abort();
         };
-    }, [corpus, enabled, failed, words]);
+    }, [corpus, enabled, failed, tokens]);
 
     const setEnabled = useCallback((next: boolean) => {
         setEnabledState(next);
@@ -261,28 +251,38 @@ export function useReadingHighlights(texts: readonly string[]): ReadingHighlight
     const levelLabel = VOCAB_LEVELS.find((entry) => entry.id === level)?.label ?? 'A2';
     const thresholdRank = VOCAB_LEVEL_RANK[level];
 
-    // Derived from the shared cache on every render: cached words paint
-    // immediately (no effect round-trip) and a failed corpus paints nothing.
-    const wordLevels = new Map<string, string | null>();
-    if (!failed) {
-        for (const word of words) {
-            if (wordLevelCache.has(word)) {
-                wordLevels.set(word, wordLevelCache.get(word) ?? null);
+    // Derived from the shared cache on every relevant render: cached words
+    // paint immediately (no effect round-trip) and a failed corpus paints
+    // nothing. `highlightable` is keyed by lower-case form because the
+    // rendered token carries no sentence position: a word is markable when at
+    // least one of its occurrences is non-proper and above the threshold.
+    const { wordLevels, highlightable } = useMemo(() => {
+        const levels = new Map<string, string | null>();
+        const forms = new Set<string>();
+        if (!failed) {
+            for (const token of tokens) {
+                const result = classifyCache.get(
+                    classifyCacheKey(token.text, token.sentenceStart),
+                );
+                if (!result) continue;
+                const form = token.text.toLowerCase();
+                if (result.proper) continue;
+                if (!levels.has(form)) levels.set(form, result.level);
+                const rank = wordRank(result.level);
+                if (rank !== null && rank > thresholdRank) forms.add(form);
             }
         }
-    }
+        return { wordLevels: levels, highlightable: forms };
+    }, [tokens, cacheVersion, failed, thresholdRank]);
 
-    // 调用方（ClickableWords 等）传进来的是保留原始大小写的 token；这里正用
-    // 大小写做专名/句首判断，小写只用于查词级——不再像以前那样先把大小写丢掉。
-    // 先做大小写/专名判定、再查 level 缓存：缓存只按小写词形存 level，若先查
-    // 缓存，句首的 London 会借到 london 的等级被误标成生词（缓存串味）。
+    // 调用方（ClickableWords 等）传进来的是保留原始大小写的 token；大小写与
+    // 专名判断已经由后端 classify 完成，这里只按「小写词形是否在本文里被判
+    // 为可标亮」查。若先按小写缓存查 level，句首的 London 会借到 london 的
+    // 等级被误标——所以由 highlightable 集合统一收口。
     const isHighlighted = (word: string) => {
         if (!enabled || failed) return false;
-        if (!canJudgeReadingWordCase(word, eligibleWords)) return false;
-        const value = wordLevels.get(cleanReadingWord(word.trim()).toLowerCase());
-        if (value === undefined) return false;
-        const rank = wordRank(value);
-        return rank !== null && rank > thresholdRank;
+        const form = cleanReadingWord(word.trim()).toLowerCase();
+        return form.length >= 2 && highlightable.has(form);
     };
 
     return { enabled, setEnabled, level, levelLabel, wordLevels, isHighlighted };

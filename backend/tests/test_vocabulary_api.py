@@ -3,6 +3,7 @@
 覆盖：公开只读、目录 10 项（合并 cefr + 6 个兼容 CEFR 单级 + GRE/CET4/CET6）、
 合并 CEFR 的分页/搜索/等级筛选、C2 unavailable、分页/搜索/前缀优先、
 等级映射/C1+/非法 token、大小限制、404/503/400、缓存头、合并列表缓存、
+``POST /classify`` 契约（等级 + 专名 + sentenceStart + 200 上限 + 游客可用）、
 公开端点不签发游客 Cookie。
 """
 from __future__ import annotations
@@ -16,6 +17,7 @@ import pytest
 import config
 import difficulty
 import vocabulary
+import word_rules
 from tests.vocab_fixtures import (
     build_phrases,
     copy_frequency,
@@ -602,6 +604,119 @@ def test_level_word_count_limits(vocab_env, make_client):
 
 
 # ---------------------------------------------------------------------------
+# 标亮判定 POST /api/vocabulary/classify（specs/004 / 028）
+# ---------------------------------------------------------------------------
+
+def test_classify_returns_levels_and_proper_flags(vocab_env, make_client):
+    items = [
+        {"text": "abandon"},
+        {"text": "the"},
+        # 非句首 Georgie：名单外 + 首字母大写 → 专名
+        {"text": "Georgie", "sentenceStart": False},
+        # 同名在句首：不能按大写判专名（名单外），仍返回等级
+        {"text": "Georgie", "sentenceStart": True},
+        # 名单命中任何位置（含句首）都是专名
+        {"text": "London", "sentenceStart": False},
+        {"text": "London", "sentenceStart": True},
+        # 句首普通词不是专名
+        {"text": "The", "sentenceStart": True},
+        # 非法 token：level=null，不报错
+        {"text": "qwerty!"},
+        {"text": "123"},
+    ]
+    with make_client() as client:
+        response = client.post("/api/vocabulary/classify", json={"items": items})
+    assert response.status_code == 200, response.text
+    assert response.headers["cache-control"] == "public, max-age=3600"
+    payload = response.json()
+    assert [item["text"] for item in payload["items"]] == [
+        item["text"] for item in items
+    ]
+    assert len(payload["items"]) == len(items)
+
+    by_index = payload["items"]
+    assert by_index[0] == {"text": "abandon", "level": "B1", "proper": False}
+    assert by_index[1] == {"text": "the", "level": "A1", "proper": False}
+    assert by_index[2]["proper"] is True
+    assert by_index[3]["proper"] is False
+    assert isinstance(by_index[3]["level"], str)  # 句首也照常查等级
+    assert by_index[4]["proper"] is True
+    assert by_index[5]["proper"] is True
+    assert by_index[6] == {"text": "The", "level": "A1", "proper": False}
+    assert by_index[7]["level"] is None
+    assert by_index[7]["proper"] is False
+    assert by_index[8]["level"] is None
+    assert by_index[8]["proper"] is False
+
+
+def test_classify_keeps_duplicate_texts_and_rejects_bad_shape(vocab_env, make_client):
+    """同一 text 可在不同 sentenceStart 下出现两次；坏请求体 422。"""
+    with make_client() as client:
+        duplicated = client.post("/api/vocabulary/classify", json={"items": [
+            {"text": "Georgie", "sentenceStart": False},
+            {"text": "Georgie", "sentenceStart": True},
+        ]})
+        missing_items = client.post("/api/vocabulary/classify", json={})
+        wrong_type = client.post("/api/vocabulary/classify", json={"items": "nope"})
+    assert duplicated.status_code == 200
+    first, second = duplicated.json()["items"]
+    assert (first["text"], first["proper"]) == ("Georgie", True)
+    assert (second["text"], second["proper"]) == ("Georgie", False)
+    assert missing_items.status_code == 422
+    assert wrong_type.status_code == 422
+
+
+def test_classify_limit_and_empty_items(vocab_env, make_client):
+    ok_items = [{"text": f"w{i}"} for i in range(200)]
+    too_many = [{"text": f"w{i}"} for i in range(201)]
+    with make_client() as client:
+        ok = client.post("/api/vocabulary/classify", json={"items": ok_items})
+        over = client.post("/api/vocabulary/classify", json={"items": too_many})
+        empty = client.post("/api/vocabulary/classify", json={"items": []})
+    assert ok.status_code == 200, ok.text
+    assert len(ok.json()["items"]) == 200
+    assert over.status_code == 400
+    assert "200" in over.json()["detail"]
+    assert empty.status_code == 200
+    assert empty.json() == {"items": []}
+
+
+def test_classify_public_endpoint_does_not_issue_guest_cookie(vocab_env, make_client):
+    with make_client() as client:
+        response = client.post(
+            "/api/vocabulary/classify", json={"items": [{"text": "the"}]}
+        )
+    assert response.status_code == 200
+    assert "ln_guest" not in response.cookies
+    assert all(
+        "ln_guest" not in header
+        for header in response.headers.get_list("set-cookie")
+    )
+
+
+def test_classify_rule_matches_word_rules_module(vocab_env, make_client):
+    """端点只是 word_rules 的 HTTP 封装：专名判定与纯函数一致。"""
+    tokens = [
+        ("George", False),
+        ("George", True),
+        ("London", False),
+        ("The", True),
+        ("museum", False),
+    ]
+    with make_client() as client:
+        response = client.post(
+            "/api/vocabulary/classify",
+            json={"items": [
+                {"text": text, "sentenceStart": sentence_start}
+                for text, sentence_start in tokens
+            ]},
+        )
+    assert response.status_code == 200
+    for item, (text, sentence_start) in zip(response.json()["items"], tokens):
+        assert item["proper"] is word_rules.is_proper_token(text, sentence_start)
+
+
+# ---------------------------------------------------------------------------
 # 503 / 数据文件边界
 # ---------------------------------------------------------------------------
 
@@ -615,9 +730,13 @@ def test_missing_frequency_returns_503(vocab_env, tmp_path, monkeypatch, make_cl
         lists = client.get("/api/vocabulary/lists")
         detail = client.get("/api/vocabulary/lists/cefr-a1")
         level = client.get("/api/vocabulary/level", params={"words": "the"})
+        classify = client.post(
+            "/api/vocabulary/classify", json={"items": [{"text": "the"}]}
+        )
     assert lists.status_code == 503
     assert detail.status_code == 503
     assert level.status_code == 503
+    assert classify.status_code == 503
     assert "频表" in lists.json()["detail"]
 
 

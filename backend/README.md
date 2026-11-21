@@ -196,7 +196,12 @@ data/                                  # DATA_DIR（gitignore）
 | `GET /api/vocabulary/lists` | — | `200` 数组：CEFR A1–C2（C2 `available:false`）+ GRE/CET4/CET6；每项含 `id/label/count/source/license/notice/approximate/available/note/version` | `503` 词表文件缺失/损坏/完整性失败 |
 | `GET /api/vocabulary/lists/{id}` | `page`（≥1）、`pageSize`（1–200，默认 50）、`q`（≤64 字符） | `200 {items:[{word,phonetic,translation,cefrLevel}], total, page, pageSize, hasMore}` | `404` id 不存在或 C2 未建模；`503`；`422` 页码/页大小越界；`400` q 超长 |
 | `GET /api/vocabulary/level` | `words=a,b,c`（逗号分隔或重复传参，≤100） | `200 {词: "A1"…"C1"|"C1+"|null}` | `400` words 为空/超过 100；`503` 频表缺失 |
+| `POST /api/vocabulary/classify` | JSON `{items:[{text, sentenceStart?}]}`（≤200） | `200 {items:[{text, level: "A1"…"C1"|"C1+"|null, proper}]}`，保持入参顺序与原词形；非法 token `level:null` | `400` items 超过 200；`422` 请求体非法；`503` 频表缺失 |
 
+- **标亮候选单一来源（specs/004 / 028）**：`backend/word_rules.py` 是专名名单
+  与「非句首首字母大写」规则的唯一一份；`POST /classify` 与教学分析
+  `_candidate_words_for_blocks` 都调用它。前端（视频页 / 四个阅读器）只消费
+  `classify`，不再维护第二份名单或第二套大小写规则。
 - **公开只读**：`main.py` 的 `_PUBLIC_API_PREFIXES` 含 `/api/vocabulary/`，
   不要求登录、也不签发游客 Cookie；响应 `Cache-Control: public, max-age=3600`。
 - **CEFR 口径**：A1≤1k / A2≤2k / B1≤4k / B2≤7k / C1≤10k（频带估计，不是

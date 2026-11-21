@@ -32,7 +32,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // ── Fixtures ───────────────────────────────────────────────────────────────
 // A 3-paragraph article: paragraph 0 carries one B2 word, paragraph 1 one C1+
 // word, paragraph 2 adds enough distinct words to force more than one
-// /api/vocabulary/level batch (the endpoint accepts ≤100 words per request).
+// /api/vocabulary/classify batch (the client sends ≤100 tokens per request;
+// the endpoint itself accepts ≤200).
 const FILLER = Array.from({ length: 130 }, (_, i) => {
     const a = 'abcdefghijklmnopqrstuvwxyz'[i % 26];
     const b = 'abcdefghijklmnopqrstuvwxyz'[Math.floor(i / 26) % 26];
@@ -316,21 +317,24 @@ await context.route('**/api/**', async (route) => {
     }
     if (pathname === '/api/content/difficulty/batch') return respond({ items: [] });
 
-    // ── word-level lookup under test ──────────────────────────────────────
-    if (pathname === '/api/vocabulary/level') {
-        const words = (url.searchParams.get('words') || '')
-            .split(',')
-            .map((word) => word.trim())
-            .filter(Boolean);
+    // ── highlight classification under test ──────────────────────────────
+    // The reader now calls POST /api/vocabulary/classify (level + proper
+    // noun). Mocked words are lowercase or sentence-start capitals, so
+    // `proper: false` is enough for this fixture; the real rule lives in
+    // backend/word_rules.py and is covered by backend pytest.
+    if (pathname === '/api/vocabulary/classify') {
+        const body = request.postDataJSON() || {};
+        const items = Array.isArray(body.items) ? body.items : [];
         state.levelRequests += 1;
-        state.levelRequestSizes.push(words.length);
-        if (state.levelApiFail) return fail(500, 'level lookup unavailable');
-        const payload = {};
-        for (const word of words) {
-            payload[word] = levelForWord(word);
-            state.levelledWords.add(word.toLowerCase());
-        }
-        return respond(payload);
+        state.levelRequestSizes.push(items.length);
+        if (state.levelApiFail) return fail(500, 'classification unavailable');
+        return respond({
+            items: items.map((item) => {
+                const text = String(item?.text ?? '');
+                state.levelledWords.add(text.toLowerCase());
+                return { text, level: levelForWord(text), proper: false };
+            }),
+        });
     }
 
     // ── dictionary ────────────────────────────────────────────────────────
@@ -558,8 +562,8 @@ assert.equal(
     '1',
     'C1+ words must be marked at B1',
 );
-assert.ok(state.levelRequestSizes.length >= 2, `expected >1 batched lookup calls, got ${state.levelRequestSizes.length}`);
-assert.ok(state.levelRequestSizes.every((size) => size <= 100), `batches must be ≤100 words: ${state.levelRequestSizes}`);
+assert.ok(state.levelRequestSizes.length >= 2, `expected >1 batched classify calls, got ${state.levelRequestSizes.length}`);
+assert.ok(state.levelRequestSizes.every((size) => size <= 100), `batches must be ≤100 tokens: ${state.levelRequestSizes}`);
 const readerToggle = page.locator('[data-testid=reader-highlight-toggle]');
 assert.equal(await readerToggle.getAttribute('data-enabled'), '1');
 assert.match(await readerToggle.getAttribute('title'), /B1/);
@@ -587,7 +591,7 @@ await setHash('/content/reader/art1');
 await page.locator('[data-testid=reader-en-0]').waitFor({ state: 'visible', timeout: 15000 });
 await waitHighlighted('reader-en-0', 'luminous');
 assert.equal(state.levelRequests, levelRequestsAfterFirstPaint,
-    `re-entering the same text must reuse cached word levels (${state.levelRequests} vs ${levelRequestsAfterFirstPaint})`);
+    `re-entering the same text must reuse cached classifications (${state.levelRequests} vs ${levelRequestsAfterFirstPaint})`);
 await shot('05b-article-cached-reentry-1440');
 
 // ── e) the switch is persisted (off → refresh → still off) ────────────────
@@ -733,6 +737,6 @@ await shot('12-profile-vi-highlight-copy-1440');
 await page.evaluate(() => localStorage.setItem('yt_bilingual_ui_lang', 'zh-CN'));
 
 assert.equal(pageErrors.length, 0, `page errors: ${pageErrors.join('\n')}`);
-console.log(`\nRESULT: highlight difficulty acceptance passed (${state.levelRequests} level requests, batches ${JSON.stringify(state.levelRequestSizes)}).`);
+console.log(`\nRESULT: highlight difficulty acceptance passed (${state.levelRequests} classify requests, batches ${JSON.stringify(state.levelRequestSizes)}).`);
 console.log(`SHOTS: ${SHOTS}`);
 await browser.close();
