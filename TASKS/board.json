@@ -162,6 +162,28 @@
         "P0-03",
         "P0-07"
       ]
+    },
+    {
+      "id": "P0-10",
+      "file": "TASKS/P0-10-wordbook-row-toggles.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "frontend/src/components/VocabularyRows.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/wordbook-v12-acceptance.mjs",
+        "scripts/custom-wordlists-acceptance.mjs",
+        "scripts/mastered-tab-acceptance.mjs",
+        "specs/005-favorites-export/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P0-09"
+      ]
     }
   ]
 }
