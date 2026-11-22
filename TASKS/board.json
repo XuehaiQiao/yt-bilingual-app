@@ -201,8 +201,8 @@
     {
       "id": "P0-12",
       "file": "TASKS/P0-12-mastered-toggle-affordance.md",
-      "status": "claimed",
-      "owner": "toggle-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VocabularyRows.tsx",
         "frontend/src/i18n/zh-CN.json",
