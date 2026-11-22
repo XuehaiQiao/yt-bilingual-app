@@ -8,20 +8,35 @@
 //      「共 N 行 · 有效 M · 跳过 K」 stats with the first skip reasons →
 //      automatic `(2)` name on a collision → POST /api/wordlists/import;
 //   C) the new tab appears, becomes active and renders its rows;
-//   D) row actions: 加入我的单词 (meta.source_kind=wordlist), 加入复习
-//      (definition snapshot), 标为已掌握 (PATCH);
+//   D) row actions: 加入我的单词 (meta.source_kind=wordlist), 标为已掌握
+//      (PATCH); 加入复习 stays hidden while the review UI is paused;
 //   E) server-side search + 50/page pagination;
 //   F) 删除词表 asks first (cancel keeps it), confirms, deletes the table only;
-//   G) 全部加入复习（N） asks first and posts every word with its snapshot;
-//   H) review card with a queue `definition` shows it without calling
-//      /api/define; a card without one still falls back to /api/define;
+//   G) 全部加入复习（N） is hidden: no bulk button, no review POST;
+//   H) review UI paused (specs/013 2026-11-22): a direct #/app/practice/review
+//      link falls back to #/app/practice, no review card, no queue request;
 //   I) guest entry opens the login overlay and never calls /api/wordlists;
 //   J) 375 has no horizontal overflow.
+//
+// Review UI 暂停启用（specs/013 2026-11-22）：REVIEW_UI_ENABLED=false hides every
+// review surface; the FSRS engine, endpoints and the `definition` snapshot stay
+// in the product. The old 复习卡 definition-priority case can no longer be
+// exercised through the UI, so §H asserts the deep-link fallback instead.
 //
 // Screenshots: /tmp/custom-wordlists-*.png
 // Run: APP_URL=http://127.0.0.1:5173 node scripts/custom-wordlists-acceptance.mjs
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
+
+// Count executed assertions so a green run reports how many checks passed.
+let assertionsPassed = 0;
+for (const name of ['ok', 'equal', 'deepEqual', 'match']) {
+    const original = assert[name];
+    assert[name] = (...args) => {
+        original(...args);
+        assertionsPassed += 1;
+    };
+}
 
 const BASE = (process.env.APP_URL || 'http://127.0.0.1:5173').replace(/\/+$/, '');
 const SHOTS = '/tmp';
@@ -94,6 +109,7 @@ function createState() {
         reviewPosts: [],
         masteredPatches: [],
         defineCalls: 0,
+        queueCalls: 0,
         wordlistCalls: 0,
         importBodies: [],
         deletes: [],
@@ -186,6 +202,7 @@ async function installMocks(context, state) {
             return respond({ status: 'ok', word: { ...word(body.lemma, null), mastered: body.mastered === true } });
         }
         if (pathname === '/api/review/queue' && method === 'GET') {
+            state.queueCalls += 1;
             const items = state.reviewQueue || [
                 word('abundant', '词表快照：丰富的；充裕的', 0),
                 word('candid', null, 1),
@@ -530,10 +547,11 @@ assert.equal(state.favorites[0].source_title, '旅行词汇');
 assert.equal(state.favorites[0].example, 'The region has abundant rainfall.');
 assert.equal(state.favorites[0].zh_text, '/əˈbʌndənt/ 丰富的；充裕的');
 
-// specs/038 (2026-11-22): the review UI is paused, so the custom-list surface
-// hides 加入复习 / 全部加入复习 while keeping the API + definition snapshot.
-assert.equal(await page.getByTestId(`${ROW}-add-review`).count(), 0);
-assert.equal(await page.getByTestId('vocab-custom-add-all').count(), 0);
+// specs/038 + specs/013 (2026-11-22): the review UI is paused, so the
+// custom-list surface hides 加入复习 (and 全部加入复习, asserted in §G) while
+// keeping the API + definition snapshot.
+assert.equal(await page.getByTestId(`${ROW}-add-review`).count(), 0,
+    '加入复习 must be hidden on a custom-list row while the review UI is paused');
 
 await page.getByTestId(`${ROW}-master`).click();
 await page.waitForFunction(() => document.querySelector('[data-testid="wl-1:abundant-master"]')?.textContent?.includes('已掌握'));
@@ -583,23 +601,27 @@ assert.equal(await page.getByTestId('vocab-tab-mine').getAttribute('aria-selecte
 assert.equal(state.favorites.length, 1, 'deleting a table keeps saved favorites');
 assert.equal(state.reviewPosts.length, 0);
 
-// ── G) review card (engine retained): snapshot wins, no /api/define ─────
-await page.goto(`${BASE}/#/app/practice/review`, { waitUntil: 'domcontentloaded' });
-await page.getByTestId('review-card').waitFor({ timeout: 15000 });
-assert.equal(await page.getByTestId('review-word').innerText(), 'abundant');
-await page.getByTestId('review-reveal').click();
-await page.getByTestId('review-definition-zh').waitFor();
-assert.equal(await page.getByTestId('review-definition-zh').innerText(), '词表快照：丰富的；充裕的');
-assert.equal(state.defineCalls, 0, 'a word-list snapshot must not call /api/define');
-await page.screenshot({ path: `${SHOTS}/custom-wordlists-review-1440.png`, fullPage: false });
+// ── G) 全部加入复习（N） hidden (review UI paused) ──────────────────────
+// The bulk button lived on the custom-list page header. It must not exist on
+// any surface while REVIEW_UI_ENABLED=false, and no row may post a review word.
+await page.getByTestId('vocab-tab-custom-wl-2').click();
+await page.getByTestId('vocab-custom-list').waitFor();
+assert.equal(await page.getByTestId('vocab-custom-add-all').count(), 0,
+    '全部加入复习（N） must be hidden on a custom list while the review UI is paused');
+assert.equal(state.reviewPosts.length, 0, 'no custom-list row may POST to /api/review/words');
 
-// Second card has no snapshot → the existing /api/define path still works.
-await page.getByTestId('review-rating-good').click();
-await page.waitForFunction(() => document.querySelector('[data-testid="review-word"]')?.textContent === 'candid');
-await page.getByTestId('review-reveal').click();
-await page.getByTestId('review-definition-zh').waitFor();
-assert.equal(state.defineCalls, 1);
-assert.equal(await page.getByTestId('review-definition-zh').innerText(), '来自词典的释义');
+// ── H) review UI paused (specs/013 2026-11-22): deep link falls back ──────
+// ReviewScreen may not mount from a URL either: #/app/practice/review is
+// rewritten to the tab root (no blank page) and never fetches the queue. The
+// old 复习卡 definition-priority case needs the hidden screen, so it is gone;
+// the snapshot/`definition` contract stays covered by the backend tests.
+await page.goto(`${BASE}/#/app/practice/review`, { waitUntil: 'domcontentloaded' });
+await page.getByTestId('practice-screen').waitFor({ timeout: 15000 });
+await page.waitForFunction(() => location.hash === '#/app/practice', null, { timeout: 10000 });
+assert.equal(await page.getByTestId('review-card').count(), 0, 'a paused review route must not render a review card');
+assert.equal(state.queueCalls, 0, 'a paused review route must never request /api/review/queue');
+assert.equal(await page.getByTestId('practice-screen').isVisible(), true, 'the fallback must render the practice tab');
+await page.screenshot({ path: `${SHOTS}/custom-wordlists-review-route-1440.png`, fullPage: false });
 
 assert.deepEqual(pageErrors, [], `page errors: ${pageErrors.join(' | ')}`);
 
@@ -663,6 +685,7 @@ await guest.context.close();
 await limit.context.close();
 await browser.close();
 console.log('custom-wordlists acceptance: PASS');
+console.log(`  checks passed: ${assertionsPassed}`);
 console.log(`  wordlists fetched: ${state.wordlistCalls} · imports: ${state.importBodies.length}`);
-console.log(`  deletes: ${state.deletes.join(', ')} · review POSTs: ${state.reviewPosts.length} · define calls: ${state.defineCalls}`);
+console.log(`  deletes: ${state.deletes.join(', ')} · review POSTs: ${state.reviewPosts.length} · review queue calls: ${state.queueCalls} · define calls: ${state.defineCalls}`);
 console.log(`  screenshots: ${SHOTS}/custom-wordlists-*.png`);

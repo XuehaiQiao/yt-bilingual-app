@@ -1,7 +1,10 @@
 // Playwright acceptance for the word book v1.2 daily-use layer
-// (specs/005 §v1.2): row TTS, 我的单词 search + 状态 chips, built-in list /
-// phrase 加入我的单词 + 加入复习, multi-select bulk actions, 字母 sort + 50/page,
-// guest gating and the "state endpoint missing → hide the group" degradation.
+// (specs/005 §v1.2). The review UI is paused (specs/013 2026-11-22,
+// REVIEW_UI_ENABLED=false), so: row TTS, 我的单词 search (状态 chips hidden),
+// built-in list / phrase 加入我的单词 (加入复习 hidden), multi-select bulk
+// actions (标为已掌握 / 删除 only), 字母 sort + 50/page, guest gating.
+// Every hidden review surface is asserted ABSENT, and the run must end with
+// zero `?state=` reads and zero review POSTs.
 //
 // Every /api/** request is mocked; nothing touches :8000 or :5173.
 // Run (the script needs a directory where `playwright` resolves, e.g. a
@@ -11,6 +14,16 @@
 // Shots: /tmp/wb-ux-*.png
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
+
+// Count executed assertions so a green run reports how many checks passed.
+let assertionsPassed = 0;
+for (const name of ['ok', 'equal', 'deepEqual', 'match']) {
+    const original = assert[name];
+    assert[name] = (...args) => {
+        original(...args);
+        assertionsPassed += 1;
+    };
+}
 
 const BASE = process.env.APP_URL || 'http://127.0.0.1:5199/';
 const SHOTS = '/tmp';
@@ -312,11 +325,11 @@ const rowWords = async (prefix) => page.$$eval(
     (nodes) => nodes.map((node) => node.textContent.trim()),
 );
 
-// ═══ A) 我的单词: search, 状态 chips, 字母 sort, 50/page ═══════════════════
+// ═══ A) 我的单词: search, 状态 chips hidden, 字母 sort, 50/page ═══════════
 await gotoWordbook();
 await page.getByTestId('vocab-tab-mine').click();
 await page.waitForSelector('[data-testid="vocab-mine-list"]');
-await page.waitForSelector('[data-testid="vocab-state-filter"]');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length > 0);
 
 let rows = await page.$$eval('[data-testid^="vocab-mine-toggle-"]', (nodes) => nodes.length);
 assert.equal(rows, 50, `我的单词 page 1 must show 50 rows, saw ${rows}`);
@@ -324,24 +337,14 @@ assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 2
 assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 60 词');
 await shot('1440-mine');
 
-// 状态 chips: 全部/新词/学习中/复习中/已暂停, data from ?state=
+// 状态 chips: REVIEW_UI_ENABLED=false → the whole group is gone and the screen
+// never asks GET /api/review/words?state= (backend/data stay, UI does not).
+assert.equal(await page.getByTestId('vocab-state-filter').count(), 0,
+    'the 状态 filter group must be hidden while the review UI is paused');
 for (const id of ['vocab-state-all', 'vocab-state-new', 'vocab-state-learning', 'vocab-state-review', 'vocab-state-suspended']) {
-    assert.equal(await page.getByTestId(id).count(), 1, `state chip ${id} missing`);
+    assert.equal(await page.getByTestId(id).count(), 0, `state chip ${id} must be hidden`);
 }
-assert.ok(state.stateRequests.length >= 1, 'the screen must call GET /api/review/words?state=');
-assert.match(state.stateRequests[0], /new/, `state param: ${state.stateRequests[0]}`);
-assert.match(state.stateRequests[0], /suspended/, `state param: ${state.stateRequests[0]}`);
-await page.getByTestId('vocab-state-new').click();
-await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 10);
-await page.getByTestId('vocab-state-learning').click();
-await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 10);
-await page.getByTestId('vocab-state-review').click();
-await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 5);
-await shot('1440-mine-state-review');
-await page.getByTestId('vocab-state-suspended').click();
-await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 3);
-await page.getByTestId('vocab-state-all').click();
-await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 50);
+assert.deepEqual(state.stateRequests, [], 'the screen must not call GET /api/review/words?state=');
 
 // 行内发音: local speech synthesis, no AI request.
 const firstSpeak = await page.$$eval('[data-testid^="vocab-mine-speak-"]', (nodes) => nodes[0].getAttribute('data-testid'));
@@ -373,11 +376,16 @@ await page.waitForFunction(() => {
 await page.getByTestId('vocab-page-2').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 10);
 assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 2 / 2 页');
-await page.getByTestId('vocab-state-review').click();
-await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 5);
+// A new search is a filter change and always restarts at page 1 (the state
+// chips used to prove this; they are hidden now, so search takes that role).
+await page.getByTestId('vocab-mine-search').fill('w00');
+await page.waitForFunction(() => {
+    const node = document.querySelector('[data-testid="vocab-page-status"]');
+    return node && node.textContent.includes('第 1 / 1 页');
+});
 assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 1 页',
     'a filter change must return to page 1');
-await page.getByTestId('vocab-state-all').click();
+await page.getByTestId('vocab-mine-search-clear').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 50);
 
 // ═══ B) 批量操作 (我的单词) ══════════════════════════════════════════════
@@ -397,11 +405,20 @@ assert.deepEqual(
 assert.equal(await page.getByTestId('vocab-mine-selected').innerText(), '已选 0 项');
 await shot('1440-mine-bulk-mastered');
 
-// 批量加入复习
+// 批量加入复习 hidden (review UI paused): the bulk bar keeps only
+// 标为已掌握 / 删除 and no word may be posted to the review API.
 await page.getByTestId('vocab-mine-select-fav-w003').check();
 await page.getByTestId('vocab-mine-select-fav-w004').check();
-await page.getByTestId('vocab-mine-bulk-review').click();
-await waitFor(() => state.reviewPosts.length >= 2, 15000, 'bulk review POSTs');
+assert.equal(await page.getByTestId('vocab-mine-bulk-review').count(), 0,
+    '批量加入复习 must be hidden while the review UI is paused');
+assert.equal(await page.getByTestId('vocab-mine-bulk-master').count(), 1, 'bulk 标为已掌握 stays');
+assert.equal(await page.getByTestId('vocab-mine-bulk-delete').count(), 1, 'bulk 删除 stays');
+assert.equal(state.reviewPosts.length, 0, 'the bulk bar must never POST a review word');
+await page.getByTestId('vocab-mine-bulk-clear').click();
+await page.waitForFunction(() => {
+    const node = document.querySelector('[data-testid="vocab-mine-selected"]');
+    return node && node.textContent.includes('已选 0 项');
+});
 // 批量删除 (确认对话框 + 逐条 DELETE)
 await page.getByTestId('vocab-mine-select-fav-w010').check();
 await page.getByTestId('vocab-mine-select-fav-w011').check();
@@ -471,14 +488,11 @@ assert.equal(await page.getByTestId('gre:abundant-add-mine').isDisabled(), true,
 // clicking again must not POST
 await page.getByTestId('gre:abundant-add-mine').click({ force: true }).catch(() => {});
 assert.equal(state.favoritePosts.length, postsBefore + 1, 'the added row never re-posts');
-// 加入复习 on a list row
-await page.getByTestId('gre:brisk-add-review').click();
-await page.waitForFunction(() => {
-    const button = document.querySelector('[data-testid="gre:brisk-add-review"]');
-    return button && button.textContent.includes('已在复习');
-});
-assert.deepEqual(state.reviewPosts.at(-1), { lemma: 'brisk', source: { contentRef: 'gre' } },
-    `review POST body: ${JSON.stringify(state.reviewPosts.at(-1))}`);
+// 加入复习 hidden on list rows (review UI paused): 加入我的单词 stays the only
+// row write, and nothing may reach POST /api/review/words.
+assert.equal(await page.getByTestId('gre:brisk-add-review').count(), 0,
+    '加入复习 must be hidden on built-in list rows');
+assert.equal(state.reviewPosts.length, 0, 'list rows must never POST a review word');
 // speaker on a list row
 await page.getByTestId('gre:candid-speak').click();
 await page.waitForFunction(() => (window.__spoken || []).includes('candid'));
@@ -512,39 +526,44 @@ assert.equal(state.favoritePosts.length, phrasePostsBefore + 1);
 assert.equal(phrasePost.meta.source_kind, 'wordlist');
 assert.equal(phrasePost.meta.source_ref, 'phrases');
 assert.equal(phrasePost.text, 'give up');
-await page.getByTestId('phrase:p2-add-review').click();
-await page.waitForFunction(() => {
-    const button = document.querySelector('[data-testid="phrase:p2-add-review"]');
-    return button && button.textContent.includes('已在复习');
-});
-assert.equal(state.reviewPosts.at(-1).lemma, 'on the fence');
+// 加入复习 hidden on phrase rows too (review UI paused).
+assert.equal(await page.getByTestId('phrase:p2-add-review').count(), 0,
+    '加入复习 must be hidden on phrase rows');
+assert.equal(state.reviewPosts.length, 0, 'phrase rows must never POST a review word');
 await page.getByTestId('phrase:p1-speak').click();
 await page.waitForFunction(() => (window.__spoken || []).includes('give up'));
 
-// ═══ F) 状态接口 403/404 → 整组隐藏（不回退成错误） ═══════════════════════
+// ═══ F) 状态接口 403/404 → unreachable while the chips are hidden ════════
+// The old degradation (403/404 hides the group) cannot be exercised any more:
+// the screen never calls ?state=, so the group stays hidden under either status
+// and no inline error can surface. Backend/data are untouched.
 for (const status of [404, 403]) {
     state.stateFail = status;
     await gotoWordbook();
     await page.getByTestId('vocab-tab-mine').click();
     await page.waitForSelector('[data-testid="vocab-mine-list"]');
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(200);
     assert.equal(await page.getByTestId('vocab-state-filter').count(), 0,
-        `HTTP ${status} must hide the whole 状态 group`);
+        `HTTP ${status}: the paused 状态 group must stay hidden`);
 }
 state.stateFail = 0;
-await gotoWordbook();
-await page.getByTestId('vocab-tab-mine').click();
-await page.waitForSelector('[data-testid="vocab-state-filter"]');
+assert.deepEqual(state.stateRequests, [], 'no ?state= read may fire, even with a failing endpoint');
 
-// ═══ G) 375px: no horizontal overflow, chips/bulk/actions visible ════════
+// ═══ G) 375px: no horizontal overflow, bulk actions visible ══════════════
 await page.setViewportSize({ width: 375, height: 812 });
 await gotoWordbook();
 await page.getByTestId('vocab-tab-mine').click();
-await page.waitForSelector('[data-testid="vocab-state-filter"]');
+await page.waitForSelector('[data-testid="vocab-mine-list"]');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length > 0);
+assert.equal(await page.getByTestId('vocab-state-filter').count(), 0,
+    'the paused 状态 group must stay hidden at 375 too');
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 assert.ok(overflow <= 0, `375px horizontal overflow: ${overflow}px`);
 await page.getByTestId('vocab-mine-select-fav-w020').check();
 await page.getByTestId('vocab-mine-select-fav-w021').check();
+assert.equal(await page.getByTestId('vocab-mine-bulk-master').isVisible(), true, 'bulk 标为已掌握 must stay reachable at 375');
+assert.equal(await page.getByTestId('vocab-mine-bulk-delete').isVisible(), true, 'bulk 删除 must stay reachable at 375');
+assert.equal(await page.getByTestId('vocab-mine-bulk-review').count(), 0, 'no bulk 加入复习 at 375');
 await shot('375-mine-bulk');
 await page.getByTestId('vocab-mine-bulk-clear').click();
 await page.getByTestId('vocab-tab-gre').click();
@@ -578,12 +597,15 @@ await shot('1440-guest-gate');
 state.mode = 'signedIn';
 
 // ── cleanup ────────────────────────────────────────────────────────────────
+assert.equal(state.reviewPosts.length, 0, 'the word book must never POST a review word');
+assert.deepEqual(state.stateRequests, [], 'the 状态 read must never fire');
 assert.deepEqual(pageErrors, [], `page errors: ${pageErrors.join('\n')}`);
 assert.deepEqual(state.unmocked, [], `unmocked API calls: ${state.unmocked.join('\n')}`);
 await browser.close();
 console.log('PASS · wb-ux acceptance');
+console.log(`  checks passed: ${assertionsPassed}`);
 console.log('  state requests:', state.stateRequests.length);
 console.log('  favorite posts:', state.favoritePosts.length);
-console.log('  review posts:', state.reviewPosts.length);
+console.log('  review posts:', state.reviewPosts.length, '(review UI paused)');
 console.log('  patches:', state.patches.length, ' deletes:', state.deletes.length);
-console.log('  speech assertions: passed');
+console.log('  screenshots: /tmp/wb-ux-*.png');
