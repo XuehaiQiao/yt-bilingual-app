@@ -471,6 +471,46 @@
       "deps": [
         "P2-02"
       ]
+    },
+    {
+      "id": "P2-05A",
+      "file": "TASKS/P2-05A-layout-tables.md",
+      "status": "claimed",
+      "owner": "layout-table-impl",
+      "write_scope": [
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "frontend/src/components/DiscoverScreen.tsx",
+        "frontend/src/components/ReaderScreen.tsx",
+        "frontend/src/components/PracticeScreen.tsx",
+        "frontend/src/components/ProfileScreen.tsx",
+        "scripts/p2-05a-layout-acceptance.mjs"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-02"
+      ]
+    },
+    {
+      "id": "P2-05B",
+      "file": "TASKS/P2-05B-layout-marketing.md",
+      "status": "claimed",
+      "owner": "layout-mkt-impl",
+      "write_scope": [
+        "frontend/src/components/BlogScreen.tsx",
+        "frontend/src/components/PublicBlogScreen.tsx",
+        "frontend/src/components/PricingScreen.tsx",
+        "frontend/src/components/ResourcesScreen.tsx",
+        "frontend/src/components/LegalDocument.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/p2-05b-layout-acceptance.mjs"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-02"
+      ]
     }
   ]
 }
