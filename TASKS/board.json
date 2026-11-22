@@ -115,8 +115,8 @@
     {
       "id": "P0-07",
       "file": "TASKS/P0-07-acceptance-sync.md",
-      "status": "claimed",
-      "owner": "sync-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "scripts/wordbook-v12-acceptance.mjs",
         "scripts/custom-wordlists-acceptance.mjs",
