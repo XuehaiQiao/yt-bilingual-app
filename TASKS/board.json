@@ -218,6 +218,27 @@
       "deps": [
         "P0-10"
       ]
+    },
+    {
+      "id": "P0-13",
+      "file": "TASKS/P0-13-mastered-definition-backfill.md",
+      "status": "claimed",
+      "owner": "def-impl",
+      "write_scope": [
+        "backend/routes_review.py",
+        "backend/srs.py",
+        "backend/tests/test_review_engine.py",
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "frontend/src/lib/review.ts",
+        "scripts/backfill_mastered_definitions.py",
+        "scripts/tests/test_backfill_mastered_definitions.py",
+        "specs/005-favorites-export/spec.md",
+        "specs/013-review-engine/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P0-10"
+      ]
     }
   ]
 }
