@@ -438,8 +438,8 @@
     {
       "id": "P2-03",
       "file": "TASKS/P2-03-layout-a-group.md",
-      "status": "claimed",
-      "owner": "layout-a-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/AbilityScreen.tsx",
         "frontend/src/components/ExamScreen.tsx",
