@@ -309,8 +309,8 @@
     {
       "id": "P1-01",
       "file": "TASKS/P1-01-lemma-impact-audit.md",
-      "status": "claimed",
-      "owner": "lemma-audit-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "scripts/lemma_impact_audit.py",
         "scripts/tests/test_lemma_impact_audit.py",
