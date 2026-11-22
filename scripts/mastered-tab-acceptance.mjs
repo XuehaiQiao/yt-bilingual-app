@@ -30,6 +30,9 @@
 // P0-14: 已掌握 also has an explicit edit mode. Non-edit state renders no
 // checkbox; 编辑 shows the leading checkbox + 取消已掌握 batch bar, and 完成 or a
 // tab switch exits and clears the selection (§E2 / §H).
+// P0-15: §E3 covers the client-paged tri-state 全选 across both 50/page pages
+// (57 rows), indeterminate + 清除选择, and a cross-page 取消已掌握 batch whose
+// page-2 row is no longer rendered. §H repeats 全选 at 375.
 //
 // Every /api/** request is mocked; nothing touches :8000 or the real backend.
 // Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node mastered-tab-acceptance.mjs
@@ -542,6 +545,71 @@ await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
 assert.equal(await page.locator('[data-testid^="vocab-mastered-select-"]').count(), 0,
     '完成 exits edit mode and clears the selection');
 
+// ── E3) P0-15 select-all across the two client-paged 已掌握 pages ─────────
+// 57 remaining mastered rows → two 50/page pages; 全选 selects all 57, not the
+// visible page. 已掌握 is client paged, so the selection is synchronous.
+await page.getByTestId('vocab-tab-mastered').click();
+await page.waitForSelector('[data-testid="vocab-mastered-list"]');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mastered-select-"]').length === 0);
+await page.getByTestId('vocab-mastered-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+const masteredSelectAll = page.getByTestId('vocab-select-all-mastered');
+assert.equal(await masteredSelectAll.count(), 1, 'editing renders the header select-all checkbox');
+assert.equal(await masteredSelectAll.isChecked(), false, 'default: nothing selected');
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 0');
+assert.equal((await page.getByTestId('vocab-edit-result-total').innerText()).trim(), '结果 57');
+assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 2 页');
+
+await masteredSelectAll.click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 57');
+assert.equal(await masteredSelectAll.isChecked(), true);
+assert.equal(await page.locator('[data-testid^="vocab-mastered-select-"]:checked').count(), 50,
+    'all 50 visible rows are checked after 全选');
+await page.screenshot({ path: `${SHOTS}/p0-15-1440-mastered-select-all.png`, fullPage: false });
+
+// The selection spans the client pages: page 2's 7 rows are checked too.
+await page.getByTestId('vocab-page-next').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 2 / 2 页');
+assert.equal(await page.locator('[data-testid^="vocab-mastered-select-"]:checked').count(), 7,
+    'the second page reflects the cross-page selection');
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 57');
+
+// Partial selection → indeterminate; a second header activation selects all.
+await page.getByTestId('vocab-mastered-select-word51').uncheck();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 56');
+assert.equal(await masteredSelectAll.isChecked(), false);
+assert.equal(await masteredSelectAll.evaluate((el) => el.indeterminate), true,
+    'a partial selection renders the header indeterminate');
+await masteredSelectAll.click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 57');
+assert.equal(await masteredSelectAll.evaluate((el) => el.indeterminate), false);
+
+// Fully selected + a second activation = clear; edit mode stays on.
+await masteredSelectAll.click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 0');
+
+// Cross-page batch: select one row on page 2, page back, select one on page 1,
+// then 取消已掌握. Both rows run even though page 1 is the only rendered page.
+await page.getByTestId('vocab-mastered-select-word51').check();
+await page.getByTestId('vocab-page-jump').fill('1');
+await page.getByTestId('vocab-page-jump-go').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 1 / 2 页');
+await page.getByTestId('vocab-mastered-select-word01').check();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 2');
+await page.getByTestId('vocab-edit-unmaster').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 0');
+const masteredBatchLeaves = state.patches.slice(-2).map((patch) => patch.lemma).sort();
+assert.deepEqual(masteredBatchLeaves, ['word01', 'word51'],
+    'the batch wrote both the rendered page-1 row and the unrendered page-2 row');
+assert.ok(state.patches.slice(-2).every((patch) => patch.mastered === false));
+assert.equal(await page.getByTestId('vocab-mastered-total').innerText(), '共 55 词');
+// The batch success toast sits over the sticky bar; dispatch the click
+// directly so the DOM handler still runs (the toast is transient UI).
+await page.getByTestId('vocab-edit-done').evaluate((el) => el.click());
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
+assert.equal(await page.getByTestId('vocab-select-all-mastered').count(), 0,
+    'non-edit state renders no select-all checkbox at all');
+
 // ── I) the built-in list still renders through the shared table ──────────
 await page.getByTestId('vocab-tab-gre').click();
 await page.waitForSelector('[data-testid="vocab-word-list"]');
@@ -636,6 +704,18 @@ const editOverflow = await page.evaluate(() => {
     return doc.scrollWidth - doc.clientWidth;
 });
 assert.ok(editOverflow <= 0, `375px overflow while editing 已掌握: ${editOverflow}px`);
+// P0-15 at 375: the compact select-all selects every filtered mastered row
+// (60 here, across the client pages) without overflowing.
+await page.getByTestId('vocab-select-all-mastered-mobile').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 60');
+assert.equal((await page.getByTestId('vocab-edit-result-total').innerText()).trim(), '结果 60');
+assert.equal(await page.getByTestId('vocab-select-all-mastered-mobile').isChecked(), true);
+await page.screenshot({ path: `${SHOTS}/p0-15-375-mastered-select-all.png`, fullPage: false });
+const selectAllOverflow = await page.evaluate(() => {
+    const doc = document.documentElement;
+    return doc.scrollWidth - doc.clientWidth;
+});
+assert.ok(selectAllOverflow <= 0, `375px overflow after select-all 已掌握: ${selectAllOverflow}px`);
 await page.getByTestId('vocab-edit-done').click();
 await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
 await page.setViewportSize({ width: 1440, height: 1000 });

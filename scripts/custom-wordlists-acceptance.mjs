@@ -34,6 +34,9 @@
 // and the edit mode (勾选删除) + 重命名 live on the custom list itself. Sections
 // D–F were rewritten accordingly; the import wizard, review-route fallback,
 // guest gate and 375px cases are unchanged.
+// P0-15: §E2 selects all 60 items of wl-2 across its two client pages, checks
+// indeterminate + clear, and runs a cross-page 删除词条 batch (the first page is
+// no longer rendered); §J repeats 全选 at 375.
 //
 // Screenshots: /tmp/custom-wordlists-*.png
 // Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node custom-wordlists-acceptance.mjs
@@ -742,6 +745,73 @@ await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-
 assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 2 / 2 页');
 await page.screenshot({ path: `${SHOTS}/custom-wordlists-1440.png`, fullPage: false });
 
+// ── E2) P0-15 select-all across the two client-paged custom-list pages ────
+// wl-2 holds 60 items → two 50/page pages. 全选 must select all 60, not the
+// visible 10 on page 2; the selection then survives paging and a cross-page
+// batch must operate on the unrendered row too.
+assert.equal(await page.locator('[data-testid^="vocab-custom-select-"]').count(), 0,
+    'non-edit custom list renders no row checkboxes');
+await page.getByTestId('vocab-custom-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+const customSelectAll = page.getByTestId('vocab-select-all-custom');
+assert.equal(await customSelectAll.count(), 1, 'editing renders the header select-all checkbox');
+assert.equal(await customSelectAll.isChecked(), false, 'default: nothing selected');
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 0');
+assert.equal((await page.getByTestId('vocab-edit-result-total').innerText()).trim(), '结果 60');
+assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 2 / 2 页');
+
+await customSelectAll.click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 60');
+assert.equal(await customSelectAll.isChecked(), true);
+assert.equal(await page.locator('[data-testid^="vocab-custom-select-"]:checked').count(), 10,
+    'all 10 visible rows on page 2 are checked');
+await page.screenshot({ path: `${SHOTS}/p0-15-1440-custom-select-all.png`, fullPage: false });
+
+// Page 1 reflects the same cross-page selection; the count stays 60.
+await page.getByTestId('vocab-page-jump').fill('1');
+await page.getByTestId('vocab-page-jump-go').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 1 / 2 页');
+assert.equal(await page.locator('[data-testid^="vocab-custom-select-"]:checked').count(), 50);
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 60');
+
+// Partial → indeterminate; header again → all; header again (all) → clear.
+await page.getByTestId('vocab-custom-select-it-word-1').uncheck();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 59');
+assert.equal(await customSelectAll.isChecked(), false);
+assert.equal(await customSelectAll.evaluate((el) => el.indeterminate), true,
+    'a partial selection renders the header indeterminate');
+await customSelectAll.click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 60');
+assert.equal(await customSelectAll.evaluate((el) => el.indeterminate), false);
+await customSelectAll.click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 0');
+
+// Cross-page batch: 删除词条 for one row on page 1 and one row on page 2.
+// After paging back to page 1 only that page is rendered, so the page-2 item
+// proves the key→row map (not the DOM) drives the batch.
+await page.getByTestId('vocab-custom-select-it-word-2').check();
+await page.getByTestId('vocab-page-jump').fill('2');
+await page.getByTestId('vocab-page-jump-go').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 2 / 2 页');
+await page.getByTestId('vocab-custom-select-it-word-60').check();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 2');
+await page.getByTestId('vocab-edit-delete').click();
+await page.getByTestId('vocab-custom-items-delete').waitFor();
+assert.match(await page.getByTestId('vocab-custom-items-delete').innerText(), /删除选中的 2 个词条/);
+await page.getByTestId('vocab-custom-items-delete-confirm').click();
+await page.getByTestId('vocab-custom-items-delete').waitFor({ state: 'hidden', timeout: 10000 });
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 0');
+assert.deepEqual(state.itemDeletes.slice(-2).flatMap((entry) => entry.ids),
+    ['it-word-2', 'it-word-60'],
+    'the batch deleted both the earlier page and the currently rendered page');
+assert.equal((await page.getByTestId('vocab-tab-count-custom-wl-2').innerText()).trim(), '58');
+assert.equal((await page.getByTestId('vocab-edit-result-total').innerText()).trim(), '结果 58');
+// The success toast covers the sticky bar; dispatch the click directly.
+await page.getByTestId('vocab-edit-done').evaluate((el) => el.click());
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
+assert.equal(await page.getByTestId('vocab-select-all-custom').count(), 0,
+    'non-edit state renders no select-all checkbox at all');
+
 // ── F) edit mode on every list + 自定义词表 matrix + 重命名 + delete-table ──
 // P0-14: every word list exposes 编辑, but the checkboxes only exist while
 // editing. 自定义词表 adds 删除词条 (ConfirmDialog) to 加入收藏 / 标为已掌握.
@@ -812,19 +882,23 @@ assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(),
 await page.getByTestId('vocab-custom-select-it-abundant').check();
 await page.getByTestId('vocab-custom-select-it-candid').check();
 state.failItemDelete = 'it-abundant';
+const itemDeletesBefore = state.itemDeletes.length;
 await page.getByTestId('vocab-edit-delete').click();
 await page.getByTestId('vocab-custom-items-delete').waitFor();
 assert.match(await page.getByTestId('vocab-custom-items-delete').innerText(), /删除选中的 2 个词条/);
 assert.match(await page.getByTestId('vocab-custom-items-delete').innerText(), /只从这张词表删除/);
 await page.getByTestId('vocab-custom-items-delete-cancel').click();
 await page.getByTestId('vocab-custom-items-delete').waitFor({ state: 'hidden' });
-assert.equal(state.itemDeletes.length, 0, 'cancel keeps both selected rows');
+assert.equal(state.itemDeletes.length, itemDeletesBefore, 'cancel keeps both selected rows');
 await page.getByTestId('vocab-edit-delete').click();
 await page.getByTestId('vocab-custom-items-delete').waitFor();
 await page.getByTestId('vocab-custom-items-delete-confirm').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 1);
 await page.getByTestId('vocab-custom-items-delete').waitFor({ state: 'hidden', timeout: 5000 });
-assert.deepEqual(state.itemDeletes.map((entry) => entry.ids).flat(), ['it-abundant', 'it-candid']);
+assert.deepEqual(
+    state.itemDeletes.slice(itemDeletesBefore).map((entry) => entry.ids).flat(),
+    ['it-abundant', 'it-candid'],
+);
 assert.equal(await page.getByTestId('vocab-custom-edit-error-it-abundant').count(), 1,
     'the failed row keeps its inline error');
 assert.equal(await page.getByTestId('vocab-edit-summary').innerText(), '1 项失败，失败项仍在已选中。');
@@ -929,6 +1003,23 @@ const overflow = await page.evaluate(() => ({
 }));
 assert.ok(overflow.doc <= overflow.view + 1, `document overflows horizontally: ${JSON.stringify(overflow)}`);
 assert.ok(overflow.body <= overflow.view + 1, `body overflows horizontally: ${JSON.stringify(overflow)}`);
+// P0-15 at 375: the compact select-all selects every filtered custom item
+// (58 after the cross-page delete in §E2) without overflowing.
+await page.getByTestId('vocab-custom-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+await page.getByTestId('vocab-select-all-custom-mobile').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 58');
+assert.equal((await page.getByTestId('vocab-edit-result-total').innerText()).trim(), '结果 58');
+assert.equal(await page.getByTestId('vocab-select-all-custom-mobile').isChecked(), true);
+await page.screenshot({ path: `${SHOTS}/p0-15-375-custom-select-all.png`, fullPage: false });
+const selectAllOverflow = await page.evaluate(() => ({
+    doc: document.documentElement.scrollWidth,
+    view: window.innerWidth,
+}));
+assert.ok(selectAllOverflow.doc <= selectAllOverflow.view + 1,
+    `375 select-all overflows horizontally: ${JSON.stringify(selectAllOverflow)}`);
+await page.getByTestId('vocab-edit-done').evaluate((el) => el.click());
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
 // No 加入我的单词 at 375 either (unfavorited wl-2 row): the star is the only
 // favorite switch on every surface and viewport.
 await page.getByTestId('vocab-custom-expand-word001').click();

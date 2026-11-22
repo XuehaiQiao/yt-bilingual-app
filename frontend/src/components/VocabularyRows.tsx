@@ -20,11 +20,12 @@
 //
 // Colour and space come from the design tokens; no new literals are added for
 // rows, star, mastered check, toolbar or expansion.
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import {
     Check,
     ChevronDown,
     ListFilter,
+    Loader2,
     Pencil,
     Search,
     Star,
@@ -105,6 +106,23 @@ export interface WordRowSelection {
     /** Accessible name, e.g. 「选择 abundant」. */
     label: string;
     disabled?: boolean;
+    testId?: string;
+}
+
+/**
+ * Header 「全选当前结果」 control (P0-15). Tri-state: unchecked / mixed
+ * (`indeterminate`) / checked; the label flips to 清除选择 once every result is
+ * selected, so a second activation clears the selection.
+ */
+export interface WordTableSelectAll {
+    checked: boolean;
+    indeterminate: boolean;
+    onChange: (checked: boolean) => void;
+    /** Accessible name (全选当前结果 / 清除选择). */
+    label: string;
+    disabled?: boolean;
+    /** A cross-page fetch is in flight (spinner while the header stays disabled). */
+    loading?: boolean;
     testId?: string;
 }
 
@@ -210,6 +228,8 @@ export interface WordTableProps {
     showSeen?: boolean;
     /** Render the leading checkbox column and put the table in edit mode. */
     selectable?: boolean;
+    /** Edit-mode header 全选 control (P0-15); absent → no select-all checkbox. */
+    selectAll?: WordTableSelectAll;
     /** Accessible name of the list. */
     ariaLabel?: string;
 }
@@ -275,6 +295,51 @@ function controlColumns(showSeen: boolean) {
     };
 }
 
+/**
+ * Tri-state header checkbox (P0-15). The shared `Checkbox` has no
+ * `indeterminate` prop and `components/ui/**` is Integrator-owned, so this
+ * header-only control sets the native property directly while reusing the same
+ * token recipe (36px target, 44px on coarse pointers, brand accent).
+ */
+function SelectAllCheckbox({
+    checked,
+    indeterminate,
+    onChange,
+    label,
+    disabled = false,
+    testId,
+}: WordTableSelectAll) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        // No dependency array on purpose: a native click clears the DOM
+        // `indeterminate` flag, so every render has to restore the prop value
+        // (the prop itself may not change across that click).
+        if (inputRef.current) inputRef.current.indeterminate = indeterminate;
+    });
+    return (
+        <label
+            title={label}
+            className={cn(
+                'inline-flex h-control-md w-9 shrink-0 cursor-pointer items-center justify-center rounded-control',
+                'transition-colors duration-200 ease-apple hover:bg-state-hover',
+                '[@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11',
+                disabled && 'pointer-events-none opacity-50',
+            )}
+        >
+            <input
+                ref={inputRef}
+                type="checkbox"
+                data-testid={testId}
+                aria-label={label}
+                checked={checked}
+                disabled={disabled}
+                onChange={(event) => onChange(event.target.checked)}
+                className="h-4 w-4 cursor-pointer accent-brand disabled:cursor-not-allowed"
+            />
+        </label>
+    );
+}
+
 export function WordTable({
     rows,
     hideChinese,
@@ -283,6 +348,7 @@ export function WordTable({
     testIdPrefix = 'vocab-list',
     showSeen = false,
     selectable = false,
+    selectAll,
     ariaLabel,
 }: WordTableProps) {
     const { t } = useI18n();
@@ -297,11 +363,31 @@ export function WordTable({
             aria-label={ariaLabel}
             className={cn(className, 'overflow-hidden')}
         >
+            {/* 375px keeps the header hidden, so edit mode adds a compact
+                select-all row instead of the desktop checkbox column. */}
+            {selectable && selectAll && (
+                <div className="flex items-center gap-1.5 border-b border-line-subtle bg-surface-2/30 px-2 py-1 md:hidden">
+                    <SelectAllCheckbox
+                        {...selectAll}
+                        testId={selectAll.testId ? `${selectAll.testId}-mobile` : undefined}
+                    />
+                    <span className="min-w-0 truncate text-micro font-medium text-fg-muted">
+                        {selectAll.label}
+                    </span>
+                    {selectAll.loading && (
+                        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-fg-muted" aria-hidden="true" />
+                    )}
+                </div>
+            )}
             <div
                 data-testid={`${testIdPrefix}-header`}
                 className="hidden border-b border-line-subtle bg-surface-2/30 md:flex"
             >
-                {selectable && <span aria-hidden="true" className="w-11 shrink-0" />}
+                {selectable && (
+                    <span className="flex w-11 shrink-0 items-center justify-center">
+                        {selectAll && <SelectAllCheckbox {...selectAll} />}
+                    </span>
+                )}
                 <div className={cn('grid flex-1 items-center gap-x-3 px-3 py-2 text-micro font-medium text-fg-muted', desktopGrid)}>
                     <span>{t('vocab.col.word')}</span>
                     <span>{t('vocab.col.phonetic')}</span>

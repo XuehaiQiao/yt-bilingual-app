@@ -35,6 +35,10 @@
 // and clears the selection; §E2 covers the full operation matrix. Nothing here
 // weakens an assertion: non-edit state is asserted to have no checkbox, and no
 // review POST/state read may fire.
+// P0-15 adds the header tri-state 全选 (§E3): CET4 is mocked with 250 rows so
+// the visible 50/page pager differs from the two 200/page server fetches the
+// select-all folds; indeterminate, 清除选择, a failed fetch keeping the old
+// selection, and a cross-page 加入收藏 batch are asserted there.
 //
 // Every /api/** request is mocked; nothing touches :8000 or :5173.
 // Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node wordbook-v12-acceptance.mjs
@@ -85,6 +89,17 @@ const GRE_ITEMS = [
     { word: 'brisk', phonetic: '/brɪsk/', translation: '轻快的', cefrLevel: 'B1' },
     { word: 'candid', phonetic: '', translation: '', cefrLevel: '' },
 ];
+// P0-15: a server-paged list with 250 rows = two 200-per-page fetches, so
+// select-all has to loop past the visible 50/page pager (and its 5 pages).
+const CET4_ITEMS = Array.from({ length: 250 }, (_, index) => {
+    const n = String(index + 1).padStart(3, '0');
+    return {
+        word: `cet4w${n}`,
+        phonetic: `/k${n}/`,
+        translation: `CET4 释义 ${n}`,
+        cefrLevel: 'B1',
+    };
+});
 const PHRASES = [
     { id: 'p1', headword: 'give up', type: 'phrasal_verb', cefr: 'A2', translation: '放弃', example: 'Never give up.', source: 'curated' },
     { id: 'p2', headword: 'on the fence', type: 'idiom', cefr: 'B1', translation: '犹豫不决', example: 'He is on the fence.', source: 'curated' },
@@ -107,6 +122,12 @@ const state = {
     deletes: [],
     stateRequests: [],
     unmocked: [],
+    /** P0-15: every built-in list page read (proves select-all loops pages). */
+    listPageCalls: [],
+    /** P0-15: fail the second select-all page (must keep the old selection). */
+    failListSelectAll: null,
+    /** P0-15: hold the second select-all page so the loading state is visible. */
+    delayListSelectAllPage: false,
 };
 
 const publicWord = (lemma, extra = {}) => ({
@@ -283,20 +304,39 @@ await context.route('**/api/**', async (route) => {
         return respond([
             list('cefr', 'CEFR 词表', 5000, { byLevel: { A1: 1000, A2: 1000, B1: 1000, B2: 1000, C1: 1000 }, approximate: true }),
             list('gre', 'GRE', 3200),
-            list('cet4', 'CET4', 2600),
+            list('cet4', 'CET4', CET4_ITEMS.length),
             list('cet6', 'CET6', 1200),
             list('phrases', '短语', 570),
         ]);
     }
     const listPage = pathname.match(/^\/api\/vocabulary\/lists\/([a-z0-9-]+)$/);
     if (listPage && method === 'GET') {
-        const items = listPage[1] === 'gre' ? GRE_ITEMS : [];
+        // P0-15: honour q/level/page/pageSize so the 250-row CET4 fixture needs
+        // two 200-per-page reads when select-all folds every result.
+        const source = listPage[1] === 'gre' ? GRE_ITEMS : listPage[1] === 'cet4' ? CET4_ITEMS : [];
+        const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+        const level = url.searchParams.get('level') || '';
+        const filtered = source.filter((item) => (
+            (!q || item.word.toLowerCase().includes(q))
+            && (!level || item.cefrLevel === level)
+        ));
+        const page = Math.max(1, Number(url.searchParams.get('page') || 1));
+        const pageSize = Math.min(200, Math.max(1, Number(url.searchParams.get('pageSize') || 50)));
+        const start = (page - 1) * pageSize;
+        const items = filtered.slice(start, start + pageSize);
+        state.listPageCalls.push({ id: listPage[1], page, pageSize, q, level });
+        if (state.delayListSelectAllPage && page === 2 && pageSize === 200) {
+            await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+        if (state.failListSelectAll === listPage[1] && page === 2 && pageSize === 200) {
+            return fail(500, 'select-all page two failed');
+        }
         return respond({
             items,
-            total: items.length,
-            page: Number(url.searchParams.get('page') || 1),
-            pageSize: Number(url.searchParams.get('pageSize') || 50),
-            hasMore: false,
+            total: filtered.length,
+            page,
+            pageSize,
+            hasMore: start + items.length < filtered.length,
         });
     }
     if (pathname === '/api/vocabulary/phrases' && method === 'GET') {
@@ -1195,9 +1235,126 @@ assert.equal(await page.getByTestId('vocab-edit-bar').count(), 0, 'switching tab
 await page.getByTestId('vocab-tab-mine').click();
 await page.waitForSelector('[data-testid="vocab-mine-list"]');
 assert.equal((await page.getByTestId('vocab-mine-edit').innerText()).trim(), '编辑');
-assert.equal((await page.getByTestId('vocab-edit-bar').count()), 0);
+assert.equal(await page.getByTestId('vocab-edit-bar').count(), 0);
 assert.equal(await page.locator('[data-testid^="vocab-mine-select-"]').count(), 0,
     'the selection is cleared on the next tab visit');
+
+// ═══ E3) P0-15 全选：current search+filter+sort results, across pages ═══
+// CET4 has 250 mocked rows: the visible pager shows 50/page (5 pages), while
+// select-all must fetch both 200/page server pages and select all 250.
+await page.getByTestId('vocab-tab-cet4').click();
+await page.waitForSelector('[data-testid="vocab-word-list"]');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-list-select-"]').length === 0);
+await page.getByTestId('vocab-list-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+const cet4SelectAll = page.getByTestId('vocab-select-all-list');
+assert.equal(await cet4SelectAll.count(), 1, 'editing renders the header select-all checkbox');
+assert.equal(await cet4SelectAll.isChecked(), false, 'default: nothing selected');
+assert.equal(await cet4SelectAll.evaluate((el) => el.indeterminate), false);
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 0');
+assert.equal((await page.getByTestId('vocab-edit-result-total').innerText()).trim(), '结果 250');
+assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 5 页');
+
+// A failed select-all keeps the existing selection and reports the error.
+await page.getByTestId('vocab-list-select-cet4:cet4w001').check();
+await waitSelected('已选 1');
+state.failListSelectAll = 'cet4';
+state.delayListSelectAllPage = true;
+await cet4SelectAll.click();
+// The second page is held for 400ms: the bar must show the loading state and
+// the header must be disabled while the fetch folds the remaining pages.
+await page.getByTestId('vocab-edit-select-all-loading').waitFor();
+assert.equal(await cet4SelectAll.isDisabled(), true,
+    'the header is disabled while select-all is fetching every page');
+await page.getByTestId('vocab-edit-select-all-error').waitFor();
+state.delayListSelectAllPage = false;
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 1',
+    'a failed select-all keeps the previous selection');
+assert.equal(await cet4SelectAll.evaluate((el) => el.indeterminate), true);
+assert.match(await page.getByTestId('vocab-edit-select-all-error').innerText(), /select-all page two failed/);
+state.failListSelectAll = null;
+
+// Retry (partial → all) now succeeds: 200/page pages 1 + 2 are folded.
+const pageCallsBefore = state.listPageCalls.length;
+await cet4SelectAll.click();
+await waitSelected('已选 250');
+assert.equal(await page.getByTestId('vocab-edit-select-all-error').count(), 0,
+    'a successful retry clears the inline select-all error');
+const selectAllCalls = state.listPageCalls.slice(pageCallsBefore)
+    .filter((call) => call.id === 'cet4' && call.pageSize === 200);
+assert.deepEqual(selectAllCalls.map((call) => call.page), [1, 2],
+    'select-all fetched both 200-per-page server pages');
+assert.equal(await cet4SelectAll.isChecked(), true);
+assert.equal(await cet4SelectAll.evaluate((el) => el.indeterminate), false);
+assert.equal((await page.getByTestId('vocab-edit-result-total').innerText()).trim(), '结果 250');
+assert.equal(await page.getByTestId('vocab-list-select-cet4:cet4w001').isChecked(), true);
+// Let the earlier transient toasts expire so the evidence shot shows the bar.
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="toast"]').length === 0, null, { timeout: 10000 }).catch(() => {});
+await page.screenshot({ path: `${SHOTS}/p0-15-1440-select-all.png`, fullPage: false });
+
+// Selection survives paging (cross-page): page 2 rows are checked, the count
+// stays 250 and the header stays fully checked.
+await page.getByTestId('vocab-page-jump').fill('2');
+await page.getByTestId('vocab-page-jump-go').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 2 / 5 页');
+assert.equal(await page.getByTestId('vocab-list-select-cet4:cet4w051').isChecked(), true,
+    'a row on page 2 reflects the select-all selection');
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 250');
+
+// Partial selection → indeterminate; clicking the header again selects all.
+await page.getByTestId('vocab-list-select-cet4:cet4w051').uncheck();
+await waitSelected('已选 249');
+assert.equal(await cet4SelectAll.isChecked(), false);
+assert.equal(await cet4SelectAll.evaluate((el) => el.indeterminate), true,
+    'a partial selection renders the header indeterminate');
+await cet4SelectAll.click();
+await waitSelected('已选 250');
+assert.equal(await cet4SelectAll.evaluate((el) => el.indeterminate), false);
+
+// Fully selected + a second activation = clear (edit mode stays on).
+await cet4SelectAll.click();
+await waitSelected('已选 0');
+assert.equal(await cet4SelectAll.isChecked(), false);
+assert.equal((await page.getByTestId('vocab-edit-result-total').innerText()).trim(), '结果 250');
+assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 2 / 5 页',
+    'clearing keeps the current page');
+
+// A search change clears the selection (a hidden row is never written) but
+// keeps edit mode on; clearing the search restores the full result set.
+await page.getByTestId('vocab-list-select-cet4:cet4w051').check();
+await waitSelected('已选 1');
+await page.getByTestId('vocab-search').fill('cet4w001');
+await waitSelected('已选 0');
+assert.equal(await page.getByTestId('vocab-edit-bar').count(), 1,
+    'a search change keeps edit mode on');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-result-total"]')?.textContent?.trim() === '结果 1');
+await page.getByTestId('vocab-search-clear').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-result-total"]')?.textContent?.trim() === '结果 250');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 1 / 5 页');
+
+// Cross-page batch: select one row on page 2, page back, select one on page 1,
+// then run 加入收藏. Both rows live in the key→row map even though only page 1
+// is rendered — the unrendered page-2 row must still be written.
+await page.getByTestId('vocab-page-jump').fill('2');
+await page.getByTestId('vocab-page-jump-go').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 2 / 5 页');
+await page.getByTestId('vocab-list-select-cet4:cet4w051').check();
+await page.getByTestId('vocab-page-jump').fill('1');
+await page.getByTestId('vocab-page-jump-go').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 1 / 5 页');
+await page.getByTestId('vocab-list-select-cet4:cet4w001').check();
+await waitSelected('已选 2');
+const cet4FavBefore = state.favoritePosts.length;
+await page.getByTestId('vocab-edit-favorite').click();
+await waitSelected('已选 0');
+const cet4FavPosts = state.favoritePosts.slice(cet4FavBefore)
+    .map((post) => String(post.text)).sort();
+assert.deepEqual(cet4FavPosts, ['cet4w001', 'cet4w051'],
+    'the batch wrote both the rendered page-1 row and the unrendered page-2 row');
+await page.getByTestId('vocab-edit-done').click();
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
+assert.equal(await page.getByTestId('vocab-select-all-list').count(), 0,
+    'non-edit state renders no select-all checkbox at all');
 
 // ═══ F) 状态接口 403/404 → nothing to degrade while the chips are gone ═══
 for (const status of [404, 403]) {
@@ -1239,6 +1396,24 @@ const editBarOverflow = await page.evaluate(() => {
     return doc.scrollWidth - doc.clientWidth;
 });
 assert.ok(editBarOverflow <= 0, `375px horizontal overflow while editing: ${editBarOverflow}px`);
+// P0-15 at 375: the compact header select-all selects every filtered result
+// (client-paged 我的收藏, across pages) without overflowing.
+const mobileResultTotal = (await page.getByTestId('vocab-edit-result-total').innerText())
+    .replace(/\D/g, '');
+assert.ok(Number(mobileResultTotal) > 0, 'the edit bar reports a result total at 375');
+await page.getByTestId('vocab-select-all-mine-mobile').click();
+await waitSelected(`已选 ${mobileResultTotal}`);
+assert.equal(
+    await page.getByTestId('vocab-select-all-mine-mobile').isChecked(),
+    true,
+    'the 375 select-all reflects the full selection',
+);
+await page.screenshot({ path: `${SHOTS}/p0-15-375-select-all.png`, fullPage: false });
+const selectAllOverflow = await page.evaluate(() => {
+    const doc = document.documentElement;
+    return doc.scrollWidth - doc.clientWidth;
+});
+assert.ok(selectAllOverflow <= 0, `375px horizontal overflow after select-all: ${selectAllOverflow}px`);
 await page.getByTestId('vocab-edit-done').click();
 await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
 assert.equal((await page.getByTestId('vocab-tab-mine').innerText()).startsWith('我的收藏'), true);

@@ -89,6 +89,7 @@ import {
     type PhrasePage,
     type PhraseType,
     type VocabularyList,
+    type VocabularyEntry,
     type VocabularyPage,
 } from '../lib/vocabulary';
 import {
@@ -131,6 +132,7 @@ import {
     type SortOption,
     type WordRowAction,
     type WordTableRow,
+    type WordTableSelectAll,
 } from './VocabularyRows';
 import { Badge } from './ui/Badge';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -190,6 +192,14 @@ interface EditEntry {
     key: string;
     word: string;
     run: () => Promise<void>;
+}
+/** P0-15: one row's batch handlers, kept after the row leaves the rendered page. */
+type EditRowActions = Partial<Record<EditAction, () => Promise<void>>>;
+/** P0-15: key→word/handlers map so a cross-page batch can run unrendered rows. */
+interface EditRowRegistration {
+    key: string;
+    word: string;
+    actions: EditRowActions;
 }
 /** One bottom-bar action for the active tab's operation matrix. */
 interface EditBarAction {
@@ -549,6 +559,18 @@ export function VocabularyBookScreen({
      * so `editBusy` alone cannot stop the second batch.
      */
     const editRunInFlight = useRef(false);
+    /**
+     * P0-15: every selected row's handlers, keyed by the same stable key as
+     * `editSelected`. It survives pagination so a batch can run the rows that
+     * are no longer rendered; search/filter/sort/tab changes clear it with the
+     * selection.
+     */
+    const editRows = useRef<Map<string, EditRowRegistration>>(new Map());
+    /** 全选 on a server-paged list is fetching every page (loading + disabled). */
+    const [editAllLoading, setEditAllLoading] = useState(false);
+    const [editAllError, setEditAllError] = useState<string | null>(null);
+    /** Invalidates an in-flight select-all when the view/selection changes. */
+    const editAllToken = useRef(0);
 
     const masteredWords = isGuest ? guestMastered : serverMastered;
 
@@ -1571,19 +1593,41 @@ export function VocabularyBookScreen({
     // §编辑模式). A batch runs row by row: successes leave the selection,
     // failures stay selected with an inline error + a 「N 项失败」 summary.
     const resetEdit = useCallback(() => {
+        editAllToken.current += 1;
+        editRows.current.clear();
         setEditMode(false);
         setEditSelected(new Set());
         setEditSummary(null);
         setEditErrors({});
         setEditDeleteOpen(false);
+        setEditAllLoading(false);
+        setEditAllError(null);
+    }, []);
+
+    /**
+     * Clear the selection but stay in edit mode (search/filter/sort change,
+     * 清除选择). P0-15: paging itself never clears it — select-all spans pages.
+     */
+    const clearEditSelection = useCallback(() => {
+        editAllToken.current += 1;
+        editRows.current.clear();
+        setEditSelected(new Set());
+        setEditSummary(null);
+        setEditErrors({});
+        setEditAllError(null);
+        setEditAllLoading(false);
     }, []);
 
     const toggleEditMode = () => {
-        if (editBusy) return;
+        if (editBusy || editAllLoading) return;
+        editAllToken.current += 1;
+        editRows.current.clear();
         setEditSelected(new Set());
         setEditSummary(null);
         setEditErrors({});
         setEditDeleteOpen(false);
+        setEditAllLoading(false);
+        setEditAllError(null);
         setEditMode((prev) => !prev);
     };
 
@@ -1601,7 +1645,88 @@ export function VocabularyBookScreen({
             return next;
         });
         setEditSummary(null);
+        setEditAllError(null);
     }, []);
+
+    /** Keep a rendered (or select-all fetched) row runnable after it unmounts. */
+    const registerEditRow = useCallback((key: string, word: string, actions: EditRowActions) => {
+        editRows.current.set(key, { key, word, actions });
+    }, []);
+
+    /** Current selection → batch entries, including rows on other pages. */
+    const selectedEditEntries = (action: EditAction): EditEntry[] => {
+        const entries: EditEntry[] = [];
+        for (const row of editRows.current.values()) {
+            if (!editSelected.has(row.key)) continue;
+            const run = row.actions[action];
+            if (!run) continue;
+            entries.push({ key: row.key, word: row.word, run });
+        }
+        return entries;
+    };
+
+    /** Replace the selection with every row of the current filtered result set. */
+    const selectAllRows = (rows: readonly EditRowRegistration[]) => {
+        editRows.current = new Map(rows.map((row) => [row.key, row]));
+        setEditSelected(new Set(rows.map((row) => row.key)));
+        setEditSummary(null);
+        setEditErrors({});
+        setEditAllError(null);
+    };
+
+    /** Client-paged lists already hold every filtered row: select them at once. */
+    const selectAllClient = (rows: readonly EditRowRegistration[]) => {
+        if (rows.length === 0) {
+            setEditSummary(t('vocab.edit.selectEmpty'));
+            return;
+        }
+        selectAllRows(rows);
+    };
+
+    /**
+     * P0-15: server-paged lists fetch every page matching the current
+     * q/filter/sort (200/page — the endpoint cap) before selecting. A failure
+     * keeps the previous selection and reports it inline + as a toast; it never
+     * reports a partial page as "all results selected".
+     */
+    const selectAllServer = async (loadRows: () => Promise<EditRowRegistration[]>) => {
+        if (editBusy || editAllLoading) return;
+        const token = ++editAllToken.current;
+        setEditAllLoading(true);
+        setEditAllError(null);
+        try {
+            const rows = await loadRows();
+            if (token !== editAllToken.current) return;
+            if (rows.length === 0) {
+                setEditSummary(t('vocab.edit.selectEmpty'));
+                return;
+            }
+            selectAllRows(rows);
+        } catch (error) {
+            if (token !== editAllToken.current) return;
+            const message = (await describeApiError(error)) || t('vocab.edit.selectAllFailed');
+            setEditAllError(message);
+            toast.error(message, { dedupeKey: 'vocab:select-all' });
+        } finally {
+            if (token === editAllToken.current) setEditAllLoading(false);
+        }
+    };
+
+    /** Shared header props: tri-state follows selection size vs. result total. */
+    const selectAllHeaderProps = (
+        resultTotal: number,
+        testId: string,
+    ): Omit<WordTableSelectAll, 'onChange'> => {
+        const allSelected = resultTotal > 0 && editSelected.size === resultTotal;
+        return {
+            checked: allSelected,
+            indeterminate: editSelected.size > 0 && !allSelected,
+            label: allSelected ? t('vocab.edit.clearSelection') : t('vocab.edit.selectAll'),
+            disabled: editBusy || editAllLoading,
+            loading: editAllLoading,
+            testId,
+        };
+    };
 
     const editErrorText = (error: unknown): string => (
         error instanceof Error && error.message.trim()
@@ -1610,7 +1735,7 @@ export function VocabularyBookScreen({
     );
 
     const runEditEntries = async (action: EditAction, entries: readonly EditEntry[]) => {
-        if (editRunInFlight.current) return;
+        if (editRunInFlight.current || editAllLoading) return;
         // Guests can only batch-undo their local 「我会了」 table; every other
         // batch is a server write and must go through the login gate first.
         if (isGuest && !(activeIsMastered && action === 'unmaster')) {
@@ -1687,24 +1812,18 @@ export function VocabularyBookScreen({
 
     /** ConfirmDialog handler for 删除词条: one DELETE per item, row by row. */
     const confirmDeleteCustomItems = async () => {
-        const list = activeCustomList;
-        if (!list) return;
-        const entries: EditEntry[] = customItems
-            .filter((item) => editSelected.has(customItemKey(item)))
-            .map((item) => ({
-                key: customItemKey(item),
-                word: item.word,
-                run: () => deleteCustomItem(list.id, item),
-            }));
-        await runEditEntries('delete', entries);
+        if (!activeCustomList) return;
+        // P0-15: the key→row map covers selected items on other pages too.
+        await runEditEntries('delete', selectedEditEntries('delete'));
     };
 
     /**
-     * Sticky bottom action bar of the edit mode (P0-14): 已选 N / the active
-     * tab's operations / 完成, with the batch failure summary underneath. The
-     * caller passes only the operations its list supports.
+     * Sticky bottom action bar of the edit mode (P0-14/P0-15): 已选 N / 结果 M /
+     * the active tab's operations / 完成, with the batch and select-all failure
+     * summaries underneath. The caller passes only the operations its list
+     * supports.
      */
-    const renderEditBar = (actions: readonly EditBarAction[]) => {
+    const renderEditBar = (actions: readonly EditBarAction[], resultTotal: number) => {
         if (!editMode) return null;
         return (
             <div
@@ -1717,6 +1836,22 @@ export function VocabularyBookScreen({
                 >
                     {t('vocab.edit.selected', { count: formatNumber(editSelected.size) })}
                 </span>
+                <span aria-hidden="true" className="text-caption text-fg-muted">/</span>
+                <span
+                    data-testid="vocab-edit-result-total"
+                    className="text-caption tabular-nums text-fg-muted"
+                >
+                    {t('vocab.edit.resultTotal', { count: formatNumber(resultTotal) })}
+                </span>
+                {editAllLoading && (
+                    <span
+                        data-testid="vocab-edit-select-all-loading"
+                        className="inline-flex items-center gap-1.5 text-caption text-fg-muted"
+                    >
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        {t('vocab.edit.selecting')}
+                    </span>
+                )}
                 <div className="ms-auto flex flex-wrap items-center gap-1.5">
                     {actions.map((action) => {
                         const Icon = action.icon;
@@ -1728,7 +1863,7 @@ export function VocabularyBookScreen({
                                 iconLeft={<Icon />}
                                 testId={action.testId}
                                 loading={editRunning === action.key}
-                                disabled={editBusy || editSelected.size === 0}
+                                disabled={editBusy || editAllLoading || editSelected.size === 0}
                                 onClick={action.onSelect}
                             >
                                 {action.label}
@@ -1739,7 +1874,7 @@ export function VocabularyBookScreen({
                         size="sm"
                         variant="secondary"
                         testId="vocab-edit-done"
-                        disabled={editBusy}
+                        disabled={editBusy || editAllLoading}
                         onClick={resetEdit}
                     >
                         {t('vocab.edit.done')}
@@ -1754,22 +1889,41 @@ export function VocabularyBookScreen({
                         {editSummary}
                     </p>
                 )}
+                {editAllError && (
+                    <p
+                        role="alert"
+                        data-testid="vocab-edit-select-all-error"
+                        className="w-full text-caption leading-relaxed text-danger-fg"
+                    >
+                        {editAllError}
+                    </p>
+                )}
             </div>
         );
     };
 
     /** Leading checkbox descriptor for one row while the list is being edited. */
-    const selectionForRow = useCallback((key: string, word: string, testId: string) => (
-        editMode
-            ? {
-                checked: editSelected.has(key),
-                onChange: (checked: boolean) => toggleEditSelection(key, checked),
-                label: t('vocab.bulk.selectRow', { word }),
-                testId,
-                disabled: editBusy,
-            }
-            : undefined
-    ), [editBusy, editMode, editSelected, t, toggleEditSelection]);
+    const selectionForRow = useCallback((
+        key: string,
+        word: string,
+        testId: string,
+        actions: EditRowActions,
+    ) => {
+        if (!editMode) return undefined;
+        // P0-15: keep the handlers past this render so a batch still owns a
+        // selected row after the user pages away from it.
+        registerEditRow(key, word, actions);
+        return {
+            checked: editSelected.has(key),
+            onChange: (checked: boolean) => toggleEditSelection(key, checked),
+            label: t('vocab.bulk.selectRow', { word }),
+            testId,
+            disabled: editBusy || editAllLoading,
+        };
+    }, [
+        editAllLoading, editBusy, editMode, editSelected, registerEditRow, t,
+        toggleEditSelection,
+    ]);
 
     const openRenameDialog = () => {
         if (!activeCustomList) return;
@@ -1998,29 +2152,28 @@ export function VocabularyBookScreen({
     }, [activeIsCustom, activeCustomListId, customNonce]);
 
     // A new custom page/search/filter starts with every translation collapsed
-    // and the selection cleared (the filter may have hidden the selected rows).
+    // and page 1; the selection is the shared effect below (P0-15 clears it on
+    // search/filter/sort, never on paging alone).
     useEffect(() => {
         setCustomRevealed(new Set());
         setCustomPage(1);
-        setEditSelected(new Set());
-        setEditSummary(null);
-        setEditErrors({});
     }, [customQuery, customSort, customLevel, customUnmasteredOnly, pageSize]);
 
-    // Any search / sort / filter / page change is a different view of the list:
-    // clear the edit selection so a hidden row can never be written blindly.
+    // P0-15: any search / sort / filter change is a different result set, so the
+    // edit selection is cleared and edit mode stays on. Paging alone does NOT
+    // clear it: select-all spans pages and the key→row map still owns the rows
+    // that are not rendered (batch + 已选 N / 结果 M remain correct).
     useEffect(() => {
-        setEditSelected(new Set());
-        setEditSummary(null);
-        setEditErrors({});
+        clearEditSelection();
         setEditDeleteOpen(false);
     }, [
-        activeTab, pageSize,
-        mineQuery, mineType, mineSource, mineLevel, minePage,
-        masteredQuery, masteredLevel, masteredPage,
-        customQuery, customSort, customLevel, customUnmasteredOnly, customPage,
-        query, listLevel, page,
-        phraseQuery, phraseLevel, phraseType, phrasePage,
+        activeTab,
+        mineQuery, mineType, mineSource, mineLevel, mineSort,
+        masteredQuery, masteredLevel, masteredSort,
+        customQuery, customSort, customLevel, customUnmasteredOnly,
+        query, listLevel,
+        phraseQuery, phraseLevel, phraseType,
+        clearEditSelection,
     ]);
 
     // A new list/page/search/level starts with every row's translation collapsed.
@@ -2444,6 +2597,21 @@ export function VocabularyBookScreen({
         const sortLabel = sortOptions.find((option) => option.value === mineSort)?.label
             ?? t('vocab.sort.added');
 
+        /** P0-15: one favorite's batch handlers, shared by its row and 全选. */
+        const editActionsForMine = (fav: FavoriteItem): EditRowActions => ({
+            unfavorite: async () => {
+                const removed = await deleteFavoriteById(fav.id);
+                if (!removed) throw new Error(t('vocab.bulk.rowError'));
+            },
+            master: async () => { await applyFavoriteMastered(fav, true); },
+        });
+        /** 我的收藏 is client paged: 全选 is every filtered+sorted favorite. */
+        const mineSelectAllRows = (): EditRowRegistration[] => mineRows.map((fav) => ({
+            key: fav.id,
+            word: fav.en_text.trim(),
+            actions: editActionsForMine(fav),
+        }));
+
         const rows: WordTableRow[] = minePageRows.map((fav) => {
             const word = fav.en_text.trim();
             const { ipa, meaning } = splitIpaAndMeaning(fav.zh_text);
@@ -2570,7 +2738,12 @@ export function VocabularyBookScreen({
                     </div>
                 ),
                 actions,
-                selection: selectionForRow(fav.id, word, `vocab-mine-select-${fav.id}`),
+                selection: selectionForRow(
+                    fav.id,
+                    word,
+                    `vocab-mine-select-${fav.id}`,
+                    editActionsForMine(fav),
+                ),
                 error: rowError?.id === fav.id
                     ? { message: rowError.message, testId: `vocab-mine-error-${fav.id}` }
                     : editErrors[fav.id]
@@ -2594,21 +2767,7 @@ export function VocabularyBookScreen({
 
         /** 我的收藏 matrix: 取消收藏 / 标为已掌握 (both run row by row). */
         const runMineEdit = (action: 'unfavorite' | 'master') => {
-            const entries: EditEntry[] = minePageRows
-                .filter((fav) => editSelected.has(fav.id))
-                .map((fav) => ({
-                    key: fav.id,
-                    word: fav.en_text,
-                    run: async () => {
-                        if (action === 'unfavorite') {
-                            const removed = await deleteFavoriteById(fav.id);
-                            if (!removed) throw new Error(t('vocab.bulk.rowError'));
-                            return;
-                        }
-                        await applyFavoriteMastered(fav, true);
-                    },
-                }));
-            void runEditEntries(action, entries);
+            void runEditEntries(action, selectedEditEntries(action));
         };
 
         return (
@@ -2709,6 +2868,13 @@ export function VocabularyBookScreen({
                                     listTestId="vocab-mine-list"
                                     testIdPrefix="vocab-mine"
                                     selectable={editMode}
+                                    selectAll={{
+                                        ...selectAllHeaderProps(mineRows.length, 'vocab-select-all-mine'),
+                                        onChange: (checked) => {
+                                            if (checked) selectAllClient(mineSelectAllRows());
+                                            else clearEditSelection();
+                                        },
+                                    }}
                                     ariaLabel={t('vocab.tab.mine')}
                                 />
                                 <span data-testid="vocab-mine-total" className="text-caption tabular-nums text-fg-muted">
@@ -2743,7 +2909,7 @@ export function VocabularyBookScreen({
                         testId: 'vocab-edit-master',
                         onSelect: () => runMineEdit('master'),
                     },
-                ])}
+                ], mineRows.length)}
             </div>
         );
     };
@@ -2807,6 +2973,48 @@ export function VocabularyBookScreen({
             setPhraseType('');
             setPhraseQuery('');
             setPhrasePage(1);
+        };
+
+        /** P0-15: one phrase's batch handlers, shared by its row and 全选. */
+        const editActionsForPhrase = (item: PhraseEntry): EditRowActions => ({
+            favorite: async () => {
+                await persistFavoriteForRow({
+                    word: item.headword,
+                    translation: item.translation,
+                    sourceKind: 'wordlist',
+                    sourceRef: PHRASES_TAB,
+                    sourceTitle: t('vocab.tab.phrases'),
+                });
+            },
+            master: async () => {
+                if (masteredWords.has(normalizeMasteryWord(item.headword))) return;
+                await applyListWordMastered({
+                    rowKey: `phrase:${item.id}`,
+                    word: item.headword,
+                    translation: item.translation,
+                    listId: PHRASES_TAB,
+                }, true);
+            },
+        });
+        /** 短语 is server paged: fetch every page matching q/level/type (≤200/page). */
+        const phraseSelectAllRows = async (): Promise<EditRowRegistration[]> => {
+            const collected = new Map<string, PhraseEntry>();
+            for (let targetPage = 1; targetPage <= 25; targetPage += 1) {
+                const data = await fetchPhrasePage({
+                    page: targetPage,
+                    pageSize: 200,
+                    q: phraseDebouncedQuery,
+                    level: phraseLevel,
+                    type: phraseType,
+                });
+                for (const item of data.items) collected.set(item.id, item);
+                if (!data.hasMore || data.items.length === 0) break;
+            }
+            return [...collected.values()].map((item) => ({
+                key: item.id,
+                word: item.headword,
+                actions: editActionsForPhrase(item),
+            }));
         };
 
         const rows: WordTableRow[] = (phraseData?.items ?? []).map((item: PhraseEntry) => {
@@ -2959,7 +3167,12 @@ export function VocabularyBookScreen({
                     word: item.headword,
                     listId: PHRASES_TAB,
                 }),
-                selection: selectionForRow(item.id, item.headword, `phrase-select-${item.id}`),
+                selection: selectionForRow(
+                    item.id,
+                    item.headword,
+                    `phrase-select-${item.id}`,
+                    editActionsForPhrase(item),
+                ),
                 error: listRowErrors[rowKey]
                     ? { message: listRowErrors[rowKey], testId: `phrase-add-error-${item.id}` }
                     : editErrors[item.id]
@@ -2981,32 +3194,7 @@ export function VocabularyBookScreen({
 
         /** 短语 matrix: 加入收藏 / 标为已掌握. */
         const runPhraseEdit = (action: 'favorite' | 'master') => {
-            const entries: EditEntry[] = (phraseData?.items ?? [])
-                .filter((item) => editSelected.has(item.id))
-                .map((item) => ({
-                    key: item.id,
-                    word: item.headword,
-                    run: async () => {
-                        if (action === 'favorite') {
-                            await persistFavoriteForRow({
-                                word: item.headword,
-                                translation: item.translation,
-                                sourceKind: 'wordlist',
-                                sourceRef: PHRASES_TAB,
-                                sourceTitle: t('vocab.tab.phrases'),
-                            });
-                            return;
-                        }
-                        if (masteredWords.has(normalizeMasteryWord(item.headword))) return;
-                        await applyListWordMastered({
-                            rowKey: `phrase:${item.id}`,
-                            word: item.headword,
-                            translation: item.translation,
-                            listId: PHRASES_TAB,
-                        }, true);
-                    },
-                }));
-            void runEditEntries(action, entries);
+            void runEditEntries(action, selectedEditEntries(action));
         };
 
         return (
@@ -3100,6 +3288,13 @@ export function VocabularyBookScreen({
                                 listTestId="phrase-list"
                                 testIdPrefix="phrase"
                                 selectable={editMode}
+                                selectAll={{
+                                    ...selectAllHeaderProps(phraseTotal, 'vocab-select-all-phrases'),
+                                    onChange: (checked) => {
+                                        if (checked) void selectAllServer(phraseSelectAllRows);
+                                        else clearEditSelection();
+                                    },
+                                }}
                                 ariaLabel={t('vocab.tab.phrases')}
                             />
                             <VocabPagination
@@ -3130,7 +3325,7 @@ export function VocabularyBookScreen({
                         testId: 'vocab-edit-master',
                         onSelect: () => runPhraseEdit('master'),
                     },
-                ])}
+                ], phraseTotal)}
             </div>
         );
     };
@@ -3161,6 +3356,16 @@ export function VocabularyBookScreen({
             { value: 'alpha', label: t('vocab.sort.alpha'), testId: 'vocab-mastered-sort-alpha' },
             { value: 'level', label: t('vocab.sort.level'), testId: 'vocab-mastered-sort-level' },
         ];
+        /** P0-15: one mastered row's batch handler, shared by its row and 全选. */
+        const editActionsForMastered = (row: { key: string; word: string }): EditRowActions => ({
+            unmaster: () => unmasterWordRow(row),
+        });
+        /** 已掌握 is client paged: 全选 is every filtered+sorted mastered word. */
+        const masteredSelectAllRows = (): EditRowRegistration[] => sorted.map((row) => ({
+            key: row.key,
+            word: row.word,
+            actions: editActionsForMastered(row),
+        }));
         const rows: WordTableRow[] = pageRows.map((row) => {
             const fav = favoriteByWord.get(row.key);
             const level = levelBadgeFor(row.word);
@@ -3230,7 +3435,12 @@ export function VocabularyBookScreen({
                 masteredLabel: masteredLabelFor(row.word, true),
                 onToggleMastered: () => { void handleMasteredRowUndo(row); },
                 masteredBusy: pendingMasteredId === expandKey,
-                selection: selectionForRow(row.key, row.word, `vocab-mastered-select-${row.key}`),
+                selection: selectionForRow(
+                    row.key,
+                    row.word,
+                    `vocab-mastered-select-${row.key}`,
+                    editActionsForMastered(row),
+                ),
                 error: rowError?.id === expandKey
                     ? { message: rowError.message, testId: `vocab-mastered-error-${row.key}` }
                     : editErrors[row.key]
@@ -3253,14 +3463,7 @@ export function VocabularyBookScreen({
 
         /** 已掌握 matrix: 取消已掌握 only. */
         const runMasteredEdit = () => {
-            const entries: EditEntry[] = pageRows
-                .filter((row) => editSelected.has(row.key))
-                .map((row) => ({
-                    key: row.key,
-                    word: row.word,
-                    run: () => unmasterWordRow(row),
-                }));
-            void runEditEntries('unmaster', entries);
+            void runEditEntries('unmaster', selectedEditEntries('unmaster'));
         };
 
         return (
@@ -3372,6 +3575,13 @@ export function VocabularyBookScreen({
                             listTestId="vocab-mastered-list"
                             testIdPrefix="vocab-mastered"
                             selectable={editMode}
+                            selectAll={{
+                                ...selectAllHeaderProps(sorted.length, 'vocab-select-all-mastered'),
+                                onChange: (checked) => {
+                                    if (checked) selectAllClient(masteredSelectAllRows());
+                                    else clearEditSelection();
+                                },
+                            }}
                             ariaLabel={masteredTabLabel}
                         />
                         <VocabPagination
@@ -3394,7 +3604,7 @@ export function VocabularyBookScreen({
                         testId: 'vocab-edit-unmaster',
                         onSelect: runMasteredEdit,
                     },
-                ])}
+                ], sorted.length)}
             </div>
         );
     };
@@ -3536,6 +3746,38 @@ export function VocabularyBookScreen({
         ];
         const filterActiveCount = Number(Boolean(customLevel)) + Number(customUnmasteredOnly);
 
+        /** P0-15: one custom item's batch handlers, shared by its row and 全选. */
+        const editActionsForCustom = (item: CustomWordlistItem): EditRowActions => ({
+            delete: () => deleteCustomItem(listId, item),
+            favorite: async () => {
+                await persistFavoriteForRow({
+                    word: item.word,
+                    phonetic: item.phonetic,
+                    translation: item.translation,
+                    example: item.example,
+                    sourceKind: 'wordlist',
+                    sourceRef: listId,
+                    sourceTitle: list.name,
+                });
+            },
+            master: async () => {
+                if (masteredWords.has(normalizeMasteryWord(item.word))) return;
+                await applyListWordMastered({
+                    rowKey: `${listId}:${item.word}`,
+                    word: item.word,
+                    translation: item.translation,
+                    phonetic: item.phonetic,
+                    listId,
+                }, true);
+            },
+        });
+        /** 自定义词表 is loaded in full: 全选 is every filtered+sorted item. */
+        const customSelectAllRows = (): EditRowRegistration[] => sorted.map((item) => ({
+            key: customItemKey(item),
+            word: item.word,
+            actions: editActionsForCustom(item),
+        }));
+
         const rows: WordTableRow[] = pageRows.map((item) => {
             const rowKey = `${listId}:${item.word}`;
             const itemKey = customItemKey(item);
@@ -3590,7 +3832,12 @@ export function VocabularyBookScreen({
                 expandLabel: expandLabelFor(isExpanded),
                 expanded: isExpanded,
                 onToggleExpand: () => toggleExpanded(expandKey),
-                selection: selectionForRow(itemKey, item.word, `vocab-custom-select-${itemKey}`),
+                selection: selectionForRow(
+                    itemKey,
+                    item.word,
+                    `vocab-custom-select-${itemKey}`,
+                    editActionsForCustom(item),
+                ),
                 detail: (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="min-w-0 space-y-1 sm:col-span-2">
@@ -3645,9 +3892,6 @@ export function VocabularyBookScreen({
         });
 
         /** 自定义词表 matrix: 删除词条（二次确认）/ 加入收藏 / 标为已掌握. */
-        const selectedCustomItems = pageRows.filter((item) => (
-            editSelected.has(customItemKey(item))
-        ));
         const runCustomEdit = (action: 'favorite' | 'master' | 'delete') => {
             if (action === 'delete') {
                 if (editSelected.size === 0) {
@@ -3657,33 +3901,8 @@ export function VocabularyBookScreen({
                 setEditDeleteOpen(true);
                 return;
             }
-            const entries: EditEntry[] = selectedCustomItems.map((item) => ({
-                key: customItemKey(item),
-                word: item.word,
-                run: async () => {
-                    if (action === 'favorite') {
-                        await persistFavoriteForRow({
-                            word: item.word,
-                            phonetic: item.phonetic,
-                            translation: item.translation,
-                            example: item.example,
-                            sourceKind: 'wordlist',
-                            sourceRef: listId,
-                            sourceTitle: list.name,
-                        });
-                        return;
-                    }
-                    if (masteredWords.has(normalizeMasteryWord(item.word))) return;
-                    await applyListWordMastered({
-                        rowKey: `${listId}:${item.word}`,
-                        word: item.word,
-                        translation: item.translation,
-                        phonetic: item.phonetic,
-                        listId,
-                    }, true);
-                },
-            }));
-            void runEditEntries(action, entries);
+            // P0-15: the key→row map covers selected items on other pages too.
+            void runEditEntries(action, selectedEditEntries(action));
         };
 
         return (
@@ -3855,6 +4074,13 @@ export function VocabularyBookScreen({
                             listTestId="vocab-custom-list"
                             testIdPrefix="vocab-custom"
                             selectable={editMode}
+                            selectAll={{
+                                ...selectAllHeaderProps(sorted.length, 'vocab-select-all-custom'),
+                                onChange: (checked) => {
+                                    if (checked) selectAllClient(customSelectAllRows());
+                                    else clearEditSelection();
+                                },
+                            }}
                             ariaLabel={list.name}
                         />
                         <VocabPagination
@@ -3892,7 +4118,7 @@ export function VocabularyBookScreen({
                         testId: 'vocab-edit-master',
                         onSelect: () => runCustomEdit('master'),
                     },
-                ])}
+                ], sorted.length)}
             </div>
         );
     };
@@ -3911,6 +4137,52 @@ export function VocabularyBookScreen({
             { value: 'default', label: t('vocab.sort.list'), testId: 'vocab-sort-list' },
         ];
         const levelCounts = activeIsCefr ? activeList?.byLevel : undefined;
+
+        /** P0-15: one built-in-list word's batch handlers (row + 全选 share it). */
+        const editActionsForList = (item: VocabularyEntry): EditRowActions => ({
+            favorite: async () => {
+                await persistFavoriteForRow({
+                    word: item.word,
+                    phonetic: item.phonetic,
+                    translation: item.translation,
+                    sourceKind: 'wordlist',
+                    sourceRef: activeTab,
+                    sourceTitle: label,
+                });
+            },
+            master: async () => {
+                if (masteredWords.has(normalizeMasteryWord(item.word))) return;
+                await applyListWordMastered({
+                    rowKey: `${activeTab}:${item.word}`,
+                    word: item.word,
+                    translation: item.translation,
+                    phonetic: item.phonetic,
+                    listId: activeTab,
+                }, true);
+            },
+        });
+        /**
+         * 内置词表 is server paged: fetch every page matching the current
+         * q/level (200/page — the endpoint cap) and merge by row key.
+         */
+        const listSelectAllRows = async (): Promise<EditRowRegistration[]> => {
+            const collected = new Map<string, VocabularyEntry>();
+            for (let targetPage = 1; targetPage <= 25; targetPage += 1) {
+                const data = await fetchVocabularyPage(activeTab, {
+                    page: targetPage,
+                    pageSize: 200,
+                    q: debouncedQuery,
+                    level: listLevel,
+                });
+                for (const item of data.items) collected.set(`${activeTab}:${item.word}`, item);
+                if (!data.hasMore || data.items.length === 0) break;
+            }
+            return [...collected.entries()].map(([key, item]) => ({
+                key,
+                word: item.word,
+                actions: editActionsForList(item),
+            }));
+        };
 
         const rows: WordTableRow[] = (listData?.items ?? []).map((item, index) => {
             // Row key doubles as the write-state key and the test id suffix:
@@ -3964,7 +4236,12 @@ export function VocabularyBookScreen({
                 expandLabel: expandLabelFor(isExpanded),
                 expanded: isExpanded,
                 onToggleExpand: () => toggleExpanded(`list:${rowKey}`),
-                selection: selectionForRow(rowKey, item.word, `vocab-list-select-${rowKey}`),
+                selection: selectionForRow(
+                    rowKey,
+                    item.word,
+                    `vocab-list-select-${rowKey}`,
+                    editActionsForList(item),
+                ),
                 detail: (
                     <div className="min-w-0 space-y-1">
                         <p className="text-micro text-fg-muted">{t('vocab.meaning.full')}</p>
@@ -4007,35 +4284,7 @@ export function VocabularyBookScreen({
 
         /** 内置词表 matrix: 加入收藏 / 标为已掌握. */
         const runListEdit = (action: 'favorite' | 'master') => {
-            const entries: EditEntry[] = (listData?.items ?? [])
-                .map((item) => ({ item, rowKey: `${activeTab}:${item.word}` }))
-                .filter(({ rowKey }) => editSelected.has(rowKey))
-                .map(({ item, rowKey }) => ({
-                    key: rowKey,
-                    word: item.word,
-                    run: async () => {
-                        if (action === 'favorite') {
-                            await persistFavoriteForRow({
-                                word: item.word,
-                                phonetic: item.phonetic,
-                                translation: item.translation,
-                                sourceKind: 'wordlist',
-                                sourceRef: activeTab,
-                                sourceTitle: label,
-                            });
-                            return;
-                        }
-                        if (masteredWords.has(normalizeMasteryWord(item.word))) return;
-                        await applyListWordMastered({
-                            rowKey,
-                            word: item.word,
-                            translation: item.translation,
-                            phonetic: item.phonetic,
-                            listId: activeTab,
-                        }, true);
-                    },
-                }));
-            void runEditEntries(action, entries);
+            void runEditEntries(action, selectedEditEntries(action));
         };
 
         return (
@@ -4146,6 +4395,13 @@ export function VocabularyBookScreen({
                                 listTestId="vocab-word-list"
                                 testIdPrefix="vocab-list"
                                 selectable={editMode}
+                                selectAll={{
+                                    ...selectAllHeaderProps(total, 'vocab-select-all-list'),
+                                    onChange: (checked) => {
+                                        if (checked) void selectAllServer(listSelectAllRows);
+                                        else clearEditSelection();
+                                    },
+                                }}
                                 ariaLabel={label}
                             />
                             <VocabPagination
@@ -4176,7 +4432,7 @@ export function VocabularyBookScreen({
                         testId: 'vocab-edit-master',
                         onSelect: () => runListEdit('master'),
                     },
-                ])}
+                ], total)}
             </div>
         );
     };
