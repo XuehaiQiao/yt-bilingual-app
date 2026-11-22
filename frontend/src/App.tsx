@@ -74,7 +74,7 @@ import { ProfileScreen } from './components/ProfileScreen';
 import { VocabularyBookScreen } from './components/VocabularyBookScreen';
 import { toast, describeApiError } from './lib/toast';
 import { formatMicroUsd } from './lib/billing';
-import { getReviewStats, type ReviewStats } from './lib/review';
+import { getReviewStats, REVIEW_UI_ENABLED, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
 import {
@@ -922,6 +922,15 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // skipped: specs/013 makes every review endpoint 403 without an account.
   // `targetLang` is part of the key because the deck is language-scoped.
   useEffect(() => {
+    // The review UI is paused (specs/013 2026-11-22): no entry point renders a
+    // number, so never spend a request on /api/review/stats. The backend and
+    // the stored word states are untouched.
+    if (!REVIEW_UI_ENABLED) {
+      setReviewStats(null);
+      setReviewStatsLoading(false);
+      setReviewStatsFailed(false);
+      return;
+    }
     if (status !== 'authenticated') {
       setReviewStats(null);
       setReviewStatsLoading(false);
@@ -1166,7 +1175,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // target); only tab switches and same-screen params replace. The browser
   // history is the back stack, so there is no client-side depth clamp.
   const isLearningView = state.sub?.kind === 'learn';
-  const isSubView = state.sub !== null;
+  // The review UI is paused (specs/013 2026-11-22): a review URL is treated as
+  // "not a sub view" so the source tab renders underneath while the effect
+  // below rewrites the address bar to the tab root. This is also what keeps
+  // ReviewScreen (and its queue requests) from ever mounting on a deep link.
+  const reviewRoutePaused = !REVIEW_UI_ENABLED && state.sub?.kind === 'review';
+  const isSubView = state.sub !== null && !reviewRoutePaused;
   const isTaskView = state.sub !== null && TASK_SUB_KINDS.has(state.sub.kind);
   const routeKey = toHash(state);
 
@@ -1179,6 +1193,14 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const openSub = useCallback((sub: SubRoute) => {
     open(sub);
   }, [open]);
+
+  // Deep link / refresh on `#/app/<tab>/review` while the review UI is paused:
+  // land on that tab's root instead of a blank or error screen. `replace` keeps
+  // it out of the history stack, so Back still returns to where the learner was.
+  useEffect(() => {
+    if (!reviewRoutePaused) return;
+    replace({ tab: state.tab, sub: null });
+  }, [reviewRoutePaused, replace, state.tab]);
 
   const navigateTab = (tab: TabId) => {
     if (state.tab === tab && !state.sub && !state.anchor) {
@@ -2369,6 +2391,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   // ── Sub-view openers (all entries go through the route model) ────────────
   const handleOpenReview = () => {
+    // Hidden while the review UI is paused; the route keeps falling back too.
+    if (!REVIEW_UI_ENABLED) return;
     if (!requireAccount()) return;
     openSub({ kind: 'review' });
   };
@@ -2831,6 +2855,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleOpenReviewShortcut = () => {
+    if (!REVIEW_UI_ENABLED) return;
     if (!requireAccount()) return;
     openSubFromTab('practice', { kind: 'review' });
   };
@@ -3505,7 +3530,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // ── View rendering ──────────────────────────────────────────────────────
   // Everything below is a pure mapping from `NavState` to a component. No
   // view-priority `if/else` chain, no hidden booleans (P0 IA §1.2 problem 3).
-  const sub = state.sub;
+  // A paused review route maps to the source tab root (see `reviewRoutePaused`).
+  const sub = reviewRoutePaused ? null : state.sub;
 
   const subFrame = (node: React.ReactNode) => (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{node}</div>
@@ -4139,7 +4165,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     );
   }
 
-  const subLabel = state.sub
+  const subLabel = state.sub && !reviewRoutePaused
     ? (state.sub.kind === 'learn' ? featureLabel : t(SUB_LABEL_KEYS[state.sub.kind]))
     : undefined;
 

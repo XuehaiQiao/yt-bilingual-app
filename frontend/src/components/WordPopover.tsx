@@ -7,7 +7,7 @@ import { describeApiError, toast } from '../lib/toast';
 import { speak } from '../lib/tts';
 import type { FavoriteSourceKind } from '../lib/favorites';
 import { useAuth } from '../lib/auth';
-import { addWord, setWordMastered, ReviewApiError } from '../lib/review';
+import { addWord, setWordMastered, ReviewApiError, REVIEW_UI_ENABLED } from '../lib/review';
 import {
     addIgnored,
     normalizeIgnoredWord,
@@ -519,10 +519,12 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
 
                 {/* v1.1 review entry points (specs/005 / specs/013 §v1.1):
                     the dictionary card is the primary "加入复习" entry; the
-                    word-book favorite row is the secondary one. */}
+                    word-book favorite row is the secondary one. While the
+                    review UI is paused the entry is hidden, "我已掌握" stays. */}
                 {definition && (
                     <div className="mt-3 border-t border-line-strong pt-3">
                         <div className="flex flex-wrap items-center gap-1.5">
+                            {REVIEW_UI_ENABLED && (
                             <Button
                                 size="sm"
                                 variant={reviewPhase === 'added' ? 'secondary' : 'tinted'}
@@ -537,6 +539,7 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
                             >
                                 {reviewPhase === 'added' ? t('vocab.review.added') : t('vocab.review.add')}
                             </Button>
+                            )}
                             <Button
                                 size="sm"
                                 variant={mastered ? 'secondary' : 'tinted'}

@@ -16,6 +16,7 @@ import {
     Repeat,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { REVIEW_UI_ENABLED } from '../lib/review';
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import { SubHeader } from './ui/SubHeader';
@@ -195,7 +196,11 @@ export function ReportScreen({ onClose, parentLabel, onOpenEvidence, onOpenRevie
     const passiveMinutes = Number.isFinite(numbers.passiveMinutes) ? numbers.passiveMinutes : 0;
     const reviewedWords = Number.isFinite(numbers.reviewedWords) ? numbers.reviewedWords : 0;
     const accuracy = numbers.quizAccuracy;
-    const noData = passiveMinutes === 0 && reviewedWords === 0 && accuracy == null;
+    // 复习词数 is hidden while the review UI is paused, so it must not decide
+    // whether the week has data either.
+    const noData = passiveMinutes === 0
+        && accuracy == null
+        && (!REVIEW_UI_ENABLED || reviewedWords === 0);
     const evidence = report.evidence;
     const dueTomorrow = report.words?.dueTomorrow ?? 0;
     const accuracyText = accuracy == null
@@ -219,10 +224,17 @@ export function ReportScreen({ onClose, parentLabel, onOpenEvidence, onOpenRevie
                     </p>
 
                     {/* Three numbers. `null` accuracy means "no quiz attempts",
-                        not 0%, so it renders the localized placeholder. */}
-                    <div data-testid="report-numbers" className="grid grid-cols-3 gap-2 sm:gap-3">
+                        not 0%, so it renders the localized placeholder.
+                        复习词数 disappears with the review UI (specs/013
+                        2026-11-22); the other two facts stay. */}
+                    <div
+                        data-testid="report-numbers"
+                        className={`grid ${REVIEW_UI_ENABLED ? 'grid-cols-3' : 'grid-cols-2'} gap-2 sm:gap-3`}
+                    >
                         <BigStat label={t('report.stats.passive')} value={formatNumber(passiveMinutes)} testId="report-number-passive" />
-                        <BigStat label={t('report.stats.reviewed')} value={formatNumber(reviewedWords)} testId="report-number-reviewed" />
+                        {REVIEW_UI_ENABLED && (
+                            <BigStat label={t('report.stats.reviewed')} value={formatNumber(reviewedWords)} testId="report-number-reviewed" />
+                        )}
                         <BigStat label={t('report.stats.accuracy')} value={accuracyText} testId="report-number-accuracy" />
                     </div>
 
@@ -250,12 +262,14 @@ export function ReportScreen({ onClose, parentLabel, onOpenEvidence, onOpenRevie
                             </p>
                         </div>
                     </div>
+                    {REVIEW_UI_ENABLED && (
                     <div className="mt-4 rounded-2xl bg-blue-500/[0.07] border border-blue-500/15 px-4 py-3.5">
                         <p className="text-[11px] font-medium text-blue-300/80">{t('report.nextLabel')}</p>
                         <p data-testid="report-next-step" className="mt-1 text-sm font-medium text-zinc-100 break-words">
                             {report.nextStep}
                         </p>
                     </div>
+                    )}
                 </section>
 
                 {/* Evidence: 5-second review window from the backend. */}
@@ -307,7 +321,7 @@ export function ReportScreen({ onClose, parentLabel, onOpenEvidence, onOpenRevie
                 ) : null}
 
                 {/* Due-tomorrow entry into the existing review view. */}
-                {dueTomorrow > 0 && (
+                {REVIEW_UI_ENABLED && dueTomorrow > 0 && (
                     <button
                         type="button"
                         data-testid="report-due-button"

@@ -527,7 +527,10 @@ export function VocabularyBookScreen({
     // 403 (no account) / 404 (endpoint not deployed) / any other failure sets the
     // phase to `unavailable`, which hides the chips instead of reporting an error.
     useEffect(() => {
-        if (isGuest) {
+        // The 状态 chips are a review concept: while the review UI is paused
+        // (specs/013 2026-11-22) there is no read to make — hide the group and
+        // keep the rest of the word book untouched.
+        if (!REVIEW_UI_ENABLED || isGuest) {
             setWordStates({});
             setStatePhase('unavailable');
             return;
@@ -554,9 +557,9 @@ export function VocabularyBookScreen({
     }, [isGuest, targetLang]);
 
     /** The 状态 group is only offered when the endpoint answered successfully. */
-    const stateFilterAvailable = !isGuest && statePhase === 'ready';
+    const stateFilterAvailable = REVIEW_UI_ENABLED && !isGuest && statePhase === 'ready';
     /** Chips keep their slot while loading (disabled), so the toolbar does not jump. */
-    const stateFilterVisible = !isGuest && (statePhase === 'loading' || statePhase === 'ready');
+    const stateFilterVisible = REVIEW_UI_ENABLED && !isGuest && (statePhase === 'loading' || statePhase === 'ready');
     const effectiveMineState: WordStateFilter | '' = stateFilterAvailable ? mineState : '';
 
     const myWordLemmas = useMemo(
@@ -976,7 +979,8 @@ export function VocabularyBookScreen({
         ];
         // specs/038 (2026-11-22): the custom-list surface hides 加入复习 while
         // the review UI is paused; the interface + definition snapshot stay.
-        if (!(options?.includeReview ?? true)) return actions;
+        // specs/005/013: the same pause hides it on the built-in lists/phrases.
+        if (!(options?.includeReview ?? REVIEW_UI_ENABLED)) return actions;
         const reviewState = rowReviewAddState(input.rowKey, input.word);
         const reviewLabel = reviewState === 'added' ? t('vocab.review.added') : t('vocab.review.add');
         actions.push({
@@ -2111,6 +2115,7 @@ export function VocabularyBookScreen({
                 selectedCount: mineSelected.length,
                 actions: (
                     <>
+                        {REVIEW_UI_ENABLED && (
                         <Button
                             size="sm"
                             variant="tinted"
@@ -2123,6 +2128,7 @@ export function VocabularyBookScreen({
                         >
                             {t('vocab.review.add')}
                         </Button>
+                        )}
                         <Button
                             size="sm"
                             variant="tinted"
@@ -2286,6 +2292,7 @@ export function VocabularyBookScreen({
                                                     <Volume2 className="h-4 w-4" aria-hidden="true" />
                                                 </IconButton>
                                             </span>
+                                            {REVIEW_UI_ENABLED && (
                                             <Button
                                                 size="sm"
                                                 variant={isReviewed ? 'secondary' : 'tinted'}
@@ -2300,6 +2307,7 @@ export function VocabularyBookScreen({
                                             >
                                                 {reviewLabel}
                                             </Button>
+                                            )}
                                             <Button
                                                 size="sm"
                                                 variant="tinted"

@@ -26,6 +26,7 @@ import {
 import type { NavState, TabId } from '../lib/nav';
 import { formatDueBadge, NAV_TABS, type NavTabDef } from '../lib/navTabs';
 import { useAuth } from '../lib/auth';
+import { REVIEW_UI_ENABLED } from '../lib/review';
 import { displayUsername, usernameInitial } from '../lib/username';
 import {
   loadSidebarCollapsed,
@@ -235,13 +236,17 @@ export function Sidebar({
   ];
 
   const practiceItems: SidebarSubItemDef[] = [
-    {
-      id: 'review',
-      kind: 'page',
-      labelKey: 'review.title',
-      active: state.tab === 'practice' && subKind === 'review',
-      onSelect: () => selectShortcut(onOpenReview),
-    },
+    // 复习 entry disappears with the review UI pause (specs/013 2026-11-22);
+    // the route + screen stay behind REVIEW_UI_ENABLED.
+    ...(REVIEW_UI_ENABLED
+      ? [{
+        id: 'review',
+        kind: 'page' as const,
+        labelKey: 'review.title' as const,
+        active: state.tab === 'practice' && subKind === 'review',
+        onSelect: () => selectShortcut(onOpenReview),
+      }]
+      : []),
     {
       id: 'exam',
       kind: 'page',

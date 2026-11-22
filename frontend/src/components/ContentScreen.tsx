@@ -24,6 +24,7 @@ import { apiFetch } from '../lib/api';
 import { allowAi } from '../lib/aiGate';
 import { blogFeedUrl } from '../lib/blog';
 import { progressPercent } from '../lib/progress';
+import { REVIEW_UI_ENABLED } from '../lib/review';
 import type { HistoryItem } from './ChannelVideoList';
 import type { EstimateDialogHandle } from './EstimateDialog';
 import { EstimateDialog } from './EstimateDialog';
@@ -500,7 +501,7 @@ export function ContentScreen({
                                     className="mt-3"
                                 />
                             )}
-                            <div className="mt-3 grid grid-cols-3 gap-1.5">
+                            <div className={`mt-3 grid ${REVIEW_UI_ENABLED ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5`}>
                                 <Card variant="stat" padding="none" className="min-w-0 px-2 py-1.5">
                                     <p className="truncate text-[10px] font-medium text-zinc-500">{t('content.rail.weekMinutes')}</p>
                                     <p className="mt-0.5 truncate text-sm font-semibold text-zinc-100 tabular-nums">
@@ -508,6 +509,7 @@ export function ContentScreen({
                                         <span className="ml-0.5 text-[10px] font-medium text-zinc-500">{t('home.today.minutesUnit')}</span>
                                     </p>
                                 </Card>
+                                {REVIEW_UI_ENABLED && (
                                 <Card variant="stat" padding="none" className="min-w-0 px-2 py-1.5">
                                     <p className="truncate text-[10px] font-medium text-zinc-500">{t('content.rail.weekReviewed')}</p>
                                     <p className="mt-0.5 truncate text-sm font-semibold text-zinc-100 tabular-nums">
@@ -515,6 +517,7 @@ export function ContentScreen({
                                         <span className="ml-0.5 text-[10px] font-medium text-zinc-500">{t('home.today.wordsUnit')}</span>
                                     </p>
                                 </Card>
+                                )}
                                 <Card variant="stat" padding="none" className="min-w-0 px-2 py-1.5">
                                     <p className="truncate text-[10px] font-medium text-zinc-500">{t('content.rail.weekAccuracy')}</p>
                                     <p className="mt-0.5 truncate text-sm font-semibold text-zinc-100 tabular-nums">

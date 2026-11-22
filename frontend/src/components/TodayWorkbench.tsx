@@ -13,7 +13,7 @@
 import { ArrowRight, CalendarRange, Gauge, GraduationCap, Play, Repeat } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { HistoryItem } from './ChannelVideoList';
-import type { ReviewStats } from '../lib/review';
+import { REVIEW_UI_ENABLED, type ReviewStats } from '../lib/review';
 import type { PlacementProfile } from '../lib/placement';
 import { progressPercent } from '../lib/progress';
 import { ErrorPanel } from './ui/StateView';
@@ -137,7 +137,7 @@ export function TodayWorkbench({
     const statusParts: string[] = [];
     if (isGuest) {
         statusParts.push(t('home.today.statusGuest'));
-    } else if (reviewStats) {
+    } else if (REVIEW_UI_ENABLED && reviewStats) {
         statusParts.push(
             dueNow > 0
                 ? t('home.today.statusDue', { count: formatNumber(dueNow) })
@@ -184,7 +184,11 @@ export function TodayWorkbench({
             : t('home.today.reviewView');
 
     const report = weekReport?.numbers ?? null;
-    const reportEmpty = !!report && report.passiveMinutes === 0 && report.reviewedWords === 0;
+    // 复习词数 is a review concept: while the review UI is paused only the
+    // passive minutes count toward "this week has data".
+    const reportEmpty = !!report
+        && report.passiveMinutes === 0
+        && (!REVIEW_UI_ENABLED || report.reviewedWords === 0);
     const reportHint = !report && weekReportLoading
         ? t('home.today.reportLoading')
         : !report && weekReportFailed
@@ -311,7 +315,7 @@ export function TodayWorkbench({
 
             {/* Three actions. Equal-height cards; each action sits at the
                 bottom so the row scans as one band. */}
-            <div data-testid="today-cards" className="mt-4 sm:mt-5 grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-4">
+            <div data-testid="today-cards" className={`mt-4 sm:mt-5 grid grid-cols-1 ${REVIEW_UI_ENABLED ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-2.5 sm:gap-4`}>
                 {/* 1. Continue learning */}
                 <motion.section
                     data-testid="today-card-continue"
@@ -411,7 +415,9 @@ export function TodayWorkbench({
                     </button>
                 </motion.section>
 
-                {/* 2. Today's review */}
+                {/* 2. Today's review — hidden while the review UI is paused
+                    (specs/013 2026-11-22); due/new numbers go with it. */}
+                {REVIEW_UI_ENABLED && (
                 <motion.section
                     data-testid="review-entry-card"
                     data-today-card="review"
@@ -455,6 +461,7 @@ export function TodayWorkbench({
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </motion.section>
+                )}
 
                 {/* 3. Weekly report (two of the three numbers; the full page
                     has all three). */}
@@ -475,7 +482,7 @@ export function TodayWorkbench({
                     </div>
 
                     <div className="mt-2.5 sm:mt-3 flex-1 min-w-0">
-                        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                        <div className={`grid ${REVIEW_UI_ENABLED ? 'grid-cols-2' : 'grid-cols-1'} gap-1.5 sm:gap-2`}>
                             <div className="min-w-0 rounded-xl border border-white/5 bg-zinc-800/30 px-2 py-1.5 sm:px-2.5 sm:py-2">
                                 <p className="truncate text-[10px] font-medium text-zinc-500">
                                     {t('home.today.reportMinutesLabel')}
@@ -489,6 +496,7 @@ export function TodayWorkbench({
                                     )}
                                 </p>
                             </div>
+                            {REVIEW_UI_ENABLED && (
                             <div className="min-w-0 rounded-xl border border-white/5 bg-zinc-800/30 px-2 py-1.5 sm:px-2.5 sm:py-2">
                                 <p className="truncate text-[10px] font-medium text-zinc-500">
                                     {t('home.today.reportReviewedLabel')}
@@ -502,6 +510,7 @@ export function TodayWorkbench({
                                     )}
                                 </p>
                             </div>
+                            )}
                         </div>
                         {weekReportFailed ? (
                             <ErrorPanel

@@ -8,7 +8,7 @@ import { ArrowRight, GraduationCap, Gauge, Repeat, ScanSearch } from 'lucide-rea
 import type { TranslationKey } from '../i18n';
 import { motion } from 'framer-motion';
 import type { PlacementProfile } from '../lib/placement';
-import type { ReviewStats } from '../lib/review';
+import { REVIEW_UI_ENABLED, type ReviewStats } from '../lib/review';
 import { useI18n } from '../i18n/I18nProvider';
 import { PageHeader } from './ui/PageHeader';
 import { Card, IconTile } from './ui/Card';
@@ -92,7 +92,10 @@ export function PracticeScreen({
                     subtitle={t('practice.subtitle')}
                 />
 
-                {/* Main card: today's review. */}
+                {/* Main card: today's review. Hidden while the review UI is
+                    paused (specs/013 2026-11-22); the card's data stays in the
+                    props so flipping REVIEW_UI_ENABLED restores it unchanged. */}
+                {REVIEW_UI_ENABLED && (
                 <motion.section
                     whileTap={{ scale: 0.995 }}
                     transition={{ type: 'spring', stiffness: 550, damping: 35 }}
@@ -129,6 +132,7 @@ export function PracticeScreen({
                         </button>
                     </Card>
                 </motion.section>
+                )}
 
                 {/* Quiz explainer + exam card (md: two columns). */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
