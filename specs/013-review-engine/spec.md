@@ -54,6 +54,12 @@
 - `UNIQUE(user_id, lemma, target_lang)`：同用户同语言同一个词只有一条状态。
 - `INDEX (user_id, due_at)`：到期队列主查询路径。
 
+#### 释义快照（迁移 `0029_word_state_definition`）
+
+- 新增列 `definition TEXT NULL`：用户提供的释义快照（来自自定义词表/收藏），**不覆盖已有值**。
+- 复习队列/词列表的公开 `word` 形状新增 `definition`；复习卡优先显示它，缺失才调 `/api/define`。
+- 系统词典释义不回写该列（快照只属于用户数据）。
+
 #### 已掌握（v1.1 任务 2，迁移 `0027_review_mastered`）
 
 - 新增列 `mastered INTEGER NOT NULL DEFAULT 0`（0/1），用 `ALTER TABLE ... ADD COLUMN`，**不重建表**。
