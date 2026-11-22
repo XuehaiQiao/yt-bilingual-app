@@ -356,6 +356,18 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-01",
+      "file": "TASKS/P2-01-desktop-layout-audit.md",
+      "status": "merged",
+      "owner": "lead",
+      "write_scope": [
+        "docs/reports/desktop-layout-audit-2026-11-23.md",
+        "TASKS/P2-01-desktop-layout-audit.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
