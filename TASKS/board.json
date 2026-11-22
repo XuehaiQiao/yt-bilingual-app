@@ -222,7 +222,7 @@
     {
       "id": "P0-13",
       "file": "TASKS/P0-13-mastered-definition-backfill.md",
-      "status": "claimed",
+      "status": "in_review",
       "owner": "def-impl",
       "write_scope": [
         "backend/routes_review.py",
@@ -242,8 +242,8 @@
     {
       "id": "P0-14",
       "file": "TASKS/P0-14-wordlist-edit-mode.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "edit-impl",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/components/VocabularyRows.tsx",
