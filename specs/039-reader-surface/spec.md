@@ -31,7 +31,8 @@
   游客只读缓存、生成需登录的语义不变。
 - 阶段 1 只接 `ReaderScreen` + `LibraryArticleReader`；两个壳保留导入/翻译/进度/免费库无账号等专有能力，
   段落渲染与阅读交互全部走共享层。
-- 阶段 2（另立任务）：`BookReaderScreen` + `ImportedBookReaderScreen`（目录/章节/上传壳）。
+- 阶段 2（2026-11-22 启动）：`BookReaderScreen` + `ImportedBookReaderScreen`（目录/章节/上传壳）
+  同样退化为壳；段落渲染、分析、听读、双栏全部走同一 `ReadingSurface`。
 
 ### 2.1 阶段 1 实现路径（2026-11-22，@381440f 基线）
 
