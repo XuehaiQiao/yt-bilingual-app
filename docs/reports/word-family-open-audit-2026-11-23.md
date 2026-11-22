@@ -395,3 +395,20 @@ backend/venv/bin/python -m pytest scripts/tests/test_word_family_open_audit.py -
 ```
 
 退出码：`0` 正常；`2` WordNet 语料/依赖不可用；`3` 人工清单与数据漂移；`4` 输入文件运行期间被改动。
+
+---
+
+## 9. 实现复核（P1-05，2026-11-23）
+
+生成数据 `content/wordlist/word-families.v1.json` 的实测数字与本文早期的「规则 E」摘要有差异，原因是本文摘要中的部分数字是**应用黑名单前**的基线；实现严格应用了 17 条黑名单后：
+
+| 项 | 实现值 |
+|---|---:|
+| 词族 | 3,696 |
+| 成员 | 11,567 |
+| 10k 内 / 外 | 5,233 / 6,334 |
+| 最大族 | 18 |
+| judge 族 | 7（judge–adjudicate 已黑名单删除） |
+| reflect 族 | 5（allowlist 补入 reflection） |
+
+以生成数据与 `specs/041` 的实现验收数字为准；本文 §1–§8 作为审计过程记录保留。
