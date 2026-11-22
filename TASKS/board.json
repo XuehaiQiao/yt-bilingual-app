@@ -166,8 +166,8 @@
     {
       "id": "P0-10",
       "file": "TASKS/P0-10-wordbook-row-toggles.md",
-      "status": "claimed",
-      "owner": "p10-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/components/VocabularyRows.tsx",
