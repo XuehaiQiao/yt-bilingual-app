@@ -37,7 +37,7 @@
 4. [design-qa-checklist.md](docs/design-governance/design-qa-checklist.md) 里对应模块的检查条目。
 5. 只复用 [design-system/](docs/design-governance/design-system/tokens.md) 的 token 与 `frontend/src/components/ui/*`；**同一语义只允许一个来源**（[团队章程 §4.5](docs/design-governance/00-team-charter.md)）。
 
-**改数据契约 / 迁移 / 缓存键**：先 `grep` 全部消费方；空值/缺省路径要有测试；新迁移写清回滚；行为变化同步对应 `specs/00X`。
+**改数据契约 / 迁移 / 缓存键**：先 `grep` 全部消费方；空值/缺省路径要有测试；新迁移写清回滚；行为变化同步对应 `specs/00X`。**新增或拉取到新迁移后，本地验证前必须先跑 `cd backend && venv/bin/python -m alembic upgrade head`**——应用启动不会自动迁移，缺表只会 503/「未跑迁移」。
 
 **提交前证据**：
 
