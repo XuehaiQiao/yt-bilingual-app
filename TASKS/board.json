@@ -372,8 +372,8 @@
     {
       "id": "P1-04",
       "file": "TASKS/P1-04-word-family-open-audit.md",
-      "status": "claimed",
-      "owner": "family-open-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "scripts/word_family_open_audit.py",
         "scripts/tests/test_word_family_open_audit.py",
