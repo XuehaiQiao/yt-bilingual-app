@@ -124,7 +124,7 @@ JSON，不安装、不读取 nltk / WordNet 语料。
 | ruleVersion | `E`（全量 WordNet 派生图 + allowlist − 黑名单） |
 | 构图 | WordNet 3.0 `derivationally_related_forms()` 无向派生图；连通分量 ≥2 成员且 ≥1 成员在 CEFR 10k；10k 外成员等级留空；无族词不写入 |
 | 人工清单 | 黑名单 17 条坏边（`semantic_split` + `clear_error`）、allowlist 22 条缺失边；逐条校验存在性 |
-| 结果 | 3,696 族 / 11,567 成员（10k 内 5,233、10k 外 6,334）/ 最大族 18 |
+| 结果 | 3,704 族 / 11,534 成员（10k 内 5,233、10k 外 6,301）/ 最大族 14；已应用 2026-11-23 高置信 AI 审计 23 条（中/低 11 条未应用） |
 | 审计依据 | `docs/reports/word-family-open-audit-2026-11-23.md`（P1-04） |
 | **本产物许可** | **WordNet 3.0 License**（WordNet 派生部分）+ **CC BY-SA 4.0**（CEFR 频次/等级部分，见上文章节） |
 

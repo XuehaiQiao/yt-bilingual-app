@@ -1,13 +1,31 @@
 # 词族候选 AI 审计汇总（2026-11-23）
 
-> 输入：436 个机器候选族；8 批 AI 逐族审阅；只产出建议，**未改数据**。
-> 结果：keep 402 / trim 21 / split 13；高置信待应用 23 条，中/低置信待人工 11 条。
+> 输入：436 个机器候选族；8 批 AI 逐族审阅；只产出建议。
+> 结果：keep 402 / trim 21 / split 13；**高置信 23 条已于 2026-11-23 应用（P1-11）**，
+> 中/低置信 11 条未应用（保持不动）。
 
-## 高置信变更（建议应用）
+## 应用状态（P1-11，2026-11-23）
+
+**已应用 23 条**：13 条 trim（删 24 个成员及其所有边）+ 10 条 split（删 11 条桥边，
+`large` 族需两条）。规则写进 `scripts/build_word_families.py` 的 `TRIM_MEMBERS`
+（族 id/成员/理由）与 `SPLIT_EDGES`（族 id/桥边/理由），逐条对着应用前（规则 E）
+族表校验存在性；重新生成 `content/wordlist/word-families.v1.json`，生成脚本
+`--check` 幂等。
+
+| 项 | 应用前（规则 E） | 应用后 |
+|---|---:|---:|
+| 词族 | 3,696 | 3,704 |
+| 成员 | 11,567 | 11,534 |
+| 10k 内 / 外 | 5,233 / 6,334 | 5,233 / 6,301 |
+| 最大族 | 18（`large`） | 14（`sense`） |
+| 10k 覆盖率 | 52.33% | 52.33% |
+| 无族词 | 4,767 | 4,767 |
+
+## 高置信变更（已应用 23 条）
 
 | id | head | verdict | 要移除 | 理由摘要 |
 |---|---|---|---|---|
-| F0264 | large | split | 边:  | WordNet 用「近义/释义桥」把三个不同词根串成 18 人：large/largeness（拉丁 largus）、extend/exte |
+| F0264 | large | split | 边: comprehensive–largeness、extensiveness–large | WordNet 用「近义/释义桥」把三个不同词根串成 18 人：large/largeness（拉丁 largus）、extend/exte |
 | F0900 | digital | trim | digitalis | digitalis（毛地黄/洋地黄制剂）是植物—药物名，只在 digitalize.v.02「投予洋地黄」这一医学义上入族（数字义 digi |
 | F0370 | industry | trim | diligence, diligent | diligent/diligence（拉丁 diligere）与 industry（拉丁 industria）不同词根，WordNet 只经 |
 | F1710 | vital | trim | indispensability, indispensable, indispensableness | indispensable/indispensability/indispensableness 词根是拉丁 dispensare（分配/免 |
@@ -31,7 +49,7 @@
 | F1393 | angle | trim | angler | angle「角/角度」源自拉丁 angulus；angler「垂钓者/阴谋者」源自古英语 angel「鱼钩」，与 angle「钓鱼」同形异源 |
 | F2407 | frost | trim | frostian | frostian「罗伯特·弗罗斯特（诗人）风格的」源自姓氏 Frost，与 frost「霜」仅词形相同、词源无关，属专名派生误入。删 fro |
 
-## 中/低置信（待人工裁决）
+## 未应用：中/低置信 11 条（保持不动）
 
 | id | head | verdict | conf | 要移除 |
 |---|---|---|---|---|
@@ -49,6 +67,11 @@
 
 ## 说明
 
-- 未应用；应用时把这些变更写回 `scripts/build_word_families.py` 的 blacklist/allowlist/remove_members，重新生成数据。
-- 高置信变更预计影响 23 个族；split 后可能有一个子组失去 CEFR 锚点而被丢弃（如 foil 组）。
-- 中/低置信 11 条先保留，待你逐条决定。
+- 高置信 23 条已应用（见上表）；P1-11 重新生成数据，`specs/041`、后端与 scripts
+  测试期望的数字已同步为 3,704 族 / 11,534 成员 / 10k 外 6,301 / 最大族 14。
+- split 后失去 CEFR 锚点的子组整体消失（`strenuous` 组、`tart` 组、`luminous` 组）；
+  `foil` 组未被应用（中置信），仍在原族。
+- 中/低置信 11 条保持规则 E 原图不动；构建脚本用 `HELD_AUDIT_ITEMS` 断言它们仍在
+  原族/原边，防止后续误删。
+- 原审计族 id（如 F0264/F0900）是**应用前**的编号；应用后 family id 按 head rank
+  重新编号，勿再按旧 id 引用数据。

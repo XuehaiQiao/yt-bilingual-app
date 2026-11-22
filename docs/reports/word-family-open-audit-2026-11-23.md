@@ -398,7 +398,9 @@ backend/venv/bin/python -m pytest scripts/tests/test_word_family_open_audit.py -
 
 ---
 
-## 9. 实现复核（P1-05，2026-11-23）
+## 9. 实现复核与 P1-11 应用（2026-11-23）
+
+### 9.1 P1-05 实现（应用 AI 审计前）
 
 生成数据 `content/wordlist/word-families.v1.json` 的实测数字与本文早期的「规则 E」摘要有差异，原因是本文摘要中的部分数字是**应用黑名单前**的基线；实现严格应用了 17 条黑名单后：
 
@@ -411,4 +413,26 @@ backend/venv/bin/python -m pytest scripts/tests/test_word_family_open_audit.py -
 | judge 族 | 7（judge–adjudicate 已黑名单删除） |
 | reflect 族 | 5（allowlist 补入 reflection） |
 
-以生成数据与 `specs/041` 的实现验收数字为准；本文 §1–§8 作为审计过程记录保留。
+### 9.2 P1-11 应用 AI 审计 23 条高置信变更后
+
+- 应用：13 条 trim（删 24 个成员及其所有边）+ 10 条 split（删 11 条桥边；`large`
+  族需两条：`comprehensive–largeness`、`extensiveness–large`）。规则写在
+  `scripts/build_word_families.py` 的 `TRIM_MEMBERS` / `SPLIT_EDGES`（含应用前审计
+  族 id、成员/桥边与理由），逐条校验存在性；生成脚本 `--check` 幂等。
+- 未应用：中/低置信 11 条（见 `docs/reports/word-family-ai-audit-summary-2026-11-23.md`）；
+  构建脚本 `HELD_AUDIT_ITEMS` 断言它们仍在原族/原边。
+
+| 项 | 应用后 |
+|---|---:|
+| 词族 | 3,704 |
+| 成员 | 11,534 |
+| 10k 内 / 外 | 5,233 / 6,301 |
+| 最大族 | 14（`sense`） |
+| 10k 覆盖率 | 52.33% |
+| 无族词 | 4,767 |
+| `large` / `extend` / `comprehensive` 族 | 2 / 9 / 7（原 18 人 `large` 族拆开） |
+| `the` / `at` | 仍不在任何族 |
+
+split 后无 10k 锚点的子组整体消失（`strenuous` / `tart` / `luminous` 组），成员数
+因此减少 33（24 个 trim 成员 + 9 个失去锚点的子组成员）。以 P1-11 后的生成数据与
+`specs/041` §1/§4 的实现验收数字为准；本文 §1–§8 作为审计过程记录保留。

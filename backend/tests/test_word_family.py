@@ -2,10 +2,13 @@
 
 覆盖：
 
-- 规则 E 的数据契约：3,696 族 / 11,567 成员 / 10k 内 5,233 / 10k 外 6,334 /
-  最大族 18；黑名单 17 条、allowlist 22 条；the/at 不在任何族；
+- 规则 E + P1-11 的数据契约：3,704 族 / 11,534 成员 / 10k 内 5,233 /
+  10k 外 6,301 / 最大族 14；黑名单 17 条、allowlist 22 条；the/at 不在任何族；
 - 指定族：decide 5 人、reflect 含 reflection（allowlist）、judge 不含
-  adjudicate（黑名单删边后 7 人）、comprehend 最大族 18 人含 extend；
+  adjudicate（黑名单删边后 7 人）；large 拆成 2/9/7 三族（large / extend /
+  comprehensive），最大族变成 sense 14 人；
+- P1-11 变更：13 条 trim 的 24 个成员不再出现；10 条 split（11 条桥边）后
+  两端不同族；中/低置信 11 条保持原样；
 - API：总数、分页 50/页 + hasMore + 越界页、q 命中任一成员（含 10k 外）、
   level 筛选、sort=rank/alpha；
 - 成员字段：每条成员带 ``phonetic`` / ``translation`` 字符串快照（来自
@@ -31,11 +34,11 @@ DATA_PATH = Path(word_family.WORD_FAMILIES_PATH)
 FREQUENCY_PATH = DATA_PATH.parent / "frequency_bands.v1.json"
 LEVELS = ("A1", "A2", "B1", "B2", "C1")
 EXPECTED = {
-    "families": 3696,
-    "members": 11567,
+    "families": 3704,
+    "members": 11534,
     "cefrMembers": 5233,
-    "outsideMembers": 6334,
-    "maxFamilySize": 18,
+    "outsideMembers": 6301,
+    "maxFamilySize": 14,
 }
 
 
@@ -60,7 +63,7 @@ def family_by_head(head: str) -> dict:
 
 
 def test_total_and_first_page(make_client):
-    """3,696 族；默认按 head 词频升序，50/页，字段形状与 head 契约。"""
+    """3,704 族；默认按 head 词频升序，50/页，字段形状与 head 契约。"""
     with make_client() as client:
         response = client.get(ENDPOINT, params={"pageSize": 1})
         assert response.status_code == 200, response.text
@@ -108,30 +111,44 @@ def test_cross_boundary_members_have_empty_level(make_client):
     """10k 外成员保留在族里，level/rank 为 null（等级留空，不默认 A1）。"""
     with make_client() as client:
         body = client.get(ENDPOINT, params={"q": "largeness", "pageSize": 50}).json()
+        extend = client.get(
+            ENDPOINT, params={"q": "extendible", "pageSize": 50}).json()
     assert body["total"] == 1, "q 命中 10k 外成员也要返回整族"
     family = body["items"][0]
+    # P1-11 split 后 large 族只剩 large / largeness 两人。
     assert family["head"] == "large"
-    assert len(family["members"]) == EXPECTED["maxFamilySize"]
+    assert [member["lemma"] for member in family["members"]] == [
+        "large", "largeness"]
     outside = [member for member in family["members"] if member["level"] is None]
-    assert len(outside) == 10
+    assert [member["lemma"] for member in outside] == ["largeness"]
     assert all(member["rank"] is None for member in outside)
-    assert {member["lemma"] for member in outside} >= {"largeness", "extendible"}
-    assert len([member for member in family["members"] if member["level"]]) == 8
+    assert len([member for member in family["members"] if member["level"]]) == 1
+    # 同一条跨边界边在 extend 族保留：4 个 10k 内 + 5 个 10k 外。
+    extend_family = extend["items"][0]
+    assert extend_family["head"] == "extend"
+    extend_outside = [
+        member for member in extend_family["members"] if member["level"] is None]
+    assert len(extend_family["members"]) == 9
+    assert len(extend_outside) == 5
+    assert {member["lemma"] for member in extend_outside} >= {
+        "extendible", "extensiveness"}
     # 10k 外成员与 10k 内成员用同一套成员字段（缺词典条目时为空串）。
     for member in family["members"]:
         assert isinstance(member["phonetic"], str)
         assert isinstance(member["translation"], str)
-    largeness = next(member for member in outside if member["lemma"] == "largeness")
+    largeness = outside[0]
     assert largeness["phonetic"] == ""
     assert largeness["translation"] == ""
 
 
 def test_named_families_match_rule_e(make_client):
-    """卡里点名的族：decide / reflect / judge / comprehend。"""
+    """卡里点名的族 + P1-11 拆族后的 large/extend/comprehend。"""
     with make_client() as client:
         decide = client.get(ENDPOINT, params={"q": "decide"}).json()
         reflect = client.get(ENDPOINT, params={"q": "reflection"}).json()
         judge = client.get(ENDPOINT, params={"q": "judge"}).json()
+        large = client.get(ENDPOINT, params={"q": "largeness"}).json()
+        extend = client.get(ENDPOINT, params={"q": "extensible"}).json()
         comprehend = client.get(ENDPOINT, params={"q": "comprehend"}).json()
 
     decide_family = decide["items"][0]
@@ -161,11 +178,94 @@ def test_named_families_match_rule_e(make_client):
     assert len(judge_family["members"]) == 7
     assert judge_family["members"][0]["lemma"] == "judge"
 
-    # 最大族：18 人，head=large，含 extend（审计 §3.5 的桥接结论）。
-    assert len(comprehend["items"][0]["members"]) == EXPECTED["maxFamilySize"]
-    assert {member["lemma"] for member in comprehend["items"][0]["members"]} >= {
-        "large", "extend", "comprehend",
+    # P1-11 split（large）：三簇各自成族，large 2 / extend 9 / comprehensive 7。
+    large_family = large["items"][0]
+    assert large_family["head"] == "large"
+    assert {member["lemma"] for member in large_family["members"]} == {
+        "large", "largeness"}
+    extend_family = extend["items"][0]
+    assert extend_family["head"] == "extend"
+    assert len(extend_family["members"]) == 9
+    assert {member["lemma"] for member in extend_family["members"]} >= {
+        "extend", "extent", "extensive"}
+    comprehend_family = comprehend["items"][0]
+    assert comprehend_family["head"] == "comprehensive"
+    assert len(comprehend_family["members"]) == 7
+    assert {member["lemma"] for member in comprehend_family["members"]} >= {
+        "comprehend", "comprehension", "comprehensive"}
+    assert not ({"large", "extend"} & {
+        member["lemma"] for member in comprehend_family["members"]})
+
+
+def test_ai_audit_changes_applied(make_client):
+    """P1-11：13 条 trim 每族最后一个成员；10 条 split 拆族；中低 11 条保留。"""
+    document = load_document()
+    by_head = {
+        family["head"]: {member["lemma"] for member in family["members"]}
+        for family in document["families"]
     }
+    all_members = {
+        member["lemma"]
+        for family in document["families"]
+        for member in family["members"]
+    }
+    # 13 条 trim 各取一个成员：全部从数据里消失（含其所有边）。
+    trimmed = [
+        "digitalis", "diligent", "indispensable", "ventral", "ostentatious",
+        "pugnacity", "serviceable", "livery", "limpid", "entrancement",
+        "pager", "angler", "frostian",
+    ]
+    with make_client() as client:
+        for word in trimmed:
+            if word == "livery":
+                continue  # q=livery 会子串命中 delivery；下面用全量成员集合断言
+            body = client.get(ENDPOINT, params={"q": word}).json()
+            assert body["total"] == 0, f"{word} 应已 trim"
+            assert body["items"] == []
+    assert not (set(trimmed) & all_members)
+    # 10 条 split：指定的两组（有锚点的一方）都已分开，且桥边另一侧不再同族。
+    assert by_head["large"] == {"large", "largeness"}
+    assert "extend" in by_head["extend"] and "large" not in by_head["extend"]
+    assert "comprehend" not in by_head["extend"]
+    assert "large" not in by_head["comprehensive"]
+    assert by_head["strain"] == {"strain", "strainer", "straining"}
+    assert "strenuous" not in all_members
+    assert by_head["sour"] == {"sour", "souring", "sourness"}
+    assert "tartness" not in all_members
+    assert "inquisitiveness" not in by_head["curious"]
+    assert "inquisitiveness" in by_head["inquiry"]
+    assert by_head["drive"] == {"drive", "driver", "driving"}
+    assert by_head["drift"] == {"drift", "driftage", "drifter", "drifting"}
+    assert "flight" in by_head["fly"]
+    assert by_head["flee"] == {"flee", "fleer"}
+    assert by_head["vacation"] == {
+        "vacation", "vacationer", "vacationing", "vacationist"}
+    assert by_head["vacancy"] == {"vacancy", "vacant", "vacate"}
+    assert by_head["advantage"] == {
+        "advantage", "advantageous", "advantageousness"}
+    assert by_head["profitable"] == {
+        "profitable", "profitability", "profitableness"}
+    assert by_head["bad"] == {"bad", "badness"}
+    assert by_head["severe"] == {"severe", "severity", "severeness"}
+    assert by_head["bright"] == {"bright", "brightness"}
+    assert "luminousness" not in all_members
+    # 中/低置信 11 条保持原样（成员仍在原族）。
+    for member, head in {
+        "gameness": "game",
+        "agonist": "agony",
+        "agonistic": "agony",
+        "impressment": "impress",
+        "creature": "create",
+        "spoilation": "spoil",
+        "spoliation": "spoil",
+        "sonant": "sound",
+        "urbane": "urban",
+        "winder": "wind",
+    }.items():
+        assert member in by_head[head], f"未应用条目 {head} 丢了 {member}"
+    # 最大族从 large（18）变成 sense（14）。
+    assert max(len(family["members"]) for family in document["families"]) == 14
+    assert len(by_head["sense"]) == 14
 
 
 def test_level_filter(make_client):
@@ -292,6 +392,7 @@ def test_data_document_contract():
     assert document["schema"] == "linguatrek.word-family.v1"
     assert document["ruleVersion"] == "E"
     assert document["version"] == "2026.11.23"
+    assert document["rules"]["aiAudit"].startswith("P1-11")
     assert "WordNet" in document["license"]
     assert document["source"]["wordnet"]["version"] == "3.0"
     expected_sha = hashlib.sha256(FREQUENCY_PATH.read_bytes()).hexdigest()

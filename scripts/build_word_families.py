@@ -13,6 +13,11 @@
 - 人工清单：17 条黑名单坏边（从图中删除）+ 22 条 allowlist 缺失边（加入图中）。
   两份清单**写死在本脚本**，逐条校验存在性（黑名单必须存在于 WordNet 图、
   allowlist 必须不存在于图），数据漂移直接报错，防止清单与真实图脱节。
+- P1-11（2026-11-23）在规则 E 之上应用 AI 审计的 **23 条高置信变更**：13 条
+  ``trim``（删指定成员及其所有边，共 24 个成员）+ 10 条 ``split``（删指定桥边，
+  共 11 条边——``large`` 族由两条桥边串起三簇）。清单写死为 ``TRIM_MEMBERS`` /
+  ``SPLIT_EDGES``，逐条对着规则 E 族表校验族 id/head/成员/边存在；中/低置信
+  11 条不应用（``HELD_AUDIT_ITEMS`` 校验它们仍留在原族）。
 
 成员释义（P1-07）：每个成员从 ``content/wordlists/lexicon.v1.json`` 补
 ``phonetic`` / ``translation``（head 的释义仍由后端按同一词典在运行期补充；
@@ -63,14 +68,15 @@ LICENSE = "WordNet 3.0 License (Princeton University, 2006)"
 LICENSE_URL = "https://wordnet.princeton.edu/"
 SOURCE_DRIVEN = "WordNet 3.0"
 
-# 规则 E 的验收数字（specs/041 §1/§4；来自 P1-04 审计 §5 的 E 行）。
-# 若词表或 WordNet 语料变更导致数字变化，必须先更新审计报告与 spec，再改这里。
+# 规则 E + P1-11 AI 审计 23 条变更后的验收数字（specs/041 §1/§4）。
+# 若词表、WordNet 语料或审计清单变更导致数字变化，必须先更新审计报告与 spec，
+# 再改这里。
 EXPECTED_COUNTS: Mapping[str, object] = {
-    "families": 3696,
-    "members": 11567,
+    "families": 3704,
+    "members": 11534,
     "cefrMembers": 5233,
-    "outsideMembers": 6334,
-    "maxFamilySize": 18,
+    "outsideMembers": 6301,
+    "maxFamilySize": 14,
     "cefrWithoutFamily": 4767,
     "cefrCoveragePct": 52.33,
     "blacklistEdges": 17,
@@ -161,12 +167,229 @@ ALLOWLIST: Tuple[Mapping[str, str], ...] = (
 
 
 # ---------------------------------------------------------------------------
+# P1-11：2026-11-23 AI 审计的 23 条高置信变更（写死；逐条校验存在性）
+# ---------------------------------------------------------------------------
+# 来源：docs/reports/word-family-ai-audit-summary-2026-11-23.md 与
+# docs/reports/word-family-ai-audit/batch-*.json（436 族审阅结果）。
+# `family` / `head` 是**应用前**（规则 E）的审计族 id，只用于定位与校验；
+# 应用后 family id 会按 head rank 重新编号，别在别处引用这些 id。
+# trim（13 条，24 个成员）：删成员及其所有边；
+# split（10 条，11 条桥边）：只删桥边（large 族由两条桥边串起三簇）。
+# 中/低置信 11 条不应用；HELD_AUDIT_ITEMS 只断言它们仍在原族。
+TRIM_MEMBERS: Tuple[Mapping[str, object], ...] = (
+    {"family": "F0900", "head": "digital", "members": ("digitalis",),
+     "reason": "digitalis（毛地黄/洋地黄制剂）是植物—药物名，只经 digitalize.v.02「投予洋地黄」入族；与 digit 数字义不同根"},
+    {"family": "F0370", "head": "industry", "members": ("diligence", "diligent"),
+     "reason": "拉丁 diligere vs industria；WordNet 只经 industry.n.02「勤勉」义把 diligence 的同义名词挂进来"},
+    {"family": "F1710", "head": "vital",
+     "members": ("indispensability", "indispensable", "indispensableness"),
+     "reason": "词根拉丁 dispensare（分配/免除）；只靠「必需＝不可或缺」近义入族（indispensable.s.01 / vitalness.n.01）"},
+    {"family": "F2473", "head": "vent", "members": ("venter", "ventral"),
+     "reason": "venter 是词形枢纽（「发泄的人」/「腹」）；ventral 拉丁 venter「腹」与 vent 拉丁 ventus 不同根"},
+    {"family": "F2524", "head": "splash",
+     "members": ("ostentate", "ostentation", "ostentatious", "ostentatiousness"),
+     "reason": "拉丁 ostendere「展示」vs splash 拟声词根；只经 splashiness＝ostentation 近义入族"},
+    {"family": "F1842", "head": "aggressive", "members": ("pugnacious", "pugnacity"),
+     "reason": "拉丁 aggredi vs pugnare；只经 aggressiveness.n.03 同义名词（pugnacity）串接"},
+    {"family": "F0064", "head": "use",
+     "members": ("serviceability", "serviceable", "serviceableness"),
+     "reason": "serviceable 源出 service（拉丁 servire），非 use 派生；经 useableness–serviceable 同义桥入族"},
+    {"family": "F0039", "head": "life", "members": ("livery",),
+     "reason": "liver–livery 走 WordNet 形容词 livery「胆汁的」（bilious.s.02）；数据里 livery 是「制服」，词形巧合"},
+    {"family": "F0312", "head": "clear", "members": ("limpid", "limpidity"),
+     "reason": "拉丁 limpidus vs clarus；limpidity 与 clarity 同义项串接，非 clear 派生"},
+    {"family": "F0441", "head": "enter", "members": ("entrancement",),
+     "reason": "entrancement 来自动词 entrance「使入迷」（en-+trance），与名词 entrance（拉丁 intrare）同形异源"},
+    {"family": "F0383", "head": "page", "members": ("pager",),
+     "reason": "pager 走 page.v.01「寻呼」，来自 page.n.04「男童/男侍」同形异源，与「书页」不同根"},
+    {"family": "F1393", "head": "angle", "members": ("angler",),
+     "reason": "angler 源自古英语 angel「鱼钩」，与 angle 拉丁 angulus「角」同形异源"},
+    {"family": "F2407", "head": "frost", "members": ("frostian",),
+     "reason": "frostian 源自诗人姓氏 Frost，与 frost「霜」仅词形相同、词源无关"},
+)
+
+SPLIT_EDGES: Tuple[Mapping[str, str], ...] = (
+    {"family": "F0264", "head": "large", "a": "comprehensive", "b": "largeness",
+     "reason": "largeness.n.01「breadth（理解面广）」近义 comprehensive；large（largus）与 comprehend（prehendere）不同根"},
+    {"family": "F0264", "head": "large", "a": "extensiveness", "b": "large",
+     "reason": "extensiveness.n.01 释义「large or extensive in breadth」，近义串接；extend（tendere）与 large（largus）不同根"},
+    {"family": "F1709", "head": "strain", "a": "strain", "b": "strenuous",
+     "reason": "strain 拉丁 stringere「拉紧」vs strenuous 拉丁 strenuus「精力充沛」；只凭「费力/紧张」义桥接"},
+    {"family": "F2751", "head": "sour", "a": "sour", "b": "tartness",
+     "reason": "tartness→sour 是同义关系（sour.n.02 味觉义），非派生；sour 日耳曼语源、tart 不同根"},
+    {"family": "F1578", "head": "curious", "a": "curious", "b": "inquisitiveness",
+     "reason": "curious 拉丁 cura「关心」（cur-）vs inquiry/inquisitive 拉丁 quaerere「寻求」；同义串接"},
+    {"family": "F0202", "head": "drive", "a": "drive", "b": "drift",
+     "reason": "只靠 drift.n.07「矿井水平巷道」↔drive.v.19「水平挖掘」冷僻义；现代英语已非透明派生"},
+    {"family": "F0474", "head": "fly", "a": "flee", "b": "flight",
+     "reason": "flight 兼「飞行」与「逃走」：flight–fly（allowlist，飞行义）与 flight–flee（flight.n.01 escape）把 flee 串进 fly"},
+    {"family": "F1548", "head": "vacation", "a": "vacate", "b": "vacation",
+     "reason": "走 vacation.n.02「法律上使无效/撤销」冷僻义（revoke.v.02），不是「假期」义"},
+    {"family": "F0845", "head": "advantage", "a": "advantageous", "b": "profitableness",
+     "reason": "profitableness 兼「有利/盈利」两义；advantage（古法语 avantage）与 profit（拉丁 profectus）不同根"},
+    {"family": "F0090", "head": "bad", "a": "bad", "b": "severeness",
+     "reason": "badness.n.02（疼痛/天气等不良程度）同义集把 severeness→bad；bad 日耳曼语源 vs severe 拉丁 severus"},
+    {"family": "F1259", "head": "bright", "a": "bright", "b": "luminousness",
+     "reason": "bright/brightness 日耳曼语源（OE beorht）vs luminous 拉丁 lumen；luminousness 是近义指回，不是派生"},
+)
+
+# 中/低置信 11 条：P1-11 不应用；这里只做「仍在原族/原边」断言，防止日后误删。
+HELD_AUDIT_ITEMS: Tuple[Mapping[str, object], ...] = (
+    {"family": "F0045", "head": "game", "verdict": "trim", "members": ("gameness",)},
+    {"family": "F3586", "head": "agony", "verdict": "trim", "members": ("agonist", "agonistic")},
+    {"family": "F1461", "head": "impress", "verdict": "trim", "members": ("impressment",)},
+    {"family": "F0213", "head": "create", "verdict": "trim", "members": ("creature",)},
+    {"family": "F2021", "head": "spoil", "verdict": "trim", "members": ("spoilation", "spoliation")},
+    {"family": "F0252", "head": "sound", "verdict": "trim", "members": ("sonant",)},
+    {"family": "F1186", "head": "urban", "verdict": "trim", "members": ("urbane",)},
+    {"family": "F1453", "head": "deposit", "verdict": "split",
+     "edges": (("depose", "deposition"),)},
+    {"family": "F1623", "head": "dump", "verdict": "split", "edges": (("dump", "dumpy"),)},
+    {"family": "F2880", "head": "foil", "verdict": "split", "edges": (("foil", "foliate"),)},
+    {"family": "F0624", "head": "wind", "verdict": "trim", "members": ("winder",)},
+)
+
+
+# ---------------------------------------------------------------------------
 # 构建（纯函数；单测不依赖 WordNet）
 # ---------------------------------------------------------------------------
 
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise BuildError(message)
+
+
+def _audit_word_list(raw: object, label: str) -> Tuple[str, ...]:
+    """校验审计清单里的词形列表（小写单字、无下划线）；空列表合法。"""
+    if raw is None:
+        return ()
+    _require(isinstance(raw, (list, tuple)), f"{label}: members 必须是数组")
+    words: List[str] = []
+    for word in raw:
+        _require(isinstance(word, str), f"{label}: 成员必须是字符串：{word!r}")
+        normalized = word.strip().lower()
+        _require(
+            normalized == word and "_" not in normalized,
+            f"{label}: 成员必须是小写单字：{word!r}",
+        )
+        words.append(normalized)
+    return tuple(words)
+
+
+def _audit_family(table: audit.FamilyTable, family_id: object, head: object,
+                  label: str) -> audit.Family:
+    """按应用前（规则 E）的审计族 id 定位族，并校验 head 一致。"""
+    family = next(
+        (item for item in table.families if item.id == family_id), None)
+    _require(family is not None, f"{label}: 族 id {family_id!r} 不在规则 E 族表里")
+    _require(
+        family.head == head,
+        f"{label}: 族 {family_id} 的 head 不是 {head!r}（实际 {family.head!r}）",
+    )
+    return family
+
+
+def resolve_trim_members(
+    table: audit.FamilyTable,
+    entries: Sequence[Mapping[str, object]] = TRIM_MEMBERS,
+) -> Tuple[str, ...]:
+    """校验 trim 清单：族 id/head/成员都必须存在于应用前（规则 E）族表。"""
+    resolved: List[str] = []
+    seen: set = set()
+    for entry in entries:
+        label = f"TRIM_MEMBERS[{entry.get('family')}]"
+        _require(str(entry.get("reason") or "").strip(), f"{label} 缺理由")
+        family = _audit_family(table, entry.get("family"), entry.get("head"), label)
+        members = _audit_word_list(entry.get("members"), label)
+        _require(bool(members), f"{label}: members 不能为空")
+        family_words = {member.word for member in family.members}
+        for word in members:
+            _require(
+                word in family_words,
+                f"{label}: 成员 {word} 不在 {family.id}/{family.head} 族里（数据漂移）",
+            )
+            _require(word not in seen, f"{label}: 成员重复：{word}")
+            seen.add(word)
+            resolved.append(word)
+    return tuple(resolved)
+
+
+def resolve_split_edges(
+    table: audit.FamilyTable,
+    edge_pairs: Iterable[Tuple[str, str]],
+    entries: Sequence[Mapping[str, str]] = SPLIT_EDGES,
+    *,
+    allowlist_pairs: Iterable[Tuple[str, str]] = (),
+) -> Tuple[Tuple[str, str], ...]:
+    """校验 split 清单：边必须存在于应用前图、两端同属审计族，且不是 allowlist 边。"""
+    existing = set(edge_pairs)
+    allowed = set(allowlist_pairs)
+    resolved: List[Tuple[str, str]] = []
+    seen: set = set()
+    for entry in entries:
+        label = f"SPLIT_EDGES[{entry.get('family')}]"
+        _require(str(entry.get("reason") or "").strip(), f"{label} 缺理由")
+        family = _audit_family(table, entry.get("family"), entry.get("head"), label)
+        pair = audit.edge_pair(entry.get("a"), entry.get("b"))
+        _require(
+            pair is not None,
+            f"{label}: 端点非法：{entry.get('a')!r}/{entry.get('b')!r}",
+        )
+        _require(
+            pair in existing,
+            f"{label}: 边 {pair[0]}/{pair[1]} 不在规则 E 图里（数据漂移）",
+        )
+        _require(
+            pair not in allowed,
+            f"{label}: {pair[0]}/{pair[1]} 是 allowlist 边，不能当桥边删除",
+        )
+        family_words = {member.word for member in family.members}
+        _require(
+            pair[0] in family_words and pair[1] in family_words,
+            f"{label}: 边 {pair[0]}/{pair[1]} 两端不在同一审计族 "
+            f"{family.id}/{family.head}",
+        )
+        _require(pair not in seen, f"{label}: 边重复：{pair[0]}/{pair[1]}")
+        seen.add(pair)
+        resolved.append(pair)
+    return tuple(resolved)
+
+
+def resolve_held_items(
+    table: audit.FamilyTable,
+    edge_pairs: Iterable[Tuple[str, str]],
+    entries: Sequence[Mapping[str, object]] = HELD_AUDIT_ITEMS,
+) -> Tuple[Tuple[str, ...], Tuple[Tuple[str, str], ...]]:
+    """校验中/低置信 11 条：成员仍在审计族、边仍在应用前图里（未应用）。"""
+    existing = set(edge_pairs)
+    members: List[str] = []
+    edges: List[Tuple[str, str]] = []
+    for entry in entries:
+        label = f"HELD_AUDIT_ITEMS[{entry.get('family')}]"
+        family = _audit_family(table, entry.get("family"), entry.get("head"), label)
+        family_words = {member.word for member in family.members}
+        for word in _audit_word_list(entry.get("members"), label):
+            _require(word in family_words, f"{label}: 成员 {word} 不在原族")
+            members.append(word)
+        raw_edges = entry.get("edges") or ()
+        _require(isinstance(raw_edges, (list, tuple)), f"{label}: edges 必须是数组")
+        for raw_edge in raw_edges:
+            _require(
+                isinstance(raw_edge, (list, tuple)) and len(raw_edge) == 2,
+                f"{label}: 边必须是二元组：{raw_edge!r}",
+            )
+            pair = audit.edge_pair(raw_edge[0], raw_edge[1])
+            _require(pair is not None, f"{label}: 端点非法：{raw_edge!r}")
+            _require(
+                pair in existing,
+                f"{label}: 边 {pair[0]}/{pair[1]} 不在规则 E 图里",
+            )
+            _require(
+                pair[0] in family_words and pair[1] in family_words,
+                f"{label}: 边 {pair[0]}/{pair[1]} 两端不在原族",
+            )
+            edges.append(pair)
+    return tuple(members), tuple(edges)
 
 
 def validate_manual_lists(
@@ -246,17 +469,21 @@ def build_family_document(
     *,
     blacklist: Sequence[Mapping[str, str]] = BLACKLIST,
     allowlist: Sequence[Mapping[str, str]] = ALLOWLIST,
+    trim_members: Sequence[Mapping[str, object]] = TRIM_MEMBERS,
+    split_edges: Sequence[Mapping[str, str]] = SPLIT_EDGES,
+    held_items: Sequence[Mapping[str, object]] = HELD_AUDIT_ITEMS,
     provider_version: str = SOURCE_DRIVEN,
     frequency_path: str | Path = DEFAULT_FREQUENCY,
     frequency_version: str = "",
     lexicon: Optional[Mapping[str, Tuple[str, str]]] = None,
     lexicon_source: Optional[Mapping[str, object]] = None,
 ) -> Dict[str, object]:
-    """按规则 E 建词族文档（不写盘、不读 WordNet）。
+    """按规则 E + P1-11 审计变更建词族文档（不写盘、不读 WordNet）。
 
     ``lexicon``（``lemma -> (phonetic, translation)``）非空时给每个成员补
     ``phonetic`` / ``translation``；``None`` 保留纯图结构（隔离单测用），
-    CLI 总会传入。
+    CLI 总会传入。``trim_members`` / ``split_edges`` / ``held_items`` 默认取
+    模块内写死的审计清单；隔离单测喂自造小图时传 ``()`` 关闭。
     """
     black_pairs, allow_pairs = validate_manual_lists(index.pairs, blacklist, allowlist)
     # allowlist 的规则前提：两侧都在 CEFR 10k（否则是产品口径变化，先复核审计）。
@@ -266,13 +493,50 @@ def build_family_document(
             f"ALLOWLIST 边不满足「两侧都在 10k」：{left}/{right}",
         )
     black_set = set(black_pairs)
-    final_pairs = (set(index.pairs) | set(allow_pairs)) - black_set
+    base_pairs = (set(index.pairs) | set(allow_pairs)) - black_set
     _require(
-        not (final_pairs & black_set),
-        "黑名单边仍在最终边集里（不应发生）",
+        not (base_pairs & black_set),
+        "黑名单边仍在规则 E 边集里（不应发生）",
     )
+    # AI 审计清单必须逐条对上应用前（规则 E）族表；应用后再断言效果。
+    base_table = audit.build_families(
+        sorted(base_pairs), cefr.ranks, cefr.anchors)
+    trimmed_members = resolve_trim_members(base_table, trim_members)
+    split_pairs = resolve_split_edges(
+        base_table, base_pairs, split_edges, allowlist_pairs=allow_pairs)
+    held_members, held_edges = resolve_held_items(
+        base_table, base_pairs, held_items)
+    trimmed_set = set(trimmed_members)
+    final_pairs = {
+        (left, right) for left, right in base_pairs
+        if left not in trimmed_set and right not in trimmed_set
+    } - set(split_pairs)
 
     table = audit.build_families(sorted(final_pairs), cefr.ranks, cefr.anchors)
+    # trim 后成员必须消失；split 边两端必须不再同族；中/低置信 11 条必须原样保留。
+    leaked = sorted(trimmed_set & set(table.mapping))
+    _require(not leaked, f"TRIM_MEMBERS 成员仍在族里：{', '.join(leaked)}")
+    for left, right in split_pairs:
+        left_ref = table.mapping.get(left)
+        right_ref = table.mapping.get(right)
+        _require(
+            left_ref is None or right_ref is None
+            or left_ref.family != right_ref.family,
+            f"SPLIT_EDGES 拆族失败：{left}/{right} 仍在同一族",
+        )
+    missing_held = [word for word in held_members if word not in table.mapping]
+    _require(
+        not missing_held,
+        f"未应用（中/低置信）成员从族里消失：{', '.join(missing_held)}",
+    )
+    missing_edges = [
+        f"{left}/{right}" for left, right in held_edges
+        if (left, right) not in final_pairs
+    ]
+    _require(
+        not missing_edges,
+        f"未应用（中/低置信）边被删除：{', '.join(missing_edges)}",
+    )
     coverage = audit.coverage_for(sorted(final_pairs), cefr.ranks, cefr.anchors)
     level_order = tuple(level for _cap, level in sorted(cefr.anchors))
     rank_of_level = {level: rank for rank, level in enumerate(level_order)}
@@ -396,6 +660,7 @@ def build_family_document(
             "head": "族内 CEFR rank 最小者；family id 按 head rank 升序 F0001…",
             "blacklist": "17 条人工确认坏边从图中删除（semantic_split + clear_error）",
             "allowlist": "22 条 WordNet 缺失/不对称的人工边加入图中（两侧都在 10k）",
+            "aiAudit": "P1-11 应用 2026-11-23 AI 审计 23 条高置信变更：13 条 trim（删 24 个成员及其边）+ 10 条 split（删 11 条桥边）；中/低置信 11 条未应用",
             "memberFields": "成员 phonetic/translation 来自 lexicon.v1.json；缺条目为空串，不编造",
         },
         "counts": counts,
@@ -534,6 +799,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
           f"（缺条目留空 {counts['members'] - with_translation:,}）")
     print(f"最大族 / 覆盖     : {counts['maxFamilySize']} / {counts['cefrCoveragePct']}%")
     print(f"黑名单 / allowlist: {counts['blacklistEdges']} / {counts['allowlistEdges']}")
+    print(f"AI 审计变更        : {len(TRIM_MEMBERS)} trim / {len(SPLIT_EDGES)} 条桥边 / "
+          f"{len(HELD_AUDIT_ITEMS)} 条中低置信未应用")
     print(f"完整性 sha256     : {document['integrity']['sha256']}")
 
     if args.check:
