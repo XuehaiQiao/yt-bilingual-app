@@ -451,6 +451,26 @@
       "deps": [
         "P2-02"
       ]
+    },
+    {
+      "id": "P2-04",
+      "file": "TASKS/P2-04-layout-reading.md",
+      "status": "claimed",
+      "owner": "layout-read-impl",
+      "write_scope": [
+        "frontend/src/components/ReaderScreen.tsx",
+        "frontend/src/components/LibraryArticleReader.tsx",
+        "frontend/src/components/BookReaderScreen.tsx",
+        "frontend/src/components/ImportedBookReaderScreen.tsx",
+        "frontend/src/components/SentenceView.tsx",
+        "frontend/src/components/CourseScreen.tsx",
+        "scripts/p2-04-layout-acceptance.mjs",
+        "docs/设计-桌面布局规范.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-02"
+      ]
     }
   ]
 }
