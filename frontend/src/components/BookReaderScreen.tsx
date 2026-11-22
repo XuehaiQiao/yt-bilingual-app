@@ -25,8 +25,8 @@ import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ReadingHighlightToggle } from './ReadingHighlight';
 import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
-import { ReadingAudioText } from './ReadingAudioText';
 import { useReadingAudio } from '../lib/useReadingAudio';
+import { useReadingAnalysis } from '../lib/useReadingAnalysis';
 import { LanguagePointToggle } from './ui/LanguagePointToggle';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
@@ -36,7 +36,8 @@ import { SubHeader } from './ui/SubHeader';
 import { ReadingVocabButton } from './ReadingVocabButton';
 import type { FavoriteItem } from '../lib/favorites';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
-import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
+import { bilingualReadingWidth } from './BilingualRow';
+import { ReadingSurface, type ReadingSurfaceParagraph } from './reading/ReadingSurface';
 import {
     BooksApiError,
     fetchBook,
@@ -219,17 +220,46 @@ export function BookReaderScreen({
     const highlight = useReadingHighlights(
         chapter ? chapter.paragraphs.map((paragraph) => paragraph.en) : [],
     );
-    const languagePointsByParagraph = useMemo(() => {
-        const map: Record<number, InlineLanguagePoint[]> = {};
-        for (const point of chapter?.languagePoints ?? []) {
-            (map[point.blockId] ??= []).push({
+    // Teaching analysis (specs/028) rides on the chapter payload: the chapter
+    // endpoint already returns idioms/culture plus per-paragraph glosses for the
+    // requested level. It is handed to the shared hook as payload analysis, so
+    // this shell requests nothing and the surface consumes the exact same
+    // languagePointsByBlock / wordGlossesByBlock maps as the article readers
+    // (specs/039 phase 2). `enabled: false` = payload only.
+    const analysisPayload = useMemo(() => {
+        if (!chapter) return undefined;
+        const languagePointsByBlock: Record<string, InlineLanguagePoint[]> = {};
+        for (const point of chapter.languagePoints) {
+            (languagePointsByBlock[String(point.blockId)] ??= []).push({
                 text: point.text,
                 meaning: point.meaning,
                 kind: point.kind,
             });
         }
-        return map;
-    }, [chapter?.languagePoints]);
+        const wordGlossesByBlock: Record<string, Record<string, string>> = {};
+        for (const paragraph of chapter.paragraphs) {
+            if (Object.keys(paragraph.glosses).length > 0) {
+                wordGlossesByBlock[String(paragraph.index)] = paragraph.glosses;
+            }
+        }
+        return { languagePointsByBlock, wordGlossesByBlock };
+    }, [chapter]);
+    const analysis = useReadingAnalysis({
+        contentRef: chapter ? `book:${bookId}:${chapter.chapter}:${language}` : null,
+        payloadAnalysis: analysisPayload,
+        enabled: false,
+    });
+    const surfaceParagraphs = useMemo<ReadingSurfaceParagraph[]>(
+        () => chapter?.paragraphs.map((paragraph) => ({
+            id: paragraph.index,
+            index: paragraph.index,
+            en: paragraph.en,
+            zh: paragraph.zh,
+            languagePoints: analysis.languagePointsByBlock[String(paragraph.index)],
+            glosses: analysis.wordGlossesByBlock[String(paragraph.index)],
+        })) ?? [],
+        [analysis.languagePointsByBlock, analysis.wordGlossesByBlock, chapter?.paragraphs],
+    );
     const scrollRef = useRef<HTMLDivElement>(null);
     // Listening / shadowing: the shared bar follows the current chapter. A
     // chapter (or target-language) switch changes `scopeKey`, which cancels the
@@ -899,67 +929,36 @@ export function BookReaderScreen({
                                                     : t('books.reader.sourceLive')}
                                             </p>
 
-                                            {chapter.paragraphs.map((paragraph) => (
-                                                <div
-                                                    key={paragraph.index}
-                                                    data-book-paragraph={paragraph.index}
-                                                    data-testid={`book-paragraph-${paragraph.index}`}
-                                                    className="mt-4 rounded-xl border border-transparent px-2 py-1 -mx-2 hover:border-white/5 hover:bg-zinc-900/30 transition-colors"
-                                                >
-                                                    <BilingualRow
-                                                        twoColumn={bilingualColumns}
-                                                        testId={`book-row-${paragraph.index}`}
-                                                        english={(
-                                                            <p
-                                                                data-testid={`book-en-${paragraph.index}`}
-                                                                data-lookup-context={paragraph.en}
-                                                                data-lookup-start={paragraph.index}
-                                                                lang="en"
-                                                                className="ruby-safe-line text-base text-zinc-200 break-words"
-                                                            >
-                                                                <ReadingAudioText
-                                                                    text={paragraph.en}
-                                                                    paragraphIndex={paragraph.index}
-                                                                    active={audio.active}
-                                                                    isHighlighted={highlight.isHighlighted}
-                                                                    languagePoints={languagePointsByParagraph[paragraph.index]}
-                                                                    showLanguagePoints={showLanguagePoints}
-                                                                    wordGlosses={paragraph.glosses}
-                                                                    onWordClick={(word, event) =>
-                                                                        onWordLookup(word, paragraph.en, paragraph.index, event, {
-                                                                            id: bookId,
-                                                                            title: detail?.title,
-                                                                        })
-                                                                    }
-                                                                />
-                                                            </p>
-                                                        )}
-                                                        translation={
-                                                            showTranslations && hasAnyTranslation
-                                                                ? paragraph.zh
-                                                                    ? (
-                                                                        <p
-                                                                            data-testid={`book-translation-${paragraph.index}`}
-                                                                            lang={language}
-                                                                            className="text-[15px] leading-relaxed text-zinc-400 break-words"
-                                                                        >
-                                                                            {paragraph.zh}
-                                                                        </p>
-                                                                    )
-                                                                    : (
-                                                                        <p
-                                                                            data-testid={`book-translation-missing-${paragraph.index}`}
-                                                                            className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.06] px-2 py-0.5 text-[11px] text-amber-300/90"
-                                                                        >
-                                                                            <AlertCircle className="w-3 h-3" />
-                                                                            {t('books.reader.missingTranslation')}
-                                                                        </p>
-                                                                    )
-                                                                : undefined
-                                                        }
-                                                    />
-                                                </div>
-                                            ))}
+                                            {/* Shared paragraph renderer (specs/039): the
+                                                shell only supplies data, state and the
+                                                book-specific row density attribute. */}
+                                            <ReadingSurface
+                                                paragraphs={surfaceParagraphs}
+                                                testIdPrefix="book"
+                                                paragraphIndexAttr="data-book-paragraph"
+                                                listClassName=""
+                                                extraParagraphClass="mt-4 rounded-xl px-2 py-1 -mx-2 sm:px-2"
+                                                isHighlighted={highlight.isHighlighted}
+                                                showLanguagePoints={showLanguagePoints}
+                                                audio={audio}
+                                                layout={bilingualColumns ? 'two-column' : 'single'}
+                                                showTranslations={showTranslations}
+                                                translationMissingLabel={
+                                                    showTranslations && hasAnyTranslation
+                                                        ? t('books.reader.missingTranslation')
+                                                        : undefined
+                                                }
+                                                englishLang="en"
+                                                translationLang={language}
+                                                analysisStatus={analysis.status}
+                                                onWordClick={(word, event, paragraph) => onWordLookup(
+                                                    word,
+                                                    paragraph.en,
+                                                    paragraph.index,
+                                                    event,
+                                                    { id: bookId, title: detail?.title },
+                                                )}
+                                            />
 
                                             <div className="mt-6 flex items-center justify-between gap-2 border-t border-white/5 pt-4">
                                                 <button

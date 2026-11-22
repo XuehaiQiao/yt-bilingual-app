@@ -1,11 +1,11 @@
-// Shared reading surface (specs/039 phase 1).
+// Shared reading surface (specs/039 phases 1–2).
 //
-// One paragraph renderer for every prose reader. Before this component the two
-// article readers each had their own paragraph loop, their own `MarkedWords`
-// wiring and their own sentence highlight wrapper, so "English paragraph"
-// behaved differently depending on where it was opened. The shells keep what is
-// genuinely theirs (import/translate/progress, free-library no-account path,
-// toolbar, playback bar); this file only owns:
+// One paragraph renderer for every prose reader. Before this component the four
+// readers each had their own paragraph loop, their own `MarkedWords` wiring and
+// their own sentence highlight wrapper, so "English paragraph" behaved
+// differently depending on where it was opened. The shells keep what is
+// genuinely theirs (import/translate/progress, chapter index, free-library
+// no-account path, upload/cover, toolbar, playback bar); this file only owns:
 //
 //   - the paragraph loop and the single/bilingual column switch
 //     (`BilingualRow`, same scroll container as before);
@@ -22,8 +22,11 @@
 //
 // Shell-specific chrome is injected, not re-implemented: paragraph actions
 // (share menu) via `renderParagraphActions`, and the failed-translation retry
-// via `onRetryTranslation`. Colours come from the semantic tokens
-// (design-gate G1).
+// via `onRetryTranslation`. Book shells keep their compact row density through
+// `extraParagraphClass` (their old class recipe, merged by tailwind-merge) and
+// keep the `data-*-paragraph` attribute their scroll/progress code queries
+// through `paragraphIndexAttr`; they do not clone the paragraph DOM.
+// Colours come from the semantic tokens (design-gate G1).
 import { useMemo, type ReactNode } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nProvider';
@@ -102,13 +105,40 @@ export interface ReadingSurfaceProps {
      * hint, never an error (specs/039 §3).
      */
     analysisStatus?: ReadingAnalysisStatus;
+    /**
+     * Attribute name that carries `paragraph.index` on the paragraph node
+     * (e.g. `data-book-paragraph`, `data-imported-paragraph`). The book readers'
+     * scroll restoration and progress persistence query this attribute, so the
+     * shared surface keeps it instead of the shell wrapping the paragraph.
+     */
+    paragraphIndexAttr?: string;
+    /**
+     * Replaces the default `space-y-1.5` list spacing. The book readers space
+     * their own rows (`mt-4`), which a parent `space-y-*` would override; they
+     * pass `''` and keep the row margin in `extraParagraphClass`.
+     */
+    listClassName?: string;
+    /**
+     * Extra classes merged onto each paragraph (book readers keep their compact
+     * row recipe). `cn` uses tailwind-merge, so a conflicting utility (padding,
+     * rounding, hover colour) replaces the default instead of stacking.
+     */
+    extraParagraphClass?: string;
+    /**
+     * Translation-cell label shown for a paragraph with no translation while
+     * the scope has some (book readers). Omitted = render nothing, as before.
+     * The shell decides *when* the state applies by passing the label.
+     */
+    translationMissingLabel?: string;
 }
 
 /**
- * MarkedWords is the single sentence renderer: it keeps sentence-level audio
- * attributes around the exact same word DOM the paragraph used before
- * (`data-word-hit`, ruby, difficulty marks). Mirrors `ReadingAudioText`, which
- * keeps serving the book readers until phase 2 folds them into this surface.
+ * MarkedWords wrapped per sentence for the audio highlight: it keeps the exact
+ * word DOM every reader had before (`data-word-hit`, ruby, difficulty marks)
+ * and only adds the inline `AudioSentenceSpan` around each sentence. Since
+ * specs/039 phase 2 this is the only paragraph-level sentence renderer; the old
+ * `ReadingAudioText` component was removed and only `AudioSentenceSpan` stays
+ * in `ReadingAudioText.tsx` for the sentence-pack reader.
  */
 const SentenceMarkedWords: React.FC<{
     text: string;
@@ -198,6 +228,10 @@ export const ReadingSurface: React.FC<ReadingSurfaceProps> = ({
     onRetryTranslation,
     translating = false,
     analysisStatus,
+    paragraphIndexAttr,
+    listClassName = 'space-y-1.5',
+    extraParagraphClass,
+    translationMissingLabel,
 }) => {
     const { t } = useI18n();
     const twoColumn = layout === 'two-column';
@@ -206,7 +240,7 @@ export const ReadingSurface: React.FC<ReadingSurfaceProps> = ({
     if (paragraphs.length === 0) return null;
 
     return (
-        <div data-testid={`${testIdPrefix}-paragraphs`} className="space-y-1.5">
+        <div data-testid={`${testIdPrefix}-paragraphs`} className={listClassName || undefined}>
             {analysisStatus === 'login' && showLanguagePoints && (
                 <p
                     data-testid={`${testIdPrefix}-analysis-login`}
@@ -224,40 +258,62 @@ export const ReadingSurface: React.FC<ReadingSurfaceProps> = ({
                 const wordClick: WordClickHandler | undefined = onWordClick
                     ? (word, e) => onWordClick(word, e, paragraph)
                     : undefined;
-                const translation = showTranslations && paragraph.zh && paragraph.zh.trim()
-                    ? (
-                        <p
-                            data-testid={`${translationPrefix}-${paragraph.id}`}
-                            lang={translationLang}
-                            className={cn('text-body-zh text-fg-secondary break-words', reserved)}
-                        >
-                            {paragraph.zh}
-                        </p>
-                    )
-                    : showTranslations && paragraph.translationFailed
+                const indexAttributes = paragraphIndexAttr
+                    ? { [paragraphIndexAttr]: paragraph.index }
+                    : undefined;
+                const translationText = showTranslations && paragraph.zh && paragraph.zh.trim()
+                    ? paragraph.zh
+                    : null;
+                const translation = !showTranslations
+                    ? undefined
+                    : translationText
                         ? (
-                            <div className={cn('flex flex-wrap items-center gap-2 text-xs text-warning-fg/90', reserved)}>
-                                <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                <span>{t('reader.translation.failed')}</span>
-                                {onRetryTranslation && (
-                                    <button
-                                        type="button"
-                                        data-testid={`${translationPrefix}-retry-${paragraph.id}`}
-                                        onClick={() => onRetryTranslation(paragraph)}
-                                        disabled={translating}
-                                        className="inline-flex h-7 items-center gap-1 rounded-lg border border-warning/20 bg-warning/10 px-2 text-warning-fg transition-colors hover:bg-warning/15 disabled:opacity-50"
-                                    >
-                                        <RefreshCw className="h-3 w-3" aria-hidden="true" />
-                                        {t('reader.translation.retry')}
-                                    </button>
-                                )}
-                            </div>
+                            <p
+                                data-testid={`${translationPrefix}-${paragraph.id}`}
+                                lang={translationLang}
+                                className={cn('text-body-zh text-fg-secondary break-words', reserved)}
+                            >
+                                {translationText}
+                            </p>
                         )
-                        : undefined;
+                        : paragraph.translationFailed
+                            ? (
+                                <div className={cn('flex flex-wrap items-center gap-2 text-xs text-warning-fg/90', reserved)}>
+                                    <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                    <span>{t('reader.translation.failed')}</span>
+                                    {onRetryTranslation && (
+                                        <button
+                                            type="button"
+                                            data-testid={`${translationPrefix}-retry-${paragraph.id}`}
+                                            onClick={() => onRetryTranslation(paragraph)}
+                                            disabled={translating}
+                                            className="inline-flex h-7 items-center gap-1 rounded-lg border border-warning/20 bg-warning/10 px-2 text-warning-fg transition-colors hover:bg-warning/15 disabled:opacity-50"
+                                        >
+                                            <RefreshCw className="h-3 w-3" aria-hidden="true" />
+                                            {t('reader.translation.retry')}
+                                        </button>
+                                    )}
+                                </div>
+                            )
+                            : translationMissingLabel
+                                ? (
+                                    <p
+                                        data-testid={`${translationPrefix}-missing-${paragraph.id}`}
+                                        className={cn(
+                                            'inline-flex items-center gap-1.5 rounded-md border border-warning/20 bg-warning/10 px-2 py-0.5 text-caption text-warning-fg/90',
+                                            reserved,
+                                        )}
+                                    >
+                                        <AlertCircle className="h-3 w-3 shrink-0" aria-hidden="true" />
+                                        {translationMissingLabel}
+                                    </p>
+                                )
+                                : undefined;
 
                 return (
                     <article
                         key={paragraph.id}
+                        {...indexAttributes}
                         data-testid={`${testIdPrefix}-paragraph-${paragraph.id}`}
                         data-paragraph-index={paragraph.id}
                         data-reading-paragraph={paragraph.index}
@@ -267,6 +323,7 @@ export const ReadingSurface: React.FC<ReadingSurfaceProps> = ({
                                 ? 'border-line-strong bg-surface/50'
                                 : 'border-transparent',
                             'hover:border-line-subtle hover:bg-surface/30',
+                            extraParagraphClass,
                         )}
                     >
                         {renderParagraphActions && (

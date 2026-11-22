@@ -90,7 +90,7 @@
 | `frontend/src/lib/sentenceSplit.ts` | 共享分句：缩写（Mr./Dr./U.S./e.g.）、首字母缩写、引号、省略号、数字；返回原文偏移，渲染可逐字还原 |
 | `frontend/src/lib/useReadingAudio.ts` | 状态机 `idle/playing/paused/waiting/finished/unsupported` + `speechSynthesis` 控制：一次一个 utterance、切换前 cancel、generation 计数器挡住 cancel 后残留的 `onend`、切章/卸载取消、看门狗防“假播放中”；语速/模式存 `yt_bilingual_reading_audio_*` |
 | `frontend/src/components/ReadingAudioBar.tsx` | 统一播放条与入口按钮：播放/暂停、上/下一句、跟读开关、语速菜单、关闭、跟读等待行的「再听一遍 / 下一句」；自量高度供阅读器留出底部内边距；无英文语音时禁用并给明确文案 |
-| `frontend/src/components/ReadingAudioText.tsx` | 段落 → 句子：逐句交给既有 `ReadingHighlight`（难度标亮 + 语言点 ruby + 点词），外层套 `<span data-audio-sentence data-audio-active>`；`AudioSentenceSpan` 供句子精背复用 |
+| `frontend/src/components/ReadingAudioText.tsx` | 句子级高亮外壳：`AudioSentenceSpan` 提供 `<span data-audio-sentence data-audio-active>`（品牌色当前句）；段落 → 句子的循环已随 specs/039 阶段 2 收敛到 `reading/ReadingSurface.tsx`，本文件不再渲染段落（`AudioSentenceSpan` 仍供句子精背复用） |
 | `frontend/src/lib/tts.ts` | 抽出 `pickEnglishVoice` / `detectSpeechVoice` 等，供播放条与原有 `speak()` 共用；`speak()` 行为不变 |
 
 接入点：`BookReaderScreen`（工具条 `book-audio-trigger`）、`ImportedBookReaderScreen`（`imported-book-audio-trigger`）、`LibraryArticleReader`（`library-audio-trigger`）、`ReaderScreen`（`reader-audio-trigger`）、`SentenceView`（`sentences-audio-trigger`，保留每行原有朗读按钮）。

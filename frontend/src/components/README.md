@@ -27,8 +27,8 @@
 | `TeachingNotesPanel.tsx` | 学习页（侧栏/视频下方） | 「语言点」面板（specs/028）：习语/文化点计数与分组列表（phrase/term、中文 meaning/note、quote、时间），点击条目按 blockId seek；折叠/展开、加载骨架、空态「本课暂无语言点」、错误重试、游客或 403 显示「登录后查看语言点」；不遮挡字幕 |
 | `ReadingHighlight.tsx` | 四个阅读器 | 阅读标亮 UI：`ReadingHighlight` 包装 `ClickableWords`（淡琥珀下划线/背景，不拦截点词），`ReadingHighlightToggle` 是工具栏「标亮生词」开关（默认开、localStorage 记忆，切换后即时重算） |
 | `ReadingAudioBar.tsx` | 五个阅读界面 | 阅读听读条（specs/037）：`ReadingAudioTrigger` 是工具栏统一入口，`ReadingAudioBar` 是固定底部播放条（播放/暂停、上/下一句、跟读开关、语速六档菜单、关闭、跟读等待行的「再听一遍 / 下一句」）；自量高度给阅读器留底部内边距；无英文语音时禁用并给明确文案；375px 折两行、键盘 Space/←/→ |
-| `ReadingAudioText.tsx` | 四个阅读器 | 段落→句子渲染（specs/037）：逐句交给既有 `ReadingHighlight`（难度标亮 + 语言点 ruby + 点词全部保留），外层 `<span data-audio-sentence data-audio-active>` 用品牌色 `bg-brand/15` 标当前句；`AudioSentenceSpan` 给句子精背复用同一高亮契约 |
-| `reading/ReadingSurface.tsx` | 阅读器（阶段 1：导入文章 + 免费库文章；阶段 2 书籍） | 共享段落渲染层（specs/039）：`MarkedWords`（点词/难度琥珀底/语言点常显 ruby/语境 gloss）、句子级听读高亮（`AudioSentenceSpan`）、单/双栏、段落 testid 别名（`<prefix>-paragraph|row|en|translation-*`）；不含取数据、分析请求与页面 chrome |
+| `ReadingAudioText.tsx` | 阅读器 / 句子精背 | 句子级听读高亮外壳（specs/037）：`AudioSentenceSpan` = `<span data-audio-sentence data-audio-active>`，当前句用品牌色 `bg-brand/15`；段落→句子的循环已收敛到 `reading/ReadingSurface.tsx`（specs/039 阶段 2），本文件不再渲染段落 |
+| `reading/ReadingSurface.tsx` | 四个阅读器（阶段 2：导入文章 + 免费库文章 + 公版书 + 导入书） | 共享段落渲染层（specs/039）：`MarkedWords`（点词/难度琥珀底/语言点常显 ruby/语境 gloss）、句子级听读高亮（`AudioSentenceSpan`）、单/双栏、缺译文徽章、段落 testid 别名（`<prefix>-paragraph|row|en|translation-*`）；壳通过 `paragraphIndexAttr`/`extraParagraphClass` 注入自己的进度属性与行密度，不含取数据、分析请求与页面 chrome |
 | `BilingualRow.tsx` | 阅读器 | 双语段落布局原语：≥lg 左英右中同段同行（同一滚动容器），<lg 英文在上中文在下；译文隐藏时调用方传 `twoColumn=false` 即英文单栏；英文/译文槽位分离，译文栏不参与点词 |
 | `WordPopover.tsx` | 全局 | 点查词典卡：音标/释义/例句/TTS/入生词本；卡片打开后单击另一个单词直接切词（触屏无 hover 也一次命中），点空白才关闭 |
 | `SentenceView.tsx` | 句子精背 | 背诵视图：册切换、按天卡片、自测遮中文、复习打卡、搜索、单句分享卡 |
