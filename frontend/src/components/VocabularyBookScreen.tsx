@@ -482,16 +482,18 @@ export function VocabularyBookScreen({
     const [mineQuery, setMineQuery] = useState('');
     const [mineDebouncedQuery, setMineDebouncedQuery] = useState('');
     const [minePage, setMinePage] = useState(1);
-    // Row-level 加入我的单词 / 加入复习 state, keyed by `<listId>:<word>` for the
-    // built-in lists and `phrase:<phrase id>` for phrases. The inline error
-    // replaces the success state on failure; the same button is the retry.
-    const [mineAdds, setMineAdds] = useState<Record<string, RowAddState>>({});
+    // Row-level 加入我的单词 requests in flight, keyed by the normalized word.
+    // This is a request state only: there is deliberately NO result mirror.
+    // Whether a row may render the action (and whether its star is filled) is
+    // derived from `favoritedWordKeys`, the canonical favorite set — a local
+    // "added" copy would drift from it after a star delete (ADR-0001).
+    const [mineAddBusyKeys, setMineAddBusyKeys] = useState<Set<string>>(() => new Set());
+    /** Synchronous in-flight guard: two clicks in one tick must POST once. */
+    const mineAddInFlight = useRef<Set<string>>(new Set());
     const [reviewAdds, setReviewAdds] = useState<Record<string, RowAddState>>({});
     /** Custom-list 标为已掌握 rows (idempotent PATCH, same busy/added shape). */
     const [masterAdds, setMasterAdds] = useState<Record<string, RowAddState>>({});
     const [listRowErrors, setListRowErrors] = useState<Record<string, string>>({});
-    /** Row delete in flight (single-row delete disables itself, no double send). */
-    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     // ── Custom word lists: full load + edit mode (specs/005 §统一词表 UI) ──
     // 自定义词表 is client paged like 我的单词 / 已掌握: one bounded fetch
@@ -949,9 +951,10 @@ export function VocabularyBookScreen({
     );
 
     // ── 加入我的单词 / 加入复习 (built-in lists + phrases) ──────────────────
-    // Both writes are idempotent server-side; the row only ever shows
-    // 已加入 / 已在复习 after the request resolved, and a failure leaves an
-    // inline, retryable error on that row (IX-02 row level, never a fake state).
+    // Both writes are idempotent server-side; the row only ever shows a row
+    // error after the request failed (inline, retryable, IX-02). Success is not
+    // mirrored locally: the canonical favorite set retires the action and fills
+    // the star on the very next render.
     const addListWordToMine = async (input: {
         rowKey: string;
         word: string;
@@ -962,15 +965,25 @@ export function VocabularyBookScreen({
         listId: string;
         listLabel: string;
     }) => {
-        if (mineAdds[input.rowKey] === 'busy' || mineAdds[input.rowKey] === 'added') return;
         if (isGuest) {
             openLogin();
             return;
         }
         const word = input.word.trim();
-        if (!word) return;
-        const zhText = [input.phonetic?.trim(), input.translation.trim()].filter(Boolean).join(' ');
-        setMineAdds((prev) => ({ ...prev, [input.rowKey]: 'busy' }));
+        const wordKey = normalizeMasteryWord(word);
+        if (!word || !wordKey) return;
+        // Canonical idempotence: a word that is already a favorite has no
+        // action at all, and the same word may be shown by several lists — the
+        // synchronous ref keeps a second click from sending a second POST
+        // before React can retire the button.
+        if (favoritedWordKeys.has(wordKey) || mineAddInFlight.current.has(wordKey)) return;
+        mineAddInFlight.current.add(wordKey);
+        setMineAddBusyKeys((prev) => {
+            if (prev.has(wordKey)) return prev;
+            const next = new Set(prev);
+            next.add(wordKey);
+            return next;
+        });
         setListRowErrors((prev) => {
             if (!(input.rowKey in prev)) return prev;
             const next = { ...prev };
@@ -983,7 +996,7 @@ export function VocabularyBookScreen({
             videoId: input.listId,
             start: 0,
             en_text: word,
-            zh_text: zhText,
+            zh_text: [input.phonetic?.trim(), input.translation.trim()].filter(Boolean).join(' '),
             added_at: Date.now(),
             ...(input.example?.trim() ? { example: input.example.trim() } : {}),
             source_kind: 'wordlist',
@@ -1003,11 +1016,19 @@ export function VocabularyBookScreen({
                 next.delete(saved.id);
                 return next;
             });
-            setMineAdds((prev) => ({ ...prev, [input.rowKey]: 'added' }));
             toast.success(t('vocab.toast.added'), { dedupeKey: 'favorites:added' });
         } catch {
-            setMineAdds((prev) => ({ ...prev, [input.rowKey]: 'idle' }));
+            // No local success-looking state: the row keeps the action (retry)
+            // and shows the failure inline.
             setListRowErrors((prev) => ({ ...prev, [input.rowKey]: t('vocab.list.addError') }));
+        } finally {
+            mineAddInFlight.current.delete(wordKey);
+            setMineAddBusyKeys((prev) => {
+                if (!prev.has(wordKey)) return prev;
+                const next = new Set(prev);
+                next.delete(wordKey);
+                return next;
+            });
         }
     };
 
@@ -1051,12 +1072,7 @@ export function VocabularyBookScreen({
         }
     };
 
-    /** Where one row's 加入我的单词 control stands when it renders. */
-    const rowMineAddState = (rowKey: string, word: string): RowAddState => {
-        const local = mineAdds[rowKey];
-        if (local) return local;
-        return favoritedWordKeys.has(normalizeMasteryWord(word)) ? 'added' : 'idle';
-    };
+    /** Where one row's 加入复习 control stands when it renders. */
     const rowReviewAddState = (rowKey: string, word: string): RowAddState => {
         const local = reviewAdds[rowKey];
         if (local) return local;
@@ -1065,7 +1081,12 @@ export function VocabularyBookScreen({
         return stateFilterAvailable && wordStates[normalizeMasteryWord(word)] ? 'added' : 'idle';
     };
 
-    /** Shared action descriptors for the list/phrase rows (label flips on done). */
+    /**
+     * Shared action descriptors for the list/phrase rows. The favorite state is
+     * read from `favoritedWordKeys` only: a favorited row renders NO 加入我的单词
+     * action (there is nothing to disable or relabel, and no local result copy
+     * to drift from the canonical set).
+     */
     const rowAddActions = (input: {
         rowKey: string;
         word: string;
@@ -1076,20 +1097,21 @@ export function VocabularyBookScreen({
         listId: string;
         listLabel: string;
     }, options?: { includeReview?: boolean }): WordRowAction[] => {
-        const mineState = rowMineAddState(input.rowKey, input.word);
-        const actions: WordRowAction[] = [
-            {
+        const wordKey = normalizeMasteryWord(input.word);
+        const actions: WordRowAction[] = [];
+        if (wordKey && !favoritedWordKeys.has(wordKey)) {
+            const busy = mineAddBusyKeys.has(wordKey);
+            actions.push({
                 key: 'mine',
-                label: `${mineState === 'added' ? t('vocab.list.added') : t('vocab.list.addMine')} ${input.word}`,
-                text: mineState === 'added' ? t('vocab.list.added') : t('vocab.list.addMine'),
+                label: `${t('vocab.list.addMine')} ${input.word}`,
+                text: t('vocab.list.addMine'),
                 icon: BookmarkPlus,
                 testId: `${input.rowKey}-add-mine`,
-                busy: mineState === 'busy',
-                done: mineState === 'added',
-                disabled: mineState === 'added',
+                busy,
+                disabled: busy,
                 onClick: () => { void addListWordToMine(input); },
-            },
-        ];
+            });
+        }
         // specs/038 (2026-11-22): the custom-list surface hides 加入复习 while
         // the review UI is paused; the interface + definition snapshot stay.
         // specs/005/013: the same pause hides it on the built-in lists/phrases.
@@ -1357,6 +1379,10 @@ export function VocabularyBookScreen({
      * prop path (it also performs the DELETE); favorites this screen added
      * itself are removed here. Resolves `true` only when the row is really gone
      * — exactly once, so the App handler never re-sends a deleted id.
+     *
+     * Only the 已掌握 write paths call this directly now (marking a word
+     * mastered also removes its favorite, specs/005 §已掌握与收藏互斥);
+     * cancelling a favorite is the row star, one entry per surface.
      */
     const deleteFavoriteById = async (id: string): Promise<boolean> => {
         if (favorites.some((fav) => fav.id === id)) {
@@ -1374,22 +1400,6 @@ export function VocabularyBookScreen({
         }
         setAddedFavorites((prev) => prev.filter((fav) => fav.id !== id));
         return true;
-    };
-
-    /** Single-row delete / 取消收藏 from the expanded detail. */
-    const handleRowDelete = async (fav: FavoriteItem) => {
-        if (pendingDeleteId) return;
-        setRowError(null);
-        setPendingDeleteId(fav.id);
-        try {
-            const removed = await deleteFavoriteById(fav.id);
-            if (!removed) throw new Error(t('vocab.delete.error'));
-            toast.success(t('vocab.toast.removed'), { dedupeKey: 'favorites:removed' });
-        } catch {
-            setRowError({ id: fav.id, message: t('vocab.delete.error') });
-        } finally {
-            setPendingDeleteId(null);
-        }
     };
 
     const markFavoriteBusy = (word: string, busy: boolean) => {
@@ -2275,15 +2285,8 @@ export function VocabularyBookScreen({
                 disabled: Boolean(pendingReviewId || pendingMasteredId),
                 onClick: () => { void handleToggleFavoriteMastered(fav); },
             });
-            actions.push({
-                key: 'delete',
-                label: `${t('vocab.delete')} ${word}`,
-                text: t('vocab.delete'),
-                icon: Trash2,
-                testId: `vocab-mine-delete-${fav.id}`,
-                busy: pendingDeleteId === fav.id,
-                onClick: () => { void handleRowDelete(fav); },
-            });
+            // No 取消收藏 action here: the row star is the single cancel entry
+            // (specs/005 单一来源; ADR-0001). The expanded area keeps 已掌握.
             return {
                 key: fav.id,
                 word,
@@ -2293,7 +2296,8 @@ export function VocabularyBookScreen({
                 levelTitle: level.title,
                 seenText: seenText(fav),
                 seenTitle,
-                favored: true,
+                // Canonical favorite state, same source as every list surface.
+                favored: favoritedWordKeys.has(masteredKey),
                 favoriteLabel: t('vocab.star.remove', { word }),
                 onToggleFavorite: () => removeFavoriteForRow(fav),
                 favoriteBusy: favoriteBusyKeys.has(masteredKey),

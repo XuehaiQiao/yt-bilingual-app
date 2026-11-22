@@ -8,8 +8,9 @@
 //   收藏星标（实心=已收藏）/ ×N 见过次数（仅我的单词）/ 展开箭头
 //
 // The expanded area carries the full meaning, provenance and the row actions
-// (加入我的单词 / 已掌握 / 取消收藏…). Expansion animates its own height, so the
-// table never reflows column widths when a row opens.
+// (加入我的单词 / 已掌握…); cancelling a favorite is the row star only — one entry
+// per surface. Expansion animates its own height, so the table never reflows
+// column widths when a row opens.
 //
 // Colour and space come from the design tokens; no new literals are added for
 // rows, star, toolbar or expansion.
@@ -70,8 +71,8 @@ export function normalizePhonetic(raw: string | null | undefined): string {
 /**
  * One trailing row control. `text` keeps a visible label (grammar: the label is
  * also the accessible name); without it the control is icon-only and `label`
- * alone names it. `done` renders the completed state (已加入 / 已在复习) with the
- * success tone and `aria-pressed`.
+ * alone names it. `done` renders a completed state (success tone + `aria-pressed`)
+ * for actions that stay visible after succeeding.
  */
 export interface WordRowAction {
     key: string;
