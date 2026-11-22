@@ -28,6 +28,7 @@
 | `ReadingHighlight.tsx` | 四个阅读器 | 阅读标亮 UI：`ReadingHighlight` 包装 `ClickableWords`（淡琥珀下划线/背景，不拦截点词），`ReadingHighlightToggle` 是工具栏「标亮生词」开关（默认开、localStorage 记忆，切换后即时重算） |
 | `ReadingAudioBar.tsx` | 五个阅读界面 | 阅读听读条（specs/037）：`ReadingAudioTrigger` 是工具栏统一入口，`ReadingAudioBar` 是固定底部播放条（播放/暂停、上/下一句、跟读开关、语速六档菜单、关闭、跟读等待行的「再听一遍 / 下一句」）；自量高度给阅读器留底部内边距；无英文语音时禁用并给明确文案；375px 折两行、键盘 Space/←/→ |
 | `ReadingAudioText.tsx` | 四个阅读器 | 段落→句子渲染（specs/037）：逐句交给既有 `ReadingHighlight`（难度标亮 + 语言点 ruby + 点词全部保留），外层 `<span data-audio-sentence data-audio-active>` 用品牌色 `bg-brand/15` 标当前句；`AudioSentenceSpan` 给句子精背复用同一高亮契约 |
+| `reading/ReadingSurface.tsx` | 阅读器（阶段 1：导入文章 + 免费库文章；阶段 2 书籍） | 共享段落渲染层（specs/039）：`MarkedWords`（点词/难度琥珀底/语言点常显 ruby/语境 gloss）、句子级听读高亮（`AudioSentenceSpan`）、单/双栏、段落 testid 别名（`<prefix>-paragraph|row|en|translation-*`）；不含取数据、分析请求与页面 chrome |
 | `BilingualRow.tsx` | 阅读器 | 双语段落布局原语：≥lg 左英右中同段同行（同一滚动容器），<lg 英文在上中文在下；译文隐藏时调用方传 `twoColumn=false` 即英文单栏；英文/译文槽位分离，译文栏不参与点词 |
 | `WordPopover.tsx` | 全局 | 点查词典卡：音标/释义/例句/TTS/入生词本；卡片打开后单击另一个单词直接切词（触屏无 hover 也一次命中），点空白才关闭 |
 | `SentenceView.tsx` | 句子精背 | 背诵视图：册切换、按天卡片、自测遮中文、复习打卡、搜索、单句分享卡 |

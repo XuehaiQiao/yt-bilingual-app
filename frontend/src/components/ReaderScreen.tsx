@@ -34,13 +34,14 @@ import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { ReadingHighlightToggle } from './ReadingHighlight';
 import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
-import { ReadingAudioText } from './ReadingAudioText';
 import { useReadingAudio } from '../lib/useReadingAudio';
+import { useReadingAnalysis, type ReadingAnalysisMaps } from '../lib/useReadingAnalysis';
 import { LanguagePointToggle } from './ui/LanguagePointToggle';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
-import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
+import { bilingualReadingWidth } from './BilingualRow';
+import { ReadingSurface, type ReadingSurfaceParagraph } from './reading/ReadingSurface';
 import { ShareCardDialog } from './ShareCardDialog';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { SubHeader } from './ui/SubHeader';
@@ -109,6 +110,31 @@ function usableTranslation(paragraph: ArticleParagraph): string | undefined {
     const translation = typeof paragraph.translation === 'string' ? paragraph.translation.trim() : '';
     if (!translation || translation === '[未翻译]' || paragraph.translationFailed) return undefined;
     return translation;
+}
+
+/**
+ * Article payload → the same per-block maps `useReadingAnalysis` returns for
+ * endpoint-loaded content. Keeps the payload path (one request on open) equal
+ * to the endpoint path (level switch) for the shared surface.
+ */
+function articleAnalysisMaps(
+    detail: Pick<ArticleDetail, 'paragraphs' | 'languagePoints'>,
+): ReadingAnalysisMaps {
+    const languagePointsByBlock: Record<string, InlineLanguagePoint[]> = {};
+    for (const point of detail.languagePoints) {
+        (languagePointsByBlock[String(point.blockId)] ??= []).push({
+            text: point.text,
+            meaning: point.meaning,
+            kind: point.kind,
+        });
+    }
+    const wordGlossesByBlock: Record<string, Record<string, string>> = {};
+    for (const paragraph of detail.paragraphs) {
+        if (Object.keys(paragraph.glosses).length > 0) {
+            wordGlossesByBlock[String(paragraph.idx)] = paragraph.glosses;
+        }
+    }
+    return { languagePointsByBlock, wordGlossesByBlock };
 }
 
 function statusOf(error: unknown): number {
@@ -274,17 +300,46 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const highlight = useReadingHighlights(
         article ? article.paragraphs.map((paragraph) => paragraph.text) : [],
     );
-    const languagePointsByParagraph = useMemo(() => {
-        const map: Record<number, InlineLanguagePoint[]> = {};
-        for (const point of article?.languagePoints ?? []) {
-            (map[point.blockId] ??= []).push({
-                text: point.text,
-                meaning: point.meaning,
-                kind: point.kind,
-            });
-        }
-        return map;
-    }, [article?.languagePoints]);
+    // Analysis: the level-aware article payload wins; when the reader switches
+    // the CEFR stop (or turns the layer on later) the shared hook asks the same
+    // endpoint for the new level. No shell-level refetch bookkeeping remains.
+    const articleIdForAnalysis = article?.articleId ?? null;
+    const analysisPayload = useMemo(() => (
+        article && article.analysisLevel === highlight.level
+            ? articleAnalysisMaps(article)
+            : undefined
+    ), [article, highlight.level]);
+    const loadArticleAnalysis = useCallback(async ({ level }: { level: string }) => {
+        if (!articleIdForAnalysis) return null;
+        const detail = await getArticle(articleIdForAnalysis, targetLang, level);
+        return articleAnalysisMaps(detail);
+    }, [articleIdForAnalysis, targetLang]);
+    const analysis = useReadingAnalysis({
+        contentRef: articleIdForAnalysis ? `article:${articleIdForAnalysis}` : null,
+        level: highlight.level,
+        targetLang,
+        isGuest,
+        payloadAnalysis: analysisPayload,
+        enabled: Boolean(article) && !isGuest && (showLanguagePoints || highlight.enabled),
+        load: loadArticleAnalysis,
+    });
+    const surfaceParagraphs = useMemo<ReadingSurfaceParagraph[]>(() => (
+        article
+            ? article.paragraphs.map((paragraph) => ({
+                id: paragraph.idx,
+                index: paragraph.idx,
+                en: paragraph.text,
+                zh: usableTranslation(paragraph) ?? null,
+                glosses: paragraph.glosses,
+                languagePoints: analysis.languagePointsByBlock[String(paragraph.idx)],
+                translationFailed: paragraph.translationFailed,
+            }))
+            : []
+    ), [analysis.languagePointsByBlock, article]);
+    // Paragraph actions (share) still need the full article paragraph row.
+    const articleParagraphById = useMemo(() => new Map(
+        article?.paragraphs.map((paragraph) => [paragraph.idx, paragraph]) ?? [],
+    ), [article]);
 
     const mountedRef = useRef(true);
     const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -296,8 +351,6 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const pollTimerRef = useRef<number | null>(null);
     const rafRef = useRef<number | null>(null);
     const saveErrorToastRef = useRef(false);
-    // Avoid retrying a failed language-point fetch on every article object update.
-    const analysisRequestedRef = useRef<string | null>(null);
 
     // Reading audio: one shared bar for the article pane. `scopeKey` follows the
     // open article, so switching (or closing) it immediately stops the voice.
@@ -405,7 +458,6 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         lastSavedIdxRef.current = null;
         restoreIdxRef.current = null;
         saveErrorToastRef.current = false;
-        analysisRequestedRef.current = null;
         try {
             const detail = await getArticle(
                 articleId,
@@ -431,27 +483,6 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
             }
         }
     }, [flushProgress, highlight.level, isGuest, showLanguagePoints, targetLang]);
-
-    // Turn the optional language-point layer on (or change the CEFR stop)
-    // without reopening the article. The request is cached per content/level
-    // and only runs for signed-in readers.
-    useEffect(() => {
-        const articleId = selectedIdRef.current;
-        if (!articleId || !article || isGuest || (!showLanguagePoints && !highlight.enabled)) return;
-        if (article.analysisLevel === highlight.level) return;
-        const attemptKey = `${articleId}:${highlight.level}`;
-        if (analysisRequestedRef.current === attemptKey) return;
-        analysisRequestedRef.current = attemptKey;
-        let cancelled = false;
-        getArticle(articleId, targetLang, highlight.level)
-            .then((detail) => {
-                if (!cancelled && selectedIdRef.current === articleId) setArticle(detail);
-            })
-            .catch(() => {
-                // Language points are an enhancement; reading stays usable.
-            });
-        return () => { cancelled = true; };
-    }, [article, highlight.enabled, highlight.level, isGuest, showLanguagePoints, targetLang]);
 
     // Favorites "出处" jump: open the requested article instead of the list.
     // App remounts this screen when a different target arrives, so this runs
@@ -1214,52 +1245,62 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
 
                             {translateSection}
 
-                            <div className="mt-6 space-y-1.5">
-                                {article.paragraphs.map((paragraph) => {
-                                    const translated = typeof paragraph.translation === 'string'
-                                        && paragraph.translation.trim() !== ''
-                                        && paragraph.translation.trim() !== '[未翻译]'
-                                        && !paragraph.translationFailed;
-                                    return (
-                                        <article
-                                            key={paragraph.idx}
-                                            data-paragraph-index={paragraph.idx}
-                                            data-testid={`reader-paragraph-${paragraph.idx}`}
-                                            className={`relative group rounded-2xl border px-4 py-4 sm:px-5 transition-colors duration-200 ${
-                                                currentIdx === paragraph.idx
-                                                    ? 'border-white/10 bg-zinc-900/50'
-                                                    : 'border-transparent'
-                                            }`}
-                                        >
-                                            {/* Paragraph actions: hover/focus on desktop,
-                                                always visible for touch pointers. The menu
-                                                is the discoverable path to "share paragraph";
-                                                selecting text also raises a floating chip. */}
-                                            <div className="absolute right-1.5 top-2.5 z-10">
+                            <div className="mt-6">
+                                <ReadingSurface
+                                    paragraphs={surfaceParagraphs}
+                                    testIdPrefix="reader"
+                                    isHighlighted={highlight.isHighlighted}
+                                    showLanguagePoints={showLanguagePoints}
+                                    audio={audio}
+                                    layout={bilingualColumns ? 'two-column' : 'single'}
+                                    showTranslations={showTranslations}
+                                    englishLang={article.lang || undefined}
+                                    translationLang={article.targetLang || undefined}
+                                    currentParagraphIndex={currentIdx}
+                                    analysisStatus={analysis.status}
+                                    translating={translating}
+                                    onRetryTranslation={() => { void handleTranslate(); }}
+                                    onWordClick={(word, e, paragraph) => onWordLookup(
+                                        word,
+                                        paragraph.en,
+                                        paragraph.index,
+                                        e,
+                                        article.articleId,
+                                        article.title || t('reader.untitled'),
+                                    )}
+                                    renderParagraphActions={(paragraph) => {
+                                        const source = articleParagraphById.get(paragraph.id);
+                                        if (!source) return null;
+                                        // Paragraph actions: hover/focus on desktop,
+                                        // always visible for touch pointers. The menu
+                                        // is the discoverable path to "share paragraph";
+                                        // selecting text also raises a floating chip.
+                                        return (
+                                            <>
                                                 <button
                                                     type="button"
-                                                    data-testid={`reader-paragraph-menu-button-${paragraph.idx}`}
-                                                    aria-label={t('share.paragraphMenuAria', { index: paragraph.idx + 1 })}
-                                                    aria-expanded={menuIdx === paragraph.idx}
-                                                    onClick={() => setMenuIdx(menuIdx === paragraph.idx ? null : paragraph.idx)}
+                                                    data-testid={`reader-paragraph-menu-button-${paragraph.id}`}
+                                                    aria-label={t('share.paragraphMenuAria', { index: paragraph.id + 1 })}
+                                                    aria-expanded={menuIdx === paragraph.id}
+                                                    onClick={() => setMenuIdx(menuIdx === paragraph.id ? null : paragraph.id)}
                                                     className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100 [@media(pointer:coarse)]:opacity-100"
                                                 >
                                                     <MoreHorizontal className="w-4 h-4" />
                                                 </button>
-                                                {menuIdx === paragraph.idx && (
+                                                {menuIdx === paragraph.id && (
                                                     <>
                                                         <div
                                                             className="fixed inset-0 z-10"
                                                             onClick={() => setMenuIdx(null)}
                                                         />
                                                         <div
-                                                            data-testid={`reader-paragraph-menu-${paragraph.idx}`}
+                                                            data-testid={`reader-paragraph-menu-${paragraph.id}`}
                                                             className="absolute right-0 top-9 z-20 w-44 p-1 rounded-xl bg-zinc-900/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/60"
                                                         >
                                                             <button
                                                                 type="button"
-                                                                data-testid={`reader-share-paragraph-${paragraph.idx}`}
-                                                                onClick={() => shareParagraph(paragraph)}
+                                                                data-testid={`reader-share-paragraph-${paragraph.id}`}
+                                                                onClick={() => shareParagraph(source)}
                                                                 className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-left text-sm text-zinc-300 hover:text-zinc-100 hover:bg-white/5 transition-colors"
                                                             >
                                                                 <Share2 className="w-4 h-4" />
@@ -1268,67 +1309,10 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                                         </div>
                                                     </>
                                                 )}
-                                            </div>
-                                            <BilingualRow
-                                                twoColumn={bilingualColumns}
-                                                testId={`reader-row-${paragraph.idx}`}
-                                                english={(
-                                                    <p
-                                                        data-testid={`reader-en-${paragraph.idx}`}
-                                                        data-lookup-context={paragraph.text}
-                                                        data-lookup-start={paragraph.idx}
-                                                        lang={article.lang || undefined}
-                                                        className="ruby-safe-line pr-8 text-base sm:text-[17px] text-zinc-200 break-words"
-                                                    >
-                                                        <ReadingAudioText
-                                                            text={paragraph.text}
-                                                            paragraphIndex={paragraph.idx}
-                                                            active={audio.active}
-                                                            isHighlighted={highlight.isHighlighted}
-                                                            languagePoints={languagePointsByParagraph[paragraph.idx]}
-                                                            showLanguagePoints={showLanguagePoints}
-                                                            wordGlosses={paragraph.glosses}
-                                                            onWordClick={(word, e) => onWordLookup(
-                                                                word,
-                                                                paragraph.text,
-                                                                paragraph.idx,
-                                                                e,
-                                                                article.articleId,
-                                                                article.title || t('reader.untitled'),
-                                                            )}
-                                                        />
-                                                    </p>
-                                                )}
-                                                translation={
-                                                    showTranslations && translated ? (
-                                                        <p
-                                                            data-testid={`reader-translation-${paragraph.idx}`}
-                                                            lang={article.targetLang || undefined}
-                                                            className="pr-8 text-[15px] leading-relaxed text-zinc-400 break-words"
-                                                        >
-                                                            {paragraph.translation}
-                                                        </p>
-                                                    ) : showTranslations && paragraph.translationFailed ? (
-                                                        <div className="flex flex-wrap items-center gap-2 pr-8 text-xs text-amber-400/90">
-                                                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                                            <span>{t('reader.translation.failed')}</span>
-                                                            <button
-                                                                type="button"
-                                                                data-testid={`reader-translation-retry-${paragraph.idx}`}
-                                                                onClick={() => { void handleTranslate(); }}
-                                                                disabled={translating}
-                                                                className="inline-flex items-center gap-1 h-7 px-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 text-amber-300 transition-colors disabled:opacity-50"
-                                                            >
-                                                                <RefreshCw className="w-3 h-3" />
-                                                                {t('reader.translation.retry')}
-                                                            </button>
-                                                        </div>
-                                                    ) : undefined
-                                                }
-                                            />
-                                        </article>
-                                    );
-                                })}
+                                            </>
+                                        );
+                                    }}
+                                />
                             </div>
                         </>
                     ) : (

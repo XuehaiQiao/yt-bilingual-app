@@ -11,11 +11,12 @@ import type { LibraryArticle } from '../lib/library';
 import { difficultyBadge, fetchDifficultyBatch, type DifficultyItem } from '../lib/difficulty';
 import { ReadingHighlightToggle } from './ReadingHighlight';
 import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
-import { ReadingAudioText } from './ReadingAudioText';
 import { useReadingAudio } from '../lib/useReadingAudio';
+import { useReadingAnalysis } from '../lib/useReadingAnalysis';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
-import { BilingualRow, bilingualReadingWidth } from './BilingualRow';
+import { bilingualReadingWidth } from './BilingualRow';
 import type { InlineLanguagePoint } from './TranscriptBlock';
+import { ReadingSurface, type ReadingSurfaceParagraph } from './reading/ReadingSurface';
 import { SubHeader } from './ui/SubHeader';
 import { ReadingVocabButton } from './ReadingVocabButton';
 import type { FavoriteItem } from '../lib/favorites';
@@ -75,6 +76,35 @@ export function LibraryArticleReader({
     const [difficulty, setDifficulty] = useState<DifficultyItem | null>(null);
     // Same threshold + cache as the other three readers (B1 → mark B2+ words).
     const highlight = useReadingHighlights(article.paragraphs.map((paragraph) => paragraph.en));
+    // Analysis is already merged into the free-library payload by App
+    // (specs/028 × 024); this reader never requests it, so the no-account path
+    // stays request-free. The shared hook only normalizes the block maps, so
+    // both article readers consume the exact same shape (specs/039).
+    const payloadAnalysis = useMemo(() => {
+        if (languagePointsByBlock === undefined && wordGlossesByBlock === undefined) return undefined;
+        return {
+            languagePointsByBlock: languagePointsByBlock ?? {},
+            wordGlossesByBlock: wordGlossesByBlock ?? {},
+        };
+    }, [languagePointsByBlock, wordGlossesByBlock]);
+    const analysis = useReadingAnalysis({
+        contentRef: `library:${article.id}`,
+        payloadAnalysis,
+        // App owns the level refresh (it reloads the payload and re-passes the
+        // maps); this surface only renders what it is handed.
+        enabled: false,
+    });
+    const surfaceParagraphs = useMemo<ReadingSurfaceParagraph[]>(
+        () => article.paragraphs.map((paragraph, index) => ({
+            id: index,
+            index,
+            en: paragraph.en,
+            zh: paragraph.zh,
+            languagePoints: analysis.languagePointsByBlock[String(index)],
+            glosses: analysis.wordGlossesByBlock[String(index)],
+        })),
+        [analysis.languagePointsByBlock, analysis.wordGlossesByBlock, article.paragraphs],
+    );
     // Listening / shadowing for this article: the shared bar owns playback, the
     // reader only supplies the paragraph texts and the scroll container.
     const audioParagraphs = useMemo(
@@ -201,55 +231,28 @@ export function LibraryArticleReader({
                         <span className="text-[11px] text-zinc-600">{t('library.article.noApiHint')}</span>
                     </div>
 
-                    <div className="mt-6 space-y-1.5">
-                        {article.paragraphs.map((paragraph, index) => (
-                            <article
-                                key={index}
-                                data-testid={`library-paragraph-${index}`}
-                                className="rounded-2xl border border-transparent px-4 py-4 sm:px-5 hover:border-white/5 hover:bg-zinc-900/30 transition-colors"
-                            >
-                                <BilingualRow
-                                    twoColumn={bilingualColumns}
-                                    testId={`library-row-${index}`}
-                                    english={(
-                                        <p
-                                            data-testid={`library-en-${index}`}
-                                            data-lookup-context={paragraph.en}
-                                            data-lookup-start={index}
-                                            lang="en"
-                                            className="ruby-safe-line text-base sm:text-[17px] text-zinc-200 break-words"
-                                        >
-                                            <ReadingAudioText
-                                                text={paragraph.en}
-                                                paragraphIndex={index}
-                                                active={audio.active}
-                                                isHighlighted={highlight.isHighlighted}
-                                                languagePoints={languagePointsByBlock?.[String(index)]}
-                                                wordGlosses={wordGlossesByBlock?.[String(index)]}
-                                                showLanguagePoints={showLanguagePoints}
-                                                onWordClick={(word, e) => onWordLookup(
-                                                    word,
-                                                    paragraph.en,
-                                                    index,
-                                                    e,
-                                                    article.id,
-                                                    article.title,
-                                                )}
-                                            />
-                                        </p>
-                                    )}
-                                    translation={showTranslations ? (
-                                        <p
-                                            data-testid={`library-article-translation-${index}`}
-                                            lang="zh-CN"
-                                            className="text-[15px] leading-relaxed text-zinc-400 break-words"
-                                        >
-                                            {paragraph.zh}
-                                        </p>
-                                    ) : undefined}
-                                />
-                            </article>
-                        ))}
+                    <div className="mt-6">
+                        <ReadingSurface
+                            paragraphs={surfaceParagraphs}
+                            testIdPrefix="library"
+                            translationTestIdPrefix="library-article-translation"
+                            isHighlighted={highlight.isHighlighted}
+                            showLanguagePoints={showLanguagePoints}
+                            audio={audio}
+                            layout={bilingualColumns ? 'two-column' : 'single'}
+                            showTranslations={showTranslations}
+                            englishLang="en"
+                            translationLang="zh-CN"
+                            analysisStatus={analysis.status}
+                            onWordClick={(word, e, paragraph) => onWordLookup(
+                                word,
+                                paragraph.en,
+                                paragraph.index,
+                                e,
+                                article.id,
+                                article.title,
+                            )}
+                        />
                     </div>
                 </article>
             </div>

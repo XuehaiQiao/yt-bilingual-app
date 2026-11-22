@@ -1,6 +1,6 @@
 # 039 — 阅读器统一渲染层（ReadingSurface）
 
-> 状态：**待实现** ｜ 2026-11-22 ｜ 需求来源：负责人「阅读器并没有通用，给不通用的理由」+ 决定分阶段收敛
+> 状态：**阶段 1 已实现**（2026-11-22）；阶段 2（书籍阅读器）待实现 ｜ 需求来源：负责人「阅读器并没有通用，给不通用的理由」+ 决定分阶段收敛
 > 一句话：把「一段英文怎么渲染、怎么查词、怎么标亮、怎么读出来」收敛成**一份共享组件**，
 > 四个阅读器退化为只负责取数据与各自专有功能的“壳”。
 
@@ -32,6 +32,16 @@
 - 阶段 1 只接 `ReaderScreen` + `LibraryArticleReader`；两个壳保留导入/翻译/进度/免费库无账号等专有能力，
   段落渲染与阅读交互全部走共享层。
 - 阶段 2（另立任务）：`BookReaderScreen` + `ImportedBookReaderScreen`（目录/章节/上传壳）。
+
+### 2.1 阶段 1 实现路径（2026-11-22，@381440f 基线）
+
+| 文件 | 改动 |
+|---|---|
+| `frontend/src/components/reading/ReadingSurface.tsx` | 新建共享段落渲染：`MarkedWords`（难度琥珀底 / 语言点 ruby / 点词 / 语境 gloss）+ `AudioSentenceSpan` 当前句 brand 高亮 + `BilingualRow` 单/双栏 + 段落 testid 别名 |
+| `frontend/src/lib/useReadingAnalysis.ts` | 新建分析加载 hook：payload 分析优先（免请求）→ 默认 `fetchTeachingAnalysis`（缓存命中免费）→ 调用方 `load` 覆盖（文章/书籍端点把分析合并在 payload 里）；403 → `status: 'login'`，不报错 |
+| `frontend/src/components/ReaderScreen.tsx` | 删除段落级 JSX / 分析 refetch effect；壳保留导入/翻译/进度/列表/段落菜单；分析按 level 走 hook |
+| `frontend/src/components/LibraryArticleReader.tsx` | 删除段落级 JSX；壳保留无账号免费路径/返回/译文开关/听读条；App 传入的 payload 分析进入 hook |
+| 保留 testid | `reader-*`、`library-*` 全部保留（`<prefix>-paragraph|row|en|translation-*`，库翻译列沿用 `library-article-translation-*`） |
 
 ## 3. 要求
 
