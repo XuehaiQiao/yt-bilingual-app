@@ -265,8 +265,8 @@
     {
       "id": "P0-15",
       "file": "TASKS/P0-15-select-all-filtered.md",
-      "status": "claimed",
-      "owner": "select-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/components/VocabularyRows.tsx",
