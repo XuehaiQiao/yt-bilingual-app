@@ -27,9 +27,9 @@
 //   H) 375px: no horizontal overflow.
 //   I) the GRE list still renders through the same WordTable.
 //
-// The old 已掌握 multi-select bulk bar is gone: selection lives only in the
-// custom-wordlist edit mode (custom-wordlists-acceptance.mjs). This script
-// asserts that removed bulk surface ABSENT instead of silently skipping it.
+// P0-14: 已掌握 also has an explicit edit mode. Non-edit state renders no
+// checkbox; 编辑 shows the leading checkbox + 取消已掌握 batch bar, and 完成 or a
+// tab switch exits and clears the selection (§E2 / §H).
 //
 // Every /api/** request is mocked; nothing touches :8000 or the real backend.
 // Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node mastered-tab-acceptance.mjs
@@ -92,6 +92,8 @@ const state = {
     mode: 'signedIn', // 'signedIn' | 'guest'
     mastered: [...ALL_MASTERED],
     masteredFail: false,
+    /** Lemma whose PATCH fails (P0-14 failed-batch retention case). */
+    failMastered: null,
     masteredFetches: 0,
     masteredUrls: [],
     guestMasteredFetches: 0,
@@ -228,6 +230,9 @@ await context.route('**/api/**', async (route) => {
         const body = request.postDataJSON() || {};
         const lemma = String(body.lemma ?? '').toLowerCase();
         state.patches.push({ lemma, mastered: body.mastered });
+        if (state.failMastered && lemma === state.failMastered) {
+            return fail(500, 'mastered write failed');
+        }
         if (body.mastered === true) state.mastered = [...new Set([...state.mastered, lemma])];
         else state.mastered = state.mastered.filter((word) => word !== lemma);
         return respond({ status: 'ok', word: publicWord(lemma, body.mastered === true) });
@@ -489,6 +494,54 @@ assert.equal(await page.getByTestId('vocab-mine-word-fav-abundant').count(), 0,
     'the undone word must not return to 我的收藏');
 await shot('mastered-undone-stays-out-of-mine');
 
+// ── E2) P0-14 edit mode: 取消已掌握 in a batch ──────────────────────────
+await page.getByTestId('vocab-tab-mastered').click();
+await page.waitForSelector('[data-testid="vocab-mastered-list"]');
+assert.equal(await page.locator('[data-testid^="vocab-mastered-select-"]').count(), 0,
+    'the default 已掌握 state renders no checkbox');
+assert.equal(await page.getByTestId('vocab-edit-bar').count(), 0);
+await page.getByTestId('vocab-mastered-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+assert.equal((await page.getByTestId('vocab-mastered-edit').innerText()).trim(), '完成',
+    'the toolbar button flips to 完成 while editing');
+assert.equal(await page.locator('[data-testid^="vocab-mastered-select-"]').count(), 50,
+    'one checkbox per visible row (50/page)');
+assert.equal(await page.getByTestId('vocab-mastered-master-toggle-meticulous').isDisabled(), true,
+    'the row check is disabled while editing');
+// Row click toggles the selection; the row does not expand.
+await page.locator('[data-testid="vocab-mastered-row"][data-word="meticulous"]').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 1');
+assert.equal(await page.locator('[data-testid="vocab-mastered-detail-meticulous"]').count(), 0,
+    'editing disables row expansion');
+await page.locator('[data-testid="vocab-mastered-row"][data-word="meticulous"]').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 0');
+// Batch 取消已掌握: PATCH mastered=false, the row leaves, the selection empties.
+await page.getByTestId('vocab-mastered-select-meticulous').check();
+await page.getByTestId('vocab-edit-unmaster').click();
+await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-mastered-row"][data-word="meticulous"]'));
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 0');
+assert.deepEqual(state.patches.at(-1), { lemma: 'meticulous', mastered: false });
+assert.equal(await page.getByTestId('vocab-mastered-total').innerText(), '共 58 词');
+// A failed row stays selected with its inline error + 「N 项失败」 summary.
+state.failMastered = 'reluctant';
+await page.getByTestId('vocab-mastered-select-reluctant').check();
+await page.getByTestId('vocab-edit-unmaster').click();
+await page.waitForSelector('[data-testid="vocab-mastered-edit-error-reluctant"]');
+assert.equal(await page.locator('[data-testid="vocab-mastered-row"][data-word="reluctant"]').count(), 1,
+    'the failed row is rolled back into the table');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 1');
+assert.match(await page.getByTestId('vocab-edit-summary').innerText(), /1 项失败/);
+state.failMastered = null;
+await page.getByTestId('vocab-edit-unmaster').click();
+await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-mastered-row"][data-word="reluctant"]'));
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 0');
+assert.equal(await page.getByTestId('vocab-mastered-total').innerText(), '共 57 词');
+await page.screenshot({ path: `${SHOTS}/p0-14-1440-mastered-edit.png` });
+await page.getByTestId('vocab-edit-done').click();
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
+assert.equal(await page.locator('[data-testid^="vocab-mastered-select-"]').count(), 0,
+    '完成 exits edit mode and clears the selection');
+
 // ── I) the built-in list still renders through the shared table ──────────
 await page.getByTestId('vocab-tab-gre').click();
 await page.waitForSelector('[data-testid="vocab-word-list"]');
@@ -573,6 +626,18 @@ assert.ok(overflow.docScroll <= 0, `375px horizontal overflow: ${overflow.docScr
 assert.ok(overflow.bookScroll <= 0, `375px word-book overflow: ${overflow.bookScroll}px`);
 assert.ok(overflow.rows > 0);
 await shot('mastered-375');
+// P0-14 at 375: 编辑 opens the checkbox column without horizontal overflow.
+await page.getByTestId('vocab-mastered-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+await page.getByTestId('vocab-mastered-select-meticulous').check();
+await page.screenshot({ path: `${SHOTS}/p0-14-375-mastered-edit.png`, fullPage: false });
+const editOverflow = await page.evaluate(() => {
+    const doc = document.documentElement;
+    return doc.scrollWidth - doc.clientWidth;
+});
+assert.ok(editOverflow <= 0, `375px overflow while editing 已掌握: ${editOverflow}px`);
+await page.getByTestId('vocab-edit-done').click();
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
 await page.setViewportSize({ width: 1440, height: 1000 });
 
 // ── G) guest: 「我会了」 tab fed only by the local table ──────────────────
@@ -647,13 +712,24 @@ assert.equal(guestAbundantWord, 'abundant', 'guest rows come from the local tabl
 assert.equal((await guestPage.getByTestId('vocab-mastered-ipa-abundant').innerText()).trim(), '');
 assert.equal(await guestPage.getByTestId('vocab-mastered-translation-abundant').innerText(), '—');
 await guestPage.screenshot({ path: `${SHOTS}/mastered-tab-guest-1440.png` });
-await guestPage.getByTestId('vocab-mastered-master-toggle-meticulous').click();
+// P0-14: a guest may batch-undo the local 「我会了」 table (no login wall, no
+// server PATCH): the batch runner's guest exception is only for this surface.
+await guestPage.getByTestId('vocab-mastered-edit').click();
+await guestPage.getByTestId('vocab-edit-bar').waitFor();
+await guestPage.getByTestId('vocab-mastered-select-meticulous').check();
+await guestPage.getByTestId('vocab-edit-unmaster').click();
 await guestPage.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mastered-row"]').length === 1);
 assert.equal(await guestPage.getByTestId('vocab-mastered-total').innerText(), '共 1 词');
+await guestPage.waitForFunction(() => document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === '已选 0');
+assert.equal(await guestPage.getByTestId('guest-auth-overlay').count(), 0,
+    'a guest local-table batch must not open the login overlay');
 const guestTable = await guestPage.evaluate((key) => localStorage.getItem(key), GUEST_KEY);
 assert.deepEqual(JSON.parse(guestTable), ['abundant'], `guest local table: ${guestTable}`);
+await guestPage.getByTestId('vocab-edit-done').click();
+await guestPage.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
 await guestPage.screenshot({ path: `${SHOTS}/mastered-tab-guest-undo-1440.png` });
-// Unmarking the last guest word leaves the success+empty state (not an error).
+// The single-row check still works for the last guest word and leaves the
+// success+empty state (not an error).
 await guestPage.getByTestId('vocab-mastered-master-toggle-abundant').click();
 await guestPage.waitForSelector('[data-testid="vocab-mastered-empty"]');
 assert.equal(await guestPage.evaluate((key) => localStorage.getItem(key), GUEST_KEY), '[]');

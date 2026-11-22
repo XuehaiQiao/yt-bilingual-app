@@ -26,16 +26,15 @@
 //     UI paused), phrase filters, guest login gate at the star write entry.
 //
 // REMOVED SURFACES (kept out of this script on purpose): the old 状态 chips, the
-// multi-select bulk bar (标为已掌握 / 删除 / 加入复习), the expanded-area
-// 加入我的单词 action (P0-09 — the star is the only favorite switch, in any
-// favorite state), the expanded-area 取消收藏/删除 row action (P0-03) and,
-// since P0-10, every expanded-area 我已掌握/已掌握 text action (the row check
-// replaced it).
-// specs/013 paused the review UI, and 381440f replaced bulk selection with
-// per-row expanded actions plus 勾选删除 in the custom-wordlist edit mode only
-// (covered by custom-wordlists-acceptance.mjs). Nothing here weakens an
-// assertion: every removed control is asserted ABSENT instead, and no review
-// POST/state read may fire.
+// expanded-area 加入我的单词 action (P0-09 — the star is the only favorite
+// switch, in any favorite state), the expanded-area 取消收藏/删除 row action
+// (P0-03) and, since P0-10, every expanded-area 我已掌握/已掌握 text action
+// (the row check replaced it).
+// P0-14 replaced the old always-on bulk bar with an explicit edit mode on every
+// list: 编辑 reveals the checkbox column + the bottom bar, 完成/tab switch exits
+// and clears the selection; §E2 covers the full operation matrix. Nothing here
+// weakens an assertion: non-edit state is asserted to have no checkbox, and no
+// review POST/state read may fire.
 //
 // Every /api/** request is mocked; nothing touches :8000 or :5173.
 // Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node wordbook-v12-acceptance.mjs
@@ -381,6 +380,10 @@ async function closeMenu() {
 const firstWord = async (prefix = 'vocab-mine-word-') => (
     await page.locator(`[data-testid^="${prefix}"]`).first().innerText()
 ).trim();
+/** Wait for the edit bar's 已选 N label (batch writes settle asynchronously). */
+const waitSelected = (expected) => page.waitForFunction((value) => (
+    document.querySelector('[data-testid="vocab-edit-selected"]')?.textContent?.trim() === value
+), expected);
 
 // ═══ A) 我的收藏: search, 排序菜单, 筛选菜单, 每页条数 + 跳页 ═══════════════
 await gotoWordbook();
@@ -664,11 +667,13 @@ await page.getByTestId('vocab-mine-star-fav-w013').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w013"]').length === 0);
 await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mine-total"]')?.textContent === '共 55 词');
 
-// The removed bulk bar is asserted ABSENT (selection now lives only in the
-// custom-wordlist edit mode) and no review write may fire from 我的收藏.
-for (const id of ['vocab-mine-select-fav-w000', 'vocab-mine-selected', 'vocab-mine-bulk-master', 'vocab-mine-bulk-delete', 'vocab-mine-bulk-review']) {
-    assert.equal(await page.getByTestId(id).count(), 0, `removed bulk control ${id} must not render`);
-}
+// P0-14: the default state has no checkbox column and no action bar; 编辑 is
+// the only entry into selection. No review write may fire from 我的收藏.
+assert.equal(await page.getByTestId('vocab-mine-edit').isVisible(), true);
+assert.equal(await page.locator('[data-testid^="vocab-mine-select-"]').count(), 0,
+    'the default 我的收藏 state must not render any checkbox');
+assert.equal(await page.getByTestId('vocab-edit-bar').count(), 0,
+    'the batch bar only exists while editing');
 assert.deepEqual(state.reviewPosts, [], '我的收藏 must never POST a review word');
 
 // ═══ C) 已掌握: shared row structure + star + search ═════════════════════
@@ -1002,6 +1007,198 @@ assert.doesNotMatch(await page.getByTestId('phrase-detail-p2').innerText(), /加
     'the expanded phrase detail must not render a favorite action');
 await shot('1440-phrases-added');
 
+// ═══ E2) P0-14 edit mode: every list has 编辑 / checkbox / batch actions ═
+// Non-edit state renders no checkboxes anywhere; 编辑 opens the leading
+// checkbox column + the sticky bar and disables the row star/check so a batch
+// cannot accidentally write through a row control.
+
+// ── 我的收藏 matrix: 取消收藏 / 标为已掌握 ───────────────────────────────
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-list"]');
+assert.equal(await page.getByTestId('vocab-mine-edit').isVisible(), true);
+assert.equal(await page.locator('[data-testid^="vocab-mine-select-"]').count(), 0,
+    '我的收藏 renders no checkboxes before 编辑');
+await page.getByTestId('vocab-mine-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+assert.equal((await page.getByTestId('vocab-mine-edit').innerText()).trim(), '完成');
+await waitSelected('已选 0');
+assert.equal(await page.locator('[data-testid^="vocab-mine-select-"]').count(), 50,
+    'editing prepends one checkbox to every visible row');
+assert.equal(await page.getByTestId('vocab-mine-star-fav-w020').isDisabled(), true,
+    'the star is disabled while editing (never a row write from a batch tap)');
+assert.equal(await page.getByTestId('vocab-mine-master-toggle-fav-w020').isDisabled(), true,
+    'the mastered check is disabled while editing');
+// Row click toggles the selection instead of expanding.
+await page.locator('[data-testid="vocab-mine-toggle-fav-w020"]').click();
+await waitSelected('已选 1');
+assert.equal(await page.getByTestId('vocab-mine-detail-fav-w020').count(), 0,
+    'the row does not expand while editing');
+await page.locator('[data-testid="vocab-mine-toggle-fav-w020"]').click();
+await waitSelected('已选 0');
+await page.getByTestId('vocab-mine-select-fav-w020').check();
+await page.getByTestId('vocab-mine-select-fav-w021').check();
+await waitSelected('已选 2');
+await page.screenshot({ path: `${SHOTS}/p0-14-1440-mine-edit.png`, fullPage: false });
+const mineDeletesBefore = state.deletes.length;
+await page.getByTestId('vocab-edit-unfavorite').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w020"]').length === 0
+    && document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w021"]').length === 0);
+assert.equal(state.deletes.includes('fav-w020') && state.deletes.includes('fav-w021'), true);
+assert.equal(state.deletes.length, mineDeletesBefore + 2);
+await waitSelected('已选 0');
+
+// 标为已掌握: PATCH + DELETE the favorite, and the independent 已掌握 list grows.
+await page.getByTestId('vocab-mine-select-fav-w022').check();
+await page.getByTestId('vocab-edit-master').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w022"]').length === 0);
+await waitFor(() => state.patches.some((item) => item.lemma === 'w022' && item.mastered === true), 15000, 'batch master PATCH');
+assert.equal(state.deletes.includes('fav-w022'), true,
+    'marking mastered removes the favorite (mutual exclusion)');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-tab-count-mastered"]')?.textContent === '12');
+await waitSelected('已选 0');
+
+// A rapid double click submits the batch exactly once (synchronous guard).
+await page.getByTestId('vocab-mine-select-fav-w025').check();
+await page.getByTestId('vocab-edit-unfavorite').evaluate((el) => { el.click(); el.click(); });
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w025"]').length === 0);
+await waitSelected('已选 0');
+assert.equal(state.deletes.filter((id) => id === 'fav-w025').length, 1,
+    'a double click must not send a second batch');
+
+// A failed unfavorite keeps the row + selection and shows the inline error +
+// 「N 项失败」 summary; a retry clears both.
+state.failDelete = 'fav-w023';
+await page.getByTestId('vocab-mine-select-fav-w023').check();
+await page.getByTestId('vocab-edit-unfavorite').click();
+await page.waitForSelector('[data-testid="vocab-mine-edit-error-fav-w023"]');
+assert.equal(await page.getByTestId('vocab-mine-toggle-fav-w023').count(), 1,
+    'the failed row is not removed');
+await waitSelected('已选 1');
+assert.match(await page.getByTestId('vocab-edit-summary').innerText(), /1 项失败/);
+state.failDelete = null;
+await page.getByTestId('vocab-edit-unfavorite').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w023"]').length === 0);
+assert.equal(await page.getByTestId('vocab-mine-edit-error-fav-w023').count(), 0,
+    'a successful retry clears the row error');
+await page.getByTestId('vocab-edit-done').click();
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
+assert.equal(await page.locator('[data-testid^="vocab-mine-select-"]').count(), 0,
+    '完成 exits edit mode and clears the checkboxes');
+
+// ── 已掌握 matrix: 取消已掌握 ────────────────────────────────────────────
+await page.getByTestId('vocab-tab-mastered').click();
+await page.waitForSelector('[data-testid="vocab-mastered-list"]');
+assert.equal(await page.locator('[data-testid^="vocab-mastered-select-"]').count(), 0);
+await page.getByTestId('vocab-mastered-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+assert.equal(await page.locator('[data-testid^="vocab-mastered-select-"]').count(), 12,
+    '已掌握 prepends one checkbox per row while editing');
+await page.getByTestId('vocab-mastered-select-w060').check();
+await page.getByTestId('vocab-edit-unmaster').click();
+await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-mastered-row"][data-word="w060"]'));
+assert.deepEqual(state.patches.at(-1), { lemma: 'w060', mastered: false });
+await waitSelected('已选 0');
+// Failure retention for 取消已掌握: the optimistic row returns with an error.
+state.failMastered = 'w061';
+await page.getByTestId('vocab-mastered-select-w061').check();
+await page.getByTestId('vocab-edit-unmaster').click();
+await page.waitForSelector('[data-testid="vocab-mastered-edit-error-w061"]');
+assert.equal(await page.locator('[data-testid="vocab-mastered-row"][data-word="w061"]').count(), 1,
+    'a failed 取消已掌握 rolls the row back');
+await waitSelected('已选 1');
+assert.match(await page.getByTestId('vocab-edit-summary').innerText(), /1 项失败/);
+state.failMastered = null;
+await page.getByTestId('vocab-edit-unmaster').click();
+await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-mastered-row"][data-word="w061"]'));
+await page.getByTestId('vocab-edit-done').click();
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
+
+// ── 内置词表 matrix: 加入收藏 / 标为已掌握 ──────────────────────────────
+await page.getByTestId('vocab-tab-gre').click();
+await page.waitForSelector('[data-testid="vocab-word-list"]');
+assert.equal(await page.locator('[data-testid^="vocab-list-select-"]').count(), 0);
+await page.getByTestId('vocab-list-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+assert.equal(await page.locator('[data-testid^="vocab-list-select-"]').count(), 3);
+assert.equal(await page.getByTestId('vocab-list-star-gre:abundant').isDisabled(), true);
+await page.getByTestId('vocab-list-select-gre:brisk').check();
+await page.getByTestId('vocab-edit-favorite').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-star-gre:brisk"]')?.getAttribute('aria-pressed') === 'true');
+await waitSelected('已选 0');
+// Failed 加入收藏 keeps the row selected + inline error; retry succeeds.
+state.failFavoritePost = 'candid';
+await page.getByTestId('vocab-list-select-gre:candid').check();
+await page.getByTestId('vocab-edit-favorite').click();
+await page.waitForSelector('[data-testid="vocab-list-edit-error-gre:candid"]');
+await waitSelected('已选 1');
+assert.match(await page.getByTestId('vocab-edit-summary').innerText(), /1 项失败/);
+state.failFavoritePost = null;
+await page.getByTestId('vocab-edit-favorite').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-star-gre:candid"]')?.getAttribute('aria-pressed') === 'true');
+await waitSelected('已选 0');
+// 标为已掌握 from the list: PATCH + DELETE the favorite just created.
+await page.getByTestId('vocab-list-select-gre:candid').check();
+await page.getByTestId('vocab-edit-master').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-master-toggle-gre:candid"]')?.getAttribute('aria-pressed') === 'true');
+await waitFor(() => state.patches.at(-1)?.lemma === 'candid' && state.patches.at(-1)?.mastered === true, 15000, 'batch list master');
+assert.equal(state.deletes.includes('vocab-fav-candid'), true);
+await page.getByTestId('vocab-edit-done').click();
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
+// Restore the 375 fixture contrast: brisk is un-starred again through its row
+// star (the batch only needed to prove the write path).
+await page.getByTestId('vocab-list-star-gre:brisk').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-star-gre:brisk"]')?.getAttribute('aria-pressed') === 'false');
+await waitFor(() => state.deletes.includes('vocab-fav-brisk'), 15000, 'brisk unstar');
+
+// ── 短语 matrix: 加入收藏 / 标为已掌握 ──────────────────────────────────
+await page.getByTestId('vocab-tab-phrases').click();
+await page.waitForSelector('[data-testid="phrase-list"]');
+// p2 starts favorited by §E: unstar it through the row star first.
+await page.getByTestId('phrase:p2-star').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="phrase:p2-star"]')?.getAttribute('aria-pressed') === 'false');
+await page.getByTestId('vocab-phrases-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+assert.equal(await page.locator('[data-testid^="phrase-select-"]').count(), 2);
+await page.screenshot({ path: `${SHOTS}/p0-14-1440-phrases-edit.png`, fullPage: false });
+await page.getByTestId('phrase-select-p2').check();
+await page.getByTestId('vocab-edit-favorite').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="phrase:p2-star"]')?.getAttribute('aria-pressed') === 'true');
+await waitSelected('已选 0');
+const phrasePostBatch = state.favoritePosts.at(-1);
+assert.equal(phrasePostBatch.meta.source_kind, 'wordlist');
+assert.equal(phrasePostBatch.meta.source_ref, 'phrases');
+// Failed 标为已掌握 stays selected; the retry PATCHes then deletes the favorite.
+state.failMastered = 'on the fence';
+await page.getByTestId('phrase-select-p2').check();
+await page.getByTestId('vocab-edit-master').click();
+await page.waitForSelector('[data-testid="phrase-edit-error-p2"]');
+await waitSelected('已选 1');
+state.failMastered = null;
+await page.getByTestId('vocab-edit-master').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="phrase:p2-master-toggle"]')?.getAttribute('aria-pressed') === 'true');
+await page.getByTestId('phrase-select-p1').check();
+await page.getByTestId('vocab-edit-master').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="phrase:p1-master-toggle"]')?.getAttribute('aria-pressed') === 'true');
+await page.getByTestId('vocab-edit-done').click();
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
+
+// Switching tabs exits edit mode and clears the selection.
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-list"]');
+await page.getByTestId('vocab-mine-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+await page.getByTestId('vocab-mine-select-fav-w030').check();
+await waitSelected('已选 1');
+await page.getByTestId('vocab-tab-mastered').click();
+await page.waitForSelector('[data-testid="vocab-mastered-list"]');
+assert.equal(await page.getByTestId('vocab-edit-bar').count(), 0, 'switching tabs exits edit mode');
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-list"]');
+assert.equal((await page.getByTestId('vocab-mine-edit').innerText()).trim(), '编辑');
+assert.equal((await page.getByTestId('vocab-edit-bar').count()), 0);
+assert.equal(await page.locator('[data-testid^="vocab-mine-select-"]').count(), 0,
+    'the selection is cleared on the next tab visit');
+
 // ═══ F) 状态接口 403/404 → nothing to degrade while the chips are gone ═══
 for (const status of [404, 403]) {
     state.stateFail = status;
@@ -1029,7 +1226,21 @@ assert.equal(await page.getByTestId('vocab-mine-sort').isVisible(), true, '排�
 assert.equal(await page.getByTestId('vocab-mine-filter').isVisible(), true, '筛选 must stay reachable at 375');
 assert.equal(await page.getByTestId('vocab-page-size').isVisible(), true, '每页条数 must stay reachable at 375');
 assert.equal(await page.getByTestId('vocab-page-jump').isVisible(), true, '跳页 must stay reachable at 375');
-assert.equal(await page.getByTestId('vocab-mine-bulk-master').count(), 0, 'no bulk bar at 375 either');
+assert.equal(await page.getByTestId('vocab-edit-bar').count(), 0, 'no batch bar before 编辑 at 375 either');
+assert.equal(await page.locator('[data-testid^="vocab-mine-select-"]').count(), 0,
+    '375 default state has no checkboxes');
+await page.getByTestId('vocab-mine-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+await page.screenshot({ path: `${SHOTS}/p0-14-375-mine-edit.png`, fullPage: false });
+assert.equal(await page.locator('[data-testid^="vocab-mine-select-"]').first().isVisible(), true,
+    'the edit checkbox stays reachable at 375');
+const editBarOverflow = await page.evaluate(() => {
+    const doc = document.documentElement;
+    return doc.scrollWidth - doc.clientWidth;
+});
+assert.ok(editBarOverflow <= 0, `375px horizontal overflow while editing: ${editBarOverflow}px`);
+await page.getByTestId('vocab-edit-done').click();
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
 assert.equal((await page.getByTestId('vocab-tab-mine').innerText()).startsWith('我的收藏'), true);
 assert.equal(await page.locator('[data-testid^="vocab-mine-master-toggle-"]:not([data-testid$="-indicator"])').first().isVisible(), true,
     'the 已掌握 check stays reachable at 375');

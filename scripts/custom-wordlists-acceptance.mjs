@@ -131,6 +131,8 @@ function createState() {
         deletes: [],
         renames: [],
         itemDeletes: [],
+        /** Item id whose DELETE fails (partial batch failure case). */
+        failItemDelete: null,
         reviewQueue: null,
     };
 }
@@ -326,6 +328,9 @@ async function installMocks(context, state) {
                 const body = request.postDataJSON() || {};
                 const ids = Array.isArray(body.itemIds) ? body.itemIds : [];
                 state.itemDeletes.push({ id, ids });
+                if (state.failItemDelete && ids.includes(state.failItemDelete)) {
+                    return fail(500, 'items delete failed');
+                }
                 list.items = list.items.filter((item) => !ids.includes(item.id));
                 return respond({ deleted: ids.length, itemCount: list.items.length });
             }
@@ -737,50 +742,122 @@ await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-
 assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 2 / 2 页');
 await page.screenshot({ path: `${SHOTS}/custom-wordlists-1440.png`, fullPage: false });
 
-// ── F) edit mode (勾选删除) + 重命名 + delete-table menu ─────────────────
-// Editing exists only on a custom list: no edit entry on 我的单词 / 已掌握 /
-// 内置词表 / 短语.
+// ── F) edit mode on every list + 自定义词表 matrix + 重命名 + delete-table ──
+// P0-14: every word list exposes 编辑, but the checkboxes only exist while
+// editing. 自定义词表 adds 删除词条 (ConfirmDialog) to 加入收藏 / 标为已掌握.
 await page.getByTestId('vocab-tab-mine').click();
 await page.waitForSelector('[data-testid="vocab-mine-panel"]');
-assert.equal(await page.getByTestId('vocab-custom-edit').count(), 0, 'no edit mode outside a custom list');
-assert.equal(await page.getByTestId('vocab-custom-edit-bar').count(), 0);
+assert.equal(await page.getByTestId('vocab-mine-edit').isVisible(), true,
+    '我的收藏 also exposes 编辑');
+assert.equal(await page.locator('[data-testid^="vocab-mine-select-"]').count(), 0,
+    'the default (non-edit) state renders no checkboxes');
+assert.equal(await page.getByTestId('vocab-edit-bar').count(), 0);
 await page.getByTestId('vocab-tab-gre').click();
-// This fixture's built-in list is empty, so the GRE tab renders the empty state.
 await page.waitForSelector('[data-testid="vocab-empty"]');
-assert.equal(await page.getByTestId('vocab-custom-edit').count(), 0);
+assert.equal(await page.getByTestId('vocab-list-edit').isVisible(), true,
+    '内置词表 exposes 编辑 even on its empty state');
+assert.equal(await page.locator('[data-testid^="vocab-list-select-"]').count(), 0);
+
 await page.getByTestId('vocab-tab-custom-wl-1').click();
 await page.getByTestId('vocab-custom-list').waitFor();
 assert.equal(await page.getByTestId('vocab-custom-edit').isVisible(), true);
+assert.equal(await page.locator('[data-testid^="vocab-custom-select-"]').count(), 0,
+    'the custom list hides its checkboxes until 编辑');
 await page.getByTestId('vocab-custom-edit').click();
-await page.getByTestId('vocab-custom-edit-bar').waitFor();
-assert.equal(await page.getByTestId('vocab-custom-edit').count(), 0, 'edit mode replaces the 编辑 button');
-assert.equal((await page.getByTestId('vocab-custom-selected').innerText()).trim(), '已选 0');
+await page.getByTestId('vocab-edit-bar').waitFor();
+assert.equal((await page.getByTestId('vocab-custom-edit').innerText()).trim(), '完成',
+    'the toolbar button switches to 完成');
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 0');
 assert.equal(await page.locator('[data-testid^="vocab-custom-select-"]').count(), 2,
     'edit mode adds one checkbox per row');
+// Clicking the row toggles the selection and never expands it.
+await page.locator('[data-testid="vocab-custom-row"][data-word="candid"]').click();
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 1');
+assert.equal(await page.getByTestId('vocab-custom-detail-candid').count(), 0,
+    'row click selects instead of expanding while editing');
+assert.equal(await page.getByTestId('vocab-custom-star-candid').isDisabled(), true,
+    'the star is disabled while editing');
+assert.equal(await page.getByTestId('vocab-custom-master-toggle-candid').isDisabled(), true,
+    'the mastered check is disabled while editing');
+await page.locator('[data-testid="vocab-custom-row"][data-word="candid"]').click();
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 0');
+await page.screenshot({ path: `${SHOTS}/p0-14-custom-edit-1440.png`, fullPage: false });
+
+// 加入收藏 runs row by row; the selection clears on success.
+await page.getByTestId('vocab-custom-select-it-candid').check();
+const customFavBefore = state.favorites.length;
+await page.getByTestId('vocab-edit-favorite').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-custom-star-candid"]')?.getAttribute('aria-pressed') === 'true');
+assert.equal(state.favorites.length, customFavBefore + 1);
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 0',
+    'a successful batch row leaves the selection');
+const customFav = state.favorites.find((fav) => fav.en_text === 'candid');
+assert.equal(customFav.source_kind, 'wordlist');
+assert.equal(customFav.source_ref, 'wl-1');
+assert.equal(customFav.source_title, '旅行词汇');
+
+// 标为已掌握 runs row by row: PATCH + favorite removal (mutual exclusion).
+await page.getByTestId('vocab-custom-select-it-candid').check();
+await page.getByTestId('vocab-edit-master').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-custom-master-toggle-candid"]')?.getAttribute('aria-pressed') === 'true');
+assert.equal(state.masteredPatches.at(-1).mastered, true);
+assert.match(await rowTone(page, 'candid'), /bg-success\/10/);
+assert.equal(await page.getByTestId('vocab-custom-star-candid').getAttribute('aria-pressed'), 'false');
+assert.equal(state.favoriteDeletes.includes('vocab-fav-candid'), true,
+    'marking mastered removes the batch-created favorite');
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 0');
+
+// 删除词条 needs the ConfirmDialog and executes per row: a failed row stays
+// selected with its own error and the bar reports 「N 项失败」.
 await page.getByTestId('vocab-custom-select-it-abundant').check();
-assert.equal((await page.getByTestId('vocab-custom-selected').innerText()).trim(), '已选 1');
-await page.screenshot({ path: `${SHOTS}/custom-wordlists-edit-mode-1440.png`, fullPage: false });
-await page.getByTestId('vocab-custom-edit-delete').click();
+await page.getByTestId('vocab-custom-select-it-candid').check();
+state.failItemDelete = 'it-abundant';
+await page.getByTestId('vocab-edit-delete').click();
 await page.getByTestId('vocab-custom-items-delete').waitFor();
-assert.match(await page.getByTestId('vocab-custom-items-delete').innerText(), /删除选中的 1 个词条/);
+assert.match(await page.getByTestId('vocab-custom-items-delete').innerText(), /删除选中的 2 个词条/);
 assert.match(await page.getByTestId('vocab-custom-items-delete').innerText(), /只从这张词表删除/);
 await page.getByTestId('vocab-custom-items-delete-cancel').click();
 await page.getByTestId('vocab-custom-items-delete').waitFor({ state: 'hidden' });
-assert.equal(state.itemDeletes.length, 0, 'cancel keeps the selected row');
-assert.equal(await page.locator('[data-testid^="vocab-custom-row"]').count(), 2);
-await page.getByTestId('vocab-custom-edit-delete').click();
+assert.equal(state.itemDeletes.length, 0, 'cancel keeps both selected rows');
+await page.getByTestId('vocab-edit-delete').click();
 await page.getByTestId('vocab-custom-items-delete').waitFor();
 await page.getByTestId('vocab-custom-items-delete-confirm').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 1);
 await page.getByTestId('vocab-custom-items-delete').waitFor({ state: 'hidden', timeout: 5000 });
-assert.equal(state.itemDeletes.length, 1);
-assert.equal(state.itemDeletes[0].id, 'wl-1');
-assert.deepEqual(state.itemDeletes[0].ids, ['it-abundant']);
-assert.equal(await page.getByTestId('vocab-tab-count-custom-wl-1').innerText(), '1');
-assert.equal(state.favorites.length, 1, 'deleting a row keeps its saved favorite');
-await page.getByTestId('vocab-custom-edit-done').click();
-await page.getByTestId('vocab-custom-edit-bar').waitFor({ state: 'detached' });
+assert.deepEqual(state.itemDeletes.map((entry) => entry.ids).flat(), ['it-abundant', 'it-candid']);
+assert.equal(await page.getByTestId('vocab-custom-edit-error-it-abundant').count(), 1,
+    'the failed row keeps its inline error');
+assert.equal(await page.getByTestId('vocab-edit-summary').innerText(), '1 项失败，失败项仍在已选中。');
+assert.equal((await page.getByTestId('vocab-edit-selected').innerText()).trim(), '已选 1',
+    'the failed row stays selected');
+assert.equal(await page.getByTestId('vocab-tab-count-custom-wl-1').innerText(), '1',
+    'the tab count follows the itemCount returned by the server');
+state.failItemDelete = null;
+await page.getByTestId('vocab-edit-delete').click();
+await page.getByTestId('vocab-custom-items-delete').waitFor();
+await page.getByTestId('vocab-custom-items-delete-confirm').click();
+await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-custom-row"]'));
+await page.getByTestId('vocab-custom-items-delete').waitFor({ state: 'hidden', timeout: 5000 });
+assert.equal(await page.getByTestId('vocab-tab-count-custom-wl-1').count(), 0,
+    'a zero itemCount renders no tab badge');
+assert.equal(await page.getByTestId('vocab-total').innerText(), '共 0 词');
+assert.equal(await page.getByTestId('vocab-edit-summary').count(), 0,
+    'a clean retry clears the failure summary');
+assert.equal(state.favorites.length, 1, 'deleting rows keeps the saved favorite');
+
+// 完成 exits editing and clears the selection; switching tabs does the same.
+await page.getByTestId('vocab-edit-done').click();
+await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
 assert.equal(await page.getByTestId('vocab-custom-edit').isVisible(), true);
+await page.getByTestId('vocab-custom-edit').click();
+await page.getByTestId('vocab-edit-bar').waitFor();
+await page.getByTestId('vocab-tab-gre').click();
+await page.waitForSelector('[data-testid="vocab-empty"]');
+await page.getByTestId('vocab-tab-custom-wl-1').click();
+await page.waitForSelector('[data-testid="vocab-custom-empty"]');
+assert.equal(await page.getByTestId('vocab-edit-bar').count(), 0, 'switching tabs exits edit mode');
+assert.equal((await page.getByTestId('vocab-custom-edit').innerText()).trim(), '编辑');
+assert.equal(await page.locator('[data-testid^="vocab-custom-select-"]').count(), 0);
 
 // 重命名 from the list menu: the tab label follows the PATCH response.
 await page.getByTestId('vocab-custom-menu-trigger').click();

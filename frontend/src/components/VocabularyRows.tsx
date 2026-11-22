@@ -14,6 +14,10 @@
 // 我已掌握/撤销 button. Expansion animates its own height, so the table never
 // reflows column widths when a row opens.
 //
+// Edit mode (P0-14) is shared by every list: `selectable` prepends the leading
+// checkbox column, makes the row click toggle its selection instead of
+// expanding, and disables the star/check so a batch never triggers a row write.
+//
 // Colour and space come from the design tokens; no new literals are added for
 // rows, star, mastered check, toolbar or expansion.
 import { type ReactNode } from 'react';
@@ -21,6 +25,7 @@ import {
     Check,
     ChevronDown,
     ListFilter,
+    Pencil,
     Search,
     Star,
     Volume2,
@@ -93,7 +98,7 @@ export interface WordRowAction {
     done?: boolean;
 }
 
-/** Leading multi-select control (custom-wordlist edit mode only). */
+/** Leading multi-select control (P0-14 edit mode on every word list). */
 export interface WordRowSelection {
     checked: boolean;
     onChange: (checked: boolean) => void;
@@ -185,7 +190,7 @@ export interface WordTableRow {
     detail?: ReactNode;
     /** Actions rendered inside the expanded area. */
     actions?: readonly WordRowAction[];
-    /** Leading checkbox (custom-wordlist edit mode only). */
+    /** Leading checkbox (P0-14 edit mode; present on every list while editing). */
     selection?: WordRowSelection;
     /** Row-level write failure, rendered under the row (never a page error). */
     error?: { message: string; testId?: string };
@@ -203,7 +208,7 @@ export interface WordTableProps {
     testIdPrefix?: string;
     /** Render the ×N column (我的单词 only). */
     showSeen?: boolean;
-    /** Render the leading checkbox column (custom-wordlist edit mode). */
+    /** Render the leading checkbox column and put the table in edit mode. */
     selectable?: boolean;
     /** Accessible name of the list. */
     ariaLabel?: string;
@@ -320,6 +325,7 @@ export function WordTable({
                         desktopGrid={desktopGrid}
                         cols={cols}
                         reduceMotion={reduceMotion}
+                        selectionMode={selectable}
                     />
                 ))}
             </div>
@@ -335,6 +341,7 @@ function WordTableRowView({
     desktopGrid,
     cols,
     reduceMotion,
+    selectionMode,
 }: {
     row: WordTableRow;
     hideChinese: boolean;
@@ -343,6 +350,7 @@ function WordTableRowView({
     desktopGrid: string;
     cols: ReturnType<typeof controlColumns>;
     reduceMotion: boolean;
+    selectionMode: boolean;
 }) {
     const { t } = useI18n();
     const ids = {
@@ -361,23 +369,34 @@ function WordTableRowView({
     const translationHidden = hideChinese && !row.revealed;
     const phonetic = normalizePhonetic(row.phonetic);
     const translation = (row.translation ?? '').trim();
-    const expandable = Boolean(row.onToggleExpand);
+    // P0-14: while editing, the row click toggles selection and the disclosure
+    // is closed — the checkbox is the only row-level action.
+    const selectionControl = selectionMode ? row.selection : undefined;
+    const selected = Boolean(selectionControl?.checked);
+    const expandable = !selectionMode && Boolean(row.onToggleExpand);
     // The whole row is the expand/collapse hot zone (specs/005 §整行展开); the
     // reveal callback (hide-Chinese) stays a secondary effect of the same
     // click. Inner controls stop propagation and keep their own handlers.
-    const activatable = expandable || Boolean(row.onActivate);
+    const activatable = Boolean(selectionControl) || expandable || Boolean(row.onActivate);
     // The disclosure id must be a legal, unique HTML id (row keys can
     // contain spaces/colons); the test hook keeps its legacy string.
     const detailId = ids.detail.replace(/\s+/g, '-');
     const activate = () => {
+        if (selectionControl) {
+            if (selectionControl.disabled) return;
+            selectionControl.onChange(!selected);
+            return;
+        }
         row.onActivate?.();
         row.onToggleExpand?.();
     };
-    const activationLabel = expandable
-        ? `${row.expandLabel} ${row.word}`
-        : row.revealed
-            ? t('vocab.tapHide')
-            : t('vocab.tapReveal');
+    const activationLabel = selectionControl
+        ? selectionControl.label
+        : expandable
+            ? `${row.expandLabel} ${row.word}`
+            : row.revealed
+                ? t('vocab.tapHide')
+                : t('vocab.tapReveal');
 
     return (
         <div data-word={row.word}>
@@ -385,8 +404,13 @@ function WordTableRowView({
                 the edit-mode checkbox column) reads the state; hover stays the
                 inner grid's own `hover:bg-state-hover` layer. */}
             <div
-                className={cn('flex items-stretch', wordRowToneClass(row.tone))}
+                className={cn(
+                    'flex items-stretch',
+                    wordRowToneClass(row.tone),
+                    selected && 'bg-state-selected',
+                )}
                 data-row-tone={row.tone ?? 'none'}
+                data-selected={selectionControl ? (selected ? 'true' : 'false') : undefined}
             >
                 {row.selection && (
                     <div className="flex shrink-0 items-center ps-2">
@@ -404,7 +428,9 @@ function WordTableRowView({
                     data-word={row.word}
                     role={activatable ? 'button' : undefined}
                     tabIndex={activatable ? 0 : undefined}
-                    aria-pressed={hideChinese ? Boolean(row.revealed) : undefined}
+                    aria-pressed={selectionControl
+                        ? selected
+                        : hideChinese ? Boolean(row.revealed) : undefined}
                     aria-expanded={expandable ? Boolean(row.expanded) : undefined}
                     aria-controls={expandable ? detailId : undefined}
                     aria-label={activatable ? activationLabel : undefined}
@@ -505,7 +531,7 @@ function WordTableRowView({
                                 ariaLabel={row.favoriteLabel}
                                 ariaPressed={row.favored}
                                 testId={ids.star}
-                                disabled={row.favoriteBusy || row.favoriteDisabled}
+                                disabled={row.favoriteBusy || row.favoriteDisabled || selectionMode}
                                 loading={row.favoriteBusy}
                                 onClick={row.onToggleFavorite}
                             >
@@ -530,7 +556,7 @@ function WordTableRowView({
                                 ariaLabel={row.masteredLabel}
                                 ariaPressed={row.mastered}
                                 testId={ids.mastered}
-                                disabled={row.masteredBusy || row.masteredDisabled}
+                                disabled={row.masteredBusy || row.masteredDisabled || selectionMode}
                                 loading={row.masteredBusy}
                                 onClick={row.onToggleMastered}
                                 className="group/mastered"
@@ -569,7 +595,11 @@ function WordTableRowView({
                                 data-testid={ids.expand}
                                 aria-hidden="true"
                                 title={row.expandLabel}
-                                className={cn('inline-flex h-control-sm w-8 items-center justify-center', cols.expand)}
+                                className={cn(
+                                    'inline-flex h-control-sm w-8 items-center justify-center',
+                                    selectionMode && 'opacity-40',
+                                    cols.expand,
+                                )}
                             >
                                 <ChevronDown
                                     className={cn(
@@ -594,7 +624,7 @@ function WordTableRowView({
                 </p>
             )}
 
-            {expandable && (
+            {expandable && !selectionMode && (
                 <AnimatePresence initial={false}>
                     {row.expanded && (
                         <motion.div
@@ -678,13 +708,25 @@ export interface WordbookToolbarProps {
     };
     /** Extra controls (e.g. the hide-Chinese switch) rendered after the filters. */
     extra?: ReactNode;
+    /**
+     * P0-14 edit-mode toggle. Every toolbar owns one: 编辑 → 完成, with the
+     * same leading checkbox column in the table while it is on.
+     */
+    edit?: {
+        editing: boolean;
+        onToggle: () => void;
+        label: string;
+        doneLabel: string;
+        testId: string;
+        disabled?: boolean;
+    };
 }
 
 const TOOLBAR_BUTTON =
     'inline-flex h-control-md shrink-0 items-center gap-1.5 rounded-control border border-line-subtle bg-surface-2/60 px-2.5 text-caption font-medium text-fg-strong transition-colors hover:bg-surface-3/60 hover:text-fg-primary';
 
 /** Search + 排序 + 筛选, identical on every word list. */
-export function WordbookToolbar({ search, sort, filter, extra }: WordbookToolbarProps) {
+export function WordbookToolbar({ search, sort, filter, extra, edit }: WordbookToolbarProps) {
     const { t } = useI18n();
 
     const filterItems: MenuItem[] = [];
@@ -810,6 +852,26 @@ export function WordbookToolbar({ search, sort, filter, extra }: WordbookToolbar
                         className="inline-flex h-control-md items-center rounded-control px-2 text-caption font-medium text-fg-muted transition-colors hover:bg-state-hover hover:text-fg-primary"
                     >
                         {t('vocab.filter.clear')}
+                    </button>
+                )}
+
+                {edit && (
+                    <button
+                        type="button"
+                        data-testid={edit.testId}
+                        aria-pressed={edit.editing}
+                        disabled={edit.disabled}
+                        onClick={edit.onToggle}
+                        className={cn(
+                            TOOLBAR_BUTTON,
+                            edit.editing && 'border-brand/30 bg-brand/10 text-brand-300',
+                            'disabled:pointer-events-none disabled:opacity-50',
+                        )}
+                    >
+                        {edit.editing
+                            ? <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                            : <Pencil className="h-3.5 w-3.5 text-fg-muted" aria-hidden="true" />}
+                        {edit.editing ? edit.doneLabel : edit.label}
                     </button>
                 )}
 
