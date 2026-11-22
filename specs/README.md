@@ -53,3 +53,4 @@
 | [038](./038-custom-wordlists/spec.md) | 导入自定义词表（CSV / Anki TSV） | 登录用户导入 CSV/TSV 为独立词表 tab：列映射/预览校验/去重/限额；词条可加入我的单词、复习、已掌握；词表释义优先，复习卡用定义快照 | 待实现 |
 | [039](./039-reader-surface/spec.md) | 阅读器统一渲染层（ReadingSurface） | 共享段落渲染 + 分析加载 hook，四个阅读器（导入文章/免费库文章/公版书/导入书）全部退化为壳 | 阶段 1 + 阶段 2 已实现 |
 | [040](./040-cefr-lemma-list/spec.md) | CEFR 10k 词形表（只读） | 基于现有 frequency_bands + lexicon 静态数据新增「词形」tab：10k lemma、forms、A1–C1 筛选、词形搜索；不改现有词表结构与数据 | 已实现（后端 + 前端 + 中越文案） |
+| [041](./041-word-family-list/spec.md) | CEFR 词族表（只读，替换词形） | 基于 WordNet 派生关系 + 人工黑/白名单：族可含 10k 外词、无族词不显示；只读 tab/搜索/筛选/分页；预生成静态数据，不改现有词表 | 待实现 |
