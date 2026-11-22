@@ -11,10 +11,14 @@
 //      table only (no /api/review/words GET), the mark disappears, survives a
 //      reload through localStorage, and undo restores it.
 //
-// Updated for the unified word-list UI (commit 381440f): the word book's guest
-// write path is now the expanded row action (expand → 我会了) and the undo lives
-// in the 已掌握/我会了 tab's expanded row; the removed 学习/已掌握 segment is
-// replaced by the real tab. The reader/highlight contract is unchanged.
+// Updated for P0-10 (2026-11-22): the word book's mastery control is the inline
+// row check on every list — the expanded area has no text 我已掌握/我会了 action.
+// For 「我的收藏」 (formerly 我的单词) a signed-in check PATCHes
+// `word_states.mastered=1` and then removes the favorite (mutual exclusion), so
+// the row leaves the list; a failed removal rolls the mark back and shows an
+// inline row error. Guests write the local 「我会了」 table only. Undo in the
+// 已掌握 (guest: 我会了) tab is the same row check. The reader/highlight contract
+// is unchanged.
 //
 // Every /api/** request is mocked; nothing touches :8000 or :5173.
 // Run: APP_URL=http://127.0.0.1:5199/ node scripts/mastered-filter-acceptance.mjs
@@ -120,6 +124,14 @@ const state = {
     guestMasteredFetches: 0,
     classifyRequests: 0,
     patchCount: 0,
+    /** PATCH bodies in call order (the check + any rollback). */
+    patchBodies: [],
+    /** Favorites the server returns; a successful DELETE removes one. */
+    favorites: [FAVORITE],
+    /** Make the favorite DELETE fail (rollback check). */
+    deleteFails: false,
+    /** Favorite ids passed to DELETE, in call order (success or failure). */
+    deleteIds: [],
 };
 
 function levelForWord(word) {
@@ -209,7 +221,14 @@ await context.route('**/api/**', async (route) => {
     if (pathname === '/api/history' || pathname === '/api/subscriptions' || pathname === '/api/shows') {
         return respond(pathname === '/api/shows' ? { shows: [] } : []);
     }
-    if (pathname === '/api/favorites' && method === 'GET') return respond([FAVORITE]);
+    if (pathname === '/api/favorites' && method === 'GET') return respond(state.favorites);
+    if (/^\/api\/favorites\/[^/]+$/.test(pathname) && method === 'DELETE') {
+        const id = decodeURIComponent(pathname.split('/').pop());
+        state.deleteIds.push(id);
+        if (state.deleteFails) return fail(500, 'favorite storage unavailable');
+        state.favorites = state.favorites.filter((fav) => fav.id !== id);
+        return respond({ status: 'ok', deleted: true, id });
+    }
     if (pathname === '/api/models') {
         return respond({
             models: [{ id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'deepseek', available: true, quotaInfo: '' }],
@@ -281,6 +300,7 @@ await context.route('**/api/**', async (route) => {
         const body = request.postDataJSON() || {};
         const lemma = String(body.lemma ?? '').toLowerCase();
         state.patchCount += 1;
+        state.patchBodies.push(body);
         if (body.mastered === true) state.mastered.add(lemma);
         else state.mastered.delete(lemma);
         return respond({ status: 'ok', word: publicWord(lemma, body.mastered === true) });
@@ -495,7 +515,113 @@ assert.equal(await page.locator('[data-testid=reader-en-0] [role=alert]').count(
     'a failed mastered list must not surface an error in the reader');
 await shot('signedin-list-fail-degraded');
 
+// ── A2) signed-in 我的收藏: the inline row check ────────────────────────────
+// P0-10 replaced the expanded 「我已掌握」 text action with the icon-only row
+// check. Marking a favorite mastered must PATCH `word_states.mastered=1`, then
+// remove the favorite (mutual exclusion) so the row leaves 我的收藏 and the
+// word moves into 已掌握. A failed favorite removal rolls the mark back and
+// leaves an inline, retryable row error instead of a success-looking row.
+state.mode = 'signedIn';
+state.mastered = new Set();
+state.masteredFail = false;
+state.favorites = [FAVORITE];
+state.deleteFails = false;
+
+// The reader's dictionary-card mark in section A also removed this favorite
+// (specs/005 互斥), so the word book needs a fresh app boot with the server
+// favorite list restored before exercising the row check.
+await page.evaluate(() => { window.location.hash = '#/app/profile/vocabulary'; });
+await page.reload({ waitUntil: 'domcontentloaded' });
+await waitApp();
+await page.locator('[data-testid=vocab-tabs]').waitFor({ state: 'visible', timeout: 20000 });
+await page.locator('[data-testid=vocab-tab-mine]').click();
+await page.locator('[data-testid=vocab-mine-list]').waitFor({ state: 'visible', timeout: 20000 });
+assert.equal((await page.locator('[data-testid=vocab-tab-mine]').innerText()).startsWith('我的收藏'), true,
+    'the mine tab reads 我的收藏');
+
+const mineCheck = page.locator('[data-testid=vocab-mine-master-toggle-f1]');
+await mineCheck.waitFor({ state: 'visible', timeout: 20000 });
+assert.equal(await mineCheck.getAttribute('aria-pressed'), 'false',
+    'an unmastered 我的收藏 row check starts unpressed');
+assert.equal(await mineCheck.getAttribute('aria-label'), '已掌握 luminous',
+    'the row check names the mastered action');
+
+// The expanded area keeps no text mastery action: the check is the only one.
+await page.locator('[data-testid=vocab-mine-word-f1]').click();
+await page.locator('[data-testid=vocab-mine-detail-f1]').waitFor({ state: 'visible', timeout: 10000 });
+assert.equal(await page.locator('[data-testid=vocab-mine-master-f1]').count(), 0,
+    'the expanded 我的收藏 area keeps no text mastered action');
+assert.ok(!/(我已掌握|取消已掌握)/.test(await page.locator('[data-testid=vocab-mine-detail-f1]').innerText()),
+    'no text mastery action is rendered inside the 我的收藏 expanded area');
+await page.locator('[data-testid=vocab-mine-word-f1]').click(); // collapse
+
+// P0-10 375px: the row check stays reachable and the list does not overflow.
+await page.setViewportSize({ width: 375, height: 812 });
+const overflow375 = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+);
+assert.ok(overflow375 <= 0, `375px horizontal overflow in 我的收藏: ${overflow375}px`);
+assert.equal(await mineCheck.isVisible(), true, 'the mastered check stays reachable at 375');
+await page.setViewportSize({ width: 1440, height: 1000 });
+
+const patchesBeforeMark = state.patchBodies.length;
+const deletesBeforeMark = state.deleteIds.length;
+await mineCheck.click();
+await page.locator('[data-testid=vocab-mine-empty]').waitFor({ state: 'visible', timeout: 20000 });
+assert.equal(state.patchBodies.length, patchesBeforeMark + 1, 'the row check PATCHes the server');
+assert.deepEqual(
+    { lemma: state.patchBodies.at(-1).lemma, mastered: state.patchBodies.at(-1).mastered },
+    { lemma: 'luminous', mastered: true },
+    'the row check PATCHes mastered=true for its word',
+);
+assert.equal(state.deleteIds.length, deletesBeforeMark + 1, 'marking mastered removes the favorite');
+assert.equal(state.deleteIds.at(-1), 'f1', 'the removed favorite is the row itself');
+assert.ok(state.mastered.has('luminous'), 'PATCH records the mastered word');
+assert.equal(state.favorites.length, 0, 'the favorite is gone from the server list');
+await page.waitForFunction(
+    () => document.querySelector('[data-testid="vocab-tab-count-mastered"]')?.textContent === '1',
+    null,
+    { timeout: 10000 },
+);
+assert.equal((await page.locator('[data-testid=vocab-tab-count-mastered]').innerText()).trim(), '1',
+    'the word moves into the 已掌握 tab');
+await shot('signedin-wordbook-after-row-check');
+
+// Failure rollback: the favorite DELETE fails, so the mark is undone and the
+// row stays in 我的收藏 with an inline error.
+state.favorites = [FAVORITE];
+state.mastered = new Set();
+state.deleteFails = true;
+await page.reload({ waitUntil: 'domcontentloaded' });
+await waitApp();
+await page.locator('[data-testid=vocab-tab-mine]').click();
+await page.locator('[data-testid=vocab-mine-list]').waitFor({ state: 'visible', timeout: 20000 });
+const patchesBeforeFail = state.patchBodies.length;
+const deletesBeforeFail = state.deleteIds.length;
+await page.locator('[data-testid=vocab-mine-master-toggle-f1]').click();
+const rowError = page.locator('[data-testid=vocab-mine-error-f1]');
+await rowError.waitFor({ state: 'visible', timeout: 20000 });
+assert.equal((await rowError.innerText()).trim(),
+    '没能移除该词的收藏，已回滚「已掌握」，请重试。',
+    'a failed favorite removal reports the rollback inline');
+assert.equal(state.deleteIds.length, deletesBeforeFail + 1, 'the failed DELETE is observed');
+assert.equal(state.patchBodies.length, patchesBeforeFail + 2,
+    'a failed favorite removal triggers a rollback PATCH');
+assert.deepEqual(state.patchBodies.slice(-2).map((body) => body.mastered), [true, false],
+    'the rollback PATCH clears the mastered mark');
+assert.ok(!state.mastered.has('luminous'), 'a rolled-back mark is not recorded as mastered');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mine-master-toggle-f1"]')
+    ?.getAttribute('aria-pressed') === 'false', null, { timeout: 10000 });
+assert.equal(await page.locator('[data-testid=vocab-mine-toggle-f1]').count(), 1,
+    'the row stays in 我的收藏 after the rollback');
+await shot('signedin-wordbook-delete-fail-rollback');
+
 // ── B) guest ──────────────────────────────────────────────────────────────
+// Leave the signed-in word book for the reader first; only then switch the
+// mocked session to guest so the signed-in mount cannot pollute the guest
+// mastered-list counter.
+await page.evaluate(() => { window.location.hash = '#/app/content/reader/art1'; });
+await sleep(500);
 state.mode = 'guest';
 state.masteredFail = false;
 state.mastered = new Set();
@@ -511,25 +637,52 @@ assert.equal(await page.evaluate((key) => localStorage.getItem(key), GUEST_KEY),
 // Guests cannot open the dictionary card: word lookup is an AI entry, so the
 // app's requireAi() shows the login overlay before the card mounts (pre-existing
 // gate, unchanged by this task). The reachable guest write path for the same
-// local table is the word book's 「我会了」/「撤销」 toggle; both end up in the
+// local table is the word book's 「我会了」/「撤销」 row check; both end up in the
 // shared ignored-words store, so the highlight assertion below still exercises
 // the exact requirement (guest mark → mark gone, survives a reload).
 await goHash('#/app/profile/vocabulary');
-// Row actions live inside the expanded area (shared WordTable, 381440f).
+const guestMineTab = page.locator('[data-testid=vocab-tab-mine]');
+await guestMineTab.waitFor({ state: 'visible', timeout: 20000 });
+assert.equal((await guestMineTab.innerText()).startsWith('我的收藏'), true,
+    'the guest mine tab reads 我的收藏 too');
+await guestMineTab.click();
+await page.locator('[data-testid=vocab-mine-list]').waitFor({ state: 'visible', timeout: 20000 });
+
+// P0-10: the icon-only row check is the only mastery action; the old expanded
+// 「我会了」 text action is gone.
 const guestExpand = page.locator('[data-testid=vocab-mine-expand-f1]');
 await guestExpand.waitFor({ state: 'visible', timeout: 20000 });
 await guestExpand.click();
-const guestMasterButton = page.locator('[data-testid=vocab-mine-master-f1]');
-await guestMasterButton.waitFor({ state: 'visible', timeout: 20000 });
-assert.equal((await guestMasterButton.innerText()).trim(), '我会了',
-    'word book keeps its own guest label');
+await page.locator('[data-testid=vocab-mine-detail-f1]').waitFor({ state: 'visible', timeout: 20000 });
+assert.equal(await page.locator('[data-testid=vocab-mine-master-f1]').count(), 0,
+    'the guest 我的收藏 expanded area keeps no text mastered action');
+assert.ok(!/(我已掌握|我会了)/.test(await page.locator('[data-testid=vocab-mine-detail-f1]').innerText()),
+    'no text mastery action is rendered inside the guest expanded area');
+await guestExpand.click(); // collapse
+
+const guestMasterCheck = page.locator('[data-testid=vocab-mine-master-toggle-f1]');
+await guestMasterCheck.waitFor({ state: 'visible', timeout: 20000 });
+assert.equal(await guestMasterCheck.getAttribute('aria-label'), '我会了 luminous',
+    'the guest row check keeps its own label (never 已掌握)');
+assert.equal(await guestMasterCheck.getAttribute('aria-pressed'), 'false');
+const patchesBeforeGuestMark = state.patchBodies.length;
+const deletesBeforeGuestMark = state.deleteIds.length;
 await shot('guest-wordbook-before-ignore');
-await guestMasterButton.click();
+await guestMasterCheck.click();
 await page.waitForFunction(
     (key) => (localStorage.getItem(key) ?? '').includes('luminous'),
     GUEST_KEY,
     { timeout: 10000 },
 );
+await page.waitForFunction(
+    () => document.querySelector('[data-testid="vocab-mine-master-toggle-f1"]')?.getAttribute('aria-pressed') === 'true',
+    null,
+    { timeout: 10000 },
+);
+assert.equal(state.patchBodies.length, patchesBeforeGuestMark,
+    'the guest row check writes the local table only (never PATCH)');
+assert.equal(state.deleteIds.length, deletesBeforeGuestMark,
+    'the guest row check never removes a favorite');
 await shot('guest-wordbook-after-ignore');
 
 // Back to the reader: the same local table now filters the mark.
@@ -555,19 +708,42 @@ assert.equal(state.guestMasteredFetches, 0, 'guest reload still makes no mastere
 await shot('guest-after-reload');
 
 // Undo from the word book puts the mark back and clears the local table. The
-// marked row now lives in the 已掌握 (guest: 我会了) tab, so open that tab and
-// expand the row before finding its 撤销 action.
+// marked row now lives in the 已掌握 (guest: 我会了) tab, where the row check
+// itself is the undo entry; the expanded area has no text undo action.
 await goHash('#/app/profile/vocabulary');
-await page.locator('[data-testid=vocab-tab-mastered]').waitFor({ state: 'visible', timeout: 20000 });
-assert.equal((await page.locator('[data-testid=vocab-tab-mastered]').innerText()).trim().startsWith('我会了'), true,
+const masteredTab = page.locator('[data-testid=vocab-tab-mastered]');
+await masteredTab.waitFor({ state: 'visible', timeout: 20000 });
+assert.equal((await masteredTab.innerText()).trim().startsWith('我会了'), true,
     'guest tab reads 我会了');
-await page.locator('[data-testid=vocab-tab-mastered]').click();
+await masteredTab.click();
 await page.locator('[data-testid=vocab-mastered-list]').waitFor({ state: 'visible', timeout: 20000 });
+
+const guestUndoCheck = page.locator('[data-testid=vocab-mastered-master-toggle-luminous]');
+await guestUndoCheck.waitFor({ state: 'visible', timeout: 20000 });
+assert.equal(await guestUndoCheck.getAttribute('aria-pressed'), 'true',
+    'a mastered row check starts pressed');
+assert.equal(await guestUndoCheck.getAttribute('aria-label'), '撤销 luminous',
+    'the pressed row check is the undo action');
 await page.locator('[data-testid=vocab-mastered-expand-luminous]').click();
-const guestUndoButton = page.locator('[data-testid=vocab-mastered-undo-luminous]');
-await guestUndoButton.waitFor({ state: 'visible', timeout: 20000 });
-assert.equal((await guestUndoButton.innerText()).trim(), '撤销', 'guest undo label in the word book');
-await guestUndoButton.click();
+await page.locator('[data-testid=vocab-mastered-detail-luminous]').waitFor({ state: 'visible', timeout: 20000 });
+assert.equal(await page.locator('[data-testid=vocab-mastered-undo-luminous]').count(), 0,
+    'the expanded 已掌握 area keeps no text undo action');
+assert.equal(await page.locator('[data-testid=vocab-mastered-detail-luminous] button',
+    { hasText: /撤销|已掌握/ }).count(), 0,
+    'no text mastery action is rendered inside the expanded 已掌握 area');
+
+// Hide-Chinese still works in the mastered tab: the meaning cell disappears and
+// tapping the row reveals it.
+await page.locator('[data-testid=vocab-hide-toggle]').click();
+assert.equal(await page.locator('[data-testid=vocab-mastered-translation-luminous]').count(), 0,
+    'hide-Chinese hides the mastered meaning cell');
+await page.locator('[data-testid=vocab-mastered-word-luminous]').click();
+await page.locator('[data-testid=vocab-mastered-translation-luminous]').waitFor({ state: 'visible', timeout: 10000 });
+await page.locator('[data-testid=vocab-hide-toggle]').click(); // Chinese back on
+assert.equal(await page.locator('[data-testid=vocab-mastered-translation-luminous]').count(), 1,
+    'turning hide-Chinese off restores the meaning cell');
+
+await guestUndoCheck.click();
 await page.waitForFunction(
     (key) => !(localStorage.getItem(key) ?? '').includes('luminous'),
     GUEST_KEY,
