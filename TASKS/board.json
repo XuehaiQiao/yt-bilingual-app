@@ -111,6 +111,23 @@
       "deps": [
         "P0-05"
       ]
+    },
+    {
+      "id": "P0-07",
+      "file": "TASKS/P0-07-acceptance-sync.md",
+      "status": "claimed",
+      "owner": "sync-impl",
+      "write_scope": [
+        "scripts/wordbook-v12-acceptance.mjs",
+        "scripts/custom-wordlists-acceptance.mjs",
+        "specs/005-favorites-export/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P0-01",
+        "P0-02",
+        "P0-03"
+      ]
     }
   ]
 }
