@@ -18,7 +18,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0027_review_mastered"
+HEAD = "0029_word_state_definition"
 PREVIOUS = "0015_assessment_sessions"
 
 

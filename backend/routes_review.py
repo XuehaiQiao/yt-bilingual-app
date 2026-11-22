@@ -58,6 +58,9 @@ class AddWordRequest(BaseModel):
     # 来源形状由 srs.normalize_source 校验（str / dict / null），这里用 Any
     # 是为了把非法形状映射成 400 而不是 pydantic 的 422。
     source: object = None
+    # 用户提供的释义快照（来自自定义词表/收藏）；形状由 srs 校验成 400。
+    # **仅当 word_states.definition 为空时写入**，不覆盖已有快照。
+    definition: object = None
 
 
 class AnswerRequest(BaseModel):
@@ -162,6 +165,8 @@ def add_review_word(
 
     ``source`` 可传 ``{contentRef, sentenceId}``（也接受 snake_case / videoId），
     用于回答「这个词从哪来」；同一来源重复提交不会产生重复行。
+    ``definition`` 可选：用户释义快照，只在该词尚无穷义时写入（specs/013）；
+    响应 ``word.definition`` 为写入后的值（可为 null）。
     """
     user = _require_login(request)
     lang = _target_lang_or_400(payload.target_lang)
@@ -172,6 +177,7 @@ def add_review_word(
             lang,
             payload.source,
             now=srs.now_ms(),
+            definition=payload.definition,
         )
     except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
         _raise_review_error(exc)
@@ -287,7 +293,8 @@ def get_review_queue(
     """到期队列 + 新词（总条数受 ``limit`` 限制，新词另有 ``newLimit``）。
 
     到期词按 ``due_at`` 升序在前，新词按 ``created_at`` 升序在后；
-    不返回释义，前端按需再调 ``/api/define``。
+    每个公开 ``word`` 带 ``definition``（用户释义快照，可为 null）：前端优先
+    显示它，只有为 null 时才按需再调 ``/api/define``。
     """
     user = _require_login(request)
     lang = _target_lang_or_400(targetLang)

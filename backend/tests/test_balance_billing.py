@@ -294,7 +294,7 @@ def test_migration_downgrade_keeps_users_and_usage(tmp_path, monkeypatch):
     ]
 
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head again")
-    assert revision(db) == "0027_review_mastered"
+    assert revision(db) == "0029_word_state_definition"
     # 回滚后余额列重建为 0，再按 D-3 给 active 用户补发。
     assert _balance(db, "keep") == BONUS
 

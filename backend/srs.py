@@ -201,6 +201,19 @@ def _first_present(mapping: dict, *keys: str):
     return None
 
 
+def _normalize_definition(definition) -> str | None:
+    """用户释义快照：去首尾空白；空串/null → None；其它类型 ValueError。
+
+    只做形状校验，不猜语言；长度不设上限（词表释义是用户自己的数据）。
+    """
+    if definition is None:
+        return None
+    if not isinstance(definition, str):
+        raise ValueError("definition 必须是字符串或 null。")
+    value = definition.strip()
+    return value or None
+
+
 def _clean_ref(value) -> str | None:
     if value is None:
         return None
@@ -419,6 +432,11 @@ def _row_to_word(row: sqlite3.Row) -> dict:
     item["fail_streak"] = int(item.get("fail_streak") or 0)
     # 「已掌握」标记：库停在 0026 时 SELECT 用 0 AS mastered 兜底，这里统一成 0/1。
     item[MASTERED_COLUMN] = 1 if int(item.get(MASTERED_COLUMN) or 0) else 0
+    # 释义快照：库停在 0028 时 SELECT 用 NULL AS definition 兜底。
+    definition = item.get(DEFINITION_COLUMN)
+    item[DEFINITION_COLUMN] = (
+        definition if isinstance(definition, str) and definition.strip() else None
+    )
     if item.get("stability") is not None:
         item["stability"] = float(item["stability"])
     if item.get("difficulty") is not None:
@@ -455,6 +473,10 @@ _WORD_COLUMNS = (
 # ``state`` 取值；列可能不存在（库停在 0026），所以读写都要先探测列。
 MASTERED_COLUMN = "mastered"
 
+# 用户提供的释义快照（迁移 0029_word_state_definition）。可空；只由
+# ``add_word(definition=...)`` 在现有值为空时写入，**不覆盖**已有快照。
+DEFINITION_COLUMN = "definition"
+
 
 def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
     """表/列是否存在（PRAGMA；表不存在时返回 False，不抛异常）。"""
@@ -469,15 +491,27 @@ def _has_mastered(conn: sqlite3.Connection) -> bool:
     return _has_column(conn, "word_states", MASTERED_COLUMN)
 
 
+def _has_definition(conn: sqlite3.Connection) -> bool:
+    return _has_column(conn, "word_states", DEFINITION_COLUMN)
+
+
 def _word_columns(conn: sqlite3.Connection) -> str:
     """词状态 SELECT 的列清单。
 
-    未跑 0027 的库没有 ``mastered`` 列：读侧返回 ``0 AS mastered``，让队列 /
-    统计 / 公开形状保持兼容，而不是让整个复习模块 503。
+    未跑 0027 / 0029 的库没有 ``mastered`` / ``definition`` 列：读侧分别返回
+    ``0 AS mastered`` 与 ``NULL AS definition``，让队列 / 列表 / 公开形状保持
+    兼容，而不是让整个复习模块 503。
     """
+    columns = _WORD_COLUMNS
     if _has_mastered(conn):
-        return _WORD_COLUMNS + f", {MASTERED_COLUMN}"
-    return _WORD_COLUMNS + f", 0 AS {MASTERED_COLUMN}"
+        columns += f", {MASTERED_COLUMN}"
+    else:
+        columns += f", 0 AS {MASTERED_COLUMN}"
+    if _has_definition(conn):
+        columns += f", {DEFINITION_COLUMN}"
+    else:
+        columns += f", NULL AS {DEFINITION_COLUMN}"
+    return columns
 
 
 def _unmastered_clause(conn: sqlite3.Connection) -> str:
@@ -559,21 +593,35 @@ def add_word(
     target_lang: str,
     source=None,
     now=None,
+    definition=None,
 ) -> dict:
-    """把词加入生词本；已存在时**不重置进度**，只补充新来源。
+    """把词加入生词本；已存在时**不重置进度**，只补充新来源 / 释义快照。
 
-    返回词字典（含 ``sources`` 与 ``created``）。``created=True`` 表示本次
-    新建了状态；重复添加返回 ``created=False``，``reps`` / ``due_at`` /
+    返回词字典（含 ``sources`` / ``definition`` 与 ``created``）。``created=True``
+    表示本次新建了状态；重复添加返回 ``created=False``，``reps`` / ``due_at`` /
     FSRS 参数保持原样。
+
+    ``definition``（可选）：用户提供的释义快照（来自自定义词表/收藏）。写入
+    ``word_states.definition``，**仅当现有值为空（NULL / 空白）时写入**——第二
+    次导入的不同释义绝不覆盖已有快照。库未跑 ``0029_word_state_definition``
+    时：不带 ``definition`` 照常加词（读侧 ``definition`` 为 null），带了则抛
+    :class:`ReviewUnavailable`（路由 503），不静默丢用户数据。
     """
     user_id = _require_user_id(user_id)
     lemma_key = normalize_lemma(lemma)
     lang = canonical_target_lang(target_lang)
     normalized_source = normalize_source(source)
+    definition_value = _normalize_definition(definition)
     created_at = _coerce_ms(now)
 
     conn = _connect()
     try:
+        has_definition = _has_definition(conn)
+        if definition_value is not None and not has_definition:
+            raise ReviewUnavailable(
+                "词状态表缺少 definition 列（未跑 0029_word_state_definition "
+                "迁移）。请先运行 `backend/venv/bin/alembic upgrade head`。"
+            )
         conn.execute("BEGIN IMMEDIATE")
         row = _fetch_word(conn, user_id, lemma_key, lang)
         created = False
@@ -599,6 +647,15 @@ def add_word(
                 (row["id"],),
             )
             row = _fetch_word(conn, user_id, lemma_key, lang)
+        if definition_value is not None:
+            # 只填空值：已有用户释义快照（词表/收藏）优先，不被后续导入覆盖。
+            current = row[DEFINITION_COLUMN] if has_definition else None
+            if not (isinstance(current, str) and current.strip()):
+                conn.execute(
+                    "UPDATE word_states SET definition = ? WHERE id = ?",
+                    (definition_value, row["id"]),
+                )
+                row = _fetch_word(conn, user_id, lemma_key, lang)
         if normalized_source is not None:
             _insert_source(conn, row["id"], normalized_source, created_at)
         word = _row_to_word(row)
@@ -1332,6 +1389,8 @@ def to_public_word(word: dict) -> dict:
         "createdAt": word.get("created_at"),
         # 「已掌握」标记：bool（库停在 0026 时由读侧兜底为 False）。
         "mastered": bool(word.get(MASTERED_COLUMN)),
+        # 用户释义快照（specs/013）：可为 null；缺失时前端才调 /api/define。
+        "definition": word.get(DEFINITION_COLUMN),
         "sources": [
             _public_source(source) for source in (word.get("sources") or [])
         ],

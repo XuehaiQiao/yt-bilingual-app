@@ -109,6 +109,7 @@ import routes_teaching_analysis
 import routes_user
 import routes_videos
 import routes_vocabulary
+import routes_wordlists
 import storage
 
 
@@ -413,6 +414,7 @@ app.include_router(routes_difficulty.router)
 app.include_router(routes_user.router)
 app.include_router(routes_vocabulary.router)
 app.include_router(routes_review.router)
+app.include_router(routes_wordlists.router)
 app.include_router(routes_quiz.router)
 app.include_router(routes_course.router)
 app.include_router(routes_teaching_analysis.router)

@@ -58,10 +58,12 @@ def clock(monkeypatch):
     return state
 
 
-def _add(client, lemma, target="zh-CN", source=None):
+def _add(client, lemma, target="zh-CN", source=None, definition=None):
     body = {"lemma": lemma, "targetLang": target}
     if source is not None:
         body["source"] = source
+    if definition is not None:
+        body["definition"] = definition
     return client.post("/api/review/words", json=body)
 
 
@@ -1039,3 +1041,71 @@ def test_review_reads_work_before_0027_migration(client, clock):
         run_alembic(config.AUTH_DB_PATH, "upgrade", "head"), "upgrade head"
     )
     assert _master(client, "olddb", True).status_code == 200
+
+
+def test_definition_snapshot_written_once_and_returned_everywhere(review_db, clock):
+    """释义快照（specs/013 / 0029）：首写生效，二次不覆盖；队列/列表都带该字段。"""
+    client = review_db
+    clock["now"] = NOW
+
+    created = _add(client, "café", definition="咖啡馆")
+    assert created.status_code == 201
+    word = created.json()["word"]
+    assert word["definition"] == "咖啡馆"
+    assert _db_rows(
+        "SELECT definition FROM word_states WHERE lemma = 'café'"
+    )[0]["definition"] == "咖啡馆"
+
+    # 同词（大小写不同）再次导入不同释义：不覆盖已有快照，也不重置进度。
+    again = _add(client, "Café", definition="咖啡店")
+    assert again.status_code == 200
+    assert again.json()["created"] is False
+    assert again.json()["word"]["definition"] == "咖啡馆"
+    assert _db_rows(
+        "SELECT definition FROM word_states WHERE lemma = 'café'"
+    )[0]["definition"] == "咖啡馆"
+
+    queue = _queue(client).json()
+    assert [item["lemma"] for item in queue["items"]] == ["café"]
+    assert queue["items"][0]["definition"] == "咖啡馆"
+    listed = client.get("/api/review/words").json()
+    assert listed["words"][0]["definition"] == "咖啡馆"
+
+
+def test_definition_is_null_when_not_provided(review_db, clock):
+    """没有用户释义时公开 word 仍带 definition 字段，值为 null（旧行为）。"""
+    client = review_db
+    clock["now"] = NOW
+    word = _add(client, "plain").json()["word"]
+    assert "definition" in word and word["definition"] is None
+    assert _queue(client).json()["items"][0]["definition"] is None
+    assert client.get("/api/review/words").json()["words"][0]["definition"] is None
+
+
+def test_definition_requires_0029_migration(client, clock):
+    """库停在 0028：无 definition 的加词/队列照常；带 definition 的写路径 503。"""
+    assert_alembic_ok(
+        run_alembic(config.AUTH_DB_PATH, "upgrade", "0028_user_wordlists"),
+        "upgrade 0028",
+    )
+    clock["now"] = NOW
+    assert _add(client, "olddb").status_code == 201
+    assert _add(client, "olddb").json()["word"]["definition"] is None
+    assert _queue(client).json()["items"][0]["definition"] is None
+
+    blocked = _add(client, "olddb", definition="旧库释义")
+    assert blocked.status_code == 503
+    assert "0029_word_state_definition" in blocked.json()["detail"]
+    # 事务已回滚：没有半写入（旧库没有该列，词状态仍只有先前那一行）。
+    assert _db_rows("SELECT COUNT(*) AS n FROM word_states")[0]["n"] == 1
+
+    assert_alembic_ok(
+        run_alembic(config.AUTH_DB_PATH, "upgrade", "head"), "upgrade head"
+    )
+    filled = _add(client, "olddb", definition="旧库释义")
+    assert filled.status_code == 200
+    assert filled.json()["word"]["definition"] == "旧库释义"
+
+    # definition 形状非法 → 400（不是 500）。
+    invalid = _add(client, "another", definition=123)
+    assert invalid.status_code == 400

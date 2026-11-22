@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0027_review_mastered"
+HEAD = "0029_word_state_definition"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -68,6 +68,8 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "users", "sessions", "learning_events",
         "ai_usage", "ai_quota", "jobs",
         "word_states", "review_logs", "word_sources",
+        # 0028_user_wordlists：自定义词表两张表（specs/038）。
+        "user_wordlists", "user_wordlist_items",
         "content_items", "questions", "attempts",
         "watch_events", "weekly_reports",
         "placement_sessions", "placement_answers", "user_profiles",
@@ -360,6 +362,8 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "created_at",
         # 0027_review_mastered：「已掌握」标记（0/1，默认 0，原地加列不重建表）。
         "mastered",
+        # 0029_word_state_definition：用户释义快照（可空，旧行 NULL，原地加列）。
+        "definition",
     ]
     assert word_states["id"]["pk"] == 1
     assert word_states["id"]["notnull"] == 1
@@ -371,6 +375,9 @@ def test_upgrade_head_from_empty_db(tmp_path):
     assert word_states["stability"]["notnull"] == 0
     assert word_states["difficulty"]["notnull"] == 0
     assert word_states["last_reviewed_at"]["notnull"] == 0
+    # 0029：释义快照可空，旧行为 NULL（不是空串默认值）。
+    assert word_states["definition"]["notnull"] == 0
+    assert word_states["definition"]["default"] is None
     assert "zh-CN" in str(word_states["target_lang"]["default"])
     assert "new" in str(word_states["state"]["default"])
     # 0027：「已掌握」是 0/1 标记，NOT NULL DEFAULT 0（老行自动补 0）。
@@ -1621,3 +1628,159 @@ def test_review_mastered_migration_is_additive_and_idempotent(tmp_path):
             "FROM word_states WHERE id = 'ws-m1'"
         ).fetchone()
     assert tuple(row) == ("hello", "new", 1000, 1000, 1)
+
+
+def test_user_wordlists_schema_constraints_and_cascade(tmp_path):
+    """0028：两张表、唯一约束、(list_id, position) 索引、FK 删除级联。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+
+    assert {"user_wordlists", "user_wordlist_items"} <= table_names(db)
+    lists = columns(db, "user_wordlists")
+    assert list(lists) == [
+        "id",
+        "user_id",
+        "name",
+        "source_filename",
+        "item_count",
+        "created_at",
+    ]
+    assert lists["id"]["pk"] == 1
+    for required in ("user_id", "name"):
+        assert lists[required]["notnull"] == 1, required
+    for optional in ("source_filename", "item_count", "created_at"):
+        assert lists[optional]["notnull"] == 0, optional
+
+    items = columns(db, "user_wordlist_items")
+    assert list(items) == [
+        "id",
+        "list_id",
+        "word",
+        "word_key",
+        "translation",
+        "phonetic",
+        "cefr",
+        "example",
+        "position",
+    ]
+    assert items["id"]["pk"] == 1
+    for required in ("list_id", "word", "word_key"):
+        assert items[required]["notnull"] == 1, required
+    for optional in (
+        "translation", "phonetic", "cefr", "example", "position",
+    ):
+        assert items[optional]["notnull"] == 0, optional
+    assert "ix_user_wordlist_items_list_position" in index_names(
+        db, "user_wordlist_items"
+    )
+
+    with sqlite3.connect(db) as conn:
+        # 外键声明：list_id → user_wordlists.id ON DELETE CASCADE。
+        fk_rows = conn.execute(
+            "PRAGMA foreign_key_list(user_wordlist_items)"
+        ).fetchall()
+        assert any(
+            row[2] == "user_wordlists" and row[3] == "list_id" and row[6] == "CASCADE"
+            for row in fk_rows
+        )
+        # 唯一约束：同一用户同表名 / 同表同 word_key 都写不进去。
+        unique_sets = []
+        for row in conn.execute("PRAGMA index_list(user_wordlists)"):
+            if row[2]:
+                unique_sets.append(
+                    tuple(
+                        col[2]
+                        for col in conn.execute(f"PRAGMA index_info({row[1]})")
+                    )
+                )
+        assert ("user_id", "name") in unique_sets
+        unique_item_sets = []
+        for row in conn.execute("PRAGMA index_list(user_wordlist_items)"):
+            if row[2]:
+                unique_item_sets.append(
+                    tuple(
+                        col[2]
+                        for col in conn.execute(f"PRAGMA index_info({row[1]})")
+                    )
+                )
+        assert ("list_id", "word_key") in unique_item_sets
+
+        conn.execute(
+            "INSERT INTO user_wordlists (id, user_id, name, created_at) "
+            "VALUES ('l1', 'u1', '我的词表', 1000)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO user_wordlists (id, user_id, name, created_at) "
+                "VALUES ('l2', 'u1', '我的词表', 1001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("UNIQUE(user_id, name) 应拒绝同名词表")
+        conn.execute(
+            "INSERT INTO user_wordlist_items "
+            "(id, list_id, word, word_key, position) "
+            "VALUES ('i1', 'l1', 'Hello', 'hello', 1)"
+        )
+        try:
+            conn.execute(
+                "INSERT INTO user_wordlist_items "
+                "(id, list_id, word, word_key, position) "
+                "VALUES ('i2', 'l1', 'HELLO', 'hello', 2)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("UNIQUE(list_id, word_key) 应拒绝重复词条")
+
+    # 真删父行：开 foreign_keys 的连接上条目级联消失。
+    with sqlite3.connect(db) as conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("DELETE FROM user_wordlists WHERE id = 'l1'")
+        remaining = conn.execute(
+            "SELECT COUNT(*) FROM user_wordlist_items WHERE list_id = 'l1'"
+        ).fetchone()[0]
+    assert remaining == 0
+
+
+def test_definition_migration_is_additive_idempotent_and_data_preserving(tmp_path):
+    """0029：可空加列、旧行 NULL；downgrade no-op 保留快照；再升级幂等。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    assert "definition" in columns(db, "word_states")
+
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "INSERT INTO word_states (id, user_id, lemma, target_lang, state, "
+            "due_at, reps, lapses, step, fail_streak, created_at) "
+            "VALUES ('ws-d1', 'u1', 'hello', 'zh-CN', 'new', 1000, 0, 0, 0, 0, 1000)"
+        )
+        # 旧行没有写 definition → NULL（不是空串）。
+        assert conn.execute(
+            "SELECT definition FROM word_states WHERE id = 'ws-d1'"
+        ).fetchone()[0] is None
+        conn.execute(
+            "UPDATE word_states SET definition = '你好' WHERE id = 'ws-d1'"
+        )
+
+    # 回滚到 0027：0029 是 no-op（保留列与用户释义），0028 删除词表两张表。
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0027_review_mastered"), "downgrade 0027"
+    )
+    assert revision(db) == "0027_review_mastered"
+    assert not ({"user_wordlists", "user_wordlist_items"} & table_names(db))
+    assert "definition" in columns(db, "word_states")
+    with sqlite3.connect(db) as conn:
+        assert conn.execute(
+            "SELECT definition FROM word_states WHERE id = 'ws-d1'"
+        ).fetchone()[0] == "你好"
+
+    # 再升级：0028 重建表、0029 发现列已存在则跳过（不能 duplicate column）。
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert revision(db) == HEAD
+    assert {"user_wordlists", "user_wordlist_items"} <= table_names(db)
+    with sqlite3.connect(db) as conn:
+        assert conn.execute(
+            "SELECT definition FROM word_states WHERE id = 'ws-d1'"
+        ).fetchone()[0] == "你好"
