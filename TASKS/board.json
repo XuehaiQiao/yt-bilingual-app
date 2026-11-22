@@ -383,6 +383,26 @@
       "deps": [
         "P1-03"
       ]
+    },
+    {
+      "id": "P2-02",
+      "file": "TASKS/P2-02-layout-foundation.md",
+      "status": "claimed",
+      "owner": "layout-impl",
+      "write_scope": [
+        "frontend/src/components/layout/PageContainer.tsx",
+        "frontend/src/components/layout/PageGrid.tsx",
+        "frontend/src/components/layout/SideRail.tsx",
+        "frontend/src/components/layout/ReadingLayout.tsx",
+        "frontend/src/components/ReportScreen.tsx",
+        "frontend/tailwind.config.js",
+        "frontend/tailwind.config.ts",
+        "frontend/src/components/README.md",
+        "scripts/p2-02-layout-acceptance.mjs",
+        "docs/设计-桌面布局规范.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
