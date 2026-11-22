@@ -39,6 +39,7 @@ import type { PlacementProfile } from '../lib/placement';
 import { useInstallPrompt, useOnlineStatus } from '../lib/pwa';
 import { BackButton } from './ui/BackButton';
 import { PageHeader } from './ui/PageHeader';
+import { PageContainer } from './layout/PageContainer';
 import { toast, describeApiError } from '../lib/toast';
 import { displayUsername, usernameInitial, usernameProblem } from '../lib/username';
 import { loadVocabLevel, saveVocabLevel, VOCAB_LEVEL_EVENT, VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
@@ -558,7 +559,8 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
         data-page-scroll
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10"
       >
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* 设置/账户原型 (docs/设计-桌面布局规范.md §3): standard measure. */}
+        <PageContainer variant="standard" testId="account-page-container" className="py-6 sm:py-8">
           {pageChrome}
 
           <div
@@ -593,7 +595,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
           <p className="mt-8 text-center text-[11px] leading-relaxed text-zinc-600">
             {t('account.footerNote')}
           </p>
-        </div>
+        </PageContainer>
 
         <LanguageSettingsModal isOpen={languageOpen} onClose={() => setLanguageOpen(false)} />
       </div>
@@ -614,7 +616,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
       data-page-scroll
       className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10"
     >
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <PageContainer variant="standard" testId="account-page-container" className="py-6 sm:py-8">
         {pageChrome}
 
         {isPendingDeletion && <PendingDeletionCard />}
@@ -953,7 +955,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
         <p className="mt-8 text-center text-[11px] leading-relaxed text-zinc-600">
           {t('account.footerNote')}
         </p>
-      </div>
+      </PageContainer>
 
       <LanguageSettingsModal isOpen={languageOpen} onClose={() => setLanguageOpen(false)} />
     </div>

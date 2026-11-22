@@ -46,6 +46,7 @@ import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
 import { selectMyWords } from '../lib/myWords';
 import { ReadingLayout } from './layout/ReadingLayout';
+import { PageContainer } from './layout/PageContainer';
 import { ReadingSurface, type ReadingSurfaceParagraph } from './reading/ReadingSurface';
 import { ShareCardDialog } from './ShareCardDialog';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -1498,12 +1499,18 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
             )}
             {readingView || (
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                    <div className="max-w-3xl mx-auto px-4 sm:px-8 py-6 sm:py-10">
+                    {/* List state only (P2-05A): the article detail keeps the
+                        P2-04 reading layout above; this sheet is 列表/清单. */}
+                    <PageContainer
+                        variant="standard"
+                        testId="reader-list-container"
+                        className="py-6 sm:py-10"
+                    >
                         {listHeader}
                         {loginPanel}
                         {importSection}
                         {articleList}
-                    </div>
+                    </PageContainer>
                 </div>
             )}
             {selection && !shareData && (

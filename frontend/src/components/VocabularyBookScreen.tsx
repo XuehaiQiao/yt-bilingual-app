@@ -145,6 +145,7 @@ import {
     type WordTableSelectAll,
 } from './VocabularyRows';
 import { Badge } from './ui/Badge';
+import { PageContainer } from './layout/PageContainer';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { Dialog } from './ui/Dialog';
 import { Menu } from './ui/Menu';
@@ -4975,7 +4976,13 @@ export function VocabularyBookScreen({
         >
             {renderHeader()}
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
-            <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-4 sm:gap-5 sm:px-6 sm:py-8">
+            {/* 表格/清单原型 (docs/设计-桌面布局规范.md §3): one wide sheet —
+                toolbar and rows share this container so they always line up. */}
+            <PageContainer
+                variant="wide"
+                testId="vocab-page-container"
+                className="flex flex-col gap-4 py-4 sm:gap-5 sm:py-8"
+            >
                 {catalogPhase === 'error' && (
                     <div
                         data-testid="vocab-catalog-error"
@@ -5012,7 +5019,7 @@ export function VocabularyBookScreen({
                 <div {...tabPanelProps('vocab', activeTab)}>
                     {renderTabPanel()}
                 </div>
-            </div>
+            </PageContainer>
             </div>
 
             {/* Custom word lists (specs/038). The wizard owns the three steps;

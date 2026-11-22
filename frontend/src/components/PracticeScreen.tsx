@@ -11,6 +11,7 @@ import type { PlacementProfile } from '../lib/placement';
 import { REVIEW_UI_ENABLED, type ReviewStats } from '../lib/review';
 import { useI18n } from '../i18n/I18nProvider';
 import { PageHeader } from './ui/PageHeader';
+import { PageContainer } from './layout/PageContainer';
 import { Card, IconTile } from './ui/Card';
 
 const PAGE_PAD = 'pb-[calc(56px+env(safe-area-inset-bottom)+16px)] md:pb-10';
@@ -84,7 +85,13 @@ export function PracticeScreen({
             data-page-scroll
             className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar bg-[#09090b] ${PAGE_PAD}`}
         >
-            <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 pt-5 sm:pt-8 space-y-4 sm:space-y-5">
+            {/* 报告/评估原型 (docs/设计-桌面布局规范.md §3): standard measure;
+                the explainer/exam/placement cards keep the 2–3 column grid. */}
+            <PageContainer
+                variant="standard"
+                testId="practice-page-container"
+                className="pt-5 sm:pt-8 space-y-4 sm:space-y-5"
+            >
                 <PageHeader
                     testId="practice-page-header"
                     titleTestId="practice-title"
@@ -251,7 +258,7 @@ export function PracticeScreen({
                 </div>
 
                 <p className="pt-1 text-[11px] leading-relaxed text-zinc-600">{t('practice.footnote')}</p>
-            </div>
+            </PageContainer>
         </div>
     );
 }

@@ -33,6 +33,7 @@ import { loadModel } from '../lib/settings';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { EstimateDialog, type EstimateDialogHandle } from './EstimateDialog';
+import { PageContainer } from './layout/PageContainer';
 import { SubHeader } from './ui/SubHeader';
 
 interface DiscoverScreenProps {
@@ -264,7 +265,11 @@ export function DiscoverScreen({
             />
 
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
-            <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-5 sm:py-8">
+            <PageContainer
+                variant="standard"
+                testId="discover-page-container"
+                className="py-5 sm:py-8"
+            >
                 <header className="mt-0 flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
                         <Compass className="w-5 h-5 text-brand-300" />
@@ -602,7 +607,7 @@ export function DiscoverScreen({
                         )}
                     </section>
                 ) : null}
-            </div>
+            </PageContainer>
             </div>
         </div>
     );
