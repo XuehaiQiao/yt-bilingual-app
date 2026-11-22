@@ -483,7 +483,8 @@
         "frontend/src/components/ReaderScreen.tsx",
         "frontend/src/components/PracticeScreen.tsx",
         "frontend/src/components/ProfileScreen.tsx",
-        "scripts/p2-05a-layout-acceptance.mjs"
+        "scripts/p2-05a-layout-acceptance.mjs",
+        "frontend/src/components/AccountScreen.tsx"
       ],
       "shared_writes": [],
       "deps": [

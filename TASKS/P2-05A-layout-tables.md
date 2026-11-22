@@ -13,6 +13,7 @@
 - `frontend/src/components/ReaderScreen.tsx`（仅列表态容器，不动详情阅读布局）
 - `frontend/src/components/PracticeScreen.tsx`
 - `frontend/src/components/ProfileScreen.tsx`
+- `frontend/src/components/AccountScreen.tsx`（仅容器改为 PageContainer/standard，不改业务）
 - `scripts/p2-05a-layout-acceptance.mjs`（新建）
 
 ## read_only
