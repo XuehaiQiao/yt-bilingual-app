@@ -36,7 +36,8 @@ import { SubHeader } from './ui/SubHeader';
 import { ReadingVocabButton } from './ReadingVocabButton';
 import type { FavoriteItem } from '../lib/favorites';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
-import { bilingualReadingWidth } from './BilingualRow';
+import { selectMyWords } from '../lib/myWords';
+import { ReadingLayout } from './layout/ReadingLayout';
 import { ReadingSurface, type ReadingSurfaceParagraph } from './reading/ReadingSurface';
 import {
     BooksApiError,
@@ -557,6 +558,161 @@ export function BookReaderScreen({
         setChapterRetry((value) => value + 1);
     };
 
+    // Right rail (P2-04): the chapter index moves here instead of being a second
+    // copy in the body, plus the language points and vocabulary the page already
+    // has in memory.
+    const railLanguagePoints: InlineLanguagePoint[] = [];
+    const seenRailPoints = new Set<string>();
+    for (const list of Object.values(analysis.languagePointsByBlock)) {
+        for (const point of list) {
+            const key = `${point.kind}:${point.text.trim().toLowerCase()}`;
+            if (!point.text.trim() || seenRailPoints.has(key)) continue;
+            seenRailPoints.add(key);
+            railLanguagePoints.push(point);
+        }
+    }
+    const railVocabulary = selectMyWords(favorites);
+
+    const rail = detail && chapters.length > 0 ? (
+        <>
+            <section
+                data-testid="book-rail-chapters"
+                className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+            >
+                <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-caption font-semibold text-fg-primary">
+                        {t('books.reader.chapters')}
+                    </h3>
+                    <div className="flex items-center gap-1">
+                        <button
+                            type="button"
+                            data-testid="book-prev-chapter"
+                            onClick={() => previousChapter && goChapter(previousChapter.n)}
+                            disabled={!previousChapter}
+                            className="inline-flex h-7 items-center gap-1 rounded-lg border border-line-subtle bg-surface-2/60 px-2 text-micro font-medium text-fg-secondary transition-colors hover:bg-state-hover disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                            {t('books.reader.prev')}
+                        </button>
+                        <button
+                            type="button"
+                            data-testid="book-next-chapter"
+                            onClick={() => nextChapter && goChapter(nextChapter.n)}
+                            disabled={!nextChapter}
+                            className="inline-flex h-7 items-center gap-1 rounded-lg border border-line-subtle bg-surface-2/60 px-2 text-micro font-medium text-fg-secondary transition-colors hover:bg-state-hover disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            {t('books.reader.next')}
+                            <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                </div>
+                <div className="mt-2 flex max-h-80 flex-col gap-1 overflow-y-auto custom-scrollbar">
+                    {chapters.map((item) => (
+                        <button
+                            key={item.n}
+                            type="button"
+                            data-testid={`book-chapter-${item.n}`}
+                            onClick={() => goChapter(item.n)}
+                            aria-current={item.n === chapterNumber ? 'page' : undefined}
+                            className={item.n === chapterNumber
+                                ? 'w-full rounded-lg border border-line-strong bg-state-selected px-2.5 py-1.5 text-left'
+                                : 'w-full rounded-lg border border-transparent px-2.5 py-1.5 text-left transition-colors hover:bg-state-hover'}
+                        >
+                            <span className="flex items-center gap-1.5 text-micro tabular-nums text-fg-muted">
+                                {t('books.reader.chapter', { n: formatNumber(item.n) })}
+                                {item.translated ? (
+                                    <span
+                                        data-testid={`book-chapter-translated-${item.n}`}
+                                        className="inline-flex h-1.5 w-1.5 rounded-full bg-success"
+                                    />
+                                ) : (
+                                    <span
+                                        data-testid={`book-chapter-pending-${item.n}`}
+                                        className="inline-flex h-1.5 w-1.5 rounded-full bg-surface-3"
+                                    />
+                                )}
+                            </span>
+                            <span className="mt-0.5 block truncate text-caption font-medium text-fg-strong">
+                                {item.titleZh || item.title}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </section>
+
+            {railLanguagePoints.length > 0 && (
+                <section
+                    data-testid="book-rail-language-points"
+                    className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+                >
+                    <h3 className="text-caption font-semibold text-fg-primary">
+                        {t('reading.languagePoints.toggle')}
+                    </h3>
+                    <p className="mt-1 text-micro leading-relaxed text-fg-muted">
+                        {t('reading.languagePoints.hint')}
+                    </p>
+                    <ul className="mt-3 flex flex-col gap-2">
+                        {railLanguagePoints.slice(0, 8).map((point) => (
+                            <li key={`${point.kind}:${point.text}`} className="min-w-0">
+                                <p className="break-words text-ui font-medium text-fg-strong">
+                                    {point.text}
+                                </p>
+                                {point.meaning && (
+                                    <p className="mt-0.5 break-words text-micro leading-relaxed text-fg-muted">
+                                        {point.meaning}
+                                    </p>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+
+            <section
+                data-testid="book-rail-vocabulary"
+                className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+            >
+                <h3 className="text-caption font-semibold text-fg-primary">{t('vocab.title')}</h3>
+                <p className="mt-1 text-micro text-fg-muted">
+                    {t('vocab.total', { count: formatNumber(railVocabulary.length) })}
+                </p>
+                {railVocabulary.length > 0 ? (
+                    <ul className="mt-2 flex flex-col gap-1">
+                        {railVocabulary.slice(0, 6).map((item) => (
+                            <li key={item.id} className="min-w-0">
+                                <button
+                                    type="button"
+                                    onClick={onOpenWordbook}
+                                    className="flex w-full min-w-0 items-baseline gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-state-hover"
+                                >
+                                    <span className="min-w-0 truncate text-ui font-medium text-fg-strong">
+                                        {item.en_text}
+                                    </span>
+                                    {item.zh_text && (
+                                        <span className="min-w-0 flex-1 truncate text-micro text-fg-muted">
+                                            {item.zh_text}
+                                        </span>
+                                    )}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="mt-2 text-micro leading-relaxed text-fg-muted">
+                        {t('vocab.empty.mine')}
+                    </p>
+                )}
+                <button
+                    type="button"
+                    onClick={onOpenWordbook}
+                    className="mt-3 text-caption font-medium text-brand-300 transition-colors hover:text-brand-400"
+                >
+                    {t('vocab.title')}
+                </button>
+            </section>
+        </>
+    ) : undefined;
+
     return (
         <div data-testid="book-reader" className="h-full min-h-0 flex flex-col bg-[#09090b]">
             <SubHeader
@@ -590,9 +746,14 @@ export function BookReaderScreen({
                 onScroll={handleScroll}
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar"
             >
-                <div
-                    className={`mx-auto w-full px-4 sm:px-8 py-5 sm:py-8 ${bilingualReadingWidth(bilingualColumns)}`}
-                    style={audio.bottomInset ? { paddingBottom: audio.bottomInset } : undefined}
+                <div style={audio.bottomInset ? { paddingBottom: audio.bottomInset } : undefined}>
+                <ReadingLayout
+                    testId="book-layout"
+                    gridTestId="book-grid"
+                    bodyTestId="book-body"
+                    railTestId="book-rail"
+                    className="py-4 sm:py-8"
+                    rail={rail}
                 >
                     {detailLoading && (
                         <div data-testid="book-reader-loading" className="space-y-4">
@@ -690,72 +851,6 @@ export function BookReaderScreen({
                                 </div>
                             ) : (
                                 <>
-                                    <section className="mt-6" aria-label={t('books.reader.chapters')}>
-                                        <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <h2 className="text-[13px] font-semibold text-zinc-300">
-                                                {t('books.reader.chapters')}
-                                            </h2>
-                                            <div className="flex items-center gap-1.5">
-                                                <button
-                                                    type="button"
-                                                    data-testid="book-prev-chapter"
-                                                    onClick={() => previousChapter && goChapter(previousChapter.n)}
-                                                    disabled={!previousChapter}
-                                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-[11px] font-medium text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                >
-                                                    <ChevronLeft className="w-3.5 h-3.5" />
-                                                    {t('books.reader.prev')}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    data-testid="book-next-chapter"
-                                                    onClick={() => nextChapter && goChapter(nextChapter.n)}
-                                                    disabled={!nextChapter}
-                                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-lg bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-[11px] font-medium text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                                >
-                                                    {t('books.reader.next')}
-                                                    <ChevronRight className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="mt-2 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto custom-scrollbar">
-                                            <div className="flex gap-1.5 snap-x snap-mandatory pb-1">
-                                                {chapters.map((item) => (
-                                                    <button
-                                                        key={item.n}
-                                                        type="button"
-                                                        data-testid={`book-chapter-${item.n}`}
-                                                        onClick={() => goChapter(item.n)}
-                                                        aria-current={item.n === chapterNumber ? 'page' : undefined}
-                                                        className={`shrink-0 snap-start rounded-lg border px-3 py-1.5 text-left transition-colors ${
-                                                            item.n === chapterNumber
-                                                                ? 'border-blue-500/30 bg-blue-500/10 text-blue-200'
-                                                                : 'border-white/5 bg-zinc-900/40 text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-100'
-                                                        }`}
-                                                    >
-                                                        <span className="flex items-center gap-1 text-[10px] tabular-nums opacity-70">
-                                                            {t('books.reader.chapter', { n: formatNumber(item.n) })}
-                                                            {item.translated ? (
-                                                                <span
-                                                                    data-testid={`book-chapter-translated-${item.n}`}
-                                                                    className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400"
-                                                                />
-                                                            ) : (
-                                                                <span
-                                                                    data-testid={`book-chapter-pending-${item.n}`}
-                                                                    className="inline-flex h-1.5 w-1.5 rounded-full bg-zinc-600"
-                                                                />
-                                                            )}
-                                                        </span>
-                                                        <span className="block max-w-[150px] truncate text-[12px] font-medium">
-                                                            {item.titleZh || item.title}
-                                                        </span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </section>
-
                                     <div className="mt-5 flex flex-wrap items-center gap-2 rounded-2xl border border-white/5 bg-zinc-900/40 px-3 py-2">
                                         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 shrink-0">
                                             <Languages className="w-4 h-4" />
@@ -1007,6 +1102,7 @@ export function BookReaderScreen({
                             )}
                         </>
                     )}
+                </ReadingLayout>
                 </div>
             </div>
 

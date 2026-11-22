@@ -44,7 +44,8 @@ import { LanguagePointToggle } from './ui/LanguagePointToggle';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
-import { bilingualReadingWidth } from './BilingualRow';
+import { selectMyWords } from '../lib/myWords';
+import { ReadingLayout } from './layout/ReadingLayout';
 import { ReadingSurface, type ReadingSurfaceParagraph } from './reading/ReadingSurface';
 import { ShareCardDialog } from './ShareCardDialog';
 import { ConfirmDialog } from './ui/ConfirmDialog';
@@ -354,6 +355,22 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
             }))
             : []
     ), [analysis.languagePointsByBlock, article]);
+    // Right-rail panels (P2-04): language points and vocabulary come from the
+    // data that already feeds the page; nothing is fetched twice.
+    const railLanguagePoints = useMemo<InlineLanguagePoint[]>(() => {
+        const seen = new Set<string>();
+        const points: InlineLanguagePoint[] = [];
+        for (const list of Object.values(analysis.languagePointsByBlock)) {
+            for (const point of list) {
+                const key = `${point.kind}:${point.text.trim().toLowerCase()}`;
+                if (!point.text.trim() || seen.has(key)) continue;
+                seen.add(key);
+                points.push(point);
+            }
+        }
+        return points.slice(0, 8);
+    }, [analysis.languagePointsByBlock]);
+    const railVocabulary = useMemo(() => selectMyWords(favorites), [favorites]);
     // Paragraph actions (share) still need the full article paragraph row.
     const articleParagraphById = useMemo(() => new Map(
         article?.paragraphs.map((paragraph) => [paragraph.idx, paragraph]) ?? [],
@@ -1166,6 +1183,114 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         </section>
     );
 
+    const jumpToParagraph = (id: number) => {
+        const node = scrollRef.current?.querySelector<HTMLElement>(
+            `[data-testid="reader-paragraph-${id}"]`,
+        );
+        node?.scrollIntoView({ block: 'start' });
+    };
+
+    const rail = article ? (
+        <>
+            <section
+                data-testid="reader-rail-toc"
+                className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+            >
+                <h3 className="text-caption font-semibold text-fg-primary">
+                    {t('reader.paragraphs', { count: formatNumber(article.paragraphs.length) })}
+                </h3>
+                <div className="mt-2 flex max-h-80 flex-col gap-1 overflow-y-auto custom-scrollbar">
+                    {article.paragraphs.map((paragraph) => (
+                        <button
+                            key={paragraph.idx}
+                            type="button"
+                            onClick={() => jumpToParagraph(paragraph.idx)}
+                            className="flex w-full min-w-0 items-baseline gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-state-hover"
+                        >
+                            <span className="w-5 shrink-0 text-micro tabular-nums text-fg-muted">
+                                {paragraph.idx + 1}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-micro text-fg-secondary">
+                                {paragraph.text}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </section>
+
+            {railLanguagePoints.length > 0 && (
+                <section
+                    data-testid="reader-rail-language-points"
+                    className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+                >
+                    <h3 className="text-caption font-semibold text-fg-primary">
+                        {t('reading.languagePoints.toggle')}
+                    </h3>
+                    <p className="mt-1 text-micro leading-relaxed text-fg-muted">
+                        {t('reading.languagePoints.hint')}
+                    </p>
+                    <ul className="mt-3 flex flex-col gap-2">
+                        {railLanguagePoints.map((point) => (
+                            <li key={`${point.kind}:${point.text}`} className="min-w-0">
+                                <p className="break-words text-ui font-medium text-fg-strong">
+                                    {point.text}
+                                </p>
+                                {point.meaning && (
+                                    <p className="mt-0.5 break-words text-micro leading-relaxed text-fg-muted">
+                                        {point.meaning}
+                                    </p>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+
+            <section
+                data-testid="reader-rail-vocabulary"
+                className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+            >
+                <h3 className="text-caption font-semibold text-fg-primary">{t('vocab.title')}</h3>
+                <p className="mt-1 text-micro text-fg-muted">
+                    {t('vocab.total', { count: formatNumber(railVocabulary.length) })}
+                </p>
+                {railVocabulary.length > 0 ? (
+                    <ul className="mt-2 flex flex-col gap-1">
+                        {railVocabulary.slice(0, 6).map((item) => (
+                            <li key={item.id} className="min-w-0">
+                                <button
+                                    type="button"
+                                    onClick={onOpenWordbook}
+                                    className="flex w-full min-w-0 items-baseline gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-state-hover"
+                                >
+                                    <span className="min-w-0 truncate text-ui font-medium text-fg-strong">
+                                        {item.en_text}
+                                    </span>
+                                    {item.zh_text && (
+                                        <span className="min-w-0 flex-1 truncate text-micro text-fg-muted">
+                                            {item.zh_text}
+                                        </span>
+                                    )}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="mt-2 text-micro leading-relaxed text-fg-muted">
+                        {t('vocab.empty.mine')}
+                    </p>
+                )}
+                <button
+                    type="button"
+                    onClick={onOpenWordbook}
+                    className="mt-3 text-caption font-medium text-brand-300 transition-colors hover:text-brand-400"
+                >
+                    {t('vocab.title')}
+                </button>
+            </section>
+        </>
+    ) : undefined;
+
     const readingView = selectedId !== null && (
         <div data-testid="reader-article" data-current-paragraph={currentIdx} className="flex flex-col h-full min-h-0">
             <SubHeader
@@ -1211,9 +1336,14 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                 data-testid="reader-scroll"
                 className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar"
             >
-                <div
-                    className={`mx-auto px-4 sm:px-8 py-6 sm:py-10 ${bilingualReadingWidth(bilingualColumns)}`}
-                    style={audio.bottomInset ? { paddingBottom: audio.bottomInset } : undefined}
+                <div style={audio.bottomInset ? { paddingBottom: audio.bottomInset } : undefined}>
+                <ReadingLayout
+                    testId="reader-layout"
+                    gridTestId="reader-grid"
+                    bodyTestId="reader-body"
+                    railTestId="reader-rail"
+                    className="py-4 sm:py-8"
+                    rail={rail}
                 >
                     {articleLoading ? (
                         <div
@@ -1347,6 +1477,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                             <p className="text-sm font-medium text-zinc-400">{t('reader.detail.missing')}</p>
                         </div>
                     )}
+                </ReadingLayout>
                 </div>
             </div>
 

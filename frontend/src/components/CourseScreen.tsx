@@ -28,6 +28,7 @@ import {
 import type { TranslationKey } from '../i18n';
 import { useI18n } from '../i18n/I18nProvider';
 import { SubHeader } from './ui/SubHeader';
+import { ReadingLayout } from './layout/ReadingLayout';
 import {
     completeCourseAttempt,
     countCourseWords,
@@ -148,9 +149,9 @@ function CourseHeader({
             {(showProgress || showTimer) && (
                 <div
                     data-testid="course-toolbar"
-                    className="flex-none border-b border-white/5 bg-zinc-950/40 px-3 pb-2.5 pt-2 sm:px-4 lg:px-6"
+                    className="flex-none border-b border-line-subtle bg-app/40 pb-2.5 pt-2"
                 >
-                    <div className="mx-auto w-full max-w-5xl">
+                    <div className="mx-auto w-full max-w-page-reading px-4 sm:px-6 lg:px-8">
                         <div className="mb-1.5 flex items-center justify-between gap-3">
                             <p className="min-w-0 truncate text-[11px] text-zinc-500">
                                 {t('course.progress')}
@@ -979,6 +980,37 @@ export function CourseScreen({ lessonId, isGuest, onRequestLogin, onExit, parent
     }
 
     const lessonStepCount = lesson.steps.length;
+    // Right rail (P2-04): the lesson outline. Read-only: the course engine only
+    // advances forward, so the outline reports the path and the current step.
+    const rail = (
+        <section
+            data-testid="course-rail-outline"
+            className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+        >
+            <h3 className="text-caption font-semibold text-fg-primary">{t('course.progress')}</h3>
+            <ol className="mt-2 flex flex-col gap-1">
+                {lesson.steps.map((step, index) => (
+                    <li key={step.id} className="min-w-0">
+                        <div
+                            aria-current={index === currentStepIndex ? 'step' : undefined}
+                            className={index === currentStepIndex
+                                ? 'rounded-lg border border-line-strong bg-state-selected px-2 py-1.5'
+                                : 'rounded-lg px-2 py-1.5'}
+                        >
+                            <p className="text-micro tabular-nums text-fg-muted">
+                                {t('course.stepOf', { current: index + 1, total: lessonStepCount })}
+                            </p>
+                            <p className={index === currentStepIndex
+                                ? 'mt-0.5 truncate text-caption font-medium text-fg-primary'
+                                : 'mt-0.5 truncate text-caption text-fg-secondary'}>
+                                {step.title}
+                            </p>
+                        </div>
+                    </li>
+                ))}
+            </ol>
+        </section>
+    );
     const completionSample = lesson.steps.find(step => step.type === 'output')?.sample;
 
     if (completed) {
@@ -1162,7 +1194,14 @@ export function CourseScreen({ lessonId, isGuest, onRequestLogin, onExit, parent
             />
 
             <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-                <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-5 sm:py-8">
+                <ReadingLayout
+                    testId="course-layout"
+                    gridTestId="course-grid"
+                    bodyTestId="course-body"
+                    railTestId="course-rail"
+                    className="py-4 sm:py-8"
+                    rail={rail}
+                >
                     {currentStep?.type === 'intro' && (
                         <section className="animate-fade-in">
                             <div className={`${CARD} p-5 sm:p-7`}>
@@ -1464,7 +1503,7 @@ export function CourseScreen({ lessonId, isGuest, onRequestLogin, onExit, parent
                             )}
                         </section>
                     )}
-                </div>
+                </ReadingLayout>
             </div>
 
             <footer className="flex-none border-t border-white/5 bg-zinc-950/70 backdrop-blur-xl">

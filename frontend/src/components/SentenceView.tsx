@@ -16,6 +16,7 @@ import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
 import { AudioSentenceSpan } from './ReadingAudioText';
 import { useReadingAudio } from '../lib/useReadingAudio';
 import { Segmented } from './ui/Segmented';
+import { ReadingLayout } from './layout/ReadingLayout';
 import type { ShareCardData } from '../lib/shareCard';
 import { speak } from '../lib/tts';
 
@@ -106,6 +107,77 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
     const doneDays = level ? levelDoneDays(levelId, level.days) : 0;
     void doneTick; // 依赖 doneTick 触发重算
 
+    // Right rail (P2-04): the progress block that used to sit above the list
+    // moves here, alongside short hints. One source, no second copy.
+    const rail = level ? (
+        <>
+            <section
+                data-testid="sentences-rail-progress"
+                className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+            >
+                <h3 className="text-caption font-semibold text-fg-primary">
+                    {t('sentences.progressDays', { done: doneDays, total: level.days })}
+                </h3>
+                <p className="mt-0.5 text-micro text-fg-muted">{level.title} · {level.subtitle}</p>
+                <div
+                    className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-3"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={level.days}
+                    aria-valuenow={doneDays}
+                    aria-label={t('sentences.progressDays', { done: doneDays, total: level.days })}
+                >
+                    <div
+                        className="h-full rounded-full bg-brand transition-[width] duration-500"
+                        style={{ width: `${(doneDays / Math.max(1, level.days)) * 100}%` }}
+                    />
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-micro">
+                    {(Object.keys(CHUNK_STYLE) as (keyof typeof CHUNK_STYLE)[]).map((c) => (
+                        <span key={c} className={CHUNK_STYLE[c].text}>■ {t(CHUNK_LABEL[c])}</span>
+                    ))}
+                </div>
+                <ul className="mt-3 flex flex-col gap-1">
+                    {days.map(({ d }) => {
+                        const done = isDayDone(levelId, d);
+                        return (
+                            <li key={d} className="min-w-0">
+                                <button
+                                    type="button"
+                                    onClick={() => scrollRef.current
+                                        ?.querySelector(`#sentence-day-${d}`)
+                                        ?.scrollIntoView({ block: 'start' })}
+                                    className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-state-hover"
+                                >
+                                    <span className="text-ui text-fg-secondary">
+                                        {t('sentences.day', { day: d })}
+                                    </span>
+                                    <span className={done ? 'text-micro text-success-fg' : 'text-micro text-fg-muted'}>
+                                        {done ? t('sentences.done') : t('sentences.markDone')}
+                                    </span>
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </section>
+
+            <section
+                data-testid="sentences-rail-hints"
+                className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+            >
+                <h3 className="text-caption font-semibold text-fg-primary">
+                    {t('transcript.tipsTitle')}
+                </h3>
+                <ul className="mt-2 flex flex-col gap-1.5 text-micro leading-relaxed text-fg-muted">
+                    <li>{t('sentences.annotationHint')}</li>
+                    <li>{t('sentences.hideZhTitle')}</li>
+                    <li>{t('sentences.reviewTitle')}</li>
+                </ul>
+            </section>
+        </>
+    ) : undefined;
+
     const toggleZh = () => { const v = !zhHidden; setZhHidden(v); saveZhHidden(v); };
     const shareSentence = (s: Sentence) => {
         setShareData({
@@ -189,30 +261,20 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                 )}
             </div>
 
-            {/* 进度条 + 图例 */}
-            {level && (
-                <div className="flex-none px-4 md:px-6 py-2 bg-zinc-900/40 border-b border-white/5">
-                    <div className="h-1 rounded-full bg-zinc-800 overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-emerald-400 to-sky-400 rounded-full transition-[width] duration-500"
-                            style={{ width: `${(doneDays / level.days) * 100}%` }} />
-                    </div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
-                        <span>{level.title} · {level.subtitle}</span>
-                        <span className="text-zinc-700">·</span>
-                        {(Object.keys(CHUNK_STYLE) as (keyof typeof CHUNK_STYLE)[]).map(c => (
-                            <span key={c} className={CHUNK_STYLE[c].text}>■ {t(CHUNK_LABEL[c])}</span>
-                        ))}
-                        <span className="text-zinc-600">{t('sentences.annotationHint')}</span>
-                    </div>
-                </div>
-            )}
-
             {/* 句子列表 */}
-            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 md:px-6 py-5">
+            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                <ReadingLayout
+                    testId="sentences-layout"
+                    gridTestId="sentences-grid"
+                    bodyTestId="sentences-body"
+                    railTestId="sentences-rail"
+                    className="py-4 sm:py-8"
+                    rail={rail}
+                >
                 {!level ? (
                     <div className="flex flex-col items-center justify-center py-24 text-zinc-500 text-sm">{t('sentences.loading')}</div>
                 ) : (
-                    <div className="max-w-3xl mx-auto space-y-5 pb-24">
+                    <div className="space-y-5 pb-24">
                         {days.map(({ d, items }) => {
                             const shown = items.filter(matches);
                             if (q && shown.length === 0) return null;
@@ -299,6 +361,7 @@ export const SentenceView: React.FC<SentenceViewProps> = ({
                         })}
                     </div>
                 )}
+                </ReadingLayout>
             </div>
 
             <ReadingAudioBar audio={audio} testIdPrefix="sentences-audio" />
