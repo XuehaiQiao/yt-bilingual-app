@@ -44,6 +44,7 @@ rollback: revert merge; 纯前端
 - 一卡一 worktree：`git worktree add .worktrees/<id> -b task/<id> <base>`；`.worktrees/` 入 `.gitignore`。
 - 共享文件（只 Integrator）：`App.tsx`、`i18n/*.json`、`package*.json`、`components/ui/**`、`lib/nav*`、`backend/migrations/**`、`.github/**`、`scripts/gate-receipt.mjs`、`specs/README.md`。
 - 冲突硬停：preflight 扫活跃卡 scope 交集 → 拒绝 claim；PR 再验 diff ⊆ 白名单；Integrator 串行合并。
+- **共享工作区提交纪律**：多个 agent 同一 worktree 时，agent 只能 `git add` 自己白名单内的文件；Integrator 提交前必须 `git diff --cached --name-only` 复核，并使用 `git commit -- <paths>` 显式提交自己的文件，**禁止 `git add -A`/裸 `git commit` 把别人暂存的文件带入**。
 - 证据绑 `HEAD <sha7>`；rebase/amend 后旧证据作废重跑。
 
 ## 4. 合并门禁
