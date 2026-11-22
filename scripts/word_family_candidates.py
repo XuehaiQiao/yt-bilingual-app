@@ -101,6 +101,7 @@ def main() -> int:
         "reasonCounts": {reason: sum(1 for r in rows if reason in r["reasons"]) for reason in ("large", "multi-pos", "outside-heavy", "word-shape", "rank-spread")},
         "largeFamilies": [r for r in rows if r["size"] >= 10],
         "sample": rows[:40],
+        "all": rows,
         "sha256": {"families": sha256(FAMILIES), "bands": sha256(BANDS)},
         "note": "只读候选清单；未调用 AI、未修改数据。",
     }

@@ -568,6 +568,19 @@
       "deps": [
         "P1-05"
       ]
+    },
+    {
+      "id": "P1-09",
+      "file": "TASKS/P1-09-family-ai-audit.md",
+      "status": "claimed",
+      "owner": "lead",
+      "write_scope": [
+        "docs/reports/word-family-ai-audit/"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P1-08"
+      ]
     }
   ]
 }
