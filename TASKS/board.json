@@ -387,8 +387,8 @@
     {
       "id": "P2-02",
       "file": "TASKS/P2-02-layout-foundation.md",
-      "status": "claimed",
-      "owner": "layout-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/layout/PageContainer.tsx",
         "frontend/src/components/layout/PageGrid.tsx",
