@@ -89,8 +89,8 @@
     {
       "id": "P0-04",
       "file": "TASKS/P0-04-article-analysis-recovery.md",
-      "status": "claimed",
-      "owner": "p04-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/teaching_analysis.py",
         "backend/routes_reading.py",
