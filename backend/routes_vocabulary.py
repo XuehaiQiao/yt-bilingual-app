@@ -10,7 +10,8 @@
   搜索/按等级与类型筛选；
 - ``GET /api/vocabulary/phrases/{id}``：短语详情；
 - ``GET /api/vocabulary/word-families?q=&level=&sort=&page=&pageSize=``：
-  CEFR 10k 词族表（族可含 10k 外成员，只读；specs/041）；
+  CEFR 10k 词族表（族可含 10k 外成员；成员带 phonetic/translation 快照；
+  族行只读，成员收藏/掌握走既有端点；specs/041）；
 - ``GET /api/vocabulary/level?words=a,b,c``：词 → A1–C1 / ``C1+`` / ``null``；
 - ``POST /api/vocabulary/classify``：批量标亮判定（CEFR 等级 + 专名），
   ``{items:[{text, sentenceStart?, hasLowercase?, hasNonInitialCapital?}]}``
@@ -159,7 +160,9 @@ def get_vocabulary_word_families(
 
     level 非法 → 400；page/pageSize/sort/q 非法 → 400；词族/释义数据缺失或
     损坏 → 503。``q`` 命中族内任一成员（如 ``reflection``）即返回整个族；
-    10k 外成员 ``level/rank`` 为 ``null``（UI 显示 ``—``）。
+    10k 外成员 ``level/rank`` 为 ``null``（UI 显示 ``—``）；每个成员自带
+    ``phonetic`` / ``translation`` 词典快照（缺条目为 ``""``）。成员收藏/
+    已掌握复用 ``/api/favorites``、``/api/review/words``，本端点仍只读。
     """
     try:
         payload = word_family.word_family_page(page, page_size, q, level, sort)

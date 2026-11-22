@@ -8,6 +8,8 @@
   adjudicate（黑名单删边后 7 人）、comprehend 最大族 18 人含 extend；
 - API：总数、分页 50/页 + hasMore + 越界页、q 命中任一成员（含 10k 外）、
   level 筛选、sort=rank/alpha；
+- 成员字段：每条成员带 ``phonetic`` / ``translation`` 字符串快照（来自
+  ``lexicon.v1.json``，缺条目为空串），与词典逐条一致；10k 外成员同样有；
 - 非法参数 400（page/pageSize/sort/level/q 长度）；旧 lemma-list 端点已删除；
 - 游客可读、不签发游客 Cookie、公开缓存头、不调 AI、不写库；
 - 词族/释义数据缺失或损坏 → 503；缺释义时 phonetic/translation 留空，不编造。
@@ -87,9 +89,18 @@ def test_total_and_first_page(make_client):
         ]
         assert len(item["members"]) >= 2
         for member in item["members"]:
-            assert set(member) == {"lemma", "level", "rank"}
+            assert set(member) == {
+                "lemma", "level", "rank", "phonetic", "translation"}
+            assert isinstance(member["phonetic"], str)
+            assert isinstance(member["translation"], str)
             assert member["level"] in LEVELS or member["level"] is None
             assert (member["level"] is None) == (member["rank"] is None)
+        # 成员释义/音标是构建时写入的词典快照；be / being 都有条目。
+        assert item["members"][0]["phonetic"] == "bi:"
+        assert item["members"][0]["translation"].startswith("v. 是")
+        assert item["members"][1]["lemma"] == "being"
+        assert item["members"][1]["phonetic"]
+        assert item["members"][1]["translation"].startswith("n. 存在")
     assert "ln_guest" not in response.cookies
 
 
@@ -106,6 +117,13 @@ def test_cross_boundary_members_have_empty_level(make_client):
     assert all(member["rank"] is None for member in outside)
     assert {member["lemma"] for member in outside} >= {"largeness", "extendible"}
     assert len([member for member in family["members"] if member["level"]]) == 8
+    # 10k 外成员与 10k 内成员用同一套成员字段（缺词典条目时为空串）。
+    for member in family["members"]:
+        assert isinstance(member["phonetic"], str)
+        assert isinstance(member["translation"], str)
+    largeness = next(member for member in outside if member["lemma"] == "largeness")
+    assert largeness["phonetic"] == ""
+    assert largeness["translation"] == ""
 
 
 def test_named_families_match_rule_e(make_client):
@@ -122,6 +140,13 @@ def test_named_families_match_rule_e(make_client):
     assert {member["lemma"] for member in decide_family["members"]} == {
         "decide", "decision", "decisive", "deciding", "decisiveness",
     }
+    decide_members = {member["lemma"]: member for member in decide_family["members"]}
+    assert decide_members["decision"]["phonetic"].startswith("di")
+    assert decide_members["decision"]["translation"].startswith("n. 决定")
+    # 词典缺条目的成员（10k 外）字段为空串，成员行仍会下发。
+    assert decide_members["deciding"]["level"] is None
+    assert decide_members["deciding"]["phonetic"] == ""
+    assert decide_members["deciding"]["translation"] == ""
 
     # allowlist：WordNet 3.0 缺 reflect–reflection，规则 E 补上后同族。
     reflect_family = reflect["items"][0]
@@ -299,6 +324,7 @@ def test_data_document_contract():
     assert "the" not in members
     assert "at" not in members
     # family id 连续、head 是 members[0]、等级集合与成员一致。
+    lexicon = vocabulary.load_lexicon()
     for index, family in enumerate(document["families"], start=1):
         assert family["id"] == f"F{index:04d}"
         assert family["head"] == family["members"][0]["lemma"]
@@ -309,6 +335,14 @@ def test_data_document_contract():
                 member["level"] for member in family["members"]}]
         assert len(family["members"]) >= 2
         assert any(member["level"] for member in family["members"])
+        for member in family["members"]:
+            # 成员释义/音标来自 lexicon.v1.json 的构建快照：与词典逐条一致
+            # （缺条目为空串）；10k 外成员同样带这两个字段。
+            assert set(member) == {
+                "lemma", "level", "rank", "phonetic", "translation"}
+            phonetic, translation = lexicon.entries.get(member["lemma"], ("", ""))
+            assert member["phonetic"] == phonetic
+            assert member["translation"] == translation
 
 
 def test_missing_data_is_503(monkeypatch, make_client, tmp_path):
@@ -356,6 +390,9 @@ def test_missing_lexicon_entry_keeps_empty_fields(monkeypatch):
     assert decide.translation == ""
     assert decide.head_level == "A1"
     assert len(decide.members) == 5
+    # head 的释义依赖运行期词典；成员的快照字段来自静态数据，不随之清空。
+    assert decide.members[0].phonetic == "di'said"
+    assert decide.members[0].translation.startswith("v. 决定")
 
 
 def test_index_is_cached_and_resettable():

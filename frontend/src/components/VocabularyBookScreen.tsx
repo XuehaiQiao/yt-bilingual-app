@@ -137,7 +137,10 @@ import {
     type FilterGroup,
     type FilterOption,
     type SortOption,
+    type WordFamilyMember,
+    type WordFamilyMemberState,
     type WordFamilyPage,
+    type WordFamilyRow,
     type WordFamilySort,
     type WordRowAction,
     type WordTableRow,
@@ -606,10 +609,12 @@ export function VocabularyBookScreen({
     }, [isGuest]);
 
     // Signed-in 已掌握 list: fetch the server list when 我的单词 or 已掌握 opens
-    // (and on retry). Actions afterwards update `serverMastered` from the PATCH
-    // response instead of refetching — one authoritative source, no reload.
+    // (and on retry), plus the 词族 tab now that its members carry the check
+    // (P1-07) — the check state must be right before the first member click.
+    // Actions afterwards update `serverMastered` from the PATCH response instead
+    // of refetching — one authoritative source, no reload.
     useEffect(() => {
-        if ((!activeIsMine && !activeIsMastered) || isGuest) {
+        if ((!activeIsMine && !activeIsMastered && !activeIsWordFamily) || isGuest) {
             setMasteredPhase('idle');
             return;
         }
@@ -660,7 +665,7 @@ export function VocabularyBookScreen({
                 setMasteredPhase('error');
             });
         return () => { cancelled = true; };
-    }, [activeIsMine, activeIsMastered, isGuest, targetLang, masteredNonce]);
+    }, [activeIsMine, activeIsMastered, activeIsWordFamily, isGuest, targetLang, masteredNonce]);
 
     // 已在复习 row state (specs/005): one read of the signed-in review deck,
     // reduced to `normalized lemma → state`, used only by the (flag-hidden)
@@ -1728,6 +1733,116 @@ export function VocabularyBookScreen({
         void addFavoriteForRow(input);
     };
 
+    // ── P1-07: 词族成员逐词收藏 / 标已掌握 ────────────────────────────────
+    // The family row stays read-only; its members are ordinary word rows. The
+    // star writes a wordlist favorite with the family provenance
+    // (`source_ref='word-family:<id>'`) and rolls back on failure; the check is
+    // the shared mastered write, which also removes the same word's favorite
+    // (specs/005 §已掌握与收藏互斥). Both report failures inline on the member
+    // row, and repeat clicks stay idempotent through the shared guards.
+    const familyMemberRowKey = (familyId: string, lemma: string): string => (
+        `family-member:${familyId}:${normalizeMasteryWord(lemma)}`
+    );
+
+    const clearFamilyMemberError = (rowKey: string) => {
+        setListRowErrors((prev) => {
+            if (!(rowKey in prev)) return prev;
+            const next = { ...prev };
+            delete next[rowKey];
+            return next;
+        });
+    };
+
+    /** One expanded member's favorite/mastered state (screen owns the data). */
+    const familyMemberState = (
+        row: WordFamilyRow,
+        member: WordFamilyMember,
+    ): WordFamilyMemberState => {
+        const key = normalizeMasteryWord(member.lemma);
+        const rowKey = familyMemberRowKey(row.id, member.lemma);
+        const favored = favoritedWordKeys.has(key);
+        const mastered = masteredWords.has(key);
+        return {
+            favorited: favored,
+            favoriteBusy: favoriteBusyKeys.has(key),
+            // 已掌握 is not a favorite: the star disables until the check is
+            // switched off (P0-10), exactly like the other word lists.
+            favoriteDisabled: mastered,
+            favoriteLabel: mastered
+                ? t('vocab.mastered.starDisabled', { word: member.lemma })
+                : favoriteLabelFor(member.lemma),
+            mastered,
+            masteredBusy: masterAdds[rowKey] === 'busy',
+            masteredLabel: masteredLabelFor(member.lemma, mastered),
+            error: listRowErrors[rowKey],
+        };
+    };
+
+    /** Member star: POST when unsaved, DELETE when saved; inline on failure. */
+    const toggleFamilyMemberFavorite = (
+        row: WordFamilyRow,
+        member: WordFamilyMember,
+    ) => {
+        if (isGuest) {
+            openLogin();
+            return;
+        }
+        const lemma = member.lemma.trim();
+        const key = normalizeMasteryWord(lemma);
+        if (!key) return;
+        const rowKey = familyMemberRowKey(row.id, lemma);
+        if (favoriteBusyKeys.has(key) || favoriteWriteInFlight.current.has(key)) return;
+        clearFamilyMemberError(rowKey);
+        const existing = favoriteByWord.get(key);
+        if (existing) {
+            // The star fills/unfills optimistically through the App-owned
+            // handler; a failed DELETE resolves false and the star rolls back.
+            favoriteWriteInFlight.current.add(key);
+            markFavoriteBusy(lemma, true);
+            void deleteFavoriteById(existing.id)
+                .then((removed) => {
+                    if (!removed) throw new Error(t('vocab.edit.rowFailed'));
+                    toast.success(t('vocab.toast.removed'), { dedupeKey: 'favorites:removed' });
+                })
+                .catch((error) => {
+                    setListRowErrors((prev) => ({ ...prev, [rowKey]: editErrorText(error) }));
+                })
+                .finally(() => {
+                    favoriteWriteInFlight.current.delete(key);
+                    markFavoriteBusy(lemma, false);
+                });
+            return;
+        }
+        void persistFavoriteForRow({
+            word: lemma,
+            phonetic: member.phonetic,
+            translation: member.translation,
+            sourceKind: 'wordlist',
+            sourceRef: `word-family:${row.id}`,
+            sourceTitle: t('vocab.family.sourceTitle', { head: row.head }),
+        })
+            .then((created) => {
+                if (created) toast.success(t('vocab.toast.added'), { dedupeKey: 'favorites:added' });
+            })
+            .catch((error) => {
+                setListRowErrors((prev) => ({ ...prev, [rowKey]: editErrorText(error) }));
+            });
+    };
+
+    /** Member check: the shared mastered write (snapshot + favorite removal). */
+    const toggleFamilyMemberMastered = (
+        row: WordFamilyRow,
+        member: WordFamilyMember,
+    ) => {
+        void toggleListRowMastered({
+            rowKey: familyMemberRowKey(row.id, member.lemma),
+            word: member.lemma,
+            translation: member.translation,
+            phonetic: member.phonetic,
+            listId: `word-family:${row.id}`,
+        });
+    };
+
     // ── Shared edit mode (P0-14) ──────────────────────────────────────────
     // Every word list uses the same mode, checkbox column and bottom action
     // bar; switching tabs exits editing and clears the selection (specs/005
@@ -2627,10 +2742,11 @@ export function VocabularyBookScreen({
     }, [t]);
 
     const renderWordFamily = () => {
-        // Read-only CEFR 10k word family list (specs/041): server paging with
-        // the shared 20/50/100 selector, search over any member, CEFR filter,
-        // frequency/alpha sort. No write controls exist on this surface — no
-        // star/check/edit/batch/export.
+        // CEFR 10k word family list (specs/041): server paging with the shared
+        // 20/50/100 selector, search over any member, CEFR filter,
+        // frequency/alpha sort. P1-07: family rows stay read-only (no
+        // edit/batch/export), while every expanded member carries the standard
+        // word-row star (favorite) and 已掌握 check.
         const total = familyData?.total ?? 0;
         const pages = Math.max(1, Math.ceil(total / familyPageSize));
         const hasFilter = Boolean(familyDebouncedQuery || familyLevel);
@@ -2747,6 +2863,9 @@ export function VocabularyBookScreen({
                                 rows={familyData.items}
                                 expanded={familyExpanded}
                                 onToggleExpand={toggleFamilyExpand}
+                                memberState={familyMemberState}
+                                onToggleMemberFavorite={toggleFamilyMemberFavorite}
+                                onToggleMemberMastered={toggleFamilyMemberMastered}
                                 className={LIST_CARD}
                             />
                             <VocabPagination
@@ -2881,10 +3000,10 @@ export function VocabularyBookScreen({
                     : !unavailable ? `vocab-tab-count-${id}` : undefined,
                 disabled: unavailable,
                 title: unavailable ? entry?.note ?? undefined : undefined,
-                // The read-only 词族 tab keeps its own hook (`vocab-family-tab`):
+                // The 词族 tab keeps its own hook (`vocab-family-tab`):
                 // the legacy `vocab-tab-*` namespace is the pre-existing built-in
                 // list tabs, whose order/count assertions must not shift when a
-                // new read-only surface is appended (P1-02/P1-05 zero-regression).
+                // new surface is appended (P1-02/P1-05 zero-regression).
                 testId: customEntry
                     ? `vocab-tab-custom-${customEntry.id}`
                     : id === WORD_FAMILY_TAB

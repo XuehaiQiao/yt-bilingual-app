@@ -14,8 +14,13 @@
   两份清单**写死在本脚本**，逐条校验存在性（黑名单必须存在于 WordNet 图、
   allowlist 必须不存在于图），数据漂移直接报错，防止清单与真实图脱节。
 
-确定性：同一 WordNet 语料 + 同一频表 → 逐字节一致的 JSON（无时间戳/耗时）。
-运行期不依赖 nltk/WordNet：应用只读生成的 JSON。
+成员释义（P1-07）：每个成员从 ``content/wordlists/lexicon.v1.json`` 补
+``phonetic`` / ``translation``（head 的释义仍由后端按同一词典在运行期补充；
+成员字段写进静态数据，展开成员表不再需要额外请求）。词典缺该词时两者为 ``""``，
+不编造。
+
+确定性：同一 WordNet 语料 + 同一频表 + 同一释义索引 → 逐字节一致的 JSON
+（无时间戳/耗时）。运行期不依赖 nltk/WordNet：应用只读生成的 JSON。
 
 用法::
 
@@ -49,8 +54,10 @@ RULE_VERSION = "E"
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FREQUENCY = REPO_ROOT / "content/wordlist/frequency_bands.v1.json"
+DEFAULT_LEXICON = REPO_ROOT / "content/wordlists/lexicon.v1.json"
 DEFAULT_OUT = REPO_ROOT / "content/wordlist/word-families.v1.json"
 DEFAULT_WORDNET_DIR = Path("/tmp/nltk_data")
+SCHEMA_LEXICON = "linguatrek.lexicon.v1"
 
 LICENSE = "WordNet 3.0 License (Princeton University, 2006)"
 LICENSE_URL = "https://wordnet.princeton.edu/"
@@ -178,6 +185,61 @@ def validate_manual_lists(
     return black, allow
 
 
+def load_lexicon_entries(path: str | Path) -> Tuple[Dict[str, str], Dict[str, str], Dict[str, object]]:
+    """读取释义索引，返回 ``(phonetics, translations, source)``。
+
+    只校验生成所需的最小契约（schema/entries 形状）；完整性哈希由运行期
+    ``backend/vocabulary.py`` 复核，这里不重复实现。键必须是词典里的小写词。
+    """
+    lexicon_path = Path(path)
+    try:
+        document = json.loads(lexicon_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise BuildError(f"释义索引读取失败：{exc}") from exc
+    _require(isinstance(document, dict), "释义索引必须是 JSON 对象")
+    _require(
+        document.get("schema") == SCHEMA_LEXICON,
+        f"释义索引 schema 不是 {SCHEMA_LEXICON}",
+    )
+    raw_entries = document.get("entries")
+    _require(
+        isinstance(raw_entries, dict) and bool(raw_entries),
+        "释义索引 entries 必须是非空对象",
+    )
+    phonetics: Dict[str, str] = {}
+    translations: Dict[str, str] = {}
+    for word, value in raw_entries.items():
+        _require(
+            isinstance(word, str) and word == word.lower(),
+            f"释义索引键必须是小写词：{word!r}",
+        )
+        _require(
+            isinstance(value, list) and len(value) == 2
+            and isinstance(value[0], str) and isinstance(value[1], str),
+            f"释义索引 entries[{word}] 必须是 [phonetic, translation]",
+        )
+        phonetics[word] = value[0]
+        translations[word] = value[1]
+    source: Dict[str, object] = {
+        "path": _repo_relative(lexicon_path),
+        "version": str(document.get("version") or ""),
+        "sha256": hashlib.sha256(lexicon_path.read_bytes()).hexdigest(),
+        "entries": len(phonetics),
+    }
+    return phonetics, translations, source
+
+
+def _lexicon_fields(
+    lemma: str,
+    lexicon: Optional[Mapping[str, Tuple[str, str]]],
+) -> Dict[str, str]:
+    """一个成员的 ``phonetic`` / ``translation``；词典缺失时留空串。"""
+    if lexicon is None:
+        return {}
+    phonetic, translation = lexicon.get(lemma, ("", ""))
+    return {"phonetic": str(phonetic), "translation": str(translation)}
+
+
 def build_family_document(
     index: audit.EdgeIndex,
     cefr: audit.CefrInput,
@@ -187,8 +249,15 @@ def build_family_document(
     provider_version: str = SOURCE_DRIVEN,
     frequency_path: str | Path = DEFAULT_FREQUENCY,
     frequency_version: str = "",
+    lexicon: Optional[Mapping[str, Tuple[str, str]]] = None,
+    lexicon_source: Optional[Mapping[str, object]] = None,
 ) -> Dict[str, object]:
-    """按规则 E 建词族文档（不写盘、不读 WordNet）。"""
+    """按规则 E 建词族文档（不写盘、不读 WordNet）。
+
+    ``lexicon``（``lemma -> (phonetic, translation)``）非空时给每个成员补
+    ``phonetic`` / ``translation``；``None`` 保留纯图结构（隔离单测用），
+    CLI 总会传入。
+    """
     black_pairs, allow_pairs = validate_manual_lists(index.pairs, blacklist, allowlist)
     # allowlist 的规则前提：两侧都在 CEFR 10k（否则是产品口径变化，先复核审计）。
     for left, right in allow_pairs:
@@ -211,7 +280,12 @@ def build_family_document(
     families: List[Mapping[str, object]] = []
     for family in table.families:
         members = [
-            {"lemma": member.word, "level": member.level, "rank": member.rank}
+            {
+                "lemma": member.word,
+                "level": member.level,
+                "rank": member.rank,
+                **_lexicon_fields(member.word, lexicon),
+            }
             for member in family.members
         ]
         levels = sorted(
@@ -242,6 +316,15 @@ def build_family_document(
             f"{family['id']} head 不是 members[0]",
         )
         _require(bool(family["levels"]), f"{family['id']} 缺等级集合")
+        if lexicon is not None:
+            _require(
+                all(
+                    isinstance(member.get("phonetic"), str)
+                    and isinstance(member.get("translation"), str)
+                    for member in members
+                ),
+                f"{family['id']} 成员缺 phonetic/translation 字段",
+            )
 
     # allowlist 效果：加入的边两端必须落在同一族；黑名单按规则 E 只保证「边不在
     # 最终图里」（审计的「坏边 0」口径就是边计数，不保证两端不被其它合法边连起来）。
@@ -303,6 +386,7 @@ def build_family_document(
                 "sha256": cefr.sha256,
                 "lemmas": len(cefr.ranks),
             },
+            **({"lexicon": dict(lexicon_source)} if lexicon_source else {}),
         },
         "rules": {
             "graph": "WordNet 3.0 派生图：全部单字 lemma，无向边；自指/多词丢弃，同对去重",
@@ -312,6 +396,7 @@ def build_family_document(
             "head": "族内 CEFR rank 最小者；family id 按 head rank 升序 F0001…",
             "blacklist": "17 条人工确认坏边从图中删除（semantic_split + clear_error）",
             "allowlist": "22 条 WordNet 缺失/不对称的人工边加入图中（两侧都在 10k）",
+            "memberFields": "成员 phonetic/translation 来自 lexicon.v1.json；缺条目为空串，不编造",
         },
         "counts": counts,
         "sizeDistribution": size_distribution,
@@ -377,6 +462,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--frequency", default=str(DEFAULT_FREQUENCY),
                         help="CEFR 频表（默认 content/wordlist/frequency_bands.v1.json）")
+    parser.add_argument("--lexicon", default=str(DEFAULT_LEXICON),
+                        help="释义索引（默认 content/wordlists/lexicon.v1.json）")
     parser.add_argument("--wordnet-dir", default=str(DEFAULT_WORDNET_DIR),
                         help="NLTK 数据目录（默认 /tmp/nltk_data）")
     parser.add_argument("--out", default=str(DEFAULT_OUT),
@@ -391,6 +478,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     frequency_path = Path(args.frequency)
+    lexicon_path = Path(args.lexicon)
     out_path = Path(args.out)
 
     try:
@@ -398,6 +486,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         cefr = audit.load_cefr(frequency_path)
         frequency_version = str(frequency_document.get("version") or "")
         sha_before = audit.file_sha256(frequency_path)
+        lexicon_sha_before = audit.file_sha256(lexicon_path)
+        phonetics, translations, lexicon_source = load_lexicon_entries(lexicon_path)
+        lexicon = {word: (phonetics[word], translations[word]) for word in phonetics}
         provider = audit.WordNetProvider(args.wordnet_dir)
         records = list(provider.derivation_pointers())
         index = audit.build_edge_index(records)
@@ -407,6 +498,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             provider_version=str(provider.version),
             frequency_path=frequency_path,
             frequency_version=frequency_version,
+            lexicon=lexicon,
+            lexicon_source=lexicon_source,
         )
         assert_expected_counts(document)
     except audit.WordNetUnavailable as exc:
@@ -419,16 +512,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if audit.file_sha256(frequency_path) != sha_before:
         print("[word-families] 频表在运行期间被改动，拒绝写数据", file=sys.stderr)
         return 4
+    if audit.file_sha256(lexicon_path) != lexicon_sha_before:
+        print("[word-families] 释义索引在运行期间被改动，拒绝写数据", file=sys.stderr)
+        return 4
 
     text = dump_json(document)
     counts = document["counts"]
+    members = [member for family in document["families"] for member in family["members"]]
+    with_phonetic = sum(1 for member in members if member["phonetic"])
+    with_translation = sum(1 for member in members if member["translation"])
     print(f"schema            : {SCHEMA}")
     print(f"WordNet           : {document['source']['wordnet']['version']}")
     print(f"频表              : {document['source']['frequencyBands']['path']}"
           f"（{cefr.sha256[:12]}…）")
+    print(f"释义索引          : {document['source']['lexicon']['path']}"
+          f"（{document['source']['lexicon']['sha256'][:12]}…）")
     print(f"规则              : {RULE_VERSION}")
     print(f"词族 / 成员       : {counts['families']:,} / {counts['members']:,}"
           f"（10k 内 {counts['cefrMembers']:,} / 10k 外 {counts['outsideMembers']:,}）")
+    print(f"成员音标 / 释义   : {with_phonetic:,} / {with_translation:,}"
+          f"（缺条目留空 {counts['members'] - with_translation:,}）")
     print(f"最大族 / 覆盖     : {counts['maxFamilySize']} / {counts['cefrCoveragePct']}%")
     print(f"黑名单 / allowlist: {counts['blacklistEdges']} / {counts['allowlistEdges']}")
     print(f"完整性 sha256     : {document['integrity']['sha256']}")

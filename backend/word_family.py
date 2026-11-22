@@ -3,8 +3,9 @@
 数据来源（随仓库分发、运行期只读、无数据库、无迁移、不装 nltk/WordNet）：
 
 - ``content/wordlist/word-families.v1.json``：规则 E 预生成的词族
-  （WordNet 3.0 派生图 + 17 条黑名单坏边 + 22 条 allowlist 缺失边）。
-  生成脚本 ``scripts/build_word_families.py``；文件带 ``integrity.sha256``。
+  （WordNet 3.0 派生图 + 17 条黑名单坏边 + 22 条 allowlist 缺失边），
+  成员自带 ``phonetic`` / ``translation`` 词典快照。生成脚本
+  ``scripts/build_word_families.py``；文件带 ``integrity.sha256``。
 - ``content/wordlists/lexicon.v1.json``：head 的 ``phonetic/translation``；
   复用 :func:`vocabulary.load_lexicon`。
 
@@ -20,7 +21,11 @@
 → 503。游客可读、不调 AI、不写库。响应字段见 :func:`word_family_page`：
 
 ``{total, page, pageSize, hasMore, items:[{id, head, headRank, headLevel,
-headPhonetic, headTranslation, levels, members:[{lemma, level, rank}]}]}``
+headPhonetic, headTranslation, levels, members:[{lemma, level, rank,
+phonetic, translation}]}]}``
+
+成员 ``phonetic`` / ``translation`` 来自静态数据（生成时从 ``lexicon.v1.json``
+快照，缺条目为 ``""``，不编造）；head 的字段仍按同一词典在运行期补充。
 """
 from __future__ import annotations
 
@@ -69,11 +74,17 @@ class WordFamilyInvalid(WordFamilyError):
 
 @dataclass(frozen=True)
 class FamilyMember:
-    """族内一个词；10k 外成员 level/rank 均为 ``None``。"""
+    """族内一个词；10k 外成员 level/rank 均为 ``None``。
+
+    ``phonetic`` / ``translation`` 是生成时的词典快照，缺条目为空串；
+    成员可逐词收藏/标已掌握（specs/041 §3），所以这三个字段一起下发。
+    """
 
     lemma: str
     level: Optional[str]
     rank: Optional[int]
+    phonetic: str = ""
+    translation: str = ""
 
 
 @dataclass(frozen=True)
@@ -161,7 +172,23 @@ def _as_member(raw: object, family_id: str, levels: Sequence[str]) -> FamilyMemb
         lemma=lemma,
         level=level if isinstance(level, str) else None,
         rank=rank if isinstance(rank, int) and not isinstance(rank, bool) else None,
+        phonetic=_optional_text(raw, "phonetic", family_id, lemma),
+        translation=_optional_text(raw, "translation", family_id, lemma),
     )
+
+
+def _optional_text(
+    raw: Mapping[str, object], field: str, family_id: str, lemma: str
+) -> str:
+    """成员快照字段：缺失视为空串，非字符串 → 数据损坏（503）。"""
+    value = raw.get(field)
+    if value is None:
+        return ""
+    _require(
+        isinstance(value, str),
+        f"{family_id}/{lemma}: {field} 必须是字符串",
+    )
+    return value
 
 
 def _parse_family(raw: object, expected_id: str) -> Family:
@@ -449,8 +476,13 @@ def word_family_page(
                 "headTranslation": family.translation,
                 "levels": list(family.levels),
                 "members": [
-                    {"lemma": member.lemma, "level": member.level,
-                     "rank": member.rank}
+                    {
+                        "lemma": member.lemma,
+                        "level": member.level,
+                        "rank": member.rank,
+                        "phonetic": member.phonetic,
+                        "translation": member.translation,
+                    }
                     for member in family.members
                 ],
             }
