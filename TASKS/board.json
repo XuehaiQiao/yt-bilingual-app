@@ -318,6 +318,31 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P1-02",
+      "file": "TASKS/P1-02-cefr-lemma-tab.md",
+      "status": "claimed",
+      "owner": "lemma-tab-impl",
+      "write_scope": [
+        "backend/lemma_list.py",
+        "backend/routes_vocabulary.py",
+        "backend/tests/test_lemma_list.py",
+        "frontend/src/lib/wordlists.ts",
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "frontend/src/components/VocabularyRows.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/cefr-lemma-acceptance.mjs",
+        "specs/040-cefr-lemma-list/spec.md",
+        "specs/README.md"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P0-16"
+      ]
     }
   ]
 }
