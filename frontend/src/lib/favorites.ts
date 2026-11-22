@@ -53,6 +53,8 @@ export interface FavoriteItem extends FavoriteSourceFields {
     type?: FavoriteType;
     context_en?: string;
     context_zh?: string;
+    /** Dictionary example snapshot for words imported from a word list. */
+    example?: string;
 }
 
 /** What a call site knows before the server normalizes/assigns fields. */
@@ -67,6 +69,8 @@ export interface FavoriteDraft extends FavoriteSourceFields {
     highlights?: FavoriteHighlight[];
     context_en?: string;
     context_zh?: string;
+    /** Dictionary example snapshot for words imported from a word list. */
+    example?: string;
 }
 
 async function errorDetail(response: Response): Promise<string> {
@@ -99,6 +103,7 @@ export async function addFavorite(draft: FavoriteDraft): Promise<FavoriteItem> {
         meta: {
             ...(draft.context_en ? { context_en: draft.context_en } : {}),
             ...(draft.context_zh ? { context_zh: draft.context_zh } : {}),
+            ...(draft.example ? { example: draft.example } : {}),
             ...(draft.highlights?.length ? { highlights: draft.highlights } : {}),
             ...(draft.source_kind ? { source_kind: draft.source_kind } : {}),
             ...(draft.source_ref ? { source_ref: draft.source_ref } : {}),

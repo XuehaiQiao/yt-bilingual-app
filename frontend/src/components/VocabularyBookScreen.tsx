@@ -55,6 +55,7 @@ import {
     Trash2,
     Tv,
     Undo2,
+    Upload,
     Volume2,
     X,
     type LucideIcon,
@@ -98,6 +99,7 @@ import {
     addWord,
     getMasteredWords,
     listReviewWords,
+    REVIEW_UI_ENABLED,
     REVIEW_WORD_STATES,
     setWordMastered,
     WORD_STATE_FILTER_STATES,
@@ -105,6 +107,19 @@ import {
     type ReviewWordState,
     type WordStateFilter,
 } from '../lib/review';
+import {
+    deleteCustomWordlist,
+    fetchCustomWordlistPage,
+    fetchCustomWordlists,
+    WordlistsApiError,
+    type CustomWordlist,
+    type CustomWordlistItem,
+    type CustomWordlistPage,
+} from '../lib/wordlists';
+import {
+    WORDLIST_MAX_LISTS,
+    WORDLIST_PAGE_SIZE,
+} from '../lib/wordlistParse';
 import { fetchSeenCounts } from '../lib/vocabSeen';
 import { normalizeMasteryWord, readGuestMastered, writeGuestMastered } from '../lib/wordMastery';
 import { describeApiError, toast } from '../lib/toast';
@@ -113,6 +128,7 @@ import { useSpeechAvailability } from '../lib/useSpeechAvailability';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/I18nProvider';
 import { VocabPagination } from './VocabPagination';
+import { WordlistImportDialog } from './WordlistImportDialog';
 import {
     LevelBadge,
     WordRowActionButton,
@@ -157,6 +173,8 @@ type SeenPhase = 'idle' | 'loading' | 'ready' | 'unavailable';
 type StateFilterPhase = 'idle' | 'loading' | 'ready' | 'unavailable';
 /** Row-level add state for the built-in lists / phrases (idempotent writes). */
 type RowAddState = 'idle' | 'busy' | 'added';
+/** Custom-list catalog: `unavailable` = 403/404 → hide the surface, no error. */
+type CustomListsPhase = 'idle' | 'loading' | 'ready' | 'error' | 'unavailable';
 
 const MINE_TAB = 'mine';
 /** 已掌握 is a word list of its own, not a segment inside 我的单词 (specs/005). */
@@ -166,6 +184,12 @@ const PHRASES_TAB = 'phrases';
 const CEFR_TAB = 'cefr';
 /** Product order: 我的单词 / 已掌握 / 短语 / CEFR 词表 / GRE / CET4 / CET6. */
 const LIST_TAB_IDS = [CEFR_TAB, 'gre', 'cet4', 'cet6'] as const;
+/** Custom lists are appended after every built-in tab (specs/038 §1). */
+const CUSTOM_TAB_PREFIX = 'custom:';
+const customTabId = (listId: string) => `${CUSTOM_TAB_PREFIX}${listId}`;
+const customListId = (tabId: string): string | null => (
+    tabId.startsWith(CUSTOM_TAB_PREFIX) ? tabId.slice(CUSTOM_TAB_PREFIX.length) : null
+);
 const FALLBACK_LABELS: Record<string, string> = {
     cefr: 'CEFR 词表',
     gre: 'GRE',
@@ -302,6 +326,45 @@ export function VocabularyBookScreen({
     const [catalogNonce, setCatalogNonce] = useState(0);
     const [activeTab, setActiveTab] = useState<string>(MINE_TAB);
 
+    // v1.3 custom word lists (specs/038): signed-in only, appended after the
+    // built-in tabs. A 403/404 means "this surface is not available" (no tabs,
+    // no banner); any other failure keeps the built-in lists usable and shows
+    // one inline, retryable warning above the tab strip (G3 / IX-01).
+    const [customLists, setCustomLists] = useState<CustomWordlist[]>([]);
+    const [customListsPhase, setCustomListsPhase] = useState<CustomListsPhase>('idle');
+    const [customListsError, setCustomListsError] = useState('');
+    const [customListsNonce, setCustomListsNonce] = useState(0);
+    const [importOpen, setImportOpen] = useState(false);
+
+    useEffect(() => {
+        if (isGuest) {
+            setCustomLists([]);
+            setCustomListsPhase('idle');
+            setCustomListsError('');
+            return;
+        }
+        let cancelled = false;
+        setCustomListsPhase('loading');
+        setCustomListsError('');
+        fetchCustomWordlists()
+            .then((lists) => {
+                if (cancelled) return;
+                setCustomLists(lists);
+                setCustomListsPhase('ready');
+            })
+            .catch(async (error) => {
+                if (cancelled) return;
+                if (error instanceof WordlistsApiError && (error.status === 403 || error.status === 404)) {
+                    setCustomLists([]);
+                    setCustomListsPhase('unavailable');
+                    return;
+                }
+                setCustomListsError(await describeApiError(error));
+                setCustomListsPhase('error');
+            });
+        return () => { cancelled = true; };
+    }, [isGuest, customListsNonce]);
+
     useEffect(() => {
         let cancelled = false;
         setCatalogPhase('loading');
@@ -326,8 +389,30 @@ export function VocabularyBookScreen({
     const activeIsMine = activeTab === MINE_TAB;
     const activeIsMastered = activeTab === MASTERED_TAB;
     const activeIsCefr = activeTab === CEFR_TAB;
-    const activeList = activeIsMine || activeIsMastered ? null : catalogById.get(activeTab) ?? null;
+    const activeCustomListId = customListId(activeTab);
+    const activeCustomList = activeCustomListId
+        ? customLists.find((entry) => entry.id === activeCustomListId) ?? null
+        : null;
+    const activeIsCustom = activeCustomList != null;
+    const activeList = activeIsMine || activeIsMastered || activeIsCustom
+        ? null
+        : catalogById.get(activeTab) ?? null;
     const activeUnavailable = activeList?.available === false;
+
+    // If the active custom list disappears (deleted in another tab and the
+    // catalog refreshed), fall back to 我的单词 instead of fetching a dead id.
+    useEffect(() => {
+        if (!activeCustomListId) return;
+        if (customListsPhase !== 'ready' && customListsPhase !== 'unavailable') return;
+        if (customLists.some((entry) => entry.id === activeCustomListId)) return;
+        setActiveTab(MINE_TAB);
+        setCustomQuery('');
+        setCustomDebouncedQuery('');
+        setCustomPage(1);
+        setCustomRevealed(new Set());
+        setCustomListPhase('idle');
+        setCustomListData(null);
+    }, [activeCustomListId, customLists, customListsPhase]);
 
     // ── My words: expand + batched CEFR lookup ────────────────────────────
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -384,6 +469,8 @@ export function VocabularyBookScreen({
     // replaces the success state on failure; the same button is the retry.
     const [mineAdds, setMineAdds] = useState<Record<string, RowAddState>>({});
     const [reviewAdds, setReviewAdds] = useState<Record<string, RowAddState>>({});
+    /** Custom-list 标为已掌握 rows (idempotent PATCH, same busy/added shape). */
+    const [masterAdds, setMasterAdds] = useState<Record<string, RowAddState>>({});
     const [listRowErrors, setListRowErrors] = useState<Record<string, string>>({});
     // Bulk selection keys: favorite id on 我的单词, `mastered:<normalized word>`
     // on 已掌握 (a mastered word may have no favorite record). `bulkSummary`
@@ -754,6 +841,8 @@ export function VocabularyBookScreen({
         word: string;
         translation: string;
         phonetic?: string | null;
+        /** Dictionary example kept in the favorite snapshot (specs/038 §3.2). */
+        example?: string | null;
         listId: string;
         listLabel: string;
     }) => {
@@ -780,6 +869,7 @@ export function VocabularyBookScreen({
             en_text: word,
             zh_text: zhText,
             added_at: Date.now(),
+            ...(input.example?.trim() ? { example: input.example.trim() } : {}),
             source_kind: 'wordlist',
             source_ref: input.listId,
             source_title: input.listLabel,
@@ -809,6 +899,8 @@ export function VocabularyBookScreen({
         rowKey: string;
         word: string;
         listId: string;
+        /** Word-list meaning snapshot; the review card shows it before /api/define. */
+        definition?: string | null;
     }) => {
         if (reviewAdds[input.rowKey] === 'busy' || reviewAdds[input.rowKey] === 'added') return;
         if (isGuest) {
@@ -828,6 +920,7 @@ export function VocabularyBookScreen({
             const result = await addWord({
                 lemma,
                 targetLang,
+                ...(input.definition?.trim() ? { definition: input.definition.trim() } : {}),
                 source: { contentRef: input.listId },
             });
             setReviewAdds((prev) => ({ ...prev, [input.rowKey]: 'added' }));
@@ -862,18 +955,17 @@ export function VocabularyBookScreen({
         word: string;
         translation: string;
         phonetic?: string | null;
+        definition?: string | null;
+        example?: string | null;
         listId: string;
         listLabel: string;
-    }): WordRowAction[] => {
+    }, options?: { includeReview?: boolean }): WordRowAction[] => {
         const mineState = rowMineAddState(input.rowKey, input.word);
-        const reviewState = rowReviewAddState(input.rowKey, input.word);
-        const mineLabel = mineState === 'added' ? t('vocab.list.added') : t('vocab.list.addMine');
-        const reviewLabel = reviewState === 'added' ? t('vocab.review.added') : t('vocab.review.add');
-        return [
+        const actions: WordRowAction[] = [
             {
                 key: 'mine',
-                label: `${mineLabel} ${input.word}`,
-                text: mineLabel,
+                label: `${mineState === 'added' ? t('vocab.list.added') : t('vocab.list.addMine')} ${input.word}`,
+                text: mineState === 'added' ? t('vocab.list.added') : t('vocab.list.addMine'),
                 icon: BookmarkPlus,
                 testId: `${input.rowKey}-add-mine`,
                 busy: mineState === 'busy',
@@ -881,18 +973,29 @@ export function VocabularyBookScreen({
                 disabled: mineState === 'added',
                 onClick: () => { void addListWordToMine(input); },
             },
-            {
-                key: 'review',
-                label: `${reviewLabel} ${input.word}`,
-                text: reviewLabel,
-                icon: Repeat,
-                testId: `${input.rowKey}-add-review`,
-                busy: reviewState === 'busy',
-                done: reviewState === 'added',
-                disabled: reviewState === 'added',
-                onClick: () => { void addListWordToReview({ rowKey: input.rowKey, word: input.word, listId: input.listId }); },
-            },
         ];
+        // specs/038 (2026-11-22): the custom-list surface hides 加入复习 while
+        // the review UI is paused; the interface + definition snapshot stay.
+        if (!(options?.includeReview ?? true)) return actions;
+        const reviewState = rowReviewAddState(input.rowKey, input.word);
+        const reviewLabel = reviewState === 'added' ? t('vocab.review.added') : t('vocab.review.add');
+        actions.push({
+            key: 'review',
+            label: `${reviewLabel} ${input.word}`,
+            text: reviewLabel,
+            icon: Repeat,
+            testId: `${input.rowKey}-add-review`,
+            busy: reviewState === 'busy',
+            done: reviewState === 'added',
+            disabled: reviewState === 'added',
+            onClick: () => { void addListWordToReview({
+                rowKey: input.rowKey,
+                word: input.word,
+                listId: input.listId,
+                definition: input.definition,
+            }); },
+        });
+        return actions;
     };
 
     /** 朗读 control, disabled (with a reason) when no English voice exists. */
@@ -906,6 +1009,48 @@ export function VocabularyBookScreen({
         disabled: speechDisabled,
         onClick: () => speakRow(input.text),
     });
+
+    /**
+     * 标为已掌握 for a custom word-list row (specs/038 §1). Idempotent PATCH;
+     * the row stays in the word list, it just flips its own action state. The
+     * review response is authoritative for the mark, and a failure leaves an
+     * inline retryable error instead of a success-looking row.
+     */
+    const addListWordToMastered = async (input: {
+        rowKey: string;
+        word: string;
+        listId: string;
+    }) => {
+        const key = normalizeMasteryWord(input.word);
+        if (masterAdds[input.rowKey] === 'busy' || masteredWords.has(key)) return;
+        if (isGuest) {
+            openLogin();
+            return;
+        }
+        const lemma = input.word.trim();
+        if (!lemma) return;
+        setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'busy' }));
+        setListRowErrors((prev) => {
+            if (!(input.rowKey in prev)) return prev;
+            const next = { ...prev };
+            delete next[input.rowKey];
+            return next;
+        });
+        try {
+            const result = await setWordMastered({
+                lemma,
+                mastered: true,
+                targetLang,
+                source: { contentRef: input.listId },
+            });
+            writeMasteredState(lemma, result.word.mastered === true);
+            setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'added' }));
+            toast.success(t('vocab.custom.masterToast'), { dedupeKey: 'review:fav-mastered' });
+        } catch {
+            setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'idle' }));
+            setListRowErrors((prev) => ({ ...prev, [input.rowKey]: t('vocab.custom.masterError') }));
+        }
+    };
 
     const handleAddFavoriteToReview = async (fav: FavoriteItem) => {
         if (pendingReviewId || pendingMasteredId) return;
@@ -1260,6 +1405,21 @@ export function VocabularyBookScreen({
         }
     });
 
+    // ── Custom word lists: server search + 50/page + hide-Chinese ─────────
+    // Kept separate from the built-in list state: switching between a custom
+    // list and GRE must not rewrite the other surface's query/page (IX-06:
+    // every request is tied to an AbortController so a stale page cannot win).
+    const [customQuery, setCustomQuery] = useState('');
+    const [customDebouncedQuery, setCustomDebouncedQuery] = useState('');
+    const [customPage, setCustomPage] = useState(1);
+    const [customListPhase, setCustomListPhase] = useState<Phase>('idle');
+    const [customListData, setCustomListData] = useState<CustomWordlistPage | null>(null);
+    const [customListError, setCustomListError] = useState('');
+    const [customListNonce, setCustomListNonce] = useState(0);
+    const [customRevealed, setCustomRevealed] = useState<Set<string>>(() => new Set());
+    const [customDeleteOpen, setCustomDeleteOpen] = useState(false);
+    const [customAddAllOpen, setCustomAddAllOpen] = useState(false);
+
     // ── Phrases: independent paging/search/filter state ───────────────────
     // Deliberately separate from the word-list state above: switching tabs (or
     // searching a phrase) must never rewrite what the A1/GRE list is showing.
@@ -1295,6 +1455,13 @@ export function VocabularyBookScreen({
         setPhraseType('');
         setPhraseRevealed(new Set());
         setPhraseExpanded(new Set());
+        // Custom lists restart clean too (first page, no search, collapsed).
+        setCustomQuery('');
+        setCustomDebouncedQuery('');
+        setCustomPage(1);
+        setCustomRevealed(new Set());
+        setCustomListPhase('idle');
+        setCustomListData(null);
         // 我的单词 and 已掌握 also restart clean (first page, default sort, no
         // filters/search/state, empty selection) — specs/005 §v1.2.
         setMasteredPage(1);
@@ -1319,6 +1486,50 @@ export function VocabularyBookScreen({
             // Ignore: the preference just won't survive the reload.
         }
     }, [hideChinese]);
+
+    // Custom list search: 300ms debounce, and a changed query restarts at 1.
+    useEffect(() => {
+        const trimmed = customQuery.trim();
+        const timer = window.setTimeout(() => {
+            if (trimmed === customDebouncedQuery) return;
+            setCustomDebouncedQuery(trimmed);
+            setCustomPage(1);
+        }, 300);
+        return () => window.clearTimeout(timer);
+    }, [customQuery, customDebouncedQuery]);
+
+    // A new custom page/search/tab starts with every translation collapsed.
+    useEffect(() => {
+        setCustomRevealed(new Set());
+    }, [activeTab, customPage, customDebouncedQuery]);
+
+    useEffect(() => {
+        if (!activeIsCustom || !activeCustomListId) {
+            setCustomListPhase('idle');
+            setCustomListData(null);
+            return;
+        }
+        const controller = new AbortController();
+        setCustomListPhase('loading');
+        setCustomListError('');
+        fetchCustomWordlistPage(activeCustomListId, {
+            page: customPage,
+            pageSize: WORDLIST_PAGE_SIZE,
+            q: customDebouncedQuery,
+            signal: controller.signal,
+        })
+            .then((data) => {
+                if (controller.signal.aborted) return;
+                setCustomListData(data);
+                setCustomListPhase('ready');
+            })
+            .catch(async (error) => {
+                if (controller.signal.aborted || (error as Error)?.name === 'AbortError') return;
+                setCustomListError(await describeApiError(error));
+                setCustomListPhase('error');
+            });
+        return () => controller.abort();
+    }, [activeIsCustom, activeCustomListId, customPage, customDebouncedQuery, customListNonce]);
 
     // 300ms debounce; entering a query starts again from page 1.
     useEffect(() => {
@@ -1530,6 +1741,7 @@ export function VocabularyBookScreen({
     const renderTabPanel = () => {
         if (activeIsMine) return renderMine();
         if (activeIsMastered) return renderMastered();
+        if (activeIsCustom) return renderCustomList();
         if (activeTab === PHRASES_TAB) return renderPhrases();
         return renderList();
     };
@@ -1541,7 +1753,11 @@ export function VocabularyBookScreen({
         ? (masteredKnown ? t('vocab.total', { count: formatNumber(learningCount) }) : null)
         : activeIsMastered
             ? (masteredKnown ? t('vocab.total', { count: formatNumber(masteredRows.length) }) : null)
-            : activeTab === PHRASES_TAB
+            : activeIsCustom
+                ? (activeCustomList
+                    ? t('vocab.total', { count: formatNumber(activeCustomList.itemCount) })
+                    : null)
+                : activeTab === PHRASES_TAB
                 ? (phraseData ? phraseTotalLabel : null)
                 : (listData ? totalLabel : null);
 
@@ -1553,44 +1769,75 @@ export function VocabularyBookScreen({
             meta={headerTotalLabel != null
                 ? <span data-testid="vocab-total">{headerTotalLabel}</span>
                 : undefined}
+            actions={(
+                <Button
+                    size="sm"
+                    variant="secondary"
+                    iconLeft={<Upload />}
+                    ariaLabel={t('vocab.custom.import')}
+                    onClick={openImport}
+                    testId="vocab-import-button"
+                    className="h-11 w-11 px-0 sm:h-control-sm sm:w-auto sm:px-3"
+                >
+                    <span className="hidden sm:inline">{t('vocab.custom.import')}</span>
+                </Button>
+            )}
             backTestId="vocab-back"
         />
     );
 
     const renderTabs = () => {
-        const tabs: string[] = [MINE_TAB, MASTERED_TAB, PHRASES_TAB, ...LIST_TAB_IDS];
+        // Built-in order first; the account's custom lists follow, in creation
+        // order (specs/038 §1: 词表 tab 追加到末尾).
+        const tabs: string[] = [
+            MINE_TAB,
+            MASTERED_TAB,
+            PHRASES_TAB,
+            ...LIST_TAB_IDS,
+            ...customLists.map((entry) => customTabId(entry.id)),
+        ];
         const items: TabItem[] = tabs.map((id) => {
             const entry = catalogById.get(id);
+            const listId = customListId(id);
+            const customEntry = listId
+                ? customLists.find((list) => list.id === listId) ?? null
+                : null;
             const unavailable = entry?.available === false;
-            const label = id === MINE_TAB
-                ? t('vocab.tab.mine')
-                : id === MASTERED_TAB
-                    ? masteredTabLabel
-                    : id === PHRASES_TAB
-                        ? t('vocab.tab.phrases')
-                        : id === CEFR_TAB
-                            ? t('vocab.tab.cefr')
-                            : (entry?.label || FALLBACK_LABELS[id] || id);
-            const count = id === MINE_TAB
-                // Hidden until the signed-in mastered read succeeds: an unknown
-                // mastered set must not be counted as learning words.
-                ? (masteredKnown ? learningCount : null)
-                : id === MASTERED_TAB
-                    // The whole mastered collection, not just mastered favorites:
-                    // unknown until the signed-in GET succeeds (never a fake 0).
-                    ? (masteredKnown ? masteredWords.size : null)
-                    : typeof entry?.count === 'number' && !unavailable
-                        ? entry.count
-                        : null;
+            const label = customEntry
+                ? customEntry.name
+                : id === MINE_TAB
+                    ? t('vocab.tab.mine')
+                    : id === MASTERED_TAB
+                        ? masteredTabLabel
+                        : id === PHRASES_TAB
+                            ? t('vocab.tab.phrases')
+                            : id === CEFR_TAB
+                                ? t('vocab.tab.cefr')
+                                : (entry?.label || FALLBACK_LABELS[id] || id);
+            const count = customEntry
+                ? customEntry.itemCount
+                : id === MINE_TAB
+                    // Hidden until the signed-in mastered read succeeds: an unknown
+                    // mastered set must not be counted as learning words.
+                    ? (masteredKnown ? learningCount : null)
+                    : id === MASTERED_TAB
+                        // The whole mastered collection, not just mastered favorites:
+                        // unknown until the signed-in GET succeeds (never a fake 0).
+                        ? (masteredKnown ? masteredWords.size : null)
+                        : typeof entry?.count === 'number' && !unavailable
+                            ? entry.count
+                            : null;
             return {
                 id,
                 label,
                 count,
                 countLabel: count != null ? formatNumber(count) : undefined,
-                countTestId: !unavailable ? `vocab-tab-count-${id}` : undefined,
+                countTestId: customEntry
+                    ? `vocab-tab-count-custom-${customEntry.id}`
+                    : !unavailable ? `vocab-tab-count-${id}` : undefined,
                 disabled: unavailable,
                 title: unavailable ? entry?.note ?? undefined : undefined,
-                testId: `vocab-tab-${id}`,
+                testId: customEntry ? `vocab-tab-custom-${customEntry.id}` : `vocab-tab-${id}`,
             };
         });
         return (
@@ -2769,6 +3016,304 @@ export function VocabularyBookScreen({
         );
     };
 
+    const toggleCustomReveal = (word: string) => {
+        setCustomRevealed((prev) => {
+            const next = new Set(prev);
+            if (next.has(word)) next.delete(word);
+            else next.add(word);
+            return next;
+        });
+    };
+
+    /** Top-bar entry: guests get the login overlay, never a local import. */
+    const openImport = () => {
+        if (isGuest) {
+            openLogin();
+            return;
+        }
+        if (customLists.length >= WORDLIST_MAX_LISTS) {
+            toast.error(t('vocab.custom.import.limit'));
+            return;
+        }
+        setImportOpen(true);
+    };
+
+    /** 删除词表: table + its rows only; favorites/review keep their snapshots. */
+    const handleDeleteCustomList = async () => {
+        const list = activeCustomList;
+        if (!list) throw new Error(t('vocab.custom.deleteError'));
+        try {
+            await deleteCustomWordlist(list.id);
+        } catch {
+            throw new Error(t('vocab.custom.deleteError'));
+        }
+        toast.success(t('vocab.custom.deleteSuccess', { name: list.name }), {
+            dedupeKey: 'wordlist:deleted',
+        });
+        setCustomLists((prev) => prev.filter((entry) => entry.id !== list.id));
+        setCustomDeleteOpen(false);
+        selectTab(MINE_TAB);
+    };
+
+    /**
+     * 全部加入复习（N）: fetch every item through the server's 200/page cap,
+     * then POST each word with its meaning snapshot. Nothing is reported as
+     * done before the server confirms; failed words are counted, not hidden.
+     */
+    const handleAddAllCustomToReview = async () => {
+        const list = activeCustomList;
+        if (!list) throw new Error(t('vocab.custom.addAllError'));
+        const collected: CustomWordlistItem[] = [];
+        const seen = new Set<string>();
+        try {
+            let targetPage = 1;
+            for (;;) {
+                const data = await fetchCustomWordlistPage(list.id, { page: targetPage, pageSize: 200 });
+                for (const item of data.items) {
+                    const key = normalizeMasteryWord(item.word);
+                    if (!key || seen.has(key)) continue;
+                    seen.add(key);
+                    collected.push(item);
+                }
+                if (!data.hasMore || data.items.length === 0 || targetPage >= 100) break;
+                targetPage += 1;
+            }
+        } catch {
+            throw new Error(t('vocab.custom.addAllError'));
+        }
+        let added = 0;
+        let failed = 0;
+        for (const item of collected) {
+            const lemma = item.word.trim();
+            if (!lemma) continue;
+            try {
+                await addWord({
+                    lemma,
+                    targetLang,
+                    ...(item.translation?.trim() ? { definition: item.translation.trim() } : {}),
+                    source: { contentRef: list.id },
+                });
+                added += 1;
+                setReviewAdds((prev) => ({ ...prev, [`${list.id}:${lemma}`]: 'added' }));
+                setReviewedWords((prev) => new Set(prev).add(normalizeMasteryWord(lemma)));
+            } catch {
+                failed += 1;
+            }
+        }
+        if (failed > 0) {
+            toast.error(t('vocab.custom.addAllPartial', {
+                count: formatNumber(added),
+                failed: formatNumber(failed),
+            }), { dedupeKey: 'wordlist:add-all' });
+        } else {
+            toast.success(t('vocab.custom.addAllSuccess', { count: formatNumber(added) }), {
+                dedupeKey: 'wordlist:add-all',
+            });
+        }
+        setCustomListNonce((value) => value + 1);
+    };
+
+    const renderCustomList = () => {
+        if (!activeCustomList) return null;
+        const list = activeCustomList;
+        const listId = list.id;
+        const pageData = customListData && customListData.id === listId ? customListData : null;
+        const total = pageData?.total ?? list.itemCount;
+        const pages = Math.max(1, Math.ceil(total / WORDLIST_PAGE_SIZE));
+        const currentPage = Math.min(Math.max(1, customPage), pages);
+        const itemRows = pageData?.items ?? [];
+        const hasFilter = Boolean(customDebouncedQuery);
+        const dataReady = customListPhase === 'ready' && pageData != null;
+        const dataFailed = customListPhase === 'error';
+
+        const tableRows: WordTableRow[] = itemRows.map((item, index) => {
+            const rowKey = `${listId}:${item.word}`;
+            const mastered = masteredWords.has(normalizeMasteryWord(item.word));
+            const masterState = masterAdds[rowKey];
+            return {
+                key: `${item.word}-${index}`,
+                word: item.word,
+                phonetic: item.phonetic,
+                translation: item.translation,
+                level: item.cefr,
+                levelTitle: item.cefr ? `CEFR ${item.cefr}` : undefined,
+                revealed: customRevealed.has(item.word),
+                onActivate: hideChinese ? () => toggleCustomReveal(item.word) : undefined,
+                actions: [
+                    rowSpeakAction({ rowKey, text: item.word }),
+                    ...rowAddActions({
+                        rowKey,
+                        word: item.word,
+                        translation: item.translation ?? '',
+                        phonetic: item.phonetic,
+                        definition: item.translation,
+                        example: item.example,
+                        listId,
+                        listLabel: list.name,
+                    }, { includeReview: REVIEW_UI_ENABLED }),
+                    {
+                        key: 'master',
+                        label: `${mastered ? t('vocab.custom.mastered') : t('vocab.custom.master')} ${item.word}`,
+                        text: mastered ? t('vocab.custom.mastered') : t('vocab.custom.master'),
+                        icon: CheckCircle2,
+                        testId: `${rowKey}-master`,
+                        busy: masterState === 'busy',
+                        done: mastered,
+                        disabled: mastered,
+                        onClick: () => {
+                            void addListWordToMastered({ rowKey, word: item.word, listId });
+                        },
+                    },
+                ],
+                error: listRowErrors[rowKey]
+                    ? { message: listRowErrors[rowKey], testId: `vocab-custom-error-${item.word}` }
+                    : undefined,
+            };
+        });
+
+        return (
+            <div data-testid="vocab-custom-panel" className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="max-w-xl text-caption leading-relaxed text-fg-secondary">
+                        {t('vocab.custom.hint')}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {REVIEW_UI_ENABLED && (
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                iconLeft={<Repeat />}
+                                testId="vocab-custom-add-all"
+                                onClick={() => setCustomAddAllOpen(true)}
+                            >
+                                {t('vocab.custom.addAll', { count: formatNumber(list.itemCount) })}
+                            </Button>
+                        )}
+                        <Button
+                            size="sm"
+                            variant="destructive"
+                            iconLeft={<Trash2 />}
+                            testId="vocab-custom-delete"
+                            onClick={() => setCustomDeleteOpen(true)}
+                        >
+                            {t('vocab.custom.delete')}
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="relative min-w-0 flex-1">
+                        <Search
+                            className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted"
+                            aria-hidden="true"
+                        />
+                        <input
+                            type="text"
+                            data-testid="vocab-custom-search"
+                            value={customQuery}
+                            onChange={(event) => setCustomQuery(event.target.value)}
+                            placeholder={t('vocab.custom.search.placeholder')}
+                            aria-label={t('vocab.custom.search.placeholder')}
+                            className="h-control-md w-full min-w-0 rounded-control border border-line-subtle bg-surface-2/60 ps-9 pe-9 text-ui text-fg-primary placeholder:text-fg-muted"
+                        />
+                        {customQuery && (
+                            <button
+                                type="button"
+                                data-testid="vocab-custom-search-clear"
+                                onClick={() => setCustomQuery('')}
+                                aria-label={t('vocab.custom.search.clear')}
+                                title={t('vocab.custom.search.clear')}
+                                className="absolute end-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-control text-fg-muted transition-colors hover:bg-state-hover hover:text-fg-primary"
+                            >
+                                <X className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        data-testid="vocab-hide-toggle"
+                        data-scope="custom"
+                        aria-pressed={hideChinese}
+                        onClick={toggleHideChinese}
+                        title={hideChinese ? t('vocab.show') : t('vocab.hide')}
+                        className={`inline-flex h-control-lg shrink-0 items-center justify-center gap-1.5 rounded-control border px-3 text-caption font-medium transition-colors ${
+                            hideChinese
+                                ? 'border-brand/20 bg-brand/10 text-brand-300 hover:bg-brand/15'
+                                : 'border-line-subtle bg-surface-2/60 text-fg-strong hover:bg-surface-3/60 hover:text-fg-primary'
+                        }`}
+                    >
+                        {hideChinese
+                            ? <Eye className="h-4 w-4" aria-hidden="true" />
+                            : <EyeOff className="h-4 w-4" aria-hidden="true" />}
+                        {hideChinese ? t('vocab.show') : t('vocab.hide')}
+                    </button>
+                </div>
+
+                {hideChinese && (
+                    <p className="text-micro leading-relaxed text-fg-muted">{t('vocab.hint.hide')}</p>
+                )}
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-fg-muted">
+                    <span data-testid="vocab-custom-total" className="tabular-nums">
+                        {t('vocab.total', { count: formatNumber(total) })}
+                    </span>
+                    <span className="min-w-0 truncate">{list.name}</span>
+                </div>
+
+                {dataFailed ? (
+                    <ErrorPanel
+                        level="card"
+                        title={t('vocab.custom.error.title')}
+                        detail={customListError || t('vocab.custom.error.hint')}
+                        onRetry={() => setCustomListNonce((value) => value + 1)}
+                        retryLabel={t('common.retry')}
+                        testId="vocab-custom-error"
+                        retryTestId="vocab-custom-retry"
+                    />
+                ) : !dataReady ? (
+                    <LoadingState
+                        kind="skeleton"
+                        rows={4}
+                        label={t('vocab.custom.listLoading')}
+                        testId="vocab-custom-loading"
+                        className={`${CARD} px-4 py-6`}
+                    />
+                ) : itemRows.length === 0 ? (
+                    hasFilter
+                        ? emptyState(
+                            t('vocab.empty.title'),
+                            t('vocab.empty.hint'),
+                            Search,
+                            'vocab-custom-empty',
+                        )
+                        : emptyState(
+                            t('vocab.custom.empty.title'),
+                            t('vocab.custom.empty.hint'),
+                            Library,
+                            'vocab-custom-empty',
+                        )
+                ) : (
+                    <>
+                        <WordTable
+                            rows={tableRows}
+                            hideChinese={hideChinese}
+                            className={CARD}
+                            listTestId="vocab-custom-list"
+                            testIdPrefix="vocab-custom"
+                        />
+                        <VocabPagination
+                            scope="vocab"
+                            page={currentPage}
+                            pages={pages}
+                            hasMore={currentPage < pages}
+                            onChange={setCustomPage}
+                        />
+                    </>
+                )}
+            </div>
+        );
+    };
+
     const renderList = () => {
         const label = activeIsCefr
             ? t('vocab.tab.cefr')
@@ -2988,6 +3533,17 @@ export function VocabularyBookScreen({
                         </button>
                     </div>
                 )}
+                {customListsPhase === 'error' && (
+                    <ErrorPanel
+                        level="inline"
+                        title={t('vocab.custom.error.title')}
+                        detail={customListsError || t('vocab.custom.error.hint')}
+                        onRetry={() => setCustomListsNonce((value) => value + 1)}
+                        retryLabel={t('common.retry')}
+                        testId="vocab-custom-lists-error"
+                        retryTestId="vocab-custom-lists-retry"
+                    />
+                )}
                 {renderTabs()}
                 <div {...tabPanelProps('vocab', activeTab)}>
                     {renderTabPanel()}
@@ -3007,6 +3563,57 @@ export function VocabularyBookScreen({
                 onClose={() => setBulkDeleteOpen(false)}
                 testId="vocab-bulk-delete"
             />
+
+            {/* Custom word lists (specs/038). The wizard owns the three steps;
+                both confirmations reuse the one shared ConfirmDialog. */}
+            <WordlistImportDialog
+                open={importOpen}
+                onClose={() => setImportOpen(false)}
+                existingNames={customLists.map((entry) => entry.name)}
+                listCount={customLists.length}
+                onImported={(list) => {
+                    setCustomLists((prev) => (
+                        prev.some((entry) => entry.id === list.id)
+                            ? prev.map((entry) => (entry.id === list.id ? list : entry))
+                            : [...prev, list]
+                    ));
+                    setCustomListsPhase('ready');
+                    setCustomListsError('');
+                    setActiveTab(customTabId(list.id));
+                    setCustomQuery('');
+                    setCustomDebouncedQuery('');
+                    setCustomPage(1);
+                    setCustomRevealed(new Set());
+                    setCustomListPhase('idle');
+                    setCustomListData(null);
+                    setCustomListsNonce((value) => value + 1);
+                }}
+            />
+
+            <ConfirmDialog
+                open={customDeleteOpen && activeCustomList != null}
+                title={t('vocab.custom.deleteTitle', { name: activeCustomList?.name ?? '' })}
+                description={t('vocab.custom.deleteDesc')}
+                confirmLabel={t('vocab.custom.deleteConfirm')}
+                onConfirm={handleDeleteCustomList}
+                onClose={() => setCustomDeleteOpen(false)}
+                testId="vocab-custom-delete-confirm"
+            />
+
+            {REVIEW_UI_ENABLED && (
+                <ConfirmDialog
+                    open={customAddAllOpen && activeCustomList != null}
+                    title={t('vocab.custom.addAllTitle', { name: activeCustomList?.name ?? '' })}
+                    description={t('vocab.custom.addAllDesc', {
+                        count: formatNumber(activeCustomList?.itemCount ?? 0),
+                    })}
+                    confirmLabel={t('vocab.custom.addAllConfirm')}
+                    destructive={false}
+                    onConfirm={handleAddAllCustomToReview}
+                    onClose={() => setCustomAddAllOpen(false)}
+                    testId="vocab-custom-add-all-confirm"
+                />
+            )}
         </div>
     );
 }

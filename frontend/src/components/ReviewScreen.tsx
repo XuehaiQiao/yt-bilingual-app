@@ -260,6 +260,17 @@ export const ReviewScreen: React.FC<ReviewScreenProps> = ({ onClose, parentLabel
     const handleReveal = useCallback(() => {
         if (!current || revealed) return;
         setRevealed(true);
+        // specs/038 §3: a word added from a word list carries its meaning
+        // snapshot on the queue item. Show it directly and never call
+        // /api/define for it; only a card without a snapshot falls back.
+        const snapshot = current.definition?.trim();
+        if (snapshot) {
+            defineTokenRef.current += 1; // drop any request from the old card
+            setDefinition({ word: current.lemma, zh: snapshot });
+            setDefineState('idle');
+            setDefineError(null);
+            return;
+        }
         if (defineState !== 'loading') void loadDefinition(current.lemma);
     }, [current, revealed, defineState, loadDefinition]);
 

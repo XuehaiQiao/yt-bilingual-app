@@ -274,6 +274,10 @@ await context.route('**/api/**', async (route) => {
     }
     if (pathname === '/api/vocabulary/seen' && method === 'GET') return respond({});
 
+    // specs/038: the word book fetches the account's custom lists on mount.
+    // These fixtures predate the feature, so it is an empty catalog here.
+    if (pathname === '/api/wordlists' && method === 'GET') return respond({ lists: [] });
+
     state.unmocked.push(`${method} ${pathname}`);
     return fail(404, `unmocked ${method} ${pathname}`);
 });

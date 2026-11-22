@@ -8,6 +8,15 @@
 import { apiFetch } from './api';
 import { describeApiError } from './toast';
 
+/**
+ * Product switch for the review UI (2026-11-22, specs/013 + specs/038).
+ *
+ * The FSRS engine, every endpoint and the `definition` snapshot stay; only the
+ * user-facing entry points pause. 单词本不再显示「加入复习」，自定义词表的
+ * 「全部加入复习」也一并隐藏；把开关改回 true 即可恢复，无需改调用点。
+ */
+export const REVIEW_UI_ENABLED = false;
+
 /** FSRS answer grades, ordered from "forgot" to "too easy". */
 export type ReviewRating = 'again' | 'hard' | 'good' | 'easy';
 
@@ -38,6 +47,11 @@ export interface ReviewWord {
     sources: ReviewWordSource[];
     /** v1.1: marked as mastered; excluded from the queue, not a `state` value. */
     mastered?: boolean;
+    /**
+     * v1.3 (specs/038): meaning snapshot saved when the word came from a word
+     * list. The review card shows it before falling back to `/api/define`.
+     */
+    definition?: string | null;
 }
 
 export interface ReviewQueueCounts {
@@ -200,6 +214,8 @@ export interface AddWordSource {
 export interface AddWordInput {
     lemma: string;
     targetLang?: string;
+    /** Word-list meaning snapshot (never overwrites an existing one). */
+    definition?: string | null;
     source?: AddWordSource;
 }
 
@@ -226,6 +242,9 @@ export interface SetWordMasteredResult {
 function wordPayload(input: AddWordInput | SetWordMasteredInput): Record<string, unknown> {
     const body: Record<string, unknown> = { lemma: input.lemma };
     if (input.targetLang) body.targetLang = input.targetLang;
+    if ('definition' in input && typeof input.definition === 'string' && input.definition.trim()) {
+        body.definition = input.definition.trim();
+    }
     if (input.source && (input.source.contentRef || input.source.sentenceId)) {
         const source: Record<string, string> = {};
         if (input.source.contentRef) source.contentRef = input.source.contentRef;
