@@ -517,8 +517,8 @@
     {
       "id": "P1-06",
       "file": "TASKS/P1-06-family-pagination-shared.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "pager-impl",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "scripts/word-family-acceptance.mjs",
