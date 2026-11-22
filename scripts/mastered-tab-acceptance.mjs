@@ -39,6 +39,7 @@
 // Shots: /tmp/mastered-tab-*.png
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 // Count executed assertions so a green run reports how many checks passed.
 let assertionsPassed = 0;
@@ -58,6 +59,14 @@ const MASTERED_BASE = ['abundant', 'meticulous', 'reluctant'];
 // 60 rows total → two 50/page pages (the last page shows the remainder).
 const FILLER = Array.from({ length: 57 }, (_, index) => `word${String(index + 1).padStart(2, '0')}`);
 const ALL_MASTERED = [...MASTERED_BASE, ...FILLER];
+// P0-16: distinct 加入时间 values whose order differs from alphabetical, so the
+// default `added` sort is proven by row order (not by a coincidental alpha order).
+const BASE_CREATED_AT = {
+    abundant: 1763100003000,
+    reluctant: 1763100002000,
+    meticulous: 1763100001000,
+};
+const fillerCreatedAt = (index) => 1763000000000 - index * 1000;
 
 // 已掌握 and 我的收藏 are two independent lists (ADR-0001). Only `luminous` is
 // a vocabulary favorite; no mastered lemma appears in FAVORITES, so their row
@@ -107,7 +116,7 @@ const state = {
     levelCalls: [],
 };
 
-const publicWord = (lemma, mastered) => ({
+const publicWord = (lemma, mastered, createdAt = Date.now()) => ({
     id: `w-${lemma}`,
     lemma,
     targetLang: 'zh-CN',
@@ -119,7 +128,7 @@ const publicWord = (lemma, mastered) => ({
     lapses: 0,
     failStreak: 0,
     lastReviewedAt: null,
-    createdAt: Date.now(),
+    createdAt,
     mastered,
     definition: MASTERED_DEFINITIONS[lemma] ?? null,
     sources: [],
@@ -226,7 +235,11 @@ await context.route('**/api/**', async (route) => {
         state.masteredFetches += 1;
         state.masteredUrls.push(url.search);
         if (state.masteredFail) return fail(500, 'review table unavailable');
-        const words = state.mastered.map((lemma) => publicWord(lemma, true));
+        const words = state.mastered.map((lemma, index) => publicWord(
+            lemma,
+            true,
+            BASE_CREATED_AT[lemma] ?? fillerCreatedAt(index),
+        ));
         return respond({ targetLang: 'zh-CN', now: Date.now(), total: words.length, words });
     }
     if (isReviewWords && method === 'PATCH') {
@@ -296,6 +309,26 @@ page.on('pageerror', (error) => pageErrors.push(String(error)));
 
 const shot = async (name) => {
     await page.screenshot({ path: `${SHOTS}/mastered-tab-${name}.png`, fullPage: false });
+};
+
+/** P0-16: download one export and read the file Playwright saved. */
+const grabDownload = async (locator) => {
+    const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 15000 }),
+        locator.click(),
+    ]);
+    const path = await download.path();
+    assert.ok(path, 'export produced a file');
+    const raw = readFileSync(path, 'utf8');
+    return {
+        filename: download.suggestedFilename(),
+        hasBom: raw.startsWith('\uFEFF'),
+        text: raw.replace(/^\uFEFF/, ''),
+    };
+};
+const stamp = () => {
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 };
 
 async function gotoWordbook() {
@@ -432,6 +465,35 @@ assert.deepEqual(state.favoriteWrites, [], 'clicking the 已掌握 star must not
 assert.deepEqual(state.patches, [], 'clicking the 已掌握 star must not PATCH a mastery mark');
 await shot('mastered-table');
 
+// ── B2) P0-16 default sort: 加入时间 (createdAt new → old, tie by word) ────
+// The fixture's created order differs from alphabetical, so this proves the
+// default reads `createdAt` from GET /api/review/words rather than sorting by
+// word. The 已掌握 menu offers all three orders and shows the current value.
+const masteredFirstWords = async () => (
+    await page.$$eval('[data-testid^="vocab-mastered-word-"]',
+        (nodes) => nodes.slice(0, 3).map((node) => node.textContent.trim()))
+);
+assert.deepEqual(await masteredFirstWords(), ['abundant', 'reluctant', 'meticulous'],
+    '已掌握 defaults to 加入时间, newest first');
+const masteredSortLabel = await page.getByTestId('vocab-mastered-sort').innerText();
+assert.match(masteredSortLabel, /加入时间/, `已掌握 sort trigger shows the current value: ${masteredSortLabel}`);
+await page.getByTestId('vocab-mastered-sort').click();
+await page.getByTestId('vocab-mastered-sort-menu').waitFor();
+assert.equal(await page.locator('[role="menuitemradio"]').count(), 3,
+    '已掌握 sort menu: 加入时间 / 字母 A→Z / 难度');
+assert.equal(await page.getByTestId('vocab-mastered-sort-added').count(), 1,
+    'the 已掌握 menu carries the 加入时间 item');
+await page.getByTestId('vocab-mastered-sort-alpha').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mastered-sort"]')?.textContent?.includes('字母'));
+assert.deepEqual(await masteredFirstWords(), ['abundant', 'meticulous', 'reluctant'],
+    '字母 A→Z remains available');
+await page.getByTestId('vocab-mastered-sort').click();
+await page.getByTestId('vocab-mastered-sort-menu').waitFor();
+await page.getByTestId('vocab-mastered-sort-added').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mastered-sort"]')?.textContent?.includes('加入时间'));
+assert.deepEqual(await masteredFirstWords(), ['abundant', 'reluctant', 'meticulous'],
+    'switching back to 加入时间 restores the createdAt order');
+
 // Page size / strip / jump input live in one shared pager.
 assert.equal(await page.getByTestId('vocab-total').innerText(), '共 60 词', 'the header total follows 已掌握');
 assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 2 页');
@@ -460,6 +522,32 @@ assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 2 / 2
 await shot('mastered-page2');
 await page.getByTestId('vocab-page-prev').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mastered-row"]').length === 50);
+
+// ── B3) P0-16 export: word / definition / level, current sort, all 60 rows ─
+// 已掌握 is client paged; the export must include both pages, follow the
+// current sort, keep missing definitions empty, and name the file after the list.
+assert.equal(await page.getByTestId('vocab-mastered-export-tsv').isVisible(), true,
+    '已掌握 toolbar has the TSV export');
+assert.equal(await page.getByTestId('vocab-mastered-export-csv').isVisible(), true,
+    '已掌握 toolbar has the CSV export');
+const masteredCsv = await grabDownload(page.getByTestId('vocab-mastered-export-csv'));
+assert.equal(masteredCsv.hasBom, true, 'the export carries a UTF-8 BOM');
+assert.equal(masteredCsv.filename, `lingua-nova-mastered-${stamp()}.csv`);
+const masteredCsvLines = masteredCsv.text.split('\n');
+assert.equal(masteredCsvLines[0], '"单词","释义","等级"', 'CSV columns: word / definition / level');
+assert.equal(masteredCsvLines.length, 61, 'CSV = header + all 60 mastered rows (both client pages)');
+assert.equal(masteredCsvLines[1], '"abundant","丰富的；充裕的","B2"',
+    'the export follows the current 加入时间 sort');
+const meticulousLine = masteredCsvLines.find((line) => line.startsWith('"meticulous"'));
+assert.equal(meticulousLine, '"meticulous","","C1+"',
+    'a missing definition exports as an empty cell, level is the badge value');
+const masteredTsv = await grabDownload(page.getByTestId('vocab-mastered-export-tsv'));
+assert.equal(masteredTsv.filename, `lingua-nova-mastered-${stamp()}.tsv`);
+const masteredTsvLines = masteredTsv.text.split('\n');
+assert.equal(masteredTsvLines.length, 60, 'TSV is headerless and holds all 60 rows');
+assert.equal(masteredTsvLines[0], 'abundant\t丰富的；充裕的\tB2',
+    'TSV columns: word / definition / level, current sort first');
+await page.screenshot({ path: `${SHOTS}/p0-16-1440-mastered-export.png`, fullPage: false });
 
 // ── C) hide-Chinese removes the shared meaning column ────────────────────
 await page.getByTestId('vocab-hide-toggle').click();
@@ -694,6 +782,9 @@ assert.ok(overflow.docScroll <= 0, `375px horizontal overflow: ${overflow.docScr
 assert.ok(overflow.bookScroll <= 0, `375px word-book overflow: ${overflow.bookScroll}px`);
 assert.ok(overflow.rows > 0);
 await shot('mastered-375');
+assert.equal(await page.getByTestId('vocab-mastered-export-tsv').isVisible(), true,
+    'P0-16: the 已掌握 export stays reachable at 375');
+await page.screenshot({ path: `${SHOTS}/p0-16-375-mastered-export.png`, fullPage: false });
 // P0-14 at 375: 编辑 opens the checkbox column without horizontal overflow.
 await page.getByTestId('vocab-mastered-edit').click();
 await page.getByTestId('vocab-edit-bar').waitFor();

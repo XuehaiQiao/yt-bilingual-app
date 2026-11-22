@@ -59,7 +59,12 @@ import {
     Upload,
     type LucideIcon,
 } from 'lucide-react';
-import { exportAnkiTsv, exportCsv } from '../lib/exporter';
+import {
+    exportAnkiTsv,
+    exportCsv,
+    exportTable,
+    type ExportColumn,
+} from '../lib/exporter';
 import {
     addFavorite,
     removeFavorite,
@@ -176,7 +181,7 @@ interface VocabularyBookScreenProps {
 
 type Phase = 'idle' | 'loading' | 'ready' | 'error';
 type MineSort = 'added' | 'seen' | 'level' | 'alpha';
-type MasteredSort = 'alpha' | 'level';
+type MasteredSort = 'added' | 'alpha' | 'level';
 type CustomSort = 'alpha' | 'level';
 type MineType = '' | 'word' | 'phrase';
 type MineLevel = '' | CefrLevel | 'C1+';
@@ -230,6 +235,10 @@ const customListId = (tabId: string): string | null => (
 /** Stable selection key for one custom-list row (server id when available). */
 const customItemKey = (item: CustomWordlistItem): string => (
     item.id ?? `word:${item.word}`
+);
+/** P0-16: file-name-safe list token; non-ASCII names fall back to the list id. */
+const fileSlug = (value: string): string => (
+    value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
 );
 const FALLBACK_LABELS: Record<string, string> = {
     cefr: 'CEFR 词表',
@@ -495,7 +504,10 @@ export function VocabularyBookScreen({
     const [masteredPage, setMasteredPage] = useState(1);
     const [masteredQuery, setMasteredQuery] = useState('');
     const [masteredLevel, setMasteredLevel] = useState<MineLevel>('');
-    const [masteredSort, setMasteredSort] = useState<MasteredSort>('alpha');
+    // P0-16: default 已掌握 order is 加入时间 (newest first); `createdAt` comes
+    // from GET /api/review/words (guests have no server row → 0, alphabetical).
+    const [masteredSort, setMasteredSort] = useState<MasteredSort>('added');
+    const [masteredCreatedAt, setMasteredCreatedAt] = useState<Record<string, number>>({});
     // hide-Chinese reveal is per row; reset whenever the switch flips.
     const [masteredRevealed, setMasteredRevealed] = useState<Set<string>>(() => new Set());
     const [reviewedWords, setReviewedWords] = useState<Set<string>>(() => new Set());
@@ -537,6 +549,10 @@ export function VocabularyBookScreen({
     const [customSort, setCustomSort] = useState<CustomSort>('alpha');
     const [customLevel, setCustomLevel] = useState<MineLevel>('');
     const [customUnmasteredOnly, setCustomUnmasteredOnly] = useState(false);
+    /** P0-16: the list whose export is fetching all rows (its buttons disable). */
+    const [exportBusy, setExportBusy] = useState<string | null>(null);
+    /** Synchronous in-flight guard: two clicks in one tick read the same render state. */
+    const exportInFlight = useRef(false);
     const [renameOpen, setRenameOpen] = useState(false);
     const [renameName, setRenameName] = useState('');
     const [renameBusy, setRenameBusy] = useState(false);
@@ -619,6 +635,15 @@ export function VocabularyBookScreen({
                     }
                     return next;
                 });
+                // P0-16: the server row's `createdAt` is the 加入时间 sort key.
+                setMasteredCreatedAt(Object.fromEntries(
+                    data.words.map((word) => [
+                        normalizeMasteryWord(word.lemma),
+                        typeof word.createdAt === 'number' && Number.isFinite(word.createdAt)
+                            ? word.createdAt
+                            : 0,
+                    ]),
+                ));
                 setMasteredReady(true);
                 setMasteredPhase('ready');
             })
@@ -765,6 +790,20 @@ export function VocabularyBookScreen({
         });
     };
 
+    /**
+     * P0-16: remember when the server says a word joined 已掌握, so a row marked
+     * in this session sorts by 加入时间 before the next list refresh.
+     */
+    const rememberMasteredCreatedAt = (lemma: string, createdAt: number | undefined) => {
+        const key = normalizeMasteryWord(lemma);
+        if (!key || typeof createdAt !== 'number' || !Number.isFinite(createdAt) || createdAt <= 0) {
+            return;
+        }
+        setMasteredCreatedAt((prev) => (
+            prev[key] === createdAt ? prev : { ...prev, [key]: createdAt }
+        ));
+    };
+
     const mineSourceKinds = useMemo(() => {
         const present = new Set(myWords.map((fav) => resolveFavoriteSource(fav).kind));
         return SOURCE_KIND_ORDER.filter((kind) => present.has(kind));
@@ -825,7 +864,14 @@ export function VocabularyBookScreen({
      * never filled here: 已掌握 is not a favorite.
      */
     const masteredRows = useMemo(() => {
-        const rows: Array<{ key: string; word: string; phonetic: string; translation: string }> = [];
+        const rows: Array<{
+            key: string;
+            word: string;
+            phonetic: string;
+            translation: string;
+            /** P0-16: 加入时间 for the default `added` sort (0 when unknown). */
+            createdAt: number;
+        }> = [];
         for (const key of masteredWords) {
             const snapshot = masteredSnapshots[key];
             // Legacy rows may still have a favorite record (marks made before
@@ -845,13 +891,14 @@ export function VocabularyBookScreen({
                 word,
                 phonetic: snapshot?.phonetic || legacy?.ipa || '',
                 translation: snapshot?.translation || legacy?.meaning || '',
+                createdAt: masteredCreatedAt[key] ?? 0,
             });
         }
         rows.sort((a, b) => (
             a.word.toLowerCase().localeCompare(b.word.toLowerCase()) || a.word.localeCompare(b.word)
         ));
         return rows;
-    }, [masteredWords, favoriteByWord, masteredLabels, masteredSnapshots]);
+    }, [masteredWords, favoriteByWord, masteredLabels, masteredSnapshots, masteredCreatedAt]);
 
     // The CEFR lookup covers only the rows the active tab shows; levels already
     // fetched are cached in `levels` and never re-requested.
@@ -1022,6 +1069,86 @@ export function VocabularyBookScreen({
         </button>
     );
 
+    // ── P0-16: list exports (TSV / CSV) ───────────────────────────────────
+    /** Level shown in an export: same truth as the badge, empty while unknown. */
+    const exportLevelFor = useCallback((word: string): string => {
+        if (!(word in levels)) return '';
+        const level = levels[word];
+        return level ?? 'C1+';
+    }, [levels]);
+
+    /**
+     * Run one list export. The caller must build the **complete** current result
+     * set (current search/filter/sort, every page) before this downloads: a
+     * failure surfaces one toast and never writes a partial file. `scope`
+     * disables the buttons while the (possibly multi-page) fetch is running.
+     */
+    const runListExport = async (scope: string, task: () => Promise<void> | void) => {
+        if (exportInFlight.current) return;
+        exportInFlight.current = true;
+        setExportBusy(scope);
+        try {
+            await task();
+        } catch (error) {
+            let message = t('vocab.export.failed');
+            if (error instanceof Error && error.message.trim()) {
+                message = error.message;
+            } else {
+                const described = await describeApiError(error).catch(() => '');
+                if (described) message = described;
+            }
+            toast.error(message, { dedupeKey: 'vocab:export' });
+        } finally {
+            exportInFlight.current = false;
+            setExportBusy(null);
+        }
+    };
+
+    /** One list's TSV + CSV pair, rendered in the shared panel toolbar. */
+    const exportButtons = (input: {
+        scope: string;
+        tsvTestId: string;
+        csvTestId: string;
+        disabled: boolean;
+        onTsv: () => void;
+        onCsv: () => void;
+    }) => {
+        const busy = exportBusy === input.scope;
+        const disabled = input.disabled || exportBusy != null;
+        return (
+            <div className="flex items-center gap-1.5" data-testid={`${input.tsvTestId}-group`}>
+                <button
+                    type="button"
+                    data-testid={input.tsvTestId}
+                    onClick={input.onTsv}
+                    disabled={disabled}
+                    aria-busy={busy || undefined}
+                    aria-label={t('favorites.exportAnki')}
+                    title={t('vocab.export.tsvTitle')}
+                    className={ACTION_BUTTON}
+                >
+                    {busy
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        : <Download className="h-3.5 w-3.5" aria-hidden="true" />}
+                    <span className="hidden sm:inline">{t('favorites.exportAnki')}</span>
+                </button>
+                <button
+                    type="button"
+                    data-testid={input.csvTestId}
+                    onClick={input.onCsv}
+                    disabled={disabled}
+                    aria-busy={busy || undefined}
+                    aria-label={t('favorites.exportCsv')}
+                    title={t('vocab.export.csvTitle')}
+                    className={ACTION_BUTTON}
+                >
+                    <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span className="hidden sm:inline">{t('favorites.exportCsv')}</span>
+                </button>
+            </div>
+        );
+    };
+
     // ── 加入复习 (built-in lists + phrases) ────────────────────────────────
     // No 加入我的单词 write lives here: saving/unsaving is the row star on
     // every surface (specs/005 §统一词表 UI). The review write stays idempotent
@@ -1137,6 +1264,7 @@ export function VocabularyBookScreen({
         const lemma = input.word.trim();
         if (!key || !lemma) throw new Error(t('vocab.review.error.mastered'));
         let masteredNow: boolean;
+        let createdAt: number | undefined;
         try {
             const result = await setWordMastered({
                 lemma,
@@ -1151,10 +1279,12 @@ export function VocabularyBookScreen({
             });
             // The PATCH response is authoritative for the post-write mark.
             masteredNow = result.word.mastered === true;
+            createdAt = result.word.createdAt;
         } catch {
             throw new Error(t('vocab.review.error.mastered'));
         }
         writeMasteredState(lemma, masteredNow);
+        if (masteredNow) rememberMasteredCreatedAt(lemma, createdAt);
         onMasteredChange?.(lemma, masteredNow);
         if (!mastered) {
             if (masteredNow) throw new Error(t('vocab.review.error.mastered'));
@@ -1281,6 +1411,7 @@ export function VocabularyBookScreen({
         if (!lemma) throw new Error(t('vocab.review.error.mastered'));
         const { ipa, meaning } = splitIpaAndMeaning(fav.zh_text);
         let masteredNow: boolean;
+        let createdAt: number | undefined;
         try {
             const result = await setWordMastered({
                 lemma,
@@ -1293,10 +1424,12 @@ export function VocabularyBookScreen({
             });
             // The PATCH response is authoritative for the post-write mark.
             masteredNow = result.word.mastered === true;
+            createdAt = result.word.createdAt;
         } catch {
             throw new Error(t('vocab.review.error.mastered'));
         }
         writeMasteredState(lemma, masteredNow);
+        if (masteredNow) rememberMasteredCreatedAt(lemma, createdAt);
         onMasteredChange?.(lemma, masteredNow);
         if (!mastered) {
             if (masteredNow) throw new Error(t('vocab.review.error.mastered'));
@@ -2100,11 +2233,12 @@ export function VocabularyBookScreen({
         setCustomItems([]);
         resetEdit();
         // 我的单词 and 已掌握 also restart clean (first page, default sort, no
-        // filters/search) — specs/005 §统一词表 UI.
+        // filters/search) — specs/005 §统一词表 UI. P0-16: 已掌握's default is
+        // 加入时间, so a tab switch returns to it too.
         setMasteredPage(1);
         setMasteredQuery('');
         setMasteredLevel('');
-        setMasteredSort('alpha');
+        setMasteredSort('added');
         setMasteredRevealed(new Set());
         setMineSort('added');
         setMineType('');
@@ -2770,35 +2904,25 @@ export function VocabularyBookScreen({
             void runEditEntries(action, selectedEditEntries(action));
         };
 
+        /**
+         * P0-16: export the **current** 我的收藏 view (search + type/source/level
+         * filters + sort, all client pages) with the existing favorites format —
+         * Front/Back/Tags for TSV, the context CSV.
+         */
+        const exportMine = (format: 'tsv' | 'csv') => {
+            void runListExport('mine', () => {
+                if (mineRows.length === 0) {
+                    toast.info(t('vocab.export.empty'), { dedupeKey: 'vocab:export' });
+                    return;
+                }
+                if (format === 'tsv') exportAnkiTsv(mineRows);
+                else exportCsv(mineRows);
+            });
+        };
+
         return (
             <div data-testid="vocab-mine-panel" className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-caption leading-relaxed text-fg-muted">{t('vocab.mine.hint')}</p>
-                    {myWords.length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                data-testid="vocab-export-anki"
-                                onClick={() => exportAnkiTsv(myWords)}
-                                title={t('favorites.exportAnkiTitle')}
-                                className={ACTION_BUTTON}
-                            >
-                                <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                                <span className="hidden sm:inline">{t('favorites.exportAnki')}</span>
-                            </button>
-                            <button
-                                type="button"
-                                data-testid="vocab-export-csv"
-                                onClick={() => exportCsv(myWords)}
-                                title={t('favorites.exportCsvTitle')}
-                                className={ACTION_BUTTON}
-                            >
-                                <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
-                                <span className="hidden sm:inline">{t('favorites.exportCsv')}</span>
-                            </button>
-                        </div>
-                    )}
-                </div>
+                <p className="text-caption leading-relaxed text-fg-muted">{t('vocab.mine.hint')}</p>
 
                 <WordbookToolbar
                     search={{
@@ -2835,6 +2959,14 @@ export function VocabularyBookScreen({
                         testId: 'vocab-mine-edit',
                         disabled: editBusy,
                     }}
+                    extra={exportButtons({
+                        scope: 'mine',
+                        tsvTestId: 'vocab-export-anki',
+                        csvTestId: 'vocab-export-csv',
+                        disabled: mineRows.length === 0,
+                        onTsv: () => exportMine('tsv'),
+                        onCsv: () => exportMine('csv'),
+                    })}
                 />
 
                 {!isGuest && masteredPhase === 'error' && (
@@ -2996,8 +3128,12 @@ export function VocabularyBookScreen({
                 }, true);
             },
         });
-        /** 短语 is server paged: fetch every page matching q/level/type (≤200/page). */
-        const phraseSelectAllRows = async (): Promise<EditRowRegistration[]> => {
+        /**
+         * P0-15/P0-16: fetch every page matching the current q/level/type
+         * (200/page — the endpoint cap). Shared by 全选 and the cross-page export
+         * so both consume exactly the same full result set.
+         */
+        const loadAllPhrases = async (): Promise<PhraseEntry[]> => {
             const collected = new Map<string, PhraseEntry>();
             for (let targetPage = 1; targetPage <= 25; targetPage += 1) {
                 const data = await fetchPhrasePage({
@@ -3010,11 +3146,39 @@ export function VocabularyBookScreen({
                 for (const item of data.items) collected.set(item.id, item);
                 if (!data.hasMore || data.items.length === 0) break;
             }
-            return [...collected.values()].map((item) => ({
+            return [...collected.values()];
+        };
+        /** 短语 is server paged: 全选 is the full q/level/type result set. */
+        const phraseSelectAllRows = async (): Promise<EditRowRegistration[]> => (
+            (await loadAllPhrases()).map((item) => ({
                 key: item.id,
                 word: item.headword,
                 actions: editActionsForPhrase(item),
-            }));
+            }))
+        );
+
+        /** P0-16: headword / type / translation / level / example, current view. */
+        const phraseExportColumns: ExportColumn<PhraseEntry>[] = [
+            { header: t('vocab.export.col.headword'), value: (item) => item.headword },
+            { header: t('vocab.export.col.type'), value: (item) => phraseTypeLabel(item.type) },
+            { header: t('vocab.export.col.translation'), value: (item) => item.translation },
+            { header: t('vocab.export.col.level'), value: (item) => item.cefr },
+            { header: t('vocab.export.col.example'), value: (item) => item.example },
+        ];
+        const exportPhrases = (format: 'tsv' | 'csv') => {
+            void runListExport('phrases', async () => {
+                const items = await loadAllPhrases();
+                if (items.length === 0) {
+                    toast.info(t('vocab.export.empty'), { dedupeKey: 'vocab:export' });
+                    return;
+                }
+                exportTable({
+                    format,
+                    baseName: 'phrases',
+                    columns: phraseExportColumns,
+                    rows: items,
+                });
+            });
         };
 
         const rows: WordTableRow[] = (phraseData?.items ?? []).map((item: PhraseEntry) => {
@@ -3234,7 +3398,19 @@ export function VocabularyBookScreen({
                         testId: 'vocab-phrases-edit',
                         disabled: editBusy,
                     }}
-                    extra={hideChineseToggle('phrases')}
+                    extra={(
+                        <>
+                            {exportButtons({
+                                scope: 'phrases',
+                                tsvTestId: 'vocab-phrases-export-tsv',
+                                csvTestId: 'vocab-phrases-export-csv',
+                                disabled: phrasePhase !== 'ready' || (phraseData?.items.length ?? 0) === 0,
+                                onTsv: () => exportPhrases('tsv'),
+                                onCsv: () => exportPhrases('csv'),
+                            })}
+                            {hideChineseToggle('phrases')}
+                        </>
+                    )}
                 />
 
                 <p className="flex items-start gap-1.5 text-micro leading-relaxed text-fg-muted">
@@ -3340,7 +3516,12 @@ export function VocabularyBookScreen({
             return true;
         });
         const sorted = [...filtered].sort((a, b) => {
-            if (masteredSort === 'level') {
+            if (masteredSort === 'added') {
+                // P0-16: default 加入时间 (newest first); equal times fall back
+                // to the alphabetical order below.
+                const byAdded = b.createdAt - a.createdAt;
+                if (byAdded !== 0) return byAdded;
+            } else if (masteredSort === 'level') {
                 const byLevel = levelSortRank(a.word, levels) - levelSortRank(b.word, levels);
                 if (byLevel !== 0) return byLevel;
             }
@@ -3353,6 +3534,7 @@ export function VocabularyBookScreen({
         const pageRows = sorted.slice(start, start + pageSize);
         const hasFilter = Boolean(masteredQuery.trim() || masteredLevel);
         const sortOptions: SortOption[] = [
+            { value: 'added', label: t('vocab.sort.added'), testId: 'vocab-mastered-sort-added' },
             { value: 'alpha', label: t('vocab.sort.alpha'), testId: 'vocab-mastered-sort-alpha' },
             { value: 'level', label: t('vocab.sort.level'), testId: 'vocab-mastered-sort-level' },
         ];
@@ -3466,6 +3648,27 @@ export function VocabularyBookScreen({
             void runEditEntries('unmaster', selectedEditEntries('unmaster'));
         };
 
+        /** P0-16: word / definition (empty when absent) / level, current view. */
+        const masteredExportColumns: ExportColumn<(typeof sorted)[number]>[] = [
+            { header: t('vocab.export.col.word'), value: (row) => row.word },
+            { header: t('vocab.export.col.definition'), value: (row) => row.translation },
+            { header: t('vocab.export.col.level'), value: (row) => exportLevelFor(row.word) },
+        ];
+        const exportMastered = (format: 'tsv' | 'csv') => {
+            void runListExport('mastered', () => {
+                if (sorted.length === 0) {
+                    toast.info(t('vocab.export.empty'), { dedupeKey: 'vocab:export' });
+                    return;
+                }
+                exportTable({
+                    format,
+                    baseName: 'mastered',
+                    columns: masteredExportColumns,
+                    rows: sorted,
+                });
+            });
+        };
+
         return (
             <div data-testid="vocab-mastered-panel" className="flex flex-col gap-3">
                 <WordbookToolbar
@@ -3481,7 +3684,7 @@ export function VocabularyBookScreen({
                     sort={{
                         value: masteredSort,
                         label: sortOptions.find((option) => option.value === masteredSort)?.label
-                            ?? t('vocab.sort.alpha'),
+                            ?? t('vocab.sort.added'),
                         options: sortOptions,
                         onChange: (value) => setMasteredSort(value as MasteredSort),
                         testId: 'vocab-mastered-sort',
@@ -3514,7 +3717,19 @@ export function VocabularyBookScreen({
                         testId: 'vocab-mastered-edit',
                         disabled: editBusy,
                     }}
-                    extra={hideChineseToggle('mastered')}
+                    extra={(
+                        <>
+                            {exportButtons({
+                                scope: 'mastered',
+                                tsvTestId: 'vocab-mastered-export-tsv',
+                                csvTestId: 'vocab-mastered-export-csv',
+                                disabled: sorted.length === 0,
+                                onTsv: () => exportMastered('tsv'),
+                                onCsv: () => exportMastered('csv'),
+                            })}
+                            {hideChineseToggle('mastered')}
+                        </>
+                    )}
                 />
 
                 {hideChinese && (
@@ -3778,6 +3993,33 @@ export function VocabularyBookScreen({
             actions: editActionsForCustom(item),
         }));
 
+        /** P0-16: word / phonetic / translation / level, current view. */
+        const customExportColumns: ExportColumn<CustomWordlistItem>[] = [
+            { header: t('vocab.export.col.word'), value: (item) => item.word },
+            { header: t('vocab.export.col.phonetic'), value: (item) => item.phonetic },
+            { header: t('vocab.export.col.translation'), value: (item) => item.translation },
+            { header: t('vocab.export.col.level'), value: (item) => item.cefr },
+        ];
+        // List identifier in the file name; non-ASCII names use the list id.
+        const customBaseName = (() => {
+            const slug = fileSlug(list.name) || fileSlug(list.id);
+            return slug ? `custom-${slug}` : 'custom';
+        })();
+        const exportCustom = (format: 'tsv' | 'csv') => {
+            void runListExport('custom', () => {
+                if (sorted.length === 0) {
+                    toast.info(t('vocab.export.empty'), { dedupeKey: 'vocab:export' });
+                    return;
+                }
+                exportTable({
+                    format,
+                    baseName: customBaseName,
+                    columns: customExportColumns,
+                    rows: sorted,
+                });
+            });
+        };
+
         const rows: WordTableRow[] = pageRows.map((item) => {
             const rowKey = `${listId}:${item.word}`;
             const itemKey = customItemKey(item);
@@ -4021,7 +4263,19 @@ export function VocabularyBookScreen({
                         testId: 'vocab-custom-edit',
                         disabled: editBusy,
                     }}
-                    extra={hideChineseToggle('custom')}
+                    extra={(
+                        <>
+                            {exportButtons({
+                                scope: 'custom',
+                                tsvTestId: 'vocab-custom-export-tsv',
+                                csvTestId: 'vocab-custom-export-csv',
+                                disabled: customLoadPhase !== 'ready' || sorted.length === 0,
+                                onTsv: () => exportCustom('tsv'),
+                                onCsv: () => exportCustom('csv'),
+                            })}
+                            {hideChineseToggle('custom')}
+                        </>
+                    )}
                 />
 
                 {hideChinese && (
@@ -4162,10 +4416,11 @@ export function VocabularyBookScreen({
             },
         });
         /**
-         * 内置词表 is server paged: fetch every page matching the current
-         * q/level (200/page — the endpoint cap) and merge by row key.
+         * P0-15/P0-16: fetch every page matching the current q/level
+         * (200/page — the endpoint cap) and merge by row key. Shared by 全选
+         * and the cross-page export.
          */
-        const listSelectAllRows = async (): Promise<EditRowRegistration[]> => {
+        const loadAllListEntries = async (): Promise<VocabularyEntry[]> => {
             const collected = new Map<string, VocabularyEntry>();
             for (let targetPage = 1; targetPage <= 25; targetPage += 1) {
                 const data = await fetchVocabularyPage(activeTab, {
@@ -4177,11 +4432,38 @@ export function VocabularyBookScreen({
                 for (const item of data.items) collected.set(`${activeTab}:${item.word}`, item);
                 if (!data.hasMore || data.items.length === 0) break;
             }
-            return [...collected.entries()].map(([key, item]) => ({
-                key,
+            return [...collected.values()];
+        };
+        /** 内置词表 is server paged: 全选 is the full q/level result set. */
+        const listSelectAllRows = async (): Promise<EditRowRegistration[]> => (
+            (await loadAllListEntries()).map((item) => ({
+                key: `${activeTab}:${item.word}`,
                 word: item.word,
                 actions: editActionsForList(item),
-            }));
+            }))
+        );
+
+        /** P0-16: word / phonetic / translation / level, current q + level filter. */
+        const listExportColumns: ExportColumn<VocabularyEntry>[] = [
+            { header: t('vocab.export.col.word'), value: (item) => item.word },
+            { header: t('vocab.export.col.phonetic'), value: (item) => item.phonetic },
+            { header: t('vocab.export.col.translation'), value: (item) => item.translation },
+            { header: t('vocab.export.col.level'), value: (item) => item.cefrLevel },
+        ];
+        const exportList = (format: 'tsv' | 'csv') => {
+            void runListExport(`list:${activeTab}`, async () => {
+                const items = await loadAllListEntries();
+                if (items.length === 0) {
+                    toast.info(t('vocab.export.empty'), { dedupeKey: 'vocab:export' });
+                    return;
+                }
+                exportTable({
+                    format,
+                    baseName: activeTab,
+                    columns: listExportColumns,
+                    rows: items,
+                });
+            });
         };
 
         const rows: WordTableRow[] = (listData?.items ?? []).map((item, index) => {
@@ -4335,7 +4617,19 @@ export function VocabularyBookScreen({
                         testId: 'vocab-list-edit',
                         disabled: editBusy,
                     }}
-                    extra={hideChineseToggle('list')}
+                    extra={(
+                        <>
+                            {exportButtons({
+                                scope: `list:${activeTab}`,
+                                tsvTestId: `vocab-${activeTab}-export-tsv`,
+                                csvTestId: `vocab-${activeTab}-export-csv`,
+                                disabled: listPhase !== 'ready' || (listData?.items.length ?? 0) === 0,
+                                onTsv: () => exportList('tsv'),
+                                onCsv: () => exportList('csv'),
+                            })}
+                            {hideChineseToggle('list')}
+                        </>
+                    )}
                 />
 
                 {activeIsCefr && renderC2Note()}

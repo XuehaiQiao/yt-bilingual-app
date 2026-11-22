@@ -45,6 +45,7 @@
 // Shots: /tmp/wb-ux-*.png
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 // Count executed assertions so a green run reports how many checks passed.
 let assertionsPassed = 0;
@@ -128,6 +129,8 @@ const state = {
     failListSelectAll: null,
     /** P0-15: hold the second select-all page so the loading state is visible. */
     delayListSelectAllPage: false,
+    /** P0-16: fail the second page of a cross-page export (no partial file). */
+    failListExport: null,
 };
 
 const publicWord = (lemma, extra = {}) => ({
@@ -331,6 +334,9 @@ await context.route('**/api/**', async (route) => {
         if (state.failListSelectAll === listPage[1] && page === 2 && pageSize === 200) {
             return fail(500, 'select-all page two failed');
         }
+        if (state.failListExport === listPage[1] && page === 2 && pageSize === 200) {
+            return fail(500, 'export page two failed');
+        }
         return respond({
             items,
             total: filtered.length,
@@ -370,6 +376,9 @@ await context.route('**/api/**', async (route) => {
 const page = await context.newPage();
 const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(String(error)));
+/** P0-16: downloads seen by the page (a failed export must add none). */
+let downloadCount = 0;
+page.on('download', () => { downloadCount += 1; });
 
 const shot = async (name) => {
     await page.screenshot({ path: `${SHOTS}/wb-ux-${name}.png`, fullPage: false });
@@ -768,7 +777,13 @@ assert.equal(await page.getByTestId('vocab-mastered-total').innerText(), '找到
 await page.getByTestId('vocab-mastered-search-clear').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mastered-row"]').length === 11);
 await openMenu('vocab-mastered-sort', 'vocab-mastered-sort-menu');
-assert.equal(await page.locator('[role="menuitemradio"]').count(), 2);
+assert.equal(await page.locator('[role="menuitemradio"]').count(), 3,
+    '已掌握 sort menu: 加入时间 / 字母 / 难度');
+assert.equal(await page.getByTestId('vocab-mastered-sort-added').count(), 1,
+    'P0-16: the 已掌握 menu offers 加入时间');
+assert.match(await page.getByTestId('vocab-mastered-sort-menu').innerText(), /加入时间/);
+assert.match(await page.getByTestId('vocab-mastered-sort').innerText(), /加入时间/,
+    'P0-16: 已掌握 defaults to 加入时间 and shows the current value');
 await pickMenuItem('vocab-mastered-sort-level');
 assert.match(await page.getByTestId('vocab-mastered-sort').innerText(), /难度/);
 await openMenu('vocab-mastered-sort', 'vocab-mastered-sort-menu');
@@ -1356,6 +1371,125 @@ await page.getByTestId('vocab-edit-bar').waitFor({ state: 'detached' });
 assert.equal(await page.getByTestId('vocab-select-all-list').count(), 0,
     'non-edit state renders no select-all checkbox at all');
 
+// ═══ E4) P0-16 exports: every list has TSV + CSV; current view, across pages ═
+const stamp = () => {
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+};
+const grabDownload = async (testId) => {
+    const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 15000 }),
+        page.getByTestId(testId).click(),
+    ]);
+    const path = await download.path();
+    assert.ok(path, `${testId} produced a file`);
+    const raw = readFileSync(path, 'utf8');
+    return {
+        filename: download.suggestedFilename(),
+        hasBom: raw.startsWith('\uFEFF'),
+        text: raw.replace(/^\uFEFF/, ''),
+    };
+};
+
+// 内置词表 (CET4): 250 rows over two 200/page server pages — the export must
+// fold both pages, not just the visible 50.
+assert.equal(await page.getByTestId('vocab-cet4-export-tsv').isVisible(), true,
+    '内置词表 toolbar has the TSV export');
+assert.equal(await page.getByTestId('vocab-cet4-export-csv').isVisible(), true,
+    '内置词表 toolbar has the CSV export');
+const cet4Tsv = await grabDownload('vocab-cet4-export-tsv');
+assert.equal(cet4Tsv.hasBom, true, 'exports carry a UTF-8 BOM');
+assert.equal(cet4Tsv.filename, `lingua-nova-cet4-${stamp()}.tsv`);
+const cet4TsvLines = cet4Tsv.text.split('\n');
+assert.equal(cet4TsvLines.length, 250, 'CET4 TSV covers both server pages (250 rows)');
+assert.equal(cet4TsvLines[0], 'cet4w001\t/k001/\tCET4 释义 001\tB1',
+    'TSV columns: word / phonetic / translation / level, no header');
+const cet4Csv = await grabDownload('vocab-cet4-export-csv');
+assert.equal(cet4Csv.filename, `lingua-nova-cet4-${stamp()}.csv`);
+const cet4CsvLines = cet4Csv.text.split('\n');
+assert.equal(cet4CsvLines[0], '"单词","音标","中文释义","等级"', 'CSV starts with the column headers');
+assert.equal(cet4CsvLines.length, 251, 'CSV = header + 250 rows');
+assert.equal(cet4CsvLines[1], '"cet4w001","/k001/","CET4 释义 001","B1"');
+await page.screenshot({ path: `${SHOTS}/p0-16-1440-export-cet4.png`, fullPage: false });
+// A failed later page must not write a half file: toast only, no download.
+state.failListExport = 'cet4';
+const downloadsBeforeFail = downloadCount;
+const toastsBeforeFail = await page.$$eval('[data-testid="toast"]', (nodes) => nodes.map((node) => node.textContent));
+await page.getByTestId('vocab-cet4-export-tsv').click();
+await page.waitForFunction((before) => {
+    const now = [...document.querySelectorAll('[data-testid="toast"]')].map((node) => node.textContent);
+    return now.some((text) => !before.includes(text));
+}, toastsBeforeFail, { timeout: 8000 });
+await page.waitForTimeout(300);
+assert.equal(downloadCount, downloadsBeforeFail, 'a failed cross-page export downloads nothing');
+state.failListExport = null;
+assert.equal(await page.getByTestId('vocab-cet4-export-tsv').isDisabled(), false,
+    'the export button re-enables after a failure');
+
+// 短语: headword / type / translation / level / example.
+await page.getByTestId('vocab-tab-phrases').click();
+await page.waitForSelector('[data-testid="phrase-list"]');
+assert.equal(await page.getByTestId('vocab-phrases-export-tsv').isVisible(), true,
+    '短语 toolbar has the TSV export');
+assert.equal(await page.getByTestId('vocab-phrases-export-csv').isVisible(), true,
+    '短语 toolbar has the CSV export');
+const phraseCsv = await grabDownload('vocab-phrases-export-csv');
+assert.equal(phraseCsv.filename, `lingua-nova-phrases-${stamp()}.csv`);
+const phraseCsvLines = phraseCsv.text.split('\n');
+assert.equal(phraseCsvLines[0], '"短语","类型","中文释义","等级","例句"');
+assert.equal(phraseCsvLines.length, 3, '短语 CSV = header + both fixtures');
+assert.equal(phraseCsvLines[1], '"give up","短语动词","放弃","A2","Never give up."');
+
+// 内置词表 (GRE): word / phonetic / translation / level, TSV headerless.
+await page.getByTestId('vocab-tab-gre').click();
+await page.waitForSelector('[data-testid="vocab-word-list"]');
+const greTsv = await grabDownload('vocab-gre-export-tsv');
+assert.equal(greTsv.filename, `lingua-nova-gre-${stamp()}.tsv`);
+assert.equal(greTsv.text.split('\n').length, 3);
+assert.equal(greTsv.text.split('\n')[0], 'abundant\t/əˈbʌndənt/\t丰富的；充裕的\tB2');
+assert.equal(await page.getByTestId('vocab-gre-export-csv').isVisible(), true);
+
+// Every built-in list owns its own test ids; no data → the pair is disabled.
+for (const id of ['cefr', 'cet6']) {
+    await page.getByTestId(`vocab-tab-${id}`).click();
+    await page.waitForSelector('[data-testid="vocab-empty"]');
+    assert.equal(await page.getByTestId(`vocab-${id}-export-tsv`).isDisabled(), true,
+        `${id}: no data disables the TSV export`);
+    assert.equal(await page.getByTestId(`vocab-${id}-export-csv`).isDisabled(), true,
+        `${id}: no data disables the CSV export`);
+}
+
+// 我的收藏 keeps its Anki TSV / context CSV, now fed by the current view.
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-list"]');
+assert.equal(await page.getByTestId('vocab-export-anki').isVisible(), true,
+    '我的收藏 keeps the Anki TSV button');
+assert.equal(await page.getByTestId('vocab-export-csv').isVisible(), true,
+    '我的收藏 keeps the CSV button');
+const mineTotal = Number((await page.getByTestId('vocab-mine-total').innerText()).replace(/\D/g, ''));
+const mineCsv = await grabDownload('vocab-export-csv');
+assert.equal(mineCsv.filename, `lingua-nova-favorites-${stamp()}.csv`);
+assert.equal(mineCsv.text.split('\n')[0],
+    '类型,英文,中文,例句(英),例句(中),视频ID,时间点(秒),收藏日期',
+    '我的收藏 keeps its existing context header row');
+assert.equal(mineCsv.text.split('\n').length, mineTotal + 1,
+    '我的收藏 CSV exports every client page');
+// The export follows the current search: one hit → one data row.
+await page.getByTestId('vocab-mine-search').fill('w059');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mine-total"]')?.textContent === '找到 1 词');
+const filteredCsv = await grabDownload('vocab-export-csv');
+assert.equal(filteredCsv.text.split('\n').length, 2, 'the export respects the current search');
+await page.getByTestId('vocab-mine-search-clear').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mine-total"]')?.textContent?.startsWith('共 '));
+const mineTsv = await grabDownload('vocab-export-anki');
+assert.equal(mineTsv.filename, `lingua-nova-favorites-anki-${stamp()}.tsv`);
+assert.equal(mineTsv.text.split('\n').length, mineTotal);
+assert.match(mineTsv.text.split('\n')[0], /^[^\t]+\t[^\t]+\tlingua-nova vocabulary$/,
+    'favorites TSV keeps Front/Back/Tags');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="toast"]').length === 0,
+    null, { timeout: 12000 }).catch(() => {});
+await page.screenshot({ path: `${SHOTS}/p0-16-1440-export-mine.png`, fullPage: false });
+
 // ═══ F) 状态接口 403/404 → nothing to degrade while the chips are gone ═══
 for (const status of [404, 403]) {
     state.stateFail = status;
@@ -1383,6 +1517,9 @@ assert.equal(await page.getByTestId('vocab-mine-sort').isVisible(), true, '排�
 assert.equal(await page.getByTestId('vocab-mine-filter').isVisible(), true, '筛选 must stay reachable at 375');
 assert.equal(await page.getByTestId('vocab-page-size').isVisible(), true, '每页条数 must stay reachable at 375');
 assert.equal(await page.getByTestId('vocab-page-jump').isVisible(), true, '跳页 must stay reachable at 375');
+assert.equal(await page.getByTestId('vocab-export-anki').isVisible(), true,
+    'P0-16: the export stays reachable at 375');
+await page.screenshot({ path: `${SHOTS}/p0-16-375-export-mine.png`, fullPage: false });
 assert.equal(await page.getByTestId('vocab-edit-bar').count(), 0, 'no batch bar before 编辑 at 375 either');
 assert.equal(await page.locator('[data-testid^="vocab-mine-select-"]').count(), 0,
     '375 default state has no checkboxes');

@@ -1,6 +1,6 @@
 # 规格：单词本与导出
 
-**状态：** 已实现（M1 ④ 按条 API：2026-11-15；生词折叠与出处：2026-11-16；独立「单词本」页面：2026-11-17；短语 tab：2026-11-17；全词表编辑模式：2026-11-23；编辑态全选（按筛选结果跨页）：2026-11-23）｜ **对应代码：** `backend/routes_user.py`（`/api/favorites`）、`backend/routes_vocabulary.py`（词表目录/短语/分页/等级）、`backend/storage.py`（路径 + 墓碑文件）、`backend/vocabulary.py`、`frontend/src/lib/favorites.ts`、`frontend/src/lib/vocabulary.ts`、`frontend/src/lib/favoriteSource.ts`、`frontend/src/components/VocabularyBookScreen.tsx`、`frontend/src/App.tsx`、`frontend/src/lib/exporter.ts`
+**状态：** 已实现（M1 ④ 按条 API：2026-11-15；生词折叠与出处：2026-11-16；独立「单词本」页面：2026-11-17；短语 tab：2026-11-17；全词表编辑模式：2026-11-23；编辑态全选（按筛选结果跨页）：2026-11-23；已掌握默认加入时间 + 全词表导出：2026-11-23）｜ **对应代码：** `backend/routes_user.py`（`/api/favorites`）、`backend/routes_vocabulary.py`（词表目录/短语/分页/等级）、`backend/storage.py`（路径 + 墓碑文件）、`backend/vocabulary.py`、`frontend/src/lib/favorites.ts`、`frontend/src/lib/vocabulary.ts`、`frontend/src/lib/favoriteSource.ts`、`frontend/src/components/VocabularyBookScreen.tsx`、`frontend/src/App.tsx`、`frontend/src/lib/exporter.ts`
 
 ---
 
@@ -172,6 +172,35 @@
 - 验收：三个脚本各 2 次 PASS，覆盖服务端两页全选 / indeterminate / 清除 / 跨页批量 /
   非编辑态无 checkbox；`tsc -b` / `build` / `check:i18n` / `gate-receipt` 绿；1440/375 无溢出。
 
+### 已掌握默认加入时间 + 全词表导出（2026-11-23，P0-16）
+
+- **必须**：**已掌握默认按加入时间倒序**（新→旧）：排序键是 `GET /api/review/words` 返回的
+  `createdAt`；同一时间按字母。排序菜单提供「加入时间 / 字母 A→Z / 难度」，触发器显示当前值；
+  当前 tab 内保持用户选择；按现有 tab 切换行为，回到「已掌握」时重置为默认加入时间；
+  客户端分页（50/20/100）不变。游客无服务端 `createdAt`，同按字母兜底。
+- **必须**：**每个词表都有导出**——我的收藏 / 已掌握 / 短语 / 内置 CEFR·GRE·CET4·CET6 / 自定义词表；
+  导出按钮位于该词表面板工具栏（与排序/筛选/编辑/隐藏中文同一行），每列表唯一 testid
+  （`vocab-mastered-export-tsv`、`vocab-<list>-export-tsv`、`vocab-custom-export-tsv` …）；
+  当前列表无可导出结果时按钮**禁用**（不只当前页为空，而是当前筛选结果为空）。
+- **必须**：**导出范围 = 当前搜索 + 筛选 + 排序命中的全部结果（跨页）**：
+  - 我的收藏 / 已掌握 / 自定义词表为客户端全量列表，直接导出当前筛选排序后的全部行；
+  - 内置词表 / 短语为服务端分页，按当前 `q` + 等级/类型筛选以 200/页（端点上限）循环拉全部分页；
+  - 先取全量、后下载；任何一页失败只给 toast，**不写出半份文件**。
+- **必须**：**列内容**：
+  - 我的收藏：维持现有 Anki TSV（Front/Back/Tags）与上下文 CSV；
+  - 已掌握：word / definition（无则空）/ level；
+  - 内置词表：word / phonetic / translation / level；
+  - 短语：headword / type（本地化类型名）/ translation / level / example；
+  - 自定义词表：word / phonetic / translation / level。
+- **必须**：**文件名**带列表标识与日期：`lingua-nova-<list>-<YYYYMMDD>.tsv|csv`（我的收藏为
+  `lingua-nova-favorites-anki-<date>.tsv` / `lingua-nova-favorites-<date>.csv`；自定义词表取名称的
+  ASCII slug，中文名回退列表 id）。
+- **必须**：`lib/exporter.ts` 提供通用按列导出 `exportTable`（TSV/CSV 共用 BOM、转义与文件名规则）：
+  TSV **不带表头**（避免 Anki 导入时多出一张假卡），制表/换行压成空格；CSV 首行为列头（i18n），
+  按 RFC 4180 引号转义。我的收藏继续用 `exportAnkiTsv` / `exportCsv`，不复制格式逻辑。
+- 验收：三脚本各 2 次 PASS，覆盖已掌握默认加入时间排序、每列表导出按钮、下载文件名/CSV 列头/行数
+  （Playwright `download`）；`tsc -b` / `build` / `check:i18n` / `gate-receipt` 绿；1440/375 截图。
+
 ## API 契约
 ### 收藏（M1 ④）
 
@@ -217,6 +246,9 @@
 - [x] （P0-15）编辑态表头三态全选：默认未选；全选选中当前搜索+筛选+排序的全部结果（服务端分页列表按 200/页拉全部分页）；底部「已选 N / 结果 M」；部分选中 indeterminate；再次点全选清空；非编辑态无全选 checkbox。
 - [x] （P0-15）跨页批量：key→row 映射让未渲染的选中行同样执行；成功移出选择、失败保留 + 汇总、操作中禁用；服务端全选失败保留原选择并报错；搜索/筛选/排序清空选择、翻页保留；切 tab 退出并清空。
 - [x] （P0-15）三脚本覆盖两页全选 / indeterminate / 清除 / 跨页批量 / 非编辑态无 checkbox 并各 2 次 PASS；1440/375 截图；tsc/build/i18n/gate 绿。
+- [x] （P0-16）已掌握默认按 `createdAt` 加入时间倒序（同时间按字母），菜单含「加入时间」并显示当前值；客户端分页不变。
+- [x] （P0-16）我的收藏 / 已掌握 / 短语 / 内置 CEFR·GRE·CET4·CET6 / 自定义词表均有 TSV + CSV 导出（无数据禁用）；导出尊重当前搜索/筛选/排序并跨页，失败只 toast 不写半份。
+- [x] （P0-16）导出文件名带列表标识与日期；已掌握/内置/短语/自定义列头与行数符合卡片；`exportTable` 复用 BOM/转义；我的收藏维持原格式。
 - [x] （P0-10）tab「我的单词」显示名 zh「我的收藏」、vi「Từ đã lưu của tôi」，页面 copy/搜索 placeholder 一致，路由与 tab id 不变。
 - [x] （P0-10）固定词表行底色：已掌握 `bg-success/10`、收藏 `bg-warning/10`、无状态默认；已掌握优先；我的收藏/已掌握 tab 无底色；1440/375 无溢出。
 - [x] 来源可跳回：视频/本地剧集、文章、免费文章、句子精背、公版书、导入书；无来源时显示「来源未知」且不可点。

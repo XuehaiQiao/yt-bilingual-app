@@ -42,6 +42,7 @@
 // Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node custom-wordlists-acceptance.mjs
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 // Count executed assertions so a green run reports how many checks passed.
 let assertionsPassed = 0;
@@ -423,6 +424,26 @@ const rowTone = (page, word, testId = 'vocab-custom-row') => page
     .first()
     .evaluate((el) => el.parentElement?.className ?? '');
 
+/** P0-16: download one export and read the file Playwright saved. */
+const grabDownload = async (page, testId) => {
+    const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 15000 }),
+        page.getByTestId(testId).click(),
+    ]);
+    const path = await download.path();
+    assert.ok(path, `${testId} produced a file`);
+    const raw = readFileSync(path, 'utf8');
+    return {
+        filename: download.suggestedFilename(),
+        hasBom: raw.startsWith('\uFEFF'),
+        text: raw.replace(/^\uFEFF/, ''),
+    };
+};
+const stamp = () => {
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const state = createState();
 const { context, page, pageErrors } = await newContext(browser, state);
@@ -745,6 +766,45 @@ await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-
 assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 2 / 2 页');
 await page.screenshot({ path: `${SHOTS}/custom-wordlists-1440.png`, fullPage: false });
 
+// ── E1b) P0-16 export: word / phonetic / translation / level, current view ─
+// wl-2 has 60 items in two client pages; exporting from page 2 must still write
+// all 60, and the current search must narrow the file. Non-ASCII list names
+// fall back to the list id in the file name (`custom-wl-2`).
+assert.equal(await page.getByTestId('vocab-custom-export-tsv').isVisible(), true,
+    '自定义词表 toolbar has the TSV export');
+assert.equal(await page.getByTestId('vocab-custom-export-csv').isVisible(), true,
+    '自定义词表 toolbar has the CSV export');
+const customCsv = await grabDownload(page, 'vocab-custom-export-csv');
+assert.equal(customCsv.hasBom, true, 'the export carries a UTF-8 BOM');
+assert.equal(customCsv.filename, `lingua-nova-custom-wl-2-${stamp()}.csv`);
+const customCsvLines = customCsv.text.split('\n');
+assert.equal(customCsvLines[0], '"单词","音标","中文释义","等级"',
+    'CSV columns: word / phonetic / translation / level');
+assert.equal(customCsvLines.length, 61, 'CSV = header + all 60 items (both client pages)');
+assert.equal(customCsvLines[1], '"word001","/wɜːd1/","释义 1","B1"',
+    'the export follows the current alphabetical order');
+const customTsv = await grabDownload(page, 'vocab-custom-export-tsv');
+assert.equal(customTsv.filename, `lingua-nova-custom-wl-2-${stamp()}.tsv`);
+const customTsvLines = customTsv.text.split('\n');
+assert.equal(customTsvLines.length, 60, 'TSV is headerless and holds all 60 items');
+assert.equal(customTsvLines[0], 'word001\t/wɜːd1/\t释义 1\tB1');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="toast"]').length === 0,
+    null, { timeout: 12000 }).catch(() => {});
+await page.screenshot({ path: `${SHOTS}/p0-16-1440-custom-export.png`, fullPage: false });
+// The export respects the current custom search.
+await page.getByTestId('vocab-custom-search').fill('word060');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 1);
+const filteredCustomCsv = await grabDownload(page, 'vocab-custom-export-csv');
+assert.equal(filteredCustomCsv.text.split('\n').length, 2,
+    'the custom export follows the current search');
+await page.getByTestId('vocab-custom-search-clear').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-custom-total"]')?.textContent === '共 60 词');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 50);
+// E2 starts from page 2 (the search above restarted at page 1).
+await page.getByTestId('vocab-page-next').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 2 / 2 页'
+    && document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 10);
+
 // ── E2) P0-15 select-all across the two client-paged custom-list pages ────
 // wl-2 holds 60 items → two 50/page pages. 全选 must select all 60, not the
 // visible 10 on page 2; the selection then survives paging and a cross-page
@@ -1003,6 +1063,11 @@ const overflow = await page.evaluate(() => ({
 }));
 assert.ok(overflow.doc <= overflow.view + 1, `document overflows horizontally: ${JSON.stringify(overflow)}`);
 assert.ok(overflow.body <= overflow.view + 1, `body overflows horizontally: ${JSON.stringify(overflow)}`);
+assert.equal(await page.getByTestId('vocab-custom-export-tsv').isVisible(), true,
+    'P0-16: the custom export stays reachable at 375');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="toast"]').length === 0,
+    null, { timeout: 12000 }).catch(() => {});
+await page.screenshot({ path: `${SHOTS}/p0-16-375-custom-export.png`, fullPage: false });
 // P0-15 at 375: the compact select-all selects every filtered custom item
 // (58 after the cross-page delete in §E2) without overflowing.
 await page.getByTestId('vocab-custom-edit').click();
