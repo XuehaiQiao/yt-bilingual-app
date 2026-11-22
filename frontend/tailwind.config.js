@@ -120,6 +120,20 @@ export default {
         'dialog-sm': '28rem',
         'dialog-md': '36rem',
         'dialog-lg': '56rem',
+        // Desktop page measures (docs/设计-桌面布局规范.md §2). One page
+        // prototype = one token; screens use PageContainer instead of
+        // picking their own max-w-*.
+        'page-wide': '105rem',
+        'page-standard': '80rem',
+        'page-reading': '75rem',
+        'page-marketing': '75rem',
+        'page-focused': '42rem',
+        // Reading body measure: 65–75ch, spec pins 68ch.
+        'reading-body': '68ch',
+      },
+      gridTemplateColumns: {
+        // PageGrid rail: main column + 320px side rail, ≥xl only.
+        'page-rail': 'minmax(0, 1fr) 20rem',
       },
       transitionTimingFunction: {
         // Apple-feel deceleration curve for micro-interactions

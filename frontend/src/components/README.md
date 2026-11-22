@@ -5,6 +5,10 @@
 | 组件 | 用在哪 | 职责 |
 |---|---|---|
 | `ui/StateView.tsx` | 全局 | 异步状态统一视图（C10）：`EmptyState` / `LoadingState` / `ErrorPanel` / `Skeleton`；`page(py-16)/card(py-10)/inline(py-3)` 三档；失败只渲染错误面板 + 重试（`ErrorPanel level=inline` 也用于「保留旧数据 + 刷新失败」），空态只来自成功且为空；错误面板 `role=alert`、加载块 `aria-busy` |
+| `layout/PageContainer.tsx` | 桌面页面容器 | 页面原型 → 一个容器（`docs/设计-桌面布局规范.md` §2）：`variant: wide / standard / reading / marketing / focused` 选语义 maxWidth token；统一居中与 `px-4 sm:px-6 lg:px-8`，页面不再自选 `max-w-*` |
+| `layout/PageGrid.tsx` | 桌面两栏页 | `main` + `rail` 槽：≥xl `minmax(0,1fr) 20rem`、gap 24–32；窄屏单栏，rail 落在主列后；无 rail 时单栏 |
+| `layout/SideRail.tsx` | 桌面右栏 | 宽 320px（`max-w-rail`）、≥xl sticky 且顶部偏移与页面 padding 对齐；统一标题/说明/空态；窄屏全宽随主列堆叠 |
+| `layout/ReadingLayout.tsx` | 阅读页 | `reading` 容器 + 正文列 `max-w-reading-body`（68ch）+ 可选 rail 槽；本卡只提供 API，P2-04 接四个阅读器 |
 | `AuthScreen.tsx` | 未登录 | 登录/注册门禁：单页两个 tab、邮箱+密码（注册含必填用户名 2–24 字与可选确认密码）、邀请码（`REGISTRATION_OPEN=false` 时必填，可从 `?invite=` 预填）、内测/无找回密码提示；注册 tab 另有 `auth-signup-disclosure`（M4：邀请制、无邮箱验证、无自助找回/改密、7 天删除冷静期、字幕文本送 AI）与隐私/协议链接；用户名/表单行内错误；成功后由 `AuthProvider` 切进应用 |
 | `AppShell.tsx` | 全局 | 应用外壳：≥lg 为 `[Sidebar 240/72][TopBar + Main]` 三栏，md–lg 保留 top tabs，<md 仅精简顶栏 + bottom bar；沉浸式任务子视图（视频/阅读/句子精背/复习/考试/定位）隐藏侧栏与主导航，内容占满宽度 |
 | `Sidebar.tsx` | 桌面（≥lg） | 左侧导航栏：品牌、四个一级页（图标+文字+练习到期徽章）、分组快捷入口（学习/内容/管理）、底部账号卡片 + 语言/设置；可折叠为 72px 图标栏（aria-label/title 提示），状态持久化在 `localStorage`；空白页签不在此出现，快捷入口全部复用 App 既有路由 |
@@ -49,7 +53,7 @@
 | `AccountDataSection.tsx` | 用户页「数据与账号」 | 账号生命周期 UI（specs/033 / M2b）：导出（密码确认、配额/限流文案、排队→生成→可下载/失败/过期状态轮询、一次性 token 下载、删除临时文件）、删除危险区（密码 + 用户名 + `DELETE` + 可选原因，7 天冷静期/不可恢复/备份 30 天/无邮箱验证）、冷静期卡片（到期日、密码确认取消、跳转导出）；无内联中文，全部走 i18n |
 | `AdminConsoleScreen.tsx` | 管理控制台 | 独立整页管理员控制台（specs/021 + 023 + 032）：概览（总用户/近 7 天新增/今日活跃/游客/今日 AI 花费/失败任务）、用户（搜索、每页 20 条分页、余额列 + 旧额标记、整数 µUSD 调余额对话框（USD 字符串/方向/原因/UUID 幂等键/预览）、资金流水对话框（最近 50 条分页，类型/金额/调整后余额/原因/操作者）、封禁/解封，不能操作自己/最后一个管理员）、计费（M3b：日期范围汇总真实扣费 µUSD/USD、token、未计费/legacy/settle_failed、hold、余额↔流水对账、无价格模型提示与价格表）、邀请码（生成并显示一次明文/复制、状态筛选/分页、撤销、公开注册状态只读）、删除请求（状态筛选/分页、用户邮箱脱敏、到期执行：原因必填 + 二次确认 `DELETE` + 冷静期未满需强制、失败可重试）、审计（时间/操作者/动作/目标/结果，结果由动作与 detail 推导）、设置（维护模式开关 + 公告，公开公告条待接入）、用量与健康（按天×功能、迁移版本/磁盘/最近 failed jobs）；仅管理员可进，非管理员被 toast 拦回首页；中越双语；表格各自横向滚动，375px 不撑破页面 |
 | `EstimateDialog.tsx` | 首页 / 内容发现 | 共用的处理前估价流程：`/api/estimate-cost` loading 覆盖层 → `ModelSelectionModal` → 确认后交给调用方开始处理；首页链接输入与发现页候选点击都走它 |
-| `ReportScreen.tsx` | 本周报告 | 本周报告全屏视图（M5 / specs/015）：周一到今天日期范围、三个数字（无答题显示「暂无」）、一句事实/下一步/连续天数、证据句子与「回看 mm:ss」、明日到期词入口；加载/错误/空数据态，中越双语、375px 单列 |
+| `ReportScreen.tsx` | 本周报告 | 本周报告全屏视图（M5 / specs/015）：周一到今天日期范围、三个数字（无答题显示「暂无」）、一句事实/下一步/连续天数、证据句子与「回看 mm:ss」、明日到期词入口；加载/错误/空数据态，中越双语、375px 单列；桌面 `standard` 容器 + ≥xl 两栏（左事实/数字/证据，右解释/下一步/操作） |
 | `SentenceText.tsx` | 句子精背 | seg 渲染：四色语块 + ruby 注音 + 逐词可点 |
 | `VocabularyBookScreen.tsx` | 单词本（整页） | 收藏的生词（句子不列入）+ 短语 + CEFR/GRE/CET4/CET6 词表：我的单词单行/展开（批量 `/level` 显示 CEFR，不在词表 C1+、来源跳转、收藏时间、取消收藏）；短语 tab（类型/近似 CEFR 徽章、展开懒加载例句/类型说明/来源/notes、服务端搜索 + level/type 筛选 + 每页 50 + 页码）；词表服务端搜索/每页 50/分页、全局隐藏中文（localStorage，点行临时显示，短语展开时中文说明/笔记同样隐藏）；C2 禁用并说明；空/加载/错误重试；中越双语、桌面表格、375px 单列 |
 | `ShareCardDialog.tsx` | 全局 | 分享卡弹窗（计划 D-6）：1080×1440 Canvas 预览、下载 PNG、复制文案、生成失败可读错误；本机生成、不请求后端，中越双语与 375px |
