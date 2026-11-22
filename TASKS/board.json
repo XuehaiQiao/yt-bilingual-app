@@ -222,8 +222,8 @@
     {
       "id": "P0-13",
       "file": "TASKS/P0-13-mastered-definition-backfill.md",
-      "status": "in_review",
-      "owner": "def-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/routes_review.py",
         "backend/srs.py",
