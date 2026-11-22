@@ -148,8 +148,8 @@
     {
       "id": "P0-09",
       "file": "TASKS/P0-09-remove-add-action.md",
-      "status": "claimed",
-      "owner": "rm-add-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/components/VocabularyRows.tsx",
@@ -166,8 +166,8 @@
     {
       "id": "P0-10",
       "file": "TASKS/P0-10-wordbook-row-toggles.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "p10-impl",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/components/VocabularyRows.tsx",
