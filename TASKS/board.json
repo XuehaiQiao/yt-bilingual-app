@@ -455,8 +455,8 @@
     {
       "id": "P2-04",
       "file": "TASKS/P2-04-layout-reading.md",
-      "status": "claimed",
-      "owner": "layout-read-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/ReaderScreen.tsx",
         "frontend/src/components/LibraryArticleReader.tsx",
