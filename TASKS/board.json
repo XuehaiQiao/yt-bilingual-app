@@ -188,8 +188,8 @@
     {
       "id": "P0-11",
       "file": "TASKS/P0-11-mastered-filter-sync.md",
-      "status": "claimed",
-      "owner": "sync3-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "scripts/mastered-filter-acceptance.mjs"
       ],
