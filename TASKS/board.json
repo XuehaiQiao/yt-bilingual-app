@@ -74,8 +74,8 @@
     {
       "id": "P0-03",
       "file": "TASKS/P0-03-duplicate-actions.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "p03-impl",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/components/VocabularyRows.tsx",
