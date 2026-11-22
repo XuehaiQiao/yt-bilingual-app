@@ -128,6 +128,22 @@
         "P0-02",
         "P0-03"
       ]
+    },
+    {
+      "id": "P0-08",
+      "file": "TASKS/P0-08-mastered-scripts-sync.md",
+      "status": "claimed",
+      "owner": "sync2-impl",
+      "write_scope": [
+        "scripts/mastered-tab-acceptance.mjs",
+        "scripts/mastered-filter-acceptance.mjs"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P0-01",
+        "P0-02",
+        "P0-03"
+      ]
     }
   ]
 }
