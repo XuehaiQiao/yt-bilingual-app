@@ -407,8 +407,8 @@
     {
       "id": "P1-05",
       "file": "TASKS/P1-05-word-family-tab.md",
-      "status": "claimed",
-      "owner": "family-tab-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "content/wordlist/word-families.v1.json",
         "content/wordlist/NOTICE.md",
