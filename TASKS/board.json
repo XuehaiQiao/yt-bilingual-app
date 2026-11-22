@@ -517,8 +517,8 @@
     {
       "id": "P1-06",
       "file": "TASKS/P1-06-family-pagination-shared.md",
-      "status": "claimed",
-      "owner": "pager-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "scripts/word-family-acceptance.mjs",
@@ -532,8 +532,8 @@
     {
       "id": "P1-07",
       "file": "TASKS/P1-07-family-member-actions.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "family-member-impl",
       "write_scope": [
         "content/wordlist/word-families.v1.json",
         "scripts/build_word_families.py",
