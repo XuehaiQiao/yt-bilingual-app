@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://linguatrek.app/contracts/analysis.v5.json",
+  "title": "TeachingAnalysisV5",
+  "description": "教学分析 payload（analysis.v5）。外层 camelCase；highlights 内层字段冻结为 en_word/zh_word/color。",
+  "type": "object",
+  "required": ["analysisVersion", "level", "targetLang", "highlights", "idioms", "culture"],
+  "properties": {
+    "analysisVersion": { "const": "analysis.v5" },
+    "level": { "type": "string" },
+    "targetLang": { "type": "string" },
+    "glossAttempted": { "type": "boolean" },
+    "highlights": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["en_word", "zh_word"],
+          "properties": {
+            "en_word": { "type": "string" },
+            "zh_word": { "type": "string" },
+            "color": { "type": "string" }
+          }
+        }
+      }
+    },
+    "idioms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "blockId": { "type": ["integer", "string"] },
+          "phrase": { "type": "string" },
+          "meaning": { "type": "string" }
+        }
+      }
+    },
+    "culture": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "blockId": { "type": ["integer", "string"] },
+          "term": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

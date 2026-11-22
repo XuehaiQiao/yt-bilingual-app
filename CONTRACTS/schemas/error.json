@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://linguatrek.app/contracts/error.json",
+  "title": "ApiError",
+  "description": "统一错误体。code 是稳定标识；message 面向用户；resetAt 仅 429 配额/预算有。",
+  "type": "object",
+  "required": ["detail"],
+  "properties": {
+    "detail": { "type": "string" },
+    "code": {
+      "type": "string",
+      "enum": [
+        "login_required",
+        "insufficient_balance",
+        "quota_exceeded",
+        "budget_exceeded",
+        "model_unpriced",
+        "feature_disabled",
+        "analysis_unavailable",
+        "billing_unavailable",
+        "rate_limited"
+      ]
+    },
+    "feature": { "type": "string" },
+    "used": { "type": "integer", "minimum": 0 },
+    "limit": { "type": "integer", "minimum": 0 },
+    "spendUsd": { "type": "number" },
+    "limitUsd": { "type": "number" },
+    "resetAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}

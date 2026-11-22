@@ -1,0 +1,17 @@
+# Feature Flag 注册表（唯一默认值来源）
+# 规则：命名 ff.<域>.<特性>；每条必须有 owner/default/created/expiry/removal。
+flags:
+  ff.review.ui:
+    owner: vocabulary-owner
+    default: false
+    created: "2026-11-22"
+    expiry: "2027-03-31"
+    removal: "独立背单词功能上线时移除前端入口开关"
+    description: "复习 UI（卡片/数字/入口/加入复习/状态筛选）；关闭时后端端点保留、不再 403 给用户"
+  ff.course.generation:
+    owner: reading-owner
+    default: false
+    created: "2026-11-17"
+    expiry: "2027-06-30"
+    removal: "课程生成转正或删除时移除"
+    description: "经典小说课程生成入口（对应现有 SHOW_COURSE_GENERATION）"

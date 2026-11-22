@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://linguatrek.app/contracts/word.json",
+  "title": "Word",
+  "description": "收藏/已掌握/复习队列共用的词条形状（camelCase）。definition 是用户释义快照，可为 null。",
+  "type": "object",
+  "required": ["word"],
+  "properties": {
+    "word": { "type": "string", "minLength": 1 },
+    "lemma": { "type": "string" },
+    "phonetic": { "type": ["string", "null"] },
+    "translation": { "type": ["string", "null"] },
+    "level": { "type": ["string", "null"], "enum": ["A1", "A2", "B1", "B2", "C1", "C1+", null] },
+    "definition": { "type": ["string", "null"] },
+    "senses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pos": { "type": "string" },
+          "zh": { "type": "string" },
+          "definition_en": { "type": "string" }
+        }
+      }
+    },
+    "example": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}
