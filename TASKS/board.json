@@ -27,8 +27,8 @@
     {
       "id": "P0-02",
       "file": "TASKS/P0-02-reconcile-mastered-favorites.md",
-      "status": "in_review",
-      "owner": "P0-02-reconcile",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "scripts/reconcile_mastered_favorites.py",
         "scripts/tests/test_reconcile_mastered_favorites.py"
@@ -56,8 +56,8 @@
     {
       "id": "P0-01",
       "file": "TASKS/P0-01-my-words-count.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "p01-impl",
       "write_scope": [
         "frontend/src/lib/myWords.ts",
         "frontend/src/components/VocabularyBookScreen.tsx",
@@ -89,8 +89,8 @@
     {
       "id": "P0-04",
       "file": "TASKS/P0-04-article-analysis-recovery.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "p04-impl",
       "write_scope": [
         "backend/teaching_analysis.py",
         "backend/routes_reading.py",
