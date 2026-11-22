@@ -239,6 +239,29 @@
       "deps": [
         "P0-10"
       ]
+    },
+    {
+      "id": "P0-14",
+      "file": "TASKS/P0-14-wordlist-edit-mode.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "frontend/src/components/VocabularyRows.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/wordbook-v12-acceptance.mjs",
+        "scripts/mastered-tab-acceptance.mjs",
+        "scripts/custom-wordlists-acceptance.mjs",
+        "specs/005-favorites-export/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P0-12",
+        "P0-13"
+      ]
     }
   ]
 }
