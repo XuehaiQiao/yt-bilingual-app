@@ -553,6 +553,21 @@
       "deps": [
         "P1-06"
       ]
+    },
+    {
+      "id": "P1-08",
+      "file": "TASKS/P1-08-family-candidates.md",
+      "status": "merged",
+      "owner": "lead",
+      "write_scope": [
+        "scripts/word_family_candidates.py",
+        "scripts/tests/test_word_family_candidates.py",
+        "docs/reports/word-family-candidates-2026-11-23.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P1-05"
+      ]
     }
   ]
 }
