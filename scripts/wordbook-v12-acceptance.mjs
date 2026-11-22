@@ -6,9 +6,9 @@
 //   - 我的收藏 search (200ms debounce), menu-driven 排序 (menuitemradio) and
 //     筛选 (multi-select groups, keepOpen + 清除筛选), client paging with the
 //     每页 20/50/100 selector and the 跳至 input;
-//   - the shared row: 原词 / 音标 / 释义 / 发音 / CEFR / 星标 / 已掌握对勾 / 展开,
-//     with ×N only in 我的收藏; 已掌握 is the row check (icon-only) on every
-//     surface — the expanded area never carries a mastered text action (P0-10);
+//   - the shared row: 原词 / 音标 / 释义 / 发音 / CEFR / 星标 / 已掌握圆形勾选 / 展开,
+//     with ×N only in 我的收藏; 已掌握 is the row circle toggle (P0-10/P0-12) on
+//     every surface — the expanded area never carries a mastered text action;
 //   - star = the ONE favorite toggle on every surface (POST /api/favorites on a
 //     list/phrase row, DELETE when unstarring); the expanded area never carries
 //     a save action — no 「加入我的单词」 and no 「已加入」 disabled variant, in
@@ -423,12 +423,29 @@ assert.equal((await page.getByTestId(`vocab-mine-ipa-${firstId}`).innerText()).t
 assert.equal((await page.getByTestId(`vocab-mine-meaning-${firstId}`).innerText()).trim(), '释义59');
 assert.equal((await page.getByTestId(`vocab-mine-seen-${firstId}`).innerText()).trim(), '×0');
 assert.equal(await page.getByTestId(`vocab-mine-star-${firstId}`).getAttribute('aria-pressed'), 'true');
-// The 已掌握 control is an icon-only toggle: unfilled Check, 44px-class icon
-// button (shared IconButton), aria-pressed mirrors the mark.
+// P0-12: the 已掌握 control is a circle+check toggle, never a naked check.
+// Unmastered = hollow neutral ring; the shared IconButton keeps the 44px
+// coarse-pointer target, aria-pressed and the aria-label.
 const mineCheck = page.getByTestId(`vocab-mine-master-toggle-${firstId}`);
 assert.equal(await mineCheck.getAttribute('aria-pressed'), 'false');
 assert.equal(await mineCheck.getAttribute('aria-label'), '已掌握 w059');
-assert.equal(await mineCheck.locator('svg').count(), 1, 'the check renders one lucide icon');
+const mineIndicator = page.getByTestId(`vocab-mine-master-toggle-${firstId}-indicator`);
+assert.equal(await mineIndicator.count(), 1, 'the toggle renders one circle indicator');
+assert.equal(await mineIndicator.getAttribute('data-state'), 'unchecked');
+assert.equal(await mineCheck.locator(':scope > svg').count(), 0,
+    'no naked check icon sits outside the circle');
+assert.equal(await mineIndicator.locator('svg').count(), 1,
+    'the check glyph lives inside the circle');
+const mineIndicatorClass = (await mineIndicator.getAttribute('class')) ?? '';
+assert.match(mineIndicatorClass, /rounded-full/, 'the mastered toggle is a circle');
+assert.match(mineIndicatorClass, /border-line-strong/, 'the unmastered circle uses the line token');
+assert.match(mineIndicatorClass, /text-fg-muted/, 'the unmastered check stays neutral grey');
+assert.doesNotMatch(mineIndicatorClass, /\bbg-success\b/, 'an unmastered circle has no success fill');
+assert.match(mineIndicatorClass, /group-hover\/mastered:bg-state-hover/,
+    'the unmastered circle has a hover affordance');
+assert.match(mineIndicatorClass, /group-hover\/mastered:text-fg-strong/,
+    'hover lifts the neutral check tone');
+await page.screenshot({ path: `${SHOTS}/p0-12-1440-mine-unmastered.png` });
 assert.doesNotMatch(await rowTone(`[data-testid="vocab-mine-toggle-${firstId}"]`), /bg-(success|warning)\/10/,
     '我的收藏 rows never get a state tint');
 assert.equal(await page.getByTestId(`vocab-mine-expand-${firstId}`).evaluate((el) => el.closest('[aria-expanded]')?.getAttribute('aria-expanded') ?? null), 'false');
@@ -548,13 +565,27 @@ assert.equal(await page.getByTestId('vocab-tab-count-mastered').innerText(), '11
     'marking mastered adds one to the independent 已掌握 list');
 await shot('1440-mine-mastered');
 
-// Undo from 已掌握: the pressed check PATCHes mastered=false and the word
-// leaves the tab — the expanded area is not needed.
+// Undo from 已掌握: the pressed circle check PATCHes mastered=false and the
+// word leaves the tab — the expanded area is not needed.
 await page.getByTestId('vocab-tab-mastered').click();
 await page.waitForSelector('[data-testid="vocab-mastered-list"]');
 const masteredCheck = page.getByTestId('vocab-mastered-master-toggle-w000');
 assert.equal(await masteredCheck.getAttribute('aria-pressed'), 'true',
     '已掌握 rows render a pressed check');
+const masteredIndicator = page.getByTestId('vocab-mastered-master-toggle-w000-indicator');
+assert.equal(await masteredIndicator.count(), 1, 'the pressed state keeps the circle shape');
+assert.equal(await masteredIndicator.getAttribute('data-state'), 'checked');
+assert.equal(await masteredCheck.locator(':scope > svg').count(), 0,
+    'no naked check icon in the pressed state either');
+assert.equal(await masteredIndicator.locator('svg').count(), 1);
+const masteredIndicatorClass = (await masteredIndicator.getAttribute('class')) ?? '';
+assert.match(masteredIndicatorClass, /rounded-full/, 'the mastered state is the same circle');
+assert.match(masteredIndicatorClass, /bg-success\/15/, 'the mastered circle carries the success fill');
+assert.match(masteredIndicatorClass, /border-success\/40/, 'the mastered circle uses the success border');
+assert.match(masteredIndicatorClass, /text-success-fg/, 'the mastered check is green');
+assert.doesNotMatch(masteredIndicatorClass, /text-fg-muted/,
+    'the mastered check is no longer neutral grey');
+await page.screenshot({ path: `${SHOTS}/p0-12-1440-mastered-toggle.png` });
 assert.equal(await page.getByTestId('vocab-mastered-undo-w000').count(), 0,
     'the old 撤销 text action must be gone');
 await masteredCheck.click();
@@ -653,10 +684,15 @@ assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-ipa-/).count(), 1)
 assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-translation-/).count(), 1);
 assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-level-/).count(), 1);
 assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-star-/).count(), 1);
-assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-master-toggle-/).count(), 1,
+// The indicator span reuses the toggle prefix; the button itself is the
+// control (no data-testid ending in -indicator).
+const masteredFirstToggle = masteredFirst.locator(
+    '[data-testid^="vocab-mastered-master-toggle-"]:not([data-testid$="-indicator"])',
+);
+assert.equal(await masteredFirstToggle.count(), 1,
     '已掌握 rows carry the pressed check as their undo control');
 assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-expand-/).count(), 1);
-assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-master-toggle-/).first().getAttribute('aria-pressed'), 'true');
+assert.equal(await masteredFirstToggle.first().getAttribute('aria-pressed'), 'true');
 assert.doesNotMatch(await rowTone('[data-testid="vocab-mastered-row"]'), /bg-(success|warning)\/10/,
     '已掌握 rows never get a state tint');
 assert.equal(await page.locator('[data-testid^="vocab-mastered-seen-"]').count(), 0,
@@ -714,7 +750,7 @@ for (const suffix of ['word', 'ipa', 'translation', 'level']) {
         `GRE rows need one ${suffix} cell each`);
 }
 // P0-10 §2: the 已掌握 check sits beside the star on every built-out row.
-assert.equal(await page.locator('[data-testid^="vocab-list-master-toggle-"]').count(), 3,
+assert.equal(await page.locator('[data-testid^="vocab-list-master-toggle-"]:not([data-testid$="-indicator"])').count(), 3,
     'every built-in list row carries the 已掌握 check');
 assert.equal(await page.getByTestId('vocab-list-master-toggle-gre:abundant').getAttribute('aria-pressed'), 'false');
 assert.equal(await page.getByTestId('vocab-list-master-toggle-gre:abundant').getAttribute('aria-label'), '已掌握 abundant');
@@ -821,6 +857,13 @@ await waitFor(() => state.patches.some((item) => item.lemma === 'candid' && item
 await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-master-toggle-gre:candid"]')?.getAttribute('aria-pressed') === 'true');
 assert.equal(await page.getByTestId('vocab-list-master-toggle-gre:candid').getAttribute('aria-label'),
     '取消已掌握 candid', 'the pressed check names the undo action');
+const listIndicator = page.getByTestId('vocab-list-master-toggle-gre:candid-indicator');
+assert.equal(await listIndicator.getAttribute('data-state'), 'checked',
+    'the fixed-list toggle switches to the pressed circle');
+const listIndicatorClass = (await listIndicator.getAttribute('class')) ?? '';
+assert.match(listIndicatorClass, /rounded-full/);
+assert.match(listIndicatorClass, /bg-success\/15/);
+assert.match(listIndicatorClass, /text-success-fg/);
 assert.match(await rowTone('[data-testid="vocab-list-row"][data-word="candid"]'), /bg-success\/10/,
     'a mastered built-in list row is tinted success');
 assert.equal(await page.getByTestId('vocab-list-star-gre:candid').isDisabled(), true,
@@ -988,10 +1031,17 @@ assert.equal(await page.getByTestId('vocab-page-size').isVisible(), true, '每�
 assert.equal(await page.getByTestId('vocab-page-jump').isVisible(), true, '跳页 must stay reachable at 375');
 assert.equal(await page.getByTestId('vocab-mine-bulk-master').count(), 0, 'no bulk bar at 375 either');
 assert.equal((await page.getByTestId('vocab-tab-mine').innerText()).startsWith('我的收藏'), true);
-assert.equal(await page.locator('[data-testid^="vocab-mine-master-toggle-"]').first().isVisible(), true,
+assert.equal(await page.locator('[data-testid^="vocab-mine-master-toggle-"]:not([data-testid$="-indicator"])').first().isVisible(), true,
     'the 已掌握 check stays reachable at 375');
 await shot('375-mine');
 await page.screenshot({ path: `${SHOTS}/p0-10-375-mine.png` });
+await page.screenshot({ path: `${SHOTS}/p0-12-375-mine-unmastered.png` });
+// The 已掌握 tab shows the pressed (green) circle at 375 without touching state.
+await page.getByTestId('vocab-tab-mastered').click();
+await page.waitForSelector('[data-testid="vocab-mastered-list"]');
+await page.screenshot({ path: `${SHOTS}/p0-12-375-mastered-toggle.png` });
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-list"]');
 await page.getByTestId('vocab-tab-gre').click();
 await page.waitForSelector('[data-testid="vocab-word-list"]');
 assert.equal(await page.getByTestId('vocab-list-master-toggle-gre:abundant').isVisible(), true,

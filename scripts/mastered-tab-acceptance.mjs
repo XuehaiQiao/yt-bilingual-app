@@ -14,10 +14,12 @@
 //      activation), so the reveal contract is asserted on the GRE list in §I.
 //   D) shared pager: 50/page default, 每页 20/50/100 menu, page strip and 跳至
 //      input (60 mocked rows → 2 pages at 50, 3 at 20).
-//   E) the pressed 已掌握 check is the undo control (P0-10 — no expanded text
-//      action); it PATCHes mastered=false and the row leaves the tab, but the
-//      word does NOT come back to 我的收藏 (undo never refills the favorite,
-//      specs/005 §已掌握与收藏互斥) and the count stays 1.
+//   E) the pressed 已掌握 circle toggle is the undo control (P0-10 — no
+//      expanded text action; P0-12 — same circle+check shape, success-filled
+//      when mastered and hollow when not); it PATCHes mastered=false and the
+//      row leaves the tab, but the word does NOT come back to 我的收藏 (undo
+//      never refills the favorite, specs/005 §已掌握与收藏互斥) and the count
+//      stays 1.
 //   F) first-load failure shows an error panel with retry (never the empty
 //      state); a failed refresh keeps stale rows (IX-01); retry recovers.
 //   G) guest: the tab is 「我会了」, fed by the local table only (no review GET),
@@ -328,10 +330,21 @@ assert.equal(mineWords.length > 0, true, 'the single favorite is listed in 我�
 assert.equal(await page.getByTestId('vocab-mine-word-fav-abundant').count(), 0,
     'a mastered word is not a favorite, so it never shows in 我的收藏');
 assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 1 词');
-// P0-10: the favorites row carries the 已掌握 check (unpressed; luminous is not
-// mastered) next to the star.
+// P0-10: the favorites row carries the 已掌握 circle toggle (unpressed;
+// luminous is not mastered) next to the star. P0-12: the toggle is a circle +
+// check, never a naked check — the unpressed state is a hollow neutral ring.
 assert.equal(await page.getByTestId('vocab-mine-master-toggle-fav-luminous').count(), 1);
 assert.equal(await page.getByTestId('vocab-mine-master-toggle-fav-luminous').getAttribute('aria-pressed'), 'false');
+const mineIndicator = page.getByTestId('vocab-mine-master-toggle-fav-luminous-indicator');
+assert.equal(await mineIndicator.count(), 1, 'the my-favorites toggle renders the circle indicator');
+assert.equal(await mineIndicator.getAttribute('data-state'), 'unchecked');
+const mineIndicatorClass = (await mineIndicator.getAttribute('class')) ?? '';
+assert.match(mineIndicatorClass, /rounded-full/, 'the mastered toggle is a circle');
+assert.match(mineIndicatorClass, /border-line-strong/, 'the unmastered circle is a line-token ring');
+assert.match(mineIndicatorClass, /text-fg-muted/, 'the unmastered check is neutral grey');
+assert.doesNotMatch(mineIndicatorClass, /\bbg-success\b/, 'an unmastered circle is hollow');
+assert.equal(await page.getByTestId('vocab-mine-master-toggle-fav-luminous').locator(':scope > svg').count(), 0,
+    'the check is never rendered naked outside the circle');
 await shot('mine-tab');
 
 // ── B) 已掌握 table: definition snapshot, no favorite enrichment, no star ──
@@ -390,6 +403,17 @@ const masteredCheck = page.getByTestId('vocab-mastered-master-toggle-abundant');
 assert.equal(await masteredCheck.count(), 1, '已掌握 rows carry the check');
 assert.equal(await masteredCheck.getAttribute('aria-pressed'), 'true', 'the check is pressed on 已掌握 rows');
 assert.match(await masteredCheck.getAttribute('aria-label'), /取消已掌握 abundant/);
+// P0-12: pressed = the same circle, filled with the success token.
+const masteredIndicator = page.getByTestId('vocab-mastered-master-toggle-abundant-indicator');
+assert.equal(await masteredIndicator.count(), 1, '已掌握 rows render one circle indicator');
+assert.equal(await masteredIndicator.getAttribute('data-state'), 'checked');
+const masteredIndicatorClass = (await masteredIndicator.getAttribute('class')) ?? '';
+assert.match(masteredIndicatorClass, /rounded-full/, 'the mastered state keeps the circle shape');
+assert.match(masteredIndicatorClass, /bg-success\/15/, 'the mastered circle is filled success');
+assert.match(masteredIndicatorClass, /border-success\/40/, 'the mastered circle uses the success border');
+assert.match(masteredIndicatorClass, /text-success-fg/, 'the mastered check is green');
+assert.equal(await masteredIndicator.locator('svg').count(), 1,
+    'the check glyph lives inside the circle');
 assert.equal(await page.getByTestId('vocab-mastered-undo-abundant').count(), 0,
     'the old 撤销 text action is removed (P0-10)');
 // Native click on a disabled control dispatches no event — and even if it
@@ -442,7 +466,11 @@ await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab
 const undoAction = page.getByTestId('vocab-mastered-master-toggle-abundant');
 assert.equal(await undoAction.getAttribute('aria-pressed'), 'true');
 assert.equal(await undoAction.getAttribute('aria-label'), '取消已掌握 abundant');
-assert.equal(await undoAction.locator('svg').count(), 1, 'the ghost icon button renders one icon');
+const undoIndicator = page.getByTestId('vocab-mastered-master-toggle-abundant-indicator');
+assert.equal(await undoIndicator.locator('svg').count(), 1,
+    'the pressed toggle keeps its check inside the circle');
+assert.equal(await undoAction.locator(':scope > svg').count(), 0,
+    'the undo control never renders a naked check icon');
 await undoAction.click();
 await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-mastered-row"][data-word="abundant"]'));
 assert.deepEqual(state.patches.at(-1), { lemma: 'abundant', mastered: false },

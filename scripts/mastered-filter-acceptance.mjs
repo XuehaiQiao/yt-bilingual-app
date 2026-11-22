@@ -12,7 +12,9 @@
 //      reload through localStorage, and undo restores it.
 //
 // Updated for P0-10 (2026-11-22): the word book's mastery control is the inline
-// row check on every list — the expanded area has no text 我已掌握/我会了 action.
+// row circle toggle on every list — the expanded area has no text 我已掌握/我会了
+// action. P0-12: the toggle is one circle+check shape (hollow neutral when
+// unmastered, success-tinted when mastered), never a naked check.
 // For 「我的收藏」 (formerly 我的单词) a signed-in check PATCHes
 // `word_states.mastered=1` and then removes the favorite (mutual exclusion), so
 // the row leaves the list; a failed removal rolls the mark back and shows an
@@ -545,6 +547,19 @@ assert.equal(await mineCheck.getAttribute('aria-pressed'), 'false',
     'an unmastered 我的收藏 row check starts unpressed');
 assert.equal(await mineCheck.getAttribute('aria-label'), '已掌握 luminous',
     'the row check names the mastered action');
+// P0-12: the control is one circle+check shape; unpressed = hollow neutral ring.
+const mineIndicator = page.locator('[data-testid=vocab-mine-master-toggle-f1-indicator]');
+assert.equal(await mineIndicator.count(), 1, 'the toggle renders one circle indicator');
+assert.equal(await mineIndicator.getAttribute('data-state'), 'unchecked');
+assert.equal(await mineCheck.locator(':scope > svg').count(), 0,
+    'no naked check icon outside the circle');
+assert.equal(await mineIndicator.locator('svg').count(), 1,
+    'the check glyph lives inside the circle');
+const mineIndicatorClass = (await mineIndicator.getAttribute('class')) ?? '';
+assert.match(mineIndicatorClass, /rounded-full/, 'the mastered toggle is a circle');
+assert.match(mineIndicatorClass, /border-line-strong/, 'the unmastered circle is a line-token ring');
+assert.match(mineIndicatorClass, /text-fg-muted/, 'the unmastered check is neutral grey');
+assert.doesNotMatch(mineIndicatorClass, /\bbg-success\b/, 'an unmastered circle is hollow');
 
 // The expanded area keeps no text mastery action: the check is the only one.
 await page.locator('[data-testid=vocab-mine-word-f1]').click();
@@ -614,6 +629,8 @@ await page.waitForFunction(() => document.querySelector('[data-testid="vocab-min
     ?.getAttribute('aria-pressed') === 'false', null, { timeout: 10000 });
 assert.equal(await page.locator('[data-testid=vocab-mine-toggle-f1]').count(), 1,
     'the row stays in 我的收藏 after the rollback');
+assert.equal(await page.locator('[data-testid=vocab-mine-master-toggle-f1-indicator]').getAttribute('data-state'),
+    'unchecked', 'a rolled-back mark restores the hollow circle');
 await shot('signedin-wordbook-delete-fail-rollback');
 
 // ── B) guest ──────────────────────────────────────────────────────────────
@@ -724,6 +741,16 @@ assert.equal(await guestUndoCheck.getAttribute('aria-pressed'), 'true',
     'a mastered row check starts pressed');
 assert.equal(await guestUndoCheck.getAttribute('aria-label'), '撤销 luminous',
     'the pressed row check is the undo action');
+// P0-12: pressed = the same circle filled with the success token.
+const guestUndoIndicator = page.locator('[data-testid=vocab-mastered-master-toggle-luminous-indicator]');
+assert.equal(await guestUndoIndicator.count(), 1, 'the pressed toggle keeps the circle shape');
+assert.equal(await guestUndoIndicator.getAttribute('data-state'), 'checked');
+const guestUndoIndicatorClass = (await guestUndoIndicator.getAttribute('class')) ?? '';
+assert.match(guestUndoIndicatorClass, /rounded-full/);
+assert.match(guestUndoIndicatorClass, /bg-success\/15/, 'the pressed circle is filled success');
+assert.match(guestUndoIndicatorClass, /text-success-fg/, 'the pressed check is green');
+assert.equal(await guestUndoCheck.locator(':scope > svg').count(), 0,
+    'the pressed control never renders a naked check icon');
 await page.locator('[data-testid=vocab-mastered-expand-luminous]').click();
 await page.locator('[data-testid=vocab-mastered-detail-luminous]').waitFor({ state: 'visible', timeout: 20000 });
 assert.equal(await page.locator('[data-testid=vocab-mastered-undo-luminous]').count(), 0,

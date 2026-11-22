@@ -5,8 +5,8 @@
 // and two internal lines at 375px:
 //
 //   原词 / 音标（统一 /…/）/ 释义（左对齐、单行省略）/ 发音 / LevelBadge /
-//   收藏星标（实心=已收藏）/ 已掌握对勾（实心=已掌握）/ ×N 见过次数（仅我的单词）/
-//   展开箭头
+//   收藏星标（实心=已收藏）/ 已掌握圆形勾选（空心=未掌握、绿色实心=已掌握）/
+//   ×N 见过次数（仅我的单词）/ 展开箭头
 //
 // The expanded area carries the full meaning and provenance; the row controls
 // own every write: the star is the only favorite toggle and the check is the
@@ -18,7 +18,6 @@
 // rows, star, mastered check, toolbar or expansion.
 import { type ReactNode } from 'react';
 import {
-    BadgeCheck,
     Check,
     ChevronDown,
     ListFilter,
@@ -164,9 +163,10 @@ export interface WordTableRow {
      */
     favoriteDisabled?: boolean;
     /**
-     * 已掌握 icon toggle (P0-10): filled check when mastered, and the only
-     * mastery control on every surface. `masteredLabel` names the action
-     * (已掌握 / 取消已掌握); `stopPropagation` keeps the row from expanding.
+     * 已掌握 toggle (P0-10/P0-12): one circle+check shape on every surface.
+     * Unmastered = hollow neutral ring + grey check; mastered = success-tinted
+     * circle + green check. `masteredLabel` names the action (已掌握 /
+     * 取消已掌握); `stopPropagation` keeps the row from expanding.
      */
     mastered: boolean;
     masteredLabel: string;
@@ -491,8 +491,9 @@ function WordTableRowView({
                         )}
                     </div>
 
-                    {/* Star + mastered check + expand: first control line on
-                        phones, own columns from md up (P0-10: 星标 / 对勾 / 展开). */}
+                    {/* Star + mastered circle toggle + expand: first control
+                        line on phones, own columns from md up (P0-10: 星标 /
+                        勾选 / 展开；P0-12: 勾选是同一外形的圆+勾双态）。 */}
                     <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-1 md:contents">
                         <span
                             className={cn('inline-flex', cols.star)}
@@ -532,17 +533,31 @@ function WordTableRowView({
                                 disabled={row.masteredBusy || row.masteredDisabled}
                                 loading={row.masteredBusy}
                                 onClick={row.onToggleMastered}
+                                className="group/mastered"
                             >
-                                {row.mastered ? (
-                                    <BadgeCheck
-                                        className="h-4 w-4 text-success-fg"
+                                {/* P0-12: both states share the same circle +
+                                    check glyph; only fill/border/colour change.
+                                    The busy spinner owns the box, so the glyph
+                                    is hidden while loading. */}
+                                {!row.masteredBusy && (
+                                    <span
+                                        data-testid={`${ids.mastered}-indicator`}
+                                        data-state={row.mastered ? 'checked' : 'unchecked'}
                                         aria-hidden="true"
-                                    />
-                                ) : (
-                                    <Check
-                                        className="h-4 w-4 text-fg-muted"
-                                        aria-hidden="true"
-                                    />
+                                        className={cn(
+                                            'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
+                                            'transition-colors duration-200 motion-reduce:transition-none',
+                                            row.mastered
+                                                ? 'border-success/40 bg-success/15 text-success-fg group-hover/mastered:bg-success/25'
+                                                : 'border-line-strong text-fg-muted group-hover/mastered:bg-state-hover group-hover/mastered:text-fg-strong',
+                                        )}
+                                    >
+                                        <Check
+                                            className="h-3.5 w-3.5"
+                                            strokeWidth={2.5}
+                                            aria-hidden="true"
+                                        />
+                                    </span>
                                 )}
                             </IconButton>
                         </span>
