@@ -8,10 +8,10 @@
 //      「共 N 行 · 有效 M · 跳过 K」 stats with the first skip reasons →
 //      automatic `(2)` name on a collision → POST /api/wordlists/import;
 //   C) the new tab appears, becomes active and renders its rows;
-//   D) row actions: 加入我的单词 (meta.source_kind=wordlist) only while the
-//      word is unfavorited — once saved the action is GONE (canonical favorite
-//      set, no local 已加入 mirror) and the star turns solid; 标为已掌握
-//      (PATCH); 加入复习 stays hidden while the review UI is paused;
+//   D) row actions: NO 加入我的单词 in any favorite state (P0-09 — the row star
+//      is the only favorite switch; POST/DELETE + source_kind=wordlist, no local
+//      已加入 mirror); 标为已掌握 (PATCH); 加入复习 stays hidden while the
+//      review UI is paused;
 //   E) server-side search + 50/page pagination;
 //   F) 删除词表 asks first (cancel keeps it), confirms, deletes the table only;
 //   G) 全部加入复习（N） is hidden: no bulk button, no review POST;
@@ -575,10 +575,9 @@ assert.equal(
 );
 assert.equal(await page.$$eval('[data-testid="vocab-custom-row"]', (rows) => rows.length), 2);
 
-// ── D) row actions on a pre-existing custom list (shared WordTable) ─────
+// ── D) star-only favorite + 标为已掌握 on a custom list (shared WordTable) ─
 await page.getByTestId('vocab-tab-custom-wl-1').click();
 await page.getByTestId('vocab-custom-list').waitFor();
-const ROW = 'wl-1:abundant';
 
 // The shared row: 原词 / 音标 / 释义 / 发音 / 等级 / 星标 / 展开. No ×N column.
 for (const [suffix, text] of [
@@ -593,30 +592,42 @@ assert.equal(await page.locator('[data-testid^="vocab-custom-seen-"]').count(), 
     'custom lists must not render the ×N column');
 assert.equal(await page.getByTestId('vocab-custom-star-abundant').getAttribute('aria-pressed'), 'false');
 
-// Row actions live in the expanded area: 加入我的单词 / 标为已掌握 (+ 加入复习,
-// hidden while the review UI is paused). 加入我的单词 exists only while the word
-// is not a favorite; the action is derived from the canonical favorite set, so
-// success retires it instead of relabelling a local 已加入 state.
+// P0-09: the expanded area never carries 加入我的单词 — marked words, unmarked
+// words, any state (the star is the only favorite switch). No disabled 「已加入」
+// variant either; just 完整释义 / 来源 / 等级.
 await page.getByTestId('vocab-custom-expand-abundant').click();
-await page.waitForSelector('[data-testid="wl-1:abundant-add-mine"]');
+await page.getByTestId('vocab-custom-detail-abundant').waitFor();
+assert.equal(await page.getByTestId('wl-1:abundant-add-mine').count(), 0,
+    '未收藏的自定义词表行不得渲染 加入我的单词');
+assert.doesNotMatch(await page.getByTestId('vocab-custom-detail-abundant').innerText(), /加入我的单词|已加入/,
+    'the unfavorited expanded row carries no favorite action');
 assert.equal(await page.getByTestId('wl-1:abundant-add-review').count(), 0,
     '加入复习 must be hidden on a custom-list row while the review UI is paused');
-// Two clicks in the same tick: the in-flight guard must POST exactly once.
-await page.getByTestId('wl-1:abundant-add-mine').evaluate((el) => { el.click(); el.click(); });
-await page.waitForFunction(() => !document.querySelector('[data-testid="wl-1:abundant-add-mine"]'));
-await page.waitForFunction(() => document.querySelector('[data-testid="vocab-custom-star-abundant"]')?.getAttribute('aria-pressed') === 'true');
-assert.equal(await page.getByTestId('wl-1:abundant-add-mine').count(), 0,
-    '已收藏的行不得再渲染 加入我的单词');
-assert.equal(state.favorites.length, 1, 'a double click still sends exactly one POST');
-assert.equal(state.favorites[0].en_text, 'abundant');
-assert.equal(state.favorites[0].source_kind, 'wordlist');
-assert.equal(state.favorites[0].source_ref, 'wl-1');
-assert.equal(state.favorites[0].source_title, '旅行词汇');
-assert.equal(state.favorites[0].example, 'The region has abundant rainfall.');
-assert.equal(state.favorites[0].zh_text, '/əˈbʌndənt/ 丰富的；充裕的');
 
-// Star = favorite toggle: POST on star, DELETE on unstar (mock favorites list
-// is the server record; the row star is filled while the word is favorited).
+// Star = the only favorite toggle. Two clicks in the same tick must POST once
+// (the busy guard disables the star after the first click) and must not turn
+// into a DELETE.
+const postsBefore = state.favorites.length;
+await page.getByTestId('vocab-custom-star-abundant').evaluate((el) => { el.click(); el.click(); });
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-custom-star-abundant"]')?.getAttribute('aria-pressed') === 'true');
+await page.waitForTimeout(400);
+assert.equal(state.favorites.length, postsBefore + 1, 'a double click still sends exactly one POST');
+assert.equal(state.favoriteDeletes.length, 0, 'a double click must not turn into a DELETE');
+assert.equal(await page.getByTestId('vocab-custom-star-abundant').getAttribute('aria-pressed'), 'true');
+assert.equal(await page.getByTestId('wl-1:abundant-add-mine').count(), 0,
+    '已收藏的行也不得渲染 加入我的单词');
+assert.doesNotMatch(await page.getByTestId('vocab-custom-detail-abundant').innerText(), /加入我的单词|已加入/,
+    'the favorited expanded row still carries no favorite action');
+const savedAbundant = state.favorites.find((fav) => fav.en_text === 'abundant');
+assert.equal(savedAbundant.id, 'vocab-fav-abundant');
+assert.equal(savedAbundant.source_kind, 'wordlist');
+assert.equal(savedAbundant.source_ref, 'wl-1');
+assert.equal(savedAbundant.source_title, '旅行词汇');
+assert.equal(savedAbundant.example, 'The region has abundant rainfall.');
+assert.equal(savedAbundant.zh_text, '/əˈbʌndənt/ 丰富的；充裕的');
+await page.screenshot({ path: `${SHOTS}/custom-wordlists-star-only-1440.png`, fullPage: false });
+
+// Star = DELETE on unstar (mock favorites list is the server record).
 await page.getByTestId('vocab-custom-star-candid').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-star-candid"][aria-pressed="true"]').length === 1);
 assert.equal(state.favorites.length, 2);
@@ -791,6 +802,13 @@ const overflow = await page.evaluate(() => ({
 }));
 assert.ok(overflow.doc <= overflow.view + 1, `document overflows horizontally: ${JSON.stringify(overflow)}`);
 assert.ok(overflow.body <= overflow.view + 1, `body overflows horizontally: ${JSON.stringify(overflow)}`);
+// No 加入我的单词 at 375 either (unfavorited wl-2 row): the star is the only
+// favorite switch on every surface and viewport.
+await page.getByTestId('vocab-custom-expand-word001').click();
+await page.getByTestId('vocab-custom-detail-word001').waitFor();
+assert.equal(await page.getByTestId('wl-2:word001-add-mine').count(), 0,
+    '未收藏的自定义词表行在 375 也不得渲染 加入我的单词');
+assert.doesNotMatch(await page.getByTestId('vocab-custom-detail-word001').innerText(), /加入我的单词|已加入/);
 await page.screenshot({ path: `${SHOTS}/custom-wordlists-375.png`, fullPage: false });
 
 // The wizard is usable at 375 too (dialog body scrolls, no page overflow).
