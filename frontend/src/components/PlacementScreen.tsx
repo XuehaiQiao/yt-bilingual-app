@@ -43,6 +43,9 @@ import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { Dialog } from './ui/Dialog';
 import { SubHeader } from './ui/SubHeader';
+import { PageContainer } from './layout/PageContainer';
+import { PageGrid } from './layout/PageGrid';
+import { SideRail } from './layout/SideRail';
 
 export type PlacementInitialView = 'intro' | 'profile';
 
@@ -698,24 +701,6 @@ export function PlacementScreen({
 
                 {errorPanel(error, () => void beginPlacement())}
             </section>
-
-            {profilePayload && (
-                <section
-                    data-testid="placement-intro-disclaimer"
-                    className="rounded-2xl border border-white/5 bg-zinc-900/30 p-4"
-                >
-                    {profilePayload.preliminary && (
-                        <p className="text-xs text-amber-300/90">
-                            {t('placement.result.preliminaryHint', {
-                                count: formatNumber(profilePayload.sampleSize),
-                            })}
-                        </p>
-                    )}
-                    <p className="mt-1 text-xs leading-relaxed text-zinc-500 break-words">
-                        {profilePayload.disclaimer}
-                    </p>
-                </section>
-            )}
         </div>
     );
 
@@ -885,10 +870,6 @@ export function PlacementScreen({
                         </span>
                     </button>
                 </div>
-
-                <p className="hidden sm:block mt-3 text-[11px] text-zinc-600">
-                    {t('placement.quiz.keyHint')}
-                </p>
             </motion.section>
 
             {timedOut && submitting && (
@@ -1064,14 +1045,6 @@ export function PlacementScreen({
                 </section>
             )}
 
-            <section
-                data-testid="placement-result-disclaimer"
-                className="rounded-2xl border border-white/5 bg-zinc-900/30 p-4"
-            >
-                <p className="text-[11px] font-medium text-zinc-500">{t('placement.result.disclaimerLabel')}</p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400 break-words">{result.disclaimer}</p>
-            </section>
-
             {isGuest && (
                 <div
                     data-testid="placement-guest-hint"
@@ -1093,49 +1066,6 @@ export function PlacementScreen({
                     )}
                 </div>
             )}
-
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-                <button
-                    type="button"
-                    data-testid="placement-result-learn"
-                    onClick={onStartLearning ?? onClose}
-                    className={`${PRIMARY_BUTTON} w-full sm:w-auto`}
-                >
-                    {t('placement.result.learn')}
-                    <ArrowRight className="w-4 h-4" />
-                </button>
-                {onOpenAbility && (
-                    <button
-                        type="button"
-                        data-testid="placement-result-ability"
-                        onClick={onOpenAbility}
-                        className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
-                    >
-                        {t('placement.result.viewAbility')}
-                        <ArrowRight className="w-4 h-4" />
-                    </button>
-                )}
-                <button
-                    type="button"
-                    data-testid="placement-result-home"
-                    onClick={onClose}
-                    className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
-                >
-                    {t('placement.home')}
-                </button>
-                <button
-                    type="button"
-                    data-testid="placement-result-retest"
-                    onClick={() => void beginPlacement()}
-                    disabled={starting}
-                    className={`${GHOST_BUTTON} w-full sm:w-auto`}
-                >
-                    {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-                    {t('placement.result.retest')}
-                </button>
-            </div>
-
-            {errorPanel(error, () => void beginPlacement())}
         </div>
     ) : null;
 
@@ -1339,18 +1269,6 @@ export function PlacementScreen({
                         </section>
                     )}
 
-                    <section
-                        data-testid="placement-profile-disclaimer"
-                        className="rounded-2xl border border-white/5 bg-zinc-900/30 p-4"
-                    >
-                        <p className="text-[11px] font-medium text-zinc-500">
-                            {t('placement.result.disclaimerLabel')}
-                        </p>
-                        <p className="mt-1 text-xs leading-relaxed text-zinc-400 break-words">
-                            {profile.disclaimer}
-                        </p>
-                    </section>
-
                     {isGuest && (
                         <div
                             data-testid="placement-profile-guest"
@@ -1371,44 +1289,6 @@ export function PlacementScreen({
                             )}
                         </div>
                     )}
-
-                    {retestError && (
-                        <p data-testid="placement-profile-retest-error" className="text-xs text-amber-300 break-words">
-                            {retestError}
-                        </p>
-                    )}
-
-                    <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-                        <button
-                            type="button"
-                            data-testid="placement-profile-retest"
-                            onClick={() => setConfirm('retest')}
-                            disabled={starting}
-                            className={`${PRIMARY_BUTTON} w-full sm:w-auto`}
-                        >
-                            {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-                            {t('placement.profile.retest')}
-                        </button>
-                        {onOpenAbility && (
-                            <button
-                                type="button"
-                                data-testid="placement-profile-ability"
-                                onClick={onOpenAbility}
-                                className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
-                            >
-                                {t('placement.profile.viewAbility')}
-                                <ArrowRight className="w-4 h-4" />
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            data-testid="placement-profile-home"
-                            onClick={onClose}
-                            className={`${SECONDARY_BUTTON} w-full sm:w-auto`}
-                        >
-                            {t('placement.home')}
-                        </button>
-                    </div>
                 </>
             )}
         </div>
@@ -1422,6 +1302,155 @@ export function PlacementScreen({
                 : phase === 'result'
                     ? resultBody
                     : profileBody;
+
+    // Desktop side rail (docs/设计-桌面布局规范.md §6): the phase's status,
+    // explanation and entry actions. Test ids move with their blocks; the
+    // mobile single column stacks the rail after the main column, so result and
+    // profile actions keep their position at the end of the page.
+    const rail = (
+        <SideRail testId="placement-rail">
+            {phase === 'intro' && profilePayload && (
+                <section
+                    data-testid="placement-intro-disclaimer"
+                    className="rounded-panel border border-line-subtle bg-surface/30 p-4"
+                >
+                    {profilePayload.preliminary && (
+                        <p className="text-xs text-warning-fg/90">
+                            {t('placement.result.preliminaryHint', {
+                                count: formatNumber(profilePayload.sampleSize),
+                            })}
+                        </p>
+                    )}
+                    <p className="mt-1 text-xs leading-relaxed text-fg-muted break-words">
+                        {profilePayload.disclaimer}
+                    </p>
+                </section>
+            )}
+
+            {phase === 'quiz' && (
+                <section className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5">
+                    <p className="text-micro font-medium text-fg-muted">
+                        {t('placement.result.disclaimerLabel')}
+                    </p>
+                    <p className="mt-1 hidden text-xs leading-relaxed text-fg-muted break-words sm:block">
+                        {t('placement.quiz.keyHint')}
+                    </p>
+                    <p className="mt-2 border-t border-line-subtle pt-2 text-xs leading-relaxed text-fg-muted break-words">
+                        {t('placement.intro.durationHint')}
+                    </p>
+                </section>
+            )}
+
+            {phase === 'result' && result && (
+                <>
+                    <div className="flex flex-col gap-2 rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5">
+                        <button
+                            type="button"
+                            data-testid="placement-result-learn"
+                            onClick={onStartLearning ?? onClose}
+                            className={`${PRIMARY_BUTTON} w-full`}
+                        >
+                            {t('placement.result.learn')}
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                        {onOpenAbility && (
+                            <button
+                                type="button"
+                                data-testid="placement-result-ability"
+                                onClick={onOpenAbility}
+                                className={`${SECONDARY_BUTTON} w-full`}
+                            >
+                                {t('placement.result.viewAbility')}
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            data-testid="placement-result-home"
+                            onClick={onClose}
+                            className={`${SECONDARY_BUTTON} w-full`}
+                        >
+                            {t('placement.home')}
+                        </button>
+                        <button
+                            type="button"
+                            data-testid="placement-result-retest"
+                            onClick={() => void beginPlacement()}
+                            disabled={starting}
+                            className={`${GHOST_BUTTON} w-full`}
+                        >
+                            {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                            {t('placement.result.retest')}
+                        </button>
+                    </div>
+                    {errorPanel(error, () => void beginPlacement())}
+                    <section
+                        data-testid="placement-result-disclaimer"
+                        className="rounded-panel border border-line-subtle bg-surface/30 p-4"
+                    >
+                        <p className="text-micro font-medium text-fg-muted">
+                            {t('placement.result.disclaimerLabel')}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-fg-secondary break-words">
+                            {result.disclaimer}
+                        </p>
+                    </section>
+                </>
+            )}
+
+            {phase === 'profile' && profile && (
+                <>
+                    <div className="flex flex-col gap-2 rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5">
+                        <button
+                            type="button"
+                            data-testid="placement-profile-retest"
+                            onClick={() => setConfirm('retest')}
+                            disabled={starting}
+                            className={`${PRIMARY_BUTTON} w-full`}
+                        >
+                            {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                            {t('placement.profile.retest')}
+                        </button>
+                        {onOpenAbility && (
+                            <button
+                                type="button"
+                                data-testid="placement-profile-ability"
+                                onClick={onOpenAbility}
+                                className={`${SECONDARY_BUTTON} w-full`}
+                            >
+                                {t('placement.profile.viewAbility')}
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            data-testid="placement-profile-home"
+                            onClick={onClose}
+                            className={`${SECONDARY_BUTTON} w-full`}
+                        >
+                            {t('placement.home')}
+                        </button>
+                    </div>
+                    {retestError && (
+                        <p data-testid="placement-profile-retest-error" className="text-xs text-warning-fg break-words">
+                            {retestError}
+                        </p>
+                    )}
+                    <section
+                        data-testid="placement-profile-disclaimer"
+                        className="rounded-panel border border-line-subtle bg-surface/30 p-4"
+                    >
+                        <p className="text-micro font-medium text-fg-muted">
+                            {t('placement.result.disclaimerLabel')}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-fg-secondary break-words">
+                            {profile.disclaimer}
+                        </p>
+                    </section>
+                </>
+            )}
+        </SideRail>
+    );
 
     const confirmCopy: Record<
         ConfirmKind,
@@ -1486,7 +1515,9 @@ export function PlacementScreen({
             />
 
             <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
-            <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-6">
+            <PageContainer variant="standard" className="py-4 sm:py-8">
+                <PageGrid testId="placement-grid" railTestId="placement-rail-slot" rail={rail}>
+                    <div className="flex flex-col gap-4 sm:gap-6">
                 <p className="text-xs leading-relaxed text-fg-muted break-words">
                     {headerSubtitle}
                 </p>
@@ -1502,7 +1533,9 @@ export function PlacementScreen({
                         {body}
                     </motion.div>
                 </AnimatePresence>
-            </div>
+                    </div>
+                </PageGrid>
+            </PageContainer>
             </div>
 
             <Dialog

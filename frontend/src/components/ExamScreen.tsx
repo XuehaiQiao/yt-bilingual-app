@@ -45,6 +45,9 @@ import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import { Dialog } from './ui/Dialog';
 import { SubHeader } from './ui/SubHeader';
+import { PageContainer } from './layout/PageContainer';
+import { PageGrid } from './layout/PageGrid';
+import { SideRail } from './layout/SideRail';
 
 interface ExamScreenProps {
     /** Guests can open the view but cannot practice (records belong to an account). */
@@ -563,17 +566,6 @@ export function ExamScreen({ isGuest, onClose, parentLabel, onRequestLogin }: Ex
             <div data-testid="exam-types" className="flex flex-col gap-3 sm:gap-4">
                 {typesState.types.map(renderTypeCard)}
             </div>
-            <div
-                data-testid="exam-type-disclaimer"
-                className="rounded-2xl border border-white/5 bg-zinc-900/40 px-4 py-3"
-            >
-                <p className="text-[11px] font-medium text-zinc-500">
-                    {t('exam.types.disclaimerTitle')}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400 break-words">
-                    {typesState.disclaimer || t('exam.home.disclaimer')}
-                </p>
-            </div>
             {actionError && (
                 <p
                     data-testid="exam-action-error"
@@ -1033,18 +1025,6 @@ export function ExamScreen({ isGuest, onClose, parentLabel, onRequestLogin }: Ex
                     {result.items.map(renderResultRow)}
                 </div>
             </section>
-
-            <section
-                data-testid="exam-result-disclaimer"
-                className="rounded-2xl border border-white/5 bg-zinc-900/40 px-4 py-3"
-            >
-                <p className="text-[11px] font-medium text-zinc-500">
-                    {t('exam.result.disclaimer')}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400 break-words">
-                    {result.disclaimer}
-                </p>
-            </section>
         </div>
     ) : (
         <p className="text-sm text-zinc-400">{t('exam.quiz.empty')}</p>
@@ -1144,12 +1124,6 @@ export function ExamScreen({ isGuest, onClose, parentLabel, onRequestLogin }: Ex
                     ))}
                 </div>
             )}
-
-            <div className="rounded-2xl border border-white/5 bg-zinc-900/40 px-4 py-3">
-                <p className="text-xs leading-relaxed text-zinc-400 break-words">
-                    {historyState.disclaimer || t('exam.home.disclaimer')}
-                </p>
-            </div>
         </div>
     );
 
@@ -1161,6 +1135,40 @@ export function ExamScreen({ isGuest, onClose, parentLabel, onRequestLogin }: Ex
                 : phase === 'result'
                     ? resultBody
                     : historyBody;
+
+    // Desktop side rail (docs/设计-桌面布局规范.md §6): the phase's explanation,
+    // rendered from the server copy verbatim. The three disclaimer test ids move
+    // with it; on the mobile single column it stacks after the phase body.
+    const railNote =
+        phase === 'types'
+            ? typesState.disclaimer || t('exam.home.disclaimer')
+            : phase === 'result'
+                ? result?.disclaimer || t('exam.home.disclaimer')
+                : phase === 'history'
+                    ? historyState.disclaimer || t('exam.home.disclaimer')
+                    : t('exam.home.disclaimer');
+    const rail = (
+        <SideRail testId="exam-rail">
+            <section
+                data-testid={
+                    phase === 'types'
+                        ? 'exam-type-disclaimer'
+                        : phase === 'result'
+                            ? 'exam-result-disclaimer'
+                            : 'exam-rail-note'
+                }
+                data-phase={phase}
+                className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+            >
+                <p className="text-micro font-medium text-fg-muted">
+                    {t('exam.types.disclaimerTitle')}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-fg-secondary break-words">
+                    {railNote}
+                </p>
+            </section>
+        </SideRail>
+    );
 
     return (
         <div
@@ -1199,7 +1207,9 @@ export function ExamScreen({ isGuest, onClose, parentLabel, onRequestLogin }: Ex
             />
 
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
-            <div className="mx-auto w-full max-w-2xl px-4 py-4 sm:px-6 sm:py-8 flex flex-col gap-4 sm:gap-6">
+            <PageContainer variant="standard" className="py-4 sm:py-8">
+                <PageGrid testId="exam-grid" railTestId="exam-rail-slot" rail={rail}>
+                    <div className="flex flex-col gap-4 sm:gap-6">
                 <p className="text-xs leading-relaxed text-fg-muted break-words">
                     {headerSubtitle}
                 </p>
@@ -1212,7 +1222,9 @@ export function ExamScreen({ isGuest, onClose, parentLabel, onRequestLogin }: Ex
                 >
                     {body}
                 </motion.div>
-            </div>
+                    </div>
+                </PageGrid>
+            </PageContainer>
             </div>
 
             <Dialog

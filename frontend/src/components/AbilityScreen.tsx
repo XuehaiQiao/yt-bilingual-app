@@ -51,6 +51,9 @@ import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { Dialog } from './ui/Dialog';
 import { SubHeader } from './ui/SubHeader';
+import { PageContainer } from './layout/PageContainer';
+import { PageGrid } from './layout/PageGrid';
+import { SideRail } from './layout/SideRail';
 
 interface AbilityScreenProps {
     /** Leave the screen (the previous page stays mounted underneath). */
@@ -1096,43 +1099,58 @@ export function AbilityScreen({ onClose, parentLabel, onOpenPlacement }: Ability
                 </section>
             )}
 
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
-                {hasEvidence ? (
-                    <button
-                        type="button"
-                        data-testid="ability-retest"
-                        onClick={onOpenPlacement}
-                        className={`${SECONDARY_BUTTON} h-10 w-full sm:w-auto`}
-                    >
-                        <RotateCcw className="w-4 h-4" />
-                        {t('ability.actions.retest')}
-                    </button>
-                ) : null}
-                <button
-                    type="button"
-                    data-testid="ability-self-assess"
-                    onClick={() => setAssessOpen(true)}
-                    className={`${PRIMARY_BUTTON} w-full sm:w-auto`}
-                >
-                    <SquarePen className="w-4 h-4" />
-                    {t('ability.actions.assess')}
-                </button>
-                {(evidence.length > 0 || selfReportBand) && (
-                    <button
-                        type="button"
-                        data-testid="ability-evidence"
-                        onClick={() => setEvidenceOpen(true)}
-                        className={`${GHOST_BUTTON} h-10 w-full sm:w-auto`}
-                    >
-                        {t('ability.actions.evidence')}
-                    </button>
-                )}
-            </div>
+        </>
+    );
 
-            <p className="text-[11px] leading-relaxed text-zinc-600 break-words">
+    // Desktop side rail (docs/设计-桌面布局规范.md §6): the page's actions and
+    // the footnote. The action set only exists once the profile is ready, same
+    // visibility contract as before; the mobile single column stacks it after
+    // the main column at the same place the buttons used to sit.
+    const rail = (
+        <SideRail testId="ability-rail">
+            {phase === 'ready' && (
+                <section
+                    data-testid="ability-actions"
+                    className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
+                >
+                    <div className="flex flex-col gap-2">
+                        {hasEvidence ? (
+                            <button
+                                type="button"
+                                data-testid="ability-retest"
+                                onClick={onOpenPlacement}
+                                className={`${SECONDARY_BUTTON} h-10 w-full`}
+                            >
+                                <RotateCcw className="w-4 h-4" />
+                                {t('ability.actions.retest')}
+                            </button>
+                        ) : null}
+                        <button
+                            type="button"
+                            data-testid="ability-self-assess"
+                            onClick={() => setAssessOpen(true)}
+                            className={`${PRIMARY_BUTTON} w-full`}
+                        >
+                            <SquarePen className="w-4 h-4" />
+                            {t('ability.actions.assess')}
+                        </button>
+                        {(evidence.length > 0 || selfReportBand) && (
+                            <button
+                                type="button"
+                                data-testid="ability-evidence"
+                                onClick={() => setEvidenceOpen(true)}
+                                className={`${GHOST_BUTTON} h-10 w-full`}
+                            >
+                                {t('ability.actions.evidence')}
+                            </button>
+                        )}
+                    </div>
+                </section>
+            )}
+            <p className="text-micro leading-relaxed text-fg-disabled break-words">
                 {t('ability.disclaimer.footer')}
             </p>
-        </>
+        </SideRail>
     );
 
     return (
@@ -1143,7 +1161,9 @@ export function AbilityScreen({ onClose, parentLabel, onOpenPlacement }: Ability
         >
             {header}
             <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
-            <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 py-4 sm:py-8 flex flex-col gap-4 sm:gap-5">
+            <PageContainer variant="standard" className="py-4 sm:py-8">
+                <PageGrid testId="ability-grid" railTestId="ability-rail-slot" rail={rail}>
+                    <div className="flex flex-col gap-4 sm:gap-6">
                 <div
                     aria-live="polite"
                     data-testid="ability-announce"
@@ -1186,7 +1206,9 @@ export function AbilityScreen({ onClose, parentLabel, onOpenPlacement }: Ability
                 )}
 
                 {phase === 'ready' && body}
-            </div>
+                    </div>
+                </PageGrid>
+            </PageContainer>
             </div>
 
             {assessOpen && (
