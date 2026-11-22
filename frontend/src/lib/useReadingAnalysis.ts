@@ -24,7 +24,7 @@
 // the dependency list aborts the old request and starts a new one. Stale
 // responses are dropped through a generation counter, so an older level can
 // never paint over a newer one (interaction-spec IX-06).
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LanguageCode } from '../i18n';
 import type { InlineLanguagePoint } from '../components/TranscriptBlock';
 import {
@@ -53,8 +53,71 @@ export type ReadingAnalysisStatus =
     | 'ready'
     /** Signed-out/expired: generation needs an account, reading does not. */
     | 'login'
-    /** Enhancement unavailable (network/5xx); never blocks reading. */
+    /** Enhancement unavailable (quota/budget/model/network); never blocks reading. */
     | 'error';
+
+/** Stable reasons the backend attaches when analysis could not be generated. */
+export type ReadingAnalysisUnavailableReason =
+    | 'quota_exceeded'
+    | 'budget_exceeded'
+    | 'model_error'
+    | 'analysis_unavailable';
+
+/**
+ * Why the language layer is missing (P0-04). The page payload carries
+ * `analysisUnavailableReason` (+ `analysisUsed` / `analysisLimit` /
+ * `analysisResetAt`); the loader can return the same shape after a retry or a
+ * level switch. Rendering is a non-blocking inline hint, never an empty state.
+ */
+export interface ReadingAnalysisUnavailable {
+    reason: ReadingAnalysisUnavailableReason;
+    used?: number;
+    limit?: number;
+    resetAt?: string;
+}
+
+const UNAVAILABLE_REASONS: ReadonlySet<string> = new Set([
+    'quota_exceeded',
+    'budget_exceeded',
+    'model_error',
+    'analysis_unavailable',
+]);
+
+function finiteNumber(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+/** Parse the failure fields from any page payload; `null` when absent/invalid. */
+export function parseReadingAnalysisUnavailable(
+    raw: unknown,
+): ReadingAnalysisUnavailable | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const record = raw as Record<string, unknown>;
+    const reason = record.analysisUnavailableReason;
+    if (typeof reason !== 'string' || !UNAVAILABLE_REASONS.has(reason)) return null;
+    const used = finiteNumber(record.analysisUsed);
+    const limit = finiteNumber(record.analysisLimit);
+    const resetAtRaw = record.analysisResetAt;
+    const resetAt = typeof resetAtRaw === 'string' && resetAtRaw.trim()
+        ? resetAtRaw.trim()
+        : undefined;
+    return {
+        reason: reason as ReadingAnalysisUnavailableReason,
+        ...(used !== undefined ? { used } : {}),
+        ...(limit !== undefined ? { limit } : {}),
+        ...(resetAt !== undefined ? { resetAt } : {}),
+    };
+}
+
+/** Loader return shape: maps plus the (optional) visible failure reason. */
+export interface ReadingAnalysisLoadResult {
+    analysis?: ReadingAnalysisPayload | null;
+    unavailable?: ReadingAnalysisUnavailable | null;
+}
+
+function isLoadResult(value: ReadingAnalysisPayload | ReadingAnalysisLoadResult): value is ReadingAnalysisLoadResult {
+    return 'analysis' in value || 'unavailable' in value;
+}
 
 export interface ReadingAnalysisLoadContext {
     contentRef: string;
@@ -66,7 +129,7 @@ export interface ReadingAnalysisLoadContext {
 /** Loader used by surfaces whose endpoint attaches analysis inline. */
 export type ReadingAnalysisLoader = (
     context: ReadingAnalysisLoadContext,
-) => Promise<ReadingAnalysisPayload | null>;
+) => Promise<ReadingAnalysisPayload | ReadingAnalysisLoadResult | null>;
 
 export interface UseReadingAnalysisOptions {
     /** Stable content identity, e.g. `article:<id>` / `library:<id>`. */
@@ -76,6 +139,12 @@ export interface UseReadingAnalysisOptions {
     isGuest?: boolean;
     /** Analysis already in the page payload: wins, no request. */
     payloadAnalysis?: ReadingAnalysisPayload | null;
+    /**
+     * Failure fields already delivered with the page payload (the same object
+     * that carries `analysisUnavailableReason`). When present, the hook does
+     * not re-request on mount; only an explicit retry does (P0-04).
+     */
+    payloadUnavailable?: unknown;
     /** False = the language layer is off; stay idle and request nothing. */
     enabled?: boolean;
     /** Override for content refs the teaching-analysis endpoint cannot load. */
@@ -84,6 +153,12 @@ export interface UseReadingAnalysisOptions {
 
 export interface ReadingAnalysisResult extends ReadingAnalysisMaps {
     status: ReadingAnalysisStatus;
+    /** Why the layer is missing (quota/budget/model/unavailable); `null` = fine. */
+    unavailable: ReadingAnalysisUnavailable | null;
+    /** True while a user-triggered retry is in flight (button stays disabled). */
+    retrying: boolean;
+    /** Re-run only the analysis lookup; never reloads the article body. */
+    retry: () => void;
 }
 
 /** Fresh empty maps (never a shared mutable object). */
@@ -198,6 +273,7 @@ export function useReadingAnalysis({
     targetLang,
     isGuest = false,
     payloadAnalysis = null,
+    payloadUnavailable = null,
     enabled = true,
     load,
 }: UseReadingAnalysisOptions): ReadingAnalysisResult {
@@ -205,18 +281,25 @@ export function useReadingAnalysis({
         () => normalizeReadingAnalysisPayload(payloadAnalysis),
         [payloadAnalysis],
     );
+    const payloadMeta = useMemo(
+        () => parseReadingAnalysisUnavailable(payloadUnavailable),
+        [payloadUnavailable],
+    );
     const ref = (contentRef ?? '').trim();
     const stop = (level ?? '').trim();
-    // `null` = nothing to request: payload already answers, the layer is off,
-    // or there is no content/level yet.
-    const requestKey = !payload && enabled && ref && stop
-        ? `${isGuest ? 'guest' : 'user'}\u0000${targetLang ?? ''}\u0000${stop}\u0000${ref}`
+    // The payload already answers (maps or a visible failure reason): no request
+    // on mount. `retry()` bumps `retryNonce` and forces exactly one new request;
+    // nothing else in the reader reloads (P0-04).
+    const [retryNonce, setRetryNonce] = useState(0);
+    const requestKey = enabled && ref && stop && (retryNonce > 0 || (!payload && !payloadMeta))
+        ? `${isGuest ? 'guest' : 'user'}\u0000${targetLang ?? ''}\u0000${stop}\u0000${ref}\u0000${retryNonce}`
         : null;
 
     const [fetched, setFetched] = useState<{
         key: string;
         status: 'ready' | 'login' | 'error';
         maps: ReadingAnalysisMaps;
+        unavailable: ReadingAnalysisUnavailable | null;
     } | null>(null);
     // Bumped on every new source; a resolved request only wins when its token
     // is still current, so an older level never paints over a newer one.
@@ -230,10 +313,16 @@ export function useReadingAnalysis({
         loader({ contentRef: ref, level: stop, targetLang, signal: controller.signal })
             .then((next) => {
                 if (seq !== requestSeq.current) return;
+                const loaded: ReadingAnalysisLoadResult | null =
+                    next && typeof next === 'object' && isLoadResult(next) ? next : null;
+                const source = loaded
+                    ? (loaded.analysis ?? null)
+                    : (next as ReadingAnalysisPayload | null);
                 setFetched({
                     key: requestKey,
                     status: 'ready',
-                    maps: normalizeReadingAnalysisPayload(next) ?? emptyReadingAnalysis(),
+                    maps: normalizeReadingAnalysisPayload(source) ?? emptyReadingAnalysis(),
+                    unavailable: loaded?.unavailable ?? null,
                 });
             })
             .catch((error: unknown) => {
@@ -242,6 +331,7 @@ export function useReadingAnalysis({
                     key: requestKey,
                     status: loginRequired(error) ? 'login' : 'error',
                     maps: emptyReadingAnalysis(),
+                    unavailable: null,
                 });
             });
         return () => {
@@ -252,22 +342,56 @@ export function useReadingAnalysis({
         };
     }, [isGuest, load, ref, requestKey, stop, targetLang]);
 
-    if (payload) {
-        return {
-            languagePointsByBlock: payload.languagePointsByBlock,
-            wordGlossesByBlock: payload.wordGlossesByBlock,
-            status: 'ready',
-        };
-    }
-    if (!enabled || requestKey === null) {
-        return { ...emptyReadingAnalysis(), status: 'idle' };
-    }
+    const retry = useCallback(() => {
+        if (!enabled || !ref || !stop) return;
+        setRetryNonce((value) => value + 1);
+    }, [enabled, ref, stop]);
+
     if (fetched && fetched.key === requestKey) {
         return {
             languagePointsByBlock: fetched.maps.languagePointsByBlock,
             wordGlossesByBlock: fetched.maps.wordGlossesByBlock,
             status: fetched.status,
+            unavailable: fetched.unavailable,
+            retrying: false,
+            retry,
         };
     }
-    return { ...emptyReadingAnalysis(), status: 'loading' };
+    if (payload && (retryNonce === 0 || requestKey === null)) {
+        return {
+            languagePointsByBlock: payload.languagePointsByBlock,
+            wordGlossesByBlock: payload.wordGlossesByBlock,
+            status: 'ready',
+            unavailable: null,
+            retrying: false,
+            retry,
+        };
+    }
+    if (!enabled || requestKey === null) {
+        return {
+            ...emptyReadingAnalysis(),
+            status: payloadMeta ? 'error' : 'idle',
+            unavailable: payloadMeta,
+            retrying: false,
+            retry,
+        };
+    }
+    if (retryNonce > 0) {
+        // Keep the visible reason while the retry is in flight, so the inline
+        // hint does not flicker back into a blank state.
+        return {
+            ...emptyReadingAnalysis(),
+            status: 'loading',
+            unavailable: fetched?.unavailable ?? payloadMeta,
+            retrying: true,
+            retry,
+        };
+    }
+    return {
+        ...emptyReadingAnalysis(),
+        status: 'loading',
+        unavailable: null,
+        retrying: false,
+        retry,
+    };
 }

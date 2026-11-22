@@ -134,7 +134,9 @@ async def _attach_article_analysis(
     """可选：给文章段落合并教学分析（specs/028）。
 
     只有显式传 ``level`` 才调用（普通打开文章不产生额外 AI 成本）；分析失败
-    静默跳过，阅读本身不受影响。命中缓存时零模型调用。
+    **不再静默**：payload 顶层带 ``analysisUnavailableReason``（+ used/limit/
+    resetAt，配额/预算时可得），接口仍 200，正文/查词不受影响（P0-04）。
+    命中缓存时零模型调用。
     """
     if not level:
         return payload
@@ -155,13 +157,18 @@ async def _attach_article_analysis(
     ):
         return payload
     wrapper = {"transcript": paragraphs}
+    unavailable: dict = {}
     analysis = await teaching_analysis.attach_to_payload(
         wrapper,
         level=level,
         target_lang=lang,
         content_ref=f"article:{payload.get('articleId') or ''}",
         user_id=user_id,
+        unavailable_out=unavailable,
     )
+    # 失败原因先写回 payload：即使分析没有生成，前端也能显示可重试的 inline
+    # 提示，而不是把失败当空态。成功时 unavailable 为空。
+    payload.update(unavailable)
     if analysis is not None:
         payload["paragraphs"] = wrapper["transcript"]
         payload["idioms"] = wrapper.get("idioms") or []

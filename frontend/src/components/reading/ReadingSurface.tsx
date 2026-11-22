@@ -30,9 +30,13 @@
 import { useMemo, type ReactNode } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nProvider';
+import type { TranslationKey } from '../../i18n';
 import { splitSentences } from '../../lib/sentenceSplit';
 import type { ReadingAudioPosition } from '../../lib/useReadingAudio';
-import type { ReadingAnalysisStatus } from '../../lib/useReadingAnalysis';
+import type {
+    ReadingAnalysisStatus,
+    ReadingAnalysisUnavailable,
+} from '../../lib/useReadingAnalysis';
 import { AudioSentenceSpan } from '../ReadingAudioText';
 import { BilingualRow } from '../BilingualRow';
 import {
@@ -105,6 +109,17 @@ export interface ReadingSurfaceProps {
      * hint, never an error (specs/039 §3).
      */
     analysisStatus?: ReadingAnalysisStatus;
+    /**
+     * Why the language layer could not be generated (P0-04): quota, budget,
+     * model failure or unavailable service. Rendered as a **non-blocking inline
+     * hint** with an optional retry; paragraphs, translations and word lookup
+     * keep working. A failed analysis is never rendered as an empty state.
+     */
+    analysisUnavailable?: ReadingAnalysisUnavailable | null;
+    /** Re-run only the analysis lookup; must never reload the article body. */
+    onRetryAnalysis?: () => void;
+    /** A user-triggered analysis retry is in flight (button disabled/label swap). */
+    retryingAnalysis?: boolean;
     /**
      * Attribute name that carries `paragraph.index` on the paragraph node
      * (e.g. `data-book-paragraph`, `data-imported-paragraph`). The book readers'
@@ -228,6 +243,9 @@ export const ReadingSurface: React.FC<ReadingSurfaceProps> = ({
     onRetryTranslation,
     translating = false,
     analysisStatus,
+    analysisUnavailable = null,
+    onRetryAnalysis,
+    retryingAnalysis = false,
     paragraphIndexAttr,
     listClassName = 'space-y-1.5',
     extraParagraphClass,
@@ -236,11 +254,60 @@ export const ReadingSurface: React.FC<ReadingSurfaceProps> = ({
     const { t } = useI18n();
     const twoColumn = layout === 'two-column';
     const translationPrefix = translationTestIdPrefix ?? `${testIdPrefix}-translation`;
+    // P0-04: a missing language layer is a visible, retryable inline state. The
+    // hook can report it explicitly (`analysisUnavailable`) or as a generic
+    // `error` (network); either way the surface shows a hint instead of "no
+    // language points" — but only while the layer is switched on.
+    const analysisFailure = analysisUnavailable
+        ?? (analysisStatus === 'error' ? { reason: 'analysis_unavailable' as const } : null);
+    const analysisHint = (() => {
+        if (!showLanguagePoints || !analysisFailure) return null;
+        const { reason, used, limit } = analysisFailure;
+        const key: TranslationKey = reason === 'quota_exceeded'
+            ? (used != null && limit != null
+                ? 'reader.analysis.quota'
+                : 'reader.analysis.quotaUnknown')
+            : reason === 'budget_exceeded'
+                ? 'reader.analysis.budget'
+                : reason === 'model_error'
+                    ? 'reader.analysis.modelFailed'
+                    : 'reader.analysis.unavailable';
+        const params = key === 'reader.analysis.quota' && used != null && limit != null
+            ? { used, limit }
+            : undefined;
+        return { key, params };
+    })();
 
     if (paragraphs.length === 0) return null;
 
     return (
         <div data-testid={`${testIdPrefix}-paragraphs`} className={listClassName || undefined}>
+            {analysisHint && (
+                <div
+                    data-testid={`${testIdPrefix}-analysis-unavailable`}
+                    role="status"
+                    className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-caption text-warning-fg/90"
+                >
+                    <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 flex-1">{t(analysisHint.key, analysisHint.params)}</span>
+                    {onRetryAnalysis && (
+                        <button
+                            type="button"
+                            data-testid={`${testIdPrefix}-analysis-retry`}
+                            onClick={onRetryAnalysis}
+                            disabled={retryingAnalysis}
+                            className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 font-medium text-brand-300 hover:bg-state-hover transition-colors disabled:opacity-60 disabled:hover:bg-transparent"
+                        >
+                            {retryingAnalysis && (
+                                <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                            )}
+                            {t(retryingAnalysis
+                                ? 'reader.analysis.retrying'
+                                : 'reader.analysis.retry')}
+                        </button>
+                    )}
+                </div>
+            )}
             {analysisStatus === 'login' && showLanguagePoints && (
                 <p
                     data-testid={`${testIdPrefix}-analysis-login`}

@@ -951,6 +951,116 @@ def test_attach_to_payload_skips_when_table_missing(client):
     assert "idioms" not in payload
 
 
+# P0-04：失败原因必须交给调用方（不再被 attach_to_payload 静默吞掉）。
+# 只在卡 P0-04 实现落地后才绿；先红后绿。
+
+def test_attach_to_payload_reports_missing_table_reason(client):
+    payload = {"transcript": copy.deepcopy(BLOCKS)}
+    unavailable: dict = {}
+    result = asyncio.run(
+        teaching_analysis.attach_to_payload(
+            payload,
+            level="moonwalk",
+            target_lang="zh-CN",
+            unavailable_out=unavailable,
+        )
+    )
+    assert result is None
+    assert unavailable["analysisUnavailableReason"] == "analysis_unavailable"
+
+
+def test_attach_to_payload_reports_quota_exceeded(analysis_db, monkeypatch):
+    q = teaching_analysis.quota
+
+    def raise_quota(user_id, feature, units=1, **kwargs):
+        raise q.QuotaExceeded(
+            "analysis",
+            day="2026-11-22",
+            used_units=30,
+            limit_units=30,
+            user_id=user_id,
+        )
+
+    monkeypatch.setattr(q, "check_and_consume_quota", raise_quota)
+    payload = {"transcript": copy.deepcopy(BLOCKS)}
+    unavailable: dict = {}
+    result = asyncio.run(
+        teaching_analysis.attach_to_payload(
+            payload,
+            level="moonwalk",
+            target_lang="zh-CN",
+            user_id="u-quota",
+            unavailable_out=unavailable,
+        )
+    )
+    assert result is None
+    assert unavailable["analysisUnavailableReason"] == "quota_exceeded"
+    assert unavailable["analysisUsed"] == 30
+    assert unavailable["analysisLimit"] == 30
+    assert unavailable["analysisResetAt"].startswith("2026-11-23T00:00:00")
+    assert "idioms" not in payload
+
+
+def test_attach_to_payload_reports_budget_exceeded(analysis_db, monkeypatch):
+    q = teaching_analysis.quota
+
+    def raise_budget(user_id, feature, units=1, **kwargs):
+        raise q.BudgetExceeded(
+            "user", day="2026-11-22", spend_usd=2.5, limit_usd=2.0, user_id=user_id
+        )
+
+    monkeypatch.setattr(q, "check_and_consume_quota", raise_budget)
+    unavailable: dict = {}
+    result = asyncio.run(
+        teaching_analysis.attach_to_payload(
+            {"transcript": copy.deepcopy(BLOCKS)},
+            level="moonwalk",
+            target_lang="zh-CN",
+            user_id="u-budget",
+            unavailable_out=unavailable,
+        )
+    )
+    assert result is None
+    assert unavailable["analysisUnavailableReason"] == "budget_exceeded"
+    assert unavailable["analysisResetAt"].startswith("2026-11-23T00:00:00")
+    assert "analysisUsed" not in unavailable
+
+
+def test_attach_to_payload_reports_model_failure(analysis_db, llm_stub):
+    llm_stub.fail = True
+    payload = {"transcript": copy.deepcopy(BLOCKS)}
+    unavailable: dict = {}
+    result = asyncio.run(
+        teaching_analysis.attach_to_payload(
+            payload,
+            level="moonwalk",
+            target_lang="zh-CN",
+            user_id="u-model",
+            unavailable_out=unavailable,
+        )
+    )
+    assert result is None
+    assert unavailable["analysisUnavailableReason"] == "model_error"
+    assert "idioms" not in payload
+
+
+def test_attach_to_payload_success_leaves_unavailable_empty(analysis_db, llm_stub):
+    payload = {"transcript": copy.deepcopy(BLOCKS)}
+    unavailable: dict = {}
+    result = asyncio.run(
+        teaching_analysis.attach_to_payload(
+            payload,
+            level="moonwalk",
+            target_lang="zh-CN",
+            user_id="u-ok",
+            unavailable_out=unavailable,
+        )
+    )
+    assert result is not None
+    assert unavailable == {}
+    assert payload["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
+
+
 # ---------------------------------------------------------------------------
 # 10. 翻译只负责译文
 # ---------------------------------------------------------------------------

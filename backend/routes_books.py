@@ -169,13 +169,17 @@ async def _attach_chapter_analysis(
         # being auto-translated; the next open/fetch generates them properly.
         return payload
     wrapper = {"transcript": paragraphs}
+    unavailable: dict = {}
     analysis = await teaching_analysis.attach_to_payload(
         wrapper,
         level=level,
         target_lang=lang,
         content_ref=f"book:{payload.get('bookId') or ''}:{payload.get('chapter')}",
         user_id=user["id"],
+        unavailable_out=unavailable,
     )
+    # P0-04：失败原因可见（正文仍 200 可读）；成功时 unavailable 为空。
+    payload.update(unavailable)
     if analysis is not None:
         payload["paragraphs"] = wrapper["transcript"]
         payload["idioms"] = wrapper.get("idioms") or []

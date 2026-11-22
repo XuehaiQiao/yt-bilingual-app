@@ -76,6 +76,18 @@ export interface ArticleDetail {
     stats: ArticleStats;
     languagePoints: ArticleLanguagePoint[];
     analysisLevel: string | null;
+    /**
+     * P0-04: why the inline analysis could not be generated
+     * (`quota_exceeded` / `budget_exceeded` / `model_error` /
+     * `analysis_unavailable`). `null` = analysis present or not requested.
+     * The reader shows this as a non-blocking, retryable inline hint.
+     */
+    analysisUnavailableReason: string | null;
+    /** Quota figures that came with the failure (`quota_exceeded` only). */
+    analysisUsed: number | null;
+    analysisLimit: number | null;
+    /** ISO timestamp of the quota/budget reset (`429` only). */
+    analysisResetAt: string | null;
 }
 
 /** `POST /api/article/import` — URL or pasted body, exactly one of them. */
@@ -158,6 +170,11 @@ function asNumber(value: unknown, fallback = 0): number {
 
 function asNullableText(value: unknown): string | null {
     return typeof value === 'string' ? value : null;
+}
+
+/** Number-or-null (the analysis failure fields are optional on the wire). */
+function asNullableNumber(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 function parseProgress(value: unknown): ArticleProgress | null {
@@ -273,6 +290,10 @@ function parseArticleDetail(value: unknown): ArticleDetail {
         stats,
         languagePoints,
         analysisLevel: asNullableText(value.analysisLevel),
+        analysisUnavailableReason: asNullableText(value.analysisUnavailableReason),
+        analysisUsed: asNullableNumber(value.analysisUsed),
+        analysisLimit: asNullableNumber(value.analysisLimit),
+        analysisResetAt: asNullableText(value.analysisResetAt),
     };
 }
 

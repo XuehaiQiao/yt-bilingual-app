@@ -435,6 +435,7 @@ async def _attach_analysis(
         return payload
     wrapper = {"transcript": blocks}
     user = ai_auth.ai_user(request)
+    unavailable: dict = {}
     if user is not None:
         analysis = await teaching_analysis.attach_to_payload(
             wrapper,
@@ -442,6 +443,7 @@ async def _attach_analysis(
             target_lang=target_lang,
             content_ref=f"library:{entry_id}",
             user_id=str(user["id"]),
+            unavailable_out=unavailable,
         )
     else:
         try:
@@ -453,6 +455,8 @@ async def _attach_analysis(
             logger.warning("免费资源分析缓存读取失败（%s）：%s", entry_id, exc)
             analysis = None
     if analysis is None:
+        # P0-04：登录用户的生成失败原因可见（游客是「缓存未命中」而非失败）。
+        payload.update(unavailable)
         return payload
     if wrapper.get("analysisVersion") != teaching_analysis.ANALYSIS_VERSION:
         # 版本闸：旧版本分析不得混进当前 payload。

@@ -28,6 +28,7 @@ import pytest
 
 import config
 import reading
+import teaching_analysis
 from ai import quota
 from tests.conftest import SECOND_USER_EMAIL, SECOND_USER_PASSWORD, TEST_USER_EMAIL, TEST_USER_PASSWORD
 from tests.migration_utils import (
@@ -1113,3 +1114,175 @@ def test_count_words_and_pasted_title():
     )
     assert title.endswith("…")
     assert len(title) <= 81
+
+
+# ---------------------------------------------------------------------------
+# 8. 教学分析失败可见（P0-04）
+# ---------------------------------------------------------------------------
+
+def _translated_article(client, llm_stub) -> str:
+    """导入并译完三段的文章（分析的前置条件：每个段落都有译文）。"""
+    article_id = _article_id(client)
+    response = _translate(client, article_id, "zh-CN")
+    assert response.status_code == 200, response.text
+    return article_id
+
+
+def _raise_analysis_quota(user_id, feature, units=1, **kwargs):
+    raise quota.QuotaExceeded(
+        "analysis",
+        day="2026-11-22",
+        used_units=30,
+        limit_units=30,
+        user_id=user_id,
+    )
+
+
+def test_article_analysis_quota_failure_is_visible_not_silent(
+    reading_client, llm_stub, monkeypatch
+):
+    """配额 429 在 payload 里给出原因；接口仍 200，正文/译文完整。"""
+    article_id = _translated_article(reading_client, llm_stub)
+    monkeypatch.setattr(quota, "check_and_consume_quota", _raise_analysis_quota)
+
+    response = reading_client.get(
+        f"/api/article/{article_id}",
+        params={"targetLang": "zh-CN", "level": "moonwalk"},
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+
+    assert payload["analysisUnavailableReason"] == "quota_exceeded"
+    assert payload["analysisUsed"] == 30
+    assert payload["analysisLimit"] == 30
+    assert payload["analysisResetAt"].startswith("2026-11-23T00:00:00")
+    # 正文/译文没有被失败连带：仍然完整可读。
+    assert len(payload["paragraphs"]) == 3
+    assert payload["paragraphs"][0]["translation"] == "中文译文（第 1 段）"
+    # 失败不能伪装成「有分析」。
+    assert "analysisLevel" not in payload
+    assert "idioms" not in payload
+
+
+def test_article_analysis_budget_failure_is_visible(
+    reading_client, llm_stub, monkeypatch
+):
+    """预算 429 → budget_exceeded（与功能配额区分，前端文案不同）。"""
+    article_id = _translated_article(reading_client, llm_stub)
+
+    def raise_budget(user_id, feature, units=1, **kwargs):
+        raise quota.BudgetExceeded(
+            "user", day="2026-11-22", spend_usd=1.2, limit_usd=1.0, user_id=user_id
+        )
+
+    monkeypatch.setattr(quota, "check_and_consume_quota", raise_budget)
+
+    payload = reading_client.get(
+        f"/api/article/{article_id}",
+        params={"targetLang": "zh-CN", "level": "moonwalk"},
+    ).json()
+    assert payload["analysisUnavailableReason"] == "budget_exceeded"
+    assert payload["analysisResetAt"].startswith("2026-11-23T00:00:00")
+    assert "analysisUsed" not in payload
+    assert len(payload["paragraphs"]) == 3
+
+
+def test_article_analysis_model_failure_is_visible_and_retryable(
+    reading_client, llm_stub, monkeypatch
+):
+    """模型失败 → model_error；同一请求修好模型后可成功（不写半成品）。"""
+    article_id = _translated_article(reading_client, llm_stub)
+
+    # 第一次：模型全挂 → 原因可见。
+    async def failing_generate(prompt, model=None):
+        raise RuntimeError("model unavailable")
+
+    monkeypatch.setattr(teaching_analysis.llm, "generate_json_async", failing_generate)
+    first = reading_client.get(
+        f"/api/article/{article_id}",
+        params={"targetLang": "zh-CN", "level": "moonwalk"},
+    )
+    assert first.status_code == 200, first.text
+    assert first.json()["analysisUnavailableReason"] == "model_error"
+    assert first.json()["paragraphs"][0]["translation"]
+
+    # 重试（第二次 GET）走同一路径：模型恢复后分析合并、原因消失。
+    async def ok_generate(prompt, model=None):
+        payload = first.json()["paragraphs"]
+        return json.dumps({
+            "highlights": [],
+            "idioms": [{
+                "blockId": payload[0]["idx"],
+                "phrase": "Paragraph 1",
+                "meaning": "第一段",
+                "quote": payload[0]["text"],
+            }],
+            "culture": [],
+        }, ensure_ascii=False)
+
+    monkeypatch.setattr(teaching_analysis.llm, "generate_json_async", ok_generate)
+    second = reading_client.get(
+        f"/api/article/{article_id}",
+        params={"targetLang": "zh-CN", "level": "moonwalk"},
+    )
+    assert second.status_code == 200, second.text
+    retried = second.json()
+    assert "analysisUnavailableReason" not in retried
+    assert retried["analysisLevel"] == "moonwalk"
+    assert retried["idioms"][0]["phrase"] == "Paragraph 1"
+
+
+def test_article_analysis_cache_hit_costs_no_quota_and_hides_reason(
+    reading_client, llm_stub
+):
+    """缓存命中：零模型/零配额，payload 无失败原因（免费库同款路径）。"""
+    article_id = _translated_article(reading_client, llm_stub)
+    detail = reading_client.get(
+        f"/api/article/{article_id}?targetLang=zh-CN"
+    ).json()
+    blocks = [
+        {"id": p["idx"], "text": p["text"], "translation": p["translation"]}
+        for p in detail["paragraphs"]
+    ]
+    normalized = teaching_analysis.normalize_blocks(blocks)
+    level = "liftoff"
+    # 缓存命中判定会按该等级的候选词重新核对：必须有可核对的 zh_word，
+    # 否则视为旧规则产出的过期高亮。这里按真实候选生成一份「有效」缓存。
+    candidates = teaching_analysis._candidate_words_for_blocks(normalized, level)
+    highlights = {
+        str(block["id"]): [
+            {"en_word": word, "zh_word": block["zh"][:2] or "--"}
+            for word in candidates.get(str(block["id"]), [])
+        ]
+        for block in normalized
+    }
+    teaching_analysis.save_cached(
+        f"article:{article_id}",
+        teaching_analysis.content_hash(normalized),
+        level,
+        "zh-CN",
+        {
+            "analysisVersion": teaching_analysis.ANALYSIS_VERSION,
+            "level": level,
+            "targetLang": "zh-CN",
+            "highlights": highlights,
+            "idioms": [{
+                "blockId": 0,
+                "phrase": "Paragraph 1",
+                "meaning": "第一段",
+                "quote": detail["paragraphs"][0]["text"],
+            }],
+            "culture": [],
+        },
+    )
+
+    payload = reading_client.get(
+        f"/api/article/{article_id}",
+        params={"targetLang": "zh-CN", "level": level},
+    ).json()
+    assert payload["analysisLevel"] == level
+    assert payload["idioms"][0]["phrase"] == "Paragraph 1"
+    assert "analysisUnavailableReason" not in payload
+    assert _db_scalar(
+        "SELECT COUNT(*) FROM ai_quota WHERE feature = 'analysis'"
+    ) == 0

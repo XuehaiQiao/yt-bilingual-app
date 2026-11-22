@@ -35,7 +35,11 @@ import type { TranslationKey } from '../i18n';
 import { ReadingHighlightToggle } from './ReadingHighlight';
 import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
 import { useReadingAudio } from '../lib/useReadingAudio';
-import { useReadingAnalysis, type ReadingAnalysisMaps } from '../lib/useReadingAnalysis';
+import {
+    parseReadingAnalysisUnavailable,
+    useReadingAnalysis,
+    type ReadingAnalysisMaps,
+} from '../lib/useReadingAnalysis';
 import { LanguagePointToggle } from './ui/LanguagePointToggle';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
@@ -304,15 +308,28 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     // the CEFR stop (or turns the layer on later) the shared hook asks the same
     // endpoint for the new level. No shell-level refetch bookkeeping remains.
     const articleIdForAnalysis = article?.articleId ?? null;
+    // Level the open payload was requested at: an `analysisUnavailableReason`
+    // in that payload only applies to this level (a switch asks again below).
+    const [articleAnalysisLevel, setArticleAnalysisLevel] = useState<string | null>(null);
     const analysisPayload = useMemo(() => (
         article && article.analysisLevel === highlight.level
             ? articleAnalysisMaps(article)
             : undefined
     ), [article, highlight.level]);
+    const analysisPayloadUnavailable = useMemo(() => (
+        article && articleAnalysisLevel === highlight.level
+            ? parseReadingAnalysisUnavailable(article)
+            : null
+    ), [article, articleAnalysisLevel, highlight.level]);
     const loadArticleAnalysis = useCallback(async ({ level }: { level: string }) => {
         if (!articleIdForAnalysis) return null;
         const detail = await getArticle(articleIdForAnalysis, targetLang, level);
-        return articleAnalysisMaps(detail);
+        // P0-04: the endpoint keeps 200 and carries the failure reason; hand it
+        // back so the surface can show the inline hint instead of an empty state.
+        return {
+            analysis: articleAnalysisMaps(detail),
+            unavailable: parseReadingAnalysisUnavailable(detail),
+        };
     }, [articleIdForAnalysis, targetLang]);
     const analysis = useReadingAnalysis({
         contentRef: articleIdForAnalysis ? `article:${articleIdForAnalysis}` : null,
@@ -320,6 +337,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         targetLang,
         isGuest,
         payloadAnalysis: analysisPayload,
+        payloadUnavailable: analysisPayloadUnavailable,
         enabled: Boolean(article) && !isGuest && (showLanguagePoints || highlight.enabled),
         load: loadArticleAnalysis,
     });
@@ -446,6 +464,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         selectedIdRef.current = articleId;
         setSelectedId(articleId);
         setArticle(null);
+        setArticleAnalysisLevel(null);
         setArticleError(null);
         setTranslateError(null);
         setShareData(null);
@@ -459,13 +478,13 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         restoreIdxRef.current = null;
         saveErrorToastRef.current = false;
         try {
-            const detail = await getArticle(
-                articleId,
-                targetLang,
-                !isGuest && (showLanguagePoints || highlight.enabled) ? highlight.level : null,
-            );
+            const analysisLevel = !isGuest && (showLanguagePoints || highlight.enabled)
+                ? highlight.level
+                : null;
+            const detail = await getArticle(articleId, targetLang, analysisLevel);
             if (!mountedRef.current || selectedIdRef.current !== articleId) return;
             setArticle(detail);
+            setArticleAnalysisLevel(analysisLevel);
             const maxIdx = Math.max(0, detail.paragraphs.length - 1);
             const startIdx = Math.min(Math.max(0, detail.progress?.paragraphIdx ?? 0), maxIdx);
             currentIdxRef.current = startIdx;
@@ -502,6 +521,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         selectedIdRef.current = null;
         setSelectedId(null);
         setArticle(null);
+        setArticleAnalysisLevel(null);
         setArticleError(null);
         setTranslateError(null);
         setShareData(null);
@@ -1258,6 +1278,9 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                                     translationLang={article.targetLang || undefined}
                                     currentParagraphIndex={currentIdx}
                                     analysisStatus={analysis.status}
+                                    analysisUnavailable={analysis.unavailable}
+                                    onRetryAnalysis={analysis.retry}
+                                    retryingAnalysis={analysis.retrying}
                                     translating={translating}
                                     onRetryTranslation={() => { void handleTranslate(); }}
                                     onWordClick={(word, e, paragraph) => onWordLookup(

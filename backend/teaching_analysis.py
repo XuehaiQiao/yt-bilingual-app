@@ -44,6 +44,8 @@ import sqlite3
 import time
 import unicodedata
 import uuid
+from datetime import datetime, timedelta, timezone as dt_timezone
+from zoneinfo import ZoneInfo
 
 import config
 import languages
@@ -142,6 +144,63 @@ class AnalysisUnavailable(TeachingAnalysisError):
 
     status_code = 503
     code = "analysis_unavailable"
+
+
+# ---------------------------------------------------------------------------
+# 失败原因（P0-04：分析失败必须可见，不再静默当空态）
+# ---------------------------------------------------------------------------
+
+# 写进 per-user payload 的字段名（camelCase，前端直接消费）。
+ANALYSIS_UNAVAILABLE_FIELDS = (
+    "analysisUnavailableReason",
+    "analysisUsed",
+    "analysisLimit",
+    "analysisResetAt",
+)
+
+
+def quota_reset_at(day: str | None = None) -> str:
+    """配额日边界次日的 ISO8601（配额时区；默认 Asia/Shanghai 明日 00:00）。"""
+    name = getattr(config, "AI_QUOTA_TIMEZONE", "Asia/Shanghai") or "Asia/Shanghai"
+    try:
+        tz = ZoneInfo(name)
+    except Exception:  # noqa: BLE001 - 时区配置错误不能阻断分析失败的上报
+        tz = dt_timezone.utc
+    try:
+        base = (
+            datetime.strptime(str(day), "%Y-%m-%d").replace(tzinfo=tz)
+            if day
+            else datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+        )
+    except (TypeError, ValueError):
+        base = datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
+    return (base + timedelta(days=1)).isoformat()
+
+
+def analysis_unavailable_fields(exc: BaseException) -> dict:
+    """把一次分析失败的异常翻译成前端可见的稳定原因（P0-04）。
+
+    - 功能日配额用尽 → ``quota_exceeded`` + ``analysisUsed`` / ``analysisLimit``；
+    - 用户/全站日预算用尽 → ``budget_exceeded``（用户可行动方式不同）；
+    - 模型调用失败/输出无法校验 → ``model_error``（可重试）；
+    - 缓存表缺失或其他内部错误 → ``analysis_unavailable``。
+
+    配额/预算额外带 ``analysisResetAt``（配额时区次日 0 点，ISO8601）。
+    """
+    if isinstance(exc, quota.QuotaExceeded):
+        if exc.scope == "feature":
+            fields: dict = {"analysisUnavailableReason": "quota_exceeded"}
+            if exc.used_units is not None:
+                fields["analysisUsed"] = int(exc.used_units)
+            if exc.limit_units is not None:
+                fields["analysisLimit"] = int(exc.limit_units)
+        else:
+            fields = {"analysisUnavailableReason": "budget_exceeded"}
+        fields["analysisResetAt"] = quota_reset_at(exc.day)
+        return fields
+    if isinstance(exc, AnalysisFailed):
+        return {"analysisUnavailableReason": "model_error"}
+    return {"analysisUnavailableReason": "analysis_unavailable"}
 
 
 # ---------------------------------------------------------------------------
@@ -1158,12 +1217,17 @@ async def attach_to_payload(
     content_ref: str = "",
     model: str | None = None,
     user_id: str | None = None,
+    unavailable_out: dict | None = None,
 ) -> dict | None:
-    """生成/读取分析并合并进 payload；失败静默跳过（不阻断视频处理）。
+    """生成/读取分析并合并进 payload；失败不再静默（P0-04）。
 
     返回分析 payload（合并成功）或 None（内容为空/表未迁移/配额超限/模型失败）。
     这是路由层「处理视频后顺手补分析」的统一入口：分析是增强功能，不能把
-    翻译/播放链路带崩。
+    翻译/播放链路带崩，但**失败原因必须交给调用方**——传 ``unavailable_out``
+    （一个 dict）时，失败会写入 ``analysisUnavailableReason``（``quota_exceeded``
+    / ``budget_exceeded`` / ``model_error`` / ``analysis_unavailable``）与可得的
+    ``analysisUsed`` / ``analysisLimit`` / ``analysisResetAt``；成功时保持原样。
+    不传时完全保持旧的「静默跳过」语义（缓存文件路径不应落失败字段）。
     """
     try:
         analysis = await ensure_analysis(
@@ -1175,7 +1239,15 @@ async def attach_to_payload(
             user_id=user_id,
         )
     except Exception as exc:  # noqa: BLE001 - 增强功能失败不能阻断主流程
-        logger.warning("教学分析已跳过（%s）：%s", content_ref or "-", exc)
+        fields = analysis_unavailable_fields(exc)
+        logger.warning(
+            "教学分析已跳过（%s，%s）：%s",
+            content_ref or "-",
+            fields["analysisUnavailableReason"],
+            exc,
+        )
+        if unavailable_out is not None:
+            unavailable_out.update(fields)
         return None
     if not isinstance(payload, dict):
         return None
