@@ -889,10 +889,31 @@ const waitCount = async (testId, expected) => {
         { timeout: 10000 },
     );
 };
+// P1-10: the top bar's 单词本 badge reads App's favorites state, so a word-book
+// add/remove must move it in place — no reload, no re-navigation (nothing below
+// calls goto between the before/after assertions).
+const topbarCount = async () => {
+    const label = await sp.getByTestId('topbar-wordbook').getAttribute('aria-label');
+    const match = label ? label.match(/(\d+)/) : null;
+    return match ? Number(match[1]) : 0;
+};
+const waitTopbar = async (expected) => {
+    await sp.waitForFunction(
+        (value) => {
+            const node = document.querySelector('[data-testid="topbar-wordbook"]');
+            if (!node) return false;
+            const match = (node.getAttribute('aria-label') || '').match(/(\d+)/);
+            return (match ? Number(match[1]) : 0) === value;
+        },
+        expected,
+        { timeout: 10000 },
+    );
+};
 
 await gotoWordbook(sp);
 await openFamilyTab(sp);
 assert.equal(await mineCount(), 0, '我的收藏 starts empty');
+assert.equal(await topbarCount(), 0, 'P1-10: 顶栏单词本计数初始为 0');
 await waitCount('vocab-tab-count-mastered', 0);
 await sp.getByTestId('vocab-family-row-F0003').click();
 await sp.getByTestId('vocab-family-detail-F0003').waitFor();
@@ -908,6 +929,9 @@ assert.equal(
 // 1) star → POST /api/favorites with the family provenance (wordlist).
 await sp.getByTestId('vocab-family-member-star-F0003-decision').click();
 await waitCount('vocab-tab-count-mine', 1);
+// P1-10: App favorites state grew, so the top-bar badge is already 1.
+await waitTopbar(1);
+assert.equal(await topbarCount(), 1, '词族成员收藏 → 顶栏计数即时 +1（未刷新）');
 assert.equal(memberState.favoritePosts.length, 1);
 const memberPost = memberState.favoritePosts[0];
 assert.equal(memberPost.text, 'decision', '收藏的是成员原词');
@@ -945,6 +969,8 @@ await sp.getByTestId('vocab-family-row-F0003').click();
 await sp.getByTestId('vocab-family-detail-F0003').waitFor();
 await sp.getByTestId('vocab-family-member-star-F0003-decision').click();
 await waitCount('vocab-tab-count-mine', 0);
+await waitTopbar(0);
+assert.equal(await topbarCount(), 0, '取消收藏 → 顶栏计数即时 -1');
 assert.equal(memberState.favoriteDeletes.length, 1, '取消收藏只 DELETE 一次');
 assert.equal(memberState.favoriteDeletes[0], 'vocab-fav-decision');
 assert.equal(
@@ -956,6 +982,8 @@ assert.equal(
 const postsBeforeDouble = memberState.favoritePosts.length;
 await sp.getByTestId('vocab-family-member-star-F0003-decide').dblclick();
 await waitCount('vocab-tab-count-mine', 1);
+await waitTopbar(1);
+assert.equal(await topbarCount(), 1, '双击只收藏一次 → 顶栏计数 +1 一次');
 assert.equal(
     memberState.favoritePosts.length,
     postsBeforeDouble + 1,
@@ -970,6 +998,8 @@ assert.equal(
 await sp.getByTestId('vocab-family-member-mastered-F0003-decide').click();
 await waitCount('vocab-tab-count-mastered', 1);
 await waitCount('vocab-tab-count-mine', 0);
+await waitTopbar(0);
+assert.equal(await topbarCount(), 0, '标为已掌握移除收藏 → 顶栏计数 -1');
 const masteredPatch = memberState.patches.at(-1);
 assert.equal(masteredPatch.lemma, 'decide');
 assert.equal(masteredPatch.mastered, true);
@@ -1019,6 +1049,8 @@ assert.equal(
 // 7) 10k-outside member without a meaning still favorites + masters (no snapshot).
 await sp.getByTestId('vocab-family-member-star-F0003-deciding').click();
 await waitCount('vocab-tab-count-mine', 1);
+await waitTopbar(1);
+assert.equal(await topbarCount(), 1, '无释义成员收藏同样回传 App → 顶栏 +1');
 const outsidePost = memberState.favoritePosts.at(-1);
 assert.equal(outsidePost.text, 'deciding');
 assert.equal(outsidePost.translation, '', '无释义时收藏快照为空串');
@@ -1055,11 +1087,14 @@ assert.equal(
     'POST 失败回滚星标',
 );
 assert.equal(await mineCount(), mineBeforeFail, 'POST 失败不改变收藏计数');
+assert.equal(await topbarCount(), mineBeforeFail, 'P1-10: POST 失败 → 顶栏计数不变');
 await sp.screenshot({ path: `${SHOTS}/p1-07-member-error-1440.png` });
 // The same star is the retry affordance once the backend recovers.
 memberState.failFavoriteWord = null;
 await sp.getByTestId('vocab-family-member-star-F0005-reflection').click();
 await waitCount('vocab-tab-count-mine', mineBeforeFail + 1);
+await waitTopbar(mineBeforeFail + 1);
+assert.equal(await topbarCount(), mineBeforeFail + 1, '重试成功 → 顶栏计数 +1');
 assert.equal(
     await sp.getByTestId('vocab-family-member-star-F0005-reflection').getAttribute('aria-pressed'),
     'true',
@@ -1080,9 +1115,12 @@ assert.ok(
     'DELETE 失败后收藏记录仍在',
 );
 assert.equal(await mineCount(), mineBeforeFail + 1);
+assert.equal(await topbarCount(), mineBeforeFail + 1, 'P1-10: DELETE 失败 → 顶栏计数不变');
 memberState.failDeleteId = null;
 await sp.getByTestId('vocab-family-member-star-F0005-reflection').click();
 await waitCount('vocab-tab-count-mine', mineBeforeFail);
+await waitTopbar(mineBeforeFail);
+assert.equal(await topbarCount(), mineBeforeFail, '重试取消收藏 → 顶栏计数 -1');
 
 // 8c) PATCH fails → check stays unchecked, inline error, count unchanged.
 memberState.failMasteredWord = 'reflective';

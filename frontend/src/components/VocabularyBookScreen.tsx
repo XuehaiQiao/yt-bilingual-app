@@ -165,6 +165,17 @@ interface VocabularyBookScreenProps {
     /** Parent screen name for the back control's aria label. */
     parentLabel?: string;
     /**
+     * P1-10: App-owned optimistic add for every new favorite this screen
+     * writes (built-in lists / phrases / custom lists / word-family members /
+     * 加入收藏 batch). App inserts it into its single favorites list — so the
+     * top-bar 单词本 count and 我的收藏 update without a refresh — posts it and
+     * rolls it back on failure. Resolves with the stored favorite; rejects with
+     * the API error after rolling back, so this screen can report it inline the
+     * way it always has. Without it (standalone use) the screen keeps its local
+     * overlay path.
+     */
+    onAddFavorite?: (draft: FavoriteDraft) => Promise<FavoriteItem>;
+    /**
      * Remove one favorite and keep both layers honest. App owns the optimistic
      * prop path; favorites this screen added itself are deleted locally.
      * Resolves `true` only when the favorite is really gone (App returns the
@@ -333,6 +344,7 @@ export function VocabularyBookScreen({
     favorites,
     onBack,
     parentLabel,
+    onAddFavorite,
     onRemoveFavorite,
     onPlayFavorite,
     onOpenArticle,
@@ -351,14 +363,14 @@ export function VocabularyBookScreen({
     const speechDisabled = speechAvailability === 'missing';
 
     // ── v1.2: favorites written from inside the word book ─────────────────
-    // App owns the favorites list, but the word book's row stars add/remove
-    // favorites without going through an App callback. These two local overlays
-    // keep this screen consistent with its own writes:
-    // `addedFavorites` are favorites this screen created, `deletedIds` are ones
-    // it deleted. Both are merged (and de-duplicated by id) with the prop, so
-    // the screen never shows a word it just added as "missing" and never
-    // resurrects a row it just deleted. App's own copy catches up on its next
-    // fetch (login / data revision); the word book never mutates the prop.
+    // App owns the favorites list. New favorites go through `onAddFavorite`
+    // (P1-10) so App's copy — and the top-bar count — is updated immediately.
+    // These two local overlays are the standalone fallback only (no callback
+    // supplied): `addedFavorites` are favorites this screen created itself,
+    // `deletedIds` are ones it deleted. Both are merged (and de-duplicated by
+    // id) with the prop, so the screen never shows a word it just added as
+    // "missing" and never resurrects a row it just deleted. The word book never
+    // mutates the prop.
     const [addedFavorites, setAddedFavorites] = useState<FavoriteItem[]>([]);
     const [deletedFavoriteIds, setDeletedFavoriteIds] = useState<Set<string>>(() => new Set());
     const allFavorites = useMemo(() => {
@@ -1628,9 +1640,11 @@ export function VocabularyBookScreen({
     };
 
     /**
-     * Favorite one row (词表 / 短语 / 已掌握 star + P0-14 加入收藏) with an
-     * optimistic overlay: the star fills immediately and a failed POST removes
-     * the overlay again. Resolves `true` only when a favorite was written;
+     * Favorite one row (词表 / 短语 / 已掌握 star + P0-14 加入收藏). With
+     * `onAddFavorite` (P1-10) App owns the optimistic insert, the POST and the
+     * rollback, so the favorites prop — and therefore the top-bar 单词本 count
+     * and 我的收藏 — updates immediately; the local overlay is only the
+     * standalone fallback. Resolves `true` only when a favorite was written;
      * `false` covers guests and rows that are already saved (idempotent no-op).
      * Failures are rethrown so the caller can report them as a toast or a row
      * error (batch mode keeps the row selected).
@@ -1671,14 +1685,18 @@ export function VocabularyBookScreen({
             ...(input.sourceRef ? { source_ref: input.sourceRef } : {}),
             ...(input.sourceTitle ? { source_title: input.sourceTitle } : {}),
         };
-        const optimistic: FavoriteItem = { ...draft };
-        setAddedFavorites((prev) => [...prev, optimistic]);
+        // App-owned writes are already optimistic on App's side: adding a local
+        // overlay too would duplicate the row until App's copy replaces it.
+        const optimistic: FavoriteItem | null = onAddFavorite ? null : { ...draft };
+        if (optimistic) setAddedFavorites((prev) => [...prev, optimistic]);
         markFavoriteBusy(word, true);
         try {
-            const saved = await addFavorite(draft);
-            setAddedFavorites((prev) => prev.map((entry) => (
-                entry.id === optimistic.id ? saved : entry
-            )));
+            const saved = onAddFavorite ? await onAddFavorite(draft) : await addFavorite(draft);
+            if (optimistic) {
+                setAddedFavorites((prev) => prev.map((entry) => (
+                    entry.id === optimistic.id ? saved : entry
+                )));
+            }
             setDeletedFavoriteIds((prev) => {
                 if (!prev.has(saved.id)) return prev;
                 const next = new Set(prev);
@@ -1687,7 +1705,9 @@ export function VocabularyBookScreen({
             });
             return true;
         } catch (error) {
-            setAddedFavorites((prev) => prev.filter((entry) => entry.id !== optimistic.id));
+            if (optimistic) {
+                setAddedFavorites((prev) => prev.filter((entry) => entry.id !== optimistic.id));
+            }
             throw error;
         } finally {
             favoriteWriteInFlight.current.delete(key);

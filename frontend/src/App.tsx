@@ -1034,7 +1034,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Per-item favorite mutations: optimistic local state, rollback + toast on
   // failure. Both operations are server-idempotent, so a double click or a
   // concurrent tab cannot corrupt the stored list.
-  const addFavoriteOptimistically = useCallback(async (draft: FavoriteDraft) => {
+  //
+  // Returns the stored item (server-normalized) so callers that own their own
+  // feedback — the word book, P1-10 — can report the outcome inline. A failed
+  // write rolls the optimistic row back and rejects with the API error, so the
+  // caller can surface the reason instead of a generic failure.
+  const addFavoriteOptimistically = useCallback(async (
+    draft: FavoriteDraft,
+    options?: { report?: boolean },
+  ): Promise<FavoriteItem> => {
+    const report = options?.report !== false;
     const optimistic: FavoriteItem = {
       id: draft.id,
       videoId: draft.videoId,
@@ -1046,6 +1055,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       type: draft.type,
       context_en: draft.context_en,
       context_zh: draft.context_zh,
+      example: draft.example,
       source_kind: draft.source_kind,
       source_ref: draft.source_ref,
       source_title: draft.source_title,
@@ -1053,16 +1063,19 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setFavorites(prev => (prev.some(f => f.id === optimistic.id) ? prev : [...prev, optimistic]));
     try {
       const saved = await addFavorite(draft);
+      const stored: FavoriteItem = { ...optimistic, ...saved };
       setFavorites(prev => {
-        const next = prev.map(f => (f.id === optimistic.id ? { ...optimistic, ...saved } : f));
+        const next = prev.map(f => (f.id === optimistic.id ? stored : f));
         // 服务端按内容指纹去重时可能返回另一个已有 id；按 id 去重避免重复卡片。
         return next.filter((fav, index) => next.findIndex(other => other.id === fav.id) === index);
       });
       // 轻提示 + 图标状态（star fill）双反馈；同一动作 5s 内去重，避免连点刷屏。
-      toast.success(t('vocab.toast.added'), { dedupeKey: 'favorites:added' });
+      if (report) toast.success(t('vocab.toast.added'), { dedupeKey: 'favorites:added' });
+      return stored;
     } catch (err) {
       setFavorites(prev => prev.filter(f => f.id !== optimistic.id));
-      toast.error(await describeApiError(err));
+      if (report) toast.error(await describeApiError(err));
+      throw err;
     }
   }, [t]);
 
@@ -1093,7 +1106,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     if (favorites.some(f => f.id === draft.id)) {
       void removeFavoriteOptimistically(draft.id);
     } else {
-      void addFavoriteOptimistically(draft);
+      // The shared path already toasts/reports its own outcome.
+      void addFavoriteOptimistically(draft).catch(() => {});
     }
   }, [favorites, addFavoriteOptimistically, removeFavoriteOptimistically, status, t]);
 
@@ -1139,6 +1153,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleRemoveFavorite = (id: string) => removeFavoriteOptimistically(id);
+
+  /**
+   * P1-10: the word book's new-favorite path. It goes through the same
+   * optimistic store as every other favorite, so the top bar / sidebar count,
+   * 我的收藏 and every other reader update without a refresh. The screen keeps
+   * its own feedback (row toast / inline row error), so the shared path stays
+   * quiet here; a failed write still rolls the favorite back and rejects.
+   */
+  const handleAddFavorite = useCallback((draft: FavoriteDraft) => (
+    addFavoriteOptimistically(draft, { report: false })
+  ), [addFavoriteOptimistically]);
 
   // Add/remove a dictionary lookup to the vocabulary favorites. Reading
   // lookups know their article (id + title); transcript lookups fall back to
@@ -4079,6 +4104,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               favorites={favorites}
               onBack={back}
               parentLabel={parentLabel}
+              onAddFavorite={handleAddFavorite}
               onRemoveFavorite={handleRemoveFavorite}
               onPlayFavorite={handlePlayFavorite}
               onOpenArticle={handleOpenFavoriteArticle}
