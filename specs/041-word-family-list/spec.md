@@ -28,6 +28,8 @@
 - 行 = 族；`q` 匹配**任一成员**（大小写不敏感，子串），返回整族
 - `level`：A1/A2/B1/B2/C1；族内任一成员命中该级即返回（成员自身等级保留）
 - `sort`：族 head 的 CEFR rank（默认）/ head 字母
+- 分页：`page` 从 1、`pageSize` 1–200（前端提供与其他词表一致的 20/50/100，
+  默认 50），响应回显 `page/pageSize/hasMore`
 - 响应 `{total, page, pageSize, hasMore, items:[{id, head, headRank, headLevel,
   headPhonetic, headTranslation, levels:[...], members:[{lemma, level|null, rank|null}]}]}`
   （音标/释义是 head 在 lexicon 里的只读补充字段，缺条目为 `""`，不编造）
@@ -41,7 +43,9 @@
 - 现有「词形」tab 改为只读「**词族**」（CEFR 10k）；不再显示 lemma-list tab
 - 每行：族 head / head 音标 / head 释义 / 等级集合（如 A1–C1）/ 成员数 / 展开
 - 展开：成员列表（lemma + 等级，10k 外显示 `—`），同族按 rank/字母（服务端已排序）
-- 搜索：任一成员命中族；筛选：CEFR 档；排序：词频/字母；服务端分页 50/页+跳页
+- 搜索：任一成员命中族；筛选：CEFR 档；排序：词频/字母；服务端分页，分页条与
+  其他词表完全一致（页码/上一页/下一页/跳页/状态文案 + 每页 20/50/100，默认 50；
+  切换条数重置到第 1 页并按新 `pageSize` 重新请求；跳页越界钳制；375/1440 可用）
 - 只读：无星标/对勾/编辑/批量/导出；现有词表结构/数据不动
 - 加载/空/错误重试；375/1440
 
@@ -49,9 +53,10 @@
 
 - 静态数据：族数 3,696、成员 11,567、10k 外 6,334、10k 覆盖 5,233、最大族 18；
   黑名单 17 条 / allowlist 22 条可验证；`the/at` 不在任何族（规则 E 见 §1 注）
-- API：总数、分页、q、level、非法参数；示例 decide（5 人）、reflect（+allowlist
+- API：总数、分页（page/pageSize 1–200）、q、level、非法参数；示例 decide（5 人）、reflect（+allowlist
   reflection）、judge（7 人，含 10k 外成员）、comprehend（18 人）
-- 前端 tab 替换、成员等级 `—`、搜索/筛选/分页、只读无写操作；现有 tab 零回归
+- 前端 tab 替换、成员等级 `—`、搜索/筛选/分页（20/50/100 + 跳页）、只读无写操作；
+  现有 tab 零回归
 - `tsc/build/i18n/gate`；1440/375 截图；Playwright `scripts/word-family-acceptance.mjs`
 
 ## 5. 实现路径
@@ -63,7 +68,7 @@
 - 前端：`frontend/src/components/VocabularyRows.tsx`（`WordFamilyTable` + 传输 +
   归一化）、`frontend/src/components/VocabularyBookScreen.tsx`（tab/工具栏/分页/三态）、
   `frontend/src/i18n/zh-CN.json`、`vi-VN.json`。
-- 验收：`scripts/word-family-acceptance.mjs`（UI，mock 后端，75 断言）。
+- 验收：`scripts/word-family-acceptance.mjs`（UI，mock 后端，105 断言）。
 
 ## 6. 非目标
 

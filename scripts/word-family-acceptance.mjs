@@ -5,7 +5,8 @@
 // account, no AI), exercising the real UI against a 120-family fixture that
 // mirrors `content/wordlist/word-families.v1.json`:
 // WordNet-derived families, cross-boundary members without a level, A1–C1
-// levels, search over any member, server paging 50/页.
+// levels, search over any member, server paging with the shared 20/50/100
+// per-page selector (default 50) and jump-to-page.
 //
 // Covers:
 //   A) 「词族（CEFR 10k）」 is the tab right after CET6; every existing tab keeps
@@ -19,12 +20,15 @@
 //   E) level filter sends `level` and narrows to families containing that band;
 //      清除筛选 restores;
 //   F) sort menu sends `sort=alpha|rank`; 字母 A→Z starts with "abandon";
-//   G) server paging is fixed 50/页 (120 families → 3 pages): next page, jump;
+//   G) the shared pager: 20/50/100 menu, switching sends `pageSize`, restarts at
+//      page 1 and recomputes 总页数/页码 (120 families → 6 at 20, 2 at 100,
+//      3 at 50); next page; jump; out-of-range jump clamps;
 //   H) empty result renders the retryable empty state (not an error);
 //   I) a failed load shows the error panel and 重试 re-fetches successfully;
-//   J) 375 has no horizontal overflow (list + expanded members), 1440/375 shots.
+//   J) 375 has no horizontal overflow (list + expanded members), the pager stays
+//      reachable, 1440/375 shots.
 //
-// Screenshots: /tmp/p1-05-*.png
+// Screenshots: /tmp/p1-05-*.png, /tmp/p1-06-page-size-menu-1440.png
 // Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node word-family-acceptance.mjs
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -357,7 +361,7 @@ assert.match(familyTabText, /CEFR 10k/, 'tab sub-label carries CEFR 10k');
 await openFamilyTab(page);
 assert.equal(state.familyRequests.length, 1);
 assert.equal(lastFamilyRequest(state).page, '1');
-assert.equal(lastFamilyRequest(state).pageSize, '50', 'server paging is fixed 50/页');
+assert.equal(lastFamilyRequest(state).pageSize, '50', 'the pager defaults to 50/页');
 assert.equal(lastFamilyRequest(state).sort, 'rank');
 assert.equal(await familyRows(page).count(), 50);
 assert.equal(await page.getByTestId('vocab-family-total').innerText(), '共 120 族');
@@ -502,24 +506,120 @@ await page.waitForFunction(
 );
 assert.equal(lastFamilyRequest(state).sort, 'rank');
 
-// ── G) server paging: next page + jump (50/页, 3 pages) ─────────────────
+// ── G) shared pager: 20/50/100 menu, switching, next page + jump ────────
 assert.match(await page.getByTestId('vocab-page-status').innerText(), /第 1 \/ 3 页/);
-await page.getByTestId('vocab-page-next').click();
-await page.waitForFunction(
-    () => Boolean(document.querySelector('[data-testid="vocab-family-word-F0051"]')),
-    { timeout: 10000 },
+assert.equal(await page.getByTestId('vocab-page-size').innerText(), '每页 50');
+
+// The size selector that every other word list shows is present here too.
+await page.getByTestId('vocab-page-size').click();
+await page.getByTestId('vocab-page-size-menu').waitFor();
+assert.equal(
+    await page.getByTestId('vocab-page-size-menu').locator('[data-menu-item="true"]').count(),
+    3,
+    '每页条数 menu offers exactly 20/50/100',
 );
+for (const size of [20, 50, 100]) {
+    assert.equal(
+        await page.getByTestId(`vocab-page-size-${size}`).innerText(),
+        `每页 ${size}`,
+        `menu item ${size}`,
+    );
+}
+await page.screenshot({ path: `${SHOTS}/p1-06-page-size-menu-1440.png`, fullPage: false });
+
+// Switch to 20/页 while on page 1: request carries pageSize=20, 120 → 6 pages.
+await page.getByTestId('vocab-page-size-20').click();
+await page.waitForFunction(() => {
+    const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
+    return status.includes('第 1 / 6 页')
+        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0001"]'))
+        && !document.querySelector('[data-testid="vocab-family-word-F0051"]');
+}, { timeout: 10000 });
+assert.equal(lastFamilyRequest(state).pageSize, '20', 'the request carries the chosen pageSize');
+assert.equal(lastFamilyRequest(state).page, '1');
+assert.equal(await page.getByTestId('vocab-page-size').innerText(), '每页 20');
+assert.equal(await page.getByTestId('vocab-page-jump').inputValue(), '1', 'jump input follows the reset');
+assert.equal(await familyRows(page).count(), 20);
+assert.equal(await page.getByTestId('vocab-page-next').isDisabled(), false);
+
+// Switch to 100/页: 120 → 2 pages, still page 1.
+await page.getByTestId('vocab-page-size').click();
+await page.getByTestId('vocab-page-size-menu').waitFor();
+await page.getByTestId('vocab-page-size-100').click();
+await page.waitForFunction(() => {
+    const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
+    return status.includes('第 1 / 2 页')
+        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0051"]'));
+}, { timeout: 10000 });
+assert.equal(lastFamilyRequest(state).pageSize, '100');
+assert.equal(lastFamilyRequest(state).page, '1');
+assert.equal(await page.getByTestId('vocab-page-size').innerText(), '每页 100');
+assert.equal(await familyRows(page).count(), 100);
+assert.match(await page.getByTestId('vocab-page-status').innerText(), /第 1 \/ 2 页/);
+
+// Page 2 at 100/页 holds the remaining 20 families.
+await page.getByTestId('vocab-page-next').click();
+await page.waitForFunction(() => {
+    const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
+    return status.includes('第 2 / 2 页')
+        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0101"]'))
+        && !document.querySelector('[data-testid="vocab-family-word-F0001"]');
+}, { timeout: 10000 });
 assert.equal(lastFamilyRequest(state).page, '2');
+assert.equal(lastFamilyRequest(state).pageSize, '100');
+assert.equal(await familyRows(page).count(), 20);
+
+// Switching size from page 2 restarts at page 1 with the new param.
+await page.getByTestId('vocab-page-size').click();
+await page.getByTestId('vocab-page-size-menu').waitFor();
+await page.getByTestId('vocab-page-size-20').click();
+await page.waitForFunction(() => {
+    const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
+    return status.includes('第 1 / 6 页')
+        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0001"]'))
+        && !document.querySelector('[data-testid="vocab-family-word-F0101"]');
+}, { timeout: 10000 });
+assert.equal(lastFamilyRequest(state).page, '1', 'a page-size change restarts at page 1');
+assert.equal(lastFamilyRequest(state).pageSize, '20');
+assert.equal(await page.getByTestId('vocab-page-jump').inputValue(), '1');
+
+// Restore 50/页 for the next-page / jump cases below.
+await page.getByTestId('vocab-page-size').click();
+await page.getByTestId('vocab-page-size-menu').waitFor();
+await page.getByTestId('vocab-page-size-50').click();
+await page.waitForFunction(() => {
+    const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
+    return status.includes('第 1 / 3 页')
+        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0050"]'))
+        && !document.querySelector('[data-testid="vocab-family-word-F0051"]');
+}, { timeout: 10000 });
+assert.equal(lastFamilyRequest(state).page, '1');
+assert.equal(lastFamilyRequest(state).pageSize, '50');
+assert.match(await page.getByTestId('vocab-page-status').innerText(), /第 1 \/ 3 页/);
+
+// Next page: 50/页, rows 51–100.
+await page.getByTestId('vocab-page-next').click();
+await page.waitForFunction(() => {
+    const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
+    return status.includes('第 2 / 3 页')
+        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0051"]'))
+        && !document.querySelector('[data-testid="vocab-family-word-F0001"]');
+}, { timeout: 10000 });
+assert.equal(lastFamilyRequest(state).page, '2');
+assert.equal(lastFamilyRequest(state).pageSize, '50');
 assert.match(await page.getByTestId('vocab-page-status').innerText(), /第 2 \/ 3 页/);
 assert.equal(await familyRows(page).count(), 50);
 
+// Jump to the last page: 20 rows, next disabled.
 await page.getByTestId('vocab-page-jump').fill('3');
 await page.getByTestId('vocab-page-jump-go').click();
-await page.waitForFunction(
-    () => Boolean(document.querySelector('[data-testid="vocab-family-word-F0101"]')),
-    { timeout: 10000 },
-);
+await page.waitForFunction(() => {
+    const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
+    return status.includes('第 3 / 3 页')
+        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0101"]'));
+}, { timeout: 10000 });
 assert.equal(lastFamilyRequest(state).page, '3');
+assert.equal(lastFamilyRequest(state).pageSize, '50');
 assert.match(await page.getByTestId('vocab-page-status').innerText(), /第 3 \/ 3 页/);
 assert.equal(await familyRows(page).count(), 20);
 assert.equal(await page.getByTestId('vocab-page-next').isDisabled(), true);
@@ -565,11 +665,29 @@ const mobile = await newContext(browser, createState(), { width: 375, height: 81
 await gotoWordbook(mobile.page);
 await openFamilyTab(mobile.page);
 assert.equal(await familyRows(mobile.page).count(), 50);
+assert.equal(
+    await mobile.page.getByTestId('vocab-page-size').isVisible(),
+    true,
+    '每页条数 selector stays reachable at 375',
+);
+assert.equal(
+    await mobile.page.getByTestId('vocab-page-jump').isVisible(),
+    true,
+    'jump-to-page input stays reachable at 375',
+);
 let overflow = await mobile.page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
 );
 assert.ok(overflow <= 1, `375 family list must not overflow horizontally (${overflow}px)`);
 await mobile.page.screenshot({ path: `${SHOTS}/p1-05-375.png`, fullPage: false });
+
+// The shared pager (size selector + page strip + jump) fits the 375 column.
+await mobile.page.getByTestId('vocab-page-size').scrollIntoViewIfNeeded();
+await mobile.page.screenshot({ path: `${SHOTS}/p1-06-page-size-375.png`, fullPage: false });
+overflow = await mobile.page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+);
+assert.ok(overflow <= 1, `375 pager must not overflow horizontally (${overflow}px)`);
 
 await mobile.page.getByTestId('vocab-family-row-F0004').click();
 await mobile.page.getByTestId('vocab-family-detail-F0004').waitFor();
@@ -590,4 +708,4 @@ await context.close();
 await browser.close();
 
 console.log(`\nWord family tab acceptance: ${assertionsPassed} assertions passed`);
-console.log(`  screenshots: ${SHOTS}/p1-05-*.png`);
+console.log(`  screenshots: ${SHOTS}/p1-05-*.png, ${SHOTS}/p1-06-*.png`);

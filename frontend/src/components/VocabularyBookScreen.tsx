@@ -131,7 +131,6 @@ import { WordlistImportDialog } from './WordlistImportDialog';
 import {
     WordFamilyTable,
     fetchWordFamilyPage,
-    WORD_FAMILY_PAGE_SIZE,
     WordbookToolbar,
     WordTable,
     normalizePhonetic,
@@ -2217,6 +2216,10 @@ export function VocabularyBookScreen({
     const [familyQuery, setFamilyQuery] = useState('');
     const [familyDebouncedQuery, setFamilyDebouncedQuery] = useState('');
     const [familyPage, setFamilyPage] = useState(1);
+    // Own per-page choice (20/50/100, default 50): the family list pages on
+    // the server, but the selector must behave exactly like the other lists
+    // without rewriting their shared 每页条数 preference (specs/041 §3).
+    const [familyPageSize, setFamilyPageSize] = useState<number>(50);
     const [familyLevel, setFamilyLevel] = useState<CefrLevel | ''>('');
     const [familySort, setFamilySort] = useState<WordFamilySort>('rank');
     const [familyPhase, setFamilyPhase] = useState<Phase>('idle');
@@ -2452,16 +2455,19 @@ export function VocabularyBookScreen({
         return () => window.clearTimeout(timer);
     }, [familyQuery, familyDebouncedQuery]);
 
-    // Server paging (fixed 50/页, specs/041 §3): a new search/filter/sort/page
-    // starts with every member list collapsed so a stale expansion never lingers.
+    // Server paging (20/50/100, default 50; specs/041 §3): a new
+    // search/filter/sort/page starts with every member list collapsed so a
+    // stale expansion never lingers.
     useEffect(() => {
         setFamilyExpanded(new Set());
     }, [familyPage, familyDebouncedQuery, familyLevel, familySort]);
 
-    // A new level filter or sort restarts from the first server page.
+    // A new level filter, sort or page size restarts from the first server page
+    // (same rule as the other lists: a phantom page beyond the result set is
+    // never requested or shown).
     useEffect(() => {
         setFamilyPage(1);
-    }, [familyLevel, familySort]);
+    }, [familyLevel, familySort, familyPageSize]);
 
     useEffect(() => {
         if (!activeIsWordFamily) {
@@ -2473,7 +2479,7 @@ export function VocabularyBookScreen({
         setFamilyError('');
         fetchWordFamilyPage({
             page: familyPage,
-            pageSize: WORD_FAMILY_PAGE_SIZE,
+            pageSize: familyPageSize,
             q: familyDebouncedQuery,
             level: familyLevel,
             sort: familySort,
@@ -2490,7 +2496,7 @@ export function VocabularyBookScreen({
                 setFamilyPhase('error');
             });
         return () => controller.abort();
-    }, [activeIsWordFamily, familyPage, familyDebouncedQuery, familyLevel, familySort, familyNonce]);
+    }, [activeIsWordFamily, familyPage, familyPageSize, familyDebouncedQuery, familyLevel, familySort, familyNonce]);
 
     // 每页条数 is a view preference shared by every list: a new size always
     // returns to page 1 (a phantom page beyond the smaller set is never shown).
@@ -2621,11 +2627,12 @@ export function VocabularyBookScreen({
     }, [t]);
 
     const renderWordFamily = () => {
-        // Read-only CEFR 10k word family list (specs/041): server paging (fixed
-        // 50), search over any member, CEFR filter, frequency/alpha sort. No
-        // write controls exist on this surface — no star/check/edit/batch/export.
+        // Read-only CEFR 10k word family list (specs/041): server paging with
+        // the shared 20/50/100 selector, search over any member, CEFR filter,
+        // frequency/alpha sort. No write controls exist on this surface — no
+        // star/check/edit/batch/export.
         const total = familyData?.total ?? 0;
-        const pages = Math.max(1, Math.ceil(total / WORD_FAMILY_PAGE_SIZE));
+        const pages = Math.max(1, Math.ceil(total / familyPageSize));
         const hasFilter = Boolean(familyDebouncedQuery || familyLevel);
         const totalLabel = hasFilter
             ? t('vocab.family.results', { count: formatNumber(total) })
@@ -2748,6 +2755,11 @@ export function VocabularyBookScreen({
                                 pages={pages}
                                 hasMore={familyData.hasMore}
                                 onChange={setFamilyPage}
+                                pageSize={familyPageSize}
+                                onPageSizeChange={(size) => {
+                                    setFamilyPageSize(size);
+                                    setFamilyPage(1);
+                                }}
                             />
                         </>
                     )
