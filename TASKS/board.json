@@ -5,8 +5,8 @@
     {
       "id": "P0-06",
       "file": "TASKS/P0-06-governance-hardening.md",
-      "status": "claimed",
-      "owner": "gov-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "TASKS/board.json",
         "scripts/agent-preflight.mjs",
@@ -27,7 +27,7 @@
     {
       "id": "P0-02",
       "file": "TASKS/P0-02-reconcile-mastered-favorites.md",
-      "status": "ready",
+      "status": "in_review",
       "owner": "P0-02-reconcile",
       "write_scope": [
         "scripts/reconcile_mastered_favorites.py",
@@ -39,7 +39,7 @@
     {
       "id": "P0-05",
       "file": "TASKS/P0-05-quota-single-source-ops.md",
-      "status": "ready",
+      "status": "claimed",
       "owner": "P0-05-quota-ops",
       "write_scope": [
         "backend/ai/ledger.py",
@@ -64,8 +64,12 @@
         "frontend/src/components/ReadingVocabButton.tsx",
         "frontend/src/components/ProfileScreen.tsx"
       ],
-      "shared_writes": ["frontend/src/App.tsx"],
-      "deps": ["P0-02"]
+      "shared_writes": [
+        "frontend/src/App.tsx"
+      ],
+      "deps": [
+        "P0-02"
+      ]
     },
     {
       "id": "P0-03",
@@ -78,7 +82,9 @@
         "frontend/src/lib/favorites.ts"
       ],
       "shared_writes": [],
-      "deps": ["P0-01"]
+      "deps": [
+        "P0-01"
+      ]
     },
     {
       "id": "P0-04",
@@ -96,8 +102,12 @@
         "frontend/src/components/ReaderScreen.tsx",
         "frontend/src/i18n/"
       ],
-      "shared_writes": ["frontend/src/i18n/"],
-      "deps": ["P0-05"]
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P0-05"
+      ]
     }
   ]
 }
