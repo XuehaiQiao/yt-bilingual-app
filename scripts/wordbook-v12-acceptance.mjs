@@ -393,7 +393,7 @@ assert.equal((await page.getByTestId(`vocab-mine-ipa-${firstId}`).innerText()).t
 assert.equal((await page.getByTestId(`vocab-mine-meaning-${firstId}`).innerText()).trim(), '释义59');
 assert.equal((await page.getByTestId(`vocab-mine-seen-${firstId}`).innerText()).trim(), '×0');
 assert.equal(await page.getByTestId(`vocab-mine-star-${firstId}`).getAttribute('aria-pressed'), 'true');
-assert.equal(await page.getByTestId(`vocab-mine-expand-${firstId}`).getAttribute('aria-expanded'), 'false');
+assert.equal(await page.getByTestId(`vocab-mine-expand-${firstId}`).evaluate((el) => el.closest('[aria-expanded]')?.getAttribute('aria-expanded') ?? null), 'false');
 
 // 行内发音: local speech synthesis, no AI request.
 await page.getByTestId(`vocab-mine-speak-${firstId}`).click();
@@ -484,7 +484,7 @@ await page.waitForSelector('[data-testid="vocab-mine-detail-fav-w000"]');
 assert.equal((await page.getByTestId('vocab-mine-full-fav-w000').innerText()).trim(), '释义0');
 assert.equal(await page.getByTestId('vocab-mine-source-fav-w000').count(), 1);
 assert.equal(await page.getByTestId('vocab-mine-added-fav-w000').count(), 1);
-assert.equal(await page.getByTestId('vocab-mine-expand-fav-w000').getAttribute('aria-expanded'), 'true');
+assert.equal(await page.getByTestId('vocab-mine-expand-fav-w000').evaluate((el) => el.closest('[aria-expanded]')?.getAttribute('aria-expanded') ?? null), 'true');
 await shot('1440-mine-expanded');
 
 // 标为已掌握: row action PATCHes and the row moves to 已掌握.
@@ -506,29 +506,27 @@ await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-ma
 assert.deepEqual(state.patches.at(-1), { lemma: 'w000', mastered: false });
 await page.getByTestId('vocab-tab-mine').click();
 await page.waitForSelector('[data-testid="vocab-mine-panel"]');
-// A tab switch restarts 我的单词 with the default 加入时间 sort (specs/005
-// §统一词表 UI), so pick 字母 A→Z again before looking for page-1 w000.
+// 撤销已掌握 does NOT bring the word back to 我的单词: mastering removed the
+// favorite, and specs/005 §已掌握与收藏互斥 keeps it un-favorited.
 await openMenu('vocab-mine-sort', 'vocab-mine-sort-menu');
 await pickMenuItem('vocab-sort-alpha');
-await page.waitForFunction(() => {
-    const first = document.querySelector('[data-testid^="vocab-mine-word-"]');
-    return first && first.textContent.trim() === 'w000';
-});
-assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 60 词',
-    'the unmastered word returns to 我的单词');
+assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 59 词',
+    'the unmastered word stays out of 我的单词 (no favorite restore)');
+assert.equal(await page.getByTestId('vocab-mine-word-fav-w000').count(), 0,
+    'w000 must not reappear in 我的单词');
 
 // 星标 = 取消收藏 on 我的单词: DELETE + the row leaves the list.
 await page.getByTestId('vocab-mine-star-fav-w010').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w010"]').length === 0);
 await waitFor(() => state.deletes.includes('fav-w010'), 15000, 'favorite DELETE');
-assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 59 词');
+assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 58 词');
 
 // 删除 one row from the expanded area (no bulk bar any more).
 await page.getByTestId('vocab-mine-expand-fav-w011').click();
 await page.getByTestId('vocab-mine-delete-fav-w011').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w011"]').length === 0);
 await waitFor(() => state.deletes.includes('fav-w011'), 15000, 'row DELETE');
-assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 58 词');
+assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 57 词');
 
 // Row-level failures stay retryable (never a fake success).
 state.failMastered = 'w012';
@@ -582,17 +580,17 @@ for (const label of ['单词', '音标', '中文释义', 'CEFR']) {
 assert.doesNotMatch(headerText, /次数/, '已掌握 header must not render the ×N column');
 await shot('1440-mastered');
 
-// Star on a mastered row removes the favorite; starring again re-adds it.
-await page.getByTestId('vocab-mastered-star-w061').click();
-await waitFor(() => state.deletes.includes('fav-w061'), 15000, 'mastered unstar DELETE');
-await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mastered-star-w061"]')?.getAttribute('aria-pressed') === 'false');
-assert.equal(await page.getByTestId('vocab-mastered-row').count(), 11, 'unstarring does not unmaster the row');
-await page.getByTestId('vocab-mastered-star-w061').click();
-await waitFor(() => state.favoritePosts.some((item) => item.text === 'w061'), 15000, 'mastered star POST');
-await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mastered-star-w061"]')?.getAttribute('aria-pressed') === 'true');
-const readded = state.favoritePosts.filter((item) => item.text === 'w061').at(-1);
-assert.equal(readded.meta.source_kind, 'wordlist', `re-added favorite meta: ${JSON.stringify(readded.meta)}`);
-assert.equal(readded.meta.source_ref, 'mastered');
+// 已掌握 star is disabled: mastered is not a favorite (specs/005 §互斥).
+const masteredStar = page.getByTestId('vocab-mastered-star-w061');
+assert.equal(await masteredStar.isDisabled(), true, 'mastered star must be disabled');
+assert.match((await masteredStar.getAttribute('aria-label')) ?? '', /已掌握/, 'mastered star explains why');
+const masteredDeletesBefore = state.deletes.length;
+const masteredPostsBefore = state.favoritePosts.length;
+await masteredStar.click({ force: true }).catch(() => {});
+await page.waitForTimeout(250);
+assert.equal(state.deletes.length, masteredDeletesBefore, 'mastered star must not DELETE a favorite');
+assert.equal(state.favoritePosts.length, masteredPostsBefore, 'mastered star must not POST a favorite');
+assert.equal(await page.getByTestId('vocab-mastered-row').count(), 11, 'row stays mastered');
 
 // 搜索 + 排序菜单 on 已掌握.
 await page.getByTestId('vocab-mastered-search').fill('w069');

@@ -391,7 +391,7 @@ await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab
 
 // ── E) undo: expanded row action, optimistic removal + return to 我的单词 ─
 const undoButton = page.getByTestId('vocab-mastered-expand-abundant');
-assert.equal(await undoButton.getAttribute('aria-label'), '展开');
+assert.equal(await undoButton.evaluate((el) => el.closest('[aria-expanded]')?.getAttribute('aria-expanded') ?? null), 'false');
 await undoButton.click();
 await page.getByTestId('vocab-mastered-detail-abundant').waitFor();
 const undoAction = page.getByTestId('vocab-mastered-undo-abundant');
