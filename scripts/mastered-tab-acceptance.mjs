@@ -1,8 +1,8 @@
 // Playwright acceptance for specs/005 §v1.1 「已掌握 is its own word-list tab」,
 // updated for the unified word-list UI (commit 381440f, specs/005 §统一词表 UI).
 //
-//   A) signed-in: tab order 我的单词 / 已掌握 / 短语 / CEFR / GRE / CET4 / CET6;
-//      no in-page 学习/已掌握 segment; 我的单词 is the favorites list itself
+//   A) signed-in: tab order 我的收藏 / 已掌握 / 短语 / CEFR / GRE / CET4 / CET6;
+//      no in-page 学习/已掌握 segment; 我的收藏 is the favorites list itself
 //      (only `luminous`) — the mastered lemmas are not favorites at all.
 //   B) 已掌握 renders the shared WordTable: 单词 / 音标 / 中文释义 / CEFR cells.
 //      Its only source is GET /api/review/words?mastered=1: the meaning comes
@@ -14,13 +14,14 @@
 //      activation), so the reveal contract is asserted on the GRE list in §I.
 //   D) shared pager: 50/page default, 每页 20/50/100 menu, page strip and 跳至
 //      input (60 mocked rows → 2 pages at 50, 3 at 20).
-//   E) 撤销 lives in the expanded row; it PATCHes mastered=false and the row
-//      leaves the tab, but the word does NOT come back to 我的单词 (undo never
-//      refills the favorite, specs/005 §已掌握与收藏互斥) and the count stays 1.
+//   E) the pressed 已掌握 check is the undo control (P0-10 — no expanded text
+//      action); it PATCHes mastered=false and the row leaves the tab, but the
+//      word does NOT come back to 我的收藏 (undo never refills the favorite,
+//      specs/005 §已掌握与收藏互斥) and the count stays 1.
 //   F) first-load failure shows an error panel with retry (never the empty
 //      state); a failed refresh keeps stale rows (IX-01); retry recovers.
 //   G) guest: the tab is 「我会了」, fed by the local table only (no review GET),
-//      undo (expanded row) writes the local table.
+//      undo (the pressed check) writes the local table.
 //   H) 375px: no horizontal overflow.
 //   I) the GRE list still renders through the same WordTable.
 //
@@ -53,7 +54,7 @@ const MASTERED_BASE = ['abundant', 'meticulous', 'reluctant'];
 const FILLER = Array.from({ length: 57 }, (_, index) => `word${String(index + 1).padStart(2, '0')}`);
 const ALL_MASTERED = [...MASTERED_BASE, ...FILLER];
 
-// 已掌握 and 我的单词 are two independent lists (ADR-0001). Only `luminous` is
+// 已掌握 and 我的收藏 are two independent lists (ADR-0001). Only `luminous` is
 // a vocabulary favorite; no mastered lemma appears in FAVORITES, so their row
 // meaning can only come from the `word_states.definition` snapshot returned by
 // GET /api/review/words?mastered=1 (never from a favorite).
@@ -311,20 +312,26 @@ assert.deepEqual(
 );
 assert.equal((await page.getByTestId('vocab-tab-mastered').innerText()).startsWith('已掌握'), true,
     'signed-in mastered tab must read 已掌握');
+assert.equal((await page.getByTestId('vocab-tab-mine').innerText()).startsWith('我的收藏'), true,
+    'the favorites surface is called 我的收藏 (P0-10)');
 assert.equal(await page.getByTestId('vocab-mine-group').count(), 0, 'the in-page group segment must be gone');
 assert.equal(await page.getByTestId('vocab-group-mastered').count(), 0, 'the in-page group segment must be gone');
-// 我的单词 is the favorites list itself (ADR-0001) — no subtraction, no
+// 我的收藏 is the favorites list itself (ADR-0001) — no subtraction, no
 // read-time mastery filter. The fixture has exactly one favorite, `luminous`:
 // the mastered lemmas are not favorites at all, which is why they are absent.
 await page.getByTestId('vocab-tab-mine').click();
 await page.waitForSelector('[data-testid="vocab-mine-list"]');
 assert.equal(await page.$$eval('[data-testid^="vocab-mine-word-"]', (nodes) => nodes.length), 1,
-    '我的单词 lists exactly the one fixture favorite (not a filtered set)');
+    '我的收藏 lists exactly the one fixture favorite (not a filtered set)');
 const mineWords = await rowTexts('vocab-mine-word-fav-luminous').catch(() => []);
-assert.equal(mineWords.length > 0, true, 'the single favorite is listed in 我的单词');
+assert.equal(mineWords.length > 0, true, 'the single favorite is listed in 我的收藏');
 assert.equal(await page.getByTestId('vocab-mine-word-fav-abundant').count(), 0,
-    'a mastered word is not a favorite, so it never shows in 我的单词');
+    'a mastered word is not a favorite, so it never shows in 我的收藏');
 assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 1 词');
+// P0-10: the favorites row carries the 已掌握 check (unpressed; luminous is not
+// mastered) next to the star.
+assert.equal(await page.getByTestId('vocab-mine-master-toggle-fav-luminous').count(), 1);
+assert.equal(await page.getByTestId('vocab-mine-master-toggle-fav-luminous').getAttribute('aria-pressed'), 'false');
 await shot('mine-tab');
 
 // ── B) 已掌握 table: definition snapshot, no favorite enrichment, no star ──
@@ -377,6 +384,14 @@ const masteredStar = page.getByTestId('vocab-mastered-star-abundant');
 assert.equal(await masteredStar.isDisabled(), true, 'the 已掌握 star is a disabled control (not a favorite)');
 assert.equal(await masteredStar.getAttribute('aria-pressed'), 'false', 'the 已掌握 star must never render as 已收藏');
 assert.match(await masteredStar.getAttribute('aria-label'), /已掌握，不是收藏/);
+// P0-10: every 已掌握 row carries a pressed check as its undo control, and the
+// expanded text action is gone.
+const masteredCheck = page.getByTestId('vocab-mastered-master-toggle-abundant');
+assert.equal(await masteredCheck.count(), 1, '已掌握 rows carry the check');
+assert.equal(await masteredCheck.getAttribute('aria-pressed'), 'true', 'the check is pressed on 已掌握 rows');
+assert.match(await masteredCheck.getAttribute('aria-label'), /取消已掌握 abundant/);
+assert.equal(await page.getByTestId('vocab-mastered-undo-abundant').count(), 0,
+    'the old 撤销 text action is removed (P0-10)');
 // Native click on a disabled control dispatches no event — and even if it
 // did, 已掌握 has no favorite write path. Assert no request escaped either way.
 await masteredStar.evaluate((element) => element.click());
@@ -422,13 +437,11 @@ await shot('mastered-hide-chinese');
 await page.getByTestId('vocab-hide-toggle').click(); // switch Chinese back on
 await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mastered-translation-"]').length === 50);
 
-// ── E) undo: expanded row action, optimistic removal, NO favorite refill ──
-const undoButton = page.getByTestId('vocab-mastered-expand-abundant');
-assert.equal(await undoButton.evaluate((el) => el.closest('[aria-expanded]')?.getAttribute('aria-expanded') ?? null), 'false');
-await undoButton.click();
-await page.getByTestId('vocab-mastered-detail-abundant').waitFor();
-const undoAction = page.getByTestId('vocab-mastered-undo-abundant');
-assert.equal(await undoAction.getAttribute('aria-label'), '撤销 abundant');
+// ── E) undo: the pressed row check, optimistic removal, NO favorite refill ─
+// The row is not expanded: the check is a default-row control (P0-10).
+const undoAction = page.getByTestId('vocab-mastered-master-toggle-abundant');
+assert.equal(await undoAction.getAttribute('aria-pressed'), 'true');
+assert.equal(await undoAction.getAttribute('aria-label'), '取消已掌握 abundant');
 assert.equal(await undoAction.locator('svg').count(), 1, 'the ghost icon button renders one icon');
 await undoAction.click();
 await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-mastered-row"][data-word="abundant"]'));
@@ -436,7 +449,7 @@ assert.deepEqual(state.patches.at(-1), { lemma: 'abundant', mastered: false },
     `PATCH body: ${JSON.stringify(state.patches.at(-1))}`);
 assert.equal(await page.getByTestId('vocab-mastered-total').innerText(), '共 59 词');
 // Undo only clears `word_states.mastered` (specs/005 §已掌握与收藏互斥). It
-// must not refill the favorite: 我的单词 still holds exactly `luminous` and its
+// must not refill the favorite: 我的收藏 still holds exactly `luminous` and its
 // count stays 1 — the undone word does not come back.
 assert.deepEqual(state.favoriteWrites, [], 'undoing mastered must not POST a favorite');
 await page.getByTestId('vocab-tab-mine').click();
@@ -445,7 +458,7 @@ assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 1 词'
     'undoing mastered must not change the favorites count');
 assert.equal(await page.getByTestId('vocab-mine-word-fav-luminous').count(), 1);
 assert.equal(await page.getByTestId('vocab-mine-word-fav-abundant').count(), 0,
-    'the undone word must not return to 我的单词');
+    'the undone word must not return to 我的收藏');
 await shot('mastered-undone-stays-out-of-mine');
 
 // ── I) the built-in list still renders through the shared table ──────────
@@ -455,7 +468,24 @@ assert.equal(await page.getByTestId('vocab-list-row').count(), 3, 'GRE rows come
 assert.equal(await page.getByTestId('vocab-list-word').first().innerText(), 'abundant');
 assert.equal(await page.getByTestId('vocab-list-translation').nth(1).innerText(), '轻快的');
 assert.equal(await page.getByTestId('vocab-list-level').last().innerText(), '—');
+// P0-10 §2/§4: the fixed list carries the check beside the star. abundant was
+// unmastered in §E, so its row starts neutral; marking it (the check is the
+// only mastery control) tints the row green and disables the star.
+const listCheck = page.getByTestId('vocab-list-master-toggle-gre:abundant');
+const listTone = () => page.locator('[data-testid="vocab-list-row"][data-word="abundant"]')
+    .first().evaluate((el) => el.parentElement?.className ?? '');
+assert.equal(await listCheck.getAttribute('aria-pressed'), 'false');
+assert.doesNotMatch(await listTone(), /bg-(success|warning)\/10/, 'a neutral list row has no tint');
+await listCheck.click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-master-toggle-gre:abundant"]')?.getAttribute('aria-pressed') === 'true');
+assert.deepEqual(state.patches.at(-1), { lemma: 'abundant', mastered: true });
+assert.match(await listCheck.getAttribute('aria-label'), /取消已掌握 abundant/);
+assert.equal(await page.getByTestId('vocab-list-star-gre:abundant').isDisabled(), true);
+assert.match(await listTone(), /bg-success\/10/, 'a mastered fixed-list row is tinted success');
 await shot('gre-list');
+await listCheck.click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-master-toggle-gre:abundant"]')?.getAttribute('aria-pressed') === 'false');
+assert.doesNotMatch(await listTone(), /bg-(success|warning)\/10/, 'unmarking clears the tint');
 await page.getByTestId('vocab-hide-toggle').click();
 assert.equal(await page.getByTestId('vocab-list-translation').count(), 0, 'hide-Chinese still works on the list');
 await page.locator('[data-testid="vocab-list-row"]').first().click();
@@ -467,7 +497,7 @@ state.mastered = [...ALL_MASTERED];
 state.masteredFail = true;
 await page.reload({ waitUntil: 'domcontentloaded' });
 await page.waitForSelector('[data-testid="vocab-tabs"]');
-// 我的单词 opens first and reports the failed mastered read inline (stale data
+// 我的收藏 opens first and reports the failed mastered read inline (stale data
 // would otherwise be mislabelled as learning).
 await page.waitForSelector('[data-testid="vocab-mastered-stale"]');
 await page.getByTestId('vocab-tab-mastered').click();
@@ -475,10 +505,10 @@ await page.waitForSelector('[data-testid="vocab-mastered-error"]');
 assert.equal(await page.getByTestId('vocab-mastered-empty').count(), 0, 'a failed GET is not an empty state');
 assert.equal(await page.getByTestId('vocab-mastered-list').count(), 0);
 assert.equal(await page.getByTestId('vocab-tab-count-mastered').count(), 0, 'unknown mastered count is not rendered as 0');
-// 我的单词 is the favorites list: its count is always known (1) and never
+// 我的收藏 is the favorites list: its count is always known (1) and never
 // derived from the mastered set, so a failed mastered read cannot inflate it.
 assert.equal(await page.getByTestId('vocab-tab-count-mine').innerText(), '1',
-    'the 我的单词 count is the favorites length, independent of the mastered read');
+    'the 我的收藏 count is the favorites length, independent of the mastered read');
 await shot('mastered-error');
 state.masteredFail = false;
 await page.getByTestId('vocab-mastered-retry').click();
@@ -589,29 +619,25 @@ assert.equal(guestAbundantWord, 'abundant', 'guest rows come from the local tabl
 assert.equal((await guestPage.getByTestId('vocab-mastered-ipa-abundant').innerText()).trim(), '');
 assert.equal(await guestPage.getByTestId('vocab-mastered-translation-abundant').innerText(), '—');
 await guestPage.screenshot({ path: `${SHOTS}/mastered-tab-guest-1440.png` });
-await guestPage.getByTestId('vocab-mastered-expand-meticulous').click();
-await guestPage.getByTestId('vocab-mastered-detail-meticulous').waitFor();
-await guestPage.getByTestId('vocab-mastered-undo-meticulous').click();
+await guestPage.getByTestId('vocab-mastered-master-toggle-meticulous').click();
 await guestPage.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mastered-row"]').length === 1);
 assert.equal(await guestPage.getByTestId('vocab-mastered-total').innerText(), '共 1 词');
 const guestTable = await guestPage.evaluate((key) => localStorage.getItem(key), GUEST_KEY);
 assert.deepEqual(JSON.parse(guestTable), ['abundant'], `guest local table: ${guestTable}`);
 await guestPage.screenshot({ path: `${SHOTS}/mastered-tab-guest-undo-1440.png` });
 // Unmarking the last guest word leaves the success+empty state (not an error).
-await guestPage.getByTestId('vocab-mastered-expand-abundant').click();
-await guestPage.getByTestId('vocab-mastered-detail-abundant').waitFor();
-await guestPage.getByTestId('vocab-mastered-undo-abundant').click();
+await guestPage.getByTestId('vocab-mastered-master-toggle-abundant').click();
 await guestPage.waitForSelector('[data-testid="vocab-mastered-empty"]');
 assert.equal(await guestPage.evaluate((key) => localStorage.getItem(key), GUEST_KEY), '[]');
 assert.equal(await guestPage.getByTestId('vocab-mastered-list').count(), 0);
 await guestPage.screenshot({ path: `${SHOTS}/mastered-tab-guest-empty-1440.png` });
-// 我的单词 still lists the guest learning row and the guest undo never refills
+// 我的收藏 still lists the guest learning row and the guest undo never refills
 // the favorites.
 await guestPage.getByTestId('vocab-tab-mine').click();
 await guestPage.waitForSelector('[data-testid="vocab-mine-list"]');
 await guestPage.getByTestId('vocab-mine-word-fav-luminous').waitFor({ timeout: 5000 });
 assert.equal(await guestPage.getByTestId('vocab-mine-total').innerText(), '共 1 词',
-    'guest 我会了 undo does not refill 我的单词');
+    'guest 我会了 undo does not refill 我的收藏');
 assert.equal(await guestPage.getByTestId('vocab-mine-word-fav-abundant').count(), 0);
 
 assert.deepEqual(pageErrors, [], `page errors: ${pageErrors.join(' | ')}`);

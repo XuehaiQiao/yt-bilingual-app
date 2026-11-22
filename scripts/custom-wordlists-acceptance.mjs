@@ -8,9 +8,11 @@
 //      「共 N 行 · 有效 M · 跳过 K」 stats with the first skip reasons →
 //      automatic `(2)` name on a collision → POST /api/wordlists/import;
 //   C) the new tab appears, becomes active and renders its rows;
-//   D) row actions: NO 加入我的单词 in any favorite state (P0-09 — the row star
+//   D) row controls: NO 加入我的单词 in any favorite state (P0-09 — the row star
 //      is the only favorite switch; POST/DELETE + source_kind=wordlist, no local
-//      已加入 mirror); 标为已掌握 (PATCH); 加入复习 stays hidden while the
+//      已加入 mirror); the 已掌握 check is the only mastery toggle (P0-10:
+//      icon-only PATCH, favorite removal + rollback, green/amber row tint);
+//      the fixed-list row is tinted by state; 加入复习 stays hidden while the
 //      review UI is paused;
 //   E) server-side search + 50/page pagination;
 //   F) 删除词表 asks first (cancel keeps it), confirms, deletes the table only;
@@ -26,8 +28,9 @@
 // exercised through the UI, so §H asserts the deep-link fallback instead.
 //
 // Updated for the unified word-list UI (commit 381440f, specs/005 §统一词表 UI):
-// rows now carry the shared WordTable controls (star / expand), row actions live
-// inside the expanded area, paging uses the shared 每页 20/50/100 + 跳至 pager,
+// rows now carry the shared WordTable controls (star / 已掌握 check / expand),
+// the expanded area only keeps the paused 加入复习 action, paging uses the
+// shared 每页 20/50/100 + 跳至 pager,
 // and the edit mode (勾选删除) + 重命名 live on the custom list itself. Sections
 // D–F were rewritten accordingly; the import wizard, review-route fallback,
 // guest gate and 375px cases are unchanged.
@@ -406,6 +409,12 @@ async function gotoWordbook(page) {
     await page.getByTestId('vocab-tabs').waitFor({ timeout: 15000 });
 }
 
+/** Class of the row container (the tested element is the inner grid row). */
+const rowTone = (page, word, testId = 'vocab-custom-row') => page
+    .locator(`[data-testid="${testId}"][data-word="${word}"]`)
+    .first()
+    .evaluate((el) => el.parentElement?.className ?? '');
+
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const state = createState();
 const { context, page, pageErrors } = await newContext(browser, state);
@@ -433,6 +442,8 @@ assert.equal(
     'a custom tab shows its name',
 );
 assert.equal(await page.getByTestId('vocab-tab-count-custom-wl-1').innerText(), '2');
+// P0-10 §3: the favorites surface is called 我的收藏 (route/tab id stays `mine`).
+assert.equal((await page.getByTestId('vocab-tab-mine').innerText()).startsWith('我的收藏'), true);
 
 // ── B) import wizard: file → map/preview/stats → name/confirm ────────────
 await page.getByTestId('vocab-import-button').click();
@@ -591,6 +602,13 @@ for (const [suffix, text] of [
 assert.equal(await page.locator('[data-testid^="vocab-custom-seen-"]').count(), 0,
     'custom lists must not render the ×N column');
 assert.equal(await page.getByTestId('vocab-custom-star-abundant').getAttribute('aria-pressed'), 'false');
+// P0-10 §2: every custom-list row carries the 已掌握 check beside the star;
+// with no state the row keeps the default surface.
+assert.equal(await page.getByTestId('vocab-custom-master-toggle-abundant').count(), 1);
+assert.equal(await page.getByTestId('vocab-custom-master-toggle-abundant').getAttribute('aria-pressed'), 'false');
+assert.equal(await page.getByTestId('vocab-custom-master-toggle-abundant').getAttribute('aria-label'), '已掌握 abundant');
+assert.doesNotMatch(await rowTone(page, 'abundant'), /bg-(success|warning)\/10/,
+    'a word with no state keeps the default row surface');
 
 // P0-09: the expanded area never carries 加入我的单词 — marked words, unmarked
 // words, any state (the star is the only favorite switch). No disabled 「已加入」
@@ -614,6 +632,9 @@ await page.waitForTimeout(400);
 assert.equal(state.favorites.length, postsBefore + 1, 'a double click still sends exactly one POST');
 assert.equal(state.favoriteDeletes.length, 0, 'a double click must not turn into a DELETE');
 assert.equal(await page.getByTestId('vocab-custom-star-abundant').getAttribute('aria-pressed'), 'true');
+// P0-10 §4: a favorited custom-list row is tinted warning.
+assert.match(await rowTone(page, 'abundant'), /bg-warning\/10/,
+    'a favorited custom-list row is tinted warning');
 assert.equal(await page.getByTestId('wl-1:abundant-add-mine').count(), 0,
     '已收藏的行也不得渲染 加入我的单词');
 assert.doesNotMatch(await page.getByTestId('vocab-custom-detail-abundant').innerText(), /加入我的单词|已加入/,
@@ -639,15 +660,44 @@ await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-
 assert.equal(state.favorites.length, 1, 'unstarring removes the favorite record');
 assert.equal(state.favoriteDeletes.length, 1, 'unstarring DELETEs the favorite');
 assert.equal(state.favoriteDeletes[0], 'vocab-fav-candid');
+assert.doesNotMatch(await rowTone(page, 'candid'), /bg-(success|warning)\/10/,
+    'unstarring clears the tint');
 
-// 标为已掌握 on a custom row: PATCH with the list as contentRef.
+// P0-10: the row check is the only 已掌握 toggle (PATCH with the list as
+// contentRef); the expanded text action is gone. Marking tints the row green
+// and disables the star; unchecking clears both and refills no favorite.
 await page.getByTestId('vocab-custom-expand-candid').click();
-await page.getByTestId('wl-1:candid-master').click();
-await page.waitForFunction(() => document.querySelector('[data-testid="wl-1:candid-master"]')?.textContent?.includes('已掌握'));
+await page.getByTestId('vocab-custom-detail-candid').waitFor();
+assert.equal(await page.getByTestId('wl-1:candid-master').count(), 0,
+    'the expanded area no longer carries a mastered text action');
+assert.doesNotMatch(await page.getByTestId('vocab-custom-detail-candid').innerText(),
+    /我已掌握|标为已掌握|取消已掌握/,
+    'no text mastered action in the expanded area (P0-10)');
+const candidCheck = page.getByTestId('vocab-custom-master-toggle-candid');
+assert.equal(await candidCheck.getAttribute('aria-pressed'), 'false');
+await candidCheck.click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-custom-master-toggle-candid"]')?.getAttribute('aria-pressed') === 'true');
 assert.equal(state.masteredPatches.length, 1);
 assert.equal(state.masteredPatches[0].mastered, true);
 assert.equal(state.masteredPatches[0].lemma, 'candid');
 assert.equal(state.masteredPatches[0].source.contentRef, 'wl-1');
+assert.equal(await page.getByTestId('vocab-custom-master-toggle-candid').getAttribute('aria-label'),
+    '取消已掌握 candid');
+assert.match(await rowTone(page, 'candid'), /bg-success\/10/,
+    'a mastered custom-list row is tinted success');
+assert.equal(await page.getByTestId('vocab-custom-star-candid').isDisabled(), true,
+    'a mastered row disables its star');
+await page.screenshot({ path: `${SHOTS}/p0-10-1440-custom-mastered.png`, fullPage: false });
+// Pressed check → unmark: the row loses the tint, the star returns, no favorite.
+await candidCheck.click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-custom-master-toggle-candid"]')?.getAttribute('aria-pressed') === 'false');
+await page.waitForTimeout(200);
+assert.equal(state.masteredPatches.length, 2, 'unchecking sends the second PATCH');
+assert.equal(state.masteredPatches[1].mastered, false);
+assert.equal(await page.getByTestId('vocab-custom-star-candid').isDisabled(), false);
+assert.doesNotMatch(await rowTone(page, 'candid'), /bg-(success|warning)\/10/,
+    'unmarking clears the tint');
+assert.equal(state.favoriteDeletes.length, 1, 'unmarking never refills the favorite');
 
 // ── D2) 隐藏中文 reuses the shared WordTable behavior ────────────────────
 assert.equal(await page.locator('[data-testid^="vocab-custom-translation-"]').count(), 2);
@@ -809,7 +859,11 @@ await page.getByTestId('vocab-custom-detail-word001').waitFor();
 assert.equal(await page.getByTestId('wl-2:word001-add-mine').count(), 0,
     '未收藏的自定义词表行在 375 也不得渲染 加入我的单词');
 assert.doesNotMatch(await page.getByTestId('vocab-custom-detail-word001').innerText(), /加入我的单词|已加入/);
+// P0-10: the 已掌握 check stays reachable at 375, beside the star.
+assert.equal(await page.getByTestId('vocab-custom-master-toggle-word001').isVisible(), true);
+assert.doesNotMatch(await rowTone(page, 'word001'), /bg-(success|warning)\/10/);
 await page.screenshot({ path: `${SHOTS}/custom-wordlists-375.png`, fullPage: false });
+await page.screenshot({ path: `${SHOTS}/p0-10-375-custom.png`, fullPage: false });
 
 // The wizard is usable at 375 too (dialog body scrolls, no page overflow).
 await page.getByTestId('vocab-import-button').click();

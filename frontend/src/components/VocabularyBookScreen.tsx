@@ -53,7 +53,6 @@ import {
     Star,
     Trash2,
     Tv,
-    Undo2,
     Upload,
     type LucideIcon,
 } from 'lucide-react';
@@ -731,6 +730,20 @@ export function VocabularyBookScreen({
             : t('vocab.star.add', { word })
     ), [favoritedWordKeys, t]);
 
+    /**
+     * Accessible name of the row's 已掌握 check (P0-10): the pressed state is
+     * the mark itself, so the name flips to 取消已掌握. Guests keep the local
+     * 「我会了」 wording — that surface is not called 已掌握 (specs/005).
+     */
+    const masteredLabelFor = useCallback((word: string, mastered: boolean): string => {
+        if (isGuest) {
+            return `${mastered ? t('vocab.review.undo') : t('vocab.review.guestMaster')} ${word}`;
+        }
+        return mastered
+            ? t('vocab.row.unmaster', { word })
+            : t('vocab.row.master', { word });
+    }, [isGuest, t]);
+
     /** Newest favorite per normalized word: the mastered row's IPA/meaning. */
     const favoriteByWord = useMemo(() => {
         const map = new Map<string, FavoriteItem>();
@@ -1035,13 +1048,16 @@ export function VocabularyBookScreen({
     };
 
     /**
-     * 标为已掌握 for a custom word-list row (specs/038 §1). Idempotent PATCH;
-     * the row stays in the word list, it just flips its own action state. A
-     * word that was also a favorite loses that favorite (mutual exclusion);
-     * if the removal fails the mark is rolled back and an inline, retryable
-     * error appears instead of a success-looking row.
+     * 已掌握 toggle of a fixed word-list row (内置词表 / 短语 / 自定义词表),
+     * P0-10: the row check is the only mastery control and its pressed state is
+     * the source of truth. Marking PATCHes mastered=true and, per the mutual
+     * exclusion invariant (specs/005 §已掌握与收藏互斥), removes the same word's
+     * favorite; if that removal fails the mark is rolled back and an inline,
+     * retryable row error appears instead of a success-looking row. Unmarking
+     * only clears `word_states.mastered` and never refills the favorite
+     * (ADR-0001). Idempotent; one row writes at a time.
      */
-    const addListWordToMastered = async (input: {
+    const toggleListRowMastered = async (input: {
         rowKey: string;
         word: string;
         /** Meaning snapshot captured for the 已掌握 tab (word-list translation). */
@@ -1050,45 +1066,47 @@ export function VocabularyBookScreen({
         listId: string;
     }) => {
         const key = normalizeMasteryWord(input.word);
-        if (masterAdds[input.rowKey] === 'busy' || masteredWords.has(key)) return;
+        if (!key || masterAdds[input.rowKey] === 'busy') return;
         if (isGuest) {
             openLogin();
             return;
         }
         const lemma = input.word.trim();
         if (!lemma) return;
-        const favorite = favoriteByWord.get(key);
+        const next = !masteredWords.has(key);
         const clearRowError = () => setListRowErrors((prev) => {
             if (!(input.rowKey in prev)) return prev;
-            const next = { ...prev };
-            delete next[input.rowKey];
-            return next;
+            const nextErrors = { ...prev };
+            delete nextErrors[input.rowKey];
+            return nextErrors;
         });
         setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'busy' }));
         clearRowError();
         try {
             const result = await setWordMastered({
                 lemma,
-                mastered: true,
+                mastered: next,
                 targetLang,
                 source: { contentRef: input.listId },
             });
+            // The PATCH response is authoritative for the post-write mark.
             const masteredNow = result.word.mastered === true;
             writeMasteredState(lemma, masteredNow);
             onMasteredChange?.(lemma, masteredNow);
-            if (masteredNow) {
+            if (next && masteredNow) {
                 rememberMasteredSnapshot({
                     lemma,
                     word: input.word,
                     phonetic: input.phonetic,
                     translation: input.translation,
                 });
+                const favorite = favoriteByWord.get(key);
                 if (favorite) {
+                    // A mastered word is not a favorite: remove the record. A
+                    // failed DELETE rolls the mark back instead of leaving the
+                    // word in both worlds.
                     const removed = await deleteFavoriteById(favorite.id);
                     if (!removed) {
-                        // Undo the mark so a word is never both mastered and
-                        // saved. The message only claims a rollback if it
-                        // actually succeeded.
                         let rolledBack = false;
                         try {
                             const rollback = await setWordMastered({
@@ -1114,11 +1132,17 @@ export function VocabularyBookScreen({
                     }
                 }
             }
-            setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'added' }));
-            toast.success(t('vocab.custom.masterToast'), { dedupeKey: 'review:fav-mastered' });
+            setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'idle' }));
+            toast.success(
+                masteredNow ? t('vocab.review.toast.mastered') : t('vocab.review.toast.unmastered'),
+                { dedupeKey: 'review:fav-mastered' },
+            );
         } catch {
             setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'idle' }));
-            setListRowErrors((prev) => ({ ...prev, [input.rowKey]: t('vocab.custom.masterError') }));
+            setListRowErrors((prev) => ({
+                ...prev,
+                [input.rowKey]: t('vocab.review.error.mastered'),
+            }));
         }
     };
 
@@ -2167,7 +2191,7 @@ export function VocabularyBookScreen({
             const knownLevel = word in levels;
             const levelLabel = levels[word] ?? null;
             const reviewLabel = isReviewed ? t('vocab.review.added') : t('vocab.review.add');
-            const masterLabel = isGuest ? t('vocab.review.guestMaster') : t('vocab.review.master');
+            const isMastered = masteredWords.has(masteredKey);
             const actions: WordRowAction[] = [];
             if (REVIEW_UI_ENABLED) {
                 actions.push({
@@ -2182,18 +2206,9 @@ export function VocabularyBookScreen({
                     onClick: () => { void handleAddFavoriteToReview(fav); },
                 });
             }
-            actions.push({
-                key: 'master',
-                label: `${masterLabel} ${word}`,
-                text: masterLabel,
-                icon: CheckCircle2,
-                testId: `vocab-mine-master-${fav.id}`,
-                busy: pendingMasteredId === fav.id,
-                disabled: Boolean(pendingReviewId || pendingMasteredId),
-                onClick: () => { void handleToggleFavoriteMastered(fav); },
-            });
-            // No 取消收藏 action here: the row star is the single cancel entry
-            // (specs/005 单一来源; ADR-0001). The expanded area keeps 已掌握.
+            // P0-10: 已掌握 is the row check, never an expanded text action. No
+            // 取消收藏 action either: the row star is the single cancel entry
+            // (specs/005 单一来源; ADR-0001).
             return {
                 key: fav.id,
                 word,
@@ -2208,6 +2223,11 @@ export function VocabularyBookScreen({
                 favoriteLabel: t('vocab.star.remove', { word }),
                 onToggleFavorite: () => removeFavoriteForRow(fav),
                 favoriteBusy: favoriteBusyKeys.has(masteredKey),
+                mastered: isMastered,
+                masteredLabel: masteredLabelFor(word, isMastered),
+                onToggleMastered: () => { void handleToggleFavoriteMastered(fav); },
+                masteredBusy: pendingMasteredId === fav.id,
+                masteredDisabled: Boolean(pendingReviewId || pendingMasteredId),
                 speakLabel: speakLabelFor(word),
                 onSpeak: () => speakRow(word),
                 speakDisabled: speechDisabled,
@@ -2295,6 +2315,7 @@ export function VocabularyBookScreen({
                     level: `vocab-mine-level-${fav.id}`,
                     speak: `vocab-mine-speak-${fav.id}`,
                     star: `vocab-mine-star-${fav.id}`,
+                    mastered: `vocab-mine-master-toggle-${fav.id}`,
                     seen: `vocab-mine-seen-${fav.id}`,
                     expand: `vocab-mine-expand-${fav.id}`,
                     detail: `vocab-mine-detail-${fav.id}`,
@@ -2486,6 +2507,8 @@ export function VocabularyBookScreen({
             const sourceLabel = phraseSourceLabel(item.source);
             const example = item.example || detail?.example || '';
             const wordKey = normalizeMasteryWord(item.headword);
+            const favored = favoritedWordKeys.has(wordKey);
+            const mastered = masteredWords.has(wordKey);
             return {
                 key: item.id,
                 word: item.headword,
@@ -2500,8 +2523,12 @@ export function VocabularyBookScreen({
                 ),
                 revealed: isRevealed,
                 onActivate: hideChinese ? () => togglePhraseReveal(item.id) : undefined,
-                favored: favoritedWordKeys.has(wordKey),
-                favoriteLabel: favoriteLabelFor(item.headword),
+                favored,
+                // 已掌握 is not a favorite: the star is disabled with an
+                // explanation until the check is switched off (P0-10).
+                favoriteLabel: mastered
+                    ? t('vocab.mastered.starDisabled', { word: item.headword })
+                    : favoriteLabelFor(item.headword),
                 onToggleFavorite: () => toggleRowFavorite({
                     word: item.headword,
                     translation: item.translation,
@@ -2510,6 +2537,19 @@ export function VocabularyBookScreen({
                     sourceTitle: t('vocab.tab.phrases'),
                 }),
                 favoriteBusy: favoriteBusyKeys.has(wordKey),
+                favoriteDisabled: mastered,
+                mastered,
+                masteredLabel: masteredLabelFor(item.headword, mastered),
+                onToggleMastered: () => {
+                    void toggleListRowMastered({
+                        rowKey,
+                        word: item.headword,
+                        translation: item.translation,
+                        listId: PHRASES_TAB,
+                    });
+                },
+                masteredBusy: masterAdds[rowKey] === 'busy',
+                tone: mastered ? 'mastered' : favored ? 'favorited' : undefined,
                 speakLabel: speakLabelFor(item.headword),
                 onSpeak: () => speakRow(item.headword),
                 speakDisabled: speechDisabled,
@@ -2615,6 +2655,7 @@ export function VocabularyBookScreen({
                     level: 'phrase-level',
                     speak: `${rowKey}-speak`,
                     star: `${rowKey}-star`,
+                    mastered: `${rowKey}-master-toggle`,
                     expand: 'phrase-expand',
                     detail: `phrase-detail-${item.id}`,
                 },
@@ -2810,17 +2851,12 @@ export function VocabularyBookScreen({
                         </div>
                     </div>
                 ),
-                actions: [
-                    {
-                        key: 'undo',
-                        label: `${t('vocab.review.undo')} ${row.word}`,
-                        text: t('vocab.review.undo'),
-                        icon: Undo2,
-                        testId: `vocab-mastered-undo-${row.key}`,
-                        busy: pendingMasteredId === expandKey,
-                        onClick: () => { void handleMasteredRowUndo(row); },
-                    },
-                ],
+                // P0-10: the check owns 撤销已掌握 (pressed = mastered); the
+                // expanded area no longer carries a text undo action.
+                mastered: true,
+                masteredLabel: masteredLabelFor(row.word, true),
+                onToggleMastered: () => { void handleMasteredRowUndo(row); },
+                masteredBusy: pendingMasteredId === expandKey,
                 error: rowError?.id === expandKey
                     ? { message: rowError.message, testId: `vocab-mastered-error-${row.key}` }
                     : undefined,
@@ -2832,6 +2868,7 @@ export function VocabularyBookScreen({
                     level: `vocab-mastered-level-${row.key}`,
                     speak: `vocab-mastered-${row.key}-speak`,
                     star: `vocab-mastered-star-${row.key}`,
+                    mastered: `vocab-mastered-master-toggle-${row.key}`,
                     expand: `vocab-mastered-expand-${row.key}`,
                     detail: `vocab-mastered-detail-${row.key}`,
                 },
@@ -3111,7 +3148,11 @@ export function VocabularyBookScreen({
                 revealed: customRevealed.has(item.word),
                 onActivate: hideChinese ? () => toggleCustomReveal(item.word) : undefined,
                 favored,
-                favoriteLabel: favoriteLabelFor(item.word),
+                // 已掌握 is not a favorite: the star is disabled until the
+                // check is switched off (P0-10 / specs/005 §互斥).
+                favoriteLabel: mastered
+                    ? t('vocab.mastered.starDisabled', { word: item.word })
+                    : favoriteLabelFor(item.word),
                 onToggleFavorite: () => toggleRowFavorite({
                     word: item.word,
                     phonetic: item.phonetic,
@@ -3122,6 +3163,20 @@ export function VocabularyBookScreen({
                     sourceTitle: list.name,
                 }),
                 favoriteBusy: favoriteBusyKeys.has(wordKey),
+                favoriteDisabled: mastered,
+                mastered,
+                masteredLabel: masteredLabelFor(item.word, mastered),
+                onToggleMastered: () => {
+                    void toggleListRowMastered({
+                        rowKey,
+                        word: item.word,
+                        translation: item.translation,
+                        phonetic: item.phonetic,
+                        listId,
+                    });
+                },
+                masteredBusy: masterState === 'busy',
+                tone: mastered ? 'mastered' : favored ? 'favorited' : undefined,
                 speakLabel: speakLabelFor(item.word),
                 onSpeak: () => speakRow(item.word),
                 speakDisabled: speechDisabled,
@@ -3162,33 +3217,14 @@ export function VocabularyBookScreen({
                         </div>
                     </div>
                 ),
-                actions: [
-                    ...rowReviewActions({
-                        rowKey,
-                        word: item.word,
-                        definition: item.translation,
-                        listId,
-                    }),
-                    {
-                        key: 'master',
-                        label: `${mastered ? t('vocab.custom.mastered') : t('vocab.custom.master')} ${item.word}`,
-                        text: mastered ? t('vocab.custom.mastered') : t('vocab.custom.master'),
-                        icon: CheckCircle2,
-                        testId: `${rowKey}-master`,
-                        busy: masterState === 'busy',
-                        done: mastered,
-                        disabled: mastered,
-                        onClick: () => {
-                            void addListWordToMastered({
-                                rowKey,
-                                word: item.word,
-                                translation: item.translation,
-                                phonetic: item.phonetic,
-                                listId,
-                            });
-                        },
-                    },
-                ],
+                // P0-10: 已掌握 is the row check; the expanded area keeps only
+                // 加入复习 (hidden while paused), never a mastered text action.
+                actions: rowReviewActions({
+                    rowKey,
+                    word: item.word,
+                    definition: item.translation,
+                    listId,
+                }),
                 error: listRowErrors[rowKey]
                     ? { message: listRowErrors[rowKey], testId: `vocab-custom-error-${item.word}` }
                     : undefined,
@@ -3200,6 +3236,7 @@ export function VocabularyBookScreen({
                     level: `vocab-custom-level-${item.word}`,
                     speak: `${rowKey}-speak`,
                     star: `vocab-custom-star-${item.word}`,
+                    mastered: `vocab-custom-master-toggle-${item.word}`,
                     expand: `vocab-custom-expand-${item.word}`,
                     detail: `vocab-custom-detail-${item.word}`,
                 },
@@ -3465,6 +3502,7 @@ export function VocabularyBookScreen({
             const rowKey = `${activeTab}:${item.word}`;
             const wordKey = normalizeMasteryWord(item.word);
             const favored = favoritedWordKeys.has(wordKey);
+            const mastered = masteredWords.has(wordKey);
             const isExpanded = Boolean(expanded[`list:${rowKey}`]);
             return {
                 key: `${item.word}-${index}`,
@@ -3476,7 +3514,11 @@ export function VocabularyBookScreen({
                 revealed: revealed.has(item.word),
                 onActivate: hideChinese ? () => toggleReveal(item.word) : undefined,
                 favored,
-                favoriteLabel: favoriteLabelFor(item.word),
+                // 已掌握 is not a favorite: the star is disabled with an
+                // explanation until the check is switched off (P0-10).
+                favoriteLabel: mastered
+                    ? t('vocab.mastered.starDisabled', { word: item.word })
+                    : favoriteLabelFor(item.word),
                 onToggleFavorite: () => toggleRowFavorite({
                     word: item.word,
                     phonetic: item.phonetic,
@@ -3486,6 +3528,20 @@ export function VocabularyBookScreen({
                     sourceTitle: label,
                 }),
                 favoriteBusy: favoriteBusyKeys.has(wordKey),
+                favoriteDisabled: mastered,
+                mastered,
+                masteredLabel: masteredLabelFor(item.word, mastered),
+                onToggleMastered: () => {
+                    void toggleListRowMastered({
+                        rowKey,
+                        word: item.word,
+                        translation: item.translation,
+                        phonetic: item.phonetic,
+                        listId: activeTab,
+                    });
+                },
+                masteredBusy: masterAdds[rowKey] === 'busy',
+                tone: mastered ? 'mastered' : favored ? 'favorited' : undefined,
                 speakLabel: speakLabelFor(item.word),
                 onSpeak: () => speakRow(item.word),
                 speakDisabled: speechDisabled,
@@ -3519,6 +3575,7 @@ export function VocabularyBookScreen({
                     : undefined,
                 testIds: {
                     star: `vocab-list-star-${rowKey}`,
+                    mastered: `vocab-list-master-toggle-${rowKey}`,
                     speak: `${rowKey}-speak`,
                     expand: `vocab-list-expand-${rowKey}`,
                     detail: `vocab-list-detail-${rowKey}`,

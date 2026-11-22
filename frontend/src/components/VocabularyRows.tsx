@@ -5,17 +5,21 @@
 // and two internal lines at 375px:
 //
 //   原词 / 音标（统一 /…/）/ 释义（左对齐、单行省略）/ 发音 / LevelBadge /
-//   收藏星标（实心=已收藏）/ ×N 见过次数（仅我的单词）/ 展开箭头
+//   收藏星标（实心=已收藏）/ 已掌握对勾（实心=已掌握）/ ×N 见过次数（仅我的单词）/
+//   展开箭头
 //
-// The expanded area carries the full meaning, provenance and the row actions
-// (加入我的单词 / 已掌握…); cancelling a favorite is the row star only — one entry
-// per surface. Expansion animates its own height, so the table never reflows
-// column widths when a row opens.
+// The expanded area carries the full meaning and provenance; the row controls
+// own every write: the star is the only favorite toggle and the check is the
+// only 已掌握 toggle (P0-10), so the expanded area no longer carries a text
+// 我已掌握/撤销 button. Expansion animates its own height, so the table never
+// reflows column widths when a row opens.
 //
 // Colour and space come from the design tokens; no new literals are added for
-// rows, star, toolbar or expansion.
+// rows, star, mastered check, toolbar or expansion.
 import { type ReactNode } from 'react';
 import {
+    BadgeCheck,
+    Check,
     ChevronDown,
     ListFilter,
     Search,
@@ -109,9 +113,24 @@ export interface WordRowTestIds {
     level?: string;
     speak?: string;
     star?: string;
+    mastered?: string;
     seen?: string;
     expand?: string;
     detail?: string;
+}
+
+/**
+ * Fixed word-list tint (P0-10 §4): mastered rows green, favourited rows amber,
+ * mastered wins when the legacy data still has both. 我的收藏/已掌握 never set
+ * this — their lists already express the state.
+ */
+export type WordRowTone = 'mastered' | 'favorited';
+
+/** Token-only tint classes; no colour literals are added for row state. */
+export function wordRowToneClass(tone: WordRowTone | undefined): string {
+    if (tone === 'mastered') return 'bg-success/10';
+    if (tone === 'favorited') return 'bg-warning/10';
+    return '';
 }
 
 /** One row: the same fields for every word list and the phrase list. */
@@ -144,6 +163,18 @@ export interface WordTableRow {
      * a favorite); `favoriteLabel` explains why instead of claiming 已收藏.
      */
     favoriteDisabled?: boolean;
+    /**
+     * 已掌握 icon toggle (P0-10): filled check when mastered, and the only
+     * mastery control on every surface. `masteredLabel` names the action
+     * (已掌握 / 取消已掌握); `stopPropagation` keeps the row from expanding.
+     */
+    mastered: boolean;
+    masteredLabel: string;
+    onToggleMastered?: () => void;
+    masteredBusy?: boolean;
+    masteredDisabled?: boolean;
+    /** Fixed-list row tint; 我的收藏/已掌握 pass nothing. */
+    tone?: WordRowTone;
     speakLabel: string;
     onSpeak?: () => void;
     speakDisabled?: boolean;
@@ -221,11 +252,11 @@ export function WordRowActionButton({ action }: { action: WordRowAction }) {
 }
 
 const MOBILE_GRID = 'grid-cols-[minmax(0,1fr)_auto]';
-/** Desktop columns: word · phonetic · meaning · speak · level · star · [seen] · expand. */
+/** Desktop columns: word · phonetic · meaning · speak · level · star · mastered · [seen] · expand. */
+const DESKTOP_GRID_9 =
+    'md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1.7fr)_2.25rem_auto_2.25rem_2.25rem_2.75rem_2.25rem]';
 const DESKTOP_GRID_8 =
-    'md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1.7fr)_2.25rem_auto_2.25rem_2.75rem_2.25rem]';
-const DESKTOP_GRID_7 =
-    'md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1.7fr)_2.25rem_auto_2.25rem_2.25rem]';
+    'md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1.7fr)_2.25rem_auto_2.25rem_2.25rem_2.25rem]';
 
 /** Static class strings (Tailwind only sees literals) for each control column. */
 function controlColumns(showSeen: boolean) {
@@ -233,8 +264,9 @@ function controlColumns(showSeen: boolean) {
         speak: 'md:col-start-4 md:row-start-1',
         level: 'md:col-start-5 md:row-start-1',
         star: 'md:col-start-6 md:row-start-1',
-        seen: showSeen ? 'md:col-start-7 md:row-start-1' : '',
-        expand: showSeen ? 'md:col-start-8 md:row-start-1' : 'md:col-start-7 md:row-start-1',
+        mastered: 'md:col-start-7 md:row-start-1',
+        seen: showSeen ? 'md:col-start-8 md:row-start-1' : '',
+        expand: showSeen ? 'md:col-start-9 md:row-start-1' : 'md:col-start-8 md:row-start-1',
     };
 }
 
@@ -250,7 +282,7 @@ export function WordTable({
 }: WordTableProps) {
     const { t } = useI18n();
     const reduceMotion = useReducedMotion() ?? false;
-    const desktopGrid = showSeen ? DESKTOP_GRID_8 : DESKTOP_GRID_7;
+    const desktopGrid = showSeen ? DESKTOP_GRID_9 : DESKTOP_GRID_8;
     const cols = controlColumns(showSeen);
 
     return (
@@ -271,6 +303,7 @@ export function WordTable({
                     <span>{t('vocab.col.translation')}</span>
                     <span aria-hidden="true" />
                     <span>{t('vocab.col.level')}</span>
+                    <span aria-hidden="true" />
                     <span aria-hidden="true" />
                     {showSeen && <span className="text-right">{t('vocab.col.seen')}</span>}
                     <span aria-hidden="true" />
@@ -320,6 +353,7 @@ function WordTableRowView({
         level: row.testIds?.level ?? `${testIdPrefix}-level`,
         speak: row.testIds?.speak ?? `${testIdPrefix}-speak`,
         star: row.testIds?.star ?? `${testIdPrefix}-star`,
+        mastered: row.testIds?.mastered ?? `${testIdPrefix}-mastered`,
         seen: row.testIds?.seen ?? `${testIdPrefix}-seen`,
         expand: row.testIds?.expand ?? `${testIdPrefix}-expand`,
         detail: row.testIds?.detail ?? `${testIdPrefix}-detail-${row.key}`,
@@ -347,7 +381,13 @@ function WordTableRowView({
 
     return (
         <div data-word={row.word}>
-            <div className="flex items-stretch">
+            {/* The tint lives on the row container so the whole row (including
+                the edit-mode checkbox column) reads the state; hover stays the
+                inner grid's own `hover:bg-state-hover` layer. */}
+            <div
+                className={cn('flex items-stretch', wordRowToneClass(row.tone))}
+                data-row-tone={row.tone ?? 'none'}
+            >
                 {row.selection && (
                     <div className="flex shrink-0 items-center ps-2">
                         <Checkbox
@@ -451,7 +491,8 @@ function WordTableRowView({
                         )}
                     </div>
 
-                    {/* Star + expand: first control line on phones. */}
+                    {/* Star + mastered check + expand: first control line on
+                        phones, own columns from md up (P0-10: 星标 / 对勾 / 展开). */}
                     <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-1 md:contents">
                         <span
                             className={cn('inline-flex', cols.star)}
@@ -476,6 +517,33 @@ function WordTableRowView({
                                     )}
                                     aria-hidden="true"
                                 />
+                            </IconButton>
+                        </span>
+                        <span
+                            className={cn('inline-flex', cols.mastered)}
+                            title={row.masteredLabel}
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <IconButton
+                                size="sm"
+                                ariaLabel={row.masteredLabel}
+                                ariaPressed={row.mastered}
+                                testId={ids.mastered}
+                                disabled={row.masteredBusy || row.masteredDisabled}
+                                loading={row.masteredBusy}
+                                onClick={row.onToggleMastered}
+                            >
+                                {row.mastered ? (
+                                    <BadgeCheck
+                                        className="h-4 w-4 text-success-fg"
+                                        aria-hidden="true"
+                                    />
+                                ) : (
+                                    <Check
+                                        className="h-4 w-4 text-fg-muted"
+                                        aria-hidden="true"
+                                    />
+                                )}
                             </IconButton>
                         </span>
                         {expandable && (
