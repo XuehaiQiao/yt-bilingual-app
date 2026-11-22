@@ -475,8 +475,8 @@
     {
       "id": "P2-05A",
       "file": "TASKS/P2-05A-layout-tables.md",
-      "status": "claimed",
-      "owner": "layout-table-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/components/DiscoverScreen.tsx",
@@ -494,8 +494,8 @@
     {
       "id": "P2-05B",
       "file": "TASKS/P2-05B-layout-marketing.md",
-      "status": "claimed",
-      "owner": "layout-mkt-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/BlogScreen.tsx",
         "frontend/src/components/PublicBlogScreen.tsx",
@@ -504,7 +504,8 @@
         "frontend/src/components/LegalDocument.tsx",
         "frontend/src/i18n/zh-CN.json",
         "frontend/src/i18n/vi-VN.json",
-        "scripts/p2-05b-layout-acceptance.mjs"
+        "scripts/p2-05b-layout-acceptance.mjs",
+        "frontend/src/components/ui/PublicShell.tsx"
       ],
       "shared_writes": [
         "frontend/src/i18n/"

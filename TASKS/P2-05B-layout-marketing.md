@@ -13,6 +13,7 @@
 - `frontend/src/components/PricingScreen.tsx`
 - `frontend/src/components/ResourcesScreen.tsx`
 - `frontend/src/components/LegalDocument.tsx`
+- `frontend/src/components/ui/PublicShell.tsx`（页头/页脚与正文同宽 1200）
 - `frontend/src/i18n/zh-CN.json`
 - `frontend/src/i18n/vi-VN.json`
 - `scripts/p2-05b-layout-acceptance.mjs`（新建）
