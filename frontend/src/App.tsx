@@ -73,9 +73,9 @@ import { PracticeScreen } from './components/PracticeScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { VocabularyBookScreen } from './components/VocabularyBookScreen';
 import { toast, describeApiError } from './lib/toast';
-import { normalizeMasteryWord } from './lib/wordMastery';
+import { selectMyWords } from './lib/myWords';
 import { formatMicroUsd } from './lib/billing';
-import { getMasteredWords, getReviewStats, REVIEW_UI_ENABLED, type ReviewStats } from './lib/review';
+import { getReviewStats, REVIEW_UI_ENABLED, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
 import {
@@ -863,42 +863,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       });
   }, [dataRevision]);
 
-  // Mastered words (`word_states.mastered=1`) participate in the saved-word
-  // count: a mastered word is not a favorite, and legacy rows may still have a
-  // favorite record (specs/005 §已掌握与收藏互斥). Loaded once per account +
-  // language; a failed read keeps the last known set instead of inventing 0.
-  const [masteredWordKeys, setMasteredWordKeys] = useState<Set<string>>(() => new Set());
-  useEffect(() => {
-    if (status !== 'authenticated') {
-      setMasteredWordKeys(new Set());
-      return;
-    }
-    let cancelled = false;
-    getMasteredWords(200, targetLang)
-      .then((data) => {
-        if (cancelled) return;
-        setMasteredWordKeys(new Set(
-          data.words.map((word) => normalizeMasteryWord(word.lemma)).filter(Boolean),
-        ));
-      })
-      .catch(() => {
-        // Keep the last known set: the count never silently drops to a fake value.
-      });
-    return () => { cancelled = true; };
-  }, [status, targetLang, dataRevision]);
-
-  /** Keep the saved-word count correct as words are marked/unmarked. */
-  const handleMasteredWordChange = useCallback((lemma: string, mastered: boolean) => {
-    const key = normalizeMasteryWord(lemma);
-    if (!key) return;
-    setMasteredWordKeys((prev) => {
-      if (prev.has(key) === mastered) return prev;
-      const next = new Set(prev);
-      if (mastered) next.add(key);
-      else next.delete(key);
-      return next;
-    });
-  }, []);
+  // 我的单词 is the favorites list itself (ADR-0001): the saved-word count is
+  // `selectMyWords(favorites).length` everywhere. No mastery subtraction and no
+  // mastered mirror for the count; 已掌握 is an independent list owned by
+  // the word book (`GET /api/review/words?mastered=1`).
 
   // Favorites are persisted one item at a time by the handlers below. The old
   // whole-file PUT path still exists server-side for legacy clients (see
@@ -2330,15 +2298,14 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   );
 
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
-  // The 单词本 badge counts saved words only. Sentence favorites stay in the
-  // store for the by-item API, but the word book neither lists nor exports them.
-  // Mastered words never count, even when a legacy favorite row still exists
-  // (specs/005 §已掌握与收藏互斥) — the top bar, Sidebar and word-book tab then
-  // agree on one number.
+  // The 单词本 badge counts 我的单词: the vocabulary favorites themselves
+  // (ADR-0001). Sentence favorites stay in the store for the by-item API, but
+  // the word book neither lists nor exports them. Count = list length; no
+  // `favorites − mastered` subtraction — the top bar, Sidebar, profile row,
+  // word-book tab and reading button all read this one selector.
   const vocabularyFavoriteCount = useMemo(
-    () => favorites.filter(f => f.type === 'vocabulary'
-      && !masteredWordKeys.has(normalizeMasteryWord(f.en_text))).length,
-    [favorites, masteredWordKeys],
+    () => selectMyWords(favorites).length,
+    [favorites],
   );
 
   const handleTranscriptClick = useCallback((time: number) => {
@@ -4120,7 +4087,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onOpenBook={(bookId) => { setWordLookup(null); openSub({ kind: 'book', bookId }); }}
               onOpenImportedBook={(bookId) => { setWordLookup(null); openSub({ kind: 'imported-book', bookId }); }}
               onRequestLogin={() => onRequestLogin?.()}
-              onMasteredChange={handleMasteredWordChange}
             />,
           );
         default:
@@ -4449,7 +4415,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             sourceContentRef={wordLookup.sourceId || videoId}
             sourceSentenceId={String(wordLookup.start)}
             onRequestLogin={() => onRequestLogin?.()}
-            onMasteredChange={handleMasteredWordChange}
           />
         )}
       </AnimatePresence>
