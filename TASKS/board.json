@@ -620,6 +620,21 @@
       "deps": [
         "P1-09"
       ]
+    },
+    {
+      "id": "P2-06",
+      "file": "TASKS/P2-06-layout-final.md",
+      "status": "merged",
+      "owner": "lead",
+      "write_scope": [
+        "docs/reports/desktop-layout-final-2026-11-23.md",
+        "TASKS/P2-06-layout-final.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-05A",
+        "P2-05B"
+      ]
     }
   ]
 }
