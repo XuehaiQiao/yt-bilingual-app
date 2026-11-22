@@ -118,7 +118,16 @@ def test_import_list_detail_delete_lifecycle(wl_db):
     assert detail["id"] == list_id and detail["name"] == "我的词表"
     assert detail["total"] == 2 and detail["page"] == 1
     assert detail["pageSize"] == 50 and detail["hasMore"] is False
-    assert detail["items"] == [
+    assert [
+        {
+            "word": item["word"],
+            "translation": item["translation"],
+            "phonetic": item["phonetic"],
+            "cefr": item["cefr"],
+            "example": item["example"],
+        }
+        for item in detail["items"]
+    ] == [
         {
             "word": "apple",
             "translation": "苹果",
@@ -133,6 +142,15 @@ def test_import_list_detail_delete_lifecycle(wl_db):
             "cefr": None,  # C2 不在白名单 → 忽略
             "example": None,
         },
+    ]
+    item_ids = [item["id"] for item in detail["items"]]
+    assert all(isinstance(item_id, str) and item_id for item_id in item_ids)
+    assert item_ids == [
+        row["id"]
+        for row in _db_rows(
+            "SELECT id FROM user_wordlist_items WHERE list_id = ? ORDER BY position",
+            (list_id,),
+        )
     ]
 
     assert _detail(client, "does-not-exist").status_code == 404
@@ -157,6 +175,18 @@ def test_guests_are_forbidden_on_every_endpoint(make_client):
         assert _import(guest, [{"word": "apple"}]).status_code == 403
         assert guest.get("/api/wordlists/any-id").status_code == 403
         assert guest.delete("/api/wordlists/any-id").status_code == 403
+        assert (
+            guest.patch("/api/wordlists/any-id", json={"name": "x"}).status_code
+            == 403
+        )
+        assert (
+            guest.request(
+                "DELETE",
+                "/api/wordlists/any-id/items",
+                json={"itemIds": ["any-item"]},
+            ).status_code
+            == 403
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -263,15 +293,19 @@ def test_dedupes_on_nfc_and_casefold_keeping_first_word_form(wl_db):
     assert response.json()["skipped"] == 3
 
     detail = _detail(client, response.json()["list"]["id"]).json()
-    assert detail["items"] == [
-        {
-            "word": "Café",
-            "translation": "第一条",
-            "phonetic": None,
-            "cefr": None,
-            "example": None,
-        }
-    ]
+    assert len(detail["items"]) == 1
+    [item] = detail["items"]
+    assert isinstance(item["id"], str) and item["id"]
+    assert {
+        key: item[key]
+        for key in ("word", "translation", "phonetic", "cefr", "example")
+    } == {
+        "word": "Café",
+        "translation": "第一条",
+        "phonetic": None,
+        "cefr": None,
+        "example": None,
+    }
     rows = _db_rows("SELECT word_key FROM user_wordlist_items")
     assert [row["word_key"] for row in rows] == ["café"]
 
@@ -423,7 +457,230 @@ def test_delete_cascades_items_and_does_not_touch_other_users(wl_db, other_clien
 
 
 # ---------------------------------------------------------------------------
-# 9. 纯函数校验（不经 HTTP）
+# 9. 重命名 + 批量删除条目
+# ---------------------------------------------------------------------------
+
+def _rename(client, list_id, name):
+    return client.patch(f"/api/wordlists/{list_id}", json={"name": name})
+
+
+def _delete_items(client, list_id, item_ids):
+    return client.request(
+        "DELETE", f"/api/wordlists/{list_id}/items", json={"itemIds": item_ids}
+    )
+
+
+def _item_ids(list_id):
+    """词条 id 未出现在 GET 响应里（spec §5 只暴露内容字段），测试直接读库。"""
+    return [
+        row["id"]
+        for row in _db_rows(
+            "SELECT id FROM user_wordlist_items WHERE list_id = ? "
+            "ORDER BY position ASC, rowid ASC",
+            (list_id,),
+        )
+    ]
+
+
+def test_rename_wordlist_success_normalizes_and_is_idempotent(wl_db):
+    client = wl_db
+    created = _import(
+        client, [{"word": "apple"}, {"word": "banana"}], name="旧名"
+    ).json()["list"]
+
+    renamed = _rename(client, created["id"], "  新  名  ")
+    assert renamed.status_code == 200, renamed.text
+    assert renamed.json() == {
+        "list": {
+            "id": created["id"],
+            "name": "新 名",
+            "itemCount": 2,
+            "createdAt": created["createdAt"],
+        }
+    }
+    assert _lists(client)[0]["name"] == "新 名"
+    assert _detail(client, created["id"]).json()["name"] == "新 名"
+    assert _db_rows(
+        "SELECT name FROM user_wordlists WHERE id = ?", (created["id"],)
+    )[0]["name"] == "新 名"
+
+    # 改成自己当前的名字：幂等成功，不触发唯一约束。
+    same = _rename(client, created["id"], "新 名")
+    assert same.status_code == 200
+    assert same.json()["list"]["name"] == "新 名"
+
+    # 80 个字符刚好允许；81 个拒绝在下一个用例。
+    eighty = "长" * 80
+    assert _rename(client, created["id"], eighty).status_code == 200
+    assert _lists(client)[0]["name"] == eighty
+
+
+def test_rename_rejects_duplicate_and_invalid_names(wl_db):
+    client = wl_db
+    first = _import(client, [{"word": "apple"}], name="表一").json()["list"]
+    second = _import(client, [{"word": "banana"}], name="表二").json()["list"]
+
+    duplicate = _rename(client, second["id"], "表一")
+    assert duplicate.status_code == 400
+    assert "已存在" in duplicate.json()["detail"]
+    assert _lists(client)[1]["name"] == "表二"
+
+    for bad in ["", "   ", "长" * 81, 123, None, ["表三"]]:
+        response = _rename(client, first["id"], bad)
+        assert response.status_code == 400, (bad, response.text)
+    # 缺 name 字段也是 400（不是 422）。
+    assert client.patch(f"/api/wordlists/{first['id']}", json={}).status_code == 400
+    assert _lists(client)[0]["name"] == "表一"
+
+
+def test_rename_missing_or_other_users_list_is_404(wl_db, other_client):
+    client = wl_db
+    mine = _import(client, [{"word": "apple"}], name="我的").json()["list"]
+
+    assert _rename(other_client, mine["id"], "偷改").status_code == 404
+    assert _lists(client)[0]["name"] == "我的"
+    assert _rename(client, "does-not-exist", "新名").status_code == 404
+
+
+def test_delete_items_updates_count_and_keeps_remaining(wl_db):
+    client = wl_db
+    created = _import(
+        client,
+        [
+            {"word": "apple"},
+            {"word": "banana"},
+            {"word": "cherry"},
+            {"word": "durian"},
+            {"word": "elderberry"},
+        ],
+        name="删条目",
+    ).json()["list"]
+    list_id = created["id"]
+    ids = _item_ids(list_id)
+
+    response = _delete_items(client, list_id, [ids[1], ids[3]])
+    assert response.status_code == 200, response.text
+    assert response.json() == {"status": "ok", "deleted": 2, "itemCount": 3}
+    assert _lists(client)[0]["itemCount"] == 3
+    detail = _detail(client, list_id).json()
+    assert detail["total"] == 3
+    assert [item["word"] for item in detail["items"]] == [
+        "apple",
+        "cherry",
+        "elderberry",
+    ]
+    assert _db_rows(
+        "SELECT COUNT(*) AS n FROM user_wordlist_items WHERE list_id = ?",
+        (list_id,),
+    )[0]["n"] == 3
+
+    # 重复的 itemId 只删一次，deleted 按去重后计数。
+    again = _delete_items(client, list_id, [ids[0], ids[0]])
+    assert again.status_code == 200
+    assert again.json() == {"status": "ok", "deleted": 1, "itemCount": 2}
+
+    # 删到空表：词表本身保留（不是「删词表」）。
+    rest = _item_ids(list_id)
+    emptied = _delete_items(client, list_id, rest)
+    assert emptied.status_code == 200
+    assert emptied.json() == {"status": "ok", "deleted": 2, "itemCount": 0}
+    assert _lists(client)[0]["itemCount"] == 0
+    empty_detail = _detail(client, list_id)
+    assert empty_detail.status_code == 200
+    assert empty_detail.json()["total"] == 0
+
+
+def test_detail_item_ids_feed_delete_items_directly(wl_db):
+    """GET 详情返回的 id 是字符串，可直接当 ``DELETE /items`` 的 ``itemIds``。"""
+    client = wl_db
+    created = _import(
+        client,
+        [{"word": "apple"}, {"word": "banana"}, {"word": "cherry"}],
+        name="详情 id",
+    ).json()["list"]
+    list_id = created["id"]
+
+    detail = _detail(client, list_id).json()
+    ids = [item["id"] for item in detail["items"]]
+    assert all(isinstance(item_id, str) and item_id for item_id in ids)
+    assert len(set(ids)) == 3
+    assert ids == _item_ids(list_id)  # 与库内顺序一致
+
+    response = _delete_items(client, list_id, ids[:2])
+    assert response.status_code == 200, response.text
+    assert response.json() == {"status": "ok", "deleted": 2, "itemCount": 1}
+
+    remaining = _detail(client, list_id).json()
+    assert remaining["total"] == 1
+    assert [item["word"] for item in remaining["items"]] == ["cherry"]
+    assert remaining["items"][0]["id"] == ids[2]
+    assert _lists(client)[0]["itemCount"] == 1
+
+
+def test_delete_items_validation_leaves_everything_atomic(wl_db):
+    client = wl_db
+    created = _import(
+        client,
+        [{"word": "apple"}, {"word": "banana"}, {"word": "cherry"}],
+        name="原子性",
+    ).json()["list"]
+    list_id = created["id"]
+    ids = _item_ids(list_id)
+    other = _import(client, [{"word": "fig"}], name="另一张").json()["list"]
+    other_ids = _item_ids(other["id"])
+
+    before = _db_rows(
+        "SELECT id FROM user_wordlist_items WHERE list_id = ? ORDER BY position",
+        (list_id,),
+    )
+
+    assert _delete_items(client, list_id, []).status_code == 400
+    assert _delete_items(client, list_id, ids * 167).status_code == 400  # 501 个
+    assert _delete_items(client, list_id, [ids[0], 123]).status_code == 400
+    assert _delete_items(client, list_id, [ids[0], ""]).status_code == 400
+    assert _delete_items(client, list_id, "not-a-list").status_code == 400
+    # 缺 itemIds / 空 body → 400。
+    assert (
+        client.request("DELETE", f"/api/wordlists/{list_id}/items", json={}).status_code
+        == 400
+    )
+    assert client.delete(f"/api/wordlists/{list_id}/items").status_code == 422
+
+    # 部分 id 不存在 → 400，整笔不删（原子性）。
+    missing = _delete_items(client, list_id, [ids[0], "missing-id"])
+    assert missing.status_code == 400
+    assert "整笔未删除" in missing.json()["detail"]
+    # 混入另一张词表的 id → 400，同样整笔不删。
+    foreign = _delete_items(client, list_id, [ids[0], other_ids[0]])
+    assert foreign.status_code == 400
+    assert "整笔未删除" in foreign.json()["detail"]
+
+    after = _db_rows(
+        "SELECT id FROM user_wordlist_items WHERE list_id = ? ORDER BY position",
+        (list_id,),
+    )
+    assert after == before
+    assert _lists(client)[0]["itemCount"] == 3
+    assert _lists(client)[1]["itemCount"] == 1
+
+
+def test_delete_items_missing_or_other_users_list_is_404(wl_db, other_client):
+    client = wl_db
+    created = _import(
+        client, [{"word": "apple"}, {"word": "banana"}], name="我的"
+    ).json()["list"]
+    ids = _item_ids(created["id"])
+
+    assert _delete_items(other_client, created["id"], ids).status_code == 404
+    assert _delete_items(client, "does-not-exist", ["any-id"]).status_code == 404
+    assert _db_rows(
+        "SELECT COUNT(*) AS n FROM user_wordlist_items WHERE list_id = ?",
+        (created["id"],),
+    )[0]["n"] == 2
+
+
+# ---------------------------------------------------------------------------
+# 10. 纯函数校验（不经 HTTP）
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize(

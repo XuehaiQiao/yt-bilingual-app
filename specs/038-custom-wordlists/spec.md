@@ -56,7 +56,7 @@
 |---|---|---|
 | `POST /api/wordlists/import` | `{name?, filename?, items:[{word,translation?,phonetic?,cefr?,example?}]}` ≤5000 | `201 {list:{id,name,itemCount,createdAt}, skipped}`；超过 10 表/5000 行/全无效 400 |
 | `GET /api/wordlists` | — | `200 {lists:[{id,name,itemCount,createdAt}]}` |
-| `GET /api/wordlists/{id}?page=1&pageSize=50&q=` | `page≥1`、`pageSize 1–200` | `200 {id,name,items:[{word,translation,phonetic,cefr,example}],total,page,pageSize,hasMore}` |
+| `GET /api/wordlists/{id}?page=1&pageSize=50&q=` | `page≥1`、`pageSize 1–200` | `200 {id,name,items:[{id,word,translation,phonetic,cefr,example}],total,page,pageSize,hasMore}`；`id` 可直接用于 `DELETE /items` 的 `itemIds` |
 | `DELETE /api/wordlists/{id}` | — | `200 {status:"ok",deleted:true}`；不存在 404 |
 | `PATCH /api/wordlists/{id}` | `{name}`（≤80、同用户唯一，重名 400） | `200 {list:{id,name,itemCount,createdAt}}` |
 | `DELETE /api/wordlists/{id}/items` | `{itemIds:[...]}`（1–500，全部属于该表） | `200 {status:"ok",deleted:N,itemCount:M}`；越权/不存在 404 |

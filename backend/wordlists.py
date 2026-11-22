@@ -10,6 +10,8 @@
   ``BEGIN IMMEDIATE`` 事务里；任何一步失败整笔回滚，绝不落半张表。
 - **删除级联**：删除词表时显式先删条目再删表（不依赖连接是否开
   ``PRAGMA foreign_keys``；迁移里的 ``ON DELETE CASCADE`` 是第二道保险）。
+- **编辑**：重命名（同用户唯一）与按 id 批量删条目都是整笔事务；删条目先
+  校验全部 id 都属于该词表再删，删后重新统计 ``item_count``（不靠减法推算）。
 - **去重键**：``NFC + casefold``（保留第一条的原词形）。``café`` / ``CAFÉ`` /
   分解写法的 ``cafe\u0301`` 视为同一个词。
 - **释义快照不在这里**：加入复习时由 ``srs.add_word(definition=...)`` 写入
@@ -35,6 +37,7 @@ MAX_ITEMS = 5000
 MAX_NAME_LENGTH = 80
 MAX_WORD_LENGTH = 40
 MAX_WORD_TOKENS = 5
+MAX_DELETE_ITEMS = 500
 DEFAULT_NAME = "导入词表"
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
@@ -219,6 +222,26 @@ def _sanitize_filename(filename) -> str | None:
     base = _WHITESPACE_RE.sub(" ", base)
     base = "".join(ch for ch in base if ch.isprintable()).strip()
     return base[:255] or None
+
+
+def normalize_name(raw) -> str:
+    """校验并规范词表名称（重命名用）：空白折叠、去控制字符、≤80 字符。
+
+    空名/非字符串/超长 → :class:`WordlistValidationError`（路由 400）。
+    与导入的 ``_base_name`` 不同：导入是「宽松截断」，重命名是用户显式输入，
+    超长必须报错而不是悄悄截掉。
+    """
+    if not isinstance(raw, str):
+        raise WordlistValidationError("词表名称必须是字符串。")
+    value = _WHITESPACE_RE.sub(" ", raw.strip())
+    value = "".join(ch for ch in value if ch.isprintable()).strip()
+    if not value:
+        raise WordlistValidationError("词表名称不能为空。")
+    if len(value) > MAX_NAME_LENGTH:
+        raise WordlistValidationError(
+            f"词表名称最多 {MAX_NAME_LENGTH} 个字符（收到 {len(value)} 个）。"
+        )
+    return value
 
 
 def _base_name(name, filename) -> str:
@@ -435,8 +458,9 @@ def get_wordlist(
 ) -> dict:
     """词表详情（分页 + 搜索）。
 
-    - 返回 ``{id,name,items,total,page,pageSize,hasMore}``；``items`` 只含
-      ``word/translation/phonetic/cefr/example``（spec §5）；
+    - 返回 ``{id,name,items,total,page,pageSize,hasMore}``；``items`` 每项含
+      ``id/word/translation/phonetic/cefr/example``（``id`` 可直接用于
+      ``DELETE /api/wordlists/{id}/items`` 的 ``itemIds``）；
     - ``q`` 同时匹配单词（``word_key``）与释义（大小写不敏感子串）；
     - 词表不存在或不属于当前用户 → :class:`WordlistNotFound`（越权不泄露
       存在性）。
@@ -480,7 +504,7 @@ def get_wordlist(
         )
         offset = (page - 1) * page_size
         rows = conn.execute(
-            "SELECT word, translation, phonetic, cefr, example "
+            "SELECT id, word, translation, phonetic, cefr, example "
             f"FROM user_wordlist_items WHERE {where} "
             "ORDER BY position ASC, rowid ASC LIMIT ? OFFSET ?",
             (*args, page_size, offset),
@@ -496,6 +520,7 @@ def get_wordlist(
         "name": row["name"],
         "items": [
             {
+                "id": item["id"],
                 "word": item["word"],
                 "translation": item["translation"],
                 "phonetic": item["phonetic"],
@@ -551,3 +576,167 @@ def delete_wordlist(user_id: str, list_id: str) -> dict:
     finally:
         conn.close()
     return {"deleted": True}
+
+
+# ---------------------------------------------------------------------------
+# 重命名
+# ---------------------------------------------------------------------------
+
+def rename_wordlist(user_id: str, list_id: str, name) -> dict:
+    """重命名词表；返回 ``{"list": {id,name,itemCount,createdAt}}``。
+
+    - ``name`` 走 :func:`normalize_name`：空/非字符串/>80 字符 → 400；
+    - 同用户重名 → :class:`WordlistValidationError`（400）；改成当前同名
+      视为成功（幂等，不触发唯一约束）；
+    - 词表不存在或不属于当前用户 → :class:`WordlistNotFound`（404）；
+    - 只改 ``name``，不动条目与 ``created_at``。
+    """
+    user_id = _require_user_id(user_id)
+    new_name = normalize_name(name)
+    if not isinstance(list_id, str) or not list_id.strip():
+        raise WordlistNotFound("词表不存在。")
+    list_id = list_id.strip()
+
+    conn = _connect()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT id, name, item_count, created_at FROM user_wordlists "
+            "WHERE id = ? AND user_id = ?",
+            (list_id, user_id),
+        ).fetchone()
+        if row is None:
+            raise WordlistNotFound("词表不存在。")
+        if new_name != row["name"]:
+            duplicate = conn.execute(
+                "SELECT 1 FROM user_wordlists "
+                "WHERE user_id = ? AND name = ? AND id <> ?",
+                (user_id, new_name, list_id),
+            ).fetchone()
+            if duplicate is not None:
+                raise WordlistValidationError(f"同名词表已存在：{new_name}")
+            conn.execute(
+                "UPDATE user_wordlists SET name = ? WHERE id = ? AND user_id = ?",
+                (new_name, list_id, user_id),
+            )
+        conn.commit()
+    except sqlite3.IntegrityError as exc:
+        # 先查后写之间被并发改名抢先时，唯一约束兜底。
+        conn.rollback()
+        raise WordlistValidationError(f"同名词表已存在：{new_name}") from exc
+    except sqlite3.OperationalError as exc:
+        conn.rollback()
+        _translate_db_error(exc)
+        raise
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+    return {
+        "list": {
+            "id": row["id"],
+            "name": new_name,
+            "itemCount": int(row["item_count"] or 0),
+            "createdAt": int(row["created_at"] or 0),
+        }
+    }
+
+
+# ---------------------------------------------------------------------------
+# 批量删除条目
+# ---------------------------------------------------------------------------
+
+def _require_item_ids(item_ids) -> list[str]:
+    """校验 ``itemIds``：1–500 个非空字符串；同 id 去重（保留首次顺序）。
+
+    去重后仍按「原始个数」判 1–500（一次请求最多 500 个 id，重复不放大配额）。
+    非法 → :class:`WordlistValidationError`（400）。
+    """
+    if item_ids is None:
+        raise WordlistValidationError("itemIds 不能为空。")
+    if not isinstance(item_ids, (list, tuple)):
+        raise WordlistValidationError("itemIds 必须是数组。")
+    if not item_ids:
+        raise WordlistValidationError("itemIds 不能为空。")
+    if len(item_ids) > MAX_DELETE_ITEMS:
+        raise WordlistValidationError(
+            f"单次最多删除 {MAX_DELETE_ITEMS} 个词条（收到 {len(item_ids)} 个）。"
+        )
+    unique: list[str] = []
+    seen: set[str] = set()
+    for raw in item_ids:
+        if not isinstance(raw, str) or not raw.strip():
+            raise WordlistValidationError("itemIds 必须是非空字符串数组。")
+        item_id = raw.strip()
+        if item_id not in seen:
+            seen.add(item_id)
+            unique.append(item_id)
+    return unique
+
+
+def delete_wordlist_items(user_id: str, list_id: str, item_ids) -> dict:
+    """按 id 批量删除词表条目（整笔事务），并同步 ``item_count``。
+
+    - 词表不存在或不属于当前用户 → :class:`WordlistNotFound`（404）；
+    - ``itemIds`` 1–500 个且**全部属于该词表**，否则 400 且整笔不删；不区分
+      「不存在」与「属于别的词表」，避免泄露其它词表的存在性；
+    - 删除后重新 ``COUNT(*)`` 回写 ``item_count``（不信 ``旧值 - N``）；
+    - 返回 ``{status:"ok",deleted:N,itemCount:M}``；删到空表时词表仍保留。
+    """
+    user_id = _require_user_id(user_id)
+    item_ids = _require_item_ids(item_ids)
+    if not isinstance(list_id, str) or not list_id.strip():
+        raise WordlistNotFound("词表不存在。")
+    list_id = list_id.strip()
+
+    placeholders = ",".join("?" for _ in item_ids)
+    conn = _connect()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT 1 FROM user_wordlists WHERE id = ? AND user_id = ?",
+            (list_id, user_id),
+        ).fetchone()
+        if row is None:
+            raise WordlistNotFound("词表不存在。")
+        found = {
+            item["id"]
+            for item in conn.execute(
+                "SELECT id FROM user_wordlist_items "
+                f"WHERE list_id = ? AND id IN ({placeholders})",
+                (list_id, *item_ids),
+            )
+        }
+        if len(found) != len(item_ids):
+            raise WordlistValidationError(
+                f"有 {len(item_ids) - len(found)} 个词条不存在或不属于该词表"
+                "（整笔未删除）。"
+            )
+        conn.execute(
+            "DELETE FROM user_wordlist_items "
+            f"WHERE list_id = ? AND id IN ({placeholders})",
+            (list_id, *item_ids),
+        )
+        item_count = int(
+            conn.execute(
+                "SELECT COUNT(*) AS n FROM user_wordlist_items WHERE list_id = ?",
+                (list_id,),
+            ).fetchone()["n"]
+            or 0
+        )
+        conn.execute(
+            "UPDATE user_wordlists SET item_count = ? WHERE id = ? AND user_id = ?",
+            (item_count, list_id, user_id),
+        )
+        conn.commit()
+    except sqlite3.OperationalError as exc:
+        conn.rollback()
+        _translate_db_error(exc)
+        raise
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+    return {"status": "ok", "deleted": len(item_ids), "itemCount": item_count}
