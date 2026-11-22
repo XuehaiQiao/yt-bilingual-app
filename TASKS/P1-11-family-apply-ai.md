@@ -12,6 +12,7 @@
 - `docs/reports/word-family-ai-audit/batch-*.json`（436 族结果）
 - `scripts/build_word_families.py`（当前 17 blacklist + 22 allowlist）
 - `content/wordlist/word-families.v1.json`
+- `content/wordlist/NOTICE.md`（同步数据统计）
 
 ## 变更
 - **trim 13 条**：删除指定成员（及其所有边）— digitalis、diligence/diligent、indispensable 组、venter/ventral、ostentation 组、pugnacious/pugnacity、serviceability 组、livery、limpid/limpidity、entrancement、pager、angler、frostian
@@ -24,6 +25,7 @@
 - `scripts/build_word_families.py`
 - `scripts/tests/test_build_word_families.py`
 - `content/wordlist/word-families.v1.json`
+- `content/wordlist/NOTICE.md`（同步数据统计）
 - `backend/tests/test_word_family.py`
 - `specs/041-word-family-list/spec.md`
 - `docs/reports/word-family-ai-audit-summary-2026-11-23.md`
