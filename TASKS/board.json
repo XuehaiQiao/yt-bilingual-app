@@ -232,7 +232,6 @@
         "frontend/src/lib/review.ts",
         "scripts/backfill_mastered_definitions.py",
         "scripts/tests/test_backfill_mastered_definitions.py",
-        "specs/005-favorites-export/spec.md",
         "specs/013-review-engine/spec.md"
       ],
       "shared_writes": [],

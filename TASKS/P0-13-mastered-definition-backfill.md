@@ -20,7 +20,7 @@
 - `frontend/src/lib/review.ts`（SetWordMasteredInput 加 definition）
 - `scripts/backfill_mastered_definitions.py`（新建）
 - `scripts/tests/test_backfill_mastered_definitions.py`（新建）
-- `specs/005-favorites-export/spec.md`、`specs/013-review-engine/spec.md`
+- `specs/013-review-engine/spec.md`（P0-12 独占 specs/005；本卡不碰）
 
 ## read_only
 - `ADR/0001`、`docs/data-map.md`、`data/backups/`（只读来源）
