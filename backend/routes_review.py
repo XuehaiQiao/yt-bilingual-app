@@ -99,6 +99,8 @@ class SetMasteredRequest(BaseModel):
     )
     mastered: object = None
     source: object = None
+    # P0-13：标记已掌握时可选带上行内释义快照（只填空、不覆盖；撤销不写）。
+    definition: object = None
 
 
 # ---------------------------------------------------------------------------
@@ -214,6 +216,7 @@ def set_review_word_mastered(payload: SetMasteredRequest, request: Request):
             payload.mastered,
             now=srs.now_ms(),
             source=payload.source,
+            definition=payload.definition,
         )
     except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
         _raise_review_error(exc)

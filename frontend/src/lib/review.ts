@@ -232,6 +232,12 @@ export interface SetWordMasteredInput {
     mastered: boolean;
     targetLang?: string;
     source?: AddWordSource;
+    /**
+     * P0-13: meaning snapshot captured when the word is marked mastered. The
+     * backend writes it only when `word_states.definition` is still empty and
+     * never on `mastered=false`, so undo cannot overwrite an existing snapshot.
+     */
+    definition?: string;
 }
 
 export interface SetWordMasteredResult {

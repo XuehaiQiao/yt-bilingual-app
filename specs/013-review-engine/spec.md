@@ -66,6 +66,14 @@
 - 新增列 `definition TEXT NULL`：用户提供的释义快照（来自自定义词表/收藏），**不覆盖已有值**。
 - 复习队列/词列表的公开 `word` 形状新增 `definition`；复习卡优先显示它，缺失才调 `/api/define`。
 - 系统词典释义不回写该列（快照只属于用户数据）。
+- **标记已掌握时也写快照（P0-13）**：`PATCH /api/review/words` 接受可选 `definition`；
+  **仅当 `mastered=true` 且现有值为空（NULL / 空白）时写入**，已有快照不覆盖，
+  `mastered=false` 不写；响应 `word.definition` 返回当前快照。旧库（未跑 0029）
+  带 `definition` 的 PATCH 返回 503，不静默丢数据。
+- **存量回填（P0-13）**：`scripts/backfill_mastered_definitions.py` 从 reconcile 备份
+  （`data/backups/favorites-*.json`，只读）找回原收藏 `zh_text` 的中文释义，默认
+  dry-run 只列清单；`--apply --yes --user-id` 先写备份 JSON + JSONL 审计，再只填空、
+  不覆盖；`--check` 巡检 `mastered=1 AND definition 空` 为 0；`--rollback` 可恢复。
 
 #### 已掌握（v1.1 任务 2，迁移 `0027_review_mastered`）
 
@@ -112,13 +120,13 @@
 | `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `200 {targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, streakDays}`；「今日」按 UTC 日界 |
 | `GET /api/review/words?state=&targetLang=&limit=` | `state` 可逗号分隔（`new/learning/review/relearning/suspended`）；省略=|不过滤 | `200 {targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序；非法 state **400** |
 | `GET /api/review/suspended?limit=100&targetLang=` | `limit` 1–200（默认 100）；省略 `targetLang` = 全部语言 | `200 {targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序、`id` 兜底；`total` 为不分页总数 |
-| `PATCH /api/review/words` | `{lemma, targetLang?, mastered: boolean, source?}` | `200 {status:"ok", word}`；词不存在则创建（等价 POST），已存在只改 `mastered`，幂等；`mastered=true` 时同时把词从队列移出 |
+| `PATCH /api/review/words` | `{lemma, targetLang?, mastered: boolean, source?, definition?}` | `200 {status:"ok", word}`；词不存在则创建（等价 POST），已存在只改 `mastered`，幂等；`mastered=true` 时把词从队列移出，并在 `definition` 为空时写入释义快照（已有快照不覆盖；`mastered=false` 不写） |
 | `GET /api/review/words?mastered=&targetLang=&limit=` | `mastered` **只接受 `0` / `1`**（省略 = 不过滤，返回全部词）；`targetLang` 省略 = 全部语言；`limit` 1–200（默认 100，只截断返回列表，**不提供分页/offset**） | `200 {targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序、`id` 兜底；`total` 为过滤后总数（不受 `limit` 影响）；`mastered=1` 即「已掌握」列表 |
 | `POST /api/review/suspend` | `{lemma, targetLang?}` | `200 {status:"ok", suspended:true, word}`；不存在 **404**；重复调用幂等 |
 | `DELETE /api/review/suspend?lemma=&targetLang=`（也接受 JSON body） | — | `200 {status:"ok", suspended:false, word}`；不存在 **404** |
 
-`word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, mastered, sources:[{contentRef,sentenceId,createdAt}]}`。
-队列项额外带 `sources`，不返回释义（前端需要时再调 `/api/define`，语言由 `targetLang` 决定）。
+`word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, mastered, definition, sources:[{contentRef,sentenceId,createdAt}]}`。
+`definition` 是用户释义快照，可为 `null`；复习卡优先显示它，缺失才调 `/api/define`（语言由 `targetLang` 决定）。
 
 错误语义：数据库未跑 `0006` 迁移时返回 **503**（`detail` 提示先 `alembic upgrade head`），不静默 500。
 
@@ -165,6 +173,8 @@
 
 - [x] 队列排除 `mastered=1`；`stats.masteredWords` 与「已掌握」列表数量一致。
 - [x] `PATCH /api/review/words` 幂等：同词两次 `mastered=true` 只一条行；`mastered=false` 可撤销。
+- [x] （P0-13）PATCH 可选 `definition`：仅 `mastered=true` 且现有值为空时写入；再次标记不覆盖；撤销不写；响应/`GET ?mastered=1` 都返回该快照；旧库带释义 503。
+- [x] （P0-13）存量回填脚本：dry-run 零写入并列出 4 条 lemma/原 `zh_text`；apply 备份+审计且只填空；`--check` 空释义=0；`--rollback` 幂等恢复。
 - [x] `GET /api/review/words?mastered=1` 能列出已掌握词、撤销后消失；游客 403；`mastered` 非 0/1 返回 400；`total` 不受 `limit` 影响。
 - [x] 加词入口：词条浮层与收藏行都能加词并带来源；重复点击不重复建行；失败可重试。
 

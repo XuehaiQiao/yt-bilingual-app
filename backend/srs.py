@@ -702,6 +702,7 @@ def set_mastered(
     mastered: bool,
     now=None,
     source=None,
+    definition=None,
 ) -> dict:
     """设置 / 撤销「已掌握」标记（upsert，幂等）。
 
@@ -710,10 +711,15 @@ def set_mastered(
     - 已存在：**只改标记**，不碰 FSRS 参数 / ``reps`` / ``due_at``（撤销已掌握
       不重置复习进度）；
     - 同一个值重复调用幂等：不新建行、不改字段；
-    - ``source`` 可选，形状同 :func:`add_word`，用于记录标记来源。
+    - ``source`` 可选，形状同 :func:`add_word`，用于记录标记来源；
+    - ``definition`` 可选（P0-13）：标记已掌握时保存行内中文释义快照，**仅当
+      现有值为空（NULL / 空白）时写入**，已有快照绝不覆盖；``mastered=false``
+      时即使传了也不写。库未跑 ``0029_word_state_definition`` 时，带
+      ``definition`` 抛 :class:`ReviewUnavailable`（路由 503），不静默丢数据。
 
-    返回词字典（含 ``sources`` 与 ``created``）。库未跑 ``0027_review_mastered``
-    迁移时抛 :class:`ReviewUnavailable`（路由 503），不静默吞掉标记。
+    返回词字典（含 ``sources`` / ``definition`` 与 ``created``）。库未跑
+    ``0027_review_mastered`` 迁移时抛 :class:`ReviewUnavailable`（路由 503），
+    不静默吞掉标记。
     """
     user_id = _require_user_id(user_id)
     lemma_key = normalize_lemma(lemma)
@@ -725,6 +731,7 @@ def set_mastered(
     else:
         raise ValueError("mastered 必须是布尔值。")
     normalized_source = normalize_source(source)
+    definition_value = _normalize_definition(definition)
     now_value = _coerce_ms(now)
 
     conn = _connect()
@@ -734,6 +741,12 @@ def set_mastered(
             raise ReviewUnavailable(
                 "词状态表缺少 mastered 列（未跑 0027_review_mastered 迁移）。"
                 "请先运行 `backend/venv/bin/alembic upgrade head`。"
+            )
+        has_definition = _has_definition(conn)
+        if definition_value is not None and not has_definition:
+            raise ReviewUnavailable(
+                "词状态表缺少 definition 列（未跑 0029_word_state_definition "
+                "迁移）。请先运行 `backend/venv/bin/alembic upgrade head`。"
             )
         row = _fetch_word(conn, user_id, lemma_key, lang)
         created = False
@@ -757,6 +770,15 @@ def set_mastered(
                 (flag, row["id"]),
             )
             row = _fetch_word(conn, user_id, lemma_key, lang)
+        if flag == 1 and definition_value is not None:
+            # 只填空值：已有用户释义快照（词表/收藏/此前标记）优先，不覆盖。
+            current = row[DEFINITION_COLUMN] if has_definition else None
+            if not (isinstance(current, str) and current.strip()):
+                conn.execute(
+                    "UPDATE word_states SET definition = ? WHERE id = ?",
+                    (definition_value, row["id"]),
+                )
+                row = _fetch_word(conn, user_id, lemma_key, lang)
         if normalized_source is not None:
             _insert_source(conn, row["id"], normalized_source, now_value)
         word = _row_to_word(row)

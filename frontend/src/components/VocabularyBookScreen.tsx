@@ -672,9 +672,9 @@ export function VocabularyBookScreen({
     };
 
     /**
-     * Remember the meaning captured at mark time. This is a session overlay for
-     * 已掌握 rows whose server `definition` snapshot is still null (PATCH does
-     * not take a definition; the GET snapshot wins whenever it exists).
+     * Remember the meaning captured at mark time. P0-13 persists it through the
+     * PATCH `definition` snapshot, while this session overlay keeps the row
+     * readable immediately (the refreshed GET snapshot wins when it lands).
      */
     const rememberMasteredSnapshot = (input: {
         lemma: string;
@@ -1088,6 +1088,11 @@ export function VocabularyBookScreen({
                 mastered: next,
                 targetLang,
                 source: { contentRef: input.listId },
+                // P0-13: snapshot the row's meaning on mark (only when known);
+                // the backend fills an empty definition and never overwrites.
+                ...(next && input.translation?.trim()
+                    ? { definition: input.translation.trim() }
+                    : {}),
             });
             // The PATCH response is authoritative for the post-write mark.
             const masteredNow = result.word.mastered === true;
@@ -1203,6 +1208,9 @@ export function VocabularyBookScreen({
                 mastered: next,
                 targetLang,
                 source: reviewSourceFor(fav),
+                // P0-13: favorite rows keep IPA in zh_text; snapshot only the
+                // meaning part (same split the row displays), never the IPA.
+                ...(next && meaning ? { definition: meaning } : {}),
             });
             // The PATCH response is authoritative for the post-write mark.
             const masteredNow = result.word.mastered === true;

@@ -577,10 +577,12 @@ def test_restore_accepts_json_body(review_db):
 # 8. 已掌握（mastered，specs/013 v1.1 / 迁移 0027）
 # ---------------------------------------------------------------------------
 
-def _master(client, lemma, mastered, target="zh-CN", source=None):
+def _master(client, lemma, mastered, target="zh-CN", source=None, definition=None):
     body = {"lemma": lemma, "targetLang": target, "mastered": mastered}
     if source is not None:
         body["source"] = source
+    if definition is not None:
+        body["definition"] = definition
     return client.patch("/api/review/words", json=body)
 
 
@@ -1109,3 +1111,99 @@ def test_definition_requires_0029_migration(client, clock):
     # definition 形状非法 → 400（不是 500）。
     invalid = _add(client, "another", definition=123)
     assert invalid.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# 8b. 标记已掌握时的释义快照（P0-13 / 0029）
+# ---------------------------------------------------------------------------
+
+def test_patch_mastered_snapshots_definition_only_when_empty(review_db, clock):
+    """PATCH 可选 definition：仅填空、不覆盖；撤销不写；响应/列表都返回快照。"""
+    client = review_db
+    clock["now"] = NOW
+
+    # 词不存在：PATCH mastered=true 建行，同时写入释义快照。
+    created = _master(
+        client, "Affordability", True, definition="支付能力；负担能力；可购性"
+    )
+    assert created.status_code == 200, created.text
+    word = created.json()["word"]
+    assert word["mastered"] is True
+    assert word["definition"] == "支付能力；负担能力；可购性"
+    assert _db_rows(
+        "SELECT definition FROM word_states WHERE lemma = 'affordability'"
+    )[0]["definition"] == "支付能力；负担能力；可购性"
+
+    # 已掌握行再次标记（带不同释义）：不覆盖已有快照。
+    again = _master(client, "affordability", True, definition="另一个释义")
+    assert again.status_code == 200, again.text
+    assert again.json()["word"]["definition"] == "支付能力；负担能力；可购性"
+    assert _db_rows(
+        "SELECT definition FROM word_states WHERE lemma = 'affordability'"
+    )[0]["definition"] == "支付能力；负担能力；可购性"
+
+    # 撤销已掌握（即使带释义）不写快照。
+    undone = _master(client, "affordability", False, definition="撤销时的释义")
+    assert undone.status_code == 200, undone.text
+    assert undone.json()["word"]["definition"] == "支付能力；负担能力；可购性"
+    assert _db_rows(
+        "SELECT definition FROM word_states WHERE lemma = 'affordability'"
+    )[0]["definition"] == "支付能力；负担能力；可购性"
+
+    # 已掌握列表按同一份快照返回，页面释义列不丢。
+    listed = client.get("/api/review/words", params={"mastered": "1"}).json()
+    assert listed["total"] == 0  # 刚撤销，已掌握列表为空
+    remastered = _master(client, "affordability", True)
+    assert remastered.json()["word"]["definition"] == "支付能力；负担能力；可购性"
+    listed = client.get("/api/review/words", params={"mastered": "1"}).json()
+    assert listed["words"][0]["definition"] == "支付能力；负担能力；可购性"
+
+    # 没有释义的标记保持 null，不伪造空串。
+    plain = _master(client, "plain", True)
+    assert plain.json()["word"]["definition"] is None
+    assert _db_rows(
+        "SELECT definition FROM word_states WHERE lemma = 'plain'"
+    )[0]["definition"] is None
+
+
+def test_patch_mastered_definition_validation(review_db):
+    """definition 形状非法 → 400（与 POST 口径一致）；空白视为未提供。"""
+    client = review_db
+    invalid = _master(client, "bad", True, definition=123)
+    assert invalid.status_code == 400
+    assert _db_rows("SELECT COUNT(*) AS n FROM word_states")[0]["n"] == 0
+
+    blank = _master(client, "blank", True, definition="   ")
+    assert blank.status_code == 200, blank.text
+    assert blank.json()["word"]["definition"] is None
+
+
+def test_patch_mastered_definition_requires_0029_migration(client, clock):
+    """库停在 0028：不带释义的标记照常；带释义 503 且不产生半写入。"""
+    assert_alembic_ok(
+        run_alembic(config.AUTH_DB_PATH, "upgrade", "0028_user_wordlists"),
+        "upgrade 0028",
+    )
+    clock["now"] = NOW
+    assert _master(client, "olddb", True).status_code == 200
+    assert _master(client, "olddb", True).json()["word"]["definition"] is None
+
+    blocked = _master(client, "olddb", True, definition="旧库释义")
+    assert blocked.status_code == 503
+    assert "0029_word_state_definition" in blocked.json()["detail"]
+    # definition 列不存在，没有半写入；标记本身也不被这次失败请求改写。
+    assert _db_rows(
+        "SELECT mastered FROM word_states WHERE lemma = 'olddb'"
+    )[0]["mastered"] == 1
+
+    # 新词 + definition 在旧库同样拒绝，且不新建行。
+    blocked_new = _master(client, "brand-new", True, definition="旧库释义")
+    assert blocked_new.status_code == 503
+    assert _db_rows("SELECT COUNT(*) AS n FROM word_states")[0]["n"] == 1
+
+    assert_alembic_ok(
+        run_alembic(config.AUTH_DB_PATH, "upgrade", "head"), "upgrade head"
+    )
+    filled = _master(client, "olddb", True, definition="旧库释义")
+    assert filled.status_code == 200, filled.text
+    assert filled.json()["word"]["definition"] == "旧库释义"
