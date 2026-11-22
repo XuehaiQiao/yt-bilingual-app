@@ -58,6 +58,8 @@
 | `GET /api/wordlists` | — | `200 {lists:[{id,name,itemCount,createdAt}]}` |
 | `GET /api/wordlists/{id}?page=1&pageSize=50&q=` | `page≥1`、`pageSize 1–200` | `200 {id,name,items:[{word,translation,phonetic,cefr,example}],total,page,pageSize,hasMore}` |
 | `DELETE /api/wordlists/{id}` | — | `200 {status:"ok",deleted:true}`；不存在 404 |
+| `PATCH /api/wordlists/{id}` | `{name}`（≤80、同用户唯一，重名 400） | `200 {list:{id,name,itemCount,createdAt}}` |
+| `DELETE /api/wordlists/{id}/items` | `{itemIds:[...]}`（1–500，全部属于该表） | `200 {status:"ok",deleted:N,itemCount:M}`；越权/不存在 404 |
 
 `POST /api/review/words` 扩展可选 `definition`：写入 `word_states.definition`（仅当为空时写入，不覆盖用户数据）。
 队列/词列表的公开 `word` 形状新增 `definition`（可为 null）。
@@ -82,6 +84,6 @@
 ## 8. 非目标（v1）
 
 - 不解析 Anki `.apkg`（zip + SQLite）；用「导出纯文本」TSV 覆盖。
-- 不做词表编辑/重命名/合并（删除后重新导入）。
+- 不自定义词表**重命名**与**勾选删除词条**之外的行内编辑（不支持逐条改词/加词/排序）。
 - 不在导入时自动 AI 补释义（可选后续，需计费与确认）。
 - 不做导入历史/版本。
