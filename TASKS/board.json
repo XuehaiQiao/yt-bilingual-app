@@ -132,8 +132,8 @@
     {
       "id": "P0-08",
       "file": "TASKS/P0-08-mastered-scripts-sync.md",
-      "status": "claimed",
-      "owner": "sync2-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "scripts/mastered-tab-acceptance.mjs",
         "scripts/mastered-filter-acceptance.mjs"
