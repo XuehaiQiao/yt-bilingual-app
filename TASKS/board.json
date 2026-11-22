@@ -100,7 +100,9 @@
         "frontend/src/lib/useReadingAnalysis.ts",
         "frontend/src/components/reading/ReadingSurface.tsx",
         "frontend/src/components/ReaderScreen.tsx",
-        "frontend/src/i18n/"
+        "frontend/src/i18n/",
+        "backend/tests/",
+        "scripts/p0-04-analysis-acceptance.mjs"
       ],
       "shared_writes": [
         "frontend/src/i18n/"

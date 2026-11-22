@@ -18,7 +18,9 @@
 - `frontend/src/lib/useReadingAnalysis.ts`
 - `frontend/src/components/reading/ReadingSurface.tsx`
 - `frontend/src/components/ReaderScreen.tsx`
-- `frontend/src/i18n/*.json`（**shared_writes，仅 Integrator**）
+- `frontend/src/i18n/*.json`（**shared_writes，本卡独占 lease**）
+- `backend/tests/`（新增/修改测试）
+- `scripts/p0-04-analysis-acceptance.mjs`（新增 Playwright 验收，根 scripts）
 
 ## read_only
 - `specs/028-teaching-analysis/spec.md`、`specs/039-reader-surface/spec.md`
