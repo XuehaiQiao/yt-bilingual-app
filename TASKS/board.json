@@ -343,6 +343,19 @@
       "deps": [
         "P0-16"
       ]
+    },
+    {
+      "id": "P1-03",
+      "file": "TASKS/P1-03-word-family-audit.md",
+      "status": "claimed",
+      "owner": "family-audit-impl",
+      "write_scope": [
+        "scripts/word_family_audit.py",
+        "scripts/tests/test_word_family_audit.py",
+        "docs/reports/word-family-audit-2026-11-23.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
