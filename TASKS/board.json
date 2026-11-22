@@ -242,8 +242,8 @@
     {
       "id": "P0-14",
       "file": "TASKS/P0-14-wordlist-edit-mode.md",
-      "status": "claimed",
-      "owner": "edit-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/components/VocabularyRows.tsx",
