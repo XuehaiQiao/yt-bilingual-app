@@ -37,6 +37,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useI18n } from '../i18n/I18nProvider';
 import { cn } from '../lib/cn';
+import type { LemmaListItem } from '../lib/wordlists';
 import { Button, IconButton } from './ui/Button';
 import { Checkbox } from './ui/Checkbox';
 import { Menu, type MenuItem } from './ui/Menu';
@@ -414,6 +415,183 @@ export function WordTable({
                         selectionMode={selectable}
                     />
                 ))}
+            </div>
+        </div>
+    );
+}
+
+// ── 词形（CEFR 10k lemma）只读表 ─────────────────────────────────────────────
+//
+// specs/040 adds one read-only surface: lemma / phonetic / meaning / CEFR /
+// form count / expand. It deliberately reuses the row card + expansion recipe
+// but none of the write controls (no star, no 已掌握 check, no 编辑/批量/导出,
+// no per-row actions), so it is a separate small table instead of a
+// `WordTable` mode. The whole row is the expand hot zone; expansion lists every
+// form mapped to that lemma, straight from the server.
+
+export interface LemmaTableProps {
+    rows: readonly LemmaListItem[];
+    /** Lemmas whose form list is open (owned by the screen; resets on page/q). */
+    expanded: ReadonlySet<string>;
+    onToggleExpand: (lemma: string) => void;
+    className?: string;
+    listTestId?: string;
+}
+
+/** Desktop: lemma · phonetic · meaning · CEFR · form count · expand. */
+const LEMMA_DESKTOP_GRID =
+    'md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1.7fr)_auto_auto_2.25rem]';
+
+export function LemmaTable({
+    rows,
+    expanded,
+    onToggleExpand,
+    className,
+    listTestId = 'vocab-lemma-list',
+}: LemmaTableProps) {
+    const { t } = useI18n();
+
+    return (
+        <div
+            data-testid={listTestId}
+            role="group"
+            aria-label={t('vocab.tab.lemma')}
+            className={cn(className, 'overflow-hidden')}
+        >
+            <div
+                data-testid="vocab-lemma-header"
+                className={cn(
+                    'hidden border-b border-line-subtle bg-surface-2/30 md:grid md:items-center md:gap-x-3 md:px-3 md:py-2 md:text-micro md:font-medium md:text-fg-muted',
+                    LEMMA_DESKTOP_GRID,
+                )}
+            >
+                <span>{t('vocab.col.word')}</span>
+                <span>{t('vocab.col.phonetic')}</span>
+                <span>{t('vocab.col.translation')}</span>
+                <span>{t('vocab.col.level')}</span>
+                <span className="text-right">{t('vocab.lemma.col.forms')}</span>
+                <span aria-hidden="true" />
+            </div>
+            <div className="divide-y divide-line-subtle">
+                {rows.map((row) => {
+                    const isExpanded = expanded.has(row.lemma);
+                    const phonetic = normalizePhonetic(row.phonetic);
+                    const translation = (row.translation || '').trim();
+                    const detailId = `vocab-lemma-detail-${row.lemma}`;
+                    const formsLabel = t('vocab.lemma.formsLabel', {
+                        count: row.forms.length,
+                    });
+                    return (
+                        <div key={row.lemma} data-word={row.lemma}>
+                            <div
+                                data-testid={`vocab-lemma-row-${row.lemma}`}
+                                role="button"
+                                tabIndex={0}
+                                aria-expanded={isExpanded}
+                                aria-controls={detailId}
+                                aria-label={`${isExpanded
+                                    ? t('vocab.lemma.collapse')
+                                    : t('vocab.lemma.expand')} ${row.lemma}`}
+                                onClick={() => onToggleExpand(row.lemma)}
+                                onKeyDown={(event) => {
+                                    if (event.target !== event.currentTarget) return;
+                                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                                    event.preventDefault();
+                                    onToggleExpand(row.lemma);
+                                }}
+                                className={cn(
+                                    'grid cursor-pointer items-center gap-x-2 gap-y-0.5 px-3 py-2 text-left transition-colors',
+                                    'hover:bg-state-hover focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-inset',
+                                    'md:min-h-12 md:gap-x-3 md:py-0',
+                                    MOBILE_GRID,
+                                    LEMMA_DESKTOP_GRID,
+                                )}
+                            >
+                                <div className="col-start-1 row-start-1 flex min-w-0 items-baseline gap-1.5 md:contents">
+                                    <span
+                                        data-testid={`vocab-lemma-word-${row.lemma}`}
+                                        className="min-w-0 truncate text-body-zh font-semibold text-fg-primary md:col-start-1 md:row-start-1"
+                                    >
+                                        {row.lemma}
+                                    </span>
+                                    <span
+                                        data-testid={`vocab-lemma-ipa-${row.lemma}`}
+                                        className="min-w-0 max-w-[45%] truncate text-caption tabular-nums text-fg-muted md:col-start-2 md:row-start-1 md:max-w-none"
+                                    >
+                                        {phonetic || '\u00A0'}
+                                    </span>
+                                </div>
+
+                                <span
+                                    data-testid={`vocab-lemma-translation-${row.lemma}`}
+                                    title={translation || undefined}
+                                    className="col-start-1 row-start-2 min-w-0 truncate text-left text-ui text-fg-secondary md:col-start-3 md:row-start-1"
+                                >
+                                    {translation || '—'}
+                                </span>
+
+                                <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-1.5 md:contents">
+                                    <span className="inline-flex md:col-start-4 md:row-start-1">
+                                        <LevelBadge
+                                            level={row.level || '—'}
+                                            testId={`vocab-lemma-badge-${row.lemma}`}
+                                            title={row.level ? `CEFR ${row.level}` : undefined}
+                                        />
+                                    </span>
+                                    <span
+                                        data-testid={`vocab-lemma-forms-count-${row.lemma}`}
+                                        title={formsLabel}
+                                        className="text-right text-caption tabular-nums text-fg-muted md:col-start-5 md:row-start-1"
+                                    >
+                                        {row.forms.length}
+                                    </span>
+                                    <span
+                                        data-testid={`vocab-lemma-expand-${row.lemma}`}
+                                        aria-hidden="true"
+                                        title={isExpanded
+                                            ? t('vocab.lemma.collapse')
+                                            : t('vocab.lemma.expand')}
+                                        className="inline-flex h-control-sm w-8 items-center justify-center md:col-start-6 md:row-start-1"
+                                    >
+                                        <ChevronDown
+                                            className={cn(
+                                                'h-4 w-4 text-fg-muted transition-transform duration-200 ease-apple motion-reduce:transition-none',
+                                                isExpanded && 'rotate-180',
+                                            )}
+                                            aria-hidden="true"
+                                        />
+                                    </span>
+                                </div>
+                            </div>
+
+                            {isExpanded && (
+                                <div
+                                    id={detailId}
+                                    data-testid={detailId}
+                                    className="overflow-hidden border-t border-line-subtle px-3 pb-3.5 pt-3 md:px-4"
+                                >
+                                    <p className="text-micro text-fg-muted">{formsLabel}</p>
+                                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                        {row.forms.map((form) => (
+                                            <span
+                                                key={form}
+                                                data-testid={`vocab-lemma-form-${row.lemma}-${form}`}
+                                                className="rounded-control border border-line-subtle bg-surface-2/60 px-2 py-0.5 text-caption text-fg-secondary"
+                                            >
+                                                {form}
+                                            </span>
+                                        ))}
+                                        {row.forms.length === 0 && (
+                                            <span className="text-caption text-fg-muted">
+                                                {t('vocab.lemma.noForms')}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

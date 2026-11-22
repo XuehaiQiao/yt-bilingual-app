@@ -112,10 +112,14 @@ import {
     fetchAllCustomWordlistItems,
     fetchCustomWordlistPage,
     fetchCustomWordlists,
+    fetchLemmaListPage,
+    LEMMA_PAGE_SIZE,
     renameCustomWordlist,
     WordlistsApiError,
     type CustomWordlist,
     type CustomWordlistItem,
+    type LemmaListPage,
+    type LemmaSort,
 } from '../lib/wordlists';
 import { WORDLIST_MAX_LISTS } from '../lib/wordlistParse';
 import { fetchSeenCounts } from '../lib/vocabSeen';
@@ -129,6 +133,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { VocabPagination } from './VocabPagination';
 import { WordlistImportDialog } from './WordlistImportDialog';
 import {
+    LemmaTable,
     WordbookToolbar,
     WordTable,
     normalizePhonetic,
@@ -224,8 +229,10 @@ const MASTERED_TAB = 'mastered';
 const PHRASES_TAB = 'phrases';
 /** Merged CEFR list id (`GET /api/vocabulary/lists/cefr`); A1–C1 in one tab. */
 const CEFR_TAB = 'cefr';
-/** Product order: 我的单词 / 已掌握 / 短语 / CEFR 词表 / GRE / CET4 / CET6. */
-const LIST_TAB_IDS = [CEFR_TAB, 'gre', 'cet4', 'cet6'] as const;
+/** specs/040: read-only CEFR 10k lemma list, after CET6 (custom lists follow). */
+const LEMMA_TAB = 'lemma';
+/** Product order: 我的单词 / 已掌握 / 短语 / CEFR 词表 / GRE / CET4 / CET6 / 词形. */
+const LIST_TAB_IDS = [CEFR_TAB, 'gre', 'cet4', 'cet6', LEMMA_TAB] as const;
 /** Custom lists are appended after every built-in tab (specs/038 §1). */
 const CUSTOM_TAB_PREFIX = 'custom:';
 const customTabId = (listId: string) => `${CUSTOM_TAB_PREFIX}${listId}`;
@@ -438,12 +445,13 @@ export function VocabularyBookScreen({
     const activeIsMine = activeTab === MINE_TAB;
     const activeIsMastered = activeTab === MASTERED_TAB;
     const activeIsCefr = activeTab === CEFR_TAB;
+    const activeIsLemma = activeTab === LEMMA_TAB;
     const activeCustomListId = customListId(activeTab);
     const activeCustomList = activeCustomListId
         ? customLists.find((entry) => entry.id === activeCustomListId) ?? null
         : null;
     const activeIsCustom = activeCustomList != null;
-    const activeList = activeIsMine || activeIsMastered || activeIsCustom
+    const activeList = activeIsMine || activeIsMastered || activeIsCustom || activeIsLemma
         ? null
         : catalogById.get(activeTab) ?? null;
     const activeUnavailable = activeList?.available === false;
@@ -2202,6 +2210,20 @@ export function VocabularyBookScreen({
     const [phraseDetailError, setPhraseDetailError] = useState<Record<string, string>>({});
     const phraseDetailControllers = useRef<Map<string, AbortController>>(new Map());
 
+    // ── 词形（CEFR 10k lemma）: read-only, own search/page/filter state ────
+    // specs/040. Separate state for the same reason as the phrase list: a
+    // lemma search must never rewrite what an existing word list is showing.
+    const [lemmaQuery, setLemmaQuery] = useState('');
+    const [lemmaDebouncedQuery, setLemmaDebouncedQuery] = useState('');
+    const [lemmaPage, setLemmaPage] = useState(1);
+    const [lemmaLevel, setLemmaLevel] = useState<CefrLevel | ''>('');
+    const [lemmaSort, setLemmaSort] = useState<LemmaSort>('rank');
+    const [lemmaPhase, setLemmaPhase] = useState<Phase>('idle');
+    const [lemmaData, setLemmaData] = useState<LemmaListPage | null>(null);
+    const [lemmaError, setLemmaError] = useState('');
+    const [lemmaNonce, setLemmaNonce] = useState(0);
+    const [lemmaExpanded, setLemmaExpanded] = useState<Set<string>>(() => new Set());
+
     const selectTab = useCallback((id: string) => {
         // A running batch owns the current selection; switching views now would
         // apply its row results to a different list. 完成/操作 settle first.
@@ -2221,6 +2243,15 @@ export function VocabularyBookScreen({
         setPhraseType('');
         setPhraseRevealed(new Set());
         setPhraseExpanded(new Set());
+        // 词形 tab (specs/040) restarts clean too: first page, no search/filter,
+        // frequency order, every form list collapsed.
+        setLemmaQuery('');
+        setLemmaDebouncedQuery('');
+        setLemmaPage(1);
+        setLemmaLevel('');
+        setLemmaSort('rank');
+        setLemmaExpanded(new Set());
+        setLemmaPhase('idle');
         // Custom lists restart clean too (first page, no search, collapsed,
         // edit mode off) — specs/005 §统一词表 UI.
         setCustomQuery('');
@@ -2330,7 +2361,7 @@ export function VocabularyBookScreen({
     }, [activeTab, page, masteredPage, debouncedQuery, listLevel]);
 
     useEffect(() => {
-        if (activeIsMine || activeIsMastered || activeIsCustom || activeUnavailable || activeTab === PHRASES_TAB) {
+        if (activeIsMine || activeIsMastered || activeIsCustom || activeIsLemma || activeUnavailable || activeTab === PHRASES_TAB) {
             setListData(null);
             setListPhase('idle');
             return;
@@ -2356,7 +2387,7 @@ export function VocabularyBookScreen({
                 setListPhase('error');
             });
         return () => controller.abort();
-    }, [activeIsMine, activeIsMastered, activeIsCustom, activeIsCefr, activeUnavailable, activeTab, page, pageSize, debouncedQuery, listLevel, listNonce]);
+    }, [activeIsMine, activeIsMastered, activeIsCustom, activeIsCefr, activeIsLemma, activeUnavailable, activeTab, page, pageSize, debouncedQuery, listLevel, listNonce]);
 
     // 300ms phrase search debounce; a changed query restarts from page 1.
     // Compare with the committed query first: the initial mount (and a tab
@@ -2406,6 +2437,59 @@ export function VocabularyBookScreen({
             });
         return () => controller.abort();
     }, [activeTab, phrasePage, pageSize, phraseDebouncedQuery, phraseLevel, phraseType, phraseNonce]);
+
+    // 300ms lemma search debounce; a changed query restarts from page 1. The
+    // committed-query guard keeps the initial mount / tab reset from jumping
+    // back to page 1 after the user already paged.
+    useEffect(() => {
+        const trimmed = lemmaQuery.trim();
+        const timer = window.setTimeout(() => {
+            if (trimmed === lemmaDebouncedQuery) return;
+            setLemmaDebouncedQuery(trimmed);
+            setLemmaPage(1);
+        }, 300);
+        return () => window.clearTimeout(timer);
+    }, [lemmaQuery, lemmaDebouncedQuery]);
+
+    // Server paging (fixed 50/页, specs/040 §3): a new search/filter/sort/page
+    // starts with every form list collapsed so a stale expansion never lingers.
+    useEffect(() => {
+        setLemmaExpanded(new Set());
+    }, [lemmaPage, lemmaDebouncedQuery, lemmaLevel, lemmaSort]);
+
+    // A new level filter or sort restarts from the first server page.
+    useEffect(() => {
+        setLemmaPage(1);
+    }, [lemmaLevel, lemmaSort]);
+
+    useEffect(() => {
+        if (!activeIsLemma) {
+            setLemmaPhase('idle');
+            return;
+        }
+        const controller = new AbortController();
+        setLemmaPhase('loading');
+        setLemmaError('');
+        fetchLemmaListPage({
+            page: lemmaPage,
+            pageSize: LEMMA_PAGE_SIZE,
+            q: lemmaDebouncedQuery,
+            level: lemmaLevel,
+            sort: lemmaSort,
+            signal: controller.signal,
+        })
+            .then((data) => {
+                if (controller.signal.aborted) return;
+                setLemmaData(data);
+                setLemmaPhase('ready');
+            })
+            .catch(async (error) => {
+                if (controller.signal.aborted || (error as Error)?.name === 'AbortError') return;
+                setLemmaError(await describeApiError(error));
+                setLemmaPhase('error');
+            });
+        return () => controller.abort();
+    }, [activeIsLemma, lemmaPage, lemmaDebouncedQuery, lemmaLevel, lemmaSort, lemmaNonce]);
 
     // 每页条数 is a view preference shared by every list: a new size always
     // returns to page 1 (a phantom page beyond the smaller set is never shown).
@@ -2535,11 +2619,148 @@ export function VocabularyBookScreen({
         return { source, text: t('vocab.source.unknown'), canOpen: false };
     }, [t]);
 
+    const renderLemma = () => {
+        // Read-only CEFR 10k lemma list (specs/040): server paging (fixed 50),
+        // search over lemma + forms, CEFR filter and frequency/alpha sort. No
+        // write controls exist on this surface — no star/check/edit/batch/export.
+        const total = lemmaData?.total ?? 0;
+        const pages = Math.max(1, Math.ceil(total / LEMMA_PAGE_SIZE));
+        const hasFilter = Boolean(lemmaDebouncedQuery || lemmaLevel);
+        const totalLabel = hasFilter
+            ? t('vocab.search.results', { count: formatNumber(total) })
+            : t('vocab.total', { count: formatNumber(total) });
+        const sortOptions: SortOption[] = [
+            { value: 'rank', label: t('vocab.lemma.sort.rank'), testId: 'vocab-lemma-sort-rank' },
+            { value: 'alpha', label: t('vocab.lemma.sort.alpha'), testId: 'vocab-lemma-sort-alpha' },
+        ];
+        const levelOptions: FilterOption[] = levelFilterOptions(
+            lemmaLevel,
+            'vocab-lemma-level',
+        ).filter((option) => option.value !== 'C1+');
+        const levelGroups: FilterGroup[] = [{
+            id: 'level',
+            label: t('vocab.filter.level'),
+            options: levelOptions,
+        }];
+        const sortLabel = lemmaSort === 'alpha'
+            ? t('vocab.lemma.sort.alpha')
+            : t('vocab.lemma.sort.rank');
+
+        const toggleLemmaExpand = (lemma: string) => {
+            setLemmaExpanded((prev) => {
+                const next = new Set(prev);
+                if (next.has(lemma)) next.delete(lemma);
+                else next.add(lemma);
+                return next;
+            });
+        };
+
+        return (
+            <div data-testid="vocab-lemma-panel" className="flex flex-col gap-3">
+                <WordbookToolbar
+                    search={{
+                        value: lemmaQuery,
+                        onChange: setLemmaQuery,
+                        placeholder: t('vocab.lemma.search.placeholder'),
+                        ariaLabel: t('vocab.lemma.search.placeholder'),
+                        testId: 'vocab-lemma-search',
+                        clearTestId: 'vocab-lemma-search-clear',
+                        clearLabel: t('vocab.search.clear'),
+                    }}
+                    sort={{
+                        value: lemmaSort,
+                        label: sortLabel,
+                        options: sortOptions,
+                        onChange: (value) => setLemmaSort(value === 'alpha' ? 'alpha' : 'rank'),
+                        testId: 'vocab-lemma-sort',
+                        menuTestId: 'vocab-lemma-sort-menu',
+                    }}
+                    filter={{
+                        groups: levelGroups,
+                        activeCount: Number(Boolean(lemmaLevel)),
+                        onChange: (key) => {
+                            const [group, value] = key.split(':');
+                            if (group !== 'level') return;
+                            setLemmaLevel(value as CefrLevel | '');
+                        },
+                        onClear: () => {
+                            setLemmaLevel('');
+                            setLemmaQuery('');
+                        },
+                        testId: 'vocab-lemma-level-filter',
+                        clearTestId: 'vocab-lemma-clear-filters',
+                        menuTestId: 'vocab-lemma-level-filter-menu',
+                    }}
+                />
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-fg-muted">
+                    <span data-testid="vocab-lemma-total" className="tabular-nums">{totalLabel}</span>
+                    <span>{t('vocab.tab.lemma')}</span>
+                    <span data-testid="vocab-lemma-readonly">{t('vocab.lemma.readonly')}</span>
+                </div>
+
+                {lemmaPhase === 'loading' && (
+                    <div data-testid="vocab-lemma-loading" className={`${LIST_CARD} flex items-center justify-center gap-2 py-16 text-ui text-fg-muted`}>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        {t('common.loading')}
+                    </div>
+                )}
+
+                {lemmaPhase === 'error' && (
+                    <div data-testid="vocab-lemma-error" className={`${LIST_CARD} flex flex-col items-center justify-center px-6 py-16 text-center`}>
+                        <AlertTriangle className="mb-3 h-10 w-10 text-warning-fg/70" aria-hidden="true" />
+                        <p className="text-ui font-medium text-fg-strong">{t('vocab.error.title')}</p>
+                        <p className="mt-1 max-w-md break-words text-caption text-fg-muted">
+                            {lemmaError || t('vocab.error.hint')}
+                        </p>
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            testId="vocab-lemma-retry"
+                            onClick={() => setLemmaNonce((value) => value + 1)}
+                            className="mt-5"
+                        >
+                            {t('common.retry')}
+                        </Button>
+                    </div>
+                )}
+
+                {lemmaPhase === 'ready' && lemmaData && (
+                    lemmaData.items.length === 0 ? (
+                        emptyState(
+                            hasFilter ? t('vocab.empty.title') : t('vocab.empty.list'),
+                            hasFilter ? t('vocab.empty.hint') : t('vocab.empty.listHint'),
+                            Search,
+                            'vocab-lemma-empty',
+                        )
+                    ) : (
+                        <>
+                            <LemmaTable
+                                rows={lemmaData.items}
+                                expanded={lemmaExpanded}
+                                onToggleExpand={toggleLemmaExpand}
+                                className={LIST_CARD}
+                            />
+                            <VocabPagination
+                                scope="vocab"
+                                page={lemmaPage}
+                                pages={pages}
+                                hasMore={lemmaData.hasMore}
+                                onChange={setLemmaPage}
+                            />
+                        </>
+                    )
+                )}
+            </div>
+        );
+    };
+
     const renderTabPanel = () => {
         if (activeIsMine) return renderMine();
         if (activeIsMastered) return renderMastered();
         if (activeIsCustom) return renderCustomList();
         if (activeTab === PHRASES_TAB) return renderPhrases();
+        if (activeIsLemma) return renderLemma();
         return renderList();
     };
 
@@ -2557,6 +2778,12 @@ export function VocabularyBookScreen({
                     : null)
                 : activeTab === PHRASES_TAB
                 ? (phraseData ? phraseTotalLabel : null)
+                : activeIsLemma
+                ? (lemmaData
+                    ? (Boolean(lemmaDebouncedQuery || lemmaLevel)
+                        ? t('vocab.search.results', { count: formatNumber(lemmaData.total) })
+                        : t('vocab.total', { count: formatNumber(lemmaData.total) }))
+                    : null)
                 : (listData
                     ? (listHasFilterServer()
                         ? t('vocab.search.results', { count: formatNumber(listData.total) })
@@ -2615,7 +2842,9 @@ export function VocabularyBookScreen({
                             ? t('vocab.tab.phrases')
                             : id === CEFR_TAB
                                 ? t('vocab.tab.cefr')
-                                : (entry?.label || FALLBACK_LABELS[id] || id);
+                                : id === LEMMA_TAB
+                                    ? t('vocab.tab.lemma')
+                                    : (entry?.label || FALLBACK_LABELS[id] || id);
             const count = customEntry
                 ? customEntry.itemCount
                 : id === MINE_TAB
@@ -2639,7 +2868,15 @@ export function VocabularyBookScreen({
                     : !unavailable ? `vocab-tab-count-${id}` : undefined,
                 disabled: unavailable,
                 title: unavailable ? entry?.note ?? undefined : undefined,
-                testId: customEntry ? `vocab-tab-custom-${customEntry.id}` : `vocab-tab-${id}`,
+                // The read-only 词形 tab keeps its own hook (`vocab-lemma-tab`):
+                // the legacy `vocab-tab-*` namespace is the pre-existing built-in
+                // list tabs, whose order/count assertions must not shift when a
+                // new read-only surface is appended (P1-02 zero-regression).
+                testId: customEntry
+                    ? `vocab-tab-custom-${customEntry.id}`
+                    : id === LEMMA_TAB
+                        ? 'vocab-lemma-tab'
+                        : `vocab-tab-${id}`,
             };
         });
         return (

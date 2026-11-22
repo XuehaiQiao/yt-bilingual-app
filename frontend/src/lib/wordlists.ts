@@ -1,4 +1,5 @@
-// Custom word lists — client transport for specs/038-custom-wordlists §5.
+// Word-list client transport: custom lists (specs/038-custom-wordlists §5) and
+// the read-only CEFR 10k lemma list (specs/040, last section).
 //
 // Every endpoint needs a signed-in account (guests get 403). The word book
 // treats 403/404 as "this surface is unavailable" (no tabs, no error banner),
@@ -6,6 +7,10 @@
 // never breaks the built-in lists. Only a real failure (5xx/network) becomes an
 // error state, and it is always retryable.
 import { apiFetch } from './api';
+import {
+    VOCABULARY_CEFR_LEVELS,
+    type CefrLevel,
+} from './vocabulary';
 
 export interface CustomWordlist {
     id: string;
@@ -259,4 +264,124 @@ export async function deleteCustomWordlist(id: string): Promise<void> {
     const body = await response.json().catch(() => null);
     const { message, code } = errorMessage(body, response.status);
     throw new WordlistsApiError(response.status, message, code);
+}
+
+// ── CEFR 10k lemma 词形表（specs/040-cefr-lemma-list）──────────────────────
+//
+// `GET /api/vocabulary/lemma-list?q=&level=&sort=&page=&pageSize=` is a public
+// read-only endpoint (guests included, no AI, no writes): the 10,000 lemmas of
+// `content/wordlist/frequency_bands.v1.json`, their form→lemma mappings and the
+// lexicon's phonetic/translation. Only transport + normalization lives here; a
+// missing level/meaning stays empty and is never fabricated.
+//
+// The 词形 tab is deliberately read-only (no favorite/mastered/edit/batch/
+// export), so this section exposes one fetcher and no write calls.
+/** Server page size for the 词形 tab (`lemma_list.DEFAULT_PAGE_SIZE`). */
+export const LEMMA_PAGE_SIZE = 50;
+export const LEMMA_MAX_PAGE_SIZE = 200;
+/** Frequency order (default) or alphabetical; matches `lemma_list.SORTS`. */
+export type LemmaSort = 'rank' | 'alpha';
+export const LEMMA_LEVELS: readonly CefrLevel[] = VOCABULARY_CEFR_LEVELS;
+
+export interface LemmaListItem {
+    lemma: string;
+    rank: number;
+    /** Empty when the server omits it (never fabricated as C1). */
+    level: CefrLevel | '';
+    phonetic: string;
+    translation: string;
+    /** Forms mapping to this lemma, alphabetical (`[]` when none). */
+    forms: string[];
+}
+
+export interface LemmaListPage {
+    items: LemmaListItem[];
+    total: number;
+    page: number;
+    pageSize: number;
+    hasMore: boolean;
+}
+
+/** Typed HTTP failure so the panel can show the server's message + retry. */
+export class LemmaListApiError extends Error {
+    readonly status: number;
+
+    constructor(status: number, message: string) {
+        super(message);
+        this.name = 'LemmaListApiError';
+        this.status = status;
+    }
+}
+
+function normalizeLemmaItem(value: unknown): LemmaListItem | null {
+    if (!isRecord(value)) return null;
+    const lemma = typeof value.lemma === 'string' ? value.lemma.trim() : '';
+    if (!lemma) return null;
+    const level = typeof value.level === 'string'
+        && (LEMMA_LEVELS as readonly string[]).includes(value.level)
+        ? value.level as CefrLevel
+        : '';
+    return {
+        lemma,
+        rank: Number.isFinite(value.rank) ? Number(value.rank) : 0,
+        level,
+        phonetic: typeof value.phonetic === 'string' ? value.phonetic : '',
+        translation: typeof value.translation === 'string' ? value.translation : '',
+        forms: Array.isArray(value.forms)
+            ? value.forms.filter((form): form is string => typeof form === 'string')
+            : [],
+    };
+}
+
+/** `GET /api/vocabulary/lemma-list` — server paging/search/level/sort. */
+export async function fetchLemmaListPage(
+    options: {
+        page?: number;
+        pageSize?: number;
+        q?: string;
+        level?: CefrLevel | '';
+        sort?: LemmaSort;
+        signal?: AbortSignal;
+    } = {},
+): Promise<LemmaListPage> {
+    const page = Math.max(1, Math.trunc(options.page ?? 1));
+    const pageSize = Math.min(
+        LEMMA_MAX_PAGE_SIZE,
+        Math.max(1, Math.trunc(options.pageSize ?? LEMMA_PAGE_SIZE)),
+    );
+    const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        sort: options.sort ?? 'rank',
+    });
+    const query = (options.q ?? '').trim();
+    if (query) params.set('q', query);
+    if (options.level) params.set('level', options.level);
+
+    const response = await apiFetch(
+        `/api/vocabulary/lemma-list?${params.toString()}`,
+        options.signal ? { signal: options.signal } : undefined,
+    );
+    if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        const { message } = errorMessage(body, response.status);
+        throw new LemmaListApiError(response.status, message);
+    }
+    const data = await response.json().catch(() => null);
+    const record = isRecord(data) ? data : {};
+    const items = Array.isArray(record.items)
+        ? record.items
+            .map(normalizeLemmaItem)
+            .filter((item): item is LemmaListItem => item !== null)
+        : [];
+    const total = Number.isFinite(record.total) ? Number(record.total) : items.length;
+    return {
+        items,
+        total,
+        page: Number.isFinite(record.page) ? Number(record.page) : page,
+        pageSize: Number.isFinite(record.pageSize) ? Number(record.pageSize) : pageSize,
+        hasMore: typeof record.hasMore === 'boolean'
+            ? record.hasMore
+            : page * pageSize < total,
+    };
 }
