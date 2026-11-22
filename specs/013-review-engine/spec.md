@@ -1,10 +1,17 @@
 # 规格：词状态与 FSRS 复习引擎（后端）
 
-**状态：** 已实现（2026-11-15，M2 后端；前端复习 UI 下一轮）｜ **对应代码：** `backend/srs.py`、`backend/routes_review.py`、`backend/migrations/versions/0006_review_engine.py`、`backend/tests/test_review_engine.py`
+**状态：** 已实现（后端与数据保留）｜ **2026-11-22 起前端 UI 暂停启用（`REVIEW_UI_ENABLED=false`）** ｜ **对应代码：** `backend/srs.py`、`backend/routes_review.py`、`backend/migrations/versions/0006_review_engine.py`、`backend/tests/test_review_engine.py`
 
 > 计划书 §13.2 M2 的第一块：把「收藏夹」从「存一条记录」升级为**可调度的记忆系统**。
 > 本规格只冻结**后端契约**：词状态、到期队列、复习作答、暂停/恢复、统计。
 > 4 种卡面、TTS、复习页交互与收藏夹迁移到词状态的界面流程在下一轮实现。
+
+> **2026-11-22 暂停启用（产品决定）**：复习（FSRS）的**前端入口与数字全部隐藏**——
+> 练习页/今日页的复习卡与到期数字、导航入口、`#/app/<tab>/review` 路由、词卡与单词本的
+> 「加入复习」按钮、单词本学习状态筛选、周报中的复习数字与「下一步」提及。
+> **后端端点、`word_states` / `review_logs` 与已掌握数据全部保留**（不删表、不清数据、不删代码）；
+> 未来「独立背单词功能」可直接复用本引擎与数据。开关关闭时直链复习路由回落到来源 tab。
+> 理由：每日到期数字构成打卡式压力，与产品「低焦虑、不制造愧疚」原则冲突。
 
 > **v1.1 任务 9 增补（2026-11-21，已实现）**：新增 `GET /api/review/suspended`
 > 暂停词列表端点；复习页补「暂停中 N 个词 → 恢复」入口；语言口径与
