@@ -11,7 +11,8 @@ import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { PublicFooter } from './PublicFooter';
 import { PublicHeader } from './PublicHeader';
-import { PublicContainer, PublicShell } from './ui/PublicShell';
+import { PageContainer } from './layout/PageContainer';
+import { PublicShell } from './ui/PublicShell';
 
 type ResourceId = 'blog' | 'library' | 'gutenberg' | 'standardebooks' | 'librivox';
 
@@ -84,7 +85,7 @@ export function ResourcesScreen() {
       footer={<PublicFooter />}
     >
       <section className="py-16 sm:py-24">
-        <PublicContainer>
+        <PageContainer variant="marketing">
           <div className="max-w-3xl">
             <p className="text-micro font-medium text-fg-muted">{t('public.resources.eyebrow')}</p>
             <h1
@@ -131,7 +132,7 @@ export function ResourcesScreen() {
           </ul>
 
           <p className="mt-8 text-micro leading-relaxed text-fg-muted">{t('public.resources.note')}</p>
-        </PublicContainer>
+        </PageContainer>
       </section>
     </PublicShell>
   );

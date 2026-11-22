@@ -376,7 +376,9 @@ export function BlogScreen({
         />
       )}
       <div className={publicMode ? 'w-full' : 'flex-1 min-h-0 overflow-y-auto overflow-x-hidden custom-scrollbar'}>
-      <div className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 sm:py-10">
+      {/* In public mode the caller owns the page measure (PageContainer
+          marketing); the list uses it instead of a second 3xl cap. */}
+      <div className={publicMode ? 'w-full py-6 sm:py-10' : 'mx-auto w-full max-w-3xl px-4 sm:px-6 py-6 sm:py-10'}>
         {selectedSlug ? (
           <article className="mt-6">
             {articleLoading && (

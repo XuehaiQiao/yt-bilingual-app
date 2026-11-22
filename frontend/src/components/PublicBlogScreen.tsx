@@ -11,9 +11,10 @@ import { useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { BlogScreen } from './BlogScreen';
+import { PageContainer } from './layout/PageContainer';
 import { PublicFooter } from './PublicFooter';
 import { PublicHeader } from './PublicHeader';
-import { PublicContainer, PublicShell } from './ui/PublicShell';
+import { PublicShell } from './ui/PublicShell';
 
 export function PublicBlogScreen({ slug }: { slug?: string }) {
   const { t } = useI18n();
@@ -48,28 +49,33 @@ export function PublicBlogScreen({ slug }: { slug?: string }) {
       footer={<PublicFooter />}
     >
       <div className="py-8 sm:py-12">
-        <PublicContainer>
-          {slug && (
-            <a
-              href="#/blog"
-              data-testid="public-blog-back"
-              onClick={(event) => {
-                event.preventDefault();
-                backToList();
-              }}
-              className="mb-2 inline-flex items-center gap-1.5 rounded-control text-ui font-medium text-fg-secondary transition-colors hover:text-fg-primary"
-            >
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              {t('blog.backToList')}
-            </a>
-          )}
-          <BlogScreen
-            publicMode
-            initialSlug={slug}
-            onOpenArticle={openArticle}
-            onClose={backToList}
-          />
-        </PublicContainer>
+        <PageContainer variant="marketing">
+          {/* The list uses the marketing measure (1200). An article keeps the
+              68ch reading column so the markdown does not stretch into long
+              lines on a wide screen; the back link travels with it. */}
+          <div className={slug ? 'mx-auto w-full max-w-reading-body' : 'w-full'}>
+            {slug && (
+              <a
+                href="#/blog"
+                data-testid="public-blog-back"
+                onClick={(event) => {
+                  event.preventDefault();
+                  backToList();
+                }}
+                className="mb-2 inline-flex items-center gap-1.5 rounded-control text-ui font-medium text-fg-secondary transition-colors hover:text-fg-primary"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                {t('blog.backToList')}
+              </a>
+            )}
+            <BlogScreen
+              publicMode
+              initialSlug={slug}
+              onOpenArticle={openArticle}
+              onClose={backToList}
+            />
+          </div>
+        </PageContainer>
       </div>
     </PublicShell>
   );

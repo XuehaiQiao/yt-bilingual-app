@@ -6,7 +6,7 @@
 // viewport height, page padding and safe-area handling:
 //   - one vertical scroll: the document. `min-h-dvh` only (no `screen`-unit
 //     height) and no nested scroller; content taller than the viewport scrolls.
-//   - one page measure per mode — marketing 1024 (`max-w-library`) / auth form
+//   - one page measure per mode — marketing 1200 (`max-w-page-marketing`) / auth form
 //     448 (`max-w-dialog-sm`) — with the 16/24/32 page padding (layout.md §3.3).
 //   - the bottom safe-area inset is added exactly once, at the shell root.
 //   - page colours/text defaults come from tokens (`bg-app` / `fg-primary`).
@@ -20,7 +20,7 @@ import { cn } from '../../lib/cn';
 export type PublicShellWidth = 'wide' | 'form';
 
 const WIDTH_CLASSES: Record<PublicShellWidth, string> = {
-  wide: 'max-w-library',
+  wide: 'max-w-page-marketing',
   form: 'max-w-dialog-sm',
 };
 

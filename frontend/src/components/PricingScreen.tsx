@@ -9,7 +9,8 @@ import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/I18nProvider';
 import { PublicFooter } from './PublicFooter';
 import { PublicHeader } from './PublicHeader';
-import { PublicContainer, PublicShell } from './ui/PublicShell';
+import { PageContainer } from './layout/PageContainer';
+import { PublicShell } from './ui/PublicShell';
 
 const PRIMARY =
   'inline-flex h-control-xl items-center justify-center gap-2 rounded-full bg-control px-6 text-ui font-semibold ' +
@@ -32,7 +33,7 @@ export function PricingScreen() {
       footer={<PublicFooter />}
     >
       <section className="py-16 sm:py-24">
-        <PublicContainer>
+        <PageContainer variant="marketing">
           <div className="max-w-3xl">
             <p className="text-micro font-medium text-fg-muted">{t('public.pricing.eyebrow')}</p>
             <h1
@@ -98,7 +99,7 @@ export function PricingScreen() {
               </p>
             </article>
           </div>
-        </PublicContainer>
+        </PageContainer>
       </section>
     </PublicShell>
   );

@@ -7,15 +7,22 @@
 // copy lives in the i18n dictionaries so both pages stay bilingual and the
 // page components stay a flat list of section keys.
 //
-// Reachability contract (M4): a visitor can open either page directly, from
-// the footer, from the account page and from the signup disclosure; each page
+// Layout (docs/设计-桌面布局规范.md §2/§3): the marketing measure (1200) plus a
+// 240px table of contents at `xl` and above. The body column keeps its 3xl
+// reading width instead of stretching with the container, and below `xl` the
+// TOC disappears and the page is a single column. The TOC scrolls in-page
+// (buttons, not anchors) because the hash owns the route (`#/privacy`).
+//
+// Reachability contract (M4): a visitor can open either page directly, from the
+// footer, from the account page and from the signup disclosure; each page
 // offers a way back home and into the app.
 import { ArrowLeft, ArrowRight, Info } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
+import { PageContainer } from './layout/PageContainer';
 import { PublicFooter } from './PublicFooter';
 import { PublicHeader } from './PublicHeader';
-import { PublicContainer, PublicShell } from './ui/PublicShell';
+import { PublicShell } from './ui/PublicShell';
 
 export type LegalDocumentKind = 'privacy' | 'terms';
 
@@ -56,6 +63,15 @@ export function LegalDocument({ kind, testId, titleKey, leadKey, sections }: Leg
   const { t } = useI18n();
   const other = OTHER[kind];
 
+  // In-page jump for the TOC. `scroll-mt-24` on the heading clears the sticky
+  // public header; reduced-motion users get an instant jump.
+  const jumpToSection = (id: string) => {
+    const target = document.getElementById(`legal-${id}-title`);
+    if (!target) return;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  };
+
   return (
     <PublicShell
       testId={testId}
@@ -64,7 +80,7 @@ export function LegalDocument({ kind, testId, titleKey, leadKey, sections }: Leg
       footer={<PublicFooter />}
     >
       <section className="py-10 sm:py-16">
-        <PublicContainer>
+        <PageContainer variant="marketing">
           <div className="max-w-3xl">
             <a
               href="/"
@@ -90,66 +106,101 @@ export function LegalDocument({ kind, testId, titleKey, leadKey, sections }: Leg
             </a>
           </div>
 
-          <article
-            aria-labelledby="legal-title"
-            className="mt-10 max-w-3xl border-t border-line-subtle"
-          >
-            {sections.map((section, index) => {
-              const titleId = `legal-${section.id}-title`;
-              return (
-                <section
-                  key={section.id}
-                  aria-labelledby={titleId}
-                  data-testid={`legal-section-${section.id}`}
-                  className="border-b border-line-subtle py-6 sm:py-7"
-                >
-                  <h2 id={titleId} className="text-page font-semibold tracking-tight text-fg-primary">
-                    {index + 1}. {t(section.titleKey)}
-                  </h2>
-                  {section.paragraphs.map((key) => (
-                    <p key={key} className="mt-3 text-ui leading-relaxed text-fg-secondary">
-                      {t(key)}
-                    </p>
-                  ))}
-                  {section.bullets && section.bullets.length > 0 && (
-                    <ul className="mt-3 space-y-2">
-                      {section.bullets.map((key) => (
-                        <li
-                          key={key}
-                          className="flex gap-2.5 text-ui leading-relaxed text-fg-secondary"
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="mt-[0.6em] h-1 w-1 shrink-0 rounded-full bg-fg-muted"
-                          />
-                          <span>{t(key)}</span>
-                        </li>
+          <div className="mt-10 xl:flex xl:items-start xl:gap-8">
+            <div data-testid="legal-body" className="min-w-0 xl:flex-1">
+              <article
+                aria-labelledby="legal-title"
+                className="max-w-3xl border-t border-line-subtle"
+              >
+                {sections.map((section, index) => {
+                  const titleId = `legal-${section.id}-title`;
+                  return (
+                    <section
+                      key={section.id}
+                      aria-labelledby={titleId}
+                      data-testid={`legal-section-${section.id}`}
+                      className="border-b border-line-subtle py-6 sm:py-7"
+                    >
+                      <h2
+                        id={titleId}
+                        className="scroll-mt-24 text-page font-semibold tracking-tight text-fg-primary"
+                      >
+                        {index + 1}. {t(section.titleKey)}
+                      </h2>
+                      {section.paragraphs.map((key) => (
+                        <p key={key} className="mt-3 text-ui leading-relaxed text-fg-secondary">
+                          {t(key)}
+                        </p>
                       ))}
-                    </ul>
-                  )}
-                </section>
-              );
-            })}
-          </article>
+                      {section.bullets && section.bullets.length > 0 && (
+                        <ul className="mt-3 space-y-2">
+                          {section.bullets.map((key) => (
+                            <li
+                              key={key}
+                              className="flex gap-2.5 text-ui leading-relaxed text-fg-secondary"
+                            >
+                              <span
+                                aria-hidden="true"
+                                className="mt-[0.6em] h-1 w-1 shrink-0 rounded-full bg-fg-muted"
+                              />
+                              <span>{t(key)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+                  );
+                })}
+              </article>
 
-          <aside
-            data-testid="legal-contact-note"
-            className="mt-8 flex max-w-3xl items-start gap-2.5 rounded-card border border-line-subtle bg-surface/40 p-4 text-caption leading-relaxed text-fg-secondary sm:p-5"
-          >
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
-            <p>{t('public.legal.contactNote')}</p>
-          </aside>
+              <aside
+                data-testid="legal-contact-note"
+                className="mt-8 flex max-w-3xl items-start gap-2.5 rounded-card border border-line-subtle bg-surface/40 p-4 text-caption leading-relaxed text-fg-secondary sm:p-5"
+              >
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-fg-muted" aria-hidden="true" />
+                <p>{t('public.legal.contactNote')}</p>
+              </aside>
 
-          <div className="mt-8 flex max-w-3xl flex-col gap-3 sm:flex-row">
-            <a href="#/app/content" data-testid="legal-enter" className={PRIMARY}>
-              {t('public.legal.enter')}
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </a>
-            <a href="/" data-testid="legal-home-bottom" className={SECONDARY}>
-              {t('public.legal.backHome')}
-            </a>
+              <div className="mt-8 flex max-w-3xl flex-col gap-3 sm:flex-row">
+                <a href="#/app/content" data-testid="legal-enter" className={PRIMARY}>
+                  {t('public.legal.enter')}
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </a>
+                <a href="/" data-testid="legal-home-bottom" className={SECONDARY}>
+                  {t('public.legal.backHome')}
+                </a>
+              </div>
+            </div>
+
+            <nav
+              data-testid="legal-toc"
+              aria-label={t('public.legal.toc')}
+              className="hidden min-w-0 xl:sticky xl:top-20 xl:block xl:w-sidebar xl:shrink-0"
+            >
+              <div className="rounded-panel border border-line-subtle bg-surface/40 p-4">
+                <h2 className="text-caption font-semibold text-fg-primary">{t('public.legal.toc')}</h2>
+                <div className="mt-2 flex flex-col gap-0.5">
+                  {sections.map((section, index) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      data-testid={`legal-toc-${section.id}`}
+                      onClick={() => jumpToSection(section.id)}
+                      className="flex w-full min-w-0 items-baseline gap-2 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-state-hover"
+                    >
+                      <span className="w-5 shrink-0 text-micro tabular-nums text-fg-muted">
+                        {index + 1}
+                      </span>
+                      <span className="min-w-0 flex-1 text-caption leading-relaxed text-fg-secondary">
+                        {t(section.titleKey)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </nav>
           </div>
-        </PublicContainer>
+        </PageContainer>
       </section>
     </PublicShell>
   );
