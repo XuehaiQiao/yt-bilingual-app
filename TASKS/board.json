@@ -287,8 +287,8 @@
     {
       "id": "P0-16",
       "file": "TASKS/P0-16-mastered-sort-export-all.md",
-      "status": "claimed",
-      "owner": "sort-export-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/lib/exporter.ts",
