@@ -39,8 +39,8 @@
     {
       "id": "P0-05",
       "file": "TASKS/P0-05-quota-single-source-ops.md",
-      "status": "claimed",
-      "owner": "P0-05-quota-ops",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/ai/ledger.py",
         "backend/ai/quota.py",
