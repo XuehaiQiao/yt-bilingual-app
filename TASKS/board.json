@@ -511,6 +511,21 @@
       "deps": [
         "P2-02"
       ]
+    },
+    {
+      "id": "P1-06",
+      "file": "TASKS/P1-06-family-pagination-shared.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "scripts/word-family-acceptance.mjs",
+        "specs/041-word-family-list/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-05A"
+      ]
     }
   ]
 }
