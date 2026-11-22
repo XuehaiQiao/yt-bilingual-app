@@ -8,7 +8,9 @@
 //      「共 N 行 · 有效 M · 跳过 K」 stats with the first skip reasons →
 //      automatic `(2)` name on a collision → POST /api/wordlists/import;
 //   C) the new tab appears, becomes active and renders its rows;
-//   D) row actions: 加入我的单词 (meta.source_kind=wordlist), 标为已掌握
+//   D) row actions: 加入我的单词 (meta.source_kind=wordlist) only while the
+//      word is unfavorited — once saved the action is GONE (canonical favorite
+//      set, no local 已加入 mirror) and the star turns solid; 标为已掌握
 //      (PATCH); 加入复习 stays hidden while the review UI is paused;
 //   E) server-side search + 50/page pagination;
 //   F) 删除词表 asks first (cancel keeps it), confirms, deletes the table only;
@@ -592,14 +594,20 @@ assert.equal(await page.locator('[data-testid^="vocab-custom-seen-"]').count(), 
 assert.equal(await page.getByTestId('vocab-custom-star-abundant').getAttribute('aria-pressed'), 'false');
 
 // Row actions live in the expanded area: 加入我的单词 / 标为已掌握 (+ 加入复习,
-// hidden while the review UI is paused).
+// hidden while the review UI is paused). 加入我的单词 exists only while the word
+// is not a favorite; the action is derived from the canonical favorite set, so
+// success retires it instead of relabelling a local 已加入 state.
 await page.getByTestId('vocab-custom-expand-abundant').click();
 await page.waitForSelector('[data-testid="wl-1:abundant-add-mine"]');
 assert.equal(await page.getByTestId('wl-1:abundant-add-review').count(), 0,
     '加入复习 must be hidden on a custom-list row while the review UI is paused');
-await page.getByTestId('wl-1:abundant-add-mine').click();
-await page.waitForFunction(() => document.querySelector('[data-testid="wl-1:abundant-add-mine"]')?.textContent?.includes('已加入'));
-assert.equal(state.favorites.length, 1);
+// Two clicks in the same tick: the in-flight guard must POST exactly once.
+await page.getByTestId('wl-1:abundant-add-mine').evaluate((el) => { el.click(); el.click(); });
+await page.waitForFunction(() => !document.querySelector('[data-testid="wl-1:abundant-add-mine"]'));
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-custom-star-abundant"]')?.getAttribute('aria-pressed') === 'true');
+assert.equal(await page.getByTestId('wl-1:abundant-add-mine').count(), 0,
+    '已收藏的行不得再渲染 加入我的单词');
+assert.equal(state.favorites.length, 1, 'a double click still sends exactly one POST');
 assert.equal(state.favorites[0].en_text, 'abundant');
 assert.equal(state.favorites[0].source_kind, 'wordlist');
 assert.equal(state.favorites[0].source_ref, 'wl-1');

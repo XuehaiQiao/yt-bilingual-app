@@ -8,19 +8,28 @@
 //     每页 20/50/100 selector and the 跳至 input;
 //   - the shared row: 原词 / 音标 / 释义 / 发音 / CEFR / 星标 / 展开, with ×N
 //     only in 我的单词; row actions live inside the expanded area;
-//   - star = favorite toggle (POST /api/favorites on a list row, DELETE when
-//     unstarring); inline retryable errors on add/delete/mastered failures;
-//   - 已掌握 rows, undo via the expanded action, star re-adds a favorite;
-//   - built-in list / phrase 加入我的单词 + 加入复习 stays hidden (review UI
-//     paused), phrase filters, guest login gate at the write entry.
+//   - star = the ONE favorite toggle on every surface (POST /api/favorites on a
+//     list row, DELETE when unstarring); the expanded area never carries a
+//     second 取消收藏 entry; inline retryable errors on add/delete/mastered
+//     failures;
+//   - 我的单词 = the favorites list itself (60 fixtures; count = length) and
+//     已掌握 = `word_states.mastered=1` (10 disjoint fixtures) — ADR-0001, no
+//     `favorites − mastered` subtraction anywhere;
+//   - 已掌握 rows, undo via the expanded action, star disabled/never filled;
+//   - built-in list / phrase 加入我的单词 exists ONLY while the word is not a
+//     favorite: once saved the action is gone (derived from the canonical
+//     favorite set, no local 已加入 mirror) and duplicate clicks still POST
+//     once; 加入复习 stays hidden (review UI paused), phrase filters, guest
+//     login gate at the write entry.
 //
-// REMOVED SURFACES (kept out of this script on purpose): the old 状态 chips and
-// the multi-select bulk bar (标为已掌握 / 删除 / 加入复习). specs/013 paused the
-// review UI, and 381440f replaced bulk selection with per-row expanded actions
-// plus 勾选删除 in the custom-wordlist edit mode only (covered by
-// custom-wordlists-acceptance.mjs). Nothing here weakens an assertion: every
-// removed control is asserted ABSENT instead, and no review POST/state read may
-// fire.
+// REMOVED SURFACES (kept out of this script on purpose): the old 状态 chips, the
+// multi-select bulk bar (标为已掌握 / 删除 / 加入复习) and — since P0-03 — the
+// expanded-area 取消收藏/删除 row action (the star is the only cancel entry).
+// specs/013 paused the review UI, and 381440f replaced bulk selection with
+// per-row expanded actions plus 勾选删除 in the custom-wordlist edit mode only
+// (covered by custom-wordlists-acceptance.mjs). Nothing here weakens an
+// assertion: every removed control is asserted ABSENT instead, and no review
+// POST/state read may fire.
 //
 // Every /api/** request is mocked; nothing touches :8000 or :5173.
 // Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node wordbook-v12-acceptance.mjs
@@ -42,8 +51,13 @@ const BASE = process.env.APP_URL || 'http://127.0.0.1:5173/';
 const SHOTS = '/tmp';
 
 // ── fixtures ────────────────────────────────────────────────────────────────
-const MINE = Array.from({ length: 70 }, (_, i) => `w${String(i).padStart(3, '0')}`);
-const MASTERED = MINE.slice(60); // w060…w069
+// 我的单词 is the favorites list itself and 已掌握 is `word_states.mastered=1`
+// (ADR-0001): two DISJOINT lists — 60 favorites (w000…w059) plus 10 mastered
+// words (w060…w069) that are never favorites too. Every count below is the
+// favorites length; no fixture overlaps, so a subtraction would be invisible
+// and is deliberately not modelled.
+const MINE = Array.from({ length: 60 }, (_, i) => `w${String(i).padStart(3, '0')}`);
+const MASTERED = Array.from({ length: 10 }, (_, i) => `w${String(60 + i).padStart(3, '0')}`); // w060…w069
 const WORD_STATE = {};
 MINE.slice(0, 10).forEach((word) => { WORD_STATE[word] = 'new'; });
 
@@ -371,6 +385,10 @@ assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 2
 assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 60 词');
 assert.equal(await page.getByTestId('vocab-total').innerText(), '共 60 词');
 assert.equal(await page.getByTestId('vocab-tab-count-mine').innerText(), '60');
+// 已掌握 is its own list (10 fixture words, none of them a favorite).
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-tab-count-mastered"]')?.textContent === '10');
+assert.equal(await page.getByTestId('vocab-tab-count-mastered').innerText(), '10',
+    '已掌握 count is the mastered list length, not a favorites intersection');
 await shot('1440-mine');
 
 // 状态 chips stay gone (REVIEW_UI_ENABLED=false): the group and every read are
@@ -493,6 +511,9 @@ await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-
 await waitFor(() => state.patches.some((item) => item.lemma === 'w000' && item.mastered === true), 15000, 'master PATCH');
 assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 59 词');
 assert.equal(await page.getByTestId('vocab-total').innerText(), '共 59 词');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-tab-count-mastered"]')?.textContent === '11');
+assert.equal(await page.getByTestId('vocab-tab-count-mastered').innerText(), '11',
+    'marking mastered adds one to the independent 已掌握 list');
 await shot('1440-mine-mastered');
 
 // Undo from 已掌握: expand the row, 撤销 PATCHes mastered=false and the word
@@ -504,6 +525,9 @@ await page.waitForSelector('[data-testid="vocab-mastered-detail-w000"]');
 await page.getByTestId('vocab-mastered-undo-w000').click();
 await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-mastered-row"][data-word="w000"]'));
 assert.deepEqual(state.patches.at(-1), { lemma: 'w000', mastered: false });
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-tab-count-mastered"]')?.textContent === '10');
+assert.equal(await page.getByTestId('vocab-tab-count-mastered').innerText(), '10',
+    'undoing the mark removes it from 已掌握');
 await page.getByTestId('vocab-tab-mine').click();
 await page.waitForSelector('[data-testid="vocab-mine-panel"]');
 // 撤销已掌握 does NOT bring the word back to 我的单词: mastering removed the
@@ -515,17 +539,31 @@ assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 59 词
 assert.equal(await page.getByTestId('vocab-mine-word-fav-w000').count(), 0,
     'w000 must not reappear in 我的单词');
 
-// 星标 = 取消收藏 on 我的单词: DELETE + the row leaves the list.
+// 星标 = the one and only 取消收藏 entry on 我的单词: DELETE + the row leaves
+// the list, so the count drops by one (the list itself is the source).
 await page.getByTestId('vocab-mine-star-fav-w010').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w010"]').length === 0);
 await waitFor(() => state.deletes.includes('fav-w010'), 15000, 'favorite DELETE');
 assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 58 词');
 
-// 删除 one row from the expanded area (no bulk bar any more).
+// The expanded area has NO 取消收藏/删除 action (P0-03 removed the duplicate
+// entry): it carries 完整释义 / 来源 / 已掌握 only, and the row star stays the
+// sole cancel affordance. Absence is the contract — nothing is commented out.
 await page.getByTestId('vocab-mine-expand-fav-w011').click();
-await page.getByTestId('vocab-mine-delete-fav-w011').click();
+await page.waitForSelector('[data-testid="vocab-mine-detail-fav-w011"]');
+assert.equal(await page.getByTestId('vocab-mine-master-fav-w011').count(), 1,
+    'the expanded area still carries 已掌握');
+assert.equal(await page.locator('[data-testid^="vocab-mine-delete-"]').count(), 0,
+    'the expanded area must not render a second 取消收藏/删除 action');
+assert.doesNotMatch(await page.getByTestId('vocab-mine-detail-fav-w011').innerText(), /取消收藏/,
+    'the expanded area keeps 完整释义/来源/已掌握, never 取消收藏');
+const cancelStar = page.getByTestId('vocab-mine-star-fav-w011');
+assert.equal(await cancelStar.getAttribute('aria-label'), '取消收藏 w011',
+    'the row star is the only cancel entry');
+assert.equal(await cancelStar.getAttribute('aria-pressed'), 'true');
+await cancelStar.click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w011"]').length === 0);
-await waitFor(() => state.deletes.includes('fav-w011'), 15000, 'row DELETE');
+await waitFor(() => state.deletes.includes('fav-w011'), 15000, 'star DELETE');
 assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 57 词');
 
 // Row-level failures stay retryable (never a fake success).
@@ -540,15 +578,22 @@ await page.getByTestId('vocab-mine-master-fav-w012').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w012"]').length === 0);
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-error-fav-w012"]').length === 0);
 
+// A failed 取消收藏 is still the star: App removes optimistically, rolls the
+// row back and reports the failure; the row/count never fake a deletion.
 state.failDelete = 'fav-w013';
-await page.getByTestId('vocab-mine-expand-fav-w013').click();
-await page.getByTestId('vocab-mine-delete-fav-w013').click();
-await page.waitForSelector('[data-testid="vocab-mine-error-fav-w013"]');
-assert.equal(await page.getByTestId('vocab-mine-toggle-fav-w013').count(), 1, 'a failed delete keeps the row');
+const deletesBeforeFail = state.deletes.length;
+await page.getByTestId('vocab-mine-star-fav-w013').click();
+await waitFor(() => state.deletes.length > deletesBeforeFail, 15000, 'failed DELETE attempt');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w013"]').length === 1);
+const deleteErrorToast = page.locator('[data-testid="toast"]', { hasText: 'delete failed' });
+await deleteErrorToast.first().waitFor({ timeout: 5000 });
+assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 56 词',
+    'a failed 取消收藏 rolls the count back');
 await shot('1440-mine-delete-failed');
 state.failDelete = null;
-await page.getByTestId('vocab-mine-delete-fav-w013').click();
+await page.getByTestId('vocab-mine-star-fav-w013').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w013"]').length === 0);
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mine-total"]')?.textContent === '共 55 词');
 
 // The removed bulk bar is asserted ABSENT (selection now lives only in the
 // custom-wordlist edit mode) and no review write may fire from 我的单词.
@@ -644,29 +689,29 @@ await page.locator('[data-testid="vocab-list-row"]').first().click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-list-translation"]').length === 0);
 await page.getByTestId('vocab-hide-toggle').click(); // Chinese back on
 
-// 加入我的单词 sits in the expanded area (no per-row button any more).
+// 加入我的单词 sits in the expanded area and exists only while the word is not
+// a favorite. Once saved, the action is GONE (the canonical favorite set is
+// the state, not a local 已加入 flag) and the star turns solid.
 await page.getByTestId('vocab-list-expand-gre:abundant').click();
 await page.waitForSelector('[data-testid="gre:abundant-add-mine"]');
 assert.equal(await page.getByTestId('gre:abundant-add-review').count(), 0,
     '加入复习 must be hidden on built-in list rows while the review UI is paused');
 const postsBefore = state.favoritePosts.length;
-await page.getByTestId('gre:abundant-add-mine').click();
-await page.waitForFunction(() => {
-    const button = document.querySelector('[data-testid="gre:abundant-add-mine"]');
-    return button && button.textContent.includes('已加入');
-});
-assert.equal(state.favoritePosts.length, postsBefore + 1);
+// Two clicks in the same tick: the synchronous in-flight guard must POST once.
+await page.getByTestId('gre:abundant-add-mine').evaluate((el) => { el.click(); el.click(); });
+await page.waitForFunction(() => !document.querySelector('[data-testid="gre:abundant-add-mine"]'));
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-star-gre:abundant"]')?.getAttribute('aria-pressed') === 'true');
+assert.equal(state.favoritePosts.length, postsBefore + 1, 'a double click still sends exactly one POST');
+assert.equal(await page.getByTestId('gre:abundant-add-mine').count(), 0,
+    '已收藏的列表行不得渲染 加入我的单词');
 const minePost = state.favoritePosts.at(-1);
 assert.equal(minePost.meta.source_kind, 'wordlist', `meta: ${JSON.stringify(minePost.meta)}`);
 assert.equal(minePost.meta.source_ref, 'gre');
 assert.equal(minePost.meta.source_title, 'GRE');
 assert.equal(minePost.text, 'abundant');
 assert.equal(minePost.translation, '/əˈbʌndənt/ 丰富的；充裕的');
-assert.equal(await page.getByTestId('gre:abundant-add-mine').isDisabled(), true, '已加入 is idempotent (disabled)');
-await page.getByTestId('gre:abundant-add-mine').click({ force: true }).catch(() => {});
-assert.equal(state.favoritePosts.length, postsBefore + 1, 'the added row never re-posts');
 
-// A failed add stays retryable and leaves an inline error, not a fake 已加入.
+// A failed add stays retryable and leaves an inline error, not a fake success.
 state.failFavoritePost = 'candid';
 await page.getByTestId('vocab-list-expand-gre:candid').click();
 await page.getByTestId('gre:candid-add-mine').click();
@@ -675,24 +720,33 @@ assert.equal(await page.getByTestId('gre:candid-add-mine').isDisabled(), false, 
 await shot('1440-gre-add-failed');
 state.failFavoritePost = null;
 await page.getByTestId('gre:candid-add-mine').click();
-await page.waitForFunction(() => {
-    const button = document.querySelector('[data-testid="gre:candid-add-mine"]');
-    return button && button.textContent.includes('已加入');
-});
+await page.waitForFunction(() => !document.querySelector('[data-testid="gre:candid-add-mine"]'));
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-list-error-candid"]').length === 0);
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-star-gre:candid"]')?.getAttribute('aria-pressed') === 'true');
 
-// Star toggles the favorite from a list row: POST then DELETE.
+// Star toggles the favorite from a list row: POST then DELETE. While the word
+// is favorited the expanded row has no 加入我的单词; unstarring brings it back
+// (the action is derived from the canonical favorite set in both directions).
 await page.getByTestId('vocab-list-star-gre:brisk').click();
 await waitFor(() => state.favoritePosts.some((item) => item.text === 'brisk'), 15000, 'star POST');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-star-gre:brisk"]')?.getAttribute('aria-pressed') === 'true');
 assert.equal(await page.getByTestId('vocab-list-star-gre:brisk').getAttribute('aria-pressed'), 'true');
 assert.equal(await page.getByTestId('vocab-list-star-gre:brisk').getAttribute('aria-label'), '取消收藏 brisk');
 const briskPost = state.favoritePosts.find((item) => item.text === 'brisk');
 assert.equal(briskPost.meta.source_kind, 'wordlist');
 assert.equal(briskPost.meta.source_ref, 'gre');
+await page.getByTestId('vocab-list-expand-gre:brisk').click();
+await page.waitForSelector('[data-testid="vocab-list-detail-gre:brisk"]');
+assert.equal(await page.getByTestId('gre:brisk-add-mine').count(), 0,
+    '已收藏的列表行不得渲染 加入我的单词');
 await page.getByTestId('vocab-list-star-gre:brisk').click();
 await waitFor(() => state.deletes.includes('vocab-fav-brisk'), 15000, 'star DELETE');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-list-star-gre:brisk"]')?.getAttribute('aria-pressed') === 'false');
 assert.equal(await page.getByTestId('vocab-list-star-gre:brisk').getAttribute('aria-pressed'), 'false');
 assert.equal(await page.getByTestId('vocab-list-star-gre:brisk').getAttribute('aria-label'), '收藏 brisk');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="gre:brisk-add-mine"]').length === 1);
+assert.equal(await page.getByTestId('gre:brisk-add-mine').count(), 1,
+    '取消收藏后 加入我的单词 重新出现');
 
 // Speaker on a list row.
 await page.getByTestId('gre:candid-speak').click();
@@ -720,7 +774,8 @@ await pickMenuItem('phrase-clear-filters-menu');
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="phrase-row"]').length === 2);
 
 // Phrase detail expands on row click (no hide-Chinese here) and carries the
-// add-to-mine action; 加入复习 stays hidden while the review UI is paused.
+// add-to-mine action only while the phrase is not a favorite; 加入复习 stays
+// hidden while the review UI is paused.
 await page.getByTestId('phrase-row').first().click();
 await page.waitForSelector('[data-testid="phrase:p1-add-mine"]');
 assert.equal(await page.getByTestId('phrase:p1-add-review').count(), 0,
@@ -729,20 +784,29 @@ assert.match(await page.getByTestId('phrase-example').innerText(), /Never give u
 assert.equal(await page.getByTestId('phrase-source').count(), 1);
 const phrasePostsBefore = state.favoritePosts.length;
 await page.getByTestId('phrase:p1-add-mine').click();
-await page.waitForFunction(() => {
-    const button = document.querySelector('[data-testid="phrase:p1-add-mine"]');
-    return button && button.textContent.includes('已加入');
-});
+await page.waitForFunction(() => !document.querySelector('[data-testid="phrase:p1-add-mine"]'));
 const phrasePost = state.favoritePosts.at(-1);
 assert.equal(state.favoritePosts.length, phrasePostsBefore + 1);
 assert.equal(phrasePost.meta.source_kind, 'wordlist');
 assert.equal(phrasePost.meta.source_ref, 'phrases');
 assert.equal(phrasePost.text, 'give up');
+await page.waitForFunction(() => document.querySelector('[data-testid="phrase:p1-star"]')?.getAttribute('aria-pressed') === 'true');
+assert.equal(await page.getByTestId('phrase:p1-add-mine').count(), 0,
+    '已收藏的短语行不得渲染 加入我的单词');
 await page.getByTestId('phrase:p1-speak').click();
 await page.waitForFunction(() => (window.__spoken || []).includes('give up'));
 await page.getByTestId('phrase:p2-star').click();
 await waitFor(() => state.favoritePosts.some((item) => item.text === 'on the fence'), 15000, 'phrase star POST');
+await page.waitForFunction(() => document.querySelector('[data-testid="phrase:p2-star"]')?.getAttribute('aria-pressed') === 'true');
 assert.equal(await page.getByTestId('phrase:p2-star').getAttribute('aria-label'), '取消收藏 on the fence');
+assert.equal(await page.getByTestId('phrase:p2-add-mine').count(), 0,
+    '已收藏的短语行不得渲染 加入我的单词');
+// Expand the starred phrase row too: the missing action is not a hidden
+// placeholder, the expanded area carries the detail only.
+await page.locator('[data-testid="phrase-row"]').nth(1).click();
+await page.waitForSelector('[data-testid="phrase-detail-p2"]');
+assert.equal(await page.getByTestId('phrase:p2-add-mine').count(), 0,
+    '已收藏的短语行（展开后）不得渲染 加入我的单词');
 await shot('1440-phrases-added');
 
 // ═══ F) 状态接口 403/404 → nothing to degrade while the chips are gone ═══
@@ -776,8 +840,16 @@ assert.equal(await page.getByTestId('vocab-mine-bulk-master').count(), 0, 'no bu
 await shot('375-mine');
 await page.getByTestId('vocab-tab-gre').click();
 await page.waitForSelector('[data-testid="vocab-word-list"]');
+// A fresh GET /api/favorites backs this reload: the fixture favorite abundant
+// renders NO 加入我的单词, while the unstarred brisk still offers it at 375.
 await page.getByTestId('vocab-list-expand-gre:abundant').click();
-assert.equal(await page.getByTestId('gre:abundant-add-mine').isVisible(), true, 'row action reachable at 375');
+await page.waitForSelector('[data-testid="vocab-list-detail-gre:abundant"]');
+assert.equal(await page.getByTestId('gre:abundant-add-mine').count(), 0,
+    '已收藏的列表行不得渲染 加入我的单词');
+assert.equal(await page.getByTestId('vocab-list-star-gre:abundant').getAttribute('aria-pressed'), 'true');
+await page.getByTestId('vocab-list-expand-gre:brisk').click();
+await page.waitForSelector('[data-testid="vocab-list-detail-gre:brisk"]');
+assert.equal(await page.getByTestId('gre:brisk-add-mine').isVisible(), true, 'row action reachable at 375');
 await shot('375-gre-list');
 await page.getByTestId('vocab-tab-phrases').click();
 await page.waitForSelector('[data-testid="phrase-list"]');
