@@ -144,6 +144,16 @@ def _seed_business_data(user_id: str, tmp_path: Path) -> None:
         "VALUES ('ws-1', 'video-1', ?)",
         (now,),
     )
+    # 自定义词表（specs/038）：条目通过 list_id 归属用户，硬删必须一起清。
+    _exec(
+        "INSERT INTO user_wordlists (id, user_id, name, item_count, created_at) "
+        "VALUES ('wl-1', ?, '我的词表', 1, ?)",
+        (user_id, now),
+    )
+    _exec(
+        "INSERT INTO user_wordlist_items (id, list_id, word, word_key, position) "
+        "VALUES ('wli-1', 'wl-1', 'apple', 'apple', 1)"
+    )
     _exec(
         "INSERT INTO ai_usage (user_id, feature, model_id, input_tokens, "
         "output_tokens, calls, est_cost_usd, occurred_at, created_at, usage_date) "
@@ -262,6 +272,7 @@ def _assert_user_rows_gone(user_id: str, pseudo: str) -> None:
         ("watch_events", "user_id"),
         ("word_states", "user_id"),
         ("review_logs", "user_id"),
+        ("user_wordlists", "user_id"),
         ("attempts", "user_id"),
         ("content_items", "user_id"),
         ("exam_sessions", "user_id"),
@@ -298,6 +309,7 @@ def _assert_user_rows_gone(user_id: str, pseudo: str) -> None:
         == 0
     )
     assert _fetchone("SELECT COUNT(*) FROM word_sources")[0] == 0
+    assert _fetchone("SELECT COUNT(*) FROM user_wordlist_items")[0] == 0
     assert _fetchone("SELECT COUNT(*) FROM questions")[0] == 0
     assert _fetchone("SELECT COUNT(*) FROM exam_answers")[0] == 0
     assert _fetchone("SELECT COUNT(*) FROM placement_answers")[0] == 0
@@ -484,6 +496,8 @@ def test_admin_execute_hard_delete_cleans_everything(
     assert result["counts"]["learning_events"] == 1
     assert result["counts"]["word_states"] == 1
     assert result["counts"]["word_sources"] == 1
+    assert result["counts"]["user_wordlists"] == 1
+    assert result["counts"]["user_wordlist_items"] == 1
     assert result["counts"]["articles"] == 1
     assert result["counts"]["imported_books"] == 1
     assert result["counts"]["generated_courses"] == 1

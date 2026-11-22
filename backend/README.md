@@ -28,7 +28,7 @@
 | `ai/ledger.py` + `ai/quota.py` | AI 成本账本与配额（M1b）：`ai_usage` 只追加记账（价格未知按已知最贵、失败不阻断）、`ai_quota` 原子日配额（UPSERT）、三层预算硬闸、模型降级链（同 provider 更便宜 → 另一个可用 provider，大陆不含 Gemini）。功能枚举 `translate` / `summary` / `define` / `local_show` / `quiz` / `reading` / `books` / `analysis` / `course_generation`。账本/配额接受 `target_lang`：`ai_usage.target_lang` 记录维度（0004 迁移，缺省 zh-CN，旧库无列时退化为不带列写入），`ai_quota` **不按语言拆限额**。0025 起 `ai_usage` 带计费快照列（`cost_micro_usd`/`price_version`/`price_source`/`token_source`/`billable`/`billing_status`/`hold_id`/`request_id`），`insert_usage()` 支持在调用方事务内写入；`record_usage(raise_on_failure=True)` 是计费严格模式 |
 | `routes_auth.py` | `/api/auth/signup`（`username` 必填/旧客户端回落 email 前缀；`REGISTRATION_OPEN=false` 时 `inviteCode` 必填，错误带稳定 `code`）、`/api/auth/registration`（公开注册开关只读）、`/api/auth/login`（封禁账号 403）、`/api/auth/logout`、`/api/auth/me`（user 带 username/credits/status；游客返回 `{user:null,guest:true}`）、`/api/auth/claim-guest`（登录后幂等认领游客数据）；`ln_session` Cookie、登录失败短窗限流与 `auth_lockout` 接入（锁定统一 429 + `Retry-After`） |
 | `routes_account.py` | 用户页数据（specs/023）：`PATCH /api/user/profile`（改用户名）、`GET /api/user/summary`（用户信息/余额/本月花费/今日分钟/版本）；均需登录，游客 403 |
-| `account_lifecycle.py` | **账号删除生命周期（M2a / specs/033）**：删除申请（密码+用户名+`DELETE`，7 天冷静期）、立即删会话、取消、到期硬删除（sessions → 业务表 → 文件 → users 最后）、`user_id_hash` 审计、最后管理员保护、密码确认限流、路径/符号链接校验；文件删除失败标 `failed` 可重试 |
+| `account_lifecycle.py` | **账号删除生命周期（M2a / specs/033）**：删除申请（密码+用户名+`DELETE`，7 天冷静期）、立即删会话、取消、到期硬删除（sessions → 业务表 → 文件 → users 最后）、`user_id_hash` 审计、最后管理员保护、密码确认限流、路径/符号链接校验；文件删除失败标 `failed` 可重试；硬删业务行包含自定义词表（specs/038：先按 `list_id` 清 `user_wordlist_items`，再按 `user_id` 删 `user_wordlists`） |
 | `account_export.py` | **数据导出（M2a / specs/033）**：1 次/24h、3 次/30 天、单任务并发、密码确认；后台 daemon 线程生成 ZIP（profile/billing/ai-usage/learning/review/activity/practice/assessment/reading/books/courses + README/manifest SHA256），200MB 上限、24h 过期、token 只存 hash、下载/删除/清理 |
 | `routes_account_lifecycle.py` | `/api/account/*`（需登录；`deletion_pending` 仍可用）：删除状态/提交/取消、导出创建/列表/下载/删除；错误带稳定 `code` |
 | `routes_admin_lifecycle.py` | `/api/admin/deletion-requests*`、`/api/admin/deletions` 别名、`/api/admin/audit`（需 `ADMIN_EMAILS`） |
@@ -45,8 +45,10 @@
 | `local_shows.py` | 本地剧集 → YouTube 视频映射：`episode_video_map(show_id)` / `lookup_episode_video(show_id, season, episode)` 读取 `subtitles/<show_id>/episodes.json`；缺失/损坏一律降级为无映射并打日志，路径限制在 `SUBTITLES_DIR` 内 |
 | `local_dict.py` | 本地离线词典（可选）：`lookup()` 查 `data/ecdict.db`（ECDICT）并映射成 `/api/define` 字段（含多义项 `senses`，`definition` 按词性对齐补英文释义）；惰性只读 sqlite，数据缺失/损坏一律返回 `None`，调用方回落大模型 |
 | `routes_user.py` | `/api/define`（词典：`targetLang` 决定缓存目录与 prompt 语言；语境缓存 → 本地 ECDICT（**仅 zh-CN**）→「已配 Key 的候选模型」；vi-VN 跳过 ECDICT 直接 LLM，只有 DeepSeek Key 也能查；缺省 `model` 时 zh 候选链首选 `DEFAULT_MODEL`、其他语言首选该语言路线；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；响应带 `targetLang`，可选 `pos_label` / `example_translation`；模型结果写按语言隔离的缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`（M1 ④ 按条 API：POST/GET/DELETE + 旧 PUT 兼容 + `?since=` 增量；文件锁 + 原子写，见下文「收藏按条 API」）、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
-| `srs.py` | **复习调度与词状态读写（M2）**：`review(word_state, rating, now)` 纯函数走 FSRS-6（PyPI `fsrs` 6.3.3，目标保持率 0.9、关闭 fuzz 保证确定性）；`add_word` 幂等建词（重复添加不重置进度，只补来源）；`get_due` 到期词 + 新词队列；`record_answer` 同一事务更新状态并追加 `review_logs` 快照；连续 3 次 `again` 自动 suspend，`set_suspended` 手工暂停/恢复；`get_stats` 今日到期/已复习/新词/连续天数。表由 `0006_review_engine` 创建，运行时不建表；时间全部毫秒 UTC |
-| `routes_review.py` | 复习引擎 HTTP 路由（**需登录，游客 403**）：`POST /api/review/words`、`PATCH /api/review/words`（标记/撤销「已掌握」，幂等，不存在则建行）、`GET /api/review/words`（缺省全部词；`?mastered=1` = 已掌握列表；`?state=new,review` 按词状态筛选）、`GET /api/review/queue`、`POST /api/review/answer`、`GET /api/review/stats`、`GET /api/review/suspended`（暂停词列表，省略 `targetLang` = 全部语言）、`POST/DELETE /api/review/suspend`；另**临时承载**单词本的 `GET /api/vocabulary/seen`（见 specs/005 v1.1，等 `routes_vocabulary.py` 的并行改动稳定后搬回）；契约与错误语义见下文「复习引擎」与 [specs/013](../specs/013-review-engine/spec.md) |
+| `srs.py` | **复习调度与词状态读写（M2）**：`review(word_state, rating, now)` 纯函数走 FSRS-6（PyPI `fsrs` 6.3.3，目标保持率 0.9、关闭 fuzz 保证确定性）；`add_word` 幂等建词（重复添加不重置进度，只补来源；可选 `definition` 用户释义快照，**仅当现有值为空时写入**，不覆盖）；`get_due` 到期词 + 新词队列；`record_answer` 同一事务更新状态并追加 `review_logs` 快照；连续 3 次 `again` 自动 suspend，`set_suspended` 手工暂停/恢复；`get_stats` 今日到期/已复习/新词/连续天数。表由 `0006_review_engine` 创建，`mastered` / `definition` 由 `0027` / `0029` 原地加列，运行时不建表；时间全部毫秒 UTC |
+| `routes_review.py` | 复习引擎 HTTP 路由（**需登录，游客 403**）：`POST /api/review/words`（可选 `definition` 释义快照，仅空时写入）、`PATCH /api/review/words`（标记/撤销「已掌握」，幂等，不存在则建行）、`GET /api/review/words`（缺省全部词；`?mastered=1` = 已掌握列表；`?state=new,review` 按词状态筛选）、`GET /api/review/queue`、`POST /api/review/answer`、`GET /api/review/stats`、`GET /api/review/suspended`（暂停词列表，省略 `targetLang` = 全部语言）、`POST/DELETE /api/review/suspend`；另**临时承载**单词本的 `GET /api/vocabulary/seen`（见 specs/005 v1.1，等 `routes_vocabulary.py` 的并行改动稳定后搬回）；契约与错误语义见下文「复习引擎」与 [specs/013](../specs/013-review-engine/spec.md) |
+| `wordlists.py` | **自定义词表（specs/038）**：服务端独立校验（拉丁字母/连字符/撇号/变音、≤40 字符 ≤5 词、`NFC + casefold` 去重、CEFR 仅 A1/A2/B1/B2/C1）、限额（每人 ≤10 表、每表 ≤5000 行、name ≤80、同名加 `(2)`）、全无效或校验失败 >50% 阻止导入；一次导入在 `BEGIN IMMEDIATE` 事务里写词表 + 全部条目（失败整笔回滚），删除时显式先删条目（FK `ON DELETE CASCADE` 兜底）；表由 `0028_user_wordlists` 创建，运行时不建表 |
+| `routes_wordlists.py` | 自定义词表 HTTP 路由（**需登录，游客 403**）：`POST /api/wordlists/import`（201 `{list, skipped}`）、`GET /api/wordlists`、`GET /api/wordlists/{id}?page&pageSize&q`、`DELETE /api/wordlists/{id}`；越权/不存在 404、参数与限额 400、未迁移 503；契约见下文「自定义词表导入」与 [specs/038](../specs/038-custom-wordlists/spec.md) |
 | `quiz.py` | **理解题生成与作答（M3）**：读当前用户已有双语字幕缓存（video / local_show，≥8 句）→ 按 `(content_hash, prompt_version)` 缓存出 3 道题 → 两道闸（结构：mcq 4 选 1 / tf 判断；内容：英文题面不混中文、题目与证据句相关）→ 写 `content_items` / `questions` / `attempts` → 返回证据 block 与秒/毫秒时间点；失败重试 1 次，仍失败该题 `rejected`；表由 `0007_quiz` 创建，运行时不建表；作答写 `learning_events(quiz_answer)` |
 | `routes_quiz.py` | 理解题 HTTP 路由（**需登录，游客 403**）：`POST /api/lesson/start`、`GET /api/lesson/{id}/questions`、`POST /api/lesson/answer`、`GET /api/lesson/{id}/result`；契约与错误语义见下文「理解题」与 [specs/014](../specs/014-quiz/spec.md) |
 | `course.py` | **课程（specs/029 + 030）**：静态课程读 `content/course/*.json`（`COURSE_DIR`，schema `linguatrek.course-lesson.v1`），生成课程读 `generated_courses`（只认本人）；两类合并成列表/详情（题目脱敏，不含 `answer`/`explain`）；attempt 开始/恢复（同一用户同一课程唯一 `in_progress`）、首次作答（重复同 choice 幂等、换 choice 409）、步骤/产出保存（≤2000 字符）、完成后按题目数评分、事件写入（≤2KB）；所有查询校验 `user_id` 归属，越权 404；表由 `0021_course_mvp` / `0022_generated_courses` 创建，运行时不建表 |
@@ -224,6 +226,39 @@ data/                                  # DATA_DIR（gitignore）
   （构建幂等 + 目录/分页/搜索/等级/C1+/C2 unavailable/参数上限/503/公开
   只读无游客 Cookie）。
 
+## 自定义词表导入（specs/038，需登录）
+
+登录用户把 CSV / Anki 纯文本 TSV 导入成独立词表（**不解析 `.apkg`**、不自动
+调 AI 补释义）。词表归属账号：游客/未登录统一 **403**，本地不做导入。前端
+预览统计只是体验层，**服务端会独立再校验一遍**（否则直接调接口就能把中文/
+数字/超长词写进来）。表由 `0028_user_wordlists` 创建；`word_states.definition`
+快照列由 `0029_word_state_definition` 原地加列（可空，旧行 NULL）。
+
+| 端点 | 请求 | 成功 | 失败 |
+|---|---|---|---|
+| `POST /api/wordlists/import` | `{name?, filename?, items:[{word,translation?,phonetic?,cefr?,example?}]}`；≤5000 行 | `201 {list:{id,name,itemCount,createdAt}, skipped}`；`skipped` = 无效行 + 重复行 | `400` 无有效词条 / 校验失败 >50% / 超过 10 表 / 超过 5000 行；`403` 游客；`503` 未迁移 |
+| `GET /api/wordlists` | — | `200 {lists:[{id,name,itemCount,createdAt}]}`；按创建时间升序（新导入排最后） | `403`；`503` |
+| `GET /api/wordlists/{id}?page=1&pageSize=50&q=` | `page≥1`、`pageSize 1–200`（默认 50）；`q` 同时匹配单词与释义 | `200 {id,name,items:[{word,translation,phonetic,cefr,example}],total,page,pageSize,hasMore}` | `404` 不存在/不属于当前用户（不泄露存在性）；`422` 分页越界；`403`；`503` |
+| `DELETE /api/wordlists/{id}` | — | `200 {status:"ok",deleted:true}`；条目一起删除，**不影响**已收藏/已加入复习的词 | `404`；`403`；`503` |
+
+- **词条校验**：单词必须含拉丁字母（允许连字符、直/弯撇号、变音符号），
+  ≤40 字符、≤5 词短语；纯中文/日文/韩文/俄文/数字/符号/空值无效。去重键
+  `NFC + casefold`（同表重复只留第一条、保留原词形）。CEFR 只接受
+  `A1/A2/B1/B2/C1`（大小写不敏感，其它值忽略为 null）；音标/释义/例句按原样存。
+- **命名与限额**：`name` ≤80 字，同名自动加 `(2)`；缺省用上传文件名（去扩展名），
+  再缺省「导入词表」。每人 ≤10 张表、每表 ≤5000 词；文件 ≤2 MB 由前端预览阶段
+  拦截，服务端按行数/表数兜底。
+- **事务性**：一次导入在同一个 `BEGIN IMMEDIATE` 事务里写词表 + 全部条目，
+  任何一步失败整笔回滚，不落半张表。删除词表显式先删条目（迁移里的 FK
+  `ON DELETE CASCADE` 是第二道保险）。
+- **与复习/收藏的关系**：词表是独立存储；「加入复习」时前端把词表释义作为
+  `definition` 传给 `POST /api/review/words`，写入 `word_states.definition`
+  快照（**仅当为空时写入，不覆盖**已有用户数据）。队列/词列表的公开 `word`
+  带 `definition`（可为 null），复习卡优先显示快照，缺失才调 `/api/define`。
+- **账号删除**：硬删除路径先按 `list_id` 清 `user_wordlist_items`、再按
+  `user_id` 删 `user_wordlists`，不留无主的用户导入内容。
+- **测试**：`venv/bin/python -m pytest tests/test_wordlists.py tests/test_review_engine.py tests/test_migrations.py -q`。
+
 ## 复习引擎（M2：FSRS-6 + 队列 + 复习日志）
 
 把收藏夹升级成「可调度的记忆系统」：每个词有状态、FSRS 参数、到期时间与复习流水。
@@ -234,7 +269,7 @@ data/                                  # DATA_DIR（gitignore）
 
 | 表 | 内容 |
 |---|---|
-| `word_states` | 每个用户每个词（按 `target_lang` 分开）一条当前状态：`state`（`new` / `learning` / `review` / `relearning` / `suspended`）、`due_at`、`stability` / `difficulty`（FSRS-6）、`reps` / `lapses`、`last_reviewed_at`、`created_at`；内部列 `step`（FSRS 学习/重学子日 step）与 `fail_streak`（连续 Again 计数）；`mastered`（迁移 `0027_review_mastered`：0/1「已掌握」标记，**不是新的 `state` 取值**；`mastered=1` 不进队列、不计新词与到期，撤销不重置 FSRS）。`UNIQUE(user_id, lemma, target_lang)` + `INDEX(user_id, due_at)` |
+| `word_states` | 每个用户每个词（按 `target_lang` 分开）一条当前状态：`state`（`new` / `learning` / `review` / `relearning` / `suspended`）、`due_at`、`stability` / `difficulty`（FSRS-6）、`reps` / `lapses`、`last_reviewed_at`、`created_at`；内部列 `step`（FSRS 学习/重学子日 step）与 `fail_streak`（连续 Again 计数）；`mastered`（迁移 `0027_review_mastered`：0/1「已掌握」标记，**不是新的 `state` 取值**；`mastered=1` 不进队列、不计新词与到期，撤销不重置 FSRS）；`definition`（迁移 `0029_word_state_definition`：用户提供的释义快照，可空，仅当现有值为空时写入、不覆盖）。`UNIQUE(user_id, lemma, target_lang)` + `INDEX(user_id, due_at)` |
 | `review_logs` | append-only 流水：`rating`（`again` / `hard` / `good` / `easy`）、`state_before` / `state_after`（JSON 快照）、`reviewed_at`、`elapsed_ms`；索引 `(user_id, reviewed_at)` |
 | `word_sources` | 词从哪来：`word_state_id`（FK → `word_states.id`，CASCADE）、`content_ref`（videoId / 剧集 / 文章）、`sentence_id`、`created_at`；索引 `word_state_id` |
 
@@ -254,10 +289,10 @@ data/                                  # DATA_DIR（gitignore）
 
 | 端点 | 请求 | 成功 |
 |---|---|---|
-| `POST /api/review/words` | `{lemma, targetLang?, source?}`；`source` 可为 `{contentRef,sentenceId}`（也接受 `videoId` / snake_case）或字符串 | `201 {"status":"ok","created":true,"word":{…}}`；已存在 `200 created:false`，**不重置进度**，只补来源 |
+| `POST /api/review/words` | `{lemma, targetLang?, source?, definition?}`；`source` 可为 `{contentRef,sentenceId}`（也接受 `videoId` / snake_case）或字符串；`definition` 为用户释义快照（词表/收藏） | `201 {"status":"ok","created":true,"word":{…}}`；已存在 `200 created:false`，**不重置进度**，只补来源；`definition` **仅在现有快照为空时写入**（不覆盖），非法类型 400 |
 | `PATCH /api/review/words` | `{lemma, targetLang?, mastered: bool, source?}`（specs/013 v1.1「已掌握」） | `200 {"status":"ok","word"}`；词不存在则建行（等价 POST），已存在只改标记，幂等；`mastered:true` 后不进队列、不计 `newWords`/`dueToday`，统计进 `masteredWords`；非法 `mastered` 400 |
 | `GET /api/review/words?state=&mastered=&targetLang=&limit=` | `state` 可逗号分隔（`new/learning/review/relearning/suspended` 的子集，大小写与首尾空白不敏感；省略 = 不过滤，空值/非法值 400）；`mastered` 只接受 `0`/`1`（省略 = 不过滤，返回全部词）；`targetLang` 省略 = 全部语言；`limit` 1–200（默认 100）；几个过滤条件 AND 组合 | `{targetLang, now, total, words:[word…]}`；按 `COALESCE(last_reviewed_at, created_at)` 倒序、`id` 兜底；`total` 为过滤后总数（不受 `limit` 影响）；**没有分页/offset**；`mastered=1` = 已掌握列表，非 0/1 400；`state` 复用 `to_public_word` 返回同一 `word` 形状 |
-| `GET /api/review/queue?limit=20&newLimit=10&targetLang=zh-CN` | `limit` 1–100（总条数）、`newLimit` 0–100 | `{targetLang, now, limit, newLimit, counts, due, new, items}`；`due` 按 `due_at` 升序、`new` 按 `created_at` 升序；不返回释义（前端需要时再调 `/api/define`） |
+| `GET /api/review/queue?limit=20&newLimit=10&targetLang=zh-CN` | `limit` 1–100（总条数）、`newLimit` 0–100 | `{targetLang, now, limit, newLimit, counts, due, new, items}`；`due` 按 `due_at` 升序、`new` 按 `created_at` 升序；每个 `word` 带 `definition`（用户释义快照，可 null；缺失才调 `/api/define`） |
 | `POST /api/review/answer` | `{lemma, rating, targetLang?, elapsedMs?}` | `{status:"ok", word, suspended, autoSuspended, dueAt}`；词不存在 404、已暂停 409、评分非法 400 |
 | `GET /api/review/stats?targetLang=` | 省略 `targetLang` = 全部语言 | `{targetLang, now, today, dueToday, dueNow, reviewedToday, reviewedWordsToday, newWords, newToday, totalWords, suspendedWords, masteredWords, streakDays}` |
 | `GET /api/review/suspended?limit=100&targetLang=` | `limit` 1–200（默认 100）；省略 `targetLang` = 全部语言 | `{targetLang, now, total, words:[word…]}`；按最近更新倒序（`COALESCE(last_reviewed_at, created_at)`），`total` 为不分页总数 |
@@ -269,7 +304,7 @@ data/                                  # DATA_DIR（gitignore）
   本轮 `routes_vocabulary.py` 正被并行改动（新增 `/classify`），为免互相覆盖先
   放在复习路由的相近位置；路径、鉴权与响应形状不变，后续可整段搬回。
 
-`word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, mastered, sources}`。
+`word` 形状：`{id, lemma, targetLang, state, dueAt, stability, difficulty, reps, lapses, failStreak, lastReviewedAt, createdAt, mastered, definition, sources}`。
 数据库未迁移 → **503**；参数错误 → **400**；游客 → **403**。
 
 ### 行为埋点事件（M2 #7 / specs/027）
@@ -1348,7 +1383,7 @@ venv/bin/python -m pytest tests/test_i18n_target_lang.py -q   # 目标语言 P0�
 
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）；`0010_discover` 建内容发现缓存/审计表 `discover_queries`（V1，见上文「内容发现」）；`0011_reading` 建读文章四表；`0012_exam` 建考试练习两表（V2，见上文「考试练习」）；`0013_user_profile` 给 `users` 加 `username`/`credits`/`status`（旧用户 username 回填 email 前缀）、建余额流水 `credit_transactions` 与应用设置 `app_settings`（V1 用户需求 1–3，见上文「用户资料、余额与后台设置」）；`0024_account_lifecycle` 建删除申请 `account_deletion_requests`、导出任务 `data_export_jobs`、管理员审计 `admin_audit_log`（M2a，见上文「账号删除 / 数据导出」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）；`0010_discover` 建内容发现缓存/审计表 `discover_queries`（V1，见上文「内容发现」）；`0011_reading` 建读文章四表；`0012_exam` 建考试练习两表（V2，见上文「考试练习」）；`0013_user_profile` 给 `users` 加 `username`/`credits`/`status`（旧用户 username 回填 email 前缀）、建余额流水 `credit_transactions` 与应用设置 `app_settings`（V1 用户需求 1–3，见上文「用户资料、余额与后台设置」）；`0024_account_lifecycle` 建删除申请 `account_deletion_requests`、导出任务 `data_export_jobs`、管理员审计 `admin_audit_log`（M2a，见上文「账号删除 / 数据导出」）；`0028_user_wordlists` 建自定义词表两表 `user_wordlists` / `user_wordlist_items`；`0029_word_state_definition` 给 `word_states` 加可空 `definition` 释义快照列（见上文「自定义词表导入」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 

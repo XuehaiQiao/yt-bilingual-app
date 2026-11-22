@@ -998,6 +998,28 @@ def _delete_business_rows(
             (user_id,),
         )
 
+    # 5b) 自定义词表（specs/038）：条目表没有 user_id，按 list_id 显式删
+    # 子表后再删词表父行。迁移里的 FK CASCADE 只在「从 user_wordlists 删」
+    # 时生效；账号硬删如果不先清子表，会留下无主的用户导入内容（隐私红线）。
+    if _table_exists(conn, "user_wordlist_items") and _table_exists(
+        conn, "user_wordlists"
+    ):
+        cursor = conn.execute(
+            "DELETE FROM user_wordlist_items WHERE list_id IN "
+            "(SELECT id FROM user_wordlists WHERE user_id = ?)",
+            (user_id,),
+        )
+        counts["user_wordlist_items"] = max(0, int(cursor.rowcount or 0))
+    else:
+        counts["user_wordlist_items"] = 0
+    _count_delete(
+        conn,
+        counts,
+        "user_wordlists",
+        "DELETE FROM user_wordlists WHERE user_id = ?",
+        (user_id,),
+    )
+
     # 6) 理解题/练习：attempts → questions（按用户 content_item）→ content_items。
     _count_delete(
         conn, counts, "attempts", "DELETE FROM attempts WHERE user_id = ?", (user_id,)
