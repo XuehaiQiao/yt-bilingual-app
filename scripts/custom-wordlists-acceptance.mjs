@@ -23,8 +23,15 @@
 // in the product. The old 复习卡 definition-priority case can no longer be
 // exercised through the UI, so §H asserts the deep-link fallback instead.
 //
+// Updated for the unified word-list UI (commit 381440f, specs/005 §统一词表 UI):
+// rows now carry the shared WordTable controls (star / expand), row actions live
+// inside the expanded area, paging uses the shared 每页 20/50/100 + 跳至 pager,
+// and the edit mode (勾选删除) + 重命名 live on the custom list itself. Sections
+// D–F were rewritten accordingly; the import wizard, review-route fallback,
+// guest gate and 375px cases are unchanged.
+//
 // Screenshots: /tmp/custom-wordlists-*.png
-// Run: APP_URL=http://127.0.0.1:5173 node scripts/custom-wordlists-acceptance.mjs
+// Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node custom-wordlists-acceptance.mjs
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 
@@ -54,6 +61,7 @@ const USER = { id: 'u-wl', email: 'wordlists@example.test', username: 'Wordliste
 const makeItems = (prefix, count, start = 1) => Array.from({ length: count }, (_, index) => {
     const n = start + index;
     return {
+        id: `it-${prefix}-${n}`,
         word: `${prefix}${String(n).padStart(3, '0')}`,
         translation: `释义 ${n}`,
         phonetic: `/wɜːd${n}/`,
@@ -63,6 +71,7 @@ const makeItems = (prefix, count, start = 1) => Array.from({ length: count }, (_
 });
 
 const ABUNDANT = {
+    id: 'it-abundant',
     word: 'abundant',
     translation: '丰富的；充裕的',
     phonetic: '/əˈbʌndənt/',
@@ -70,6 +79,7 @@ const ABUNDANT = {
     example: 'The region has abundant rainfall.',
 };
 const CANDID = {
+    id: 'it-candid',
     word: 'candid',
     translation: '坦率的',
     phonetic: '/ˈkændɪd/',
@@ -106,6 +116,7 @@ function createState() {
             { id: 'wl-3', name: 'My words', createdAt: 1763000200000, items: [{ ...CANDID, word: 'lucid', translation: '清晰的' }] },
         ],
         favorites: [],
+        favoriteDeletes: [],
         reviewPosts: [],
         masteredPatches: [],
         defineCalls: 0,
@@ -113,6 +124,8 @@ function createState() {
         wordlistCalls: 0,
         importBodies: [],
         deletes: [],
+        renames: [],
+        itemDeletes: [],
         reviewQueue: null,
     };
 }
@@ -164,6 +177,12 @@ async function installMocks(context, state) {
             });
         }
         if (pathname === '/api/favorites' && method === 'GET') return respond(state.favorites);
+        if (pathname.startsWith('/api/favorites/') && method === 'DELETE') {
+            const id = decodeURIComponent(pathname.replace('/api/favorites/', ''));
+            state.favoriteDeletes.push(id);
+            state.favorites = state.favorites.filter((fav) => fav.id !== id);
+            return respond({ status: 'ok', deleted: true, id });
+        }
         if (pathname === '/api/favorites' && method === 'POST') {
             const body = request.postDataJSON() || {};
             const meta = body.meta || {};
@@ -293,11 +312,32 @@ async function installMocks(context, state) {
             state.lists.push(list);
             return respond({ list: listMeta(list), skipped: 0 }, 201);
         }
+        const itemsMatch = pathname.match(/^\/api\/wordlists\/([^/]+)\/items$/);
+        if (itemsMatch) {
+            const id = decodeURIComponent(itemsMatch[1]);
+            const list = state.lists.find((entry) => entry.id === id);
+            if (!list) return fail(404, 'wordlist not found');
+            if (method === 'DELETE') {
+                const body = request.postDataJSON() || {};
+                const ids = Array.isArray(body.itemIds) ? body.itemIds : [];
+                state.itemDeletes.push({ id, ids });
+                list.items = list.items.filter((item) => !ids.includes(item.id));
+                return respond({ deleted: ids.length, itemCount: list.items.length });
+            }
+        }
         const pageMatch = pathname.match(/^\/api\/wordlists\/([^/]+)$/);
         if (pageMatch) {
             const id = decodeURIComponent(pageMatch[1]);
             const list = state.lists.find((entry) => entry.id === id);
             if (!list) return fail(404, 'wordlist not found');
+            if (method === 'PATCH') {
+                const body = request.postDataJSON() || {};
+                const name = String(body.name ?? '').trim();
+                if (!name) return fail(400, 'name required');
+                list.name = name;
+                state.renames.push({ id, name });
+                return respond({ list: listMeta(list) });
+            }
             if (method === 'DELETE') {
                 state.deletes.push(id);
                 state.lists = state.lists.filter((entry) => entry.id !== id);
@@ -533,58 +573,161 @@ assert.equal(
 );
 assert.equal(await page.$$eval('[data-testid="vocab-custom-row"]', (rows) => rows.length), 2);
 
-// ── D) row actions on a pre-existing custom list ────────────────────────
+// ── D) row actions on a pre-existing custom list (shared WordTable) ─────
 await page.getByTestId('vocab-tab-custom-wl-1').click();
 await page.getByTestId('vocab-custom-list').waitFor();
 const ROW = 'wl-1:abundant';
 
-await page.getByTestId(`${ROW}-add-mine`).click();
+// The shared row: 原词 / 音标 / 释义 / 发音 / 等级 / 星标 / 展开. No ×N column.
+for (const [suffix, text] of [
+    ['word-abundant', 'abundant'],
+    ['ipa-abundant', '/əˈbʌndənt/'],
+    ['translation-abundant', '丰富的；充裕的'],
+    ['level-abundant', 'B2'],
+]) {
+    assert.equal((await page.getByTestId(`vocab-custom-${suffix}`).innerText()).trim(), text);
+}
+assert.equal(await page.locator('[data-testid^="vocab-custom-seen-"]').count(), 0,
+    'custom lists must not render the ×N column');
+assert.equal(await page.getByTestId('vocab-custom-star-abundant').getAttribute('aria-pressed'), 'false');
+
+// Row actions live in the expanded area: 加入我的单词 / 标为已掌握 (+ 加入复习,
+// hidden while the review UI is paused).
+await page.getByTestId('vocab-custom-expand-abundant').click();
+await page.waitForSelector('[data-testid="wl-1:abundant-add-mine"]');
+assert.equal(await page.getByTestId('wl-1:abundant-add-review').count(), 0,
+    '加入复习 must be hidden on a custom-list row while the review UI is paused');
+await page.getByTestId('wl-1:abundant-add-mine').click();
 await page.waitForFunction(() => document.querySelector('[data-testid="wl-1:abundant-add-mine"]')?.textContent?.includes('已加入'));
 assert.equal(state.favorites.length, 1);
+assert.equal(state.favorites[0].en_text, 'abundant');
 assert.equal(state.favorites[0].source_kind, 'wordlist');
 assert.equal(state.favorites[0].source_ref, 'wl-1');
 assert.equal(state.favorites[0].source_title, '旅行词汇');
 assert.equal(state.favorites[0].example, 'The region has abundant rainfall.');
 assert.equal(state.favorites[0].zh_text, '/əˈbʌndənt/ 丰富的；充裕的');
 
-// specs/038 + specs/013 (2026-11-22): the review UI is paused, so the
-// custom-list surface hides 加入复习 (and 全部加入复习, asserted in §G) while
-// keeping the API + definition snapshot.
-assert.equal(await page.getByTestId(`${ROW}-add-review`).count(), 0,
-    '加入复习 must be hidden on a custom-list row while the review UI is paused');
+// Star = favorite toggle: POST on star, DELETE on unstar (mock favorites list
+// is the server record; the row star is filled while the word is favorited).
+await page.getByTestId('vocab-custom-star-candid').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-star-candid"][aria-pressed="true"]').length === 1);
+assert.equal(state.favorites.length, 2);
+const starred = state.favorites.find((fav) => fav.en_text === 'candid');
+assert.equal(starred.source_ref, 'wl-1');
+assert.equal(starred.example, 'She gave a candid answer.');
+await page.getByTestId('vocab-custom-star-candid').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-star-candid"][aria-pressed="false"]').length === 1);
+assert.equal(state.favorites.length, 1, 'unstarring removes the favorite record');
+assert.equal(state.favoriteDeletes.length, 1, 'unstarring DELETEs the favorite');
+assert.equal(state.favoriteDeletes[0], 'vocab-fav-candid');
 
-await page.getByTestId(`${ROW}-master`).click();
-await page.waitForFunction(() => document.querySelector('[data-testid="wl-1:abundant-master"]')?.textContent?.includes('已掌握'));
+// 标为已掌握 on a custom row: PATCH with the list as contentRef.
+await page.getByTestId('vocab-custom-expand-candid').click();
+await page.getByTestId('wl-1:candid-master').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="wl-1:candid-master"]')?.textContent?.includes('已掌握'));
 assert.equal(state.masteredPatches.length, 1);
 assert.equal(state.masteredPatches[0].mastered, true);
+assert.equal(state.masteredPatches[0].lemma, 'candid');
 assert.equal(state.masteredPatches[0].source.contentRef, 'wl-1');
 
 // ── D2) 隐藏中文 reuses the shared WordTable behavior ────────────────────
-assert.equal(await page.locator('[data-testid="vocab-custom-translation"]').count(), 2);
+assert.equal(await page.locator('[data-testid^="vocab-custom-translation-"]').count(), 2);
 await page.getByTestId('vocab-hide-toggle').click();
-assert.equal(await page.locator('[data-testid="vocab-custom-translation"]').count(), 0);
+assert.equal(await page.locator('[data-testid^="vocab-custom-translation-"]').count(), 0);
 await page.locator('[data-testid="vocab-custom-row"]').first().click();
-assert.equal(await page.locator('[data-testid="vocab-custom-translation"]').count(), 1);
+assert.equal(await page.locator('[data-testid^="vocab-custom-translation-"]').count(), 1);
 await page.getByTestId('vocab-hide-toggle').click();
-assert.equal(await page.locator('[data-testid="vocab-custom-translation"]').count(), 2);
+assert.equal(await page.locator('[data-testid^="vocab-custom-translation-"]').count(), 2);
 
-// ── E) server-side search + 50/page pagination ──────────────────────────
+// ── E) client search + shared pager (每页 20/50/100 + 跳至) ──────────────
 await page.getByTestId('vocab-custom-search').fill('abund');
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 1);
-assert.equal(await page.$$eval('[data-testid="vocab-custom-row"]', (rows) => rows.length), 1);
+assert.equal(await page.getByTestId('vocab-custom-total').innerText(), '找到 1 词');
 await page.getByTestId('vocab-custom-search-clear').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 2);
 
 await page.getByTestId('vocab-tab-custom-wl-2').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 50);
-assert.equal(await page.$$eval('[data-testid="vocab-custom-row"]', (rows) => rows.length), 50);
+assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 2 页');
+await page.getByTestId('vocab-page-size').click();
+await page.getByTestId('vocab-page-size-menu').waitFor();
+await page.getByTestId('vocab-page-size-20').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 20);
+assert.equal(await page.getByTestId('vocab-page-size').innerText(), '每页 20');
+assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 3 页');
+await page.getByTestId('vocab-page-jump').fill('2');
+await page.getByTestId('vocab-page-jump-go').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 20
+    && document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 2 / 3 页');
+await page.getByTestId('vocab-page-size').click();
+await page.getByTestId('vocab-page-size-menu').waitFor();
+await page.getByTestId('vocab-page-size-50').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 50);
 await page.getByTestId('vocab-page-next').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 10);
 assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 2 / 2 页');
 await page.screenshot({ path: `${SHOTS}/custom-wordlists-1440.png`, fullPage: false });
 
-// ── F) delete asks first; cancel keeps the table, confirm deletes it ─────
+// ── F) edit mode (勾选删除) + 重命名 + delete-table menu ─────────────────
+// Editing exists only on a custom list: no edit entry on 我的单词 / 已掌握 /
+// 内置词表 / 短语.
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-panel"]');
+assert.equal(await page.getByTestId('vocab-custom-edit').count(), 0, 'no edit mode outside a custom list');
+assert.equal(await page.getByTestId('vocab-custom-edit-bar').count(), 0);
+await page.getByTestId('vocab-tab-gre').click();
+// This fixture's built-in list is empty, so the GRE tab renders the empty state.
+await page.waitForSelector('[data-testid="vocab-empty"]');
+assert.equal(await page.getByTestId('vocab-custom-edit').count(), 0);
 await page.getByTestId('vocab-tab-custom-wl-1').click();
+await page.getByTestId('vocab-custom-list').waitFor();
+assert.equal(await page.getByTestId('vocab-custom-edit').isVisible(), true);
+await page.getByTestId('vocab-custom-edit').click();
+await page.getByTestId('vocab-custom-edit-bar').waitFor();
+assert.equal(await page.getByTestId('vocab-custom-edit').count(), 0, 'edit mode replaces the 编辑 button');
+assert.equal((await page.getByTestId('vocab-custom-selected').innerText()).trim(), '已选 0');
+assert.equal(await page.locator('[data-testid^="vocab-custom-select-"]').count(), 2,
+    'edit mode adds one checkbox per row');
+await page.getByTestId('vocab-custom-select-it-abundant').check();
+assert.equal((await page.getByTestId('vocab-custom-selected').innerText()).trim(), '已选 1');
+await page.screenshot({ path: `${SHOTS}/custom-wordlists-edit-mode-1440.png`, fullPage: false });
+await page.getByTestId('vocab-custom-edit-delete').click();
+await page.getByTestId('vocab-custom-items-delete').waitFor();
+assert.match(await page.getByTestId('vocab-custom-items-delete').innerText(), /删除选中的 1 个词条/);
+assert.match(await page.getByTestId('vocab-custom-items-delete').innerText(), /只从这张词表删除/);
+await page.getByTestId('vocab-custom-items-delete-cancel').click();
+await page.getByTestId('vocab-custom-items-delete').waitFor({ state: 'hidden' });
+assert.equal(state.itemDeletes.length, 0, 'cancel keeps the selected row');
+assert.equal(await page.locator('[data-testid^="vocab-custom-row"]').count(), 2);
+await page.getByTestId('vocab-custom-edit-delete').click();
+await page.getByTestId('vocab-custom-items-delete').waitFor();
+await page.getByTestId('vocab-custom-items-delete-confirm').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 1);
+await page.getByTestId('vocab-custom-items-delete').waitFor({ state: 'hidden', timeout: 5000 });
+assert.equal(state.itemDeletes.length, 1);
+assert.equal(state.itemDeletes[0].id, 'wl-1');
+assert.deepEqual(state.itemDeletes[0].ids, ['it-abundant']);
+assert.equal(await page.getByTestId('vocab-tab-count-custom-wl-1').innerText(), '1');
+assert.equal(state.favorites.length, 1, 'deleting a row keeps its saved favorite');
+await page.getByTestId('vocab-custom-edit-done').click();
+await page.getByTestId('vocab-custom-edit-bar').waitFor({ state: 'detached' });
+assert.equal(await page.getByTestId('vocab-custom-edit').isVisible(), true);
+
+// 重命名 from the list menu: the tab label follows the PATCH response.
+await page.getByTestId('vocab-custom-menu-trigger').click();
+await page.getByTestId('vocab-custom-menu').waitFor();
+await page.getByTestId('vocab-custom-rename').click();
+await page.getByTestId('vocab-custom-rename-dialog').waitFor();
+assert.equal(await page.getByTestId('vocab-custom-rename-input').inputValue(), '旅行词汇');
+await page.getByTestId('vocab-custom-rename-input').fill('旅行词汇 2');
+await page.getByTestId('vocab-custom-rename-save').click();
+await page.getByTestId('vocab-custom-rename-dialog').waitFor({ state: 'hidden', timeout: 10000 });
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-tab-custom-wl-1"]')?.textContent?.includes('旅行词汇 2'));
+assert.deepEqual(state.renames, [{ id: 'wl-1', name: '旅行词汇 2' }]);
+
+// Delete-table menu: cancel keeps it, confirm deletes the table only.
+await page.getByTestId('vocab-custom-menu-trigger').click();
+await page.getByTestId('vocab-custom-menu').waitFor();
 await page.getByTestId('vocab-custom-delete').click();
 await page.getByTestId('vocab-custom-delete-confirm').waitFor();
 assert.match(await page.getByTestId('vocab-custom-delete-confirm').innerText(), /只会删除这个词表/);
@@ -593,7 +736,10 @@ await page.getByTestId('vocab-custom-delete-confirm').waitFor({ state: 'hidden' 
 assert.equal(state.deletes.length, 0);
 assert.equal(await page.getByTestId('vocab-tab-custom-wl-1').count(), 1);
 
+await page.getByTestId('vocab-custom-menu-trigger').click();
+await page.getByTestId('vocab-custom-menu').waitFor();
 await page.getByTestId('vocab-custom-delete').click();
+await page.getByTestId('vocab-custom-delete-confirm').waitFor();
 await page.getByTestId('vocab-custom-delete-confirm-confirm').click();
 await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-tab-custom-wl-1"]'));
 assert.deepEqual(state.deletes, ['wl-1']);

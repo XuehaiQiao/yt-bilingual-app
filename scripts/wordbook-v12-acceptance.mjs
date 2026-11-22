@@ -1,16 +1,29 @@
-// Playwright acceptance for the word book v1.2 daily-use layer
-// (specs/005 §v1.2). The review UI is paused (specs/013 2026-11-22,
-// REVIEW_UI_ENABLED=false), so: row TTS, 我的单词 search (状态 chips hidden),
-// built-in list / phrase 加入我的单词 (加入复习 hidden), multi-select bulk
-// actions (标为已掌握 / 删除 only), 字母 sort + 50/page, guest gating.
-// Every hidden review surface is asserted ABSENT, and the run must end with
-// zero `?state=` reads and zero review POSTs.
+// Playwright acceptance for the word book v1.2 daily-use layer, updated for
+// the unified word-list UI (commit 381440f, specs/005 §统一词表 UI).
+//
+// The UI now has ONE table/toolbar/pager for all five surfaces, so this script
+// asserts the shared contract instead of the old per-surface controls:
+//   - 我的单词 search (200ms debounce), menu-driven 排序 (menuitemradio) and
+//     筛选 (multi-select groups, keepOpen + 清除筛选), client paging with the
+//     每页 20/50/100 selector and the 跳至 input;
+//   - the shared row: 原词 / 音标 / 释义 / 发音 / CEFR / 星标 / 展开, with ×N
+//     only in 我的单词; row actions live inside the expanded area;
+//   - star = favorite toggle (POST /api/favorites on a list row, DELETE when
+//     unstarring); inline retryable errors on add/delete/mastered failures;
+//   - 已掌握 rows, undo via the expanded action, star re-adds a favorite;
+//   - built-in list / phrase 加入我的单词 + 加入复习 stays hidden (review UI
+//     paused), phrase filters, guest login gate at the write entry.
+//
+// REMOVED SURFACES (kept out of this script on purpose): the old 状态 chips and
+// the multi-select bulk bar (标为已掌握 / 删除 / 加入复习). specs/013 paused the
+// review UI, and 381440f replaced bulk selection with per-row expanded actions
+// plus 勾选删除 in the custom-wordlist edit mode only (covered by
+// custom-wordlists-acceptance.mjs). Nothing here weakens an assertion: every
+// removed control is asserted ABSENT instead, and no review POST/state read may
+// fire.
 //
 // Every /api/** request is mocked; nothing touches :8000 or :5173.
-// Run (the script needs a directory where `playwright` resolves, e.g. a
-// node_modules symlink or the npx cache):
-//   cd /tmp/wb-ux && APP_URL=http://localhost:5199/ node \
-//     /Users/piece/Desktop/Me/EnglishLearning/yt-bilingual-app/scripts/wordbook-v12-acceptance.mjs
+// Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node wordbook-v12-acceptance.mjs
 // Shots: /tmp/wb-ux-*.png
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -25,7 +38,7 @@ for (const name of ['ok', 'equal', 'deepEqual', 'match']) {
     };
 }
 
-const BASE = process.env.APP_URL || 'http://127.0.0.1:5199/';
+const BASE = process.env.APP_URL || 'http://127.0.0.1:5173/';
 const SHOTS = '/tmp';
 
 // ── fixtures ────────────────────────────────────────────────────────────────
@@ -33,9 +46,6 @@ const MINE = Array.from({ length: 70 }, (_, i) => `w${String(i).padStart(3, '0')
 const MASTERED = MINE.slice(60); // w060…w069
 const WORD_STATE = {};
 MINE.slice(0, 10).forEach((word) => { WORD_STATE[word] = 'new'; });
-MINE.slice(10, 20).forEach((word) => { WORD_STATE[word] = 'learning'; });
-MINE.slice(20, 25).forEach((word) => { WORD_STATE[word] = 'review'; });
-MINE.slice(25, 28).forEach((word) => { WORD_STATE[word] = 'suspended'; });
 
 const T0 = 1763000000000;
 let favorites = MINE.map((word, i) => ({
@@ -64,12 +74,14 @@ const PHRASES = [
 const state = {
     mode: 'signedIn', // 'signedIn' | 'guest'
     mastered: [...MASTERED],
-    /** 404/403 → the state chip group must hide instead of erroring. */
-    stateFail: 0,
-    /** Word whose POST /api/favorites fails (inline retryable error). */
+    /** Lemma whose POST /api/favorites fails (inline retryable error). */
     failFavoritePost: null,
-    /** Favorite id whose DELETE fails (bulk summary keeps the row). */
+    /** Favorite id whose DELETE fails. */
     failDelete: null,
+    /** Lemma whose PATCH mastered=true fails. */
+    failMastered: null,
+    /** 404/403 for the mastered list (kept from the old chips scenario). */
+    stateFail: 0,
     favoritePosts: [],
     reviewPosts: [],
     patches: [],
@@ -179,7 +191,7 @@ await context.route('**/api/**', async (route) => {
     }
     if (pathname === '/api/ability/profile') return respond({ status: 'ok', vocabulary: { cefr: 'B1', low: 'A2', high: 'B1', label: 'A2–B1' } });
 
-    // ── favorites: single-row writes used by 加入我的单词 / 批量删除 ────────
+    // ── favorites: star toggles + 加入我的单词 ──────────────────────────────
     if (pathname === '/api/favorites' && method === 'GET') {
         return respond(state.mode === 'signedIn' ? favorites : []);
     }
@@ -211,7 +223,7 @@ await context.route('**/api/**', async (route) => {
         return respond({ status: 'ok', deleted: true, id });
     }
 
-    // ── review words: mastered list (v1.1) + state filter (v1.2) ─────────
+    // ── review words: mastered list (never the 状态 filter while paused) ───
     if (pathname === '/api/review/words' && method === 'GET') {
         if (state.mode === 'guest') return fail(403, 'login required');
         const masteredParam = url.searchParams.get('mastered');
@@ -221,28 +233,23 @@ await context.route('**/api/**', async (route) => {
             return respond({ targetLang: 'zh-CN', now: Date.now(), total: words.length, words });
         }
         if (stateParam) {
+            // The paused review UI must never send this read.
             state.stateRequests.push(stateParam);
             if (state.stateFail) return fail(state.stateFail, 'state filter unavailable');
-            const wanted = new Set(stateParam.split(',').map((item) => item.trim().toLowerCase()));
-            const words = Object.entries(WORD_STATE)
-                .filter(([, value]) => wanted.has(value))
-                .map(([lemma]) => publicWord(lemma));
-            return respond({ targetLang: 'zh-CN', now: Date.now(), total: words.length, words });
         }
-        const words = Object.keys(WORD_STATE).map((lemma) => publicWord(lemma));
-        return respond({ targetLang: 'zh-CN', now: Date.now(), total: words.length, words });
+        return respond({ targetLang: 'zh-CN', now: Date.now(), total: 0, words: [] });
     }
     if (pathname === '/api/review/words' && method === 'POST') {
         const body = request.postDataJSON() || {};
         const lemma = String(body.lemma ?? '').trim();
         state.reviewPosts.push({ lemma, source: body.source ?? null });
-        if (!(lemma in WORD_STATE)) WORD_STATE[lemma] = 'new';
         return respond({ status: 'ok', created: true, word: publicWord(lemma) });
     }
     if (pathname === '/api/review/words' && method === 'PATCH') {
         const body = request.postDataJSON() || {};
         const lemma = String(body.lemma ?? '').trim();
         state.patches.push({ lemma, mastered: body.mastered });
+        if (state.failMastered && lemma === state.failMastered) return fail(500, 'mastered write failed');
         if (body.mastered === true) state.mastered = [...new Set([...state.mastered, lemma])];
         else state.mastered = state.mastered.filter((word) => word !== lemma);
         return respond({ status: 'ok', word: publicWord(lemma, { mastered: body.mastered === true }) });
@@ -274,7 +281,15 @@ await context.route('**/api/**', async (route) => {
         });
     }
     if (pathname === '/api/vocabulary/phrases' && method === 'GET') {
-        return respond({ items: PHRASES, total: PHRASES.length, page: 1, pageSize: 50, hasMore: false });
+        const level = url.searchParams.get('level');
+        const type = url.searchParams.get('type');
+        const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+        const items = PHRASES.filter((phrase) => (
+            (!level || phrase.cefr === level)
+            && (!type || phrase.type === type)
+            && (!q || phrase.headword.toLowerCase().includes(q) || phrase.translation.includes(q))
+        ));
+        return respond({ items, total: items.length, page: 1, pageSize: 50, hasMore: false });
     }
     if (pathname.startsWith('/api/vocabulary/phrases/') && method === 'GET') {
         const id = pathname.split('/').pop();
@@ -287,8 +302,6 @@ await context.route('**/api/**', async (route) => {
     }
     if (pathname === '/api/vocabulary/seen' && method === 'GET') return respond({});
 
-    // specs/038: the word book fetches the account's custom lists on mount.
-    // These fixtures predate the feature, so it is an empty catalog here.
     if (pathname === '/api/wordlists' && method === 'GET') return respond({ lists: [] });
 
     state.unmocked.push(`${method} ${pathname}`);
@@ -311,34 +324,57 @@ const waitFor = async (fn, timeout = 15000, label = 'condition') => {
     }
     throw new Error(`timeout waiting for ${label}`);
 };
+const rowCount = (prefix) => page.locator(`[data-testid^="${prefix}"]`).count();
 
 async function gotoWordbook() {
     await page.goto(`${BASE}#/app/profile/vocabulary`, { waitUntil: 'domcontentloaded' });
     // A hash-only goto is same-document; force a real mount so per-mount reads
-    // (状态 chips, mastered list) run again for the current mock state.
+    // (mastered list) run again for the current mock state.
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('[data-testid="vocabulary-book"]', { timeout: 20000 });
     await page.getByTestId('vocab-tabs').waitFor({ timeout: 20000 });
 }
-const rowWords = async (prefix) => page.$$eval(
-    `[data-testid^="${prefix}-word-"]`,
-    (nodes) => nodes.map((node) => node.textContent.trim()),
-);
 
-// ═══ A) 我的单词: search, 状态 chips hidden, 字母 sort, 50/page ═══════════
+/** Open one Menu trigger and wait for its popup (menu testid is optional). */
+async function openMenu(triggerTestId, menuTestId) {
+    await page.getByTestId(triggerTestId).click();
+    if (menuTestId) await page.getByTestId(menuTestId).waitFor({ state: 'visible', timeout: 5000 });
+    else await page.locator('[role="menu"]').waitFor({ state: 'visible', timeout: 5000 });
+}
+
+/** Choose one menu item; menus without keepOpen close themselves. */
+async function pickMenuItem(testId, { staysOpen = false } = {}) {
+    await page.getByTestId(testId).click();
+    if (!staysOpen) {
+        await page.locator('[role="menu"]').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
+    }
+}
+
+async function closeMenu() {
+    await page.keyboard.press('Escape');
+    await page.locator('[role="menu"]').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
+}
+
+const firstWord = async (prefix = 'vocab-mine-word-') => (
+    await page.locator(`[data-testid^="${prefix}"]`).first().innerText()
+).trim();
+
+// ═══ A) 我的单词: search, 排序菜单, 筛选菜单, 每页条数 + 跳页 ═══════════════
 await gotoWordbook();
 await page.getByTestId('vocab-tab-mine').click();
 await page.waitForSelector('[data-testid="vocab-mine-list"]');
 await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length > 0);
 
-let rows = await page.$$eval('[data-testid^="vocab-mine-toggle-"]', (nodes) => nodes.length);
+let rows = await rowCount('vocab-mine-toggle-');
 assert.equal(rows, 50, `我的单词 page 1 must show 50 rows, saw ${rows}`);
 assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 2 页');
 assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 60 词');
+assert.equal(await page.getByTestId('vocab-total').innerText(), '共 60 词');
+assert.equal(await page.getByTestId('vocab-tab-count-mine').innerText(), '60');
 await shot('1440-mine');
 
-// 状态 chips: REVIEW_UI_ENABLED=false → the whole group is gone and the screen
-// never asks GET /api/review/words?state= (backend/data stay, UI does not).
+// 状态 chips stay gone (REVIEW_UI_ENABLED=false): the group and every read are
+// asserted absent, so a paused review surface can never leak back in.
 assert.equal(await page.getByTestId('vocab-state-filter').count(), 0,
     'the 状态 filter group must be hidden while the review UI is paused');
 for (const id of ['vocab-state-all', 'vocab-state-new', 'vocab-state-learning', 'vocab-state-review', 'vocab-state-suspended']) {
@@ -346,13 +382,25 @@ for (const id of ['vocab-state-all', 'vocab-state-new', 'vocab-state-learning', 
 }
 assert.deepEqual(state.stateRequests, [], 'the screen must not call GET /api/review/words?state=');
 
+// Shared row structure: 原词 / 音标 / 释义 / 发音 / 等级 / 星标 / ×N / 展开.
+const firstId = 'fav-w059';
+for (const suffix of ['word', 'ipa', 'meaning', 'speak', 'level', 'star', 'seen', 'expand']) {
+    assert.equal(await page.getByTestId(`vocab-mine-${suffix}-${firstId}`).count(), 1,
+        `我的单词 row needs the ${suffix} control`);
+}
+assert.equal((await page.getByTestId(`vocab-mine-word-${firstId}`).innerText()).trim(), 'w059');
+assert.equal((await page.getByTestId(`vocab-mine-ipa-${firstId}`).innerText()).trim(), '/ˈtest59/');
+assert.equal((await page.getByTestId(`vocab-mine-meaning-${firstId}`).innerText()).trim(), '释义59');
+assert.equal((await page.getByTestId(`vocab-mine-seen-${firstId}`).innerText()).trim(), '×0');
+assert.equal(await page.getByTestId(`vocab-mine-star-${firstId}`).getAttribute('aria-pressed'), 'true');
+assert.equal(await page.getByTestId(`vocab-mine-expand-${firstId}`).getAttribute('aria-expanded'), 'false');
+
 // 行内发音: local speech synthesis, no AI request.
-const firstSpeak = await page.$$eval('[data-testid^="vocab-mine-speak-"]', (nodes) => nodes[0].getAttribute('data-testid'));
-const firstWord = await page.$$eval('[data-testid^="vocab-mine-word-"]', (nodes) => nodes[0].textContent.trim());
-await page.getByTestId(firstSpeak).click();
+await page.getByTestId(`vocab-mine-speak-${firstId}`).click();
 await page.waitForFunction(() => (window.__spoken || []).length > 0);
-assert.equal((await spoken()).at(-1), firstWord, 'the row speaker speaks the English word');
-assert.equal(await page.getByTestId(firstSpeak).locator('svg').count(), 1, 'ghost icon recipe renders one Volume2 icon');
+assert.equal((await spoken()).at(-1), 'w059', 'the row speaker speaks the English word');
+assert.equal(await page.getByTestId(`vocab-mine-speak-${firstId}`).locator('svg').count(), 1,
+    'the ghost icon recipe renders one Volume2 icon');
 
 // Search (200ms debounce) + clear + empty state.
 await page.getByTestId('vocab-mine-search').fill('w00');
@@ -364,20 +412,53 @@ await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab
 await page.getByTestId('vocab-mine-search').fill('zzzz-nothing');
 await page.waitForSelector('[data-testid="vocab-mine-filtered-empty"]');
 await shot('1440-mine-search-empty');
-await page.getByTestId('vocab-mine-clear-filters').click();
+await page.getByTestId('vocab-mine-search-clear').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 50);
 
-// 字母 A→Z sort + paging reset.
-await page.getByTestId('vocab-sort-alpha').click();
+// 排序 is a menu now: trigger → menuitemradio → the label follows the choice.
+await openMenu('vocab-mine-sort', 'vocab-mine-sort-menu');
+assert.equal(await page.locator('[role="menuitemradio"]').count(), 4, 'sort menu has four radio options');
+assert.equal(await page.getByTestId('vocab-sort-added').getAttribute('aria-checked'), 'true');
+await pickMenuItem('vocab-sort-alpha');
 await page.waitForFunction(() => {
     const first = document.querySelector('[data-testid^="vocab-mine-word-"]');
     return first && first.textContent.trim() === 'w000';
 });
-await page.getByTestId('vocab-page-2').click();
-await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 10);
-assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 2 / 2 页');
-// A new search is a filter change and always restarts at page 1 (the state
-// chips used to prove this; they are hidden now, so search takes that role).
+assert.match(await page.getByTestId('vocab-mine-sort').innerText(), /字母 A→Z/);
+assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 2 页',
+    'a sort change returns to page 1');
+
+// 筛选 is a menu with grouped multi-select options; 清除筛选 lives in the menu
+// and in the toolbar while a filter is active.
+await openMenu('vocab-mine-filter', 'vocab-mine-filter-menu');
+const filterMenuText = await page.getByTestId('vocab-mine-filter-menu').innerText();
+for (const heading of ['类型', '来源', '等级']) {
+    assert.match(filterMenuText, new RegExp(heading), `filter menu needs the ${heading} section`);
+}
+await page.getByTestId('vocab-filter-type-phrase').click(); // keepOpen
+assert.equal(await page.getByTestId('vocab-filter-type-phrase').getAttribute('aria-checked'), 'true');
+assert.match(await page.getByTestId('vocab-mine-filter').innerText(), /筛选：短语/);
+assert.equal(await page.getByTestId('vocab-mine-filtered-empty').count(), 1, 'no phrase favorite → filtered empty');
+assert.equal(await page.getByTestId('vocab-mine-clear-filters').count(), 1, 'active filter exposes 清除筛选');
+await shot('1440-mine-filtered-empty');
+await pickMenuItem('vocab-mine-clear-filters-menu');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 50);
+assert.equal(await page.getByTestId('vocab-mine-clear-filters').count(), 0);
+
+// 每页 20/50/100 + 跳至 input. A size change resets every list to page 1.
+await openMenu('vocab-page-size', 'vocab-page-size-menu');
+assert.equal(await page.locator('[role="menuitemradio"]').count(), 3, 'pager offers 20 / 50 / 100');
+await pickMenuItem('vocab-page-size-20');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 20);
+assert.equal(await page.getByTestId('vocab-page-size').innerText(), '每页 20');
+assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 3 页');
+await page.getByTestId('vocab-page-jump').fill('2');
+await page.getByTestId('vocab-page-jump-go').click();
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-page-status"]')?.textContent === '第 2 / 3 页');
+assert.equal(await firstWord(), 'w020', 'jump to page 2 shows the second 20-word slice');
+await shot('1440-mine-page-size-jump');
+
+// A filter/search change always restarts at page 1.
 await page.getByTestId('vocab-mine-search').fill('w00');
 await page.waitForFunction(() => {
     const node = document.querySelector('[data-testid="vocab-page-status"]');
@@ -386,118 +467,210 @@ await page.waitForFunction(() => {
 assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 1 页',
     'a filter change must return to page 1');
 await page.getByTestId('vocab-mine-search-clear').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 20);
+await openMenu('vocab-page-size', 'vocab-page-size-menu');
+await pickMenuItem('vocab-page-size-50');
 await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length === 50);
 
-// ═══ B) 批量操作 (我的单词) ══════════════════════════════════════════════
-await page.getByTestId('vocab-mine-select-fav-w000').check();
-await page.getByTestId('vocab-mine-select-fav-w001').check();
-await page.getByTestId('vocab-mine-select-fav-w002').check();
-assert.equal(await page.getByTestId('vocab-mine-selected').innerText(), '已选 3 项');
-await shot('1440-mine-bulk-selected');
-await page.getByTestId('vocab-mine-bulk-master').click();
-await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w000"]').length === 0);
-await waitFor(() => state.patches.length >= 3, 15000, 'bulk master PATCHes');
-assert.deepEqual(
-    state.patches.filter((item) => item.mastered === true).map((item) => item.lemma).sort(),
-    ['w000', 'w001', 'w002'],
-    `bulk PATCH mastered: ${JSON.stringify(state.patches)}`,
-);
-assert.equal(await page.getByTestId('vocab-mine-selected').innerText(), '已选 0 项');
-await shot('1440-mine-bulk-mastered');
-
-// 批量加入复习 hidden (review UI paused): the bulk bar keeps only
-// 标为已掌握 / 删除 and no word may be posted to the review API.
-await page.getByTestId('vocab-mine-select-fav-w003').check();
-await page.getByTestId('vocab-mine-select-fav-w004').check();
-assert.equal(await page.getByTestId('vocab-mine-bulk-review').count(), 0,
-    '批量加入复习 must be hidden while the review UI is paused');
-assert.equal(await page.getByTestId('vocab-mine-bulk-master').count(), 1, 'bulk 标为已掌握 stays');
-assert.equal(await page.getByTestId('vocab-mine-bulk-delete').count(), 1, 'bulk 删除 stays');
-assert.equal(state.reviewPosts.length, 0, 'the bulk bar must never POST a review word');
-await page.getByTestId('vocab-mine-bulk-clear').click();
+// ═══ B) 我的单词 row actions: expand → master / delete / star ════════════
+await openMenu('vocab-mine-sort', 'vocab-mine-sort-menu');
+await pickMenuItem('vocab-sort-alpha');
 await page.waitForFunction(() => {
-    const node = document.querySelector('[data-testid="vocab-mine-selected"]');
-    return node && node.textContent.includes('已选 0 项');
+    const first = document.querySelector('[data-testid^="vocab-mine-word-"]');
+    return first && first.textContent.trim() === 'w000';
 });
-// 批量删除 (确认对话框 + 逐条 DELETE)
-await page.getByTestId('vocab-mine-select-fav-w010').check();
-await page.getByTestId('vocab-mine-select-fav-w011').check();
-await page.getByTestId('vocab-mine-bulk-delete').click();
-await page.waitForSelector('[data-testid="vocab-bulk-delete"]');
-assert.match(await page.getByTestId('vocab-bulk-delete').innerText(), /删除 2 条收藏/);
-await shot('1440-mine-bulk-delete-confirm');
-await page.getByTestId('vocab-bulk-delete-confirm').click();
-await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w010"]').length === 0);
-await page.getByTestId('vocab-bulk-delete').waitFor({ state: 'detached', timeout: 8000 });
-assert.ok(state.deletes.includes('fav-w010') && state.deletes.includes('fav-w011'));
+await page.getByTestId('vocab-mine-expand-fav-w000').click();
+await page.waitForSelector('[data-testid="vocab-mine-detail-fav-w000"]');
+assert.equal((await page.getByTestId('vocab-mine-full-fav-w000').innerText()).trim(), '释义0');
+assert.equal(await page.getByTestId('vocab-mine-source-fav-w000').count(), 1);
+assert.equal(await page.getByTestId('vocab-mine-added-fav-w000').count(), 1);
+assert.equal(await page.getByTestId('vocab-mine-expand-fav-w000').getAttribute('aria-expanded'), 'true');
+await shot('1440-mine-expanded');
 
-// 逐条失败: the failing row stays selected + inline summary (no fake success).
-state.failDelete = 'fav-w012';
-await page.getByTestId('vocab-mine-select-fav-w012').check();
-await page.getByTestId('vocab-mine-select-fav-w013').check();
-await page.getByTestId('vocab-mine-bulk-delete').click();
-await page.getByTestId('vocab-bulk-delete-confirm').click();
-await page.waitForSelector('[data-testid="vocab-mine-bulk-summary"]', { timeout: 15000 });
-const summary = await page.getByTestId('vocab-mine-bulk-summary').innerText();
-assert.match(summary, /1 项失败/);
-assert.equal(await page.getByTestId('vocab-mine-toggle-fav-w012').count(), 1, 'the failed row stays in the list');
-assert.equal(await page.getByTestId('vocab-mine-select-fav-w012').isChecked(), true, 'the failed row stays selected');
-assert.equal(await page.getByTestId('vocab-mine-toggle-fav-w013').count(), 0, 'the successful row is gone');
-await shot('1440-mine-bulk-failed');
-state.failDelete = null;
+// 标为已掌握: row action PATCHes and the row moves to 已掌握.
+await page.getByTestId('vocab-mine-master-fav-w000').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w000"]').length === 0);
+await waitFor(() => state.patches.some((item) => item.lemma === 'w000' && item.mastered === true), 15000, 'master PATCH');
+assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 59 词');
+assert.equal(await page.getByTestId('vocab-total').innerText(), '共 59 词');
+await shot('1440-mine-mastered');
 
-// ═══ C) 已掌握 tab: selection + bulk 撤销 + delete ══════════════════════
+// Undo from 已掌握: expand the row, 撤销 PATCHes mastered=false and the word
+// comes back to 我的单词.
 await page.getByTestId('vocab-tab-mastered').click();
 await page.waitForSelector('[data-testid="vocab-mastered-list"]');
-await page.waitForSelector('[data-testid="vocab-mastered-bulk"]');
-assert.ok(await page.getByTestId('vocab-mastered-select-w060').count() === 1);
-await page.getByTestId('vocab-mastered-select-w060').check();
-await page.getByTestId('vocab-mastered-select-w061').check();
-assert.equal(await page.getByTestId('vocab-mastered-selected').innerText(), '已选 2 项');
-await shot('1440-mastered-bulk');
-await page.getByTestId('vocab-mastered-bulk-unmaster').click();
-await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mastered-undo-w060"]').length === 0);
-assert.ok(
-    state.patches.filter((item) => item.mastered === false).map((item) => item.lemma).includes('w060'),
-    'bulk un-master must PATCH mastered=false',
-);
-// mastered row speaker
-await page.getByTestId('vocab-mastered-w062-speak').click();
-await page.waitForFunction(() => (window.__spoken || []).includes('w062'));
+await page.getByTestId('vocab-mastered-expand-w000').click();
+await page.waitForSelector('[data-testid="vocab-mastered-detail-w000"]');
+await page.getByTestId('vocab-mastered-undo-w000').click();
+await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-mastered-row"][data-word="w000"]'));
+assert.deepEqual(state.patches.at(-1), { lemma: 'w000', mastered: false });
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-panel"]');
+// A tab switch restarts 我的单词 with the default 加入时间 sort (specs/005
+// §统一词表 UI), so pick 字母 A→Z again before looking for page-1 w000.
+await openMenu('vocab-mine-sort', 'vocab-mine-sort-menu');
+await pickMenuItem('vocab-sort-alpha');
+await page.waitForFunction(() => {
+    const first = document.querySelector('[data-testid^="vocab-mine-word-"]');
+    return first && first.textContent.trim() === 'w000';
+});
+assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 60 词',
+    'the unmastered word returns to 我的单词');
 
-// ═══ D) 内置词表: speaker + 加入我的单词 + 加入复习 ══════════════════════
+// 星标 = 取消收藏 on 我的单词: DELETE + the row leaves the list.
+await page.getByTestId('vocab-mine-star-fav-w010').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w010"]').length === 0);
+await waitFor(() => state.deletes.includes('fav-w010'), 15000, 'favorite DELETE');
+assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 59 词');
+
+// 删除 one row from the expanded area (no bulk bar any more).
+await page.getByTestId('vocab-mine-expand-fav-w011').click();
+await page.getByTestId('vocab-mine-delete-fav-w011').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w011"]').length === 0);
+await waitFor(() => state.deletes.includes('fav-w011'), 15000, 'row DELETE');
+assert.equal(await page.getByTestId('vocab-mine-total').innerText(), '共 58 词');
+
+// Row-level failures stay retryable (never a fake success).
+state.failMastered = 'w012';
+await page.getByTestId('vocab-mine-expand-fav-w012').click();
+await page.getByTestId('vocab-mine-master-fav-w012').click();
+await page.waitForSelector('[data-testid="vocab-mine-error-fav-w012"]');
+assert.equal(await page.getByTestId('vocab-mine-toggle-fav-w012').count(), 1, 'a failed master keeps the row');
+await shot('1440-mine-master-failed');
+state.failMastered = null;
+await page.getByTestId('vocab-mine-master-fav-w012').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w012"]').length === 0);
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-error-fav-w012"]').length === 0);
+
+state.failDelete = 'fav-w013';
+await page.getByTestId('vocab-mine-expand-fav-w013').click();
+await page.getByTestId('vocab-mine-delete-fav-w013').click();
+await page.waitForSelector('[data-testid="vocab-mine-error-fav-w013"]');
+assert.equal(await page.getByTestId('vocab-mine-toggle-fav-w013').count(), 1, 'a failed delete keeps the row');
+await shot('1440-mine-delete-failed');
+state.failDelete = null;
+await page.getByTestId('vocab-mine-delete-fav-w013').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mine-toggle-fav-w013"]').length === 0);
+
+// The removed bulk bar is asserted ABSENT (selection now lives only in the
+// custom-wordlist edit mode) and no review write may fire from 我的单词.
+for (const id of ['vocab-mine-select-fav-w000', 'vocab-mine-selected', 'vocab-mine-bulk-master', 'vocab-mine-bulk-delete', 'vocab-mine-bulk-review']) {
+    assert.equal(await page.getByTestId(id).count(), 0, `removed bulk control ${id} must not render`);
+}
+assert.deepEqual(state.reviewPosts, [], '我的单词 must never POST a review word');
+
+// ═══ C) 已掌握: shared row structure + star + search ═════════════════════
+await page.getByTestId('vocab-tab-mastered').click();
+await page.waitForSelector('[data-testid="vocab-mastered-list"]');
+assert.equal(await page.getByTestId('vocab-mastered-row').count(), 11,
+    'ten fixture words plus w012 mastered above');
+assert.equal(await page.getByTestId('vocab-mastered-total').innerText(), '共 11 词');
+assert.equal(await page.getByTestId('vocab-tab-count-mastered').innerText(), '11');
+const masteredFirst = page.locator('[data-testid="vocab-mastered-row"]').first();
+assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-word-/).count(), 1);
+assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-ipa-/).count(), 1);
+assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-translation-/).count(), 1);
+assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-level-/).count(), 1);
+assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-star-/).count(), 1);
+assert.equal(await masteredFirst.getByTestId(/^vocab-mastered-expand-/).count(), 1);
+assert.equal(await page.locator('[data-testid^="vocab-mastered-seen-"]').count(), 0,
+    '已掌握 rows have no ×N column');
+const headerText = await page.getByTestId('vocab-mastered-header').innerText();
+for (const label of ['单词', '音标', '中文释义', 'CEFR']) {
+    assert.match(headerText, new RegExp(label), `mastered header needs ${label}`);
+}
+assert.doesNotMatch(headerText, /次数/, '已掌握 header must not render the ×N column');
+await shot('1440-mastered');
+
+// Star on a mastered row removes the favorite; starring again re-adds it.
+await page.getByTestId('vocab-mastered-star-w061').click();
+await waitFor(() => state.deletes.includes('fav-w061'), 15000, 'mastered unstar DELETE');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mastered-star-w061"]')?.getAttribute('aria-pressed') === 'false');
+assert.equal(await page.getByTestId('vocab-mastered-row').count(), 11, 'unstarring does not unmaster the row');
+await page.getByTestId('vocab-mastered-star-w061').click();
+await waitFor(() => state.favoritePosts.some((item) => item.text === 'w061'), 15000, 'mastered star POST');
+await page.waitForFunction(() => document.querySelector('[data-testid="vocab-mastered-star-w061"]')?.getAttribute('aria-pressed') === 'true');
+const readded = state.favoritePosts.filter((item) => item.text === 'w061').at(-1);
+assert.equal(readded.meta.source_kind, 'wordlist', `re-added favorite meta: ${JSON.stringify(readded.meta)}`);
+assert.equal(readded.meta.source_ref, 'mastered');
+
+// 搜索 + 排序菜单 on 已掌握.
+await page.getByTestId('vocab-mastered-search').fill('w069');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mastered-row"]').length === 1);
+assert.equal(await page.getByTestId('vocab-mastered-total').innerText(), '找到 1 词');
+await page.getByTestId('vocab-mastered-search-clear').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mastered-row"]').length === 11);
+await openMenu('vocab-mastered-sort', 'vocab-mastered-sort-menu');
+assert.equal(await page.locator('[role="menuitemradio"]').count(), 2);
+await pickMenuItem('vocab-mastered-sort-level');
+assert.match(await page.getByTestId('vocab-mastered-sort').innerText(), /难度/);
+await openMenu('vocab-mastered-sort', 'vocab-mastered-sort-menu');
+await pickMenuItem('vocab-mastered-sort-alpha');
+
+// 隐藏中文 hides the meaning cells (shared WordTable behaviour); 已掌握 rows
+// have no per-row reveal, so this section only asserts the hide/show toggle.
+await page.getByTestId('vocab-hide-toggle').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mastered-translation-"]').length === 0);
+assert.match(await page.getByTestId('vocab-mastered-panel').innerText(), /点击任意一行可临时查看释义/);
+await page.getByTestId('vocab-hide-toggle').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mastered-translation-"]').length === 11);
+
+// ═══ D) 内置词表 (GRE): shared table + 加入我的单词 + star ══════════════
 await page.getByTestId('vocab-tab-gre').click();
 await page.waitForSelector('[data-testid="vocab-word-list"]');
 assert.equal(await page.getByTestId('vocab-list-row').count(), 3);
+assert.equal(await page.getByTestId('vocab-total').first().innerText(), '共 3 词');
+assert.equal(await page.getByTestId('vocab-list-word').first().innerText(), 'abundant');
+assert.equal(await page.getByTestId('vocab-list-translation').nth(1).innerText(), '轻快的');
+assert.equal(await page.getByTestId('vocab-list-level').last().innerText(), '—');
+for (const suffix of ['word', 'ipa', 'translation', 'level']) {
+    assert.equal(await page.getByTestId(`vocab-list-${suffix}`).count(), 3,
+        `GRE rows need one ${suffix} cell each`);
+}
+assert.equal(await page.getByTestId('vocab-list-seen').count(), 0,
+    'built-in lists must not render the ×N column');
+await openMenu('vocab-level-filter', 'vocab-level-filter-menu');
+assert.equal(await page.locator('[role="menuitemradio"]').count() >= 3, true);
+await closeMenu();
 await shot('1440-gre-list');
-assert.equal(await page.getByTestId('gre:abundant-speak').count(), 1, 'list rows need a 朗读 button');
+
+// 隐藏中文 + tap-to-reveal one row (shared WordTable contract).
+await page.getByTestId('vocab-hide-toggle').click();
+assert.equal(await page.getByTestId('vocab-list-translation').count(), 0,
+    'hide-Chinese removes every translation cell');
+await page.locator('[data-testid="vocab-list-row"]').first().click();
+assert.equal(await page.getByTestId('vocab-list-translation').count(), 1,
+    'tapping one list row reveals just that translation');
+assert.equal(await page.getByTestId('vocab-list-translation').innerText(), '丰富的；充裕的');
+await page.locator('[data-testid="vocab-list-row"]').first().click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-list-translation"]').length === 0);
+await page.getByTestId('vocab-hide-toggle').click(); // Chinese back on
+
+// 加入我的单词 sits in the expanded area (no per-row button any more).
+await page.getByTestId('vocab-list-expand-gre:abundant').click();
+await page.waitForSelector('[data-testid="gre:abundant-add-mine"]');
+assert.equal(await page.getByTestId('gre:abundant-add-review').count(), 0,
+    '加入复习 must be hidden on built-in list rows while the review UI is paused');
 const postsBefore = state.favoritePosts.length;
 await page.getByTestId('gre:abundant-add-mine').click();
 await page.waitForFunction(() => {
     const button = document.querySelector('[data-testid="gre:abundant-add-mine"]');
     return button && button.textContent.includes('已加入');
 });
-const minePost = state.favoritePosts.at(-1);
 assert.equal(state.favoritePosts.length, postsBefore + 1);
+const minePost = state.favoritePosts.at(-1);
 assert.equal(minePost.meta.source_kind, 'wordlist', `meta: ${JSON.stringify(minePost.meta)}`);
 assert.equal(minePost.meta.source_ref, 'gre');
 assert.equal(minePost.meta.source_title, 'GRE');
 assert.equal(minePost.text, 'abundant');
 assert.equal(minePost.translation, '/əˈbʌndənt/ 丰富的；充裕的');
 assert.equal(await page.getByTestId('gre:abundant-add-mine').isDisabled(), true, '已加入 is idempotent (disabled)');
-// clicking again must not POST
 await page.getByTestId('gre:abundant-add-mine').click({ force: true }).catch(() => {});
 assert.equal(state.favoritePosts.length, postsBefore + 1, 'the added row never re-posts');
-// 加入复习 hidden on list rows (review UI paused): 加入我的单词 stays the only
-// row write, and nothing may reach POST /api/review/words.
-assert.equal(await page.getByTestId('gre:brisk-add-review').count(), 0,
-    '加入复习 must be hidden on built-in list rows');
-assert.equal(state.reviewPosts.length, 0, 'list rows must never POST a review word');
-// speaker on a list row
-await page.getByTestId('gre:candid-speak').click();
-await page.waitForFunction(() => (window.__spoken || []).includes('candid'));
-// inline failure + retry (the failure must not look like success)
+
+// A failed add stays retryable and leaves an inline error, not a fake 已加入.
 state.failFavoritePost = 'candid';
+await page.getByTestId('vocab-list-expand-gre:candid').click();
 await page.getByTestId('gre:candid-add-mine').click();
 await page.waitForSelector('[data-testid="vocab-list-error-candid"]');
 assert.equal(await page.getByTestId('gre:candid-add-mine').isDisabled(), false, 'a failed add stays retryable');
@@ -509,12 +682,53 @@ await page.waitForFunction(() => {
     return button && button.textContent.includes('已加入');
 });
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-list-error-candid"]').length === 0);
-await shot('1440-gre-added');
 
-// ═══ E) 短语 tab: speaker + 加入我的单词 + 加入复习 ══════════════════════
+// Star toggles the favorite from a list row: POST then DELETE.
+await page.getByTestId('vocab-list-star-gre:brisk').click();
+await waitFor(() => state.favoritePosts.some((item) => item.text === 'brisk'), 15000, 'star POST');
+assert.equal(await page.getByTestId('vocab-list-star-gre:brisk').getAttribute('aria-pressed'), 'true');
+assert.equal(await page.getByTestId('vocab-list-star-gre:brisk').getAttribute('aria-label'), '取消收藏 brisk');
+const briskPost = state.favoritePosts.find((item) => item.text === 'brisk');
+assert.equal(briskPost.meta.source_kind, 'wordlist');
+assert.equal(briskPost.meta.source_ref, 'gre');
+await page.getByTestId('vocab-list-star-gre:brisk').click();
+await waitFor(() => state.deletes.includes('vocab-fav-brisk'), 15000, 'star DELETE');
+assert.equal(await page.getByTestId('vocab-list-star-gre:brisk').getAttribute('aria-pressed'), 'false');
+assert.equal(await page.getByTestId('vocab-list-star-gre:brisk').getAttribute('aria-label'), '收藏 brisk');
+
+// Speaker on a list row.
+await page.getByTestId('gre:candid-speak').click();
+await page.waitForFunction(() => (window.__spoken || []).includes('candid'));
+
+// 加入复习 stays hidden and nothing reaches the review API.
+assert.equal(await page.getByTestId('gre:abundant-add-review').count(), 0);
+assert.equal(await page.getByTestId('gre:brisk-add-review').count(), 0);
+assert.deepEqual(state.reviewPosts, [], 'list rows must never POST a review word');
+
+// ═══ E) 短语: filter menu + expanded 加入我的单词 + star ═════════════════
 await page.getByTestId('vocab-tab-phrases').click();
 await page.waitForSelector('[data-testid="phrase-list"]');
+assert.equal(await page.getByTestId('phrase-row').count(), 2);
+assert.equal(await page.getByTestId('phrase-total').innerText(), '共 2 条短语');
 await shot('1440-phrases');
+
+await openMenu('phrase-filter', 'phrase-filter-menu');
+assert.equal(await page.getByTestId('phrase-level-all').getAttribute('aria-checked'), 'true');
+await page.getByTestId('phrase-level-B1').click(); // keepOpen
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="phrase-row"]').length === 1);
+assert.match(await page.getByTestId('phrase-filter').innerText(), /筛选：B1/);
+await shot('1440-phrases-filtered');
+await pickMenuItem('phrase-clear-filters-menu');
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="phrase-row"]').length === 2);
+
+// Phrase detail expands on row click (no hide-Chinese here) and carries the
+// add-to-mine action; 加入复习 stays hidden while the review UI is paused.
+await page.getByTestId('phrase-row').first().click();
+await page.waitForSelector('[data-testid="phrase:p1-add-mine"]');
+assert.equal(await page.getByTestId('phrase:p1-add-review').count(), 0,
+    '加入复习 must be hidden on phrase rows');
+assert.match(await page.getByTestId('phrase-example').innerText(), /Never give up/);
+assert.equal(await page.getByTestId('phrase-source').count(), 1);
 const phrasePostsBefore = state.favoritePosts.length;
 await page.getByTestId('phrase:p1-add-mine').click();
 await page.waitForFunction(() => {
@@ -526,17 +740,14 @@ assert.equal(state.favoritePosts.length, phrasePostsBefore + 1);
 assert.equal(phrasePost.meta.source_kind, 'wordlist');
 assert.equal(phrasePost.meta.source_ref, 'phrases');
 assert.equal(phrasePost.text, 'give up');
-// 加入复习 hidden on phrase rows too (review UI paused).
-assert.equal(await page.getByTestId('phrase:p2-add-review').count(), 0,
-    '加入复习 must be hidden on phrase rows');
-assert.equal(state.reviewPosts.length, 0, 'phrase rows must never POST a review word');
 await page.getByTestId('phrase:p1-speak').click();
 await page.waitForFunction(() => (window.__spoken || []).includes('give up'));
+await page.getByTestId('phrase:p2-star').click();
+await waitFor(() => state.favoritePosts.some((item) => item.text === 'on the fence'), 15000, 'phrase star POST');
+assert.equal(await page.getByTestId('phrase:p2-star').getAttribute('aria-label'), '取消收藏 on the fence');
+await shot('1440-phrases-added');
 
-// ═══ F) 状态接口 403/404 → unreachable while the chips are hidden ════════
-// The old degradation (403/404 hides the group) cannot be exercised any more:
-// the screen never calls ?state=, so the group stays hidden under either status
-// and no inline error can surface. Backend/data are untouched.
+// ═══ F) 状态接口 403/404 → nothing to degrade while the chips are gone ═══
 for (const status of [404, 403]) {
     state.stateFail = status;
     await gotoWordbook();
@@ -549,7 +760,7 @@ for (const status of [404, 403]) {
 state.stateFail = 0;
 assert.deepEqual(state.stateRequests, [], 'no ?state= read may fire, even with a failing endpoint');
 
-// ═══ G) 375px: no horizontal overflow, bulk actions visible ══════════════
+// ═══ G) 375px: no horizontal overflow, shared toolbar/pager reachable ════
 await page.setViewportSize({ width: 375, height: 812 });
 await gotoWordbook();
 await page.getByTestId('vocab-tab-mine').click();
@@ -559,30 +770,25 @@ assert.equal(await page.getByTestId('vocab-state-filter').count(), 0,
     'the paused 状态 group must stay hidden at 375 too');
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 assert.ok(overflow <= 0, `375px horizontal overflow: ${overflow}px`);
-await page.getByTestId('vocab-mine-select-fav-w020').check();
-await page.getByTestId('vocab-mine-select-fav-w021').check();
-assert.equal(await page.getByTestId('vocab-mine-bulk-master').isVisible(), true, 'bulk 标为已掌握 must stay reachable at 375');
-assert.equal(await page.getByTestId('vocab-mine-bulk-delete').isVisible(), true, 'bulk 删除 must stay reachable at 375');
-assert.equal(await page.getByTestId('vocab-mine-bulk-review').count(), 0, 'no bulk 加入复习 at 375');
-await shot('375-mine-bulk');
-await page.getByTestId('vocab-mine-bulk-clear').click();
+assert.equal(await page.getByTestId('vocab-mine-sort').isVisible(), true, '排序 must stay reachable at 375');
+assert.equal(await page.getByTestId('vocab-mine-filter').isVisible(), true, '筛选 must stay reachable at 375');
+assert.equal(await page.getByTestId('vocab-page-size').isVisible(), true, '每页条数 must stay reachable at 375');
+assert.equal(await page.getByTestId('vocab-page-jump').isVisible(), true, '跳页 must stay reachable at 375');
+assert.equal(await page.getByTestId('vocab-mine-bulk-master').count(), 0, 'no bulk bar at 375 either');
+await shot('375-mine');
 await page.getByTestId('vocab-tab-gre').click();
 await page.waitForSelector('[data-testid="vocab-word-list"]');
+await page.getByTestId('vocab-list-expand-gre:abundant').click();
+assert.equal(await page.getByTestId('gre:abundant-add-mine').isVisible(), true, 'row action reachable at 375');
 await shot('375-gre-list');
 await page.getByTestId('vocab-tab-phrases').click();
 await page.waitForSelector('[data-testid="phrase-list"]');
 await shot('375-phrases');
-await page.getByTestId('vocab-tab-mine').click();
-await page.waitForSelector('[data-testid="vocab-mine-list"]');
-await shot('375-mine');
 await page.setViewportSize({ width: 1440, height: 1000 });
 
-// ═══ H) 游客: 无状态筛选, 加入入口走登录门禁 ═════════════════════════════
+// ═══ H) 游客: no state chips, write entries go through the login gate ════
 state.mode = 'guest';
-await page.goto(`${BASE}#/app/profile/vocabulary`, { waitUntil: 'domcontentloaded' });
-await page.evaluate(() => { localStorage.removeItem('yt_bilingual_guest_mastered_words'); });
-await page.reload({ waitUntil: 'domcontentloaded' });
-await page.waitForSelector('[data-testid="vocabulary-book"]');
+await gotoWordbook();
 await page.getByTestId('vocab-tab-mine').click();
 await page.waitForSelector('[data-testid="vocab-mine-panel"]');
 await page.waitForTimeout(400);
@@ -590,6 +796,7 @@ assert.equal(await page.getByTestId('vocab-state-filter').count(), 0, 'guests ne
 const guestPostsBefore = state.favoritePosts.length;
 await page.getByTestId('vocab-tab-gre').click();
 await page.waitForSelector('[data-testid="vocab-word-list"]');
+await page.getByTestId('vocab-list-expand-gre:abundant').click();
 await page.getByTestId('gre:abundant-add-mine').click();
 await page.waitForSelector('[data-testid="guest-auth-overlay"]', { timeout: 10000 });
 assert.equal(state.favoritePosts.length, guestPostsBefore, 'the guest gate must not POST a favorite');
@@ -605,7 +812,7 @@ await browser.close();
 console.log('PASS · wb-ux acceptance');
 console.log(`  checks passed: ${assertionsPassed}`);
 console.log('  state requests:', state.stateRequests.length);
-console.log('  favorite posts:', state.favoritePosts.length);
+console.log('  favorite posts:', state.favoritePosts.length, ' deletes:', state.deletes.length);
 console.log('  review posts:', state.reviewPosts.length, '(review UI paused)');
-console.log('  patches:', state.patches.length, ' deletes:', state.deletes.length);
+console.log('  patches:', state.patches.length);
 console.log('  screenshots: /tmp/wb-ux-*.png');
