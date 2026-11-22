@@ -15,6 +15,8 @@ export interface CustomWordlist {
 }
 
 export interface CustomWordlistItem {
+    /** Server item id (needed by 勾选删除); older builds may omit it. */
+    id: string | null;
     word: string;
     translation: string | null;
     phonetic: string | null;
@@ -111,7 +113,9 @@ function normalizeItem(value: unknown): CustomWordlistItem | null {
         const raw = value[key];
         return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
     };
+    const id = typeof value.id === 'string' && value.id.trim() ? value.id.trim() : null;
     return {
+        id,
         word,
         translation: optional('translation'),
         phonetic: optional('phonetic'),
@@ -161,6 +165,59 @@ export async function fetchCustomWordlistPage(
         hasMore: typeof data.hasMore === 'boolean'
             ? data.hasMore
             : (Number.isFinite(data.page) ? Number(data.page) : 1) * (Number.isFinite(data.pageSize) ? Number(data.pageSize) : 50) < total,
+    };
+}
+
+/**
+ * Load every item of one list (client-side paging / sorting / filtering,
+ * specs/005 §统一词表 UI). The server caps each page at 200 and a list at
+ * 5000 words, so the loop is bounded; an aborted signal stops between pages.
+ */
+export async function fetchAllCustomWordlistItems(
+    id: string,
+    signal?: AbortSignal,
+): Promise<{ items: CustomWordlistItem[]; total: number }> {
+    const items: CustomWordlistItem[] = [];
+    let total = 0;
+    for (let page = 1; page <= 25; page += 1) {
+        const data = await fetchCustomWordlistPage(id, { page, pageSize: 200, signal });
+        total = data.total;
+        items.push(...data.items);
+        if (!data.hasMore || data.items.length === 0) break;
+        if (signal?.aborted) break;
+    }
+    return { items, total };
+}
+
+/** `PATCH /api/wordlists/{id}` — rename one list (≤80 chars, unique). */
+export async function renameCustomWordlist(id: string, name: string): Promise<CustomWordlist> {
+    const data = await request<unknown>(`/api/wordlists/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() }),
+    });
+    const list = isRecord(data) ? normalizeList(data.list) : null;
+    if (!list) throw new WordlistsApiError(500, 'invalid wordlist payload');
+    return list;
+}
+
+/**
+ * `DELETE /api/wordlists/{id}/items` — delete selected rows of one list
+ * (1–500 ids). The list and every favorite/review snapshot stay untouched.
+ */
+export async function deleteCustomWordlistItems(
+    id: string,
+    itemIds: readonly string[],
+): Promise<{ deleted: number; itemCount: number }> {
+    const data = await request<unknown>(`/api/wordlists/${encodeURIComponent(id)}/items`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemIds: [...itemIds] }),
+    });
+    const record = isRecord(data) ? data : {};
+    return {
+        deleted: Number.isFinite(record.deleted) ? Number(record.deleted) : itemIds.length,
+        itemCount: Number.isFinite(record.itemCount) ? Number(record.itemCount) : 0,
     };
 }
 

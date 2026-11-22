@@ -32,6 +32,11 @@ export interface ButtonProps {
   className?: string;
   testId?: string;
   children?: ReactNode;
+  /** Optional ARIA state for toggle buttons (star, expand). */
+  ariaPressed?: boolean;
+  /** Optional ARIA state for the expand control. */
+  ariaExpanded?: boolean;
+  ariaControls?: string;
 }
 
 const BASE_CLASSES =
@@ -119,6 +124,9 @@ export function Button({
   className,
   testId,
   children,
+  ariaPressed,
+  ariaExpanded,
+  ariaControls,
 }: ButtonProps) {
   const isIcon = iconOnly || variant === 'icon';
   const isDisabled = disabled || loading;
@@ -129,6 +137,9 @@ export function Button({
       type={type}
       data-testid={testId}
       aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
       aria-busy={loading || undefined}
       aria-disabled={isDisabled || undefined}
       disabled={isDisabled}

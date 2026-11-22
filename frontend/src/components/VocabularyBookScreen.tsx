@@ -1,43 +1,36 @@
-// 单词本 (word book) — full-page replacement for the old favorites modal.
+// 单词本 (word book) — full-page route `#/app/profile/vocabulary`.
 //
-// Two halves, one route (`#/app/profile/vocabulary`):
-//   1. 我的单词 — saved vocabulary favorites that are **not** marked 已掌握,
-//      one line by default; expanding reveals the CEFR level (batched /level
-//      lookup; off-list words read C1+), provenance, saved time and delete.
-//   2. 词表 — 已掌握 (its own tab, same table as the built-in lists) + 短语 +
-//      one merged CEFR 词表 (A1–C1) + GRE/CET4/CET6 from
-//      `/api/vocabulary/lists`, with server-side search, 50-per-page pagination
-//      and a global "hide Chinese" switch (persisted; hidden rows reveal their
-//      translation on tap). The merged CEFR tab adds level chips whose counts
-//      come from the catalog's `byLevel`; the old per-level A1–C1 tabs are gone.
+// Five surfaces share one implementation (specs/005 §统一词表 UI):
+//   * 我的单词 — vocabulary favorites that are not 已掌握 (client paged);
+//   * 已掌握 — mastered words, optionally enriched with a favorite's IPA/meaning;
+//   * 内置词表 — merged CEFR (A1–C1) + GRE/CET4/CET6 (`/api/vocabulary/lists`,
+//     server paged, server search + level filter);
+//   * 自定义词表 — imported lists (specs/038), fully loaded and client paged so
+//     search / sort / filters / edit mode work on the whole list;
+//   * 短语 — curated phrase list (server paged).
 //
-// 已掌握 and 我的单词 are mutually exclusive lists (specs/005 §v1.1): a mastered
-// word lives exclusively in the 已掌握 tab and never in 我的单词.
+// Every list renders through the same row (`VocabularyRows.WordTable`): word /
+// phonetic / left-aligned meaning / speak / LevelBadge / star / ×N (我的单词
+// only) / expand arrow. The expanded area carries the full meaning, provenance
+// and the row actions. Toolbars are search + one sort trigger + one filter
+// trigger; pagination is 20/50/100 + page numbers + jump input. Edit mode
+// (leading checkboxes + a sticky action bar) exists only on 自定义词表.
 //
-// v1.2 (specs/005 §v1.2) adds the daily-use layer on top of that:
-//   * a 朗读 button on every row (我的单词 / 已掌握 / 词表 / 短语) reusing
-//     `lib/tts.speak` — local only, no AI call, disabled when the browser has no
-//     English voice;
-//   * client-side 搜索 + 状态 chips on 我的单词. The state data comes from
-//     `GET /api/review/words?state=` (lib/review.listReviewWords); guests never
-//     request it and a 403/404 (endpoint not deployed yet) hides the whole group
-//     instead of showing an error — the list itself keeps working;
-//   * 加入我的单词 / 加入复习 on every built-in list and phrase row, idempotent,
-//     with an inline 已加入 / 已在复习 state and a retryable inline failure;
-//   * multi-select + bulk actions (加入复习 / 标为已掌握或撤销 / 删除收藏) on
-//     我的单词 and 已掌握, with a confirmation dialog for deletes and a per-item
-//     result summary that keeps the failed rows selected;
-//   * 字母 A→Z sorting and 50-per-page client paging for 我的单词.
+// 已掌握 and 我的单词 are mutually exclusive (specs/005 §v1.1): a mastered word
+// lives exclusively in the 已掌握 tab and never in 我的单词.
+//
+// Review surfaces stay hidden while `REVIEW_UI_ENABLED=false` (specs/013): no
+// 加入复习 action, no 状态 filter, no review counts, and no review request is
+// made from this screen.
 //
 // C2 is intentionally not modelled by the backend (`available:false`): it is
 // explained inside the CEFR tab instead of getting its own disabled tab.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     AlertTriangle,
     BookMarked,
     BookOpen,
     BookmarkPlus,
-    ChevronDown,
     CheckCircle2,
     Download,
     Eye,
@@ -48,6 +41,8 @@ import {
     Info,
     Library,
     Loader2,
+    MoreHorizontal,
+    Pencil,
     Play,
     Repeat,
     Search,
@@ -56,11 +51,8 @@ import {
     Tv,
     Undo2,
     Upload,
-    Volume2,
-    X,
     type LucideIcon,
 } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { exportAnkiTsv, exportCsv } from '../lib/exporter';
 import {
     addFavorite,
@@ -82,10 +74,8 @@ import {
     fetchVocabularyLists,
     fetchVocabularyPage,
     PHRASE_LEVELS,
-    PHRASE_PAGE_SIZE,
     PHRASE_TYPES,
     VOCABULARY_CEFR_LEVELS,
-    VOCABULARY_PAGE_SIZE,
     type CefrLevel,
     type PhraseDetail,
     type PhraseEntry,
@@ -102,24 +92,20 @@ import {
     REVIEW_UI_ENABLED,
     REVIEW_WORD_STATES,
     setWordMastered,
-    WORD_STATE_FILTER_STATES,
-    WORD_STATE_FILTERS,
     type ReviewWordState,
-    type WordStateFilter,
 } from '../lib/review';
 import {
     deleteCustomWordlist,
+    deleteCustomWordlistItems,
+    fetchAllCustomWordlistItems,
     fetchCustomWordlistPage,
     fetchCustomWordlists,
+    renameCustomWordlist,
     WordlistsApiError,
     type CustomWordlist,
     type CustomWordlistItem,
-    type CustomWordlistPage,
 } from '../lib/wordlists';
-import {
-    WORDLIST_MAX_LISTS,
-    WORDLIST_PAGE_SIZE,
-} from '../lib/wordlistParse';
+import { WORDLIST_MAX_LISTS } from '../lib/wordlistParse';
 import { fetchSeenCounts } from '../lib/vocabSeen';
 import { normalizeMasteryWord, readGuestMastered, writeGuestMastered } from '../lib/wordMastery';
 import { describeApiError, toast } from '../lib/toast';
@@ -130,19 +116,22 @@ import { useI18n } from '../i18n/I18nProvider';
 import { VocabPagination } from './VocabPagination';
 import { WordlistImportDialog } from './WordlistImportDialog';
 import {
-    LevelBadge,
-    WordRowActionButton,
+    WordbookToolbar,
     WordTable,
+    normalizePhonetic,
+    type FilterGroup,
+    type FilterOption,
+    type SortOption,
     type WordRowAction,
     type WordTableRow,
 } from './VocabularyRows';
+import { Badge } from './ui/Badge';
 import { ConfirmDialog } from './ui/ConfirmDialog';
-import { Checkbox } from './ui/Checkbox';
+import { Dialog } from './ui/Dialog';
+import { Menu } from './ui/Menu';
 import { SubHeader } from './ui/SubHeader';
 import { Tabs, tabPanelProps, type TabItem } from './ui/Tabs';
-import { FilterChip } from './ui/FilterChip';
-import { Segmented } from './ui/Segmented';
-import { Button, IconButton } from './ui/Button';
+import { Button } from './ui/Button';
 import { ErrorPanel, LoadingState } from './ui/StateView';
 import type { TranslationKey } from '../i18n';
 
@@ -167,9 +156,12 @@ interface VocabularyBookScreenProps {
 
 type Phase = 'idle' | 'loading' | 'ready' | 'error';
 type MineSort = 'added' | 'seen' | 'level' | 'alpha';
+type MasteredSort = 'alpha' | 'level';
+type CustomSort = 'alpha' | 'level';
 type MineType = '' | 'word' | 'phrase';
+type MineLevel = '' | CefrLevel | 'C1+';
 type SeenPhase = 'idle' | 'loading' | 'ready' | 'unavailable';
-/** 状态 chips: `unavailable` hides the group (403/404/any failure), never an error. */
+/** Review-state read: `unavailable` hides the 已在复习 row state (403/404), never an error. */
 type StateFilterPhase = 'idle' | 'loading' | 'ready' | 'unavailable';
 /** Row-level add state for the built-in lists / phrases (idempotent writes). */
 type RowAddState = 'idle' | 'busy' | 'added';
@@ -189,6 +181,10 @@ const CUSTOM_TAB_PREFIX = 'custom:';
 const customTabId = (listId: string) => `${CUSTOM_TAB_PREFIX}${listId}`;
 const customListId = (tabId: string): string | null => (
     tabId.startsWith(CUSTOM_TAB_PREFIX) ? tabId.slice(CUSTOM_TAB_PREFIX.length) : null
+);
+/** Stable selection key for one custom-list row (server id when available). */
+const customItemKey = (item: CustomWordlistItem): string => (
+    item.id ?? `word:${item.word}`
 );
 const FALLBACK_LABELS: Record<string, string> = {
     cefr: 'CEFR 词表',
@@ -247,14 +243,6 @@ const SOURCE_KIND_ORDER: readonly FavoriteSourceKind[] = [
     'wordlist',
 ];
 
-/** 状态 filter labels, in product order (specs/005 §v1.2). */
-const WORD_STATE_LABEL_KEYS: Record<WordStateFilter, TranslationKey> = {
-    new: 'vocab.state.new',
-    learning: 'vocab.state.learning',
-    review: 'vocab.state.review',
-    suspended: 'vocab.state.suspended',
-};
-
 /** Words outside the merged CEFR list render C1+ (specs/005), so they sort last. */
 const OFF_LIST_RANK = VOCABULARY_CEFR_LEVELS.length;
 function levelSortRank(word: string, levels: Record<string, string | null>): number {
@@ -265,11 +253,9 @@ function levelSortRank(word: string, levels: Record<string, string | null>): num
     return index >= 0 ? index : OFF_LIST_RANK;
 }
 
-const SECONDARY_BUTTON =
-    'inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-white/5 text-xs font-medium text-zinc-300 hover:text-zinc-100 transition-colors disabled:opacity-40 disabled:pointer-events-none';
-const DANGER_BUTTON =
-    'inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 text-xs font-medium text-red-400 transition-colors';
-const CARD = 'rounded-2xl border border-white/5 bg-zinc-900/40';
+const ACTION_BUTTON =
+    'inline-flex items-center justify-center gap-1.5 h-control-sm rounded-control border border-line-subtle bg-surface-2/60 px-2.5 text-caption font-medium text-fg-strong transition-colors hover:bg-surface-3/60 hover:text-fg-primary disabled:pointer-events-none disabled:opacity-40';
+const LIST_CARD = 'rounded-card border border-line-subtle bg-surface-2/30';
 
 export function VocabularyBookScreen({
     favorites,
@@ -287,7 +273,6 @@ export function VocabularyBookScreen({
     const { t, formatDate, formatNumber, targetLang } = useI18n();
     const { status } = useAuth();
     const isGuest = status === 'guest';
-    const reduceMotion = useReducedMotion() ?? false;
     /** `missing` = no speech engine / no English voice → 朗读 buttons disabled. */
     const speechAvailability = useSpeechAvailability();
     const speechDisabled = speechAvailability === 'missing';
@@ -407,11 +392,10 @@ export function VocabularyBookScreen({
         if (customLists.some((entry) => entry.id === activeCustomListId)) return;
         setActiveTab(MINE_TAB);
         setCustomQuery('');
-        setCustomDebouncedQuery('');
         setCustomPage(1);
         setCustomRevealed(new Set());
-        setCustomListPhase('idle');
-        setCustomListData(null);
+        setCustomLoadPhase('idle');
+        setCustomItems([]);
     }, [activeCustomListId, customLists, customListsPhase]);
 
     // ── My words: expand + batched CEFR lookup ────────────────────────────
@@ -427,9 +411,11 @@ export function VocabularyBookScreen({
     //   * signed-in — `GET /api/review/words?mastered=1`, fetched when 我的单词
     //     or 已掌握 opens and then updated locally from each PATCH response (no
     //     localStorage mirror for signed-in users).
+    const [pageSize, setPageSize] = useState<number>(50);
     const [mineSort, setMineSort] = useState<MineSort>('added');
     const [mineType, setMineType] = useState<MineType>('');
     const [mineSource, setMineSource] = useState<'' | FavoriteSourceKind>('');
+    const [mineLevel, setMineLevel] = useState<MineLevel>('');
     const [guestMastered, setGuestMastered] = useState<Set<string>>(() => readGuestMastered());
     const [serverMastered, setServerMastered] = useState<Set<string>>(() => new Set());
     // Display casing for mastered words that have no favorite record: the review
@@ -440,9 +426,12 @@ export function VocabularyBookScreen({
     // visible while a retry is in flight (and lets a failed retry stay inline).
     const [masteredReady, setMasteredReady] = useState(false);
     const [masteredNonce, setMasteredNonce] = useState(0);
-    // 已掌握 is client paged (50/page): the API caps the list at 200 and has no
-    // offset paging, so pages are a view concern only.
+    // 已掌握 is client paged: the API caps the list at 200 and has no offset
+    // paging, so pages are a view concern only.
     const [masteredPage, setMasteredPage] = useState(1);
+    const [masteredQuery, setMasteredQuery] = useState('');
+    const [masteredLevel, setMasteredLevel] = useState<MineLevel>('');
+    const [masteredSort, setMasteredSort] = useState<MasteredSort>('alpha');
     const [reviewedWords, setReviewedWords] = useState<Set<string>>(() => new Set());
     const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
     const [pendingMasteredId, setPendingMasteredId] = useState<string | null>(null);
@@ -452,17 +441,16 @@ export function VocabularyBookScreen({
     const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
     const [seenCounts, setSeenCounts] = useState<Record<string, number>>({});
     const [seenPhase, setSeenPhase] = useState<SeenPhase>('idle');
+    /** Star writes in flight, keyed by normalized word (optimistic + rollback). */
+    const [favoriteBusyKeys, setFavoriteBusyKeys] = useState<Set<string>>(() => new Set());
 
-    // ── v1.2: search / 状态 filter / row adds / multi-select + bulk ────────
-    // 状态 chips read `GET /api/review/words?state=` (specs/013). The endpoint
-    // needs an account and is being deployed in parallel: a 403/404 (or any
-    // other failure) hides the whole group instead of rendering an error — a
-    // filter that cannot be trusted must never silently drop rows.
+    // ── v1.2: search / row adds ────────────────────────────────────────────
+    // 状态 reads still power the (hidden) 已在复习 row state; while the review
+    // UI is paused no request is made and the row action stays hidden.
     const [wordStates, setWordStates] = useState<Record<string, ReviewWordState>>({});
     const [statePhase, setStatePhase] = useState<StateFilterPhase>('idle');
     const [mineQuery, setMineQuery] = useState('');
     const [mineDebouncedQuery, setMineDebouncedQuery] = useState('');
-    const [mineState, setMineState] = useState<WordStateFilter | ''>('');
     const [minePage, setMinePage] = useState(1);
     // Row-level 加入我的单词 / 加入复习 state, keyed by `<listId>:<word>` for the
     // built-in lists and `phrase:<phrase id>` for phrases. The inline error
@@ -472,18 +460,27 @@ export function VocabularyBookScreen({
     /** Custom-list 标为已掌握 rows (idempotent PATCH, same busy/added shape). */
     const [masterAdds, setMasterAdds] = useState<Record<string, RowAddState>>({});
     const [listRowErrors, setListRowErrors] = useState<Record<string, string>>({});
-    // Bulk selection keys: favorite id on 我的单词, `mastered:<normalized word>`
-    // on 已掌握 (a mastered word may have no favorite record). `bulkSummary`
-    // carries the per-item failure text and is cleared on the next action.
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-    const [bulkBusy, setBulkBusy] = useState(false);
-    const [bulkSummary, setBulkSummary] = useState<string | null>(null);
-    const [bulkRowErrors, setBulkRowErrors] = useState<Record<string, string>>({});
-    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-    /** Which bulk button is running (one spinner, every button disabled). */
-    const [bulkAction, setBulkAction] = useState<'review' | 'master' | 'unmaster' | 'delete' | null>(null);
     /** Row delete in flight (single-row delete disables itself, no double send). */
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+    // ── Custom word lists: full load + edit mode (specs/005 §统一词表 UI) ──
+    // 自定义词表 is client paged like 我的单词 / 已掌握: one bounded fetch
+    // (≤200/page, ≤5000 words) feeds client search, sort, filters and paging.
+    const [customItems, setCustomItems] = useState<CustomWordlistItem[]>([]);
+    const [customLoadPhase, setCustomLoadPhase] = useState<Phase>('idle');
+    const [customLoadError, setCustomLoadError] = useState('');
+    const [customSort, setCustomSort] = useState<CustomSort>('alpha');
+    const [customLevel, setCustomLevel] = useState<MineLevel>('');
+    const [customUnmasteredOnly, setCustomUnmasteredOnly] = useState(false);
+    const [customEditMode, setCustomEditMode] = useState(false);
+    const [customEditSelected, setCustomEditSelected] = useState<Set<string>>(() => new Set());
+    const [customEditBusy, setCustomEditBusy] = useState(false);
+    const [customEditSummary, setCustomEditSummary] = useState<string | null>(null);
+    const [customItemsDeleteOpen, setCustomItemsDeleteOpen] = useState(false);
+    const [renameOpen, setRenameOpen] = useState(false);
+    const [renameName, setRenameName] = useState('');
+    const [renameBusy, setRenameBusy] = useState(false);
+    const [renameError, setRenameError] = useState('');
 
     const masteredWords = isGuest ? guestMastered : serverMastered;
 
@@ -521,15 +518,15 @@ export function VocabularyBookScreen({
         return () => { cancelled = true; };
     }, [activeIsMine, activeIsMastered, isGuest, targetLang, masteredNonce]);
 
-    // 状态 filter source (specs/005 §v1.2): one read of the signed-in review deck,
-    // reduced to `normalized lemma → state`. Fetched once per screen mount (list
-    // tabs use it for their initial 已在复习 state too). Guests never call it; a
-    // 403 (no account) / 404 (endpoint not deployed) / any other failure sets the
-    // phase to `unavailable`, which hides the chips instead of reporting an error.
+    // 已在复习 row state (specs/005): one read of the signed-in review deck,
+    // reduced to `normalized lemma → state`, used only by the (flag-hidden)
+    // review row action. Guests never call it; a 403 (no account) / 404
+    // (endpoint not deployed) / any other failure sets the phase to
+    // `unavailable`, which hides that state instead of reporting an error.
     useEffect(() => {
-        // The 状态 chips are a review concept: while the review UI is paused
-        // (specs/013 2026-11-22) there is no read to make — hide the group and
-        // keep the rest of the word book untouched.
+        // The review state is a review concept: while the review UI is paused
+        // (specs/013 2026-11-22) there is no read to make — skip it and keep
+        // the rest of the word book untouched.
         if (!REVIEW_UI_ENABLED || isGuest) {
             setWordStates({});
             setStatePhase('unavailable');
@@ -556,11 +553,8 @@ export function VocabularyBookScreen({
         return () => { cancelled = true; };
     }, [isGuest, targetLang]);
 
-    /** The 状态 group is only offered when the endpoint answered successfully. */
+    /** The 已在复习 row state is only trusted when the endpoint answered. */
     const stateFilterAvailable = REVIEW_UI_ENABLED && !isGuest && statePhase === 'ready';
-    /** Chips keep their slot while loading (disabled), so the toolbar does not jump. */
-    const stateFilterVisible = REVIEW_UI_ENABLED && !isGuest && (statePhase === 'loading' || statePhase === 'ready');
-    const effectiveMineState: WordStateFilter | '' = stateFilterAvailable ? mineState : '';
 
     const myWordLemmas = useMemo(
         () => Array.from(new Set(myWords.map((fav) => fav.en_text.trim()).filter(Boolean))),
@@ -637,13 +631,28 @@ export function VocabularyBookScreen({
         return SOURCE_KIND_ORDER.filter((kind) => present.has(kind));
     }, [myWords]);
 
-    const hasMineFilters = Boolean(mineType || mineSource || mineDebouncedQuery || effectiveMineState);
+    const hasMineFilters = Boolean(mineType || mineSource || mineLevel || mineDebouncedQuery);
+
+    /** Client level filter: unknown words are only kept by 「全部」. */
+    const matchesLevel = useCallback((word: string, target: MineLevel): boolean => {
+        if (!target) return true;
+        if (!(word in levels)) return false;
+        const level = levels[word];
+        return target === 'C1+' ? level === null : level === target;
+    }, [levels]);
 
     /** Normalized words that already have a vocabulary favorite (加入 → 已加入). */
     const favoritedWordKeys = useMemo(
         () => new Set(myWords.map((fav) => normalizeMasteryWord(fav.en_text)).filter(Boolean)),
         [myWords],
     );
+
+    /** Shared accessible names for the unified row controls. */
+    const favoriteLabelFor = useCallback((word: string): string => (
+        favoritedWordKeys.has(normalizeMasteryWord(word))
+            ? t('vocab.star.remove', { word })
+            : t('vocab.star.add', { word })
+    ), [favoritedWordKeys, t]);
 
     /** Newest favorite per normalized word: the mastered row's IPA/meaning. */
     const favoriteByWord = useMemo(() => {
@@ -672,8 +681,8 @@ export function VocabularyBookScreen({
             rows.push({
                 key,
                 word,
-                phonetic: split.ipa || '—',
-                translation: split.meaning || '—',
+                phonetic: split.ipa || '',
+                translation: split.meaning || '',
             });
         }
         rows.sort((a, b) => (
@@ -696,20 +705,13 @@ export function VocabularyBookScreen({
         // multi-word entry is the phrase surface. Single-word rows stay 单词.
         const isPhrase = (fav: FavoriteItem) => /\s/.test(fav.en_text.trim());
         const needle = mineDebouncedQuery.toLowerCase();
-        const stateMembers = effectiveMineState ? WORD_STATE_FILTER_STATES[effectiveMineState] : null;
         const filtered = myWords.filter((fav) => {
             // 已掌握 rows live in their own tab only (mutually exclusive lists).
             if (masteredWords.has(normalizeMasteryWord(fav.en_text))) return false;
             if (mineType === 'word' && isPhrase(fav)) return false;
             if (mineType === 'phrase' && !isPhrase(fav)) return false;
             if (mineSource && resolveFavoriteSource(fav).kind !== mineSource) return false;
-            // 状态 filter: a word with no review record has no state, so it can
-            // never match a specific state (only 全部 keeps it) — honest, and
-            // the group is hidden whenever the state read failed.
-            if (stateMembers) {
-                const state = wordStates[normalizeMasteryWord(fav.en_text)];
-                if (!state || !stateMembers.includes(state)) return false;
-            }
+            if (!matchesLevel(fav.en_text.trim(), mineLevel)) return false;
             // 搜索 covers the word and the saved translation (IPA included).
             if (needle) {
                 const haystack = `${fav.en_text}\n${fav.zh_text || ''}`.toLowerCase();
@@ -736,18 +738,18 @@ export function VocabularyBookScreen({
             return (b.added_at || 0) - (a.added_at || 0);
         });
     }, [
-        myWords, mineType, mineSource, mineSort, masteredWords, seenCounts, levels,
-        mineDebouncedQuery, effectiveMineState, wordStates,
+        myWords, mineType, mineSource, mineLevel, mineSort, masteredWords, seenCounts, levels,
+        mineDebouncedQuery, matchesLevel,
     ]);
 
     // 我的单词 is client paged 50/page (a collection can pass a hundred favorites
     // and the favorites API has no offset paging) — same page strip as the lists.
-    const minePages = Math.max(1, Math.ceil(mineRows.length / VOCABULARY_PAGE_SIZE));
+    const minePages = Math.max(1, Math.ceil(mineRows.length / pageSize));
     const currentMinePage = Math.min(Math.max(1, minePage), minePages);
     const minePageRows = useMemo(() => {
-        const start = (currentMinePage - 1) * VOCABULARY_PAGE_SIZE;
-        return mineRows.slice(start, start + VOCABULARY_PAGE_SIZE);
-    }, [mineRows, currentMinePage]);
+        const start = (currentMinePage - 1) * pageSize;
+        return mineRows.slice(start, start + pageSize);
+    }, [mineRows, currentMinePage, pageSize]);
 
     const seenTitle = isGuest
         ? t('vocab.mine.seen.guest')
@@ -757,9 +759,9 @@ export function VocabularyBookScreen({
                 ? t('vocab.mine.seen.loading')
                 : undefined;
     const seenText = (fav: FavoriteItem): string => {
-        if (isGuest || seenPhase !== 'ready') return '—';
+        if (isGuest || seenPhase !== 'ready') return '';
         const count = seenCounts[fav.en_text.trim()];
-        return typeof count === 'number' ? t('vocab.mine.seen', { count: formatNumber(count) }) : '—';
+        return typeof count === 'number' ? `×${formatNumber(count)}` : '';
     };
 
     const openLogin = () => {
@@ -788,52 +790,77 @@ export function VocabularyBookScreen({
     // 1-page result set must never be shown).
     useEffect(() => {
         setMinePage(1);
-    }, [mineDebouncedQuery, mineType, mineSource, mineSort, effectiveMineState]);
-
-    const toggleSelected = useCallback((id: string, checked: boolean) => {
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
-            if (checked) next.add(id);
-            else next.delete(id);
-            return next;
-        });
-        setBulkSummary(null);
-    }, []);
-
-    const clearSelection = useCallback(() => {
-        setSelectedIds(new Set());
-        setBulkSummary(null);
-        setBulkRowErrors({});
-    }, []);
-
-    /** Select-all only ever covers the rows currently on screen (one page). */
-    const toggleSelectAll = useCallback((ids: readonly string[], checked: boolean) => {
-        setSelectedIds((prev) => {
-            const next = new Set(prev);
-            for (const id of ids) {
-                if (checked) next.add(id);
-                else next.delete(id);
-            }
-            return next;
-        });
-        setBulkSummary(null);
-    }, []);
+    }, [mineDebouncedQuery, mineType, mineSource, mineLevel, mineSort, pageSize]);
 
     const speakRow = useCallback((text: string) => {
         const value = text.trim();
         if (value) speak(value);
     }, []);
 
-    /** Locale-aware list join for the bulk failure summary (no separator key). */
-    const formatList = useCallback((items: readonly string[]): string => {
-        if (items.length === 0) return '';
-        try {
-            return new Intl.ListFormat(targetLang, { style: 'short', type: 'conjunction' })
-                .format(items);
-        } catch {
-            return items.join(', ');
-        }
-    }, [targetLang]);
+    const speakLabelFor = useCallback((word: string): string => (
+        speechDisabled ? t('vocab.speak.unavailable') : t('vocab.speak.word', { word })
+    ), [speechDisabled, t]);
+
+    const expandLabelFor = useCallback((expanded: boolean): string => (
+        expanded ? t('common.collapse') : t('common.expand')
+    ), [t]);
+
+    const levelBadgeFor = useCallback((word: string): { label: string; title?: string } => {
+        if (!(word in levels)) return { label: '—' };
+        const level = levels[word];
+        if (!level) return { label: 'C1+', title: t('vocab.level.beyond') };
+        return { label: level, title: `CEFR ${level}` };
+    }, [levels, t]);
+
+    /** Level filter options; CEFR bands + C1+ for favorite/mastered surfaces. */
+    const levelFilterOptions = useCallback((
+        current: MineLevel,
+        testIdPrefix: string,
+        counts?: Record<string, number>,
+    ): FilterOption[] => ([
+        {
+            value: '',
+            label: t('vocab.filter.all'),
+            checked: current === '',
+            testId: `${testIdPrefix}-all`,
+        },
+        ...VOCABULARY_CEFR_LEVELS.map((level) => ({
+            value: level,
+            label: counts && typeof counts[level] === 'number'
+                ? t('vocab.cefr.levelCount', { level, count: formatNumber(counts[level]) })
+                : level,
+            checked: current === level,
+            testId: `${testIdPrefix}-${level}`,
+        })),
+        {
+            value: 'C1+',
+            label: 'C1+',
+            checked: current === 'C1+',
+            testId: `${testIdPrefix}-c1plus`,
+        },
+    ]), [formatNumber, t]);
+
+    /** Global hide-Chinese switch, one recipe for every list toolbar. */
+    const hideChineseToggle = (scope: string) => (
+        <button
+            type="button"
+            data-testid="vocab-hide-toggle"
+            data-scope={scope}
+            aria-pressed={hideChinese}
+            onClick={toggleHideChinese}
+            title={hideChinese ? t('vocab.show') : t('vocab.hide')}
+            className={`inline-flex h-control-md shrink-0 items-center justify-center gap-1.5 rounded-control border px-2.5 text-caption font-medium transition-colors ${
+                hideChinese
+                    ? 'border-brand/20 bg-brand/10 text-brand-300 hover:bg-brand/15'
+                    : 'border-line-subtle bg-surface-2/60 text-fg-strong hover:bg-surface-3/60 hover:text-fg-primary'
+            }`}
+        >
+            {hideChinese
+                ? <Eye className="h-4 w-4" aria-hidden="true" />
+                : <EyeOff className="h-4 w-4" aria-hidden="true" />}
+            {hideChinese ? t('vocab.show') : t('vocab.hide')}
+        </button>
+    );
 
     // ── 加入我的单词 / 加入复习 (built-in lists + phrases) ──────────────────
     // Both writes are idempotent server-side; the row only ever shows
@@ -1002,18 +1029,6 @@ export function VocabularyBookScreen({
         return actions;
     };
 
-    /** 朗读 control, disabled (with a reason) when no English voice exists. */
-    const rowSpeakAction = (input: { rowKey: string; text: string }): WordRowAction => ({
-        key: 'speak',
-        label: speechDisabled
-            ? t('vocab.speak.unavailable')
-            : t('vocab.speak.word', { word: input.text }),
-        icon: Volume2,
-        testId: `${input.rowKey}-speak`,
-        disabled: speechDisabled,
-        onClick: () => speakRow(input.text),
-    });
-
     /**
      * 标为已掌握 for a custom word-list row (specs/038 §1). Idempotent PATCH;
      * the row stays in the word list, it just flips its own action state. The
@@ -1159,25 +1174,9 @@ export function VocabularyBookScreen({
         }
     };
 
-    // ── v1.2 batch operations (我的单词 / 已掌握) ──────────────────────────
-    // Every item is written one at a time and nothing is reported as done
-    // before the server confirmed it: the failed rows keep their selection and
-    // an inline error, so retrying is just pressing the same button again.
-    const mineSelected = useMemo(
-        () => myWords.filter((fav) => selectedIds.has(fav.id)),
-        [myWords, selectedIds],
-    );
-    const masteredSelected = useMemo(
-        () => masteredRows.filter((row) => selectedIds.has(`mastered:${row.key}`)),
-        [masteredRows, selectedIds],
-    );
-
     /**
-     * Delete one favorite and keep both layers honest. The API call here is the
-     * authoritative result (batch needs per-item success/failure); App's
-     * optimistic handler then runs for favorites App already knows, so its list
-     * and the sidebar count drop the row too. App's `removeFavorite` treats the
-     * resulting 404 as success, so the follow-up call is a silent no-op.
+     * Delete one favorite and keep both layers honest. App owns the optimistic
+     * prop path; favorites this screen added itself are removed locally.
      */
     const deleteFavoriteById = async (id: string) => {
         await removeFavorite(id);
@@ -1185,142 +1184,7 @@ export function VocabularyBookScreen({
         setAddedFavorites((prev) => prev.filter((fav) => fav.id !== id));
     };
 
-    const runBulk = async (
-        action: 'review' | 'master' | 'unmaster' | 'delete',
-        targets: Array<{ id: string; label: string; run: () => Promise<void> }>,
-        successText: (count: number) => string,
-    ) => {
-        if (bulkBusy || targets.length === 0) return;
-        setBulkBusy(true);
-        setBulkAction(action);
-        setBulkSummary(null);
-        setBulkRowErrors({});
-        const failed: Array<{ id: string; label: string }> = [];
-        let succeeded = 0;
-        for (const target of targets) {
-            try {
-                await target.run();
-                succeeded += 1;
-            } catch {
-                failed.push({ id: target.id, label: target.label });
-            }
-        }
-        setBulkRowErrors(Object.fromEntries(
-            failed.map((item) => [item.id, t('vocab.bulk.rowError')]),
-        ));
-        // Only failures stay selected; successes are done and out of the way.
-        setSelectedIds(new Set(failed.map((item) => item.id)));
-        setBulkBusy(false);
-        setBulkAction(null);
-        if (failed.length > 0) {
-            const summary = t('vocab.bulk.failed', {
-                count: failed.length,
-                items: formatList(failed.slice(0, 3).map((item) => item.label)),
-            });
-            setBulkSummary(summary);
-            toast.error(summary, { dedupeKey: 'vocab:bulk' });
-            return;
-        }
-        toast.success(successText(succeeded), { dedupeKey: 'vocab:bulk' });
-    };
-
-    /** 批量「加入复习」: signed-in only (guest gate at the entry, never a 403). */
-    const handleBulkAddReview = () => {
-        if (bulkBusy) return;
-        if (isGuest) {
-            openLogin();
-            return;
-        }
-        const rows = mineSelected.filter((fav) => fav.en_text.trim());
-        void runBulk('review', rows.map((fav) => {
-            const lemma = fav.en_text.trim();
-            const key = normalizeMasteryWord(lemma);
-            return {
-                id: fav.id,
-                label: lemma,
-                run: async () => {
-                    await addWord({ lemma, targetLang, source: reviewSourceFor(fav) });
-                    // Adding re-opens a mastered word (specs/013), same as the
-                    // single-row entry.
-                    if (masteredWords.has(key)) writeMasteredState(lemma, false);
-                    setReviewedWords((prev) => new Set(prev).add(key));
-                },
-            };
-        }), (count) => t('vocab.bulk.reviewDone', { count }));
-    };
-
-    /** 批量「标为已掌握」(我的单词) / 「撤销已掌握」(已掌握). */
-    const handleBulkSetMastered = (mastered: boolean) => {
-        if (bulkBusy) return;
-        if (mastered) {
-            const rows = mineSelected.filter((fav) => fav.en_text.trim());
-            void runBulk('master', rows.map((fav) => {
-                const lemma = fav.en_text.trim();
-                return {
-                    id: fav.id,
-                    label: lemma,
-                    run: async () => {
-                        if (isGuest) {
-                            writeMasteredState(lemma, true);
-                            return;
-                        }
-                        const result = await setWordMastered({
-                            lemma,
-                            mastered: true,
-                            targetLang,
-                            source: reviewSourceFor(fav),
-                        });
-                        writeMasteredState(lemma, result.word.mastered === true);
-                    },
-                };
-            }), (count) => t('vocab.bulk.masterDone', { count }));
-            return;
-        }
-        void runBulk('unmaster', masteredSelected.map((row) => {
-            const lemma = row.word.trim();
-            const fav = favoriteByWord.get(row.key);
-            return {
-                id: `mastered:${row.key}`,
-                label: row.word,
-                run: async () => {
-                    if (!lemma) throw new Error('empty lemma');
-                    if (isGuest) {
-                        writeMasteredState(lemma, false);
-                        return;
-                    }
-                    const result = await setWordMastered({
-                        lemma,
-                        mastered: false,
-                        targetLang,
-                        ...(fav ? { source: reviewSourceFor(fav) } : {}),
-                    });
-                    writeMasteredState(lemma, result.word.mastered === true);
-                },
-            };
-        }), (count) => t('vocab.bulk.unmasterDone', { count }));
-    };
-
-    /** Rows the 删除收藏 batch can act on (a mastered word may have no favorite). */
-    const bulkDeletableFavorites = useMemo(
-        () => (activeIsMine
-            ? mineSelected
-            : masteredSelected
-                .map((row) => favoriteByWord.get(row.key))
-                .filter((fav): fav is FavoriteItem => Boolean(fav))),
-        [activeIsMine, mineSelected, masteredSelected, favoriteByWord],
-    );
-
-    const handleBulkDelete = async () => {
-        if (bulkBusy) return;
-        const rows = bulkDeletableFavorites;
-        await runBulk('delete', rows.map((fav) => ({
-            id: fav.id,
-            label: fav.en_text.trim(),
-            run: () => deleteFavoriteById(fav.id),
-        })), (count) => t('vocab.bulk.deleteDone', { count }));
-    };
-
-    /** Single-row delete from the expanded detail — same authoritative path. */
+    /** Single-row delete / 取消收藏 from the expanded detail. */
     const handleRowDelete = async (fav: FavoriteItem) => {
         if (pendingDeleteId) return;
         setRowError(null);
@@ -1332,6 +1196,239 @@ export function VocabularyBookScreen({
             setRowError({ id: fav.id, message: t('vocab.delete.error') });
         } finally {
             setPendingDeleteId(null);
+        }
+    };
+
+    const markFavoriteBusy = (word: string, busy: boolean) => {
+        const key = normalizeMasteryWord(word);
+        setFavoriteBusyKeys((prev) => {
+            const next = new Set(prev);
+            if (busy) next.add(key);
+            else next.delete(key);
+            return next;
+        });
+    };
+
+    /**
+     * 取消收藏 from a row star. Favorites App already knows go through App's
+     * optimistic handler (it rolls back + toasts); ones this screen added are
+     * removed here with the same optimistic/rollback contract (IX-05).
+     */
+    const removeFavoriteForRow = (fav: FavoriteItem) => {
+        const key = normalizeMasteryWord(fav.en_text);
+        if (favoriteBusyKeys.has(key)) return;
+        markFavoriteBusy(fav.en_text, true);
+        if (favorites.some((entry) => entry.id === fav.id)) {
+            onRemoveFavorite(fav.id);
+            markFavoriteBusy(fav.en_text, false);
+            return;
+        }
+        setAddedFavorites((prev) => prev.filter((entry) => entry.id !== fav.id));
+        void removeFavorite(fav.id)
+            .then(() => toast.success(t('vocab.toast.removed'), { dedupeKey: 'favorites:removed' }))
+            .catch(async (error) => {
+                setAddedFavorites((prev) => (
+                    prev.some((entry) => entry.id === fav.id) ? prev : [...prev, fav]
+                ));
+                toast.error(await describeApiError(error));
+            })
+            .finally(() => markFavoriteBusy(fav.en_text, false));
+    };
+
+    /**
+     * Favorite one row (词表 / 短语 / 已掌握 star) with an optimistic overlay:
+     * the star fills immediately, a failed POST removes the overlay again and
+     * reports the failure as a toast (G8 / IX-02).
+     */
+    const addFavoriteForRow = async (input: {
+        word: string;
+        phonetic?: string | null;
+        translation?: string | null;
+        example?: string | null;
+        sourceKind?: FavoriteSourceKind;
+        sourceRef?: string;
+        sourceTitle?: string;
+    }) => {
+        if (isGuest) {
+            openLogin();
+            return;
+        }
+        const word = input.word.trim();
+        if (!word) return;
+        const key = normalizeMasteryWord(word);
+        if (!key || favoritedWordKeys.has(key) || favoriteBusyKeys.has(key)) return;
+        const draft: FavoriteDraft = {
+            id: `vocab-fav-${key}`.slice(0, 300),
+            type: 'vocabulary',
+            videoId: input.sourceRef ?? '',
+            start: 0,
+            en_text: word,
+            zh_text: [normalizePhonetic(input.phonetic), (input.translation ?? '').trim()]
+                .filter(Boolean)
+                .join(' '),
+            added_at: Date.now(),
+            ...(input.example?.trim() ? { example: input.example.trim() } : {}),
+            ...(input.sourceKind ? { source_kind: input.sourceKind } : {}),
+            ...(input.sourceRef ? { source_ref: input.sourceRef } : {}),
+            ...(input.sourceTitle ? { source_title: input.sourceTitle } : {}),
+        };
+        const optimistic: FavoriteItem = { ...draft };
+        setAddedFavorites((prev) => [...prev, optimistic]);
+        markFavoriteBusy(word, true);
+        try {
+            const saved = await addFavorite(draft);
+            setAddedFavorites((prev) => prev.map((entry) => (
+                entry.id === optimistic.id ? saved : entry
+            )));
+            setDeletedFavoriteIds((prev) => {
+                if (!prev.has(saved.id)) return prev;
+                const next = new Set(prev);
+                next.delete(saved.id);
+                return next;
+            });
+            toast.success(t('vocab.toast.added'), { dedupeKey: 'favorites:added' });
+        } catch (error) {
+            setAddedFavorites((prev) => prev.filter((entry) => entry.id !== optimistic.id));
+            toast.error(await describeApiError(error));
+        } finally {
+            markFavoriteBusy(word, false);
+        }
+    };
+
+    /** Star toggle shared by every non-我的单词 surface. */
+    const toggleRowFavorite = (input: {
+        word: string;
+        phonetic?: string | null;
+        translation?: string | null;
+        example?: string | null;
+        sourceKind?: FavoriteSourceKind;
+        sourceRef?: string;
+        sourceTitle?: string;
+    }) => {
+        const key = normalizeMasteryWord(input.word);
+        const existing = favoriteByWord.get(key);
+        if (existing) {
+            removeFavoriteForRow(existing);
+            return;
+        }
+        void addFavoriteForRow(input);
+    };
+
+    // ── Custom word-list edit mode (勾选删除 + 重命名, specs/038 §5) ────────
+    const resetCustomEdit = useCallback(() => {
+        setCustomEditMode(false);
+        setCustomEditSelected(new Set());
+        setCustomEditSummary(null);
+        setCustomEditBusy(false);
+    }, []);
+
+    const toggleCustomEdit = () => {
+        setCustomEditSelected(new Set());
+        setCustomEditSummary(null);
+        setCustomEditMode((prev) => !prev);
+    };
+
+    const toggleCustomItem = (key: string, checked: boolean) => {
+        setCustomEditSelected((prev) => {
+            const next = new Set(prev);
+            if (checked) next.add(key);
+            else next.delete(key);
+            return next;
+        });
+        setCustomEditSummary(null);
+    };
+
+    const customEditItems = useMemo(
+        () => customItems.filter((item) => customEditSelected.has(customItemKey(item))),
+        [customItems, customEditSelected],
+    );
+
+    /**
+     * 删除所选: one request for the selected item ids; nothing is removed
+     * locally before the server confirms. A failure keeps the rows and the
+     * selection, and leaves an inline summary + the dialog's own retry path.
+     */
+    const handleDeleteCustomItems = async () => {
+        const list = activeCustomList;
+        if (!list || customEditBusy) return;
+        const selected = customEditItems;
+        if (selected.length === 0) {
+            throw new Error(t('vocab.edit.selectEmpty'));
+        }
+        const ids = selected
+            .map((item) => item.id)
+            .filter((id): id is string => Boolean(id));
+        if (ids.length !== selected.length) {
+            const message = t('vocab.edit.missingIds');
+            setCustomEditSummary(message);
+            throw new Error(message);
+        }
+        setCustomEditBusy(true);
+        setCustomEditSummary(null);
+        try {
+            const result = await deleteCustomWordlistItems(list.id, ids);
+            const idSet = new Set(ids);
+            setCustomItems((prev) => prev.filter((item) => !idSet.has(item.id ?? '')));
+            setCustomLists((prev) => prev.map((entry) => (
+                entry.id === list.id
+                    ? {
+                        ...entry,
+                        itemCount: result.itemCount > 0
+                            ? result.itemCount
+                            : Math.max(0, entry.itemCount - result.deleted),
+                    }
+                    : entry
+            )));
+            setCustomEditSelected(new Set());
+            toast.success(t('vocab.edit.deleteDone', { count: formatNumber(result.deleted) }), {
+                dedupeKey: 'wordlist:items',
+            });
+        } catch (error) {
+            setCustomEditSummary(t('vocab.edit.deleteFailed', { count: formatNumber(selected.length) }));
+            throw error;
+        } finally {
+            setCustomEditBusy(false);
+        }
+    };
+
+    const openRenameDialog = () => {
+        if (!activeCustomList) return;
+        setRenameName(activeCustomList.name);
+        setRenameError('');
+        setRenameOpen(true);
+    };
+
+    const submitRename = async () => {
+        const list = activeCustomList;
+        if (!list || renameBusy) return;
+        const name = renameName.trim();
+        if (!name) {
+            setRenameError(t('vocab.custom.renameEmpty'));
+            return;
+        }
+        if (name === list.name) {
+            setRenameOpen(false);
+            return;
+        }
+        setRenameBusy(true);
+        setRenameError('');
+        try {
+            const updated = await renameCustomWordlist(list.id, name);
+            setCustomLists((prev) => prev.map((entry) => (
+                entry.id === updated.id ? updated : entry
+            )));
+            setRenameOpen(false);
+            toast.success(t('vocab.custom.renameSuccess', { name: updated.name }), {
+                dedupeKey: 'wordlist:renamed',
+            });
+        } catch (error) {
+            setRenameError(
+                error instanceof Error && error.message.trim()
+                    ? error.message
+                    : t('vocab.custom.renameError'),
+            );
+        } finally {
+            setRenameBusy(false);
         }
     };
 
@@ -1394,7 +1491,7 @@ export function VocabularyBookScreen({
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [page, setPage] = useState(1);
-    /** CEFR tab only; '' = 全部. Counts for the chips come from `byLevel`. */
+    /** 内置词表 level filter; '' = 全部. CEFR counts come from `byLevel`. */
     const [listLevel, setListLevel] = useState<CefrLevel | ''>('');
     const [listPhase, setListPhase] = useState<Phase>('idle');
     const [listData, setListData] = useState<VocabularyPage | null>(null);
@@ -1409,17 +1506,12 @@ export function VocabularyBookScreen({
         }
     });
 
-    // ── Custom word lists: server search + 50/page + hide-Chinese ─────────
+    // ── Custom word lists: client search/paging + hide-Chinese ────────────
     // Kept separate from the built-in list state: switching between a custom
-    // list and GRE must not rewrite the other surface's query/page (IX-06:
-    // every request is tied to an AbortController so a stale page cannot win).
+    // list and GRE must not rewrite the other surface's query/page (IX-06).
     const [customQuery, setCustomQuery] = useState('');
-    const [customDebouncedQuery, setCustomDebouncedQuery] = useState('');
     const [customPage, setCustomPage] = useState(1);
-    const [customListPhase, setCustomListPhase] = useState<Phase>('idle');
-    const [customListData, setCustomListData] = useState<CustomWordlistPage | null>(null);
-    const [customListError, setCustomListError] = useState('');
-    const [customListNonce, setCustomListNonce] = useState(0);
+    const [customNonce, setCustomNonce] = useState(0);
     const [customRevealed, setCustomRevealed] = useState<Set<string>>(() => new Set());
     const [customDeleteOpen, setCustomDeleteOpen] = useState(false);
     const [customAddAllOpen, setCustomAddAllOpen] = useState(false);
@@ -1459,27 +1551,31 @@ export function VocabularyBookScreen({
         setPhraseType('');
         setPhraseRevealed(new Set());
         setPhraseExpanded(new Set());
-        // Custom lists restart clean too (first page, no search, collapsed).
+        // Custom lists restart clean too (first page, no search, collapsed,
+        // edit mode off) — specs/005 §统一词表 UI.
         setCustomQuery('');
-        setCustomDebouncedQuery('');
         setCustomPage(1);
         setCustomRevealed(new Set());
-        setCustomListPhase('idle');
-        setCustomListData(null);
+        setCustomSort('alpha');
+        setCustomLevel('');
+        setCustomUnmasteredOnly(false);
+        setCustomLoadPhase('idle');
+        setCustomItems([]);
+        resetCustomEdit();
         // 我的单词 and 已掌握 also restart clean (first page, default sort, no
-        // filters/search/state, empty selection) — specs/005 §v1.2.
+        // filters/search) — specs/005 §统一词表 UI.
         setMasteredPage(1);
+        setMasteredQuery('');
+        setMasteredLevel('');
+        setMasteredSort('alpha');
         setMineSort('added');
         setMineType('');
         setMineSource('');
+        setMineLevel('');
         setMineQuery('');
         setMineDebouncedQuery('');
-        setMineState('');
         setMinePage(1);
-        setSelectedIds(new Set());
-        setBulkSummary(null);
-        setBulkRowErrors({});
-    }, [catalogById]);
+    }, [catalogById, resetCustomEdit]);
 
 
     // Persist the global switch. A storage failure is non-fatal (private mode).
@@ -1491,49 +1587,45 @@ export function VocabularyBookScreen({
         }
     }, [hideChinese]);
 
-    // Custom list search: 300ms debounce, and a changed query restarts at 1.
-    useEffect(() => {
-        const trimmed = customQuery.trim();
-        const timer = window.setTimeout(() => {
-            if (trimmed === customDebouncedQuery) return;
-            setCustomDebouncedQuery(trimmed);
-            setCustomPage(1);
-        }, 300);
-        return () => window.clearTimeout(timer);
-    }, [customQuery, customDebouncedQuery]);
-
-    // A new custom page/search/tab starts with every translation collapsed.
-    useEffect(() => {
-        setCustomRevealed(new Set());
-    }, [activeTab, customPage, customDebouncedQuery]);
-
+    // Custom list: one bounded full load (≤200/page, ≤5000 words) feeds client
+    // search, sorting, filters, paging and edit mode (specs/005 §统一词表 UI).
     useEffect(() => {
         if (!activeIsCustom || !activeCustomListId) {
-            setCustomListPhase('idle');
-            setCustomListData(null);
+            setCustomLoadPhase('idle');
+            setCustomItems([]);
+            setCustomLoadError('');
             return;
         }
         const controller = new AbortController();
-        setCustomListPhase('loading');
-        setCustomListError('');
-        fetchCustomWordlistPage(activeCustomListId, {
-            page: customPage,
-            pageSize: WORDLIST_PAGE_SIZE,
-            q: customDebouncedQuery,
-            signal: controller.signal,
-        })
+        setCustomLoadPhase('loading');
+        setCustomLoadError('');
+        fetchAllCustomWordlistItems(activeCustomListId, controller.signal)
             .then((data) => {
                 if (controller.signal.aborted) return;
-                setCustomListData(data);
-                setCustomListPhase('ready');
+                setCustomItems(data.items);
+                setCustomLoadPhase('ready');
             })
             .catch(async (error) => {
                 if (controller.signal.aborted || (error as Error)?.name === 'AbortError') return;
-                setCustomListError(await describeApiError(error));
-                setCustomListPhase('error');
+                setCustomLoadError(await describeApiError(error));
+                setCustomLoadPhase('error');
             });
         return () => controller.abort();
-    }, [activeIsCustom, activeCustomListId, customPage, customDebouncedQuery, customListNonce]);
+    }, [activeIsCustom, activeCustomListId, customNonce]);
+
+    // A new custom page/search/filter starts with every translation collapsed
+    // and the selection cleared (the filter may have hidden the selected rows).
+    useEffect(() => {
+        setCustomRevealed(new Set());
+        setCustomPage(1);
+        setCustomEditSelected(new Set());
+        setCustomEditSummary(null);
+    }, [customQuery, customSort, customLevel, customUnmasteredOnly, pageSize]);
+
+    // A new list/page/search/level starts with every row's translation collapsed.
+    useEffect(() => {
+        setRevealed(new Set());
+    }, [activeTab, page, masteredPage, debouncedQuery, listLevel]);
 
     // 300ms debounce; entering a query starts again from page 1.
     useEffect(() => {
@@ -1550,7 +1642,7 @@ export function VocabularyBookScreen({
     }, [activeTab, page, masteredPage, debouncedQuery, listLevel]);
 
     useEffect(() => {
-        if (activeIsMine || activeIsMastered || activeUnavailable || activeTab === PHRASES_TAB) {
+        if (activeIsMine || activeIsMastered || activeIsCustom || activeUnavailable || activeTab === PHRASES_TAB) {
             setListData(null);
             setListPhase('idle');
             return;
@@ -1560,9 +1652,9 @@ export function VocabularyBookScreen({
         setListError('');
         fetchVocabularyPage(activeTab, {
             page,
-            pageSize: VOCABULARY_PAGE_SIZE,
+            pageSize,
             q: debouncedQuery,
-            level: activeIsCefr ? listLevel : '',
+            level: listLevel,
             signal: controller.signal,
         })
             .then((data) => {
@@ -1576,7 +1668,7 @@ export function VocabularyBookScreen({
                 setListPhase('error');
             });
         return () => controller.abort();
-    }, [activeIsMine, activeIsCefr, activeUnavailable, activeTab, page, debouncedQuery, listLevel, listNonce]);
+    }, [activeIsMine, activeIsMastered, activeIsCustom, activeIsCefr, activeUnavailable, activeTab, page, pageSize, debouncedQuery, listLevel, listNonce]);
 
     // 300ms phrase search debounce; a changed query restarts from page 1.
     // Compare with the committed query first: the initial mount (and a tab
@@ -1608,7 +1700,7 @@ export function VocabularyBookScreen({
         setPhraseError('');
         fetchPhrasePage({
             page: phrasePage,
-            pageSize: PHRASE_PAGE_SIZE,
+            pageSize,
             q: phraseDebouncedQuery,
             level: phraseLevel,
             type: phraseType,
@@ -1625,7 +1717,27 @@ export function VocabularyBookScreen({
                 setPhrasePhase('error');
             });
         return () => controller.abort();
-    }, [activeTab, phrasePage, phraseDebouncedQuery, phraseLevel, phraseType, phraseNonce]);
+    }, [activeTab, phrasePage, pageSize, phraseDebouncedQuery, phraseLevel, phraseType, phraseNonce]);
+
+    // 每页条数 is a view preference shared by every list: a new size always
+    // returns to page 1 (a phantom page beyond the smaller set is never shown).
+    useEffect(() => {
+        setMinePage(1);
+        setMasteredPage(1);
+        setCustomPage(1);
+        setPage(1);
+        setPhrasePage(1);
+    }, [pageSize]);
+
+    useEffect(() => {
+        setMasteredPage(1);
+    }, [masteredQuery, masteredLevel, masteredSort]);
+
+    // A new 内置词表 level filter restarts the server page (search keeps its
+    // own debounce reset).
+    useEffect(() => {
+        setPage(1);
+    }, [listLevel]);
 
     // Abort pending detail requests on unmount.
     useEffect(() => () => {
@@ -1701,21 +1813,8 @@ export function VocabularyBookScreen({
         });
     };
 
-    /** Level chips: a new band always restarts at page 1; search combines. */
-    const selectListLevel = (level: CefrLevel | '') => {
-        setListLevel(level);
-        setPage(1);
-    };
-
-    const total = listData?.total ?? 0;
-    const pages = Math.max(1, Math.ceil(total / VOCABULARY_PAGE_SIZE));
-    const listHasFilter = Boolean(debouncedQuery) || (activeIsCefr && Boolean(listLevel));
-    const totalLabel = listHasFilter
-        ? t('vocab.search.results', { count: formatNumber(total) })
-        : t('vocab.total', { count: formatNumber(total) });
-
     const phraseTotal = phraseData?.total ?? 0;
-    const phrasePages = Math.max(1, Math.ceil(phraseTotal / PHRASE_PAGE_SIZE));
+    const phrasePages = Math.max(1, Math.ceil(phraseTotal / pageSize));
     const phraseHasFilter = Boolean(phraseDebouncedQuery || phraseLevel || phraseType);
     const phraseTotalLabel = phraseHasFilter
         ? t('vocab.phrases.results', { count: formatNumber(phraseTotal) })
@@ -1753,6 +1852,7 @@ export function VocabularyBookScreen({
     // The header total follows the active surface: it used to show the built-in
     // list total on every tab (「共 0 词」 on 我的单词/短语/已掌握). `null` means
     // "not known yet", so a failed or in-flight read never renders a fake 0 (G3).
+    const listHasFilterServer = () => Boolean(debouncedQuery || listLevel);
     const headerTotalLabel = activeIsMine
         ? (masteredKnown ? t('vocab.total', { count: formatNumber(learningCount) }) : null)
         : activeIsMastered
@@ -1763,7 +1863,11 @@ export function VocabularyBookScreen({
                     : null)
                 : activeTab === PHRASES_TAB
                 ? (phraseData ? phraseTotalLabel : null)
-                : (listData ? totalLabel : null);
+                : (listData
+                    ? (listHasFilterServer()
+                        ? t('vocab.search.results', { count: formatNumber(listData.total) })
+                        : t('vocab.total', { count: formatNumber(listData.total) }))
+                    : null);
 
     const renderHeader = () => (
         <SubHeader
@@ -1872,579 +1976,338 @@ export function VocabularyBookScreen({
     const emptyState = (title: string, hint: string, icon: LucideIcon, testId: string) => {
         const Icon = icon;
         return (
-            <div data-testid={testId} className={`${CARD} flex flex-col items-center justify-center px-6 py-16 text-center`}>
-                <Icon className="mb-3 h-10 w-10 text-zinc-700" aria-hidden="true" />
-                <p className="text-sm font-medium text-zinc-400">{title}</p>
-                <p className="mt-1 max-w-md text-xs leading-relaxed text-zinc-600">{hint}</p>
+            <div data-testid={testId} className={`${LIST_CARD} flex flex-col items-center justify-center px-6 py-16 text-center`}>
+                <Icon className="mb-3 h-10 w-10 text-fg-disabled" aria-hidden="true" />
+                <p className="text-ui font-medium text-fg-secondary">{title}</p>
+                <p className="mt-1 max-w-md text-caption leading-relaxed text-fg-muted">{hint}</p>
             </div>
         );
     };
 
-    /**
-     * Selection bar shared by 我的单词 and 已掌握. The select-all checkbox only
-     * covers the rows on the current page (a paged list cannot select rows the
-     * user has never seen), and the per-tab action set is passed in.
-     */
-    const renderBulkBar = (input: {
-        scope: 'vocab-mine' | 'vocab-mastered';
-        pageIds: readonly string[];
-        selectedCount: number;
-        actions: ReactNode;
-    }) => {
-        const allPageSelected = input.pageIds.length > 0
-            && input.pageIds.every((id) => selectedIds.has(id));
-        return (
-            <div
-                data-testid={`${input.scope}-bulk`}
-                className="flex flex-wrap items-center gap-2 rounded-card border border-line-subtle bg-surface-2/40 px-3 py-2"
-            >
-                <Checkbox
-                    checked={allPageSelected}
-                    onChange={(checked) => toggleSelectAll(input.pageIds, checked)}
-                    ariaLabel={t('vocab.bulk.selectAll')}
-                    testId={`${input.scope}-select-all`}
-                    disabled={bulkBusy || input.pageIds.length === 0}
-                />
-                <span
-                    data-testid={`${input.scope}-selected`}
-                    className="text-caption tabular-nums text-fg-muted"
-                >
-                    {t('vocab.bulk.selected', { count: formatNumber(input.selectedCount) })}
-                </span>
-                <div className="ms-auto flex flex-wrap items-center gap-1.5">
-                    {input.actions}
-                    {input.selectedCount > 0 && (
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            testId={`${input.scope}-bulk-clear`}
-                            onClick={clearSelection}
-                            disabled={bulkBusy}
-                        >
-                            {t('vocab.bulk.clear')}
-                        </Button>
-                    )}
-                </div>
-                {bulkSummary && (
-                    <p
-                        role="alert"
-                        data-testid={`${input.scope}-bulk-summary`}
-                        className="w-full text-caption leading-relaxed text-danger-fg"
-                    >
-                        {bulkSummary}
-                    </p>
-                )}
-            </div>
-        );
-    };
+    const renderMine = () => {
+        const sortOptions: SortOption[] = [
+            { value: 'added', label: t('vocab.sort.added'), testId: 'vocab-sort-added' },
+            { value: 'seen', label: t('vocab.sort.seen'), testId: 'vocab-sort-seen' },
+            { value: 'level', label: t('vocab.sort.level'), testId: 'vocab-sort-level' },
+            { value: 'alpha', label: t('vocab.sort.alpha'), testId: 'vocab-sort-alpha' },
+        ];
+        const filterGroups: FilterGroup[] = [
+            {
+                id: 'type',
+                label: t('vocab.filter.type'),
+                options: [
+                    { value: '', label: t('vocab.filter.all'), checked: mineType === '', testId: 'vocab-filter-type-all' },
+                    { value: 'word', label: t('vocab.filter.word'), checked: mineType === 'word', testId: 'vocab-filter-type-word' },
+                    { value: 'phrase', label: t('vocab.filter.phrase'), checked: mineType === 'phrase', testId: 'vocab-filter-type-phrase' },
+                ],
+            },
+            {
+                id: 'source',
+                label: t('vocab.filter.source'),
+                options: [
+                    { value: '', label: t('vocab.filter.all'), checked: mineSource === '', testId: 'vocab-filter-source-all' },
+                    ...mineSourceKinds.map((kind) => ({
+                        value: kind,
+                        label: t(SOURCE_LABEL_KEYS[kind]),
+                        checked: mineSource === kind,
+                        testId: `vocab-filter-source-${kind}`,
+                    })),
+                ],
+            },
+            {
+                id: 'level',
+                label: t('vocab.filter.level'),
+                options: levelFilterOptions(mineLevel, 'vocab-filter-level'),
+            },
+        ];
+        const filterActiveCount =
+            Number(Boolean(mineType)) + Number(Boolean(mineSource)) + Number(Boolean(mineLevel));
+        const changeFilter = (key: string) => {
+            const [group, value] = key.split(':');
+            if (group === 'type') setMineType(value as MineType);
+            else if (group === 'source') setMineSource(value as '' | FavoriteSourceKind);
+            else if (group === 'level') setMineLevel(value as MineLevel);
+        };
+        const clearFilters = () => {
+            setMineType('');
+            setMineSource('');
+            setMineLevel('');
+            setMineQuery('');
+        };
+        const sortLabel = sortOptions.find((option) => option.value === mineSort)?.label
+            ?? t('vocab.sort.added');
 
-    const renderMine = () => (
-        <div data-testid="vocab-mine-panel" className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-zinc-500">{t('vocab.mine.hint')}</p>
-                {myWords.length > 0 && (
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            data-testid="vocab-export-anki"
-                            onClick={() => exportAnkiTsv(myWords)}
-                            title={t('favorites.exportAnkiTitle')}
-                            className={SECONDARY_BUTTON}
-                        >
-                            <Download className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">{t('favorites.exportAnki')}</span>
-                        </button>
-                        <button
-                            type="button"
-                            data-testid="vocab-export-csv"
-                            onClick={() => exportCsv(myWords)}
-                            title={t('favorites.exportCsvTitle')}
-                            className={SECONDARY_BUTTON}
-                        >
-                            <FileSpreadsheet className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">{t('favorites.exportCsv')}</span>
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {/* v1.2 (specs/005 §v1.2): client search + 状态 chips + 字母 A→Z.
-                已掌握 is a tab of its own now, so 我的单词 only lists learning
-                rows — the old in-page 学习/已掌握 segment is gone. */}
-            <div className="flex flex-col gap-2 rounded-card border border-line-subtle bg-surface-2/40 px-3 py-2.5">
-                <div className="relative min-w-0">
-                    <Search
-                        className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted"
-                        aria-hidden="true"
-                    />
-                    <input
-                        type="text"
-                        data-testid="vocab-mine-search"
-                        value={mineQuery}
-                        onChange={(event) => setMineQuery(event.target.value)}
-                        placeholder={t('vocab.mine.search.placeholder')}
-                        aria-label={t('vocab.mine.search.placeholder')}
-                        className="h-control-md w-full min-w-0 rounded-control border border-line-subtle bg-surface-2/60 ps-9 pe-9 text-ui text-fg-primary placeholder:text-fg-muted"
-                    />
-                    {mineQuery && (
-                        <button
-                            type="button"
-                            data-testid="vocab-mine-search-clear"
-                            onClick={() => setMineQuery('')}
-                            aria-label={t('vocab.mine.search.clear')}
-                            title={t('vocab.mine.search.clear')}
-                            className="absolute end-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-control text-fg-muted transition-colors hover:bg-state-hover hover:text-fg-primary"
-                        >
-                            <X className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                    )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    <Segmented
-                        size="sm"
-                        ariaLabel={t('vocab.sort.label')}
-                        layoutId="vocab-mine-sort"
-                        testId="vocab-mine-sort"
-                        value={mineSort}
-                        onChange={(value) => setMineSort(value as MineSort)}
-                        options={[
-                            { value: 'added', label: t('vocab.sort.added'), testId: 'vocab-sort-added' },
-                            { value: 'seen', label: t('vocab.sort.seen'), testId: 'vocab-sort-seen' },
-                            { value: 'level', label: t('vocab.sort.level'), testId: 'vocab-sort-level' },
-                            { value: 'alpha', label: t('vocab.sort.alpha'), testId: 'vocab-sort-alpha' },
-                        ]}
-                    />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-1 text-caption text-fg-muted">{t('vocab.filter.type')}</span>
-                    <FilterChip selected={mineType === ''} testId="vocab-filter-type-all" onClick={() => setMineType('')}>
-                        {t('vocab.filter.all')}
-                    </FilterChip>
-                    <FilterChip selected={mineType === 'word'} testId="vocab-filter-type-word" onClick={() => setMineType('word')}>
-                        {t('vocab.filter.word')}
-                    </FilterChip>
-                    <FilterChip selected={mineType === 'phrase'} testId="vocab-filter-type-phrase" onClick={() => setMineType('phrase')}>
-                        {t('vocab.filter.phrase')}
-                    </FilterChip>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-1 text-caption text-fg-muted">{t('vocab.filter.source')}</span>
-                    <FilterChip selected={mineSource === ''} testId="vocab-filter-source-all" onClick={() => setMineSource('')}>
-                        {t('vocab.filter.all')}
-                    </FilterChip>
-                    {mineSourceKinds.map((kind) => (
-                        <FilterChip
-                            key={kind}
-                            selected={mineSource === kind}
-                            testId={`vocab-filter-source-${kind}`}
-                            onClick={() => setMineSource(kind)}
-                        >
-                            {t(SOURCE_LABEL_KEYS[kind])}
-                        </FilterChip>
-                    ))}
-                </div>
-
-                {/* 状态 chips: signed-in only, and only once `GET /api/review/words
-                    ?state=` answered — a 403/404 hides the group, never an error
-                    (specs/005 §v1.2). They are disabled while the read is in
-                    flight so a click can never filter against an empty map. */}
-                {stateFilterVisible && (
-                    <div className="flex flex-wrap items-center gap-1.5" data-testid="vocab-state-filter">
-                        <span className="mr-1 text-caption text-fg-muted">{t('vocab.state.filter')}</span>
-                        <FilterChip
-                            selected={effectiveMineState === ''}
-                            testId="vocab-state-all"
-                            disabled={statePhase !== 'ready'}
-                            onClick={() => setMineState('')}
-                        >
-                            {t('vocab.filter.all')}
-                        </FilterChip>
-                        {WORD_STATE_FILTERS.map((state) => (
-                            <FilterChip
-                                key={state}
-                                selected={effectiveMineState === state}
-                                testId={`vocab-state-${state}`}
-                                disabled={statePhase !== 'ready'}
-                                onClick={() => setMineState(state)}
+        const rows: WordTableRow[] = minePageRows.map((fav) => {
+            const word = fav.en_text.trim();
+            const { ipa, meaning } = splitIpaAndMeaning(fav.zh_text);
+            const level = levelBadgeFor(word);
+            const source = sourceText(fav);
+            const SourceIcon = SOURCE_ICON[source.source.kind];
+            const masteredKey = normalizeMasteryWord(word);
+            const isReviewed = reviewedWords.has(masteredKey);
+            const isExpanded = Boolean(expanded[fav.id]);
+            const addedAtLabel = fav.added_at ? formatDate(fav.added_at) : t('vocab.timeUnknown');
+            const knownLevel = word in levels;
+            const levelLabel = levels[word] ?? null;
+            const reviewLabel = isReviewed ? t('vocab.review.added') : t('vocab.review.add');
+            const masterLabel = isGuest ? t('vocab.review.guestMaster') : t('vocab.review.master');
+            const actions: WordRowAction[] = [];
+            if (REVIEW_UI_ENABLED) {
+                actions.push({
+                    key: 'review',
+                    label: `${reviewLabel} ${word}`,
+                    text: reviewLabel,
+                    icon: isReviewed ? CheckCircle2 : Repeat,
+                    testId: `vocab-mine-review-${fav.id}`,
+                    busy: pendingReviewId === fav.id,
+                    done: isReviewed,
+                    disabled: Boolean(pendingReviewId || pendingMasteredId),
+                    onClick: () => { void handleAddFavoriteToReview(fav); },
+                });
+            }
+            actions.push({
+                key: 'master',
+                label: `${masterLabel} ${word}`,
+                text: masterLabel,
+                icon: CheckCircle2,
+                testId: `vocab-mine-master-${fav.id}`,
+                busy: pendingMasteredId === fav.id,
+                disabled: Boolean(pendingReviewId || pendingMasteredId),
+                onClick: () => { void handleToggleFavoriteMastered(fav); },
+            });
+            actions.push({
+                key: 'delete',
+                label: `${t('vocab.delete')} ${word}`,
+                text: t('vocab.delete'),
+                icon: Trash2,
+                testId: `vocab-mine-delete-${fav.id}`,
+                busy: pendingDeleteId === fav.id,
+                onClick: () => { void handleRowDelete(fav); },
+            });
+            return {
+                key: fav.id,
+                word,
+                phonetic: ipa,
+                translation: meaning,
+                level: level.label,
+                levelTitle: level.title,
+                seenText: seenText(fav),
+                seenTitle,
+                favored: true,
+                favoriteLabel: t('vocab.star.remove', { word }),
+                onToggleFavorite: () => removeFavoriteForRow(fav),
+                favoriteBusy: favoriteBusyKeys.has(masteredKey),
+                speakLabel: speakLabelFor(word),
+                onSpeak: () => speakRow(word),
+                speakDisabled: speechDisabled,
+                expandLabel: expandLabelFor(isExpanded),
+                expanded: isExpanded,
+                onToggleExpand: () => toggleExpanded(fav.id),
+                detail: (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="min-w-0 space-y-1 sm:col-span-2">
+                            <p className="text-micro text-fg-muted">{t('vocab.meaning.full')}</p>
+                            <p
+                                data-testid={`vocab-mine-full-${fav.id}`}
+                                className="break-words text-ui leading-relaxed text-fg-secondary"
                             >
-                                {t(WORD_STATE_LABEL_KEYS[state])}
-                            </FilterChip>
-                        ))}
-                    </div>
-                )}
-
-                {hasMineFilters && (
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            testId="vocab-mine-clear-filters"
-                            onClick={() => {
-                                setMineType('');
-                                setMineSource('');
-                                setMineQuery('');
-                                setMineState('');
-                            }}
-                        >
-                            {t('vocab.filter.clear')}
-                        </Button>
-                    </div>
-                )}
-            </div>
-
-            {/* The signed-in mastered list is a separate async read: until it
-                succeeds, mastered words would show up here as unmastered. */}
-            {!isGuest && masteredPhase === 'error' && (
-                <ErrorPanel
-                    level="inline"
-                    title={t('vocab.mine.mastered.error')}
-                    detail={t('vocab.mine.mastered.errorHint')}
-                    onRetry={() => setMasteredNonce((value) => value + 1)}
-                    retryLabel={t('common.retry')}
-                    testId="vocab-mastered-stale"
-                    retryTestId="vocab-mastered-stale-retry"
-                />
-            )}
-
-            {myWords.length > 0 && renderBulkBar({
-                scope: 'vocab-mine',
-                pageIds: minePageRows.map((fav) => fav.id),
-                selectedCount: mineSelected.length,
-                actions: (
-                    <>
-                        {REVIEW_UI_ENABLED && (
-                        <Button
-                            size="sm"
-                            variant="tinted"
-                            tone="brand"
-                            iconLeft={<Repeat />}
-                            testId="vocab-mine-bulk-review"
-                            loading={bulkAction === 'review'}
-                            disabled={bulkBusy || mineSelected.length === 0}
-                            onClick={handleBulkAddReview}
-                        >
-                            {t('vocab.review.add')}
-                        </Button>
-                        )}
-                        <Button
-                            size="sm"
-                            variant="tinted"
-                            tone="success"
-                            iconLeft={<CheckCircle2 />}
-                            testId="vocab-mine-bulk-master"
-                            loading={bulkAction === 'master'}
-                            disabled={bulkBusy || mineSelected.length === 0}
-                            onClick={() => handleBulkSetMastered(true)}
-                        >
-                            {t('vocab.bulk.master')}
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="destructive"
-                            iconLeft={<Trash2 />}
-                            testId="vocab-mine-bulk-delete"
-                            loading={bulkAction === 'delete'}
-                            disabled={bulkBusy || mineSelected.length === 0}
-                            onClick={() => setBulkDeleteOpen(true)}
-                        >
-                            {t('vocab.bulk.delete')}
-                        </Button>
-                    </>
-                ),
-            })}
-
-            {myWords.length === 0
-                ? emptyState(t('vocab.empty.mine'), t('vocab.empty.mineHint'), Star, 'vocab-mine-empty')
-                : mineRows.length === 0
-                    ? hasMineFilters
-                        ? emptyState(
-                            t('vocab.mine.empty.filtered'),
-                            t('vocab.mine.empty.filteredHint'),
-                            Search,
-                            'vocab-mine-filtered-empty',
-                        )
-                        : emptyState(
-                            t('vocab.mine.empty.allMastered'),
-                            t('vocab.mine.empty.allMasteredHint'),
-                            CheckCircle2,
-                            'vocab-mine-all-mastered',
-                        )
-                    : (
-                    <>
-                    <div data-testid="vocab-mine-list" className={`${CARD} divide-y divide-white/5 overflow-hidden`}>
-                        {minePageRows.map((fav) => {
-                            const { ipa, meaning } = splitIpaAndMeaning(fav.zh_text);
-                            const isExpanded = Boolean(expanded[fav.id]);
-                            const word = fav.en_text.trim();
-                            const knownLevel = word in levels;
-                            const level = levels[word] ?? null;
-                            const levelLabel = level ?? 'C1+';
-                            const source = sourceText(fav);
-                            const SourceIcon = SOURCE_ICON[source.source.kind];
-                            const masteredKey = normalizeMasteryWord(word);
-                            const isReviewed = reviewedWords.has(masteredKey);
-                            // Marking a word mastered moves it to the 已掌握 tab;
-                            // undoing from there is the only reverse direction.
-                            const masterLabel = isGuest ? t('vocab.review.guestMaster') : t('vocab.review.master');
-                            const reviewLabel = isReviewed ? t('vocab.review.added') : t('vocab.review.add');
-                            const addedAtLabel = fav.added_at
-                                ? formatDate(fav.added_at)
-                                : t('vocab.timeUnknown');
-                            const isSelected = selectedIds.has(fav.id);
-                            return (
-                                <div key={fav.id} data-testid={`vocab-mine-${fav.id}`}>
-                                    <div className="flex flex-wrap items-stretch">
-                                    <div className="flex shrink-0 items-center ps-2">
-                                        <Checkbox
-                                            checked={isSelected}
-                                            onChange={(checked) => toggleSelected(fav.id, checked)}
-                                            ariaLabel={t('vocab.bulk.selectRow', { word })}
-                                            testId={`vocab-mine-select-${fav.id}`}
-                                            disabled={bulkBusy}
-                                        />
-                                    </div>
+                                {meaning || '—'}
+                            </p>
+                            {fav.example && (
+                                <p className="break-words text-caption leading-relaxed text-fg-muted">
+                                    {t('vocab.example')}：{fav.example}
+                                </p>
+                            )}
+                            {!knownLevel && levelPhase === 'error' && (
+                                <p className="flex flex-wrap items-center gap-2 text-caption text-warning-fg">
+                                    <span
+                                        data-testid={`vocab-mine-level-error-${fav.id}`}
+                                        title={levelError || undefined}
+                                    >
+                                        {t('vocab.level.error')}
+                                    </span>
                                     <button
                                         type="button"
-                                        data-testid={`vocab-mine-toggle-${fav.id}`}
-                                        aria-expanded={isExpanded}
-                                        aria-controls={`vocab-mine-detail-${fav.id}`}
-                                        aria-label={isExpanded ? t('common.collapse') : t('common.expand')}
-                                        onClick={() => toggleExpanded(fav.id)}
-                                        className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-state-hover sm:px-4"
+                                        data-testid={`vocab-mine-level-retry-${fav.id}`}
+                                        onClick={() => setLevelNonce((value) => value + 1)}
+                                        className="font-medium text-brand-300 hover:text-brand-400"
                                     >
-                                        <span
-                                            data-testid={`vocab-mine-word-${fav.id}`}
-                                            className="max-w-[42%] shrink-0 truncate text-[15px] font-semibold text-zinc-100"
-                                        >
-                                            {fav.en_text}
-                                        </span>
-                                        {ipa && (
-                                            <span
-                                                data-testid={`vocab-mine-ipa-${fav.id}`}
-                                                className="max-w-[30%] shrink-0 truncate text-xs font-normal text-zinc-500"
-                                            >
-                                                {ipa}
-                                            </span>
-                                        )}
-                                        <span
-                                            data-testid={`vocab-mine-meaning-${fav.id}`}
-                                            className="min-w-0 flex-1 truncate text-sm text-zinc-400"
-                                        >
-                                            {meaning || '—'}
-                                        </span>
-                                        <ChevronDown
-                                            className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-200 ease-apple motion-reduce:transition-none ${
-                                                isExpanded ? 'rotate-180' : ''
-                                            }`}
-                                            aria-hidden="true"
-                                        />
+                                        {t('common.retry')}
                                     </button>
-                                    </div>
-
-                                    {/* Secondary review entry points + provenance.
-                                        The source link reopens the last place the
-                                        word was saved from; seen counts are
-                                        optional data (「—」 when unavailable). */}
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3.5 pb-2.5 sm:px-4">
-                                        <button
-                                            type="button"
-                                            data-testid={`vocab-mine-source-${fav.id}`}
-                                            disabled={!source.canOpen}
-                                            onClick={() => openSource(source.source, fav.start)}
-                                            title={source.canOpen ? source.text : t('vocab.source.unknown')}
-                                            className={`inline-flex min-w-0 max-w-full items-center gap-1.5 text-caption ${
-                                                source.canOpen
-                                                    ? 'text-brand-300 transition-colors hover:text-brand-400'
-                                                    : 'cursor-default text-fg-muted'
-                                            }`}
-                                        >
-                                            <SourceIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                            <span className="min-w-0 truncate">{source.text}</span>
-                                            {source.canOpen && <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />}
-                                        </button>
-                                        <span
-                                            data-testid={`vocab-mine-seen-${fav.id}`}
-                                            className="text-caption tabular-nums text-fg-muted"
-                                            title={seenTitle}
-                                        >
-                                            {seenText(fav)}
-                                        </span>
-                                        <span className="ms-auto flex items-center gap-1.5">
-                                            <span
-                                                className="inline-flex"
-                                                title={speechDisabled
-                                                    ? t('vocab.speak.unavailable')
-                                                    : t('vocab.speak.word', { word })}
-                                                onClick={(event) => event.stopPropagation()}
-                                            >
-                                                <IconButton
-                                                    size="sm"
-                                                    ariaLabel={speechDisabled
-                                                        ? t('vocab.speak.unavailable')
-                                                        : t('vocab.speak.word', { word })}
-                                                    testId={`vocab-mine-speak-${fav.id}`}
-                                                    disabled={speechDisabled}
-                                                    onClick={() => speakRow(word)}
-                                                >
-                                                    <Volume2 className="h-4 w-4" aria-hidden="true" />
-                                                </IconButton>
-                                            </span>
-                                            {REVIEW_UI_ENABLED && (
-                                            <Button
-                                                size="sm"
-                                                variant={isReviewed ? 'secondary' : 'tinted'}
-                                                tone="brand"
-                                                iconLeft={isReviewed ? <CheckCircle2 /> : <Repeat />}
-                                                loading={pendingReviewId === fav.id}
-                                                disabled={bulkBusy || Boolean(pendingReviewId || pendingMasteredId)}
-                                                ariaLabel={reviewLabel}
-                                                testId={`vocab-mine-review-${fav.id}`}
-                                                onClick={() => { void handleAddFavoriteToReview(fav); }}
-                                                className="[@media(pointer:coarse)]:min-h-11"
-                                            >
-                                                {reviewLabel}
-                                            </Button>
-                                            )}
-                                            <Button
-                                                size="sm"
-                                                variant="tinted"
-                                                tone="success"
-                                                iconLeft={<CheckCircle2 />}
-                                                loading={pendingMasteredId === fav.id}
-                                                disabled={bulkBusy || Boolean(pendingReviewId || pendingMasteredId)}
-                                                ariaLabel={masterLabel}
-                                                testId={`vocab-mine-master-${fav.id}`}
-                                                onClick={() => { void handleToggleFavoriteMastered(fav); }}
-                                                className="[@media(pointer:coarse)]:min-h-11"
-                                            >
-                                                {masterLabel}
-                                            </Button>
-                                        </span>
-                                    </div>
-                                    {rowError?.id === fav.id && (
-                                        <p
-                                            data-testid={`vocab-mine-error-${fav.id}`}
-                                            role="alert"
-                                            className="px-3.5 pb-2 text-caption leading-relaxed text-danger-fg sm:px-4"
-                                        >
-                                            {rowError.message}
-                                        </p>
-                                    )}
-                                    {bulkRowErrors[fav.id] && (
-                                        <p
-                                            data-testid={`vocab-mine-bulk-error-${fav.id}`}
-                                            role="alert"
-                                            className="px-3.5 pb-2 text-caption leading-relaxed text-danger-fg sm:px-4"
-                                        >
-                                            {bulkRowErrors[fav.id]}
-                                        </p>
-                                    )}
-
-                                    <AnimatePresence initial={false}>
-                                        {isExpanded && (
-                                            <motion.div
-                                                key="body"
-                                                id={`vocab-mine-detail-${fav.id}`}
-                                                data-testid={`vocab-mine-detail-${fav.id}`}
-                                                initial={reduceMotion ? false : { height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-                                                transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.25, 1, 0.5, 1] }}
-                                                className="overflow-hidden"
-                                            >
-                                                <div className="grid grid-cols-1 gap-3 border-t border-white/5 px-3.5 pb-3.5 pt-3 sm:grid-cols-2 sm:px-4">
-                                                    <div className="min-w-0 space-y-1">
-                                                        <p className="text-[11px] text-zinc-500">{t('vocab.level')}</p>
-                                                        <div className="flex min-h-6 flex-wrap items-center gap-2">
-                                                            {knownLevel ? (
-                                                                <LevelBadge
-                                                                    testId={`vocab-mine-level-${fav.id}`}
-                                                                    level={levelLabel}
-                                                                    title={levelLabel === 'C1+' ? t('vocab.level.beyond') : `CEFR ${levelLabel}`}
-                                                                />
-                                                            ) : levelPhase === 'error' ? (
-                                                                <span
-                                                                    data-testid={`vocab-mine-level-error-${fav.id}`}
-                                                                    title={levelError || undefined}
-                                                                    className="inline-flex items-center gap-1 text-xs text-amber-300"
-                                                                >
-                                                                    {t('vocab.level.error')}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
-                                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                                                                    {t('vocab.level.loading')}
-                                                                </span>
-                                                            )}
-                                                            {!knownLevel && levelPhase === 'error' && (
-                                                                <button
-                                                                    type="button"
-                                                                    data-testid={`vocab-mine-level-retry-${fav.id}`}
-                                                                    onClick={() => setLevelNonce((value) => value + 1)}
-                                                                    className="text-[11px] font-medium text-blue-300 hover:text-blue-200"
-                                                                >
-                                                                    {t('common.retry')}
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        {knownLevel && levelLabel === 'C1+' && (
-                                                            <p className="text-[11px] text-zinc-600">{t('vocab.level.beyond')}</p>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="min-w-0 space-y-1">
-                                                        <p className="text-[11px] text-zinc-500">{t('vocab.addedAt')}</p>
-                                                        <p
-                                                            data-testid={`vocab-mine-added-${fav.id}`}
-                                                            className="text-xs text-zinc-300 tabular-nums"
-                                                        >
-                                                            {addedAtLabel}
-                                                        </p>
-                                                    </div>
-
-                                                    <div className="flex items-end justify-start sm:justify-end">
-                                                        <button
-                                                            type="button"
-                                                            data-testid={`vocab-mine-delete-${fav.id}`}
-                                                            onClick={() => { void handleRowDelete(fav); }}
-                                                            disabled={pendingDeleteId === fav.id}
-                                                            aria-busy={pendingDeleteId === fav.id || undefined}
-                                                            title={t('vocab.delete')}
-                                                            className={`${DANGER_BUTTON} disabled:opacity-50 disabled:pointer-events-none`}
-                                                        >
-                                                            {pendingDeleteId === fav.id
-                                                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                                                                : <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
-                                                            {t('vocab.delete')}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            );
-                        })}
+                                </p>
+                            )}
+                            {knownLevel && levelLabel == null && (
+                                <p className="text-micro text-fg-muted">{t('vocab.level.beyond')}</p>
+                            )}
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                            <p className="text-micro text-fg-muted">{t('vocab.detail.source')}</p>
+                            <button
+                                type="button"
+                                data-testid={`vocab-mine-source-${fav.id}`}
+                                disabled={!source.canOpen}
+                                onClick={() => openSource(source.source, fav.start)}
+                                title={source.canOpen ? source.text : t('vocab.source.unknown')}
+                                className={`inline-flex min-w-0 max-w-full items-center gap-1.5 text-caption ${
+                                    source.canOpen
+                                        ? 'text-brand-300 transition-colors hover:text-brand-400'
+                                        : 'cursor-default text-fg-muted'
+                                }`}
+                            >
+                                <SourceIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                <span className="min-w-0 truncate">{source.text}</span>
+                                {source.canOpen && (
+                                    <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
+                                )}
+                            </button>
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                            <p className="text-micro text-fg-muted">{t('vocab.detail.addedAt')}</p>
+                            <p
+                                data-testid={`vocab-mine-added-${fav.id}`}
+                                className="text-ui tabular-nums text-fg-strong"
+                            >
+                                {addedAtLabel}
+                            </p>
+                        </div>
                     </div>
-                    <span data-testid="vocab-mine-total" className="text-xs text-fg-muted tabular-nums">
-                        {hasMineFilters
-                            ? t('vocab.search.results', { count: formatNumber(mineRows.length) })
-                            : t('vocab.total', { count: formatNumber(mineRows.length) })}
-                    </span>
-                    <VocabPagination
-                        scope="vocab"
-                        page={currentMinePage}
-                        pages={minePages}
-                        hasMore={currentMinePage < minePages}
-                        onChange={setMinePage}
+                ),
+                actions,
+                error: rowError?.id === fav.id
+                    ? { message: rowError.message, testId: `vocab-mine-error-${fav.id}` }
+                    : undefined,
+                testIds: {
+                    row: `vocab-mine-toggle-${fav.id}`,
+                    word: `vocab-mine-word-${fav.id}`,
+                    phonetic: `vocab-mine-ipa-${fav.id}`,
+                    translation: `vocab-mine-meaning-${fav.id}`,
+                    level: `vocab-mine-level-${fav.id}`,
+                    speak: `vocab-mine-speak-${fav.id}`,
+                    star: `vocab-mine-star-${fav.id}`,
+                    seen: `vocab-mine-seen-${fav.id}`,
+                    expand: `vocab-mine-expand-${fav.id}`,
+                    detail: `vocab-mine-detail-${fav.id}`,
+                },
+            };
+        });
+
+        return (
+            <div data-testid="vocab-mine-panel" className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-caption leading-relaxed text-fg-muted">{t('vocab.mine.hint')}</p>
+                    {myWords.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                data-testid="vocab-export-anki"
+                                onClick={() => exportAnkiTsv(myWords)}
+                                title={t('favorites.exportAnkiTitle')}
+                                className={ACTION_BUTTON}
+                            >
+                                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span className="hidden sm:inline">{t('favorites.exportAnki')}</span>
+                            </button>
+                            <button
+                                type="button"
+                                data-testid="vocab-export-csv"
+                                onClick={() => exportCsv(myWords)}
+                                title={t('favorites.exportCsvTitle')}
+                                className={ACTION_BUTTON}
+                            >
+                                <FileSpreadsheet className="h-3.5 w-3.5" aria-hidden="true" />
+                                <span className="hidden sm:inline">{t('favorites.exportCsv')}</span>
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                <WordbookToolbar
+                    search={{
+                        value: mineQuery,
+                        onChange: setMineQuery,
+                        placeholder: t('vocab.mine.search.placeholder'),
+                        ariaLabel: t('vocab.mine.search.placeholder'),
+                        testId: 'vocab-mine-search',
+                        clearTestId: 'vocab-mine-search-clear',
+                        clearLabel: t('vocab.mine.search.clear'),
+                    }}
+                    sort={{
+                        value: mineSort,
+                        label: sortLabel,
+                        options: sortOptions,
+                        onChange: (value) => setMineSort(value as MineSort),
+                        testId: 'vocab-mine-sort',
+                        menuTestId: 'vocab-mine-sort-menu',
+                    }}
+                    filter={{
+                        groups: filterGroups,
+                        activeCount: filterActiveCount,
+                        onChange: changeFilter,
+                        onClear: clearFilters,
+                        testId: 'vocab-mine-filter',
+                        clearTestId: 'vocab-mine-clear-filters',
+                        menuTestId: 'vocab-mine-filter-menu',
+                    }}
+                />
+
+                {!isGuest && masteredPhase === 'error' && (
+                    <ErrorPanel
+                        level="inline"
+                        title={t('vocab.mine.mastered.error')}
+                        detail={t('vocab.mine.mastered.errorHint')}
+                        onRetry={() => setMasteredNonce((value) => value + 1)}
+                        retryLabel={t('common.retry')}
+                        testId="vocab-mastered-stale"
+                        retryTestId="vocab-mastered-stale-retry"
                     />
-                    </>
                 )}
-        </div>
-    );
+
+                {myWords.length === 0
+                    ? emptyState(t('vocab.empty.mine'), t('vocab.empty.mineHint'), Star, 'vocab-mine-empty')
+                    : mineRows.length === 0
+                        ? hasMineFilters
+                            ? emptyState(
+                                t('vocab.mine.empty.filtered'),
+                                t('vocab.mine.empty.filteredHint'),
+                                Search,
+                                'vocab-mine-filtered-empty',
+                            )
+                            : emptyState(
+                                t('vocab.mine.empty.allMastered'),
+                                t('vocab.mine.empty.allMasteredHint'),
+                                CheckCircle2,
+                                'vocab-mine-all-mastered',
+                            )
+                        : (
+                            <>
+                                <WordTable
+                                    rows={rows}
+                                    hideChinese={false}
+                                    showSeen
+                                    className={LIST_CARD}
+                                    listTestId="vocab-mine-list"
+                                    testIdPrefix="vocab-mine"
+                                    ariaLabel={t('vocab.tab.mine')}
+                                />
+                                <span data-testid="vocab-mine-total" className="text-caption tabular-nums text-fg-muted">
+                                    {hasMineFilters
+                                        ? t('vocab.search.results', { count: formatNumber(mineRows.length) })
+                                        : t('vocab.total', { count: formatNumber(mineRows.length) })}
+                                </span>
+                                <VocabPagination
+                                    scope="vocab"
+                                    page={currentMinePage}
+                                    pages={minePages}
+                                    hasMore={currentMinePage < minePages}
+                                    onChange={setMinePage}
+                                    pageSize={pageSize}
+                                    onPageSizeChange={setPageSize}
+                                />
+                            </>
+                        )}
+            </div>
+        );
+    };
 
     const renderPhrases = () => {
         const phraseTypeLabel = (type: string): string => (
@@ -2462,152 +2325,260 @@ export function VocabularyBookScreen({
                 ? t(PHRASE_SOURCE_KEYS[source])
                 : (source || t('vocab.phrases.source.unknown'))
         );
-        const typeBadge = (type: string) => (
-            <span
-                data-testid="phrase-type"
-                className="order-1 inline-flex shrink-0 items-center rounded-full border border-white/5 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium text-zinc-400 sm:order-2"
-            >
-                {phraseTypeLabel(type)}
-            </span>
-        );
+
+        const sortOptions: SortOption[] = [
+            { value: 'default', label: t('vocab.sort.recommended'), testId: 'phrase-sort-default' },
+        ];
+        const filterGroups: FilterGroup[] = [
+            {
+                id: 'level',
+                label: t('vocab.phrases.filter.level'),
+                options: [
+                    { value: '', label: t('vocab.phrases.filter.all'), checked: phraseLevel === '', testId: 'phrase-level-all' },
+                    ...PHRASE_LEVELS.map((level) => ({
+                        value: level,
+                        label: level,
+                        checked: phraseLevel === level,
+                        testId: `phrase-level-${level}`,
+                    })),
+                ],
+            },
+            {
+                id: 'type',
+                label: t('vocab.phrases.filter.type'),
+                options: [
+                    { value: '', label: t('vocab.phrases.filter.all'), checked: phraseType === '', testId: 'phrase-type-all' },
+                    ...PHRASE_TYPES.map((type) => ({
+                        value: type,
+                        label: t(PHRASE_TYPE_LABEL_KEYS[type]),
+                        checked: phraseType === type,
+                        testId: `phrase-type-${type}`,
+                    })),
+                ],
+            },
+        ];
+        const filterActiveCount = Number(Boolean(phraseLevel)) + Number(Boolean(phraseType));
+        const changeFilter = (key: string) => {
+            const [group, value] = key.split(':');
+            if (group === 'level') setPhraseLevel(value as PhraseLevel | '');
+            else if (group === 'type') setPhraseType(value as PhraseType | '');
+        };
+        const clearFilters = () => {
+            setPhraseLevel('');
+            setPhraseType('');
+            setPhraseQuery('');
+            setPhrasePage(1);
+        };
+
+        const rows: WordTableRow[] = (phraseData?.items ?? []).map((item: PhraseEntry) => {
+            const rowKey = `phrase:${item.id}`;
+            const isExpanded = phraseExpanded.has(item.id);
+            const isRevealed = phraseRevealed.has(item.id);
+            const chineseHidden = hideChinese && !isRevealed;
+            const detail = phraseDetails[item.id];
+            const detailState = phraseDetailPhase[item.id] ?? 'idle';
+            const detailError = phraseDetailError[item.id] ?? '';
+            const typeDescription = phraseTypeDescription(item.type);
+            const sourceLabel = phraseSourceLabel(item.source);
+            const example = item.example || detail?.example || '';
+            const wordKey = normalizeMasteryWord(item.headword);
+            return {
+                key: item.id,
+                word: item.headword,
+                phonetic: '',
+                translation: item.translation,
+                level: item.cefr || '—',
+                levelTitle: t('vocab.phrases.approxTitle'),
+                badge: (
+                    <Badge tone="neutral" testId={`phrase-type-${item.id}`}>
+                        {phraseTypeLabel(item.type)}
+                    </Badge>
+                ),
+                revealed: isRevealed,
+                onActivate: () => activatePhraseRow(item.id),
+                favored: favoritedWordKeys.has(wordKey),
+                favoriteLabel: favoriteLabelFor(item.headword),
+                onToggleFavorite: () => toggleRowFavorite({
+                    word: item.headword,
+                    translation: item.translation,
+                    sourceKind: 'wordlist',
+                    sourceRef: PHRASES_TAB,
+                    sourceTitle: t('vocab.tab.phrases'),
+                }),
+                favoriteBusy: favoriteBusyKeys.has(wordKey),
+                speakLabel: speakLabelFor(item.headword),
+                onSpeak: () => speakRow(item.headword),
+                speakDisabled: speechDisabled,
+                expandLabel: isExpanded ? t('vocab.phrases.collapse') : t('vocab.phrases.expand'),
+                expanded: isExpanded,
+                onToggleExpand: () => togglePhraseExpand(item.id),
+                detail: (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="min-w-0 space-y-1 sm:col-span-2">
+                            <p className="text-micro text-fg-muted">{t('vocab.phrases.detail.example')}</p>
+                            <p
+                                data-testid="phrase-example"
+                                className="break-words text-caption leading-relaxed text-fg-strong"
+                            >
+                                {example || '—'}
+                            </p>
+                        </div>
+
+                        {!chineseHidden && (
+                            <div className="min-w-0 space-y-1">
+                                <p className="text-micro text-fg-muted">{t('vocab.phrases.detail.type')}</p>
+                                <p
+                                    data-testid="phrase-type-desc"
+                                    className="break-words text-caption leading-relaxed text-fg-strong"
+                                >
+                                    {typeDescription || '—'}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="min-w-0 space-y-1">
+                            <p className="text-micro text-fg-muted">{t('vocab.phrases.detail.source')}</p>
+                            <p
+                                data-testid="phrase-source"
+                                title={detail?.license ?? undefined}
+                                className="break-words text-caption text-fg-strong"
+                            >
+                                {sourceLabel}
+                            </p>
+                            {detail?.license && (
+                                <p className="break-words text-micro text-fg-muted">{detail.license}</p>
+                            )}
+                        </div>
+
+                        {chineseHidden ? (
+                            <div
+                                data-testid="phrase-zh-hidden"
+                                className="min-w-0 rounded-control border border-line-subtle bg-surface-2/40 px-3 py-2 text-micro leading-relaxed text-fg-muted sm:col-span-2"
+                            >
+                                {t('vocab.phrases.detail.zhHidden')}
+                            </div>
+                        ) : (
+                            <>
+                                {detailState === 'loading' && (
+                                    <p data-testid="phrase-detail-loading" className="flex items-center gap-1.5 text-caption text-fg-muted">
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                                        {t('vocab.phrases.detail.loading')}
+                                    </p>
+                                )}
+                                {detailState === 'error' && (
+                                    <div className="flex flex-wrap items-center gap-2 text-caption text-warning-fg">
+                                        <span data-testid="phrase-detail-error">
+                                            {t('vocab.phrases.detail.error')}
+                                            {detailError ? ` · ${detailError}` : ''}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            data-testid="phrase-detail-retry"
+                                            onClick={() => loadPhraseDetail(item.id, true)}
+                                            className="font-medium text-brand-300 hover:text-brand-400"
+                                        >
+                                            {t('common.retry')}
+                                        </button>
+                                    </div>
+                                )}
+                                {detail?.notes && (
+                                    <div className="min-w-0 space-y-1 sm:col-span-2">
+                                        <p className="text-micro text-fg-muted">{t('vocab.phrases.detail.notes')}</p>
+                                        <p
+                                            data-testid="phrase-notes"
+                                            className="break-words text-caption leading-relaxed text-fg-secondary"
+                                        >
+                                            {detail.notes}
+                                        </p>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                ),
+                actions: rowAddActions({
+                    rowKey,
+                    word: item.headword,
+                    translation: item.translation,
+                    listId: PHRASES_TAB,
+                    listLabel: t('vocab.tab.phrases'),
+                }),
+                error: listRowErrors[rowKey]
+                    ? { message: listRowErrors[rowKey], testId: `phrase-add-error-${item.id}` }
+                    : undefined,
+                testIds: {
+                    row: 'phrase-row',
+                    word: 'phrase-headword',
+                    translation: 'phrase-translation',
+                    level: 'phrase-level',
+                    speak: `${rowKey}-speak`,
+                    star: `${rowKey}-star`,
+                    expand: 'phrase-expand',
+                    detail: 'phrase-detail',
+                },
+            };
+        });
 
         return (
             <div data-testid="phrase-panel" className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <div className="relative min-w-0 flex-1">
-                        <Search
-                            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
-                            aria-hidden="true"
-                        />
-                        <input
-                            type="text"
-                            data-testid="phrase-search"
-                            value={phraseQuery}
-                            onChange={(event) => setPhraseQuery(event.target.value)}
-                            placeholder={t('vocab.phrases.search.placeholder')}
-                            aria-label={t('vocab.phrases.search.placeholder')}
-                            className="h-10 w-full min-w-0 rounded-xl border border-white/5 bg-zinc-800/60 pl-9 pr-9 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
-                        />
-                        {phraseQuery && (
-                            <button
-                                type="button"
-                                data-testid="phrase-search-clear"
-                                onClick={() => setPhraseQuery('')}
-                                aria-label={t('vocab.phrases.search.clear')}
-                                title={t('vocab.phrases.search.clear')}
-                                className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-300"
-                            >
-                                <X className="h-4 w-4" aria-hidden="true" />
-                            </button>
-                        )}
-                    </div>
-                    <button
-                        type="button"
-                        data-testid="vocab-hide-toggle"
-                        data-scope="phrases"
-                        aria-pressed={hideChinese}
-                        onClick={toggleHideChinese}
-                        title={hideChinese ? t('vocab.show') : t('vocab.hide')}
-                        className={`inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors ${
-                            hideChinese
-                                ? 'border-blue-500/20 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'
-                                : 'border-white/5 bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 hover:text-zinc-100'
-                        }`}
-                    >
-                        {hideChinese ? <Eye className="h-4 w-4" aria-hidden="true" /> : <EyeOff className="h-4 w-4" aria-hidden="true" />}
-                        {hideChinese ? t('vocab.show') : t('vocab.hide')}
-                    </button>
-                </div>
+                <WordbookToolbar
+                    search={{
+                        value: phraseQuery,
+                        onChange: setPhraseQuery,
+                        placeholder: t('vocab.phrases.search.placeholder'),
+                        ariaLabel: t('vocab.phrases.search.placeholder'),
+                        testId: 'phrase-search',
+                        clearTestId: 'phrase-search-clear',
+                        clearLabel: t('vocab.phrases.search.clear'),
+                    }}
+                    sort={{
+                        value: 'default',
+                        label: t('vocab.sort.recommended'),
+                        options: sortOptions,
+                        onChange: () => undefined,
+                        testId: 'phrase-sort',
+                        menuTestId: 'phrase-sort-menu',
+                    }}
+                    filter={{
+                        groups: filterGroups,
+                        activeCount: filterActiveCount,
+                        onChange: changeFilter,
+                        onClear: clearFilters,
+                        testId: 'phrase-filter',
+                        clearTestId: 'phrase-clear-filters',
+                        menuTestId: 'phrase-filter-menu',
+                    }}
+                    extra={hideChineseToggle('phrases')}
+                />
 
-                <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="mr-1 text-[11px] text-zinc-500">{t('vocab.phrases.filter.level')}</span>
-                        <FilterChip
-                            selected={phraseLevel === ''}
-                            testId="phrase-level-all"
-                            onClick={() => setPhraseLevel('')}
-                        >
-                            {t('vocab.phrases.filter.all')}
-                        </FilterChip>
-                        {PHRASE_LEVELS.map((level) => (
-                            <FilterChip
-                                key={level}
-                                selected={phraseLevel === level}
-                                testId={`phrase-level-${level}`}
-                                onClick={() => setPhraseLevel(level)}
-                            >
-                                {level}
-                            </FilterChip>
-                        ))}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="mr-1 text-[11px] text-zinc-500">{t('vocab.phrases.filter.type')}</span>
-                        <FilterChip
-                            selected={phraseType === ''}
-                            testId="phrase-type-all"
-                            onClick={() => setPhraseType('')}
-                        >
-                            {t('vocab.phrases.filter.all')}
-                        </FilterChip>
-                        {PHRASE_TYPES.map((type) => (
-                            <FilterChip
-                                key={type}
-                                selected={phraseType === type}
-                                testId={`phrase-type-${type}`}
-                                onClick={() => setPhraseType(type)}
-                            >
-                                {t(PHRASE_TYPE_LABEL_KEYS[type])}
-                            </FilterChip>
-                        ))}
-                    </div>
-                </div>
-
-                <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-zinc-500">
+                <p className="flex items-start gap-1.5 text-micro leading-relaxed text-fg-muted">
                     <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                     <span data-testid="phrase-approx-note">{t('vocab.phrases.approxNote')}</span>
                 </p>
 
-                {(phraseData || phrasePhase === 'ready') && (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
-                        <span data-testid="phrase-total" className="tabular-nums">{phraseTotalLabel}</span>
-                        {phraseHasFilter && (
-                            <button
-                                type="button"
-                                data-testid="phrase-clear-filters"
-                                onClick={() => {
-                                    setPhraseQuery('');
-                                    setPhraseLevel('');
-                                    setPhraseType('');
-                                    setPhrasePage(1);
-                                }}
-                                className="font-medium text-blue-300 transition-colors hover:text-blue-200"
-                            >
-                                {t('vocab.phrases.clearFilters')}
-                            </button>
-                        )}
-                    </div>
-                )}
-
                 {phrasePhase === 'loading' && (
-                    <div data-testid="phrase-loading" className={`${CARD} flex items-center justify-center gap-2 py-16 text-sm text-zinc-500`}>
+                    <div data-testid="phrase-loading" className={`${LIST_CARD} flex items-center justify-center gap-2 py-16 text-ui text-fg-muted`}>
                         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                         {t('common.loading')}
                     </div>
                 )}
 
                 {phrasePhase === 'error' && (
-                    <div data-testid="phrase-error" className={`${CARD} flex flex-col items-center justify-center px-6 py-16 text-center`}>
-                        <AlertTriangle className="mb-3 h-10 w-10 text-amber-400/70" aria-hidden="true" />
-                        <p className="text-sm font-medium text-zinc-300">{t('vocab.phrases.error.title')}</p>
-                        <p className="mt-1 max-w-md break-words text-xs text-zinc-500">{phraseError || t('vocab.phrases.error.hint')}</p>
-                        <button
-                            type="button"
-                            data-testid="phrase-retry"
+                    <div data-testid="phrase-error" className={`${LIST_CARD} flex flex-col items-center justify-center px-6 py-16 text-center`}>
+                        <AlertTriangle className="mb-3 h-10 w-10 text-warning-fg/70" aria-hidden="true" />
+                        <p className="text-ui font-medium text-fg-strong">{t('vocab.phrases.error.title')}</p>
+                        <p className="mt-1 max-w-md break-words text-caption text-fg-muted">
+                            {phraseError || t('vocab.phrases.error.hint')}
+                        </p>
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            testId="phrase-retry"
                             onClick={() => setPhraseNonce((value) => value + 1)}
-                            className={`${SECONDARY_BUTTON} mt-5`}
+                            className="mt-5"
                         >
                             {t('common.retry')}
-                        </button>
+                        </Button>
                     </div>
                 )}
 
@@ -2621,222 +2592,25 @@ export function VocabularyBookScreen({
                         )
                     ) : (
                         <>
-                            <p className="text-[11px] leading-relaxed text-zinc-500">
-                                {hideChinese ? t('vocab.phrases.hint.hide') : t('vocab.phrases.hint')}
+                            <p className="text-caption tabular-nums text-fg-muted" data-testid="phrase-total">
+                                {phraseTotalLabel}
                             </p>
-                            <div data-testid="phrase-list" className={`${CARD} overflow-hidden`}>
-                                <div className="divide-y divide-white/5">
-                                    {phraseData.items.map((item: PhraseEntry) => {
-                                        const rowKey = `phrase:${item.id}`;
-                                        const isExpanded = phraseExpanded.has(item.id);
-                                        const isRevealed = phraseRevealed.has(item.id);
-                                        const chineseHidden = hideChinese && !isRevealed;
-                                        const detail = phraseDetails[item.id];
-                                        const detailState = phraseDetailPhase[item.id] ?? 'idle';
-                                        const detailError = phraseDetailError[item.id] ?? '';
-                                        const typeDescription = phraseTypeDescription(item.type);
-                                        const sourceLabel = phraseSourceLabel(item.source);
-                                        const example = item.example || detail?.example || '';
-                                        return (
-                                            <div
-                                                key={item.id}
-                                                data-testid={`phrase-item-${item.id}`}
-                                                className={isExpanded ? 'bg-white/[0.02]' : undefined}
-                                            >
-                                                <div className="flex items-stretch">
-                                                    <button
-                                                        type="button"
-                                                        data-testid="phrase-row"
-                                                        data-phrase-id={item.id}
-                                                        aria-expanded={hideChinese ? undefined : isExpanded}
-                                                        aria-pressed={hideChinese ? isRevealed : undefined}
-                                                        title={hideChinese ? (isRevealed ? t('vocab.tapHide') : t('vocab.tapReveal')) : undefined}
-                                                        onClick={() => activatePhraseRow(item.id)}
-                                                        className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.03]"
-                                                    >
-                                                        <span
-                                                            data-testid="phrase-headword"
-                                                            className="order-1 min-w-0 flex-1 break-words text-[15px] font-semibold leading-snug text-zinc-100 sm:order-1"
-                                                        >
-                                                            {item.headword}
-                                                        </span>
-                                                        <span className="order-3 flex w-full min-w-0 flex-wrap items-center gap-2 sm:contents">
-                                                            {typeBadge(item.type)}
-                                                            <span className="order-2 min-w-0 flex-1 break-words text-sm text-zinc-400 sm:order-3">
-                                                                {chineseHidden ? null : (
-                                                                    <span data-testid="phrase-translation">{item.translation || '—'}</span>
-                                                                )}
-                                                            </span>
-                                                        </span>
-                                                        <span className="order-2 flex shrink-0 items-center gap-2 self-start sm:order-4 sm:self-auto">
-                                                            {hideChinese && (
-                                                                isRevealed
-                                                                    ? <Eye className="h-3.5 w-3.5 text-zinc-500" aria-hidden="true" />
-                                                                    : <EyeOff className="h-3.5 w-3.5 text-zinc-600" aria-hidden="true" />
-                                                            )}
-                                                            <LevelBadge
-                                                                testId="phrase-level"
-                                                                level={item.cefr || '—'}
-                                                                title={t('vocab.phrases.approxTitle')}
-                                                            />
-                                                        </span>
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        data-testid="phrase-expand"
-                                                        aria-expanded={isExpanded}
-                                                        aria-controls={`phrase-detail-${item.id}`}
-                                                        aria-label={isExpanded ? t('vocab.phrases.collapse') : t('vocab.phrases.expand')}
-                                                        title={isExpanded ? t('vocab.phrases.collapse') : t('vocab.phrases.expand')}
-                                                        onClick={() => togglePhraseExpand(item.id)}
-                                                        className="flex w-10 shrink-0 items-center justify-center text-zinc-500 transition-colors hover:bg-white/[0.03] hover:text-zinc-300"
-                                                    >
-                                                        <ChevronDown
-                                                            className={`h-4 w-4 transition-transform duration-200 ease-apple motion-reduce:transition-none ${
-                                                                isExpanded ? 'rotate-180' : ''
-                                                            }`}
-                                                            aria-hidden="true"
-                                                        />
-                                                    </button>
-                                                </div>
-
-                                                {/* v1.2 row actions: 朗读 + 加入我的单词 +
-                                                    加入复习. Same action line as the word
-                                                    lists, so 已加入/已在复习 keeps a text
-                                                    label at every width. */}
-                                                <div className="flex flex-wrap items-center justify-end gap-1 px-4 pb-2">
-                                                    <WordRowActionButton
-                                                        action={rowSpeakAction({ rowKey, text: item.headword })}
-                                                    />
-                                                    {rowAddActions({
-                                                        rowKey,
-                                                        word: item.headword,
-                                                        translation: item.translation,
-                                                        listId: PHRASES_TAB,
-                                                        listLabel: t('vocab.tab.phrases'),
-                                                    }).map((action) => (
-                                                        <WordRowActionButton key={action.key} action={action} />
-                                                    ))}
-                                                </div>
-                                                {listRowErrors[rowKey] && (
-                                                    <p
-                                                        data-testid={`phrase-add-error-${item.id}`}
-                                                        role="alert"
-                                                        className="px-4 pb-2 text-caption leading-relaxed text-danger-fg"
-                                                    >
-                                                        {listRowErrors[rowKey]}
-                                                    </p>
-                                                )}
-
-                                                <AnimatePresence initial={false}>
-                                                    {isExpanded && (
-                                                        <motion.div
-                                                            key="body"
-                                                            id={`phrase-detail-${item.id}`}
-                                                            data-testid="phrase-detail"
-                                                            initial={reduceMotion ? false : { height: 0, opacity: 0 }}
-                                                            animate={{ height: 'auto', opacity: 1 }}
-                                                            exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-                                                            transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.25, 1, 0.5, 1] }}
-                                                            className="overflow-hidden"
-                                                        >
-                                                            <div className="grid grid-cols-1 gap-3 border-t border-white/5 px-4 pb-4 pt-3 sm:grid-cols-2">
-                                                                <div className="min-w-0 space-y-1 sm:col-span-2">
-                                                                    <p className="text-[11px] text-zinc-500">{t('vocab.phrases.detail.example')}</p>
-                                                                    <p
-                                                                        data-testid="phrase-example"
-                                                                        className="break-words text-[13px] leading-relaxed text-zinc-200"
-                                                                    >
-                                                                        {example || '—'}
-                                                                    </p>
-                                                                </div>
-
-                                                                {!chineseHidden && (
-                                                                    <div className="min-w-0 space-y-1">
-                                                                        <p className="text-[11px] text-zinc-500">{t('vocab.phrases.detail.type')}</p>
-                                                                        <p
-                                                                            data-testid="phrase-type-desc"
-                                                                            className="break-words text-[13px] leading-relaxed text-zinc-300"
-                                                                        >
-                                                                            {typeDescription || '—'}
-                                                                        </p>
-                                                                    </div>
-                                                                )}
-
-                                                                <div className="min-w-0 space-y-1">
-                                                                    <p className="text-[11px] text-zinc-500">{t('vocab.phrases.detail.source')}</p>
-                                                                    <p
-                                                                        data-testid="phrase-source"
-                                                                        title={detail?.license ?? undefined}
-                                                                        className="break-words text-xs text-zinc-300"
-                                                                    >
-                                                                        {sourceLabel}
-                                                                    </p>
-                                                                    {detail?.license && (
-                                                                        <p className="break-words text-[11px] text-zinc-600">{detail.license}</p>
-                                                                    )}
-                                                                </div>
-
-                                                                {chineseHidden ? (
-                                                                    <div
-                                                                        data-testid="phrase-zh-hidden"
-                                                                        className="min-w-0 rounded-xl border border-white/5 bg-zinc-950/30 px-3 py-2 text-[11px] leading-relaxed text-zinc-500 sm:col-span-2"
-                                                                    >
-                                                                        {t('vocab.phrases.detail.zhHidden')}
-                                                                    </div>
-                                                                ) : (
-                                                                    <>
-                                                                        {detailState === 'loading' && (
-                                                                            <p data-testid="phrase-detail-loading" className="flex items-center gap-1.5 text-xs text-zinc-500">
-                                                                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                                                                                {t('vocab.phrases.detail.loading')}
-                                                                            </p>
-                                                                        )}
-                                                                        {detailState === 'error' && (
-                                                                            <div className="flex flex-wrap items-center gap-2 text-xs text-amber-300">
-                                                                                <span data-testid="phrase-detail-error">
-                                                                                    {t('vocab.phrases.detail.error')}
-                                                                                    {detailError ? ` · ${detailError}` : ''}
-                                                                                </span>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    data-testid="phrase-detail-retry"
-                                                                                    onClick={() => loadPhraseDetail(item.id, true)}
-                                                                                    className="font-medium text-amber-100 underline-offset-2 hover:underline"
-                                                                                >
-                                                                                    {t('common.retry')}
-                                                                                </button>
-                                                                            </div>
-                                                                        )}
-                                                                        {detail?.notes && (
-                                                                            <div className="min-w-0 space-y-1 sm:col-span-2">
-                                                                                <p className="text-[11px] text-zinc-500">{t('vocab.phrases.detail.notes')}</p>
-                                                                                <p
-                                                                                    data-testid="phrase-notes"
-                                                                                    className="break-words text-[13px] leading-relaxed text-zinc-400"
-                                                                                >
-                                                                                    {detail.notes}
-                                                                                </p>
-                                                                            </div>
-                                                                        )}
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
+                            <WordTable
+                                rows={rows}
+                                hideChinese={hideChinese}
+                                className={LIST_CARD}
+                                listTestId="phrase-list"
+                                testIdPrefix="phrase"
+                                ariaLabel={t('vocab.tab.phrases')}
+                            />
                             <VocabPagination
                                 scope="phrase"
                                 page={phrasePage}
                                 pages={phrasePages}
                                 hasMore={phraseData.hasMore}
                                 onChange={setPhrasePage}
+                                pageSize={pageSize}
+                                onPageSizeChange={setPageSize}
                             />
                         </>
                     )
@@ -2845,85 +2619,182 @@ export function VocabularyBookScreen({
         );
     };
 
-    /**
-     * 已掌握 — a word list of its own (specs/005 §v1.1), rendered with the same
-     * three-column table as the built-in lists: word + IPA / translation / CEFR
-     * badge, honouring the global hide-Chinese switch, client paged 50/page
-     * (the review API caps the mastered list at 200 and has no offset paging).
-     */
     const renderMastered = () => {
         const ready = isGuest || masteredReady;
         const failed = !isGuest && masteredPhase === 'error';
-        const pages = Math.max(1, Math.ceil(masteredRows.length / VOCABULARY_PAGE_SIZE));
+        const needle = masteredQuery.trim().toLowerCase();
+        const filtered = masteredRows.filter((row) => {
+            if (!matchesLevel(row.word, masteredLevel)) return false;
+            if (needle && !`${row.word}\n${row.translation}`.toLowerCase().includes(needle)) return false;
+            return true;
+        });
+        const sorted = [...filtered].sort((a, b) => {
+            if (masteredSort === 'level') {
+                const byLevel = levelSortRank(a.word, levels) - levelSortRank(b.word, levels);
+                if (byLevel !== 0) return byLevel;
+            }
+            return a.word.toLowerCase().localeCompare(b.word.toLowerCase(), 'en')
+                || a.word.localeCompare(b.word);
+        });
+        const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
         const currentPage = Math.min(Math.max(1, masteredPage), pages);
-        const start = (currentPage - 1) * VOCABULARY_PAGE_SIZE;
-        const pageRows = masteredRows.slice(start, start + VOCABULARY_PAGE_SIZE);
-        const tableRows: WordTableRow[] = pageRows.map((row) => {
-            const rowLevel = levels[row.word] ?? null;
-            const selectionKey = `mastered:${row.key}`;
-            const rowBulkError = bulkRowErrors[selectionKey];
+        const start = (currentPage - 1) * pageSize;
+        const pageRows = sorted.slice(start, start + pageSize);
+        const hasFilter = Boolean(masteredQuery.trim() || masteredLevel);
+        const sortOptions: SortOption[] = [
+            { value: 'alpha', label: t('vocab.sort.alpha'), testId: 'vocab-mastered-sort-alpha' },
+            { value: 'level', label: t('vocab.sort.level'), testId: 'vocab-mastered-sort-level' },
+        ];
+        const rows: WordTableRow[] = pageRows.map((row) => {
+            const fav = favoriteByWord.get(row.key);
+            const level = levelBadgeFor(row.word);
+            const expandKey = `mastered:${row.key}`;
+            const isExpanded = Boolean(expanded[expandKey]);
+            const favored = favoritedWordKeys.has(row.key);
+            const wordKey = normalizeMasteryWord(row.word);
+            const source = fav ? sourceText(fav) : null;
+            const SourceIcon = source ? SOURCE_ICON[source.source.kind] : null;
             return {
                 key: row.key,
                 word: row.word,
                 phonetic: row.phonetic,
                 translation: row.translation,
-                level: rowLevel,
-                levelTitle: rowLevel ? `CEFR ${rowLevel}` : undefined,
-                revealed: revealed.has(row.word),
-                onActivate: hideChinese ? () => toggleReveal(row.word) : undefined,
-                selection: {
-                    checked: selectedIds.has(selectionKey),
-                    onChange: (checked) => toggleSelected(selectionKey, checked),
-                    label: t('vocab.bulk.selectRow', { word: row.word }),
-                    testId: `vocab-mastered-select-${row.key}`,
-                    disabled: bulkBusy,
+                level: level.label,
+                levelTitle: level.title,
+                favored,
+                favoriteLabel: favoriteLabelFor(row.word),
+                onToggleFavorite: () => {
+                    if (fav) {
+                        removeFavoriteForRow(fav);
+                        return;
+                    }
+                    toggleRowFavorite({
+                        word: row.word,
+                        phonetic: row.phonetic,
+                        translation: row.translation,
+                        sourceKind: 'wordlist',
+                        sourceRef: MASTERED_TAB,
+                        sourceTitle: masteredTabLabel,
+                    });
                 },
+                favoriteBusy: favoriteBusyKeys.has(wordKey),
+                speakLabel: speakLabelFor(row.word),
+                onSpeak: () => speakRow(row.word),
+                speakDisabled: speechDisabled,
+                expandLabel: expandLabelFor(isExpanded),
+                expanded: isExpanded,
+                onToggleExpand: () => toggleExpanded(expandKey),
+                detail: (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="min-w-0 space-y-1">
+                            <p className="text-micro text-fg-muted">{t('vocab.detail.source')}</p>
+                            {source ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        data-testid={`vocab-mastered-source-${row.key}`}
+                                        disabled={!source.canOpen}
+                                        onClick={() => openSource(source.source, fav?.start ?? 0)}
+                                        title={source.canOpen ? source.text : t('vocab.source.unknown')}
+                                        className={`inline-flex min-w-0 max-w-full items-center gap-1.5 text-caption ${
+                                            source.canOpen
+                                                ? 'text-brand-300 transition-colors hover:text-brand-400'
+                                                : 'cursor-default text-fg-muted'
+                                        }`}
+                                    >
+                                        {SourceIcon && <SourceIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+                                        <span className="min-w-0 truncate">{source.text}</span>
+                                    </button>
+                                    {fav?.added_at && (
+                                        <p
+                                            data-testid={`vocab-mastered-added-${row.key}`}
+                                            className="text-caption tabular-nums text-fg-muted"
+                                        >
+                                            {formatDate(fav.added_at)}
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <p className="text-caption text-fg-muted">{t('vocab.mastered.noFavorite')}</p>
+                            )}
+                        </div>
+                    </div>
+                ),
                 actions: [
-                    rowSpeakAction({ rowKey: `vocab-mastered-${row.key}`, text: row.word }),
                     {
                         key: 'undo',
                         label: `${t('vocab.review.undo')} ${row.word}`,
+                        text: t('vocab.review.undo'),
                         icon: Undo2,
                         testId: `vocab-mastered-undo-${row.key}`,
-                        disabled: bulkBusy,
+                        busy: pendingMasteredId === expandKey,
                         onClick: () => { void handleMasteredRowUndo(row); },
                     },
                 ],
-                error: rowError?.id === selectionKey
+                error: rowError?.id === expandKey
                     ? { message: rowError.message, testId: `vocab-mastered-error-${row.key}` }
-                    : rowBulkError
-                        ? { message: rowBulkError, testId: `vocab-mastered-bulk-error-${row.key}` }
-                        : undefined,
+                    : undefined,
+                testIds: {
+                    row: 'vocab-mastered-row',
+                    word: `vocab-mastered-word-${row.key}`,
+                    phonetic: `vocab-mastered-ipa-${row.key}`,
+                    translation: `vocab-mastered-translation-${row.key}`,
+                    level: `vocab-mastered-level-${row.key}`,
+                    speak: `vocab-mastered-${row.key}-speak`,
+                    star: `vocab-mastered-star-${row.key}`,
+                    expand: `vocab-mastered-expand-${row.key}`,
+                    detail: `vocab-mastered-detail-${row.key}`,
+                },
             };
         });
 
         return (
             <div data-testid="vocab-mastered-panel" className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                    <button
-                        type="button"
-                        data-testid="vocab-hide-toggle"
-                        data-scope="mastered"
-                        aria-pressed={hideChinese}
-                        onClick={toggleHideChinese}
-                        title={hideChinese ? t('vocab.show') : t('vocab.hide')}
-                        className={`inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors ${
-                            hideChinese
-                                ? 'border-brand/20 bg-brand/10 text-brand-300 hover:bg-brand/15'
-                                : 'border-line-subtle bg-surface-2/60 text-fg-strong hover:bg-surface-3/60 hover:text-fg-primary'
-                        }`}
-                    >
-                        {hideChinese ? <Eye className="h-4 w-4" aria-hidden="true" /> : <EyeOff className="h-4 w-4" aria-hidden="true" />}
-                        {hideChinese ? t('vocab.show') : t('vocab.hide')}
-                    </button>
-                </div>
+                <WordbookToolbar
+                    search={{
+                        value: masteredQuery,
+                        onChange: setMasteredQuery,
+                        placeholder: t('vocab.mastered.search.placeholder'),
+                        ariaLabel: t('vocab.mastered.search.placeholder'),
+                        testId: 'vocab-mastered-search',
+                        clearTestId: 'vocab-mastered-search-clear',
+                        clearLabel: t('vocab.mastered.search.clear'),
+                    }}
+                    sort={{
+                        value: masteredSort,
+                        label: sortOptions.find((option) => option.value === masteredSort)?.label
+                            ?? t('vocab.sort.alpha'),
+                        options: sortOptions,
+                        onChange: (value) => setMasteredSort(value as MasteredSort),
+                        testId: 'vocab-mastered-sort',
+                        menuTestId: 'vocab-mastered-sort-menu',
+                    }}
+                    filter={{
+                        groups: [{
+                            id: 'level',
+                            label: t('vocab.filter.level'),
+                            options: levelFilterOptions(masteredLevel, 'vocab-mastered-level'),
+                        }],
+                        activeCount: Number(Boolean(masteredLevel)),
+                        onChange: (key) => {
+                            const [group, value] = key.split(':');
+                            if (group === 'level') setMasteredLevel(value as MineLevel);
+                        },
+                        onClear: () => {
+                            setMasteredLevel('');
+                            setMasteredQuery('');
+                        },
+                        testId: 'vocab-mastered-filter',
+                        clearTestId: 'vocab-mastered-clear-filters',
+                        menuTestId: 'vocab-mastered-filter-menu',
+                    }}
+                    extra={hideChineseToggle('mastered')}
+                />
 
                 {hideChinese && (
                     <p className="text-micro leading-relaxed text-fg-muted">{t('vocab.hint.hide')}</p>
                 )}
 
-                {/* Keep stale rows on a failed refresh; a first-load failure is an
-                    error panel with retry, never an empty state (G3 / IX-01). */}
                 {failed && ready && (
                     <ErrorPanel
                         level="inline"
@@ -2952,7 +2823,7 @@ export function VocabularyBookScreen({
                         rows={4}
                         label={t('vocab.mine.mastered.loading')}
                         testId="vocab-mastered-loading"
-                        className={`${CARD} px-4 py-6`}
+                        className={`${LIST_CARD} px-4 py-6`}
                     />
                 ) : masteredRows.length === 0 ? (
                     emptyState(
@@ -2963,53 +2834,21 @@ export function VocabularyBookScreen({
                     )
                 ) : (
                     <>
-                        {renderBulkBar({
-                            scope: 'vocab-mastered',
-                            pageIds: pageRows.map((row) => `mastered:${row.key}`),
-                            selectedCount: masteredSelected.length,
-                            actions: (
-                                <>
-                                    <Button
-                                        size="sm"
-                                        variant="secondary"
-                                        iconLeft={<Undo2 />}
-                                        testId="vocab-mastered-bulk-unmaster"
-                                        loading={bulkAction === 'unmaster'}
-                                        disabled={bulkBusy || masteredSelected.length === 0}
-                                        onClick={() => handleBulkSetMastered(false)}
-                                    >
-                                        {t('vocab.bulk.unmaster')}
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        iconLeft={<Trash2 />}
-                                        testId="vocab-mastered-bulk-delete"
-                                        loading={bulkAction === 'delete'}
-                                        disabled={
-                                            bulkBusy
-                                            || masteredSelected.length === 0
-                                            || bulkDeletableFavorites.length === 0
-                                        }
-                                        onClick={() => setBulkDeleteOpen(true)}
-                                    >
-                                        {t('vocab.bulk.delete')}
-                                    </Button>
-                                </>
-                            ),
-                        })}
                         <span
                             data-testid="vocab-mastered-total"
-                            className="text-xs text-fg-muted tabular-nums"
+                            className="text-caption tabular-nums text-fg-muted"
                         >
-                            {t('vocab.total', { count: formatNumber(masteredRows.length) })}
+                            {hasFilter
+                                ? t('vocab.search.results', { count: formatNumber(sorted.length) })
+                                : t('vocab.total', { count: formatNumber(sorted.length) })}
                         </span>
                         <WordTable
-                            rows={tableRows}
+                            rows={rows}
                             hideChinese={hideChinese}
-                            className={CARD}
+                            className={LIST_CARD}
                             listTestId="vocab-mastered-list"
                             testIdPrefix="vocab-mastered"
+                            ariaLabel={masteredTabLabel}
                         />
                         <VocabPagination
                             scope="vocab"
@@ -3017,6 +2856,8 @@ export function VocabularyBookScreen({
                             pages={pages}
                             hasMore={currentPage < pages}
                             onChange={setMasteredPage}
+                            pageSize={pageSize}
+                            onPageSizeChange={setPageSize}
                         />
                     </>
                 )}
@@ -3118,37 +2959,120 @@ export function VocabularyBookScreen({
                 dedupeKey: 'wordlist:add-all',
             });
         }
-        setCustomListNonce((value) => value + 1);
+        setCustomNonce((value) => value + 1);
     };
 
     const renderCustomList = () => {
         if (!activeCustomList) return null;
         const list = activeCustomList;
         const listId = list.id;
-        const pageData = customListData && customListData.id === listId ? customListData : null;
-        const total = pageData?.total ?? list.itemCount;
-        const pages = Math.max(1, Math.ceil(total / WORDLIST_PAGE_SIZE));
+        const needle = customQuery.trim().toLowerCase();
+        const levelRank = (item: CustomWordlistItem): number => {
+            const index = (VOCABULARY_CEFR_LEVELS as readonly string[]).indexOf(item.cefr ?? '');
+            return index >= 0 ? index : OFF_LIST_RANK;
+        };
+        const filtered = customItems.filter((item) => {
+            if (customLevel) {
+                if (customLevel === 'C1+') return false; // 自定义词表只存 A1–C1
+                if ((item.cefr ?? '').toUpperCase() !== customLevel) return false;
+            }
+            if (customUnmasteredOnly && masteredWords.has(normalizeMasteryWord(item.word))) return false;
+            if (needle) {
+                const haystack = `${item.word}\n${item.translation ?? ''}`.toLowerCase();
+                if (!haystack.includes(needle)) return false;
+            }
+            return true;
+        });
+        const sorted = [...filtered].sort((a, b) => {
+            if (customSort === 'level') {
+                const byLevel = levelRank(a) - levelRank(b);
+                if (byLevel !== 0) return byLevel;
+            }
+            return a.word.toLowerCase().localeCompare(b.word.toLowerCase(), 'en')
+                || a.word.localeCompare(b.word);
+        });
+        const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
         const currentPage = Math.min(Math.max(1, customPage), pages);
-        const itemRows = pageData?.items ?? [];
-        const hasFilter = Boolean(customDebouncedQuery);
-        const dataReady = customListPhase === 'ready' && pageData != null;
-        const dataFailed = customListPhase === 'error';
+        const start = (currentPage - 1) * pageSize;
+        const pageRows = sorted.slice(start, start + pageSize);
+        const hasFilter = Boolean(needle || customLevel || customUnmasteredOnly);
+        const sortOptions: SortOption[] = [
+            { value: 'alpha', label: t('vocab.sort.alpha'), testId: 'vocab-custom-sort-alpha' },
+            { value: 'level', label: t('vocab.sort.level'), testId: 'vocab-custom-sort-level' },
+        ];
+        const filterActiveCount = Number(Boolean(customLevel)) + Number(customUnmasteredOnly);
 
-        const tableRows: WordTableRow[] = itemRows.map((item, index) => {
+        const rows: WordTableRow[] = pageRows.map((item) => {
             const rowKey = `${listId}:${item.word}`;
-            const mastered = masteredWords.has(normalizeMasteryWord(item.word));
+            const itemKey = customItemKey(item);
+            const wordKey = normalizeMasteryWord(item.word);
+            const favored = favoritedWordKeys.has(wordKey);
+            const mastered = masteredWords.has(wordKey);
             const masterState = masterAdds[rowKey];
+            const expandKey = `custom:${itemKey}`;
+            const isExpanded = Boolean(expanded[expandKey]);
             return {
-                key: `${item.word}-${index}`,
+                key: itemKey,
                 word: item.word,
                 phonetic: item.phonetic,
                 translation: item.translation,
-                level: item.cefr,
+                level: item.cefr || '—',
                 levelTitle: item.cefr ? `CEFR ${item.cefr}` : undefined,
                 revealed: customRevealed.has(item.word),
                 onActivate: hideChinese ? () => toggleCustomReveal(item.word) : undefined,
+                favored,
+                favoriteLabel: favoriteLabelFor(item.word),
+                onToggleFavorite: () => toggleRowFavorite({
+                    word: item.word,
+                    phonetic: item.phonetic,
+                    translation: item.translation,
+                    example: item.example,
+                    sourceKind: 'wordlist',
+                    sourceRef: listId,
+                    sourceTitle: list.name,
+                }),
+                favoriteBusy: favoriteBusyKeys.has(wordKey),
+                speakLabel: speakLabelFor(item.word),
+                onSpeak: () => speakRow(item.word),
+                speakDisabled: speechDisabled,
+                expandLabel: expandLabelFor(isExpanded),
+                expanded: isExpanded,
+                onToggleExpand: () => toggleExpanded(expandKey),
+                selection: customEditMode
+                    ? {
+                        checked: customEditSelected.has(itemKey),
+                        onChange: (checked) => toggleCustomItem(itemKey, checked),
+                        label: t('vocab.bulk.selectRow', { word: item.word }),
+                        testId: `vocab-custom-select-${itemKey}`,
+                        disabled: customEditBusy,
+                    }
+                    : undefined,
+                detail: (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="min-w-0 space-y-1 sm:col-span-2">
+                            <p className="text-micro text-fg-muted">{t('vocab.meaning.full')}</p>
+                            <p className="break-words text-ui leading-relaxed text-fg-secondary">
+                                {item.translation || '—'}
+                            </p>
+                            {item.example && (
+                                <p className="break-words text-caption leading-relaxed text-fg-muted">
+                                    {t('vocab.example')}：{item.example}
+                                </p>
+                            )}
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                            <p className="text-micro text-fg-muted">{t('vocab.detail.source')}</p>
+                            <p className="break-words text-caption text-fg-strong">{list.name}</p>
+                        </div>
+                        <div className="min-w-0 space-y-1">
+                            <p className="text-micro text-fg-muted">{t('vocab.level')}</p>
+                            <p className="text-caption text-fg-strong">
+                                {item.cefr || t('vocab.custom.noLevel')}
+                            </p>
+                        </div>
+                    </div>
+                ),
                 actions: [
-                    rowSpeakAction({ rowKey, text: item.word }),
                     ...rowAddActions({
                         rowKey,
                         word: item.word,
@@ -3176,6 +3100,17 @@ export function VocabularyBookScreen({
                 error: listRowErrors[rowKey]
                     ? { message: listRowErrors[rowKey], testId: `vocab-custom-error-${item.word}` }
                     : undefined,
+                testIds: {
+                    row: 'vocab-custom-row',
+                    word: `vocab-custom-word-${item.word}`,
+                    phonetic: `vocab-custom-ipa-${item.word}`,
+                    translation: `vocab-custom-translation-${item.word}`,
+                    level: `vocab-custom-level-${item.word}`,
+                    speak: `${rowKey}-speak`,
+                    star: `vocab-custom-star-${item.word}`,
+                    expand: `vocab-custom-expand-${item.word}`,
+                    detail: `vocab-custom-detail-${item.word}`,
+                },
             };
         });
 
@@ -3184,6 +3119,7 @@ export function VocabularyBookScreen({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                     <p className="max-w-xl text-caption leading-relaxed text-fg-secondary">
                         {t('vocab.custom.hint')}
+                        <span className="ms-2 font-medium text-fg-strong">{list.name}</span>
                     </p>
                     <div className="flex flex-wrap items-center gap-1.5">
                         {REVIEW_UI_ENABLED && (
@@ -3197,96 +3133,136 @@ export function VocabularyBookScreen({
                                 {t('vocab.custom.addAll', { count: formatNumber(list.itemCount) })}
                             </Button>
                         )}
-                        <Button
-                            size="sm"
-                            variant="destructive"
-                            iconLeft={<Trash2 />}
-                            testId="vocab-custom-delete"
-                            onClick={() => setCustomDeleteOpen(true)}
-                        >
-                            {t('vocab.custom.delete')}
-                        </Button>
+                        {customEditMode ? (
+                            <span className="inline-flex h-control-md items-center rounded-control bg-state-selected px-2.5 text-caption font-medium text-fg-strong">
+                                {t('vocab.edit.selected', { count: formatNumber(customEditSelected.size) })}
+                            </span>
+                        ) : (
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                iconLeft={<Pencil />}
+                                testId="vocab-custom-edit"
+                                onClick={toggleCustomEdit}
+                            >
+                                {t('vocab.edit')}
+                            </Button>
+                        )}
+                        <Menu
+                            ariaLabel={t('vocab.custom.menu')}
+                            align="end"
+                            compact
+                            menuTestId="vocab-custom-menu"
+                            trigger={({ triggerRef, triggerProps }) => (
+                                <button
+                                    {...triggerProps}
+                                    ref={triggerRef}
+                                    type="button"
+                                    data-testid="vocab-custom-menu-trigger"
+                                    aria-label={t('vocab.custom.menu')}
+                                    title={t('vocab.custom.menu')}
+                                    className="inline-flex h-control-md w-9 items-center justify-center rounded-control text-fg-muted transition-colors hover:bg-state-hover hover:text-fg-primary"
+                                >
+                                    <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+                                </button>
+                            )}
+                            items={[
+                                {
+                                    id: 'rename',
+                                    label: t('vocab.custom.rename'),
+                                    icon: <Pencil />,
+                                    testId: 'vocab-custom-rename',
+                                    onSelect: openRenameDialog,
+                                },
+                                {
+                                    id: 'delete',
+                                    label: t('vocab.custom.delete'),
+                                    icon: <Trash2 />,
+                                    testId: 'vocab-custom-delete',
+                                    onSelect: () => setCustomDeleteOpen(true),
+                                },
+                            ]}
+                        />
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <div className="relative min-w-0 flex-1">
-                        <Search
-                            className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted"
-                            aria-hidden="true"
-                        />
-                        <input
-                            type="text"
-                            data-testid="vocab-custom-search"
-                            value={customQuery}
-                            onChange={(event) => setCustomQuery(event.target.value)}
-                            placeholder={t('vocab.custom.search.placeholder')}
-                            aria-label={t('vocab.custom.search.placeholder')}
-                            className="h-control-md w-full min-w-0 rounded-control border border-line-subtle bg-surface-2/60 ps-9 pe-9 text-ui text-fg-primary placeholder:text-fg-muted"
-                        />
-                        {customQuery && (
-                            <button
-                                type="button"
-                                data-testid="vocab-custom-search-clear"
-                                onClick={() => setCustomQuery('')}
-                                aria-label={t('vocab.custom.search.clear')}
-                                title={t('vocab.custom.search.clear')}
-                                className="absolute end-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-control text-fg-muted transition-colors hover:bg-state-hover hover:text-fg-primary"
-                            >
-                                <X className="h-4 w-4" aria-hidden="true" />
-                            </button>
-                        )}
-                    </div>
-                    <button
-                        type="button"
-                        data-testid="vocab-hide-toggle"
-                        data-scope="custom"
-                        aria-pressed={hideChinese}
-                        onClick={toggleHideChinese}
-                        title={hideChinese ? t('vocab.show') : t('vocab.hide')}
-                        className={`inline-flex h-control-lg shrink-0 items-center justify-center gap-1.5 rounded-control border px-3 text-caption font-medium transition-colors ${
-                            hideChinese
-                                ? 'border-brand/20 bg-brand/10 text-brand-300 hover:bg-brand/15'
-                                : 'border-line-subtle bg-surface-2/60 text-fg-strong hover:bg-surface-3/60 hover:text-fg-primary'
-                        }`}
-                    >
-                        {hideChinese
-                            ? <Eye className="h-4 w-4" aria-hidden="true" />
-                            : <EyeOff className="h-4 w-4" aria-hidden="true" />}
-                        {hideChinese ? t('vocab.show') : t('vocab.hide')}
-                    </button>
-                </div>
+                <WordbookToolbar
+                    search={{
+                        value: customQuery,
+                        onChange: setCustomQuery,
+                        placeholder: t('vocab.custom.search.placeholder'),
+                        ariaLabel: t('vocab.custom.search.placeholder'),
+                        testId: 'vocab-custom-search',
+                        clearTestId: 'vocab-custom-search-clear',
+                        clearLabel: t('vocab.custom.search.clear'),
+                    }}
+                    sort={{
+                        value: customSort,
+                        label: sortOptions.find((option) => option.value === customSort)?.label
+                            ?? t('vocab.sort.alpha'),
+                        options: sortOptions,
+                        onChange: (value) => setCustomSort(value as CustomSort),
+                        testId: 'vocab-custom-sort',
+                        menuTestId: 'vocab-custom-sort-menu',
+                    }}
+                    filter={{
+                        groups: [
+                            {
+                                id: 'level',
+                                label: t('vocab.filter.level'),
+                                options: levelFilterOptions(customLevel, 'vocab-custom-level')
+                                    .filter((option) => option.value !== 'C1+'),
+                            },
+                            {
+                                id: 'unmastered',
+                                label: t('vocab.filter.unmastered'),
+                                options: [
+                                    { value: '', label: t('vocab.filter.all'), checked: !customUnmasteredOnly, testId: 'vocab-custom-unmastered-all' },
+                                    { value: 'on', label: t('vocab.filter.unmastered'), checked: customUnmasteredOnly, testId: 'vocab-custom-unmastered' },
+                                ],
+                            },
+                        ],
+                        activeCount: filterActiveCount,
+                        onChange: (key) => {
+                            const [group, value] = key.split(':');
+                            if (group === 'level') setCustomLevel(value as MineLevel);
+                            else if (group === 'unmastered') setCustomUnmasteredOnly(value === 'on');
+                        },
+                        onClear: () => {
+                            setCustomLevel('');
+                            setCustomUnmasteredOnly(false);
+                            setCustomQuery('');
+                        },
+                        testId: 'vocab-custom-filter',
+                        clearTestId: 'vocab-custom-clear-filters',
+                        menuTestId: 'vocab-custom-filter-menu',
+                    }}
+                    extra={hideChineseToggle('custom')}
+                />
 
                 {hideChinese && (
                     <p className="text-micro leading-relaxed text-fg-muted">{t('vocab.hint.hide')}</p>
                 )}
 
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-fg-muted">
-                    <span data-testid="vocab-custom-total" className="tabular-nums">
-                        {t('vocab.total', { count: formatNumber(total) })}
-                    </span>
-                    <span className="min-w-0 truncate">{list.name}</span>
-                </div>
-
-                {dataFailed ? (
+                {customLoadPhase === 'error' ? (
                     <ErrorPanel
                         level="card"
                         title={t('vocab.custom.error.title')}
-                        detail={customListError || t('vocab.custom.error.hint')}
-                        onRetry={() => setCustomListNonce((value) => value + 1)}
+                        detail={customLoadError || t('vocab.custom.error.hint')}
+                        onRetry={() => setCustomNonce((value) => value + 1)}
                         retryLabel={t('common.retry')}
                         testId="vocab-custom-error"
                         retryTestId="vocab-custom-retry"
                     />
-                ) : !dataReady ? (
+                ) : customLoadPhase !== 'ready' ? (
                     <LoadingState
                         kind="skeleton"
                         rows={4}
                         label={t('vocab.custom.listLoading')}
                         testId="vocab-custom-loading"
-                        className={`${CARD} px-4 py-6`}
+                        className={`${LIST_CARD} px-4 py-6`}
                     />
-                ) : itemRows.length === 0 ? (
+                ) : sorted.length === 0 ? (
                     hasFilter
                         ? emptyState(
                             t('vocab.empty.title'),
@@ -3302,12 +3278,19 @@ export function VocabularyBookScreen({
                         )
                 ) : (
                     <>
+                        <span data-testid="vocab-custom-total" className="text-caption tabular-nums text-fg-muted">
+                            {hasFilter
+                                ? t('vocab.search.results', { count: formatNumber(sorted.length) })
+                                : t('vocab.total', { count: formatNumber(customItems.length) })}
+                        </span>
                         <WordTable
-                            rows={tableRows}
+                            rows={rows}
                             hideChinese={hideChinese}
-                            className={CARD}
+                            className={LIST_CARD}
                             listTestId="vocab-custom-list"
                             testIdPrefix="vocab-custom"
+                            selectable={customEditMode}
+                            ariaLabel={list.name}
                         />
                         <VocabPagination
                             scope="vocab"
@@ -3315,8 +3298,55 @@ export function VocabularyBookScreen({
                             pages={pages}
                             hasMore={currentPage < pages}
                             onChange={setCustomPage}
+                            pageSize={pageSize}
+                            onPageSizeChange={setPageSize}
                         />
                     </>
+                )}
+
+                {customEditMode && (
+                    <div
+                        data-testid="vocab-custom-edit-bar"
+                        className="sticky bottom-0 z-chrome flex flex-wrap items-center gap-2 rounded-card border border-line-strong bg-surface/90 px-3 py-2 shadow-elev-2 backdrop-blur-xl"
+                    >
+                        <span
+                            data-testid="vocab-custom-selected"
+                            className="text-caption tabular-nums text-fg-strong"
+                        >
+                            {t('vocab.edit.selected', { count: formatNumber(customEditSelected.size) })}
+                        </span>
+                        <div className="ms-auto flex flex-wrap items-center gap-1.5">
+                            <Button
+                                size="sm"
+                                variant="destructive"
+                                iconLeft={<Trash2 />}
+                                testId="vocab-custom-edit-delete"
+                                loading={customEditBusy}
+                                disabled={customEditBusy || customEditSelected.size === 0}
+                                onClick={() => setCustomItemsDeleteOpen(true)}
+                            >
+                                {t('vocab.edit.delete')}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                testId="vocab-custom-edit-done"
+                                disabled={customEditBusy}
+                                onClick={resetCustomEdit}
+                            >
+                                {t('vocab.edit.done')}
+                            </Button>
+                        </div>
+                        {customEditSummary && (
+                            <p
+                                role="alert"
+                                data-testid="vocab-custom-edit-summary"
+                                className="w-full text-caption leading-relaxed text-danger-fg"
+                            >
+                                {customEditSummary}
+                            </p>
+                        )}
+                    </div>
                 )}
             </div>
         );
@@ -3326,184 +3356,196 @@ export function VocabularyBookScreen({
         const label = activeIsCefr
             ? t('vocab.tab.cefr')
             : activeList?.label || FALLBACK_LABELS[activeTab] || activeTab;
+        const total = listData?.total ?? 0;
+        const listPages = Math.max(1, Math.ceil(total / pageSize));
+        const hasFilter = Boolean(debouncedQuery || listLevel);
+        const totalLabel = hasFilter
+            ? t('vocab.search.results', { count: formatNumber(total) })
+            : t('vocab.total', { count: formatNumber(total) });
+        const sortOptions: SortOption[] = [
+            { value: 'default', label: t('vocab.sort.list'), testId: 'vocab-sort-list' },
+        ];
+        const levelCounts = activeIsCefr ? activeList?.byLevel : undefined;
+
+        const rows: WordTableRow[] = (listData?.items ?? []).map((item, index) => {
+            // Row key doubles as the write-state key and the test id suffix:
+            // `<list id>:<word>`.
+            const rowKey = `${activeTab}:${item.word}`;
+            const wordKey = normalizeMasteryWord(item.word);
+            const favored = favoritedWordKeys.has(wordKey);
+            const isExpanded = Boolean(expanded[`list:${rowKey}`]);
+            return {
+                key: `${item.word}-${index}`,
+                word: item.word,
+                phonetic: item.phonetic,
+                translation: item.translation,
+                level: item.cefrLevel || '—',
+                levelTitle: item.cefrLevel ? `CEFR ${item.cefrLevel}` : undefined,
+                revealed: revealed.has(item.word),
+                onActivate: hideChinese ? () => toggleReveal(item.word) : undefined,
+                favored,
+                favoriteLabel: favoriteLabelFor(item.word),
+                onToggleFavorite: () => toggleRowFavorite({
+                    word: item.word,
+                    phonetic: item.phonetic,
+                    translation: item.translation,
+                    sourceKind: 'wordlist',
+                    sourceRef: activeTab,
+                    sourceTitle: label,
+                }),
+                favoriteBusy: favoriteBusyKeys.has(wordKey),
+                speakLabel: speakLabelFor(item.word),
+                onSpeak: () => speakRow(item.word),
+                speakDisabled: speechDisabled,
+                expandLabel: expandLabelFor(isExpanded),
+                expanded: isExpanded,
+                onToggleExpand: () => toggleExpanded(`list:${rowKey}`),
+                detail: (
+                    <div className="min-w-0 space-y-1">
+                        <p className="text-micro text-fg-muted">{t('vocab.meaning.full')}</p>
+                        <p className="break-words text-ui leading-relaxed text-fg-secondary">
+                            {item.translation || '—'}
+                        </p>
+                        <p className="text-micro text-fg-muted">
+                            {t('vocab.source.fromTitle', {
+                                kind: t(SOURCE_LABEL_KEYS.wordlist),
+                                title: label,
+                            })}
+                        </p>
+                    </div>
+                ),
+                actions: rowAddActions({
+                    rowKey,
+                    word: item.word,
+                    translation: item.translation,
+                    phonetic: item.phonetic,
+                    listId: activeTab,
+                    listLabel: label,
+                }),
+                error: listRowErrors[rowKey]
+                    ? {
+                        message: listRowErrors[rowKey],
+                        testId: `vocab-list-error-${item.word}`,
+                    }
+                    : undefined,
+                testIds: {
+                    star: `vocab-list-star-${rowKey}`,
+                    speak: `${rowKey}-speak`,
+                    expand: `vocab-list-expand-${rowKey}`,
+                    detail: `vocab-list-detail-${rowKey}`,
+                },
+            };
+        });
+
         return (
             <div data-testid="vocab-list-panel" className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <div className="relative min-w-0 flex-1">
-                        <Search
-                            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
-                            aria-hidden="true"
-                        />
-                        <input
-                            type="text"
-                            data-testid="vocab-search"
-                            value={query}
-                            onChange={(event) => setQuery(event.target.value)}
-                            placeholder={t('vocab.search.placeholder')}
-                            aria-label={t('vocab.search.placeholder')}
-                            className="h-10 w-full min-w-0 rounded-xl border border-white/5 bg-zinc-800/60 pl-9 pr-9 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
-                        />
-                        {query && (
-                            <button
-                                type="button"
-                                data-testid="vocab-search-clear"
-                                onClick={() => setQuery('')}
-                                aria-label={t('vocab.search.clear')}
-                                title={t('vocab.search.clear')}
-                                className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-300"
-                            >
-                                <X className="h-4 w-4" aria-hidden="true" />
-                            </button>
-                        )}
-                    </div>
-                    <button
-                        type="button"
-                        data-testid="vocab-hide-toggle"
-                        aria-pressed={hideChinese}
-                        onClick={toggleHideChinese}
-                        title={hideChinese ? t('vocab.show') : t('vocab.hide')}
-                        className={`inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors ${
-                            hideChinese
-                                ? 'border-blue-500/20 bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'
-                                : 'border-white/5 bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60 hover:text-zinc-100'
-                        }`}
-                    >
-                        {hideChinese ? <Eye className="h-4 w-4" aria-hidden="true" /> : <EyeOff className="h-4 w-4" aria-hidden="true" />}
-                        {hideChinese ? t('vocab.show') : t('vocab.hide')}
-                    </button>
-                </div>
+                <WordbookToolbar
+                    search={{
+                        value: query,
+                        onChange: setQuery,
+                        placeholder: t('vocab.search.placeholder'),
+                        ariaLabel: t('vocab.search.placeholder'),
+                        testId: 'vocab-search',
+                        clearTestId: 'vocab-search-clear',
+                        clearLabel: t('vocab.search.clear'),
+                    }}
+                    sort={{
+                        value: 'default',
+                        label: t('vocab.sort.list'),
+                        options: sortOptions,
+                        onChange: () => undefined,
+                        testId: 'vocab-sort',
+                        menuTestId: 'vocab-sort-menu',
+                    }}
+                    filter={{
+                        groups: [{
+                            id: 'level',
+                            label: t('vocab.filter.level'),
+                            options: levelFilterOptions(listLevel as MineLevel, 'vocab-level', levelCounts)
+                                .filter((option) => option.value !== 'C1+'),
+                        }],
+                        activeCount: Number(Boolean(listLevel)),
+                        onChange: (key) => {
+                            const [group, value] = key.split(':');
+                            if (group === 'level') setListLevel(value as CefrLevel | '');
+                        },
+                        onClear: () => {
+                            setListLevel('');
+                            setQuery('');
+                        },
+                        testId: 'vocab-level-filter',
+                        clearTestId: 'vocab-list-clear-filters',
+                        menuTestId: 'vocab-level-filter-menu',
+                    }}
+                    extra={hideChineseToggle('list')}
+                />
+
+                {activeIsCefr && renderC2Note()}
 
                 {hideChinese && (
                     <p className="text-micro leading-relaxed text-fg-muted">{t('vocab.hint.hide')}</p>
                 )}
 
-                {activeIsCefr && (
-                    <div className="flex flex-col gap-2">
-                        <div
-                            data-testid="vocab-level-filter"
-                            className="flex flex-wrap items-center gap-1.5"
-                        >
-                            <span className="mr-1 text-[11px] text-zinc-500">
-                                {t('vocab.cefr.filter.level')}
-                            </span>
-                            <FilterChip
-                                selected={listLevel === ''}
-                                testId="vocab-level-all"
-                                onClick={() => selectListLevel('')}
-                            >
-                                {t('vocab.cefr.filter.all')}
-                            </FilterChip>
-                            {VOCABULARY_CEFR_LEVELS.map((level) => {
-                                const count = activeList?.byLevel?.[level];
-                                return (
-                                    <FilterChip
-                                        key={level}
-                                        selected={listLevel === level}
-                                        testId={`vocab-level-${level}`}
-                                        onClick={() => selectListLevel(level)}
-                                    >
-                                        {count != null
-                                            ? t('vocab.cefr.levelCount', {
-                                                level,
-                                                count: formatNumber(count),
-                                            })
-                                            : level}
-                                    </FilterChip>
-                                );
-                            })}
-                        </div>
-                        {renderC2Note()}
-                    </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-fg-muted">
                     <span data-testid="vocab-total" className="tabular-nums">{totalLabel}</span>
-                    <span className="text-zinc-600">{label}</span>
+                    <span>{label}</span>
                     {activeList?.approximate && (
-                        <span className="rounded-full border border-white/5 bg-white/[0.03] px-2 py-0.5 text-[10px] text-zinc-500">
-                            {t('vocab.approximate')}
-                        </span>
+                        <Badge tone="neutral">{t('vocab.approximate')}</Badge>
                     )}
                 </div>
 
                 {listPhase === 'loading' && (
-                    <div data-testid="vocab-loading" className={`${CARD} flex items-center justify-center gap-2 py-16 text-sm text-zinc-500`}>
+                    <div data-testid="vocab-loading" className={`${LIST_CARD} flex items-center justify-center gap-2 py-16 text-ui text-fg-muted`}>
                         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                         {t('common.loading')}
                     </div>
                 )}
 
                 {listPhase === 'error' && (
-                    <div data-testid="vocab-error" className={`${CARD} flex flex-col items-center justify-center px-6 py-16 text-center`}>
-                        <AlertTriangle className="mb-3 h-10 w-10 text-amber-400/70" aria-hidden="true" />
-                        <p className="text-sm font-medium text-zinc-300">{t('vocab.error.title')}</p>
-                        <p className="mt-1 max-w-md break-words text-xs text-zinc-500">{listError || t('vocab.error.hint')}</p>
-                        <button
-                            type="button"
-                            data-testid="vocab-retry"
+                    <div data-testid="vocab-error" className={`${LIST_CARD} flex flex-col items-center justify-center px-6 py-16 text-center`}>
+                        <AlertTriangle className="mb-3 h-10 w-10 text-warning-fg/70" aria-hidden="true" />
+                        <p className="text-ui font-medium text-fg-strong">{t('vocab.error.title')}</p>
+                        <p className="mt-1 max-w-md break-words text-caption text-fg-muted">
+                            {listError || t('vocab.error.hint')}
+                        </p>
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            testId="vocab-retry"
                             onClick={() => setListNonce((value) => value + 1)}
-                            className={`${SECONDARY_BUTTON} mt-5`}
+                            className="mt-5"
                         >
                             {t('common.retry')}
-                        </button>
+                        </Button>
                     </div>
                 )}
 
                 {listPhase === 'ready' && listData && (
                     listData.items.length === 0 ? (
                         emptyState(
-                            listHasFilter ? t('vocab.empty.title') : t('vocab.empty.list'),
-                            listHasFilter ? t('vocab.empty.hint') : t('vocab.empty.listHint'),
+                            hasFilter ? t('vocab.empty.title') : t('vocab.empty.list'),
+                            hasFilter ? t('vocab.empty.hint') : t('vocab.empty.listHint'),
                             Search,
                             'vocab-empty',
                         )
                     ) : (
                         <>
-                            {/* Same table component as 已掌握 (VocabularyRows). */}
                             <WordTable
-                                rows={listData.items.map((item, index) => {
-                                    // Row key doubles as the write-state key and the
-                                    // test id suffix: `<list id>:<word>`.
-                                    const rowKey = `${activeTab}:${item.word}`;
-                                    return {
-                                        key: `${item.word}-${index}`,
-                                        word: item.word,
-                                        phonetic: item.phonetic,
-                                        translation: item.translation,
-                                        level: item.cefrLevel,
-                                        levelTitle: item.cefrLevel ? `CEFR ${item.cefrLevel}` : undefined,
-                                        revealed: revealed.has(item.word),
-                                        onActivate: hideChinese ? () => toggleReveal(item.word) : undefined,
-                                        actions: [
-                                            rowSpeakAction({ rowKey, text: item.word }),
-                                            ...rowAddActions({
-                                                rowKey,
-                                                word: item.word,
-                                                translation: item.translation,
-                                                phonetic: item.phonetic,
-                                                listId: activeTab,
-                                                listLabel: label,
-                                            }),
-                                        ],
-                                        error: listRowErrors[rowKey]
-                                            ? {
-                                                message: listRowErrors[rowKey],
-                                                testId: `vocab-list-error-${item.word}`,
-                                            }
-                                            : undefined,
-                                    };
-                                })}
+                                rows={rows}
                                 hideChinese={hideChinese}
-                                className={CARD}
+                                className={LIST_CARD}
                                 listTestId="vocab-word-list"
+                                testIdPrefix="vocab-list"
+                                ariaLabel={label}
                             />
-
                             <VocabPagination
                                 scope="vocab"
                                 page={page}
-                                pages={pages}
+                                pages={listPages}
                                 hasMore={listData.hasMore}
                                 onChange={setPage}
+                                pageSize={pageSize}
+                                onPageSizeChange={setPageSize}
                             />
                         </>
                     )
@@ -3559,19 +3601,6 @@ export function VocabularyBookScreen({
             </div>
             </div>
 
-            {/* 批量删除 always asks first (IX-03 / G8). The dialog owns Escape,
-                backdrop, focus and the per-item progress; failures are reported
-                afterwards by the bulk summary and keep their rows selected. */}
-            <ConfirmDialog
-                open={bulkDeleteOpen}
-                title={t('vocab.bulk.deleteTitle', { count: formatNumber(bulkDeletableFavorites.length) })}
-                description={t('vocab.bulk.deleteDesc')}
-                confirmLabel={t('vocab.bulk.deleteConfirm', { count: formatNumber(bulkDeletableFavorites.length) })}
-                onConfirm={handleBulkDelete}
-                onClose={() => setBulkDeleteOpen(false)}
-                testId="vocab-bulk-delete"
-            />
-
             {/* Custom word lists (specs/038). The wizard owns the three steps;
                 both confirmations reuse the one shared ConfirmDialog. */}
             <WordlistImportDialog
@@ -3589,14 +3618,83 @@ export function VocabularyBookScreen({
                     setCustomListsError('');
                     setActiveTab(customTabId(list.id));
                     setCustomQuery('');
-                    setCustomDebouncedQuery('');
                     setCustomPage(1);
                     setCustomRevealed(new Set());
-                    setCustomListPhase('idle');
-                    setCustomListData(null);
+                    setCustomSort('alpha');
+                    setCustomLevel('');
+                    setCustomUnmasteredOnly(false);
+                    setCustomLoadPhase('idle');
+                    setCustomItems([]);
                     setCustomListsNonce((value) => value + 1);
                 }}
             />
+
+            <ConfirmDialog
+                open={customItemsDeleteOpen && activeCustomList != null}
+                title={t('vocab.edit.deleteTitle', { count: formatNumber(customEditSelected.size) })}
+                description={t('vocab.edit.deleteDesc')}
+                confirmLabel={t('vocab.edit.deleteConfirm', { count: formatNumber(customEditSelected.size) })}
+                onConfirm={handleDeleteCustomItems}
+                onClose={() => setCustomItemsDeleteOpen(false)}
+                testId="vocab-custom-items-delete"
+            />
+
+            <Dialog
+                open={renameOpen}
+                onClose={() => { if (!renameBusy) setRenameOpen(false); }}
+                title={t('vocab.custom.renameTitle')}
+                description={t('vocab.custom.renameHint')}
+                size="sm"
+                initialFocus='[data-testid="vocab-custom-rename-input"]'
+                testId="vocab-custom-rename-dialog"
+                footer={(
+                    <>
+                        <Button
+                            variant="secondary"
+                            testId="vocab-custom-rename-cancel"
+                            disabled={renameBusy}
+                            onClick={() => setRenameOpen(false)}
+                            className="w-full sm:w-auto"
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            variant="primary"
+                            testId="vocab-custom-rename-save"
+                            loading={renameBusy}
+                            onClick={() => { void submitRename(); }}
+                            className="w-full sm:w-auto"
+                        >
+                            {t('vocab.custom.renameSave')}
+                        </Button>
+                    </>
+                )}
+            >
+                <label className="block space-y-1.5">
+                    <span className="text-caption font-medium text-fg-strong">
+                        {t('vocab.custom.renameLabel')}
+                    </span>
+                    <input
+                        type="text"
+                        data-testid="vocab-custom-rename-input"
+                        value={renameName}
+                        maxLength={80}
+                        disabled={renameBusy}
+                        onChange={(event) => setRenameName(event.target.value)}
+                        onKeyDown={(event) => {
+                            if (event.key !== 'Enter') return;
+                            event.preventDefault();
+                            void submitRename();
+                        }}
+                        className="h-control-md w-full rounded-control border border-line-subtle bg-surface-2/60 px-3 text-ui text-fg-primary placeholder:text-fg-muted"
+                    />
+                </label>
+                {renameError && (
+                    <p role="alert" data-testid="vocab-custom-rename-error" className="mt-2 text-caption leading-relaxed text-danger-fg">
+                        {renameError}
+                    </p>
+                )}
+            </Dialog>
 
             <ConfirmDialog
                 open={customDeleteOpen && activeCustomList != null}

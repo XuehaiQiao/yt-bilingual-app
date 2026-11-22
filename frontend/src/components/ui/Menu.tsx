@@ -9,6 +9,7 @@
 // The popup is positioned inside the caller's box (no portal): both current
 // menus live in normal flow and must stay inside the app chrome.
 import {
+    Fragment,
     useCallback,
     useEffect,
     useId,
@@ -28,6 +29,11 @@ export interface MenuItem {
     /** Stable identity for the item; also used as the React key. */
     id: string;
     label: ReactNode;
+    /**
+     * Optional section heading rendered above the first item that carries it.
+     * Consecutive items with the same section share one heading (filter menus).
+     */
+    section?: string;
     /** Optional second line (quota / hint). */
     description?: ReactNode;
     /** Leading action icon. Ignored when `checked` is set (radio indicator wins). */
@@ -92,6 +98,8 @@ export interface MenuProps {
     /** Wrapper classes; the wrapper is always `relative`. */
     className?: string;
     disabled?: boolean;
+    /** Dense item recipe (filter menus with many single-select rows). */
+    compact?: boolean;
 }
 
 type OpenIntent = 'first' | 'last';
@@ -124,6 +132,7 @@ export function Menu({
     menuTestId,
     className,
     disabled = false,
+    compact = false,
 }: MenuProps) {
     const menuId = useId();
     const rootRef = useRef<HTMLDivElement>(null);
@@ -172,11 +181,26 @@ export function Menu({
         const triggerRect = triggerRef.current?.getBoundingClientRect();
         const menu = menuRef.current;
         if (!triggerRect || !menu) return;
-        const menuHeight = menu.getBoundingClientRect().height;
+        const menuRect = menu.getBoundingClientRect();
         const spaceBelow = window.innerHeight - triggerRect.bottom - 8;
         const spaceAbove = triggerRect.top - 8;
-        const next = spaceBelow < menuHeight && spaceAbove > spaceBelow ? 'top' : 'bottom';
+        const next = spaceBelow < menuRect.height && spaceAbove > spaceBelow ? 'top' : 'bottom';
         if (menu.dataset.placement !== next) menu.dataset.placement = next;
+
+        // Keep the popup inside the viewport on narrow screens: the default
+        // `left-0`/`right-0` anchor can push a 16rem menu past a 375px edge.
+        // Layout-only (inline style, no state), so item focus is preserved.
+        menu.style.left = '';
+        menu.style.right = '';
+        const rect = menu.getBoundingClientRect();
+        const pad = 8;
+        let shift = 0;
+        if (rect.right > window.innerWidth - pad) shift = window.innerWidth - pad - rect.right;
+        else if (rect.left < pad) shift = pad - rect.left;
+        if (shift !== 0) {
+            menu.style.left = `${rect.left + shift - triggerRect.left}px`;
+            menu.style.right = 'auto';
+        }
     }, [isOpen, items.length]);
 
     // Move focus into the menu after it mounts. A radio group starts on the
@@ -380,12 +404,22 @@ export function Menu({
                         </div>
                     )}
 
-                    {items.map((item) => {
+                    {items.map((item, index) => {
                         const isRadio = item.checked !== undefined;
                         const checked = item.checked === true;
+                        const sectionStart = item.section != null
+                            && (index === 0 || items[index - 1].section !== item.section);
                         return (
+                            <Fragment key={item.id}>
+                            {sectionStart && (
+                                <div
+                                    role="presentation"
+                                    className="px-2.5 pb-1 pt-2.5 text-micro font-medium text-fg-muted"
+                                >
+                                    {item.section}
+                                </div>
+                            )}
                             <button
-                                key={item.id}
                                 type="button"
                                 role={isRadio ? 'menuitemradio' : 'menuitem'}
                                 aria-checked={isRadio ? checked : undefined}
@@ -398,7 +432,10 @@ export function Menu({
                                 {...item.data}
                                 onClick={() => activateItem(item)}
                                 className={cn(
-                                    'flex w-full items-start gap-3 rounded-xl border p-3 text-left',
+                                    'flex w-full items-start border text-left',
+                                    compact
+                                        ? 'gap-2 rounded-control p-2'
+                                        : 'gap-3 rounded-xl p-3',
                                     'transition-[background-color,border-color,opacity] duration-200 ease-apple',
                                     checked
                                         ? 'border-brand/40 bg-brand/10'
@@ -411,7 +448,7 @@ export function Menu({
                                     <span
                                         aria-hidden="true"
                                         className={cn(
-                                            'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
+                                            compact ? 'mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border' : 'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
                                             checked
                                                 ? 'border-brand bg-brand text-fg-inverse'
                                                 : 'border-fg-disabled',
@@ -430,13 +467,13 @@ export function Menu({
 
                                 <span className="flex min-w-0 flex-1 flex-col">
                                     <span className="flex items-center justify-between gap-2">
-                                        <span className="truncate text-ui font-medium text-fg-primary">
+                                        <span className={cn('truncate font-medium text-fg-primary', compact ? 'text-caption' : 'text-ui')}>
                                             {item.label}
                                         </span>
                                         {item.meta != null && <span className="shrink-0">{item.meta}</span>}
                                     </span>
                                     {item.description != null && (
-                                        <span className="mt-0.5 block text-caption leading-relaxed text-fg-muted">
+                                        <span className={cn('mt-0.5 block leading-relaxed text-fg-muted', compact ? 'text-micro' : 'text-caption')}>
                                             {item.description}
                                         </span>
                                     )}
@@ -457,6 +494,7 @@ export function Menu({
                                     />
                                 )}
                             </button>
+                            </Fragment>
                         );
                     })}
 
