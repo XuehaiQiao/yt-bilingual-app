@@ -56,8 +56,8 @@
     {
       "id": "P0-01",
       "file": "TASKS/P0-01-my-words-count.md",
-      "status": "claimed",
-      "owner": "p01-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/lib/myWords.ts",
         "frontend/src/components/VocabularyBookScreen.tsx",
