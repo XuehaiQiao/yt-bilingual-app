@@ -9,8 +9,8 @@
 - ``GET /api/vocabulary/phrases?page=1&pageSize=50&q=&level=&type=``：短语分页/
   搜索/按等级与类型筛选；
 - ``GET /api/vocabulary/phrases/{id}``：短语详情；
-- ``GET /api/vocabulary/lemma-list?q=&level=&sort=&page=&pageSize=``：CEFR
-  10k 词形表（lemma + 词形，只读；specs/040）；
+- ``GET /api/vocabulary/word-families?q=&level=&sort=&page=&pageSize=``：
+  CEFR 10k 词族表（族可含 10k 外成员，只读；specs/041）；
 - ``GET /api/vocabulary/level?words=a,b,c``：词 → A1–C1 / ``C1+`` / ``null``；
 - ``POST /api/vocabulary/classify``：批量标亮判定（CEFR 等级 + 专名），
   ``{items:[{text, sentenceStart?, hasLowercase?, hasNonInitialCapital?}]}``
@@ -27,8 +27,8 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import AliasChoices, BaseModel, Field
 
-import lemma_list
 import vocabulary
+import word_family
 import word_rules
 
 router = APIRouter(tags=["vocabulary"])
@@ -143,26 +143,27 @@ def get_vocabulary_phrase_detail(phrase_id: str):
     return JSONResponse(content=payload, headers=PUBLIC_CACHE_HEADERS)
 
 
-@router.get("/api/vocabulary/lemma-list")
-def get_vocabulary_lemma_list(
+@router.get("/api/vocabulary/word-families")
+def get_vocabulary_word_families(
     page: int = Query(1, description="页码，从 1 开始"),
     page_size: int = Query(
-        lemma_list.DEFAULT_PAGE_SIZE,
+        word_family.DEFAULT_PAGE_SIZE,
         alias="pageSize",
-        description=f"每页条数，1–{lemma_list.MAX_PAGE_SIZE}",
+        description=f"每页条数，1–{word_family.MAX_PAGE_SIZE}",
     ),
-    q: str | None = Query(None, description="大小写不敏感：lemma 或任一词形"),
+    q: str | None = Query(None, description="大小写不敏感：族内任一成员"),
     level: str | None = Query(None, description="A1 / A2 / B1 / B2 / C1"),
-    sort: str | None = Query(None, description="rank（默认，词频升序）/ alpha"),
+    sort: str | None = Query(None, description="rank（默认，head 词频升序）/ alpha"),
 ):
-    """CEFR 10k 词形表：游客可读、不调 AI、不写库（specs/040）。
+    """CEFR 10k 词族表：游客可读、不调 AI、不写库（specs/041）。
 
-    level 非法 → 400；page/pageSize/sort/q 非法 → 400；频表缺失/损坏 → 503。
-    命中词形（如 ``running``）时返回该词形的 lemma（``run``）。
+    level 非法 → 400；page/pageSize/sort/q 非法 → 400；词族/释义数据缺失或
+    损坏 → 503。``q`` 命中族内任一成员（如 ``reflection``）即返回整个族；
+    10k 外成员 ``level/rank`` 为 ``null``（UI 显示 ``—``）。
     """
     try:
-        payload = lemma_list.lemma_list_page(page, page_size, q, level, sort)
-    except lemma_list.LemmaListError as exc:
+        payload = word_family.word_family_page(page, page_size, q, level, sort)
+    except word_family.WordFamilyError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return JSONResponse(content=payload, headers=PUBLIC_CACHE_HEADERS)
 
@@ -242,6 +243,6 @@ def post_vocabulary_classify(body: ClassifyRequest):
     return JSONResponse(content=payload, headers=PUBLIC_CACHE_HEADERS)
 
 
-# specs/040：应用启动（main 导入本模块）时预建 CEFR 10k lemma 索引——单次、
-# 只读、进程内缓存；数据缺失/损坏不阻断启动，请求期由 lemma_list 抛 503。
-lemma_list.warmup()
+# specs/041：应用启动（main 导入本模块）时预建只读词族索引——单次、
+# 只读、进程内缓存；数据缺失/损坏不阻断启动，请求期由 word_family 抛 503。
+word_family.warmup()

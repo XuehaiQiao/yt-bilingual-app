@@ -111,8 +111,68 @@ python3 -m venv /tmp/wordlist-venv
 6. **词表大小不是「词汇量」**：10,000 是频带锚点数量，不是「认识 1 万词」；
    对外文案不得把频带/生词率写成精确等级或个性化画像（K17）。
 
+## 词族数据（`word-families.v1.json`，specs/041）
+
+本目录还分发一份**只读词族数据**，供单词本「词族」tab 使用；运行期只读该
+JSON，不安装、不读取 nltk / WordNet 语料。
+
+| 项 | 值 |
+|---|---|
+| 文件 | `word-families.v1.json`（生成脚本 `scripts/build_word_families.py`） |
+| schema | `linguatrek.word-family.v1` |
+| version | `2026.11.23` |
+| ruleVersion | `E`（全量 WordNet 派生图 + allowlist − 黑名单） |
+| 构图 | WordNet 3.0 `derivationally_related_forms()` 无向派生图；连通分量 ≥2 成员且 ≥1 成员在 CEFR 10k；10k 外成员等级留空；无族词不写入 |
+| 人工清单 | 黑名单 17 条坏边（`semantic_split` + `clear_error`）、allowlist 22 条缺失边；逐条校验存在性 |
+| 结果 | 3,696 族 / 11,567 成员（10k 内 5,233、10k 外 6,334）/ 最大族 18 |
+| 审计依据 | `docs/reports/word-family-open-audit-2026-11-23.md`（P1-04） |
+| **本产物许可** | **WordNet 3.0 License**（WordNet 派生部分）+ **CC BY-SA 4.0**（CEFR 频次/等级部分，见上文章节） |
+
+### 上游来源：WordNet 3.0（Princeton University）
+
+- 项目：WordNet — <https://wordnet.princeton.edu/>
+- 版本：3.0（2006）；本机通过 NLTK 3.6.1 的 `wordnet` 语料读取，**语料不随仓库分发**
+- 许可：WordNet 3.0 License（允许使用/复制/修改/分发，须保留版权声明与免责声明；
+  禁止以 Princeton 名义背书；AS IS）
+
+WordNet 3.0 许可要求的版权声明与免责声明（保留原文）：
+
+> WordNet 3.0 Copyright 2006 by Princeton University. All rights reserved.
+>
+> THIS SOFTWARE AND DATABASE IS PROVIDED "AS IS" AND PRINCETON UNIVERSITY MAKES
+> NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED. BY WAY OF EXAMPLE, BUT
+> NOT LIMITATION, PRINCETON UNIVERSITY MAKES NO REPRESENTATIONS OR WARRANTIES OF
+> MERCHANTABILITY OR FITNESS FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE
+> LICENSED SOFTWARE, DATABASE OR DOCUMENTATION WILL NOT INFRINGE ANY THIRD PARTY
+> PATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS.
+>
+> The name of Princeton University or Princeton may not be used in advertising
+> or publicity pertaining to distribution of the software and/or database. Title
+> to copyright in this software, database and any associated documentation shall
+> at all times remain with Princeton University and LICENSEE agrees to preserve
+> same.
+
+### 与频表的关系
+
+词族的 CEFR 锚定（10k 内/外、A1–C1 等级）派生自本目录的
+`frequency_bands.v1.json`（wordfreq 3.1.1，CC BY-SA 4.0，署名见上文章节）；
+该部分按 CC BY-SA 4.0 保留署名并以同协议开放。词族的成员关系（派生边）来自
+WordNet 3.0，按 WordNet 3.0 License 保留上述声明。
+
+### 重建与校验
+
+```bash
+python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data
+python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data --check
+```
+
+构建是确定性的（无时间戳，同一 WordNet 语料 + 同一频表逐字节一致）；文件带
+`integrity.sha256`（覆盖 counts + families + blacklist + allowlist）。清单或
+数据变化时先更新审计报告与 `specs/041`，再重跑生成并 diff。
+
 ## 变更记录
 
 | 日期 | 变更 |
 |---|---|
 | 2026-11-17 | 首版 v1：wordfreq 3.1.1，10,000 lemma / 10 带 / 10,848 forms；closes M2 词表构建 |
+| 2026-11-23 | 新增 `word-families.v1.json`（specs/041，规则 E）：WordNet 3.0 派生图 + 17 条黑名单 / 22 条 allowlist；保留 WordNet 3.0 版权声明与免责声明 |

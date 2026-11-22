@@ -36,8 +36,9 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useI18n } from '../i18n/I18nProvider';
+import { apiFetch } from '../lib/api';
 import { cn } from '../lib/cn';
-import type { LemmaListItem } from '../lib/wordlists';
+import { VOCABULARY_CEFR_LEVELS, type CefrLevel } from '../lib/vocabulary';
 import { Button, IconButton } from './ui/Button';
 import { Checkbox } from './ui/Checkbox';
 import { Menu, type MenuItem } from './ui/Menu';
@@ -420,102 +421,274 @@ export function WordTable({
     );
 }
 
-// ── 词形（CEFR 10k lemma）只读表 ─────────────────────────────────────────────
+// ── 词族（CEFR 10k word family）只读表 ──────────────────────────────────────
 //
-// specs/040 adds one read-only surface: lemma / phonetic / meaning / CEFR /
-// form count / expand. It deliberately reuses the row card + expansion recipe
-// but none of the write controls (no star, no 已掌握 check, no 编辑/批量/导出,
-// no per-row actions), so it is a separate small table instead of a
-// `WordTable` mode. The whole row is the expand hot zone; expansion lists every
-// form mapped to that lemma, straight from the server.
+// specs/041 replaces the 词形 tab with 词族: one row per WordNet-derived family,
+// inherited from specs/040's read-only surface. A family may contain words
+// outside the CEFR 10k; those members have no level and render `—` (never a
+// default A1). Deliberately read-only: no star, no 已掌握 check, no 编辑/批量/
+// 导出, no per-row writes. The whole row is the expand hot zone; expansion lists
+// every member with its own level (or `—`).
+//
+// Transport lives here (not lib/) because the word-family surface is the only
+// consumer and specs/041 keeps the change inside the word-book components.
 
-export interface LemmaTableProps {
-    rows: readonly LemmaListItem[];
-    /** Lemmas whose form list is open (owned by the screen; resets on page/q). */
+/** Server page size for the 词族 tab (`word_family.DEFAULT_PAGE_SIZE`). */
+export const WORD_FAMILY_PAGE_SIZE = 50;
+export const WORD_FAMILY_MAX_PAGE_SIZE = 200;
+/** Frequency order (head rank) or alphabetical; matches `word_family.SORTS`. */
+export type WordFamilySort = 'rank' | 'alpha';
+export const WORD_FAMILY_LEVELS: readonly CefrLevel[] = VOCABULARY_CEFR_LEVELS;
+
+export interface WordFamilyMember {
+    lemma: string;
+    /** Empty for a 10k-outside member: the UI renders `—`, never a fake level. */
+    level: CefrLevel | '';
+    rank: number | null;
+}
+
+/** One family row: head + every member (10k inside with level, outside blank). */
+export interface WordFamilyRow {
+    id: string;
+    head: string;
+    headRank: number;
+    headLevel: CefrLevel;
+    headPhonetic: string;
+    headTranslation: string;
+    /** CEFR levels present in this family, A1→C1 order. */
+    levels: CefrLevel[];
+    members: WordFamilyMember[];
+}
+
+export interface WordFamilyPage {
+    items: WordFamilyRow[];
+    total: number;
+    page: number;
+    pageSize: number;
+    hasMore: boolean;
+}
+
+/** Typed HTTP failure so the panel can show the server's message + retry. */
+export class WordFamilyApiError extends Error {
+    readonly status: number;
+
+    constructor(status: number, message: string) {
+        super(message);
+        this.name = 'WordFamilyApiError';
+        this.status = status;
+    }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    typeof value === 'object' && value !== null
+);
+
+function normalizeFamilyLevel(value: unknown): CefrLevel | '' {
+    return typeof value === 'string'
+        && (WORD_FAMILY_LEVELS as readonly string[]).includes(value)
+        ? value as CefrLevel
+        : '';
+}
+
+function normalizeWordFamilyMember(value: unknown): WordFamilyMember | null {
+    if (!isRecord(value)) return null;
+    const lemma = typeof value.lemma === 'string' ? value.lemma.trim() : '';
+    if (!lemma) return null;
+    const level = normalizeFamilyLevel(value.level);
+    // No level → no rank: a 10k-outside member never gets a fabricated band.
+    const rank = level && Number.isFinite(value.rank) ? Number(value.rank) : null;
+    return { lemma, level, rank };
+}
+
+function normalizeWordFamilyRow(value: unknown): WordFamilyRow | null {
+    if (!isRecord(value)) return null;
+    const id = typeof value.id === 'string' ? value.id.trim() : '';
+    const head = typeof value.head === 'string' ? value.head.trim() : '';
+    if (!id || !head) return null;
+    const members = Array.isArray(value.members)
+        ? value.members
+            .map(normalizeWordFamilyMember)
+            .filter((member): member is WordFamilyMember => member !== null)
+        : [];
+    if (members.length === 0) return null;
+    const levels = Array.isArray(value.levels)
+        ? value.levels
+            .map(normalizeFamilyLevel)
+            .filter((level): level is CefrLevel => level !== '')
+        : [];
+    const uniqueLevels = WORD_FAMILY_LEVELS.filter((level) => levels.includes(level));
+    const first = members[0];
+    const headLevel = normalizeFamilyLevel(value.headLevel) || first.level;
+    if (!headLevel) return null;
+    return {
+        id,
+        head,
+        headRank: Number.isFinite(value.headRank)
+            ? Number(value.headRank)
+            : (first.rank ?? 0),
+        headLevel,
+        headPhonetic: typeof value.headPhonetic === 'string' ? value.headPhonetic : '',
+        headTranslation: typeof value.headTranslation === 'string'
+            ? value.headTranslation
+            : '',
+        levels: uniqueLevels,
+        members,
+    };
+}
+
+/** `GET /api/vocabulary/word-families` — server paging/search/level/sort. */
+export async function fetchWordFamilyPage(
+    options: {
+        page?: number;
+        pageSize?: number;
+        q?: string;
+        level?: CefrLevel | '';
+        sort?: WordFamilySort;
+        signal?: AbortSignal;
+    } = {},
+): Promise<WordFamilyPage> {
+    const page = Math.max(1, Math.trunc(options.page ?? 1));
+    const pageSize = Math.min(
+        WORD_FAMILY_MAX_PAGE_SIZE,
+        Math.max(1, Math.trunc(options.pageSize ?? WORD_FAMILY_PAGE_SIZE)),
+    );
+    const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        sort: options.sort ?? 'rank',
+    });
+    const query = (options.q ?? '').trim();
+    if (query) params.set('q', query);
+    if (options.level) params.set('level', options.level);
+
+    const response = await apiFetch(
+        `/api/vocabulary/word-families?${params.toString()}`,
+        options.signal ? { signal: options.signal } : undefined,
+    );
+    if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        const detail = isRecord(body) && typeof body.detail === 'string'
+            ? body.detail
+            : `HTTP ${response.status}`;
+        throw new WordFamilyApiError(response.status, detail);
+    }
+    const data = await response.json().catch(() => null);
+    const record = isRecord(data) ? data : {};
+    const items = Array.isArray(record.items)
+        ? record.items
+            .map(normalizeWordFamilyRow)
+            .filter((item): item is WordFamilyRow => item !== null)
+        : [];
+    const total = Number.isFinite(record.total) ? Number(record.total) : items.length;
+    return {
+        items,
+        total,
+        page: Number.isFinite(record.page) ? Number(record.page) : page,
+        pageSize: Number.isFinite(record.pageSize) ? Number(record.pageSize) : pageSize,
+        hasMore: typeof record.hasMore === 'boolean'
+            ? record.hasMore
+            : page * pageSize < total,
+    };
+}
+
+export interface WordFamilyTableProps {
+    rows: readonly WordFamilyRow[];
+    /** Families whose member list is open (owned by the screen; resets on page/q). */
     expanded: ReadonlySet<string>;
-    onToggleExpand: (lemma: string) => void;
+    onToggleExpand: (familyId: string) => void;
     className?: string;
     listTestId?: string;
 }
 
-/** Desktop: lemma · phonetic · meaning · CEFR · form count · expand. */
-const LEMMA_DESKTOP_GRID =
+/** Desktop: head · phonetic · meaning · CEFR set · member count · expand. */
+const WORD_FAMILY_DESKTOP_GRID =
     'md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1.7fr)_auto_auto_2.25rem]';
 
-export function LemmaTable({
+/** `A1` (one level) or `A1–C1` (compact set, exact levels in the tooltip). */
+export function familyLevelRange(levels: readonly CefrLevel[]): string {
+    if (levels.length === 0) return '—';
+    if (levels.length === 1) return levels[0];
+    return `${levels[0]}–${levels[levels.length - 1]}`;
+}
+
+export function WordFamilyTable({
     rows,
     expanded,
     onToggleExpand,
     className,
-    listTestId = 'vocab-lemma-list',
-}: LemmaTableProps) {
+    listTestId = 'vocab-family-list',
+}: WordFamilyTableProps) {
     const { t } = useI18n();
 
     return (
         <div
             data-testid={listTestId}
             role="group"
-            aria-label={t('vocab.tab.lemma')}
+            aria-label={t('vocab.tab.wordFamily')}
             className={cn(className, 'overflow-hidden')}
         >
             <div
-                data-testid="vocab-lemma-header"
+                data-testid="vocab-family-header"
                 className={cn(
                     'hidden border-b border-line-subtle bg-surface-2/30 md:grid md:items-center md:gap-x-3 md:px-3 md:py-2 md:text-micro md:font-medium md:text-fg-muted',
-                    LEMMA_DESKTOP_GRID,
+                    WORD_FAMILY_DESKTOP_GRID,
                 )}
             >
                 <span>{t('vocab.col.word')}</span>
                 <span>{t('vocab.col.phonetic')}</span>
                 <span>{t('vocab.col.translation')}</span>
-                <span>{t('vocab.col.level')}</span>
-                <span className="text-right">{t('vocab.lemma.col.forms')}</span>
+                <span>{t('vocab.family.col.levels')}</span>
+                <span className="text-right">{t('vocab.family.col.members')}</span>
                 <span aria-hidden="true" />
             </div>
             <div className="divide-y divide-line-subtle">
                 {rows.map((row) => {
-                    const isExpanded = expanded.has(row.lemma);
-                    const phonetic = normalizePhonetic(row.phonetic);
-                    const translation = (row.translation || '').trim();
-                    const detailId = `vocab-lemma-detail-${row.lemma}`;
-                    const formsLabel = t('vocab.lemma.formsLabel', {
-                        count: row.forms.length,
+                    const isExpanded = expanded.has(row.id);
+                    const phonetic = normalizePhonetic(row.headPhonetic);
+                    const translation = (row.headTranslation || '').trim();
+                    const detailId = `vocab-family-detail-${row.id}`;
+                    const levelsText = familyLevelRange(row.levels);
+                    const levelsExact = row.levels.join('、');
+                    const membersLabel = t('vocab.family.membersLabel', {
+                        count: row.members.length,
                     });
                     return (
-                        <div key={row.lemma} data-word={row.lemma}>
+                        <div key={row.id} data-word={row.head}>
                             <div
-                                data-testid={`vocab-lemma-row-${row.lemma}`}
+                                data-testid={`vocab-family-row-${row.id}`}
+                                data-family-id={row.id}
+                                data-family-levels={row.levels.join(',')}
                                 role="button"
                                 tabIndex={0}
                                 aria-expanded={isExpanded}
                                 aria-controls={detailId}
                                 aria-label={`${isExpanded
-                                    ? t('vocab.lemma.collapse')
-                                    : t('vocab.lemma.expand')} ${row.lemma}`}
-                                onClick={() => onToggleExpand(row.lemma)}
+                                    ? t('vocab.family.collapse')
+                                    : t('vocab.family.expand')} ${row.head}`}
+                                onClick={() => onToggleExpand(row.id)}
                                 onKeyDown={(event) => {
                                     if (event.target !== event.currentTarget) return;
                                     if (event.key !== 'Enter' && event.key !== ' ') return;
                                     event.preventDefault();
-                                    onToggleExpand(row.lemma);
+                                    onToggleExpand(row.id);
                                 }}
                                 className={cn(
                                     'grid cursor-pointer items-center gap-x-2 gap-y-0.5 px-3 py-2 text-left transition-colors',
                                     'hover:bg-state-hover focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-inset',
                                     'md:min-h-12 md:gap-x-3 md:py-0',
                                     MOBILE_GRID,
-                                    LEMMA_DESKTOP_GRID,
+                                    WORD_FAMILY_DESKTOP_GRID,
                                 )}
                             >
                                 <div className="col-start-1 row-start-1 flex min-w-0 items-baseline gap-1.5 md:contents">
                                     <span
-                                        data-testid={`vocab-lemma-word-${row.lemma}`}
+                                        data-testid={`vocab-family-word-${row.id}`}
                                         className="min-w-0 truncate text-body-zh font-semibold text-fg-primary md:col-start-1 md:row-start-1"
                                     >
-                                        {row.lemma}
+                                        {row.head}
                                     </span>
                                     <span
-                                        data-testid={`vocab-lemma-ipa-${row.lemma}`}
+                                        data-testid={`vocab-family-ipa-${row.id}`}
                                         className="min-w-0 max-w-[45%] truncate text-caption tabular-nums text-fg-muted md:col-start-2 md:row-start-1 md:max-w-none"
                                     >
                                         {phonetic || '\u00A0'}
@@ -523,7 +696,7 @@ export function LemmaTable({
                                 </div>
 
                                 <span
-                                    data-testid={`vocab-lemma-translation-${row.lemma}`}
+                                    data-testid={`vocab-family-translation-${row.id}`}
                                     title={translation || undefined}
                                     className="col-start-1 row-start-2 min-w-0 truncate text-left text-ui text-fg-secondary md:col-start-3 md:row-start-1"
                                 >
@@ -531,26 +704,28 @@ export function LemmaTable({
                                 </span>
 
                                 <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-1.5 md:contents">
-                                    <span className="inline-flex md:col-start-4 md:row-start-1">
-                                        <LevelBadge
-                                            level={row.level || '—'}
-                                            testId={`vocab-lemma-badge-${row.lemma}`}
-                                            title={row.level ? `CEFR ${row.level}` : undefined}
-                                        />
+                                    <span
+                                        data-testid={`vocab-family-levels-${row.id}`}
+                                        title={levelsExact
+                                            ? t('vocab.family.levelsTitle', { levels: levelsExact })
+                                            : undefined}
+                                        className="inline-flex shrink-0 items-center rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 text-micro font-medium tabular-nums text-brand-300 md:col-start-4 md:row-start-1"
+                                    >
+                                        {levelsText}
                                     </span>
                                     <span
-                                        data-testid={`vocab-lemma-forms-count-${row.lemma}`}
-                                        title={formsLabel}
+                                        data-testid={`vocab-family-members-count-${row.id}`}
+                                        title={membersLabel}
                                         className="text-right text-caption tabular-nums text-fg-muted md:col-start-5 md:row-start-1"
                                     >
-                                        {row.forms.length}
+                                        {row.members.length}
                                     </span>
                                     <span
-                                        data-testid={`vocab-lemma-expand-${row.lemma}`}
+                                        data-testid={`vocab-family-expand-${row.id}`}
                                         aria-hidden="true"
                                         title={isExpanded
-                                            ? t('vocab.lemma.collapse')
-                                            : t('vocab.lemma.expand')}
+                                            ? t('vocab.family.collapse')
+                                            : t('vocab.family.expand')}
                                         className="inline-flex h-control-sm w-8 items-center justify-center md:col-start-6 md:row-start-1"
                                     >
                                         <ChevronDown
@@ -570,22 +745,37 @@ export function LemmaTable({
                                     data-testid={detailId}
                                     className="overflow-hidden border-t border-line-subtle px-3 pb-3.5 pt-3 md:px-4"
                                 >
-                                    <p className="text-micro text-fg-muted">{formsLabel}</p>
+                                    <p className="text-micro text-fg-muted">{membersLabel}</p>
                                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                                        {row.forms.map((form) => (
+                                        {row.members.map((member) => (
                                             <span
-                                                key={form}
-                                                data-testid={`vocab-lemma-form-${row.lemma}-${form}`}
-                                                className="rounded-control border border-line-subtle bg-surface-2/60 px-2 py-0.5 text-caption text-fg-secondary"
+                                                key={member.lemma}
+                                                data-testid={`vocab-family-member-${row.id}-${member.lemma}`}
+                                                title={member.level
+                                                    ? `CEFR ${member.level}`
+                                                    : t('vocab.family.outsideHint')}
+                                                className="inline-flex items-center gap-1.5 rounded-control border border-line-subtle bg-surface-2/60 px-2 py-0.5 text-caption text-fg-secondary"
                                             >
-                                                {form}
+                                                <span
+                                                    data-testid={`vocab-family-member-word-${row.id}-${member.lemma}`}
+                                                >
+                                                    {member.lemma}
+                                                </span>
+                                                {member.level ? (
+                                                    <LevelBadge
+                                                        level={member.level}
+                                                        testId={`vocab-family-member-level-${row.id}-${member.lemma}`}
+                                                    />
+                                                ) : (
+                                                    <span
+                                                        data-testid={`vocab-family-member-level-${row.id}-${member.lemma}`}
+                                                        className="text-fg-muted"
+                                                    >
+                                                        —
+                                                    </span>
+                                                )}
                                             </span>
                                         ))}
-                                        {row.forms.length === 0 && (
-                                            <span className="text-caption text-fg-muted">
-                                                {t('vocab.lemma.noForms')}
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
                             )}
