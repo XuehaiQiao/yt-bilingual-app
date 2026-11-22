@@ -72,6 +72,46 @@ FEATURE_LABELS = {
     "discover": "内容发现",
 }
 
+# ---------------------------------------------------------------------------
+# 主体（P0-05）：用户 / 游客 / ops / sponsored
+# ---------------------------------------------------------------------------
+#
+# ``ai_usage.user_id`` 的取值空间就是「主体」：
+#
+# - 真实账号：``<user uuid>``；
+# - 游客：``guest:<sha256>``（受日配额/预算约束，但不计费）；
+# - 运维/预热：``ops:<name>``（如 ``ops:warm-library``）；
+# - 赞助/市场：``sponsored:<name>``。
+#
+# 非用户主体**不占用户配额、不扣余额**（见 ``ai/quota.check_and_consume_quota``
+# 与 ``billing._is_billable_user``），但成本照进 ``ai_usage`` 供审计。前缀是唯一
+# 判定入口（``config.AI_OPS_SUBJECT_PREFIXES``），不要在别处各写一份。
+OPS_BILLING_STATUS = "ops_warm"
+SPONSORED_BILLING_STATUS = "sponsored"
+
+
+def _ops_prefixes() -> tuple[str, ...]:
+    prefixes = getattr(config, "AI_OPS_SUBJECT_PREFIXES", None)
+    if not prefixes:
+        return ("ops:", "sponsored:")
+    return tuple(str(item) for item in prefixes if str(item))
+
+
+def is_ops_subject(user_id: object) -> bool:
+    """``user_id`` 是否是非用户主体（``ops:`` / ``sponsored:`` 前缀）。"""
+    if not isinstance(user_id, str) or not user_id:
+        return False
+    return user_id.startswith(_ops_prefixes())
+
+
+def subject_billing_status(user_id: object) -> str | None:
+    """非用户主体的账本 ``billing_status``；用户/游客/匿名返回 ``None``。"""
+    if not is_ops_subject(user_id):
+        return None
+    if user_id.startswith("sponsored:"):
+        return SPONSORED_BILLING_STATUS
+    return OPS_BILLING_STATUS
+
 # 目录里一个已知价都没有时的保守兜底（非官方报价，只在异常配置下使用）。
 # 正常目录（gemini-2.5-flash 有价）不会走到这里，未知价按已知最贵计。
 _EMERGENCY_PRICE_IN = 3.0
@@ -118,15 +158,22 @@ class QuotaExceeded(RuntimeError):
         """统一错误体（M7a）：前端按 ``code`` 识别，不解析中文。
 
         功能日配额 → ``quota_exceeded``；用户/全站日预算 → ``budget_exceeded``
-        （两者都是 429，但用户可采取的动作不同）。
+        （两者都是 429，但用户可采取的动作不同）。功能配额额外带
+        ``used`` / ``limit``（契约 ``CONTRACTS/schemas/error.json``），且
+        ``limit`` 取**本次判断用的 config 上限**，不是 ``ai_quota.limit_units``
+        审计快照——同一天只有一个判定口径。
         """
-        return {
+        payload = {
             "detail": str(self),
             "code": "quota_exceeded" if self.scope == "feature" else "budget_exceeded",
             "scope": self.scope,
             "feature": self.feature,
             "day": self.day,
         }
+        if self.used_units is not None and self.limit_units is not None:
+            payload["used"] = int(self.used_units)
+            payload["limit"] = int(self.limit_units)
+        return payload
 
 
 def now_ms() -> int:
@@ -407,8 +454,12 @@ def record_usage(
     """追加一条 AI 用量记录，返回落库行；默认**任何失败只记日志并返回 None**。
 
     参数：
-    - ``user_id``：归属用户；``None`` 时回落到当前请求 ContextVar，仍为空则
-      记为匿名（``user_id IS NULL``，计入全局预算，不出现在「用户 X」查询里）；
+    - ``user_id``：归属主体；``None`` 时回落到当前请求 ContextVar，仍为空则
+      记为匿名（``user_id IS NULL``，计入全局预算，不出现在「用户 X」查询里）。
+      可以是真实用户 id、游客 ``guest:<sha256>``、或非用户主体
+      ``ops:<name>`` / ``sponsored:<name>``（见 :func:`is_ops_subject`）；
+      非用户主体强制 ``billable=0``、``billing_status='ops_warm'/'sponsored'``
+      （调用方误传 ``billable=1`` 也会被纠正——ops 绝不能扣用户余额）；
     - ``feature``：``translate`` / ``summary`` / ``define`` / ``local_show`` / ``quiz``；
     - ``model_id``：目录 id（用于定价；未知/缺价按已知最贵计）；
     - ``input_tokens`` / ``output_tokens``：provider usage，负数按 0；
@@ -432,6 +483,12 @@ def record_usage(
     # 未显式传 user_id 时跟随请求身份：登录用户 id 或游客 `guest:<sha256>`。
     # 游客用量因此仍能进入全站日预算，不会被「匿名」无限刷。
     resolved_user = user_id if user_id is not None else storage.active_identity()
+    # 非用户主体（ops:/sponsored:）在**写入口**强制不可计费：这是唯一收口点，
+    # 调用方（llm 的未计费路径、脚本、测试）无论传什么都改不坏这个不变量。
+    subject_status = subject_billing_status(resolved_user)
+    if subject_status is not None:
+        billable = 0
+        billing_status = subject_status
     tokens_in = _int_tokens(input_tokens)
     tokens_out = _int_tokens(output_tokens)
     call_count = _int_tokens(calls)
@@ -625,6 +682,10 @@ def daily_usage(
     - ``feature`` 给定时只看该功能；不给时聚合全部功能，并返回各功能的配额行；
     - 账本部分来自 ``ai_usage``（花费/tokens/calls），配额部分来自 ``ai_quota``
       （已用/日限额/剩余）。
+
+    ⚠️ P0-05 起这是**历史只读视图**：``quota.limit_units`` 是消费时的审计快照，
+    不是判定依据。要展示「今天上限/剩余」请用 ``ai.quota.snapshot()``（limit 取
+    config，单一事实源）。
     """
     day = day or day_of()
     totals = _usage_totals(user_id, day, feature)
@@ -684,10 +745,13 @@ _UPSERT_QUOTA_SQL = (
     "ON CONFLICT(user_id, day, feature) DO UPDATE SET limit_units = excluded.limit_units"
 )
 
+# 判定只用**本次传入的 limit（config）**，不读行里的 limit_units：后者只是
+# 「最近一次成功消费时的快照」，供审计/排查（P0-05）。这样另一个进程用不同的
+# env 上限把同行写成 400，也不会让本进程按 400 判断——同一天只有一个判定口径。
 _CONSUME_QUOTA_SQL = (
     "UPDATE ai_quota SET used_units = used_units + ? "
     "WHERE user_id = ? AND day = ? AND feature = ? "
-    "AND used_units + ? <= limit_units"
+    "AND used_units + ? <= ?"
 )
 
 
@@ -704,7 +768,11 @@ def check_and_consume_quota(
 
     - ``user_id=None``：无法归属，直接放行（``anonymous=True``），不写库；
       正常 API 请求由调用方传登录用户 id 或游客 ``guest:<sha256>``（M1 ⑧）；
+      非用户主体（``ops:`` / ``sponsored:``）也照写本表，但键是主体 id，
+      不会占用户 ``(user_id, day, feature)`` 行（见 ``ai.quota``）；
     - ``limit`` 缺省时从 ``ai.quota.limit_for(feature)`` 取（延迟导入避免环）；
+      **判定与报错都用这个值**；``ai_quota.limit_units`` 只写审计快照，
+      不参与比较（P0-05：同一天不再有两套上限）；
     - 表不存在时抛 ``sqlite3.OperationalError``，由 ``ai.quota`` 的包装层决定
       是否 fail-open（运行时未迁移时不能把翻译整条链路打死）；
     - ``target_lang`` 只作记录维度（返回在结果里），**不拆限额**：P0 仍是
@@ -750,7 +818,7 @@ def check_and_consume_quota(
         conn.execute("BEGIN IMMEDIATE")
         conn.execute(_UPSERT_QUOTA_SQL, (user_id, day, feature, limit))
         cursor = conn.execute(
-            _CONSUME_QUOTA_SQL, (units, user_id, day, feature, units)
+            _CONSUME_QUOTA_SQL, (units, user_id, day, feature, units, limit)
         )
         if cursor.rowcount != 1:
             row = conn.execute(
@@ -759,13 +827,12 @@ def check_and_consume_quota(
                 (user_id, day, feature),
             ).fetchone()
             used = int(row["used_units"]) if row is not None else 0
-            stored_limit = int(row["limit_units"]) if row is not None else limit
             conn.rollback()
             raise QuotaExceeded(
                 feature,
                 day=day,
                 used_units=used,
-                limit_units=stored_limit,
+                limit_units=limit,
                 units=units,
                 user_id=user_id,
             )
@@ -784,7 +851,7 @@ def check_and_consume_quota(
         conn.close()
 
     used = int(row["used_units"])
-    limit_value = int(row["limit_units"])
+    limit_value = limit
     return {
         "allowed": True,
         "anonymous": False,

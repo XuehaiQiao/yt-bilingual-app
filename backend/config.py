@@ -460,6 +460,15 @@ def _int_env(name: str, default: int) -> int:
     return value
 
 
+def _csv_env(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    """读逗号分隔的字符串列表；缺失/全空回落默认值。"""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    parts = tuple(part.strip() for part in raw.split(",") if part.strip())
+    return parts or default
+
+
 def _float_env(name: str, default: float) -> float:
     """读非负浮点环境变量；缺失/非法/负数回落默认值并打印一次警告。"""
     raw = os.environ.get(name, "").strip()
@@ -535,6 +544,24 @@ AI_DAILY_QUOTA_COURSE_GENERATION = _int_env(
 # 实际成本目标调；检查依据是 ai_usage 当日 SUM，不是前端估价。
 AI_DAILY_BUDGET_USER_USD = _float_env("AI_DAILY_BUDGET_USER_USD", 1.0)
 AI_DAILY_BUDGET_GLOBAL_USD = _float_env("AI_DAILY_BUDGET_GLOBAL_USD", 20.0)
+
+# --- 运维/赞助主体（P0-05：预热不占用户额度）---
+#
+# 以这些前缀开头的 user_id 是**非用户主体**（如 ``ops:warm-library``、
+# ``sponsored:library-launch``）：不写用户 ``ai_quota``、不扣余额，只受
+# 「独立主体日配额 + 全局日预算」约束；``ai_usage`` 照记 tokens/成本，但
+# ``billable=0``、``billing_status='ops_warm'`` / ``'sponsored'``，便于按主体审计。
+# 判定逻辑见 ``ai/ledger.is_ops_subject()``（唯一入口）。
+AI_OPS_SUBJECT_PREFIXES = _csv_env(
+    "AI_OPS_SUBJECT_PREFIXES", ("ops:", "sponsored:")
+)
+
+# 非用户主体的**独立**日配额（按 feature，0 = 不设功能级上限，只受全局日预算）。
+# 注意与用户额度语义不同：用户额度的 0 表示「关闭该功能」，ops 的 0 表示
+# 「不限功能次数」。预留 analysis 给免费库预热；需要别的功能时在此加一项。
+AI_OPS_DAILY_QUOTA = {
+    "analysis": _int_env("AI_OPS_DAILY_QUOTA_ANALYSIS", 0),
+}
 
 # --- 余额与 AI 计费（M3a，见 billing.py / specs/034-balance-billing） ---
 #

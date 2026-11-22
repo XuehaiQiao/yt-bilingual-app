@@ -1234,11 +1234,16 @@ def ensure_affordable(
 
 
 def _is_billable_user(user_id: object) -> bool:
-    """真实账号才计费；游客 ``guest:<sha256>`` 与匿名不计费（无余额账户）。"""
+    """真实账号才计费；游客 ``guest:<sha256>`` 与非用户主体（ops/sponsored）不计费。
+
+    P0-05：``ops:`` / ``sponsored:`` 主体没有用户余额账户，不能预占/扣款；
+    它们的用量仍进 ``ai_usage``（billable=0）供审计，见 ``ai.ledger``。
+    """
     return (
         isinstance(user_id, str)
         and bool(user_id)
         and not user_id.startswith("guest:")
+        and not ledger.is_ops_subject(user_id)
     )
 
 
@@ -1266,12 +1271,15 @@ def reserve(
     ``BEGIN IMMEDIATE`` 内：先把自己的过期 hold 标 expired → 算
     ``available = 余额 − active holds`` → 不足则回滚并抛
     :class:`InsufficientBalance`；否则插 ``credit_holds``。
+
+    非计费主体（游客 ``guest:`` / ``ops:`` / ``sponsored:``）不发预占，返回
+    ``{}``（falsy）——``llm._billing_finish`` 据此走 ``billable=0`` 的账本路径。
     """
     amount = int(amount_micro_usd)
     if amount <= 0:
         raise InvalidBillingRequest("预占金额必须大于 0。")
     if not _is_billable_user(user_id):
-        return {"id": None, "userId": user_id, "amountMicroUsd": 0, "anonymous": True}
+        return {}
     now = now_ms() if now_ms_value is None else int(now_ms_value)
     ttl = (
         int(getattr(config, "BILLING_HOLD_TTL_SECONDS", 1800))
@@ -1648,6 +1656,23 @@ def billing_summary(
         by_day = _group_sum(conn, "usage_date", where, params)
         by_model = _group_sum(conn, "model_id", where, params)
         by_feature = _group_sum(conn, "feature", where, params)
+        # P0-05：非用户主体（ops:/sponsored:）的成本按主体单列，便于运维/管理台
+        # 回答「预热这轮花了多少」；不展开普通用户 id，避免汇总接口泄露用户清单。
+        subject_prefixes = tuple(
+            str(item) for item in getattr(config, "AI_OPS_SUBJECT_PREFIXES", ()) if str(item)
+        ) or ("ops:", "sponsored:")
+        subject_rows = conn.execute(
+            "SELECT user_id AS subject, COUNT(*) AS rows, "
+            "SUM(COALESCE(calls, 0)) AS calls, "
+            "SUM(COALESCE(input_tokens, 0)) AS input_tokens, "
+            "SUM(COALESCE(output_tokens, 0)) AS output_tokens, "
+            "SUM(COALESCE(est_cost_usd, 0)) AS est_cost_usd, "
+            "SUM(COALESCE(cost_micro_usd, 0)) AS cost_micro_usd "
+            f"FROM ai_usage WHERE ({where}) AND ("
+            + " OR ".join("user_id LIKE ?" for _ in subject_prefixes)
+            + ") GROUP BY user_id ORDER BY est_cost_usd DESC",
+            [*params, *(f"{prefix}%" for prefix in subject_prefixes)],
+        ).fetchall()
         provider_rows = conn.execute(
             "SELECT model_id, provider FROM ai_usage WHERE " + where + " "
             "GROUP BY model_id, provider",
@@ -1716,6 +1741,24 @@ def billing_summary(
             for row in by_model
         ],
         "byFeature": [_entry(row) for row in by_feature],
+        "bySubject": [
+            {
+                "subject": row["subject"],
+                "kind": (
+                    "sponsored"
+                    if str(row["subject"] or "").startswith("sponsored:")
+                    else "ops"
+                ),
+                "rows": int(row["rows"] or 0),
+                "calls": int(row["calls"] or 0),
+                "inputTokens": int(row["input_tokens"] or 0),
+                "outputTokens": int(row["output_tokens"] or 0),
+                # 非用户主体 billable=0：est 是估算上界，billed 恒为 0。
+                "estimatedCostUsd": round(float(row["est_cost_usd"] or 0.0), 6),
+                "billedCostMicroUsd": int(row["cost_micro_usd"] or 0),
+            }
+            for row in subject_rows
+        ],
         "unpricedModels": unpriced_models,
         "holds": {
             "activeCount": int(active_holds["count"] or 0),

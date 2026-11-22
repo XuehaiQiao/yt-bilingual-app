@@ -813,6 +813,7 @@ async def ensure_analysis(
     content_hash: str | None = None,
     model: str | None = None,
     user_id: str | None = None,
+    subject: str | None = None,
 ) -> dict:
     """确保一份内容在某等级/语言下的教学分析（缓存命中零模型调用）。
 
@@ -823,7 +824,13 @@ async def ensure_analysis(
 
     ``content_hash`` 参数只做一致性校验：传了就必须等于按 blocks 计算出的
     哈希，否则 400（防止把 A 内容的分析写进 B 内容的缓存键）。
+
+    ``subject``（P0-05）是计费/配额主体，优先于兼容旧名的 ``user_id``：
+    可以是真实用户 id、游客 ``guest:<sha256>``、或非用户主体
+    ``ops:<name>`` / ``sponsored:<name>``（后者不占用户额度/余额，见
+    ``ai.quota`` 与 ``ai.ledger``）。缓存键不含 user_id——分析结果全局复用。
     """
+    actor = subject or user_id
     normalized = normalize_blocks(blocks)
     if not normalized:
         raise AnalysisInvalidRequest("没有可分析的英文内容。")
@@ -854,7 +861,7 @@ async def ensure_analysis(
         # 只有真的要走模型才占一条「教学分析」日配额（缓存命中的上面已返回）。
         await asyncio.to_thread(
             quota.check_and_consume_quota,
-            user_id,
+            actor,
             FEATURE,
             1,
             target_lang=lang,
@@ -872,7 +879,7 @@ async def ensure_analysis(
                 canonical_level,
                 lang,
                 model=model,
-                user_id=user_id,
+                user_id=actor,
                 candidates=candidates,
             )
             parts.append(part)

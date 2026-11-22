@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""免费库教学分析预热（specs/024 2026-11-22 修订 + specs/028）。
+"""免费库教学分析预热（specs/024 2026-11-22 修订 + specs/028 + P0-05）。
 
 把 ``content/library`` 的 55 个视频 + 67 篇文章，按 ``level × target_lang`` 逐条
 走**与线上按需生成完全相同的路径**（``teaching_analysis.ensure_analysis``），
@@ -8,37 +8,51 @@
 
 用法（仓库根目录）::
 
-    # 只看待生成条数与预估费用（不调模型、不写库）
-    backend/venv/bin/python scripts/warm_library_analysis.py --user-id <uid> --dry-run
-
-    # 真跑（中文全部 6 档；确认后自动跳过已有缓存、可随时中断续跑）
-    backend/venv/bin/python scripts/warm_library_analysis.py --user-id <uid> --yes
+    # 默认「运维主体」：不占任何用户的日配额与余额，成本照记 ai_usage 审计
+    backend/venv/bin/python scripts/warm_library_analysis.py --dry-run
+    backend/venv/bin/python scripts/warm_library_analysis.py --yes
 
     # 指定档位/语言/并发（档位可用 A1–C2 或 liftoff…supernova）
-    backend/venv/bin/python scripts/warm_library_analysis.py --user-id <uid> \
+    backend/venv/bin/python scripts/warm_library_analysis.py \
         --level A1,A2,B1,B2,C1 --lang zh-CN --concurrency 2 --yes
+
+    # 换一个运维/赞助主体名（必须是 ops: / sponsored: 前缀）
+    backend/venv/bin/python scripts/warm_library_analysis.py \
+        --subject sponsored:library-launch --yes
+
+    # 旧行为（兼容）：以某个真实用户身份跑，会消耗该用户的日配额与余额；
+    # 必须显式确认，否则拒绝执行
+    backend/venv/bin/python scripts/warm_library_analysis.py \
+        --user-id <uid> --confirm-user-billing --yes
 
 行为：
 
+- **主体（P0-05）**：默认 ``ops:warm-library``。ops/sponsored 主体不会写用户
+  ``ai_quota``、不会扣余额，只受 ``AI_OPS_DAILY_QUOTA_ANALYSIS``（可选独立配额，
+  0 = 不限功能次数）与全局日预算 ``AI_DAILY_BUDGET_GLOBAL_USD`` 约束；
+  ``ai_usage`` 记 tokens/成本（``billable=0``、``billing_status='ops_warm'``）
+  供审计。这样不会再出现「预热 374 次把用户当天分析额度打满」。
+  旧 ``--user-id`` 保留但必须配 ``--confirm-user-billing`` 显式确认。
 - **断点续跑**：同一 ``(content_hash, level, target_lang, analysis_version)``
   已缓存就跳过，不扣费；中途失败下次再跑只补缺失项；
-- **计费**：走既有 ``feature=analysis`` 配额/余额/账本路径，按 ``--user-id``
-  归属；缓存命中不写用量。用户不存在直接报错（不猜、不代开）；
+- **计费**：走既有 ``feature=analysis`` 配额/余额/账本路径（用户主体）或
+  ops 主体路径（默认）；缓存命中不写用量。用户主体要求用户已存在（不猜、不代开）；
 - **并发 1–2**（默认 1）；每条形如
   ``video <id> level=<档> lang=<lang> 生成 in=… out=… $…``，末尾汇总；
 - ``--dry-run``（或没带 ``--yes``）只统计条数/费用：按真实 prompt 文本估算
   输入 token、按候选词全量释义估算输出 token，再乘目标模型当前价目表，属
   **保守上界**；实际花费以逐条 ``ai_usage`` 为准。
 
-日配额：``analysis`` 默认每用户每天 30 次（``AI_DAILY_QUOTA_ANALYSIS``），远小于
-全量预热条数。脚本开跑前会检查「今日剩余配额」，不够时直接给出可复制的重跑
-命令（用环境变量只提高本次进程的上限，不改 .env、不写库配置）::
+日配额（用户模式）：``analysis`` 默认每用户每天 30 次，远小于全量预热条数；
+脚本开跑前会用 ``ai.quota.snapshot()``（上限只取 config）检查今日剩余，不够时
+给出可复制的重跑命令（用环境变量只提高本次进程的上限，不改 .env）：:
 
-    AI_DAILY_QUOTA_ANALYSIS=4000 backend/venv/bin/python scripts/warm_library_analysis.py --user-id <uid> --yes
+    AI_DAILY_QUOTA_ANALYSIS=4000 backend/venv/bin/python scripts/warm_library_analysis.py \
+        --user-id <uid> --confirm-user-billing --yes
 
-余额/日预算（``AI_DAILY_BUDGET_USER_USD`` 默认 $1）仍是真实硬闸：预估费用
-超过余额/预算时脚本只警告（预估是上界），实际超限会在 429/402 处停下——已生成
-的部分都已落缓存，次日/加额后可续跑。
+余额/日预算（用户模式）仍是真实硬闸：预估费用超过余额/预算时脚本只警告
+（预估是上界），实际超限会在 429/402 处停下——已生成的部分都已落缓存，
+次日/加额后可续跑。ops 模式没有用户余额闸，只有全局日预算。
 
 退出码：0 全部完成（含本来就已缓存）；1 有失败条目；2 环境/迁移/参数问题。
 """
@@ -79,6 +93,9 @@ CEFR_TO_LEVEL = {
 }
 DEFAULT_LEVELS = ",".join(teaching_analysis.LEVEL_IDS)
 DEFAULT_LANG = languages.DEFAULT_TARGET_LANG
+
+# P0-05：默认以「运维主体」跑——不占任何用户的日配额与余额；成本照记 ai_usage。
+DEFAULT_OPS_SUBJECT = "ops:warm-library"
 
 # token 估算系数（保守上界）：英文按 ~1.3 token/词、CJK 按 ~1.7 字符/token、
 # 标点与 JSON 结构按 ~4 字符/token。只用于 --dry-run 预估，不参与计费。
@@ -147,6 +164,51 @@ class Estimate:
 def _fail(message: str) -> None:
     print(f"错误：{message}", file=sys.stderr)
     raise SystemExit(2)
+
+
+# ---------------------------------------------------------------------------
+# 主体解析（P0-05）：默认 ops，用户模式必须显式确认
+# ---------------------------------------------------------------------------
+
+def resolve_actor(
+    user_id: str | None,
+    subject: str | None,
+    *,
+    confirm_user_billing: bool,
+    real_run: bool,
+) -> tuple[str, str]:
+    """``(--user-id, --subject, 确认, 是否真跑)`` → ``(mode, actor)``。
+
+    - mode ``"ops"``：actor 是 ``ops:`` / ``sponsored:`` 主体，不占用户配额/余额；
+    - mode ``"user"``：兼容旧行为，actor 是真实用户 id——真跑时必须显式确认
+      ``--confirm-user-billing``（会消耗该用户的日配额与余额），dry-run 不消耗
+      所以不要求确认。
+
+    非法参数抛 ``ValueError``（``main`` 转成退出码 2）。
+    """
+    if user_id and subject:
+        raise ValueError("--user-id 与 --subject 只能二选一")
+    if user_id:
+        actor = str(user_id).strip()
+        if not actor:
+            raise ValueError("--user-id 不能为空")
+        if real_run and not confirm_user_billing:
+            raise ValueError(
+                "--user-id 会以该用户身份消耗日配额与余额；确需旧行为请加 "
+                "--confirm-user-billing，或去掉 --user-id 使用默认 ops 主体"
+                f"（{DEFAULT_OPS_SUBJECT}）"
+            )
+        return "user", actor
+
+    actor = (subject or DEFAULT_OPS_SUBJECT).strip()
+    if not actor:
+        raise ValueError("--subject 不能为空")
+    if not ledger.is_ops_subject(actor):
+        raise ValueError(
+            f"--subject 必须是运维/赞助主体（{config.AI_OPS_SUBJECT_PREFIXES} 前缀），"
+            f"收到 {actor!r}；真实用户请用 --user-id + --confirm-user-billing"
+        )
+    return "ops", actor
 
 
 def _parse_levels(raw: str) -> list[str]:
@@ -229,16 +291,20 @@ def _table_exists(name: str) -> bool:
     return row is not None
 
 
-def _preflight(user_id: str, *, real_run: bool) -> dict:
-    """身份/迁移/模型与配额预检；返回可复用的环境信息。"""
+def _preflight(mode: str, actor: str, *, real_run: bool) -> dict:
+    """身份/迁移/模型与计费预检；返回可复用的环境信息。"""
     db_path = config.AUTH_DB_PATH
     if not db_path or not Path(db_path).is_file():
         _fail(
             f"数据库不存在：{db_path!r}（先跑 alembic upgrade head，或用 AUTH_DB_PATH 指向线上库）"
         )
-    user = auth_db.get_user_by_id(user_id)
-    if user is None:
-        _fail(f"--user-id 不存在：{user_id!r}（不会自动创建账号）")
+    user = None
+    if mode == "user":
+        user = auth_db.get_user_by_id(actor)
+        if user is None:
+            _fail(f"--user-id 不存在：{actor!r}（不会自动创建账号）")
+    elif not ledger.is_ops_subject(actor):
+        _fail(f"内部错误：主体 {actor!r} 不是 ops/sponsored 前缀")
     if not _table_exists(teaching_analysis.TABLE):
         _fail("缺少 content_teaching_analysis 表（先运行 `backend/venv/bin/alembic upgrade head`）")
 
@@ -253,18 +319,21 @@ def _preflight(user_id: str, *, real_run: bool) -> dict:
         if billing.price_for_model(model) is None:
             _fail(f"模型 {model} 没有可核实单价（model_prices），严格计费会 503 model_unpriced")
 
-    return {"user": user, "model": model, "chain": chain}
+    return {"user": user, "model": model, "chain": chain, "mode": mode, "actor": actor}
 
 
-def _quota_status(user_id: str) -> tuple[int, int]:
-    """(已用, 日上限)；读不到配额表时按 fail-open 返回 (0, 0 表示未知)。"""
-    limit = int(getattr(config, "AI_DAILY_QUOTA_ANALYSIS", 0) or 0)
+def _quota_snapshot(actor: str) -> dict:
+    """今日 analysis 配额快照：上限只取 config（用户额度 / ops 独立配额）。"""
     try:
-        usage = ledger.daily_usage(user_id, teaching_analysis.FEATURE)
+        return quota.snapshot(actor, teaching_analysis.FEATURE)
     except Exception:  # noqa: BLE001 - 配额表不可用时运行期 fail-open
-        return 0, 0
-    used = int(((usage.get("quota") or {}).get("used_units")) or 0)
-    return used, limit
+        return {
+            "used_units": 0,
+            "limit_units": None,
+            "remaining": None,
+            "limit_source": "config",
+            "independent": ledger.is_ops_subject(actor),
+        }
 
 
 def _price_for_estimate(model_id: str) -> tuple[float, float, str]:
@@ -376,7 +445,7 @@ def _fmt_usd(value: float) -> str:
     return f"${value:.4f}" if value >= 0.0001 else f"${value:.6f}"
 
 
-async def _run_tasks(tasks: list[Task], user_id: str, concurrency: int) -> dict:
+async def _run_tasks(tasks: list[Task], actor: str, concurrency: int) -> dict:
     stats = {
         "generated": 0,
         "failed": 0,
@@ -406,7 +475,7 @@ async def _run_tasks(tasks: list[Task], user_id: str, concurrency: int) -> dict:
                     task.level,
                     task.lang,
                     content_ref=f"library:{task.content.entry_id}",
-                    user_id=user_id,
+                    subject=actor,
                 )
             except (QuotaExceeded, billing.BillingError) as exc:
                 stats["failed"] += 1
@@ -473,7 +542,24 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="免费库视频/文章教学分析预热（按 level × target_lang 写全局缓存）",
     )
-    parser.add_argument("--user-id", required=True, help="计费归属用户 id（必须已存在）")
+    parser.add_argument(
+        "--user-id",
+        default=None,
+        help="兼容旧行为：以真实用户身份跑（会消耗其日配额与余额；真跑需 --confirm-user-billing）",
+    )
+    parser.add_argument(
+        "--confirm-user-billing",
+        action="store_true",
+        help="显式确认 --user-id 会消耗该用户的日配额与余额",
+    )
+    parser.add_argument(
+        "--subject",
+        default=None,
+        help=(
+            "运维/赞助主体（必须是 ops:/sponsored: 前缀；"
+            f"默认 {DEFAULT_OPS_SUBJECT}，不占用户额度与余额）"
+        ),
+    )
     parser.add_argument(
         "--level",
         default=DEFAULT_LEVELS,
@@ -489,80 +575,137 @@ def main(argv: list[str] | None = None) -> int:
     langs = _parse_langs(args.lang)
     real_run = bool(args.yes and not args.dry_run)
 
-    env = _preflight(args.user_id, real_run=real_run)
+    try:
+        mode, actor = resolve_actor(
+            args.user_id,
+            args.subject,
+            confirm_user_billing=args.confirm_user_billing,
+            real_run=real_run,
+        )
+    except ValueError as exc:
+        _fail(str(exc))
+
+    env = _preflight(mode, actor, real_run=real_run)
     model_id = env["model"]
     contents = _load_contents()
     pending, cached = _build_plan(contents, levels, langs)
     estimates = [_estimate_task(task, model_id) for task in pending]
+    subject_note = (
+        "真实用户：消耗该用户日配额与余额"
+        if mode == "user"
+        else "运维/赞助主体：不占用户额度与余额，成本记 ai_usage 审计"
+    )
+    print(f"主体：{actor}（{subject_note}）")
     _print_plan(contents, levels, langs, pending, cached, model_id, estimates)
     estimated_cost = sum(item.cost_usd for item in estimates)
+
+    if mode == "user":
+        actor_args = ["--user-id", actor, "--confirm-user-billing"]
+        quota_env = "AI_DAILY_QUOTA_ANALYSIS"
+    else:
+        actor_args = ["--subject", actor]
+        quota_env = "AI_OPS_DAILY_QUOTA_ANALYSIS"
+    rerun_tail = (
+        f"{' '.join(actor_args)} --level {','.join(levels)} "
+        f"--lang {','.join(langs)} --concurrency {args.concurrency} --yes"
+    )
 
     if not real_run:
         if not args.dry_run:
             print("未带 --yes：按 dry-run 处理，未调用模型、未写库。")
         else:
             print("dry-run：未调用模型、未写库。")
-        if pending:
-            used, limit = _quota_status(args.user_id) if _table_exists("ai_quota") else (0, 0)
-            if limit:
-                print(f"今日 analysis 配额：已用 {used}/{limit}；本次待生成 {len(pending)}。")
-                if len(pending) > max(0, limit - used):
-                    print(
-                        f"提示：配额不足，真跑前可临时提高本次进程上限："
-                        f"AI_DAILY_QUOTA_ANALYSIS={used + len(pending)} "
-                        f"backend/venv/bin/python scripts/warm_library_analysis.py "
-                        f"--user-id {args.user_id} --level {','.join(levels)} "
-                        f"--lang {','.join(langs)} --concurrency {args.concurrency} --yes"
-                    )
+        snapshot = _quota_snapshot(actor)
+        used = int(snapshot.get("used_units") or 0)
+        limit = snapshot.get("limit_units")
+        if limit is None:
+            global_limit = float(getattr(config, "AI_DAILY_BUDGET_GLOBAL_USD", 0) or 0)
+            print(
+                f"独立配额：未设功能级上限（只受全局日预算 ${global_limit:.2f}）；"
+                f"今日已用 {used}。"
+            )
+        else:
+            print(
+                f"今日 analysis 配额（上限取 config）：已用 {used}/{limit}；"
+                f"本次待生成 {len(pending)}。"
+            )
+            if pending and len(pending) > max(0, limit - used):
+                print(
+                    f"提示：配额不足，真跑前可临时提高本次进程上限："
+                    f"{quota_env}={used + len(pending)} "
+                    f"backend/venv/bin/python scripts/warm_library_analysis.py {rerun_tail}"
+                )
         return 0
 
     if not pending:
         print("所有内容/档位/语言都已有缓存，无需生成。")
         return 0
 
-    user = env["user"]
-    try:
-        balance = billing.get_balance(user["id"])
-    except billing.BillingError as exc:
-        _fail(f"读取余额失败：{exc}")
-    available = int(balance["availableMicroUsd"]) / 1_000_000
-    if estimated_cost > available:
-        print(
-            f"警告：预估上界 {_fmt_usd(estimated_cost)} 超过可用余额 {_fmt_usd(available)}；"
-            "真实花费通常更低，但超限会在 402 处停止（已生成部分已缓存，充值后可续跑）。"
-        )
+    snapshot = _quota_snapshot(actor)
+    used = int(snapshot.get("used_units") or 0)
+    limit = snapshot.get("limit_units")
+    retry_env = [f"{quota_env}={used + len(pending)}"] if limit is not None else []
 
-    used, limit = _quota_status(args.user_id)
-    retry_env = [f"AI_DAILY_QUOTA_ANALYSIS={used + len(pending) if limit else len(pending)}"]
-    try:
-        today_spend = ledger.daily_spend(user["id"])
-        budget = float(getattr(config, "AI_DAILY_BUDGET_USER_USD", 0) or 0)
-        if budget > 0 and today_spend + estimated_cost > budget:
-            needed_budget = round((today_spend + estimated_cost) * 1.2 + 0.01, 2)
-            retry_env.append(f"AI_DAILY_BUDGET_USER_USD={needed_budget:g}")
+    if mode == "user":
+        user = env["user"]
+        try:
+            balance = billing.get_balance(user["id"])
+        except billing.BillingError as exc:
+            _fail(f"读取余额失败：{exc}")
+        available = int(balance["availableMicroUsd"]) / 1_000_000
+        if estimated_cost > available:
             print(
-                f"警告：预估上界 {_fmt_usd(estimated_cost)} + 今日已花 {_fmt_usd(today_spend)} "
-                f"超过用户日预算 ${budget:.2f}；超限会 429。可临时提高 "
-                f"AI_DAILY_BUDGET_USER_USD（只影响本次进程）。"
+                f"警告：预估上界 {_fmt_usd(estimated_cost)} 超过可用余额 {_fmt_usd(available)}；"
+                "真实花费通常更低，但超限会在 402 处停止（已生成部分已缓存，充值后可续跑）。"
             )
-    except Exception as exc:  # noqa: BLE001 - 预算展示失败不阻断
-        print(f"提示：读取今日预算失败（{exc}），跳过预算检查。")
 
-    if limit == 0:
-        _fail("analysis 日配额为 0（AI_DAILY_QUOTA_ANALYSIS），无法生成；请先调高再运行")
-    if len(pending) > max(0, limit - used):
-        _fail(
-            f"今日 analysis 配额不够：剩余 {max(0, limit - used)}，本次待生成 {len(pending)}。"
-            f"这样重新运行（只影响本次进程，不改 .env）："
-            f"{' '.join(retry_env)} backend/venv/bin/python scripts/warm_library_analysis.py "
-            f"--user-id {args.user_id} --level {','.join(levels)} --lang {','.join(langs)} "
-            f"--concurrency {args.concurrency} --yes"
-        )
+        try:
+            today_spend = ledger.daily_spend(user["id"])
+            budget = float(getattr(config, "AI_DAILY_BUDGET_USER_USD", 0) or 0)
+            if budget > 0 and today_spend + estimated_cost > budget:
+                needed_budget = round((today_spend + estimated_cost) * 1.2 + 0.01, 2)
+                retry_env.append(f"AI_DAILY_BUDGET_USER_USD={needed_budget:g}")
+                print(
+                    f"警告：预估上界 {_fmt_usd(estimated_cost)} + 今日已花 {_fmt_usd(today_spend)} "
+                    f"超过用户日预算 ${budget:.2f}；超限会 429。可临时提高 "
+                    f"AI_DAILY_BUDGET_USER_USD（只影响本次进程）。"
+                )
+        except Exception as exc:  # noqa: BLE001 - 预算展示失败不阻断
+            print(f"提示：读取今日预算失败（{exc}），跳过预算检查。")
+
+        if limit == 0:
+            _fail("analysis 日配额为 0（AI_DAILY_QUOTA_ANALYSIS），无法生成；请先调高再运行")
+        if limit is not None and len(pending) > max(0, limit - used):
+            _fail(
+                f"今日 analysis 配额不够：剩余 {max(0, limit - used)}，本次待生成 {len(pending)}。"
+                f"这样重新运行（只影响本次进程，不改 .env）："
+                f"{' '.join(retry_env)} backend/venv/bin/python scripts/warm_library_analysis.py "
+                f"{rerun_tail}"
+            )
+    else:
+        # ops：没有用户余额/用户预算闸；只有独立配额（可选）与全局日预算。
+        if limit is not None and len(pending) > max(0, limit - used):
+            _fail(
+                f"ops 独立配额不够：剩余 {max(0, limit - used)}，本次待生成 {len(pending)}。"
+                f"这样重新运行（只影响本次进程）："
+                f"{' '.join(retry_env)} backend/venv/bin/python scripts/warm_library_analysis.py "
+                f"{rerun_tail}"
+            )
+        try:
+            global_spend = ledger.global_daily_spend()
+            global_budget = float(getattr(config, "AI_DAILY_BUDGET_GLOBAL_USD", 0) or 0)
+            if global_budget > 0:
+                print(
+                    f"全局日预算：今日已花 {_fmt_usd(global_spend)}/${global_budget:.2f}；"
+                    f"本次预估上界 {_fmt_usd(estimated_cost)}。超过会 429 停下（已生成部分已缓存）。"
+                )
+        except Exception as exc:  # noqa: BLE001 - 预算展示失败不阻断
+            print(f"提示：读取全局预算失败（{exc}），跳过预算展示。")
 
     _instrument_ledger()
     print(f"开始预热：{len(pending)} 条，并发 {args.concurrency}，模型 {model_id}。")
     try:
-        stats = asyncio.run(_run_tasks(pending, user["id"], args.concurrency))
+        stats = asyncio.run(_run_tasks(pending, actor, args.concurrency))
     finally:
         ledger.insert_usage = _ORIGINAL_INSERT_USAGE
     _print_summary(stats, len(pending))

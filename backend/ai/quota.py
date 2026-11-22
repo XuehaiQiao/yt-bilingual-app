@@ -1,15 +1,23 @@
 """三层配额（每用户/功能日限额 → 每用户日预算 → 全局日预算）与模型降级链。
 
-配额口径（计划书 §7.4「配额与预算」）：
+配额口径（计划书 §7.4「配额与预算」，P0-05 起单一事实源）：
 
 1. **每用户每功能日限额**：``ai_quota`` 里 ``(user_id, day, feature)`` 的
-   ``used_units / limit_units``，原子 UPSERT 递增；免费额度默认值见
-   ``config.AI_DAILY_QUOTA_*``（翻译 60 批 ≈ 120 分钟视频、总结 10 次、词典
-   200 次、本地剧集 60 批、理解题 30 个 lesson）。
+   ``used_units`` 原子 UPSERT 递增；**上限只取 config** —— ``limit_for()``
+   （免费额度默认值见 ``config.AI_DAILY_QUOTA_*``：翻译 60 批 ≈ 120 分钟视频、
+   总结 10 次、词典 200 次、本地剧集 60 批、理解题 30 个 lesson）。行内
+   ``limit_units`` 只是消费时的审计快照，**不参与判断**（P0-05：同一用户同一天
+   不再因不同进程的 env 上限出现 374/30 与 374/400 两套判断）。
 2. **每用户日预算**：``ai_usage`` 当日 SUM ≥ ``AI_DAILY_BUDGET_USER_USD``
    → ``BudgetExceeded``。
 3. **全局日预算**：全站当日 SUM ≥ ``AI_DAILY_BUDGET_GLOBAL_USD``
    → ``BudgetExceeded``。
+
+**非用户主体（P0-05）**：``ops:<name>`` / ``sponsored:<name>``（前缀见
+``config.AI_OPS_SUBJECT_PREFIXES``）不是用户——不写用户 ``ai_quota`` 行、不查
+余额（无 402），只受**独立日配额**（``AI_OPS_DAILY_QUOTA``，0 = 不限功能次数）
+与**全局日预算**约束；``ai_usage`` 照记 tokens/成本供审计。读侧统一用
+:func:`snapshot`（used 取库、limit 取 config）。
 
 超限统一抛 ``QuotaExceeded``（``status_code = 429``）。未跑 ``0003_cost_ledger``
 迁移的库**fail-open**（记日志、不阻断 AI 功能）——这是为了让升级过程中应用
@@ -94,7 +102,7 @@ def rethrow_billing_error(exc: BaseException) -> None:
 
 
 def limit_for(feature: str) -> int:
-    """某功能的每日免费额度（0 = 关闭该功能）。"""
+    """某功能的**用户**每日免费额度（0 = 关闭该功能）；上限的唯一来源。"""
     if feature not in KNOWN_FEATURES:
         raise ValueError(f"未知 AI 功能：{feature!r}（见 ai.ledger.KNOWN_FEATURES）")
     attr = _FEATURE_LIMIT_ATTRS[feature]
@@ -102,6 +110,69 @@ def limit_for(feature: str) -> int:
         return max(0, int(getattr(config, attr, 0)))
     except (TypeError, ValueError):
         return 0
+
+
+def ops_limit_for(feature: str) -> int:
+    """非用户主体（ops/sponsored）的独立日配额；0 = 不设功能级上限。
+
+    与 :func:`limit_for` 的 0 语义不同（用户 0 = 关闭该功能，ops 0 = 不限），
+    因为 ops 的成本闸是全局日预算（``AI_DAILY_BUDGET_GLOBAL_USD``），不是
+    用户免费额度。见 ``config.AI_OPS_DAILY_QUOTA``。
+    """
+    if feature not in KNOWN_FEATURES:
+        raise ValueError(f"未知 AI 功能：{feature!r}（见 ai.ledger.KNOWN_FEATURES）")
+    limits = getattr(config, "AI_OPS_DAILY_QUOTA", None) or {}
+    try:
+        return max(0, int(limits.get(feature, 0) or 0))
+    except (AttributeError, TypeError, ValueError):
+        return 0
+
+
+def snapshot(user_id: str | None, feature: str, day: str | None = None) -> dict:
+    """权威配额快照（读侧唯一入口）：used 取 ``ai_quota``，limit 只取 config。
+
+    返回 ``{subject, feature, day, used_units, limit_units, remaining,
+    limit_source, audit_limit_units, independent}``：
+
+    - 用户主体：``limit_units = limit_for(feature)``（config）；
+    - 非用户主体：``limit_units = ops_limit_for(feature)``，0 时返回 ``None``
+      （表示不设功能级上限）；
+    - ``audit_limit_units`` 是 ``ai_quota.limit_units`` 审计快照，只供排查，
+      不参与任何判定；``limit_source`` 恒为 ``config``。
+    - 未迁移/读库失败按 0 已用处理（这是展示接口，不能把页面打死）。
+    """
+    if feature not in KNOWN_FEATURES:
+        raise ValueError(f"未知 AI 功能：{feature!r}（见 ai.ledger.KNOWN_FEATURES）")
+    resolved_day = day or ledger.day_of()
+    independent = ledger.is_ops_subject(user_id)
+    limit = ops_limit_for(feature) if independent else limit_for(feature)
+    unlimited = independent and limit <= 0
+
+    used = 0
+    audit_limit: int | None = None
+    if user_id:
+        try:
+            usage = ledger.daily_usage(user_id, feature, resolved_day)
+        except Exception:  # noqa: BLE001 - 展示接口 fail-open
+            usage = None
+        quota_row = usage.get("quota") if isinstance(usage, dict) else None
+        if isinstance(quota_row, dict):
+            try:
+                used = int(quota_row.get("used_units") or 0)
+            except (TypeError, ValueError):
+                used = 0
+            audit_limit = quota_row.get("limit_units")
+    return {
+        "subject": user_id,
+        "feature": feature,
+        "day": resolved_day,
+        "used_units": used,
+        "limit_units": None if unlimited else limit,
+        "remaining": None if unlimited else max(0, limit - used),
+        "limit_source": "config",
+        "audit_limit_units": audit_limit,
+        "independent": independent,
+    }
 
 
 def _float_config(attr: str) -> float:
@@ -114,13 +185,16 @@ def _float_config(attr: str) -> float:
 def ensure_within_budget(user_id: str | None, day: str | None = None) -> None:
     """第二、三层预算硬闸：超限抛 ``BudgetExceeded``（0 = 该层不启用）。
 
+    非用户主体（ops/sponsored）跳过用户日预算，只查全局日预算——它们没有
+    用户余额/用户额度，成本由全局预算兜底。
+
     调用前请确保当日账本可用；表未迁移时 sqlite 错误由
     ``check_and_consume_quota`` 统一 fail-open。
     """
     day = day or ledger.day_of()
 
     user_limit = _float_config("AI_DAILY_BUDGET_USER_USD")
-    if user_id and user_limit > 0:
+    if user_id and not ledger.is_ops_subject(user_id) and user_limit > 0:
         spend = ledger.daily_spend(user_id, day)
         # 飞书 P1（M5，specs/035）：日预算跨过 50/80/100% 时告警（每档每天一次）；
         # 告警不改变 429 语义，也不抛异常。
@@ -138,6 +212,89 @@ def ensure_within_budget(user_id: str | None, day: str | None = None) -> None:
             raise BudgetExceeded("global", day=day, spend_usd=spend, limit_usd=global_limit)
 
 
+def _is_missing_db_error(exc: BaseException) -> bool:
+    """库/表尚未初始化（升级顺序问题），调用方应 fail-open。"""
+    message = str(exc).lower()
+    return "no such table" in message or "数据库文件不存在" in str(exc)
+
+
+def _warn_missing_tables_once() -> None:
+    global _warned_missing_tables
+    if _warned_missing_tables:
+        return
+    _warned_missing_tables = True
+    logger.warning(
+        "ai_usage/ai_quota 表不可用（未初始化数据库或未跑 0003_cost_ledger "
+        "迁移），AI 配额与预算本次跳过；上线前必须运行 `alembic upgrade head`。"
+    )
+
+
+def _fail_open_result(feature: str, units: int, day: str | None, lang: str) -> dict:
+    return {
+        "allowed": True,
+        "anonymous": False,
+        "enforced": False,
+        "feature": feature,
+        "day": day or ledger.day_of(),
+        "used_units": None,
+        "limit_units": None,
+        "remaining": None,
+        "units": max(1, int(units)),
+        "target_lang": lang,
+    }
+
+
+def _check_ops_budget(day: str) -> None:
+    """非用户主体只受全局日预算约束（用户预算与余额都跳过）。"""
+    ensure_within_budget(None, day)
+
+
+def _consume_ops_quota(
+    subject: str,
+    feature: str,
+    units: int,
+    *,
+    day: str | None,
+    target_lang: str,
+) -> dict:
+    """ops/sponsored 主体：独立配额（可选）+ 全局预算；不写用户行、不查余额。"""
+    resolved_day = day or ledger.day_of()
+    try:
+        _check_ops_budget(resolved_day)
+        limit = ops_limit_for(feature)
+        if limit <= 0:
+            return {
+                "allowed": True,
+                "anonymous": False,
+                "ops": True,
+                # 只查了全局预算；没有功能级独立配额时 enforced 取决于全局预算是否开启。
+                "enforced": _float_config("AI_DAILY_BUDGET_GLOBAL_USD") > 0,
+                "feature": feature,
+                "day": resolved_day,
+                "used_units": None,
+                "limit_units": None,
+                "remaining": None,
+                "units": max(1, int(units)),
+                "target_lang": target_lang,
+            }
+        result = ledger.check_and_consume_quota(
+            subject,
+            feature,
+            units,
+            limit=limit,
+            day=resolved_day,
+            target_lang=target_lang,
+        )
+        result["ops"] = True
+        result["enforced"] = True
+        return result
+    except sqlite3.OperationalError as exc:
+        if not _is_missing_db_error(exc):
+            raise
+        _warn_missing_tables_once()
+        return {**_fail_open_result(feature, units, resolved_day, target_lang), "ops": True}
+
+
 def check_and_consume_quota(
     user_id: str | None,
     feature: str,
@@ -150,9 +307,12 @@ def check_and_consume_quota(
 
     ``user_id=None``（脚本/旧调用）直接放行且不写库；正常 API 请求会传登录
     用户 id 或游客 ``guest:<sha256>``（M1 ⑧，见 storage.active_identity），
-    游客同样受日配额/预算约束。表/数据库尚未初始化（``no such table`` 或
-    ``数据库文件不存在``）时 fail-open：记一次 WARNING 并放行，避免升级顺序
-    问题或「游客先于首个注册到达」把翻译/查词整条链路打死；上线前必须迁移。
+    游客同样受日配额/预算约束。**非用户主体**（``ops:`` / ``sponsored:``）
+    走独立分支：不查余额（无 402）、不写用户 ``ai_quota``，只受独立配额
+    （``AI_OPS_DAILY_QUOTA``）与全局日预算约束（P0-05 预热主体）。表/数据库
+    尚未初始化（``no such table`` 或 ``数据库文件不存在``）时 fail-open：记一次
+    WARNING 并放行，避免升级顺序问题或「游客先于首个注册到达」把翻译/查词整条
+    链路打死；上线前必须迁移。
 
     ``target_lang`` 只随结果/账本记录，**不拆限额**（P0 仍按
     ``(user_id, day, feature)`` 计数，见规格 §5.5「成本与配额」）。
@@ -160,12 +320,19 @@ def check_and_consume_quota(
     M3a 起在扣日配额/预算**之前**先做一次余额可用性预检查（402）：余额连「输出
     上界 × 候选链最高价」都付不起时直接 402，避免先扣掉日额度却调用不了模型。
     余额为 0 且配额也用尽时优先返 402（用户可行动）；全站预算仍是 429（系统保护）。
+
+    P0-05：功能配额上限只取 ``limit_for(feature)``（config）；``ai_quota.limit_units``
+    只是审计快照，不再参与判断。
     """
     resolved_lang = languages.normalize_code(target_lang) or languages.DEFAULT_TARGET_LANG
-    global _warned_missing_tables
 
     if not user_id:
         return ledger.check_and_consume_quota(
+            user_id, feature, units, day=day, target_lang=resolved_lang
+        )
+
+    if ledger.is_ops_subject(user_id):
+        return _consume_ops_quota(
             user_id, feature, units, day=day, target_lang=resolved_lang
         )
 
@@ -189,27 +356,10 @@ def check_and_consume_quota(
         result["enforced"] = True
         return result
     except sqlite3.OperationalError as exc:
-        message = str(exc).lower()
-        if "no such table" not in message and "数据库文件不存在" not in str(exc):
+        if not _is_missing_db_error(exc):
             raise
-        if not _warned_missing_tables:
-            _warned_missing_tables = True
-            logger.warning(
-                "ai_usage/ai_quota 表不可用（未初始化数据库或未跑 0003_cost_ledger "
-                "迁移），AI 配额与预算本次跳过；上线前必须运行 `alembic upgrade head`。"
-            )
-        return {
-            "allowed": True,
-            "anonymous": False,
-            "enforced": False,
-            "feature": feature,
-            "day": day or ledger.day_of(),
-            "used_units": None,
-            "limit_units": None,
-            "remaining": None,
-            "units": max(1, int(units)),
-            "target_lang": resolved_lang,
-        }
+        _warn_missing_tables_once()
+        return _fail_open_result(feature, units, day, resolved_lang)
 
 
 # ---------------------------------------------------------------------------
@@ -320,5 +470,7 @@ __all__ = [
     "ensure_within_budget",
     "is_domestic_region",
     "limit_for",
+    "ops_limit_for",
     "rethrow_billing_error",
+    "snapshot",
 ]
