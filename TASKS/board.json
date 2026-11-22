@@ -585,8 +585,8 @@
     {
       "id": "P1-10",
       "file": "TASKS/P1-10-favorite-callback.md",
-      "status": "claimed",
-      "owner": "fav-callback-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
         "frontend/src/components/VocabularyBookScreen.tsx",
