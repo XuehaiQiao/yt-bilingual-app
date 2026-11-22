@@ -15,6 +15,7 @@
 - `backend/teaching_analysis.py`（错误分类/返回原因）
 - `backend/routes_reading.py`（payload 携带 `analysisUnavailableReason`）
 - `backend/routes_videos.py`、`routes_books.py`、`routes_library.py`（同类静默 catch 的透出，最小改动）
+- `frontend/src/lib/reading.ts`（解析后端新增的 analysisUnavailableReason/used/limit/resetAt）
 - `frontend/src/lib/useReadingAnalysis.ts`
 - `frontend/src/components/reading/ReadingSurface.tsx`
 - `frontend/src/components/ReaderScreen.tsx`

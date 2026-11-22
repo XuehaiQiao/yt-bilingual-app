@@ -97,6 +97,7 @@
         "backend/routes_videos.py",
         "backend/routes_books.py",
         "backend/routes_library.py",
+        "frontend/src/lib/reading.ts",
         "frontend/src/lib/useReadingAnalysis.ts",
         "frontend/src/components/reading/ReadingSurface.tsx",
         "frontend/src/components/ReaderScreen.tsx",

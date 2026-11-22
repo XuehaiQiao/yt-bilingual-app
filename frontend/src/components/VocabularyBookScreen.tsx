@@ -1,7 +1,7 @@
 // 单词本 (word book) — full-page route `#/app/profile/vocabulary`.
 //
 // Five surfaces share one implementation (specs/005 §统一词表 UI):
-//   * 我的单词 — vocabulary favorites that are not 已掌握 (client paged);
+//   * 我的单词 — the vocabulary favorites themselves (ADR-0001; client paged);
 //   * 已掌握 — `word_states.mastered=1` only (not favorites); the meaning comes
 //     from the `definition` snapshot, then `—`. Its star is disabled: mastered
 //     is not a favorite and must never pretend to be one.
@@ -18,8 +18,11 @@
 // trigger; pagination is 20/50/100 + page numbers + jump input. Edit mode
 // (leading checkboxes + a sticky action bar) exists only on 自定义词表.
 //
-// 已掌握 and 我的单词 are mutually exclusive (specs/005 §v1.1): a mastered word
-// lives exclusively in the 已掌握 tab and never in 我的单词.
+// 已掌握 and 我的单词 are two independent lists (ADR-0001): 我的单词 is the
+// favorites list itself (count = length, no subtraction, no read-time mastery
+// filter); 已掌握 is `word_states.mastered=1` on its own. Mutual exclusion is
+// enforced by the write path — a legacy overlap is surfaced honestly until the
+// reconcile removes the duplicate favorite, never hidden here.
 //
 // Review surfaces stay hidden while `REVIEW_UI_ENABLED=false` (specs/013): no
 // 加入复习 action, no 状态 filter, no review counts, and no review request is
@@ -110,6 +113,7 @@ import {
 import { WORDLIST_MAX_LISTS } from '../lib/wordlistParse';
 import { fetchSeenCounts } from '../lib/vocabSeen';
 import { normalizeMasteryWord, readGuestMastered, writeGuestMastered } from '../lib/wordMastery';
+import { selectMastered, selectMyWords } from '../lib/myWords';
 import { describeApiError, toast } from '../lib/toast';
 import { speak } from '../lib/tts';
 import { useSpeechAvailability } from '../lib/useSpeechAvailability';
@@ -160,7 +164,10 @@ interface VocabularyBookScreenProps {
     onOpenImportedBook: (bookId: string) => void;
     /** Guest gate for review actions (opens the login overlay, never a 403). */
     onRequestLogin?: () => void;
-    /** App-level saved-word count: mastered words never count as favorites. */
+    /**
+     * Optional observer for callers that mirror mastery writes. The saved-word
+     * count no longer depends on it (ADR-0001: it is the favorites list length).
+     */
     onMasteredChange?: (lemma: string, mastered: boolean) => void;
 }
 
@@ -308,9 +315,10 @@ export function VocabularyBookScreen({
             : merged.filter((fav) => !deletedFavoriteIds.has(fav.id));
     }, [favorites, addedFavorites, deletedFavoriteIds]);
 
+    // 我的单词 = every vocabulary favorite, newest first (ADR-0001). The count
+    // and the export consume this exact list; no mastery subtraction/filter.
     const myWords = useMemo(
-        () => allFavorites
-            .filter((fav) => fav.type === 'vocabulary')
+        () => selectMyWords(allFavorites)
             .sort((a, b) => (b.added_at || 0) - (a.added_at || 0)),
         [allFavorites],
     );
@@ -632,19 +640,10 @@ export function VocabularyBookScreen({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeIsMine, isGuest, seenWordKey]);
 
-    // 我的单词 count: favorites that are not mastered. The two tabs partition
-    // the word surface, so a mastered favorite is never counted twice.
-    const masteredCount = useMemo(
-        () => myWords.filter((fav) => masteredWords.has(normalizeMasteryWord(fav.en_text))).length,
-        [myWords, masteredWords],
-    );
-    const learningCount = myWords.length - masteredCount;
-    // 我的单词 / 导出 exclude mastered words (specs/005 §已掌握与收藏互斥), including
-    // legacy rows where the favorite record still exists.
-    const learningWords = useMemo(
-        () => myWords.filter((fav) => !masteredWords.has(normalizeMasteryWord(fav.en_text))),
-        [myWords, masteredWords],
-    );
+    // 我的单词 count is the favorites list length (ADR-0001) — no mastered
+    // subtraction. 已掌握 is the independent server list; its count is that
+    // list's length too (guest: the local 我会了 table).
+    const masteredCount = useMemo(() => selectMastered(masteredWords).length, [masteredWords]);
     const masteredTabLabel = isGuest ? t('vocab.review.guestMaster') : t('vocab.mine.mastered');
     // Hide the counts until the signed-in list has loaded: a failed GET must
     // not render "已掌握 0" as if that were the answer (G3).
@@ -795,8 +794,6 @@ export function VocabularyBookScreen({
         const isPhrase = (fav: FavoriteItem) => /\s/.test(fav.en_text.trim());
         const needle = mineDebouncedQuery.toLowerCase();
         const filtered = myWords.filter((fav) => {
-            // 已掌握 rows live in their own tab only (mutually exclusive lists).
-            if (masteredWords.has(normalizeMasteryWord(fav.en_text))) return false;
             if (mineType === 'word' && isPhrase(fav)) return false;
             if (mineType === 'phrase' && !isPhrase(fav)) return false;
             if (mineSource && resolveFavoriteSource(fav).kind !== mineSource) return false;
@@ -827,7 +824,7 @@ export function VocabularyBookScreen({
             return (b.added_at || 0) - (a.added_at || 0);
         });
     }, [
-        myWords, mineType, mineSource, mineLevel, mineSort, masteredWords, seenCounts, levels,
+        myWords, mineType, mineSource, mineLevel, mineSort, seenCounts, levels,
         mineDebouncedQuery, matchesLevel,
     ]);
 
@@ -2057,9 +2054,9 @@ export function VocabularyBookScreen({
     // "not known yet", so a failed or in-flight read never renders a fake 0 (G3).
     const listHasFilterServer = () => Boolean(debouncedQuery || listLevel);
     const headerTotalLabel = activeIsMine
-        ? (masteredKnown ? t('vocab.total', { count: formatNumber(learningCount) }) : null)
+        ? t('vocab.total', { count: formatNumber(myWords.length) })
         : activeIsMastered
-            ? (masteredKnown ? t('vocab.total', { count: formatNumber(masteredRows.length) }) : null)
+            ? (masteredKnown ? t('vocab.total', { count: formatNumber(masteredCount) }) : null)
             : activeIsCustom
                 ? (activeCustomList
                     ? t('vocab.total', { count: formatNumber(activeCustomList.itemCount) })
@@ -2128,13 +2125,13 @@ export function VocabularyBookScreen({
             const count = customEntry
                 ? customEntry.itemCount
                 : id === MINE_TAB
-                    // Hidden until the signed-in mastered read succeeds: an unknown
-                    // mastered set must not be counted as learning words.
-                    ? (masteredKnown ? learningCount : null)
+                    // 我的单词 is the favorites list itself; its count no longer
+                    // depends on any mastered read (ADR-0001).
+                    ? myWords.length
                     : id === MASTERED_TAB
                         // The whole mastered collection, not just mastered favorites:
                         // unknown until the signed-in GET succeeds (never a fake 0).
-                        ? (masteredKnown ? masteredWords.size : null)
+                        ? (masteredKnown ? masteredCount : null)
                         : typeof entry?.count === 'number' && !unavailable
                             ? entry.count
                             : null;
@@ -2398,12 +2395,12 @@ export function VocabularyBookScreen({
             <div data-testid="vocab-mine-panel" className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-caption leading-relaxed text-fg-muted">{t('vocab.mine.hint')}</p>
-                    {learningWords.length > 0 && (
+                    {myWords.length > 0 && (
                         <div className="flex items-center gap-2">
                             <button
                                 type="button"
                                 data-testid="vocab-export-anki"
-                                onClick={() => exportAnkiTsv(learningWords)}
+                                onClick={() => exportAnkiTsv(myWords)}
                                 title={t('favorites.exportAnkiTitle')}
                                 className={ACTION_BUTTON}
                             >
@@ -2413,7 +2410,7 @@ export function VocabularyBookScreen({
                             <button
                                 type="button"
                                 data-testid="vocab-export-csv"
-                                onClick={() => exportCsv(learningWords)}
+                                onClick={() => exportCsv(myWords)}
                                 title={t('favorites.exportCsvTitle')}
                                 className={ACTION_BUTTON}
                             >
@@ -2468,19 +2465,12 @@ export function VocabularyBookScreen({
                 {myWords.length === 0
                     ? emptyState(t('vocab.empty.mine'), t('vocab.empty.mineHint'), Star, 'vocab-mine-empty')
                     : mineRows.length === 0
-                        ? hasMineFilters
-                            ? emptyState(
-                                t('vocab.mine.empty.filtered'),
-                                t('vocab.mine.empty.filteredHint'),
-                                Search,
-                                'vocab-mine-filtered-empty',
-                            )
-                            : emptyState(
-                                t('vocab.mine.empty.allMastered'),
-                                t('vocab.mine.empty.allMasteredHint'),
-                                CheckCircle2,
-                                'vocab-mine-all-mastered',
-                            )
+                        ? emptyState(
+                            t('vocab.mine.empty.filtered'),
+                            t('vocab.mine.empty.filteredHint'),
+                            Search,
+                            'vocab-mine-filtered-empty',
+                        )
                         : (
                             <>
                                 <WordTable

@@ -8,13 +8,14 @@
 // models, and the navigation spec already makes the word book a full page.
 //
 // Data: App owns the favorites store. The button receives the same array the
-// word-book screen gets, keeps only `type === 'vocabulary'` (the word book
-// neither lists nor counts sentence favorites), and derives the count from it.
-// A word saved through the global WordPopover updates that state, so the count
-// refreshes optimistically with no refetch.
+// word-book screen gets and counts it through `selectMyWords` — the single
+// source ADR-0001 defines (vocabulary favorites themselves, no mastery
+// subtraction). A word saved through the global WordPopover updates that state,
+// so the count refreshes optimistically with no refetch.
 import { BookMarked } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { FavoriteItem } from '../lib/favorites';
+import { selectMyWords } from '../lib/myWords';
 
 interface ReadingVocabButtonProps {
     /** Every favorite, as owned by App; only vocabulary entries are counted. */
@@ -25,7 +26,7 @@ interface ReadingVocabButtonProps {
 
 export function ReadingVocabButton({ favorites, onOpenWordbook }: ReadingVocabButtonProps) {
     const { t } = useI18n();
-    const count = favorites.filter((favorite) => favorite.type === 'vocabulary').length;
+    const count = selectMyWords(favorites).length;
 
     return (
         <button
