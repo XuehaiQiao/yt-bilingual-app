@@ -604,8 +604,8 @@
     {
       "id": "P1-11",
       "file": "TASKS/P1-11-family-apply-ai.md",
-      "status": "claimed",
-      "owner": "family-apply-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "scripts/build_word_families.py",
         "scripts/tests/test_build_word_families.py",
