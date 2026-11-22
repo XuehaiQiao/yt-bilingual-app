@@ -184,6 +184,19 @@
       "deps": [
         "P0-09"
       ]
+    },
+    {
+      "id": "P0-11",
+      "file": "TASKS/P0-11-mastered-filter-sync.md",
+      "status": "claimed",
+      "owner": "sync3-impl",
+      "write_scope": [
+        "scripts/mastered-filter-acceptance.mjs"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P0-10"
+      ]
     }
   ]
 }
