@@ -57,6 +57,13 @@ interface WordPopoverProps {
     onClose: () => void;
     onToggleFavorite: (def: WordDefinition) => void;
     isFavorited: boolean;
+    /**
+     * Remove the current word's favorite row (specs/005 §已掌握与收藏互斥).
+     * App owns the optimistic star + rollback and resolves `true` only after
+     * `DELETE /api/favorites/:id` succeeds; the card rolls the freshly made
+     * mastered mark back when this returns `false`.
+     */
+    onRemoveFavorite?: (def: WordDefinition) => Promise<boolean>;
     /** Retarget an already-open card when the pointer dwells on another word. */
     onSwitchWord: (target: WordLookupTarget) => void;
     /** Content ref of the lookup (video / article / book id) for word_sources. */
@@ -65,6 +72,8 @@ interface WordPopoverProps {
     sourceSentenceId?: string;
     /** Guest gate: open the login overlay instead of calling the review API. */
     onRequestLogin?: () => void;
+    /** App-level saved-word count: mastered words never count as favorites. */
+    onMasteredChange?: (lemma: string, mastered: boolean) => void;
 }
 
 const CARD_WIDTH = 320;
@@ -118,10 +127,12 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
     onClose,
     onToggleFavorite,
     isFavorited,
+    onRemoveFavorite,
     onSwitchWord,
     sourceContentRef,
     sourceSentenceId,
     onRequestLogin,
+    onMasteredChange,
 }) => {
     const { t, targetLang } = useI18n();
     const { status } = useAuth();
@@ -307,18 +318,55 @@ export const WordPopover: React.FC<WordPopoverProps> = ({
         }
         setMasteredSaving(true);
         setMasteredError(null);
+        const source = { contentRef: sourceContentRef, sentenceId: sourceSentenceId };
         try {
             const result = await setWordMastered({
                 lemma: reviewLemma,
                 mastered: next,
                 targetLang,
-                source: { contentRef: sourceContentRef, sentenceId: sourceSentenceId },
+                source,
             });
             // The PATCH response is authoritative for the post-write mark; the
             // store update then makes the current page re-render immediately
             // (highlight disappears / returns without a re-classify).
-            if (result.word.mastered === true) addIgnored(reviewLemma);
+            const masteredNow = result.word.mastered === true;
+            if (masteredNow) addIgnored(reviewLemma);
             else removeIgnored(reviewLemma);
+            onMasteredChange?.(reviewLemma, masteredNow);
+
+            // specs/005 §已掌握与收藏互斥: a mastered word must not stay in the
+            // favorites (top-bar count / export). Ask the owner to remove it
+            // whether or not the star prop said 已收藏: the row may have been
+            // saved under a different casing/lemma, and a no-op is harmless.
+            // If the DELETE fails, undo the mastered mark instead of keeping
+            // the two states together.
+            if (next && masteredNow && onRemoveFavorite && definition) {
+                const removed = await onRemoveFavorite(definition);
+                if (!removed) {
+                    // Undo the mark so a word is never both mastered and saved;
+                    // only claim the rollback when it actually succeeded.
+                    let rolledBack = false;
+                    try {
+                        const rollback = await setWordMastered({
+                            lemma: reviewLemma,
+                            mastered: false,
+                            targetLang,
+                            source,
+                        });
+                        rolledBack = rollback.word.mastered === false;
+                        if (rolledBack) removeIgnored(reviewLemma);
+                        else addIgnored(reviewLemma);
+                        onMasteredChange?.(reviewLemma, !rolledBack);
+                    } catch {
+                        // Best effort; stay honest about the failed rollback.
+                        onMasteredChange?.(reviewLemma, true);
+                    }
+                    setMasteredError(t(rolledBack
+                        ? 'vocab.review.error.masteredFavorite'
+                        : 'vocab.review.error.mastered'));
+                    return;
+                }
+            }
             toast.success(
                 next ? t('vocab.review.toast.mastered') : t('vocab.review.toast.unmastered'),
                 { dedupeKey: 'review:word-mastered' },

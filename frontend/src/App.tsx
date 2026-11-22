@@ -73,8 +73,9 @@ import { PracticeScreen } from './components/PracticeScreen';
 import { ProfileScreen } from './components/ProfileScreen';
 import { VocabularyBookScreen } from './components/VocabularyBookScreen';
 import { toast, describeApiError } from './lib/toast';
+import { normalizeMasteryWord } from './lib/wordMastery';
 import { formatMicroUsd } from './lib/billing';
-import { getReviewStats, REVIEW_UI_ENABLED, type ReviewStats } from './lib/review';
+import { getMasteredWords, getReviewStats, REVIEW_UI_ENABLED, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
 import { endWatch, notePlayback, pauseWatch, startWatch } from './lib/events';
 import {
@@ -862,6 +863,43 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       });
   }, [dataRevision]);
 
+  // Mastered words (`word_states.mastered=1`) participate in the saved-word
+  // count: a mastered word is not a favorite, and legacy rows may still have a
+  // favorite record (specs/005 §已掌握与收藏互斥). Loaded once per account +
+  // language; a failed read keeps the last known set instead of inventing 0.
+  const [masteredWordKeys, setMasteredWordKeys] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      setMasteredWordKeys(new Set());
+      return;
+    }
+    let cancelled = false;
+    getMasteredWords(200, targetLang)
+      .then((data) => {
+        if (cancelled) return;
+        setMasteredWordKeys(new Set(
+          data.words.map((word) => normalizeMasteryWord(word.lemma)).filter(Boolean),
+        ));
+      })
+      .catch(() => {
+        // Keep the last known set: the count never silently drops to a fake value.
+      });
+    return () => { cancelled = true; };
+  }, [status, targetLang, dataRevision]);
+
+  /** Keep the saved-word count correct as words are marked/unmarked. */
+  const handleMasteredWordChange = useCallback((lemma: string, mastered: boolean) => {
+    const key = normalizeMasteryWord(lemma);
+    if (!key) return;
+    setMasteredWordKeys((prev) => {
+      if (prev.has(key) === mastered) return prev;
+      const next = new Set(prev);
+      if (mastered) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }, []);
+
   // Favorites are persisted one item at a time by the handlers below. The old
   // whole-file PUT path still exists server-side for legacy clients (see
   // lib/favorites.replaceAllFavorites), but the app never sends it: two tabs
@@ -1060,17 +1098,20 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
   }, [t]);
 
-  const removeFavoriteOptimistically = useCallback(async (id: string) => {
+  /** Resolves `true` only after DELETE succeeded (callers pair it with a write). */
+  const removeFavoriteOptimistically = useCallback(async (id: string): Promise<boolean> => {
     const removed = favorites.find(f => f.id === id);
     setFavorites(prev => prev.filter(f => f.id !== id));
     try {
       await removeFavorite(id);
       toast.success(t('vocab.toast.removed'), { dedupeKey: 'favorites:removed' });
+      return true;
     } catch (err) {
       if (removed) {
         setFavorites(prev => (prev.some(f => f.id === id) ? prev : [...prev, removed]));
       }
       toast.error(await describeApiError(err));
+      return false;
     }
   }, [favorites, t]);
 
@@ -1129,9 +1170,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     });
   };
 
-  const handleRemoveFavorite = (id: string) => {
-    void removeFavoriteOptimistically(id);
-  };
+  const handleRemoveFavorite = (id: string) => removeFavoriteOptimistically(id);
 
   // Add/remove a dictionary lookup to the vocabulary favorites. Reading
   // lookups know their article (id + title); transcript lookups fall back to
@@ -1169,6 +1208,30 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         : currentSourceFields()),
     });
   };
+
+  /**
+   * The dictionary card's 我已掌握 removes the word's favorite (specs/005
+   * §已掌握与收藏互斥). Resolve the row from the live favorites list — the card
+   * only knows the lookup — and let the same optimistic/rollback path handle
+   * the DELETE. Returns `false` when the remove failed so the card can undo the
+   * mastered mark instead of leaving both states.
+   */
+  const handleRemoveDictFavorite = useCallback(async (def: WordDefinition): Promise<boolean> => {
+    if (!wordLookup) return true;
+    const sourceId = wordLookup.sourceId || videoId;
+    const normalize = (value: string) => value.trim().toLowerCase();
+    const expectedIds = [
+      `vocab-${sourceId}-${def.word.replace(/\s+/g, '-')}`,
+      `vocab-${sourceId}-${wordLookup.word.replace(/\s+/g, '-')}`,
+    ];
+    const target = favorites.find(f => f.type === 'vocabulary' && expectedIds.includes(f.id))
+      ?? favorites.find(f => f.type === 'vocabulary'
+        && (f.source_ref === sourceId || f.videoId === sourceId)
+        && normalize(f.en_text) === normalize(def.word));
+    // Nothing to remove = the invariant already holds.
+    if (!target) return true;
+    return removeFavoriteOptimistically(target.id);
+  }, [favorites, wordLookup, videoId, removeFavoriteOptimistically]);
 
   // ── Route helpers (navigation-model D-01/D-02) ───────────────────────────
   // Every forward move is a push (tab root→sub, sub→sub, list→detail, source→
@@ -2269,9 +2332,13 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
   // The 单词本 badge counts saved words only. Sentence favorites stay in the
   // store for the by-item API, but the word book neither lists nor exports them.
+  // Mastered words never count, even when a legacy favorite row still exists
+  // (specs/005 §已掌握与收藏互斥) — the top bar, Sidebar and word-book tab then
+  // agree on one number.
   const vocabularyFavoriteCount = useMemo(
-    () => favorites.filter(f => f.type === 'vocabulary').length,
-    [favorites],
+    () => favorites.filter(f => f.type === 'vocabulary'
+      && !masteredWordKeys.has(normalizeMasteryWord(f.en_text))).length,
+    [favorites, masteredWordKeys],
   );
 
   const handleTranscriptClick = useCallback((time: number) => {
@@ -4053,6 +4120,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onOpenBook={(bookId) => { setWordLookup(null); openSub({ kind: 'book', bookId }); }}
               onOpenImportedBook={(bookId) => { setWordLookup(null); openSub({ kind: 'imported-book', bookId }); }}
               onRequestLogin={() => onRequestLogin?.()}
+              onMasteredChange={handleMasteredWordChange}
             />,
           );
         default:
@@ -4376,10 +4444,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             onClose={() => setWordLookup(null)}
             onToggleFavorite={handleToggleDictFavorite}
             isFavorited={favorites.some(f => f.id === `vocab-${wordLookup.sourceId || videoId}-${wordLookup.word.replace(/\s+/g, '-')}`)}
+            onRemoveFavorite={handleRemoveDictFavorite}
             onSwitchWord={handleSwitchWord}
             sourceContentRef={wordLookup.sourceId || videoId}
             sourceSentenceId={String(wordLookup.start)}
             onRequestLogin={() => onRequestLogin?.()}
+            onMasteredChange={handleMasteredWordChange}
           />
         )}
       </AnimatePresence>

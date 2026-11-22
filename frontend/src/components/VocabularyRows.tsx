@@ -138,6 +138,11 @@ export interface WordTableRow {
     favoriteLabel: string;
     onToggleFavorite?: () => void;
     favoriteBusy?: boolean;
+    /**
+     * 已掌握 rows: the star is disabled and never fills (a mastered word is not
+     * a favorite); `favoriteLabel` explains why instead of claiming 已收藏.
+     */
+    favoriteDisabled?: boolean;
     speakLabel: string;
     onSpeak?: () => void;
     speakDisabled?: boolean;
@@ -322,6 +327,22 @@ function WordTableRowView({
     const phonetic = normalizePhonetic(row.phonetic);
     const translation = (row.translation ?? '').trim();
     const expandable = Boolean(row.onToggleExpand);
+    // The whole row is the expand/collapse hot zone (specs/005 §整行展开); the
+    // reveal callback (hide-Chinese) stays a secondary effect of the same
+    // click. Inner controls stop propagation and keep their own handlers.
+    const activatable = expandable || Boolean(row.onActivate);
+    // The disclosure id must be a legal, unique HTML id (row keys can
+    // contain spaces/colons); the test hook keeps its legacy string.
+    const detailId = ids.detail.replace(/\s+/g, '-');
+    const activate = () => {
+        row.onActivate?.();
+        row.onToggleExpand?.();
+    };
+    const activationLabel = expandable
+        ? `${row.expandLabel} ${row.word}`
+        : row.revealed
+            ? t('vocab.tapHide')
+            : t('vocab.tapReveal');
 
     return (
         <div data-word={row.word}>
@@ -340,29 +361,30 @@ function WordTableRowView({
                 <div
                     data-testid={ids.row}
                     data-word={row.word}
-                    role={row.onActivate ? 'button' : undefined}
-                    tabIndex={row.onActivate ? 0 : undefined}
+                    role={activatable ? 'button' : undefined}
+                    tabIndex={activatable ? 0 : undefined}
                     aria-pressed={hideChinese ? Boolean(row.revealed) : undefined}
-                    aria-label={row.onActivate
-                        ? (row.revealed ? t('vocab.tapHide') : t('vocab.tapReveal'))
-                        : undefined}
-                    title={row.onActivate
-                        ? (row.revealed ? t('vocab.tapHide') : t('vocab.tapReveal'))
-                        : undefined}
-                    onClick={row.onActivate}
-                    onKeyDown={row.onActivate
+                    aria-expanded={expandable ? Boolean(row.expanded) : undefined}
+                    aria-controls={expandable ? detailId : undefined}
+                    aria-label={activatable ? activationLabel : undefined}
+                    title={activatable ? activationLabel : undefined}
+                    onClick={activatable ? activate : undefined}
+                    onKeyDown={activatable
                         ? (event) => {
+                            // Keys pressed on an inner control belong to it.
+                            if (event.target !== event.currentTarget) return;
                             if (event.key !== 'Enter' && event.key !== ' ') return;
                             event.preventDefault();
-                            row.onActivate?.();
+                            activate();
                         }
                         : undefined}
                     className={cn(
                         'grid min-w-0 flex-1 items-center gap-x-2 gap-y-0.5 px-3 py-2 text-left transition-colors',
                         'md:min-h-12 md:gap-x-3 md:py-0',
+                        'focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-inset',
                         MOBILE_GRID,
                         desktopGrid,
-                        row.onActivate ? 'cursor-pointer hover:bg-state-hover' : 'cursor-default',
+                        activatable ? 'cursor-pointer hover:bg-state-hover' : 'cursor-default',
                     )}
                 >
                     {/* Word + phonetic: inline on phones, own columns from md up. */}
@@ -440,7 +462,7 @@ function WordTableRowView({
                                 ariaLabel={row.favoriteLabel}
                                 ariaPressed={row.favored}
                                 testId={ids.star}
-                                disabled={row.favoriteBusy}
+                                disabled={row.favoriteBusy || row.favoriteDisabled}
                                 loading={row.favoriteBusy}
                                 onClick={row.onToggleFavorite}
                             >
@@ -456,26 +478,22 @@ function WordTableRowView({
                             </IconButton>
                         </span>
                         {expandable && (
+                            // 视觉提示 only: the row itself is the hot zone and
+                            // owns aria-expanded; the arrow is not a second
+                            // interactive control.
                             <span
-                                className={cn('inline-flex', cols.expand)}
-                                onClick={(event) => event.stopPropagation()}
+                                data-testid={ids.expand}
+                                aria-hidden="true"
+                                title={row.expandLabel}
+                                className={cn('inline-flex h-control-sm w-8 items-center justify-center', cols.expand)}
                             >
-                                <IconButton
-                                    size="sm"
-                                    ariaLabel={row.expandLabel}
-                                    testId={ids.expand}
-                                    ariaExpanded={row.expanded}
-                                    ariaControls={ids.detail}
-                                    onClick={row.onToggleExpand}
-                                >
-                                    <ChevronDown
-                                        className={cn(
-                                            'h-4 w-4 text-fg-muted transition-transform duration-200 ease-apple motion-reduce:transition-none',
-                                            row.expanded && 'rotate-180',
-                                        )}
-                                        aria-hidden="true"
-                                    />
-                                </IconButton>
+                                <ChevronDown
+                                    className={cn(
+                                        'h-4 w-4 text-fg-muted transition-transform duration-200 ease-apple motion-reduce:transition-none',
+                                        row.expanded && 'rotate-180',
+                                    )}
+                                    aria-hidden="true"
+                                />
                             </span>
                         )}
                     </div>
@@ -497,7 +515,7 @@ function WordTableRowView({
                     {row.expanded && (
                         <motion.div
                             key="body"
-                            id={ids.detail}
+                            id={detailId}
                             data-testid={ids.detail}
                             initial={reduceMotion ? false : { height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}

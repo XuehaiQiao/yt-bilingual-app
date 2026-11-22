@@ -2,7 +2,9 @@
 //
 // Five surfaces share one implementation (specs/005 §统一词表 UI):
 //   * 我的单词 — vocabulary favorites that are not 已掌握 (client paged);
-//   * 已掌握 — mastered words, optionally enriched with a favorite's IPA/meaning;
+//   * 已掌握 — `word_states.mastered=1` only (not favorites); the meaning comes
+//     from the `definition` snapshot, then `—`. Its star is disabled: mastered
+//     is not a favorite and must never pretend to be one.
 //   * 内置词表 — merged CEFR (A1–C1) + GRE/CET4/CET6 (`/api/vocabulary/lists`,
 //     server paged, server search + level filter);
 //   * 自定义词表 — imported lists (specs/038), fully loaded and client paged so
@@ -142,8 +144,14 @@ interface VocabularyBookScreenProps {
     onBack: () => void;
     /** Parent screen name for the back control's aria label. */
     parentLabel?: string;
-    /** Optimistic delete + rollback/toast live in App; the row disappears now. */
-    onRemoveFavorite: (id: string) => void;
+    /**
+     * Remove one favorite and keep both layers honest. App owns the optimistic
+     * prop path; favorites this screen added itself are deleted locally.
+     * Resolves `true` only when the favorite is really gone (App returns the
+     * server outcome for prop-owned rows), so callers can roll back a paired
+     * write (e.g. the mastered mark).
+     */
+    onRemoveFavorite: (id: string) => void | Promise<boolean>;
     onPlayFavorite: (videoId: string, start: number) => void;
     onOpenArticle: (articleId: string) => void;
     onOpenLibraryArticle: (articleId: string) => void;
@@ -152,6 +160,8 @@ interface VocabularyBookScreenProps {
     onOpenImportedBook: (bookId: string) => void;
     /** Guest gate for review actions (opens the login overlay, never a 403). */
     onRequestLogin?: () => void;
+    /** App-level saved-word count: mastered words never count as favorites. */
+    onMasteredChange?: (lemma: string, mastered: boolean) => void;
 }
 
 type Phase = 'idle' | 'loading' | 'ready' | 'error';
@@ -269,6 +279,7 @@ export function VocabularyBookScreen({
     onOpenBook,
     onOpenImportedBook,
     onRequestLogin,
+    onMasteredChange,
 }: VocabularyBookScreenProps) {
     const { t, formatDate, formatNumber, targetLang } = useI18n();
     const { status } = useAuth();
@@ -421,6 +432,15 @@ export function VocabularyBookScreen({
     // Display casing for mastered words that have no favorite record: the review
     // API returns the lemma, and the local table stores the normalized form.
     const [masteredLabels, setMasteredLabels] = useState<Record<string, string>>({});
+    // Meaning snapshots for 已掌握 rows. Source order (specs/005 §已掌握与收藏
+    // 互斥): `word_states.definition` from the GET, else the meaning captured
+    // when the row was marked (this session), else `—`. A removed favorite never
+    // feeds this map — 已掌握 is not a favorite.
+    const [masteredSnapshots, setMasteredSnapshots] = useState<Record<string, {
+        word: string;
+        phonetic: string;
+        translation: string;
+    }>>({});
     const [masteredPhase, setMasteredPhase] = useState<Phase>('idle');
     // True once the signed-in list has loaded at least once; keeps stale rows
     // visible while a retry is in flight (and lets a failed retry stay inline).
@@ -432,6 +452,8 @@ export function VocabularyBookScreen({
     const [masteredQuery, setMasteredQuery] = useState('');
     const [masteredLevel, setMasteredLevel] = useState<MineLevel>('');
     const [masteredSort, setMasteredSort] = useState<MasteredSort>('alpha');
+    // hide-Chinese reveal is per row; reset whenever the switch flips.
+    const [masteredRevealed, setMasteredRevealed] = useState<Set<string>>(() => new Set());
     const [reviewedWords, setReviewedWords] = useState<Set<string>>(() => new Set());
     const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
     const [pendingMasteredId, setPendingMasteredId] = useState<string | null>(null);
@@ -508,6 +530,27 @@ export function VocabularyBookScreen({
                 setMasteredLabels(Object.fromEntries(
                     data.words.map((word) => [normalizeMasteryWord(word.lemma), word.lemma.trim()]),
                 ));
+                // `word_states.definition` is the authoritative meaning snapshot;
+                // keep a session-local snapshot when the server has none yet.
+                setMasteredSnapshots((prev) => {
+                    const next = { ...prev };
+                    for (const word of data.words) {
+                        const key = normalizeMasteryWord(word.lemma);
+                        const definition = typeof word.definition === 'string'
+                            ? word.definition.trim()
+                            : '';
+                        if (!definition) continue;
+                        const split = splitIpaAndMeaning(definition);
+                        next[key] = {
+                            word: word.lemma.trim(),
+                            // A definition-only snapshot has no IPA; keep the
+                            // mark-time IPA instead of erasing it.
+                            phonetic: split.ipa || next[key]?.phonetic || '',
+                            translation: split.meaning,
+                        };
+                    }
+                    return next;
+                });
                 setMasteredReady(true);
                 setMasteredPhase('ready');
             })
@@ -596,6 +639,12 @@ export function VocabularyBookScreen({
         [myWords, masteredWords],
     );
     const learningCount = myWords.length - masteredCount;
+    // 我的单词 / 导出 exclude mastered words (specs/005 §已掌握与收藏互斥), including
+    // legacy rows where the favorite record still exists.
+    const learningWords = useMemo(
+        () => myWords.filter((fav) => !masteredWords.has(normalizeMasteryWord(fav.en_text))),
+        [myWords, masteredWords],
+    );
     const masteredTabLabel = isGuest ? t('vocab.review.guestMaster') : t('vocab.mine.mastered');
     // Hide the counts until the signed-in list has loaded: a failed GET must
     // not render "已掌握 0" as if that were the answer (G3).
@@ -623,6 +672,37 @@ export function VocabularyBookScreen({
             if (mastered) next.add(key);
             else next.delete(key);
             return next;
+        });
+    };
+
+    /**
+     * Remember the meaning captured at mark time. This is a session overlay for
+     * 已掌握 rows whose server `definition` snapshot is still null (PATCH does
+     * not take a definition; the GET snapshot wins whenever it exists).
+     */
+    const rememberMasteredSnapshot = (input: {
+        lemma: string;
+        word: string;
+        phonetic?: string | null;
+        translation?: string | null;
+    }) => {
+        const key = normalizeMasteryWord(input.lemma);
+        if (!key) return;
+        const word = input.word.trim() || input.lemma.trim();
+        const phonetic = (input.phonetic ?? '').trim();
+        const translation = (input.translation ?? '').trim();
+        if (!word && !translation) return;
+        setMasteredSnapshots((prev) => {
+            const existing = prev[key];
+            if (existing
+                && existing.word === word
+                && existing.phonetic === phonetic
+                && existing.translation === translation) {
+                return prev;
+            }
+            // Never erase a known meaning with an empty one.
+            if (!translation && existing?.translation) return prev;
+            return { ...prev, [key]: { word, phonetic, translation } };
         });
     };
 
@@ -666,30 +746,39 @@ export function VocabularyBookScreen({
     }, [myWords]);
 
     /**
-     * 已掌握 rows: the mastered set (server for signed-in, local for guests)
-     * enriched with the favorite's word casing + `/ipa/ 释义`; a mastered word
-     * without a favorite keeps the lemma and renders `—` for both. Sorted by
-     * word so client paging is stable across re-renders.
+     * 已掌握 rows: `word_states.mastered=1` is the only source. The row meaning
+     * is the `definition` snapshot first (`/api/review/words` + the mark-time
+     * session overlay), then a legacy favorite's meaning, then `—`. The star is
+     * never filled here: 已掌握 is not a favorite.
      */
     const masteredRows = useMemo(() => {
         const rows: Array<{ key: string; word: string; phonetic: string; translation: string }> = [];
         for (const key of masteredWords) {
-            const fav = favoriteByWord.get(key);
-            const word = fav ? fav.en_text.trim() : (masteredLabels[key] ?? key).trim();
+            const snapshot = masteredSnapshots[key];
+            // Legacy rows may still have a favorite record (marks made before
+            // the mutual-exclusion rule); it is only a meaning fallback, never
+            // a 已收藏 state.
+            const legacyFavorite = favoriteByWord.get(key);
+            const legacy = legacyFavorite
+                ? splitIpaAndMeaning(legacyFavorite.zh_text)
+                : null;
+            const word = (snapshot?.word
+                || legacyFavorite?.en_text
+                || masteredLabels[key]
+                || key).trim();
             if (!word) continue;
-            const split = fav ? splitIpaAndMeaning(fav.zh_text) : { ipa: null, meaning: '' };
             rows.push({
                 key,
                 word,
-                phonetic: split.ipa || '',
-                translation: split.meaning || '',
+                phonetic: snapshot?.phonetic || legacy?.ipa || '',
+                translation: snapshot?.translation || legacy?.meaning || '',
             });
         }
         rows.sort((a, b) => (
             a.word.toLowerCase().localeCompare(b.word.toLowerCase()) || a.word.localeCompare(b.word)
         ));
         return rows;
-    }, [masteredWords, favoriteByWord, masteredLabels]);
+    }, [masteredWords, favoriteByWord, masteredLabels, masteredSnapshots]);
 
     // The CEFR lookup covers only the rows the active tab shows; levels already
     // fetched are cached in `levels` and never re-requested.
@@ -1031,13 +1120,17 @@ export function VocabularyBookScreen({
 
     /**
      * 标为已掌握 for a custom word-list row (specs/038 §1). Idempotent PATCH;
-     * the row stays in the word list, it just flips its own action state. The
-     * review response is authoritative for the mark, and a failure leaves an
-     * inline retryable error instead of a success-looking row.
+     * the row stays in the word list, it just flips its own action state. A
+     * word that was also a favorite loses that favorite (mutual exclusion);
+     * if the removal fails the mark is rolled back and an inline, retryable
+     * error appears instead of a success-looking row.
      */
     const addListWordToMastered = async (input: {
         rowKey: string;
         word: string;
+        /** Meaning snapshot captured for the 已掌握 tab (word-list translation). */
+        translation?: string | null;
+        phonetic?: string | null;
         listId: string;
     }) => {
         const key = normalizeMasteryWord(input.word);
@@ -1048,13 +1141,15 @@ export function VocabularyBookScreen({
         }
         const lemma = input.word.trim();
         if (!lemma) return;
-        setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'busy' }));
-        setListRowErrors((prev) => {
+        const favorite = favoriteByWord.get(key);
+        const clearRowError = () => setListRowErrors((prev) => {
             if (!(input.rowKey in prev)) return prev;
             const next = { ...prev };
             delete next[input.rowKey];
             return next;
         });
+        setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'busy' }));
+        clearRowError();
         try {
             const result = await setWordMastered({
                 lemma,
@@ -1062,7 +1157,47 @@ export function VocabularyBookScreen({
                 targetLang,
                 source: { contentRef: input.listId },
             });
-            writeMasteredState(lemma, result.word.mastered === true);
+            const masteredNow = result.word.mastered === true;
+            writeMasteredState(lemma, masteredNow);
+            onMasteredChange?.(lemma, masteredNow);
+            if (masteredNow) {
+                rememberMasteredSnapshot({
+                    lemma,
+                    word: input.word,
+                    phonetic: input.phonetic,
+                    translation: input.translation,
+                });
+                if (favorite) {
+                    const removed = await deleteFavoriteById(favorite.id);
+                    if (!removed) {
+                        // Undo the mark so a word is never both mastered and
+                        // saved. The message only claims a rollback if it
+                        // actually succeeded.
+                        let rolledBack = false;
+                        try {
+                            const rollback = await setWordMastered({
+                                lemma,
+                                mastered: false,
+                                targetLang,
+                                source: { contentRef: input.listId },
+                            });
+                            rolledBack = rollback.word.mastered === false;
+                            writeMasteredState(lemma, !rolledBack);
+                            onMasteredChange?.(lemma, !rolledBack);
+                        } catch {
+                            // Best effort; stay honest about the failed rollback.
+                        }
+                        setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'idle' }));
+                        setListRowErrors((prev) => ({
+                            ...prev,
+                            [input.rowKey]: t(rolledBack
+                                ? 'vocab.review.error.masteredFavorite'
+                                : 'vocab.review.error.mastered'),
+                        }));
+                        return;
+                    }
+                }
+            }
             setMasterAdds((prev) => ({ ...prev, [input.rowKey]: 'added' }));
             toast.success(t('vocab.custom.masterToast'), { dedupeKey: 'review:fav-mastered' });
         } catch {
@@ -1092,7 +1227,10 @@ export function VocabularyBookScreen({
             setReviewedWords((prev) => new Set(prev).add(key));
             // specs/013: adding an already-tracked word forces mastered=0, so a
             // mastered favorite returns to 我的单词 instead of staying hidden.
-            if (masteredWords.has(key)) writeMasteredState(lemma, false);
+            if (masteredWords.has(key)) {
+                writeMasteredState(lemma, false);
+                onMasteredChange?.(lemma, false);
+            }
             toast.success(
                 result.created ? t('vocab.review.toast.added') : t('vocab.review.toast.already'),
                 { dedupeKey: 'review:fav-added' },
@@ -1118,6 +1256,7 @@ export function VocabularyBookScreen({
         }
         setPendingMasteredId(fav.id);
         setRowError(null);
+        const { ipa, meaning } = splitIpaAndMeaning(fav.zh_text);
         try {
             const result = await setWordMastered({
                 lemma,
@@ -1126,7 +1265,47 @@ export function VocabularyBookScreen({
                 source: reviewSourceFor(fav),
             });
             // The PATCH response is authoritative for the post-write mark.
-            writeMasteredState(lemma, result.word.mastered === true);
+            const masteredNow = result.word.mastered === true;
+            writeMasteredState(lemma, masteredNow);
+            onMasteredChange?.(lemma, masteredNow);
+            if (next && masteredNow) {
+                rememberMasteredSnapshot({
+                    lemma,
+                    word: lemma,
+                    phonetic: ipa,
+                    translation: meaning,
+                });
+                // specs/005 §已掌握与收藏互斥: marking mastered also removes the
+                // favorite (DELETE /api/favorites/:id) so counts, export and
+                // 我的单词 stop showing it. If the removal fails, undo the mark
+                // rather than leave a word in both worlds.
+                const removed = await deleteFavoriteById(fav.id);
+                if (!removed) {
+                    // Undo the mark so a word is never both mastered and saved.
+                    // The message only claims a rollback if it actually succeeded.
+                    let rolledBack = false;
+                    try {
+                        const rollback = await setWordMastered({
+                            lemma,
+                            mastered: false,
+                            targetLang,
+                            source: reviewSourceFor(fav),
+                        });
+                        rolledBack = rollback.word.mastered === false;
+                        writeMasteredState(lemma, !rolledBack);
+                        onMasteredChange?.(lemma, !rolledBack);
+                    } catch {
+                        // Best effort; stay honest about the failed rollback.
+                    }
+                    setRowError({
+                        id: fav.id,
+                        message: t(rolledBack
+                            ? 'vocab.review.error.masteredFavorite'
+                            : 'vocab.review.error.mastered'),
+                    });
+                    return;
+                }
+            }
             toast.success(
                 next ? t('vocab.review.toast.mastered') : t('vocab.review.toast.unmastered'),
                 { dedupeKey: 'review:fav-mastered' },
@@ -1165,9 +1344,11 @@ export function VocabularyBookScreen({
             });
             // The PATCH response is authoritative for the post-write mark.
             writeMasteredState(lemma, result.word.mastered === true);
+            onMasteredChange?.(lemma, result.word.mastered === true);
             toast.success(t('vocab.review.toast.unmastered'), { dedupeKey: 'review:fav-mastered' });
         } catch {
             writeMasteredState(lemma, true); // roll the row back into the table
+            onMasteredChange?.(lemma, true);
             setRowError({ id: `mastered:${row.key}`, message: t('vocab.review.error.mastered') });
         } finally {
             setPendingMasteredId(null);
@@ -1176,12 +1357,26 @@ export function VocabularyBookScreen({
 
     /**
      * Delete one favorite and keep both layers honest. App owns the optimistic
-     * prop path; favorites this screen added itself are removed locally.
+     * prop path (it also performs the DELETE); favorites this screen added
+     * itself are removed here. Resolves `true` only when the row is really gone
+     * — exactly once, so the App handler never re-sends a deleted id.
      */
-    const deleteFavoriteById = async (id: string) => {
-        await removeFavorite(id);
-        if (favorites.some((fav) => fav.id === id)) onRemoveFavorite(id);
+    const deleteFavoriteById = async (id: string): Promise<boolean> => {
+        if (favorites.some((fav) => fav.id === id)) {
+            try {
+                const removed = await onRemoveFavorite(id);
+                return removed !== false;
+            } catch {
+                return false;
+            }
+        }
+        try {
+            await removeFavorite(id);
+        } catch {
+            return false;
+        }
         setAddedFavorites((prev) => prev.filter((fav) => fav.id !== id));
+        return true;
     };
 
     /** Single-row delete / 取消收藏 from the expanded detail. */
@@ -1190,7 +1385,8 @@ export function VocabularyBookScreen({
         setRowError(null);
         setPendingDeleteId(fav.id);
         try {
-            await deleteFavoriteById(fav.id);
+            const removed = await deleteFavoriteById(fav.id);
+            if (!removed) throw new Error(t('vocab.delete.error'));
             toast.success(t('vocab.toast.removed'), { dedupeKey: 'favorites:removed' });
         } catch {
             setRowError({ id: fav.id, message: t('vocab.delete.error') });
@@ -1568,6 +1764,7 @@ export function VocabularyBookScreen({
         setMasteredQuery('');
         setMasteredLevel('');
         setMasteredSort('alpha');
+        setMasteredRevealed(new Set());
         setMineSort('added');
         setMineType('');
         setMineSource('');
@@ -1792,16 +1989,22 @@ export function VocabularyBookScreen({
         });
     }, []);
 
-    /** Row click: expand normally, but reveal Chinese first when it is hidden. */
-    const activatePhraseRow = useCallback((id: string) => {
-        if (hideChinese) togglePhraseReveal(id);
-        else togglePhraseExpand(id);
-    }, [hideChinese, togglePhraseExpand, togglePhraseReveal]);
+    /** Row click: the shared row expands; hide-Chinese reveal stays a side effect. */
+
+    const toggleMasteredReveal = (key: string) => {
+        setMasteredRevealed((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    };
 
     const toggleHideChinese = () => {
         setHideChinese((prev) => !prev);
         setRevealed(new Set());
         setPhraseRevealed(new Set());
+        setMasteredRevealed(new Set());
     };
 
     const toggleReveal = (word: string) => {
@@ -2195,12 +2398,12 @@ export function VocabularyBookScreen({
             <div data-testid="vocab-mine-panel" className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-caption leading-relaxed text-fg-muted">{t('vocab.mine.hint')}</p>
-                    {myWords.length > 0 && (
+                    {learningWords.length > 0 && (
                         <div className="flex items-center gap-2">
                             <button
                                 type="button"
                                 data-testid="vocab-export-anki"
-                                onClick={() => exportAnkiTsv(myWords)}
+                                onClick={() => exportAnkiTsv(learningWords)}
                                 title={t('favorites.exportAnkiTitle')}
                                 className={ACTION_BUTTON}
                             >
@@ -2210,7 +2413,7 @@ export function VocabularyBookScreen({
                             <button
                                 type="button"
                                 data-testid="vocab-export-csv"
-                                onClick={() => exportCsv(myWords)}
+                                onClick={() => exportCsv(learningWords)}
                                 title={t('favorites.exportCsvTitle')}
                                 className={ACTION_BUTTON}
                             >
@@ -2395,7 +2598,7 @@ export function VocabularyBookScreen({
                     </Badge>
                 ),
                 revealed: isRevealed,
-                onActivate: () => activatePhraseRow(item.id),
+                onActivate: hideChinese ? () => togglePhraseReveal(item.id) : undefined,
                 favored: favoritedWordKeys.has(wordKey),
                 favoriteLabel: favoriteLabelFor(item.headword),
                 onToggleFavorite: () => toggleRowFavorite({
@@ -2514,7 +2717,7 @@ export function VocabularyBookScreen({
                     speak: `${rowKey}-speak`,
                     star: `${rowKey}-star`,
                     expand: 'phrase-expand',
-                    detail: 'phrase-detail',
+                    detail: `phrase-detail-${item.id}`,
                 },
             };
         });
@@ -2650,8 +2853,6 @@ export function VocabularyBookScreen({
             const level = levelBadgeFor(row.word);
             const expandKey = `mastered:${row.key}`;
             const isExpanded = Boolean(expanded[expandKey]);
-            const favored = favoritedWordKeys.has(row.key);
-            const wordKey = normalizeMasteryWord(row.word);
             const source = fav ? sourceText(fav) : null;
             const SourceIcon = source ? SOURCE_ICON[source.source.kind] : null;
             return {
@@ -2661,23 +2862,13 @@ export function VocabularyBookScreen({
                 translation: row.translation,
                 level: level.label,
                 levelTitle: level.title,
-                favored,
-                favoriteLabel: favoriteLabelFor(row.word),
-                onToggleFavorite: () => {
-                    if (fav) {
-                        removeFavoriteForRow(fav);
-                        return;
-                    }
-                    toggleRowFavorite({
-                        word: row.word,
-                        phonetic: row.phonetic,
-                        translation: row.translation,
-                        sourceKind: 'wordlist',
-                        sourceRef: MASTERED_TAB,
-                        sourceTitle: masteredTabLabel,
-                    });
-                },
-                favoriteBusy: favoriteBusyKeys.has(wordKey),
+                revealed: masteredRevealed.has(row.key),
+                onActivate: hideChinese ? () => toggleMasteredReveal(row.key) : undefined,
+                // 已掌握 is not a favorite: never a filled star, never a toggle.
+                // The disabled control explains itself through its accessible name.
+                favored: false,
+                favoriteLabel: t('vocab.mastered.starDisabled', { word: row.word }),
+                favoriteDisabled: true,
                 speakLabel: speakLabelFor(row.word),
                 onSpeak: () => speakRow(row.word),
                 speakDisabled: speechDisabled,
@@ -3093,7 +3284,13 @@ export function VocabularyBookScreen({
                         done: mastered,
                         disabled: mastered,
                         onClick: () => {
-                            void addListWordToMastered({ rowKey, word: item.word, listId });
+                            void addListWordToMastered({
+                                rowKey,
+                                word: item.word,
+                                translation: item.translation,
+                                phonetic: item.phonetic,
+                                listId,
+                            });
                         },
                     },
                 ],
