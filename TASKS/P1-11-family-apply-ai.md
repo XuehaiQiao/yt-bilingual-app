@@ -28,7 +28,7 @@
 - `specs/041-word-family-list/spec.md`
 - `docs/reports/word-family-ai-audit-summary-2026-11-23.md`
 - `docs/reports/word-family-open-audit-2026-11-23.md`
-- `scripts/word-family-acceptance.mjs`（如需数字调整）
+
 
 ## read_only
 - batch JSON、summary、spec 041、ADR
