@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "updated": "2026-11-22",
+  "cards": [
+    {
+      "id": "P0-06",
+      "file": "TASKS/P0-06-governance-hardening.md",
+      "status": "claimed",
+      "owner": "gov-impl",
+      "write_scope": [
+        "TASKS/board.json",
+        "scripts/agent-preflight.mjs",
+        "scripts/check-task-board.mjs",
+        "scripts/check-contracts.mjs",
+        "scripts/install-hooks.mjs",
+        ".githooks/pre-commit",
+        "scripts/tests/governance.test.mjs",
+        "AGENTS.md",
+        ".github/workflows/ci.yml",
+        "docs/多agent协作工作流.md",
+        "TASKS/README.md",
+        "TASKS/P0-06-governance-hardening.md"
+      ],
+      "shared_writes": [],
+      "deps": []
+    },
+    {
+      "id": "P0-02",
+      "file": "TASKS/P0-02-reconcile-mastered-favorites.md",
+      "status": "ready",
+      "owner": "P0-02-reconcile",
+      "write_scope": [
+        "scripts/reconcile_mastered_favorites.py",
+        "scripts/tests/"
+      ],
+      "shared_writes": [],
+      "deps": []
+    },
+    {
+      "id": "P0-05",
+      "file": "TASKS/P0-05-quota-single-source-ops.md",
+      "status": "ready",
+      "owner": "P0-05-quota-ops",
+      "write_scope": [
+        "backend/ai/ledger.py",
+        "backend/ai/quota.py",
+        "backend/config.py",
+        "backend/billing.py",
+        "backend/teaching_analysis.py",
+        "scripts/warm_library_analysis.py",
+        "backend/tests/"
+      ],
+      "shared_writes": [],
+      "deps": []
+    },
+    {
+      "id": "P0-01",
+      "file": "TASKS/P0-01-my-words-count.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "frontend/src/lib/myWords.ts",
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "frontend/src/components/ReadingVocabButton.tsx",
+        "frontend/src/components/ProfileScreen.tsx"
+      ],
+      "shared_writes": ["frontend/src/App.tsx"],
+      "deps": ["P0-02"]
+    },
+    {
+      "id": "P0-03",
+      "file": "TASKS/P0-03-duplicate-actions.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "frontend/src/components/VocabularyRows.tsx",
+        "frontend/src/lib/favorites.ts"
+      ],
+      "shared_writes": [],
+      "deps": ["P0-01"]
+    },
+    {
+      "id": "P0-04",
+      "file": "TASKS/P0-04-article-analysis-recovery.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "backend/teaching_analysis.py",
+        "backend/routes_reading.py",
+        "backend/routes_videos.py",
+        "backend/routes_books.py",
+        "backend/routes_library.py",
+        "frontend/src/lib/useReadingAnalysis.ts",
+        "frontend/src/components/reading/ReadingSurface.tsx",
+        "frontend/src/components/ReaderScreen.tsx",
+        "frontend/src/i18n/"
+      ],
+      "shared_writes": ["frontend/src/i18n/"],
+      "deps": ["P0-05"]
+    }
+  ]
+}
