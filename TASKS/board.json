@@ -528,6 +528,31 @@
       "deps": [
         "P2-05A"
       ]
+    },
+    {
+      "id": "P1-07",
+      "file": "TASKS/P1-07-family-member-actions.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "content/wordlist/word-families.v1.json",
+        "scripts/build_word_families.py",
+        "backend/word_family.py",
+        "backend/routes_vocabulary.py",
+        "backend/tests/test_word_family.py",
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "frontend/src/components/VocabularyRows.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/word-family-acceptance.mjs",
+        "specs/041-word-family-list/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P1-06"
+      ]
     }
   ]
 }
