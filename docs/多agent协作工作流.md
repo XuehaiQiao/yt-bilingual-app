@@ -1,6 +1,6 @@
-# 多 Agent 协作工作流 v1.0
+# 多 Agent 协作工作流 v1.1
 
-> 状态：**随架构批准生效（2026-11-22）** ｜ 依据：`ARCHITECTURE.md` §10、`docs/design-governance/*`、专家提案
+> 状态：**随架构批准生效（2026-11-22）；P0-06 已把任务板 / 写域 preflight / 契约与 Flag / hook / CI 落成机器门禁（2026-11-22）** ｜ 依据：`ARCHITECTURE.md` §10、`docs/design-governance/*`、专家提案
 > 原则：**契约先行、写域隔离、机器门禁、独立评审**；agent 之间不靠长对话同步。
 
 ## 1. 角色
@@ -55,11 +55,29 @@ rollback: revert merge; 纯前端
 | 后端 | `py_compile *.py` + `pytest tests -q` | CI 已跑 | 必须 |
 | 功能验收 | `APP_URL=… node scripts/<feature>-acceptance.mjs` | 手动 | 改动功能必须 |
 | 设计门禁 | `node scripts/gate-receipt.mjs`（绑 HEAD） | report-only | 必须跑并贴结果；P0 阻断 |
-| 写域/证据 | `agent-preflight`（diff ⊆ 白名单、共享文件、HEAD） | **待建（P1）** | 新任务强制 |
-| 契约 | `check-contract-map`（改 route/schema 必须有测试） | **待建（P1）** | 新任务强制 |
-| Flag | `check-flags`（新 flag 必须登记 + 默认值 + 关闭态测试） | **待建（P1）** | 新任务强制 |
+| 任务板 | `node scripts/check-task-board.mjs`（卡文件/ID 唯一/状态/deps 无环） | **已落地（P0-06）** | CI 强制 |
+| 写域/证据 | `node scripts/agent-preflight.mjs --card <ID> [--staged]`（diff ⊆ 白名单、共享文件、活跃卡交集、HEAD） | **已落地（P0-06）** | 新任务强制；pre-commit 自动跑 |
+| 契约 | `node scripts/check-contracts.mjs`（schemas JSON + flags 注册）；`check-contract-map`（route/schema 测试映射） | schemas/flag **已落地（P0-06）**；contract-map 仍待建（P1） | 新任务强制（已落地部分） |
+| Flag | `node scripts/check-contracts.mjs`（必填/唯一/未过期/未登记 `ff.*`）；关闭态测试 | 注册表检查**已落地（P0-06）**；关闭态测试仍待建（P1） | 新任务强制（已落地部分） |
 
-诚实边界：`gate-receipt` 目前 report-only；无 CODEOWNERS/分支保护时靠 CI + Integrator 人工执行；不宣称“已强制”。
+### 4.1 安装与绕过（诚实边界）
+
+每个 clone 执行一次（只改本仓库 local config，不动全局）：
+
+```bash
+node scripts/install-hooks.mjs           # git config core.hooksPath .githooks；chmod +x .githooks/pre-commit
+node scripts/install-hooks.mjs --check   # 校验是否已安装
+```
+
+- `.githooks/pre-commit`：无 `TASK_ID` 且 `GOVERNANCE_BYPASS!=1` → **拒绝提交**；有 `TASK_ID` → 跑
+  `node scripts/agent-preflight.mjs --card "$TASK_ID" --staged`，失败即拒绝。
+- 绕过：`GOVERNANCE_BYPASS=1` 或 `git commit --no-verify` 可跳过 hook。**仅限事故**，事后必须在
+  handoff / PR 写明原因与补跑结果。
+- CI：`.github/workflows/ci.yml` 的 `governance` job 跑
+  `check-task-board` + `check-contracts` + `node --test "scripts/tests/*.test.mjs"`（Node 22）。
+  注意 Node 的 test runner 接受文件/glob 而不是裸目录，因此不写 `node --test scripts/tests`。
+- **仍待管理员**：GitHub 分支保护 / required checks。在配置之前，`governance` job 失败只是“变红”，
+  不能物理阻止合并；`gate-receipt` 仍是 report-only。**不宣称“已强制”**。
 
 ## 5. Handoff（交接记忆）
 

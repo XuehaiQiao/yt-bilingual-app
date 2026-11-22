@@ -1,0 +1,45 @@
+#!/bin/sh
+# 治理门禁 · pre-commit
+#
+# 安装：node scripts/install-hooks.mjs   （git config core.hooksPath .githooks）
+# 规则：
+#   - 无 TASK_ID 且 GOVERNANCE_BYPASS!=1 → 拒绝提交；
+#   - 有 TASK_ID → 跑写域 preflight 检查暂存区；
+#   - GOVERNANCE_BYPASS=1 → 跳过门禁（仅事故使用，事后必须在 handoff/PR 记录原因）。
+#
+# 绕过代价：--no-verify / GOVERNANCE_BYPASS=1 都能跳过本 hook，
+# 因此 CI 的 governance job 才是最终兜底（分支保护仍待管理员配置）。
+
+set -u
+
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "✘ 拒绝提交：不在 git 仓库内。" >&2
+  exit 1
+}
+cd "$ROOT" || exit 1
+
+if [ "${GOVERNANCE_BYPASS:-0}" = "1" ]; then
+  echo "⚠️  GOVERNANCE_BYPASS=1：跳过治理门禁（必须事后补记原因）。" >&2
+  exit 0
+fi
+
+if [ -z "${TASK_ID:-}" ]; then
+  echo "✘ 拒绝提交：未设置 TASK_ID（任务卡 ID）。" >&2
+  echo "  用法：TASK_ID=P0-06 git commit -m \"...\"" >&2
+  echo "  无卡不开工：先在 TASKS/ 建卡并登记 TASKS/board.json。" >&2
+  echo "  紧急绕过：GOVERNANCE_BYPASS=1 git commit ...（事后补记）" >&2
+  exit 1
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "✘ 拒绝提交：找不到 node（agent-preflight 需要 Node 22+）。" >&2
+  exit 1
+fi
+
+echo "▶ governance preflight：card=$TASK_ID（--staged）"
+if ! node scripts/agent-preflight.mjs --card "$TASK_ID" --staged; then
+  echo "✘ preflight 未通过，提交已拒绝。" >&2
+  exit 1
+fi
+
+exit 0

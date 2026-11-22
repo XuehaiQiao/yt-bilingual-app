@@ -95,3 +95,27 @@ jobs:
 
       - name: Selector scan (report only)
         run: node scripts/check-ui-selectors.mjs --baseline || true
+
+  # 治理机器门禁（P0-06）：任务板 / 契约与 Flag / 治理脚本单测。
+  # 注意：Node 的 test runner 接受文件或 glob，裸目录会被当成模块路径而报
+  # MODULE_NOT_FOUND（Node 22/26 均如此），所以这里用 glob 而不是
+  # `node --test scripts/tests`。
+  governance:
+    name: governance (Node 22)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Task board
+        run: node scripts/check-task-board.mjs
+
+      - name: Contracts & flags
+        run: node scripts/check-contracts.mjs
+
+      - name: Governance tests
+        run: node --test "scripts/tests/*.test.mjs"

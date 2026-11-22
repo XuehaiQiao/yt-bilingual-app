@@ -31,7 +31,7 @@
       "owner": "P0-02-reconcile",
       "write_scope": [
         "scripts/reconcile_mastered_favorites.py",
-        "scripts/tests/"
+        "scripts/tests/test_reconcile_mastered_favorites.py"
       ],
       "shared_writes": [],
       "deps": []

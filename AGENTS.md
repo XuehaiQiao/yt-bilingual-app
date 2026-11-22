@@ -2,6 +2,26 @@
 
 > 你是来二次开发这个项目的 AI agent？**只读 md 文件就能上手。** 按下面的顺序读，别先扎进代码。
 
+## 开工前（强制）
+
+> **无卡不开工**：没有 `TASKS/<id>.md` 卡 + `TASKS/board.json` 登记，就不要改本仓库的任何文件。
+
+1. **读架构**：先读 [ARCHITECTURE.md](ARCHITECTURE.md)，尤其 §6 单一事实源、§9 所有权与写域、§10 多 agent 工作流。
+2. **找卡**：在 `TASKS/` 找本次任务卡；找不到 → 停，先让 Architect/Lead 建卡。
+3. **查 board/写域**：读 [TASKS/board.json](TASKS/board.json)，确认卡状态（`ready`/`claimed`）、owner、`write_scope`、`deps`；确认没有其他活跃卡的写域交集。
+4. **声明 base sha**：`git rev-parse --short=7 HEAD` 写进 handoff/PR；证据一律绑 `HEAD <sha7>`，rebase/amend 后作废重跑。
+5. **跑 preflight**（写域/共享文件/证据）：
+
+```bash
+node scripts/agent-preflight.mjs --card <ID>            # 工作区 diff
+node scripts/agent-preflight.mjs --card <ID> --staged   # 提交前（pre-commit 会自动跑）
+node scripts/install-hooks.mjs                          # 每个 clone 执行一次（core.hooksPath=.githooks）
+```
+
+- 共享文件（`frontend/src/App.tsx`、`i18n/*.json`、`components/ui/**`、`lib/nav*`、`backend/migrations/**`、`.github/**` 等）**只由 Integrator 合入**：preflight 命中时需 `--as-integrator`，否则失败。
+- 证据 `--evidence-sha <sha7>` 必须等于 `git rev-parse HEAD` 的前 7 位，否则证据无效。
+- pre-commit 无 `TASK_ID` 且 `GOVERNANCE_BYPASS!=1` 时拒绝提交；绕过仅限事故，事后必须在 handoff/PR 补记原因。
+
 ## 这是什么项目
 
 **语途（LinguaTrek）**：帮中文用户通过 YouTube 视频学英语的本地应用。三种学习模式：看视频（AI 双语字幕流式生成）、本地剧集（SRT）、句子精背。React 19 + FastAPI + Gemini / DeepSeek（多模型，模型适配层见 `backend/llm.py`、清单见 `MODEL_CATALOG`）。
