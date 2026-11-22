@@ -1,0 +1,731 @@
+{
+  "schema": "linguatrek.word-family-ai-audit.v1",
+  "batch": 3,
+  "range": [
+    110,
+    165
+  ],
+  "reviewer": "agent-42",
+  "headSha": "0ac9ac8",
+  "source": {
+    "file": "/tmp/word-family-candidates-audit.json",
+    "candidateTotal": 436,
+    "familiesSha256": "9b5b7a315478baeba9ecf757392ccdcef0c175dfbfc170790985b48ac28b93cd",
+    "bandsSha256": "67614c18f096cd7981da686c4c02f93447fb5d1dd3eceb76f5dfcbc2cbfd5927"
+  },
+  "reviewed": 55,
+  "counts": {
+    "keep": 48,
+    "trim": 4,
+    "split": 3
+  },
+  "conventions": {
+    "verdict": "keep=保留；trim=按 remove_members 移除成员后保留该族；split=按 remove_edges 切断桥边、按 groups 拆成多组",
+    "remove_members": "建议从该族移除的成员（不同词根/词形巧合/义项串味）；不是删词，词本身仍在词表",
+    "remove_edges": "建议切断的 WordNet 派生边 [a,b]：trim 列出被删成员的入边，split 列出桥接边，keep 为 null",
+    "groups": "split 后各子族的成员（覆盖该族全部成员）；keep/trim 为 null",
+    "confidence": "high=证据明确；medium=词根/语义有争议或存在代价；low=不确定、按纪律暂留"
+  },
+  "results": [
+    {
+      "id": "F1506",
+      "head": "cure",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "5 条边均以 cure 为根：curable–curability–curableness、curative、curing；词根 cur- 与「治疗」语义透明，无链式跨根。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1543",
+      "head": "float",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "float 直连 floatation/flotation（拼写变体）、floater、floating、floaty；同根透明，floaty「漂浮的」略口语但合法。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1658",
+      "head": "devil",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "devil 直连 devilize/devilment/devilry/deviltry；diabolic 同出希腊 diabolos，语义「恶魔般的」可追溯。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1708",
+      "head": "beast",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "beast–beastly–beastliness 与 beast–bestial–bestiality/bestialize 两条同根链；bestiality 另有性含义但仍属 bestial 派生。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1709",
+      "head": "strain",
+      "size": 6,
+      "verdict": "split",
+      "remove_members": null,
+      "remove_edges": [
+        [
+          "strain",
+          "strenuous"
+        ]
+      ],
+      "groups": [
+        [
+          "strain",
+          "strainer",
+          "straining"
+        ],
+        [
+          "strenuous",
+          "strenuosity",
+          "strenuousness"
+        ]
+      ],
+      "reason": "strain 源自拉丁 stringere「拉紧」，strenuous 源自拉丁 strenuus「精力充沛」，非同根；WordNet 仅凭「费力/紧张」义（striving.n.01、strain.n.10）桥接，属语义联想。拆后 strenuous 组无 10k 锚点（3 词均为 10k 外）。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1800",
+      "head": "moderate",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "moderate 直连 moderateness/moderation/moderator；moderationist、moderatorship 罕见但词根透明；moderator「主持人」由 moderate「主持」义派生。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1840",
+      "head": "grain",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "grain–grainy–graininess、grain–granular–granularity 同出 granum；granular「颗粒的」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1926",
+      "head": "radiation",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "radiate 为中心：radiation/radiator 及 radiant–radiance/radiancy 同出 radiare「发光」；7 条边凝聚，无跨根。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2001",
+      "head": "rope",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "rope 直连 roper/roping/ropey/ropy，ropy–ropiness 同根；语义透明（绳/绳状）。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2053",
+      "head": "abstract",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "abstract 直连 abstracter/abstractor/abstraction/abstractive/abstractness；同根，词性转换透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2191",
+      "head": "persuade",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "persuade 直连 persuader/persuasion/persuasive/persuasible，persuasive–persuasiveness 同根；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2351",
+      "head": "bastard",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "bastard 直连 bastardise/ize、bastardly，bastardisation/ization 与动词同根；含贬义但派生合法。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2434",
+      "head": "marble",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "marble 直连 marbleize/marbleization/marbleizing 与 marmoreal/marmorean（拉丁 marmor 同源）；marmoreal 生僻但「大理石的」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2684",
+      "head": "anatomy",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "anatomy 直连 anatomic/anatomical/anatomist/anatomise/anatomize；同根透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2694",
+      "head": "obsession",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "obsess–obsession–obsessive–obsessional 及 obsessiveness/obsessivity 同根；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2705",
+      "head": "litigation",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "litigate–litigation–litigator–litigant 及 litigious/litigiousness 同根（litig-「诉讼」）；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2751",
+      "head": "sour",
+      "size": 6,
+      "verdict": "split",
+      "remove_members": null,
+      "remove_edges": [
+        [
+          "sour",
+          "tartness"
+        ]
+      ],
+      "groups": [
+        [
+          "sour",
+          "souring",
+          "sourness"
+        ],
+        [
+          "tart",
+          "tartness",
+          "tartlet"
+        ]
+      ],
+      "reason": "sour（日耳曼语源）与 tart（teart 语源）不同根；桥边 tartness→sour 是同义关系（同属 sour.n.02 味觉义），非派生。tartlet 走 tart「果馅饼」义（同形异源）；拆后 tart 组无 10k 锚点。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2914",
+      "head": "adhere",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "adhere 直连 adherence/adherent/adhesion/adhesive，adhesive–adhesiveness 同根；adherent「拥护者」由「黏附」义引申但可追溯。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3048",
+      "head": "miniature",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "miniature 直连 miniaturise/ize、miniaturist 及名词化形式；同根透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3077",
+      "head": "compartment",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "compartment 直连 compartmental/compartmentalise/ize 及名词化；同根透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3104",
+      "head": "analogy",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "analogy 直连 analogical/analogise/ize/analogist/analogous；同出希腊 analogia，语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3153",
+      "head": "nitrogen",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "nitrogen–nitrogenize/nitrogenous 与 nitrate–nitrify–nitrification 同出 niter 词根，化学语义可追溯。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3179",
+      "head": "rigid",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "rigid–rigidity/rigidness 与 rigidify–rigidification/rigidifying 同根；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3263",
+      "head": "stigma",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "stigma–stigmatic–stigmatize/stigmatization 为同根核心；stigmatism 另有光学「正视」义、stigmatist 为宗教圣痕义，生僻且语义分支，暂不删。",
+      "confidence": "low"
+    },
+    {
+      "id": "F3341",
+      "head": "deduction",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "deduce–deduction–deductive/deducible 与 deduct–deduction–deductible 同出 deducere；deduction 兼「推断/扣除」义但派生透明。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F3458",
+      "head": "satire",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "satire 直连 satiric/satirical/satirise/ize/satirist；同根透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3480",
+      "head": "alleviate",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "alleviate 直连 alleviant/alleviation/alleviative/alleviator/alleviatory；同根透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3498",
+      "head": "fraternity",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "fraternity–fraternal–fraternise/ize 及名词化同根（frater「兄弟」）；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3586",
+      "head": "agony",
+      "size": 6,
+      "verdict": "trim",
+      "remove_members": [
+        "agonist",
+        "agonistic"
+      ],
+      "remove_edges": [
+        [
+          "agony",
+          "agonist"
+        ],
+        [
+          "agonist",
+          "agonistic"
+        ]
+      ],
+      "groups": null,
+      "reason": "agonist/agonistic 与 agony 同出希腊 agon「竞赛」，但现代义「主动肌/激动剂」「好斗的」已与「剧痛」分化，非透明派生；agonal/agonise/agonize 仍透明保留。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0391",
+      "head": "sense",
+      "size": 14,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "14 词均出拉丁 sens-/sent-（sense 为中心 8 条边）；sensation/sensible/sensitive/sensor 透明；sensuous 略偏「审美愉悦」但同根。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0064",
+      "head": "use",
+      "size": 12,
+      "verdict": "trim",
+      "remove_members": [
+        "serviceability",
+        "serviceable",
+        "serviceableness"
+      ],
+      "remove_edges": [
+        [
+          "serviceable",
+          "serviceableness"
+        ],
+        [
+          "serviceable",
+          "useableness"
+        ],
+        [
+          "serviceability",
+          "serviceable"
+        ]
+      ],
+      "groups": null,
+      "reason": "serviceable 源出 service（拉丁 servire），非 use 派生；WordNet 经 useableness–serviceable 的同义桥（serviceability.n.01）并族，属不同词根；其余 use/usage/usance/user/usable 等同根透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0323",
+      "head": "value",
+      "size": 11,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "value–valuable–valuate/evaluate–valuation/evaluation–evaluator 同出 valere；「估价」语义链透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1061",
+      "head": "circle",
+      "size": 10,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "circle–circular–circulate–circulation 同出 circulus；circularise/ize 等名词化同根，「环绕」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0039",
+      "head": "life",
+      "size": 9,
+      "verdict": "trim",
+      "remove_members": [
+        "livery"
+      ],
+      "remove_edges": [
+        [
+          "liver",
+          "livery"
+        ]
+      ],
+      "groups": null,
+      "reason": "livery 与 liver 的边走 WordNet 形容词 livery「胆汁的」（bilious.s.02），数据里 livery 是「制服」（源 livrée「交付」），词形巧合；liver 保留（另含「居住者」义，与 live 同根），life/live/lifer/living/livable 等透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0100",
+      "head": "move",
+      "size": 9,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "move–movement–mover–movable/moveable 与 motion–motional 同出 movere；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0174",
+      "head": "act",
+      "size": 9,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "act–action–actor–acting–actable–actionable 与 actuate–actuation/actuator 同出 agere/actus；actuate「驱动」可追溯。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0233",
+      "head": "receive",
+      "size": 9,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "receive–reception–receiver–recipient–receptive 等同出 recipere；黑名单已挡 receptor，本族无混入。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0817",
+      "head": "advice",
+      "size": 9,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "advice/advise（allowlist 补边）–advisory/adviser/advisor–advisable/advisability–advisee/advisement 同根透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1452",
+      "head": "philosophy",
+      "size": 9,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "philosophy–philosopher–philosophic(al)–philosophise/ize 及施事名词同根；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1461",
+      "head": "impress",
+      "size": 9,
+      "verdict": "trim",
+      "remove_members": [
+        "impressment"
+      ],
+      "remove_edges": [
+        [
+          "impress",
+          "impressment"
+        ]
+      ],
+      "groups": null,
+      "reason": "impressment 的 impress 走 WordNet「强征入伍」义（shanghai.v.01），与 head impress「留下印象/印记」（imprimere）同形异源，-ment 为形态巧合；impression/impressive/impressionism 等同根透明。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F1574",
+      "head": "adapt",
+      "size": 9,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "adapt 直连 adaptation/adaption/adapter/adaptor/adaptive/adaptable/adaptability；同根透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1578",
+      "head": "curious",
+      "size": 9,
+      "verdict": "split",
+      "remove_members": null,
+      "remove_edges": [
+        [
+          "curious",
+          "inquisitiveness"
+        ]
+      ],
+      "groups": [
+        [
+          "curious",
+          "curiosity",
+          "curiousness"
+        ],
+        [
+          "inquiry",
+          "inquire",
+          "inquirer",
+          "inquiring",
+          "inquisitive",
+          "inquisitiveness"
+        ]
+      ],
+      "reason": "curious 源自拉丁 cura「关心」（cur-），inquiry/inquisitive 源自 quaerere「寻求」（quer-/quir-），不同词根；桥边 inquisitiveness→curious 是同义关系（curiousness.n.01「好奇状态」），非派生。两组各有 10k 锚点（curious B1；inquiry B1、inquire C1），可独立成族。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1615",
+      "head": "specialist",
+      "size": 9,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "specialist–specialize/specialise–specialization/specialisation–specialism/specializer 同根；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0351",
+      "head": "education",
+      "size": 8,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "educate–education–educator–educatee–educational–educative–educationalist/educationist 同根；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0361",
+      "head": "effect",
+      "size": 8,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "effect–effective–effectiveness/effectivity–effectuate/effectuation–effecter/effector 同根；effector 生理「效应器」为专业引申。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0456",
+      "head": "apply",
+      "size": 8,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "apply–application–applicable–applicant–applicability–applicative/applicatory–applier 同根；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0478",
+      "head": "accept",
+      "size": 8,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "accept–acceptable–acceptance–acceptability/acceptableness–acceptant/acceptation/acceptive 同根；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0499",
+      "head": "management",
+      "size": 8,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "manage–management–manager–manageable/manageability–managerial/managership 同根；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1145",
+      "head": "vary",
+      "size": 8,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "vary–variation–variable–variant–variance–variability–variate 同出 variare；透明（variate 统计义可追溯）。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1304",
+      "head": "revolution",
+      "size": 8,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "revolve/revolt 与 revolution 同出 revolvere；revolt 政治义、revolve 旋转义已分化，但同根可追溯，暂不拆。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F1690",
+      "head": "poetry",
+      "size": 8,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "poet–poetry–poetic/poetical–poetise/ize 及施事名词同根；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3211",
+      "head": "oxide",
+      "size": 8,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "oxide–oxidise/ize–oxidisation/ization–oxidiser/izer–oxidant 同根；化学语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0063",
+      "head": "long",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "long–longer–length（allowlist 补边）–lengthy/lengthiness 同根；longing 为 long v.「渴望」派生，义分化但词形与派生透明，暂留。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0093",
+      "head": "please",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "please–pleasure–pleasant–pleasantness–pleasing–pleaser–pleasance 同出 placere；透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0133",
+      "head": "government",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "govern–government–governor–governance–governing–governorship–gubernatorial 同出 gubernare；gubernatorial 生僻但合法。",
+      "confidence": "high"
+    }
+  ],
+  "counts_note": "counts 按 verdict 统计 55 族；keep 48 / trim 4 / split 3"
+}

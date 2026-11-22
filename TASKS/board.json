@@ -572,7 +572,7 @@
     {
       "id": "P1-09",
       "file": "TASKS/P1-09-family-ai-audit.md",
-      "status": "claimed",
+      "status": "merged",
       "owner": "lead",
       "write_scope": [
         "docs/reports/word-family-ai-audit/"

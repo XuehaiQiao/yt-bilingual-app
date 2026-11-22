@@ -1,0 +1,689 @@
+{
+ "batch": 1,
+ "range": [
+  0,
+  55
+ ],
+ "results": [
+  {
+   "id": "F0700",
+   "head": "theory",
+   "size": 10,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "10 个成员全部由 theory 或其 -ise/-ize 变体直连（theorist/theoretic/theoretician；theorise/theorize 及其 -isation/-ization/-iser/-izer），同一希腊词根 theoria，理论↔推论 语义透明；成对变体只是拼写差异。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0342",
+   "head": "space",
+   "size": 7,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "space/spatial/spacial/spacing/spatiality 同拉丁词根 spatium，spacious(ness) 走 space「空间大/空地」义，语义透明；spacial 是 spatial 的变体拼写。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0396",
+   "head": "standard",
+   "size": 7,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "standard 与 standardize/standardise 及各 -isation/-ization/-iser/-izer 派生全部由 standard 直连，词干与语义（标准↔标准化）透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0264",
+   "head": "large",
+   "size": 18,
+   "verdict": "split",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": [
+    [
+     "large",
+     "largeness"
+    ],
+    [
+     "extend",
+     "extension",
+     "extensive",
+     "extent",
+     "extendible",
+     "extensible",
+     "extensional",
+     "extensiveness",
+     "extensor"
+    ],
+    [
+     "comprehend",
+     "comprehension",
+     "comprehensive",
+     "comprehendible",
+     "comprehensibility",
+     "comprehensible",
+     "comprehensiveness"
+    ]
+   ],
+   "reason": "WordNet 用「近义/释义桥」把三个不同词根串成 18 人：large/largeness（拉丁 largus）、extend/extent/extensive/extensor（拉丁 tendere）、comprehend/comprehension/comprehensive（拉丁 prehendere）。桥是 largeness.n.01「breadth（理解面广）」↔comprehensive 与 extensiveness.n.01（释义「large or extensive in breadth」）↔large，属近义串接而非形态派生，须拆三族。",
+   "confidence": "high"
+  },
+  {
+   "id": "F3052",
+   "head": "ascend",
+   "size": 13,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "ascend/ascension/ascent/ascendancy/ascendant/ascender/ascensive 等全部由 ascend 或一级派生直连，同一拉丁词根 ascendere；ascendance/ascendence、ascendancy/ascendency 只是变体拼写。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0640",
+   "head": "crime",
+   "size": 12,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "crime/criminal/criminality/criminalize/criminate/incriminate 同一拉丁词根 crimin-，「罪行→罪犯→控告/牵连」语义链透明，链长≤2。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0812",
+   "head": "concept",
+   "size": 12,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "concept/conceive/conception/conceptual/conceptive 同拉丁词根 concipere，「概念↔构思」语义透明，边由 concept/conceive 直连；conceptualise/conceptualization 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0900",
+   "head": "digital",
+   "size": 11,
+   "verdict": "trim",
+   "remove_members": [
+    "digitalis"
+   ],
+   "remove_edges": [
+    [
+     "digitalis",
+     "digitalize"
+    ]
+   ],
+   "groups": null,
+   "reason": "digitalis（毛地黄/洋地黄制剂）是植物—药物名，只在 digitalize.v.02「投予洋地黄」这一医学义上入族（数字义 digitalize.v.01 来自 digit），与 digit「数字/手指」/digital 不同义，属纯词形巧合；删该成员及其边，其余 digit→digital/digitize 链合法。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2178",
+   "head": "harmony",
+   "size": 11,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "harmony/harmonic/harmonious/harmonise/harmonize 及其 -isation/-izer/-ness 派生同词根，边全部由 harmony 或同级变体直连，协调↔和谐 语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0196",
+   "head": "idea",
+   "size": 10,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "idea/ideal/ideate/ideation/ideational 同拉丁词根 idea；ideal 经 ideal.s.02「只存在于观念中的」直连 idea，理想↔观念 语义可推；idealise/idealization 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1367",
+   "head": "carbon",
+   "size": 10,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "carbon/carbonate/carbonic/carbonize/carburize 同词根 carbon-；carburise/carburize（渗碳）是本词根的冶金义而非跨根，生僻不构成删除理由。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1469",
+   "head": "symbol",
+   "size": 10,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "symbol/symbolic/symbolise/symbolize 及各级变体由 symbol 直连，同一希腊词根 symbolon，符号↔象征 语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1832",
+   "head": "perceive",
+   "size": 10,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "perceive/perception/perceptible/perceptive/perceptual/percipient 同拉丁词根 percipere，感觉↔知觉↔领悟 语义透明，边由 perceive 或一级派生直连。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2300",
+   "head": "nutrition",
+   "size": 10,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "nutrition/nutrient/nutritious/nutrify 与 nourish/nourishment 同拉丁词根 nutrire（nourish 经古法语借形），「营养↔滋养」语义透明；nutritionary 等为罕见但合法的同根派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F3520",
+   "head": "vapor",
+   "size": 10,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "vapor/vaporize/vaporous 与 evaporate/evaporation 同词根 vapor-，蒸发＝e(x)+vapor，语义透明；vaporise/vaporisation 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0239",
+   "head": "sign",
+   "size": 9,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "sign/signify/significant/significance/signature/signifier 同拉丁词根 signum，「符号→表意→重要」语义链透明，派生链≤2 级。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0370",
+   "head": "industry",
+   "size": 9,
+   "verdict": "trim",
+   "remove_members": [
+    "diligence",
+    "diligent"
+   ],
+   "remove_edges": [
+    [
+     "diligent",
+     "industry"
+    ]
+   ],
+   "groups": null,
+   "reason": "diligent/diligence（拉丁 diligere）与 industry（拉丁 industria）不同词根，WordNet 只经 diligence.n.02（industriousness 的同义名词）连到 industry.n.02「勤奋」义；而族内 industrial* 走「工业」义。删 2 个成员与桥边，保留 industry+industrial* 7 词。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1054",
+   "head": "climate",
+   "size": 9,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "climate/acclimate/acclimation/climatic 同词根 climat-，「气候→适应气候」语义透明；acclimate 与 acclimatize 是同一派生的不同借形，不构成两族。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1268",
+   "head": "tone",
+   "size": 9,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "tonic/tonicity 的「补药/肌肉张力」义对学习者不透明，但 tonic 另有「主音/音调」义（tonic.a.02、tonic.s.04 直连 tone.n.03），tonicity 由 tonic 派生，属同一词根 tonus 的多义，不是跨根误合并；建议展示时标义而非删边。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F1640",
+   "head": "utility",
+   "size": 9,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "utility/utilize/utilizable/utilitarian 同拉丁词根 uti/utilis，「有用↔利用」语义透明；utilise/utilisation/utilizer 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1710",
+   "head": "vital",
+   "size": 9,
+   "verdict": "trim",
+   "remove_members": [
+    "indispensability",
+    "indispensable",
+    "indispensableness"
+   ],
+   "remove_edges": [
+    [
+     "indispensable",
+     "vitalness"
+    ],
+    [
+     "indispensability",
+     "indispensable"
+    ]
+   ],
+   "groups": null,
+   "reason": "indispensable/indispensability/indispensableness 词根是拉丁 dispensare（分配/免除），仅因「必需＝不可或缺」与 vital 近义才被连上（indispensable.s.01「vitally necessary」；vitalness.n.01 把 indispensability 当近义名词）。删这 3 个成员及其边，保留 vital/vitality/vitalize/vitalization/vitalizer/vitalness 6 词。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1806",
+   "head": "colony",
+   "size": 9,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "colony/colonial/colonist/colonize 同拉丁词根 colonia，「殖民地↔殖民」语义透明；colonise/colonisation/colonizer 为变体与常规派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1896",
+   "head": "absorb",
+   "size": 9,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "absorb/absorption/absorbent/absorptive 同拉丁词根 absorbere，「吸收↔专注」语义透明；absorbate/absorptivity 等技术词仍属本根。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1976",
+   "head": "myth",
+   "size": 9,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "myth/mythic/mythical/mythology/mythologize/mythologist 同希腊词根 mythos，「神话↔虚构作品」语义透明，边由 myth 或 mythology 直连。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2750",
+   "head": "monopoly",
+   "size": 9,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "monopoly/monopolize/monopolist/monopolistic 同希腊词根 monopōlion，「垄断↔独占」语义透明；monopolise/monopolisation 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F3244",
+   "head": "arbitration",
+   "size": 9,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "arbitrate/arbitration/arbiter/arbitrator/arbitrable 同拉丁词根 arbiter，「仲裁↔裁决人」语义透明；arbitrament/arbitrement 为罕见但合法的同根变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0015",
+   "head": "person",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "person/persona/impersonate/personify 同拉丁词根 persona，「人↔人格面具↔扮演↔拟人」语义链透明，链长≤2。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0071",
+   "head": "woman",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "woman/womanhood/womanly/womanliness/womanize 同词根，「女性↔女性气质」语义透明；womanise/womanizer 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0157",
+   "head": "provide",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "provide/provision/provider/provident/providence 同拉丁词根 providere，「提供↔预备↔天意」语义链可推，边直连 provide/provident。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0256",
+   "head": "air",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "air/aerial/aerate/aerify/airy 同一希腊—拉丁词根 aer「空气」，空中/充气 语义透明；air 经古法语借入但与本根同源。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0278",
+   "head": "phone",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "phone 兼有「电话」与「音素（语音单音）」两义：phoner 走电话义，phonetic/phonetician/phonate 走 phone.n.02（音素）义，均是该词自身义项的直接派生，词根同为希腊 phōnē；不是跨根误合并，但两个义域建议展示时标注。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F0423",
+   "head": "military",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "military/militarize/militarist/militaristic/militarism 同拉丁词根 militaris，「军事↔军国主义」语义透明；militarise 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0501",
+   "head": "notice",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "notice/notify/notification 同拉丁词根 notus，「注意↔通知」语义透明；noticeable/notifiable 分别直连 notice/notify。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0631",
+   "head": "capital",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "capital/capitalism/capitalist/capitalize 同拉丁词根 capitalis，「首都/资本→资本家→资本化」语义透明；capitalise/capitalisation 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0656",
+   "head": "solution",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "solve/solution/solvent/solvency/solvate/solvation 同拉丁词根 solvere，「解开→溶解/偿付」语义链可推；solvate/solvation 属溶剂义技术词，仍同根。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0748",
+   "head": "communication",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "communicate/communication/communicative/communicator 同拉丁词根 communicare，「交流↔传达」语义透明；communicating/communicational 为常规派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0765",
+   "head": "scale",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "scale 本身多义（刻度/规模/天平/鳞/音阶）：scalar/scalic 走音阶与标度义、scaly/scaliness 走鳞义，但全部是 scale 这一词形（拉丁 scala）的直接派生，无跨根串接；scalage 生僻但合法。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0835",
+   "head": "wave",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "wave 与 waver 同词根（waver 为 wave 的反复动词），wavy/waviness/wavelet 由波义派生，waver 的「动摇/踌躇」由「摇摆」引申，属同根语义延伸而非跨根巧合。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F0969",
+   "head": "repeat",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "repeat/repetition/repetitive/repetitious 及 -ness 派生同拉丁词根 repetere，「重复」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1036",
+   "head": "wine",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "wine/vinous/vinaceous/vinify/winery/winey 同拉丁词根 vinum（wine 为同源借形），「葡萄酒↔酿酒」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1105",
+   "head": "fruit",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "fruit/fruity/fruitlet/fruiterer/fructify/fructification 同拉丁词根 fructus，「果实↔结果实」语义透明；fruition 在 WordNet 有 fruition.n.01「结果实的状态」，并非只有「成就」义。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1238",
+   "head": "accuse",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "accuse/accusation/accuser/accusatory 同拉丁词根 accusare，「控告↔指责」语义透明；accusative 有 accusative.s.01「含有/表达指责」义并直连 accuse，其「宾格」语法义对学习者不透明，但仍是同一词形义项，宜标注而非删边。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F1914",
+   "head": "induce",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "induce/induction/inducement/induct/inductee 同拉丁词根 inducere，「诱导→引导→就职/归纳」语义链透明，inductee 为规则派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2189",
+   "head": "canon",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "canon/canonical/canonize/canonist 同词根 kanōn，「教规→圣典→封圣」语义透明；canonise/canonisation 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2453",
+   "head": "atom",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "atom/atomic/atomize/atomizer/atomise 同希腊词根 atomos，「原子↔使成原子」语义透明，无跨根。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2473",
+   "head": "vent",
+   "size": 8,
+   "verdict": "trim",
+   "remove_members": [
+    "venter",
+    "ventral"
+   ],
+   "remove_edges": [
+    [
+     "vent",
+     "venter"
+    ],
+    [
+     "venter",
+     "ventral"
+    ]
+   ],
+   "groups": null,
+   "reason": "venter 是词形枢纽：venter.n.01「发泄的人」连 vent，venter.n.02「腹/子宫」连 ventral（拉丁 venter「腹」）。ventral「腹的」与 vent「通风口/发泄」（拉丁 ventus）不同词根，属纯词形巧合；删 venter、ventral 及两条边，保留 vent/ventilate/ventilation/ventilator/ventilatory/venting 6 词。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2524",
+   "head": "splash",
+   "size": 8,
+   "verdict": "trim",
+   "remove_members": [
+    "ostentate",
+    "ostentation",
+    "ostentatious",
+    "ostentatiousness"
+   ],
+   "remove_edges": [
+    [
+     "ostentatious",
+     "splashiness"
+    ]
+   ],
+   "groups": null,
+   "reason": "ostentate/ostentation/ostentatious（拉丁 ostendere「展示」）与 splash（拟声词根）不同根，WordNet 只经 splashiness＝ostentation.n.02「浮夸」与 splashy「花哨的」近义义项入族；删 4 个 ostentat* 成员及桥边，保留 splash/splashy/splashiness/splashing。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2932",
+   "head": "articulate",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "articulate 本身有「发音清晰」与「有关节/铰接」两义，articular/articulary/articulatory 走关节与发音器官义，articulation 同形覆盖两义，均属同一拉丁词根 articulus，边直连 articulation。",
+   "confidence": "high"
+  },
+  {
+   "id": "F3213",
+   "head": "alphabet",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "alphabet/alphabetic/alphabetical/alphabetize 同希腊词根 alpha+beta，「字母表↔按字母序」语义透明；alphabetise/alphabetisation 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F3641",
+   "head": "syllable",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "syllable/syllabic/syllabify/syllabification/syllabicate 同希腊词根 syllabē，「音节↔分音节」语义透明，边由 syllable 或同级派生直连。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0217",
+   "head": "office",
+   "size": 7,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "office/official/officiate/officiant 同拉丁词根 officium，「职务→官员→主持」语义链透明；officialdom/officiating 为常规派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0234",
+   "head": "information",
+   "size": 7,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "inform/information/informative/informant/informer 同拉丁词根 informare，「告知↔消息↔告密者」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0286",
+   "head": "picture",
+   "size": 7,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "picture/depict/depiction/depictive 同拉丁词根 pingere/pict-，「图画↔描绘」语义透明；pictural 为 pictorial 的罕见同根变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0414",
+   "head": "perfect",
+   "size": 7,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "perfect/perfection/perfectible/perfectionism/perfectionist 同拉丁词根 perficere，「完美↔完善」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0524",
+   "head": "reduce",
+   "size": 7,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "reduce/reduction/reducible/reductive/reductant 同拉丁词根 reducere，「减少→简化/还原」语义透明；reductant 属还原义技术词，仍同根。",
+   "confidence": "high"
+  }
+ ]
+}

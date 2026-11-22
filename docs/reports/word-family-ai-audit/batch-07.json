@@ -1,0 +1,703 @@
+{
+ "schema": "linguatrek.word-family-ai-audit.v1",
+ "batch": 7,
+ "range": [
+  330,
+  385
+ ],
+ "reviewer": "agent-46",
+ "headSha": "0ac9ac8",
+ "source": {
+  "file": "/tmp/word-family-candidates-audit.json",
+  "candidateTotal": 436,
+  "familiesSha256": "9b5b7a315478baeba9ecf757392ccdcef0c175dfbfc170790985b48ac28b93cd",
+  "bandsSha256": "67614c18f096cd7981da686c4c02f93447fb5d1dd3eceb76f5dfcbc2cbfd5927"
+ },
+ "reviewed": 55,
+ "counts": {
+  "keep": 49,
+  "trim": 3,
+  "split": 3
+ },
+ "conventions": {
+  "verdict": "keep=保留；trim=按 remove_members 移除成员后保留该族；split=按 remove_edges 切断桥边、按 groups 拆成多组",
+  "remove_members": "建议从该族移除的成员（不同词根/词形巧合/义项串味）；不是删词，词本身仍在词表",
+  "remove_edges": "建议切断的 WordNet 派生边 [a,b]：trim 列出被删成员的入边，split 列出桥接边，keep 为 null",
+  "groups": "split 后各子族的成员（覆盖该族全部成员）；keep/trim 为 null",
+  "confidence": "high=证据明确；medium=词根/语义有争议或存在代价；low=不确定、按纪律暂留"
+ },
+ "results": [
+  {
+   "id": "F1114",
+   "head": "appropriate",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "appropriate 直连 appropriable/appropriateness/appropriative/appropriator，同拉丁 appropriare「据为己有、使适合」；-able/-ness/-ive/-or 派生透明，无跨词根串接。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1126",
+   "head": "panel",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "panel 直连 paneling/panelling（拼写变体）与 panelist/panellist（变体）；「面板/小组」→「镶板/小组成员」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1153",
+   "head": "contest",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "contest 直连 contestable/contestation/contestee/contester；「争夺/质疑」义下 -able/-ation/-ee/-er 派生透明（contestee 为法律术语「被质疑的当选人」）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1169",
+   "head": "motor",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "motor 直连 motoring/motorist/motorize，motorization 由 motorize 派生；「汽车/发动机」→「驾车/驾车者/电动化」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1186",
+   "head": "urban",
+   "size": 5,
+   "verdict": "trim",
+   "remove_members": [
+    "urbane"
+   ],
+   "remove_edges": [
+    [
+     "urbane",
+     "urbanity"
+    ]
+   ],
+   "groups": null,
+   "reason": "urban/urbanization/urbanize 与 urbanity 的「城市性」义同拉丁 urbs，透明；urbane「彬彬有礼/有教养的」语义已从「城市」分化（WordNet 经 urbanity.n.01「polished courtesy」连入），属同源双式词的语义分化。删 urbane 及其边；urbanity 保留（另有「城市生活」义连 urban）。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F1200",
+   "head": "wire",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "wire 直连 wirer/wiring/wiry，wiriness 由 wiry 派生；「电线/布线」→「布线工/布线/金属丝般的」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1211",
+   "head": "adventure",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "adventure 直连 adventurer/adventuristic/adventurous，adventurousness 由 adventurous 派生；「冒险」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1228",
+   "head": "index",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "index 直连 indexation/indexer/indexical/indexing；「索引/指数」→「指数化/编索引者/索引的」语义透明（indexical 另有语言学「指示的」义，仍属 index 派生）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1239",
+   "head": "stretch",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "stretch 直连 stretcher/stretching/stretchy，stretchiness 由 stretchy 派生；「伸展」→「拉伸器/拉伸/有弹性的」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1259",
+   "head": "bright",
+   "size": 5,
+   "verdict": "split",
+   "remove_members": null,
+   "remove_edges": [
+    [
+     "bright",
+     "luminousness"
+    ]
+   ],
+   "groups": [
+    [
+     "bright",
+     "brightness"
+    ],
+    [
+     "luminosity",
+     "luminous",
+     "luminousness"
+    ]
+   ],
+   "reason": "bright/brightness 为日耳曼语源（OE beorht）；luminous/luminosity/luminousness 属拉丁 lumen 词根，WordNet 让 luminosity.n.01 的 luminousness 直接指回 bright 的同义义项（「发光/明亮」），属近义串接而非形态派生。删桥边后拆两组：bright 组 2 词（B1/C1 锚点），luminous 组 3 词均 10k 外。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1267",
+   "head": "shadow",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "shadow 直连 shadower/shadowing/shadowy，shadowiness 由 shadowy 派生；「影子/跟踪/阴暗」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1303",
+   "head": "flash",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "flash 直连 flasher/flashing/flashy，flashiness 由 flashy 派生；「闪光」→「闪光物/闪烁/花哨的」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1305",
+   "head": "satisfy",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "satisfaction 由 satisfy 派生，satisfactory 同出拉丁 satisfacere；satisfactoriness/satisfier 分别由 satisfactory/satisfy 派生，语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1378",
+   "head": "acid",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "acid 直连 acidify/acidity/acidulate，acidification 由 acidify 派生；「酸」→「酸化/酸度/使微酸」透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1388",
+   "head": "leak",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "leak 直连 leakage/leaker/leaky，leakiness 由 leaky 派生；「漏」→「泄漏/泄密者/有漏的」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1393",
+   "head": "angle",
+   "size": 5,
+   "verdict": "trim",
+   "remove_members": [
+    "angler"
+   ],
+   "remove_edges": [
+    [
+     "angle",
+     "angler"
+    ]
+   ],
+   "groups": null,
+   "reason": "angle「角/角度」源自拉丁 angulus；angler「垂钓者/阴谋者」源自古英语 angel「鱼钩」，与 angle「钓鱼」同形异源，仅因 lemma 合并入族（WordNet 走 fish.v.01 与 angle.v.04）。删 angler 及其边；angular/angularity/angulate 仍同拉丁 angulus，保留。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1405",
+   "head": "dispute",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "dispute 直连 disputant/disputation/disputatious/disputative；「争论」→「争论者/争论/好争辩的」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1453",
+   "head": "deposit",
+   "size": 5,
+   "verdict": "split",
+   "remove_members": null,
+   "remove_edges": [
+    [
+     "depose",
+     "deposition"
+    ]
+   ],
+   "groups": [
+    [
+     "deposit",
+     "deposition",
+     "depositor"
+    ],
+    [
+     "depose",
+     "deposer"
+    ]
+   ],
+   "reason": "deposit「存款/沉积」与 depose「免职/宣誓作证」同出拉丁 deponere，但现代义已分化；桥是 deposition 双义（「沉淀/放置」连 deposit，「证词/免职」连 depose）。删 depose–deposition 桥边后拆两组：deposit 组 3 词（B1/C1 锚点，deposition 走「沉淀」义），depose 组 2 词均 10k 外。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F1464",
+   "head": "import",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "import 直连 importation/importee/importer/importing；「进口」→「进口品/进口业务」语义透明（importee 为生僻法律词「被带入者」）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1479",
+   "head": "crystal",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "crystal 直连 crystalize/crystallize（拼写变体）与 crystallizing，crystallization 由 crystallize 派生；「晶体」→「结晶」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1487",
+   "head": "insist",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "insist 直连 insistence/insistency（变体）/insisting，insistent 由 insistence 类名词派生；「坚持」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1603",
+   "head": "liquid",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "liquid 直连 liquidity/liquidness/liquify（liquefy 变体），liquifiable 由 liquify 派生；「液体/流动」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1623",
+   "head": "dump",
+   "size": 5,
+   "verdict": "split",
+   "remove_members": null,
+   "remove_edges": [
+    [
+     "dump",
+     "dumpy"
+    ]
+   ],
+   "groups": [
+    [
+     "dump",
+     "dumper",
+     "dumping"
+    ],
+    [
+     "dumpiness",
+     "dumpy"
+    ]
+   ],
+   "reason": "dump/dumper/dumping「倾倒/垃圾场」同源；dumpy「矮胖的」与 dumpiness 属另一词（词源通常认为与「块/lump」相关），WordNet 以 dumpy.a.01「像垃圾场的」义连 dump，属同形词义串接。删桥边后拆两组：dump 组 3 词（B1 锚点），dumpy 组 2 词均 10k 外。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F1784",
+   "head": "vocal",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "vocal 直连 vocalization/vocalize/vocalizer/vocalizing；「嗓音」→「发声/歌唱」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1831",
+   "head": "powder",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "powder 直连 powderer/powderize/powdery，powderiness 由 powdery 派生；「粉末」→「撒粉者/粉碎/粉状的」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1869",
+   "head": "collective",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "collective 与 collectivize/collectivise 及 -ization/-isation 变体同出拉丁 colligere；「集体」→「集体化」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1885",
+   "head": "canal",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "canal 直连 canalize/canalise 与 canalization/canalisation；「运河」→「开渠/疏导」语义透明（canalize 的「引导流动」义为同根引申）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1887",
+   "head": "lodge",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "lodge 直连 lodger/lodging/lodgings/lodgement；「小屋/寄宿」义链透明（lodgement 兼「提出/固定」义，仍为 lodge 动词派生）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1899",
+   "head": "conspiracy",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "conspiracy 与 conspire/conspirator/conspiratorial/conspirative 同拉丁 conspirare；「密谋」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1952",
+   "head": "coalition",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "coalition 与 coalesce/coalescence/coalescency（变体）/coalescent 同出拉丁 coalescere；「结合/联合」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1983",
+   "head": "divine",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "divine 直连 divination/divinatory/diviner/divinity；「神/占卜」义链透明（divine 的「凭直觉发现」义为同根引申）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1989",
+   "head": "facilitate",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "facilitate 直连 facilitation/facilitative/facilitator/facilitatory；「使容易/促进」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2024",
+   "head": "soap",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "soap 与 saponify/saponification 同出拉丁 sapo「肥皂」，「皂化」为同根化学术语；soapy/soapiness 由 soap 派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2048",
+   "head": "gravity",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "gravity/gravitate/gravitation/gravitational/gravitative 同拉丁 gravitas「重」；「重力」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2079",
+   "head": "tender",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "tender（温柔的/嫩的）与 tenderize/tenderization/tenderizer 同源，tenderness 由 tender 派生；「使嫩化」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2093",
+   "head": "excitement",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "excite 与 excitement/excitant/excitation/excitatory 同拉丁 excitare；「激发」义链透明（excitatory 为生理学术语，同根）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2134",
+   "head": "propaganda",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "propaganda 直连 propagandise/propagandize（变体）/propagandist/propagandistic；「宣传」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2168",
+   "head": "jerk",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "jerk 直连 jerker/jerking/jerky，jerkiness 由 jerky 派生；「急拉/抽动」义链透明（jerky 另有「牛肉干」义，同形同源）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2212",
+   "head": "bail",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "bail/bailable 走「保释」义；bailee/bailment/bailor 走法律「寄托/信托交付」义，同出古法语 baillier「交付、掌管」，WordNet 直连派生成立，但两义群对学习者不透明，暂留并降置信度。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F2318",
+   "head": "sculpture",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "sculpt 与 sculpture/sculptor/sculptural/sculpturer 同拉丁 sculpere「雕刻」；「雕塑」义链透明（sculpturer 为生僻变体）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2323",
+   "head": "fragment",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "fragment 直连 fragmental/fragmentary/fragmentation/fragmentize；「碎片」→「破碎/分裂」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2324",
+   "head": "compel",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "compel 与 compulsion/compulsive/compulsiveness/compulsivity 同拉丁 compellere；「强迫」义链透明（compulsive 的心理学义为同根引申）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2374",
+   "head": "ethical",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "ethical/ethics/ethicist/ethician/ethicism 同希腊 ethos 词根；「伦理」→「伦理学家/伦理主义」语义透明（ethician/ethicism 生僻但为合法派生）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2405",
+   "head": "illusion",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "illusion 直连 illusional/illusionary/illusionist/illusory；「幻觉/错觉」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2407",
+   "head": "frost",
+   "size": 5,
+   "verdict": "trim",
+   "remove_members": [
+    "frostian"
+   ],
+   "remove_edges": [
+    [
+     "frost",
+     "frostian"
+    ]
+   ],
+   "groups": null,
+   "reason": "frostian「罗伯特·弗罗斯特（诗人）风格的」源自姓氏 Frost，与 frost「霜」仅词形相同、词源无关，属专名派生误入。删 frostian 及其边；frost/frosty/frostiness/frosting 保留。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2408",
+   "head": "void",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "void 与 voidable/voidance/voider/voiding 同出拉丁 vocivus「空的」；voiding/voidance/voider 走「排空/排泄」义（void 动词「使空、排出」），语义可追溯但偏医学/古旧，暂留并降置信度。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F2430",
+   "head": "orchestra",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "orchestra 直连 orchestral/orchestrate/orchestration/orchestrator；「管弦乐队」→「配器/编排」语义透明（orchestrate 的「统筹安排」义为同根引申）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2476",
+   "head": "sphere",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "sphere 直连 spheric/spherical，sphericalness/sphericity 分别由 spherical/spheric 派生；「球体」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2479",
+   "head": "telegraph",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "telegraph 直连 telegrapher/telegraphic/telegraphist/telegraphy；「电报」义链透明（telegrapher/telegraphist 为同义变体）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2500",
+   "head": "mold",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "mold 一词兼「模子/塑造」与「霉」两义（词源不同但同形），moldable/molding 与 moldy/moldiness 分别由两义透明派生，且词表 head 释义同时收录两义，故保留并降置信度。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F2505",
+   "head": "triangle",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "triangle 直连 triangular/triangulate，triangularity/triangulation 分别由二者派生；「三角」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2532",
+   "head": "vest",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "vest 直连 vestment/vesture，vestiary 由 vesture 派生，均拉丁 vestis「衣服」；现代 vest 义「背心」与 vestment「法衣/礼服」已专业化，形态同根、语义仍属衣着，暂留并降置信度。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F2555",
+   "head": "attain",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "attain 直连 attainable/attainment，attainability/attainableness 由 attainable 派生；「达到」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2616",
+   "head": "presume",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "presume 直连 presumption/presumptive/presumptuous，presumptuousness 由 presumptuous 派生；「推定/冒昧」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2718",
+   "head": "abolish",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "abolish 直连 abolishable/abolishment/abolition，abolitionary 由 abolition 派生；「废除」义链透明。",
+   "confidence": "high"
+  }
+ ],
+ "counts_note": "counts 按 verdict 统计 55 族；keep 49 / trim 3 / split 3"
+}

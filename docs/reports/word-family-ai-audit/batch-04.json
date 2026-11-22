@@ -1,0 +1,700 @@
+{
+  "batch": 4,
+  "range": [
+    165,
+    220
+  ],
+  "results": [
+    {
+      "id": "F0138",
+      "head": "different",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "different/difference/differ/differentiate/differentiation/differentiator/differential 全部同拉丁词根 differre（dis-+ferre）：differential「差异的/微分」仍是 difference 的透明派生，无跨词根串接。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0202",
+      "head": "drive",
+      "size": 7,
+      "verdict": "split",
+      "remove_members": null,
+      "remove_edges": [
+        [
+          "drive",
+          "drift"
+        ]
+      ],
+      "groups": [
+        [
+          "drive",
+          "driver",
+          "driving"
+        ],
+        [
+          "drift",
+          "driftage",
+          "drifter",
+          "drifting"
+        ]
+      ],
+      "reason": "WordNet 把 drift 挂到 drive 只靠 drift.n.07「矿井水平巷道」↔drive.v.19「水平挖掘」这一冷僻义；drift 与 drive 虽远源相关，现代英语已非透明派生。删桥边后拆为 drive 组（3，A1/A2）与 drift 组（4，B2），两组都有 CEFR 锚点。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0213",
+      "head": "create",
+      "size": 7,
+      "verdict": "trim",
+      "remove_members": [
+        "creature"
+      ],
+      "remove_edges": [
+        [
+          "create",
+          "creature"
+        ]
+      ],
+      "groups": null,
+      "reason": "creature 经 WordNet animal.n.01「生物」↔make.v.03「创造」挂入 create；现代 creature 指「动物/生物」（B1），与 create 只剩词源相关、语义已不透明。删该成员后 creature 单成员不写族；若坚持纯词源族可保留，故 confidence=medium。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0215",
+      "head": "speak",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "speak/speech/speaker/speaking/speakership 同源（OE specan/sprǣc），speechify/speechifier 由 speech+-ify/-ifier 派生；虽生僻但形态与语义透明，无坏边。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0268",
+      "head": "account",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "account/accountant/accounting/accountancy/accountantship 同源（拉丁 computare→古法语 acont）；accountable/accountability 走「对…负责」义，仍是 account 的透明派生。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0312",
+      "head": "clear",
+      "size": 7,
+      "verdict": "trim",
+      "remove_members": [
+        "limpid",
+        "limpidity"
+      ],
+      "remove_edges": [
+        [
+          "clear",
+          "limpidity"
+        ],
+        [
+          "limpid",
+          "limpidity"
+        ]
+      ],
+      "groups": null,
+      "reason": "limpid/limpidity 与 clear 词根不同（拉丁 limpidus vs clarus）：limpidity 与 clarity 同义项，WordNet 由 clear.s.15「易懂」↔limpidity.n.01 连边、limpid 再由 limpid.s.03 连到 limpidity，属同义串接而非 clear 派生。删两成员及两条边后 limpid 组无 10k 锚点不写族；clear/clarity/clearance/clearing/clearness 保留。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0392",
+      "head": "director",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "direct/director/directive/directness/directorship 同源（拉丁 dirigere），-ive/-ness/-ship 派生透明；directiveness/directivity 是 directive 的技术名词化，仍同根。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0474",
+      "head": "fly",
+      "size": 7,
+      "verdict": "split",
+      "remove_members": null,
+      "remove_edges": [
+        [
+          "flee",
+          "flight"
+        ]
+      ],
+      "groups": [
+        [
+          "fly",
+          "flight",
+          "flyer",
+          "flier",
+          "flying"
+        ],
+        [
+          "flee",
+          "fleer"
+        ]
+      ],
+      "reason": "flight 兼「飞行」与「逃走」两义：flight–fly（allowlist，飞行义）与 flight–flee（flight.n.01「escape」↔flee.v.01，逃走义）把 flee/fleer 串进 fly。删 flight–flee 后拆为 fly 组（5，A1/A2/B2）与 flee 组（2，B1）。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0497",
+      "head": "judge",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "judge/judgment/judging/judgeship/judgmental 同源（拉丁 judex/judicare）；judicial/judiciary 同 judic- 词根，「司法的/司法机构」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0526",
+      "head": "attention",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "attend/attention/attentive/attentiveness/attendance/attendant/attender 同源（拉丁 attendere），-ance/-ant/-ive 派生透明；attendant 的「伴随的/随从」义可追。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0683",
+      "head": "memory",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "memory/memorize/memorise/memorization/memorisation/memorizer/memoriser 同源（拉丁 memoria），-ize/-ise 与 -ation 变体合法且语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0731",
+      "head": "reference",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "refer/reference/referee/referral/referent/referential/refereeing 同源（拉丁 referre）；referee「裁判」走「受托裁决/被咨询者」义，仍是 refer 的透明派生。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0767",
+      "head": "executive",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "execute/execution/executive/executor/executioner/executant/executing 同源（拉丁 exsequi），-ive/-or/-ant 派生透明；executioner 只是走「执行死刑者」义。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0792",
+      "head": "analysis",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "analysis/analyze/analyst/analytic/analytical/analyticity/analyzer 同源（希腊 analusis），-ist/-ic/-ity 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0849",
+      "head": "victim",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "victim/victimize/victimise 及 -ation/-er 派生（英/美拼写变体并存）同源透明，无坏边。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0899",
+      "head": "critical",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "critic/critical/criticism/criticize/criticise/criticality/criticalness 同源（希腊 kritikos），-ism/-ize/-ity 派生透明；criticality 走「危急」义但仍由 critical 派生。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0931",
+      "head": "defend",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "defend/defence/defensive/defender/defendant/defensible/defensibility 同源（拉丁 defendere），-ce/-ive/-er/-ant/-ible 派生透明；defendant 为法律义特化。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0954",
+      "head": "edit",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "edit/editor/editorial/editing/editorialist/editorialize/editorship 同源（拉丁 editor），-or/-ial/-ship 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1547",
+      "head": "integrate",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "integrate/integration/integrative/integrator/integrating 同源（拉丁 integrare）；integral/integrality 走「整体/积分」义，仍同根透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1548",
+      "head": "vacation",
+      "size": 7,
+      "verdict": "split",
+      "remove_members": null,
+      "remove_edges": [
+        [
+          "vacate",
+          "vacation"
+        ]
+      ],
+      "groups": [
+        [
+          "vacation",
+          "vacationer",
+          "vacationing",
+          "vacationist"
+        ],
+        [
+          "vacancy",
+          "vacant",
+          "vacate"
+        ]
+      ],
+      "reason": "vacate–vacation 走 vacation.n.02「法律上使无效/撤销」冷僻义（revoke.v.02），不是「假期」义；vacation 组（假期）与 vacancy/vacant/vacate（空/腾出）语义已分化。删桥边后拆两族，均有锚点（B1/C1）。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1661",
+      "head": "counsel",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "counsel/counselor/counsellor/counseling/counselling/counsellorship/counselorship 同源（拉丁 consilium），英/美拼写变体合法。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1737",
+      "head": "consult",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "consult/consultant/consultation/consultancy/consultative/consultatory/consultive 同源（拉丁 consultare），-ant/-ation/-ancy/-ive 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1822",
+      "head": "motivate",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "motive/motivate/motivation/motivational/motivative/motivator 同源（拉丁 movere→motivus）；motivity 生僻但由 motive 透明派生。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2344",
+      "head": "precede",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "precede/precedent/precedence/precedency/predecessor/precession/precedential 同源（拉丁 praecedere），均含「在前」义，-ent/-ence/-or/-ion 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2630",
+      "head": "subsidy",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "subsidy/subsidize/subsidise 及 -ation/-er 派生（英/美变体并存）同源透明，无坏边。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3004",
+      "head": "vibration",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "vibrate/vibration/vibrational/vibrator/vibratory 同源（拉丁 vibrare）；vibrant/vibrancy 走「共振/有活力」义，词根仍透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0056",
+      "head": "part",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "part/partial/partiality/partialness/parting/partitive 同源（拉丁 pars/partire）；partial「部分的/偏袒的」与 partitive 都是透明派生。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0095",
+      "head": "system",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "system/systematic/systemize/systemise/systemizer/systemiser 同源（希腊 systema），-atic/-ize 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0145",
+      "head": "break",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "break/breakable/breakability/breakableness/breakage/breaker 同源（OE brecan），-able/-age/-er 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0169",
+      "head": "study",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "study/student/studentship/studious/studiousness/studying 同源（拉丁 studium/studere），-ent/-ous 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0224",
+      "head": "health",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "heal/health/healthy/healer/healing/healthiness 同源（OE hælan/hælþ）；heal–health 为 allowlist 的不规则 -th 名词化，其余派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0265",
+      "head": "present",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "present/presence/presentation/presenter/presentment/presentness 同源（拉丁 praesens），-ence/-ation/-er 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0291",
+      "head": "appear",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "appear/appearance/apparent/apparency/apparentness 同源（拉丁 apparere），语义透明；apparition 亦同根（apparition.n.04「显现」），但现代多指「鬼魂」、形态不透明，且为 10k 外——按「10k 外不轻易删」保留，交人工复核。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0347",
+      "head": "center",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "center/central/centric/centrical/centering/centrality 同源（拉丁 centrum），-al/-ic 派生透明（centrical 为 centric 变体）。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0442",
+      "head": "suggest",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "suggest/suggestion/suggestible/suggestibility/suggestive/suggester 同源（拉丁 suggerere），-ion/-ible/-ive 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0465",
+      "head": "medical",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "medicine/medical/medication/medicate/medicative/medicinal 同源（拉丁 medicina/mederi），-al/-ation/-ive 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0473",
+      "head": "protect",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "protect/protection/protective/protector/protectiveness/protectorship 同源（拉丁 protegere），-ion/-ive/-or 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0544",
+      "head": "culture",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "culture/cultural/acculturate/acculturation/acculturational/acculturative 同源（拉丁 cultura），ad-+culture 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0563",
+      "head": "measure",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "measure/measurement/measurable/measurability/measurer/measuring 同源（拉丁 mensura），-ment/-able 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0577",
+      "head": "weight",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "weigh/weight/weighty/weightiness/weigher/weighing 同源（OE wegan/wiht）；weigh–weight 为 allowlist 的不规则 -ght 名词化，其余派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0620",
+      "head": "note",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "note/notate/notation/annotate/annotation/annotator 同源（拉丁 nota/notare），ad-+notare 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0670",
+      "head": "christian",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "Christ/Christian/Christianity/Christendom/Christianly/Christly 同源（希腊 Christos），-ian/-ity/-dom/-ly 派生透明（专名统一小写入库）。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0688",
+      "head": "identify",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "identify/identity/identical/identification/identifiable/identicalness 同源（拉丁 idem/identitas），-ity/-ical/-ation 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0693",
+      "head": "express",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "express/expression/expressive/expressiveness/expressible/expressage 同源（拉丁 exprimere）；expressage「快递费」生僻但由 express 透明派生。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0701",
+      "head": "factor",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "factor/factorize/factorise/factorization/factorisation/factoring 同源（拉丁 factor/facere），-ize/-ation 派生透明（英/美变体并存）。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0732",
+      "head": "competition",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "compete/competition/competitive/competitor/competitiveness/competitory 同源（拉丁 competere），-ition/-itive/-itor 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0744",
+      "head": "administration",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "administer/administration/administrative/administrator/administrable/administrate 同源（拉丁 administrare），-ation/-ive/-or 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0754",
+      "head": "conduct",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "conduct/conductor/conduction/conductive/conductivity/conducting 同源（拉丁 conducere）；物理义（传导）与音乐义（指挥）均为 conduct 的透明派生。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0797",
+      "head": "argue",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "argue/argument/argumentation/argumentative/arguable/arguer 同源（拉丁 arguere），-ment/-ation/-ive/-able 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0831",
+      "head": "correct",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "correct/correction/corrective/correctness/corrigible/correctional 同源（拉丁 corrigere），-ion/-ive/-ness 派生透明（corrigible 为同根 -ible 形）。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0845",
+      "head": "advantage",
+      "size": 6,
+      "verdict": "split",
+      "remove_members": null,
+      "remove_edges": [
+        [
+          "advantageous",
+          "profitableness"
+        ]
+      ],
+      "groups": [
+        [
+          "advantage",
+          "advantageous",
+          "advantageousness"
+        ],
+        [
+          "profitable",
+          "profitability",
+          "profitableness"
+        ]
+      ],
+      "reason": "profitable/profitability/profitableness 属 profit（拉丁 profectus）词根，WordNet 经 profitableness 兼义桥入族：advantageous–profitableness 走 favorableness「有利」义，profitable–profitableness 走「盈利」义；advantage（古法语 avantage）与 profit 不同词根。删桥边后拆为 advantage 组（3）与 profitable 组（3），均有锚点（A2/B2）。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0864",
+      "head": "reaction",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "react/reaction/reactive/reactivity/reactant/reactionary 同源（拉丁 reagere），-ion/-ive/-ant 派生透明；reactionary 走「反动」政治义仍可追。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0870",
+      "head": "religious",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "religion/religious/religiosity/religiousness/religionist/religionism 同源（拉丁 religio），-ous/-ity/-ist 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0875",
+      "head": "intend",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "intend/intent/intention/intentional/intentionality/intentness 同源（拉丁 intendere），-ion/-al/-ity 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0893",
+      "head": "transfer",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "transfer/transference/transferral/transferor/transferer/transferrer 同源（拉丁 transferre）；-er/-or 与 -rr- 拼写变体均合法（transferer/transferrer 同词异拼）。",
+      "confidence": "high"
+    }
+  ]
+}

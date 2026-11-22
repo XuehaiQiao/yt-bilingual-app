@@ -1,0 +1,621 @@
+{
+ "batch": 5,
+ "range": [
+  220,
+  275
+ ],
+ "results": [
+  {
+   "id": "F0929",
+   "head": "license",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "license/licence（英式名词 licence、美式 license）与 licensee/licenser 由 license「授权」直连；licentious/licentiousness 同拉丁词根 licere「自由」，但经 license.n.03「过度自由、无节制」义项入族，与「执照/许可」义距离较远，建议成员表标「放肆」义而非删族；WordNet 派生关系真实且无 10k 内独立 head 可拆，保守保留。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F0958",
+   "head": "cycle",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "cycle/cyclic/cyclical/cyclicity 同一希腊词根 kyklos「圆圈/周期」；cyclist/cycling 经 cycle「自行车/骑车」义入族，词干与「循环→骑行」语义透明（cycle 与 bicycle 同根）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0994",
+   "head": "tend",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "tend/tendency/tendencious（变体）/tendentious/tendentiousness/tending 均由拉丁 tendere「伸向」派生；tend「倾向」↔ tendency、tend「照料」↔ tending 语义透明；tend—tender 已在数据黑名单。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1027",
+   "head": "adopt",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "adopt/adoption/adoptable/adoptee/adopter/adoptive 同一拉丁 adoptare；「收养/采用」两义均由 adopt 直连，派生链长 1。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1058",
+   "head": "admit",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "admit/admission/admissive/admittable/admittance/admittible 同一拉丁 admittere；「允许进入/承认」义由 admit 直连，admittible 为 admittable 变体拼写。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1111",
+   "head": "expensive",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "expensive/expensiveness/expend/expender/expending/expenditure 同一拉丁 pendere「称量/支付」；expend「花费」→ expensive「昂贵」语义透明（expense 同根）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1172",
+   "head": "attract",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "attract/attractive/attraction/attractable/attractiveness/attractor 同一拉丁 trahere「拉」；attract 的「吸引（物理/心理）」两义均由 attract 直连。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1182",
+   "head": "confidence",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "confidence/confident/confidential/confidentiality/confidant/confide 同一拉丁 fidere「信任」；「信心→机密→吐露」语义链透明（confide 为 confidant/confidential 的词干）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1199",
+   "head": "observe",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "observe/observation/observer/observable/observance/observant 同一拉丁 servare「注视/遵守」；observe 的「观察/遵守/庆祝」义均有对应派生，observance 走「遵守/仪式」义，链长 1。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1202",
+   "head": "pure",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "pure/purity/pureness/purify/purification/purifier 同一拉丁 purus；「纯→净化」语义透明，物理纯化与道德纯洁两义同源。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1265",
+   "head": "succeed",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "succeed/successor/succession/successive/succeeder/successiveness 同一拉丁 succedere「接续」；succeed 的「成功/继承」两义中，继承义直连 successor/succession/successive，语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1290",
+   "head": "instrument",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "instrument/instrumental/instrumentalist/instrumentality/instrumentate/instrumentation 同一拉丁 instruere「装备」；「工具→手段→乐器」义由 instrument 直连，instrumentalist 走「乐器演奏者」义。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1333",
+   "head": "instruction",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "instruction/instruct/instructor/instructorship/instructional/instructive 同一拉丁 instruere；「教导/指令」两义均由 instruct 直连，链长 1。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1346",
+   "head": "gene",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "gene/genetic/genetical/geneticist/genetics/genic 同一希腊 genos「出生/种族」；genetic 为 gene 的形容词，genetics/geneticist 由 genetic 直连。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1359",
+   "head": "resistance",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "resistance/resist/resistant/resister/resistive/resistivity 同一拉丁 resistere；「抵抗→阻力→电阻」语义链透明（resistive/resistivity 走电阻义）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1373",
+   "head": "legislation",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "legislation/legislate/legislative/legislature/legislator/legislatorship 同一拉丁 lex/legis「法律」；「立法→立法机关→立法者」链长 ≤2。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1444",
+   "head": "permission",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "permission/permit/permissibility/permissible/permissive/permissiveness 同一拉丁 permittere；「许可→可允许的→放任的」语义透明，链长 1。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1488",
+   "head": "adjust",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "adjust/adjustment/adjustable/adjuster/adjustive/adjustor 同一拉丁 juxta「靠近」+ iubere；「调整/适应」义直连，adjuster/adjustor 为同义异体（保险理赔员）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1545",
+   "head": "offensive",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "offensive/offense/offence/offend/offender/offensiveness 同一拉丁 offendere；英式 offence/美式 offense 为变体，「冒犯/进攻/犯罪」义链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1572",
+   "head": "sustain",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "sustain/sustainable/sustainability/sustainer/sustainment/sustenance 同一拉丁 sustinere「支撑」；「维持→可持续→生计/食物」语义链透明（sustenance 走供养义）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1595",
+   "head": "justify",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "justify/justification/justifiable/justificative/justificatory/justifier 同一拉丁 justus+facere；「证明正当→辩护」义直连，justificative/justificatory 为同义变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1653",
+   "head": "innovation",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "innovation/innovative/innovate/innovational/innovativeness/innovator 同一拉丁 novus「新」；「创新→革新者」链长 1，innovational 罕见但派生真实。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1669",
+   "head": "organic",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "organic/organ/organism/organismal/organismic/organist 同一希腊 organon「工具/器官」；organ「器官/风琴」两义分别连 organic/organist，语义透明（organist 走风琴义）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1742",
+   "head": "transmission",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "transmission/transmit/transmitter/transmissible/transmittal/transmitting 同一拉丁 mittere「送」；「传输/传染」义均由 transmit 直连。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1782",
+   "head": "tension",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "tension/tense/tenseness/tensional/tensity/tensor 同一拉丁 tendere「拉紧」；「紧张→张力→张量/张肌」语义链透明（tensor 走专业义但仍同根）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1790",
+   "head": "corruption",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "corruption/corrupt/corruptibility/corruptible/corruptive/corruptness 同一拉丁 corrumpere；「腐败→可腐蚀的」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1837",
+   "head": "collaboration",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "collaboration/collaborate/collaborative/collaborationism/collaborationist/collaborator 同一拉丁 laborare「劳作」；collaborate 的「合作/通敌」两义均有对应派生，链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1850",
+   "head": "interpretation",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "interpretation/interpret/interpreter/interpretative/interpreting/interpretive 同一拉丁 interpretari；「解释/口译/演绎」义均由 interpret 直连，interpretative/interpretive 为同义变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1962",
+   "head": "exploit",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "exploit/exploitation/exploitative/exploitatory/exploiter/exploitive 同一拉丁 explicare；exploit 名词「功绩」与动词「利用/剥削」同源，派生走动词义，语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2092",
+   "head": "bacteria",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "bacteria/bacterium 为单复数同族，bacterial/bacterioidal 形容词与 bacterise/bacterize（英/美变体）均同根派生，「细菌→细菌的/接种细菌」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2095",
+   "head": "humor",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "humor/humorous/humorist/humorousness/humoring 走「幽默/心情/迁就」义，同拉丁 humor（体液→性情）；humoral 却走原义「体液的」，与「幽默」义距离远（经 humor.n.05「四种体液」入族），建议成员表标义而非删族；同根不可拆。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F2125",
+   "head": "migration",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "migration/migrant/migrate/migrational/migrator/migratory 同一拉丁 migrare；「迁移→候鸟/移居者」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2133",
+   "head": "magnetic",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "magnetic/magnet/magnetisation/magnetise/magnetization/magnetize 同一希腊 magnetis；英/美 -ise/-ize 变体，磁化义直连。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2203",
+   "head": "inflation",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "inflation/inflate/inflatable/inflater/inflationary/inflator 同一拉丁 flare「吹」；「充气→膨胀→通胀」语义链透明，inflater/inflator 同义变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2240",
+   "head": "decorate",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "decorate/decoration/decorative/decor/decorativeness/decorator 同一拉丁 decorare；decor 为 decoration 的截短借词，语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2285",
+   "head": "assert",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "assert/assertion/assertable/asserter/assertive/assertiveness 同一拉丁 asserere；「断言→自信的」语义透明，链长 1。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2359",
+   "head": "sympathy",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "sympathy/sympathetic/sympathise/sympathiser/sympathize/sympathizer 同一希腊 pathos「感受」；英/美 -ise/-ize 变体，「同情/赞同」义直连。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2367",
+   "head": "idol",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "idol/idolise/idolization/idolize/idolisation/idolizer 同一希腊 eidolon「影像」；英/美 -ise/-ize 变体，「偶像→崇拜」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2470",
+   "head": "navigation",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "navigation/navigate/navigability/navigable/navigational/navigator 同一拉丁 navigare；「航行→可通航的→航海者」链透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2618",
+   "head": "synthetic",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "synthetic/synthesis/synthesise/synthesist/synthetical/synthesiser 同一希腊 synthesis「合成」；synthesiser 走「合成器」义，语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2687",
+   "head": "optimal",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "optimal/optimize/optimization/optimisation/optimise/optimum 同一拉丁 optimus「最好」；英/美 -ise/-ize 变体，「最优→优化」透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2748",
+   "head": "baptist",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "baptist/baptism/baptise/baptismal/baptistic/baptize 同一希腊 baptizein「浸洗」；Baptist（浸礼会教友）为教派专名，与 baptism 同根透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2785",
+   "head": "moisture",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "moisture/moisten/moistener/moistening/moisturise/moisturize 同一拉丁 madere「湿」；「湿气→弄湿→保湿」语义透明，moisturise/moisturize 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2792",
+   "head": "aspire",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "aspire/aspiration/aspirant/aspirer 走「渴望/志向」义，同拉丁 spirare「呼吸」；aspirate/aspirator 走原义「吸入/送气/抽吸器」，与「渴望」义距离远（经 aspiration.n.03「送气」义入族），建议标义而非删族；同根不可拆。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F2941",
+   "head": "compression",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "compression/compress/compressibility/compressible/compressing/compressor 同一拉丁 comprimere；「压缩→压缩机」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F2952",
+   "head": "redemption",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "redemption/redeem/redeemer/redemptional/redemptive/redemptory 同一拉丁 redimere；「赎回→救赎」语义链透明（神学义为 redeem 固有义项）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F3201",
+   "head": "scrutiny",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "scrutiny/scrutineer/scrutinise/scrutiniser/scrutinize/scrutinizer 同一拉丁 scrutari「翻找」；英/美 -ise/-ize 变体，「细查→审查者」透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F3289",
+   "head": "ignite",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "ignite/ignition/ignitable/igniter/ignitible/ignitor 同一拉丁 ignis「火」；ignitable/ignitible、igniter/ignitor 为同义变体，点火义直连。",
+   "confidence": "high"
+  },
+  {
+   "id": "F3545",
+   "head": "embryo",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "embryo/embryologic/embryology/embryonal/embryonic/embryotic 同一希腊 embryon；「胚胎→胚胎学」语义透明，embryonal/embryotic 为变体。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1317",
+   "head": "terrorist",
+   "size": 8,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "terrorist/terror/terrorism/terrify/terrorisation/terrorise/terrorization/terrorize 同一拉丁 terrere「使恐惧」；「恐怖→恐怖分子/恐怖主义」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0441",
+   "head": "enter",
+   "size": 7,
+   "verdict": "trim",
+   "remove_members": [
+    "entrancement"
+   ],
+   "remove_edges": [
+    [
+     "entrance",
+     "entrancement"
+    ]
+   ],
+   "groups": null,
+   "reason": "enter/entry/entrance/entering/entrant/entree 同拉丁 intrare「进入」，语义透明；但 entrancement「着迷/陶醉」来自动词 entrance「使入迷」，该词是 en-+trance（拉丁 transire），与名词 entrance（intrare）仅词形相同、词源不同，经 WordNet 同形 lemma 串入；删该成员及其桥边后族仍连通。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1117",
+   "head": "component",
+   "size": 7,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "component/compose/composition/composer/composing/compositor/composure 同一拉丁 componere「放置在一起」；「组成→作曲→使平静」义链透明（composure 走 compose oneself 义）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1733",
+   "head": "portrait",
+   "size": 7,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "portrait/portray/portrayal/portraitist/portraiture/portrayer/portraying 同一拉丁 protrahere「拉出/描绘」；「肖像→描绘」语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0171",
+   "head": "music",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "music/musical/musician/musicality/musicalness/musicianship 同一希腊 mousike；「音乐→音乐家」语义透明，musical 兼名词「音乐剧」为同一词。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0343",
+   "head": "join",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "join/junction/joiner/joining/juncture 同拉丁 jungere「连接」，透明；jointure 亦同根，但现代常用义为法律「寡妇所得遗产」，WordNet 经 jointure.n.02「结合」冷僻义入族，建议标义而非删族；同根不拆。",
+   "confidence": "medium"
+  }
+ ]
+}

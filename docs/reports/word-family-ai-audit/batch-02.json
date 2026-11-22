@@ -1,0 +1,629 @@
+{
+  "batch": 2,
+  "range": [
+    55,
+    110
+  ],
+  "results": [
+    {
+      "id": "F0581",
+      "head": "associate",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 associ-（ad + socius「同伴」）：association 直连 associate，associable 直连 associate，associability/associableness 直连 associable，associative/associatory 直连 associate；「结伴→关联→可联想」语义透明，无跨根桥。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0595",
+      "head": "computer",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 comput-（computare「计算」）：compute 直连 computation/computer，computational 直连 computation，computerize/computerise 直连 computer、computerization 直连 computerize；链长≤2，语义透明，-ise/-ize 为拼写变体。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0628",
+      "head": "gas",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一词根 gas（van Helmont 据希腊 khaos 造词）：gaseous/gaseousness、gasify/gasification、gassy、gassing 均由 gas 直连；「气体→气化/充气」语义透明；gassing 的「毒气攻击」义仍是 gas 动词派生。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0684",
+      "head": "separate",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 separ-（separare「分开」）：separation/separateness/separative/separator 直连 separate；separatism/separatist 经 separation「分离」义派生（-ism/-ist），语义可推，无跨根桥。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0697",
+      "head": "connect",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 connect-/connex-（connectere「捆绑」）：connection/connexion 为变体拼写，connector/connecter、connective、connectivity 均由 connect 直连；「连接→连接物/连通性」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0714",
+      "head": "destroy",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 destroy-/destruct-（destruere「拆毁」）：destruction/destructive/destroyer 直连 destroy，destructible 直连 destroy、destructibility 直连 destructible、destructiveness 直连 destructive；语义透明；destroyer「驱逐舰」为同根专门化。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0726",
+      "head": "global",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 glob-（globus「球」）：global/globe/globular/globularness 语义「球→全球/球状」透明；conglobate/conglobation/conglobe 是 con+glob- 的拉丁古语派生（「使成球状」），生僻但同根且语义可通，按规则不因生僻删除。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0967",
+      "head": "approve",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 approb-（approbare「认可」）：approval/approbation/approbative/approbatory/approver 直连 approve，approbate 直连 approbation/approval；「赞成→批准」语义透明；approbate 为古语但合法。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0975",
+      "head": "expand",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 expand-/expans-（expandere「展开」）：expansion/expansive/expansible 直连 expand，expandible 为 expansible 的变体拼写，expansiveness/expansivity 直连 expansive；语义「扩张/膨胀」透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1084",
+      "head": "equal",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 equ-（aequare「使相等」）：equal/equality/equate/equation 透明；equator 经 equate（equal.v.03「使相等」）派生，本义「使昼夜均分的线」，现代义「赤道」已专门化、透明度低，equatorial 随之；同根非跨根，保留待人工。",
+      "confidence": "low"
+    },
+    {
+      "id": "F1085",
+      "head": "reform",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 reform-（reformare「重新塑形」）：reformation/reformer/reformative/reformatory 直连 reform，reformism/reformist 直连 reform/reformer；「改革→改革者/主义」语义透明；reformatory 兼「感化院」义仍同根。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1094",
+      "head": "drama",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一希腊词根 drama/dramat-（drama「动作/戏剧」）：dramatic 直连 drama，dramatist/dramatize/dramatise 直连 drama，dramatization/dramatisation 直连 dramatize/dramatise；语义透明，-ise/-ize 变体。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1128",
+      "head": "trick",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一词根 trick-：tricky/trickery/trickster/trickiness 直连 trick，tricker（-er）与 tricksy（-sy）为罕见但合法派生；「诡计→狡猾/骗子」语义透明，无跨根桥。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F1140",
+      "head": "acquire",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 acquir-/acquisit-（acquirere「取得」）：acquisition/acquirer/acquirable/acquiring 直连 acquire，acquisitive 直连 acquire、acquisitiveness 直连 acquisitive；「获得→贪求」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1218",
+      "head": "diet",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一希腊—拉丁词根 diet-（diaita「生活方式/饮食」）：dietary/dieter/dietetic/dietetical/dietician/dieting 均由 diet 直连；「饮食→节食/饮食的」语义透明；dietetical 为 dietetic 的变体拼写。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1229",
+      "head": "false",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 fals-（falsus「虚假」）：falseness/falsity/falsify 直连 false，falsification/falsifier/falsifying 直连 falsify；「假→伪造/虚假」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1306",
+      "head": "pretend",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 pretend-/pretens-（praetendere「伸展/声称」）：pretender/pretending/pretense/pretension 直连 pretend，pretentious/pretentiousness 直连 pretense；「假装→借口/自负」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1743",
+      "head": "luxury",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 luxuri-（luxuria「过度/丰盛」）：luxury/luxurious/luxuriate 语义「奢华/纵情」透明；luxuriance/luxuriant 走「繁茂」义，经 luxuriate「繁茂生长」与主群相连，属同根语义延伸而非跨根，保留。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F1746",
+      "head": "mature",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 matur-（maturus「成熟」）：maturity/maturation/maturate 直连 mature，maturational 直连 maturation，maturement/matureness 直连 mature；语义透明；maturate 的「化脓」义为医学专门化，仍同根。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1842",
+      "head": "aggressive",
+      "size": 7,
+      "verdict": "trim",
+      "remove_members": [
+        "pugnacious",
+        "pugnacity"
+      ],
+      "remove_edges": [
+        [
+          "aggressive",
+          "pugnacity"
+        ]
+      ],
+      "groups": null,
+      "reason": "aggress-/aggressor 与 pugnacious/pugnacity 不同词根：前者拉丁 aggredi（ad+gradi「走向/攻击」），后者拉丁 pugnare「打斗」。WordNet 桥是 aggressiveness.n.03 同义名词（pugnacity＝aggressiveness），属近义串接而非形态派生；删 2 个 pugn- 成员及桥边，保留 aggress-/aggression/aggressive/aggressiveness/aggressor 5 词。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1958",
+      "head": "scandal",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一希腊词根 scandal-（skandalon「绊脚石/丑闻」）：scandalous/scandalize/scandalise 直连 scandal，scandalisation/scandalization/scandalousness 为常规派生；语义「丑闻→诽谤/可耻」透明，-ise/-ize 变体。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1979",
+      "head": "ion",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一希腊词根 ion-（ion「行进者」）：ionic/ionize/ionise/ionate 直连 ion，ionization/ionisation 直连 ionize/ionise；「离子→电离」语义透明；ionate「加离子」生僻但同根合法。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F2325",
+      "head": "convey",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 convey-（conviare「沿路运送」）：conveyance/conveyer/conveyor/conveyable/conveying 直连 convey，conveyancer 直连 conveyance 的法律义「产权转让」；「运送→传达/转让」语义透明；conveyer/conveyor 为变体。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2343",
+      "head": "vendor",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 vend-（vendere「卖」）：vendor/vender/vendable/vendible/vending/vendition 均由 vend 直连；「售卖→卖主/售卖物」语义透明；-er/-or、-able/-ible 为变体拼写。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2737",
+      "head": "hesitate",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 hesit-（haesitare「粘住/迟疑」）：hesitance/hesitancy/hesitant/hesitation 直连 hesitate，hesitater/hesitator 为 -er/-or 变体；「犹豫→迟疑的」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2979",
+      "head": "digest",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 digest-（digerere「分解/消化」）：digestion/digestive/digestible/digester 直连 digest，digestibility/digestibleness 直连 digestible；「消化→可消化/消化力」语义透明；digest 的「文摘」义同源。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3058",
+      "head": "affirm",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 affirm-（affirmare「使坚定/断言」）：affirmation/affirmative/affirmable/affirmatory/affirmer 直连 affirm，affirmativeness 直连 affirmative；「断言→肯定」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3489",
+      "head": "precipitation",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 precipit-（praecipitare「头朝下抛」）：precipitate/precipitant/precipitation 语义「下落/沉淀/仓促」透明，precipitance/precipitancy/precipitateness 为「仓促」义变体，precipitator 为同根器械名。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3508",
+      "head": "coherent",
+      "size": 7,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 coher-/cohes-（cohaerere「粘在一起」）：coherence/coherency/cohesive 直连 cohere，cohesion 直连 cohere、cohesiveness 直连 cohesive；「连贯/凝聚」语义透明；coherency 为变体拼写。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0045",
+      "head": "game",
+      "size": 6,
+      "verdict": "trim",
+      "remove_members": [
+        "gameness"
+      ],
+      "remove_edges": [
+        [
+          "game",
+          "gameness"
+        ]
+      ],
+      "groups": null,
+      "reason": "gameness 在 WordNet 只走 game.s.01「瘸的」义（gameness.n.01＝lameness「跛」），与族内 game「游戏/野味」及 gaming/gamey/gamy 的义群分化；game（瘸）与 game（游戏）是不同词源的同形词，属词义巧合串接。删 gameness 及其边，保留 game/gamey/gaminess/gaming/gamy；gameness 另有「胆量」义，故置信 medium。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0079",
+      "head": "talk",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一中古英语词根 talk-：talkative/talkativeness/talker/talking/talky 直连 talk；「谈话→健谈/说话者」语义透明；talky 生僻但合法。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0109",
+      "head": "base",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一词根 bas-（拉丁/希腊 basis「基础」）：basal/baseness/basify/basilar/basilary 均由 base 直连，分别走「基部/卑劣/碱/基部解剖」义，均为 base 自身义项的直接派生，非跨根；basify/basilar 为专业义但仍同根。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0167",
+      "head": "add",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 add-（addere「加」）：addition/additive/addable/addible 直连 add；adder 在 WordNet 走「加法者/加法器」义（adder.n.01/02）确与 add 同根，但另有「蝰蛇」同形异义（adder.n.03），学习者易混淆，保留待人工。",
+      "confidence": "low"
+    },
+    {
+      "id": "F0203",
+      "head": "class",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 class-/classific-（classis「等级/类」）：classify/classification/classificatory/classifier 直连 class/classify，classy 走 class「社会等级」义；「分类/上等」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0240",
+      "head": "type",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一希腊词根 typ-（typos「印记/类型」）：typify/typification/typing/typist 直连 type，typic 为 typical 的罕见变体；「类型/打字」语义透明。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0317",
+      "head": "character",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一希腊词根 character-（kharakter「刻印」）：characteristic 直连 character，characterize/characterise 直连 character，characterization/characterisation 为常规派生；「特征/刻画」语义透明，-ise/-ize 变体。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0373",
+      "head": "race",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一词根 rac-（古诺斯 rás「疾行」）：racial（race「人种」义）/racer/racing 直连 race；racy 在 WordNet 走 race.n.02「竞速」的 racy.s.04「为竞赛设计的」义，确属同根，但其主要义「活泼/辛辣」已分化，raciness 随之；保留待人工。",
+      "confidence": "low"
+    },
+    {
+      "id": "F0400",
+      "head": "election",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 elect-（eligere「选出」）：elector/electoral/electorate/elective 直连 elect/election；「选举→选民/选举的」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0405",
+      "head": "stage",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一词根 stage-（古法语 estage「站立/层」）：stager/stagey/stagy/staginess/staging 直连 stage；「舞台→上演/做作」语义透明；stager 生僻但合法（stage manager/老手）。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0416",
+      "head": "style",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 styl-（stilus「笔/风格」）：styler/stylist/stylistic/stylize/stylization 直连 style；「风格→造型/文体」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0445",
+      "head": "economic",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一希腊词根 econom-（oikonomia「家政/经济」）：economy/economist/economical/economize/economizer 直连 economy；「经济→节约/经济学家」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0546",
+      "head": "contract",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 contract-（contrahere「拉紧/订约」）：contractor/contractual 走「契约」义，contraction/contracting/contracture 走「收缩」义，均为 contract 一词自身义项的直接派生，属多义而非跨根；保留为一个多义词族。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0572",
+      "head": "suppose",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 suppos-/supposit-（supponere「置于下/假定」）：supposal/supposition/suppositional 直连 suppose/supposition，suppositious/supposititious 为 supposit- 的罕见形容词（「推测的」），语义可通，保留。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0735",
+      "head": "grade",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 grad-（gradus「步/等级」）：grader/grading 直连 grade，gradate/gradation 直连 grade，gradational 直连 gradation；「等级→渐变」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0851",
+      "head": "investigation",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 investig-（investigare「追踪调查」）：investigate/investigator/investigative/investigatory/investigating 直连 investigation/investigate；「调查→调查者」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0855",
+      "head": "honor",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 honor-（honor「荣誉」）：honorable/honorary/honoree/honoring 直连 honor，honorableness 直连 honorable；「荣誉→可敬/荣誉的」语义透明；honorary 为同根专门化。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0889",
+      "head": "signal",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 signal-（signum「记号」）：signaler/signaller/signaling/signalize 直连 signal，signalization 直连 signalize；「信号→发信号」语义透明；-er/-ll- 变体。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0987",
+      "head": "beauty",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一词根 beaut-（拉丁 bellus→古法语 beauté）：beauteous 直连 beauty，beautician/beautify 直连 beauty，beautification 直连 beautify；「美→美化/美容师」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1000",
+      "head": "category",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一希腊词根 categori-（katēgoria「断言/范畴」）：categorial/categoric/categorical/categorize 直连 category，categorization 直连 categorize；「范畴→分类」语义透明；categorical 的「绝对」义为同根哲学引申。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1025",
+      "head": "solid",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 solid-（solidus「坚实」）：solidify/solidity/solidness 直连 solid，solidification/solidifying 直连 solidify；「固体→凝固/坚固」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1076",
+      "head": "bone",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一词根 bon-（古英语 bān「骨」）：bony/boney/boniness/bonyness/bonelet 直连 bone；「骨→多骨的/小骨」语义透明；-ey/-y、-iness/-yness 为变体拼写。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1092",
+      "head": "procedure",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 proced-/process-（procedere「前进」）：proceed/proceeding/proceedings/procedural 直连 procedure/proceed；procession 走 proceed「列队前行」义，语义可通；无跨根桥，保留。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F1109",
+      "head": "scheme",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一希腊词根 schem-/schemat-（schema「形状/图式」）：schema/schematic/schematize 直连 scheme/schema，schematization 直连 schematize；schemer 走 scheme「阴谋」义；「图式/计划」语义透明，schema 与 scheme 为同源异形。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F1272",
+      "head": "saint",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 sanct-（sanctus「神圣」）：saint 为古法语借形，saintly/sainthood/saintliness 直连 saint；sanctify/sanctification 走同根「使神圣」义，语义可通但 saint-/sanct- 形态不透明，保留待人工。",
+      "confidence": "low"
+    },
+    {
+      "id": "F1313",
+      "head": "convert",
+      "size": 6,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "同一拉丁词根 convert-/convers-（convertere「转向」）：conversion/converter/convertor/convertible 直连 convert，convertibility 直连 convertible；「转变→转换/可转换」语义透明；-er/-or 变体。",
+      "confidence": "high"
+    }
+  ]
+}

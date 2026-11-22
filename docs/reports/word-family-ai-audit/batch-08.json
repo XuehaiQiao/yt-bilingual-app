@@ -1,0 +1,592 @@
+{
+  "batch": 8,
+  "range": [
+    385,
+    436
+  ],
+  "results": [
+    {
+      "id": "F2767",
+      "head": "bulb",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "bulb 与 bulbaceous（产球茎的）、bulblike/bulbous（球状）直连；bulbar 走 bulb 的「延髓」旧义（WordNet bulb.n.05），同根但语义专门化、词典释义未收该义，10k 外保留待人工。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F2807",
+      "head": "scrub",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "scrub 与 scrubber/scrubbing（擦洗）、scrubby/scrubbiness（矮灌丛→矮小/劣质）同根，-er/-ing/-y/-ness 派生透明，无跨根桥。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2880",
+      "head": "foil",
+      "size": 5,
+      "verdict": "split",
+      "remove_members": null,
+      "remove_edges": [
+        [
+          "foil",
+          "foliate"
+        ]
+      ],
+      "groups": [
+        [
+          "foil",
+          "foiling"
+        ],
+        [
+          "foliage",
+          "foliate",
+          "foliation"
+        ]
+      ],
+      "reason": "foil（金属箔/衬托）与 foliage（树叶）同出拉丁 folium，但现代语义已分化；WordNet 经 foliate 双义（v.01「打成薄箔」↔v.02「长叶」）把两组链式串接。删桥边 foil–foliate，拆为 foil/foiling 与 foliage/foliate/foliation 两组；后组无 10k 锚点（同 batch-3 同类处理）。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F2907",
+      "head": "capsule",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "capsule 与 capsular（胶囊的）、capsulate/capsulise/capsulize（装胶囊/概括）同拉丁 capsula；capsulize 的「概括」义由 capsule「概要」义引申，-ar/-ate/-ize 规则透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F2946",
+      "head": "urine",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "urine 与 urinary/urinate/urination/urinator 同拉丁 urina，-ary/-ate/-ation/-ator 派生透明；urinator 生僻但为合法施事名词。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3017",
+      "head": "devise",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "devise 与 deviser/devising/devisal 走「设计」义；devisee 走 devise「遗赠」义（词条释义已收「遗赠给」），同根且 -ee 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3055",
+      "head": "puff",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "puff 与 puffer/puffing/puffy/puffiness 同根；puffy「肿胀」、puffer「河豚」均由 puff「喷/膨胀」引申，-er/-ing/-y/-ness 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3070",
+      "head": "duel",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "duel 与 dueler/duelist/dueller/duellist 仅 -er/-ist 及英式拼写变体，同根「决斗者」语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3074",
+      "head": "sermon",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "sermon 与 sermonise/sermonize（说教）及 -er 变体同拉丁 sermo，-ise/-ize/-er 派生透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3132",
+      "head": "mole",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "mole 与 molal/molality/molar/molarity 的化学义同出 mole「摩尔/克分子」（词条释义已收）；molar 另有臼齿义，但族内边走化学义，成立。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3145",
+      "head": "mitigate",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "mitigate 与 mitigable/mitigation/mitigative/mitigatory 同拉丁 mitigare，-able/-ation/-ive/-ory 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3150",
+      "head": "conform",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "conform 与 conformance/conformation/conformism/conformist 同拉丁 conformare；conformation 的「构造」义仍为同根名词化，无跨根桥。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3182",
+      "head": "dissent",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "dissent 与 dissension/dissenter/dissentient/dissentious 同拉丁 dissentire，「不同意」义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3205",
+      "head": "tame",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "tame 与 tamable/tameable（拼写变体）、tameness、tamer 同根，-able/-ness/-er 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3324",
+      "head": "revert",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "revert 与 reversion/reversionary/reversive/reverting 同拉丁 revertere，「返回/回复」义透明；reversionary 为法律术语但 -ary 派生规则。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3365",
+      "head": "procurement",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "procure 与 procurement/procural/procurance/procurer 同拉丁 procurare，「获得/招揽」义透明；procurer 另有「拉皮条者」义，族内边走「替人招揽」义。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3516",
+      "head": "interrogation",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "interrogate 与 interrogation/interrogative/interrogator/interrogatory 同拉丁 interrogare，「询问」义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3543",
+      "head": "obstruction",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "obstruct 与 obstruction/obstructer/obstructor/obstructive 同拉丁 obstruere，-er/-or 变体与 -ive 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3551",
+      "head": "delusion",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "delude 与 delusion/delusional/delusive/delusory 同拉丁 deludere，「欺骗/妄想」义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3573",
+      "head": "germ",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "germ 与 germinal（萌芽的）、germinate/germination（发芽）、germy（带细菌的）同拉丁 germen，义项分支但形态透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3578",
+      "head": "odor",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "odor 与 odour（英式变体）、odorize/odourise（使有气味）、odorous 同拉丁 odor，透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3600",
+      "head": "segregation",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "segregate 与 segregation/segregationism/segregationist/segregator 同拉丁 segregare，「隔离」义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3635",
+      "head": "anecdote",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "anecdote 与 anecdotal/anecdotic/anecdotical/anecdotist 同希腊 anekdota，-al/-ic/-ist 透明，anecdotical 为变体。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3663",
+      "head": "incite",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "incite 与 incitation/incitement/inciter/incitive 同拉丁 incitare，「煽动」义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3668",
+      "head": "anarchist",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "anarchist 与 anarchy/anarchism/anarchical/anarchistic 同希腊 anarkhos（无首领），语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F3678",
+      "head": "converge",
+      "size": 5,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "converge 与 convergence/convergency/convergent/converging 同拉丁 convergere，「汇聚」义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0019",
+      "head": "think",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "think 与 thought（不规则过去式/名词）、thinker、thinking 同根，语义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0040",
+      "head": "call",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "call 与 caller/calling/callable 同根；callable 走 call「要求偿付」义，仍为 -able 派生，无跨根。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0094",
+      "head": "open",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "open 与 opener/opening/openness 同根，-er/-ing/-ness 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0124",
+      "head": "hear",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "hear 与 hearing/hearable/hearer 同根，-ing/-able/-er 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0142",
+      "head": "kill",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "kill 与 killer/killing/killable 同根，-er/-ing/-able 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0160",
+      "head": "understand",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "understand 与 understandable/understandability/understanding 同根，-able/-ability/-ing 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0188",
+      "head": "continue",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "continue 与 continuation/continuance 同拉丁 continuare，透明；continuant 为语音学「延续音」，WordNet 经 continuance（duration）↔ fricative.s.01 桥入，普通学习者不透明且为 10k 外技术词，暂保留待人工。",
+      "confidence": "low"
+    },
+    {
+      "id": "F0222",
+      "head": "grow",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "grow 与 growth/grower/growing 同根，-th/-er/-ing 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0223",
+      "head": "fire",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "fire 与 fiery（fire+-y 拼写变化）、fieriness、firing 同根，透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0273",
+      "head": "save",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "save 与 saver/savior/savings 同根；savior 宗教义但「拯救者」透明，savings 为 save「储蓄」义名词化。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0292",
+      "head": "bear",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "bear 与 bearer/bearable/bearing 均由动词 bear「承受/携带」派生；bear 另有「熊」同形异源义，但族内成员不取该义。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0314",
+      "head": "parent",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "parent 与 parental/parentage/parenthood 同拉丁 parens，「父母/出身」义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0353",
+      "head": "available",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "avail 为基词，available/availability/availableness 同根，-able/-ability 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0375",
+      "head": "catch",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "catch 与 catcher/catchment/catchy 同根；catchment「集水区」为 catch「接住/汇集」的技术引申，-ment 规则。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0382",
+      "head": "focus",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "focus 与 focal/focusing/focussing（英式变体）同拉丁 focus，透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0541",
+      "head": "announce",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "announce 与 announcement/announcer/annunciatory 同拉丁 annuntiare，-ment/-er/-atory 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0624",
+      "head": "wind",
+      "size": 4,
+      "verdict": "trim",
+      "remove_members": [
+        "winder"
+      ],
+      "remove_edges": [
+        [
+          "wind",
+          "winder"
+        ]
+      ],
+      "groups": null,
+      "reason": "wind 为同形异源：wind「风」派生 windy/windiness；winder「卷线器/上发条者」源自动词 wind「缠绕」（/waɪnd/，古英语 windan），与「风」不同词根、不同读音。删 winder 及 wind–winder 边，保留 wind/windy/windiness；若按「同一 lemma 多义」口径可保留，故 medium。",
+      "confidence": "medium"
+    },
+    {
+      "id": "F0648",
+      "head": "heat",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "heat 与 heater/heatable/heating 同根，-er/-able/-ing 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0783",
+      "head": "injury",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "injury 与 injure/injurious/injuriousness 同拉丁 injuria，「伤害」义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0816",
+      "head": "equipment",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "equip 与 equipment/equipping 同根；equipage（装备/马车）为同根借词，-ment/-age 语义可通。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0863",
+      "head": "prior",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "prior/priority/prioritize 同拉丁 prior「在前的」，透明；priorship 由 prior 名词义「修道院长」（prior.n.01）派生，与形容词「较早的」义分化，且词条释义未收名词义；同根、-ship 规则且 10k 外，暂保留待人工。",
+      "confidence": "low"
+    },
+    {
+      "id": "F0938",
+      "head": "dinner",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "dinner 与 dine/diner/dining 同古法语 disner「进餐」，语义「正餐/用餐」透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1358",
+      "head": "export",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "export 与 exportation/exporter/exporting 同拉丁 exportare，-ation/-er/-ing 透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F1391",
+      "head": "reverse",
+      "size": 4,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "reverse 与 reversal/reversible/reversibility 同拉丁 revertere，「反转」义透明。",
+      "confidence": "high"
+    },
+    {
+      "id": "F0488",
+      "head": "ok",
+      "size": 2,
+      "verdict": "keep",
+      "remove_members": null,
+      "remove_edges": null,
+      "groups": null,
+      "reason": "ok 与 o.k. 仅拼写变体（word-shape 命中），同一词，保留。",
+      "confidence": "high"
+    }
+  ]
+}

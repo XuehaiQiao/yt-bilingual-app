@@ -1,0 +1,655 @@
+{
+ "batch": 6,
+ "range": [
+  275,
+  330
+ ],
+ "results": [
+  {
+   "id": "F0673",
+   "head": "commission",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "commission/commissioner/commissioning 同出拉丁 committere（com-+mittere），「委任/授权」义与 commit「委托/犯」透明对应，commitment/committal 亦透明。commission 兼「佣金/委员会」义、与 commit 现代义有分化，但同根可追溯（同 batch-03 revolution/revolt 口径），保留待人工确认。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F1177",
+   "head": "install",
+   "size": 6,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "install/instal/installation/installing 均 install 透明派生；installment/instalment 在 WordNet 走 installation.n.01「安装行为」义（词条释义亦含「就职/装设」），但常用义「分期付款/一集」已分化，且 installment 为 10k 内 C1，不轻易删，保留待人工复核。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F2021",
+   "head": "spoil",
+   "size": 6,
+   "verdict": "trim",
+   "remove_members": [
+    "spoilation",
+    "spoliation"
+   ],
+   "remove_edges": [
+    [
+     "spoil",
+     "spoilation"
+    ],
+    [
+     "spoil",
+     "spoliation"
+    ]
+   ],
+   "groups": null,
+   "reason": "spoilage/spoiler/spoiling 与 spoil 同根透明；spoliation 为拉丁 spoliare 的法律借词（spoliation.n.01「销毁证据」），spoilation 仅是 WordNet 中与 spoil 同列于 spoil.n.03「武力掠夺」古义的变体。现代 spoil 主用义为破坏/宠坏，语义已不透明，删两成员及两条边后保留 spoil/spoilage/spoiler/spoiling（B1/C1）。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F0014",
+   "head": "time",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "time/timely/timer/timing 均由 time 透明派生；timeliness 由 timely+-ness，同根明确。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0018",
+   "head": "know",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "know/knowable/knower/knowing/knowingness 全部 -able/-er/-ing/-ness 透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0058",
+   "head": "home",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "home/homey/homy 同根；homely/homeliness 为 home+-ly 派生（「家常的/朴素的」义仍可溯），无跨词根串接。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0090",
+   "head": "bad",
+   "size": 5,
+   "verdict": "split",
+   "remove_members": null,
+   "remove_edges": [
+    [
+     "bad",
+     "severeness"
+    ]
+   ],
+   "groups": [
+    [
+     "bad",
+     "badness"
+    ],
+    [
+     "severe",
+     "severity",
+     "severeness"
+    ]
+   ],
+   "reason": "WordNet badness.n.02（疼痛/天气等不良程度）同义集把 severeness 的派生指针挂到 bad（severeness→bad），severe/severity/severeness 由此串入；bad 为日耳曼语源、severe 出拉丁 severus，不同词根，badness 与 severeness 是同义而非派生。删桥边后拆为 bad/badness（A1）与 severe/severity/severeness（B1/C1），两组均有 10k 锚点。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0122",
+   "head": "book",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "book/booklet/bookable/booker/booking 同根；booklet 为 book+-let，booking/bookable 走「预订」义，均透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0123",
+   "head": "order",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "order/orderer/ordering/orderly/orderliness 同根透明；orderly 的「值班的」为引申义但同根可溯。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0147",
+   "head": "cause",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "cause/causal/causality/causation/causative 同出拉丁 causa，-al/-ity/-ation/-ative 派生透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0154",
+   "head": "water",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "water/waterer/watering/watery/wateriness 全部透明派生，无跨词根成员。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0195",
+   "head": "train",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "train/trainer/trainee/training/traineeship 同根；trainee 为 train+-ee、traineeship 为 trainee+-ship，透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0216",
+   "head": "room",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "room/roomer/roomette/roomy/roominess 同根；roomette 为 room+-ette「小房间」，语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0252",
+   "head": "sound",
+   "size": 5,
+   "verdict": "trim",
+   "remove_members": [
+    "sonant"
+   ],
+   "remove_edges": [
+    [
+     "sonant",
+     "sound"
+    ]
+   ],
+   "groups": null,
+   "reason": "sound/sounder/sounding/soundness 均由 sound 的常见义透明派生（测深/健全），保持连通；sonant 为语音学术语「响音/浊音」，WordNet 仅经 sonant.n.01（voiced sound）与 voice.v.02「发声」的 sound 互指挂入，现代英语非透明派生且为 10k 外技术词，删该成员及边。",
+   "confidence": "medium"
+  },
+  {
+   "id": "F0281",
+   "head": "example",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "example/exemplar/exemplary/exemplify/exemplification 同出拉丁 exemplum；exemplar 为同源借词，语义「范例」透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0293",
+   "head": "development",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "develop/development/developer/developmental/developing 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0295",
+   "head": "answer",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "answer/answerable/answerer/answerability/answerableness 全部 -able/-er/-ability 透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0304",
+   "head": "moment",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "moment/momentary/momentaneous/momentous/momentousness 同出拉丁 momentum；momentous 走「重要」义（moment 词条亦含「重要」义），同根可溯。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0315",
+   "head": "model",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "model/modeler/modeling/modeller/modelling 同根；后两者为英式拼写变体，透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0383",
+   "head": "page",
+   "size": 5,
+   "verdict": "trim",
+   "remove_members": [
+    "pager"
+   ],
+   "remove_edges": [
+    [
+     "page",
+     "pager"
+    ]
+   ],
+   "groups": null,
+   "reason": "page/paginate/pagination/paging 同出拉丁 pagina「页」，分页义透明；pager 走 page.v.01「用寻呼机/广播呼叫」，来自 page「侍童/男侍」同形异源义（page.n.04），与「书页」不同词根，属词形巧合。删 pager 及 page–pager 边后其余 4 词仍连通。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0385",
+   "head": "energy",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "energy/energetic/energize/energizer/energizing 同出希腊 energeia，派生透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0394",
+   "head": "sleep",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "sleep/sleepy/sleeper/sleepiness/sleeping 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0433",
+   "head": "teach",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "teach/teacher/teaching/teachable/teachership 同根；teachership 为 teacher+-ship，10k 外但派生合法透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0455",
+   "head": "plant",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "plant/planter/planting/plantlet/plantal 同根；plantlet 为 plant+-let、plantal 为 plant+-al，语义透明（10k 外但合法）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0457",
+   "head": "code",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "code/coder/coding/codify/codification 同根；codify 为 code+-ify 的透明动词化。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0477",
+   "head": "quality",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "quality/qualify/qualification/qualifier/qualifying 同出拉丁 qualis；-ify/-ification/-ier 派生透明，无跨词根串接。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0493",
+   "head": "dream",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "dream/dreamer/dreaming/dreamy/dreaminess 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0496",
+   "head": "block",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "block/blockage/blocker/blocking/blocky 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0528",
+   "head": "color",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "color/coloration/coloring/colorist/colorize 全部 -ation/-ing/-ist/-ize 透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0538",
+   "head": "push",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "push/pusher/pushing/pushy/pushiness 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0588",
+   "head": "speed",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "speed/speeder/speeding/speedy/speediness 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0589",
+   "head": "earth",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "earth/earthing/earthling/earthly/earthy 同根；earthling 为 earth+-ling，10k 外但派生合法透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0597",
+   "head": "master",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "master/mastery/mastering/masterly/mastership 全部 -y/-ing/-ly/-ship 透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0599",
+   "head": "conference",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "confer/conference/conferment/conferral/conferee 同出拉丁 conferre（com-+ferre）；conference 与 confer「商议」义透明对应。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0601",
+   "head": "promise",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "promise/promisee/promiser/promisor/promissory 同根；-ee/-or/-ory 为透明法律/正式派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0607",
+   "head": "mix",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "mix/mixture/mixer/mixable/mixing 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0675",
+   "head": "item",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "item/itemize/itemise/itemization/itemisation 同根，英/美拼写变体成对，透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0676",
+   "head": "channel",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "channel/channelize/channelise/channelization/channelisation 同根，英/美拼写变体成对，透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0704",
+   "head": "shape",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "shape/shaper/shaping/shapely/shapeliness 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0729",
+   "head": "depend",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "depend/dependent/dependant/dependence/dependency 同出拉丁 dependere；-ent/-ance/-ency 派生透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0743",
+   "head": "physical",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "physical/physics/physicist/physicality/physicalness 同出希腊 physis；physics 为同源学科名，语义透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0804",
+   "head": "soldier",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "soldier/soldiering/soldierly/soldiership/soldiery 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0818",
+   "head": "conversation",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "conversation/converse（交谈）/conversational/conversationalist/conversationist 同出拉丁 conversari，派生透明；词条 converse 取「相反」义，族内走「交谈」动词义。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0838",
+   "head": "indicate",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "indicate/indication/indicator/indicative/indicant 同出拉丁 indicare；indicant 为生僻名词但「指示物」义透明（10k 外）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0853",
+   "head": "edge",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "edge/edger/edging/edgy/edginess 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0856",
+   "head": "command",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "command/commander/commandment/commandant/commandership 同根；commandant 经法语同源，语义「指挥官」透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0909",
+   "head": "shift",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "shift/shifter/shifting/shifty/shiftiness 同根；shifty「狡猾的」为引申义但可溯（shift 手段/应变），保留。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0932",
+   "head": "negative",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "negative/negate/negation/negativeness/negativity 同出拉丁 negare，-ate/-ation/-ness/-ity 派生透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0956",
+   "head": "blame",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "blame/blamable/blameable/blameworthy/blameworthiness 同根；blamable/blameable 为拼写变体，派生透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F0982",
+   "head": "reflect",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "reflect/reflection/reflective/reflectivity/reflector 同根；reflection 由 allowlist 补边，派生透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1009",
+   "head": "draft",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "draft/draftee/drafter/drafting/drafty 同根；draftee「应征者」、drafty「有穿堂风的」各走 draft 的透明义。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1039",
+   "head": "ruin",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "ruin/ruination/ruiner/ruining/ruinous 同出拉丁 ruina，-ation/-er/-ing/-ous 派生透明。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1057",
+   "head": "shake",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "shake/shaker/shaking/shaky/shakiness 全部透明派生。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1065",
+   "head": "plane",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "plane/planar/planeness/planer/planation 同出拉丁 planus「平」；planation 为地质学术语但 -ation 派生透明（10k 外但合法）。",
+   "confidence": "high"
+  },
+  {
+   "id": "F1089",
+   "head": "bind",
+   "size": 5,
+   "verdict": "keep",
+   "remove_members": null,
+   "remove_edges": null,
+   "groups": null,
+   "reason": "bind/binder/bindery/bindable/binding 全部透明派生。",
+   "confidence": "high"
+  }
+ ]
+}
