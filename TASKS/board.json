@@ -979,8 +979,8 @@
     {
       "id": "P2-13",
       "file": "TASKS/P2-13-video-payload-glosses.md",
-      "status": "claimed",
-      "owner": "gloss-fix-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
         "scripts/watch-mode-acceptance.mjs",
