@@ -26,8 +26,8 @@
 - 绝对定位在视频区下缘（玻璃配方 `bg-zinc-950/70 backdrop-blur-md border-t border-white/5`）
 - 只显示当前句：**英文在上（主内容）**、中文在下（辅助）；不显示整条 transcript
 - **字号随视频窗宽度流体缩放（P2-11，纯 CSS 容器查询）**：媒体区 `data-testid="video-area"` 设 `container-type: inline-size`（`[container-type:inline-size]`），字幕字号用容器查询单位 `cqi`（1cqi = 视频窗宽度的 1%）：
-  - 英文：`clamp(1.0625rem, 2cqi, 1.5rem)` → 17px … 24px
-  - 中文：`clamp(0.9375rem, 1.7cqi, 1.25rem)` → 15px … 20px
+  - 英文：`clamp(1.0625rem, 2cqi, 1.95rem)` → 17px … 31.2px
+  - 中文：`clamp(0.9375rem, 1.7cqi, 1.625rem)` → 15px … 26px
   - 任意窗宽英文都大于中文；375 落在下限 17/15；全屏/加宽视频窗时自动变大，不依赖 JS ResizeObserver
   - **回退**：`text-section`（17px）/ `text-body-zh`（15px）token 保留在元素上；不支持 `cqi` 的引擎会丢弃无效的 inline 声明，回退到 token 固定字号，不出现无字号
 - 行高沿用 `leading-snug`，居中、`text-balance`；字号不写裸 px

@@ -71,8 +71,8 @@ const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 // (the `text-section` / `text-body-zh` classes stay as the no-cqi fallback).
 // 1cqi = 1% of the `video-area` container width, so the same declaration
 // resolves differently in the normal and watch layouts.
-const FLUID_EN = 'clamp(1.0625rem, 2cqi, 1.5rem)';
-const FLUID_ZH = 'clamp(0.9375rem, 1.7cqi, 1.25rem)';
+const FLUID_EN = 'clamp(1.0625rem, 2cqi, 1.95rem)';
+const FLUID_ZH = 'clamp(0.9375rem, 1.7cqi, 1.625rem)';
 
 // ── fixtures ───────────────────────────────────────────────────────────────
 const VIDEO_ID = 'acceptance-watch';
@@ -604,7 +604,7 @@ try {
     assert.ok(normalType, 'normal-layout media stage missing');
     assert.equal(normalType.containerType, 'inline-size', 'media stage is not a container-query source');
     assert.ok(
-        normalType.en > 17 && normalType.en < 24,
+        normalType.en > 17 && normalType.en < 31.2,
         `1440 normal media should resolve the fluid clamp above the 17px floor, got ${normalType.en}px`,
     );
     assert.ok(normalType.en > normalType.zh, 'normal-layout English must stay above Chinese');
@@ -698,7 +698,7 @@ try {
     );
 
     // — P2-11: watch mode widens the media stage, so the same fluid formula
-    // resolves larger than the normal layout (and stays below the 24px cap so
+    // resolves larger than the normal layout (and stays below the 31.2px cap so
     // 1920 can keep growing). English must remain above Chinese. —
     const watchType = await subtitleType(page);
     assert.ok(watchType.en && watchType.zh, 'watch subtitle lines missing for the fluid type check');
@@ -715,8 +715,8 @@ try {
         `watch English ${watchType.en.fontSize}px must stay above Chinese ${watchType.zh.fontSize}px`,
     );
     assert.ok(
-        watchType.en.fontSize < 24,
-        `1440 watch English ${watchType.en.fontSize}px must stay below the 24px cap so 1920 can grow`,
+        watchType.en.fontSize < 31.2,
+        `1440 watch English ${watchType.en.fontSize}px must stay below the 31.2px cap so 1920 can grow`,
     );
     // The token classes are what engines without container queries fall back
     // to; an unsupported cqi drops the inline declaration, not the font size.
@@ -1308,8 +1308,8 @@ try {
         wideType.zh.fontSize > subtitleTypography.zh.fontSize,
         `1920 Chinese ${wideType.zh.fontSize}px must be larger than 1440 watch ${subtitleTypography.zh.fontSize}px`,
     );
-    assert.ok(wideType.en.fontSize <= 24.01, `1920 English ${wideType.en.fontSize}px exceeds the 24px cap`);
-    assert.ok(wideType.zh.fontSize <= 20.01, `1920 Chinese ${wideType.zh.fontSize}px exceeds the 20px cap`);
+    assert.ok(wideType.en.fontSize <= 31.21, `1920 English ${wideType.en.fontSize}px exceeds the 31.2px cap`);
+    assert.ok(wideType.zh.fontSize <= 26.01, `1920 Chinese ${wideType.zh.fontSize}px exceeds the 26px cap`);
     assert.ok(wideType.en.fontSize > wideType.zh.fontSize, '1920 English must stay above Chinese');
     assert.ok(!wideType.en.clipped && !wideType.zh.clipped, '1920 subtitle text is horizontally clipped');
     assert.ok(wideType.insideMedia && wideType.insideViewport, '1920 subtitle overlay overflows the media stage');
