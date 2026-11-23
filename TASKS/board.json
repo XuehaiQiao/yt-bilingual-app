@@ -825,6 +825,23 @@
         "P1-17",
         "P1-18"
       ]
+    },
+    {
+      "id": "P1-19",
+      "file": "TASKS/P1-19-sse-stream-speed.md",
+      "status": "claimed",
+      "owner": "sse-perf-impl",
+      "write_scope": [
+        "backend/translate.py",
+        "backend/routes_videos.py",
+        "backend/tests/test_streaming.py",
+        "backend/tests/test_streaming_pipeline.py",
+        "docs/reports/pipeline-timing-sse-2026-11-23.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P1-18"
+      ]
     }
   ]
 }
