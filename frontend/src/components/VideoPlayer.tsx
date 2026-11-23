@@ -1,14 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { YouTubeProps } from 'react-youtube';
 import YouTube from 'react-youtube';
-import { Clapperboard, Maximize, Minimize, Minimize2 } from 'lucide-react';
+import { Clapperboard, Minimize2 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 
 interface VideoPlayerProps {
     videoId: string;
     onTimeUpdate: (time: number) => void;
     seekCommand?: { time: number; timestamp: number } | null;
-    wrapperRef?: React.RefObject<HTMLDivElement | null>;
     playbackRate?: number;
     playToggleCommand?: number | null; // timestamp; toggles play/pause when it changes
     /** Optional: the embed became playable (used by local episodes to clear a fallback). */
@@ -29,7 +28,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     videoId,
     onTimeUpdate,
     seekCommand,
-    wrapperRef,
     playbackRate = 1,
     playToggleCommand,
     onPlayerReady,
@@ -120,26 +118,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         onPlayerError?.(event.data);
     };
 
-    const [isFullscreen, setIsFullscreen] = useState(false);
-
-    useEffect(() => {
-        const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
-        };
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
-
-    const toggleFullscreen = () => {
-        if (!document.fullscreenElement) {
-            wrapperRef?.current?.requestFullscreen?.().catch(err => {
-                console.error(`Error attempting to enable fullscreen: ${err.message}`);
-            });
-        } else {
-            document.exitFullscreen?.();
-        }
-    };
-
     const opts = {
         height: '100%',
         width: '100%',
@@ -180,23 +158,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                             aria-label={watchMode ? t('watchMode.exit') : t('watchMode.enter')}
                             title={watchMode ? t('watchMode.exit') : t('watchMode.enter')}
                             onClick={onToggleWatchMode}
-                            className={`absolute bottom-4 ${wrapperRef ? 'right-16' : 'right-4'} p-2.5 bg-app/60 hover:bg-app/80 text-fg-primary rounded-lg backdrop-blur-md ${watchMode ? 'opacity-100' : 'opacity-0 group-hover/video:opacity-100 [@media(pointer:coarse)]:opacity-100'} transition-[opacity,background-color,transform] duration-200 ease-apple motion-reduce:transition-none active:scale-[0.98] flex items-center gap-2 z-50 pointer-events-auto`}
+                            className={`absolute bottom-4 right-16 p-2.5 bg-app/60 hover:bg-app/80 text-fg-primary rounded-lg backdrop-blur-md ${watchMode ? 'opacity-100' : 'opacity-0 group-hover/video:opacity-100 [@media(pointer:coarse)]:opacity-100'} transition-[opacity,background-color,transform] duration-200 ease-apple motion-reduce:transition-none active:scale-[0.98] flex items-center gap-2 z-50 pointer-events-auto`}
                         >
                             {watchMode ? <Minimize2 className="w-5 h-5" /> : <Clapperboard className="w-5 h-5" />}
                             <span className="text-xs font-medium whitespace-nowrap">
                                 {watchMode ? t('watchMode.exit') : t('watchMode.enter')}
                             </span>
-                        </button>
-                    )}
-
-                    {wrapperRef && (
-                        <button
-                            onClick={toggleFullscreen}
-                            data-testid="video-fullscreen-toggle"
-                            className="absolute bottom-4 right-4 p-2.5 bg-zinc-950/60 hover:bg-zinc-950/80 text-white rounded-lg backdrop-blur-md opacity-0 group-hover/video:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-[opacity,background-color,transform] duration-200 ease-apple active:scale-[0.98] flex items-center gap-2 z-50 pointer-events-auto"
-                            title={isFullscreen ? t('transcript.exitFullscreen') : t('transcript.fullscreen')}
-                        >
-                            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
                         </button>
                     )}
                 </div>

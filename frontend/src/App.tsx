@@ -463,13 +463,87 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     media.addEventListener?.('change', onChange);
     return () => media.removeEventListener?.('change', onChange);
   }, []);
+  // 观影模式 owns page fullscreen (specs/044 §5, P2-10): the old player-only
+  // fullscreen button is gone and this shell is the one fullscreen element.
+  const fullscreenWrapperRef = useRef<HTMLDivElement>(null);
+  // The element the browser actually fullscreened. React detaches the shell's
+  // ref when the video route unmounts, so cleanup needs this identity to know
+  // whether the document is still trapped in *our* fullscreen.
+  const fullscreenTargetRef = useRef<Element | null>(null);
+  const [pageFullscreen, setPageFullscreen] = useState(false);
+
+  const enterPageFullscreen = useCallback(() => {
+    const node = fullscreenWrapperRef.current;
+    // No API (mobile Safari, an iframe without allowfullscreen): the mode still
+    // switches the layout, it just cannot take the page fullscreen.
+    if (!node || typeof node.requestFullscreen !== 'function') return;
+    try {
+      const request = node.requestFullscreen();
+      fullscreenTargetRef.current = node;
+      // A rejected request is an expected downgrade, not a failure: keep the
+      // watch layout and never surface it as an error.
+      void request?.catch(() => {
+        if (fullscreenTargetRef.current === node) fullscreenTargetRef.current = null;
+      });
+    } catch {
+      fullscreenTargetRef.current = null;
+    }
+  }, []);
+
+  const exitPageFullscreen = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const element = document.fullscreenElement;
+    if (!element) return;
+    if (element !== fullscreenWrapperRef.current && element !== fullscreenTargetRef.current) return;
+    fullscreenTargetRef.current = null;
+    try {
+      const exit = document.exitFullscreen?.();
+      // The browser may have left fullscreen a moment earlier (ESC): its
+      // rejection is expected and deliberately silent.
+      void exit?.catch(() => {});
+    } catch {
+      // Fullscreen API unavailable: restoring the layout is all that is left.
+    }
+  }, []);
+
+  // Browsers can leave fullscreen without the toggle (ESC, browser chrome,
+  // another fullscreen request). The watch layout is deliberately kept; only
+  // the state flag follows the document.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const sync = () => {
+      const element = document.fullscreenElement;
+      const owns = Boolean(
+        element
+        && (element === fullscreenWrapperRef.current || element === fullscreenTargetRef.current),
+      );
+      if (owns) fullscreenTargetRef.current = element;
+      setPageFullscreen(owns);
+    };
+    sync();
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, []);
+
   const toggleWatchMode = useCallback(() => {
+    const entering = !watchModeActive;
     // The mode swap rewires the shell, so the embed remounts. Carry the
     // playhead over (the new player seeks on ready) instead of restarting.
     setSeekCommand({ time: currentTimeRef.current, timestamp: Date.now() });
     setWatchMode((previous) => (previous === 'on' ? 'off' : 'on'));
-  }, []);
-  const fullscreenWrapperRef = useRef<HTMLDivElement>(null);
+    // Page fullscreen is part of entering the mode. Both calls stay inside the
+    // click gesture: `requestFullscreen()` outside a user gesture is denied.
+    if (entering) enterPageFullscreen();
+    else exitPageFullscreen();
+  }, [watchModeActive, enterPageFullscreen, exitPageFullscreen]);
+
+  // The mode can stop applying without a click (e.g. the payload turns out to
+  // be a local episode). Do not leave the page fullscreen behind a layout that
+  // is no longer the watch view.
+  useEffect(() => {
+    if (watchModeActive || !pageFullscreen) return;
+    exitPageFullscreen();
+  }, [watchModeActive, pageFullscreen, exitPageFullscreen]);
   const [currentTime, setCurrentTime] = useState(0);
   const [seekCommand, setSeekCommand] = useState<{ time: number, timestamp: number } | null>(null);
 
@@ -1274,6 +1348,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // target); only tab switches and same-screen params replace. The browser
   // history is the back stack, so there is no client-side depth clamp.
   const isLearningView = state.sub?.kind === 'learn';
+  // Leaving the video route must not leave the page in the watch shell's
+  // fullscreen. The browser usually exits fullscreen when the element is
+  // removed, but not every engine/embed does; this explicit pass is silent.
+  useEffect(() => {
+    if (isLearningView) return;
+    exitPageFullscreen();
+    setPageFullscreen(false);
+  }, [isLearningView, exitPageFullscreen]);
+  // Unmounting the app (teardown / a navigation outside the SPA) can strand
+  // fullscreen too; cleanup never throws or logs.
+  useEffect(() => () => exitPageFullscreen(), [exitPageFullscreen]);
   // The review UI is paused (specs/013 2026-11-22): a review URL is treated as
   // "not a sub view" so the source tab renders underneath while the effect
   // below rewrites the address bar to the tab root. This is also what keeps
@@ -3181,7 +3266,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           videoId={hasLocalVideo ? localYouTubeId : videoId}
           seekCommand={seekCommand}
           onTimeUpdate={handleTimeUpdate}
-          wrapperRef={fullscreenWrapperRef}
           playbackRate={playbackRate}
           playToggleCommand={playToggleCommand}
           onPlayerReady={hasLocalVideo ? () => setLocalVideoError(false) : undefined}
@@ -3691,6 +3775,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         ref={fullscreenWrapperRef}
         data-testid="learning-scroll"
         data-watch-mode={watchModeActive ? 'on' : 'off'}
+        data-page-fullscreen={pageFullscreen ? 'on' : 'off'}
         className="learning-scroll flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden max-md:overflow-y-auto relative bg-transparent group/wrapper"
       >
         {watchModeActive ? (

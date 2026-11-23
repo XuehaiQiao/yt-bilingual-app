@@ -29,6 +29,12 @@
 //   5. watch OFF restores the previous stacked/split layout + teaching panel;
 //   6. reduced-motion: the overlay/rail carry no animation or transition;
 //   7. 1440 and 375 screenshots, no horizontal overflow at 375.
+//   8. P2-10 page fullscreen: the retired player fullscreen button is gone; the
+//      watch toggle calls `requestFullscreen()` on the learning shell inside the
+//      click gesture, leaving watch mode calls `exitFullscreen()`, an ESC-style
+//      browser exit keeps the watch layout and only syncs `data-page-fullscreen`,
+//      a rejected/missing Fullscreen API degrades to the layout silently, and a
+//      route change cleans up the page fullscreen (all via a page-side stub).
 //
 // Run (needs `npm run dev` on :5173; Playwright lives in scripts/node_modules):
 //   node scripts/watch-mode-acceptance.mjs
@@ -352,6 +358,64 @@ async function createContext(browser, {
     return context;
 }
 
+/**
+ * P2-10: deterministic page-fullscreen stub. Real fullscreen is asynchronous
+ * and headless-host dependent, so the whole lifecycle is driven page-side:
+ * `window.__fsStub` records requests/exits, `document.fullscreenElement` is an
+ * own getter, `fullscreenchange` is dispatched like the browser would, and
+ * `__fsStub.escape()` simulates the ESC/browser-chrome exit.
+ */
+async function stubFullscreen(page) {
+    await page.addInitScript(() => {
+        const state = {
+            element: null,
+            requests: 0,
+            exits: 0,
+            requestedTestId: null,
+            rejectNext: false,
+        };
+        const notify = () => document.dispatchEvent(new Event('fullscreenchange'));
+        Object.defineProperty(document, 'fullscreenElement', {
+            configurable: true,
+            get: () => state.element,
+        });
+        const request = function requestFullscreen() {
+            state.requests += 1;
+            state.requestedTestId = this instanceof Element ? this.getAttribute('data-testid') : null;
+            if (state.rejectNext) {
+                state.rejectNext = false;
+                return Promise.reject(new TypeError('fullscreen request denied (acceptance stub)'));
+            }
+            state.element = this;
+            notify();
+            return Promise.resolve();
+        };
+        Object.defineProperty(Element.prototype, 'requestFullscreen', {
+            configurable: true,
+            writable: true,
+            value: request,
+        });
+        const exit = function exitFullscreen() {
+            state.exits += 1;
+            if (state.element === null) return Promise.resolve();
+            state.element = null;
+            notify();
+            return Promise.resolve();
+        };
+        Object.defineProperty(document, 'exitFullscreen', {
+            configurable: true,
+            writable: true,
+            value: exit,
+        });
+        state.escape = () => {
+            if (state.element === null) return;
+            state.element = null;
+            notify();
+        };
+        window.__fsStub = state;
+    });
+}
+
 async function openVideo(page, videoId) {
     await page.goto(`${BASE}/#/app/content/learn/youtube/${videoId}`, { waitUntil: 'domcontentloaded' });
     await page.locator('[data-testid="video-area"]').waitFor({ state: 'visible', timeout: 20000 });
@@ -447,6 +511,7 @@ try {
     // ═════════════════════════════════════════════════════════════════════
     const desktop = await createContext(browser);
     const page = await desktop.newPage();
+    await stubFullscreen(page);
     const pageErrors = [];
     const apiRequests = [];
     page.on('pageerror', (error) => pageErrors.push(String(error)));
@@ -460,6 +525,9 @@ try {
     // — toggle OFF is the default even with a split layout stored —
     assert.equal(await page.getAttribute('[data-testid="watch-mode-toggle"]', 'aria-pressed'), 'false');
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'off');
+    assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-page-fullscreen'), 'off');
+    assert.equal(await page.locator('[data-testid="video-fullscreen-toggle"]').count(), 0, 'the player must not render a standalone fullscreen button');
+    assert.equal(await page.locator('[data-testid="watch-mode-toggle"]').count(), 1, 'the watch toggle must be the only watch control');
     assert.equal(await page.locator('[data-testid="teaching-notes-panel"]').count(), 1, 'teaching panel missing before watch mode');
     assert.equal(await page.locator('[data-testid="split-divider"]').count(), 1, 'split layout not restored on load');
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_mode')), 'off');
@@ -468,6 +536,11 @@ try {
     await page.locator('[data-testid="video-area"]').hover();
     await page.locator('[data-testid="watch-mode-toggle"]').click();
     await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_mode') === 'on', null, { timeout: 5000 });
+    // P2-10: the same click requests page fullscreen on the watch shell.
+    await page.waitForFunction(() => document.fullscreenElement !== null, null, { timeout: 5000 });
+    assert.equal(await page.evaluate(() => window.__fsStub.requests), 1, 'entering watch mode must request page fullscreen');
+    assert.equal(await page.evaluate(() => window.__fsStub.requestedTestId), 'learning-scroll', 'fullscreen must target the watch shell');
+    assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-page-fullscreen'), 'on');
     assert.equal(await page.getAttribute('[data-testid="watch-mode-toggle"]', 'aria-pressed'), 'true');
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on');
     assert.equal(await page.locator('[data-testid="teaching-notes-panel"]').count(), 0, 'teaching panel must NOT be mounted in watch mode');
@@ -567,9 +640,11 @@ try {
         `overlay sits ${overlayRect.bottomGap}px from the bottom (<12% of ${overlayRect.parentHeight})`,
     );
     const overlay = await boxOf(page, 'watch-subtitle-overlay');
+    // P2-10 retired the standalone fullscreen control: the watch toggle is the
+    // only player control the overlay has to clear.
+    assert.equal(await page.locator('[data-testid="video-fullscreen-toggle"]').count(), 0, 'retired fullscreen button is still mounted');
     const controlBoxes = await Promise.all([
         boxOf(page, 'watch-mode-toggle'),
-        boxOf(page, 'video-fullscreen-toggle'),
     ]);
     assert.ok(controlBoxes.every(Boolean), 'player controls missing');
     const overlapsControls = controlBoxes.some((controls) => (
@@ -658,6 +733,10 @@ try {
     // — turn watch mode off: stacked/split layout + teaching panel return —
     await page.locator('[data-testid="watch-mode-toggle"]').click();
     await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_mode') === 'off', null, { timeout: 5000 });
+    // P2-10: leaving the mode also leaves page fullscreen (the stub is still on).
+    await page.waitForFunction(() => document.fullscreenElement === null, null, { timeout: 5000 });
+    assert.equal(await page.evaluate(() => window.__fsStub.exits), 1, 'leaving watch mode must call exitFullscreen');
+    assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-page-fullscreen'), 'off');
     await page.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
     assert.equal(await page.locator('[data-testid="watch-gloss-rail"]').count(), 0);
     assert.equal(await page.locator('[data-testid="watch-subtitle-overlay"]').count(), 0);
@@ -674,6 +753,7 @@ try {
     await page.locator('[data-testid="watch-gloss-rail"]').waitFor({ state: 'visible', timeout: 20000 });
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on');
     assert.equal(await page.getAttribute('[data-testid="watch-mode-toggle"]', 'aria-pressed'), 'true');
+    assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-page-fullscreen'), 'off', 'persisted watch mode must not auto-request fullscreen on reload');
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_mode')), 'on');
 
     await seekToGlossedCue(page);
@@ -727,6 +807,152 @@ try {
         history: { accumulated: 2, dedupe: 'pass' },
     };
     await desktop.close();
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 1440 — P2-10 page fullscreen lifecycle (stubbed, deterministic)
+    // ═════════════════════════════════════════════════════════════════════
+    const fsContext = await createContext(browser);
+    const fsPage = await fsContext.newPage();
+    await stubFullscreen(fsPage);
+    const fsErrors = [];
+    const fsConsoleErrors = [];
+    fsPage.on('pageerror', (error) => fsErrors.push(String(error)));
+    fsPage.on('console', (message) => {
+        if (message.type() === 'error') fsConsoleErrors.push(message.text());
+    });
+    await openVideo(fsPage, VIDEO_ID);
+
+    const readFs = () => fsPage.evaluate(() => {
+        const shell = document.querySelector('[data-testid="learning-scroll"]');
+        const toggle = document.querySelector('[data-testid="watch-mode-toggle"]');
+        return {
+            requests: window.__fsStub.requests,
+            exits: window.__fsStub.exits,
+            element: document.fullscreenElement
+                ? document.fullscreenElement.getAttribute('data-testid')
+                : null,
+            watch: shell ? shell.getAttribute('data-watch-mode') : null,
+            pageFullscreen: shell ? shell.getAttribute('data-page-fullscreen') : null,
+            pressed: toggle ? toggle.getAttribute('aria-pressed') : null,
+        };
+    });
+    const waitFullscreen = (present) => fsPage.waitForFunction(
+        (expected) => (document.fullscreenElement !== null) === expected,
+        present,
+        { timeout: 5000 },
+    );
+
+    // — enter watch: request inside the click gesture, targeting the shell —
+    await fsPage.locator('[data-testid="video-area"]').hover();
+    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await waitFullscreen(true);
+    let fsState = await readFs();
+    assert.equal(fsState.requests, 1, 'entering watch mode must call requestFullscreen once');
+    assert.equal(fsState.element, 'learning-scroll', 'requestFullscreen must target the watch shell');
+    assert.equal(fsState.watch, 'on');
+    assert.equal(fsState.pageFullscreen, 'on');
+    assert.equal(fsState.pressed, 'true');
+    assert.equal(await fsPage.locator('[data-testid="video-fullscreen-toggle"]').count(), 0, 'retired fullscreen button must stay gone');
+    assert.equal(await fsPage.locator('[data-testid="watch-mode-toggle"]').count(), 1, 'watch toggle must be the only watch control');
+
+    // — ESC / browser chrome leaves fullscreen: the watch layout survives —
+    await fsPage.evaluate(() => window.__fsStub.escape());
+    await waitFullscreen(false);
+    fsState = await readFs();
+    assert.equal(fsState.watch, 'on', 'a browser-initiated fullscreen exit must keep the watch layout');
+    assert.equal(fsState.pressed, 'true', 'a browser-initiated fullscreen exit must not toggle watch mode off');
+    assert.equal(fsState.pageFullscreen, 'off', 'page-fullscreen state did not follow the document');
+    assert.equal(fsState.exits, 0, 'the app must not call exitFullscreen after the browser already exited');
+
+    // — leaving watch after ESC only restores the layout (no spurious exit) —
+    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await fsPage.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+    fsState = await readFs();
+    assert.equal(fsState.watch, 'off');
+    assert.equal(fsState.exits, 0, 'leaving the watch layout out of fullscreen must not call exitFullscreen');
+
+    // — re-enter, then leave: exit is called while the shell owns fullscreen —
+    await fsPage.locator('[data-testid="video-area"]').hover();
+    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await waitFullscreen(true);
+    fsState = await readFs();
+    assert.equal(fsState.requests, 2);
+    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await waitFullscreen(false);
+    await fsPage.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+    fsState = await readFs();
+    assert.equal(fsState.exits, 1, 'leaving watch mode while fullscreen must call exitFullscreen');
+    assert.equal(fsState.pageFullscreen, 'off');
+
+    // — route change away from the video page cleans up page fullscreen —
+    await fsPage.locator('[data-testid="video-area"]').hover();
+    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await waitFullscreen(true);
+    await fsPage.evaluate(() => { window.location.hash = '#/app/today'; });
+    await waitFullscreen(false);
+    fsState = await readFs();
+    assert.equal(fsState.exits, 2, 'leaving the video route must clean up page fullscreen');
+    assert.equal(fsState.watch, null, 'the watch shell must be unmounted after leaving the video route');
+
+    // — back to the video: watch mode persists, fullscreen needs a gesture —
+    await openVideo(fsPage, VIDEO_ID);
+    assert.equal(await fsPage.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on');
+    assert.equal(
+        await fsPage.getAttribute('[data-testid="learning-scroll"]', 'data-page-fullscreen'),
+        'off',
+        'returning to the video page must not restore fullscreen without a user gesture',
+    );
+    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await fsPage.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+
+    // — rejected request: silent, layout-only fallback —
+    const beforeReject = await fsPage.evaluate(() => window.__fsStub.requests);
+    await fsPage.evaluate(() => { window.__fsStub.rejectNext = true; });
+    await fsPage.locator('[data-testid="video-area"]').hover();
+    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await fsPage.waitForFunction((count) => window.__fsStub.requests === count, beforeReject + 1, { timeout: 5000 });
+    await fsPage.waitForFunction(
+        () => document.querySelector('[data-testid="learning-scroll"]')?.getAttribute('data-watch-mode') === 'on',
+        null,
+        { timeout: 5000 },
+    );
+    await sleep(150);
+    fsState = await readFs();
+    assert.equal(fsState.element, null, 'a rejected request must not enter fullscreen');
+    assert.equal(fsState.pageFullscreen, 'off');
+    assert.equal(fsState.pressed, 'true', 'the rejected request must keep the watch layout');
+    assert.deepEqual(fsErrors, [], `rejected fullscreen request raised a page error: ${JSON.stringify(fsErrors)}`);
+
+    // — missing API (mobile / iframe): layout-only fallback, no requests —
+    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await fsPage.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+    await fsPage.evaluate(() => {
+        delete Element.prototype.requestFullscreen;
+        delete document.exitFullscreen;
+    });
+    const beforeUnsupported = await fsPage.evaluate(() => window.__fsStub.requests);
+    await fsPage.locator('[data-testid="video-area"]').hover();
+    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await fsPage.waitForFunction(
+        () => document.querySelector('[data-testid="learning-scroll"]')?.getAttribute('data-watch-mode') === 'on',
+        null,
+        { timeout: 5000 },
+    );
+    fsState = await readFs();
+    assert.equal(fsState.requests, beforeUnsupported, 'a missing Fullscreen API must not be called');
+    assert.equal(fsState.element, null);
+    assert.equal(fsState.pageFullscreen, 'off');
+    assert.equal(fsState.pressed, 'true', 'the missing API must keep the watch layout');
+    assert.deepEqual(fsConsoleErrors.filter((text) => /fullscreen/i.test(text)), [], 'fullscreen fallbacks must stay silent');
+    assert.deepEqual(fsErrors, [], `fullscreen lifecycle raised page errors: ${JSON.stringify(fsErrors)}`);
+    summary.pageFullscreen = {
+        requests: fsState.requests,
+        exits: fsState.exits,
+        escKeepsWatchLayout: true,
+        rejectedRequest: 'layout-only',
+        missingApi: 'layout-only',
+    };
+    await fsContext.close();
 
     // ═════════════════════════════════════════════════════════════════════
     // 375 — phone: single column, no overflow, floating gloss layer
