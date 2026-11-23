@@ -846,8 +846,8 @@
     {
       "id": "P1-20",
       "file": "TASKS/P1-20-qwen-version-pricing.md",
-      "status": "claimed",
-      "owner": "qwen-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/config.py",
         "backend/migrations/versions/0030_qwen_prices.py",
