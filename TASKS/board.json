@@ -769,6 +769,35 @@
       "deps": [
         "P1-15"
       ]
+    },
+    {
+      "id": "P1-17",
+      "file": "TASKS/P1-17-book-pipeline-speed.md",
+      "status": "claimed",
+      "owner": "book-perf-impl",
+      "write_scope": [
+        "backend/book_translation.py",
+        "backend/routes_books.py",
+        "backend/tests/",
+        "frontend/src/components/BookReaderScreen.tsx",
+        "docs/reports/pipeline-timing-2026-11-23.md"
+      ],
+      "shared_writes": [],
+      "deps": []
+    },
+    {
+      "id": "P1-18",
+      "file": "TASKS/P1-18-video-pipeline-speed.md",
+      "status": "claimed",
+      "owner": "video-perf-impl",
+      "write_scope": [
+        "backend/routes_videos.py",
+        "backend/tests/",
+        "frontend/src/components/TranscriptBlock.tsx",
+        "docs/reports/pipeline-timing-2026-11-23.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
