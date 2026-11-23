@@ -721,8 +721,8 @@
     {
       "id": "P1-15",
       "file": "TASKS/P1-15-reading-highlight-rail.md",
-      "status": "claimed",
-      "owner": "rail-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/lib/highlightedWords.ts",
         "frontend/src/components/reading/ReadingHighlightRail.tsx",
@@ -748,8 +748,8 @@
     {
       "id": "P1-16",
       "file": "TASKS/P1-16-wordbook-in-topbar.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "topbar-impl",
       "write_scope": [
         "frontend/src/components/AppShell.tsx",
         "frontend/src/App.tsx",
