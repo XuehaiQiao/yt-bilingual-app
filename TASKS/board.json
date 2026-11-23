@@ -915,6 +915,29 @@
       "deps": [
         "P2-08"
       ]
+    },
+    {
+      "id": "P2-10",
+      "file": "TASKS/P2-10-watch-fullscreen.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "frontend/src/components/VideoPlayer.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/components/WatchSubtitleOverlay.tsx",
+        "frontend/src/components/WatchGlossPanel.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/watch-mode-acceptance.mjs",
+        "specs/044-watch-mode/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/App.tsx",
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-09"
+      ]
     }
   ]
 }
