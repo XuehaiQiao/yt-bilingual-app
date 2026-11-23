@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, LogIn, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { InlineLanguagePoint } from './TranscriptBlock';
@@ -7,6 +7,13 @@ import type { TeachingNotesStatus } from './TeachingNotesPanel';
 interface WatchGlossPanelProps {
     /** Block id of the sentence being spoken; null before the first cue. */
     blockId: string | null;
+    /** English text of the current sentence, used as the entry's one-line context. */
+    enText?: string | null;
+    /**
+     * Content identity (video id). The accumulated history belongs to one
+     * video, so switching content starts a fresh window.
+     */
+    contentRef?: string | null;
     /** `wordGlossesByBlock[blockId]` — the same map the transcript ruby uses. */
     glosses: Record<string, string>;
     /** `languagePointsByBlock[blockId]` — the same list the underline layer uses. */
@@ -23,6 +30,39 @@ interface WatchGlossPanelProps {
      * into a glass layer; it never covers the video unless the learner opens it.
      */
     variant?: 'rail' | 'floating';
+}
+
+/** One sentence's gloss snapshot, kept so earlier sentences stay readable. */
+interface WatchGlossEntry {
+    blockId: string;
+    enText: string;
+    words: Array<[string, string]>;
+    points: InlineLanguagePoint[];
+}
+
+/** P2-09: keep the recent sentences, oldest fall off the bottom. */
+const MAX_HISTORY_ENTRIES = 30;
+
+const samePoint = (a: InlineLanguagePoint, b: InlineLanguagePoint) =>
+    a.text === b.text && a.meaning === b.meaning && a.kind === b.kind;
+
+const sameEntry = (a: WatchGlossEntry, b: WatchGlossEntry) =>
+    a.blockId === b.blockId
+    && a.enText === b.enText
+    && a.words.length === b.words.length
+    && a.words.every(([word, gloss], index) => word === b.words[index][0] && gloss === b.words[index][1])
+    && a.points.length === b.points.length
+    && a.points.every((point, index) => samePoint(point, b.points[index]));
+
+interface GlossBodyProps {
+    /** Current sentence first, then the accumulated earlier sentences. */
+    entries: WatchGlossEntry[];
+    /** Which entry is the sentence being spoken (null = between sentences). */
+    currentBlockId: string | null;
+    showLanguagePoints: boolean;
+    status: TeachingNotesStatus;
+    onRequestAnalysis: () => void;
+    onRequestLogin?: () => void;
 }
 
 const StatusSkeleton: React.FC = () => {
@@ -54,18 +94,108 @@ const EmptyState: React.FC<{ testId: string; icon: React.ReactNode; title: strin
     </div>
 );
 
-const GlossBody: React.FC<Omit<WatchGlossPanelProps, 'variant'>> = ({
-    blockId,
-    glosses,
-    languagePoints,
+/** One sentence's block: context line, words, language points. */
+const GlossEntryBody: React.FC<{
+    entry: WatchGlossEntry;
+    isCurrent: boolean;
+    showLanguagePoints: boolean;
+}> = ({ entry, isCurrent, showLanguagePoints }) => {
+    const { t } = useI18n();
+    const words = entry.words;
+    const points = showLanguagePoints ? entry.points : [];
+
+    return (
+        <article
+            data-testid="watch-gloss-entry"
+            data-block-id={entry.blockId}
+            data-current={isCurrent ? 'true' : 'false'}
+            aria-current={isCurrent ? 'true' : undefined}
+            className={
+                isCurrent
+                    ? 'min-w-0 rounded-control border border-line-subtle/80 bg-surface-2/25 px-2.5 py-2'
+                    : 'min-w-0 border-b border-line-subtle/50 pb-3 last:border-b-0 last:pb-0'
+            }
+        >
+            <header className="mb-2 flex min-w-0 items-center gap-2">
+                <span
+                    data-testid="watch-gloss-entry-context"
+                    title={entry.enText || undefined}
+                    className="min-w-0 flex-1 truncate text-micro leading-tight text-fg-muted"
+                >
+                    {entry.enText || '—'}
+                </span>
+                {isCurrent && (
+                    <span
+                        data-testid="watch-gloss-entry-current"
+                        aria-hidden="true"
+                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
+                    />
+                )}
+            </header>
+            {words.length > 0 && (
+                <section data-testid="watch-gloss-words">
+                    <h3 className="mb-1.5 text-micro font-medium text-fg-muted">{t('watchMode.words')}</h3>
+                    <ul className="space-y-1.5">
+                        {words.map(([word, gloss]) => (
+                            <li
+                                key={word}
+                                data-testid="watch-gloss-word"
+                                className="flex items-baseline justify-between gap-3 rounded-control border border-line-subtle bg-surface-2/30 px-2.5 py-1.5"
+                            >
+                                <span className="min-w-0 break-words text-ui font-medium text-amber-300/90">{word}</span>
+                                <span className="min-w-0 break-words text-right text-caption text-fg-strong">{gloss}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+            {points.length > 0 && (
+                <section data-testid="watch-gloss-language-points" className={words.length > 0 ? 'mt-2.5' : ''}>
+                    <h3 className="mb-1.5 text-micro font-medium text-fg-muted">{t('watchMode.languagePoints')}</h3>
+                    <ul className="space-y-1.5">
+                        {points.map((point, index) => (
+                            <li
+                                key={`${point.kind}-${point.text}-${index}`}
+                                data-testid="watch-gloss-language-point"
+                                data-kind={point.kind}
+                                className="rounded-control border border-line-subtle bg-surface-2/30 px-2.5 py-2"
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <span className="min-w-0 break-words text-ui font-medium text-sky-300">{point.text}</span>
+                                    <span className="shrink-0 rounded-full bg-state-hover px-2 py-0.5 text-micro font-medium text-fg-secondary">
+                                        {point.kind === 'idiom' ? t('teachingNotes.idioms') : t('teachingNotes.culture')}
+                                    </span>
+                                </div>
+                                {point.meaning && (
+                                    <p className="mt-1 break-words text-caption leading-relaxed text-fg-secondary">{point.meaning}</p>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
+            {words.length === 0 && points.length === 0 && (
+                <div
+                    data-testid={isCurrent ? 'watch-gloss-empty' : 'watch-gloss-entry-empty'}
+                    className="flex items-center gap-2 rounded-control border border-dashed border-line-subtle px-2.5 py-2 text-caption text-fg-muted"
+                >
+                    <BookOpen className="h-3.5 w-3.5 shrink-0 text-fg-disabled" aria-hidden="true" />
+                    <span>{t('watchMode.noGloss')}</span>
+                </div>
+            )}
+        </article>
+    );
+};
+
+const GlossBody: React.FC<GlossBodyProps> = ({
+    entries,
+    currentBlockId,
     showLanguagePoints,
     status,
     onRequestAnalysis,
     onRequestLogin,
 }) => {
     const { t } = useI18n();
-    const words = Object.entries(glosses ?? {});
-    const points = showLanguagePoints ? (languagePoints ?? []) : [];
 
     if (status === 'loading' || status === 'idle') return <StatusSkeleton />;
 
@@ -132,7 +262,7 @@ const GlossBody: React.FC<Omit<WatchGlossPanelProps, 'variant'>> = ({
         );
     }
 
-    if (!blockId || (words.length === 0 && points.length === 0)) {
+    if (entries.length === 0) {
         return (
             <EmptyState
                 testId="watch-gloss-empty"
@@ -143,68 +273,115 @@ const GlossBody: React.FC<Omit<WatchGlossPanelProps, 'variant'>> = ({
     }
 
     return (
-        <div className="space-y-4">
-            {words.length > 0 && (
-                <section data-testid="watch-gloss-words">
-                    <h3 className="mb-1.5 text-micro font-medium text-fg-muted">{t('watchMode.words')}</h3>
-                    <ul className="space-y-1.5">
-                        {words.map(([word, gloss]) => (
-                            <li
-                                key={word}
-                                data-testid="watch-gloss-word"
-                                className="flex items-baseline justify-between gap-3 rounded-control border border-line-subtle bg-surface-2/30 px-2.5 py-1.5"
-                            >
-                                <span className="min-w-0 break-words text-ui font-medium text-amber-300/90">{word}</span>
-                                <span className="min-w-0 break-words text-right text-caption text-fg-strong">{gloss}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-            )}
-            {points.length > 0 && (
-                <section data-testid="watch-gloss-language-points">
-                    <h3 className="mb-1.5 text-micro font-medium text-fg-muted">{t('watchMode.languagePoints')}</h3>
-                    <ul className="space-y-1.5">
-                        {points.map((point, index) => (
-                            <li
-                                key={`${point.kind}-${point.text}-${index}`}
-                                data-testid="watch-gloss-language-point"
-                                data-kind={point.kind}
-                                className="rounded-control border border-line-subtle bg-surface-2/30 px-2.5 py-2"
-                            >
-                                <div className="flex items-start justify-between gap-2">
-                                    <span className="min-w-0 break-words text-ui font-medium text-sky-300">{point.text}</span>
-                                    <span className="shrink-0 rounded-full bg-state-hover px-2 py-0.5 text-micro font-medium text-fg-secondary">
-                                        {point.kind === 'idiom' ? t('teachingNotes.idioms') : t('teachingNotes.culture')}
-                                    </span>
-                                </div>
-                                {point.meaning && (
-                                    <p className="mt-1 break-words text-caption leading-relaxed text-fg-secondary">{point.meaning}</p>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-            )}
+        <div data-testid="watch-gloss-history" className="space-y-3">
+            {entries.map((entry) => (
+                <GlossEntryBody
+                    key={entry.blockId}
+                    entry={entry}
+                    isCurrent={entry.blockId === currentBlockId}
+                    showLanguagePoints={showLanguagePoints}
+                />
+            ))}
         </div>
     );
 };
 
 /**
- * 观影模式词条窗 (specs/044 §3).
+ * 观影模式词条窗 (specs/044 §§3–4).
  *
  * A second presentation of the existing teaching analysis (specs/028): the
  * words the transcript already marks in ruby plus that sentence's language
- * points. It never issues an AI call of its own — the only action it exposes
- * is the existing analysis entry (`onRequestAnalysis`), which is the normal
- * cached GET the learning view already uses.
+ * points. P2-09 turns the window into a per-sentence history — the current
+ * sentence sits on top, earlier sentences slide down instead of disappearing,
+ * a revisited sentence is moved (never duplicated) and the newest sentence
+ * scrolls the window back to the top unless the learner deliberately scrolled
+ * down to read the backlog.
+ *
+ * It never issues an AI call of its own — the only action it exposes is the
+ * existing analysis entry (`onRequestAnalysis`), which is the normal cached
+ * GET the learning view already uses.
  */
 const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
     variant = 'rail',
-    ...props
+    blockId,
+    enText,
+    contentRef,
+    glosses,
+    languagePoints,
+    showLanguagePoints,
+    status,
+    onRequestAnalysis,
+    onRequestLogin,
 }) => {
     const { t } = useI18n();
     const [open, setOpen] = useState(false);
+    const [history, setHistory] = useState<WatchGlossEntry[]>([]);
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+    // True while the newest sentence may pull the window back to the top; a
+    // manual scroll down turns it off until the learner scrolls back up.
+    const stickToTopRef = useRef(true);
+    const lastContentRef = useRef<string | null>(contentRef ?? null);
+
+    const currentEntry = useMemo<WatchGlossEntry | null>(() => {
+        if (!blockId) return null;
+        return {
+            blockId,
+            enText: enText?.trim() ?? '',
+            words: Object.entries(glosses ?? {}),
+            points: languagePoints ?? [],
+        };
+    }, [blockId, enText, glosses, languagePoints]);
+
+    // A different video must never inherit the previous video's sentences:
+    // block ids are only unique inside one content.
+    useEffect(() => {
+        const next = contentRef ?? null;
+        if (lastContentRef.current === next) return;
+        lastContentRef.current = next;
+        setHistory([]);
+        stickToTopRef.current = true;
+    }, [contentRef]);
+
+    // Only accumulate once the analysis is ready; a sentence without words or
+    // points stays as the current top placeholder instead of polluting history.
+    useEffect(() => {
+        if (status !== 'ready' || !currentEntry) return;
+        if (currentEntry.words.length === 0 && currentEntry.points.length === 0) return;
+        setHistory((previous) => {
+            const top = previous[0];
+            if (top && sameEntry(top, currentEntry)) return previous;
+            return [
+                currentEntry,
+                ...previous.filter((entry) => entry.blockId !== currentEntry.blockId),
+            ].slice(0, MAX_HISTORY_ENTRIES);
+        });
+    }, [status, currentEntry]);
+
+    // New sentence → top, unless the learner scrolled down on purpose.
+    useEffect(() => {
+        if (status !== 'ready' || !blockId || !stickToTopRef.current) return;
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    }, [status, blockId]);
+
+    const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+        stickToTopRef.current = event.currentTarget.scrollTop <= 4;
+    }, []);
+
+    const entries = useMemo(() => {
+        const older = history.filter((entry) => entry.blockId !== blockId);
+        return currentEntry ? [currentEntry, ...older] : older;
+    }, [currentEntry, history, blockId]);
+
+    const body = (
+        <GlossBody
+            entries={entries}
+            currentBlockId={blockId}
+            showLanguagePoints={showLanguagePoints}
+            status={status}
+            onRequestAnalysis={onRequestAnalysis}
+            onRequestLogin={onRequestLogin}
+        />
+    );
 
     if (variant === 'floating') {
         return (
@@ -225,11 +402,16 @@ const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
                         id="watch-gloss-floating-panel"
                         data-testid="watch-gloss-panel"
                         data-variant="floating"
-                        data-status={props.status}
+                        data-status={status}
                         className="pointer-events-auto mt-2 flex max-h-[min(60dvh,24rem)] w-[min(20rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-card border border-line-strong bg-app/90 backdrop-blur-md shadow-elev-2"
                     >
-                        <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar p-3">
-                            <GlossBody {...props} />
+                        <div
+                            ref={scrollRef}
+                            onScroll={handleScroll}
+                            data-testid="watch-gloss-scroll"
+                            className="min-h-0 flex-1 overflow-y-auto custom-scrollbar p-3"
+                        >
+                            {body}
                         </div>
                     </div>
                 )}
@@ -240,7 +422,7 @@ const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
     return (
         <aside
             data-testid="watch-gloss-rail"
-            data-status={props.status}
+            data-status={status}
             className="hidden xl:flex h-full w-[clamp(20rem,24vw,22.5rem)] shrink-0 flex-col border-l border-line-subtle bg-surface/40 backdrop-blur-xl"
         >
             <header className="flex-none flex items-center gap-2 border-b border-line-subtle px-4 py-3">
@@ -249,8 +431,13 @@ const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
                     {t('watchMode.glossTitle')}
                 </h2>
             </header>
-            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4">
-                <GlossBody {...props} />
+            <div
+                ref={scrollRef}
+                onScroll={handleScroll}
+                data-testid="watch-gloss-scroll"
+                className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4"
+            >
+                {body}
             </div>
         </aside>
     );

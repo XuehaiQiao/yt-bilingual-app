@@ -12,10 +12,13 @@ interface WatchSubtitleOverlayProps {
  * 观影模式的单句字幕窗 (specs/044 §2).
  *
  * One translucent band pinned near the lower edge of the media stage. It
- * shows only the sentence that is being spoken — Chinese above, English below
- * — and is `pointer-events-none` end to end so the YouTube iframe keeps every
- * click. It carries no animation at all, which also satisfies the
- * reduce-motion contract without a media-query branch.
+ * shows only the sentence that is being spoken — English above as the primary
+ * line (`text-section`, 17px), Chinese below as the supporting line
+ * (`text-body-zh`, 15px). Both sizes come from the type scale in
+ * tailwind.config.js, so the window never hard-codes px. It is
+ * `pointer-events-none` end to end so the YouTube iframe keeps every click and
+ * carries no animation at all, which also satisfies the reduce-motion contract
+ * without a media-query branch.
  */
 const WatchSubtitleOverlayInner: React.FC<WatchSubtitleOverlayProps> = ({
     enText,
@@ -36,20 +39,20 @@ const WatchSubtitleOverlayInner: React.FC<WatchSubtitleOverlayProps> = ({
             className="absolute inset-x-0 bottom-[30%] sm:bottom-[18%] xl:bottom-[12%] z-overlay pointer-events-none border-t border-line-subtle bg-overlay backdrop-blur-md"
         >
             <div className="mx-auto max-w-4xl px-4 py-2 text-center">
+                <p
+                    data-testid="watch-subtitle-en"
+                    className={`text-section font-medium leading-snug text-fg-primary text-balance ${chinese ? 'mb-0.5' : ''}`}
+                >
+                    {english}
+                </p>
                 {chinese && (
                     <p
                         data-testid="watch-subtitle-zh"
-                        className="text-body-zh font-medium leading-snug text-fg-primary text-balance"
+                        className="text-body-zh leading-snug text-fg-strong text-balance"
                     >
                         {chinese}
                     </p>
                 )}
-                <p
-                    data-testid="watch-subtitle-en"
-                    className={`text-caption leading-snug text-fg-strong text-balance ${chinese ? 'mt-0.5' : ''}`}
-                >
-                    {english}
-                </p>
             </div>
         </div>
     );

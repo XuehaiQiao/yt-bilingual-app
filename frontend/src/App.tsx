@@ -3208,6 +3208,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         <WatchGlossPanel
           variant="floating"
           blockId={watchBlockId}
+          enText={watchBlock?.en_text}
+          contentRef={videoId}
           glosses={watchGlosses}
           languagePoints={watchLanguagePoints}
           showLanguagePoints={showLanguagePoints}
@@ -3706,6 +3708,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               <WatchGlossPanel
                 variant="rail"
                 blockId={watchBlockId}
+                enText={watchBlock?.en_text}
+                contentRef={videoId}
                 glosses={watchGlosses}
                 languagePoints={watchLanguagePoints}
                 showLanguagePoints={showLanguagePoints}
