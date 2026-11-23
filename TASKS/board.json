@@ -956,6 +956,25 @@
       "deps": [
         "P2-10"
       ]
+    },
+    {
+      "id": "P2-12",
+      "file": "TASKS/P2-12-gloss-roll-simplify.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "frontend/src/components/WatchGlossPanel.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/watch-mode-acceptance.mjs",
+        "specs/044-watch-mode/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-11"
+      ]
     }
   ]
 }
