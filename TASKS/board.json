@@ -942,8 +942,8 @@
     {
       "id": "P2-11",
       "file": "TASKS/P2-11-subtitle-fluid-type.md",
-      "status": "claimed",
-      "owner": "fluid-type-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/WatchSubtitleOverlay.tsx",
         "frontend/src/App.tsx",
@@ -960,8 +960,8 @@
     {
       "id": "P2-12",
       "file": "TASKS/P2-12-gloss-roll-simplify.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "gloss-simplify-impl",
       "write_scope": [
         "frontend/src/components/WatchGlossPanel.tsx",
         "frontend/src/i18n/zh-CN.json",
