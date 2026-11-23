@@ -1047,6 +1047,9 @@ function BillingPanel({ refreshNonce, onAuthError }: BillingPanelProps) {
   }, [load, range, refreshNonce]);
 
   const totals = summary?.totals;
+  const historicalUnpriced = summary?.unpricedModels ?? [];
+  const currentUnpriced = summary?.currentUnpricedModels ?? [];
+  const noUnpriced = historicalUnpriced.length === 0 && currentUnpriced.length === 0;
   const reconcileDiff = summary
     ? summary.balances.totalMicroUsd - summary.balances.ledgerDeltaMicroUsd
     : 0;
@@ -1221,35 +1224,85 @@ function BillingPanel({ refreshNonce, onAuthError }: BillingPanelProps) {
               })}
           </p>
 
-          {summary.unpricedModels.length > 0 ? (
+          {historicalUnpriced.length > 0 && (
             <div
               data-testid="admin-billing-unpriced"
-              className="mt-3 rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3"
+              className="mt-3 rounded-2xl border border-warning/20 bg-warning/[0.06] px-4 py-3"
             >
-              <p className="flex items-center gap-2 text-sm font-medium text-amber-200">
+              <p className="flex items-center gap-2 text-sm font-medium text-warning-fg">
                 <TriangleAlert className="w-4 h-4 shrink-0" />
-                {t('admin.billing.unpricedTitle')}
+                {t('admin.billing.historicalUnpricedTitle')}
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-amber-200/80">
-                {t('admin.billing.unpricedHint')}
+              <p className="mt-1 text-xs leading-relaxed text-warning-fg/80">
+                {t('admin.billing.historicalUnpricedHint')}
               </p>
               <ul className="mt-2 flex flex-wrap gap-1.5">
-                {summary.unpricedModels.map((model) => (
+                {historicalUnpriced.map((model) => (
                   <li
                     key={model}
                     data-testid="admin-billing-unpriced-model"
-                    className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 font-mono text-[11px] text-amber-200"
+                    className="rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 font-mono text-micro text-warning-fg"
                   >
                     {model}
                   </li>
                 ))}
               </ul>
             </div>
-          ) : (
-            <p data-testid="admin-billing-no-unpriced" className="mt-3 text-[11px] text-zinc-500">
-              {t('admin.billing.noUnpriced')}
-            </p>
           )}
+
+          {currentUnpriced.length > 0 ? (
+            <div
+              data-testid="admin-billing-current-unpriced"
+              className="mt-3 rounded-2xl border border-danger/20 bg-danger/[0.06] px-4 py-3"
+            >
+              <p className="flex items-center gap-2 text-sm font-medium text-danger-fg">
+                <TriangleAlert className="w-4 h-4 shrink-0" />
+                {t('admin.billing.currentUnpricedTitle')}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-danger-fg/80">
+                {t('admin.billing.currentUnpricedHint')}
+              </p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {currentUnpriced.map((model) => (
+                  <li
+                    key={model}
+                    data-testid="admin-billing-current-unpriced-model"
+                    className="rounded-full border border-danger/20 bg-danger/10 px-2 py-0.5 font-mono text-micro text-danger-fg"
+                  >
+                    {model}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : historicalUnpriced.length > 0 ? (
+            <div
+              data-testid="admin-billing-current-unpriced"
+              className="mt-3 rounded-card border border-line-subtle bg-surface/40 px-4 py-3"
+            >
+              <p className="text-sm font-medium text-fg-secondary">
+                {t('admin.billing.currentUnpricedTitle')}
+              </p>
+              <p
+                data-testid="admin-billing-no-current-unpriced"
+                className="mt-1 text-xs leading-relaxed text-fg-muted"
+              >
+                {t('admin.billing.currentUnpricedEmpty')}
+              </p>
+            </div>
+          ) : null}
+
+          {noUnpriced ? (
+            <p data-testid="admin-billing-no-unpriced" className="mt-3 text-micro text-fg-muted">
+              {t('admin.billing.unpricedBothEmpty')}
+            </p>
+          ) : historicalUnpriced.length === 0 ? (
+            <p
+              data-testid="admin-billing-no-historical-unpriced"
+              className="mt-3 text-micro text-fg-muted"
+            >
+              {t('admin.billing.historicalUnpricedEmpty')}
+            </p>
+          ) : null}
 
           {totals.rows === 0 ? (
             <p

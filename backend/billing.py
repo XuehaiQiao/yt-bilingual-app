@@ -1621,6 +1621,14 @@ def billing_summary(
     只读聚合，金额为整数 µUSD；``unbilledRows`` 是缺价/历史未计费条数（**没有**
     扣用户余额），``legacyRows`` 是 0025 之前的历史行。``day_from`` / ``day_to``
     是 ``usage_date`` 的 ``YYYY-MM-DD``（含 to 当天，用 ``<=``）。
+
+    P1-21 把「未计费」拆成两个口径，**不重算历史 usage**：
+
+    - ``unpricedModels``：所选范围内有未计费行的模型（历史口径，兼容旧客户端；
+      补价后这些模型仍会留在列表里，因为旧行确实没有扣费）。
+    - ``currentUnpricedModels``：``config.MODEL_CATALOG`` 中
+      ``price_for_model()`` 现在仍为 ``None`` 的目录 key（当前缺价；与历史 usage
+      和日期范围无关）。
     """
     if not schema_ready():
         raise BillingUnavailable(
@@ -1715,6 +1723,13 @@ def billing_summary(
     unpriced_models = sorted(
         row["key"] for row in by_model if int(row["unpriced_rows"] or 0) > 0
     )
+    # 当前缺价只看目录 + 现在的价格（与历史 usage 无关）：补价后从 current 消失，
+    # 但历史上未计费的行仍留在 unpricedModels，两个列表回答的是不同问题。
+    current_unpriced_models = sorted(
+        model_key
+        for model_key in config.MODEL_CATALOG
+        if price_for_model(model_key) is None
+    )
     return {
         "from": day_from,
         "to": day_to,
@@ -1760,6 +1775,7 @@ def billing_summary(
             for row in subject_rows
         ],
         "unpricedModels": unpriced_models,
+        "currentUnpricedModels": current_unpriced_models,
         "holds": {
             "activeCount": int(active_holds["count"] or 0),
             "activeMicroUsd": int(active_holds["amount"] or 0),

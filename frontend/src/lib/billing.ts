@@ -246,8 +246,10 @@ export interface AdminBillingSummary {
   byDay: AdminBillingGroupRow[];
   byModel: AdminBillingModelRow[];
   byFeature: AdminBillingGroupRow[];
-  /** Models with at least one unpriced row; `billable=0`, not charged. */
+  /** Historical: models with at least one unpriced row in range; `billable=0`, never charged (and never back-charged). */
   unpricedModels: string[];
+  /** Current: catalog models whose `billing.price_for_model()` is still null (independent of history). */
+  currentUnpricedModels: string[];
   holds: { activeCount: number; activeMicroUsd: number; activeUsd: string };
   balances: {
     usersWithBalance: number;

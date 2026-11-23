@@ -615,6 +615,8 @@ def test_admin_ledger_and_billing_summary(admin_client, billing_db):
     body = summary.json()
     assert body["totals"]["billedCostMicroUsd"] == 0
     assert body["totals"]["unbilledRows"] == 0
+    assert "currentUnpricedModels" in body
+    assert body["unpricedModels"] == []
     assert body["balances"]["totalMicroUsd"] == BONUS + 1_230_000
     assert body["balances"]["ledgerDeltaMicroUsd"] == BONUS + 1_230_000
     assert {price["modelId"] for price in body["prices"]} >= {"deepseek-chat"}
@@ -1084,7 +1086,86 @@ def test_billing_summary_counts_unbilled_rows(client_upgraded, billing_db, monke
     body = billing.billing_summary()
     assert body["totals"]["billedCostMicroUsd"] == 900
     assert body["totals"]["unbilledRows"] == 1
-    assert "qwen-flash" in body["unpricedModels"]
+    # 兼容字段不变：历史未计费按 unpriced_rows 统计（不重算、不补扣）。
+    assert body["unpricedModels"] == ["qwen-flash"]
+    # P1-21：Qwen 已补价 → 不属于「当前缺价」；旧行仍在历史列表里。
+    assert "qwen-flash" not in body["currentUnpricedModels"]
     assert body["byModel"][0]["calls"] == 1
     assert body["holds"]["activeCount"] == 0
     assert body["balances"]["ledgerDeltaMicroUsd"] == BONUS - 900
+
+
+def _seed_prices_for_missing_catalog_models(db) -> list[str]:
+    """给目录里所有仍缺价的模型插一条测试价，用于验证「当前缺价为空」态。"""
+    missing = sorted(
+        model_key
+        for model_key in config.MODEL_CATALOG
+        if billing.price_for_model(model_key) is None
+    )
+    assert missing, "前置：迁移 0025/0030 之后目录里应仍有缺价模型"
+    effective = billing.now_ms() - 1
+    with sqlite3.connect(db) as conn:
+        for index, model_key in enumerate(missing):
+            conn.execute(
+                "INSERT INTO model_prices (id, model_id, provider, effective_from_ms, "
+                "input_micro_usd_per_mtok, output_micro_usd_per_mtok, source_kind, "
+                "source_ref, verified_at_ms, price_version, note) "
+                "VALUES (?, ?, ?, ?, 100000, 200000, 'official_page', "
+                "'https://example.com/prices', ?, '2026-11-23.test.1', '测试补价')",
+                (
+                    f"mp-current-unpriced-{index}",
+                    model_key,
+                    config.MODEL_CATALOG[model_key]["provider"],
+                    effective,
+                    effective,
+                ),
+            )
+        conn.commit()
+    return missing
+
+
+def test_billing_summary_separates_historical_and_current_unpriced(
+    client_upgraded, billing_db
+):
+    """P1-21：补价模型仍出现在历史列表，但不属于当前缺价；补全后 current 为空。"""
+    user_id = client_upgraded.user_id
+    # 历史：Qwen 补价前产生的未计费行（billable=0，不扣、不补扣）。
+    ledger.record_usage(
+        user_id,
+        "define",
+        "qwen-flash",
+        10,
+        5,
+        price_source="ceiling_unknown",
+        token_source="estimated",
+        billable=0,
+        billing_status="unbilled",
+    )
+
+    body = billing.billing_summary()
+    assert body["unpricedModels"] == ["qwen-flash"]
+    assert "qwen-flash" not in body["currentUnpricedModels"]
+
+    # 当前缺价 = 目录里 price_for_model() 仍为 None 的 key（与历史 usage 无关）。
+    expected_current = sorted(
+        model_key
+        for model_key in config.MODEL_CATALOG
+        if billing.price_for_model(model_key) is None
+    )
+    assert body["currentUnpricedModels"] == expected_current
+    for priced_model in (
+        "deepseek-chat",
+        "gemini-2.5-flash",
+        "qwen-flash",
+        "qwen-plus",
+    ):
+        assert priced_model not in body["currentUnpricedModels"]
+
+    # 补价后：current 清空，但历史列表与未计费行数不变（不重算历史 usage）。
+    seeded = _seed_prices_for_missing_catalog_models(billing_db)
+    assert seeded == expected_current
+    body = billing.billing_summary()
+    assert body["currentUnpricedModels"] == []
+    assert body["unpricedModels"] == ["qwen-flash"]
+    assert body["totals"]["unbilledRows"] == 1
+
