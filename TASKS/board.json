@@ -893,6 +893,28 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-09",
+      "file": "TASKS/P2-09-watch-gloss-history.md",
+      "status": "claimed",
+      "owner": "watch-history-impl",
+      "write_scope": [
+        "frontend/src/components/WatchSubtitleOverlay.tsx",
+        "frontend/src/components/WatchGlossPanel.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/watch-mode-acceptance.mjs",
+        "specs/044-watch-mode/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/App.tsx",
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-08"
+      ]
     }
   ]
 }
