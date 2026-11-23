@@ -102,7 +102,7 @@
 | 代码 | 本地名 | 英文名 | UI | 翻译目标 | 词典策略 | 默认模型路线（建议） |
 |---|---|---|---|---|---|---|
 | `zh-CN` | 中文 | Simplified Chinese | ✅（默认） | ✅（默认） | ECDICT → LLM | `deepseek-chat`（Gemini 作海外备选） |
-| `vi-VN` | Tiếng Việt | Vietnamese | ✅ | ✅ | LLM-only | `gemini-2.5-flash` → `qwen-plus` → `deepseek-chat` |
+| `vi-VN` | Tiếng Việt | Vietnamese | ✅ | ✅ | LLM-only | `deepseek-chat`（2026-11-23 实际默认；Qwen 已补价但未加入默认路线） |
 
 - **必须**：对外/存储/API 一律使用完整代码 `zh-CN`、`vi-VN`；不接受把 `zh`/`vi` 当作长期规范值。
 - **必须**：入口做别名归一化（大小写、下划线、`zh-Hans`、`vi` 等），只做下表这些确定性映射；不做「任意相近语言自动猜」：

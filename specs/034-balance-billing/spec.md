@@ -146,9 +146,13 @@
 | `deepseek-chat` | DeepSeek | 300,000（$0.30） | 1,200,000（$1.20） | 官方价格页 `https://api-docs.deepseek.com/quick_start/pricing`：DeepSeek-V4.1-Flash-1017（模型名 `deepseek-flash`）峰值/未命中缓存价；目录 id 未单列，按同版本 Flash 计，待复核 |
 | `gemini-2.5-flash` | Google | 300,000（$0.30） | 2,500,000（$2.50） | 官方价格页 `https://ai.google.dev/gemini-api/docs/pricing` 标准文本价；抓取时官方页重定向受限，经检索到的官方引用值交叉确认，待人工复核 |
 
-**不填**：`qwen-flash` / `qwen-plus`（百炼国内站人民币报价、国际站美元价随地域
-不同，不做汇率换算）、`gemini-3.5-flash-lite` / `gemini-3.1-pro-preview`（无法确认
-官方单价）。这些模型 `billable=0`，不扣余额。
+**2026-11-23 补充**：`qwen-flash` / `qwen-plus` 已固定到实际版本并补价（迁移
+`0030_qwen_prices`）：
+- `qwen3.8-flash`：北京/全球 $0.113 / $0.382 每 M token（新加坡/香港 $0.15 / $0.47）
+- `qwen3.7-plus`：北京/全球 $0.276 / $1.101 每 M token（≤256K，取原价；美/日 $0.4 / $1.6）
+- 同时给目录别名 `qwen-flash` / `qwen-plus` 写同价行，因为计费按目录 id 查价；两套同源。
+- 默认 `MODEL_ROUTE_*` 未改（中文仍 DeepSeek→Gemini，越南语仍 DeepSeek）；Qwen 是可选模型。
+**仍不填**：`gemini-3.5-flash-lite` / `gemini-3.1-pro-preview`（无法确认官方单价）。
 
 存量补发：
 
@@ -302,7 +306,7 @@ balanceUsd, availableMicroUsd, availableUsd}`；错误：400 参数/负余额、
 
 | 误差来源 | 影响 | 处理 | 残余风险 |
 |---|---|---|---|
-| 模型缺价（qwen / Gemini 3.x） | 无法知道真实单价 | `billable=0` 不扣；`est_cost_usd` 记上界 | 用户可免费用这些模型；$2 暂不约束它们 |
+| 模型缺价（Gemini 3.x；Qwen 已于 2026-11-23 补价） | 无法知道真实单价 | `billable=0` 不扣；`est_cost_usd` 记上界 | 用户可免费用这些模型；$2 暂不约束它们 |
 | provider 未返回 usage | token 数不准 | 按字符估算 + `token_source` | 可能高估/低估 |
 | 缓存命中/批处理/错峰折扣 | 厂商账单低于标价 | 按标价记 | 账本高于账单 |
 | 失败但厂商已计费 | 账本漏记 | 记录失败、月度账单对账 | 无法逐笔归因 |
@@ -363,7 +367,7 @@ cd backend
 - 教学分析作为翻译的增强步骤时失败会被降级跳过（主流程已出译文），此时不返回
   402；`/api/teaching-analysis/*` 单独调用会 402。
 - SSE 流已开始后余额不足只能发 `error` 事件（HTTP 200），流开始前仍返回 402。
-- 缺价模型（qwen / Gemini 3.x）暂不扣费，补齐官方价前 $2 余额不约束这些模型。
+- 缺价模型（当前只剩 Gemini 3.x）暂不扣费；Qwen 已补价，按价扣费。
 
 ## 15. M3b 前端实现（2026-11-20）
 
