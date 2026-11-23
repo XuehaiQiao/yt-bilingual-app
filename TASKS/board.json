@@ -778,9 +778,9 @@
       "write_scope": [
         "backend/book_translation.py",
         "backend/routes_books.py",
-        "backend/tests/",
         "frontend/src/components/BookReaderScreen.tsx",
-        "docs/reports/pipeline-timing-books-2026-11-23.md"
+        "docs/reports/pipeline-timing-books-2026-11-23.md",
+        "backend/tests/test_book_translation*.py"
       ],
       "shared_writes": [],
       "deps": []
