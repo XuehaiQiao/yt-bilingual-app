@@ -842,6 +842,20 @@
       "deps": [
         "P1-18"
       ]
+    },
+    {
+      "id": "P1-20",
+      "file": "TASKS/P1-20-qwen-version-pricing.md",
+      "status": "claimed",
+      "owner": "qwen-impl",
+      "write_scope": [
+        "backend/config.py",
+        "backend/migrations/versions/0030_qwen_prices.py",
+        "backend/tests/",
+        "backend/README.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
