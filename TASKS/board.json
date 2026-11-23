@@ -856,6 +856,26 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P1-21",
+      "file": "TASKS/P1-21-billing-unpriced-copy.md",
+      "status": "claimed",
+      "owner": "unpriced-impl",
+      "write_scope": [
+        "backend/billing.py",
+        "backend/tests/test_balance_billing.py",
+        "frontend/src/components/AdminConsoleScreen.tsx",
+        "frontend/src/lib/billing.ts",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P1-20"
+      ]
     }
   ]
 }
