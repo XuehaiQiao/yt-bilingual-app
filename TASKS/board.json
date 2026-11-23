@@ -960,8 +960,8 @@
     {
       "id": "P2-12",
       "file": "TASKS/P2-12-gloss-roll-simplify.md",
-      "status": "claimed",
-      "owner": "gloss-simplify-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/WatchGlossPanel.tsx",
         "frontend/src/i18n/zh-CN.json",
