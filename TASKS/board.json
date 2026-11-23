@@ -780,7 +780,7 @@
         "backend/routes_books.py",
         "backend/tests/",
         "frontend/src/components/BookReaderScreen.tsx",
-        "docs/reports/pipeline-timing-2026-11-23.md"
+        "docs/reports/pipeline-timing-books-2026-11-23.md"
       ],
       "shared_writes": [],
       "deps": []
@@ -794,7 +794,7 @@
         "backend/routes_videos.py",
         "backend/tests/",
         "frontend/src/components/TranscriptBlock.tsx",
-        "docs/reports/pipeline-timing-2026-11-23.md"
+        "docs/reports/pipeline-timing-videos-2026-11-23.md"
       ],
       "shared_writes": [],
       "deps": []

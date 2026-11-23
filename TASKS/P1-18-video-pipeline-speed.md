@@ -10,7 +10,7 @@
 ## write_scope
 - `backend/routes_videos.py`
 - `backend/tests/test_videos*.py`（相关）
-- `docs/reports/pipeline-timing-2026-11-23.md`（与 P1-17 协调，避免冲突；本卡只追加视频行）
+- `docs/reports/pipeline-timing-videos-2026-11-23.md`（新建）
 - `frontend/src/components/TranscriptBlock.tsx`（如需“分析中”状态，最小）
 
 ## acceptance

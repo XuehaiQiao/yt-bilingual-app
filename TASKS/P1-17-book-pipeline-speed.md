@@ -12,7 +12,7 @@
 - `backend/tests/test_book_translation*.py`
 - `backend/routes_books.py`（分析计时）
 - `frontend/src/components/BookReaderScreen.tsx`（分析中状态，不阻塞正文）
-- `docs/reports/pipeline-timing-2026-11-23.md`（新建）
+- `docs/reports/pipeline-timing-books-2026-11-23.md`（新建）
 
 ## acceptance
 1. 翻译批次并行（默认 3、可配置 1–4），按 batch 顺序合并；成功批次落缓存、部分失败保留成功段、下次只补缺失；每日限额只扣 1 次。
