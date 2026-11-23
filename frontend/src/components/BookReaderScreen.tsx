@@ -26,7 +26,7 @@ import type { TranslationKey } from '../i18n';
 import { ReadingHighlightToggle } from './ReadingHighlight';
 import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
 import { useReadingAudio } from '../lib/useReadingAudio';
-import { useReadingAnalysis } from '../lib/useReadingAnalysis';
+import { useReadingAnalysis, type ReadingAnalysisUnavailable } from '../lib/useReadingAnalysis';
 import { LanguagePointToggle } from './ui/LanguagePointToggle';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { loadLanguagePointsEnabled } from '../lib/highlightLayers';
@@ -218,10 +218,21 @@ export function BookReaderScreen({
     const [translating, setTranslating] = useState(false);
     const [translateError, setTranslateError] = useState<TranslationKey | null>(null);
     const [translateNotice, setTranslateNotice] = useState<'done' | 'partial' | null>(null);
+    // Analysis (specs/028) is an enhancement layer (B1): it is requested only
+    // after the body is painted and never gates the chapter render. These flags
+    // drive the non-blocking "language points loading" status + failure hint.
+    const [analysisLoading, setAnalysisLoading] = useState(false);
+    const [analysisFailure, setAnalysisFailure] = useState<ReadingAnalysisUnavailable | null>(null);
+    const [analysisRetry, setAnalysisRetry] = useState(0);
     // Reading difficulty marks, shared with the article/imported-book readers.
     const highlight = useReadingHighlights(
         chapter ? chapter.paragraphs.map((paragraph) => paragraph.en) : [],
     );
+    // Deferred analysis request level: `null` = only the plain chapter is
+    // fetched up front, so the first screen never waits for analysis (B1).
+    const analysisLevel = canAnalyze && (showLanguagePoints || highlight.enabled)
+        ? highlight.level
+        : null;
     // Teaching analysis (specs/028) rides on the chapter payload: the chapter
     // endpoint already returns idioms/culture plus per-paragraph glosses for the
     // requested level. It is handed to the shared hook as payload analysis, so
@@ -284,6 +295,10 @@ export function BookReaderScreen({
     const autoTranslateRef = useRef<string | null>(null);
     const translateTokenRef = useRef(0);
     const translatingRef = useRef(false);
+    // Deferred analysis: one enriched fetch per (chapter, language, level);
+    // the token drops stale responses when the level/chapter changes mid-flight.
+    const analysisKeyRef = useRef<string | null>(null);
+    const analysisTokenRef = useRef(0);
     // Language of the currently painted chapter: guards the auto trigger from
     // firing on a stale chapter while a language switch is refetching.
     const chapterLanguageRef = useRef(language);
@@ -336,22 +351,9 @@ export function BookReaderScreen({
                 })),
             }));
             setTranslateNotice(result.outcome === 'partial' ? 'partial' : 'done');
-            // Analysis is intentionally skipped while the chapter is still
-            // untranslated; once translation lands, fetch the enriched chapter
-            // so the contextual ruby glosses can appear without a reload.
-            if (canAnalyze && (showLanguagePoints || highlight.enabled)) {
-                try {
-                    const enriched = await fetchBookChapter(
-                        bookId,
-                        target,
-                        language,
-                        highlight.level,
-                    );
-                    if (token === translateTokenRef.current) setChapter(enriched);
-                } catch {
-                    // Enhancement only; the translated chapter remains usable.
-                }
-            }
+            // The body is painted above with the fresh translations. Once the
+            // chapter is complete, the deferred analysis effect below fetches
+            // the enriched payload — analysis never gates this render (B1).
         } catch (error) {
             if (token !== translateTokenRef.current) return;
             console.error('Failed to translate book chapter:', error);
@@ -364,7 +366,7 @@ export function BookReaderScreen({
                 setTranslating(false);
             }
         }
-    }, [bookId, canAnalyze, highlight.enabled, highlight.level, language, onRequestLogin, showLanguagePoints]);
+    }, [bookId, canAnalyze, language, onRequestLogin]);
 
     // Switching chapter (or target language) invalidates the in-flight
     // translation and clears its transient status.
@@ -374,6 +376,12 @@ export function BookReaderScreen({
         setTranslating(false);
         setTranslateError(null);
         setTranslateNotice(null);
+        // The analysis fetch is enhancement-only: cancel its token and clear
+        // the non-blocking status/hint when the source changes.
+        analysisTokenRef.current += 1;
+        analysisKeyRef.current = null;
+        setAnalysisLoading(false);
+        setAnalysisFailure(null);
     }, [bookId, chapterNumber, language, canAnalyze, showLanguagePoints, highlight.level]);
 
     // A language switch drops the old-language chapter before the refetch so
@@ -419,12 +427,9 @@ export function BookReaderScreen({
     useEffect(() => {
         if (chapterNumber === null) return;
         const controller = new AbortController();
-        fetchBookChapter(
-            bookId,
-            chapterNumber,
-            language,
-            canAnalyze && (showLanguagePoints || highlight.enabled) ? highlight.level : null,
-        )
+        // First paint fetches the plain chapter only (no `?level=`): teaching
+        // analysis is an enhancement and must not delay the body (B1/P0-04).
+        fetchBookChapter(bookId, chapterNumber, language)
             .then((payload) => {
                 if (controller.signal.aborted) return;
                 chapterLanguageRef.current = language;
@@ -443,7 +448,7 @@ export function BookReaderScreen({
                 if (!controller.signal.aborted) setChapterLoading(false);
             });
         return () => controller.abort();
-    }, [bookId, chapterNumber, chapterRetry, language, canAnalyze, showLanguagePoints, highlight.enabled, highlight.level]);
+    }, [bookId, chapterNumber, chapterRetry, language]);
 
     // First open of an untranslated chapter: translate it automatically. Only
     // one automatic call per (book, chapter, language); switching chapter and
@@ -462,6 +467,46 @@ export function BookReaderScreen({
         autoTranslateRef.current = key;
         void runTranslation();
     }, [bookId, canAnalyze, chapter, chapterLoading, language, runTranslation]);
+
+    // Deferred teaching analysis (specs/028): after the (then fully translated)
+    // body is painted, fetch the enriched chapter so glosses/language points
+    // appear without a reload. Failures keep the painted chapter readable and
+    // only surface a non-blocking hint; one request per (chapter, lang, level).
+    useEffect(() => {
+        if (!chapter || chapterLoading) return;
+        if (!canAnalyze || analysisLevel === null) return;
+        if (chapterLanguageRef.current !== language) return;
+        // Analysis is skipped for an untranslated chapter (backend does the
+        // same); the translation landing re-runs this effect afterwards.
+        if (chapter.missingTranslations > 0) return;
+        const key = `${bookId}:${chapter.chapter}:${language}:${analysisLevel}:${analysisRetry}`;
+        if (analysisKeyRef.current === key) return;
+        analysisKeyRef.current = key;
+        const token = ++analysisTokenRef.current;
+        setAnalysisLoading(true);
+        setAnalysisFailure(null);
+        void fetchBookChapter(bookId, chapter.chapter, language, analysisLevel)
+            .then((enriched) => {
+                if (token !== analysisTokenRef.current) return;
+                setChapter(enriched);
+            })
+            .catch((error: unknown) => {
+                if (token !== analysisTokenRef.current) return;
+                console.error('Failed to load book chapter analysis:', error);
+                setAnalysisFailure({ reason: 'analysis_unavailable' });
+            })
+            .finally(() => {
+                if (token === analysisTokenRef.current) setAnalysisLoading(false);
+            });
+    }, [
+        analysisLevel,
+        analysisRetry,
+        bookId,
+        canAnalyze,
+        chapter,
+        chapterLoading,
+        language,
+    ]);
 
     // Restore the paragraph from localStorage once the chapter is painted.
     useEffect(() => {
@@ -997,6 +1042,21 @@ export function BookReaderScreen({
                                                     : t('books.reader.sourceLive')}
                                             </p>
 
+                                            {/* Non-blocking analysis status (B1): the
+                                                chapter body is already readable; this
+                                                line only reports the enhancement. */}
+                                            {analysisLoading && (
+                                                <p
+                                                    data-testid="book-analysis-loading"
+                                                    role="status"
+                                                    aria-live="polite"
+                                                    className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-line-subtle bg-surface/40 px-2.5 py-1 text-caption font-medium text-fg-secondary"
+                                                >
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                    {t('teachingNotes.loading')}
+                                                </p>
+                                            )}
+
                                             {/* Shared paragraph renderer (specs/039): the
                                                 shell only supplies data, state and the
                                                 book-specific row density attribute. */}
@@ -1019,6 +1079,11 @@ export function BookReaderScreen({
                                                 englishLang="en"
                                                 translationLang={language}
                                                 analysisStatus={analysis.status}
+                                                analysisUnavailable={analysisFailure}
+                                                onRetryAnalysis={analysisFailure
+                                                    ? () => setAnalysisRetry((value) => value + 1)
+                                                    : undefined}
+                                                retryingAnalysis={analysisLoading}
                                                 onWordClick={(word, event, paragraph) => onWordLookup(
                                                     word,
                                                     paragraph.en,

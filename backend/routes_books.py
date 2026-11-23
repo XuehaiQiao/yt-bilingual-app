@@ -39,6 +39,7 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -145,50 +146,76 @@ async def _attach_chapter_analysis(
 
     分析有 AI 成本，因此只有显式传 ``level`` 且已登录时才执行；失败静默
     跳过（读书链路不能因为增强功能挂掉）。缓存命中零模型调用。
+
+    B1：分析是增强层，必须在读者已拿到正文之后才执行/等待——调用方（前端
+    首屏）先渲染无 level 的章节，再单独请求本函数的结果；本函数只负责把
+    结果并进已渲染的 payload，失败也保留正文（P0-04）。每次真正尝试都记
+    ``feature=book_analysis total_ms``，便于区分「翻译慢」还是「分析慢」。
     """
     if not level:
         return payload
-    # 教学分析会调用 AI：M7a 起只有登录用户可用（403 login_required）。
-    user = ai_auth.require_ai_user(request)
+    started = time.perf_counter()
+    book_id = payload.get("bookId") or ""
+    chapter_no = payload.get("chapter")
+    status = "failed"
     try:
-        teaching_analysis.normalize_level(level)
-    except teaching_analysis.AnalysisInvalidRequest as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    paragraphs = payload.get("paragraphs") or []
-    if (
-        int(payload.get("missingTranslations") or 0) > 0
-        or not paragraphs
-        or any(
-            not isinstance(paragraph, dict)
-            or not isinstance(paragraph.get("zh"), str)
-            or not paragraph["zh"].strip()
-            for paragraph in paragraphs
+        # 教学分析会调用 AI：M7a 起只有登录用户可用（403 login_required）。
+        user = ai_auth.require_ai_user(request)
+        try:
+            teaching_analysis.normalize_level(level)
+        except teaching_analysis.AnalysisInvalidRequest as exc:
+            status = "invalid_level"
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        paragraphs = payload.get("paragraphs") or []
+        if (
+            int(payload.get("missingTranslations") or 0) > 0
+            or not paragraphs
+            or any(
+                not isinstance(paragraph, dict)
+                or not isinstance(paragraph.get("zh"), str)
+                or not paragraph["zh"].strip()
+                for paragraph in paragraphs
+            )
+        ):
+            # Do not cache empty contextual glosses for a chapter that is still
+            # being auto-translated; the next open/fetch generates them properly.
+            status = "skipped_untranslated"
+            return payload
+        wrapper = {"transcript": paragraphs}
+        unavailable: dict = {}
+        analysis = await teaching_analysis.attach_to_payload(
+            wrapper,
+            level=level,
+            target_lang=lang,
+            content_ref=f"book:{book_id}:{chapter_no}",
+            user_id=user["id"],
+            unavailable_out=unavailable,
         )
-    ):
-        # Do not cache empty contextual glosses for a chapter that is still
-        # being auto-translated; the next open/fetch generates them properly.
+        # P0-04：失败原因可见（正文仍 200 可读）；成功时 unavailable 为空。
+        payload.update(unavailable)
+        if analysis is not None:
+            payload["paragraphs"] = wrapper["transcript"]
+            payload["idioms"] = wrapper.get("idioms") or []
+            payload["culture"] = wrapper.get("culture") or []
+            payload["analysisVersion"] = (
+                wrapper.get("analysisVersion") or teaching_analysis.ANALYSIS_VERSION
+            )
+            payload["analysisLevel"] = analysis.get("level") or level
+            status = "ready"
+        else:
+            status = "unavailable"
         return payload
-    wrapper = {"transcript": paragraphs}
-    unavailable: dict = {}
-    analysis = await teaching_analysis.attach_to_payload(
-        wrapper,
-        level=level,
-        target_lang=lang,
-        content_ref=f"book:{payload.get('bookId') or ''}:{payload.get('chapter')}",
-        user_id=user["id"],
-        unavailable_out=unavailable,
-    )
-    # P0-04：失败原因可见（正文仍 200 可读）；成功时 unavailable 为空。
-    payload.update(unavailable)
-    if analysis is not None:
-        payload["paragraphs"] = wrapper["transcript"]
-        payload["idioms"] = wrapper.get("idioms") or []
-        payload["culture"] = wrapper.get("culture") or []
-        payload["analysisVersion"] = (
-            wrapper.get("analysisVersion") or teaching_analysis.ANALYSIS_VERSION
+    finally:
+        logger.info(
+            "feature=book_analysis book=%s chapter=%s lang=%s level=%s "
+            "status=%s total_ms=%.1f",
+            book_id,
+            chapter_no,
+            lang,
+            level,
+            status,
+            (time.perf_counter() - started) * 1000,
         )
-        payload["analysisLevel"] = analysis.get("level") or level
-    return payload
 
 
 @router.get("/api/books/{book_id}/chapters/{number}")

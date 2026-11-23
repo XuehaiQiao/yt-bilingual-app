@@ -25,6 +25,12 @@
 - **大小/超时**：``MAX_BOOK_TRANSLATE_CHARS`` /
   ``MAX_BOOK_TRANSLATE_PARAGRAPHS`` / ``BOOK_TRANSLATE_TIMEOUT_SECONDS``
   防止一章过大或模型长时间不返回；超时前已成功的批次会落库，重试只补缺失段。
+- **批次并行**：缺失段按批切分后并发翻译，默认 3 路（1–4 可调：优先读
+  ``config.BOOK_TRANSLATE_CONCURRENCY``，其次环境变量同名项）；结果仍按批
+  顺序合并成与原文对齐的下标数组，成功批次立即串行落缓存（写入有进程内
+  互斥锁，快照只增不减，不会互相覆盖），部分失败只留 ``null`` 段下次补。
+  整章请求只占 1 个「每 IP 每天 N 章」名额。并发为 1 时退回旧串行节奏并
+  保留 provider 批间停顿。
 - **成本账本**：每批模型调用走 ``llm.usage_scope("books", ...)``，成本记入现有
   ``ai_usage``（feature=books）；缓存命中不调用模型，因此不产生账本记录。
   账本表未迁移时只记日志，不影响翻译返回（与 llm.py 的 fail-open 口径一致）。
@@ -64,6 +70,11 @@ TRANSLATE_BATCH_CHARS = 12_000
 
 # 单段译文上限（与 books.MAX_TRANSLATION_CHARS 保持一致）。
 TRANSLATION_MAX_CHARS = books.MAX_TRANSLATION_CHARS
+
+# 批次并发：默认 3 路，最多 4 路。配置优先读 config 同名属性（测试/运维可改），
+# 其次读环境变量；非法值回退默认，1 = 串行（保留旧批间停顿）。
+DEFAULT_TRANSLATE_CONCURRENCY = 3
+MAX_TRANSLATE_CONCURRENCY = 4
 
 # 进程内并发锁的数量兜底；超过时清理空闲锁，避免长期运行无限膨胀。
 MAX_TRACKED_LOCKS = 4096
@@ -168,6 +179,22 @@ def _daily_limit() -> int:
     return _int_attr("RATE_LIMIT_BOOK_TRANSLATE_PER_DAY", 20)
 
 
+def _concurrency() -> int:
+    raw: object = getattr(config, "BOOK_TRANSLATE_CONCURRENCY", None)
+    if raw is None:
+        raw = os.environ.get("BOOK_TRANSLATE_CONCURRENCY")
+    try:
+        value = int(raw) if raw is not None else DEFAULT_TRANSLATE_CONCURRENCY
+    except (TypeError, ValueError):
+        value = DEFAULT_TRANSLATE_CONCURRENCY
+    return max(1, min(MAX_TRANSLATE_CONCURRENCY, value))
+
+
+def translate_concurrency() -> int:
+    """章节翻译的批并发数（1–4，默认 3；1 = 串行并保留批间停顿）。"""
+    return _concurrency()
+
+
 # ---------------------------------------------------------------------------
 # 数据库：全局译文缓存（book_chapter_translations）
 # ---------------------------------------------------------------------------
@@ -179,6 +206,9 @@ def _db_path() -> str:
 
 # 缓存不可用的警告只打一次，避免每个读者请求刷一行日志。
 _warned_unavailable = False
+
+# 译文缓存写互斥：并行批次落库时串行化（见 save_cache）。
+_cache_write_lock = threading.Lock()
 
 
 def _connect() -> sqlite3.Connection:
@@ -272,32 +302,35 @@ def save_cache(
         value if isinstance(value, str) and value.strip() else None for value in values
     ]
     now = int(time.time() * 1000)
-    conn = _connect()
-    try:
-        with conn:
-            conn.execute(
-                f"INSERT INTO {TABLE} "
-                "(book_id, chapter_no, target_lang, paragraphs_json, model, "
-                "created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(book_id, chapter_no, target_lang) DO UPDATE SET "
-                "paragraphs_json = excluded.paragraphs_json, "
-                "model = excluded.model, "
-                "updated_at = excluded.updated_at",
-                (
-                    book_id,
-                    number,
-                    lang,
-                    json.dumps(clean, ensure_ascii=False),
-                    model,
-                    now,
-                    now,
-                ),
-            )
-    except sqlite3.Error as exc:
-        _translate_db_error(exc)
-    finally:
-        conn.close()
+    # 缓存写串行化：并发批次各自落库时不能同时开事务，否则 sqlite 忙等/锁冲突
+    # 会让快照相互覆盖；进程内互斥即可（UPSERT 仍兜底多进程）。
+    with _cache_write_lock:
+        conn = _connect()
+        try:
+            with conn:
+                conn.execute(
+                    f"INSERT INTO {TABLE} "
+                    "(book_id, chapter_no, target_lang, paragraphs_json, model, "
+                    "created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?) "
+                    "ON CONFLICT(book_id, chapter_no, target_lang) DO UPDATE SET "
+                    "paragraphs_json = excluded.paragraphs_json, "
+                    "model = excluded.model, "
+                    "updated_at = excluded.updated_at",
+                    (
+                        book_id,
+                        number,
+                        lang,
+                        json.dumps(clean, ensure_ascii=False),
+                        model,
+                        now,
+                        now,
+                    ),
+                )
+        except sqlite3.Error as exc:
+            _translate_db_error(exc)
+        finally:
+            conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -616,6 +649,45 @@ def _cached_payload(payload: dict, lang: str, cached_row: dict | None) -> dict:
     }
 
 
+def _log_translation_timing(
+    *,
+    book_id: str,
+    number: int,
+    lang: str,
+    status: str,
+    batch_count: int,
+    concurrency: int,
+    total_ms: float,
+    batch_timings: Sequence[dict] = (),
+    failed_paragraphs: int = 0,
+) -> None:
+    """结构化计时日志（B1）：书/章、批数、每批 duration_ms、total_ms、并发度。"""
+    timing = [
+        {
+            "batch": item.get("batch"),
+            "duration_ms": item.get("duration_ms"),
+            "paragraphs": item.get("paragraphs"),
+            "translated": item.get("translated"),
+            "ok": item.get("error") is None,
+        }
+        for item in batch_timings
+    ]
+    logger.info(
+        "feature=book_translation book=%s chapter=%s lang=%s status=%s "
+        "batch_count=%s concurrency=%s total_ms=%.1f batch_ms=%s "
+        "failed_paragraphs=%s",
+        book_id,
+        number,
+        lang,
+        status,
+        batch_count,
+        concurrency,
+        total_ms,
+        json.dumps(timing, ensure_ascii=False),
+        failed_paragraphs,
+    )
+
+
 async def translate_chapter(
     manifest: dict,
     book_id: str,
@@ -632,6 +704,7 @@ async def translate_chapter(
     - 超时映射 504（本函数自身不吞 ``CancelledError``，锁在 finally 释放）。
     """
     lang = languages.resolve_target_lang(lang)
+    started = time.perf_counter()
 
     # 1) 先抓原文并与已有本地译文对齐：书/章不存在时这里就 404；
     #    原文抓取失败时 503，不写任何缓存。
@@ -655,6 +728,15 @@ async def translate_chapter(
 
     missing = _missing_paragraphs(payload)
     if not missing:
+        _log_translation_timing(
+            book_id=book_id,
+            number=number,
+            lang=lang,
+            status="cached",
+            batch_count=0,
+            concurrency=translate_concurrency(),
+            total_ms=(time.perf_counter() - started) * 1000,
+        )
         return _cached_payload(payload, lang, cached_row)
 
     ensure_chapter_size(payload)
@@ -674,6 +756,15 @@ async def translate_chapter(
             )
         missing = _missing_paragraphs(payload)
         if not missing:
+            _log_translation_timing(
+                book_id=book_id,
+                number=number,
+                lang=lang,
+                status="cached",
+                batch_count=0,
+                concurrency=translate_concurrency(),
+                total_ms=(time.perf_counter() - started) * 1000,
+            )
             return _cached_payload(payload, lang, cached_row)
 
         preferred = llm.resolve_model_for_target(None, lang)
@@ -685,39 +776,54 @@ async def translate_chapter(
                 "当前没有可用的 AI 模型，暂时无法翻译。"
             )
 
-        # 只有真正要调模型才占每 IP 每天的名额（缓存命中不占）。
+        # 只有真正要调模型才占每 IP 每天的名额（缓存命中不占）。整章（无论
+        # 切了多少批、并发几路）只在这里扣 1 次。
         _consume_daily_limit(rate_limit_key)
 
         batches = _translation_batches(missing)
+        concurrency = translate_concurrency()
         values = _paragraph_values(payload)
         failed_indices: list[int] = []
         used_models: set[str] = set()
-        used_batches = 0
+        batch_timings: list[dict] = []
         last_error: str | None = None
+        semaphore = asyncio.Semaphore(concurrency)
+        # 缓存写串行化：批次并发完成，但「合并结果 + 落库」这一段串行执行，
+        # 每个快照都包含此前所有成功批次，后写不会覆盖先写。
+        write_lock = asyncio.Lock()
 
-        for position, batch in enumerate(batches):
-            used_batches += 1
-            translations, used_model, error = await _translate_batch(
-                batch, lang, user_id, candidates
-            )
-            last_error = error or last_error
+        async def run_batch(position: int, batch: list[tuple[int, str]]) -> None:
+            nonlocal last_error
+            batch_started = time.perf_counter()
+            if concurrency == 1 and position > 0:
+                # 串行模式保留 provider 批间停顿（Gemini 免费档 RPM）。
+                pause = llm.batch_pause(preferred)
+                if pause > 0:
+                    await asyncio.sleep(pause)
+            async with semaphore:
+                translations, used_model, error = await _translate_batch(
+                    batch, lang, user_id, candidates
+                )
             batch_indices = {idx for idx, _ in batch}
             success = {
                 idx: text
                 for idx, text in translations.items()
                 if idx in batch_indices
             }
-            for idx, text in success.items():
-                values[idx] = text
+            model = used_model or preferred
             if success:
-                model = used_model or preferred
+                async with write_lock:
+                    for idx, text in success.items():
+                        values[idx] = text
+                    # 成功批次立即落库：中途超时/失败时，已花的钱不会白花，
+                    # 下次只补缺失段（null 段落）。
+                    await asyncio.to_thread(
+                        save_cache, book_id, number, lang, list(values), model
+                    )
                 used_models.add(model)
-                # 成功批次立即落库：中途超时/失败时，已花的钱不会白花，
-                # 下次只补缺失段（null 段落）。
-                await asyncio.to_thread(
-                    save_cache, book_id, number, lang, values, model
-                )
             failed = [idx for idx in batch_indices if idx not in success]
+            if error:
+                last_error = error
             if failed:
                 failed_indices.extend(failed)
                 logger.warning(
@@ -728,8 +834,40 @@ async def translate_chapter(
                     number,
                     error or "未知错误",
                 )
-            if position + 1 < len(batches):
-                await asyncio.sleep(llm.batch_pause(used_model or preferred))
+            batch_timings.append(
+                {
+                    "batch": position,
+                    "duration_ms": round(
+                        (time.perf_counter() - batch_started) * 1000, 1
+                    ),
+                    "paragraphs": len(batch),
+                    "translated": len(success),
+                    "error": error,
+                }
+            )
+
+        results = await asyncio.gather(
+            *(run_batch(position, batch) for position, batch in enumerate(batches)),
+            return_exceptions=True,
+        )
+        fatal = next(
+            (item for item in results if isinstance(item, BaseException)), None
+        )
+        if fatal is not None:
+            if isinstance(fatal, asyncio.CancelledError):
+                raise fatal
+            raise fatal
+
+        batch_timings.sort(key=lambda item: item["batch"])
+
+        # 按批顺序合并：每个下标只属于一个批次，这里显式按批次顺序覆盖，
+        # 保证最终数组与原文段落顺序一致（而不是按完成先后）。
+        ordered_values = _paragraph_values(payload)
+        for batch in batches:
+            for idx, _text in batch:
+                if isinstance(values[idx], str) and values[idx].strip():
+                    ordered_values[idx] = values[idx]
+        values = ordered_values
 
         if not used_models:
             # 一段都没成功：不写整行 null 垃圾，交给调用方 502，下次重试。
@@ -739,12 +877,27 @@ async def translate_chapter(
                 number,
                 last_error or "未知错误",
             )
+            _log_translation_timing(
+                book_id=book_id,
+                number=number,
+                lang=lang,
+                status="failed",
+                batch_count=len(batches),
+                concurrency=concurrency,
+                total_ms=(time.perf_counter() - started) * 1000,
+                batch_timings=batch_timings,
+                failed_paragraphs=len(failed_indices),
+            )
             raise BookTranslationFailed(
                 "翻译失败，请稍后重试（模型没有返回可用译文）。"
             )
 
         failed_indices.sort()
         final_model = next(iter(used_models))
+        # 最终按批顺序写一次：成功批次全部保留，部分失败段留 null。
+        await asyncio.to_thread(
+            save_cache, book_id, number, lang, values, final_model
+        )
         books.merge_cached_translations(
             payload,
             values,
@@ -752,6 +905,17 @@ async def translate_chapter(
             updated_at=int(time.time() * 1000),
         )
         status = "done" if not failed_indices else "partial"
+        _log_translation_timing(
+            book_id=book_id,
+            number=number,
+            lang=lang,
+            status=status,
+            batch_count=len(batches),
+            concurrency=concurrency,
+            total_ms=(time.perf_counter() - started) * 1000,
+            batch_timings=batch_timings,
+            failed_paragraphs=len(failed_indices),
+        )
         return {
             **payload,
             "cached": False,
@@ -761,7 +925,7 @@ async def translate_chapter(
             "failedParagraphs": len(failed_indices),
             "failedIndices": failed_indices,
             "model": final_model,
-            "batches": used_batches,
+            "batches": len(batches),
         }
     finally:
         lock.release()
@@ -811,5 +975,6 @@ __all__ = [
     "save_cache",
     "translate_chapter",
     "translate_chapter_with_timeout",
+    "translate_concurrency",
     "translate_timeout_seconds",
 ]
