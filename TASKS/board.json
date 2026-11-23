@@ -788,8 +788,8 @@
     {
       "id": "P1-18",
       "file": "TASKS/P1-18-video-pipeline-speed.md",
-      "status": "claimed",
-      "owner": "video-perf-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/routes_videos.py",
         "backend/tests/",
