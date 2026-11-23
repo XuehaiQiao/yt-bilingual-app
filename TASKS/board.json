@@ -717,6 +717,33 @@
       "deps": [
         "P2-06"
       ]
+    },
+    {
+      "id": "P1-15",
+      "file": "TASKS/P1-15-reading-highlight-rail.md",
+      "status": "claimed",
+      "owner": "rail-impl",
+      "write_scope": [
+        "frontend/src/lib/highlightedWords.ts",
+        "frontend/src/components/reading/ReadingHighlightRail.tsx",
+        "frontend/src/components/ReaderScreen.tsx",
+        "frontend/src/components/LibraryArticleReader.tsx",
+        "frontend/src/components/BookReaderScreen.tsx",
+        "frontend/src/components/ImportedBookReaderScreen.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/reading-highlight-rail-acceptance.mjs",
+        "specs/042-reading-highlight-rail/spec.md",
+        "specs/README.md"
+      ],
+      "shared_writes": [
+        "frontend/src/App.tsx",
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-04"
+      ]
     }
   ]
 }
