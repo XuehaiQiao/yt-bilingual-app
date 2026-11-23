@@ -773,8 +773,8 @@
     {
       "id": "P1-17",
       "file": "TASKS/P1-17-book-pipeline-speed.md",
-      "status": "claimed",
-      "owner": "book-perf-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/book_translation.py",
         "backend/routes_books.py",
