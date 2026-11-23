@@ -938,6 +938,24 @@
       "deps": [
         "P2-09"
       ]
+    },
+    {
+      "id": "P2-11",
+      "file": "TASKS/P2-11-subtitle-fluid-type.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "frontend/src/components/WatchSubtitleOverlay.tsx",
+        "frontend/src/App.tsx",
+        "scripts/watch-mode-acceptance.mjs",
+        "specs/044-watch-mode/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/App.tsx"
+      ],
+      "deps": [
+        "P2-10"
+      ]
     }
   ]
 }
