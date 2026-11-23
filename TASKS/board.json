@@ -798,6 +798,33 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-08",
+      "file": "TASKS/P2-08-watch-mode.md",
+      "status": "claimed",
+      "owner": "watch-impl",
+      "write_scope": [
+        "frontend/src/lib/layout.ts",
+        "frontend/src/components/WatchSubtitleOverlay.tsx",
+        "frontend/src/components/WatchGlossPanel.tsx",
+        "frontend/src/components/VideoPlayer.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/components/TeachingNotesPanel.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/watch-mode-acceptance.mjs",
+        "specs/044-watch-mode/spec.md",
+        "specs/README.md"
+      ],
+      "shared_writes": [
+        "frontend/src/App.tsx",
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P1-17",
+        "P1-18"
+      ]
     }
   ]
 }
