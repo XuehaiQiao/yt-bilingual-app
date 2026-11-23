@@ -802,8 +802,8 @@
     {
       "id": "P2-08",
       "file": "TASKS/P2-08-watch-mode.md",
-      "status": "claimed",
-      "owner": "watch-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/lib/layout.ts",
         "frontend/src/components/WatchSubtitleOverlay.tsx",
