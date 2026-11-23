@@ -1,6 +1,6 @@
 # 044 — 观影模式（最小版）
 
-> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
+> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
 > 成本：0（只读已有分析缓存，不新增 AI 调用）。
 
 ## 1. 开关与布局
@@ -24,8 +24,13 @@
 ## 2. 单句字幕窗
 
 - 绝对定位在视频区下缘（玻璃配方 `bg-zinc-950/70 backdrop-blur-md border-t border-white/5`）
-- 只显示当前句：**英文在上（主内容，17px，`text-section`）**、中文在下（辅助，15px，`text-body-zh`）；不显示整条 transcript
-- 字号只走 `tailwind.config.js` 的字号 token，不写裸 px；行高沿用 `leading-snug`，居中、`text-balance`
+- 只显示当前句：**英文在上（主内容）**、中文在下（辅助）；不显示整条 transcript
+- **字号随视频窗宽度流体缩放（P2-11，纯 CSS 容器查询）**：媒体区 `data-testid="video-area"` 设 `container-type: inline-size`（`[container-type:inline-size]`），字幕字号用容器查询单位 `cqi`（1cqi = 视频窗宽度的 1%）：
+  - 英文：`clamp(1.0625rem, 2cqi, 1.5rem)` → 17px … 24px
+  - 中文：`clamp(0.9375rem, 1.7cqi, 1.25rem)` → 15px … 20px
+  - 任意窗宽英文都大于中文；375 落在下限 17/15；全屏/加宽视频窗时自动变大，不依赖 JS ResizeObserver
+  - **回退**：`text-section`（17px）/ `text-body-zh`（15px）token 保留在元素上；不支持 `cqi` 的引擎会丢弃无效的 inline 声明，回退到 token 固定字号，不出现无字号
+- 行高沿用 `leading-snug`，居中、`text-balance`；字号不写裸 px
 - 随播放推进更新；无当前句时隐藏
 - 不遮挡 YouTube 底部控件（抬高到画面约 12% 以上）
 - `pointer-events` 分层：字幕窗不拦截播放器点击
@@ -48,7 +53,8 @@
 
 - 开关持久化；开/关布局与教学面板正确；reduced-motion 无动画
 - 当前句字幕与词条随播放/跳转更新；切句不闪整条字幕
-- 字幕英文在主位（≥17px）、中文在辅位（≥15px），375/1440 不裁切/不溢出
+- 字幕英文在主位、中文在辅位，375/1440 不裁切/不溢出
+- 字号随媒体区宽度流体缩放（P2-11）：375 恰为 17/15 下限；1440 观影字号 > 1440 普通布局；1920 观影 > 1440 观影；全屏（stub）下视频窗加宽字号继续变大；任意档位英文 > 中文；长句不横向裁切/溢出
 - 词条窗数据与页面 ruby/语言点一致；空态文案正确
 - 历史顺延：新句在顶部、旧词仍在、同一句去重移顶、新句自动回顶、手动滚动不被拉回、空句保留旧条目
 - 网页全屏（P2-10）：进入观影调用全屏 API、退出观影调用 exit；ESC/浏览器退出全屏后布局仍是观影且状态同步；API 不存在或被拒时不报错、布局正常；路由切走退出清理
@@ -62,11 +68,11 @@
 | `watchMode` off/on 持久化（key `yt_bilingual_watch_mode`；与 stacked/split、左列比例分键存储） | `frontend/src/lib/layout.ts` |
 | 播放器工具栏入口（图标+文字、`aria-pressed`、悬停/触屏可见；切换携带播放进度，不重新起播；**无独立全屏按钮**） | `frontend/src/components/VideoPlayer.tsx` |
 | 网页全屏（进入手势内 `requestFullscreen()` 于学习 shell、退出条件 `exitFullscreen()`、ESC 保留布局、失败/不支持静默、路由/卸载清理、`data-page-fullscreen` 状态） | `frontend/src/App.tsx` |
-| 单句字幕窗（英上中下、17/15px token、玻璃条、`pointer-events-none`、无当前句隐藏、无动画） | `frontend/src/components/WatchSubtitleOverlay.tsx` |
+| 单句字幕窗（英上中下、17/15px token 回退、`clamp(…2cqi…)`/`clamp(…1.7cqi…)` 随媒体区宽度流体缩放、玻璃条、`pointer-events-none`、无当前句隐藏、无动画；媒体区 `container-type: inline-size`） | `frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/App.tsx` |
 | 词条窗（≥1280 固定右栏 `clamp(20rem,24vw,22.5rem)`；<1280 浮层；loading/error/空句/无分析四态；P2-09 最近 30 句历史/去重/滚动） | `frontend/src/components/WatchGlossPanel.tsx` |
 | 学习视图接线（观看 shell、教学面板/摘要/字幕工具栏不渲染、当前句取 `activeTranscriptIndex`，向词条窗传 `blockId`/`enText`/`contentRef`） | `frontend/src/App.tsx` |
 | 文案（zh-CN / vi-VN） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
-| 验收脚本（开关持久化、布局/教学面板、播放/跳转跟句、词条/空态、字幕英主中辅字号、历史顺延/去重/滚动、reduced-motion、网页全屏 stub 断言/失败降级、1440+375 截图） | `scripts/watch-mode-acceptance.mjs` |
+| 验收脚本（开关持久化、布局/教学面板、播放/跳转跟句、词条/空态、字幕英主中辅字号与流体缩放（375/1440 普通/观影/1920/全屏 stub）、历史顺延/去重/滚动、reduced-motion、网页全屏 stub 断言/失败降级、1440+1920+375 截图） | `scripts/watch-mode-acceptance.mjs` |
 
 词条数据只读既有教学分析（specs/028）：`wordGlossesByBlock` + `languagePointsByBlock`；
 无分析态的重试按钮复用 `GET /api/teaching-analysis/{content_ref}`，本规格不新增任何 AI 调用。

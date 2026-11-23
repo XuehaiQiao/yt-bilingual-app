@@ -18,17 +18,22 @@
 //      no-analysis state that reuses the existing 028 GET (no new AI: every
 //      teaching-analysis request in the run is a GET, no process/translate
 //      calls are made);
-//   4b. P2-09 typography: English is the primary line (17px) above the Chinese
-//       support line (15px); 1440 and 375 stay inside the media stage without
+//   4b. P2-09 typography: English is the primary line above the Chinese
+//       support line; 1440 and 375 stay inside the media stage without
 //       horizontal clipping;
 //   4c. P2-09 history: the gloss window keeps earlier sentences under the
 //       current one (5 sentences driven by seek), a revisited block moves to
 //       the top instead of duplicating, an empty sentence keeps the backlog
 //       and shows 本句无生词 on top, and the window auto-scrolls to the top
 //       until the learner scrolls down by hand;
+//   4d. P2-11 fluid type: `video-area` is a container-query source and the
+//       subtitle lines use `clamp(…cqi…)`, so 375 sits at the 17/15 floors,
+//       1440 watch is larger than the 1440 normal layout, 1920 is larger than
+//       1440, and a stubbed fullscreen window that grows keeps scaling; English
+//       stays above Chinese at every tier and long sentences never clip;
 //   5. watch OFF restores the previous stacked/split layout + teaching panel;
 //   6. reduced-motion: the overlay/rail carry no animation or transition;
-//   7. 1440 and 375 screenshots, no horizontal overflow at 375.
+//   7. 1440, 1920 and 375 screenshots, no horizontal overflow at 375.
 //   8. P2-10 page fullscreen: the retired player fullscreen button is gone; the
 //      watch toggle calls `requestFullscreen()` on the learning shell inside the
 //      click gesture, leaving watch mode calls `exitFullscreen()`, an ESC-style
@@ -61,6 +66,13 @@ fs.mkdirSync(SHOTS, { recursive: true });
 
 const shot = (name) => `${SHOTS}/watch-mode-${name}@${HEAD}.png`;
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+
+// P2-11: the fluid subtitle type scale lives inline in WatchSubtitleOverlay
+// (the `text-section` / `text-body-zh` classes stay as the no-cqi fallback).
+// 1cqi = 1% of the `video-area` container width, so the same declaration
+// resolves differently in the normal and watch layouts.
+const FLUID_EN = 'clamp(1.0625rem, 2cqi, 1.5rem)';
+const FLUID_ZH = 'clamp(0.9375rem, 1.7cqi, 1.25rem)';
 
 // ── fixtures ───────────────────────────────────────────────────────────────
 const VIDEO_ID = 'acceptance-watch';
@@ -429,6 +441,39 @@ const boxOf = (page, testId) => page.evaluate((id) => {
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, bottom: rect.bottom };
 }, testId);
 
+// P2-11: computed subtitle typography plus the fit checks used by the fluid
+// type tiers (375 / 1440 normal / 1440 watch / 1920 / fullscreen stub).
+const subtitleType = (page) => page.evaluate(() => {
+    const read = (testId) => {
+        const element = document.querySelector(`[data-testid="${testId}"]`);
+        if (!element) return null;
+        return {
+            fontSize: parseFloat(getComputedStyle(element).fontSize),
+            clipped: element.scrollWidth > element.clientWidth + 1,
+        };
+    };
+    const overlay = document.querySelector('[data-testid="watch-subtitle-overlay"]');
+    const media = document.querySelector('[data-testid="video-area"]');
+    const stage = overlay ? overlay.parentElement : null;
+    const overlayRect = overlay ? overlay.getBoundingClientRect() : null;
+    const stageRect = stage ? stage.getBoundingClientRect() : null;
+    return {
+        en: read('watch-subtitle-en'),
+        zh: read('watch-subtitle-zh'),
+        mediaWidth: media ? media.getBoundingClientRect().width : null,
+        insideMedia: Boolean(
+            overlayRect && stageRect
+            && overlayRect.top >= stageRect.top - 1
+            && overlayRect.bottom <= stageRect.bottom + 1,
+        ),
+        insideViewport: Boolean(
+            overlayRect
+            && overlayRect.left >= -1
+            && overlayRect.right <= window.innerWidth + 1,
+        ),
+    };
+});
+
 const overlayText = (page) => page.evaluate(() => {
     const el = document.querySelector('[data-testid="watch-subtitle-overlay"]');
     return el ? el.innerText.replace(/\s+/g, ' ').trim() : null;
@@ -532,6 +577,38 @@ try {
     assert.equal(await page.locator('[data-testid="split-divider"]').count(), 1, 'split layout not restored on load');
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_mode')), 'off');
 
+    // — P2-11: the media stage is the container-query source. The overlay only
+    // mounts in watch mode, so the normal 1440 layout is measured with a probe
+    // span inside the same container: same clamp, narrower media → smaller
+    // computed size than the watch layout read below. —
+    const normalType = await page.evaluate(({ en, zh }) => {
+        const media = document.querySelector('[data-testid="video-area"]');
+        if (!media) return null;
+        const probe = document.createElement('span');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.position = 'absolute';
+        probe.style.visibility = 'hidden';
+        media.appendChild(probe);
+        probe.style.fontSize = en;
+        const enPx = parseFloat(getComputedStyle(probe).fontSize);
+        probe.style.fontSize = zh;
+        const zhPx = parseFloat(getComputedStyle(probe).fontSize);
+        probe.remove();
+        return {
+            mediaWidth: media.getBoundingClientRect().width,
+            containerType: getComputedStyle(media).containerType,
+            en: enPx,
+            zh: zhPx,
+        };
+    }, { en: FLUID_EN, zh: FLUID_ZH });
+    assert.ok(normalType, 'normal-layout media stage missing');
+    assert.equal(normalType.containerType, 'inline-size', 'media stage is not a container-query source');
+    assert.ok(
+        normalType.en > 17 && normalType.en < 24,
+        `1440 normal media should resolve the fluid clamp above the 17px floor, got ${normalType.en}px`,
+    );
+    assert.ok(normalType.en > normalType.zh, 'normal-layout English must stay above Chinese');
+
     // — turn watch mode on from the player toolbar —
     await page.locator('[data-testid="video-area"]').hover();
     await page.locator('[data-testid="watch-mode-toggle"]').click();
@@ -619,6 +696,41 @@ try {
         overlayFit1440 && overlayFit1440.insideWidth && overlayFit1440.insideMedia,
         `subtitle overlay overflows at 1440: ${JSON.stringify(overlayFit1440)}`,
     );
+
+    // — P2-11: watch mode widens the media stage, so the same fluid formula
+    // resolves larger than the normal layout (and stays below the 24px cap so
+    // 1920 can keep growing). English must remain above Chinese. —
+    const watchType = await subtitleType(page);
+    assert.ok(watchType.en && watchType.zh, 'watch subtitle lines missing for the fluid type check');
+    assert.ok(
+        watchType.mediaWidth > normalType.mediaWidth + 1,
+        `watch media ${watchType.mediaWidth}px should be wider than normal media ${normalType.mediaWidth}px`,
+    );
+    assert.ok(
+        watchType.en.fontSize > normalType.en,
+        `1440 normal font ${normalType.en}px must be smaller than 1440 watch font ${watchType.en.fontSize}px`,
+    );
+    assert.ok(
+        watchType.en.fontSize > watchType.zh.fontSize,
+        `watch English ${watchType.en.fontSize}px must stay above Chinese ${watchType.zh.fontSize}px`,
+    );
+    assert.ok(
+        watchType.en.fontSize < 24,
+        `1440 watch English ${watchType.en.fontSize}px must stay below the 24px cap so 1920 can grow`,
+    );
+    // The token classes are what engines without container queries fall back
+    // to; an unsupported cqi drops the inline declaration, not the font size.
+    const fluidFallback = await page.evaluate(() => {
+        const className = (testId) => document.querySelector(`[data-testid="${testId}"]`)?.className ?? '';
+        return {
+            en: className('watch-subtitle-en'),
+            zh: className('watch-subtitle-zh'),
+            supportsCqi: CSS.supports('font-size', 'clamp(1rem, 2cqi, 2rem)'),
+        };
+    });
+    assert.match(fluidFallback.en, /(^|\s)text-section(\s|$)/, 'English line dropped the text-section fallback');
+    assert.match(fluidFallback.zh, /(^|\s)text-body-zh(\s|$)/, 'Chinese line dropped the text-body-zh fallback');
+    assert.equal(fluidFallback.supportsCqi, true, 'this browser cannot check the cqi declaration');
 
     // — geometry: the overlay clears the player controls and lets clicks pass —
     const overlayRect = await page.evaluate(() => {
@@ -804,6 +916,18 @@ try {
         mediaHeight: Math.round((mediaStageWatch?.height ?? 0) * 10) / 10,
         analysisRequests: analysisCalls.length,
         subtitleFontPx: { en: subtitleTypography.en.fontSize, zh: subtitleTypography.zh.fontSize },
+        fluidType: {
+            normal1440: {
+                en: normalType.en,
+                zh: normalType.zh,
+                mediaWidth: Math.round(normalType.mediaWidth * 10) / 10,
+            },
+            watch1440: {
+                en: subtitleTypography.en.fontSize,
+                zh: subtitleTypography.zh.fontSize,
+                mediaWidth: Math.round(watchType.mediaWidth * 10) / 10,
+            },
+        },
         history: { accumulated: 2, dedupe: 'pass' },
     };
     await desktop.close();
@@ -854,6 +978,45 @@ try {
     assert.equal(fsState.pressed, 'true');
     assert.equal(await fsPage.locator('[data-testid="video-fullscreen-toggle"]').count(), 0, 'retired fullscreen button must stay gone');
     assert.equal(await fsPage.locator('[data-testid="watch-mode-toggle"]').count(), 1, 'watch toggle must be the only watch control');
+
+    // — P2-11: under the P2-10 page-fullscreen stub the shell stays fullscreen
+    // while the window (what a bigger screen is in real fullscreen) grows, so
+    // the fluid subtitle must scale with the media without a JS resize listener.
+    await seekToGlossedCue(fsPage);
+    await pausePlayback(fsPage);
+    const fsTypeBase = await subtitleType(fsPage);
+    assert.ok(fsTypeBase.en, 'fullscreen subtitle missing for the fluid type check');
+    await fsPage.setViewportSize({ width: 1920, height: 1080 });
+    await fsPage.waitForFunction(
+        (before) => {
+            const el = document.querySelector('[data-testid="watch-subtitle-en"]');
+            return el ? parseFloat(getComputedStyle(el).fontSize) > before : false;
+        },
+        fsTypeBase.en.fontSize,
+        { timeout: 5000 },
+    );
+    const fsTypeWide = await subtitleType(fsPage);
+    assert.ok(
+        fsTypeWide.en.fontSize > fsTypeBase.en.fontSize,
+        `fullscreen font did not grow with the media: ${fsTypeBase.en.fontSize}px → ${fsTypeWide.en.fontSize}px`,
+    );
+    assert.ok(fsTypeWide.en.fontSize > fsTypeWide.zh.fontSize, 'fullscreen English must stay above Chinese');
+    assert.equal(
+        await fsPage.evaluate(() => document.fullscreenElement?.getAttribute('data-testid')),
+        'learning-scroll',
+        'growing the fullscreen window must keep the shell in page fullscreen',
+    );
+    summary.screenshots.push(shot('1920-fullscreen'));
+    await fsPage.screenshot({ path: shot('1920-fullscreen') });
+    await fsPage.setViewportSize({ width: 1440, height: 900 });
+    await fsPage.waitForFunction(
+        (wide) => {
+            const el = document.querySelector('[data-testid="watch-subtitle-en"]');
+            return el ? parseFloat(getComputedStyle(el).fontSize) < wide : false;
+        },
+        fsTypeWide.en.fontSize,
+        { timeout: 5000 },
+    );
 
     // — ESC / browser chrome leaves fullscreen: the watch layout survives —
     await fsPage.evaluate(() => window.__fsStub.escape());
@@ -951,6 +1114,10 @@ try {
         escKeepsWatchLayout: true,
         rejectedRequest: 'layout-only',
         missingApi: 'layout-only',
+        fluidGrowth: {
+            before: fsTypeBase.en.fontSize,
+            after: fsTypeWide.en.fontSize,
+        },
     };
     await fsContext.close();
 
@@ -999,8 +1166,10 @@ try {
         };
     });
     assert.ok(phoneSubtitle && phoneSubtitle.en && phoneSubtitle.zh, '375 subtitle lines missing');
-    assert.ok(phoneSubtitle.en.fontSize >= 17, `375 English subtitle ${phoneSubtitle.en.fontSize}px < 17px`);
-    assert.ok(phoneSubtitle.zh.fontSize >= 15, `375 Chinese subtitle ${phoneSubtitle.zh.fontSize}px < 15px`);
+    // P2-11: 375 is the narrowest tier, so the fluid clamp sits at its floors.
+    assert.equal(phoneSubtitle.en.fontSize, 17, `375 English subtitle must be the 17px clamp floor, got ${phoneSubtitle.en.fontSize}px`);
+    assert.equal(phoneSubtitle.zh.fontSize, 15, `375 Chinese subtitle must be the 15px clamp floor, got ${phoneSubtitle.zh.fontSize}px`);
+    assert.ok(phoneSubtitle.en.fontSize > phoneSubtitle.zh.fontSize, '375 English must be larger than Chinese');
     assert.ok(phoneSubtitle.en.top < phoneSubtitle.zh.top, '375 English must sit above Chinese');
     assert.ok(!phoneSubtitle.en.clipped && !phoneSubtitle.zh.clipped, '375 subtitle text is horizontally clipped');
     assert.ok(phoneSubtitle.insideWidth && phoneSubtitle.insideMedia, '375 subtitle overlay overflows the media stage');
@@ -1118,6 +1287,40 @@ try {
         autoScrollTop: afterTop.scrollTop,
     };
     await historyContext.close();
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 1920 — P2-11 fluid type: the widest tier outgrows the 1440 watch size
+    // ═════════════════════════════════════════════════════════════════════
+    const wideContext = await createContext(browser, { width: 1920, height: 1080, watchOn: true });
+    const widePage = await wideContext.newPage();
+    const wideErrors = [];
+    widePage.on('pageerror', (error) => wideErrors.push(String(error)));
+    await openVideo(widePage, VIDEO_ID);
+    await seekToGlossedCue(widePage);
+    await pausePlayback(widePage);
+    const wideType = await subtitleType(widePage);
+    assert.ok(wideType.en && wideType.zh, '1920 subtitle lines missing');
+    assert.ok(
+        wideType.en.fontSize > subtitleTypography.en.fontSize,
+        `1920 English ${wideType.en.fontSize}px must be larger than 1440 watch ${subtitleTypography.en.fontSize}px`,
+    );
+    assert.ok(
+        wideType.zh.fontSize > subtitleTypography.zh.fontSize,
+        `1920 Chinese ${wideType.zh.fontSize}px must be larger than 1440 watch ${subtitleTypography.zh.fontSize}px`,
+    );
+    assert.ok(wideType.en.fontSize <= 24.01, `1920 English ${wideType.en.fontSize}px exceeds the 24px cap`);
+    assert.ok(wideType.zh.fontSize <= 20.01, `1920 Chinese ${wideType.zh.fontSize}px exceeds the 20px cap`);
+    assert.ok(wideType.en.fontSize > wideType.zh.fontSize, '1920 English must stay above Chinese');
+    assert.ok(!wideType.en.clipped && !wideType.zh.clipped, '1920 subtitle text is horizontally clipped');
+    assert.ok(wideType.insideMedia && wideType.insideViewport, '1920 subtitle overlay overflows the media stage');
+    summary.screenshots.push(shot('1920'));
+    await widePage.screenshot({ path: shot('1920') });
+    assert.deepEqual(wideErrors, [], `1920 page errors: ${JSON.stringify(wideErrors)}`);
+    summary.wide = {
+        mediaWidth: Math.round((wideType.mediaWidth ?? 0) * 10) / 10,
+        subtitleFontPx: { en: wideType.en.fontSize, zh: wideType.zh.fontSize },
+    };
+    await wideContext.close();
 
     // ═════════════════════════════════════════════════════════════════════
     // reduced motion — the watch layers carry no animation/transition

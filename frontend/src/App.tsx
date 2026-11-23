@@ -3241,11 +3241,15 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const episodeDuration = transcript.length > 0 ? transcript[transcript.length - 1]?.end ?? 0 : 0;
   const localEpisodeLabel = String(metadata?.title || '').match(/S\d+E\d+/i)?.[0]?.toUpperCase() ?? '';
 
+  // P2-11: the media stage is the container-query source for the watch
+  // subtitle type scale (1cqi = 1% of this width, specs/044 §2). `inline-size`
+  // containment leaves the iframe's own layout and the stage height untouched;
+  // only the subtitle font sizes read it.
   const mediaStage = (
     <div
       data-testid="video-area"
       data-watch-mode={watchModeActive ? 'on' : 'off'}
-      className={`flex-none w-full aspect-video min-h-[180px] relative bg-transparent ${watchModeActive ? 'md:max-h-full' : 'max-h-[62%]'}`}
+      className={`[container-type:inline-size] flex-none w-full aspect-video min-h-[180px] relative bg-transparent ${watchModeActive ? 'md:max-h-full' : 'max-h-[62%]'}`}
     >
       {isLocalSubtitle && !hasLocalVideo ? (
         <LocalEpisodeStage
