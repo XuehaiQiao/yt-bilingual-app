@@ -1,6 +1,6 @@
 # 044 — 观影模式（最小版）
 
-> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
+> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
 > 成本：0（只读已有分析缓存，不新增 AI 调用）。
 
 ## 1. 开关与布局
@@ -41,6 +41,7 @@
 - 标题：`watchMode.glossTitle` =「滚动词条」（zh-CN）/「Từ cuộn」（vi-VN）；rail 与 floating 共用同一 key
 - ≥1280：右侧固定栏（320–360）；<1280：浮层（容器边界/标题栏保留，不属于条目分割线）
 - 内容 = 当前句的难度标亮词（wordGlossesByBlock）+ 语言点（idioms/culture），只显示词/文本与释义
+- **数据来源（P2-13）**：`wordGlossesByBlock` 以页面实际渲染的 `displayTranscript[].highlights` 为准——历史 payload 自带 `analysis.v5` 合并块（block highlights）且 endpoint 不可用（404）时，payload 的块高亮直接生效；endpoint 可用时它已由 `applyTeachingAnalysisHighlights` 覆盖，分析留空的块保持空，不回填旧 payload。`languagePointsByBlock`（idioms/culture）仍只来自分析。免费文章阅读器例外：段落不在 `transcript` 里，仍按段落索引读分析高亮。
 - **精简（P2-12）**：不显示整句英文上文与当前句圆点、不显示「生词 / 语言点」分组标题、不显示习语/文化 kind 徽章、不显示「本句无生词」或任何逐句/全局空态占位；条目无卡片边框/底纹，条目之间无分割线
 - **连续列表**：词（amber）+ 释义（右对齐、次级色）；语言点文本（sky）+ 释义（下一行、次级色）；同一句先词后语言点，句与句之间只留间距、无分组
 - **按句累积（P2-09）**：当前句词条固定在顶部；切到下一句时新句插到顶部，旧句条目向下顺延，直到滚出窗口/超过 30 句
@@ -79,5 +80,5 @@
 | 文案（zh-CN / vi-VN） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
 | 验收脚本（开关持久化、布局/教学面板、播放/跳转跟句、滚动词条（标题/连续列表/无 context/heading/kind/empty/border、空句跳过、长词长释义 375 换行）、字幕英主中辅字号与流体缩放（375/1440 普通/观影/1920/全屏 stub）、历史顺延/去重/滚动、reduced-motion、网页全屏 stub 断言/失败降级、1440+1920+375 截图） | `scripts/watch-mode-acceptance.mjs` |
 
-词条数据只读既有教学分析（specs/028）：`wordGlossesByBlock` + `languagePointsByBlock`；
+词条数据只读既有教学分析（specs/028）：`wordGlossesByBlock`（来源见 §3「数据来源（P2-13）」）+ `languagePointsByBlock`；
 无分析态的重试按钮复用 `GET /api/teaching-analysis/{content_ref}`，本规格不新增任何 AI 调用。

@@ -2412,19 +2412,38 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const videoHighlight = useReadingHighlights(displayTranscript.map((item) => item.en_text));
 
+  // Ruby/gloss source: the transcript the page actually renders. Payload
+  // analysis is already merged into the blocks by the backend (specs/028
+  // `merge_into_payload`) and endpoint highlights are overlaid by
+  // `displayTranscript`, so this map follows the same single source as the
+  // subtitle text: endpoint-authoritative blocks that the analysis cleared stay
+  // empty (no payload fallback), while a payload-only video keeps its merged
+  // per-block glosses even when the endpoint 404s. The free-library article
+  // reader is the one view whose blocks live in the article payload, not in
+  // `transcript`, so it keeps reading the analysis map by paragraph index.
   const wordGlossesByBlock = useMemo(() => {
     const map: Record<string, Record<string, string>> = {};
-    for (const [blockId, entries] of Object.entries(teachingAnalysis?.highlights ?? {})) {
+    const addGlosses = (
+      blockId: number | string,
+      entries: ReadonlyArray<{ en_word: string; zh_word: string }> | undefined,
+    ) => {
       const glosses: Record<string, string> = {};
-      for (const entry of entries) {
+      for (const entry of entries ?? []) {
         const word = entry.en_word?.trim().toLowerCase();
         const gloss = entry.zh_word?.trim();
         if (word && gloss) glosses[word] = gloss;
       }
-      if (Object.keys(glosses).length > 0) map[blockId] = glosses;
+      if (Object.keys(glosses).length > 0) map[String(blockId)] = glosses;
+    };
+    if (libraryArticle) {
+      for (const [blockId, entries] of Object.entries(teachingAnalysis?.highlights ?? {})) {
+        addGlosses(blockId, entries);
+      }
+      return map;
     }
+    for (const block of displayTranscript) addGlosses(block.id, block.highlights);
     return map;
-  }, [teachingAnalysis]);
+  }, [displayTranscript, teachingAnalysis, libraryArticle]);
 
   const languagePointsByBlock = useMemo(() => {
     const map: Record<string, InlineLanguagePoint[]> = {};

@@ -42,6 +42,12 @@
 //      browser exit keeps the watch layout and only syncs `data-page-fullscreen`,
 //      a rejected/missing Fullscreen API degrades to the layout silently, and a
 //      route change cleans up the page fullscreen (all via a page-side stub).
+//   9. P2-13 gloss source: a history payload that already carries
+//      `analysis.v5` + block highlights + idioms (its teaching-analysis
+//      endpoint 404s) still paints transcript ruby (`data-gloss`) and the
+//      rolling gloss words; when the endpoint is authoritative, a block it
+//      leaves empty keeps neither ruby nor a word entry (the old payload gloss
+//      must not come back).
 //
 // Run (needs `npm run dev` on :5173; Playwright lives in scripts/node_modules):
 //   node scripts/watch-mode-acceptance.mjs
@@ -83,6 +89,11 @@ const HISTORY_VIDEO_ID = 'acceptance-watch-history';
 const HISTORY_FILE = `${VIDEO_ID}_zh-CN.json`;
 const HISTORY_VIDEO_FILE = `${HISTORY_VIDEO_ID}_zh-CN.json`;
 const EMPTY_HISTORY_FILE = `${EMPTY_VIDEO_ID}_zh-CN.json`;
+// P2-13: payload-merged analysis (no endpoint row) and endpoint-authoritative.
+const PAYLOAD_VIDEO_ID = 'acceptance-watch-payload';
+const PAYLOAD_HISTORY_FILE = `${PAYLOAD_VIDEO_ID}_zh-CN.json`;
+const AUTHORITATIVE_VIDEO_ID = 'acceptance-watch-authoritative';
+const AUTHORITATIVE_HISTORY_FILE = `${AUTHORITATIVE_VIDEO_ID}_zh-CN.json`;
 
 // First cue starts at 8s so "no current sentence → overlay hidden" is
 // observable before the first seek.
@@ -163,6 +174,28 @@ const METADATA = {
     duration: 24,
 };
 
+// P2-13: a history payload that already carries the merged analysis.v5, i.e.
+// the backend wrote per-block highlights + idioms into the transcript payload.
+// Its teaching-analysis endpoint is deliberately 404, so every gloss on screen
+// can only come from the payload.
+const PAYLOAD_BLOCKS = BLOCKS.map((block, index) => ({
+    ...block,
+    highlights: index === 0
+        ? [{ en_word: 'habits', zh_word: '习惯', color: '' }]
+        : [],
+}));
+const PAYLOAD_IDIOMS = [
+    { blockId: 1, phrase: 'before breakfast', meaning: '早餐前', quote: 'A short walk before breakfast…' },
+];
+
+// P2-13: a legacy payload with merged block highlights while the endpoint is
+// still authoritative. The endpoint below leaves block 0 empty on purpose.
+const AUTHORITATIVE_BLOCKS = [
+    { ...BLOCKS[0], highlights: [{ en_word: 'habits', zh_word: '习惯', color: '' }] },
+    { ...BLOCKS[1], highlights: [{ en_word: 'walk', zh_word: '散步', color: '' }] },
+    { ...BLOCKS[2], highlights: [] },
+];
+
 const ANALYSIS = {
     contentRef: VIDEO_ID,
     level: 'B1',
@@ -223,10 +256,29 @@ const HISTORY_ANALYSIS = {
     },
 };
 
+const AUTHORITATIVE_ANALYSIS = {
+    ...ANALYSIS,
+    contentRef: AUTHORITATIVE_VIDEO_ID,
+    contentHash: 'hash-watch-authoritative',
+    // The endpoint owns block 0 and leaves it empty: the payload's old gloss
+    // for "habits" must not survive. Block 1 replaces the payload's "walk".
+    highlights: {
+        1: [{ en_word: 'breakfast', zh_word: '早餐', color: '' }],
+    },
+    idioms: [],
+};
+
 const HISTORY_ITEMS = [
     { videoId: VIDEO_ID, filename: HISTORY_FILE, title: METADATA.title, channel: METADATA.channel },
     { videoId: HISTORY_VIDEO_ID, filename: HISTORY_VIDEO_FILE, title: 'History Clip', channel: METADATA.channel },
     { videoId: EMPTY_VIDEO_ID, filename: EMPTY_HISTORY_FILE, title: 'No Analysis Clip', channel: METADATA.channel },
+    { videoId: PAYLOAD_VIDEO_ID, filename: PAYLOAD_HISTORY_FILE, title: 'Payload Analysis Clip', channel: METADATA.channel },
+    {
+        videoId: AUTHORITATIVE_VIDEO_ID,
+        filename: AUTHORITATIVE_HISTORY_FILE,
+        title: 'Endpoint Authoritative Clip',
+        channel: METADATA.channel,
+    },
 ];
 
 const videoPayload = (videoId, blocks, title) => ({
@@ -239,6 +291,21 @@ const videoPayload = (videoId, blocks, title) => ({
     summary: '',
     transcript: blocks,
 });
+
+// P2-13: the merged-analysis payload shape the backend writes for
+// `analysis.v5` (block highlights inside the transcript + top-level idioms).
+const PAYLOAD_ANALYSIS_PAYLOAD = {
+    ...videoPayload(PAYLOAD_VIDEO_ID, PAYLOAD_BLOCKS, 'Payload Analysis Clip'),
+    analysisVersion: 'analysis.v5',
+    idioms: PAYLOAD_IDIOMS,
+    culture: [],
+};
+// A legacy merged payload without top-level analysis points: the endpoint is
+// still requested and stays authoritative.
+const AUTHORITATIVE_PAYLOAD = {
+    ...videoPayload(AUTHORITATIVE_VIDEO_ID, AUTHORITATIVE_BLOCKS, 'Endpoint Authoritative Clip'),
+    analysisVersion: 'analysis.v5',
+};
 
 const cors = {
     'access-control-allow-origin': ORIGIN,
@@ -354,10 +421,36 @@ async function createContext(browser, {
         if (pathname === `/api/history/${HISTORY_FILE}`) return respond(videoPayload(VIDEO_ID, BLOCKS));
         if (pathname === `/api/history/${HISTORY_VIDEO_FILE}`) return respond(videoPayload(HISTORY_VIDEO_ID, HISTORY_BLOCKS, 'History Clip'));
         if (pathname === `/api/history/${EMPTY_HISTORY_FILE}`) return respond(videoPayload(EMPTY_VIDEO_ID, EMPTY_BLOCKS));
+        // P2-13 fixtures: the first payload owns its analysis, the second one is
+        // overridden by the endpoint below.
+        if (pathname === `/api/history/${PAYLOAD_HISTORY_FILE}`) return respond(PAYLOAD_ANALYSIS_PAYLOAD);
+        if (pathname === `/api/history/${AUTHORITATIVE_HISTORY_FILE}`) return respond(AUTHORITATIVE_PAYLOAD);
         if (pathname === `/api/teaching-analysis/${VIDEO_ID}`) return respond(ANALYSIS);
         if (pathname === `/api/teaching-analysis/${HISTORY_VIDEO_ID}`) return respond(HISTORY_ANALYSIS);
         if (pathname === `/api/teaching-analysis/${EMPTY_VIDEO_ID}`) {
             return respond({ detail: 'NOT_FOUND' }, 404);
+        }
+        if (pathname === `/api/teaching-analysis/${PAYLOAD_VIDEO_ID}`) {
+            // P2-13: payload-only analysis — the endpoint must not be needed.
+            return respond({ detail: 'NOT_FOUND' }, 404);
+        }
+        if (pathname === `/api/teaching-analysis/${AUTHORITATIVE_VIDEO_ID}`) return respond(AUTHORITATIVE_ANALYSIS);
+        // P2-13: ruby needs the difficulty layer; mark the two fixture words
+        // above B1 (the seeded vocab level) and keep every other token below it.
+        if (pathname === '/api/vocabulary/classify') {
+            const body = request.postDataJSON() || {};
+            const items = Array.isArray(body.items) ? body.items : [];
+            const aboveLevel = new Set(['habits', 'breakfast']);
+            return respond({
+                items: items.map((item) => {
+                    const text = typeof item?.text === 'string' ? item.text : '';
+                    return {
+                        text,
+                        level: aboveLevel.has(text.trim().toLowerCase()) ? 'C1' : 'A1',
+                        proper: false,
+                    };
+                }),
+            });
         }
         if (pathname === '/api/favorites') return respond([]);
         if (pathname === '/api/subscriptions') return respond([]);
@@ -457,6 +550,20 @@ const boxOf = (page, testId) => page.evaluate((id) => {
     const rect = element.getBoundingClientRect();
     return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, bottom: rect.bottom };
 }, testId);
+
+/**
+ * P2-13: the `ruby[data-gloss]` pairs rendered inside one transcript block.
+ * `data-index` is the rendered position; the fixtures keep it equal to the
+ * payload block id, so a missing block returns null instead of a false empty.
+ */
+const transcriptRubyGlosses = (page, blockIndex) => page.evaluate((index) => {
+    const block = document.querySelector(`[data-testid="transcript-scroll"] [data-index="${index}"]`);
+    if (!block) return null;
+    return [...block.querySelectorAll('ruby[data-gloss]')].map((ruby) => ({
+        word: ruby.getAttribute('data-word-hit'),
+        gloss: ruby.getAttribute('data-gloss'),
+    }));
+}, blockIndex);
 
 // P2-11: computed subtitle typography plus the fit checks used by the fluid
 // type tiers (375 / 1440 normal / 1440 watch / 1920 / fullscreen stub).
@@ -1034,6 +1141,141 @@ try {
         },
     };
     await desktop.close();
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 1440 — P2-13: payload-merged analysis glosses without the endpoint
+    // ═════════════════════════════════════════════════════════════════════
+    const payloadContext = await createContext(browser);
+    const payloadPage = await payloadContext.newPage();
+    const payloadErrors = [];
+    payloadPage.on('pageerror', (error) => payloadErrors.push(String(error)));
+    await openVideo(payloadPage, PAYLOAD_VIDEO_ID);
+    // The history payload carries analysis.v5 + block highlights + idioms while
+    // its mocked teaching-analysis endpoint is a 404, so this ruby can only
+    // come from the payload transcript.
+    await payloadPage.waitForFunction(
+        () => {
+            const block = document.querySelector('[data-testid="transcript-scroll"] [data-index="0"]');
+            return Boolean(block && block.querySelector('ruby[data-gloss]'));
+        },
+        null,
+        { timeout: 15000 },
+    );
+    assert.deepEqual(
+        await transcriptRubyGlosses(payloadPage, 0),
+        [{ word: 'habits', gloss: '习惯' }],
+        'the payload block highlight did not render as ruby gloss',
+    );
+    assert.equal(
+        await payloadPage.locator('[data-testid="teaching-notes-panel"]').count(),
+        1,
+        'payload analysis should not disturb the normal-layout teaching panel',
+    );
+
+    await payloadPage.locator('[data-testid="video-area"]').hover();
+    await payloadPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await payloadPage.locator('[data-testid="watch-gloss-rail"]').waitFor({ state: 'visible', timeout: 10000 });
+    await payloadPage.keyboard.press('ArrowRight');
+    await waitForOverlay(payloadPage, 'Small habits');
+    await waitForRailText(payloadPage, '习惯');
+    const payloadWord = (await payloadPage.locator('[data-testid="watch-gloss-word"]').first().innerText()).trim();
+    assert.ok(
+        payloadWord.includes('habits') && payloadWord.includes('习惯'),
+        `rolling gloss lost the payload word: ${payloadWord}`,
+    );
+    // idioms/culture still come from the analysis, not from the word map.
+    await payloadPage.keyboard.press('ArrowRight');
+    await waitForOverlay(payloadPage, 'A short walk');
+    await waitForRailText(payloadPage, '早餐前');
+    const payloadPoint = (await payloadPage.locator('[data-testid="watch-gloss-language-point"]').first().innerText()).trim();
+    assert.ok(
+        payloadPoint.includes('before breakfast'),
+        `payload idiom missing from the rolling gloss: ${payloadPoint}`,
+    );
+    assert.deepEqual(payloadErrors, [], `payload-analysis page errors: ${JSON.stringify(payloadErrors)}`);
+    summary.screenshots.push(shot('1440-p2-13-payload'));
+    await payloadPage.screenshot({ path: shot('1440-p2-13-payload') });
+    summary.payloadAnalysis = {
+        ruby: 'habits/习惯',
+        rollingWord: 'habits/习惯',
+        idiom: 'before breakfast',
+        endpoint: 404,
+    };
+    await payloadContext.close();
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 1440 — P2-13: endpoint authority is not polluted by old payload glosses
+    // ═════════════════════════════════════════════════════════════════════
+    const authContext = await createContext(browser);
+    const authPage = await authContext.newPage();
+    const authErrors = [];
+    authPage.on('pageerror', (error) => authErrors.push(String(error)));
+    await openVideo(authPage, AUTHORITATIVE_VIDEO_ID);
+    // Wait until the endpoint-authored gloss is on screen: from then on the
+    // endpoint projection owns every block, including the ones it left empty.
+    await authPage.waitForFunction(
+        () => {
+            const block = document.querySelector('[data-testid="transcript-scroll"] [data-index="1"]');
+            const ruby = block ? block.querySelector('ruby[data-gloss]') : null;
+            return ruby?.getAttribute('data-gloss') === '早餐';
+        },
+        null,
+        { timeout: 15000 },
+    );
+    assert.deepEqual(
+        await transcriptRubyGlosses(authPage, 0),
+        [],
+        'an endpoint-cleared block kept its old payload gloss',
+    );
+    assert.deepEqual(
+        await transcriptRubyGlosses(authPage, 1),
+        [{ word: 'breakfast', gloss: '早餐' }],
+        'the endpoint gloss did not replace the payload gloss',
+    );
+
+    await authPage.locator('[data-testid="video-area"]').hover();
+    await authPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await authPage.locator('[data-testid="watch-gloss-rail"]').waitFor({ state: 'visible', timeout: 10000 });
+    await authPage.keyboard.press('ArrowRight');
+    await waitForOverlay(authPage, 'Small habits');
+    await authPage.waitForFunction(
+        () => document.querySelectorAll('[data-testid="watch-gloss-entry"]').length === 0,
+        null,
+        { timeout: 10000 },
+    );
+    assert.equal(
+        await authPage.locator('[data-testid="watch-gloss-word"]').count(),
+        0,
+        'an endpoint-empty sentence still shows payload words',
+    );
+    await authPage.keyboard.press('ArrowRight');
+    await waitForOverlay(authPage, 'A short walk');
+    await waitForRailText(authPage, '早餐');
+    assert.deepEqual(
+        await glossBlockIds(authPage),
+        ['1'],
+        'the endpoint-empty sentence leaked a rolling entry',
+    );
+    const authWords = await authPage.locator('[data-testid="watch-gloss-word"]').allInnerTexts();
+    assert.equal(authWords.length, 1, `expected one endpoint word, got ${JSON.stringify(authWords)}`);
+    assert.ok(
+        authWords[0].includes('breakfast') && authWords[0].includes('早餐'),
+        `endpoint word missing from the rolling gloss: ${authWords[0]}`,
+    );
+    const authoritativeRailText = await authPage.locator('[data-testid="watch-gloss-rail"]').innerText();
+    assert.ok(
+        !authoritativeRailText.includes('散步'),
+        'the payload word walk survived the endpoint override',
+    );
+    assert.deepEqual(authErrors, [], `authoritative page errors: ${JSON.stringify(authErrors)}`);
+    summary.screenshots.push(shot('1440-p2-13-authoritative'));
+    await authPage.screenshot({ path: shot('1440-p2-13-authoritative') });
+    summary.authoritative = {
+        emptyBlock: 'no ruby, no word entry',
+        endpointWord: 'breakfast/早餐',
+        payloadWordsDropped: ['habits', 'walk'],
+    };
+    await authContext.close();
 
     // ═════════════════════════════════════════════════════════════════════
     // 1440 — P2-10 page fullscreen lifecycle (stubbed, deterministic)
