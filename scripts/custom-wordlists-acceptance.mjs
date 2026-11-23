@@ -668,6 +668,18 @@ assert.equal(await page.getByTestId('wl-1:abundant-add-mine').count(), 0,
     '已收藏的行也不得渲染 加入我的单词');
 assert.doesNotMatch(await page.getByTestId('vocab-custom-detail-abundant').innerText(), /加入我的单词|已加入/,
     'the favorited expanded row still carries no favorite action');
+
+// P1-22 手风琴：展开另一行 → 上一行自动收起；再点当前行 → 收起。
+await page.getByTestId('vocab-custom-expand-candid').click();
+await page.getByTestId('vocab-custom-detail-candid').waitFor();
+assert.equal(await page.getByTestId('vocab-custom-detail-abundant').count(), 0,
+    '展开另一行时，上一行自动收起');
+assert.equal(await page.locator('[data-testid^="vocab-custom-detail-"]').count(), 1,
+    '自定义词表同一时刻只有一行展开');
+await page.getByTestId('vocab-custom-expand-candid').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-custom-detail-"]').length === 0);
+assert.equal(await page.getByTestId('vocab-custom-expand-candid').evaluate((el) => el.closest('[aria-expanded]')?.getAttribute('aria-expanded') ?? null), 'false',
+    '再点同一行收起');
 const savedAbundant = state.favorites.find((fav) => fav.en_text === 'abundant');
 assert.equal(savedAbundant.id, 'vocab-fav-abundant');
 assert.equal(savedAbundant.source_kind, 'wordlist');
@@ -744,8 +756,18 @@ assert.equal(await page.getByTestId('vocab-custom-total').innerText(), '找到 1
 await page.getByTestId('vocab-custom-search-clear').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 2);
 
+// P1-22：切 tab 清空展开。§D2 的行点击（隐藏中文）已经把 abundant 展开且
+// 仍在单开状态里；先确认它，再收起/重开一次，最后用切 tab 验证清空。
+assert.equal(await page.getByTestId('vocab-custom-detail-abundant').count(), 1,
+    'D2 展开的行保持在单开手风琴里');
+await page.getByTestId('vocab-custom-expand-abundant').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-custom-detail-"]').length === 0);
+await page.getByTestId('vocab-custom-expand-abundant').click();
+await page.getByTestId('vocab-custom-detail-abundant').waitFor();
 await page.getByTestId('vocab-tab-custom-wl-2').click();
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 50);
+assert.equal(await page.locator('[data-testid^="vocab-custom-detail-"]').count(), 0,
+    '切 tab 清空展开');
 assert.equal(await page.getByTestId('vocab-page-status').innerText(), '第 1 / 2 页');
 await page.getByTestId('vocab-page-size').click();
 await page.getByTestId('vocab-page-size-menu').waitFor();

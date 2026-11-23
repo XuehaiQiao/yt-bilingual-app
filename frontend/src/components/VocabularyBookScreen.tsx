@@ -486,7 +486,11 @@ export function VocabularyBookScreen({
     }, [activeCustomListId, customLists, customListsPhase]);
 
     // ── My words: expand + batched CEFR lookup ────────────────────────────
-    const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+    // Accordion (P1-22): 我的收藏 / 已掌握 / 内置词表 / 自定义词表 share ONE open
+    // row instead of a per-row map — opening another row closes the previous
+    // one, a second click collapses it, and a tab switch clears it
+    // (specs/005 §词表手风琴). `null` = every row collapsed.
+    const [expandedId, setExpandedId] = useState<string | null>(null);
     const [levels, setLevels] = useState<Record<string, string | null>>({});
     const [levelPhase, setLevelPhase] = useState<Phase>('idle');
     const [levelError, setLevelError] = useState('');
@@ -2264,8 +2268,10 @@ export function VocabularyBookScreen({
         return () => { cancelled = true; };
     }, [activeIsMine, activeIsMastered, levelWords, levels, levelNonce]);
 
+    // Accordion (P1-22): clicking the open row collapses it; any other row
+    // becomes the single open one.
     const toggleExpanded = useCallback((id: string) => {
-        setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+        setExpandedId((prev) => (prev === id ? null : id));
     }, []);
 
     const openSource = useCallback((source: ResolvedFavoriteSource, start: number) => {
@@ -2339,11 +2345,47 @@ export function VocabularyBookScreen({
     const [phraseError, setPhraseError] = useState('');
     const [phraseNonce, setPhraseNonce] = useState(0);
     const [phraseRevealed, setPhraseRevealed] = useState<Set<string>>(new Set());
-    const [phraseExpanded, setPhraseExpanded] = useState<Set<string>>(new Set());
+    // Accordion (P1-22): at most one phrase row is open. The detail cache and
+    // its request belong to that row only, so switching rows aborts the old
+    // request and drops the old payload instead of keeping a second detail.
+    const [phraseExpandedId, setPhraseExpandedId] = useState<string | null>(null);
     const [phraseDetails, setPhraseDetails] = useState<Record<string, PhraseDetail>>({});
     const [phraseDetailPhase, setPhraseDetailPhase] = useState<Record<string, Phase>>({});
     const [phraseDetailError, setPhraseDetailError] = useState<Record<string, string>>({});
     const phraseDetailControllers = useRef<Map<string, AbortController>>(new Map());
+
+    /** Drop one row's cached detail and cancel its in-flight request. */
+    const closePhraseDetail = useCallback((id: string) => {
+        phraseDetailControllers.current.get(id)?.abort();
+        phraseDetailControllers.current.delete(id);
+        setPhraseDetails((prev) => {
+            if (!(id in prev)) return prev;
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+        setPhraseDetailPhase((prev) => {
+            if (!(id in prev)) return prev;
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+        setPhraseDetailError((prev) => {
+            if (!(id in prev)) return prev;
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
+    }, []);
+
+    /** Drop every cached phrase detail and cancel all in-flight requests. */
+    const clearPhraseDetails = useCallback(() => {
+        phraseDetailControllers.current.forEach((controller) => controller.abort());
+        phraseDetailControllers.current.clear();
+        setPhraseDetails({});
+        setPhraseDetailPhase({});
+        setPhraseDetailError({});
+    }, []);
 
     // ── 词族（CEFR 10k word family）: read-only, own search/page/filter state
     // specs/041. Separate state for the same reason as the phrase list: a
@@ -2384,7 +2426,11 @@ export function VocabularyBookScreen({
         setPhraseLevel('');
         setPhraseType('');
         setPhraseRevealed(new Set());
-        setPhraseExpanded(new Set());
+        // P1-22: the open row never survives a tab switch, and neither does
+        // the phrase detail cache / its in-flight request.
+        setExpandedId(null);
+        setPhraseExpandedId(null);
+        clearPhraseDetails();
         // 词族 tab (specs/041) restarts clean too: first page, no search/filter,
         // frequency order, every member list collapsed.
         setFamilyQuery('');
@@ -2420,7 +2466,7 @@ export function VocabularyBookScreen({
         setMineQuery('');
         setMineDebouncedQuery('');
         setMinePage(1);
-    }, [catalogById, editBusy, resetEdit]);
+    }, [catalogById, editBusy, resetEdit, clearPhraseDetails]);
 
 
     // Persist the global switch. A storage failure is non-fatal (private mode).
@@ -2544,12 +2590,14 @@ export function VocabularyBookScreen({
         return () => window.clearTimeout(timer);
     }, [phraseQuery, phraseDebouncedQuery]);
 
-    // New page/search/filter: drop temporary Chinese reveals and open details
-    // so a stale row never stays expanded across a different result set.
+    // New page/search/filter: drop temporary Chinese reveals, the open detail
+    // and its cache so a stale row never stays expanded (or keeps a stale
+    // payload) across a different result set.
     useEffect(() => {
         setPhraseRevealed(new Set());
-        setPhraseExpanded(new Set());
-    }, [phrasePage, phraseDebouncedQuery, phraseLevel, phraseType]);
+        setPhraseExpandedId(null);
+        clearPhraseDetails();
+    }, [phrasePage, phraseDebouncedQuery, phraseLevel, phraseType, clearPhraseDetails]);
 
     useEffect(() => {
         if (activeTab !== PHRASES_TAB) {
@@ -2689,16 +2737,20 @@ export function VocabularyBookScreen({
             });
     }, [phraseDetails, phraseDetailPhase]);
 
+    // Accordion (P1-22): one open phrase row at a time. Opening another row
+    // cancels the previous row's in-flight detail request and drops its
+    // payload; collapsing the open row clears its detail too, so a second
+    // detail can never coexist with the visible one.
     const togglePhraseExpand = useCallback((id: string) => {
-        const willExpand = !phraseExpanded.has(id);
-        setPhraseExpanded((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-        if (willExpand) loadPhraseDetail(id);
-    }, [phraseExpanded, loadPhraseDetail]);
+        if (phraseExpandedId === id) {
+            setPhraseExpandedId(null);
+            closePhraseDetail(id);
+            return;
+        }
+        if (phraseExpandedId) closePhraseDetail(phraseExpandedId);
+        setPhraseExpandedId(id);
+        loadPhraseDetail(id);
+    }, [phraseExpandedId, closePhraseDetail, loadPhraseDetail]);
 
     const togglePhraseReveal = useCallback((id: string) => {
         setPhraseRevealed((prev) => {
@@ -3143,7 +3195,7 @@ export function VocabularyBookScreen({
             const SourceIcon = SOURCE_ICON[source.source.kind];
             const masteredKey = normalizeMasteryWord(word);
             const isReviewed = reviewedWords.has(masteredKey);
-            const isExpanded = Boolean(expanded[fav.id]);
+            const isExpanded = expandedId === fav.id;
             const addedAtLabel = fav.added_at ? formatDate(fav.added_at) : t('vocab.timeUnknown');
             const knownLevel = word in levels;
             const levelLabel = levels[word] ?? null;
@@ -3572,7 +3624,7 @@ export function VocabularyBookScreen({
 
         const rows: WordTableRow[] = (phraseData?.items ?? []).map((item: PhraseEntry) => {
             const rowKey = `phrase:${item.id}`;
-            const isExpanded = phraseExpanded.has(item.id);
+            const isExpanded = phraseExpandedId === item.id;
             const isRevealed = phraseRevealed.has(item.id);
             const chineseHidden = hideChinese && !isRevealed;
             const detail = phraseDetails[item.id];
@@ -3941,7 +3993,7 @@ export function VocabularyBookScreen({
             const fav = favoriteByWord.get(row.key);
             const level = levelBadgeFor(row.word);
             const expandKey = `mastered:${row.key}`;
-            const isExpanded = Boolean(expanded[expandKey]);
+            const isExpanded = expandedId === expandKey;
             const source = fav ? sourceText(fav) : null;
             const SourceIcon = source ? SOURCE_ICON[source.source.kind] : null;
             return {
@@ -4417,7 +4469,7 @@ export function VocabularyBookScreen({
             const mastered = masteredWords.has(wordKey);
             const masterState = masterAdds[rowKey];
             const expandKey = `custom:${itemKey}`;
-            const isExpanded = Boolean(expanded[expandKey]);
+            const isExpanded = expandedId === expandKey;
             return {
                 key: itemKey,
                 word: item.word,
@@ -4862,7 +4914,7 @@ export function VocabularyBookScreen({
             const wordKey = normalizeMasteryWord(item.word);
             const favored = favoritedWordKeys.has(wordKey);
             const mastered = masteredWords.has(wordKey);
-            const isExpanded = Boolean(expanded[`list:${rowKey}`]);
+            const isExpanded = expandedId === `list:${rowKey}`;
             return {
                 key: `${item.word}-${index}`,
                 word: item.word,

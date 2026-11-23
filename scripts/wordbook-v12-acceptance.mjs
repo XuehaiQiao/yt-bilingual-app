@@ -1062,6 +1062,79 @@ assert.doesNotMatch(await page.getByTestId('phrase-detail-p2').innerText(), /加
     'the expanded phrase detail must not render a favorite action');
 await shot('1440-phrases-added');
 
+// ═══ E1b) P1-22 手风琴：每个词表只展开一行 ═════════════════════════════
+// 展开另一行 → 上一行自动收起；再点当前行 → 收起；切 tab 清空。
+// The phrase surface is exercised first (p2 is open right now).
+assert.equal(await page.locator('[data-testid^="phrase-detail-p"]').count(), 1,
+    '短语同一时刻只有一行展开');
+await page.locator('[data-testid="phrase-row"]').first().click();
+await page.waitForSelector('[data-testid="phrase-detail-p1"]');
+assert.equal(await page.getByTestId('phrase-detail-p2').count(), 0,
+    '展开另一条短语时，上一条自动收起');
+assert.equal(await page.locator('[data-testid^="phrase-detail-p"]').count(), 1,
+    '短语同一时刻只有一行展开');
+await page.locator('[data-testid="phrase-row"]').first().click();
+await page.waitForFunction(() => document.querySelectorAll('[id^="phrase-detail-"]').length === 0);
+assert.equal(await page.getByTestId('phrase-detail-p1').count(), 0, '再点同一行收起');
+await page.locator('[data-testid="phrase-row"]').first().click();
+await page.waitForSelector('[data-testid="phrase-detail-p1"]');
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-list"]');
+await page.getByTestId('vocab-tab-phrases').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="phrase-row"]').length === 2);
+assert.equal(await page.locator('[data-testid^="phrase-detail-p"]').count(), 0,
+    '切 tab 清空短语展开');
+await shot('p1-22-accordion-phrases');
+
+// 我的收藏: single open row + click-again collapse + tab switch clears it.
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-list"]');
+await page.getByTestId('vocab-mine-expand-fav-w050').click();
+await page.waitForSelector('[data-testid="vocab-mine-detail-fav-w050"]');
+await page.getByTestId('vocab-mine-expand-fav-w051').click();
+await page.waitForSelector('[data-testid="vocab-mine-detail-fav-w051"]');
+assert.equal(await page.getByTestId('vocab-mine-detail-fav-w050').count(), 0,
+    '展开另一行时，上一行自动收起');
+assert.equal(await page.locator('[data-testid^="vocab-mine-detail-"]').count(), 1,
+    '我的收藏同一时刻只有一行展开');
+await page.getByTestId('vocab-mine-expand-fav-w051').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-detail-"]').length === 0);
+assert.equal(await page.getByTestId('vocab-mine-expand-fav-w051').evaluate((el) => el.closest('[aria-expanded]')?.getAttribute('aria-expanded') ?? null), 'false',
+    '再点同一行收起');
+await page.getByTestId('vocab-mine-expand-fav-w050').click();
+await page.waitForSelector('[data-testid="vocab-mine-detail-fav-w050"]');
+await page.getByTestId('vocab-tab-gre').click();
+await page.waitForSelector('[data-testid="vocab-word-list"]');
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mine-toggle-"]').length > 0);
+assert.equal(await page.locator('[data-testid^="vocab-mine-detail-"]').count(), 0,
+    '切 tab 清空我的收藏展开');
+
+// 内置词表 (GRE): same accordion contract.
+await page.getByTestId('vocab-tab-gre').click();
+await page.waitForSelector('[data-testid="vocab-word-list"]');
+await page.getByTestId('vocab-list-expand-gre:abundant').click();
+await page.waitForSelector('[data-testid="vocab-list-detail-gre:abundant"]');
+await page.getByTestId('vocab-list-expand-gre:brisk').click();
+await page.waitForSelector('[data-testid="vocab-list-detail-gre:brisk"]');
+assert.equal(await page.getByTestId('vocab-list-detail-gre:abundant').count(), 0,
+    '展开另一行时，上一行自动收起');
+assert.equal(await page.locator('[data-testid^="vocab-list-detail-"]').count(), 1,
+    '内置词表同一时刻只有一行展开');
+await page.getByTestId('vocab-list-expand-gre:brisk').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-list-detail-"]').length === 0);
+assert.equal(await page.getByTestId('vocab-list-expand-gre:brisk').evaluate((el) => el.closest('[aria-expanded]')?.getAttribute('aria-expanded') ?? null), 'false',
+    '再点同一行收起');
+await page.getByTestId('vocab-list-expand-gre:abundant').click();
+await page.waitForSelector('[data-testid="vocab-list-detail-gre:abundant"]');
+await page.getByTestId('vocab-tab-cet6').click();
+await page.waitForSelector('[data-testid="vocab-empty"]');
+await page.getByTestId('vocab-tab-gre').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-list-row"]').length === 3);
+assert.equal(await page.locator('[data-testid^="vocab-list-detail-"]').count(), 0,
+    '切 tab 清空内置词表展开');
+await shot('p1-22-accordion-list');
+
 // ═══ E2) P0-14 edit mode: every list has 编辑 / checkbox / batch actions ═
 // Non-edit state renders no checkboxes anywhere; 编辑 opens the leading
 // checkbox column + the sticky bar and disables the row star/check so a batch

@@ -465,6 +465,31 @@ assert.deepEqual(state.favoriteWrites, [], 'clicking the 已掌握 star must not
 assert.deepEqual(state.patches, [], 'clicking the 已掌握 star must not PATCH a mastery mark');
 await shot('mastered-table');
 
+// ── B1b) P1-22 手风琴：已掌握同一时刻只展开一行 ──────────────────────────
+// 展开另一行 → 上一行自动收起；再点同一行 → 收起；切 tab 清空。
+const masteredExpand = (key) => page.getByTestId(`vocab-mastered-expand-${key}`);
+await masteredExpand('abundant').click();
+await page.waitForSelector('[data-testid="vocab-mastered-detail-abundant"]');
+await masteredExpand('reluctant').click();
+await page.waitForSelector('[data-testid="vocab-mastered-detail-reluctant"]');
+assert.equal(await page.getByTestId('vocab-mastered-detail-abundant').count(), 0,
+    '展开另一行时，上一行自动收起');
+assert.equal(await page.locator('[data-testid^="vocab-mastered-detail-"]').count(), 1,
+    '已掌握同一时刻只有一行展开');
+await masteredExpand('reluctant').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid^="vocab-mastered-detail-"]').length === 0);
+assert.equal(await masteredExpand('reluctant').evaluate((el) => el.closest('[aria-expanded]')?.getAttribute('aria-expanded') ?? null), 'false',
+    '再点同一行收起');
+await masteredExpand('abundant').click();
+await page.waitForSelector('[data-testid="vocab-mastered-detail-abundant"]');
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-list"]');
+await page.getByTestId('vocab-tab-mastered').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-mastered-row"]').length === 50);
+assert.equal(await page.locator('[data-testid^="vocab-mastered-detail-"]').count(), 0,
+    '切 tab 清空已掌握展开');
+await shot('mastered-accordion');
+
 // ── B2) P0-16 default sort: 加入时间 (createdAt new → old, tie by word) ────
 // The fixture's created order differs from alphabetical, so this proves the
 // default reads `createdAt` from GET /api/review/words rather than sorting by

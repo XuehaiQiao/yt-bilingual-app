@@ -728,6 +728,23 @@ assert.equal(
     '全部收起',
 );
 
+// P1-22：切 tab 清空。词族与其它词表共用「切 tab 收起」规则：回到词族时
+// 没有任何族展开，也不会复活刚才那一族。
+await page.getByTestId('vocab-family-row-F0003').click();
+await page.getByTestId('vocab-family-detail-F0003').waitFor();
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-panel"]');
+await openFamilyTab(page);
+await page.waitForFunction(
+    () => document.querySelectorAll('[data-testid^="vocab-family-row-"]').length === 50,
+    { timeout: 10000 },
+);
+assert.equal(
+    await page.locator('[data-testid^="vocab-family-detail-"]').count(),
+    0,
+    '切 tab 清空展开',
+);
+
 // ── D) search matches any member, not just the head ─────────────────────
 await page.getByTestId('vocab-family-search').fill('reflection');
 await page.waitForFunction(

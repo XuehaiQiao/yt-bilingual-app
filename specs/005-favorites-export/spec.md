@@ -1,6 +1,6 @@
 # 规格：单词本与导出
 
-**状态：** 已实现（M1 ④ 按条 API：2026-11-15；生词折叠与出处：2026-11-16；独立「单词本」页面：2026-11-17；短语 tab：2026-11-17；全词表编辑模式：2026-11-23；编辑态全选（按筛选结果跨页）：2026-11-23；已掌握默认加入时间 + 全词表导出：2026-11-23）｜ **对应代码：** `backend/routes_user.py`（`/api/favorites`）、`backend/routes_vocabulary.py`（词表目录/短语/分页/等级）、`backend/storage.py`（路径 + 墓碑文件）、`backend/vocabulary.py`、`frontend/src/lib/favorites.ts`、`frontend/src/lib/vocabulary.ts`、`frontend/src/lib/favoriteSource.ts`、`frontend/src/components/VocabularyBookScreen.tsx`、`frontend/src/App.tsx`、`frontend/src/lib/exporter.ts`
+**状态：** 已实现（M1 ④ 按条 API：2026-11-15；生词折叠与出处：2026-11-16；独立「单词本」页面：2026-11-17；短语 tab：2026-11-17；全词表编辑模式：2026-11-23；编辑态全选（按筛选结果跨页）：2026-11-23；已掌握默认加入时间 + 全词表导出：2026-11-23；所有词表手风琴：2026-11-23）｜ **对应代码：** `backend/routes_user.py`（`/api/favorites`）、`backend/routes_vocabulary.py`（词表目录/短语/分页/等级）、`backend/storage.py`（路径 + 墓碑文件）、`backend/vocabulary.py`、`frontend/src/lib/favorites.ts`、`frontend/src/lib/vocabulary.ts`、`frontend/src/lib/favoriteSource.ts`、`frontend/src/components/VocabularyBookScreen.tsx`、`frontend/src/App.tsx`、`frontend/src/lib/exporter.ts`
 
 ---
 
@@ -99,6 +99,23 @@
 - **必须**：词表行**点击任意空白处即展开/收起**（发音、星标、已掌握对勾、勾选、链接等内层控件需
   `stopPropagation`）；右端箭头保留为可视提示，不再是唯一热区。
 - 可访问性：行应有 `aria-expanded`；键盘 Enter/Space 同效；展开不改变行高稳定性。
+
+### 词表手风琴（2026-11-23，P1-22）
+
+**目标：任何词表同一时刻只展开一行，展开区不再堆叠。**
+
+- **必须**：**我的收藏 / 已掌握 / 内置词表（CEFR·GRE·CET4·CET6）/ 自定义词表**共用同一份
+  展开状态（单一「当前展开行 id」，`null` = 全部收起）：展开 A 后再展开 B，A 自动收起；
+  再点当前展开行收起；同一时刻最多一行有展开区。
+- **必须**：**短语**同样是单开手风琴，且详情异步加载跟随当前行：切到另一行时取消上一行的
+  未完成请求并丢弃它的详情缓存；收起当前行清空该行详情；换页/搜索/筛选/切 tab 一律收起并清空
+  缓存，不出现过期详情串到别的行。
+- **必须**：**切 tab 清空**——任何 tab 切换都收起当前展开行（词表与短语各一次）；编辑模式
+  仍不展开（点击行 = 选择）；星标、已掌握对勾、展开区内容/操作、行底色与 testid 全部不变。
+- **必须**：词族（specs/041）已有的单开手风琴保持不变，并与上述规则一致（切 tab 收起）。
+- 验收：`wordbook-v12` / `mastered-tab` / `custom-wordlists` / `word-family` 四个脚本分别断言
+  「单开、切换自动收起、再点收起、切 tab 清空」，各跑 2 次 PASS；`tsc -b` / `build` /
+  `check:i18n` / `gate-receipt` 绿；1440/375 无回归。
 
 ### 统一词表 UI（2026-11-22 重设计）
 
@@ -249,6 +266,7 @@
 - [x] （P0-16）已掌握默认按 `createdAt` 加入时间倒序（同时间按字母），菜单含「加入时间」并显示当前值；客户端分页不变。
 - [x] （P0-16）我的收藏 / 已掌握 / 短语 / 内置 CEFR·GRE·CET4·CET6 / 自定义词表均有 TSV + CSV 导出（无数据禁用）；导出尊重当前搜索/筛选/排序并跨页，失败只 toast 不写半份。
 - [x] （P0-16）导出文件名带列表标识与日期；已掌握/内置/短语/自定义列头与行数符合卡片；`exportTable` 复用 BOM/转义；我的收藏维持原格式。
+- [x] （P1-22）所有词表（我的收藏/已掌握/内置/自定义/短语）为单开手风琴：展开另一行自动收起上一行、再点当前行收起、切 tab 清空；短语切行取消旧详情请求并清空缓存；词族单开不变；编辑态/全选/展开区内容与 testid 不变。
 - [x] （P0-10）tab「我的单词」显示名 zh「我的收藏」、vi「Từ đã lưu của tôi」，页面 copy/搜索 placeholder 一致，路由与 tab id 不变。
 - [x] （P0-10）固定词表行底色：已掌握 `bg-success/10`、收藏 `bg-warning/10`、无状态默认；已掌握优先；我的收藏/已掌握 tab 无底色；1440/375 无溢出。
 - [x] 来源可跳回：视频/本地剧集、文章、免费文章、句子精背、公版书、导入书；无来源时显示「来源未知」且不可点。
