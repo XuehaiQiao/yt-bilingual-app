@@ -34,9 +34,9 @@ import { allowAi } from '../lib/aiGate';
 import { useAuth } from '../lib/auth';
 import { SubHeader } from './ui/SubHeader';
 import { ReadingVocabButton } from './ReadingVocabButton';
-import type { FavoriteItem } from '../lib/favorites';
+import { ReadingHighlightRail } from './reading/ReadingHighlightRail';
+import type { FavoriteDraft, FavoriteItem } from '../lib/favorites';
 import { useReadingHighlights } from '../lib/useReadingHighlights';
-import { selectMyWords } from '../lib/myWords';
 import { ReadingLayout } from './layout/ReadingLayout';
 import { ReadingSurface, type ReadingSurfaceParagraph } from './reading/ReadingSurface';
 import {
@@ -69,6 +69,9 @@ interface BookReaderScreenProps {
     favorites: readonly FavoriteItem[];
     /** Same entry as the video page: navigate to the word-book full page. */
     onOpenWordbook: () => void;
+    /** App-owned optimistic favorite writes; the rail's star uses them. */
+    onAddFavorite: (draft: FavoriteDraft) => Promise<FavoriteItem>;
+    onRemoveFavorite: (id: string) => Promise<boolean>;
 }
 
 const errorKey = (status: number, fallback: TranslationKey): TranslationKey => {
@@ -199,6 +202,8 @@ export function BookReaderScreen({
     onWordLookup,
     favorites,
     onOpenWordbook,
+    onAddFavorite,
+    onRemoveFavorite,
 }: BookReaderScreenProps) {
     const { t, language, formatNumber } = useI18n();
     const [detail, setDetail] = useState<BookDetail | null>(null);
@@ -571,7 +576,6 @@ export function BookReaderScreen({
             railLanguagePoints.push(point);
         }
     }
-    const railVocabulary = selectMyWords(favorites);
 
     const rail = detail && chapters.length > 0 ? (
         <>
@@ -668,48 +672,22 @@ export function BookReaderScreen({
                 </section>
             )}
 
-            <section
-                data-testid="book-rail-vocabulary"
-                className="rounded-panel border border-line-subtle bg-surface/40 p-4 sm:p-5"
-            >
-                <h3 className="text-caption font-semibold text-fg-primary">{t('vocab.title')}</h3>
-                <p className="mt-1 text-micro text-fg-muted">
-                    {t('vocab.total', { count: formatNumber(railVocabulary.length) })}
-                </p>
-                {railVocabulary.length > 0 ? (
-                    <ul className="mt-2 flex flex-col gap-1">
-                        {railVocabulary.slice(0, 6).map((item) => (
-                            <li key={item.id} className="min-w-0">
-                                <button
-                                    type="button"
-                                    onClick={onOpenWordbook}
-                                    className="flex w-full min-w-0 items-baseline gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-state-hover"
-                                >
-                                    <span className="min-w-0 truncate text-ui font-medium text-fg-strong">
-                                        {item.en_text}
-                                    </span>
-                                    {item.zh_text && (
-                                        <span className="min-w-0 flex-1 truncate text-micro text-fg-muted">
-                                            {item.zh_text}
-                                        </span>
-                                    )}
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p className="mt-2 text-micro leading-relaxed text-fg-muted">
-                        {t('vocab.empty.mine')}
-                    </p>
-                )}
-                <button
-                    type="button"
-                    onClick={onOpenWordbook}
-                    className="mt-3 text-caption font-medium text-brand-300 transition-colors hover:text-brand-400"
-                >
-                    {t('vocab.title')}
-                </button>
-            </section>
+            <ReadingHighlightRail
+                testIdPrefix="book"
+                texts={chapter ? chapter.paragraphs.map((paragraph) => paragraph.en) : []}
+                glossesByBlock={analysis.wordGlossesByBlock}
+                enabled={highlight.enabled}
+                isHighlighted={highlight.isHighlighted}
+                wordLevels={highlight.wordLevels}
+                favorites={favorites}
+                sourceKind="book"
+                sourceRef={bookId}
+                sourceTitle={detail.title}
+                isGuest={status !== 'authenticated'}
+                onRequestLogin={onRequestLogin}
+                onAddFavorite={onAddFavorite}
+                onRemoveFavorite={onRemoveFavorite}
+            />
         </>
     ) : undefined;
 
