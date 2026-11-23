@@ -26,6 +26,11 @@ ECDICT（``data/ecdict.db``，以 ``mode=ro&immutable=1`` 只读打开、按批 
 查询；音标/释义归一化沿用 lexicon 构建口径，见 ``build_word_lists.clean_*``）；
 仍缺者留 ``""``，不编造。ECDICT 只补 lexicon 缺的字段，已有值一律不覆盖。
 
+成员释义补全（P1-14）：lexicon 与 ECDICT 都为空的 ``translation``，再由
+``content/wordlist/ai-member-translations.v1.json`` 的 AI 生成释义补齐（仅空值、
+不覆盖、不补音标）。该文件 ``reviewed=false``，未人工复核；缺文件/格式不合法
+直接报错退出（不静默生成低覆盖数据）。合并优先级固定 lexicon > ECDICT > AI。
+
 成员词性（P1-13）：每个成员带 ``pos``——该 lemma 在 WordNet 3.0 全部 synset 的
 POS 集合，按 ``n/v/a/s/r`` 规范顺序去重；该词没有任何 synset 时为 ``[]``。
 POS 只作为**展示分组**依据（动词/名词/形容词/副词/其他），不参与构图、不改族
@@ -40,9 +45,11 @@ POS 只作为**展示分组**依据（动词/名词/形容词/副词/其他）�
     python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data --check
     python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data \\
         --ecdict data/ecdict.db --no-write
+    python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data \\
+        --ai-translations content/wordlist/ai-member-translations.v1.json
 
 退出码：0 正常；2 WordNet 依赖/语料不可用；3 人工清单漂移 / 数据契约不符 /
-ECDICT 不可用；4 输入文件在运行期间被改动。
+ECDICT 不可用 / AI 释义文件缺失或格式坏；4 输入文件在运行期间被改动。
 """
 
 from __future__ import annotations
@@ -64,6 +71,7 @@ import word_family_open_audit as audit  # noqa: E402  （同目录只读审计�
 # 音标/释义归一化与 lexicon.v1.json 同源：首个含中文行、压缩空白、超 120 字符
 # 截断。复用 build_word_lists 的实现，避免两套口径。
 from build_word_lists import (  # noqa: E402
+    CJK_RE,
     TRANSLATION_LIMIT,
     clean_phonetic,
     clean_translation,
@@ -78,9 +86,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FREQUENCY = REPO_ROOT / "content/wordlist/frequency_bands.v1.json"
 DEFAULT_LEXICON = REPO_ROOT / "content/wordlists/lexicon.v1.json"
 DEFAULT_ECDICT = REPO_ROOT / "data/ecdict.db"
+DEFAULT_AI_TRANSLATIONS = (
+    REPO_ROOT / "content/wordlist/ai-member-translations.v1.json")
 DEFAULT_OUT = REPO_ROOT / "content/wordlist/word-families.v1.json"
 DEFAULT_WORDNET_DIR = Path("/tmp/nltk_data")
 SCHEMA_LEXICON = "linguatrek.lexicon.v1"
+SCHEMA_AI_TRANSLATIONS = "linguatrek.ai-member-translations.v1"
+AI_SOURCE = "ai-generated"
 # SQLite 单条语句的变量数上限默认 999（旧版本）；900 留余量，避免撞上限。
 ECDICT_BATCH_SIZE = 900
 ECDICT_TABLE = "stardict"
@@ -105,6 +117,9 @@ EXPECTED_COUNTS: Mapping[str, object] = {
     # P1-13：每个成员在 WordNet 都能查到至少一个 synset；无 POS 的成员为 0。
     "membersWithPos": 11534,
     "membersWithoutPos": 0,
+    # P1-14：AI override 补齐后释义全覆盖；音标不补、维持 P1-12 的 10,466。
+    "membersWithTranslation": 11534,
+    "membersWithPhonetic": 10466,
 }
 
 # CEFR 等级展示顺序（与频表锚点一致；数据里 levels 按此排序）。
@@ -480,6 +495,91 @@ def load_lexicon_entries(path: str | Path) -> Tuple[Dict[str, str], Dict[str, st
     return phonetics, translations, source
 
 
+def load_ai_translations(
+    path: str | Path,
+) -> Tuple[Dict[str, str], Dict[str, object]]:
+    """读取 AI 生成的成员中文释义 override，返回 ``(translations, source)``。
+
+    文件形状（P1-14，见 ``content/wordlist/ai-member-translations.v1.json``）::
+
+        {"schema": "linguatrek.ai-member-translations.v1",
+         "source": "ai-generated", "generatedAt": "2026-11-23",
+         "reviewed": false, "entries": {"word": "中文释义", ...}}
+
+    词族成员里 lexicon/ECDICT 仍缺 ``translation`` 时由这里补；音标不补。
+    缺文件、JSON 坏、schema/来源/日期/复核标记不符、entries 非对象或空、
+    键非小写、值为空/不含中文/超 120 字符，全部抛 :class:`BuildError`
+    （错误信息带文件路径与具体词条，不静默回退成「没有 override」）。
+    """
+    ai_path = Path(path)
+    try:
+        raw_text = ai_path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise BuildError(
+            f"AI 释义文件不存在：{ai_path}（--ai-translations 指向 "
+            f"content/wordlist/ai-member-translations.v1.json）") from exc
+    except (OSError, UnicodeDecodeError) as exc:
+        raise BuildError(f"AI 释义文件读取失败：{ai_path}（{exc}）") from exc
+    try:
+        document = json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        raise BuildError(f"AI 释义文件不是合法 JSON：{ai_path}（{exc}）") from exc
+    _require(isinstance(document, dict), f"AI 释义文件必须是 JSON 对象：{ai_path}")
+    _require(
+        document.get("schema") == SCHEMA_AI_TRANSLATIONS,
+        f"AI 释义文件 schema 不是 {SCHEMA_AI_TRANSLATIONS}：{ai_path}",
+    )
+    _require(
+        document.get("source") == AI_SOURCE,
+        f"AI 释义文件 source 不是 {AI_SOURCE}：{ai_path}",
+    )
+    _require(
+        isinstance(document.get("reviewed"), bool),
+        f"AI 释义文件 reviewed 必须是布尔值：{ai_path}",
+    )
+    generated_at = document.get("generatedAt")
+    _require(
+        isinstance(generated_at, str) and bool(generated_at.strip()),
+        f"AI 释义文件缺 generatedAt（日期字符串）：{ai_path}",
+    )
+    raw_entries = document.get("entries")
+    _require(
+        isinstance(raw_entries, dict) and bool(raw_entries),
+        f"AI 释义文件 entries 必须是非空对象：{ai_path}",
+    )
+    translations: Dict[str, str] = {}
+    for word, value in raw_entries.items():
+        _require(
+            isinstance(word, str) and word and word == word.lower().strip(),
+            f"AI 释义键必须是非空小写词：{word!r}（{ai_path}）",
+        )
+        _require(
+            isinstance(value, str),
+            f"AI 释义 entries[{word}] 必须是字符串（{ai_path}）",
+        )
+        text = value.strip()
+        _require(bool(text), f"AI 释义 entries[{word}] 不能为空（{ai_path}）")
+        _require(
+            bool(CJK_RE.search(text)),
+            f"AI 释义 entries[{word}] 必须含中文（{ai_path}）",
+        )
+        _require(
+            len(text) <= TRANSLATION_LIMIT,
+            f"AI 释义 entries[{word}] 超过 {TRANSLATION_LIMIT} 字符（{ai_path}）",
+        )
+        translations[word] = text
+    source: Dict[str, object] = {
+        "path": _repo_relative(ai_path),
+        "schema": SCHEMA_AI_TRANSLATIONS,
+        "source": AI_SOURCE,
+        "generatedAt": generated_at.strip(),
+        "reviewed": bool(document.get("reviewed")),
+        "sha256": hashlib.sha256(ai_path.read_bytes()).hexdigest(),
+        "entries": len(translations),
+    }
+    return translations, source
+
+
 def _ecdict_uri(path: Path) -> str:
     """只读 SQLite URI：绝对路径 + ``mode=ro&immutable=1``（不建库、不写库）。"""
     return f"{path.resolve().as_uri()}?mode=ro&immutable=1"
@@ -619,19 +719,22 @@ def _member_fields(
     lemma: str,
     lexicon: Optional[Mapping[str, Tuple[str, str]]],
     ecdict: Optional[Mapping[str, Tuple[str, str]]] = None,
+    ai_translations: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, str]:
     """一个成员的 ``phonetic`` / ``translation``。
 
-    lexicon 优先；某字段缺失才用 ECDICT 同名字段；两边都缺留空串，不编造。
-    ``lexicon`` 与 ``ecdict`` 都为 ``None`` 时不写这两个字段（纯图结构测试）。
+    音标：lexicon 优先，缺才用 ECDICT；AI 不补音标。
+    释义：lexicon > ECDICT > AI override，逐级只在上一级为空时取下一级。
+    三者都缺留空串，不编造。都传 ``None`` 时不写这两个字段（纯图结构测试）。
     """
-    if lexicon is None and ecdict is None:
+    if lexicon is None and ecdict is None and ai_translations is None:
         return {}
     lex_phonetic, lex_translation = _lexicon_fields(lemma, lexicon)
     ec_phonetic, ec_translation = (ecdict or {}).get(lemma, ("", ""))
+    ai_translation = str((ai_translations or {}).get(lemma, "") or "")
     return {
         "phonetic": lex_phonetic or str(ec_phonetic),
-        "translation": lex_translation or str(ec_translation),
+        "translation": lex_translation or str(ec_translation) or ai_translation,
     }
 
 
@@ -669,6 +772,8 @@ def build_family_document(
         Callable[[Sequence[str]],
                  Tuple[Mapping[str, Tuple[str, str]], Mapping[str, object]]]
     ] = None,
+    ai_translations: Optional[Mapping[str, str]] = None,
+    ai_translation_source: Optional[Mapping[str, object]] = None,
     pos: Optional[Mapping[str, Sequence[str]]] = None,
     pos_source: Optional[Mapping[str, object]] = None,
     pos_provider: Optional[
@@ -684,6 +789,11 @@ def build_family_document(
     ``ecdict_provider`` 接收「lexicon 缺音标或释义」的成员词列表，返回
     ``(entries, source)`` —— CLI 用它做只读批量查询，单测可喂假的。两者
     互斥，缺项仍缺时留空串。
+
+    ``ai_translations``（``lemma -> 中文释义``；见 :func:`load_ai_translations`）
+    只补 lexicon 与 ECDICT 都为空的 ``translation``，不覆盖已有值、不补音标；
+    ``None`` 不启用。键必须是当前族成员（拼错/死条目直接报错）。
+    ``ai_translation_source`` 是写进 ``source.aiTranslations`` 的溯源信息。
 
     ``pos``（``lemma -> POS 字符序列``；见 :func:`load_wordnet_pos`）非空时给
     每个成员写 ``pos``（按 n/v/a/s/r 规范化，查不到的 lemma 写 ``[]``）；
@@ -762,6 +872,22 @@ def build_family_document(
                 "ECDICT 查询结果必须是 word -> (phonetic, translation) 映射",
             )
 
+    # AI override 只补 lexicon/ECDICT 都空的释义；键必须是当前族成员，
+    # 防止拼错或族数据变更后悄悄留下不生效的死条目。
+    if ai_translations is not None:
+        member_words = {
+            member.word for family in table.families for member in family.members}
+        unknown = sorted(set(ai_translations) - member_words)
+        _require(
+            not unknown,
+            "AI 释义 entries 含非词族成员：" + "、".join(unknown[:10]),
+        )
+        for word, value in ai_translations.items():
+            _require(
+                isinstance(value, str) and bool(value.strip()),
+                f"AI 释义 {word} 必须是非空字符串",
+            )
+
     # 词性只用于前端展示分组：覆盖全部族成员，不改构图/成员数。
     if pos_provider is not None:
         _require(
@@ -773,21 +899,36 @@ def build_family_document(
         pos, pos_source = pos_provider(member_words)
         _require(hasattr(pos, "get"), "POS 查询结果必须是 word -> POS 序列映射")
 
-    phonetic_fills = 0
-    translation_fills = 0
+    member_fields = (
+        lexicon is not None or ecdict is not None or ai_translations is not None)
+    ecdict_phonetic_fills = 0
+    ecdict_translation_fills = 0
+    ai_translation_fills = 0
     members_with_pos = 0
+    members_with_phonetic = 0
+    members_with_translation = 0
     families: List[Mapping[str, object]] = []
     for family in table.families:
         members: List[Mapping[str, object]] = []
         for member in family.members:
-            fields = _member_fields(member.word, lexicon, ecdict)
+            fields = _member_fields(
+                member.word, lexicon, ecdict, ai_translations)
             if fields:
                 lex_phonetic, lex_translation = _lexicon_fields(
                     member.word, lexicon)
+                ec_translation = str(
+                    (ecdict or {}).get(member.word, ("", ""))[1])
                 if fields["phonetic"] and not lex_phonetic:
-                    phonetic_fills += 1
+                    ecdict_phonetic_fills += 1
                 if fields["translation"] and not lex_translation:
-                    translation_fills += 1
+                    if ec_translation:
+                        ecdict_translation_fills += 1
+                    elif ai_translations is not None:
+                        ai_translation_fills += 1
+                if fields["phonetic"]:
+                    members_with_phonetic += 1
+                if fields["translation"]:
+                    members_with_translation += 1
             member_pos = _member_pos(member.word, pos)
             if member_pos:
                 members_with_pos += 1
@@ -815,8 +956,11 @@ def build_family_document(
 
     source_ecdict: Dict[str, object] = dict(ecdict_source or {})
     if ecdict is not None:
-        source_ecdict["phoneticFills"] = phonetic_fills
-        source_ecdict["translationFills"] = translation_fills
+        source_ecdict["phoneticFills"] = ecdict_phonetic_fills
+        source_ecdict["translationFills"] = ecdict_translation_fills
+    source_ai: Dict[str, object] = dict(ai_translation_source or {})
+    if ai_translations is not None:
+        source_ai["translationFills"] = ai_translation_fills
     source_pos: Dict[str, object] = dict(pos_source or {})
     if pos is not None:
         source_pos["membersWithoutPos"] = coverage.members - members_with_pos
@@ -836,7 +980,7 @@ def build_family_document(
             f"{family['id']} head 不是 members[0]",
         )
         _require(bool(family["levels"]), f"{family['id']} 缺等级集合")
-        if lexicon is not None or ecdict is not None:
+        if member_fields:
             _require(
                 all(
                     isinstance(member.get("phonetic"), str)
@@ -882,6 +1026,10 @@ def build_family_document(
     if pos is not None:
         counts["membersWithPos"] = members_with_pos
         counts["membersWithoutPos"] = coverage.members - members_with_pos
+    if member_fields:
+        # P1-14：覆盖率写进 counts（后端只校验已知键，多余键无害）。
+        counts["membersWithPhonetic"] = members_with_phonetic
+        counts["membersWithTranslation"] = members_with_translation
     size_distribution = {
         str(size): count for size, count in sorted(Counter(
             len(family["members"]) for family in families).items())
@@ -921,6 +1069,8 @@ def build_family_document(
             },
             **({"lexicon": dict(lexicon_source)} if lexicon_source else {}),
             **({"ecdict": source_ecdict} if source_ecdict else {}),
+            **({"aiTranslations": source_ai}
+               if ai_translations is not None else {}),
             **({"pos": source_pos} if pos is not None else {}),
         },
         "rules": {
@@ -932,7 +1082,8 @@ def build_family_document(
             "blacklist": "17 条人工确认坏边从图中删除（semantic_split + clear_error）",
             "allowlist": "22 条 WordNet 缺失/不对称的人工边加入图中（两侧都在 10k）",
             "aiAudit": "P1-11 应用 2026-11-23 AI 审计 23 条高置信变更：13 条 trim（删 24 个成员及其边）+ 10 条 split（删 11 条桥边）；中/低置信 11 条未应用",
-            "memberFields": "成员 phonetic/translation 优先 lexicon.v1.json；缺项用本地 ECDICT 补（只读、精确小写匹配、首个含中文行、≤120 字符）；仍缺为空串，不编造",
+            "memberFields": "成员 phonetic/translation 优先 lexicon.v1.json；缺项用本地 ECDICT 补（只读、精确小写匹配、首个含中文行、≤120 字符）；translation 仍缺时用 AI 生成 override 补（仅空值、不覆盖、不补音标）；仍缺为空串，不编造",
+            "aiTranslations": "P1-14：lexicon 与 ECDICT 都为空的 115 个成员释义由 AI 生成（content/wordlist/ai-member-translations.v1.json，reviewed=false，未人工复核）；构建时仅填空值，音标不补",
             "memberPos": "成员 pos = 该 lemma 在 WordNet 3.0 全部 synset 的 POS 集合（n/v/a/s/r 规范顺序去重；无 synset 为 []）；只用于展开区按词性分组与折叠行词性徽章，不参与构图",
         },
         "counts": counts,
@@ -977,7 +1128,7 @@ def assert_expected_counts(document: Mapping[str, object]) -> None:
 
 
 def dump_json(document: Mapping[str, object]) -> str:
-    """确定性序列化：无时间戳、紧凑分隔符 + 结尾换行。"""
+    """确定性序列化：无运行时间戳、紧凑分隔符 + 结尾换行。"""
     return json.dumps(document, ensure_ascii=False, separators=(",", ":")) + "\n"
 
 
@@ -1022,6 +1173,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ecdict", default=str(DEFAULT_ECDICT),
                         help="本地 ECDICT 只读库（默认 data/ecdict.db；"
                              "lexicon 缺音标/释义时按批 IN 查询）")
+    parser.add_argument("--ai-translations", default=str(DEFAULT_AI_TRANSLATIONS),
+                        help="AI 生成成员释义 override（默认 "
+                             "content/wordlist/ai-member-translations.v1.json；"
+                             "仅补 lexicon/ECDICT 都空的 translation）")
     parser.add_argument("--wordnet-dir", default=str(DEFAULT_WORDNET_DIR),
                         help="NLTK 数据目录（默认 /tmp/nltk_data）")
     parser.add_argument("--out", default=str(DEFAULT_OUT),
@@ -1038,6 +1193,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     frequency_path = Path(args.frequency)
     lexicon_path = Path(args.lexicon)
     ecdict_path = Path(args.ecdict)
+    ai_path = Path(args.ai_translations)
     out_path = Path(args.out)
 
     try:
@@ -1048,6 +1204,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         lexicon_sha_before = audit.file_sha256(lexicon_path)
         phonetics, translations, lexicon_source = load_lexicon_entries(lexicon_path)
         lexicon = {word: (phonetics[word], translations[word]) for word in phonetics}
+        ai_translations, ai_translation_source = load_ai_translations(ai_path)
         provider = audit.WordNetProvider(args.wordnet_dir)
         records = list(provider.derivation_pointers())
         index = audit.build_edge_index(records)
@@ -1060,6 +1217,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             lexicon=lexicon,
             lexicon_source=lexicon_source,
             ecdict_provider=lambda words: load_ecdict_entries(words, ecdict_path),
+            ai_translations=ai_translations,
+            ai_translation_source=ai_translation_source,
             pos_provider=lambda words: load_wordnet_pos(words, args.wordnet_dir),
         )
         assert_expected_counts(document)
@@ -1071,6 +1230,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 3
 
     source_ecdict = document["source"].get("ecdict") or {}
+    source_ai = document["source"].get("aiTranslations") or {}
     if audit.file_sha256(frequency_path) != sha_before:
         print("[word-families] 频表在运行期间被改动，拒绝写数据", file=sys.stderr)
         return 4
@@ -1080,6 +1240,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if source_ecdict.get("sha256") and file_sha256(ecdict_path) != source_ecdict["sha256"]:
         print("[word-families] ECDICT 在运行期间被改动，拒绝写数据", file=sys.stderr)
         return 4
+    if source_ai.get("sha256") and file_sha256(ai_path) != source_ai["sha256"]:
+        print("[word-families] AI 释义文件在运行期间被改动，拒绝写数据", file=sys.stderr)
+        return 4
 
     text = dump_json(document)
     counts = document["counts"]
@@ -1088,6 +1251,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     with_translation = sum(1 for member in members if member["translation"])
     phonetic_fills = int(source_ecdict.get("phoneticFills", 0) or 0)
     translation_fills = int(source_ecdict.get("translationFills", 0) or 0)
+    ai_fills = int(source_ai.get("translationFills", 0) or 0)
     print(f"schema            : {SCHEMA}")
     print(f"WordNet           : {document['source']['wordnet']['version']}")
     print(f"频表              : {document['source']['frequencyBands']['path']}"
@@ -1101,13 +1265,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
               f"命中 {int(source_ecdict.get('found', 0) or 0):,}）")
     else:
         print("ECDICT            : 未使用（无缺失项）")
+    print(f"AI 释义 override  : {source_ai.get('path', '')}"
+          f"（reviewed={source_ai.get('reviewed')}；"
+          f"条目 {int(source_ai.get('entries', 0) or 0):,}，补 "
+          f"{ai_fills:,}）")
     print(f"规则              : {RULE_VERSION}")
     print(f"词族 / 成员       : {counts['families']:,} / {counts['members']:,}"
           f"（10k 内 {counts['cefrMembers']:,} / 10k 外 {counts['outsideMembers']:,}）")
     print(f"成员音标 / 释义   : {with_phonetic:,} / {with_translation:,}"
           f"（仍缺 {counts['members'] - with_phonetic:,} / "
           f"{counts['members'] - with_translation:,}"
-          f"；ECDICT 补 {phonetic_fills:,} / {translation_fills:,}）")
+          f"；ECDICT 补 {phonetic_fills:,} / {translation_fills:,}；"
+          f"AI 补释义 {ai_fills:,}）")
     print(f"成员词性 POS      : {counts.get('membersWithPos', 0):,} / {counts['members']:,}"
           f"（无 POS {counts.get('membersWithoutPos', 0):,}；"
           f"顺序 {'/'.join(POS_ORDER)}）")

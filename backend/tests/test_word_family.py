@@ -11,8 +11,11 @@
   两端不同族；中/低置信 11 条保持原样；
 - API：总数、分页 50/页 + hasMore + 越界页、q 命中任一成员（含 10k 外）、
   level 筛选、sort=rank/alpha；
-- 成员字段：每条成员带 ``phonetic`` / ``translation`` 字符串快照（来自
-  ``lexicon.v1.json``，缺条目为空串），与词典逐条一致；10k 外成员同样有；
+- 成员字段：每条成员带 ``phonetic`` / ``translation`` 字符串快照（lexicon
+  优先、缺项 ECDICT、释义仍缺用 AI override 补；音标不补），与静态数据逐条
+  一致；10k 外成员同样有；
+- 释义覆盖（P1-14）：11,534/11,534 全部有中文释义；音标覆盖不变 10,466
+  （AI 只补释义）；AI override 溯源标记 ``reviewed=false``；
 - 成员词性（P1-13）：每条成员带 ``pos``（WordNet synset POS 集合，n/v/a/s/r
   规范顺序、去重；旧数据缺失时为空数组），与静态数据逐条一致；
 - 非法参数 400（page/pageSize/sort/level/q 长度）；旧 lemma-list 端点已删除；
@@ -43,6 +46,9 @@ EXPECTED = {
     "maxFamilySize": 14,
     "membersWithPos": 11534,
     "membersWithoutPos": 0,
+    # P1-14：AI override 补齐释义；音标维持 P1-12 覆盖，不随 AI 增加。
+    "membersWithTranslation": 11534,
+    "membersWithPhonetic": 10466,
 }
 
 
@@ -408,8 +414,16 @@ def test_data_document_contract():
     assert document["ruleVersion"] == "E"
     assert document["version"] == "2026.11.23"
     assert document["rules"]["aiAudit"].startswith("P1-11")
+    assert document["rules"]["aiTranslations"].startswith("P1-14")
     assert "WordNet" in document["license"]
     assert document["source"]["wordnet"]["version"] == "3.0"
+    # P1-14：AI 生成释义的静态 override 溯源（未人工复核，只补空值）。
+    ai_source = document["source"]["aiTranslations"]
+    assert ai_source["path"] == "content/wordlist/ai-member-translations.v1.json"
+    assert ai_source["source"] == "ai-generated"
+    assert ai_source["reviewed"] is False
+    assert ai_source["entries"] == 115
+    assert ai_source["translationFills"] == 115
     expected_sha = hashlib.sha256(FREQUENCY_PATH.read_bytes()).hexdigest()
     assert document["source"]["frequencyBands"]["sha256"] == expected_sha
     assert document["source"]["frequencyBands"]["lemmas"] == 10000
@@ -417,6 +431,14 @@ def test_data_document_contract():
         assert document["counts"][key] == value, key
     assert document["counts"]["cefrWithoutFamily"] == 4767
     assert document["counts"]["cefrCoveragePct"] == 52.33
+    # P1-14 覆盖率：逐条统计成员字段（不只信 counts 自报）；AI 只补释义，
+    # 音标仍缺 1,068（与 P1-12 相同）。
+    member_records = [
+        member for family in document["families"] for member in family["members"]
+    ]
+    assert len(member_records) == 11534
+    assert sum(1 for member in member_records if member["translation"]) == 11534
+    assert sum(1 for member in member_records if member["phonetic"]) == 10466
     blacklist = document["blacklist"]
     allowlist = document["allowlist"]
     assert len(blacklist) == 17
@@ -525,6 +547,20 @@ def test_corrupt_data_is_503():
     document["ruleVersion"] = "B"
     with pytest.raises(word_family.WordFamilyUnavailable):
         word_family._build_index(document, key=("inline", (0, 0)))
+
+
+def test_ai_filled_translation_is_served(make_client):
+    """P1-14：10k 外 demonym 的中文释义来自 AI override，端口原样下发。"""
+    with make_client() as client:
+        body = client.get(ENDPOINT, params={"q": "tunisian"}).json()
+    assert body["total"] == 1
+    family = body["items"][0]
+    assert family["head"] == "tunisia"
+    member = next(
+        member for member in family["members"] if member["lemma"] == "tunisian")
+    assert member["translation"] == "a. 突尼斯的；n. 突尼斯人"
+    # AI 只补释义：该成员音标仍为空串（不猜音标）。
+    assert member["phonetic"] == ""
 
 
 def test_missing_lexicon_entry_keeps_empty_fields(monkeypatch):

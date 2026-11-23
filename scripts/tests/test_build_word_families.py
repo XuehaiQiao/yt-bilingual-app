@@ -14,7 +14,11 @@
 - P1-13 成员词性：pos = WordNet synset POS 集合（n/v/a/s/r 规范顺序、去重、无则
   []）；非法 POS 字符报错；pos_provider 收全部成员词、与 pos 互斥；已提交数据
   每个成员都带合法 pos；
-- 文档溯源：source/license/ruleVersion/blacklist/allowlist + integrity + ECDICT；
+- P1-14 AI 释义 override：仅 lexicon/ECDICT 都空时补 translation、绝不覆盖已有
+  值、不补音标；文件缺失/JSON 坏/schema/来源/复核标记/键值不合法 → 明确报错；
+  条目必须是族成员；已提交数据释义全覆盖（11,534）且音标覆盖不变（10,466）；
+- 文档溯源：source/license/ruleVersion/blacklist/allowlist + integrity + ECDICT +
+  AI override；
 - 输出确定性（无时间戳，两次 dump 字节一致）；
 - 已提交数据与规则 E + 23 条变更后的验收数字一致、integrity 可复算、
   成员字段符合「lexicon 优先 → ECDICT 补缺」。
@@ -43,6 +47,8 @@ ANCHORS = ((1000, "A1"), (2000, "A2"), (4000, "B1"), (7000, "B2"), (10000, "C1")
 DATA_PATH = REPO_ROOT / "content/wordlist/word-families.v1.json"
 LEXICON_PATH = REPO_ROOT / "content/wordlists/lexicon.v1.json"
 ECDICT_PATH = REPO_ROOT / "data/ecdict.db"
+AI_TRANSLATIONS_PATH = (
+    REPO_ROOT / "content/wordlist/ai-member-translations.v1.json")
 
 RANKS = {
     "run": 100,
@@ -124,6 +130,7 @@ def build_document(records=RECORDS, ranks=RANKS, blacklist=BLACKLIST,
                    allowlist=ALLOWLIST, trim_members=(), split_edges=(),
                    held_items=(), lexicon=None, lexicon_source=None,
                    ecdict=None, ecdict_source=None, ecdict_provider=None,
+                   ai_translations=None, ai_translation_source=None,
                    pos=None, pos_source=None, pos_provider=None) -> dict:
     return build.build_family_document(
         make_index(records),
@@ -141,6 +148,8 @@ def build_document(records=RECORDS, ranks=RANKS, blacklist=BLACKLIST,
         ecdict=ecdict,
         ecdict_source=ecdict_source,
         ecdict_provider=ecdict_provider,
+        ai_translations=ai_translations,
+        ai_translation_source=ai_translation_source,
         pos=pos,
         pos_source=pos_source,
         pos_provider=pos_provider,
@@ -863,13 +872,14 @@ def test_committed_member_fields_preserve_lexicon_values() -> None:
 @pytest.mark.skipif(
     not ECDICT_PATH.is_file(), reason="本机无 data/ecdict.db，跳过 ECDICT 补全契约")
 def test_committed_member_fields_fill_from_ecdict() -> None:
-    """lexicon 缺项用 ECDICT 补、两边都缺留空串；溯源 sha 与本地库一致。"""
+    """lexicon 缺项用 ECDICT 补、translation 仍缺用 AI override 补；音标不补。"""
     document = json.loads(DATA_PATH.read_text(encoding="utf-8"))
     members = [
         member for family in document["families"]
         for member in family["members"]
     ]
     phonetics, translations, _source = build.load_lexicon_entries(LEXICON_PATH)
+    ai_translations, ai_source = build.load_ai_translations(AI_TRANSLATIONS_PATH)
     missing = [
         member["lemma"] for member in members
         if not phonetics.get(member["lemma"])
@@ -881,21 +891,190 @@ def test_committed_member_fields_fill_from_ecdict() -> None:
         expected_phonetic = (
             phonetics.get(lemma) or ecdict.get(lemma, ("", ""))[0])
         expected_translation = (
-            translations.get(lemma) or ecdict.get(lemma, ("", ""))[1])
+            translations.get(lemma)
+            or ecdict.get(lemma, ("", ""))[1]
+            or ai_translations.get(lemma, ""))
         assert member["phonetic"] == expected_phonetic, lemma
         assert member["translation"] == expected_translation, lemma
-    # 溯源：committed 数据的 ECDICT 快照必须就是本机这一份库。
+    # 溯源：committed 数据的 ECDICT / AI override 快照必须就是本机这两份文件。
     assert document["source"]["ecdict"]["sha256"] == ecdict_source["sha256"]
     assert document["source"]["ecdict"]["queried"] == len(missing)
-    # P1-12 覆盖率（regenerate 时如变化，连同报告/spec 一起更新）。
+    assert document["source"]["aiTranslations"]["sha256"] == ai_source["sha256"]
+    assert document["source"]["aiTranslations"]["reviewed"] is False
+    assert document["source"]["aiTranslations"]["translationFills"] == 115
+    # P1-12 / P1-14 覆盖率（regenerate 时如变化，连同报告/spec 一起更新）：
+    # AI 只补释义，音标覆盖维持 10,466；释义全 11,534；两项都缺归零。
     with_phonetic = sum(1 for member in members if member["phonetic"])
     with_translation = sum(1 for member in members if member["translation"])
     assert len(members) == 11534
     assert with_phonetic == 10466
-    assert with_translation == 11419
+    assert with_translation == 11534
     assert sum(
         1 for member in members
-        if not member["phonetic"] and not member["translation"]) == 109
+        if not member["phonetic"] and not member["translation"]) == 0
+    assert sum(
+        1 for member in members if not member["phonetic"]) == 1068
+
+
+# ---------------------------------------------------------------------------
+# P1-14 AI 释义 override：只补空值、不覆盖、不补音标、坏文件明确报错
+# ---------------------------------------------------------------------------
+
+LEXICON_WITH_AI_CASES = LEXICON
+AI_TRANSLATIONS_FAKE = {
+    "run": "AI 跑",
+    "runner": "AI 跑步者",
+    "running": "AI 跑步",
+    "decision": "AI 决定",
+    "decisive": "AI 决定性的",
+    "reflection": "AI 反射",
+    "reflective": "AI 反身的",
+}
+
+
+def test_ai_translations_only_fill_empty_translation() -> None:
+    """lexicon > ECDICT > AI：AI 只填都空的值，绝不覆盖，也不提供音标。"""
+    document = build_document(
+        lexicon=LEXICON_WITH_AI_CASES, ecdict=ECDICT,
+        ai_translations=AI_TRANSLATIONS_FAKE,
+        ai_translation_source={
+            "path": "test/ai-member-translations.v1.json",
+            "reviewed": False,
+            "entries": len(AI_TRANSLATIONS_FAKE),
+        },
+    )
+    # lexicon 已有释义（即使 ECDICT/AI 都有不同值）→ 保留 lexicon。
+    run = member_by_lemma(document, "run")
+    assert (run["phonetic"], run["translation"]) == ("run-ph", "run-tr")
+    runner = member_by_lemma(document, "runner")
+    assert (runner["phonetic"], runner["translation"]) == (
+        "ec-runner-ph", "runner-lex-tr")
+    # lexicon 缺、ECDICT 有 → 用 ECDICT（AI 同词不覆盖）。
+    running = member_by_lemma(document, "running")
+    assert (running["phonetic"], running["translation"]) == (
+        "ec-run-ph", "ec-run-tr")
+    # lexicon/ECDICT 都缺 → 用 AI；音标仍为空串（AI 不补音标）。
+    decision = member_by_lemma(document, "decision")
+    assert (decision["phonetic"], decision["translation"]) == ("", "AI 决定")
+    assert member_by_lemma(document, "decisive")["translation"] == "AI 决定性的"
+    assert member_by_lemma(document, "reflection")["translation"] == "AI 反射"
+    # 统计：decision / decisive / reflection / reflective 4 条实际由 AI 填。
+    source = document["source"]["aiTranslations"]
+    assert source["path"] == "test/ai-member-translations.v1.json"
+    assert source["reviewed"] is False
+    assert source["entries"] == len(AI_TRANSLATIONS_FAKE)
+    assert source["translationFills"] == 4
+    assert document["counts"]["membersWithTranslation"] == 8
+    assert "AI" in document["rules"]["memberFields"]
+    assert "reviewed=false" in document["rules"]["aiTranslations"]
+    # 不传 AI 时不写该溯源（旧形状兼容）。
+    plain = build_document(lexicon=LEXICON, ecdict=ECDICT)
+    assert "aiTranslations" not in plain["source"]
+
+
+def test_ai_translation_entries_must_be_members() -> None:
+    with pytest.raises(build.BuildError, match="非词族成员"):
+        build_document(
+            lexicon=LEXICON, ai_translations={"tunisian": "a. 突尼斯的"})
+    with pytest.raises(build.BuildError, match="非空字符串"):
+        build_document(
+            lexicon=LEXICON, ai_translations={"decision": "  "})
+
+
+def test_document_with_ai_translations_is_deterministic() -> None:
+    kwargs = dict(
+        lexicon=LEXICON, ecdict=ECDICT,
+        ai_translations=AI_TRANSLATIONS_FAKE,
+        ai_translation_source={"path": "test/ai.json", "reviewed": False,
+                               "entries": len(AI_TRANSLATIONS_FAKE)},
+    )
+    first = build.dump_json(build_document(**kwargs))
+    second = build.dump_json(build_document(**kwargs))
+    assert first == second
+    document = json.loads(first)
+    assert document["source"]["aiTranslations"]["translationFills"] == 4
+
+
+def _write_ai_file(path: Path, **overrides) -> Path:
+    document = {
+        "schema": build.SCHEMA_AI_TRANSLATIONS,
+        "version": "2026.11.23",
+        "source": "ai-generated",
+        "generatedAt": "2026-11-23",
+        "reviewed": False,
+        "entries": {"tunisian": "a. 突尼斯的；n. 突尼斯人"},
+    }
+    document.update(overrides)
+    path.write_text(
+        json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8")
+    return path
+
+
+def test_load_ai_translations_valid(tmp_path: Path) -> None:
+    path = _write_ai_file(tmp_path / "ai.json")
+    translations, source = build.load_ai_translations(path)
+    assert translations == {"tunisian": "a. 突尼斯的；n. 突尼斯人"}
+    assert source["schema"] == build.SCHEMA_AI_TRANSLATIONS
+    assert source["source"] == "ai-generated"
+    assert source["generatedAt"] == "2026-11-23"
+    assert source["reviewed"] is False
+    assert source["entries"] == 1
+    assert len(source["sha256"]) == 64
+
+
+def test_load_ai_translations_missing_file(tmp_path: Path) -> None:
+    with pytest.raises(build.BuildError, match="AI 释义文件不存在"):
+        build.load_ai_translations(tmp_path / "missing.json")
+
+
+def test_load_ai_translations_bad_json(tmp_path: Path) -> None:
+    path = tmp_path / "broken.json"
+    path.write_text("{not json", encoding="utf-8")
+    with pytest.raises(build.BuildError, match="不是合法 JSON"):
+        build.load_ai_translations(path)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "match"),
+    [
+        ({"schema": "x"}, "schema 不是"),
+        ({"source": "human"}, "source 不是"),
+        ({"reviewed": "no"}, "reviewed 必须是布尔值"),
+        ({"generatedAt": ""}, "generatedAt"),
+        ({"entries": {}}, "entries 必须是非空对象"),
+        ({"entries": {"Tunisian": "a. 突尼斯的"}}, "小写词"),
+        ({"entries": {"tunisian": "  "}}, "不能为空"),
+        ({"entries": {"tunisian": "Tunisian"}}, "必须含中文"),
+        ({"entries": {"tunisian": "中" * 121}}, "超过 120 字符"),
+    ],
+)
+def test_load_ai_translations_rejects_bad_format(
+        tmp_path: Path, overrides: dict, match: str) -> None:
+    path = _write_ai_file(tmp_path / "ai.json", **overrides)
+    with pytest.raises(build.BuildError, match=match):
+        build.load_ai_translations(path)
+
+
+def test_committed_ai_translations_contract() -> None:
+    """已提交 override：115 条、全部被使用、简短中文、未人工复核。"""
+    document = json.loads(DATA_PATH.read_text(encoding="utf-8"))
+    ai_translations, source = build.load_ai_translations(AI_TRANSLATIONS_PATH)
+    assert len(ai_translations) == 115
+    assert source["source"] == "ai-generated"
+    assert source["reviewed"] is False
+    assert all(len(value) <= 40 for value in ai_translations.values())
+    members = {
+        member["lemma"]: member
+        for family in document["families"]
+        for member in family["members"]
+    }
+    assert set(ai_translations) <= set(members)
+    for word, value in ai_translations.items():
+        assert members[word]["translation"] == value, word
+    assert document["source"]["aiTranslations"]["translationFills"] == 115
+    assert document["counts"]["membersWithTranslation"] == 11534
+
 
 
 def test_check_output_detects_missing_and_drift(tmp_path: Path) -> None:

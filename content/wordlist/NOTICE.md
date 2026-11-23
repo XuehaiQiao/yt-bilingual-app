@@ -125,7 +125,7 @@ JSON，不安装、不读取 nltk / WordNet 语料。
 | 构图 | WordNet 3.0 `derivationally_related_forms()` 无向派生图；连通分量 ≥2 成员且 ≥1 成员在 CEFR 10k；10k 外成员等级留空；无族词不写入 |
 | 人工清单 | 黑名单 17 条坏边（`semantic_split` + `clear_error`）、allowlist 22 条缺失边；逐条校验存在性 |
 | 结果 | 3,704 族 / 11,534 成员（10k 内 5,233、10k 外 6,301）/ 最大族 14；已应用 2026-11-23 高置信 AI 审计 23 条（中/低 11 条未应用） |
-| 成员字段 | 每个成员带 `phonetic` / `translation` 快照：先取 `content/wordlists/lexicon.v1.json`，缺项用本地 ECDICT 补（只读、精确小写匹配、首个含中文行 ≤120 字符），仍缺留空串。覆盖率：音标 10,466/11,534（90.7%）、释义 11,419/11,534（99.0%）；仍缺任一 1,074、两项都缺 109 |
+| 成员字段 | 每个成员带 `phonetic` / `translation` 快照：先取 `content/wordlists/lexicon.v1.json`，缺项用本地 ECDICT 补（只读、精确小写匹配、首个含中文行 ≤120 字符）；`translation` 仍缺时用 AI 生成的静态 override 补（仅空值、不覆盖、不补音标，见下节），仍缺留空串。覆盖率：音标 10,466/11,534（90.7%，P1-14 未改变）、释义 11,534/11,534（100%，其中 AI 补 115 条、**未人工复核**）；仍缺音标 1,068 |
 | 审计依据 | `docs/reports/word-family-open-audit-2026-11-23.md`（P1-04） |
 | **本产物许可** | **WordNet 3.0 License**（WordNet 派生部分）+ **CC BY-SA 4.0**（CEFR 频次/等级部分，见上文章节）；成员音标/释义的 ECDICT 派生字段口径见下节 |
 
@@ -175,6 +175,26 @@ ECDICT（`data/ecdict.db`，同 `content/wordlists/` 的 ECDICT 来源）补全�
 - 局限：ECDICT 音标是旧式音标、不是严格 IPA；释义不保证覆盖全部义项；大量
   派生词只有释义没有音标（959 个成员仍缺音标）。
 
+### 上游来源：AI 生成成员释义（P1-14）
+
+lexicon 与 ECDICT 都查不到释义的 **115 个词族成员**（demonym/专名派生为主：
+`tunisian`、`londoner`、`olympia`、`o.k.` 等），用 AI 生成的词典式中文释义补齐：
+
+- 文件：`content/wordlist/ai-member-translations.v1.json`
+  （schema `linguatrek.ai-member-translations.v1`）。
+- 标记：`source: "ai-generated"`、`generatedAt: "2026-11-23"`、
+  **`reviewed: false`（AI 生成、未人工复核）**。
+- 范围：只补 `translation`，**不补音标**；条数 115，全部为词族成员。
+- 合并：构建时仅当 lexicon 与 ECDICT 的同词释义都为空才填入，**已有值绝不覆盖**
+  （优先级 lexicon > ECDICT > AI）；键不是族成员、文件缺失或格式不合法 → 构建
+  直接失败（退出码 3），不静默生成低覆盖数据。
+- 运行期不调用任何模型：override 是静态文件，应用只读生成的
+  `word-families.v1.json`；数据新增 `source.aiTranslations` 溯源
+  （path/sha256/generatedAt/reviewed/entries/translationFills）。
+- 局限：AI 释义未人工复核，可能遗漏义项或用词不够精确（多义词如 `georgian`、
+  `columbian`、`niger` 只给常见义）；专名译名采用通行译法。发现错误应改
+  override → 人工复核后把 `reviewed` 置 `true` → 重跑构建与 `--check`。
+
 ### 与频表的关系
 
 词族的 CEFR 锚定（10k 内/外、A1–C1 等级）派生自本目录的
@@ -191,8 +211,10 @@ python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data --check
 
 `--ecdict` 默认指向 `data/ecdict.db`（本地可选数据，不随仓库分发）；lexicon
 缺项时会只读查询它，库缺失则以退出码 3 失败，不静默生成低覆盖数据。
-构建是确定性的（无时间戳；同一 WordNet 语料 + 同一频表 + 同一 lexicon +
-同一 ECDICT 库逐字节一致）；文件带 `integrity.sha256`（覆盖 counts + families +
+`--ai-translations` 默认指向 `content/wordlist/ai-member-translations.v1.json`；
+文件缺失/格式坏同样以退出码 3 失败。构建是确定性的（无时间戳来源的耗时字段；
+同一 WordNet 语料 + 同一频表 + 同一 lexicon + 同一 ECDICT 库 + 同一 AI override
+逐字节一致）；文件带 `integrity.sha256`（覆盖 counts + families +
 blacklist + allowlist）。清单或数据变化时先更新审计报告与 `specs/041`，再重跑
 生成并 diff。
 
@@ -203,3 +225,4 @@ blacklist + allowlist）。清单或数据变化时先更新审计报告与 `spe
 | 2026-11-17 | 首版 v1：wordfreq 3.1.1，10,000 lemma / 10 带 / 10,848 forms；closes M2 词表构建 |
 | 2026-11-23 | 新增 `word-families.v1.json`（specs/041，规则 E）：WordNet 3.0 派生图 + 17 条黑名单 / 22 条 allowlist；保留 WordNet 3.0 版权声明与免责声明 |
 | 2026-11-23 | 词族成员音标/释义补全（P1-12）：lexicon 缺项用本地 ECDICT 补（音标 5,892→10,466、释义 5,911→11,419；仍缺 1,074），数据新增 `source.ecdict` 溯源；报告 `docs/reports/word-family-member-data-2026-11-23.md` |
+| 2026-11-23 | 词族成员中文释义补全（P1-14）：115 个 lexicon/ECDICT 均缺释义的成员用 AI 生成静态 override 补齐（释义 11,419→11,534，音标 10,466 不变）；新增 `content/wordlist/ai-member-translations.v1.json` 与 `source.aiTranslations` 溯源（`reviewed=false`，未人工复核）；报告 `docs/reports/word-family-ai-translations-2026-11-23.md` |
