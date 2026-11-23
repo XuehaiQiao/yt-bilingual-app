@@ -427,8 +427,9 @@ async def _translate_video_blocks(
 ) -> list:
     """视频 blocks 切批并行翻译，结果按原 batch 顺序合并（P1-18）。
 
-    断点/进度语义不在这里：经典路径一次性返回最终 payload；流式路径仍是
-    ``translate._stream_translate`` 逐批落盘（本卡不动它）。
+    断点/进度语义不在这里：经典路径一次性返回最终 payload；流式路径在
+    ``translate._stream_translate`` 内对批次做有序并行（P1-19），逐批落盘与
+    断点续传口径不变。
     """
     if not blocks:
         return []
@@ -1012,7 +1013,11 @@ async def _cached_stream_gen(
             model=model, vocab_level=vocab_level, user_id=user_id,
             target_lang=lang,
         ):
-            cursor = _translated_cursor(transcript)
+            # 并行批次下用生成器按批序累计的「实际已翻句数」推进进度：
+            # 不能读整份 transcript（后完成批次可能已先落盘，进度会跳变）。
+            cursor = update.pop("translated", None)
+            if cursor is None:
+                cursor = _translated_cursor(transcript)
             if job_id:
                 jobs.update_progress(job_id, cursor, total=total)
             yield _event("batch", {
@@ -1227,7 +1232,10 @@ async def _fresh_stream_gen(
         model=model, vocab_level=vocab_level, user_id=user_id,
         target_lang=lang,
     ):
-        cursor = _translated_cursor(transcript)
+        # 同续传路径：进度用生成器按批序累计的已翻句数，不读整份 transcript。
+        cursor = update.pop("translated", None)
+        if cursor is None:
+            cursor = _translated_cursor(transcript)
         if job_id:
             jobs.update_progress(job_id, cursor, total=total)
         yield _event("batch", {

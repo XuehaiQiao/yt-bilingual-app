@@ -7,13 +7,17 @@
 """
 import asyncio
 import json
+import logging
 import os
 import re
+import time
 
+import billing
 import languages
 import llm
 import storage
 from ai import quota
+from ai.ledger import QuotaExceeded
 from config import DEFAULT_MODEL
 
 # Marker for blocks whose translation is missing/failed; such blocks are
@@ -538,6 +542,48 @@ async def retranslate_marked_blocks(
     return data
 
 
+# ---------------------------------------------------------------------------
+# SSE 流式翻译：批次并行（P1-19）
+# ---------------------------------------------------------------------------
+# 目标：默认 2 批并行（``SSE_TRANSLATE_CONCURRENCY``，1–3 可调），同时保持
+# 「batch 事件按批序、每批完成即落盘、断点续传、取消/402 立即中断」。
+SSE_TRANSLATE_CONCURRENCY_ENV = "SSE_TRANSLATE_CONCURRENCY"
+SSE_TRANSLATE_CONCURRENCY_DEFAULT = 2
+SSE_TRANSLATE_CONCURRENCY_MAX = 3
+SSE_TRANSLATE_BATCH_SIZE = 20
+
+_timing_logger = logging.getLogger("linguatrek.translate")
+
+
+def _stream_translate_concurrency() -> int:
+    """流式翻译批次并发数：非数字/超出 1–3 一律回落默认 2（坏配置不拖垮流）。"""
+    raw = os.environ.get(SSE_TRANSLATE_CONCURRENCY_ENV, "").strip()
+    if not raw:
+        return SSE_TRANSLATE_CONCURRENCY_DEFAULT
+    try:
+        value = int(raw)
+    except ValueError:
+        return SSE_TRANSLATE_CONCURRENCY_DEFAULT
+    if 1 <= value <= SSE_TRANSLATE_CONCURRENCY_MAX:
+        return value
+    return SSE_TRANSLATE_CONCURRENCY_DEFAULT
+
+
+def _stream_timing(**fields) -> None:
+    """一行结构化计时日志；``feature=sse_translate`` 是检索锚点。"""
+    _timing_logger.info(
+        json.dumps(
+            {"feature": "sse_translate", **fields}, ensure_ascii=False, default=str
+        )
+    )
+
+
+def _persist_stream_payload(payload: dict, save_path: str) -> None:
+    """把整份 payload 写盘（每批一次，调用方持写锁）。测试可打桩计数。"""
+    with open(save_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+
 async def _stream_translate(
     transcript: list,
     indices: list,
@@ -556,48 +602,178 @@ async def _stream_translate(
     progress. Persists the payload after every batch so interrupted runs
     keep their progress (untranslated blocks stay marked and self-heal).
     ``target_lang`` 决定 prompt 语言、批次账本维度与落盘 payload 的元数据。
+
+    P1-19：批次并行（默认 2、1–3 可调）但仍**按批序**产出事件——
+    后完成的批次在内存队列里等前一批；每批完成即回填 + 持写锁落盘；客户端
+    取消时 ``finally`` 取消所有在途批次；402/额度硬闸立即中断并透传。
     """
     lang = languages.resolve_target_lang(
         target_lang if target_lang is not None else payload_target_lang(payload)
     )
     total = len(indices)
+    batches = [
+        indices[start:start + SSE_TRANSLATE_BATCH_SIZE]
+        for start in range(0, total, SSE_TRANSLATE_BATCH_SIZE)
+    ]
+    batch_count = len(batches)
+    if batch_count == 0:
+        return
+    concurrency = min(_stream_translate_concurrency(), batch_count)
+
+    outcomes: asyncio.Queue = asyncio.Queue()
+    lane_slots = asyncio.Semaphore(concurrency)
+    write_lock = asyncio.Lock()  # 「本批回填 + 整份 payload 落盘」的串行区
+    pace_lock = asyncio.Lock()  # 本流内所有批次的全局起步节奏
+    aborted = asyncio.Event()  # 硬闸后不再让新批次进入 provider（不再花钱）
+    last_started: float | None = None
+    tasks: list[asyncio.Task] = []
+
+    started = time.perf_counter()
+    # 进入本函数时已翻好的句数（续传/补译路径的非 pending 部分）。
+    translated = sum(
+        1 for block in transcript if not needs_retranslation(block.get("zh_text", ""))
+    )
     done = 0
-    batch_size = 20
-    for batch_start in range(0, total, batch_size):
-        batch_indices = indices[batch_start:batch_start + batch_size]
-        batch_blocks = [{
-            "id": transcript[i].get("id"),
-            "start": transcript[i]["start"],
-            "end": transcript[i]["end"],
-            "text": transcript[i]["en_text"],
-        } for i in batch_indices]
+    first_batch_ms: float | None = None
+    outcome = "done"
 
-        try:
-            result = await process_llm_batch(
-                batch_blocks,
-                model=model,
-                vocab_level=vocab_level,
-                feature=feature,
-                user_id=user_id,
-                target_lang=lang,
+    async def _wait_for_start_slot() -> None:
+        """provider 节奏：任意两批的**开始时间**至少间隔 ``batch_pause`` 秒。"""
+        nonlocal last_started
+        pause = float(llm.batch_pause(model))
+        if pause <= 0:
+            last_started = time.monotonic()
+            return
+        async with pace_lock:
+            now = time.monotonic()
+            if last_started is not None:
+                remaining = last_started + pause - now
+                if remaining > 0:
+                    await asyncio.sleep(remaining)
+                now = time.monotonic()
+            last_started = now
+
+    async def _run_batch(batch_index: int, batch_indices: list[int]) -> None:
+        if batch_index:
+            # 非首批先让出一次调度：若首批结果同步返回（缓存/极快的 provider），
+            # 事件优先交给消费端，其余 lane 随后再进 provider；真实模型调用下
+            # 这点调度开销可忽略，并发收益不变。
+            await asyncio.sleep(0)
+        async with lane_slots:
+            await _wait_for_start_slot()
+            if aborted.is_set():
+                # 前置批次已触发计费/额度硬闸：还没进 provider 的批次直接放弃。
+                return
+            batch_blocks = [{
+                "id": transcript[i].get("id"),
+                "start": transcript[i]["start"],
+                "end": transcript[i]["end"],
+                "text": transcript[i]["en_text"],
+            } for i in batch_indices]
+            batch_started = time.perf_counter()
+            try:
+                result = await process_llm_batch(
+                    batch_blocks,
+                    model=model,
+                    vocab_level=vocab_level,
+                    feature=feature,
+                    user_id=user_id,
+                    target_lang=lang,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                batch_ms = round((time.perf_counter() - batch_started) * 1000, 2)
+                if isinstance(exc, (billing.BillingError, QuotaExceeded)):
+                    # 硬闸：先叫停整条流（生成器收到 abort 后取消其余在途批次），
+                    # 再把异常抛给队列/task；不能静默跳过或等前一批跑完。
+                    aborted.set()
+                    await outcomes.put(("abort", exc))
+                    raise
+                print(f"Streaming batch failed (blocks stay marked for retry): {exc}")
+                async with write_lock:
+                    payload["transcript"] = transcript
+                    stamp_payload_language(payload, lang)
+                    _persist_stream_payload(payload, save_path)
+                await outcomes.put(
+                    ("batch", batch_index, batch_ms, time.perf_counter(), 0)
+                )
+                return
+
+            batch_ms = round((time.perf_counter() - batch_started) * 1000, 2)
+            translated_count = 0
+            async with write_lock:
+                for offset, idx in enumerate(batch_indices):
+                    if offset < len(result):
+                        transcript[idx] = result[offset]
+                        if not needs_retranslation(
+                            result[offset].get("zh_text", "")
+                        ):
+                            translated_count += 1
+                payload["transcript"] = transcript
+                stamp_payload_language(payload, lang)
+                _persist_stream_payload(payload, save_path)
+            await outcomes.put(
+                ("batch", batch_index, batch_ms, time.perf_counter(), translated_count)
             )
-            for j, idx in enumerate(batch_indices):
-                if j < len(result):
-                    transcript[idx] = result[j]
-        except Exception as e:
-            quota.rethrow_billing_error(e)  # 402 不能被静默跳过当前批次
-            print(f"Streaming batch failed (blocks stay marked for retry): {e}")
 
-        done += len(batch_indices)
-        payload["transcript"] = transcript
-        stamp_payload_language(payload, lang)
-        with open(save_path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=2)
-
-
-        yield {
-            "blocks": [transcript[i] for i in batch_indices],
-            "progress": {"done": done, "total": total},
-        }
-        if batch_start + batch_size < total:
-            await asyncio.sleep(llm.batch_pause(model))  # 按 provider 限流节奏
+    # 后完成批次的缓冲：按 batch_index 存，生成器严格等前一批。
+    completed: dict[int, tuple[float, float, int]] = {}
+    try:
+        tasks = [
+            asyncio.create_task(_run_batch(index, batch_indices))
+            for index, batch_indices in enumerate(batches)
+        ]
+        for expected in range(batch_count):
+            while expected not in completed:
+                message = await outcomes.get()
+                if message[0] == "abort":
+                    raise message[1]
+                _, batch_index, batch_ms, completed_at, translated_count = message
+                completed[batch_index] = (batch_ms, completed_at, translated_count)
+            batch_ms, completed_at, translated_count = completed.pop(expected)
+            queue_wait_ms = round((time.perf_counter() - completed_at) * 1000, 2)
+            translated += translated_count
+            done += len(batches[expected])
+            elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
+            if first_batch_ms is None:
+                first_batch_ms = elapsed_ms
+            _stream_timing(
+                event="batch",
+                batch_index=expected,
+                batch_count=batch_count,
+                queue_wait_ms=queue_wait_ms,
+                batch_ms=batch_ms,
+                concurrency=concurrency,
+            )
+            yield {
+                "blocks": [transcript[i] for i in batches[expected]],
+                "progress": {"done": done, "total": total},
+                # 并行下「实际已翻句数」按批序累计：路由据此推进 cursor/进度。
+                # 不能直接用整份 transcript 计数——后完成批次可能先落盘，
+                # 那样首批事件就会把进度报成接近 100%。
+                "translated": translated,
+            }
+    except asyncio.CancelledError:
+        outcome = "cancelled"
+        raise
+    except GeneratorExit:
+        outcome = "cancelled"
+        raise
+    except BaseException:
+        outcome = "error"
+        raise
+    finally:
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        _stream_timing(
+            event="total",
+            batch_count=batch_count,
+            total_ms=round((time.perf_counter() - started) * 1000, 2),
+            first_batch_ms=first_batch_ms,
+            concurrency=concurrency,
+            translated=translated,
+            outcome=outcome,
+        )
