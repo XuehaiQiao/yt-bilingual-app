@@ -13,9 +13,11 @@
 //   3. the single-sentence overlay follows the active sentence (playback and
 //      seek), shows Chinese above English, clears the player controls and
 //      never intercepts a click (`pointer-events: none`);
-//   4. the gloss rail shows the same words/language points the analysis gives
-//      the transcript, has an explicit empty state per sentence and a
-//      no-analysis state that reuses the existing 028 GET (no new AI: every
+//   4. the rolling gloss window (P2-12: 滚动词条) shows the same words /
+//      language points the analysis gives the transcript as one continuous
+//      borderless list — no sentence context, no section headings, no kind
+//      badge, no per-sentence/global empty placeholder — and a no-analysis
+//      state that reuses the existing 028 GET (no new AI: every
 //      teaching-analysis request in the run is a GET, no process/translate
 //      calls are made);
 //   4b. P2-09 typography: English is the primary line above the Chinese
@@ -23,9 +25,9 @@
 //       horizontal clipping;
 //   4c. P2-09 history: the gloss window keeps earlier sentences under the
 //       current one (5 sentences driven by seek), a revisited block moves to
-//       the top instead of duplicating, an empty sentence keeps the backlog
-//       and shows 本句无生词 on top, and the window auto-scrolls to the top
-//       until the learner scrolls down by hand;
+//       the top instead of duplicating, an empty sentence adds no entry and
+//       keeps the backlog, and the window auto-scrolls to the top until the
+//       learner scrolls down by hand; P2-12: long words / glosses wrap at 375;
 //   4d. P2-11 fluid type: `video-area` is a container-query source and the
 //       subtitle lines use `clamp(…cqi…)`, so 375 sits at the 17/15 floors,
 //       1440 watch is larger than the 1440 normal layout, 1920 is larger than
@@ -71,7 +73,7 @@ const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 // (the `text-section` / `text-body-zh` classes stay as the no-cqi fallback).
 // 1cqi = 1% of the `video-area` container width, so the same declaration
 // resolves differently in the normal and watch layouts.
-const FLUID_EN = 'clamp(1.0625rem, 2cqi, 1.95rem)';
+const FLUID_EN = 'clamp(1.0625rem, 2cqi, 2rem)';
 const FLUID_ZH = 'clamp(0.9375rem, 1.7cqi, 1.625rem)';
 
 // ── fixtures ───────────────────────────────────────────────────────────────
@@ -147,8 +149,9 @@ const HISTORY_BLOCKS = [
         id: 5,
         start: 28,
         end: 32,
-        en_text: 'Steam curls up toward the window.',
-        zh_text: '蒸汽朝窗户升起。',
+        // P2-12: a deliberately long word for the wrap/no-overflow check.
+        en_text: 'Steam curls uncharacteristically up toward the window.',
+        zh_text: '蒸汽一反常态地朝窗户升起。',
         highlights: [],
     },
 ];
@@ -186,22 +189,36 @@ const HISTORY_ANALYSIS = {
         0: [
             { en_word: 'habits', zh_word: '习惯', color: '' },
             { en_word: 'quietly', zh_word: '悄悄地', color: '' },
+            // P2-12: enough rows for the 375 window to overflow (scroll contract).
+            { en_word: 'shape', zh_word: '塑造', color: '' },
+            { en_word: 'whole', zh_word: '整个', color: '' },
         ],
         1: [
             { en_word: 'breakfast', zh_word: '早餐', color: '' },
             { en_word: 'walk', zh_word: '散步', color: '' },
+            { en_word: 'makes', zh_word: '使', color: '' },
+            { en_word: 'slower', zh_word: '更慢', color: '' },
         ],
         3: [
             { en_word: 'stays', zh_word: '保持', color: '' },
             { en_word: 'still', zh_word: '静止', color: '' },
+            { en_word: 'room', zh_word: '房间', color: '' },
+            { en_word: 'while', zh_word: '一会儿', color: '' },
         ],
         4: [
             { en_word: 'kettle', zh_word: '水壶', color: '' },
             { en_word: 'sing', zh_word: '鸣叫', color: '' },
+            { en_word: 'starts', zh_word: '开始', color: '' },
         ],
         5: [
             { en_word: 'steam', zh_word: '蒸汽', color: '' },
             { en_word: 'curls', zh_word: '卷曲', color: '' },
+            // P2-12: long word + long meaning must wrap inside the 375 panel.
+            {
+                en_word: 'uncharacteristically',
+                zh_word: '一反常态地、出人意料地、和平时完全不一样地（长释义换行验收）',
+                color: '',
+            },
         ],
     },
 };
@@ -541,6 +558,74 @@ async function waitForGlossEntries(page, count, timeout = 10000) {
 
 const glossEntryCount = (page) => page.locator('[data-testid="watch-gloss-entry"]').count();
 
+// P2-12: entries are identified by block id now that the sentence context
+// line is gone; the id also proves "current on top / older below" order.
+const glossBlockIds = (page) => page.locator('[data-testid="watch-gloss-entry"]').evaluateAll(
+    (entries) => entries.map((entry) => entry.getAttribute('data-block-id')),
+);
+
+async function waitForCurrentEntry(page, blockId, timeout = 10000) {
+    await page.waitForFunction(
+        (expected) => {
+            const first = document.querySelector('[data-testid="watch-gloss-entry"]');
+            return first?.getAttribute('data-current') === 'true'
+                && first.getAttribute('data-block-id') === expected;
+        },
+        blockId,
+        { timeout },
+    );
+}
+
+/**
+ * P2-12: the rolling list must stay chrome-free — no entry card border or
+ * background, no divider between entries — and text must never overflow its
+ * window (long words/glosses wrap instead of widening it).
+ */
+async function assertGlossListChrome(page, rootTestId, label) {
+    const result = await page.evaluate((rootSelector) => {
+        const root = document.querySelector(rootSelector);
+        const nodes = [...document.querySelectorAll(
+            '[data-testid="watch-gloss-entry"], [data-testid="watch-gloss-word"], [data-testid="watch-gloss-language-point"]',
+        )];
+        const rootRect = root ? root.getBoundingClientRect() : null;
+        return {
+            count: nodes.length,
+            overflowItems: nodes.filter((node) => node.scrollWidth > node.clientWidth + 1).length,
+            outsideItems: rootRect
+                ? nodes.filter((node) => node.getBoundingClientRect().right > rootRect.right + 1).length
+                : -1,
+            rootScrollWidth: root ? root.scrollWidth : null,
+            rootClientWidth: root ? root.clientWidth : null,
+            chrome: nodes.map((node) => {
+                const style = getComputedStyle(node);
+                return {
+                    testId: node.getAttribute('data-testid'),
+                    borders: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth]
+                        .map((value) => parseFloat(value) || 0),
+                    background: style.backgroundColor,
+                    backgroundImage: style.backgroundImage,
+                    boxShadow: style.boxShadow,
+                };
+            }),
+        };
+    }, `[data-testid="${rootTestId}"]`);
+
+    assert.ok(result.count > 0, `${label}: no gloss entries to inspect`);
+    for (const node of result.chrome) {
+        assert.deepEqual(node.borders, [0, 0, 0, 0], `${label}: ${node.testId} still draws a card border/divider`);
+        assert.equal(node.background, 'rgba(0, 0, 0, 0)', `${label}: ${node.testId} still draws a card background`);
+        assert.equal(node.backgroundImage, 'none', `${label}: ${node.testId} still draws a background texture`);
+        assert.equal(node.boxShadow, 'none', `${label}: ${node.testId} still draws a card shadow`);
+    }
+    assert.equal(result.overflowItems, 0, `${label}: gloss text is clipped/overflows its row (long word or gloss)`);
+    assert.equal(result.outsideItems, 0, `${label}: gloss content spills outside the window`);
+    assert.ok(
+        result.rootScrollWidth <= result.rootClientWidth + 1,
+        `${label}: the gloss window scrolls horizontally (${result.rootScrollWidth} > ${result.rootClientWidth})`,
+    );
+    return { entries: result.count };
+}
+
 const scrollMetrics = (page) => page.locator('[data-testid="watch-gloss-scroll"]').evaluate((el) => ({
     scrollTop: el.scrollTop,
     scrollHeight: el.scrollHeight,
@@ -604,7 +689,7 @@ try {
     assert.ok(normalType, 'normal-layout media stage missing');
     assert.equal(normalType.containerType, 'inline-size', 'media stage is not a container-query source');
     assert.ok(
-        normalType.en > 17 && normalType.en < 31.2,
+        normalType.en > 17 && normalType.en < 32,
         `1440 normal media should resolve the fluid clamp above the 17px floor, got ${normalType.en}px`,
     );
     assert.ok(normalType.en > normalType.zh, 'normal-layout English must stay above Chinese');
@@ -641,6 +726,12 @@ try {
     assert.ok(Math.abs(shell.x + shell.width - (rail.x + rail.width)) < 2, 'rail does not end at the shell edge');
     const mediaStageWatch = await boxOf(page, 'video-area');
     assert.ok((mediaStageWatch?.height ?? 0) > 900 * 0.62 * 0.9, 'watch mode did not enlarge the media stage');
+    // P2-12: the rail and the floating layer share the renamed title.
+    assert.equal(
+        (await page.locator('[data-testid="watch-gloss-rail"] h2').innerText()).trim(),
+        '滚动词条',
+        'gloss window title is not 滚动词条',
+    );
 
     // — before the first cue there is no current sentence → overlay hidden —
     assert.equal(await page.locator('[data-testid="watch-subtitle-overlay"]').count(), 0, 'overlay should hide with no current sentence');
@@ -698,7 +789,7 @@ try {
     );
 
     // — P2-11: watch mode widens the media stage, so the same fluid formula
-    // resolves larger than the normal layout (and stays below the 31.2px cap so
+    // resolves larger than the normal layout (and stays below the 32px cap so
     // 1920 can keep growing). English must remain above Chinese. —
     const watchType = await subtitleType(page);
     assert.ok(watchType.en && watchType.zh, 'watch subtitle lines missing for the fluid type check');
@@ -715,8 +806,8 @@ try {
         `watch English ${watchType.en.fontSize}px must stay above Chinese ${watchType.zh.fontSize}px`,
     );
     assert.ok(
-        watchType.en.fontSize < 31.2,
-        `1440 watch English ${watchType.en.fontSize}px must stay below the 31.2px cap so 1920 can grow`,
+        watchType.en.fontSize < 32,
+        `1440 watch English ${watchType.en.fontSize}px must stay below the 32px cap so 1920 can grow`,
     );
     // The token classes are what engines without container queries fall back
     // to; an unsupported cqi drops the inline declaration, not the font size.
@@ -772,43 +863,57 @@ try {
     assert.ok((await page.locator('[data-testid="watch-gloss-word"]').first().innerText()).includes('habits'));
     assert.ok((await page.locator('[data-testid="watch-gloss-word"]').first().innerText()).includes('习惯'));
     assert.equal(await page.locator('[data-testid="watch-gloss-language-point"]').count(), 0, 'cue 0 has no language point');
+    // P2-12: the sentence context, the current-sentence dot, the words /
+    // language-point headings and any empty placeholder are gone.
+    assert.equal(await page.locator('[data-testid="watch-gloss-entry-context"]').count(), 0, 'sentence context line must be gone');
+    assert.equal(await page.locator('[data-testid="watch-gloss-entry-current"]').count(), 0, 'current-sentence dot must be gone');
+    assert.equal(await page.locator('[data-testid="watch-gloss-rail"] h3').count(), 0, 'gloss section headings must be gone');
+    assert.equal(await page.locator('[data-testid="watch-gloss-empty"]').count(), 0, 'global gloss placeholder must be gone');
 
     // — the overlay follows playback into cue 1 (no seek) —
     await waitForOverlay(page, 'A short walk', 12000);
     await waitForRailText(page, '早餐', 12000);
     await pausePlayback(page);
     assert.equal(await page.locator('[data-testid="watch-gloss-language-point"]').count(), 1);
-    const pointText = await page.locator('[data-testid="watch-gloss-language-point"]').first().innerText();
+    const point = page.locator('[data-testid="watch-gloss-language-point"]').first();
+    const pointText = await point.innerText();
     assert.ok(pointText.includes('before breakfast') && pointText.includes('早餐前'), `language point mismatch: ${pointText}`);
+    // P2-12: the idiom/culture kind badge (and its data-kind hook) is gone.
+    assert.equal(await point.getAttribute('data-kind'), null, 'language point still exposes a kind badge hook');
+    assert.ok(!pointText.includes('习语') && !pointText.includes('文化'), `language point still shows a kind badge: ${pointText}`);
 
     // — P2-09 history: cue 1 on top, cue 0 still below, no repetition —
     await waitForGlossEntries(page, 2);
-    const cue1Entries = page.locator('[data-testid="watch-gloss-entry"]');
-    assert.equal(await cue1Entries.first().getAttribute('data-current'), 'true', 'newest sentence is not marked current');
-    assert.ok((await cue1Entries.first().innerText()).includes('A short walk'), 'newest sentence is not on top');
-    const cue1Contexts = await page.locator('[data-testid="watch-gloss-entry-context"]').allInnerTexts();
-    assert.ok(cue1Contexts[0].includes('A short walk'), `top context is not cue 1: ${JSON.stringify(cue1Contexts)}`);
-    assert.ok(cue1Contexts[1]?.includes('Small habits'), `previous sentence missing below: ${JSON.stringify(cue1Contexts)}`);
+    await waitForCurrentEntry(page, '1');
+    assert.deepEqual(await glossBlockIds(page), ['1', '0'], 'cue 1 should sit above cue 0');
     assert.equal(await page.locator('[data-testid="watch-gloss-word"]').count(), 2, 'words from both sentences should remain visible');
     assert.ok(
         (await page.locator('[data-testid="watch-gloss-word"]').allInnerTexts()).some((text) => text.includes('habits')),
         'earlier word habits disappeared from the history',
     );
+    const railText = await page.locator('[data-testid="watch-gloss-rail"]').innerText();
+    assert.ok(!railText.includes('A short walk') && !railText.includes('Small habits'), 'sentence context is still rendered in the rail');
+    assert.ok(!railText.includes('生词') && !railText.includes('语言点'), 'gloss section headings are still rendered');
+    await assertGlossListChrome(page, 'watch-gloss-rail', '1440 rail');
     const cue1Scroll = await scrollMetrics(page);
     assert.equal(cue1Scroll.scrollTop, 0, 'a new sentence should leave the window at the top');
 
-    // — seek to cue 2: overlay follows, gloss shows the explicit empty state on top —
+    // — seek to cue 2: the empty sentence adds NO entry and NO placeholder —
     await page.keyboard.press('ArrowRight');
     await waitForOverlay(page, 'Nobody moves');
     await pausePlayback(page);
-    await page.locator('[data-testid="watch-gloss-empty"]').waitFor({ state: 'visible', timeout: 10000 });
-    assert.ok((await page.locator('[data-testid="watch-gloss-empty"]').innerText()).includes('本句无生词'));
-    await waitForGlossEntries(page, 3);
-    const cue2Entries = page.locator('[data-testid="watch-gloss-entry"]');
-    assert.equal(await cue2Entries.first().getAttribute('data-current'), 'true');
-    const cue2Top = await cue2Entries.first().innerText();
-    assert.ok(cue2Top.includes('Nobody moves') && cue2Top.includes('本句无生词'), `empty sentence is not the top entry: ${cue2Top}`);
+    await page.waitForFunction(
+        () => document.querySelectorAll('[data-testid="watch-gloss-entry"][data-current="true"]').length === 0,
+        null,
+        { timeout: 5000 },
+    );
+    await waitForGlossEntries(page, 2);
+    assert.equal(await page.locator('[data-testid="watch-gloss-empty"]').count(), 0, 'empty sentence must not render a placeholder');
+    assert.equal(await page.locator('[data-testid="watch-gloss-entry-empty"]').count(), 0, 'empty sentence must not render an entry placeholder');
     assert.equal(await page.locator('[data-testid="watch-gloss-word"]').count(), 2, 'earlier words must survive an empty sentence');
+    const cue2RailText = await page.locator('[data-testid="watch-gloss-rail"]').innerText();
+    assert.ok(!cue2RailText.includes('本句无生词'), 'the no-gloss placeholder text is still rendered');
+    assert.ok(!cue2RailText.includes('Nobody moves'), 'the empty sentence context is still rendered');
     summary.screenshots.push(shot('1440-history'));
     await page.screenshot({ path: shot('1440-history') });
 
@@ -816,29 +921,19 @@ try {
     await page.keyboard.press('ArrowLeft');
     await waitForOverlay(page, 'A short walk');
     await pausePlayback(page);
-    await page.waitForFunction(() => {
-        const first = document.querySelector('[data-testid="watch-gloss-entry"]');
-        return first?.getAttribute('data-current') === 'true' && (first.textContent || '').includes('A short walk');
-    }, null, { timeout: 10000 });
+    await waitForCurrentEntry(page, '1');
     assert.equal(await glossEntryCount(page), 2, 'revisiting a sentence must not duplicate it');
+    assert.deepEqual(await glossBlockIds(page), ['1', '0'], 'revisited cue 1 did not move to the top');
     await page.keyboard.press('ArrowLeft');
     await waitForOverlay(page, 'Small habits');
     await pausePlayback(page);
-    await page.waitForFunction(() => {
-        const first = document.querySelector('[data-testid="watch-gloss-entry"]');
-        return first?.getAttribute('data-current') === 'true' && (first.textContent || '').includes('Small habits');
-    }, null, { timeout: 10000 });
+    await waitForCurrentEntry(page, '0');
     assert.equal(await glossEntryCount(page), 2, 'revisiting cue 0 duplicated the history');
-    const revisitContexts = await page.locator('[data-testid="watch-gloss-entry-context"]').allInnerTexts();
-    assert.equal(revisitContexts.filter((text) => text.includes('Small habits')).length, 1, 'revisited sentence duplicated');
-    assert.ok(revisitContexts[0].includes('Small habits'), 'revisited sentence did not move to the top');
+    assert.deepEqual(await glossBlockIds(page), ['0', '1'], 'revisited cue 0 did not move to the top');
     await page.keyboard.press('ArrowRight');
     await waitForOverlay(page, 'A short walk');
     await pausePlayback(page);
-    await page.waitForFunction(() => {
-        const first = document.querySelector('[data-testid="watch-gloss-entry"]');
-        return first?.getAttribute('data-current') === 'true' && (first.textContent || '').includes('A short walk');
-    }, null, { timeout: 10000 });
+    await waitForCurrentEntry(page, '1');
     assert.equal(await glossEntryCount(page), 2, 'moving forward duplicated an existing sentence');
     assert.equal(await page.locator('[data-testid="watch-gloss-word"]').count(), 2, 'history lost a word after the revisit');
 
@@ -928,7 +1023,15 @@ try {
                 mediaWidth: Math.round(watchType.mediaWidth * 10) / 10,
             },
         },
-        history: { accumulated: 2, dedupe: 'pass' },
+        history: { accumulated: 2, dedupe: 'pass', emptySentence: 'skipped' },
+        glossRoll: {
+            title: '滚动词条',
+            sentenceContext: 'removed',
+            sectionHeadings: 'removed',
+            kindBadge: 'removed',
+            emptyPlaceholder: 'removed',
+            entryChrome: 'borderless',
+        },
     };
     await desktop.close();
 
@@ -1178,9 +1281,18 @@ try {
     // sits on the media without covering it.
     summary.screenshots.push(shot('375'));
     await phone.screenshot({ path: shot('375') });
-    // Expanded: the <1280 floating gloss layer (D1-1) carries the same words.
+    // Expanded: the <1280 floating gloss layer (D1-1) carries the same words
+    // under the P2-12 title, with no headings / context / placeholder.
     await phone.locator('[data-testid="watch-gloss-toggle"]').click();
     await phone.locator('[data-testid="watch-gloss-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+    assert.equal(
+        (await phone.locator('[data-testid="watch-gloss-toggle"]').innerText()).trim(),
+        '滚动词条',
+        'floating gloss toggle title is not 滚动词条',
+    );
+    assert.equal(await phone.locator('[data-testid="watch-gloss-panel"] h3').count(), 0, 'floating gloss section headings must be gone');
+    assert.equal(await phone.locator('[data-testid="watch-gloss-entry-context"]').count(), 0, 'floating gloss context line must be gone');
+    assert.equal(await phone.locator('[data-testid="watch-gloss-empty"]').count(), 0, 'floating gloss placeholder must be gone');
     const phoneWord = (await phone.locator('[data-testid="watch-gloss-word"]').first().innerText()).trim();
     assert.ok(phoneWord.length > 0, 'floating gloss window has no glossed word');
     summary.screenshots.push(shot('375-gloss'));
@@ -1233,10 +1345,18 @@ try {
         historyInitial.scrollHeight > historyInitial.clientHeight,
         `history window does not overflow (${historyInitial.scrollHeight} <= ${historyInitial.clientHeight}); scroll contract cannot be exercised`,
     );
-    const historyContexts = await historyPage.locator('[data-testid="watch-gloss-entry-context"]').allInnerTexts();
-    assert.ok(historyContexts[0].includes('Then the kettle'), `newest sentence is not on top: ${JSON.stringify(historyContexts)}`);
-    for (const earlier of ['The room stays', 'A short walk', 'Small habits']) {
-        assert.ok(historyContexts.some((text) => text.includes(earlier)), `earlier sentence missing from history: ${earlier}`);
+    // P2-12: entries are ordered by block id (the sentence context is gone);
+    // cue 2 is empty, so it never appears in the rolling list.
+    assert.deepEqual(
+        await glossBlockIds(historyPage),
+        ['4', '3', '1', '0'],
+        'history should be newest-first and skip the empty sentence',
+    );
+    assert.equal(await historyPage.locator('[data-testid="watch-gloss-empty"]').count(), 0, 'history must not contain a placeholder entry');
+    assert.equal(await historyPage.locator('[data-testid="watch-gloss-entry-context"]').count(), 0, 'history must not render sentence context');
+    const historyPanelText = await historyPage.locator('[data-testid="watch-gloss-panel"]').innerText();
+    for (const earlier of ['保持', '早餐', '习惯']) {
+        assert.ok(historyPanelText.includes(earlier), `earlier sentence missing from history: ${earlier}`);
     }
     summary.screenshots.push(shot('375-history'));
     await historyPage.screenshot({ path: shot('375-history') });
@@ -1255,8 +1375,12 @@ try {
     await waitForGlossEntries(historyPage, 5);
     const afterManualScroll = await scrollMetrics(historyPage);
     assert.ok(afterManualScroll.scrollTop > 8, `new sentence pulled the manually scrolled window back to ${afterManualScroll.scrollTop}`);
-    const topAfterNew = await historyPage.locator('[data-testid="watch-gloss-entry"]').first().innerText();
-    assert.ok(topAfterNew.includes('Steam curls'), 'new sentence is not the top entry after manual scroll');
+    const topAfterNew = historyPage.locator('[data-testid="watch-gloss-entry"]').first();
+    assert.equal(await topAfterNew.getAttribute('data-block-id'), '5', 'new sentence is not the top entry after manual scroll');
+    assert.ok((await topAfterNew.innerText()).includes('蒸汽'), 'new sentence words are missing after manual scroll');
+    // P2-12: cue 5 carries the long word + long gloss; it must wrap inside the
+    // 375 panel (all five entries are in the DOM, cue 5 on top).
+    await assertGlossListChrome(historyPage, 'watch-gloss-panel', '375 history');
 
     // Back at the top by hand: auto-follow resumes on the next sentence.
     await historyPage.locator('[data-testid="watch-gloss-scroll"]').evaluate((el) => {
@@ -1271,20 +1395,19 @@ try {
     await historyPage.keyboard.press('ArrowLeft');
     await waitForOverlay(historyPage, 'Then the kettle', 12000);
     await pausePlayback(historyPage);
-    await historyPage.waitForFunction(() => {
-        const first = document.querySelector('[data-testid="watch-gloss-entry"]');
-        return first?.getAttribute('data-current') === 'true' && (first.textContent || '').includes('Then the kettle');
-    }, null, { timeout: 10000 });
+    await waitForCurrentEntry(historyPage, '4');
     assert.equal(await glossEntryCount(historyPage), 5, 'revisiting a sentence in the history duplicated it');
     const afterTop = await scrollMetrics(historyPage);
     assert.equal(afterTop.scrollTop, 0, 'auto-follow did not keep the window at the top after scrolling back up');
     assert.deepEqual(historyErrors, [], `history page errors: ${JSON.stringify(historyErrors)}`);
     summary.history = {
         entries: 5,
+        emptySentence: 'skipped',
         scrollHeight: historyInitial.scrollHeight,
         clientHeight: historyInitial.clientHeight,
         manualScrollTop: Math.round(afterManualScroll.scrollTop),
         autoScrollTop: afterTop.scrollTop,
+        longText375: 'wrapped',
     };
     await historyContext.close();
 
@@ -1308,17 +1431,36 @@ try {
         wideType.zh.fontSize > subtitleTypography.zh.fontSize,
         `1920 Chinese ${wideType.zh.fontSize}px must be larger than 1440 watch ${subtitleTypography.zh.fontSize}px`,
     );
-    assert.ok(wideType.en.fontSize <= 31.21, `1920 English ${wideType.en.fontSize}px exceeds the 31.2px cap`);
+    assert.ok(wideType.en.fontSize <= 32.01, `1920 English ${wideType.en.fontSize}px exceeds the 32px cap`);
     assert.ok(wideType.zh.fontSize <= 26.01, `1920 Chinese ${wideType.zh.fontSize}px exceeds the 26px cap`);
     assert.ok(wideType.en.fontSize > wideType.zh.fontSize, '1920 English must stay above Chinese');
     assert.ok(!wideType.en.clipped && !wideType.zh.clipped, '1920 subtitle text is horizontally clipped');
     assert.ok(wideType.insideMedia && wideType.insideViewport, '1920 subtitle overlay overflows the media stage');
     summary.screenshots.push(shot('1920'));
     await widePage.screenshot({ path: shot('1920') });
+    // P2-11 follow-up: the English ceiling is 32px (2rem). A window wide enough
+    // for 2cqi to exceed it must clamp there instead of growing further.
+    await widePage.setViewportSize({ width: 2048, height: 1152 });
+    await widePage.waitForFunction(
+        () => {
+            const el = document.querySelector('[data-testid="watch-subtitle-en"]');
+            return el ? parseFloat(getComputedStyle(el).fontSize) > 31.5 : false;
+        },
+        null,
+        { timeout: 5000 },
+    );
+    const cappedType = await subtitleType(widePage);
+    assert.ok(
+        Math.abs(cappedType.en.fontSize - 32) < 0.01,
+        `2048 English ${cappedType.en.fontSize}px must hit the 32px ceiling`,
+    );
+    assert.ok(cappedType.en.fontSize > cappedType.zh.fontSize, 'capped English must stay above Chinese');
+    assert.ok(!cappedType.en.clipped && !cappedType.zh.clipped, '2048 subtitle text is horizontally clipped');
     assert.deepEqual(wideErrors, [], `1920 page errors: ${JSON.stringify(wideErrors)}`);
     summary.wide = {
         mediaWidth: Math.round((wideType.mediaWidth ?? 0) * 10) / 10,
         subtitleFontPx: { en: wideType.en.fontSize, zh: wideType.zh.fontSize },
+        capFontPx: cappedType.en.fontSize,
     };
     await wideContext.close();
 
