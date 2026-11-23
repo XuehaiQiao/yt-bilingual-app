@@ -748,8 +748,8 @@
     {
       "id": "P1-16",
       "file": "TASKS/P1-16-wordbook-in-topbar.md",
-      "status": "claimed",
-      "owner": "topbar-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/AppShell.tsx",
         "frontend/src/App.tsx",
