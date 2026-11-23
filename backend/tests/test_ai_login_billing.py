@@ -289,17 +289,18 @@ def test_define_charges_balance_and_cache_hit_is_free(client, monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_unpriced_model_is_503_without_provider_call(client, monkeypatch):
+    """P1-20 起 Qwen 已有官方价，缺价样本改用仍未定价的 Gemini 3.1 Pro（预览）。"""
     calls: list[dict] = []
-    monkeypatch.setattr(llm, "_generate_openai_compatible", _fake_provider(calls))
+    monkeypatch.setattr(llm, "_generate_google", _fake_provider(calls))
     before = _balance(client.user_id)
 
     response = client.post(
-        "/api/define", json={"word": "unpricedword", "model": "qwen-flash"}
+        "/api/define", json={"word": "unpricedword", "model": "gemini-3.1-pro-preview"}
     )
     assert response.status_code == 503, response.text
     body = response.json()
     assert body["code"] == "model_unpriced"
-    assert body["modelId"] == "qwen-flash"
+    assert body["modelId"] == "gemini-3.1-pro-preview"
     assert calls == [], "缺价模型不得调用厂商"
     assert _balance(client.user_id) == before
     assert _rows("SELECT COUNT(*) FROM credit_holds") == [(0,)]

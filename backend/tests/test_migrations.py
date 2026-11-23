@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0029_word_state_definition"
+HEAD = "0030_qwen_prices"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -1784,3 +1784,71 @@ def test_definition_migration_is_additive_idempotent_and_data_preserving(tmp_pat
         assert conn.execute(
             "SELECT definition FROM word_states WHERE id = 'ws-d1'"
         ).fetchone()[0] == "你好"
+
+
+def test_qwen_price_migration_seeds_versions_and_aliases(tmp_path):
+    """0030：Qwen 版本价 + 目录别名价；重复 upgrade 幂等；downgrade 只删这四行。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    assert revision(db) == HEAD
+
+    expected = {
+        "qwen3.8-flash": (113_000, 382_000),
+        "qwen-flash": (113_000, 382_000),
+        "qwen3.7-plus": (276_000, 1_101_000),
+        "qwen-plus": (276_000, 1_101_000),
+    }
+
+    def _qwen_rows():
+        with sqlite3.connect(db) as conn:
+            return {
+                row[0]: row
+                for row in conn.execute(
+                    "SELECT model_id, provider, effective_from_ms, "
+                    "input_micro_usd_per_mtok, output_micro_usd_per_mtok, "
+                    "source_kind, source_ref, note, price_version "
+                    "FROM model_prices WHERE model_id LIKE 'qwen%'"
+                )
+            }
+
+    rows = _qwen_rows()
+    assert set(rows) == set(expected)
+    for model_id, (in_price, out_price) in expected.items():
+        row = rows[model_id]
+        assert row[1] == "Alibaba", model_id
+        # 0025 同一轮核价生效时间：2026-11-20 00:00:00 UTC。
+        assert row[2] == 1_795_132_800_000, model_id
+        assert (row[3], row[4]) == (in_price, out_price), model_id
+        assert row[5] == "official_page", model_id
+        assert row[6] == (
+            "https://www.alibabacloud.com/help/zh/model-studio/model-pricing"
+        ), model_id
+        assert "北京" in row[7] and "全球" in row[7], model_id
+        assert row[8].startswith("2026-11-"), model_id
+    # 别名行写明指向的真实版本，避免两套价目悄悄漂移。
+    assert "qwen3.8-flash" in rows["qwen-flash"][7]
+    assert "qwen3.7-plus" in rows["qwen-plus"][7]
+
+    # 幂等：把版本号退回 0029 再升一次，0030 会在已有行上重跑（INSERT OR IGNORE）。
+    assert_alembic_ok(
+        run_alembic(db, "stamp", "0029_word_state_definition"), "stamp 0029"
+    )
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (re-run 0030)")
+    assert revision(db) == HEAD
+    assert set(_qwen_rows()) == set(expected)
+
+    # downgrade：只删 0030 的四行，0025 的 deepseek / gemini seed 保留。
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0029_word_state_definition"), "downgrade 0029"
+    )
+    assert not _qwen_rows()
+    with sqlite3.connect(db) as conn:
+        rest = {
+            row[0]
+            for row in conn.execute("SELECT model_id FROM model_prices")
+        }
+    assert rest == {"deepseek-chat", "gemini-2.5-flash"}
+
+    # 再升级把价补回来。
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert set(_qwen_rows()) == set(expected)

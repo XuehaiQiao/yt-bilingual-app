@@ -161,7 +161,15 @@ def test_migration_creates_balance_schema_and_seeds_prices(billing_db):
         "FROM model_prices ORDER BY model_id",
     )
     by_model = {row[0]: row for row in prices}
-    assert set(by_model) == {"deepseek-chat", "gemini-2.5-flash"}
+    assert set(by_model) == {
+        "deepseek-chat",
+        "gemini-2.5-flash",
+        # P1-20 / 0030：Qwen 写真实版本名 + 目录别名两套同价行（见迁移文档）。
+        "qwen3.8-flash",
+        "qwen-flash",
+        "qwen3.7-plus",
+        "qwen-plus",
+    }
     deepseek = by_model["deepseek-chat"]
     assert deepseek[2] == 300_000 and deepseek[3] == 1_200_000
     assert deepseek[4] == "official_page"
@@ -169,14 +177,27 @@ def test_migration_creates_balance_schema_and_seeds_prices(billing_db):
     gemini = by_model["gemini-2.5-flash"]
     assert gemini[2] == 300_000 and gemini[3] == 2_500_000
     assert gemini[4] == "official_page"
-    # 缺价模型不编数字：qwen / Gemini 3.x 没有行。
-    assert not {"qwen-flash", "qwen-plus", "gemini-3.5-flash-lite"} & set(by_model)
+    # 0030：北京/全球官方价（USD 原价）；版本名与目录别名同价同源。
+    for model_id in ("qwen3.8-flash", "qwen-flash"):
+        assert by_model[model_id][2] == 113_000 and by_model[model_id][3] == 382_000
+        assert by_model[model_id][4] == "official_page"
+        assert "alibabacloud.com" in by_model[model_id][6]
+    for model_id in ("qwen3.7-plus", "qwen-plus"):
+        assert by_model[model_id][2] == 276_000 and by_model[model_id][3] == 1_101_000
+        assert by_model[model_id][4] == "official_page"
+        assert "alibabacloud.com" in by_model[model_id][6]
+    # 缺价模型不编数字：Gemini 3.x 没有行。
+    assert not {"gemini-3.5-flash-lite", "gemini-3.1-pro-preview"} & set(by_model)
 
     # 价格解析：官方价 → billing.price_for_model
     price = billing.price_for_model("deepseek-chat")
     assert price["inputMicroUsdPerMtok"] == 300_000
     assert price["priceSource"] == "official"
-    assert billing.price_for_model("qwen-flash") is None
+    # P1-20：目录 id（账本/计费键）与真实版本名都能取到 Qwen 价。
+    assert billing.price_for_model("qwen-flash")["inputMicroUsdPerMtok"] == 113_000
+    assert billing.price_for_model("qwen3.8-flash")["outputMicroUsdPerMtok"] == 382_000
+    assert billing.price_for_model("qwen-plus")["outputMicroUsdPerMtok"] == 1_101_000
+    assert billing.price_for_model("qwen3.7-plus")["inputMicroUsdPerMtok"] == 276_000
 
 
 def test_compat_schema_matches_migration(tmp_path, monkeypatch):
@@ -294,7 +315,7 @@ def test_migration_downgrade_keeps_users_and_usage(tmp_path, monkeypatch):
     ]
 
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head again")
-    assert revision(db) == "0029_word_state_definition"
+    assert revision(db) == "0030_qwen_prices"
     # 回滚后余额列重建为 0，再按 D-3 给 active 用户补发。
     assert _balance(db, "keep") == BONUS
 
@@ -785,7 +806,34 @@ def test_llm_generate_reserves_and_settles(client_upgraded, billing_db, monkeypa
 def test_llm_generate_unpriced_model_is_rejected_and_not_called(
     client_upgraded, billing_db, monkeypatch
 ):
-    """M7a：没有可核实单价的模型必须 503 model_unpriced，且**不调用 provider**。"""
+    """M7a：没有可核实单价的模型必须 503 model_unpriced，且**不调用 provider**。
+
+    P1-20 起 Qwen Flash/Plus 有官方价，缺价样本改用仍未定价的 Gemini 3.1 Pro
+    （预览模型无官方美元价，目录 in/out 亦为 None）。
+    """
+    user_id = client_upgraded.user_id
+    calls: list[str] = []
+
+    def _fake(prompt, spec, json_mode):
+        calls.append(spec.get("model_id", "?"))
+        return '{"ok": true}', {"input_tokens": 1000, "output_tokens": 500}
+
+    monkeypatch.setattr(llm, "_generate_google", _fake)
+    with llm.usage_scope("define", user_id, target_lang="zh-CN"):
+        with pytest.raises(billing.ModelUnpriced) as excinfo:
+            llm.generate("hello", model="gemini-3.1-pro-preview")
+    assert excinfo.value.code == "model_unpriced"
+    assert excinfo.value.status_code == 503
+    assert calls == [], "缺价模型不得真正调用厂商"
+    assert _balance(billing_db, user_id) == BONUS
+    assert _rows(billing_db, "SELECT COUNT(*) FROM credit_holds") == [(0,)]
+    assert _rows(billing_db, "SELECT COUNT(*) FROM ai_usage") == [(0,)]
+
+
+def test_llm_generate_priced_qwen_uses_version_name_and_alias_price(
+    client_upgraded, billing_db, monkeypatch
+):
+    """P1-20：Qwen 有价后不再 503；provider 收真实版本名，账本/计价用目录 id。"""
     user_id = client_upgraded.user_id
     calls: list[str] = []
 
@@ -795,14 +843,25 @@ def test_llm_generate_unpriced_model_is_rejected_and_not_called(
 
     monkeypatch.setattr(llm, "_generate_openai_compatible", _fake)
     with llm.usage_scope("define", user_id, target_lang="zh-CN"):
-        with pytest.raises(billing.ModelUnpriced) as excinfo:
-            llm.generate("hello", model="qwen-flash")
-    assert excinfo.value.code == "model_unpriced"
-    assert excinfo.value.status_code == 503
-    assert calls == [], "缺价模型不得真正调用厂商"
-    assert _balance(billing_db, user_id) == BONUS
-    assert _rows(billing_db, "SELECT COUNT(*) FROM credit_holds") == [(0,)]
-    assert _rows(billing_db, "SELECT COUNT(*) FROM ai_usage") == [(0,)]
+        llm.generate("hello", model="qwen-flash")
+
+    # 调用名是目录别名，发给厂商的是固定版本名。
+    assert calls == ["qwen3.8-flash"]
+    rows = _rows(
+        billing_db,
+        "SELECT model_id, cost_micro_usd, billable, billing_status, "
+        "input_price_micro_usd_per_mtok, output_price_micro_usd_per_mtok "
+        "FROM ai_usage WHERE user_id = ?",
+        (user_id,),
+    )
+    assert len(rows) == 1
+    row = rows[0]
+    assert row[0] == "qwen-flash", "账本按目录 id 记账"
+    assert row[2] == 1 and row[3] == "settled"
+    assert (row[4], row[5]) == (113_000, 382_000)
+    # 113 + 191 = 304 µUSD（北京价，分量分别向上取整）。
+    assert row[1] == 304
+    assert _balance(billing_db, user_id) == BONUS - 304
 
 
 def test_llm_generate_provider_failure_releases_hold(

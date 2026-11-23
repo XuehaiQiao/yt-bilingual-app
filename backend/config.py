@@ -271,18 +271,23 @@ MODEL_CATALOG = {
     },
     # Qwen（阿里）走 OpenAI 兼容协议；国际站/大陆站端点不同，**不在代码里写死**，
     # 由 QWEN_BASE_URL 提供（缺失时该模型视为不可用、在路线里自动跳过）。
-    # 价格没有可核实来源，保持 None（前端显示「待定」），不编数字。
+    #
+    # P1-20：目录 id 保持稳定别名（`qwen-flash` / `qwen-plus` 是**账本与计费键**，
+    # 也是 provider 仍接受的调用名），`model_id` 固定到 provider `/models` 已确认
+    # 的实际版本；`version` 只是给人看的版本标记（接口 shape 不输出它）。
+    # 价格不在目录里编：由迁移 `0030_qwen_prices` 写入 `model_prices`（北京/全球
+    # 官方价），`billing.price_for_model()` 优先读表；in/out 仍留 None，避免两套价目。
     "qwen-flash": {
-        "name": "Qwen Flash", "provider": "Alibaba",
-        "kind": "openai_compatible", "model_id": "qwen-flash",
+        "name": "Qwen 3.8 Flash", "provider": "Alibaba", "version": "3.8",
+        "kind": "openai_compatible", "model_id": "qwen3.8-flash",
         "base_url_env": "QWEN_BASE_URL",
         "api_key_env": "QWEN_API_KEY", "batch_pause": 1,
         "in": None, "out": None,
         "quotaInfo": "Default · fast & cheap · verify region",
     },
     "qwen-plus": {
-        "name": "Qwen Plus", "provider": "Alibaba",
-        "kind": "openai_compatible", "model_id": "qwen-plus",
+        "name": "Qwen 3.7 Plus", "provider": "Alibaba", "version": "3.7",
+        "kind": "openai_compatible", "model_id": "qwen3.7-plus",
         "base_url_env": "QWEN_BASE_URL",
         "api_key_env": "QWEN_API_KEY", "batch_pause": 1,
         "in": None, "out": None,
@@ -324,8 +329,9 @@ def resolve_model(model: str | None) -> str:
 # 大陆部署不配 GEMINI_API_KEY 时 Gemini 自动跳过，路线落到 Qwen/DeepSeek；
 # 这里**不把 Gemini 写进任何降级链**（降级链见 ai/quota.py，另按地域过滤）。
 DEFAULT_MODEL_ZH_CN_FALLBACK = "deepseek-chat"
-# M7a：越南语默认也走有可核实单价的 deepseek-chat。Qwen（Flash/Plus）目前没有
-# 可核实的官方价，严格计费下禁止调用；补齐 model_prices 后才允许放进路线。
+# M7a：越南语默认也走有可核实单价的 deepseek-chat。P1-20 起 Qwen Flash/Plus 已有
+# 官方价（迁移 0030_qwen_prices），但本卡验收明确**不改路线**：是否把 Qwen 加回
+# 越南语路线由负责人另行决定，改动需单独走卡（含价格复核）。
 DEFAULT_MODEL_VI_VN_FALLBACK = "deepseek-chat"
 
 
@@ -351,9 +357,8 @@ TARGET_LANG_MODEL_ROUTES: dict[str, list[str]] = {
     "zh-CN": _model_route_from_env(
         "MODEL_ROUTE_ZH_CN", ["deepseek-chat", "gemini-2.5-flash"]
     ),
-    # 越南语（M7a）：Qwen Flash/Plus 在 model_prices 里没有可核实单价，严格
-    # 计费下不能调用，默认路线改为 deepseek-chat（prompt 语言仍是越南语）。
-    # 补齐 Qwen 官方价（model_prices）后可再用 MODEL_ROUTE_VI_VN 加回去。
+    # 越南语（M7a）：默认 deepseek-chat（prompt 语言仍是越南语）。P1-20 补齐了
+    # Qwen 官方价，但本卡不改路线；要加回 Qwen 走 MODEL_ROUTE_VI_VN 覆盖或单独开卡。
     "vi-VN": _model_route_from_env(
         "MODEL_ROUTE_VI_VN", ["deepseek-chat"]
     ),

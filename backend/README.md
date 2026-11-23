@@ -1360,10 +1360,17 @@ data/users/<user_id>/history/                     # zh-CN 兼容位（长期保�
 | `zh-CN` | `deepseek-chat` → `gemini-2.5-flash` | `MODEL_ROUTE_ZH_CN` |
 | `vi-VN` | `deepseek-chat` | `MODEL_ROUTE_VI_VN` |
 
-- **M7a：路线里只能放有可核实单价的模型**（`model_prices` 有价，或目录 `in/out` 有值）。Qwen Flash/Plus 缺官方价，已从越南语路线移除；补齐官方价后再加回。
+- **M7a：路线里只能放有可核实单价的模型**（`model_prices` 有价，或目录 `in/out` 有值）。P1-20 已补齐 Qwen 官方价（见下节），但**本轮不改路线**：Qwen 仍不在越南语路线里，要加回走 `MODEL_ROUTE_VI_VN` 覆盖或单独开卡评估。
 - 每语言首选用 `DEFAULT_MODEL_ZH_CN` / `DEFAULT_MODEL_VI_VN` 覆盖；全局兜底仍是 `DEFAULT_MODEL`。越南语默认 `deepseek-chat`（prompt 语言仍是越南语）。
-- `qwen-*` 用 `QWEN_API_KEY` + `QWEN_BASE_URL`（国际站/大陆站端点不同，**代码不写死**）；缺任一视为不可用并跳过。当前即使配置了 Key，严格计费也会因缺价返回 503。
+- `qwen-*` 用 `QWEN_API_KEY` + `QWEN_BASE_URL`（国际站/大陆站端点不同，**代码不写死**）；缺任一视为不可用并跳过。P1-20 起已写入 `model_prices`，配置齐全的 Qwen 不再因「未定价」被严格计费 503。
 - 大陆部署不配 `GEMINI_API_KEY` → Gemini 自动跳过；Gemini 不进大陆降级链（降级链逻辑见 `ai/quota.py`）。自动候选链只收 priced 模型，避免「免费调用未定价模型」。
+
+#### Qwen 版本与价格来源（P1-20）
+
+- 目录 id 是稳定别名（`qwen-flash` / `qwen-plus`，**同时是账本与计费键**）；实际版本在 `MODEL_CATALOG[...]["model_id"]`，已由 provider `/models` 确认：`qwen-flash` → `qwen3.8-flash`、`qwen-plus` → `qwen3.7-plus`，名称与 `version` 字段同步标 3.8 / 3.7。
+- 价格由迁移 `0030_qwen_prices` 写入 `model_prices`（`source_kind=official_page`）：北京/全球 输入 **$0.113** / 输出 **$0.382**（3.8 Flash）；输入 **$0.276** / 输出 **$1.101**（3.7 Plus，≤256K 上下文，取**原价**、不采用限时折扣）。单位每百万 Token，USD 不含税。
+- 来源：官方帮助页 2026-11-21 更新 <https://www.alibabacloud.com/help/zh/model-studio/model-pricing>（核对日 2026-11-23）。本项目 `QWEN_BASE_URL` 为 dashscope 国内站 → 采用北京/全球价；新加坡/香港（$0.15/$0.47）、美国/日本（$0.4/$1.6）价不采用，不做汇率换算。
+- 迁移同时写目录别名行（与版本行同价同源）：`billing.price_for_model()` 按目录 id 查询，只写版本名行时严格计费仍会 503；别名改指向时必须同步更新价格行。**默认 `MODEL_ROUTE` 不变**，Qwen 只能被显式选择。
 
 ### 词典策略
 
@@ -1385,7 +1392,7 @@ venv/bin/python -m pytest tests/test_i18n_target_lang.py -q   # 目标语言 P0�
 
 ## 迁移与事件日志（M1：Alembic + learning_events）
 
-数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）；`0010_discover` 建内容发现缓存/审计表 `discover_queries`（V1，见上文「内容发现」）；`0011_reading` 建读文章四表；`0012_exam` 建考试练习两表（V2，见上文「考试练习」）；`0013_user_profile` 给 `users` 加 `username`/`credits`/`status`（旧用户 username 回填 email 前缀）、建余额流水 `credit_transactions` 与应用设置 `app_settings`（V1 用户需求 1–3，见上文「用户资料、余额与后台设置」）；`0024_account_lifecycle` 建删除申请 `account_deletion_requests`、导出任务 `data_export_jobs`、管理员审计 `admin_audit_log`（M2a，见上文「账号删除 / 数据导出」）；`0028_user_wordlists` 建自定义词表两表 `user_wordlists` / `user_wordlist_items`；`0029_word_state_definition` 给 `word_states` 加可空 `definition` 释义快照列（见上文「自定义词表导入」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
+数据库 schema 从 M1 起由 **Alembic** 管理（`alembic.ini` + `migrations/`）。基线迁移 `0001_baseline` 复刻 `auth_db.py` 原有的 `users`/`sessions`/`idx_sessions_expires`；`0002_learning_events` 建学习事件表；`0003_cost_ledger` 建 AI 成本账本 `ai_usage` 与日配额 `ai_quota`；`0004_target_lang` 给 `ai_usage` 加可空 `target_lang`（默认 `zh-CN`，旧行不改写）；`0005_jobs` 建任务表 `jobs`（含未完成任务的**部分唯一索引**，保证同一内容同语言只有一个在跑的任务）；`0006_review_engine` 建复习三表 `word_states` / `review_logs` / `word_sources`（M2，见上文「复习引擎」）；`0007_quiz` 建理解题三表 `content_items` / `questions` / `attempts`（M3，见上文「理解题」）；`0008_weekly_report` 建观看事件 `watch_events` 与周报快照 `weekly_reports`（M5，见上文「学习事件上报与周报」）；`0009_placement` 建定位测三表 `placement_sessions` / `placement_answers` / `user_profiles`（M4，见上文「能力定位测与能力画像」）；`0010_discover` 建内容发现缓存/审计表 `discover_queries`（V1，见上文「内容发现」）；`0011_reading` 建读文章四表；`0012_exam` 建考试练习两表（V2，见上文「考试练习」）；`0013_user_profile` 给 `users` 加 `username`/`credits`/`status`（旧用户 username 回填 email 前缀）、建余额流水 `credit_transactions` 与应用设置 `app_settings`（V1 用户需求 1–3，见上文「用户资料、余额与后台设置」）；`0024_account_lifecycle` 建删除申请 `account_deletion_requests`、导出任务 `data_export_jobs`、管理员审计 `admin_audit_log`（M2a，见上文「账号删除 / 数据导出」）；`0028_user_wordlists` 建自定义词表两表 `user_wordlists` / `user_wordlist_items`；`0029_word_state_definition` 给 `word_states` 加可空 `definition` 释义快照列（见上文「自定义词表导入」）；`0030_qwen_prices` 往 `model_prices` 写 Qwen 版本价与目录别名价（见上文「Qwen 版本与价格来源」）。应用不再为**新表**写「连库即建表」，`auth_db.py` 里的 `CREATE TABLE IF NOT EXISTS` 只作为旧部署/测试的兼容路径保留。
 
 命令都在 `backend/` 下执行：
 
