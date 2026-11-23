@@ -1,6 +1,6 @@
 # 044 — 观影模式（最小版）
 
-> 状态：待实现 ｜ 2026-11-23 ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
+> 状态：**已实现（2026-11-23，P2-08）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
 > 成本：0（只读已有分析缓存，不新增 AI 调用）。
 
 ## 1. 开关与布局
@@ -34,3 +34,18 @@
 - 词条窗数据与页面 ruby/语言点一致；空态文案正确
 - 全屏语义不变（最小版不改全屏）
 - 现有播放/字幕/听读/验收脚本零回归；1440/375 截图
+
+## 5. 实现落点（2026-11-23）
+
+| 内容 | 位置 |
+|---|---|
+| `watchMode` off/on 持久化（key `yt_bilingual_watch_mode`；与 stacked/split、左列比例分键存储） | `frontend/src/lib/layout.ts` |
+| 播放器工具栏入口（图标+文字、`aria-pressed`、悬停/触屏可见；切换携带播放进度，不重新起播） | `frontend/src/components/VideoPlayer.tsx` |
+| 单句字幕窗（中上英下、玻璃条、`pointer-events-none`、无当前句隐藏、无动画） | `frontend/src/components/WatchSubtitleOverlay.tsx` |
+| 词条窗（≥1280 固定右栏 `clamp(20rem,24vw,22.5rem)`；<1280 浮层；loading/error/空句/无分析四态） | `frontend/src/components/WatchGlossPanel.tsx` |
+| 学习视图接线（观看 shell、教学面板/摘要/字幕工具栏不渲染、当前句取 `activeTranscriptIndex`） | `frontend/src/App.tsx` |
+| 文案（zh-CN / vi-VN） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
+| 验收脚本（开关持久化、布局/教学面板、播放/跳转跟句、词条/空态、reduced-motion、1440+375 截图） | `scripts/watch-mode-acceptance.mjs` |
+
+词条数据只读既有教学分析（specs/028）：`wordGlossesByBlock` + `languagePointsByBlock`；
+无分析态的重试按钮复用 `GET /api/teaching-analysis/{content_ref}`，本规格不新增任何 AI 调用。

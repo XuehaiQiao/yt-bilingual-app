@@ -31,6 +31,8 @@ import { LanguagePointToggle } from './components/ui/LanguagePointToggle';
 import { useReadingHighlights } from './lib/useReadingHighlights';
 import { loadLanguagePointsEnabled } from './lib/highlightLayers';
 import { TeachingNotesPanel, type TeachingNotesStatus } from './components/TeachingNotesPanel';
+import { WatchSubtitleOverlay } from './components/WatchSubtitleOverlay';
+import { WatchGlossPanel } from './components/WatchGlossPanel';
 import { addFavorite, fetchFavorites, removeFavorite, type FavoriteDraft, type FavoriteItem } from './lib/favorites';
 import { ChannelVideoList } from './components/ChannelVideoList';
 import { Toaster } from './components/Toaster';
@@ -118,16 +120,24 @@ import {
   DEFAULT_SPLIT_RATIO,
   loadSplitRatio,
   loadTranscriptLayout,
+  loadWatchMode,
   MAX_SPLIT_RATIO,
   MIN_SPLIT_RATIO,
   saveSplitRatio,
   saveTranscriptLayout,
+  saveWatchMode,
   type TranscriptLayout,
+  type WatchMode,
 } from './lib/layout';
 import { getProgress, saveProgress } from './lib/progress';
 import { getProfile, type PlacementProfile } from './lib/placement';
 import { fetchLibraryArticle, fetchLibraryVideo, type LibraryArticle, type LibraryVideo } from './lib/library';
 import ReactMarkdown from 'react-markdown';
+
+// Stable empty values so the watch-mode panels keep referential identity while
+// playback ticks (the memoized panel only re-renders when the sentence changes).
+const EMPTY_WORD_GLOSSES: Record<string, string> = {};
+const EMPTY_LANGUAGE_POINTS: InlineLanguagePoint[] = [];
 
 // Dev-only component matrix (QA-X-31). Lazy so the chunk is never part of the
 // app's first screen; `AuthGate` decides whether it may mount at all.
@@ -431,6 +441,34 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     return () => media.removeEventListener?.('change', onChange);
   }, []);
   const isTranscriptExpanded = transcriptLayout === 'split' && !isCompactViewport;
+  // 观影模式 (specs/044): a device-level preference for the video page only.
+  // It lives beside the two layout preferences and writes its own storage key,
+  // so toggling it never resets the transcript placement or the split ratio.
+  const [watchMode, setWatchMode] = useState<WatchMode>(loadWatchMode);
+  // Local episodes have no teaching analysis (D1-2), so the mode never applies
+  // to them — even when the preference was switched on for YouTube videos.
+  const watchModeAvailable = !isLocalSubtitle;
+  const watchModeActive = watchMode === 'on' && watchModeAvailable;
+  // ≥1280: the gloss window is a fixed right column; below that it is a
+  // floating layer over the media (D1-1). JS gating keeps exactly one of the
+  // two presentations mounted, so the panel's DOM (and test ids) stay unique.
+  const [isWideViewport, setIsWideViewport] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 1280px)').matches
+      : true,
+  );
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1280px)');
+    const onChange = () => setIsWideViewport(media.matches);
+    media.addEventListener?.('change', onChange);
+    return () => media.removeEventListener?.('change', onChange);
+  }, []);
+  const toggleWatchMode = useCallback(() => {
+    // The mode swap rewires the shell, so the embed remounts. Carry the
+    // playhead over (the new player seeks on ready) instead of restarting.
+    setSeekCommand({ time: currentTimeRef.current, timestamp: Date.now() });
+    setWatchMode((previous) => (previous === 'on' ? 'off' : 'on'));
+  }, []);
   const fullscreenWrapperRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [seekCommand, setSeekCommand] = useState<{ time: number, timestamp: number } | null>(null);
@@ -663,6 +701,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   useEffect(() => {
     if (!isResizing) saveSplitRatio(leftRatio);
   }, [leftRatio, isResizing]);
+  // Watch mode keeps its own key: the two layout preferences above are never
+  // touched when it flips (specs/044 §1).
+  useEffect(() => {
+    saveWatchMode(watchMode);
+  }, [watchMode]);
 
   // While dragging the divider a transparent shield covers the page (and the
   // video iframe, which would otherwise swallow pointermove). Releasing
@@ -2322,6 +2365,16 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     [transcript, currentTime]
   );
 
+  // 观影模式 reads the same active index the transcript highlight uses: the
+  // single-sentence overlay and the gloss window must never disagree with the
+  // sentence that is actually highlighted (specs/044 §4).
+  const watchBlock = watchModeActive && activeTranscriptIndex >= 0
+    ? displayTranscript[activeTranscriptIndex] ?? null
+    : null;
+  const watchBlockId = watchBlock ? String(watchBlock.id) : null;
+  const watchGlosses = watchBlockId ? (wordGlossesByBlock[watchBlockId] ?? {}) : EMPTY_WORD_GLOSSES;
+  const watchLanguagePoints = watchBlockId ? (languagePointsByBlock[watchBlockId] ?? EMPTY_LANGUAGE_POINTS) : EMPTY_LANGUAGE_POINTS;
+
   const favoriteIds = useMemo(() => favorites.map(f => f.id), [favorites]);
   // The 单词本 badge counts 我的单词: the vocabulary favorites themselves
   // (ADR-0001). Sentence favorites stay in the store for the by-item API, but
@@ -3106,7 +3159,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const mediaStage = (
     <div
       data-testid="video-area"
-      className="flex-none w-full aspect-video max-h-[62%] min-h-[180px] relative bg-transparent"
+      data-watch-mode={watchModeActive ? 'on' : 'off'}
+      className={`flex-none w-full aspect-video min-h-[180px] relative bg-transparent ${watchModeActive ? 'md:max-h-full' : 'max-h-[62%]'}`}
     >
       {isLocalSubtitle && !hasLocalVideo ? (
         <LocalEpisodeStage
@@ -3133,6 +3187,33 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           onPlayerReady={hasLocalVideo ? () => setLocalVideoError(false) : undefined}
           onPlayerError={hasLocalVideo ? () => setLocalVideoError(true) : undefined}
           onPlaybackStateChange={(playing) => { if (!playing) pauseWatch(); }}
+          watchMode={watchModeActive}
+          onToggleWatchMode={watchModeAvailable ? toggleWatchMode : undefined}
+        >
+          {/* 观影模式: one sentence over the picture, between the embed and the
+              player controls. It never mounts the teaching panel or the
+              transcript toolbar. */}
+          {watchModeActive && (
+            <WatchSubtitleOverlay
+              enText={watchBlock?.en_text}
+              zhText={watchBlock?.zh_text}
+            />
+          )}
+        </VideoPlayer>
+      )}
+
+      {/* <1280: the gloss window floats over the media instead of a side rail
+          (D1-1); it stays collapsed until the learner opens it. */}
+      {watchModeActive && !isWideViewport && (
+        <WatchGlossPanel
+          variant="floating"
+          blockId={watchBlockId}
+          glosses={watchGlosses}
+          languagePoints={watchLanguagePoints}
+          showLanguagePoints={showLanguagePoints}
+          status={teachingNotesStatus}
+          onRequestAnalysis={handleTeachingNotesRetry}
+          onRequestLogin={onRequestLogin}
         />
       )}
 
@@ -3607,8 +3688,35 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       <div
         ref={fullscreenWrapperRef}
         data-testid="learning-scroll"
+        data-watch-mode={watchModeActive ? 'on' : 'off'}
         className="learning-scroll flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden max-md:overflow-y-auto relative bg-transparent group/wrapper"
       >
+        {watchModeActive ? (
+          <>
+            {/* 观影模式 shell: the media owns the page. The teaching panel and
+                the transcript toolbar are not mounted at all (not collapsed),
+                and the gloss window is the only right column. */}
+            <div
+              data-testid="video-column"
+              className="w-full md:flex-1 md:h-full flex flex-col min-w-0 min-h-0"
+            >
+              {mediaStage}
+            </div>
+            {isWideViewport && (
+              <WatchGlossPanel
+                variant="rail"
+                blockId={watchBlockId}
+                glosses={watchGlosses}
+                languagePoints={watchLanguagePoints}
+                showLanguagePoints={showLanguagePoints}
+                status={teachingNotesStatus}
+                onRequestAnalysis={handleTeachingNotesRetry}
+                onRequestLogin={onRequestLogin}
+              />
+            )}
+          </>
+        ) : (
+        <>
         {/* One shell for both learning modes. Left column: media stage +
             whatever sits beneath it — the transcript by default, the
             summary/vocabulary when the transcript is expanded to the right. */}
@@ -3684,6 +3792,8 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                 </div>
               )}
             </div>
+        </>
+        )}
         {/* Drag shield: covers the video iframe (which would otherwise swallow
             pointermove) and suppresses text selection while dragging. */}
         {isResizing && createPortal(

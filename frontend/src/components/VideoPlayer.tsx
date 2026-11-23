@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { YouTubeProps } from 'react-youtube';
 import YouTube from 'react-youtube';
-import { Maximize, Minimize } from 'lucide-react';
+import { Clapperboard, Maximize, Minimize, Minimize2 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 
 interface VideoPlayerProps {
@@ -17,6 +17,12 @@ interface VideoPlayerProps {
     onPlayerError?: (code: number) => void;
     /** Optional: play/pause transitions, used to flush watch-event segments. */
     onPlaybackStateChange?: (playing: boolean) => void;
+    /** 观影模式 (specs/044): hints the page-level layout, never the embed. */
+    watchMode?: boolean;
+    /** Optional: render the 观影模式 entry in the player toolbar. */
+    onToggleWatchMode?: () => void;
+    /** 观影模式 overlay slot: painted between the embed and the controls. */
+    children?: React.ReactNode;
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -29,6 +35,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     onPlayerReady,
     onPlayerError,
     onPlaybackStateChange,
+    watchMode = false,
+    onToggleWatchMode,
+    children,
 }) => {
     const { t } = useI18n();
     const playerRef = useRef<any>(null);
@@ -160,10 +169,30 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         className="w-full h-full"
                         iframeClassName="w-full h-full pointer-events-auto"
                     />
-                    
+
+                    {children}
+
+                    {onToggleWatchMode && (
+                        <button
+                            type="button"
+                            data-testid="watch-mode-toggle"
+                            aria-pressed={watchMode}
+                            aria-label={watchMode ? t('watchMode.exit') : t('watchMode.enter')}
+                            title={watchMode ? t('watchMode.exit') : t('watchMode.enter')}
+                            onClick={onToggleWatchMode}
+                            className={`absolute bottom-4 ${wrapperRef ? 'right-16' : 'right-4'} p-2.5 bg-app/60 hover:bg-app/80 text-fg-primary rounded-lg backdrop-blur-md ${watchMode ? 'opacity-100' : 'opacity-0 group-hover/video:opacity-100 [@media(pointer:coarse)]:opacity-100'} transition-[opacity,background-color,transform] duration-200 ease-apple motion-reduce:transition-none active:scale-[0.98] flex items-center gap-2 z-50 pointer-events-auto`}
+                        >
+                            {watchMode ? <Minimize2 className="w-5 h-5" /> : <Clapperboard className="w-5 h-5" />}
+                            <span className="text-xs font-medium whitespace-nowrap">
+                                {watchMode ? t('watchMode.exit') : t('watchMode.enter')}
+                            </span>
+                        </button>
+                    )}
+
                     {wrapperRef && (
                         <button
                             onClick={toggleFullscreen}
+                            data-testid="video-fullscreen-toggle"
                             className="absolute bottom-4 right-4 p-2.5 bg-zinc-950/60 hover:bg-zinc-950/80 text-white rounded-lg backdrop-blur-md opacity-0 group-hover/video:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-[opacity,background-color,transform] duration-200 ease-apple active:scale-[0.98] flex items-center gap-2 z-50 pointer-events-auto"
                             title={isFullscreen ? t('transcript.exitFullscreen') : t('transcript.fullscreen')}
                         >
