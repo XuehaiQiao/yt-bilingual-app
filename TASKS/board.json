@@ -919,8 +919,8 @@
     {
       "id": "P2-10",
       "file": "TASKS/P2-10-watch-fullscreen.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "watch-fullscreen-impl",
       "write_scope": [
         "frontend/src/components/VideoPlayer.tsx",
         "frontend/src/App.tsx",
