@@ -21,11 +21,13 @@
 → 503。游客可读、不调 AI、不写库。响应字段见 :func:`word_family_page`：
 
 ``{total, page, pageSize, hasMore, items:[{id, head, headRank, headLevel,
-headPhonetic, headTranslation, levels, members:[{lemma, level, rank,
+headPhonetic, headTranslation, levels, members:[{lemma, level, rank, pos,
 phonetic, translation}]}]}``
 
 成员 ``phonetic`` / ``translation`` 来自静态数据（生成时从 ``lexicon.v1.json``
 快照，缺条目为 ``""``，不编造）；head 的字段仍按同一词典在运行期补充。
+成员 ``pos`` 是 WordNet synset POS 集合（P1-13：``n/v/a/s/r`` 规范顺序；无
+synset 为空数组），只用于前端折叠行词性徽章与展开区按词性分组，不参与过滤。
 """
 from __future__ import annotations
 
@@ -43,6 +45,8 @@ RULE_VERSION = "E"
 INTEGRITY_SCOPE = "counts+families+blacklist+allowlist"
 CEFR_LEVELS: Tuple[str, ...] = vocabulary.CEFR_LEVELS
 SORTS: Tuple[str, ...] = ("rank", "alpha")
+# WordNet synset POS 字符的规范顺序（与 scripts/build_word_families.py 同一口径）。
+POS_ORDER: Tuple[str, ...] = ("n", "v", "a", "s", "r")
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
 MAX_QUERY_CHARS = vocabulary.MAX_QUERY_CHARS
@@ -77,7 +81,8 @@ class FamilyMember:
     """族内一个词；10k 外成员 level/rank 均为 ``None``。
 
     ``phonetic`` / ``translation`` 是生成时的词典快照，缺条目为空串；
-    成员可逐词收藏/标已掌握（specs/041 §3），所以这三个字段一起下发。
+    成员可逐词收藏/标已掌握（specs/041 §3），所以这些字段一起下发。
+    ``pos`` 是 WordNet synset POS 集合（P1-13），缺失视为空（不编造）。
     """
 
     lemma: str
@@ -85,6 +90,7 @@ class FamilyMember:
     rank: Optional[int]
     phonetic: str = ""
     translation: str = ""
+    pos: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -174,6 +180,7 @@ def _as_member(raw: object, family_id: str, levels: Sequence[str]) -> FamilyMemb
         rank=rank if isinstance(rank, int) and not isinstance(rank, bool) else None,
         phonetic=_optional_text(raw, "phonetic", family_id, lemma),
         translation=_optional_text(raw, "translation", family_id, lemma),
+        pos=_member_pos(raw, family_id, lemma),
     )
 
 
@@ -189,6 +196,28 @@ def _optional_text(
         f"{family_id}/{lemma}: {field} 必须是字符串",
     )
     return value
+
+
+def _member_pos(raw: Mapping[str, object], family_id: str, lemma: str) -> Tuple[str, ...]:
+    """成员 ``pos``：缺失视为空；必须是 ``n/v/a/s/r`` 数组，否则数据损坏（503）。
+
+    输出按 :data:`POS_ORDER` 去重排序，容忍手工调过顺序的数据；未知字符
+    一律拒绝，避免把拼错的 POS 静默丢掉。
+    """
+    value = raw.get("pos")
+    if value is None:
+        return ()
+    _require(
+        isinstance(value, list) and all(isinstance(code, str) for code in value),
+        f"{family_id}/{lemma}: pos 必须是字符串数组",
+    )
+    unknown = [code for code in value if code not in POS_ORDER]
+    _require(
+        not unknown,
+        f"{family_id}/{lemma}: 未知 POS 字符 {unknown!r}（只允许 n/v/a/s/r）",
+    )
+    present = set(value)
+    return tuple(code for code in POS_ORDER if code in present)
 
 
 def _parse_family(raw: object, expected_id: str) -> Family:
@@ -278,6 +307,21 @@ def _validate_counts(document: Mapping[str, object], families: Sequence[Family])
         isinstance(counts.get("cefrWithoutFamily"), int),
         "词族数据缺少 counts.cefrWithoutFamily",
     )
+    # P1-13：POS 覆盖计数（旧数据没有这两项时跳过，不阻碍加载）。
+    with_pos = sum(
+        1 for family in families for member in family.members if member.pos)
+    if "membersWithPos" in counts:
+        _require(
+            counts.get("membersWithPos") == with_pos,
+            f"词族数据 counts.membersWithPos 与内容不一致："
+            f"{counts.get('membersWithPos')!r} != {with_pos!r}",
+        )
+    if "membersWithoutPos" in counts:
+        _require(
+            counts.get("membersWithoutPos") == members - with_pos,
+            f"词族数据 counts.membersWithoutPos 与内容不一致："
+            f"{counts.get('membersWithoutPos')!r} != {members - with_pos!r}",
+        )
 
 
 def _build_index(document: Mapping[str, object], *, key: Tuple[str, Tuple[int, int]]
@@ -480,6 +524,7 @@ def word_family_page(
                         "lemma": member.lemma,
                         "level": member.level,
                         "rank": member.rank,
+                        "pos": list(member.pos),
                         "phonetic": member.phonetic,
                         "translation": member.translation,
                     }

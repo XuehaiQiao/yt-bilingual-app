@@ -1,6 +1,6 @@
 # 041 — CEFR 词族表（族行只读，成员可收藏/掌握）
 
-> 状态：**已实现（2026-11-23；P1-07 成员释义与操作、P1-11 应用 AI 审计 23 条变更、P1-12 成员音标/释义补全）** ｜ 需求：负责人「词族包含 10k 外的词；无族词不显示」
+> 状态：**已实现（2026-11-23；P1-07 成员释义与操作、P1-11 应用 AI 审计 23 条变更、P1-12 成员音标/释义补全、P1-13 折叠行/词性分组手风琴重设计）** ｜ 需求：负责人「词族包含 10k 外的词；无族词不显示」
 > 数据依据：`docs/reports/word-family-open-audit-2026-11-23.md` 规则 E + `docs/reports/word-family-ai-audit-summary-2026-11-23.md`（P1-11 应用 23 条）+ `docs/reports/word-family-member-data-2026-11-23.md`（P1-12 成员字段覆盖）。
 
 ## 1. 构图规则（审计定稿）
@@ -22,6 +22,12 @@
     18 人 `large` 族（原桥接边 `comprehensive–largeness`、`extensiveness–large`）。
 - 预生成静态数据 `content/wordlist/word-families.v1.json`（含 WordNet 来源/license/
   规则版本/黑/白名单/integrity），运行时不依赖 nltk 或 WordNet 语料。
+- 成员词性（P1-13）：每个成员在生成时写入 `pos`——该 lemma 在 WordNet 3.0
+  **全部 synset** 的 POS 集合，按 `n/v/a/s/r` 规范顺序去重；没有任何 synset 的
+  lemma 写 `[]`（不编造）。`s`（satellite adjective）与 `a` 在展示上同归形容词。
+  POS 只用于折叠行徽章与展开区分组，**不参与构图**，族数/成员数不变。生成时
+  查 11,534 个词、全部命中（`counts.membersWithPos` = 11,534，
+  `membersWithoutPos` = 0）；`--check` 可复现。
 - 成员释义（P1-07 / P1-12）：每个成员在生成时快照 `phonetic` / `translation`：
   先取 `content/wordlists/lexicon.v1.json`，缺项用本地 ECDICT（`data/ecdict.db`，
   `mode=ro&immutable=1` 只读打开、批量 `IN` 查询、只查缺失词）补，仍未命中留
@@ -44,9 +50,11 @@
   默认 50），响应回显 `page/pageSize/hasMore`
 - 响应 `{total, page, pageSize, hasMore, items:[{id, head, headRank, headLevel,
   headPhonetic, headTranslation, levels:[...], members:[{lemma, level|null, rank|null,
-  phonetic, translation}]}]}`
+  pos:[...], phonetic, translation}]}]}`
   （head 音标/释义是 head 在 lexicon 里的只读补充字段；成员 `phonetic/translation`
-  是构建时的词典快照（lexicon 优先、缺项 ECDICT 补），两边都缺为 `""`，不编造）
+  是构建时的词典快照（lexicon 优先、缺项 ECDICT 补），两边都缺为 `""`，不编造；
+  成员 `pos` 是 `n/v/a/s/r` 的规范顺序数组，旧数据缺失时下发 `[]`，非法字符
+  → 503）
 - 游客可读、不调 AI、不写库；非法参数 400（`level` 含 C2 / `sort` / page /
   pageSize / q 长度）；数据缺失/损坏（含 integrity 失败）→ 503
 - `backend/word_family.py`（加载/校验/索引/分页）；`routes_vocabulary.py` 挂路由并
@@ -57,9 +65,17 @@
 ## 3. 前端
 
 - 现有「词形」tab 改为「**词族**」（CEFR 10k）；不再显示 lemma-list tab
-- 每行：族 head / head 音标 / head 释义 / 等级集合（如 A1–C1）/ 成员数 / 展开
-- 展开：成员行（原词 / 音标 / 中文释义 / CEFR（10k 外 `—`）/ 星标 / 对勾），
-  同族按 rank/字母（服务端已排序）；缺音标/释义的成员显示 `—`
+- **默认折叠行**（P1-13）：`head / 音标 / 中文释义 / CEFR / POS 徽章 / N 词 /
+  → 派生词预览`。POS 徽章按 `v·n·adj·adv` 展示族内出现的词性（`a`+`s` 合并为
+  `adj`）；预览取 head 之后按 rank 的前 2 个成员，其余以 `+N` 计数；无音标/
+  释义/词性一律显示 `—`，不显示默认值
+- **手风琴**（P1-13）：同一时刻只允许一个族展开；展开另一个族自动收起前一个；
+  点击已展开的族收起；展开状态只在本页内存中，**不写 URL/history**
+- **展开区按词性分组**（P1-13）：动词 / 名词 / 形容词 / 副词 / 其他（空组不
+  渲染，顺序固定）；一个多词性成员只进一个组（优先 v → n → a/s → r → 其他）；
+  组内主词置顶，其余按 CEFR rank（10k 外最后）、再按字母；每组标题带成员数
+- 展开：成员行（原词 / 音标 / 中文释义 / CEFR（10k 外 `—`）/ 星标 / 对勾）；
+  缺音标/释义的成员显示 `—`（P1-07 行为保留）
 - 族行只读：族行没有星标/对勾/编辑/批量/导出，现有词表结构/数据不动；成员
   逐词可操作（P1-07）：
   - 星标 = 收藏开关：POST/DELETE `/api/favorites`，`source_kind='wordlist'`、
@@ -83,7 +99,10 @@
   的 24 个成员不再出现；10 条 split 的 11 条桥边两端不同族；中/低 11 条保持原样）；
   `the/at` 不在任何族（规则 E 见 §1 注）；每个成员带 `phonetic` / `translation`
   字符串快照：lexicon 非空值逐条保留，缺项为 ECDICT 值或 `""`（不编造；全库
-  10,466 个成员有音标 / 11,419 个有释义，仍缺 1,068 / 115），`--check` 可复现
+  10,466 个成员有音标 / 11,419 个有释义，仍缺 1,068 / 115），`--check` 可复现；
+  每个成员带 `pos`（n/v/a/s/r 去重排序；11,534 个成员全部可解析、0 个为空），
+  `decide` 族为 decide `[v]` / decision `[n]` / decisive `[a,s]` /
+  deciding `[n,v,s]` / decisiveness `[n]`，`large` 为 `[n,a,s,r]`
 - API：总数、分页（page/pageSize 1–200）、q、level、非法参数；示例 decide（5 人）、
   reflect（+allowlist reflection）、judge（7 人，含 10k 外成员）、large（2 人）、
   extend（9 人）、comprehensive（7 人，不含 large/extend）、sense（14 人，最大族）；
@@ -92,6 +111,11 @@
   （无星标/对勾/编辑/批量/导出），成员星标/对勾两态、POST/DELETE/PATCH 载荷、
   失败回滚 + 行内错误、幂等、计数与我的收藏/已掌握同步、10k 外无释义成员可操作、
   游客登录门禁；现有 tab 零回归
+- P1-13 折叠行/手风琴/分组：折叠行结构（head/音标/释义/CEFR/POS/N 词/预览 2 个
+  + `+N`）、POS 徽章（`v·n`、`v·n·adj`）、无值 `—`；手风琴单开（展开另一个自动
+  收起、再点收起、URL 不变、同一时刻只有 1 个展开区）；展开区组顺序与组内成员
+  （动词/名词/形容词；主词置顶、rank 排序、成员不重复渲染）；375/1440 均无横向
+  溢出；`scripts/word-family-acceptance.mjs` 217 断言
 - `tsc/build/i18n/gate`；1440/375 截图；Playwright `scripts/word-family-acceptance.mjs`
 
 ## 5. 实现路径
@@ -106,10 +130,11 @@
   传输 + 归一化）、`frontend/src/components/VocabularyBookScreen.tsx`
   （tab/工具栏/分页/三态 + 成员收藏/掌握写路径与回滚）、
   `frontend/src/i18n/zh-CN.json`、`vi-VN.json`。
-- 验收：`scripts/word-family-acceptance.mjs`（UI，mock 后端，185 断言；P1-10 顶栏计数断言并入）。
+- 验收：`scripts/word-family-acceptance.mjs`（UI，mock 后端，217 断言；P1-10
+  顶栏计数、P1-13 折叠行/手风琴/词性分组断言并入）。
 
 ## 6. 非目标
 
 - 不做族行收藏/掌握/编辑/批量/导出（成员可逐词收藏、标已掌握，见 §3）
-- 不改现有词表结构/计数/写路径
+- 不改现有词表结构/计数/写路径；不做按 POS 筛选、不把展开状态写进 URL/深链
 - 不做词族人工编辑界面；不把 WordNet 语料随仓库分发

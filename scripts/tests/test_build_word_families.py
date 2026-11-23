@@ -11,6 +11,9 @@
   保留；族 id/head/成员/边逐条校验存在性，数据漂移报错；
 - P1-12 成员字段：lexicon 优先不覆盖、缺项回退 ECDICT（逐字段）、两边都缺留
   空串；ECDICT 只读批量查询/归一化/不可用报错；provider 只收缺失词；
+- P1-13 成员词性：pos = WordNet synset POS 集合（n/v/a/s/r 规范顺序、去重、无则
+  []）；非法 POS 字符报错；pos_provider 收全部成员词、与 pos 互斥；已提交数据
+  每个成员都带合法 pos；
 - 文档溯源：source/license/ruleVersion/blacklist/allowlist + integrity + ECDICT；
 - 输出确定性（无时间戳，两次 dump 字节一致）；
 - 已提交数据与规则 E + 23 条变更后的验收数字一致、integrity 可复算、
@@ -120,8 +123,8 @@ def make_cefr(ranks=RANKS) -> audit.CefrInput:
 def build_document(records=RECORDS, ranks=RANKS, blacklist=BLACKLIST,
                    allowlist=ALLOWLIST, trim_members=(), split_edges=(),
                    held_items=(), lexicon=None, lexicon_source=None,
-                   ecdict=None, ecdict_source=None,
-                   ecdict_provider=None) -> dict:
+                   ecdict=None, ecdict_source=None, ecdict_provider=None,
+                   pos=None, pos_source=None, pos_provider=None) -> dict:
     return build.build_family_document(
         make_index(records),
         make_cefr(ranks),
@@ -138,6 +141,9 @@ def build_document(records=RECORDS, ranks=RANKS, blacklist=BLACKLIST,
         ecdict=ecdict,
         ecdict_source=ecdict_source,
         ecdict_provider=ecdict_provider,
+        pos=pos,
+        pos_source=pos_source,
+        pos_provider=pos_provider,
     )
 
 
@@ -654,6 +660,86 @@ def test_document_with_ecdict_is_deterministic() -> None:
 
 
 # ---------------------------------------------------------------------------
+# P1-13 成员词性 POS：WordNet synset 集合 → 数据里的 pos
+# ---------------------------------------------------------------------------
+
+POS_MAP = {
+    "run": ("v",),
+    "runner": ("n",),
+    "decide": ("v",),
+    "decision": ("n",),
+    "decisive": ("a", "s"),
+    "reflect": ("v", "n"),
+    "reflection": ("n",),
+    "critical": ("a",),
+    "crisis": ("n",),
+}
+
+
+def test_member_pos_written_normalized_and_ordered() -> None:
+    document = build_document(pos=POS_MAP)
+    # 集合去重 + n/v/a/s/r 规范顺序（输入乱序也按此输出）。
+    assert member_by_lemma(document, "decisive")["pos"] == ["a", "s"]
+    assert member_by_lemma(document, "reflect")["pos"] == ["n", "v"]
+    # 映射里没有的成员（假图里的 running）写空数组，而不是编造。
+    assert member_by_lemma(document, "running")["pos"] == []
+    # pos 与成员字段共存：纯图结构（不传 pos）时不写 pos 键。
+    assert "pos" not in member_by_lemma(build_document(), "run")
+
+
+def test_member_pos_rejects_unknown_codes() -> None:
+    with pytest.raises(build.BuildError, match="未知 POS 字符"):
+        build_document(pos={"run": ("v", "x")})
+    with pytest.raises(build.BuildError, match="pos 必须是 POS 字符序列"):
+        build_document(pos={"run": "v"})
+
+
+def test_document_with_pos_counts_and_source() -> None:
+    document = build_document(
+        pos=POS_MAP,
+        pos_source={"version": "3.0", "posOrder": "n/v/a/s/r",
+                    "queried": 9, "withPos": 9},
+    )
+    members = [
+        member for family in document["families"]
+        for member in family["members"]
+    ]
+    with_pos = sum(1 for member in members if member["pos"])
+    # 假图里能对上 POS_MAP 的成员：run/runner/decide/decision/decisive/
+    # reflect/critical/crisis（reflection 不在假图里）。
+    assert with_pos == 8
+    assert document["counts"]["membersWithPos"] == with_pos
+    assert document["counts"]["membersWithoutPos"] == len(members) - with_pos
+    assert document["source"]["pos"]["version"] == "3.0"
+    assert document["source"]["pos"]["membersWithoutPos"] == (
+        len(members) - with_pos)
+    assert document["rules"]["memberPos"].startswith("成员 pos")
+    # 不传 pos 时不写 counts/source（纯图结构测试保持旧形状）。
+    plain = build_document()
+    assert "membersWithPos" not in plain["counts"]
+    assert "pos" not in plain["source"]
+
+
+def test_pos_provider_gets_all_member_words_and_is_exclusive() -> None:
+    seen: list = []
+
+    def provider(words):
+        seen.append(tuple(words))
+        return {word: ("v",) for word in words}, {"version": "3.0"}
+
+    document = build_document(pos_provider=provider)
+    assert len(seen) == 1
+    assert set(seen[0]) == set(_member_lemmas(document))
+    assert all(
+        member["pos"] == ["v"]
+        for family in document["families"]
+        for member in family["members"]
+    )
+    with pytest.raises(build.BuildError, match="只能给一种"):
+        build_document(pos=POS_MAP, pos_provider=provider)
+
+
+# ---------------------------------------------------------------------------
 # 已提交数据契约（不依赖 WordNet；只读文件）
 # ---------------------------------------------------------------------------
 
@@ -735,6 +821,30 @@ def test_committed_data_matches_rule_e_contract() -> None:
     # 最大族从 large（18）变成 sense（14）。
     assert max(len(family["members"]) for family in document["families"]) == 14
     assert len(family_by_head(document, "sense")["members"]) == 14
+
+    # P1-13 成员词性：每个成员都带 pos，按 n/v/a/s/r 去重排序；覆盖数字一致。
+    pos_order = build.POS_ORDER
+    with_pos = 0
+    for family in document["families"]:
+        for member in family["members"]:
+            raw = member["pos"]
+            assert isinstance(raw, list), member["lemma"]
+            assert all(code in pos_order for code in raw), member["lemma"]
+            assert raw == [code for code in pos_order if code in set(raw)]
+            with_pos += 1 if raw else 0
+    assert document["counts"]["membersWithPos"] == with_pos == 11534
+    assert document["counts"]["membersWithoutPos"] == 0
+    # 指定族的词性（前端分组/徽章口径的锚点）。
+    decide_pos = {
+        member["lemma"]: member["pos"]
+        for member in family_by_head(document, "decide")["members"]
+    }
+    assert decide_pos == {
+        "decide": ["v"], "decision": ["n"], "decisive": ["a", "s"],
+        "deciding": ["n", "v", "s"], "decisiveness": ["n"],
+    }
+    assert family_by_head(document, "large")["members"][0]["pos"] == [
+        "n", "a", "s", "r"]
 
 
 def test_committed_member_fields_preserve_lexicon_values() -> None:

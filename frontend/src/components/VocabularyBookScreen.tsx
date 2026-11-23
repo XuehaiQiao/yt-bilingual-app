@@ -2361,7 +2361,10 @@ export function VocabularyBookScreen({
     const [familyData, setFamilyData] = useState<WordFamilyPage | null>(null);
     const [familyError, setFamilyError] = useState('');
     const [familyNonce, setFamilyNonce] = useState(0);
-    const [familyExpanded, setFamilyExpanded] = useState<Set<string>>(() => new Set());
+    // Accordion (P1-13): at most one family is open at a time; null = all
+    // collapsed. Opening another family replaces this id, so no URL/history
+    // state is written for a purely local disclosure.
+    const [familyExpandedId, setFamilyExpandedId] = useState<string | null>(null);
 
     const selectTab = useCallback((id: string) => {
         // A running batch owns the current selection; switching views now would
@@ -2389,7 +2392,7 @@ export function VocabularyBookScreen({
         setFamilyPage(1);
         setFamilyLevel('');
         setFamilySort('rank');
-        setFamilyExpanded(new Set());
+        setFamilyExpandedId(null);
         setFamilyPhase('idle');
         // Custom lists restart clean too (first page, no search, collapsed,
         // edit mode off) — specs/005 §统一词表 UI.
@@ -2591,10 +2594,10 @@ export function VocabularyBookScreen({
     }, [familyQuery, familyDebouncedQuery]);
 
     // Server paging (20/50/100, default 50; specs/041 §3): a new
-    // search/filter/sort/page starts with every member list collapsed so a
-    // stale expansion never lingers.
+    // search/filter/sort/page starts with the accordion closed so a stale
+    // expansion never lingers on another family's page.
     useEffect(() => {
-        setFamilyExpanded(new Set());
+        setFamilyExpandedId(null);
     }, [familyPage, familyDebouncedQuery, familyLevel, familySort]);
 
     // A new level filter, sort or page size restarts from the first server page
@@ -2790,13 +2793,10 @@ export function VocabularyBookScreen({
             ? t('vocab.family.sort.alpha')
             : t('vocab.family.sort.rank');
 
+        // Accordion (specs/041 §3): opening one family closes the open one;
+        // clicking the open family collapses it. No URL/history write.
         const toggleFamilyExpand = (familyId: string) => {
-            setFamilyExpanded((prev) => {
-                const next = new Set(prev);
-                if (next.has(familyId)) next.delete(familyId);
-                else next.add(familyId);
-                return next;
-            });
+            setFamilyExpandedId((prev) => (prev === familyId ? null : familyId));
         };
 
         return (
@@ -2881,7 +2881,7 @@ export function VocabularyBookScreen({
                         <>
                             <WordFamilyTable
                                 rows={familyData.items}
-                                expanded={familyExpanded}
+                                expandedFamilyId={familyExpandedId}
                                 onToggleExpand={toggleFamilyExpand}
                                 memberState={familyMemberState}
                                 onToggleMemberFavorite={toggleFamilyMemberFavorite}

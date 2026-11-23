@@ -22,6 +22,7 @@
 // rows, star, mastered check, toolbar or expansion.
 import { type ReactNode, useEffect, useRef } from 'react';
 import {
+    ArrowRight,
     Check,
     ChevronDown,
     ListFilter,
@@ -454,7 +455,21 @@ export interface WordFamilyMember {
     phonetic: string;
     /** Chinese meaning snapshot; empty when no entry (renders `—`). */
     translation: string;
+    /**
+     * WordNet synset POS set (P1-13): n/v/a/s/r, canonical order. Empty only for
+     * a lemma WordNet never defines (renders as the `other` group).
+     */
+    pos: WordFamilyPos[];
 }
+
+/** WordNet synset POS codes (`s` = satellite adjective, grouped with `a`). */
+export type WordFamilyPos = 'n' | 'v' | 'a' | 's' | 'r';
+/** Canonical POS order, the same as the generated payload (`POS_ORDER`). */
+export const WORD_FAMILY_POS_ORDER: readonly WordFamilyPos[] = ['n', 'v', 'a', 's', 'r'];
+/** Collapsed-row badge categories, in display order (v · n · adj · adv). */
+export type WordFamilyPosCategory = 'v' | 'n' | 'adj' | 'adv';
+/** Expanded groups, in display order; `other` = no WordNet synset. */
+export type WordFamilyPosGroup = 'verb' | 'noun' | 'adjective' | 'adverb' | 'other';
 
 /** One family row: head + every member (10k inside with level, outside blank). */
 export interface WordFamilyRow {
@@ -499,6 +514,16 @@ function normalizeFamilyLevel(value: unknown): CefrLevel | '' {
         : '';
 }
 
+/** Valid POS codes only, de-duplicated into the canonical n/v/a/s/r order. */
+function normalizeFamilyPos(value: unknown): WordFamilyPos[] {
+    if (!Array.isArray(value)) return [];
+    const codes = new Set(
+        value.filter((code): code is WordFamilyPos => typeof code === 'string'
+            && (WORD_FAMILY_POS_ORDER as readonly string[]).includes(code)),
+    );
+    return WORD_FAMILY_POS_ORDER.filter((code) => codes.has(code));
+}
+
 function normalizeWordFamilyMember(value: unknown): WordFamilyMember | null {
     if (!isRecord(value)) return null;
     const lemma = typeof value.lemma === 'string' ? value.lemma.trim() : '';
@@ -512,6 +537,7 @@ function normalizeWordFamilyMember(value: unknown): WordFamilyMember | null {
         rank,
         phonetic: typeof value.phonetic === 'string' ? value.phonetic : '',
         translation: typeof value.translation === 'string' ? value.translation : '',
+        pos: normalizeFamilyPos(value.pos),
     };
 }
 
@@ -624,8 +650,11 @@ export interface WordFamilyMemberState {
 
 export interface WordFamilyTableProps {
     rows: readonly WordFamilyRow[];
-    /** Families whose member list is open (owned by the screen; resets on page/q). */
-    expanded: ReadonlySet<string>;
+    /**
+     * The one open family id (accordion: at most one family at a time) or null
+     * when every family is collapsed. Owned by the screen; resets on page/q.
+     */
+    expandedFamilyId: string | null;
     onToggleExpand: (familyId: string) => void;
     /** Per-member favorite/mastered state; when omitted the member row is plain. */
     memberState?: (family: WordFamilyRow, member: WordFamilyMember) => WordFamilyMemberState;
@@ -635,13 +664,21 @@ export interface WordFamilyTableProps {
     listTestId?: string;
 }
 
-/** Desktop: head · phonetic · meaning · CEFR set · member count · expand. */
+/** Desktop collapsed row: head · ipa · meaning · CEFR · POS · N 词 · 派生词 · expand. */
 const WORD_FAMILY_DESKTOP_GRID =
-    'md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1.7fr)_auto_auto_2.25rem]';
+    'md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.7fr)_minmax(0,1.45fr)_auto_auto_auto_minmax(0,1.1fr)_2.25rem]';
 
 /** Expanded member row: word · phonetic · meaning · level · star · check. */
 const WORD_FAMILY_MEMBER_GRID =
     'md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.8fr)_minmax(0,1.7fr)_auto_2.25rem_2.25rem]';
+
+/** Expanded groups, in display order (specs/041 §3). */
+export const WORD_FAMILY_GROUPS: readonly WordFamilyPosGroup[] = [
+    'verb', 'noun', 'adjective', 'adverb', 'other',
+];
+
+/** Collapsed preview: this many derived members, then `+N` for the rest. */
+export const WORD_FAMILY_PREVIEW_COUNT = 2;
 
 /** `A1` (one level) or `A1–C1` (compact set, exact levels in the tooltip). */
 export function familyLevelRange(levels: readonly CefrLevel[]): string {
@@ -650,9 +687,85 @@ export function familyLevelRange(levels: readonly CefrLevel[]): string {
     return `${levels[0]}–${levels[levels.length - 1]}`;
 }
 
+/**
+ * Collapsed-row POS badge: the categories present in the whole family, in the
+ * v · n · adj · adv display order (same order as the spec's `[v·n·adj]`).
+ */
+export function familyPosCategories(
+    members: readonly WordFamilyMember[],
+): WordFamilyPosCategory[] {
+    const codes = new Set<string>();
+    for (const member of members) {
+        for (const code of member.pos) codes.add(code);
+    }
+    const categories: WordFamilyPosCategory[] = [];
+    if (codes.has('v')) categories.push('v');
+    if (codes.has('n')) categories.push('n');
+    if (codes.has('a') || codes.has('s')) categories.push('adj');
+    if (codes.has('r')) categories.push('adv');
+    return categories;
+}
+
+/**
+ * One member's group: the first POS in v → n → a/s → r order, `other` when the
+ * lemma has no WordNet synset. A word with several POS lands in exactly one
+ * group (never duplicated), so the head has a stable place.
+ */
+export function familyMemberGroup(member: WordFamilyMember): WordFamilyPosGroup {
+    const codes = new Set(member.pos);
+    if (codes.has('v')) return 'verb';
+    if (codes.has('n')) return 'noun';
+    if (codes.has('a') || codes.has('s')) return 'adjective';
+    if (codes.has('r')) return 'adverb';
+    return 'other';
+}
+
+export interface WordFamilyMemberGroup {
+    group: WordFamilyPosGroup;
+    members: WordFamilyMember[];
+}
+
+/**
+ * Expanded groups: 动词 / 名词 / 形容词 / 副词 / 其他 (empty groups omitted).
+ * The family head is pinned to the top of its own group; the rest follow by
+ * CEFR rank (10k-outside last), then lemma, so the order is stable.
+ */
+export function groupFamilyMembers(row: WordFamilyRow): WordFamilyMemberGroup[] {
+    const buckets = new Map<WordFamilyPosGroup, WordFamilyMember[]>(
+        WORD_FAMILY_GROUPS.map((group) => [group, []]),
+    );
+    for (const member of row.members) {
+        buckets.get(familyMemberGroup(member))!.push(member);
+    }
+    return WORD_FAMILY_GROUPS.map((group) => ({
+        group,
+        members: [...(buckets.get(group) ?? [])].sort((left, right) => {
+            const leftHead = left.lemma === row.head ? 0 : 1;
+            const rightHead = right.lemma === row.head ? 0 : 1;
+            if (leftHead !== rightHead) return leftHead - rightHead;
+            const leftRank = left.rank ?? Number.POSITIVE_INFINITY;
+            const rightRank = right.rank ?? Number.POSITIVE_INFINITY;
+            if (leftRank !== rightRank) return leftRank - rightRank;
+            return left.lemma < right.lemma ? -1 : left.lemma > right.lemma ? 1 : 0;
+        }),
+    })).filter((bucket) => bucket.members.length > 0);
+}
+
+/**
+ * Collapsed-row derivations: the first `WORD_FAMILY_PREVIEW_COUNT` non-head
+ * members (server order = rank) plus the count still hidden behind `+N`.
+ */
+export function familyDerivations(
+    row: WordFamilyRow,
+): { preview: WordFamilyMember[]; rest: number } {
+    const derived = row.members.filter((member) => member.lemma !== row.head);
+    const preview = derived.slice(0, WORD_FAMILY_PREVIEW_COUNT);
+    return { preview, rest: derived.length - preview.length };
+}
+
 export function WordFamilyTable({
     rows,
-    expanded,
+    expandedFamilyId,
     onToggleExpand,
     memberState,
     onToggleMemberFavorite,
@@ -661,6 +774,7 @@ export function WordFamilyTable({
     listTestId = 'vocab-family-list',
 }: WordFamilyTableProps) {
     const { t } = useI18n();
+    const groupLabel = (group: WordFamilyPosGroup): string => t(`vocab.family.pos.${group}`);
 
     return (
         <div
@@ -680,12 +794,14 @@ export function WordFamilyTable({
                 <span>{t('vocab.col.phonetic')}</span>
                 <span>{t('vocab.col.translation')}</span>
                 <span>{t('vocab.family.col.levels')}</span>
+                <span>{t('vocab.family.col.pos')}</span>
                 <span className="text-right">{t('vocab.family.col.members')}</span>
+                <span>{t('vocab.family.col.derivations')}</span>
                 <span aria-hidden="true" />
             </div>
             <div className="divide-y divide-line-subtle">
                 {rows.map((row) => {
-                    const isExpanded = expanded.has(row.id);
+                    const isExpanded = expandedFamilyId === row.id;
                     const phonetic = normalizePhonetic(row.headPhonetic);
                     const translation = (row.headTranslation || '').trim();
                     const detailId = `vocab-family-detail-${row.id}`;
@@ -694,12 +810,170 @@ export function WordFamilyTable({
                     const membersLabel = t('vocab.family.membersLabel', {
                         count: row.members.length,
                     });
+                    const memberCountLabel = t('vocab.family.memberCount', {
+                        count: row.members.length,
+                    });
+                    const posCategories = familyPosCategories(row.members);
+                    const posLabel = posCategories.length > 0
+                        ? posCategories.join('·')
+                        : '—';
+                    const { preview, rest } = familyDerivations(row);
+                    const derivedWords = row.members
+                        .filter((member) => member.lemma !== row.head)
+                        .map((member) => member.lemma);
+                    const previewText = preview.length > 0
+                        ? preview.map((member) => member.lemma).join(' · ')
+                        : '—';
+                    const groups = groupFamilyMembers(row);
+
+                    const renderMember = (member: WordFamilyMember) => {
+                        const state = memberState?.(row, member);
+                        const memberPhonetic = normalizePhonetic(member.phonetic);
+                        const memberTranslation = (member.translation || '').trim();
+                        const levelTitle = member.level
+                            ? `CEFR ${member.level}`
+                            : t('vocab.family.outsideHint');
+                        const memberId = `${row.id}-${member.lemma}`;
+                        return (
+                            <div key={`${row.id}-${member.lemma}`}>
+                                <div
+                                    data-testid={`vocab-family-member-${memberId}`}
+                                    className={cn(
+                                        'grid items-center gap-x-2 gap-y-0.5 px-3 py-1.5',
+                                        'md:min-h-10 md:gap-x-3 md:py-0',
+                                        MOBILE_GRID,
+                                        WORD_FAMILY_MEMBER_GRID,
+                                    )}
+                                >
+                                    <div className="col-start-1 row-start-1 flex min-w-0 items-baseline gap-1.5 md:contents">
+                                        <span
+                                            data-testid={`vocab-family-member-word-${memberId}`}
+                                            className="min-w-0 truncate text-caption font-semibold text-fg-primary md:col-start-1 md:row-start-1"
+                                        >
+                                            {member.lemma}
+                                        </span>
+                                        <span
+                                            data-testid={`vocab-family-member-ipa-${memberId}`}
+                                            className="min-w-0 max-w-[45%] truncate text-micro tabular-nums text-fg-muted md:col-start-2 md:row-start-1 md:max-w-none"
+                                        >
+                                            {memberPhonetic || '—'}
+                                        </span>
+                                    </div>
+
+                                    <span
+                                        data-testid={`vocab-family-member-translation-${memberId}`}
+                                        title={memberTranslation || undefined}
+                                        className="col-start-1 row-start-2 min-w-0 truncate text-left text-caption text-fg-secondary md:col-start-3 md:row-start-1"
+                                    >
+                                        {memberTranslation || '—'}
+                                    </span>
+
+                                    <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-1 md:contents">
+                                        <span
+                                            title={levelTitle}
+                                            className="inline-flex md:col-start-4 md:row-start-1"
+                                        >
+                                            {member.level ? (
+                                                <LevelBadge
+                                                    level={member.level}
+                                                    testId={`vocab-family-member-level-${memberId}`}
+                                                    title={levelTitle}
+                                                />
+                                            ) : (
+                                                <span
+                                                    data-testid={`vocab-family-member-level-${memberId}`}
+                                                    className="text-micro text-fg-muted"
+                                                >
+                                                    —
+                                                </span>
+                                            )}
+                                        </span>
+                                        {state && onToggleMemberFavorite && (
+                                            <span
+                                                title={state.favoriteLabel}
+                                                className="inline-flex md:col-start-5 md:row-start-1"
+                                            >
+                                                <IconButton
+                                                    size="sm"
+                                                    ariaLabel={state.favoriteLabel}
+                                                    ariaPressed={state.favorited}
+                                                    testId={`vocab-family-member-star-${memberId}`}
+                                                    disabled={state.favoriteBusy || state.favoriteDisabled}
+                                                    loading={state.favoriteBusy}
+                                                    onClick={() => onToggleMemberFavorite(row, member)}
+                                                >
+                                                    <Star
+                                                        className={cn(
+                                                            'h-4 w-4',
+                                                            state.favorited
+                                                                ? 'fill-warning-fg text-warning-fg'
+                                                                : 'text-fg-muted',
+                                                        )}
+                                                        aria-hidden="true"
+                                                    />
+                                                </IconButton>
+                                            </span>
+                                        )}
+                                        {state && onToggleMemberMastered && (
+                                            <span
+                                                title={state.masteredLabel}
+                                                className="inline-flex md:col-start-6 md:row-start-1"
+                                            >
+                                                <IconButton
+                                                    size="sm"
+                                                    ariaLabel={state.masteredLabel}
+                                                    ariaPressed={state.mastered}
+                                                    testId={`vocab-family-member-mastered-${memberId}`}
+                                                    disabled={state.masteredBusy}
+                                                    loading={state.masteredBusy}
+                                                    onClick={() => onToggleMemberMastered(row, member)}
+                                                    className="group/mastered-member"
+                                                >
+                                                    {!state.masteredBusy && (
+                                                        <span
+                                                            data-testid={`vocab-family-member-mastered-indicator-${memberId}`}
+                                                            data-state={state.mastered ? 'checked' : 'unchecked'}
+                                                            aria-hidden="true"
+                                                            className={cn(
+                                                                'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
+                                                                'transition-colors duration-200 motion-reduce:transition-none',
+                                                                state.mastered
+                                                                    ? 'border-success/40 bg-success/15 text-success-fg group-hover/mastered-member:bg-success/25'
+                                                                    : 'border-line-strong text-fg-muted group-hover/mastered-member:bg-state-hover group-hover/mastered-member:text-fg-strong',
+                                                            )}
+                                                        >
+                                                            <Check
+                                                                className="h-3.5 w-3.5"
+                                                                strokeWidth={2.5}
+                                                                aria-hidden="true"
+                                                            />
+                                                        </span>
+                                                    )}
+                                                </IconButton>
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                {state?.error && (
+                                    <p
+                                        data-testid={`vocab-family-member-error-${memberId}`}
+                                        role="alert"
+                                        className="px-3 pb-2 text-caption leading-relaxed text-danger-fg md:px-4"
+                                    >
+                                        {state.error}
+                                    </p>
+                                )}
+                            </div>
+                        );
+                    };
+
                     return (
                         <div key={row.id} data-word={row.head}>
                             <div
                                 data-testid={`vocab-family-row-${row.id}`}
                                 data-family-id={row.id}
                                 data-family-levels={row.levels.join(',')}
+                                data-family-pos={posCategories.join(',')}
                                 role="button"
                                 tabIndex={0}
                                 aria-expanded={isExpanded}
@@ -733,7 +1007,7 @@ export function WordFamilyTable({
                                         data-testid={`vocab-family-ipa-${row.id}`}
                                         className="min-w-0 max-w-[45%] truncate text-caption tabular-nums text-fg-muted md:col-start-2 md:row-start-1 md:max-w-none"
                                     >
-                                        {phonetic || '\u00A0'}
+                                        {phonetic || '—'}
                                     </span>
                                 </div>
 
@@ -743,6 +1017,14 @@ export function WordFamilyTable({
                                     className="col-start-1 row-start-2 min-w-0 truncate text-left text-ui text-fg-secondary md:col-start-3 md:row-start-1"
                                 >
                                     {translation || '—'}
+                                </span>
+
+                                <span
+                                    data-testid={`vocab-family-pos-${row.id}`}
+                                    title={posLabel}
+                                    className="col-start-2 row-start-2 inline-flex shrink-0 items-center justify-self-end rounded-full border border-line-subtle bg-surface-2/60 px-2 py-0.5 text-micro font-medium tabular-nums text-fg-muted md:col-start-5 md:row-start-1"
+                                >
+                                    {posLabel}
                                 </span>
 
                                 <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-1.5 md:contents">
@@ -758,9 +1040,9 @@ export function WordFamilyTable({
                                     <span
                                         data-testid={`vocab-family-members-count-${row.id}`}
                                         title={membersLabel}
-                                        className="text-right text-caption tabular-nums text-fg-muted md:col-start-5 md:row-start-1"
+                                        className="whitespace-nowrap text-right text-caption tabular-nums text-fg-muted md:col-start-6 md:row-start-1"
                                     >
-                                        {row.members.length}
+                                        {memberCountLabel}
                                     </span>
                                     <span
                                         data-testid={`vocab-family-expand-${row.id}`}
@@ -768,7 +1050,7 @@ export function WordFamilyTable({
                                         title={isExpanded
                                             ? t('vocab.family.collapse')
                                             : t('vocab.family.expand')}
-                                        className="inline-flex h-control-sm w-8 items-center justify-center md:col-start-6 md:row-start-1"
+                                        className="inline-flex h-control-sm w-8 items-center justify-center md:col-start-8 md:row-start-1"
                                     >
                                         <ChevronDown
                                             className={cn(
@@ -778,6 +1060,35 @@ export function WordFamilyTable({
                                             aria-hidden="true"
                                         />
                                     </span>
+                                </div>
+
+                                <div
+                                    data-testid={`vocab-family-derivations-${row.id}`}
+                                    title={derivedWords.length > 0
+                                        ? t('vocab.family.derivationsTitle', {
+                                            words: derivedWords.join('、'),
+                                        })
+                                        : undefined}
+                                    className="col-span-2 col-start-1 row-start-3 flex min-w-0 items-center gap-1 text-caption text-fg-muted md:col-span-1 md:col-start-7 md:row-start-1"
+                                >
+                                    <ArrowRight
+                                        className="h-3 w-3 shrink-0 text-fg-muted"
+                                        aria-hidden="true"
+                                    />
+                                    <span
+                                        data-testid={`vocab-family-preview-${row.id}`}
+                                        className="min-w-0 truncate"
+                                    >
+                                        {previewText}
+                                    </span>
+                                    {rest > 0 && (
+                                        <span
+                                            data-testid={`vocab-family-preview-rest-${row.id}`}
+                                            className="shrink-0 tabular-nums text-fg-muted"
+                                        >
+                                            +{rest}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
@@ -803,148 +1114,29 @@ export function WordFamilyTable({
                                             <span aria-hidden="true" />
                                             <span aria-hidden="true" />
                                         </div>
-                                        <div className="divide-y divide-line-subtle">
-                                            {row.members.map((member) => {
-                                                const state = memberState?.(row, member);
-                                                const phonetic = normalizePhonetic(member.phonetic);
-                                                const translation = (member.translation || '').trim();
-                                                const levelTitle = member.level
-                                                    ? `CEFR ${member.level}`
-                                                    : t('vocab.family.outsideHint');
-                                                const memberId = `${row.id}-${member.lemma}`;
-                                                return (
-                                                    <div key={member.lemma}>
-                                                        <div
-                                                            data-testid={`vocab-family-member-${memberId}`}
-                                                            className={cn(
-                                                                'grid items-center gap-x-2 gap-y-0.5 px-3 py-1.5',
-                                                                'md:min-h-10 md:gap-x-3 md:py-0',
-                                                                MOBILE_GRID,
-                                                                WORD_FAMILY_MEMBER_GRID,
-                                                            )}
-                                                        >
-                                                            <div className="col-start-1 row-start-1 flex min-w-0 items-baseline gap-1.5 md:contents">
-                                                                <span
-                                                                    data-testid={`vocab-family-member-word-${memberId}`}
-                                                                    className="min-w-0 truncate text-caption font-semibold text-fg-primary md:col-start-1 md:row-start-1"
-                                                                >
-                                                                    {member.lemma}
-                                                                </span>
-                                                                <span
-                                                                    data-testid={`vocab-family-member-ipa-${memberId}`}
-                                                                    className="min-w-0 max-w-[45%] truncate text-micro tabular-nums text-fg-muted md:col-start-2 md:row-start-1 md:max-w-none"
-                                                                >
-                                                                    {phonetic || '—'}
-                                                                </span>
-                                                            </div>
-
-                                                            <span
-                                                                data-testid={`vocab-family-member-translation-${memberId}`}
-                                                                title={translation || undefined}
-                                                                className="col-start-1 row-start-2 min-w-0 truncate text-left text-caption text-fg-secondary md:col-start-3 md:row-start-1"
-                                                            >
-                                                                {translation || '—'}
-                                                            </span>
-
-                                                            <div className="col-start-2 row-start-1 flex items-center justify-self-end gap-1 md:contents">
-                                                                <span
-                                                                    title={levelTitle}
-                                                                    className="inline-flex md:col-start-4 md:row-start-1"
-                                                                >
-                                                                    {member.level ? (
-                                                                        <LevelBadge
-                                                                            level={member.level}
-                                                                            testId={`vocab-family-member-level-${memberId}`}
-                                                                            title={levelTitle}
-                                                                        />
-                                                                    ) : (
-                                                                        <span
-                                                                            data-testid={`vocab-family-member-level-${memberId}`}
-                                                                            className="text-micro text-fg-muted"
-                                                                        >
-                                                                            —
-                                                                        </span>
-                                                                    )}
-                                                                </span>
-                                                                {state && onToggleMemberFavorite && (
-                                                                    <span
-                                                                        title={state.favoriteLabel}
-                                                                        className="inline-flex md:col-start-5 md:row-start-1"
-                                                                    >
-                                                                        <IconButton
-                                                                            size="sm"
-                                                                            ariaLabel={state.favoriteLabel}
-                                                                            ariaPressed={state.favorited}
-                                                                            testId={`vocab-family-member-star-${memberId}`}
-                                                                            disabled={state.favoriteBusy || state.favoriteDisabled}
-                                                                            loading={state.favoriteBusy}
-                                                                            onClick={() => onToggleMemberFavorite(row, member)}
-                                                                        >
-                                                                            <Star
-                                                                                className={cn(
-                                                                                    'h-4 w-4',
-                                                                                    state.favorited
-                                                                                        ? 'fill-warning-fg text-warning-fg'
-                                                                                        : 'text-fg-muted',
-                                                                                )}
-                                                                                aria-hidden="true"
-                                                                            />
-                                                                        </IconButton>
-                                                                    </span>
-                                                                )}
-                                                                {state && onToggleMemberMastered && (
-                                                                    <span
-                                                                        title={state.masteredLabel}
-                                                                        className="inline-flex md:col-start-6 md:row-start-1"
-                                                                    >
-                                                                        <IconButton
-                                                                            size="sm"
-                                                                            ariaLabel={state.masteredLabel}
-                                                                            ariaPressed={state.mastered}
-                                                                            testId={`vocab-family-member-mastered-${memberId}`}
-                                                                            disabled={state.masteredBusy}
-                                                                            loading={state.masteredBusy}
-                                                                            onClick={() => onToggleMemberMastered(row, member)}
-                                                                            className="group/mastered-member"
-                                                                        >
-                                                                            {!state.masteredBusy && (
-                                                                                <span
-                                                                                    data-testid={`vocab-family-member-mastered-indicator-${memberId}`}
-                                                                                    data-state={state.mastered ? 'checked' : 'unchecked'}
-                                                                                    aria-hidden="true"
-                                                                                    className={cn(
-                                                                                        'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
-                                                                                        'transition-colors duration-200 motion-reduce:transition-none',
-                                                                                        state.mastered
-                                                                                            ? 'border-success/40 bg-success/15 text-success-fg group-hover/mastered-member:bg-success/25'
-                                                                                            : 'border-line-strong text-fg-muted group-hover/mastered-member:bg-state-hover group-hover/mastered-member:text-fg-strong',
-                                                                                    )}
-                                                                                >
-                                                                                    <Check
-                                                                                        className="h-3.5 w-3.5"
-                                                                                        strokeWidth={2.5}
-                                                                                        aria-hidden="true"
-                                                                                    />
-                                                                                </span>
-                                                                            )}
-                                                                        </IconButton>
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        {state?.error && (
-                                                            <p
-                                                                data-testid={`vocab-family-member-error-${memberId}`}
-                                                                role="alert"
-                                                                className="px-3 pb-2 text-caption leading-relaxed text-danger-fg md:px-4"
-                                                            >
-                                                                {state.error}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                        {groups.map(({ group, members }) => (
+                                            <div
+                                                key={group}
+                                                data-testid={`vocab-family-group-${row.id}-${group}`}
+                                                data-family-group={group}
+                                                data-group-count={members.length}
+                                            >
+                                                <p className="flex items-baseline gap-1.5 border-y border-line-subtle bg-surface-2/20 px-3 py-1.5 text-micro text-fg-muted first:border-t-0">
+                                                    <span className="font-medium text-fg-secondary">
+                                                        {groupLabel(group)}
+                                                    </span>
+                                                    <span
+                                                        data-testid={`vocab-family-group-count-${row.id}-${group}`}
+                                                        className="tabular-nums"
+                                                    >
+                                                        {members.length}
+                                                    </span>
+                                                </p>
+                                                <div className="divide-y divide-line-subtle">
+                                                    {members.map(renderMember)}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}

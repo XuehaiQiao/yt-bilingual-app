@@ -14,9 +14,13 @@
 //   B) family rows are read-only (no star/check/编辑/批量/导出/全选); expanded
 //      members are full word rows: lemma / phonetic / meaning / CEFR (`—` for
 //      10k-outside) / star / 已掌握 check (P1-07);
-//   C) columns head / phonetic / meaning / level set / member count / expand;
-//      expanding lists every member with its own meaning snapshot; members
-//      without a lexicon entry show `—` for IPA/meaning/level;
+//   C) collapsed row = head / phonetic / meaning / CEFR / POS badge / N 词 /
+//      derived-word preview (2 + `+N`); expanding groups members by POS
+//      (动词/名词/形容词/副词/其他), head pinned first, rank order inside a group;
+//      every member row keeps its own meaning snapshot; members without a
+//      lexicon entry show `—` for IPA/meaning/level;
+//   C2) accordion (P1-13): at most one family open — opening another closes the
+//      previous one, clicking the open family collapses it, URL never changes;
 //   D) server search matches any member (reflection → reflect, deciding → decide)
 //      and sends `q` to /api/vocabulary/word-families;
 //   E) level filter sends `level` and narrows to families containing that band;
@@ -38,7 +42,8 @@
 //   L) 375 has no horizontal overflow (list + expanded member rows), the pager
 //      stays reachable, 1440/375 shots.
 //
-// Screenshots: /tmp/p1-07-*.png (P1-05/P1-06 shots are kept)
+// Screenshots: /tmp/p1-13-*.png for the P1-13 redesign (1440/375), plus the
+// legacy /tmp/p1-05|06|07-*.png regression shots.
 // Run: cd scripts && APP_URL=http://127.0.0.1:5173/ node word-family-acceptance.mjs
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
@@ -97,37 +102,56 @@ const MEMBER_LEXICON = {
 const CURATED = [
     {
         id: 'F0001', head: 'be', headRank: 2, headPhonetic: 'biː', headTranslation: 'v. 是；存在',
-        members: [['be', 'A1', 2], ['being', 'B2', 5000]],
+        members: [
+            ['be', 'A1', 2, ['n', 'v']],
+            ['being', 'B2', 5000, ['n', 'v']],
+        ],
     },
     {
         id: 'F0002', head: 'do', headRank: 22, headPhonetic: 'duː', headTranslation: 'v. 做',
-        members: [['do', 'A1', 22], ['doing', 'A1', 600]],
+        members: [
+            ['do', 'A1', 22, ['v']],
+            ['doing', 'A1', 600, ['n', 'v']],
+        ],
     },
     {
         id: 'F0003', head: 'decide', headRank: 494, headPhonetic: 'dɪˈsaɪd', headTranslation: 'v. 决定',
         members: [
-            ['decide', 'A1', 494], ['decision', 'A1', 603], ['decisive', 'C1', 7294],
-            ['deciding', null, null], ['decisiveness', null, null],
+            ['decide', 'A1', 494, ['v']],
+            ['decision', 'A1', 603, ['n']],
+            ['decisive', 'C1', 7294, ['a', 's']],
+            ['deciding', null, null, ['n', 'v', 's']],
+            ['decisiveness', null, null, ['n']],
         ],
     },
     {
         id: 'F0004', head: 'judge', headRank: 779, headPhonetic: 'dʒʌdʒ', headTranslation: 'n./v. 法官；判断',
         members: [
-            ['judge', 'A1', 779], ['judgment', 'B1', 3348], ['judicial', 'B2', 4548],
-            ['judiciary', 'B2', 6756], ['judgeship', null, null], ['judging', null, null],
-            ['judgmental', null, null],
+            ['judge', 'A1', 779, ['n', 'v']],
+            ['judgment', 'B1', 3348, ['n']],
+            ['judicial', 'B2', 4548, ['a', 's']],
+            ['judiciary', 'B2', 6756, ['n']],
+            ['judgeship', null, null, ['n']],
+            ['judging', null, null, ['n', 'v']],
+            ['judgmental', null, null, ['a']],
         ],
     },
     {
         id: 'F0005', head: 'reflect', headRank: 1645, headPhonetic: 'rɪˈflekt', headTranslation: 'v. 反映；反思',
         members: [
-            ['reflect', 'A2', 1645], ['reflection', 'B1', 3622], ['reflective', 'C1', 9839],
-            ['reflectivity', null, null], ['reflector', null, null],
+            ['reflect', 'A2', 1645, ['n', 'v']],
+            ['reflection', 'B1', 3622, ['n']],
+            ['reflective', 'C1', 9839, ['a', 's']],
+            ['reflectivity', null, null, ['n']],
+            ['reflector', null, null, ['n']],
         ],
     },
     {
         id: 'F0006', head: 'abandon', headRank: 2183, headPhonetic: 'əˈbændən', headTranslation: 'v. 放弃',
-        members: [['abandon', 'B1', 2183], ['abandonment', null, null]],
+        members: [
+            ['abandon', 'B1', 2183, ['v']],
+            ['abandonment', null, null, ['n']],
+        ],
     },
 ];
 
@@ -145,7 +169,10 @@ function buildFamilies() {
             headRank: rank,
             headPhonetic: '',
             headTranslation: `释义 ${index}`,
-            members: [[head, level, rank], [`${head}x`, null, null]],
+            members: [
+                [head, level, rank, ['v']],
+                [`${head}x`, null, null, ['n']],
+            ],
         });
     }
     return families;
@@ -190,9 +217,9 @@ function familyPage(searchParams) {
             headPhonetic: family.headPhonetic,
             headTranslation: family.headTranslation,
             levels: levelsOf(family.members),
-            members: family.members.map(([lemma, memberLevel, rank]) => {
+            members: family.members.map(([lemma, memberLevel, rank, pos]) => {
                 const [phonetic, translation] = MEMBER_LEXICON[lemma] || ['', ''];
-                return { lemma, level: memberLevel, rank, phonetic, translation };
+                return { lemma, level: memberLevel, rank, pos, phonetic, translation };
             }),
         })),
         total,
@@ -511,9 +538,27 @@ assert.equal(await page.getByTestId('vocab-family-word-F0001').innerText(), 'be'
 assert.equal(await page.getByTestId('vocab-family-ipa-F0001').innerText(), '/biː/');
 assert.equal(await page.getByTestId('vocab-family-translation-F0001').innerText(), 'v. 是；存在');
 assert.equal(await page.getByTestId('vocab-family-levels-F0001').innerText(), 'A1–B2');
-assert.equal(await page.getByTestId('vocab-family-members-count-F0001').innerText(), '2');
+// ── P1-13 collapsed row: POS badge · N 词 · 2-word preview + remaining count ──
+assert.equal(await page.getByTestId('vocab-family-members-count-F0001').innerText(), '2 词');
+assert.equal(await page.getByTestId('vocab-family-pos-F0001').innerText(), 'v·n');
+assert.equal(await page.getByTestId('vocab-family-preview-F0001').innerText(), 'being');
+assert.equal(await page.getByTestId('vocab-family-preview-rest-F0001').count(), 0);
+assert.equal(await page.getByTestId('vocab-family-pos-F0003').innerText(), 'v·n·adj');
+assert.equal(await page.getByTestId('vocab-family-members-count-F0003').innerText(), '5 词');
+assert.equal(await page.getByTestId('vocab-family-preview-F0003').innerText(), 'decision · decisive');
+assert.equal(await page.getByTestId('vocab-family-preview-rest-F0003').innerText(), '+2');
+assert.equal(await page.getByTestId('vocab-family-pos-F0004').innerText(), 'v·n·adj');
+assert.equal(await page.getByTestId('vocab-family-preview-F0004').innerText(), 'judgment · judicial');
+assert.equal(await page.getByTestId('vocab-family-preview-rest-F0004').innerText(), '+4');
+assert.equal(await page.getByTestId('vocab-family-pos-F0005').innerText(), 'v·n·adj');
+assert.equal(await page.getByTestId('vocab-family-preview-F0005').innerText(), 'reflection · reflective');
+assert.equal(await page.getByTestId('vocab-family-preview-rest-F0005').innerText(), '+2');
+assert.equal(await page.getByTestId('vocab-family-pos-F0006').innerText(), 'v·n');
+assert.equal(await page.getByTestId('vocab-family-preview-F0006').innerText(), 'abandonment');
+// 无值显示 —：filler 族的 head 没有词典音标（不显示空白，也不编造）。
+assert.equal(await page.getByTestId('vocab-family-ipa-F0007').innerText(), '—');
 assert.equal(await page.getByTestId('vocab-family-row-F0051').count(), 0, 'only page 1 is rendered');
-await page.screenshot({ path: `${SHOTS}/p1-05-1440.png`, fullPage: false });
+await page.screenshot({ path: `${SHOTS}/p1-13-collapsed-1440.png`, fullPage: false });
 
 // Before expanding, the panel renders no per-row write control at all.
 const panel = page.getByTestId('vocab-family-panel');
@@ -558,7 +603,7 @@ for (const familyId of ['F0001', 'F0003']) {
 // C) expanding a family lists every member with its own meaning + controls.
 await page.getByTestId('vocab-family-row-F0003').click();
 await page.getByTestId('vocab-family-detail-F0003').waitFor();
-assert.equal(await page.getByTestId('vocab-family-members-count-F0003').innerText(), '5');
+assert.equal(await page.getByTestId('vocab-family-members-count-F0003').innerText(), '5 词');
 assert.equal(
     await page.getByTestId('vocab-family-member-level-F0003-decision').innerText(),
     'A1',
@@ -629,9 +674,59 @@ assert.match(
     await page.getByTestId('vocab-family-detail-F0003').innerText(),
     /成员（5 个）/,
 );
-await page.screenshot({ path: `${SHOTS}/p1-07-expand-1440.png`, fullPage: false });
-await page.getByTestId('vocab-family-row-F0003').click();
-assert.equal(await page.getByTestId('vocab-family-detail-F0003').count(), 0, '再次点击收起');
+
+// ── P1-13 展开区按词性分组：动词/名词/形容词/副词/其他；主词置顶 ──────
+const groupIds = await detailF0003
+    .locator('[data-testid^="vocab-family-group-F0003-"]')
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-family-group')));
+assert.deepEqual(groupIds, ['verb', 'noun', 'adjective'], `F0003 组顺序：${groupIds.join(' / ')}`);
+assert.match(await page.getByTestId('vocab-family-group-F0003-verb').innerText(), /动词/);
+assert.match(await page.getByTestId('vocab-family-group-F0003-noun').innerText(), /名词/);
+assert.match(await page.getByTestId('vocab-family-group-F0003-adjective').innerText(), /形容词/);
+assert.equal(await page.getByTestId('vocab-family-group-count-F0003-verb').innerText(), '2');
+assert.equal(await page.getByTestId('vocab-family-group-count-F0003-noun').innerText(), '2');
+assert.equal(await page.getByTestId('vocab-family-group-count-F0003-adjective').innerText(), '1');
+assert.deepEqual(
+    await page.getByTestId('vocab-family-group-F0003-verb')
+        .locator('[data-testid^="vocab-family-member-word-F0003-"]').allInnerTexts(),
+    ['decide', 'deciding'],
+    '主词置顶，组内按 rank，10k 外最后',
+);
+assert.deepEqual(
+    await page.getByTestId('vocab-family-group-F0003-noun')
+        .locator('[data-testid^="vocab-family-member-word-F0003-"]').allInnerTexts(),
+    ['decision', 'decisiveness'],
+);
+assert.equal(
+    await detailF0003.locator('[data-testid^="vocab-family-member-level-F0003-"]').count(),
+    5,
+    '每个成员只出现在一个分组（不重复渲染）',
+);
+await page.screenshot({ path: `${SHOTS}/p1-13-expanded-1440.png`, fullPage: false });
+
+// ── P1-13 手风琴：只一个展开；切另一个自动收起；再点收起；不写 URL ──────
+const urlBeforeAccordion = page.url();
+await page.getByTestId('vocab-family-row-F0004').click();
+await page.getByTestId('vocab-family-detail-F0004').waitFor();
+assert.equal(
+    await page.getByTestId('vocab-family-detail-F0003').count(),
+    0,
+    '展开另一个族时自动收起前一个',
+);
+assert.equal(
+    await page.locator('[data-testid^="vocab-family-detail-"]').count(),
+    1,
+    '同一时刻只有一个族展开',
+);
+assert.equal(page.url(), urlBeforeAccordion, '手风琴不写 URL');
+await page.screenshot({ path: `${SHOTS}/p1-13-accordion-1440.png`, fullPage: false });
+await page.getByTestId('vocab-family-row-F0004').click();
+assert.equal(await page.getByTestId('vocab-family-detail-F0004').count(), 0, '再点收起');
+assert.equal(
+    await page.locator('[data-testid^="vocab-family-detail-"]').count(),
+    0,
+    '全部收起',
+);
 
 // ── D) search matches any member, not just the head ─────────────────────
 await page.getByTestId('vocab-family-search').fill('reflection');
@@ -738,8 +833,8 @@ await page.getByTestId('vocab-page-size-20').click();
 await page.waitForFunction(() => {
     const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
     return status.includes('第 1 / 6 页')
-        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0001"]'))
-        && !document.querySelector('[data-testid="vocab-family-word-F0051"]');
+        && document.querySelectorAll('[data-testid^="vocab-family-row-"]').length === 20
+        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0001"]'));
 }, { timeout: 10000 });
 assert.equal(lastFamilyRequest(state).pageSize, '20', 'the request carries the chosen pageSize');
 assert.equal(lastFamilyRequest(state).page, '1');
@@ -755,6 +850,7 @@ await page.getByTestId('vocab-page-size-100').click();
 await page.waitForFunction(() => {
     const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
     return status.includes('第 1 / 2 页')
+        && document.querySelectorAll('[data-testid^="vocab-family-row-"]').length === 100
         && Boolean(document.querySelector('[data-testid="vocab-family-word-F0051"]'));
 }, { timeout: 10000 });
 assert.equal(lastFamilyRequest(state).pageSize, '100');
@@ -782,8 +878,8 @@ await page.getByTestId('vocab-page-size-20').click();
 await page.waitForFunction(() => {
     const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
     return status.includes('第 1 / 6 页')
-        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0001"]'))
-        && !document.querySelector('[data-testid="vocab-family-word-F0101"]');
+        && document.querySelectorAll('[data-testid^="vocab-family-row-"]').length === 20
+        && Boolean(document.querySelector('[data-testid="vocab-family-word-F0001"]'));
 }, { timeout: 10000 });
 assert.equal(lastFamilyRequest(state).page, '1', 'a page-size change restarts at page 1');
 assert.equal(lastFamilyRequest(state).pageSize, '20');
@@ -796,6 +892,7 @@ await page.getByTestId('vocab-page-size-50').click();
 await page.waitForFunction(() => {
     const status = document.querySelector('[data-testid="vocab-page-status"]')?.textContent || '';
     return status.includes('第 1 / 3 页')
+        && document.querySelectorAll('[data-testid^="vocab-family-row-"]').length === 50
         && Boolean(document.querySelector('[data-testid="vocab-family-word-F0050"]'))
         && !document.querySelector('[data-testid="vocab-family-word-F0051"]');
 }, { timeout: 10000 });
@@ -1185,7 +1282,7 @@ let overflow = await mobile.page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
 );
 assert.ok(overflow <= 1, `375 family list must not overflow horizontally (${overflow}px)`);
-await mobile.page.screenshot({ path: `${SHOTS}/p1-05-375.png`, fullPage: false });
+await mobile.page.screenshot({ path: `${SHOTS}/p1-13-collapsed-375.png`, fullPage: false });
 
 // The shared pager (size selector + page strip + jump) fits the 375 column.
 await mobile.page.getByTestId('vocab-page-size').scrollIntoViewIfNeeded();
@@ -1226,11 +1323,21 @@ assert.equal(
     false,
     '375 隐藏成员表头（两行布局）',
 );
+assert.equal(
+    await mobile.page.getByTestId('vocab-family-pos-F0004').innerText(),
+    'v·n·adj',
+    '375 折叠行保留 POS 徽章',
+);
+assert.equal(
+    await mobile.page.getByTestId('vocab-family-group-F0004-verb').isVisible(),
+    true,
+    '375 展开区仍按词性分组',
+);
 overflow = await mobile.page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
 );
 assert.ok(overflow <= 1, `375 expanded members must not overflow horizontally (${overflow}px)`);
-await mobile.page.screenshot({ path: `${SHOTS}/p1-07-375-expand.png`, fullPage: false });
+await mobile.page.screenshot({ path: `${SHOTS}/p1-13-expanded-375.png`, fullPage: false });
 assert.equal(mobile.pageErrors.length, 0, `no mobile page errors: ${mobile.pageErrors.join(' | ')}`);
 
 assert.equal(pageErrors.length, 0, `no desktop page errors: ${pageErrors.join(' | ')}`);
@@ -1239,4 +1346,4 @@ await context.close();
 await browser.close();
 
 console.log(`\nWord family tab acceptance: ${assertionsPassed} assertions passed`);
-console.log(`  screenshots: ${SHOTS}/p1-05-*.png, ${SHOTS}/p1-06-*.png, ${SHOTS}/p1-07-*.png`);
+console.log(`  screenshots: ${SHOTS}/p1-13-*.png (new), plus p1-05/06/07 regression shots`);

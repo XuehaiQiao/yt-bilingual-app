@@ -13,6 +13,8 @@
   level 筛选、sort=rank/alpha；
 - 成员字段：每条成员带 ``phonetic`` / ``translation`` 字符串快照（来自
   ``lexicon.v1.json``，缺条目为空串），与词典逐条一致；10k 外成员同样有；
+- 成员词性（P1-13）：每条成员带 ``pos``（WordNet synset POS 集合，n/v/a/s/r
+  规范顺序、去重；旧数据缺失时为空数组），与静态数据逐条一致；
 - 非法参数 400（page/pageSize/sort/level/q 长度）；旧 lemma-list 端点已删除；
 - 游客可读、不签发游客 Cookie、公开缓存头、不调 AI、不写库；
 - 词族/释义数据缺失或损坏 → 503；缺释义时 phonetic/translation 留空，不编造。
@@ -39,6 +41,8 @@ EXPECTED = {
     "cefrMembers": 5233,
     "outsideMembers": 6301,
     "maxFamilySize": 14,
+    "membersWithPos": 11534,
+    "membersWithoutPos": 0,
 }
 
 
@@ -93,7 +97,8 @@ def test_total_and_first_page(make_client):
         assert len(item["members"]) >= 2
         for member in item["members"]:
             assert set(member) == {
-                "lemma", "level", "rank", "phonetic", "translation"}
+                "lemma", "level", "rank", "pos", "phonetic", "translation"}
+            assert isinstance(member["pos"], list)
             assert isinstance(member["phonetic"], str)
             assert isinstance(member["translation"], str)
             assert member["level"] in LEVELS or member["level"] is None
@@ -101,9 +106,12 @@ def test_total_and_first_page(make_client):
         # 成员释义/音标是构建时写入的词典快照；be / being 都有条目。
         assert item["members"][0]["phonetic"] == "bi:"
         assert item["members"][0]["translation"].startswith("v. 是")
+        # P1-13：be / being 在 WordNet 里都有名词与动词 synset。
+        assert item["members"][0]["pos"] == ["n", "v"]
         assert item["members"][1]["lemma"] == "being"
         assert item["members"][1]["phonetic"]
         assert item["members"][1]["translation"].startswith("n. 存在")
+        assert item["members"][1]["pos"] == ["n", "v"]
     assert "ln_guest" not in response.cookies
 
 
@@ -161,6 +169,11 @@ def test_named_families_match_rule_e(make_client):
     decide_members = {member["lemma"]: member for member in decide_family["members"]}
     assert decide_members["decision"]["phonetic"].startswith("di")
     assert decide_members["decision"]["translation"].startswith("n. 决定")
+    # P1-13：成员 POS 按 n/v/a/s/r 规范顺序下发（s = 卫星形容词）。
+    assert decide_members["decide"]["pos"] == ["v"]
+    assert decide_members["decision"]["pos"] == ["n"]
+    assert decide_members["decisive"]["pos"] == ["a", "s"]
+    assert decide_members["deciding"]["pos"] == ["n", "v", "s"]
     # 词典缺条目的成员（10k 外）字段为空串，成员行仍会下发。
     assert decide_members["deciding"]["level"] is None
     # P1-12：10k 外成员同样由 ECDICT 补全音标/释义。
@@ -442,7 +455,12 @@ def test_data_document_contract():
             # 成员释义/音标来自 lexicon.v1.json 的构建快照：与词典逐条一致
             # （缺条目为空串）；10k 外成员同样带这两个字段。
             assert set(member) == {
-                "lemma", "level", "rank", "phonetic", "translation"}
+                "lemma", "level", "rank", "pos", "phonetic", "translation"}
+            # P1-13：pos 必须是 n/v/a/s/r 去重数组（数据里全部成员可解析）。
+            raw_pos = member["pos"]
+            assert isinstance(raw_pos, list) and raw_pos, member["lemma"]
+            assert raw_pos == [
+                code for code in word_family.POS_ORDER if code in set(raw_pos)]
             # P1-12：lexicon 已有的非空值必须原样保留；缺项回退 ECDICT 或 ""。
             phonetic, translation = lexicon.entries.get(member["lemma"], ("", ""))
             if phonetic:
@@ -451,6 +469,32 @@ def test_data_document_contract():
                 assert member["translation"] == translation
             assert isinstance(member["phonetic"], str)
             assert isinstance(member["translation"], str)
+
+
+def test_member_pos_is_optional_and_validated():
+    """成员 pos：缺失 → 空（旧数据兼容）；乱序规范化；非法字符 → 503。"""
+    raw = {
+        "id": "F0001", "head": "decide", "headRank": 1, "headLevel": "A1",
+        "levels": ["A1"],
+        "members": [
+            {"lemma": "decide", "level": "A1", "rank": 1},
+            {"lemma": "decision", "level": "A1", "rank": 2,
+             "pos": ["s", "n", "s"]},
+        ],
+    }
+    family = word_family._parse_family(raw, "F0001")
+    assert family.members[0].pos == ()
+    assert family.members[1].pos == ("n", "s")
+
+    bad_type = json.loads(json.dumps(raw))
+    bad_type["members"][1]["pos"] = "n"
+    with pytest.raises(word_family.WordFamilyUnavailable, match="pos 必须是字符串数组"):
+        word_family._parse_family(bad_type, "F0001")
+
+    bad_code = json.loads(json.dumps(raw))
+    bad_code["members"][1]["pos"] = ["n", "x"]
+    with pytest.raises(word_family.WordFamilyUnavailable, match="未知 POS 字符"):
+        word_family._parse_family(bad_code, "F0001")
 
 
 def test_missing_data_is_503(monkeypatch, make_client, tmp_path):

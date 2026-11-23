@@ -26,6 +26,11 @@ ECDICT（``data/ecdict.db``，以 ``mode=ro&immutable=1`` 只读打开、按批 
 查询；音标/释义归一化沿用 lexicon 构建口径，见 ``build_word_lists.clean_*``）；
 仍缺者留 ``""``，不编造。ECDICT 只补 lexicon 缺的字段，已有值一律不覆盖。
 
+成员词性（P1-13）：每个成员带 ``pos``——该 lemma 在 WordNet 3.0 全部 synset 的
+POS 集合，按 ``n/v/a/s/r`` 规范顺序去重；该词没有任何 synset 时为 ``[]``。
+POS 只作为**展示分组**依据（动词/名词/形容词/副词/其他），不参与构图、不改族
+成员数；集合里 ``s`` 是 WordNet 的 satellite adjective，前端与 ``a`` 同归形容词。
+
 确定性：同一 WordNet 语料 + 同一频表 + 同一 lexicon + 同一 ECDICT 库 → 逐字节
 一致的 JSON（无时间戳/耗时）。运行期不依赖 nltk/WordNet：应用只读生成的 JSON。
 
@@ -97,10 +102,17 @@ EXPECTED_COUNTS: Mapping[str, object] = {
     "cefrCoveragePct": 52.33,
     "blacklistEdges": 17,
     "allowlistEdges": 22,
+    # P1-13：每个成员在 WordNet 都能查到至少一个 synset；无 POS 的成员为 0。
+    "membersWithPos": 11534,
+    "membersWithoutPos": 0,
 }
 
 # CEFR 等级展示顺序（与频表锚点一致；数据里 levels 按此排序）。
 LEVEL_ORDER: Tuple[str, ...] = ("A1", "A2", "B1", "B2", "C1")
+
+# WordNet synset POS 字符的规范顺序（数据里 pos 按此排序；前端同一口径分组）。
+# n=名词 v=动词 a=形容词 s=卫星形容词（与 a 同组） r=副词。
+POS_ORDER: Tuple[str, ...] = ("n", "v", "a", "s", "r")
 
 
 class BuildError(RuntimeError):
@@ -538,6 +550,62 @@ def load_ecdict_entries(
     return entries, source
 
 
+def load_wordnet_pos(
+    words: Iterable[str],
+    wordnet_dir: str | Path = DEFAULT_WORDNET_DIR,
+) -> Tuple[Dict[str, Tuple[str, ...]], Dict[str, object]]:
+    """按 lemma 收集 WordNet 3.0 synset POS 集合，返回 ``(pos, source)``。
+
+    每个词的集合 = 该 lemma 在 WordNet 全部 synset 里的 ``pos()``，按
+    ``POS_ORDER``（n/v/a/s/r）去重排序；WordNet 查不到的词出现在返回字典里
+    且值为空元组（前端归「其他」，数据仍写 ``[]``）。只读、不联网；目录/语料
+    不可用时抛 :class:`audit.WordNetUnavailable`（与构图同一个 WordNet 源，
+    因此版本与 ``source.wordnet`` 一致）。
+    """
+    provider = audit.WordNetProvider(wordnet_dir)
+    from nltk.corpus import wordnet as wn  # noqa: PLC0415  （依赖 audit 校验过目录）
+    try:
+        wn.ensure_loaded()
+    except (LookupError, OSError) as exc:  # pragma: no cover - audit 已先校验
+        raise audit.WordNetUnavailable(
+            f"WordNet 数据未加载：{exc}") from exc
+    queried = tuple(sorted({word for word in words if word}))
+    positions: Dict[str, Tuple[str, ...]] = {}
+    for word in queried:
+        present = {synset.pos() for synset in wn.synsets(word)}
+        positions[word] = tuple(code for code in POS_ORDER if code in present)
+    # 不写 WordNet 数据目录的本地路径：数据随仓库分发且要求跨机器逐字节可复现
+    # （--check），版本已由 source.wordnet.version 记录。
+    return positions, {
+        "version": str(provider.version),
+        "posOrder": "/".join(POS_ORDER),
+        "queried": len(queried),
+        "withPos": sum(1 for value in positions.values() if value),
+    }
+
+
+def _member_pos(
+    lemma: str,
+    pos: Optional[Mapping[str, Sequence[str]]],
+) -> Tuple[str, ...]:
+    """成员 ``pos``：按 ``POS_ORDER`` 规范化的去重元组；无映射/无词条为 ``()``。
+
+    输入来自 :func:`load_wordnet_pos`（或单测的假映射）；未知字符直接报错，
+    防止把拼错的 POS 写进静态数据。
+    """
+    if pos is None:
+        return ()
+    raw = pos.get(lemma) or ()
+    _require(
+        isinstance(raw, (list, tuple, set, frozenset)),
+        f"{lemma}: pos 必须是 POS 字符序列",
+    )
+    unknown = [code for code in raw if code not in POS_ORDER]
+    _require(not unknown, f"{lemma}: 未知 POS 字符 {unknown!r}（只允许 n/v/a/s/r）")
+    present = set(raw)
+    return tuple(code for code in POS_ORDER if code in present)
+
+
 def _lexicon_fields(
     lemma: str,
     lexicon: Optional[Mapping[str, Tuple[str, str]]],
@@ -601,6 +669,12 @@ def build_family_document(
         Callable[[Sequence[str]],
                  Tuple[Mapping[str, Tuple[str, str]], Mapping[str, object]]]
     ] = None,
+    pos: Optional[Mapping[str, Sequence[str]]] = None,
+    pos_source: Optional[Mapping[str, object]] = None,
+    pos_provider: Optional[
+        Callable[[Sequence[str]],
+                 Tuple[Mapping[str, Sequence[str]], Mapping[str, object]]]
+    ] = None,
 ) -> Dict[str, object]:
     """按规则 E + P1-11 审计变更建词族文档（不写盘、不读 WordNet）。
 
@@ -609,9 +683,14 @@ def build_family_document(
     CLI 总会传入。``ecdict`` 是已查好的 ECDICT 结果（同形状，缺项回退用）；
     ``ecdict_provider`` 接收「lexicon 缺音标或释义」的成员词列表，返回
     ``(entries, source)`` —— CLI 用它做只读批量查询，单测可喂假的。两者
-    互斥，缺项仍缺时留空串。``trim_members`` / ``split_edges`` /
-    ``held_items`` 默认取模块内写死的审计清单；隔离单测喂自造小图时传
-    ``()`` 关闭。
+    互斥，缺项仍缺时留空串。
+
+    ``pos``（``lemma -> POS 字符序列``；见 :func:`load_wordnet_pos`）非空时给
+    每个成员写 ``pos``（按 n/v/a/s/r 规范化，查不到的 lemma 写 ``[]``）；
+    ``None`` 不写该字段（纯图结构测试）。``pos_provider`` 接收全部成员词列表，
+    返回 ``(pos, source)``，CLI 注入 WordNet 查询，单测可喂假的；与 ``pos`` /
+    ``pos_source`` 互斥。``trim_members`` / ``split_edges`` / ``held_items``
+    默认取模块内写死的审计清单；隔离单测喂自造小图时传 ``()`` 关闭。
     """
     black_pairs, allow_pairs = validate_manual_lists(index.pairs, blacklist, allowlist)
     # allowlist 的规则前提：两侧都在 CEFR 10k（否则是产品口径变化，先复核审计）。
@@ -683,8 +762,20 @@ def build_family_document(
                 "ECDICT 查询结果必须是 word -> (phonetic, translation) 映射",
             )
 
+    # 词性只用于前端展示分组：覆盖全部族成员，不改构图/成员数。
+    if pos_provider is not None:
+        _require(
+            pos is None and pos_source is None,
+            "pos / pos_source 与 pos_provider 只能给一种",
+        )
+        member_words = tuple(sorted(
+            {member.word for family in table.families for member in family.members}))
+        pos, pos_source = pos_provider(member_words)
+        _require(hasattr(pos, "get"), "POS 查询结果必须是 word -> POS 序列映射")
+
     phonetic_fills = 0
     translation_fills = 0
+    members_with_pos = 0
     families: List[Mapping[str, object]] = []
     for family in table.families:
         members: List[Mapping[str, object]] = []
@@ -697,12 +788,18 @@ def build_family_document(
                     phonetic_fills += 1
                 if fields["translation"] and not lex_translation:
                     translation_fills += 1
-            members.append({
+            member_pos = _member_pos(member.word, pos)
+            if member_pos:
+                members_with_pos += 1
+            record: Dict[str, object] = {
                 "lemma": member.word,
                 "level": member.level,
                 "rank": member.rank,
-                **fields,
-            })
+            }
+            if pos is not None:
+                record["pos"] = list(member_pos)
+            record.update(fields)
+            members.append(record)
         levels = sorted(
             {member.level for member in family.members if member.level},
             key=lambda level: rank_of_level.get(str(level), len(rank_of_level)),
@@ -720,6 +817,9 @@ def build_family_document(
     if ecdict is not None:
         source_ecdict["phoneticFills"] = phonetic_fills
         source_ecdict["translationFills"] = translation_fills
+    source_pos: Dict[str, object] = dict(pos_source or {})
+    if pos is not None:
+        source_pos["membersWithoutPos"] = coverage.members - members_with_pos
 
     # 数据契约（与 specs/041 §2 响应形状一致；后端加载时再校验一遍）。
     for family in families:
@@ -745,6 +845,16 @@ def build_family_document(
                 ),
                 f"{family['id']} 成员缺 phonetic/translation 字段",
             )
+        if pos is not None:
+            _require(
+                all(
+                    isinstance(member.get("pos"), list)
+                    and all(code in POS_ORDER for code in member["pos"])
+                    and member["pos"] == list(dict.fromkeys(member["pos"]))
+                    for member in members
+                ),
+                f"{family['id']} 成员 pos 不是规范的 n/v/a/s/r 去重数组",
+            )
 
     # allowlist 效果：加入的边两端必须落在同一族；黑名单按规则 E 只保证「边不在
     # 最终图里」（审计的「坏边 0」口径就是边计数，不保证两端不被其它合法边连起来）。
@@ -769,6 +879,9 @@ def build_family_document(
         "blacklistEdges": len(black_pairs),
         "allowlistEdges": len(allow_pairs),
     }
+    if pos is not None:
+        counts["membersWithPos"] = members_with_pos
+        counts["membersWithoutPos"] = coverage.members - members_with_pos
     size_distribution = {
         str(size): count for size, count in sorted(Counter(
             len(family["members"]) for family in families).items())
@@ -808,6 +921,7 @@ def build_family_document(
             },
             **({"lexicon": dict(lexicon_source)} if lexicon_source else {}),
             **({"ecdict": source_ecdict} if source_ecdict else {}),
+            **({"pos": source_pos} if pos is not None else {}),
         },
         "rules": {
             "graph": "WordNet 3.0 派生图：全部单字 lemma，无向边；自指/多词丢弃，同对去重",
@@ -819,6 +933,7 @@ def build_family_document(
             "allowlist": "22 条 WordNet 缺失/不对称的人工边加入图中（两侧都在 10k）",
             "aiAudit": "P1-11 应用 2026-11-23 AI 审计 23 条高置信变更：13 条 trim（删 24 个成员及其边）+ 10 条 split（删 11 条桥边）；中/低置信 11 条未应用",
             "memberFields": "成员 phonetic/translation 优先 lexicon.v1.json；缺项用本地 ECDICT 补（只读、精确小写匹配、首个含中文行、≤120 字符）；仍缺为空串，不编造",
+            "memberPos": "成员 pos = 该 lemma 在 WordNet 3.0 全部 synset 的 POS 集合（n/v/a/s/r 规范顺序去重；无 synset 为 []）；只用于展开区按词性分组与折叠行词性徽章，不参与构图",
         },
         "counts": counts,
         "sizeDistribution": size_distribution,
@@ -945,6 +1060,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             lexicon=lexicon,
             lexicon_source=lexicon_source,
             ecdict_provider=lambda words: load_ecdict_entries(words, ecdict_path),
+            pos_provider=lambda words: load_wordnet_pos(words, args.wordnet_dir),
         )
         assert_expected_counts(document)
     except audit.WordNetUnavailable as exc:
@@ -992,6 +1108,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
           f"（仍缺 {counts['members'] - with_phonetic:,} / "
           f"{counts['members'] - with_translation:,}"
           f"；ECDICT 补 {phonetic_fills:,} / {translation_fills:,}）")
+    print(f"成员词性 POS      : {counts.get('membersWithPos', 0):,} / {counts['members']:,}"
+          f"（无 POS {counts.get('membersWithoutPos', 0):,}；"
+          f"顺序 {'/'.join(POS_ORDER)}）")
     print(f"最大族 / 覆盖     : {counts['maxFamilySize']} / {counts['cefrCoveragePct']}%")
     print(f"黑名单 / allowlist: {counts['blacklistEdges']} / {counts['allowlistEdges']}")
     print(f"AI 审计变更        : {len(TRIM_MEMBERS)} trim / {len(SPLIT_EDGES)} 条桥边 / "
