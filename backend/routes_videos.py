@@ -303,6 +303,217 @@ async def estimate_cost(url: str, targetLang: str | None = None):
     }
 
 
+# ---------------------------------------------------------------------------
+# 经典处理路径：翻译批次并行 + 结构化计时（P1-18）
+# ---------------------------------------------------------------------------
+# 批大小与流式路径保持一致（20）。并发只作用在「英文已就绪、待翻译」的批次上：
+#   - 结果按 batch 下标回填，block 顺序与串行完全一致；
+#   - 每个批次仍走原来的 retry / 429 退避 / mock 回退 / 计费硬闸语义，批次内不拆；
+#   - provider 限流靠 `llm.batch_pause(model)`：每条并发通道跑完一批先停一拍再领
+#     下一批，等于「同一时刻最多 concurrency 个请求在途」；
+#   - 计费/配额硬闸（BillingError/QuotaExceeded）照旧直接抛出，并取消剩余通道。
+VIDEO_TRANSLATION_BATCH_SIZE = 20
+VIDEO_TRANSLATION_CONCURRENCY_DEFAULT = 2
+VIDEO_TRANSLATION_CONCURRENCY_MAX = 3
+
+
+def _video_translation_concurrency() -> int:
+    """翻译批次并发数：环境变量 ``VIDEO_TRANSLATION_CONCURRENCY``，默认 2，夹在 1–3。
+
+    每次调用时读取（改 .env 后不用改代码）；非法值回落默认值——视频处理不能
+    因为一个坏配置失败。
+    """
+    raw = os.environ.get("VIDEO_TRANSLATION_CONCURRENCY", "").strip()
+    if not raw:
+        return VIDEO_TRANSLATION_CONCURRENCY_DEFAULT
+    try:
+        value = int(raw)
+    except ValueError:
+        return VIDEO_TRANSLATION_CONCURRENCY_DEFAULT
+    return max(1, min(VIDEO_TRANSLATION_CONCURRENCY_MAX, value))
+
+
+def _timing_log(feature: str, **fields) -> None:
+    """一行结构化计时日志；``feature`` 是检索锚点（视频翻译/教学分析）。"""
+    logger.info(
+        json.dumps({"feature": feature, **fields}, ensure_ascii=False, default=str)
+    )
+
+
+async def _translate_video_batch(
+    batch: list,
+    *,
+    batch_no: int,
+    batch_count: int,
+    concurrency: int,
+    model: str,
+    user_id: str,
+    lang: str,
+) -> tuple[list, float]:
+    """翻译一个批次（retry/回退语义与旧串行循环逐行一致），返回 (blocks, duration_ms)。"""
+    started = time.perf_counter()
+    attempts = 0
+    fallback = False
+    outcome = "ok"
+    print(f"Processing batch {batch_no}/{batch_count} (concurrency={concurrency})")
+    try:
+        max_retries = 3
+        retry_delay = 10  # Start with 10s delay if rate limited
+        success = False
+        batch_result: list = []
+
+        for attempt in range(max_retries):
+            attempts = attempt + 1
+            try:
+                batch_result = await process_llm_batch(
+                    batch, model=model, user_id=user_id, target_lang=lang
+                )
+                success = True
+                break  # Break out of retry loop
+            except Exception as e:
+                if isinstance(e, (billing.BillingError, QuotaExceeded)):
+                    # 402/403/429/503 是硬闸，不能被当成可重试的模型失败。
+                    outcome = "billing_error"
+                    raise
+                error_msg = str(e).lower()
+                if "429" in error_msg or "quota" in error_msg or "exhausted" in error_msg:
+                    if attempt < max_retries - 1:
+                        print(
+                            f"Batch {batch_no}: rate limit hit (429). "
+                            f"Retrying in {retry_delay}s... (Attempt {attempt + 1}/{max_retries})"
+                        )
+                        await asyncio.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff: 10s, 20s, etc.
+                    else:
+                        print(
+                            f"Batch {batch_no}: rate limit hit persistently. "
+                            f"Falling back to mock for this batch. Error: {e}"
+                        )
+                else:
+                    print(f"Batch {batch_no} failed with non-retryable error: {e}")
+                    break  # Don't retry for other types of errors (e.g. malformed JSON)
+
+        if not success:
+            fallback = True
+            outcome = "mock_fallback"
+            batch_result = await mock_llm_processing(batch, target_lang=lang)
+
+        return batch_result, round((time.perf_counter() - started) * 1000, 2)
+    except BaseException:
+        if outcome == "ok":
+            outcome = "error"
+        raise
+    finally:
+        _timing_log(
+            "video_translation",
+            event="batch",
+            batch=batch_no,
+            batch_count=batch_count,
+            duration_ms=round((time.perf_counter() - started) * 1000, 2),
+            concurrency=concurrency,
+            attempts=attempts,
+            fallback=fallback,
+            outcome=outcome,
+        )
+
+
+async def _translate_video_blocks(
+    blocks: list,
+    *,
+    model: str,
+    user_id: str,
+    lang: str,
+    batch_size: int = VIDEO_TRANSLATION_BATCH_SIZE,
+) -> list:
+    """视频 blocks 切批并行翻译，结果按原 batch 顺序合并（P1-18）。
+
+    断点/进度语义不在这里：经典路径一次性返回最终 payload；流式路径仍是
+    ``translate._stream_translate`` 逐批落盘（本卡不动它）。
+    """
+    if not blocks:
+        return []
+
+    batches = [
+        blocks[start:start + batch_size]
+        for start in range(0, len(blocks), batch_size)
+    ]
+    batch_count = len(batches)
+    concurrency = min(_video_translation_concurrency(), batch_count)
+    print(
+        f"Processing {len(blocks)} blocks in {batch_count} batches of {batch_size} "
+        f"[{lang}] concurrency={concurrency}..."
+    )
+
+    started = time.perf_counter()
+    results: list[list | None] = [None] * batch_count
+    durations: list[dict] = []
+    next_index = 0
+    ok = True
+
+    try:
+        async def _lane() -> None:
+            nonlocal next_index
+            while True:
+                index = next_index
+                next_index += 1
+                if index >= batch_count:
+                    return
+                batch_result, duration_ms = await _translate_video_batch(
+                    batches[index],
+                    batch_no=index + 1,
+                    batch_count=batch_count,
+                    concurrency=concurrency,
+                    model=model,
+                    user_id=user_id,
+                    lang=lang,
+                )
+                results[index] = batch_result
+                durations.append({"batch": index + 1, "duration_ms": duration_ms})
+                if index + 1 < batch_count:
+                    # 通道跑完一批先停一拍再领下一批：限流节奏与串行路径一致。
+                    await asyncio.sleep(llm.batch_pause(model))
+
+        tasks = [asyncio.create_task(_lane()) for _ in range(concurrency)]
+        try:
+            await asyncio.gather(*tasks)
+        except BaseException:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+        return [block for batch in results for block in (batch or [])]
+    except BaseException:
+        ok = False
+        raise
+    finally:
+        _timing_log(
+            "video_translation",
+            event="total",
+            batch_count=batch_count,
+            total_ms=round((time.perf_counter() - started) * 1000, 2),
+            concurrency=concurrency,
+            batch_durations_ms=sorted(durations, key=lambda item: item["batch"]),
+            ok=ok,
+        )
+
+
+async def _attach_video_analysis(payload: dict, **kwargs):
+    """调用教学分析并记录 ``feature=video_analysis total_ms``（返回值/异常语义不变）。"""
+    started = time.perf_counter()
+    result = None
+    try:
+        result = await teaching_analysis.attach_to_payload(payload, **kwargs)
+        return result
+    finally:
+        _timing_log(
+            "video_analysis",
+            total_ms=round((time.perf_counter() - started) * 1000, 2),
+            content_ref=kwargs.get("content_ref"),
+            level=kwargs.get("level"),
+            ok=result is not None,
+        )
+
+
 @router.post("/api/process-video")
 async def process_video(request: VideoRequest, http_request: Request):
     """处理视频（会触发 AI）：M7a 起仅登录用户可用；游客 403 login_required。
@@ -353,7 +564,7 @@ async def process_video(request: VideoRequest, http_request: Request):
                     cached_data["model"] = model
                 # 教学分析：按内容+等级+语言补高亮/习语/文化点（缓存命中零调用），
                 # 再随 _bump_study 一起写回缓存文件。
-                await teaching_analysis.attach_to_payload(
+                await _attach_video_analysis(
                     cached_data,
                     level=request.vocab_level,
                     target_lang=lang,
@@ -393,51 +604,10 @@ async def process_video(request: VideoRequest, http_request: Request):
     for idx, b in enumerate(blocks):
         b["id"] = idx + 1
 
-    # Process blocks in batches of 20 to stay within limits and ensure quality JSON
-    processed_blocks = []
-    batch_size = 20
-
-    print(f"Processing {len(blocks)} blocks in batches of {batch_size} [{lang}]...")
-
-    # Limit removed to allow processing of full-length videos
-    blocks_to_process = blocks
-
-    for i in range(0, len(blocks_to_process), batch_size):
-        batch = blocks_to_process[i:i + batch_size]
-        print(f"Processing batch {i//batch_size + 1}/{(len(blocks_to_process)-1)//batch_size + 1}")
-
-        max_retries = 3
-        retry_delay = 10  # Start with 10s delay if rate limited
-        success = False
-
-        for attempt in range(max_retries):
-            try:
-                batch_result = await process_llm_batch(
-                    batch, model=model, user_id=user_id, target_lang=lang
-                )
-                processed_blocks.extend(batch_result)
-                await asyncio.sleep(llm.batch_pause(model))  # 按 provider 限流节奏
-                success = True
-                break  # Break out of retry loop
-            except Exception as e:
-                if isinstance(e, (billing.BillingError, QuotaExceeded)):
-                    # 402/403/429/503 是硬闸，不能被当成可重试的模型失败。
-                    raise
-                error_msg = str(e).lower()
-                if "429" in error_msg or "quota" in error_msg or "exhausted" in error_msg:
-                    if attempt < max_retries - 1:
-                        print(f"Rate limit hit (429). Retrying in {retry_delay}s... (Attempt {attempt + 1}/{max_retries})")
-                        await asyncio.sleep(retry_delay)
-                        retry_delay *= 2  # Exponential backoff: 10s, 20s, etc.
-                    else:
-                        print(f"Rate limit hit persistently. Falling back to mock for this batch. Error: {e}")
-                else:
-                    print(f"Batch {i//batch_size + 1} failed with non-retryable error: {e}")
-                    break  # Don't retry for other types of errors (e.g. malformed JSON)
-
-        if not success:
-            mock_result = await mock_llm_processing(batch, target_lang=lang)
-            processed_blocks.extend(mock_result)
+    # 翻译批次并行（默认 2 路、1–3 可调）：顺序/回退/限流语义见 _translate_video_blocks。
+    processed_blocks = await _translate_video_blocks(
+        blocks, model=model, user_id=user_id, lang=lang
+    )
 
     # Generate summary based on original English blocks
     print("Generating video summary...")
@@ -461,7 +631,7 @@ async def process_video(request: VideoRequest, http_request: Request):
         "studyCount": 1,
     }, lang)
     # 教学分析：翻译只负责译文，高亮/习语/文化点在这里按等级单独生成并合并。
-    await teaching_analysis.attach_to_payload(
+    await _attach_video_analysis(
         result_payload,
         level=request.vocab_level,
         target_lang=lang,
@@ -810,7 +980,7 @@ async def _cached_stream_gen(
     # 纯缓存打开：先把该等级的教学分析补齐/合并，meta 里就能带上正确的高亮。
     # 有未翻译句时等翻译完成后再分析，并用 batch 事件回传（见下方）。
     if not pending:
-        await teaching_analysis.attach_to_payload(
+        await _attach_video_analysis(
             cached,
             level=vocab_level,
             target_lang=lang,
@@ -857,7 +1027,7 @@ async def _cached_stream_gen(
     # 有未翻译句时上面才翻译；翻译完成后再做教学分析（一次模型调用/按等级缓存），
     # 用既有 batch 事件回传更新后的 blocks，前端按 id 合并即可显示高亮。
     if pending:
-        analysis = await teaching_analysis.attach_to_payload(
+        analysis = await _attach_video_analysis(
             cached,
             level=vocab_level,
             target_lang=lang,
@@ -1070,7 +1240,7 @@ async def _fresh_stream_gen(
 
     # 翻译只负责译文；教学分析在翻译完成后单独生成/命中缓存，并按 block id
     # 合并进 payload。用 batch 事件把带高亮的 blocks 回传给前端（沿用既有事件）。
-    analysis = await teaching_analysis.attach_to_payload(
+    analysis = await _attach_video_analysis(
         payload,
         level=vocab_level,
         target_lang=lang,
@@ -1467,7 +1637,7 @@ async def get_history(
                     teaching_analysis.normalize_level(level)
                 except teaching_analysis.AnalysisInvalidRequest as exc:
                     raise HTTPException(status_code=400, detail=str(exc)) from exc
-                await teaching_analysis.attach_to_payload(
+                await _attach_video_analysis(
                     data,
                     level=level,
                     target_lang=lang,
