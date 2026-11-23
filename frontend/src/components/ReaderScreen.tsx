@@ -50,7 +50,6 @@ import { ReadingSurface, type ReadingSurfaceParagraph } from './reading/ReadingS
 import { ShareCardDialog } from './ShareCardDialog';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { SubHeader } from './ui/SubHeader';
-import { ReadingVocabButton } from './ReadingVocabButton';
 import { ReadingHighlightRail } from './reading/ReadingHighlightRail';
 import type { FavoriteDraft, FavoriteItem } from '../lib/favorites';
 import { Segmented } from './ui/Segmented';
@@ -101,10 +100,8 @@ interface ReaderScreenProps {
         sourceId?: string,
         sourceTitle?: string,
     ) => void;
-    /** App-owned favorites; the header chip shows the vocabulary count. */
+    /** App-owned favorites; the rail's star reads/writes through App. */
     favorites: readonly FavoriteItem[];
-    /** Same entry as the video page: navigate to the word-book full page. */
-    onOpenWordbook: () => void;
     /** App-owned optimistic favorite writes; the rail's star uses them. */
     onAddFavorite: (draft: FavoriteDraft) => Promise<FavoriteItem>;
     onRemoveFavorite: (id: string) => Promise<boolean>;
@@ -260,7 +257,6 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     onImportPublicDomainBook,
     onWordLookup,
     favorites,
-    onOpenWordbook,
     onAddFavorite,
     onRemoveFavorite,
 }) => {
@@ -1280,7 +1276,6 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                 backLabel={t('reader.backToList')}
                 backTestId="reader-back-list"
                 titleAs="p"
-                actions={<ReadingVocabButton favorites={favorites} onOpenWordbook={onOpenWordbook} />}
             />
             <div
                 data-testid="reader-toolbar"

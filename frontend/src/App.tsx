@@ -3603,8 +3603,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         featureLabel={featureLabel}
         onBack={() => back()}
         parentLabel={parentLabel}
-        wordbookCount={vocabularyFavoriteCount}
-        onOpenWordbook={handleOpenWordbookRoute}
       />
       <div
         ref={fullscreenWrapperRef}
@@ -3911,8 +3909,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           subtitleName={localVideo.subtitleName}
           transcript={localVideo.transcript}
           initialTime={localVideo.initialTime}
-          wordbookCount={vocabularyFavoriteCount}
-          onOpenWordbook={handleOpenWordbookRoute}
           onClose={closeLocalVideo}
           onWordLookup={handleWordLookup}
           onLoadSubtitle={handleLoadLocalSubtitle}
@@ -3952,7 +3948,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                 parentLabel={parentLabel}
                 onWordLookup={handleLibraryArticleWordLookup}
                 favorites={favorites}
-                onOpenWordbook={handleOpenWordbookRoute}
                 languagePointsByBlock={languagePointsByBlock}
                 wordGlossesByBlock={wordGlossesByBlock}
                 showLanguagePoints={showLanguagePoints}
@@ -4049,7 +4044,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               initialImport={readerInitialImport ?? undefined}
               onInitialImportConsumed={() => setReaderInitialImport(null)}
               favorites={favorites}
-              onOpenWordbook={handleOpenWordbookRoute}
               onAddFavorite={handleAddFavorite}
               onRemoveFavorite={handleRemoveFavorite}
             />,
@@ -4078,7 +4072,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onWordLookup={handleBookWordLookup}
               onRequestLogin={onRequestLogin}
               favorites={favorites}
-              onOpenWordbook={handleOpenWordbookRoute}
               onAddFavorite={handleAddFavorite}
               onRemoveFavorite={handleRemoveFavorite}
             />,
@@ -4103,7 +4096,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               onWordLookup={handleImportedBookWordLookup}
               onRequestLogin={() => onRequestLogin?.()}
               favorites={favorites}
-              onOpenWordbook={handleOpenWordbookRoute}
               onAddFavorite={handleAddFavorite}
               onRemoveFavorite={handleRemoveFavorite}
             />,
@@ -4250,7 +4242,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         dueCount={reviewStats?.dueNow ?? 0}
         isSub={isSubView}
         isTask={isTaskView}
-        hideWordbook={Boolean(localVideo)}
         subLabel={subLabel}
         onNavigate={navigateTab}
         onRequestLogin={onRequestLogin}

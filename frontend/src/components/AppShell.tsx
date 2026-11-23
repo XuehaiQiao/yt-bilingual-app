@@ -40,7 +40,10 @@ interface AppShellProps {
   isSub: boolean;
   /** Immersive task: desktop Sidebar + tabs hide so the view is full width. */
   isTask: boolean;
-  /** Local-file playback has its own learning header; avoid a second word-book entry. */
+  /**
+   * Explicit exception for a screen that supplies its own word-book entry (no
+   * current caller; local video and the readers now use this top-bar entry).
+   */
   hideWordbook?: boolean;
   /** Breadcrumb fragment for the open sub view (e.g. 官方博客). */
   subLabel?: string;
@@ -192,8 +195,11 @@ export function AppShell({
               <Play className="w-3.5 h-3.5 fill-current" />
               <span className="whitespace-nowrap">{t('topbar.startLearning')}</span>
             </button>
-            {!isTask && !hideWordbook && (
-            <button
+            {/* One word-book entry for the whole app: the browser tabs, the
+                readers and the video pages all use this top-bar chip. Task
+                views keep the Sidebar/tabs hidden, but this entry stays. */}
+            {!hideWordbook && (
+              <button
                 type="button"
                 data-testid="topbar-wordbook"
                 onClick={onOpenWordbook}
@@ -203,8 +209,12 @@ export function AppShell({
               >
                 <BookMarked className="w-4 h-4 text-amber-400/90" aria-hidden="true" />
                 <span className="hidden lg:inline text-xs font-medium whitespace-nowrap">{t('vocab.title')}</span>
+                {/* The P1-15 reading-rail acceptance script already asserts
+                    this top-bar count through `reading-wordbook-count`; keep the
+                    hook so the in-page chip could be removed without a test
+                    regression. */}
                 <span className="text-[11px] font-medium tabular-nums text-zinc-400">
-                  {wordbookCount > 99 ? '99+' : wordbookCount}
+                  <span data-testid="reading-wordbook-count">{wordbookCount > 99 ? '99+' : wordbookCount}</span>
                 </span>
               </button>
             )}

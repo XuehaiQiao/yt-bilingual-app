@@ -18,7 +18,6 @@ import { ReadingLayout } from './layout/ReadingLayout';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import { ReadingSurface, type ReadingSurfaceParagraph } from './reading/ReadingSurface';
 import { SubHeader } from './ui/SubHeader';
-import { ReadingVocabButton } from './ReadingVocabButton';
 import { ReadingHighlightRail } from './reading/ReadingHighlightRail';
 import type { FavoriteDraft, FavoriteItem } from '../lib/favorites';
 
@@ -40,10 +39,8 @@ interface LibraryArticleReaderProps {
         sourceId?: string,
         sourceTitle?: string,
     ) => void;
-    /** App-owned favorites; the header chip shows the vocabulary count. */
+    /** App-owned favorites; the rail's star reads/writes through App. */
     favorites: readonly FavoriteItem[];
-    /** Same entry as the video page: navigate to the word-book full page. */
-    onOpenWordbook: () => void;
     /**
      * Teaching analysis merged into the article payload (specs/028 × 024),
      * keyed by paragraph index. Optional: without it the reader behaves
@@ -68,7 +65,6 @@ export function LibraryArticleReader({
     parentLabel,
     onWordLookup,
     favorites,
-    onOpenWordbook,
     languagePointsByBlock,
     wordGlossesByBlock,
     showLanguagePoints = true,
@@ -251,7 +247,6 @@ export function LibraryArticleReader({
                         {t('library.article.badge')}
                     </span>
                 )}
-                actions={<ReadingVocabButton favorites={favorites} onOpenWordbook={onOpenWordbook} />}
                 backTestId="library-article-back"
                 titleAs="p"
             />

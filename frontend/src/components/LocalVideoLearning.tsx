@@ -25,8 +25,6 @@ interface LocalVideoLearningProps {
     transcript: LocalTranscriptBlock[];
     /** Saved playback position; re-applied once the metadata is known. */
     initialTime?: number;
-    wordbookCount: number;
-    onOpenWordbook: () => void;
     onClose: () => void;
     onWordLookup: (word: string, sentence: string, start: number, e: React.MouseEvent) => void;
     /** Swap the subtitle without remounting the video (loaded later or replaced). */
@@ -51,8 +49,6 @@ export function LocalVideoLearning({
     subtitleName,
     transcript,
     initialTime,
-    wordbookCount,
-    onOpenWordbook,
     onClose,
     onWordLookup,
     onLoadSubtitle,
@@ -367,8 +363,6 @@ export function LocalVideoLearning({
                 featureLabel={t('localVideo.feature')}
                 onBack={handleClose}
                 parentLabel={t('nav.content')}
-                wordbookCount={wordbookCount}
-                onOpenWordbook={onOpenWordbook}
             />
             <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
                 <section className="min-w-0 lg:w-[58%] flex flex-col bg-black/30">
