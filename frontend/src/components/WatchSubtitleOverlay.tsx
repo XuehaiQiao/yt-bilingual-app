@@ -20,7 +20,7 @@ interface WatchSubtitleOverlayProps {
  *
  * P2-11: the sizes are fluid and scale with the media stage's own width through
  * container query units (`cqi`), never the page viewport or JS:
- *   English  clamp(1.0625rem, 2cqi, 1.95rem)   → 17px … 31.2px
+ *   English  clamp(1.0625rem, 2cqi, 2rem)      → 17px … 32px
  *   Chinese  clamp(0.9375rem, 1.7cqi, 1.625rem) → 15px … 26px
  * 1cqi = 1% of the `video-area` container, which App.tsx marks with
  * `container-type: inline-size`. The `text-section` / `text-body-zh` classes
@@ -29,7 +29,7 @@ interface WatchSubtitleOverlayProps {
  * line can ever end up without a font size. English stays above Chinese at
  * every width because both floors and both slopes keep a gap.
  */
-const EN_FLUID_SIZE = 'clamp(1.0625rem, 2cqi, 1.95rem)';
+const EN_FLUID_SIZE = 'clamp(1.0625rem, 2cqi, 2rem)';
 const ZH_FLUID_SIZE = 'clamp(0.9375rem, 1.7cqi, 1.625rem)';
 
 const WatchSubtitleOverlayInner: React.FC<WatchSubtitleOverlayProps> = ({
