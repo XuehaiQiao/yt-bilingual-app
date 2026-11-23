@@ -919,8 +919,8 @@
     {
       "id": "P2-10",
       "file": "TASKS/P2-10-watch-fullscreen.md",
-      "status": "claimed",
-      "owner": "watch-fullscreen-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VideoPlayer.tsx",
         "frontend/src/App.tsx",
@@ -942,8 +942,8 @@
     {
       "id": "P2-11",
       "file": "TASKS/P2-11-subtitle-fluid-type.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "fluid-type-impl",
       "write_scope": [
         "frontend/src/components/WatchSubtitleOverlay.tsx",
         "frontend/src/App.tsx",
