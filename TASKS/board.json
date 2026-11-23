@@ -699,6 +699,24 @@
       "deps": [
         "P1-13"
       ]
+    },
+    {
+      "id": "P2-07",
+      "file": "TASKS/P2-07-reading-width.md",
+      "status": "merged",
+      "owner": "lead",
+      "write_scope": [
+        "frontend/tailwind.config.js",
+        "frontend/src/components/layout/ReadingLayout.tsx",
+        "frontend/src/components/layout/PageContainer.tsx",
+        "scripts/p2-04-layout-acceptance.mjs",
+        "docs/设计-桌面布局规范.md",
+        "docs/reports/desktop-layout-final-2026-11-23.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-06"
+      ]
     }
   ]
 }

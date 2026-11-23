@@ -4,7 +4,7 @@
 // live DOM at 1440 / 1920 / 375:
 //   - 1440: reading container 1200, content ≥ 1100, ≥xl two-column grid
 //     (minmax(0,1fr) + 320px rail), body capped at 68ch, no overflow;
-//   - 1920: container stays at the 1200px reading measure and is centered,
+//   - 1920: container widens to 1360 and is centered, body 88ch,
 //     still two columns, rail still 320;
 //   - 375: one column, rail stacks below, no horizontal overflow.
 // It also checks the rail actually carries the page's own panel: language
@@ -532,8 +532,8 @@ const assertPage = async ({ name, prefix, url, ready, railIds }) => {
         `${name} 1440: rail does not start on the main row`,
     );
     assert.ok(
-        at1440.main.width >= 600 && at1440.main.width <= 720,
-        `${name} 1440: body column ${at1440.main.width} outside the 68ch measure`,
+        at1440.main.width >= 730 && at1440.main.width <= 830,
+        `${name} 1440: body column ${at1440.main.width} outside the 76ch measure`,
     );
     assert.ok(
         at1440.main.x >= at1440.grid.x - 1
@@ -541,18 +541,18 @@ const assertPage = async ({ name, prefix, url, ready, railIds }) => {
         `${name} 1440: body column escapes the grid`,
     );
 
-    // ── 1920: container stays 1200 and centered, still two columns ────────
+    // ── 1920: container widens to 1360 and centered, still two columns ───
     await page.setViewportSize({ width: 1920, height: 900 });
     await sleep(300);
     const at1920 = await metrics(prefix);
     await page.screenshot({ path: SHOT(name, 1920) });
     assertNoOverflow(`${name} 1920`, at1920);
     assert.ok(
-        Math.abs(at1920.container.width - 1200) <= 2,
-        `${name} 1920: container ${at1920.container.width} != 1200`,
+        Math.abs(at1920.container.width - 1360) <= 2,
+        `${name} 1920: container ${at1920.container.width} != 1360`,
     );
     assert.ok(
-        Math.abs(at1920.container.x - (at1920.viewport - 1200) / 2) <= 2,
+        Math.abs(at1920.container.x - (at1920.viewport - 1360) / 2) <= 2,
         `${name} 1920: container x ${at1920.container.x} is not centered`,
     );
     assert.equal(
@@ -565,8 +565,8 @@ const assertPage = async ({ name, prefix, url, ready, railIds }) => {
         `${name} 1920: rail width ${at1920.rail.width} != 320`,
     );
     assert.ok(
-        at1920.main.width >= 600 && at1920.main.width <= 720,
-        `${name} 1920: body column ${at1920.main.width} outside the 68ch measure`,
+        at1920.main.width >= 840 && at1920.main.width <= 940,
+        `${name} 1920: body column ${at1920.main.width} outside the 88ch measure`,
     );
 
     // ── 375: single column, rail below, no overflow ───────────────────────

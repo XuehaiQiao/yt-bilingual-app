@@ -60,7 +60,7 @@ export function ReadingLayout({
       <PageGrid testId={gridTestId} rail={railNode}>
         <div
           data-testid={bodyTestId}
-          className={cn('w-full max-w-reading-body leading-relaxed', bodyClassName)}
+          className={cn('w-full max-w-reading-body xl:max-w-reading-body-lg 2xl:max-w-reading-body-xl leading-relaxed', bodyClassName)}
         >
           {children}
         </div>

@@ -18,7 +18,7 @@ export type PageContainerVariant =
 const VARIANT_CLASSES: Record<PageContainerVariant, string> = {
   wide: 'max-w-page-wide',
   standard: 'max-w-page-standard',
-  reading: 'max-w-page-reading',
+  reading: 'max-w-page-reading 2xl:max-w-page-reading-lg',
   marketing: 'max-w-page-marketing',
   focused: 'max-w-page-focused',
 };

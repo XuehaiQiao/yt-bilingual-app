@@ -126,10 +126,13 @@ export default {
         'page-wide': '105rem',
         'page-standard': '80rem',
         'page-reading': '75rem',
+        'page-reading-lg': '85rem',
         'page-marketing': '75rem',
         'page-focused': '42rem',
         // Reading body measure: 65–75ch, spec pins 68ch.
         'reading-body': '68ch',
+        'reading-body-lg': '76ch',
+        'reading-body-xl': '88ch',
       },
       gridTemplateColumns: {
         // PageGrid rail: main column + 320px side rail, ≥xl only.
