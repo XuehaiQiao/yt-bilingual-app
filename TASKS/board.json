@@ -876,6 +876,23 @@
       "deps": [
         "P1-20"
       ]
+    },
+    {
+      "id": "P1-22",
+      "file": "TASKS/P1-22-wordbook-accordion.md",
+      "status": "claimed",
+      "owner": "accordion-impl",
+      "write_scope": [
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "frontend/src/components/VocabularyRows.tsx",
+        "scripts/wordbook-v12-acceptance.mjs",
+        "scripts/mastered-tab-acceptance.mjs",
+        "scripts/custom-wordlists-acceptance.mjs",
+        "scripts/word-family-acceptance.mjs",
+        "specs/005-favorites-export/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
