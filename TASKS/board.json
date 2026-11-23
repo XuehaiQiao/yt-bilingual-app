@@ -860,7 +860,7 @@
     {
       "id": "P1-21",
       "file": "TASKS/P1-21-billing-unpriced-copy.md",
-      "status": "merged",
+      "status": "claimed",
       "owner": "lead",
       "write_scope": [
         "backend/billing.py",
