@@ -13,6 +13,7 @@
 - `content/wordlist/word-families.v1.json`
 - `content/wordlist/NOTICE.md`
 - `specs/041-word-family-list/spec.md`
+- `backend/tests/test_word_family.py`（旧断言按新数据更新）
 - `docs/reports/word-family-member-data-2026-11-23.md`（新建）
 
 ## acceptance

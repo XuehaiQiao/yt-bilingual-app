@@ -639,15 +639,16 @@
     {
       "id": "P1-12",
       "file": "TASKS/P1-12-family-member-data.md",
-      "status": "claimed",
-      "owner": "family-data-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "scripts/build_word_families.py",
         "scripts/tests/test_build_word_families.py",
         "content/wordlist/word-families.v1.json",
         "content/wordlist/NOTICE.md",
         "specs/041-word-family-list/spec.md",
-        "docs/reports/word-family-member-data-2026-11-23.md"
+        "docs/reports/word-family-member-data-2026-11-23.md",
+        "backend/tests/test_word_family.py"
       ],
       "shared_writes": [],
       "deps": [

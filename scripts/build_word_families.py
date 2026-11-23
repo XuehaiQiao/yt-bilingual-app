@@ -19,22 +19,25 @@
   ``SPLIT_EDGES``，逐条对着规则 E 族表校验族 id/head/成员/边存在；中/低置信
   11 条不应用（``HELD_AUDIT_ITEMS`` 校验它们仍留在原族）。
 
-成员释义（P1-07）：每个成员从 ``content/wordlists/lexicon.v1.json`` 补
+成员释义（P1-07 / P1-12）：每个成员从 ``content/wordlists/lexicon.v1.json`` 补
 ``phonetic`` / ``translation``（head 的释义仍由后端按同一词典在运行期补充；
-成员字段写进静态数据，展开成员表不再需要额外请求）。词典缺该词时两者为 ``""``，
-不编造。
+成员字段写进静态数据，展开成员表不再需要额外请求）。lexicon 缺该项时回退本地
+ECDICT（``data/ecdict.db``，以 ``mode=ro&immutable=1`` 只读打开、按批 ``IN``
+查询；音标/释义归一化沿用 lexicon 构建口径，见 ``build_word_lists.clean_*``）；
+仍缺者留 ``""``，不编造。ECDICT 只补 lexicon 缺的字段，已有值一律不覆盖。
 
-确定性：同一 WordNet 语料 + 同一频表 + 同一释义索引 → 逐字节一致的 JSON
-（无时间戳/耗时）。运行期不依赖 nltk/WordNet：应用只读生成的 JSON。
+确定性：同一 WordNet 语料 + 同一频表 + 同一 lexicon + 同一 ECDICT 库 → 逐字节
+一致的 JSON（无时间戳/耗时）。运行期不依赖 nltk/WordNet：应用只读生成的 JSON。
 
 用法::
 
     python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data
     python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data --check
-    python3 scripts/build_word_families.py --out /tmp/word-families.json --no-write
+    python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data \\
+        --ecdict data/ecdict.db --no-write
 
-退出码：0 正常；2 WordNet 依赖/语料不可用；3 人工清单漂移 / 数据契约不符；
-4 输入文件在运行期间被改动。
+退出码：0 正常；2 WordNet 依赖/语料不可用；3 人工清单漂移 / 数据契约不符 /
+ECDICT 不可用；4 输入文件在运行期间被改动。
 """
 
 from __future__ import annotations
@@ -42,16 +45,25 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sqlite3
 import sys
 from collections import Counter
 from pathlib import Path
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 import word_family_open_audit as audit  # noqa: E402  （同目录只读审计脚本）
+# 音标/释义归一化与 lexicon.v1.json 同源：首个含中文行、压缩空白、超 120 字符
+# 截断。复用 build_word_lists 的实现，避免两套口径。
+from build_word_lists import (  # noqa: E402
+    TRANSLATION_LIMIT,
+    clean_phonetic,
+    clean_translation,
+    file_sha256,
+)
 
 SCHEMA = "linguatrek.word-family.v1"
 VERSION = "2026.11.23"
@@ -60,9 +72,13 @@ RULE_VERSION = "E"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FREQUENCY = REPO_ROOT / "content/wordlist/frequency_bands.v1.json"
 DEFAULT_LEXICON = REPO_ROOT / "content/wordlists/lexicon.v1.json"
+DEFAULT_ECDICT = REPO_ROOT / "data/ecdict.db"
 DEFAULT_OUT = REPO_ROOT / "content/wordlist/word-families.v1.json"
 DEFAULT_WORDNET_DIR = Path("/tmp/nltk_data")
 SCHEMA_LEXICON = "linguatrek.lexicon.v1"
+# SQLite 单条语句的变量数上限默认 999（旧版本）；900 留余量，避免撞上限。
+ECDICT_BATCH_SIZE = 900
+ECDICT_TABLE = "stardict"
 
 LICENSE = "WordNet 3.0 License (Princeton University, 2006)"
 LICENSE_URL = "https://wordnet.princeton.edu/"
@@ -452,15 +468,117 @@ def load_lexicon_entries(path: str | Path) -> Tuple[Dict[str, str], Dict[str, st
     return phonetics, translations, source
 
 
+def _ecdict_uri(path: Path) -> str:
+    """只读 SQLite URI：绝对路径 + ``mode=ro&immutable=1``（不建库、不写库）。"""
+    return f"{path.resolve().as_uri()}?mode=ro&immutable=1"
+
+
+def load_ecdict_entries(
+    words: Iterable[str],
+    path: str | Path = DEFAULT_ECDICT,
+    *,
+    batch_size: int = ECDICT_BATCH_SIZE,
+) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, object]]:
+    """按批 ``IN`` 查本地 ECDICT ``stardict``，返回 ``(entries, source)``。
+
+    只读打开（``mode=ro&immutable=1``），不建表、不写库、不联网。音标/释义
+    归一化复用 ``build_word_lists.clean_phonetic/clean_translation``，与
+    ``lexicon.v1.json`` 同一口径（首个含中文行、压缩空白、超 120 字符截断）。
+    ``word`` 按**精确小写**匹配：ECDICT 里只有大写形式的专名/派生（Flemish、
+    Americanization 等）不作为小写 lemma 的释义来源，避免把专名义项错挂到
+    普通词上；查不到的词不出现在返回字典里（调用方保留空串）。没有待查词时
+    不打开数据库。
+    """
+    db_path = Path(path)
+    queried = tuple(sorted({word for word in words if word}))
+    source: Dict[str, object] = {
+        "path": _repo_relative(db_path),
+        "translationLimit": TRANSLATION_LIMIT,
+        "queried": len(queried),
+        "found": 0,
+        "sha256": "",
+    }
+    if not queried:
+        return {}, source
+    _require(
+        db_path.is_file(),
+        f"ECDICT 不可用：{db_path} 不存在（--ecdict 指向本地 data/ecdict.db）",
+    )
+    source["sha256"] = file_sha256(db_path)
+    entries: Dict[str, Tuple[str, str]] = {}
+    try:
+        connection = sqlite3.connect(_ecdict_uri(db_path), uri=True)
+        try:
+            columns = {
+                str(row[1]) for row in connection.execute(
+                    f"PRAGMA table_info({ECDICT_TABLE})")
+            }
+            _require(
+                {"word", "phonetic", "translation"} <= columns,
+                f"ECDICT 表 {ECDICT_TABLE} 缺列（实际：{sorted(columns)}）",
+            )
+            for start in range(0, len(queried), batch_size):
+                chunk = queried[start:start + batch_size]
+                placeholders = ",".join("?" * len(chunk))
+                rows = connection.execute(
+                    f"SELECT word, phonetic, translation FROM {ECDICT_TABLE} "
+                    f"WHERE word IN ({placeholders})",
+                    chunk,
+                )
+                for word, phonetic, translation in rows:
+                    entries[str(word)] = (
+                        clean_phonetic(phonetic),
+                        clean_translation(translation),
+                    )
+        finally:
+            connection.close()
+    except sqlite3.Error as exc:
+        raise BuildError(f"ECDICT 不可用：{db_path}（{exc}）") from exc
+    source["found"] = len(entries)
+    return entries, source
+
+
 def _lexicon_fields(
     lemma: str,
     lexicon: Optional[Mapping[str, Tuple[str, str]]],
+) -> Tuple[str, str]:
+    """成员在 lexicon 里的 ``(phonetic, translation)``；缺条目为两个空串。"""
+    phonetic, translation = (lexicon or {}).get(lemma, ("", ""))
+    return str(phonetic), str(translation)
+
+
+def _member_fields(
+    lemma: str,
+    lexicon: Optional[Mapping[str, Tuple[str, str]]],
+    ecdict: Optional[Mapping[str, Tuple[str, str]]] = None,
 ) -> Dict[str, str]:
-    """一个成员的 ``phonetic`` / ``translation``；词典缺失时留空串。"""
-    if lexicon is None:
+    """一个成员的 ``phonetic`` / ``translation``。
+
+    lexicon 优先；某字段缺失才用 ECDICT 同名字段；两边都缺留空串，不编造。
+    ``lexicon`` 与 ``ecdict`` 都为 ``None`` 时不写这两个字段（纯图结构测试）。
+    """
+    if lexicon is None and ecdict is None:
         return {}
-    phonetic, translation = lexicon.get(lemma, ("", ""))
-    return {"phonetic": str(phonetic), "translation": str(translation)}
+    lex_phonetic, lex_translation = _lexicon_fields(lemma, lexicon)
+    ec_phonetic, ec_translation = (ecdict or {}).get(lemma, ("", ""))
+    return {
+        "phonetic": lex_phonetic or str(ec_phonetic),
+        "translation": lex_translation or str(ec_translation),
+    }
+
+
+def _missing_lexicon_words(
+    table: audit.FamilyTable,
+    lexicon: Optional[Mapping[str, Tuple[str, str]]],
+) -> Tuple[str, ...]:
+    """成员里 lexicon 未同时有音标与释义的词（去重、排序；ECDICT 只查这些）。"""
+    missing = set()
+    for family in table.families:
+        for member in family.members:
+            phonetic, translation = _lexicon_fields(member.word, lexicon)
+            if not phonetic or not translation:
+                missing.add(member.word)
+    return tuple(sorted(missing))
 
 
 def build_family_document(
@@ -477,13 +595,23 @@ def build_family_document(
     frequency_version: str = "",
     lexicon: Optional[Mapping[str, Tuple[str, str]]] = None,
     lexicon_source: Optional[Mapping[str, object]] = None,
+    ecdict: Optional[Mapping[str, Tuple[str, str]]] = None,
+    ecdict_source: Optional[Mapping[str, object]] = None,
+    ecdict_provider: Optional[
+        Callable[[Sequence[str]],
+                 Tuple[Mapping[str, Tuple[str, str]], Mapping[str, object]]]
+    ] = None,
 ) -> Dict[str, object]:
     """按规则 E + P1-11 审计变更建词族文档（不写盘、不读 WordNet）。
 
     ``lexicon``（``lemma -> (phonetic, translation)``）非空时给每个成员补
     ``phonetic`` / ``translation``；``None`` 保留纯图结构（隔离单测用），
-    CLI 总会传入。``trim_members`` / ``split_edges`` / ``held_items`` 默认取
-    模块内写死的审计清单；隔离单测喂自造小图时传 ``()`` 关闭。
+    CLI 总会传入。``ecdict`` 是已查好的 ECDICT 结果（同形状，缺项回退用）；
+    ``ecdict_provider`` 接收「lexicon 缺音标或释义」的成员词列表，返回
+    ``(entries, source)`` —— CLI 用它做只读批量查询，单测可喂假的。两者
+    互斥，缺项仍缺时留空串。``trim_members`` / ``split_edges`` /
+    ``held_items`` 默认取模块内写死的审计清单；隔离单测喂自造小图时传
+    ``()`` 关闭。
     """
     black_pairs, allow_pairs = validate_manual_lists(index.pairs, blacklist, allowlist)
     # allowlist 的规则前提：两侧都在 CEFR 10k（否则是产品口径变化，先复核审计）。
@@ -541,17 +669,40 @@ def build_family_document(
     level_order = tuple(level for _cap, level in sorted(cefr.anchors))
     rank_of_level = {level: rank for rank, level in enumerate(level_order)}
 
+    # ECDICT 只查 lexicon 缺音标或释义的成员；查询结果只补缺项，不覆盖 lexicon。
+    if ecdict_provider is not None:
+        _require(
+            ecdict is None and ecdict_source is None,
+            "ecdict / ecdict_source 与 ecdict_provider 只能给一种",
+        )
+        missing_words = _missing_lexicon_words(table, lexicon)
+        if missing_words:
+            ecdict, ecdict_source = ecdict_provider(missing_words)
+            _require(
+                hasattr(ecdict, "get"),
+                "ECDICT 查询结果必须是 word -> (phonetic, translation) 映射",
+            )
+
+    phonetic_fills = 0
+    translation_fills = 0
     families: List[Mapping[str, object]] = []
     for family in table.families:
-        members = [
-            {
+        members: List[Mapping[str, object]] = []
+        for member in family.members:
+            fields = _member_fields(member.word, lexicon, ecdict)
+            if fields:
+                lex_phonetic, lex_translation = _lexicon_fields(
+                    member.word, lexicon)
+                if fields["phonetic"] and not lex_phonetic:
+                    phonetic_fills += 1
+                if fields["translation"] and not lex_translation:
+                    translation_fills += 1
+            members.append({
                 "lemma": member.word,
                 "level": member.level,
                 "rank": member.rank,
-                **_lexicon_fields(member.word, lexicon),
-            }
-            for member in family.members
-        ]
+                **fields,
+            })
         levels = sorted(
             {member.level for member in family.members if member.level},
             key=lambda level: rank_of_level.get(str(level), len(rank_of_level)),
@@ -564,6 +715,11 @@ def build_family_document(
             "levels": levels,
             "members": members,
         })
+
+    source_ecdict: Dict[str, object] = dict(ecdict_source or {})
+    if ecdict is not None:
+        source_ecdict["phoneticFills"] = phonetic_fills
+        source_ecdict["translationFills"] = translation_fills
 
     # 数据契约（与 specs/041 §2 响应形状一致；后端加载时再校验一遍）。
     for family in families:
@@ -580,7 +736,7 @@ def build_family_document(
             f"{family['id']} head 不是 members[0]",
         )
         _require(bool(family["levels"]), f"{family['id']} 缺等级集合")
-        if lexicon is not None:
+        if lexicon is not None or ecdict is not None:
             _require(
                 all(
                     isinstance(member.get("phonetic"), str)
@@ -651,6 +807,7 @@ def build_family_document(
                 "lemmas": len(cefr.ranks),
             },
             **({"lexicon": dict(lexicon_source)} if lexicon_source else {}),
+            **({"ecdict": source_ecdict} if source_ecdict else {}),
         },
         "rules": {
             "graph": "WordNet 3.0 派生图：全部单字 lemma，无向边；自指/多词丢弃，同对去重",
@@ -661,7 +818,7 @@ def build_family_document(
             "blacklist": "17 条人工确认坏边从图中删除（semantic_split + clear_error）",
             "allowlist": "22 条 WordNet 缺失/不对称的人工边加入图中（两侧都在 10k）",
             "aiAudit": "P1-11 应用 2026-11-23 AI 审计 23 条高置信变更：13 条 trim（删 24 个成员及其边）+ 10 条 split（删 11 条桥边）；中/低置信 11 条未应用",
-            "memberFields": "成员 phonetic/translation 来自 lexicon.v1.json；缺条目为空串，不编造",
+            "memberFields": "成员 phonetic/translation 优先 lexicon.v1.json；缺项用本地 ECDICT 补（只读、精确小写匹配、首个含中文行、≤120 字符）；仍缺为空串，不编造",
         },
         "counts": counts,
         "sizeDistribution": size_distribution,
@@ -709,6 +866,24 @@ def dump_json(document: Mapping[str, object]) -> str:
     return json.dumps(document, ensure_ascii=False, separators=(",", ":")) + "\n"
 
 
+def check_output_error(out_path: str | Path, text: str) -> Optional[str]:
+    """``--check`` 判定：已提交文件必须存在且与现场生成逐字节一致。
+
+    返回 ``None`` 表示通过；否则返回可直接打印给用户的错误说明。同一输入
+    重复生成得到的 ``text`` 字节一致，因此 ``--check`` 幂等。
+    """
+    path = Path(out_path)
+    if not path.exists():
+        return f"{path} 不存在"
+    try:
+        current = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        return f"{path} 读取失败：{exc}"
+    if current != text:
+        return f"{path} 与现场生成不一致，请重跑并 diff 后更新"
+    return None
+
+
 def _repo_relative(path: str | Path) -> str:
     resolved = Path(path)
     try:
@@ -729,6 +904,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="CEFR 频表（默认 content/wordlist/frequency_bands.v1.json）")
     parser.add_argument("--lexicon", default=str(DEFAULT_LEXICON),
                         help="释义索引（默认 content/wordlists/lexicon.v1.json）")
+    parser.add_argument("--ecdict", default=str(DEFAULT_ECDICT),
+                        help="本地 ECDICT 只读库（默认 data/ecdict.db；"
+                             "lexicon 缺音标/释义时按批 IN 查询）")
     parser.add_argument("--wordnet-dir", default=str(DEFAULT_WORDNET_DIR),
                         help="NLTK 数据目录（默认 /tmp/nltk_data）")
     parser.add_argument("--out", default=str(DEFAULT_OUT),
@@ -744,6 +922,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     frequency_path = Path(args.frequency)
     lexicon_path = Path(args.lexicon)
+    ecdict_path = Path(args.ecdict)
     out_path = Path(args.out)
 
     try:
@@ -765,6 +944,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             frequency_version=frequency_version,
             lexicon=lexicon,
             lexicon_source=lexicon_source,
+            ecdict_provider=lambda words: load_ecdict_entries(words, ecdict_path),
         )
         assert_expected_counts(document)
     except audit.WordNetUnavailable as exc:
@@ -774,11 +954,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"[word-families] 生成失败：{exc}", file=sys.stderr)
         return 3
 
+    source_ecdict = document["source"].get("ecdict") or {}
     if audit.file_sha256(frequency_path) != sha_before:
         print("[word-families] 频表在运行期间被改动，拒绝写数据", file=sys.stderr)
         return 4
     if audit.file_sha256(lexicon_path) != lexicon_sha_before:
         print("[word-families] 释义索引在运行期间被改动，拒绝写数据", file=sys.stderr)
+        return 4
+    if source_ecdict.get("sha256") and file_sha256(ecdict_path) != source_ecdict["sha256"]:
+        print("[word-families] ECDICT 在运行期间被改动，拒绝写数据", file=sys.stderr)
         return 4
 
     text = dump_json(document)
@@ -786,17 +970,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     members = [member for family in document["families"] for member in family["members"]]
     with_phonetic = sum(1 for member in members if member["phonetic"])
     with_translation = sum(1 for member in members if member["translation"])
+    phonetic_fills = int(source_ecdict.get("phoneticFills", 0) or 0)
+    translation_fills = int(source_ecdict.get("translationFills", 0) or 0)
     print(f"schema            : {SCHEMA}")
     print(f"WordNet           : {document['source']['wordnet']['version']}")
     print(f"频表              : {document['source']['frequencyBands']['path']}"
           f"（{cefr.sha256[:12]}…）")
     print(f"释义索引          : {document['source']['lexicon']['path']}"
           f"（{document['source']['lexicon']['sha256'][:12]}…）")
+    if source_ecdict:
+        print(f"ECDICT            : {source_ecdict.get('path', '')}"
+              f"（{str(source_ecdict.get('sha256', ''))[:12]}…；"
+              f"查询 {int(source_ecdict.get('queried', 0) or 0):,} / "
+              f"命中 {int(source_ecdict.get('found', 0) or 0):,}）")
+    else:
+        print("ECDICT            : 未使用（无缺失项）")
     print(f"规则              : {RULE_VERSION}")
     print(f"词族 / 成员       : {counts['families']:,} / {counts['members']:,}"
           f"（10k 内 {counts['cefrMembers']:,} / 10k 外 {counts['outsideMembers']:,}）")
     print(f"成员音标 / 释义   : {with_phonetic:,} / {with_translation:,}"
-          f"（缺条目留空 {counts['members'] - with_translation:,}）")
+          f"（仍缺 {counts['members'] - with_phonetic:,} / "
+          f"{counts['members'] - with_translation:,}"
+          f"；ECDICT 补 {phonetic_fills:,} / {translation_fills:,}）")
     print(f"最大族 / 覆盖     : {counts['maxFamilySize']} / {counts['cefrCoveragePct']}%")
     print(f"黑名单 / allowlist: {counts['blacklistEdges']} / {counts['allowlistEdges']}")
     print(f"AI 审计变更        : {len(TRIM_MEMBERS)} trim / {len(SPLIT_EDGES)} 条桥边 / "
@@ -804,13 +999,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     print(f"完整性 sha256     : {document['integrity']['sha256']}")
 
     if args.check:
-        if not out_path.exists():
-            print(f"[word-families] --check：{out_path} 不存在", file=sys.stderr)
-            return 3
-        current = out_path.read_text(encoding="utf-8")
-        if current != text:
-            print(f"[word-families] --check：{out_path} 与现场生成不一致，"
-                  f"请重跑并 diff 后更新", file=sys.stderr)
+        problem = check_output_error(out_path, text)
+        if problem is not None:
+            print(f"[word-families] --check：{problem}", file=sys.stderr)
             return 3
         print(f"--check 通过：{out_path} 与现场生成逐字节一致")
         return 0

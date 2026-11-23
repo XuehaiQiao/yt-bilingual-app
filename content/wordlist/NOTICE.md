@@ -125,8 +125,9 @@ JSON，不安装、不读取 nltk / WordNet 语料。
 | 构图 | WordNet 3.0 `derivationally_related_forms()` 无向派生图；连通分量 ≥2 成员且 ≥1 成员在 CEFR 10k；10k 外成员等级留空；无族词不写入 |
 | 人工清单 | 黑名单 17 条坏边（`semantic_split` + `clear_error`）、allowlist 22 条缺失边；逐条校验存在性 |
 | 结果 | 3,704 族 / 11,534 成员（10k 内 5,233、10k 外 6,301）/ 最大族 14；已应用 2026-11-23 高置信 AI 审计 23 条（中/低 11 条未应用） |
+| 成员字段 | 每个成员带 `phonetic` / `translation` 快照：先取 `content/wordlists/lexicon.v1.json`，缺项用本地 ECDICT 补（只读、精确小写匹配、首个含中文行 ≤120 字符），仍缺留空串。覆盖率：音标 10,466/11,534（90.7%）、释义 11,419/11,534（99.0%）；仍缺任一 1,074、两项都缺 109 |
 | 审计依据 | `docs/reports/word-family-open-audit-2026-11-23.md`（P1-04） |
-| **本产物许可** | **WordNet 3.0 License**（WordNet 派生部分）+ **CC BY-SA 4.0**（CEFR 频次/等级部分，见上文章节） |
+| **本产物许可** | **WordNet 3.0 License**（WordNet 派生部分）+ **CC BY-SA 4.0**（CEFR 频次/等级部分，见上文章节）；成员音标/释义的 ECDICT 派生字段口径见下节 |
 
 ### 上游来源：WordNet 3.0（Princeton University）
 
@@ -152,6 +153,28 @@ WordNet 3.0 许可要求的版权声明与免责声明（保留原文）：
 > at all times remain with Princeton University and LICENSEE agrees to preserve
 > same.
 
+### 上游来源：ECDICT（成员缺项补充）
+
+词族成员的 `phonetic` / `translation` 在 `lexicon.v1.json` 缺该项时，用本机
+ECDICT（`data/ecdict.db`，同 `content/wordlists/` 的 ECDICT 来源）补全：
+
+- 项目与授权：ECDICT，<https://github.com/skywind3000/ECDICT>；仓库代码 MIT，
+  词典数据由作者从 EDicTAZ、cdict、四六级/GRE 词表、BNC 等多来源整理，各来源
+  授权状况不一。**本目录只分发紧凑派生字段**（词 → 音标/首行中文释义），不重发
+  原文 CSV、英文 `definition`、例句、扩展 JSON 或音频；对外分发/商用前请自行
+  复核，详见 [`content/wordlists/NOTICE.md`](../wordlists/NOTICE.md)。
+- 快照：`data/ecdict.db` 表 `stardict(word, phonetic, translation)`，
+  SHA-256 `47f361f6cbc8b5bbcd5b1eb6fd3a9bd7ef5f872120ae920c32c051aad55f1a62`
+  （不随仓库分发）。
+- 读取方式：`file:<绝对路径>?mode=ro&immutable=1` 只读打开，按批 `IN` 查询
+  （每批 900 词），不建表、不写库、不联网；构建后复核文件 SHA-256 未变。
+- 合并规则：只补 `lexicon.v1.json` 缺的音标或释义，**已有值不覆盖**；两边都缺
+  留空串。归一化与 lexicon 同口径：音标压缩空白，释义取第一个含中文的行、
+  超 120 字符以 `…` 截断。精确小写匹配（ECDICT 仅存大写词形的专名派生不补）。
+- 本次结果：查询 5,642 词、命中 5,533；补音标 4,574、补释义 5,508。
+- 局限：ECDICT 音标是旧式音标、不是严格 IPA；释义不保证覆盖全部义项；大量
+  派生词只有释义没有音标（959 个成员仍缺音标）。
+
 ### 与频表的关系
 
 词族的 CEFR 锚定（10k 内/外、A1–C1 等级）派生自本目录的
@@ -166,9 +189,12 @@ python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data
 python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data --check
 ```
 
-构建是确定性的（无时间戳，同一 WordNet 语料 + 同一频表逐字节一致）；文件带
-`integrity.sha256`（覆盖 counts + families + blacklist + allowlist）。清单或
-数据变化时先更新审计报告与 `specs/041`，再重跑生成并 diff。
+`--ecdict` 默认指向 `data/ecdict.db`（本地可选数据，不随仓库分发）；lexicon
+缺项时会只读查询它，库缺失则以退出码 3 失败，不静默生成低覆盖数据。
+构建是确定性的（无时间戳；同一 WordNet 语料 + 同一频表 + 同一 lexicon +
+同一 ECDICT 库逐字节一致）；文件带 `integrity.sha256`（覆盖 counts + families +
+blacklist + allowlist）。清单或数据变化时先更新审计报告与 `specs/041`，再重跑
+生成并 diff。
 
 ## 变更记录
 
@@ -176,3 +202,4 @@ python3 scripts/build_word_families.py --wordnet-dir /tmp/nltk_data --check
 |---|---|
 | 2026-11-17 | 首版 v1：wordfreq 3.1.1，10,000 lemma / 10 带 / 10,848 forms；closes M2 词表构建 |
 | 2026-11-23 | 新增 `word-families.v1.json`（specs/041，规则 E）：WordNet 3.0 派生图 + 17 条黑名单 / 22 条 allowlist；保留 WordNet 3.0 版权声明与免责声明 |
+| 2026-11-23 | 词族成员音标/释义补全（P1-12）：lexicon 缺项用本地 ECDICT 补（音标 5,892→10,466、释义 5,911→11,419；仍缺 1,074），数据新增 `source.ecdict` 溯源；报告 `docs/reports/word-family-member-data-2026-11-23.md` |

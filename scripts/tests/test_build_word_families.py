@@ -1,6 +1,6 @@
 """``scripts/build_word_families.py`` 的隔离单测（固定小样本，不下载 WordNet）。
 
-覆盖 specs/041 的规则 E 生成逻辑 + P1-11 的 AI 审计变更：
+覆盖 specs/041 的规则 E 生成逻辑 + P1-11 的 AI 审计变更 + P1-12 成员补全：
 
 - 人工清单形状：17 条黑名单 / 22 条 allowlist、类别/分组合法、无重复/重叠；
 - 清单漂移：黑名单边不存在、allowlist 边已存在、allowlist 两侧不在 10k → 报错；
@@ -9,16 +9,20 @@
 - 黑名单删边会拆族/踢出成员；allowlist 补边会把单例并入族；
 - P1-11 审计变更：13 条 trim（24 个成员）/ 10 条 split（11 条桥边）/ 中低 11 条
   保留；族 id/head/成员/边逐条校验存在性，数据漂移报错；
-- 文档溯源：source/license/ruleVersion/blacklist/allowlist + integrity；
+- P1-12 成员字段：lexicon 优先不覆盖、缺项回退 ECDICT（逐字段）、两边都缺留
+  空串；ECDICT 只读批量查询/归一化/不可用报错；provider 只收缺失词；
+- 文档溯源：source/license/ruleVersion/blacklist/allowlist + integrity + ECDICT；
 - 输出确定性（无时间戳，两次 dump 字节一致）；
-- 已提交数据与规则 E + 23 条变更后的验收数字一致、integrity 可复算。
+- 已提交数据与规则 E + 23 条变更后的验收数字一致、integrity 可复算、
+  成员字段符合「lexicon 优先 → ECDICT 补缺」。
 
-所有用例只喂假数据；唯一读取仓库文件的是「已提交数据」契约测试。
+所有用例只喂假数据；读仓库文件的只有「已提交数据」契约测试。
 """
 
 from __future__ import annotations
 
 import json
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -34,6 +38,8 @@ import word_family_open_audit as audit  # noqa: E402
 
 ANCHORS = ((1000, "A1"), (2000, "A2"), (4000, "B1"), (7000, "B2"), (10000, "C1"))
 DATA_PATH = REPO_ROOT / "content/wordlist/word-families.v1.json"
+LEXICON_PATH = REPO_ROOT / "content/wordlists/lexicon.v1.json"
+ECDICT_PATH = REPO_ROOT / "data/ecdict.db"
 
 RANKS = {
     "run": 100,
@@ -113,7 +119,9 @@ def make_cefr(ranks=RANKS) -> audit.CefrInput:
 
 def build_document(records=RECORDS, ranks=RANKS, blacklist=BLACKLIST,
                    allowlist=ALLOWLIST, trim_members=(), split_edges=(),
-                   held_items=()) -> dict:
+                   held_items=(), lexicon=None, lexicon_source=None,
+                   ecdict=None, ecdict_source=None,
+                   ecdict_provider=None) -> dict:
     return build.build_family_document(
         make_index(records),
         make_cefr(ranks),
@@ -125,6 +133,11 @@ def build_document(records=RECORDS, ranks=RANKS, blacklist=BLACKLIST,
         provider_version="3.0",
         frequency_path=DATA_PATH,
         frequency_version="test",
+        lexicon=lexicon,
+        lexicon_source=lexicon_source,
+        ecdict=ecdict,
+        ecdict_source=ecdict_source,
+        ecdict_provider=ecdict_provider,
     )
 
 
@@ -447,6 +460,200 @@ def test_expected_counts_guard_rejects_drift() -> None:
 
 
 # ---------------------------------------------------------------------------
+# P1-12 成员字段：lexicon 优先 → ECDICT 补缺 → 空串
+# ---------------------------------------------------------------------------
+
+LEXICON = {
+    "run": ("run-ph", "run-tr"),
+    "runner": ("", "runner-lex-tr"),
+    "decide": ("decide-ph", "decide-tr"),
+}
+ECDICT = {
+    "run": ("ec-run-ph", "ec-run-tr"),
+    "runner": ("ec-runner-ph", "ec-runner-tr"),
+    "running": ("ec-run-ph", "ec-run-tr"),
+}
+
+
+def member_by_lemma(document: dict, lemma: str) -> dict:
+    for family in document["families"]:
+        for member in family["members"]:
+            if member["lemma"] == lemma:
+                return member
+    raise AssertionError(f"成员不存在：{lemma}")
+
+
+def _member_lemmas(document: dict) -> list:
+    return [
+        member["lemma"]
+        for family in document["families"]
+        for member in family["members"]
+    ]
+
+
+def test_member_fields_lexicon_priority_then_ecdict() -> None:
+    document = build_document(
+        lexicon=LEXICON, ecdict=ECDICT,
+        ecdict_source={"path": "test/ecdict.db", "queried": 3, "found": 3})
+    # lexicon 已有值一律保留（即使 ECDICT 同词有不同值）。
+    run = member_by_lemma(document, "run")
+    assert (run["phonetic"], run["translation"]) == ("run-ph", "run-tr")
+    decide = member_by_lemma(document, "decide")
+    assert (decide["phonetic"], decide["translation"]) == (
+        "decide-ph", "decide-tr")
+    # 逐字段回退：接口音标缺 → ECDICT，释义沿用 lexicon。
+    runner = member_by_lemma(document, "runner")
+    assert runner["phonetic"] == "ec-runner-ph"
+    assert runner["translation"] == "runner-lex-tr"
+    # 两边只有 ECDICT：两个字段都补。
+    running = member_by_lemma(document, "running")
+    assert (running["phonetic"], running["translation"]) == (
+        "ec-run-ph", "ec-run-tr")
+    # 两边都没有：字段仍在、值为空串（不省略、不编造）。
+    decision = member_by_lemma(document, "decision")
+    assert (decision["phonetic"], decision["translation"]) == ("", "")
+    # 补全统计与溯源写进 source.ecdict（不覆盖 lexicon 计数）。
+    source = document["source"]["ecdict"]
+    assert source["path"] == "test/ecdict.db"
+    assert source["queried"] == 3
+    assert source["phoneticFills"] == 2  # runner / running
+    assert source["translationFills"] == 1  # running
+    assert "ECDICT" in document["rules"]["memberFields"]
+
+
+def test_member_fields_all_empty_strings_without_any_source() -> None:
+    document = build_document(lexicon={}, ecdict={})
+    for family in document["families"]:
+        for member in family["members"]:
+            assert set(member) == {
+                "lemma", "level", "rank", "phonetic", "translation"}
+            assert member["phonetic"] == ""
+            assert member["translation"] == ""
+
+
+def test_ecdict_provider_receives_only_missing_words() -> None:
+    seen = []
+
+    def provider(words):
+        seen.append(tuple(words))
+        return (
+            {"runner": ("ec-runner-ph", "ec-runner-tr")},
+            {"path": "fake/ecdict.db", "queried": len(words), "found": 1},
+        )
+
+    document = build_document(lexicon=LEXICON, ecdict_provider=provider)
+    assert len(seen) == 1
+    queried = seen[0]
+    assert list(queried) == sorted(queried), "查询词必须排序（确定性）"
+    assert "run" not in queried  # lexicon 两字段齐全 → 不查
+    assert "decide" not in queried
+    assert "runner" in queried  # 缺音标
+    assert "running" in queried  # 两边都缺
+    # provider 返回的只补缺项：runner 现在有音标（释义仍来自 lexicon）。
+    runner = member_by_lemma(document, "runner")
+    assert runner["phonetic"] == "ec-runner-ph"
+    assert runner["translation"] == "runner-lex-tr"
+    # provider 没返回的成员保持空串。
+    running = member_by_lemma(document, "running")
+    assert (running["phonetic"], running["translation"]) == ("", "")
+    assert document["source"]["ecdict"]["phoneticFills"] == 1
+
+
+def test_ecdict_provider_contract_errors() -> None:
+    with pytest.raises(build.BuildError, match="只能给一种"):
+        build_document(
+            lexicon=LEXICON, ecdict=ECDICT,
+            ecdict_provider=lambda words: ({}, {}))
+    with pytest.raises(build.BuildError, match="映射"):
+        build_document(
+            lexicon=LEXICON,
+            ecdict_provider=lambda words: (None, {}))
+
+
+def make_ecdict_db(tmp_path: Path, rows) -> Path:
+    """造一个最小 ECDICT 库（与真实库同名表/列，便于 loader 复用）。"""
+    path = tmp_path / "ecdict.db"
+    connection = sqlite3.connect(path)
+    connection.execute(
+        "CREATE TABLE stardict (word TEXT PRIMARY KEY, sw INTEGER, "
+        "phonetic TEXT, definition TEXT, translation TEXT, exchange TEXT)")
+    connection.executemany(
+        "INSERT INTO stardict (word, phonetic, translation) VALUES (?, ?, ?)",
+        rows,
+    )
+    connection.commit()
+    connection.close()
+    return path
+
+
+def test_load_ecdict_entries_batched_readonly_and_normalized(
+        tmp_path: Path) -> None:
+    long_translation = "n. " + "很" * 130
+    db_path = make_ecdict_db(tmp_path, (
+        ("runner", "  'rʌnə  ", "n. 奔跑者\\n[法] 赛跑者"),
+        ("running", "", "n. 跑步, 奔跑"),
+        ("longword", "'lɔŋ", long_translation),
+        ("nocjk", "'x", "english only"),
+    ))
+    sha_before = build.file_sha256(db_path)
+    entries, source = build.load_ecdict_entries(
+        ["runner", "running", "longword", "nocjk", "absent"],
+        db_path,
+        batch_size=2,
+    )
+    assert set(entries) == {"runner", "running", "longword", "nocjk"}
+    assert entries["runner"] == ("'rʌnə", "n. 奔跑者")  # 首个含中文行
+    assert entries["running"] == ("", "n. 跑步, 奔跑")  # 音标缺 → 空串
+    assert len(entries["longword"][1]) == build.TRANSLATION_LIMIT
+    assert entries["longword"][1].endswith("…")
+    assert entries["nocjk"][1] == ""  # 无中文行 → 空串
+    assert "absent" not in entries
+    assert source["queried"] == 5
+    assert source["found"] == 4
+    assert source["translationLimit"] == build.TRANSLATION_LIMIT
+    assert Path(source["path"]).name == "ecdict.db"
+    assert source["sha256"] == sha_before
+    # 只读打开：库文件字节不变，不产生 journal/wal 旁路文件。
+    assert build.file_sha256(db_path) == sha_before
+    assert not (tmp_path / "ecdict.db-journal").exists()
+    assert not (tmp_path / "ecdict.db-wal").exists()
+
+
+def test_load_ecdict_entries_skips_empty_query(tmp_path: Path) -> None:
+    entries, source = build.load_ecdict_entries(
+        [], tmp_path / "missing.db")
+    assert entries == {}
+    assert source["queried"] == 0
+    assert source["found"] == 0
+    assert source["sha256"] == ""
+
+
+def test_load_ecdict_entries_unavailable(tmp_path: Path) -> None:
+    with pytest.raises(build.BuildError, match="ECDICT 不可用"):
+        build.load_ecdict_entries(["runner"], tmp_path / "missing.db")
+
+    broken = tmp_path / "broken.db"
+    broken.write_text("not a sqlite database", encoding="utf-8")
+    with pytest.raises(build.BuildError, match="ECDICT 不可用"):
+        build.load_ecdict_entries(["runner"], broken)
+
+    wrong_schema = tmp_path / "wrong.db"
+    connection = sqlite3.connect(wrong_schema)
+    connection.execute("CREATE TABLE other (word TEXT)")
+    connection.commit()
+    connection.close()
+    with pytest.raises(build.BuildError, match="缺列"):
+        build.load_ecdict_entries(["runner"], wrong_schema)
+
+
+def test_document_with_ecdict_is_deterministic() -> None:
+    first = build.dump_json(build_document(lexicon=LEXICON, ecdict=ECDICT))
+    second = build.dump_json(build_document(lexicon=LEXICON, ecdict=ECDICT))
+    assert first == second
+    assert len(_member_lemmas(json.loads(first))) == 13
+
+
+# ---------------------------------------------------------------------------
 # 已提交数据契约（不依赖 WordNet；只读文件）
 # ---------------------------------------------------------------------------
 
@@ -528,3 +735,70 @@ def test_committed_data_matches_rule_e_contract() -> None:
     # 最大族从 large（18）变成 sense（14）。
     assert max(len(family["members"]) for family in document["families"]) == 14
     assert len(family_by_head(document, "sense")["members"]) == 14
+
+
+def test_committed_member_fields_preserve_lexicon_values() -> None:
+    """已提交数据里，成员在 lexicon 非空的值必须逐条保留（ECDICT 不得覆盖）。"""
+    document = json.loads(DATA_PATH.read_text(encoding="utf-8"))
+    phonetics, translations, _source = build.load_lexicon_entries(LEXICON_PATH)
+    for family in document["families"]:
+        for member in family["members"]:
+            lemma = member["lemma"]
+            if phonetics.get(lemma):
+                assert member["phonetic"] == phonetics[lemma], lemma
+            if translations.get(lemma):
+                assert member["translation"] == translations[lemma], lemma
+
+
+@pytest.mark.skipif(
+    not ECDICT_PATH.is_file(), reason="本机无 data/ecdict.db，跳过 ECDICT 补全契约")
+def test_committed_member_fields_fill_from_ecdict() -> None:
+    """lexicon 缺项用 ECDICT 补、两边都缺留空串；溯源 sha 与本地库一致。"""
+    document = json.loads(DATA_PATH.read_text(encoding="utf-8"))
+    members = [
+        member for family in document["families"]
+        for member in family["members"]
+    ]
+    phonetics, translations, _source = build.load_lexicon_entries(LEXICON_PATH)
+    missing = [
+        member["lemma"] for member in members
+        if not phonetics.get(member["lemma"])
+        or not translations.get(member["lemma"])
+    ]
+    ecdict, ecdict_source = build.load_ecdict_entries(missing, ECDICT_PATH)
+    for member in members:
+        lemma = member["lemma"]
+        expected_phonetic = (
+            phonetics.get(lemma) or ecdict.get(lemma, ("", ""))[0])
+        expected_translation = (
+            translations.get(lemma) or ecdict.get(lemma, ("", ""))[1])
+        assert member["phonetic"] == expected_phonetic, lemma
+        assert member["translation"] == expected_translation, lemma
+    # 溯源：committed 数据的 ECDICT 快照必须就是本机这一份库。
+    assert document["source"]["ecdict"]["sha256"] == ecdict_source["sha256"]
+    assert document["source"]["ecdict"]["queried"] == len(missing)
+    # P1-12 覆盖率（regenerate 时如变化，连同报告/spec 一起更新）。
+    with_phonetic = sum(1 for member in members if member["phonetic"])
+    with_translation = sum(1 for member in members if member["translation"])
+    assert len(members) == 11534
+    assert with_phonetic == 10466
+    assert with_translation == 11419
+    assert sum(
+        1 for member in members
+        if not member["phonetic"] and not member["translation"]) == 109
+
+
+def test_check_output_detects_missing_and_drift(tmp_path: Path) -> None:
+    """`--check` 语义：同一生成结果幂等通过；缺文件/差一字节即失败。"""
+    text = build.dump_json(build_document(lexicon=LEXICON, ecdict=ECDICT))
+    target = tmp_path / "word-families.json"
+    assert "不存在" in build.check_output_error(target, text)
+
+    target.write_text(text, encoding="utf-8")
+    assert build.check_output_error(target, text) is None
+    # 再跑一次「现场生成」仍逐字节一致（确定性 → --check 幂等）。
+    again = build.dump_json(build_document(lexicon=LEXICON, ecdict=ECDICT))
+    assert build.check_output_error(target, again) is None
+
+    target.write_text(text + " ", encoding="utf-8")
+    assert "不一致" in build.check_output_error(target, text)

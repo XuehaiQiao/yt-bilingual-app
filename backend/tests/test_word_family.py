@@ -137,8 +137,9 @@ def test_cross_boundary_members_have_empty_level(make_client):
         assert isinstance(member["phonetic"], str)
         assert isinstance(member["translation"], str)
     largeness = outside[0]
-    assert largeness["phonetic"] == ""
-    assert largeness["translation"] == ""
+    # P1-12：lexicon 缺项由 ECDICT 补全；仍缺才是空串。
+    assert largeness["phonetic"] == "'lɑ:dʒnis"
+    assert largeness["translation"] == "n. 巨大, 广大, 大量"
 
 
 def test_named_families_match_rule_e(make_client):
@@ -162,8 +163,9 @@ def test_named_families_match_rule_e(make_client):
     assert decide_members["decision"]["translation"].startswith("n. 决定")
     # 词典缺条目的成员（10k 外）字段为空串，成员行仍会下发。
     assert decide_members["deciding"]["level"] is None
-    assert decide_members["deciding"]["phonetic"] == ""
-    assert decide_members["deciding"]["translation"] == ""
+    # P1-12：10k 外成员同样由 ECDICT 补全音标/释义。
+    assert decide_members["deciding"]["phonetic"] == "di'saidiŋ"
+    assert decide_members["deciding"]["translation"] == "[计] 判定"
 
     # allowlist：WordNet 3.0 缺 reflect–reflection，规则 E 补上后同族。
     reflect_family = reflect["items"][0]
@@ -441,9 +443,14 @@ def test_data_document_contract():
             # （缺条目为空串）；10k 外成员同样带这两个字段。
             assert set(member) == {
                 "lemma", "level", "rank", "phonetic", "translation"}
+            # P1-12：lexicon 已有的非空值必须原样保留；缺项回退 ECDICT 或 ""。
             phonetic, translation = lexicon.entries.get(member["lemma"], ("", ""))
-            assert member["phonetic"] == phonetic
-            assert member["translation"] == translation
+            if phonetic:
+                assert member["phonetic"] == phonetic
+            if translation:
+                assert member["translation"] == translation
+            assert isinstance(member["phonetic"], str)
+            assert isinstance(member["translation"], str)
 
 
 def test_missing_data_is_503(monkeypatch, make_client, tmp_path):
