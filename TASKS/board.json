@@ -829,8 +829,8 @@
     {
       "id": "P1-19",
       "file": "TASKS/P1-19-sse-stream-speed.md",
-      "status": "claimed",
-      "owner": "sse-perf-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/translate.py",
         "backend/routes_videos.py",
