@@ -860,8 +860,8 @@
     {
       "id": "P1-21",
       "file": "TASKS/P1-21-billing-unpriced-copy.md",
-      "status": "claimed",
-      "owner": "unpriced-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/billing.py",
         "backend/tests/test_balance_billing.py",
@@ -880,8 +880,8 @@
     {
       "id": "P1-22",
       "file": "TASKS/P1-22-wordbook-accordion.md",
-      "status": "claimed",
-      "owner": "accordion-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/components/VocabularyRows.tsx",
@@ -897,8 +897,8 @@
     {
       "id": "P2-09",
       "file": "TASKS/P2-09-watch-gloss-history.md",
-      "status": "claimed",
-      "owner": "watch-history-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/WatchSubtitleOverlay.tsx",
         "frontend/src/components/WatchGlossPanel.tsx",
