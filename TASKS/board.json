@@ -744,6 +744,31 @@
       "deps": [
         "P2-04"
       ]
+    },
+    {
+      "id": "P1-16",
+      "file": "TASKS/P1-16-wordbook-in-topbar.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "frontend/src/components/AppShell.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/components/LearningHeader.tsx",
+        "frontend/src/components/ReaderScreen.tsx",
+        "frontend/src/components/LibraryArticleReader.tsx",
+        "frontend/src/components/BookReaderScreen.tsx",
+        "frontend/src/components/ImportedBookReaderScreen.tsx",
+        "frontend/src/components/ReadingVocabButton.tsx",
+        "frontend/src/components/LocalVideoLearning.tsx",
+        "scripts/topbar-wordbook-acceptance.mjs",
+        "specs/005-favorites-export/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/App.tsx"
+      ],
+      "deps": [
+        "P1-15"
+      ]
     }
   ]
 }
