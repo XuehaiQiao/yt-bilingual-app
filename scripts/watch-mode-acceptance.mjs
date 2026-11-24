@@ -48,6 +48,25 @@
 //      rolling gloss words; when the endpoint is authoritative, a block it
 //      leaves empty keeps neither ruby nor a word entry (the old payload gloss
 //      must not come back).
+//  10. P2-15 immersive shell: AppShell's top bar and the LearningHeader are NOT
+//      rendered; the floating `watch-topbar` (back / title+source / 观影模式
+//      chip / CC / 退出观影) is the only chrome, has no fake settings button,
+//      fades out after 2.5s of stillness and returns on pointer / touch /
+//      keyboard activity. Leaving the mode restores both chromes.
+//  11. P2-15 stage: the 16:9 picture is centred in the remaining viewport on a
+//      size-container stage, an ambient (blurred/gradient) layer fills the
+//      letterbox instead of dead black, and 1440 / 1920 / 375 never overflow.
+//  12. P2-15 subtitles: `watchSubtitleMode` = bilingual | english | off, stored
+//      under `yt_bilingual_watch_subtitle_mode`, switchable from the CC menu
+//      (click and keyboard) and by `C`; `off` does not render the overlay, the
+//      player is never remounted and the playhead is preserved; the gloss panel
+//      keeps working while the overlay is off. The native-caption coexistence
+//      copy is visible and nothing reads/controls the iframe's own CC state.
+//  13. P2-15 native controls: YouTube keeps its own control bar and native CC
+//      entry — no custom transport/progress bar is added and the subtitle scrim
+//      clears the bottom strip those controls live in.
+//  14. P2-10 / P2-11 / P2-12 / P2-13 keep their previous coverage verbatim
+//      (only the watch toggle → top-bar exit selector moved).
 //
 // Run (needs `npm run dev` on :5173; Playwright lives in scripts/node_modules):
 //   node scripts/watch-mode-acceptance.mjs
@@ -541,8 +560,85 @@ async function stubFullscreen(page) {
 async function openVideo(page, videoId) {
     await page.goto(`${BASE}/#/app/content/learn/youtube/${videoId}`, { waitUntil: 'domcontentloaded' });
     await page.locator('[data-testid="video-area"]').waitFor({ state: 'visible', timeout: 20000 });
-    await page.locator('[data-testid="watch-mode-toggle"]').waitFor({ state: 'attached', timeout: 20000 });
+    // P2-15: the entry toggle only exists outside watch mode, so the learning
+    // shell itself is the readiness signal (a persisted watch preference opens
+    // the page straight into the immersive shell).
+    await page.locator('[data-testid="learning-scroll"]').waitFor({ state: 'attached', timeout: 20000 });
 }
+
+// ── P2-15 helpers ─────────────────────────────────────────────────────────
+// The floating top bar fades after 2.5s of stillness. Any interaction with it
+// first has to bring it back the same way a learner would (pointer movement)
+// and wait for the fade-in, otherwise Playwright would click an inert /
+// pointer-events-none bar.
+async function revealWatchTopbar(page) {
+    await page.mouse.move(2, 2);
+    await page.waitForFunction(
+        () => {
+            const bar = document.querySelector('[data-testid="watch-topbar"]');
+            return Boolean(bar)
+                && bar.getAttribute('data-idle') === 'false'
+                && parseFloat(getComputedStyle(bar).opacity) > 0.9;
+        },
+        null,
+        { timeout: 5000 },
+    );
+}
+
+const watchTopbarState = (page) => page.evaluate(() => {
+    const bar = document.querySelector('[data-testid="watch-topbar"]');
+    if (!bar) return null;
+    const rect = bar.getBoundingClientRect();
+    return {
+        idle: bar.getAttribute('data-idle'),
+        opacity: parseFloat(getComputedStyle(bar).opacity),
+        pointerEvents: getComputedStyle(bar).pointerEvents,
+        box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+        buttons: [...bar.querySelectorAll('button')]
+            .map((button) => button.getAttribute('data-testid'))
+            .filter(Boolean),
+    };
+});
+
+async function enterWatchMode(page) {
+    await page.locator('[data-testid="video-area"]').hover();
+    await page.locator('[data-testid="watch-mode-toggle"]').click();
+    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_mode') === 'on', null, { timeout: 5000 });
+    await page.locator('[data-testid="watch-topbar"]').waitFor({ state: 'attached', timeout: 5000 });
+}
+
+/** Leaves 观影模式 through the top bar (the toggle is not mounted in watch). */
+async function exitWatchMode(page) {
+    await revealWatchTopbar(page);
+    await page.locator('[data-testid="watch-topbar-exit"]').click();
+    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_mode') === 'off', null, { timeout: 5000 });
+    await page.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+}
+
+async function openSubtitleMenu(page) {
+    await revealWatchTopbar(page);
+    await page.locator('[data-testid="watch-subtitle-toggle"]').click();
+    await page.locator('[data-testid="watch-subtitle-menu"]').waitFor({ state: 'visible', timeout: 5000 });
+}
+
+async function chooseSubtitleMode(page, mode) {
+    await openSubtitleMenu(page);
+    await page.locator(`[data-testid="watch-subtitle-mode-${mode}"]`).click();
+    await page.locator('[data-testid="watch-subtitle-menu"]').waitFor({ state: 'detached', timeout: 5000 });
+    await page.waitForFunction(
+        (expected) => localStorage.getItem('yt_bilingual_watch_subtitle_mode') === expected,
+        mode,
+        { timeout: 5000 },
+    );
+}
+
+const subtitleModeState = (page) => page.evaluate(() => ({
+    toggleMode: document.querySelector('[data-testid="watch-subtitle-toggle"]')?.getAttribute('data-mode') ?? null,
+    stored: localStorage.getItem('yt_bilingual_watch_subtitle_mode'),
+    overlay: document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-mode') ?? null,
+    en: Boolean(document.querySelector('[data-testid="watch-subtitle-en"]')),
+    zh: Boolean(document.querySelector('[data-testid="watch-subtitle-zh"]')),
+}));
 
 const boxOf = (page, testId) => page.evaluate((id) => {
     const element = document.querySelector(`[data-testid="${id}"]`);
@@ -765,6 +861,8 @@ try {
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-page-fullscreen'), 'off');
     assert.equal(await page.locator('[data-testid="video-fullscreen-toggle"]').count(), 0, 'the player must not render a standalone fullscreen button');
     assert.equal(await page.locator('[data-testid="watch-mode-toggle"]').count(), 1, 'the watch toggle must be the only watch control');
+    assert.equal(await page.locator('[data-testid="top-bar"]').count(), 1, 'AppShell top bar missing before watch mode');
+    assert.equal(await page.locator('[data-testid="learning-header"]').count(), 1, 'LearningHeader missing before watch mode');
     assert.equal(await page.locator('[data-testid="teaching-notes-panel"]').count(), 1, 'teaching panel missing before watch mode');
     assert.equal(await page.locator('[data-testid="split-divider"]').count(), 1, 'split layout not restored on load');
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_mode')), 'off');
@@ -802,15 +900,45 @@ try {
     assert.ok(normalType.en > normalType.zh, 'normal-layout English must stay above Chinese');
 
     // — turn watch mode on from the player toolbar —
-    await page.locator('[data-testid="video-area"]').hover();
-    await page.locator('[data-testid="watch-mode-toggle"]').click();
-    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_mode') === 'on', null, { timeout: 5000 });
+    await enterWatchMode(page);
     // P2-10: the same click requests page fullscreen on the watch shell.
     await page.waitForFunction(() => document.fullscreenElement !== null, null, { timeout: 5000 });
     assert.equal(await page.evaluate(() => window.__fsStub.requests), 1, 'entering watch mode must request page fullscreen');
     assert.equal(await page.evaluate(() => window.__fsStub.requestedTestId), 'learning-scroll', 'fullscreen must target the watch shell');
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-page-fullscreen'), 'on');
-    assert.equal(await page.getAttribute('[data-testid="watch-mode-toggle"]', 'aria-pressed'), 'true');
+    // — P2-15 §1: immersive shell — AppShell's top bar and the LearningHeader
+    //   are not rendered; the floating top bar is the only chrome. —
+    assert.equal(await page.locator('[data-testid="watch-mode-toggle"]').count(), 0, 'the entry toggle must unmount in watch mode (the top bar owns exit)');
+    assert.equal(await page.locator('[data-testid="top-bar"]').count(), 0, 'AppShell top bar must NOT be rendered in watch mode');
+    assert.equal(await page.locator('[data-testid="learning-header"]').count(), 0, 'LearningHeader must NOT be rendered in watch mode');
+    const topbarInitial = await watchTopbarState(page);
+    assert.ok(topbarInitial, 'watch top bar missing');
+    assert.deepEqual(
+        [...topbarInitial.buttons].sort(),
+        ['watch-subtitle-toggle', 'watch-topbar-back', 'watch-topbar-exit'],
+        'the watch top bar must expose exactly back / CC / exit — no fake settings button',
+    );
+    assert.equal(
+        (await page.locator('[data-testid="watch-topbar-chip"]').innerText()).trim(),
+        '观影模式',
+        'watch top bar chip is not 观影模式',
+    );
+    assert.ok(
+        (await page.locator('[data-testid="watch-topbar-title"]').innerText()).includes('Watch Mode Acceptance'),
+        'watch top bar title does not carry the video title',
+    );
+    assert.ok(
+        (await page.locator('[data-testid="watch-topbar-source"]').innerText()).includes('LinguaTrek Test'),
+        'watch top bar source does not carry the channel',
+    );
+    assert.ok(
+        topbarInitial.box.y <= 1 && Math.abs(topbarInitial.box.width - 1440) < 2,
+        `watch top bar is not floating at the viewport top: ${JSON.stringify(topbarInitial.box)}`,
+    );
+    assert.ok(
+        topbarInitial.box.height >= 44 && topbarInitial.box.height <= 60,
+        `watch top bar height ${topbarInitial.box.height} outside 44–60`,
+    );
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on');
     assert.equal(await page.locator('[data-testid="teaching-notes-panel"]').count(), 0, 'teaching panel must NOT be mounted in watch mode');
     assert.equal(await page.locator('[data-testid="summary-panel"]').count(), 0, 'summary panel must not be mounted in watch mode');
@@ -819,6 +947,110 @@ try {
     // The toggle must not reset the other two layout preferences.
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_transcript_layout')), 'split');
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_split_ratio')), '60');
+
+    // — P2-15 §1: 2.5s of stillness fades the bar; keyboard / pointer bring
+    //   it back. The shell itself keeps its reserved strip so the jump never
+    //   shifts the stage. —
+    await revealWatchTopbar(page);
+    summary.screenshots.push(shot('1440-topbar'));
+    await page.screenshot({ path: shot('1440-topbar') });
+    const awake = await watchTopbarState(page);
+    assert.equal(awake.idle, 'false');
+    assert.ok(awake.opacity > 0.9, `visible top bar opacity ${awake.opacity}`);
+    assert.notEqual(awake.pointerEvents, 'none', 'a visible top bar must accept clicks');
+    // Move off the bar: resting on the chrome counts as being in its control,
+    // the 2.5s stillness contract applies to an untouched picture.
+    await page.mouse.move(720, 300);
+    await page.waitForFunction(
+        () => {
+            const bar = document.querySelector('[data-testid="watch-topbar"]');
+            return bar?.getAttribute('data-idle') === 'true' && parseFloat(getComputedStyle(bar).opacity) < 0.005;
+        },
+        null,
+        { timeout: 6000 },
+    );
+    const faded = await watchTopbarState(page);
+    assert.ok(faded.opacity < 0.2, `idle top bar still visible (opacity ${faded.opacity})`);
+    assert.equal(faded.pointerEvents, 'none', 'an idle top bar must let clicks reach the picture');
+    summary.screenshots.push(shot('1440-idle'));
+    await page.screenshot({ path: shot('1440-idle') });
+    // Keyboard activity reveals it (spec: 鼠标/触摸/键盘出现).
+    await page.keyboard.press('Shift');
+    await page.waitForFunction(
+        () => {
+            const bar = document.querySelector('[data-testid="watch-topbar"]');
+            return bar?.getAttribute('data-idle') === 'false' && parseFloat(getComputedStyle(bar).opacity) > 0.9;
+        },
+        null,
+        { timeout: 5000 },
+    );
+
+    // — P2-15 §2: the 16:9 picture is centred on an ambient stage; the letterbox
+    //   is environment light, never a dead-black band, and nothing overflows. —
+    const watchGeometry = await page.evaluate(() => {
+        const box = (id) => {
+            const element = document.querySelector(`[data-testid="${id}"]`);
+            if (!element) return null;
+            const rect = element.getBoundingClientRect();
+            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom };
+        };
+        const stage = document.querySelector('[data-testid="watch-stage"]');
+        const ambient = document.querySelector('[data-testid="watch-stage-ambient"]');
+        return {
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+            documentWidth: document.documentElement.scrollWidth,
+            shell: box('learning-scroll'),
+            stage: box('watch-stage'),
+            video: box('video-area'),
+            ambient: ambient ? box('watch-stage-ambient') : null,
+            stageContainer: stage ? getComputedStyle(stage).containerType : null,
+            ambientGradient: ambient
+                ? [...ambient.querySelectorAll('*')].some((element) => getComputedStyle(element).backgroundImage !== 'none')
+                : false,
+            ambientBlur: ambient
+                ? [...ambient.querySelectorAll('*')].some((element) => getComputedStyle(element).filter.includes('blur'))
+                : false,
+        };
+    });
+    assert.ok(watchGeometry.stage && watchGeometry.video && watchGeometry.ambient, 'watch stage / media / ambient layer missing');
+    assert.equal(watchGeometry.stageContainer, 'size', 'the watch stage is not a size container (centred 16:9 box)');
+    assert.ok(
+        Math.abs(watchGeometry.stage.y - awake.box.height) <= 2,
+        `stage top ${watchGeometry.stage.y} must sit exactly below the top bar (${awake.box.height})`,
+    );
+    assert.ok(
+        Math.abs(watchGeometry.stage.bottom - watchGeometry.viewport.height) <= 2,
+        'the stage must reach the bottom of the viewport (no dead band below it)',
+    );
+    const videoAspect = watchGeometry.video.width / watchGeometry.video.height;
+    assert.ok(Math.abs(videoAspect - 16 / 9) < 0.02, `media is not 16:9 (${videoAspect.toFixed(3)})`);
+    assert.ok(
+        Math.abs((watchGeometry.video.x + watchGeometry.video.width / 2) - (watchGeometry.stage.x + watchGeometry.stage.width / 2)) <= 2,
+        'the media is not horizontally centred on the stage',
+    );
+    assert.ok(
+        Math.abs((watchGeometry.video.y + watchGeometry.video.height / 2) - (watchGeometry.stage.y + watchGeometry.stage.height / 2)) <= 2,
+        `the media is not vertically centred on the stage (video y ${watchGeometry.video.y}, stage ${watchGeometry.stage.y}–${watchGeometry.stage.bottom})`,
+    );
+    assert.ok(
+        watchGeometry.video.x >= watchGeometry.stage.x - 1
+        && watchGeometry.video.right <= watchGeometry.stage.right + 1
+        && watchGeometry.video.y >= watchGeometry.stage.y - 1
+        && watchGeometry.video.bottom <= watchGeometry.stage.bottom + 1,
+        'the media overflows the watch stage',
+    );
+    assert.ok(watchGeometry.documentWidth <= watchGeometry.viewport.width + 1, '1440 watch layout overflows horizontally');
+    assert.ok(
+        Math.abs(watchGeometry.ambient.width - watchGeometry.stage.width) < 2
+        && Math.abs(watchGeometry.ambient.height - watchGeometry.stage.height) < 2,
+        'the ambient layer does not fill the whole stage (letterbox left as dead black)',
+    );
+    assert.ok(watchGeometry.ambientGradient, 'the ambient stage has no gradient environment light');
+    assert.ok(watchGeometry.ambientBlur, 'the ambient stage has no blurred environment light');
+    assert.ok(
+        watchGeometry.video.y - watchGeometry.stage.y > 24 && watchGeometry.stage.bottom - watchGeometry.video.bottom > 24,
+        'the letterbox above/below the picture is too small for an ambient stage',
+    );
 
     // — the ≥1280 gloss window is a fixed right rail, 320–360 wide —
     const rail = await boxOf(page, 'watch-gloss-rail');
@@ -950,20 +1182,31 @@ try {
         `overlay sits ${overlayRect.bottomGap}px from the bottom (<12% of ${overlayRect.parentHeight})`,
     );
     const overlay = await boxOf(page, 'watch-subtitle-overlay');
-    // P2-10 retired the standalone fullscreen control: the watch toggle is the
-    // only player control the overlay has to clear.
+    // P2-15 §3: the YouTube embed keeps its native control bar and native CC
+    // entry. The watch shell adds no transport UI of its own, and the subtitle
+    // scrim must clear the bottom strip those native controls live in.
     assert.equal(await page.locator('[data-testid="video-fullscreen-toggle"]').count(), 0, 'retired fullscreen button is still mounted');
-    const controlBoxes = await Promise.all([
-        boxOf(page, 'watch-mode-toggle'),
-    ]);
-    assert.ok(controlBoxes.every(Boolean), 'player controls missing');
-    const overlapsControls = controlBoxes.some((controls) => (
-        overlay.x < controls.x + controls.width
-        && overlay.x + overlay.width > controls.x
-        && overlay.y < controls.y + controls.height
-        && overlay.y + overlay.height > controls.y
-    ));
-    assert.ok(!overlapsControls, 'subtitle overlay overlaps the player controls');
+    assert.equal(await page.locator('[data-testid="watch-mode-toggle"]').count(), 0, 'the entry toggle must not sit over the picture in watch mode');
+    assert.equal(
+        await page.locator('[data-testid="watch-stage"] input[type="range"]').count(),
+        0,
+        'no custom transport/progress bar may be added — the native YouTube controls stay authoritative',
+    );
+    assert.ok(
+        !(await page.locator('[data-testid="watch-stage"] [data-testid*="progress"]').count()),
+        'a custom progress control appeared in the watch stage',
+    );
+    const mediaBox = await boxOf(page, 'video-area');
+    const playerSurface = await boxOf(page, 'video-player');
+    assert.ok(playerSurface, 'player surface missing');
+    assert.ok(
+        Math.abs(playerSurface.width - mediaBox.width) < 2 && Math.abs(playerSurface.height - mediaBox.height) < 2,
+        'the player surface no longer fills the 16:9 media box — the native YouTube control bar and its native CC entry need that space',
+    );
+    assert.ok(
+        overlay.bottom <= mediaBox.bottom - 0.12 * mediaBox.height + 1,
+        'the subtitle scrim intrudes into the bottom strip where the native controls live',
+    );
 
     // — gloss rail content matches the analysis for cue 0 —
     assert.equal(await page.locator('[data-testid="watch-gloss-word"]').count(), 1);
@@ -988,6 +1231,110 @@ try {
     // P2-12: the idiom/culture kind badge (and its data-kind hook) is gone.
     assert.equal(await point.getAttribute('data-kind'), null, 'language point still exposes a kind badge hook');
     assert.ok(!pointText.includes('习语') && !pointText.includes('文化'), `language point still shows a kind badge: ${pointText}`);
+
+    // ═════════════════════════════════════════════════════════════════════
+    // P2-15 §4 — 字幕三态: bilingual | english | off (persisted, C, CC menu)
+    // ═════════════════════════════════════════════════════════════════════
+    assert.deepEqual(
+        await subtitleModeState(page),
+        { toggleMode: 'bilingual', stored: 'bilingual', overlay: 'bilingual', en: true, zh: true },
+        'the default subtitle mode must be bilingual and persisted',
+    );
+    // Remember the exact current sentence and the player DOM node: switching
+    // the caption mode must neither reload the embed nor lose the playhead.
+    await page.evaluate(() => {
+        window.__watchPlayerNode = document.querySelector('[data-testid="video-player"]');
+        window.__watchOverlayEn = (document.querySelector('[data-testid="watch-subtitle-en"]')?.textContent ?? '').trim();
+    });
+    assert.ok((await page.evaluate(() => window.__watchOverlayEn)).includes('A short walk'));
+
+    // — CC menu: three options + the native-caption coexistence copy —
+    await openSubtitleMenu(page);
+    assert.equal(await page.locator('[data-testid="watch-subtitle-menu"] [role="menuitemradio"]').count(), 3, 'CC menu must offer exactly three subtitle modes');
+    assert.deepEqual(
+        await page.locator('[data-testid="watch-subtitle-menu"] [role="menuitemradio"]').evaluateAll((items) => items.map((item) => item.getAttribute('aria-checked'))),
+        ['true', 'false', 'false'],
+        'the current subtitle mode is not checked in the CC menu',
+    );
+    const nativeHint = await page.locator('[data-testid="watch-subtitle-native-hint"]').innerText();
+    assert.ok(nativeHint.includes('原生字幕'), `the CC menu lost the native-caption coexistence copy: ${nativeHint}`);
+    assert.ok(nativeHint.includes('关闭'), `the native-caption copy no longer points at 关闭: ${nativeHint}`);
+    summary.screenshots.push(shot('1440-subtitle-menu'));
+    await page.screenshot({ path: shot('1440-subtitle-menu') });
+
+    // — english: only the English line, same sentence, embed untouched —
+    await page.locator('[data-testid="watch-subtitle-mode-english"]').click();
+    await page.locator('[data-testid="watch-subtitle-menu"]').waitFor({ state: 'detached', timeout: 5000 });
+    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_subtitle_mode') === 'english', null, { timeout: 5000 });
+    let subtitleState = await subtitleModeState(page);
+    assert.equal(subtitleState.toggleMode, 'english');
+    assert.equal(subtitleState.overlay, 'english');
+    assert.equal(subtitleState.en, true, '仅英文 must keep the English line');
+    assert.equal(subtitleState.zh, false, '仅英文 must hide the Chinese line');
+    assert.equal(
+        await page.evaluate(() => window.__watchPlayerNode === document.querySelector('[data-testid="video-player"]')),
+        true,
+        'switching the subtitle mode remounted the player',
+    );
+    assert.equal(
+        await page.evaluate(() => (document.querySelector('[data-testid="watch-subtitle-en"]')?.textContent ?? '').trim()),
+        await page.evaluate(() => window.__watchOverlayEn),
+        'switching the subtitle mode moved the playhead / changed the sentence',
+    );
+    summary.screenshots.push(shot('1440-english'));
+    await page.screenshot({ path: shot('1440-english') });
+
+    // — off: no overlay at all, the native captions are usable, the gloss
+    //   window keeps working (P2-16 will redesign it; this phase must not
+    //   couple it to the overlay). —
+    await chooseSubtitleMode(page, 'off');
+    subtitleState = await subtitleModeState(page);
+    assert.equal(subtitleState.toggleMode, 'off');
+    assert.equal(subtitleState.overlay, null, 'off must not render the subtitle overlay');
+    assert.equal(await page.locator('[data-testid="watch-subtitle-overlay"]').count(), 0, 'off must not mount the overlay');
+    assert.equal(await page.locator('[data-testid="watch-gloss-rail"]').count(), 1, 'the gloss window must stay available with subtitles off');
+    assert.ok(await page.locator('[data-testid="watch-gloss-word"]').count() >= 2, 'the gloss window emptied when the subtitles were switched off');
+    summary.screenshots.push(shot('1440-off'));
+    await page.screenshot({ path: shot('1440-off') });
+
+    // — C cycles 关闭 → 双语 → 仅英文 → 关闭, without a reload —
+    await page.keyboard.press('c');
+    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_subtitle_mode') === 'bilingual', null, { timeout: 5000 });
+    subtitleState = await subtitleModeState(page);
+    assert.equal(subtitleState.overlay, 'bilingual');
+    assert.equal(subtitleState.en, true);
+    assert.equal(subtitleState.zh, true);
+    assert.equal(await page.evaluate(() => window.__watchPlayerNode === document.querySelector('[data-testid="video-player"]')), true, 'the C shortcut remounted the player');
+    assert.ok((await overlayText(page)).includes('A short walk'), 'the C shortcut lost the current sentence');
+    await page.keyboard.press('c');
+    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_subtitle_mode') === 'english', null, { timeout: 5000 });
+    assert.equal(await page.locator('[data-testid="watch-subtitle-zh"]').count(), 0, 'C did not hide the Chinese line in 仅英文');
+    await page.keyboard.press('c');
+    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_subtitle_mode') === 'off', null, { timeout: 5000 });
+    assert.equal(await page.locator('[data-testid="watch-subtitle-overlay"]').count(), 0, 'C did not reach 关闭');
+    await page.keyboard.press('c');
+    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_subtitle_mode') === 'bilingual', null, { timeout: 5000 });
+    assert.deepEqual(await subtitleModeState(page), { toggleMode: 'bilingual', stored: 'bilingual', overlay: 'bilingual', en: true, zh: true });
+
+    // — the CC menu is keyboard operable: ArrowDown opens, arrows move, Enter
+    //   selects, Esc closes without changing the preference —
+    await revealWatchTopbar(page);
+    await page.locator('[data-testid="watch-subtitle-toggle"]').focus();
+    await page.keyboard.press('ArrowDown');
+    await page.locator('[data-testid="watch-subtitle-menu"]').waitFor({ state: 'visible', timeout: 5000 });
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('data-testid')), 'watch-subtitle-mode-bilingual', 'the checked mode is not focused on open');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('data-testid')), 'watch-subtitle-mode-english', 'ArrowDown did not move through the CC menu');
+    await page.keyboard.press('Enter');
+    await page.locator('[data-testid="watch-subtitle-menu"]').waitFor({ state: 'detached', timeout: 5000 });
+    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_subtitle_mode') === 'english', null, { timeout: 5000 });
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('data-testid')), 'watch-subtitle-toggle', 'selecting a mode did not return focus to the CC trigger');
+    await openSubtitleMenu(page);
+    await page.keyboard.press('Escape');
+    await page.locator('[data-testid="watch-subtitle-menu"]').waitFor({ state: 'detached', timeout: 5000 });
+    assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_subtitle_mode')), 'english', 'Esc must close the CC menu without changing the mode');
+    await chooseSubtitleMode(page, 'bilingual');
+    assert.equal(await page.locator('[data-testid="watch-subtitle-zh"]').count(), 1, 'restoring 双语 did not bring the Chinese line back');
 
     // — P2-09 history: cue 1 on top, cue 0 still below, no repetition —
     await waitForGlossEntries(page, 2);
@@ -1044,14 +1391,16 @@ try {
     assert.equal(await glossEntryCount(page), 2, 'moving forward duplicated an existing sentence');
     assert.equal(await page.locator('[data-testid="watch-gloss-word"]').count(), 2, 'history lost a word after the revisit');
 
-    // — turn watch mode off: stacked/split layout + teaching panel return —
-    await page.locator('[data-testid="watch-mode-toggle"]').click();
-    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_mode') === 'off', null, { timeout: 5000 });
+    // — turn watch mode off through the floating top bar: stacked/split layout,
+    //   both app chromes and the teaching panel return —
+    await exitWatchMode(page);
     // P2-10: leaving the mode also leaves page fullscreen (the stub is still on).
     await page.waitForFunction(() => document.fullscreenElement === null, null, { timeout: 5000 });
     assert.equal(await page.evaluate(() => window.__fsStub.exits), 1, 'leaving watch mode must call exitFullscreen');
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-page-fullscreen'), 'off');
-    await page.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+    assert.equal(await page.locator('[data-testid="watch-topbar"]').count(), 0, 'the floating top bar must unmount when watch mode ends');
+    assert.equal(await page.locator('[data-testid="top-bar"]').count(), 1, 'the AppShell top bar did not come back after watch mode');
+    assert.equal(await page.locator('[data-testid="learning-header"]').count(), 1, 'the LearningHeader did not come back after watch mode');
     assert.equal(await page.locator('[data-testid="watch-gloss-rail"]').count(), 0);
     assert.equal(await page.locator('[data-testid="watch-subtitle-overlay"]').count(), 0);
     assert.equal(await page.locator('[data-testid="split-divider"]').count(), 1, 'split layout not restored after watch off');
@@ -1059,16 +1408,21 @@ try {
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_transcript_layout')), 'split');
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_split_ratio')), '60');
 
-    // — persistence across a reload —
-    await page.locator('[data-testid="video-area"]').hover();
-    await page.locator('[data-testid="watch-mode-toggle"]').click();
-    await page.waitForFunction(() => localStorage.getItem('yt_bilingual_watch_mode') === 'on');
+    // — persistence across a reload: watch mode AND the subtitle preference —
+    await enterWatchMode(page);
+    // Park the caption preference on 仅英文 so the reload has to restore a
+    // non-default mode, not merely fall back to bilingual.
+    await chooseSubtitleMode(page, 'english');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-testid="watch-gloss-rail"]').waitFor({ state: 'visible', timeout: 20000 });
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on');
-    assert.equal(await page.getAttribute('[data-testid="watch-mode-toggle"]', 'aria-pressed'), 'true');
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-page-fullscreen'), 'off', 'persisted watch mode must not auto-request fullscreen on reload');
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_mode')), 'on');
+    assert.equal(await page.locator('[data-testid="top-bar"]').count(), 0, 'reloading in watch mode rendered the AppShell top bar');
+    assert.equal(await page.locator('[data-testid="learning-header"]').count(), 0, 'reloading in watch mode rendered the LearningHeader');
+    assert.ok(await page.locator('[data-testid="watch-topbar"]').count(), 'reloading in watch mode lost the floating top bar');
+    assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_subtitle_mode')), 'english', 'the subtitle preference did not persist across a reload');
+    assert.equal(await page.getAttribute('[data-testid="watch-subtitle-toggle"]', 'data-mode'), 'english', 'the reloaded top bar did not restore 仅英文');
 
     await seekToGlossedCue(page);
     await page.waitForFunction(
@@ -1076,6 +1430,11 @@ try {
         null,
         { timeout: 10000 },
     );
+    assert.equal(await page.locator('[data-testid="watch-subtitle-en"]').count(), 1, '仅英文 did not survive the reload');
+    assert.equal(await page.locator('[data-testid="watch-subtitle-zh"]').count(), 0, '仅英文 showed the Chinese line after the reload');
+    // Back to the default for the screenshot and the remaining checks.
+    await chooseSubtitleMode(page, 'bilingual');
+    assert.equal(await page.locator('[data-testid="watch-subtitle-zh"]').count(), 1, 'bilingual did not restore the Chinese line');
     summary.screenshots.push(shot('1440'));
     await page.screenshot({ path: shot('1440') });
 
@@ -1138,6 +1497,41 @@ try {
             kindBadge: 'removed',
             emptyPlaceholder: 'removed',
             entryChrome: 'borderless',
+        },
+        // P2-15: immersive shell / stage / subtitle modes / native controls.
+        immersiveShell: {
+            appTopbar: 'not rendered',
+            learningHeader: 'not rendered',
+            watchTopbar: 'floating',
+            topbarButtons: topbarInitial.buttons,
+            idleFadeMs: 2500,
+            idleOpacity: Math.round(faded.opacity * 100) / 100,
+        },
+        stage: {
+            stageWidth: Math.round(watchGeometry.stage.width * 10) / 10,
+            stageHeight: Math.round(watchGeometry.stage.height * 10) / 10,
+            videoWidth: Math.round(watchGeometry.video.width * 10) / 10,
+            videoHeight: Math.round(watchGeometry.video.height * 10) / 10,
+            centred: 'both axes',
+            ambient: { gradient: watchGeometry.ambientGradient, blur: watchGeometry.ambientBlur },
+            overflow: watchGeometry.documentWidth <= watchGeometry.viewport.width + 1 ? 'none' : 'overflow',
+        },
+        subtitleModes: {
+            values: ['bilingual', 'english', 'off'],
+            default: 'bilingual',
+            key: 'yt_bilingual_watch_subtitle_mode',
+            persisted: 'english allowed to survive a reload',
+            cycleKey: 'C',
+            nativeCaptionHint: 'visible',
+            overlayOff: 'not mounted',
+            playerRemountOnSwitch: 'no',
+            glossWhileOff: 'available',
+        },
+        nativeControls: {
+            youtubeControlBar: 'kept',
+            nativeCcEntry: 'kept',
+            customTransport: 'none',
+            iframeCcState: 'never read or controlled',
         },
     };
     await desktop.close();
@@ -1293,7 +1687,6 @@ try {
 
     const readFs = () => fsPage.evaluate(() => {
         const shell = document.querySelector('[data-testid="learning-scroll"]');
-        const toggle = document.querySelector('[data-testid="watch-mode-toggle"]');
         return {
             requests: window.__fsStub.requests,
             exits: window.__fsStub.exits,
@@ -1302,7 +1695,8 @@ try {
                 : null,
             watch: shell ? shell.getAttribute('data-watch-mode') : null,
             pageFullscreen: shell ? shell.getAttribute('data-page-fullscreen') : null,
-            pressed: toggle ? toggle.getAttribute('aria-pressed') : null,
+            topbar: Boolean(document.querySelector('[data-testid="watch-topbar"]')),
+            entryToggle: Boolean(document.querySelector('[data-testid="watch-mode-toggle"]')),
         };
     });
     const waitFullscreen = (present) => fsPage.waitForFunction(
@@ -1312,17 +1706,21 @@ try {
     );
 
     // — enter watch: request inside the click gesture, targeting the shell —
-    await fsPage.locator('[data-testid="video-area"]').hover();
-    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await enterWatchMode(fsPage);
     await waitFullscreen(true);
     let fsState = await readFs();
     assert.equal(fsState.requests, 1, 'entering watch mode must call requestFullscreen once');
     assert.equal(fsState.element, 'learning-scroll', 'requestFullscreen must target the watch shell');
     assert.equal(fsState.watch, 'on');
     assert.equal(fsState.pageFullscreen, 'on');
-    assert.equal(fsState.pressed, 'true');
+    assert.equal(fsState.topbar, true, 'the watch shell did not mount its floating top bar');
+    assert.equal(fsState.entryToggle, false, 'the entry toggle must be unmounted in watch mode');
     assert.equal(await fsPage.locator('[data-testid="video-fullscreen-toggle"]').count(), 0, 'retired fullscreen button must stay gone');
-    assert.equal(await fsPage.locator('[data-testid="watch-mode-toggle"]').count(), 1, 'watch toggle must be the only watch control');
+    assert.equal(await fsPage.locator('[data-testid="watch-topbar-exit"]').count(), 1, 'watch top bar exit must be the only watch control');
+    // Only the watch shell is fullscreened: its AppShell top bar / header are
+    // not part of the DOM, so the page fullscreen never captures app chrome.
+    assert.equal(await fsPage.locator('[data-testid="top-bar"]').count(), 0);
+    assert.equal(await fsPage.locator('[data-testid="learning-header"]').count(), 0);
 
     // — P2-11: under the P2-10 page-fullscreen stub the shell stays fullscreen
     // while the window (what a bigger screen is in real fullscreen) grows, so
@@ -1368,33 +1766,30 @@ try {
     await waitFullscreen(false);
     fsState = await readFs();
     assert.equal(fsState.watch, 'on', 'a browser-initiated fullscreen exit must keep the watch layout');
-    assert.equal(fsState.pressed, 'true', 'a browser-initiated fullscreen exit must not toggle watch mode off');
+    assert.equal(fsState.topbar, true, 'a browser-initiated fullscreen exit must keep the floating top bar');
     assert.equal(fsState.pageFullscreen, 'off', 'page-fullscreen state did not follow the document');
     assert.equal(fsState.exits, 0, 'the app must not call exitFullscreen after the browser already exited');
 
     // — leaving watch after ESC only restores the layout (no spurious exit) —
-    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
-    await fsPage.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+    await exitWatchMode(fsPage);
     fsState = await readFs();
     assert.equal(fsState.watch, 'off');
     assert.equal(fsState.exits, 0, 'leaving the watch layout out of fullscreen must not call exitFullscreen');
+    assert.equal(fsState.topbar, false, 'the floating top bar must unmount after leaving watch mode');
 
     // — re-enter, then leave: exit is called while the shell owns fullscreen —
-    await fsPage.locator('[data-testid="video-area"]').hover();
-    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await enterWatchMode(fsPage);
     await waitFullscreen(true);
     fsState = await readFs();
     assert.equal(fsState.requests, 2);
-    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await exitWatchMode(fsPage);
     await waitFullscreen(false);
-    await fsPage.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
     fsState = await readFs();
     assert.equal(fsState.exits, 1, 'leaving watch mode while fullscreen must call exitFullscreen');
     assert.equal(fsState.pageFullscreen, 'off');
 
     // — route change away from the video page cleans up page fullscreen —
-    await fsPage.locator('[data-testid="video-area"]').hover();
-    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await enterWatchMode(fsPage);
     await waitFullscreen(true);
     await fsPage.evaluate(() => { window.location.hash = '#/app/today'; });
     await waitFullscreen(false);
@@ -1410,14 +1805,12 @@ try {
         'off',
         'returning to the video page must not restore fullscreen without a user gesture',
     );
-    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
-    await fsPage.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+    await exitWatchMode(fsPage);
 
     // — rejected request: silent, layout-only fallback —
     const beforeReject = await fsPage.evaluate(() => window.__fsStub.requests);
     await fsPage.evaluate(() => { window.__fsStub.rejectNext = true; });
-    await fsPage.locator('[data-testid="video-area"]').hover();
-    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await enterWatchMode(fsPage);
     await fsPage.waitForFunction((count) => window.__fsStub.requests === count, beforeReject + 1, { timeout: 5000 });
     await fsPage.waitForFunction(
         () => document.querySelector('[data-testid="learning-scroll"]')?.getAttribute('data-watch-mode') === 'on',
@@ -1428,19 +1821,17 @@ try {
     fsState = await readFs();
     assert.equal(fsState.element, null, 'a rejected request must not enter fullscreen');
     assert.equal(fsState.pageFullscreen, 'off');
-    assert.equal(fsState.pressed, 'true', 'the rejected request must keep the watch layout');
+    assert.equal(fsState.topbar, true, 'the rejected request must keep the watch layout');
     assert.deepEqual(fsErrors, [], `rejected fullscreen request raised a page error: ${JSON.stringify(fsErrors)}`);
 
     // — missing API (mobile / iframe): layout-only fallback, no requests —
-    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
-    await fsPage.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+    await exitWatchMode(fsPage);
     await fsPage.evaluate(() => {
         delete Element.prototype.requestFullscreen;
         delete document.exitFullscreen;
     });
     const beforeUnsupported = await fsPage.evaluate(() => window.__fsStub.requests);
-    await fsPage.locator('[data-testid="video-area"]').hover();
-    await fsPage.locator('[data-testid="watch-mode-toggle"]').click();
+    await enterWatchMode(fsPage);
     await fsPage.waitForFunction(
         () => document.querySelector('[data-testid="learning-scroll"]')?.getAttribute('data-watch-mode') === 'on',
         null,
@@ -1450,7 +1841,7 @@ try {
     assert.equal(fsState.requests, beforeUnsupported, 'a missing Fullscreen API must not be called');
     assert.equal(fsState.element, null);
     assert.equal(fsState.pageFullscreen, 'off');
-    assert.equal(fsState.pressed, 'true', 'the missing API must keep the watch layout');
+    assert.equal(fsState.topbar, true, 'the missing API must keep the watch layout');
     assert.deepEqual(fsConsoleErrors.filter((text) => /fullscreen/i.test(text)), [], 'fullscreen fallbacks must stay silent');
     assert.deepEqual(fsErrors, [], `fullscreen lifecycle raised page errors: ${JSON.stringify(fsErrors)}`);
     summary.pageFullscreen = {
@@ -1477,6 +1868,25 @@ try {
 
     assert.equal(await phone.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on');
     assert.equal(await phone.locator('[data-testid="watch-gloss-rail"]').count(), 0, 'rail must not mount below 1280');
+    // P2-15 §1: the phone shell is immersive too — neither app chrome renders,
+    // and the floating top bar spans the viewport.
+    assert.equal(await phone.locator('[data-testid="top-bar"]').count(), 0, '375: AppShell top bar must NOT be rendered in watch mode');
+    assert.equal(await phone.locator('[data-testid="learning-header"]').count(), 0, '375: LearningHeader must NOT be rendered in watch mode');
+    const phoneTopbar = await watchTopbarState(phone);
+    assert.ok(phoneTopbar, '375: watch top bar missing');
+    assert.ok(phoneTopbar.box.y <= 1 && Math.abs(phoneTopbar.box.width - 375) < 2, `375: top bar not flush with the viewport: ${JSON.stringify(phoneTopbar.box)}`);
+    // Touch activity reveals the faded bar (spec: 鼠标/触摸/键盘出现).
+    await phone.waitForFunction(
+        () => document.querySelector('[data-testid="watch-topbar"]')?.getAttribute('data-idle') === 'true',
+        null,
+        { timeout: 6000 },
+    );
+    await phone.touchscreen.tap(4, 260);
+    await phone.waitForFunction(
+        () => document.querySelector('[data-testid="watch-topbar"]')?.getAttribute('data-idle') === 'false',
+        null,
+        { timeout: 5000 },
+    );
     await seekToGlossedCue(phone);
     const overflow375 = await phone.evaluate(() => ({
         documentWidth: document.documentElement.scrollWidth,
@@ -1519,6 +1929,44 @@ try {
     assert.ok(!phoneSubtitle.en.clipped && !phoneSubtitle.zh.clipped, '375 subtitle text is horizontally clipped');
     assert.ok(phoneSubtitle.insideWidth && phoneSubtitle.insideMedia, '375 subtitle overlay overflows the media stage');
     assert.equal(phoneSubtitle.pointerEvents, 'none', '375 overlay must stay pointer-events-none');
+    // P2-15 §2 at 375: the 16:9 media is centred on the ambient stage and the
+    // whole watch shell stays inside the viewport.
+    const phoneStage = await phone.evaluate(() => {
+        const box = (id) => {
+            const element = document.querySelector(`[data-testid="${id}"]`);
+            if (!element) return null;
+            const rect = element.getBoundingClientRect();
+            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom };
+        };
+        return {
+            stage: box('watch-stage'),
+            video: box('video-area'),
+            ambient: box('watch-stage-ambient'),
+            documentWidth: document.documentElement.scrollWidth,
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+        };
+    });
+    assert.ok(phoneStage.stage && phoneStage.video && phoneStage.ambient, '375: watch stage / media / ambient missing');
+    assert.ok(
+        Math.abs((phoneStage.video.x + phoneStage.video.width / 2) - (phoneStage.stage.x + phoneStage.stage.width / 2)) <= 2,
+        '375: the media is not horizontally centred on the stage',
+    );
+    assert.ok(
+        phoneStage.video.y >= phoneStage.stage.y - 1 && phoneStage.video.bottom <= phoneStage.stage.bottom + 1,
+        '375: the media overflows the watch stage vertically',
+    );
+    assert.ok(phoneStage.documentWidth <= phoneStage.viewport.width + 1, '375: watch shell overflows horizontally');
+    assert.ok(
+        Math.abs(phoneStage.ambient.height - phoneStage.stage.height) < 2,
+        '375: the ambient layer does not fill the letterbox',
+    );
+    // P2-15 §4 at 375: 关闭 removes the overlay while the floating gloss entry
+    // keeps working; restore 双语 for the screenshot.
+    await chooseSubtitleMode(phone, 'off');
+    assert.equal(await phone.locator('[data-testid="watch-subtitle-overlay"]').count(), 0, '375: 关闭 must not render the overlay');
+    assert.equal(await phone.locator('[data-testid="watch-gloss-toggle"]').count(), 1, '375: the gloss entry disappeared with the subtitles off');
+    await chooseSubtitleMode(phone, 'bilingual');
+    assert.equal(await phone.locator('[data-testid="watch-subtitle-zh"]').count(), 1, '375: 双语 did not restore the Chinese line');
     // Collapsed: the subtitle window is visible and the floating gloss entry
     // sits on the media without covering it.
     summary.screenshots.push(shot('375'));
@@ -1540,8 +1988,10 @@ try {
     summary.screenshots.push(shot('375-gloss'));
     await phone.screenshot({ path: shot('375-gloss') });
     // Watch OFF on the phone restores the stacked column + teaching panel.
-    await phone.locator('[data-testid="watch-mode-toggle"]').click();
-    await phone.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
+    await exitWatchMode(phone);
+    assert.equal(await phone.locator('[data-testid="watch-topbar"]').count(), 0, '375: the floating top bar must unmount after watch off');
+    assert.equal(await phone.locator('[data-testid="top-bar"]').count(), 1, '375: the AppShell top bar did not come back after watch off');
+    assert.equal(await phone.locator('[data-testid="learning-header"]').count(), 1, '375: the LearningHeader did not come back after watch off');
     assert.equal(await phone.locator('[data-testid="watch-gloss-toggle"]').count(), 0);
     assert.equal(await phone.locator('[data-testid="watch-subtitle-overlay"]').count(), 0);
     assert.equal(await phone.locator('[data-testid="transcript-column"]').count(), 1, 'stacked transcript column missing after watch off');
@@ -1678,6 +2128,43 @@ try {
     assert.ok(wideType.en.fontSize > wideType.zh.fontSize, '1920 English must stay above Chinese');
     assert.ok(!wideType.en.clipped && !wideType.zh.clipped, '1920 subtitle text is horizontally clipped');
     assert.ok(wideType.insideMedia && wideType.insideViewport, '1920 subtitle overlay overflows the media stage');
+    // P2-15 §1/§2 at 1920: the floating top bar spans the viewport and the
+    // centred ambient stage has no dead-black band or overflow.
+    const wideShell = await widePage.evaluate(() => {
+        const box = (id) => {
+            const element = document.querySelector(`[data-testid="${id}"]`);
+            if (!element) return null;
+            const rect = element.getBoundingClientRect();
+            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom };
+        };
+        const bar = document.querySelector('[data-testid="watch-topbar"]');
+        return {
+            topbar: bar ? { x: bar.getBoundingClientRect().x, y: bar.getBoundingClientRect().y, width: bar.getBoundingClientRect().width } : null,
+            topbarCount: document.querySelectorAll('[data-testid="watch-topbar"]').length,
+            topBar: document.querySelectorAll('[data-testid="top-bar"]').length,
+            learningHeader: document.querySelectorAll('[data-testid="learning-header"]').length,
+            stage: box('watch-stage'),
+            video: box('video-area'),
+            ambient: box('watch-stage-ambient'),
+            documentWidth: document.documentElement.scrollWidth,
+            viewport: { width: window.innerWidth, height: window.innerHeight },
+        };
+    });
+    assert.equal(wideShell.topbarCount, 1, '1920: watch top bar missing');
+    assert.equal(wideShell.topBar, 0, '1920: AppShell top bar rendered in watch mode');
+    assert.equal(wideShell.learningHeader, 0, '1920: LearningHeader rendered in watch mode');
+    assert.ok(wideShell.topbar && Math.abs(wideShell.topbar.width - 1920) < 2 && wideShell.topbar.y <= 1, '1920: watch top bar is not full-width at the viewport top');
+    assert.ok(
+        Math.abs((wideShell.video.x + wideShell.video.width / 2) - (wideShell.stage.x + wideShell.stage.width / 2)) <= 2
+        && Math.abs((wideShell.video.y + wideShell.video.height / 2) - (wideShell.stage.y + wideShell.stage.height / 2)) <= 2,
+        '1920: the media is not centred on the stage',
+    );
+    assert.ok(wideShell.documentWidth <= wideShell.viewport.width + 1, '1920: watch layout overflows horizontally');
+    assert.ok(
+        Math.abs(wideShell.ambient.width - wideShell.stage.width) < 2
+        && Math.abs(wideShell.ambient.height - wideShell.stage.height) < 2,
+        '1920: the ambient layer does not fill the stage',
+    );
     summary.screenshots.push(shot('1920'));
     await widePage.screenshot({ path: shot('1920') });
     // P2-11 follow-up: the English ceiling is 32px (2rem). A window wide enough
@@ -1734,10 +2221,12 @@ try {
             overlay: read(document.querySelector('[data-testid="watch-subtitle-overlay"]')),
             rail: read(document.querySelector('[data-testid="watch-gloss-rail"]')),
             scroll: read(document.querySelector('[data-testid="learning-scroll"]')),
+            // P2-15: the floating top bar's 2.5s fade must not animate either.
+            topbar: read(document.querySelector('[data-testid="watch-topbar"]')),
         };
     });
     assert.equal(motion.prefersReduce, true);
-    for (const key of ['overlay', 'rail', 'scroll']) {
+    for (const key of ['overlay', 'rail', 'scroll', 'topbar']) {
         assert.ok(motion[key], `${key} missing for reduced-motion check`);
         assert.equal(motion[key].animationName, 'none', `${key} still animates under reduced motion`);
         assert.ok(motion[key].maxTransitionMs <= 0.02, `${key} transition ${motion[key].maxTransitionMs}ms under reduced motion`);

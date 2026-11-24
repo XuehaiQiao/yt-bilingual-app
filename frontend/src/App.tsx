@@ -32,6 +32,7 @@ import { useReadingHighlights } from './lib/useReadingHighlights';
 import { loadLanguagePointsEnabled } from './lib/highlightLayers';
 import { TeachingNotesPanel, type TeachingNotesStatus } from './components/TeachingNotesPanel';
 import { WatchSubtitleOverlay } from './components/WatchSubtitleOverlay';
+import { WatchTopBar } from './components/WatchTopBar';
 import { WatchGlossPanel } from './components/WatchGlossPanel';
 import { addFavorite, fetchFavorites, removeFavorite, type FavoriteDraft, type FavoriteItem } from './lib/favorites';
 import { ChannelVideoList } from './components/ChannelVideoList';
@@ -120,14 +121,18 @@ import {
   DEFAULT_SPLIT_RATIO,
   loadSplitRatio,
   loadTranscriptLayout,
+  cycleWatchSubtitleMode,
   loadWatchMode,
+  loadWatchSubtitleMode,
   MAX_SPLIT_RATIO,
   MIN_SPLIT_RATIO,
   saveSplitRatio,
   saveTranscriptLayout,
   saveWatchMode,
+  saveWatchSubtitleMode,
   type TranscriptLayout,
   type WatchMode,
+  type WatchSubtitleMode,
 } from './lib/layout';
 import { getProgress, saveProgress } from './lib/progress';
 import { getProfile, type PlacementProfile } from './lib/placement';
@@ -449,6 +454,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // to them — even when the preference was switched on for YouTube videos.
   const watchModeAvailable = !isLocalSubtitle;
   const watchModeActive = watchMode === 'on' && watchModeAvailable;
+  // 字幕三态 (specs/045 §4.2.1): bilingual | english | off, one device-level
+  // preference stored separately from the watch flag. `off` stops mounting the
+  // overlay entirely so the video's native captions are usable untouched.
+  const [watchSubtitleMode, setWatchSubtitleMode] = useState<WatchSubtitleMode>(loadWatchSubtitleMode);
   // ≥1280: the gloss window is a fixed right column; below that it is a
   // floating layer over the media (D1-1). JS gating keeps exactly one of the
   // two presentations mounted, so the panel's DOM (and test ids) stay unique.
@@ -780,6 +789,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   useEffect(() => {
     saveWatchMode(watchMode);
   }, [watchMode]);
+  // The caption mode is independent from the watch flag (specs/045 §4.2.1):
+  // toggling 观影模式 never changes it, and it survives reloads on its own.
+  useEffect(() => {
+    saveWatchSubtitleMode(watchSubtitleMode);
+  }, [watchSubtitleMode]);
 
   // While dragging the divider a transparent shield covers the page (and the
   // video iframe, which would otherwise swallow pointermove). Releasing
@@ -2599,11 +2613,19 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         case 'l': case 'L':
           toggleLoop();
           break;
+        // P2-15 / specs/045 §4.2.1: C cycles 双语 → 仅英文 → 关闭 → 双语.
+        // Only meaningful in 观影模式 (the only place the overlay exists).
+        case 'c': case 'C':
+          if (watchModeActive) {
+            e.preventDefault();
+            setWatchSubtitleMode((previous) => cycleWatchSubtitleMode(previous));
+          }
+          break;
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [isLearningView, videoId, transcript, currentTime, useSubtitleTimer, isSubtitlePlaying, seekTo, toggleLoop, pauseSubtitleTimer, startSubtitleTimer, quizOpen]);
+  }, [isLearningView, videoId, transcript, currentTime, useSubtitleTimer, isSubtitlePlaying, seekTo, toggleLoop, pauseSubtitleTimer, startSubtitleTimer, quizOpen, watchModeActive]);
 
   // ── Sub-view openers (all entries go through the route model) ────────────
   const handleOpenReview = () => {
@@ -3264,11 +3286,23 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // subtitle type scale (1cqi = 1% of this width, specs/044 §2). `inline-size`
   // containment leaves the iframe's own layout and the stage height untouched;
   // only the subtitle font sizes read it.
+  // P2-15 / specs/045 §4.1: in 观影模式 the picture is centred on an ambient
+  // stage instead of being pinned to the top of the column. `watch-stage` is a
+  // size container so the 16:9 box can be the largest rectangle that fits BOTH
+  // the stage width and height (100cqh = 1% of the stage height), which is what
+  // removes the old "video on top + a large dead-black area below" layout
+  // without ever letting the media overflow 1440/1920/375. `video-area` keeps
+  // `container-type: inline-size` for the P2-11 fluid subtitle scale.
   const mediaStage = (
     <div
       data-testid="video-area"
       data-watch-mode={watchModeActive ? 'on' : 'off'}
-      className={`[container-type:inline-size] flex-none w-full aspect-video min-h-[180px] relative bg-transparent ${watchModeActive ? 'md:max-h-full' : 'max-h-[62%]'}`}
+      className={
+        watchModeActive
+          ? '[container-type:inline-size] relative flex-none w-full aspect-video bg-transparent'
+          : '[container-type:inline-size] flex-none w-full aspect-video min-h-[180px] relative bg-transparent max-h-[62%]'
+      }
+      style={watchModeActive ? { width: 'min(100%, calc(100cqh * 16 / 9))' } : undefined}
     >
       {isLocalSubtitle && !hasLocalVideo ? (
         <LocalEpisodeStage
@@ -3300,8 +3334,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           {/* 观影模式: one sentence over the picture, between the embed and the
               player controls. It never mounts the teaching panel or the
               transcript toolbar. */}
-          {watchModeActive && (
+          {watchModeActive && watchSubtitleMode !== 'off' && (
             <WatchSubtitleOverlay
+              mode={watchSubtitleMode}
               enText={watchBlock?.en_text}
               zhText={watchBlock?.zh_text}
             />
@@ -3375,6 +3410,28 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           </button>
         </div>
       )}
+    </div>
+  );
+
+  // Ambient cinema stage: the blurred dark environment light fills the
+  // letterbox instead of leaving flat black, always behind the picture and
+  // never intercepting a pointer (the YouTube iframe keeps every click).
+  const watchStage = (
+    <div
+      data-testid="watch-stage"
+      data-ambient="on"
+      className="[container-type:size] relative flex flex-1 min-h-0 w-full items-center justify-center overflow-hidden bg-app"
+    >
+      <div
+        data-testid="watch-stage-ambient"
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
+        <div className="absolute -left-[8%] -top-[22%] h-[80%] w-[62%] rounded-full bg-brand/[0.14] blur-3xl" />
+        <div className="absolute -bottom-[26%] -right-[6%] h-[76%] w-[54%] rounded-full bg-warning/10 blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-app/40 via-transparent to-app/50" />
+      </div>
+      {mediaStage}
     </div>
   );
 
@@ -3788,19 +3845,36 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const learningView = (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-      <LearningHeader
-        title={metadata?.title || t('common.unknownVideo')}
-        featureLabel={featureLabel}
-        onBack={() => back()}
-        parentLabel={parentLabel}
-      />
+      {/* P2-15: 观影模式 renders neither LearningHeader (here) nor the AppShell
+          top bar (hideTopbar below); the floating WatchTopBar is the only
+          chrome, so the stage owns the full viewport height. */}
+      {!watchModeActive && (
+        <LearningHeader
+          title={metadata?.title || t('common.unknownVideo')}
+          featureLabel={featureLabel}
+          onBack={() => back()}
+          parentLabel={parentLabel}
+        />
+      )}
       <div
         ref={fullscreenWrapperRef}
         data-testid="learning-scroll"
         data-watch-mode={watchModeActive ? 'on' : 'off'}
         data-page-fullscreen={pageFullscreen ? 'on' : 'off'}
-        className="learning-scroll flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden max-md:overflow-y-auto relative bg-transparent group/wrapper"
+        className={`learning-scroll flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden max-md:overflow-y-auto relative bg-transparent group/wrapper ${
+          watchModeActive ? 'pt-12 md:pt-14' : ''
+        }`}
       >
+        {watchModeActive && (
+          <WatchTopBar
+            title={metadata?.title || t('common.unknownVideo')}
+            source={metadata?.channel || featureLabel}
+            subtitleMode={watchSubtitleMode}
+            onSubtitleModeChange={setWatchSubtitleMode}
+            onBack={() => back()}
+            onExit={toggleWatchMode}
+          />
+        )}
         {watchModeActive ? (
           <>
             {/* 观影模式 shell: the media owns the page. The teaching panel and
@@ -3808,9 +3882,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                 and the gloss window is the only right column. */}
             <div
               data-testid="video-column"
-              className="w-full md:flex-1 md:h-full flex flex-col min-w-0 min-h-0"
+              className="w-full flex-1 min-h-0 md:h-full flex flex-col min-w-0"
             >
-              {mediaStage}
+              {watchStage}
             </div>
             {isWideViewport && (
               <WatchGlossPanel
@@ -4464,6 +4538,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         dueCount={reviewStats?.dueNow ?? 0}
         isSub={isSubView}
         isTask={isTaskView}
+        /* 观影模式 is a persisted video-page preference, so the shell only
+           hides its top bar while the learning route (the watch shell) is the
+           visible view — never on Today / Content / Profile. */
+        hideTopbar={watchModeActive && isLearningView}
         subLabel={subLabel}
         onNavigate={navigateTab}
         onRequestLogin={onRequestLogin}

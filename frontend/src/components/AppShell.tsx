@@ -41,6 +41,13 @@ interface AppShellProps {
   /** Immersive task: desktop Sidebar + tabs hide so the view is full width. */
   isTask: boolean;
   /**
+   * 观影模式 (specs/045 §4.1): the whole top bar is not rendered — not merely
+   * hidden — so the watch stage owns the full viewport height. The immersive
+   * view supplies its own floating top bar (WatchTopBar). Defaults to false so
+   * every other screen keeps the shell exactly as before.
+   */
+  hideTopbar?: boolean;
+  /**
    * Explicit exception for a screen that supplies its own word-book entry (no
    * current caller; local video and the readers now use this top-bar entry).
    */
@@ -74,6 +81,7 @@ export function AppShell({
   dueCount,
   isSub,
   isTask,
+  hideTopbar = false,
   hideWordbook = false,
   subLabel,
   onNavigate,
@@ -130,6 +138,7 @@ export function AppShell({
       )}
 
       <div className="flex flex-1 min-h-0 min-w-0 flex-col">
+        {!hideTopbar && (
         <header
           data-testid="top-bar"
           className={`flex-none h-12 md:h-16 bg-zinc-950/60 backdrop-blur-xl border-b border-white/5 px-3 sm:px-4 lg:px-6 items-center gap-2 z-20 ${
@@ -267,6 +276,7 @@ export function AppShell({
             </button>
           </div>
         </header>
+        )}
 
         <main
           data-testid="app-main"

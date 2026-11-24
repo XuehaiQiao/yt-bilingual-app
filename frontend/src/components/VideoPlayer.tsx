@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { YouTubeProps } from 'react-youtube';
 import YouTube from 'react-youtube';
-import { Clapperboard, Minimize2 } from 'lucide-react';
+import { Clapperboard } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 
 interface VideoPlayerProps {
@@ -150,19 +150,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
                     {children}
 
-                    {onToggleWatchMode && (
+                    {/* 观影模式 entry (specs/044 §1). In watch mode this
+                        control is NOT rendered: the floating WatchTopBar owns
+                        exit (P2-15, specs/045 §4.1) so the picture carries no
+                        second, redundant exit affordance. The embed's own
+                        YouTube controls stay untouched either way. */}
+                    {onToggleWatchMode && !watchMode && (
                         <button
                             type="button"
                             data-testid="watch-mode-toggle"
-                            aria-pressed={watchMode}
-                            aria-label={watchMode ? t('watchMode.exit') : t('watchMode.enter')}
-                            title={watchMode ? t('watchMode.exit') : t('watchMode.enter')}
+                            aria-pressed={false}
+                            aria-label={t('watchMode.enter')}
+                            title={t('watchMode.enter')}
                             onClick={onToggleWatchMode}
-                            className={`absolute bottom-4 right-16 p-2.5 bg-app/60 hover:bg-app/80 text-fg-primary rounded-lg backdrop-blur-md ${watchMode ? 'opacity-100' : 'opacity-0 group-hover/video:opacity-100 [@media(pointer:coarse)]:opacity-100'} transition-[opacity,background-color,transform] duration-200 ease-apple motion-reduce:transition-none active:scale-[0.98] flex items-center gap-2 z-50 pointer-events-auto`}
+                            className="absolute bottom-4 right-16 p-2.5 bg-app/60 hover:bg-app/80 text-fg-primary rounded-lg backdrop-blur-md opacity-0 group-hover/video:opacity-100 [@media(pointer:coarse)]:opacity-100 transition-[opacity,background-color,transform] duration-200 ease-apple motion-reduce:transition-none active:scale-[0.98] flex items-center gap-2 z-chrome pointer-events-auto"
                         >
-                            {watchMode ? <Minimize2 className="w-5 h-5" /> : <Clapperboard className="w-5 h-5" />}
+                            <Clapperboard className="w-5 h-5" />
                             <span className="text-xs font-medium whitespace-nowrap">
-                                {watchMode ? t('watchMode.exit') : t('watchMode.enter')}
+                                {t('watchMode.enter')}
                             </span>
                         </button>
                     )}

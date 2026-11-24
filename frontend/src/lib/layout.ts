@@ -72,6 +72,47 @@ export function saveWatchMode(mode: WatchMode): void {
     }
 }
 
+// ── Watch-mode subtitles (specs/045 §4.2.1) ────────────────────────────────
+// Three states, one preference per device:
+//   bilingual — English above the Chinese support line (default)
+//   english   — English only, still the app's per-sentence overlay
+//   off       — the overlay is not rendered at all, so the video's own
+//               captions can be used untouched
+// The mode is stored beside (not inside) the watch-mode flag: entering /
+// leaving 观影模式 never resets a learner's caption preference.
+export type WatchSubtitleMode = 'bilingual' | 'english' | 'off';
+
+export const WATCH_SUBTITLE_MODE_KEY = 'yt_bilingual_watch_subtitle_mode';
+
+/** Cycle order used by the `C` shortcut and documented in the CC menu. */
+export const WATCH_SUBTITLE_MODES: readonly WatchSubtitleMode[] = ['bilingual', 'english', 'off'];
+
+export function normalizeWatchSubtitleMode(value: string | null | undefined): WatchSubtitleMode {
+    return value === 'english' || value === 'off' ? value : 'bilingual';
+}
+
+export function loadWatchSubtitleMode(): WatchSubtitleMode {
+    try {
+        return normalizeWatchSubtitleMode(localStorage.getItem(WATCH_SUBTITLE_MODE_KEY));
+    } catch {
+        // Private-mode storage failures must never break the learning view.
+        return 'bilingual';
+    }
+}
+
+export function saveWatchSubtitleMode(mode: WatchSubtitleMode): void {
+    try {
+        localStorage.setItem(WATCH_SUBTITLE_MODE_KEY, normalizeWatchSubtitleMode(mode));
+    } catch {
+        // Private-mode storage failures must never break the learning view.
+    }
+}
+
+export function cycleWatchSubtitleMode(mode: WatchSubtitleMode): WatchSubtitleMode {
+    const index = WATCH_SUBTITLE_MODES.indexOf(normalizeWatchSubtitleMode(mode));
+    return WATCH_SUBTITLE_MODES[(index + 1) % WATCH_SUBTITLE_MODES.length];
+}
+
 // ── Desktop sidebar ────────────────────────────────────────────────────────
 // The ≥lg navigation rail is 240px expanded and 72px collapsed (icon-only).
 // The preference survives reloads; the shell itself stays stateless.
