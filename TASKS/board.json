@@ -1617,6 +1617,27 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-42",
+      "file": "TASKS/P2-42-v11-feedback-admin.md",
+      "status": "claimed",
+      "owner": "feedback-admin-impl",
+      "write_scope": [
+        "frontend/src/components/AdminFeedbackPanel.tsx",
+        "frontend/src/components/AdminConsoleScreen.tsx",
+        "frontend/src/lib/admin.ts",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/admin-feedback-acceptance.mjs",
+        "specs/048-feedback-quota/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-39"
+      ]
     }
   ]
 }
