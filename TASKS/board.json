@@ -1267,6 +1267,20 @@
         "P2-23",
         "P2-24"
       ]
+    },
+    {
+      "id": "P2-27",
+      "file": "TASKS/P2-27-model-selection-billing.md",
+      "status": "claimed",
+      "owner": "lead",
+      "write_scope": [
+        "backend/ai/quota.py",
+        "backend/tests/test_ai_ledger.py",
+        "backend/tests/test_i18n_target_lang.py",
+        "specs/034-balance-billing/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
