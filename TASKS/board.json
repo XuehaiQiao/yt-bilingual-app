@@ -1394,8 +1394,8 @@
     {
       "id": "P2-33",
       "file": "TASKS/P2-33-token-aware-batching.md",
-      "status": "claimed",
-      "owner": "batching-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/translation_batching.py",
         "backend/translate.py",
@@ -1418,8 +1418,8 @@
     {
       "id": "P2-34",
       "file": "TASKS/P2-34-quota-units.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "quota-units-impl",
       "write_scope": [
         "backend/ai/quota.py",
         "backend/translate.py",
