@@ -1450,8 +1450,8 @@
     {
       "id": "P2-35",
       "file": "TASKS/P2-35-timing.md",
-      "status": "claimed",
-      "owner": "timing-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/pipeline_timing.py",
         "backend/routes_videos.py",
