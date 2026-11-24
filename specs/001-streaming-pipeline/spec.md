@@ -1,6 +1,6 @@
 # 规格：字幕流式管线
 
-**状态：** 已实现 ｜ **对应代码：** `backend/routes_videos.py`（`process_video_stream`）、`backend/translate.py`（`_stream_translate` 等）、`backend/jobs.py` + `backend/migrations/versions/0005_jobs.py`（任务表/续传，M1 ⑤）、`frontend/src/lib/transcript.ts`、`frontend/src/lib/jobs.ts`、`frontend/src/App.tsx`、`frontend/src/components/ModelBar.tsx`
+**状态：** 已实现 ｜ **对应代码：** `backend/routes_videos.py`（`process_video_stream`）、`backend/translate.py`（`_stream_translate`、`process_llm_batch`、`_align_processed_blocks`）、`backend/llm.py`（OpenAI 兼容 payload）、`backend/config.py`（`MODEL_CATALOG`）、`backend/jobs.py` + `backend/migrations/versions/0005_jobs.py`（任务表/续传，M1 ⑤）、`frontend/src/lib/transcript.ts`、`frontend/src/lib/jobs.ts`、`frontend/src/App.tsx`、`frontend/src/components/ModelBar.tsx`
 
 ---
 
@@ -23,6 +23,13 @@
 - **必须**（M1 ⑤）：`GET /api/jobs/{id}` 返回状态/进度/`canResume`；续传走 `jobId + from`，只补 `[未翻译]` 的句子，已生成的字幕不再调用模型。
 - **必须**（M1 ⑤）：同一 job 的并发请求只有一条流在生成（进程内执行权），不产生额外 LLM 调用；已完成任务重连只回放。
 - **应当**（M1 ⑤）：前端把 `jobId`/游标写 `sessionStorage`，刷新后先查 job 状态再决定是否重连；失败/可续时给一句中越双语提示。
+- **必须**（P2-31）：翻译 prompt 使用瘦身 schema——输入 `[{"i": id, "t": text}]`（不含 `start/end`）、输出 `{"r": [{"i": id, "t": "译文"}]}`（不要求 `en_text` 回显）；`en_text/start/end` 一律由输入块回填，不信任模型改写。
+- **必须**（P2-31）：解析同时兼容新 `r/i/t` 与旧 `blocks/id/en_text/zh_text`；`prompt_version` 随结构变更递增（当前 `translate.v3`），只写入缓存 payload 供追溯，不进缓存键。
+- **必须**（P2-31）：新 schema 若解析出零条目（兼容端点不认 `r/i/t`），同一候选再用旧 schema 救援一次；仍零覆盖则标 `[未翻译]`，不整批换候选重发。
+- **必须**（P2-31）：空/纯空白响应在同一候选内重试 1 次，仍空才换候选；JSON 完全无法解析同样同一候选重试 1 次；每批配额只在入口扣 1 次，重试/补译/降级都不重复扣。
+- **必须**（P2-31）：输出 id 覆盖不足时统计缺失 id，只对缺失子集同候选补译一次（不整批重发）；补译后仍缺的块标 `[未翻译]`，交由下次加载自愈。
+- **必须**（P2-31）：单批翻译有 90s deadline（`translate.TRANSLATE_BATCH_TIMEOUT_SECONDS`），超时取消当前调用并按失败进入降级链；其他 LLM 调用仍走 provider 的 180s timeout，不受影响。
+- **应当**（P2-31）：Qwen 目录项用模型级 `thinking_disabled` 标记，OpenAI 兼容 payload 只对该标记发 `thinking:{"type":"disabled"}`；DeepSeek/其他 provider 不发未验证的未知参数。
 
 ## 验收标准
 - [ ] 给定一个有英文字幕的视频，粘贴后数秒内英文字幕可见且可播放。
@@ -32,6 +39,9 @@
 - [ ] 无字幕视频给出明确提示（并在装了 Whisper 时走 [008 转写回退](../008-asr-fallback/spec.md)）。
 - [ ] 翻译中途断开连接：`GET /api/jobs/{id}` 返回 `partial` + 正确 `cursor`；带 `jobId + from` 续传后 `done`，provider 调用总数 = 批次数（无重复 block）。
 - [ ] 刷新页面（sessionStorage 里有未完成 job）→ 自动续传；已 `done`/`failed` 的 job 不再重连。
+- [ ] （P2-31）新 prompt 输入无 `start/end`、输出无 `en_text` 回显；新 `r/i/t` 与旧 `blocks/id/en_text/zh_text` 响应都能按 id 正确对齐，`en_text/start/end` 由输入回填。
+- [ ] （P2-31）空响应/不可解析 JSON 各自同候选最多重试 1 次；仍失败才降级；整条重试路径只扣 1 次配额。
+- [ ] （P2-31）缺失 id 只补缺失子集一次，仍缺标 `[未翻译]`；单批 90s 超时进入降级，不会挂到 180s。
 
 ## 边界与非目标
 - 只处理英文源字幕 → 中文翻译。

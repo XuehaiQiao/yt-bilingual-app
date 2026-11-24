@@ -1,6 +1,7 @@
 # 语途翻译链路专家方案：稳定性、质量、延迟、Token
 
 > 日期：2026-11-24 ｜ 证据基线：`HEAD e891f15` ｜ 研究任务图：`t-mwuolufj-c91b`
+> **状态（2026-11-24 回填）**：P0 的 1（thinking off）/2（prompt 瘦身）/3（空响应重试 + ID 覆盖）/4（90s deadline）已由 P2-31 落地；5（分析移出首屏）不在本卡范围。实施与测试证据见 §11。
 > 方法：生产代码/账本审计 + 受控真实模型实验 + 外部文献调研；三者交叉，不把单一来源当结论。
 > 外部文献说明：本次 `mnemos_validate` 隔离验证通道不可用（返回“未写入验证结论”），因此外部论文/厂商文档结论按“来源自述、未隔离验证”标注；生产代码与实验数据是可复核事实。
 
@@ -321,3 +322,26 @@
 ## 10. 最终建议（一句话）
 
 **先用 prompt 瘦身 + 关闭 thinking + 强校验拿到确定收益；再用 token-aware 的“首批小批/稳定期大批”把延迟和成本同时压下来；分析字典化与配额单位改革放在第二阶段。** 在没有真实 P95 日志之前，不要把任何固定 batch size 称为“最优”；本方案给出的 10/40、5/20 是当前实验与文献约束下的最合理起点，必须用灰度数据继续校准。
+
+---
+
+## 11. P2-31 实施状态（2026-11-24 回填）
+
+任务卡：`TASKS/P2-31-translation-p0.md`；实现：工作区改动（基于 `759eaf5`，按卡要求未提交）。
+
+| P0 项 | 状态 | 落地内容 | 验证 |
+|---|---|---|---|
+| 1. 关闭 thinking | **已实施（Qwen）** | `MODEL_CATALOG` 的 `qwen-flash`/`qwen-plus` 增加模型级 `thinking_disabled: true`；`llm._generate_openai_compatible` 仅对该标记发 `thinking:{"type":"disabled"}` | `test_translation_hardening.py::test_qwen_payload_sends_thinking_disabled`、`test_deepseek_payload_has_no_thinking_or_unknown_fields` |
+| 2. 视频 prompt 瘦身 | **已实施** | 输入 `[{"i","t"}]`（去 start/end）、输出 `{"r":[{"i","t"}]}`（去 en_text 回显）；`_extract_block_list`/`_align_processed_blocks` 兼容新 `r/i/t` 与旧 `blocks/id/en_text/zh_text`；`en_text/start/end` 由输入回填；`translate.v2 → translate.v3` | `test_slim_prompt_and_new_schema_align_backfills_original_fields`、`test_extract_block_list_accepts_r_and_legacy_blocks`、`test_align_accepts_legacy_schema_and_ignores_model_en_text` |
+| 3. 空响应 + ID 覆盖稳定化 | **已实施** | 空/纯空白响应同候选重试 1 次；不可解析 JSON 同候选重试 1 次；新 schema 零覆盖时同候选旧 schema 救援一次；缺失 id 只补缺失子集一次；仍缺标 `[未翻译]`；每批只在入口扣 1 次配额 | `test_empty_response_retries_same_candidate_once`、`test_empty_response_after_retry_degrades_and_charges_quota_once`、`test_unparsable_json_retries_same_candidate_once`、`test_missing_ids_only_resend_the_missing_subset`、`test_missing_ids_still_missing_after_one_supplement_marked_untranslated`、`test_zero_coverage_response_rescued_once_with_legacy_schema` |
+| 4. 90s 单批 deadline | **已实施** | `translate.TRANSLATE_BATCH_TIMEOUT_SECONDS = 90.0`，`process_llm_batch` 用 `asyncio.wait_for` 包住单次调用；超时按失败进入降级；其他 LLM 调用仍走 provider 180s | `test_translate_batch_timeout_degrades_to_next_candidate`、`test_default_deadline_is_90s_and_llm_timeout_untouched` |
+| 5. 分析移出首屏 | 未实施（不在 P2-31 卡范围） | — | — |
+
+**限制说明**：
+- DeepSeek Key 当前无效，`thinking` 关闭的收益只在 Qwen 上实测（Qwen 3.8 Flash：关闭后 reasoning_tokens 215→0、completion 261→38、2.19s）；DeepSeek **不发** `thinking` 字段，避免未验证参数导致 400。Qwen 关闭 thinking 后的文章/视频批量质量复测仍待做（§7 第一项）。
+- prompt 瘦身的 −30%～−40% 成本收益来自审计/实验推算；本卡只验证 schema/解析/对齐不降级，真实成本下降需灰度账本复核。
+
+**验收（实现时）**：
+- `cd backend && venv/bin/python -m pytest -q` → **1529 passed**（P2-31 新增 `tests/test_translation_hardening.py` 15 例；旧测试全绿）。
+- `node scripts/agent-preflight.mjs --card P2-31 --base 759eaf5` → 通过（新增测试先 `git add -N` 纳入检查）。说明：卡 `base_sha=e891f15` 早于卡登记提交 `759eaf5`，直接用卡 base 会把 `TASKS/P2-31-translation-p0.md`、`TASKS/board.json` 两个已提交文件算成本次改动；故以 HEAD 为 base 复核写域。
+- 未提交（按卡要求），改动仅限卡 `write_scope`。

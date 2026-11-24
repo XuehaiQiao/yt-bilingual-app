@@ -539,6 +539,11 @@ def _generate_openai_compatible(prompt: str, spec: dict, json_mode: bool) -> tup
     if json_mode:
         # DeepSeek/OpenAI 都支持；prompt 里必须出现 "json" 字样（现有 prompt 已满足）。
         payload["response_format"] = {"type": "json_object"}
+    if spec.get("thinking_disabled"):
+        # P2-31：只有目录项显式标记 `thinking_disabled` 的模型才发这个字段
+        # （目前仅 Qwen）。DeepSeek 等 provider 不发未验证的未知参数——有的
+        # 端点会直接 400，不能拿主链路去试。
+        payload["thinking"] = {"type": "disabled"}
 
     url = base_url.rstrip("/") + "/chat/completions"
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}

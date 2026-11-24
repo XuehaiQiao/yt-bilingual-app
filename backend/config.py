@@ -277,12 +277,17 @@ MODEL_CATALOG = {
     # 的实际版本；`version` 只是给人看的版本标记（接口 shape 不输出它）。
     # 价格不在目录里编：由迁移 `0030_qwen_prices` 写入 `model_prices`（北京/全球
     # 官方价），`billing.price_for_model()` 优先读表；in/out 仍留 None，避免两套价目。
+    #
+    # P2-31：`thinking_disabled` 是**模型级**能力标记——只有目录项显式写了它，
+    # `llm` 才在 OpenAI 兼容 payload 里发 `thinking:{"type":"disabled"}`。
+    # Qwen 实测关闭后 reasoning_tokens 215→0、completion 261→38、2.19s；
+    # DeepSeek 目前不标记（不给它发未验证的未知参数）。
     "qwen-flash": {
         "name": "Qwen 3.8 Flash", "provider": "Alibaba", "version": "3.8",
         "kind": "openai_compatible", "model_id": "qwen3.8-flash",
         "base_url_env": "QWEN_BASE_URL",
         "api_key_env": "QWEN_API_KEY", "batch_pause": 1,
-        "in": None, "out": None,
+        "in": None, "out": None, "thinking_disabled": True,
         "quotaInfo": "Default · fast & cheap · verify region",
     },
     "qwen-plus": {
@@ -290,7 +295,7 @@ MODEL_CATALOG = {
         "kind": "openai_compatible", "model_id": "qwen3.7-plus",
         "base_url_env": "QWEN_BASE_URL",
         "api_key_env": "QWEN_API_KEY", "batch_pause": 1,
-        "in": None, "out": None,
+        "in": None, "out": None, "thinking_disabled": True,
         "quotaInfo": "Overseas / mainland endpoints differ · verify region",
     },
 }
