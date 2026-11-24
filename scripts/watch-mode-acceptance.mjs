@@ -9,7 +9,8 @@
 //   1. toggle persists to `yt_bilingual_watch_mode`; the transcript placement
 //      and split ratio keys are untouched by the toggle;
 //   2. watch ON: teaching panel / summary / transcript toolbar are NOT
-//      mounted, the media owns the page and the ≥1280 gloss rail is 320–360;
+//      mounted, the media owns the page and the ≥1280 gloss rail is width-ratio
+//      driven (P2-25: 280–560px clamp, 360px at the 1440 default 75/25);
 //   3. the single-sentence overlay follows the active sentence (playback and
 //      seek), shows Chinese above English, clears the player controls and
 //      never intercepts a click (`pointer-events: none`);
@@ -71,7 +72,8 @@
 //  14. P2-10 / P2-11 / P2-12 / P2-13 keep their previous coverage (the P2-10
 //      ESC assertion was revised by P2-17 above; the watch toggle → top-bar
 //      exit selector moved in P2-15).
-//  15. P2-16 desktop rail: exactly 360px, 「滚动词条」+ 本句词数, current
+//  15. P2-16 desktop rail: 360px at the P2-25 default 75/25 on 1440 (480px on
+//      1920, 280–560px clamp), 「滚动词条」+ 本句词数, current
 //      sentence target pinned on top inside three rows with a 2px marker,
 //      fading history, no headings / context / placeholder, and a hover/focus
 //      favorite star that writes one vocabulary draft
@@ -121,13 +123,14 @@
 //      sits at bottom 10% (~7–14% media gap) and only in-viewport pointer
 //      events wake it; the sentence box is min(96ch,92%) so 1440/1920 use ≥85%
 //      of the picture width without clipping (375 unchanged).
-//  23. P2-22 画面大小: the floating top bar exposes a 画面大小 popover with the
-//      60 / 75 / 100% presets (`yt_bilingual_watch_video_scale`, default 100).
-//      The watch-mode picture width is scaled while `aspect-video`
-//      keeps 16:9, the stage keeps it centred, nothing overflows, the subtitle
-//      container-query type follows the smaller picture, the choice survives a
-//      reload, 100% restores the previous maximum, and <768 forces 100% with
-//      no control at all (375 unchanged).
+//  23. P2-25 split ratio: the ≥1280 watch row carries one vertical splitter
+//      (`role=separator`, aria 55/85/now, tabIndex 0) between the picture column
+//      and the rolling gloss rail. The picture owns 55–85% (default 75/25) and
+//      the rail takes the remainder clamped to 280–560px, so 1440 keeps the
+//      familiar 360px rail and 1920 uses 480px. Pointer drag changes the split,
+//      ←/→ nudge 2%, double-click restores 75/25, and the choice survives a
+//      reload. The P2-22 画面大小 popover is gone (one semantic, one control);
+//      <1280 has no divider at all (picture top-pinned + drawer, 375 unchanged).
 //  24. P2-22 activity region: pointermove/pointerdown/pointerover only raise
 //      the subtitle when their target lives inside `video-area` (touchstart
 //      follows the same target rule); rail / top bar / stage-letterbox /
@@ -862,27 +865,101 @@ async function chooseSubtitleMode(page, mode) {
     );
 }
 
-// ── P2-22 画面大小 helpers ────────────────────────────────────────────────
-async function openVideoSizeMenu(page) {
-    await revealWatchTopbar(page);
-    await page.locator('[data-testid="watch-video-size-toggle"]').click();
-    await page.locator('[data-testid="watch-video-size-menu"]').waitFor({ state: 'visible', timeout: 5000 });
+// ── P2-25 split-ratio helpers ─────────────────────────────────────────────
+/**
+ * P2-25: the watch row, the picture column, the gloss rail and the split
+ * divider in one snapshot. `videoShare`/`railShare` are measured against the
+ * row so the split can be asserted without hard-coding a pixel width; the
+ * picture must stay 16:9 while the divider trades its width against the rail.
+ */
+const watchSplitState = (page) => page.evaluate(() => {
+    const row = document.querySelector('[data-testid="learning-scroll"]');
+    const video = document.querySelector('[data-testid="video-area"]');
+    const stage = document.querySelector('[data-testid="watch-stage"]');
+    const rail = document.querySelector('[data-testid="watch-gloss-rail"]');
+    const divider = document.querySelector('[data-testid="watch-split-divider"]');
+    if (!row || !video || !rail) return null;
+    const box = (element) => {
+        const rect = element.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom };
+    };
+    const rowBox = box(row);
+    const videoBox = box(video);
+    const railBox = box(rail);
+    const stageBox = stage ? box(stage) : null;
+    const dividerBox = divider ? box(divider) : null;
+    return {
+        row: rowBox,
+        video: videoBox,
+        rail: railBox,
+        stage: stageBox,
+        divider: divider ? {
+            ...dividerBox,
+            role: divider.getAttribute('role'),
+            orientation: divider.getAttribute('aria-orientation'),
+            min: divider.getAttribute('aria-valuemin'),
+            max: divider.getAttribute('aria-valuemax'),
+            now: divider.getAttribute('aria-valuenow'),
+            tabindex: divider.getAttribute('tabindex'),
+            label: divider.getAttribute('aria-label'),
+        } : null,
+        videoShare: videoBox.width / rowBox.width,
+        railShare: railBox.width / rowBox.width,
+        aspect: videoBox.height > 0 ? videoBox.width / videoBox.height : 0,
+        stored: localStorage.getItem('yt_bilingual_watch_split_ratio'),
+        documentWidth: document.documentElement.scrollWidth,
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+    };
+});
+
+/** The rail width the CSS clamp must produce for `ratio` on the measured row. */
+const expectedRailWidth = (state, ratio) =>
+    Math.min(560, Math.max(280, state.row.width * (100 - ratio) / 100));
+
+/** Pointer-drag the watch divider until the picture column owns `share`%. */
+async function dragWatchDivider(page, share) {
+    const state = await watchSplitState(page);
+    if (!state?.divider) throw new Error('watch split divider missing');
+    const y = state.divider.y + state.divider.height / 2;
+    await page.mouse.move(state.divider.x + state.divider.width / 2, y);
+    await page.mouse.down();
+    await page.mouse.move(state.row.x + state.row.width * share / 100, y, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForFunction(
+        (expected) => {
+            const raw = localStorage.getItem('yt_bilingual_watch_split_ratio');
+            return raw !== null && Math.abs(parseFloat(raw) - expected) <= 1;
+        },
+        share,
+        { timeout: 5000 },
+    );
+    await sleep(120);
+    return watchSplitState(page);
 }
 
-async function chooseVideoScale(page, scale) {
-    await openVideoSizeMenu(page);
-    await page.locator(`[data-testid="watch-video-scale-${scale}"]`).click();
-    await page.locator('[data-testid="watch-video-size-menu"]').waitFor({ state: 'detached', timeout: 5000 });
+/** Focus the divider and nudge it with the keyboard (←/→/Home/End). */
+async function nudgeWatchDivider(page, key) {
+    await page.locator('[data-testid="watch-split-divider"]').focus();
+    await page.keyboard.press(key);
+    await sleep(80);
+    return watchSplitState(page);
+}
+
+/** Double-click the divider: P2-25 resets the split to the 75/25 default. */
+async function resetWatchDivider(page) {
+    await page.locator('[data-testid="watch-split-divider"]').dblclick();
     await page.waitForFunction(
-        (expected) => localStorage.getItem('yt_bilingual_watch_video_scale') === expected,
-        String(scale),
+        () => document.querySelector('[data-testid="watch-split-divider"]')?.getAttribute('aria-valuenow') === '75',
+        null,
         { timeout: 5000 },
     );
-    await page.waitForFunction(
-        (expected) => document.querySelector('[data-testid="video-area"]')?.getAttribute('data-watch-scale') === expected,
-        String(scale),
-        { timeout: 5000 },
-    );
+    // The divider keeps focus after a pointer click; blur it so the next
+    // keyboard test (seeking with ←/→) is not routed to the separator.
+    await page.evaluate(() => {
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    });
+    await sleep(80);
+    return watchSplitState(page);
 }
 
 const subtitleModeState = (page) => page.evaluate(() => ({
@@ -1013,36 +1090,6 @@ const dispatchTouchOn = (page, testId) => page.evaluate((payload) => {
     if (!element) throw new Error(`missing element for touch activity: ${payload.testId}`);
     element.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true }));
 }, { testId });
-
-/**
- * P2-22 画面大小: the picture box, the ambient stage and the size control in
- * one snapshot. `share` is the picture width as a fraction of the 100% width.
- */
-const videoScaleState = (page) => page.evaluate(() => {
-    const video = document.querySelector('[data-testid="video-area"]');
-    const stage = document.querySelector('[data-testid="watch-stage"]');
-    if (!video || !stage) return null;
-    const v = video.getBoundingClientRect();
-    const s = stage.getBoundingClientRect();
-    const toggle = document.querySelector('[data-testid="watch-video-size-toggle"]');
-    return {
-        width: v.width,
-        height: v.height,
-        x: v.x,
-        y: v.y,
-        right: v.right,
-        bottom: v.bottom,
-        stage: { x: s.x, y: s.y, width: s.width, height: s.height, right: s.right, bottom: s.bottom },
-        toggle: toggle ? {
-            scale: toggle.getAttribute('data-scale'),
-            aria: toggle.getAttribute('aria-label'),
-            expanded: toggle.getAttribute('aria-expanded'),
-        } : null,
-        stored: localStorage.getItem('yt_bilingual_watch_video_scale'),
-        documentWidth: document.documentElement.scrollWidth,
-        viewport: { width: window.innerWidth, height: window.innerHeight },
-    };
-});
 
 const overlayText = (page) => page.evaluate(() => {
     const el = document.querySelector('[data-testid="watch-subtitle-overlay"]');
@@ -1358,7 +1405,7 @@ const scrollMetrics = (page) => page.locator('[data-testid="watch-gloss-scroll"]
 }));
 
 const browser = await chromium.launch({ executablePath: CHROME, headless: true });
-const summary = { status: 'PASS', head: HEAD, screenshots: [], p2_21: {}, p2_22: {} };
+const summary = { status: 'PASS', head: HEAD, screenshots: [], p2_21: {}, p2_25: {} };
 
 try {
     // ═════════════════════════════════════════════════════════════════════
@@ -1443,8 +1490,8 @@ try {
     assert.ok(topbarInitial, 'watch top bar missing');
     assert.deepEqual(
         [...topbarInitial.buttons].sort(),
-        ['watch-subtitle-toggle', 'watch-topbar-back', 'watch-topbar-exit', 'watch-video-size-toggle'],
-        'the watch top bar must expose exactly back / 画面大小 / CC / exit — no fake settings button',
+        ['watch-subtitle-toggle', 'watch-topbar-back', 'watch-topbar-exit'],
+        'the watch top bar must expose exactly back / CC / exit — the P2-22 画面大小 control is gone',
     );
     assert.equal(
         (await page.locator('[data-testid="watch-topbar-chip"]').innerText()).trim(),
@@ -1588,8 +1635,14 @@ try {
     const shell = await boxOf(page, 'learning-scroll');
     assert.ok(videoColumn && shell, 'video column / shell missing');
     assert.ok(Math.abs((videoColumn.x || 0) - (shell.x || 0)) < 2, 'video column should start at the shell edge');
-    assert.ok(Math.abs(shell.width - (videoColumn.width + rail.width)) < 2, `shell ${shell.width} != media ${videoColumn.width} + rail ${rail.width}`);
-    assert.ok(rail.x >= videoColumn.x + videoColumn.width - 2, 'rail is not to the right of the media');
+    // P2-25: picture column + divider + rail fill the row exactly.
+    const splitDivider = await boxOf(page, 'watch-split-divider');
+    assert.ok(splitDivider, 'watch split divider missing at 1440');
+    assert.ok(
+        Math.abs(shell.width - (videoColumn.width + splitDivider.width + rail.width)) < 2,
+        `shell ${shell.width} != media ${videoColumn.width} + divider ${splitDivider.width} + rail ${rail.width}`,
+    );
+    assert.ok(rail.x >= videoColumn.x + videoColumn.width + splitDivider.width - 2, 'rail is not to the right of the divider');
     assert.ok(Math.abs(shell.x + shell.width - (rail.x + rail.width)) < 2, 'rail does not end at the shell edge');
     const mediaStageWatch = await boxOf(page, 'video-area');
     assert.ok((mediaStageWatch?.height ?? 0) > 900 * 0.62 * 0.9, 'watch mode did not enlarge the media stage');
@@ -1943,7 +1996,7 @@ try {
         outOfViewport: 'pointermove/pointerdown ignored (dock kept)',
         inViewport: 'target must sit inside the picture (P2-22)',
     };
-    summary.p2_22.pointerFilter = {
+    summary.p2_25.pointerFilter = {
         rail: 'pointermove/pointerdown/pointerover/touchstart keep the subtitle docked',
         topbar: 'pointermove keeps the subtitle docked',
         windowInViewport: 'in-viewport coordinates alone no longer raise',
@@ -2429,130 +2482,89 @@ try {
     assert.equal(await glossEntryCount(page), 2, 'moving forward duplicated an existing sentence');
     assert.equal(await page.locator('[data-testid="watch-gloss-word"]').count(), 2, 'history lost a word after the revisit');
 
-    // — P2-22 画面大小: the floating top bar exposes 60 / 75 / 100% presets.
-    //   100% is the existing maximum; the picture keeps 16:9, stays centred on
-    //   the ambient stage and never overflows; the choice persists. —
-    const size100 = await videoScaleState(page);
-    assert.ok(size100, '1440: picture / stage missing for the picture-size check');
-    assert.ok(size100.toggle, '1440: the 画面大小 control is missing from the watch top bar');
-    assert.equal(size100.toggle.scale, '100', '1440: the picture did not start at 100%');
-    assert.match(size100.toggle.aria ?? '', /画面大小/, '1440: the picture-size control has no aria label');
-    const aspect100 = size100.width / size100.height;
-    assert.ok(Math.abs(aspect100 - 16 / 9) < 0.02, `1440: the 100% picture is not 16:9 (${aspect100.toFixed(3)})`);
+    // — P2-25 分栏比例: one divider trades the picture column against the
+    //   rolling gloss rail (the P2-22 画面大小 menu is gone). 1440 starts at
+    //   the 75/25 default → rail 360px; pointer drags to 85/60 hit the rail's
+    //   280/560px clamp; ←/→ nudge 2%, double-click restores 75/25; the choice
+    //   persists. —
+    const splitDefault = await watchSplitState(page);
+    assert.ok(splitDefault, '1440: watch row / picture / rail missing for the split check');
+    assert.equal(splitDefault.divider?.role, 'separator', '1440: the split divider is not a separator');
+    assert.equal(splitDefault.divider?.orientation, 'vertical', '1440: the split divider is not vertical');
+    assert.equal(splitDefault.divider?.min, '55', '1440: the split divider min is not 55');
+    assert.equal(splitDefault.divider?.max, '85', '1440: the split divider max is not 85');
+    assert.equal(splitDefault.divider?.now, '75', '1440: the split did not start at the 75/25 default');
+    assert.equal(splitDefault.divider?.tabindex, '0', '1440: the split divider is not keyboard focusable');
+    assert.match(splitDefault.divider?.label ?? '', /分栏/, '1440: the split divider has no aria label');
+    assert.equal(splitDefault.stored, '75', '1440: the default 75/25 split was not persisted');
+    assert.ok(Math.abs(splitDefault.rail.width - 360) <= 1, `1440: the default rail is ${splitDefault.rail.width}px, expected 360`);
     assert.ok(
-        Math.abs((size100.x + size100.width / 2) - (size100.stage.x + size100.stage.width / 2)) <= 2
-        && Math.abs((size100.y + size100.height / 2) - (size100.stage.y + size100.stage.height / 2)) <= 2,
-        '1440: the 100% picture is not centred on the stage',
+        Math.abs(splitDefault.rail.width - expectedRailWidth(splitDefault, 75)) <= 1,
+        '1440: the rail width does not follow the 75/25 split',
     );
-    assert.ok(
-        size100.x >= size100.stage.x - 1 && size100.right <= size100.stage.right + 1
-        && size100.y >= size100.stage.y - 1 && size100.bottom <= size100.stage.bottom + 1,
-        '1440: the 100% picture overflows the stage',
-    );
-    assert.equal(size100.stored, '100', '1440: the default 100% was not persisted');
-
-    await openVideoSizeMenu(page);
-    summary.screenshots.push(shot('1440-size-menu'));
-    await page.screenshot({ path: shot('1440-size-menu') });
-    for (const scale of [60, 75, 100]) {
-        assert.equal(
-            await page.locator(`[data-testid="watch-video-scale-${scale}"]`).count(),
-            1,
-            `1440: the 画面大小 menu lost the ${scale}% preset`,
-        );
-    }
+    assert.ok(Math.abs(splitDefault.aspect - 16 / 9) < 0.02, `1440: the picture is not 16:9 (${splitDefault.aspect.toFixed(3)})`);
+    assert.ok(splitDefault.documentWidth <= splitDefault.viewport.width + 1, '1440: the 75/25 split causes horizontal overflow');
     assert.equal(
-        await page.locator('[data-testid="watch-video-scale-100"]').getAttribute('aria-checked'),
-        'true',
-        '1440: the 画面大小 menu does not mark the current 100% preset',
+        await page.locator('[data-testid="watch-video-size-toggle"]').count(),
+        0,
+        '1440: the removed 画面大小 control is still rendered',
     );
-    assert.equal(
-        await page.locator('[data-testid="watch-video-scale-60"]').getAttribute('aria-checked'),
-        'false',
-        '1440: a non-current picture-size preset is marked as checked',
-    );
-    await page.locator('[data-testid="watch-video-scale-75"]').click();
-    await page.locator('[data-testid="watch-video-size-menu"]').waitFor({ state: 'detached', timeout: 5000 });
-    await page.waitForFunction(
-        () => document.querySelector('[data-testid="video-area"]')?.getAttribute('data-watch-scale') === '75',
-        null,
-        { timeout: 5000 },
-    );
-    assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_video_scale')), '75');
-    const size75 = await videoScaleState(page);
-    assert.ok(size75, '1440: picture state missing after choosing 75%');
-    assert.ok(
-        Math.abs(size75.width / size100.width - 0.75) <= 0.01,
-        `1440: 75% picture is ${(size75.width / size100.width * 100).toFixed(1)}% of the 100% width`,
-    );
-    assert.ok(
-        Math.abs(size75.width / size75.height - 16 / 9) < 0.02,
-        `1440: the 75% picture is not 16:9 (${(size75.width / size75.height).toFixed(3)})`,
-    );
-    assert.ok(
-        Math.abs((size75.x + size75.width / 2) - (size75.stage.x + size75.stage.width / 2)) <= 2
-        && Math.abs((size75.y + size75.height / 2) - (size75.stage.y + size75.stage.height / 2)) <= 2,
-        '1440: the 75% picture is not centred on the stage',
-    );
-    assert.ok(
-        size75.x >= size75.stage.x - 1 && size75.right <= size75.stage.right + 1
-        && size75.y >= size75.stage.y - 1 && size75.bottom <= size75.stage.bottom + 1,
-        '1440: the 75% picture overflows the stage',
-    );
-    assert.ok(size75.documentWidth <= size75.viewport.width + 1, '1440: the 75% picture causes horizontal overflow');
+    summary.screenshots.push(shot('1440-watch-split'));
+    await page.screenshot({ path: shot('1440-watch-split') });
 
-    await chooseVideoScale(page, 60);
-    await sleep(150);
-    const size60 = await videoScaleState(page);
-    assert.ok(size60, '1440: picture state missing after choosing 60%');
+    // Drag right to 85%: the rail hits its 280px floor, the picture grows.
+    const split85 = await dragWatchDivider(page, 85);
+    assert.ok(split85, '1440: split state missing after dragging to 85');
+    assert.equal(split85.divider?.now, '85', `1440: aria-valuenow is ${split85.divider?.now} after dragging to 85`);
+    assert.ok(Math.abs(split85.rail.width - 280) <= 1, `1440: the rail did not clamp at 280px (${split85.rail.width}px)`);
+    assert.ok(split85.rail.width >= 280 && split85.rail.width <= 560, '1440: the rail escaped its 280–560px clamp');
     assert.ok(
-        Math.abs(size60.width / size100.width - 0.60) <= 0.01,
-        `1440: 60% picture is ${(size60.width / size100.width * 100).toFixed(1)}% of the 100% width`,
+        Math.abs(split85.rail.width - expectedRailWidth(split85, 85)) <= 1,
+        `1440: the 85% rail is ${split85.rail.width}px, expected the 280px clamp`,
     );
+    assert.ok(split85.video.width > splitDefault.video.width, '1440: dragging to 85 did not widen the picture');
+    assert.ok(Math.abs(split85.aspect - 16 / 9) < 0.02, `1440: the 85% picture is not 16:9 (${split85.aspect.toFixed(3)})`);
+    assert.ok(split85.documentWidth <= split85.viewport.width + 1, '1440: the 85% split causes horizontal overflow');
+    assert.ok(Math.abs(parseFloat(split85.stored) - 85) <= 1, `1440: the stored ratio is ${split85.stored} after dragging to 85`);
+    summary.screenshots.push(shot('1440-split-85'));
+    await page.screenshot({ path: shot('1440-split-85') });
+
+    // Drag left to 60%: the rail hits its 560px ceiling, the picture shrinks.
+    const split60 = await dragWatchDivider(page, 60);
+    assert.ok(split60, '1440: split state missing after dragging to 60');
+    assert.equal(split60.divider?.now, '60', `1440: aria-valuenow is ${split60.divider?.now} after dragging to 60`);
+    assert.ok(Math.abs(split60.rail.width - 560) <= 1, `1440: the rail did not clamp at 560px (${split60.rail.width}px)`);
+    assert.ok(split60.rail.width >= 280 && split60.rail.width <= 560, '1440: the rail escaped its 280–560px clamp');
+    assert.ok(split60.video.width < splitDefault.video.width, '1440: dragging to 60 did not narrow the picture');
+    assert.ok(Math.abs(split60.aspect - 16 / 9) < 0.02, `1440: the 60% picture is not 16:9 (${split60.aspect.toFixed(3)})`);
+    assert.ok(split60.documentWidth <= split60.viewport.width + 1, '1440: the 60% split causes horizontal overflow');
     assert.ok(
-        Math.abs(size60.width / size60.height - 16 / 9) < 0.02,
-        `1440: the 60% picture is not 16:9 (${(size60.width / size60.height).toFixed(3)})`,
+        Math.abs((1 - split60.railShare - 8 / split60.row.width) - split60.videoShare) < 0.001,
+        '1440: the picture column does not take the row remainder',
     );
+    summary.screenshots.push(shot('1440-split-60'));
+    await page.screenshot({ path: shot('1440-split-60') });
+
+    // Double-click restores 75/25; ←/→ nudge 2 percentage points.
+    const splitReset = await resetWatchDivider(page);
+    assert.ok(splitReset, '1440: split state missing after the double-click reset');
+    assert.equal(splitReset.divider?.now, '75', '1440: double-click did not restore the 75/25 split');
+    assert.ok(Math.abs(splitReset.rail.width - 360) <= 1, `1440: double-click restored a ${splitReset.rail.width}px rail, expected 360`);
+    const nudgedLeft = await nudgeWatchDivider(page, 'ArrowLeft');
+    assert.equal(nudgedLeft.divider?.now, '73', `1440: ArrowLeft did not subtract 2% (now ${nudgedLeft.divider?.now})`);
     assert.ok(
-        Math.abs((size60.x + size60.width / 2) - (size60.stage.x + size60.stage.width / 2)) <= 2
-        && Math.abs((size60.y + size60.height / 2) - (size60.stage.y + size60.stage.height / 2)) <= 2,
-        '1440: the 60% picture is not centred on the stage',
+        Math.abs(nudgedLeft.rail.width - expectedRailWidth(nudgedLeft, 73)) <= 1,
+        '1440: the rail did not follow the keyboard nudge',
     );
-    assert.ok(
-        size60.x >= size60.stage.x - 1 && size60.right <= size60.stage.right + 1
-        && size60.y >= size60.stage.y - 1 && size60.bottom <= size60.stage.bottom + 1,
-        '1440: the 60% picture overflows the stage',
-    );
-    assert.ok(size60.documentWidth <= size60.viewport.width + 1, '1440: the 60% picture causes horizontal overflow');
-    // The subtitle scales with the picture (container query), not with the page.
-    const size60Type = await subtitleType(page);
-    assert.ok(size60Type.en && size60Type.zh, '1440: subtitle lines missing at 60%');
-    assert.ok(
-        size60Type.en.fontSize >= 17 && !size60Type.en.clipped && !size60Type.zh.clipped,
-        `1440: the 60% subtitle is clipped or below the 17px floor (${size60Type.en.fontSize}px)`,
-    );
-    assert.ok(size60Type.insideMedia && size60Type.insideViewport, '1440: the 60% subtitle overflows the picture');
-    assert.equal(await page.getAttribute('[data-testid="watch-video-size-toggle"]', 'data-scale'), '60');
-    summary.screenshots.push(shot('1440-scale-60'));
-    await page.screenshot({ path: shot('1440-scale-60') });
-    summary.p2_22.scale1440 = {
-        width100: Math.round(size100.width),
-        width75: Math.round(size75.width),
-        width60: Math.round(size60.width),
-        ratio75: Math.round(size75.width / size100.width * 1000) / 1000,
-        ratio60: Math.round(size60.width / size100.width * 1000) / 1000,
-        aspect60: Math.round(size60.width / size60.height * 1000) / 1000,
+    const nudgedBack = await nudgeWatchDivider(page, 'ArrowRight');
+    assert.equal(nudgedBack.divider?.now, '75', `1440: ArrowRight did not add 2% back (now ${nudgedBack.divider?.now})`);
+    summary.p2_25.split1440 = {
+        defaultRail: Math.round(splitDefault.rail.width * 10) / 10,
+        railAt85: Math.round(split85.rail.width * 10) / 10,
+        railAt60: Math.round(split60.rail.width * 10) / 10,
+        videoShareAt85: Math.round(split85.videoShare * 1000) / 1000,
+        videoShareAt60: Math.round(split60.videoShare * 1000) / 1000,
     };
-
-    // — 100% restores the existing maximum —
-    await chooseVideoScale(page, 100);
-    const restored100 = await videoScaleState(page);
-    assert.ok(restored100, '1440: picture state missing after restoring 100%');
-    assert.ok(
-        Math.abs(restored100.width - size100.width) <= 1 && Math.abs(restored100.height - size100.height) <= 1,
-        `1440: 100% did not restore the maximum picture (${restored100.width}×${restored100.height} vs ${size100.width}×${size100.height})`,
-    );
-    assert.equal(restored100.stored, '100');
 
     // — turn watch mode off through the floating top bar: stacked/split layout,
     //   both app chromes and the teaching panel return —
@@ -2578,13 +2590,16 @@ try {
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_transcript_layout')), 'split');
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_split_ratio')), '60');
 
-    // — persistence across a reload: watch mode AND the subtitle preference —
+    // — persistence across a reload: watch mode + the subtitle preference +
+    //   the P2-25 split ratio —
     await enterWatchMode(page);
-    // Park the caption preference on 仅英文 and the picture size on 75% so the
+    // Park the caption preference on 仅英文 and the split on 63/37 so the
     // reload has to restore two non-default preferences, not merely fall back
     // to their defaults.
     await chooseSubtitleMode(page, 'english');
-    await chooseVideoScale(page, 75);
+    let parkedSplit = await watchSplitState(page);
+    for (let step = 0; step < 6; step += 1) parkedSplit = await nudgeWatchDivider(page, 'ArrowLeft');
+    assert.equal(parkedSplit?.divider?.now, '63', '1440: the split did not reach 63/37 before the reload');
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-testid="watch-gloss-rail"]').waitFor({ state: 'visible', timeout: 20000 });
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on');
@@ -2595,34 +2610,20 @@ try {
     assert.ok(await page.locator('[data-testid="watch-topbar"]').count(), 'reloading in watch mode lost the floating top bar');
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_subtitle_mode')), 'english', 'the subtitle preference did not persist across a reload');
     assert.equal(await page.getAttribute('[data-testid="watch-subtitle-toggle"]', 'data-mode'), 'english', 'the reloaded top bar did not restore 仅英文');
-    // — P2-22: 画面大小 survives the reload as well (75% parked above) —
-    assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_video_scale')), '75', 'the picture size did not persist across a reload');
-    assert.equal(await page.getAttribute('[data-testid="watch-video-size-toggle"]', 'data-scale'), '75', 'the reloaded top bar did not restore the 75% picture size');
-    const reloadedScale = await videoScaleState(page);
-    assert.ok(reloadedScale, '1440: picture state missing after the reload');
+    // — P2-25: the non-default split survives the reload as well —
+    const reloadedSplit = await watchSplitState(page);
+    assert.ok(reloadedSplit?.divider, '1440: the split divider is missing after the reload');
+    assert.equal(reloadedSplit.stored, '63', 'the split ratio did not persist across a reload');
+    assert.equal(reloadedSplit.divider?.now, '63', 'the reloaded divider did not restore 63/37');
     assert.ok(
-        Math.abs(reloadedScale.width / size100.width - 0.75) <= 0.01,
-        `1440: the reloaded 75% picture is ${(reloadedScale.width / size100.width * 100).toFixed(1)}% of the 100% width`,
+        Math.abs(reloadedSplit.rail.width - expectedRailWidth(reloadedSplit, 63)) <= 1,
+        `1440: the reloaded rail is ${reloadedSplit.rail.width}px, expected the 37% width`,
     );
-    assert.ok(
-        Math.abs(reloadedScale.width / reloadedScale.height - 16 / 9) < 0.02,
-        '1440: the reloaded 75% picture is not 16:9',
-    );
-    await openVideoSizeMenu(page);
-    assert.equal(
-        await page.locator('[data-testid="watch-video-scale-75"]').getAttribute('aria-checked'),
-        'true',
-        '1440: the reloaded 画面大小 menu does not mark 75%',
-    );
-    await page.keyboard.press('Escape');
-    await page.locator('[data-testid="watch-video-size-menu"]').waitFor({ state: 'detached', timeout: 5000 });
-    // Restore the maximum for the remaining checks and the screenshot.
-    await chooseVideoScale(page, 100);
-    const afterReload100 = await videoScaleState(page);
-    assert.ok(
-        afterReload100 && Math.abs(afterReload100.width - size100.width) <= 1,
-        '1440: 100% did not restore the maximum picture after the reload',
-    );
+    assert.ok(Math.abs(reloadedSplit.aspect - 16 / 9) < 0.02, '1440: the reloaded picture is not 16:9');
+    // Back to the 75/25 default for the remaining checks and the screenshots.
+    const afterReloadReset = await resetWatchDivider(page);
+    assert.ok(afterReloadReset, '1440: split state missing after restoring the default post-reload');
+    assert.equal(afterReloadReset.divider?.now, '75');
 
     await seekToGlossedCue(page);
     await page.waitForFunction(
@@ -3882,22 +3883,22 @@ try {
     );
     const phoneAspect = phoneVideo.width / phoneVideo.height;
     assert.ok(Math.abs(phoneAspect - 16 / 9) < 0.02, `375: the picture is not 16:9 (${phoneAspect.toFixed(3)})`);
-    // — P2-22: <768 forces 100% and hides the 画面大小 control; the phone keeps
-    //   the untouched full-width picture it had before this card. —
+    // — P2-25: the phone keeps the untouched full-width top-pinned picture and
+    //   the bottom drawer; there is no split divider or ratio control at all. —
+    assert.equal(
+        await phone.locator('[data-testid="watch-split-divider"]').count(),
+        0,
+        '375: the split divider must not render below 1280',
+    );
     assert.equal(
         await phone.locator('[data-testid="watch-video-size-toggle"]').count(),
         0,
-        '375: the 画面大小 control must not render below 768',
+        '375: the removed 画面大小 control must not render',
     );
     assert.equal(
-        await phone.getAttribute('[data-testid="video-area"]', 'data-watch-scale'),
-        '100',
-        '375: the picture size is not forced to 100%',
-    );
-    assert.equal(
-        await phone.evaluate(() => localStorage.getItem('yt_bilingual_watch_video_scale')),
-        '100',
-        '375: the stored picture size was not normalised to 100%',
+        await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+        true,
+        '375: the watch layout overflows horizontally',
     );
     assert.ok(
         phoneVideo.y - phoneTopbarBox.height <= 12,
@@ -4210,7 +4211,7 @@ try {
         };
     });
     assert.equal(wideShell.topbarCount, 1, '1920: watch top bar missing');
-    assert.ok(wideShell.rail && Math.abs(wideShell.rail.width - 360) <= 1, '1920: the gloss rail is not 360px');
+    assert.ok(wideShell.rail && Math.abs(wideShell.rail.width - 480) <= 1, '1920: the gloss rail is not 480px (75/25 default)');
     assert.equal(wideShell.topBar, 0, '1920: AppShell top bar rendered in watch mode');
     assert.equal(wideShell.learningHeader, 0, '1920: LearningHeader rendered in watch mode');
     assert.ok(wideShell.topbar && Math.abs(wideShell.topbar.width - 1920) < 2 && wideShell.topbar.y <= 1, '1920: watch top bar is not full-width at the viewport top');
@@ -4227,50 +4228,54 @@ try {
     );
     summary.screenshots.push(shot('1920'));
     await widePage.screenshot({ path: shot('1920') });
-    // — P2-22 at 1920: the same 60% preset keeps the 16:9 picture centred and
-    //   inside the larger stage, and 100% restores the 1920 maximum. —
-    const wideScale100 = await videoScaleState(widePage);
-    assert.ok(wideScale100?.toggle, '1920: the 画面大小 control is missing');
+    // — P2-25 at 1920: the default 75/25 grows the rail to 480px; dragging to
+    //   85 keeps it inside the 280–560 clamp (288px), while 60 pushes it to the
+    //   560px ceiling. The 16:9 picture never overflows. —
+    const wideSplitDefault = await watchSplitState(widePage);
+    assert.ok(wideSplitDefault?.divider, '1920: the split divider is missing');
+    assert.equal(wideSplitDefault.divider?.now, '75', '1920: the split did not start at 75/25');
+    assert.ok(Math.abs(wideSplitDefault.rail.width - 480) <= 1, `1920: the default rail is ${wideSplitDefault.rail.width}px, expected 480`);
+    const wideSplit85 = await dragWatchDivider(widePage, 85);
+    assert.ok(wideSplit85, '1920: split state missing after dragging to 85');
+    assert.equal(wideSplit85.divider?.now, '85', `1920: aria-valuenow is ${wideSplit85.divider?.now} after dragging to 85`);
     assert.ok(
-        Math.abs(wideScale100.width - wideShell.video.width) <= 1,
-        '1920: the default picture width drifted from the 100% geometry',
-    );
-    await chooseVideoScale(widePage, 60);
-    await sleep(150);
-    const wideScale60 = await videoScaleState(widePage);
-    assert.ok(wideScale60, '1920: picture state missing after choosing 60%');
-    assert.ok(
-        Math.abs(wideScale60.width / wideScale100.width - 0.60) <= 0.01,
-        `1920: 60% picture is ${(wideScale60.width / wideScale100.width * 100).toFixed(1)}% of the 100% width`,
+        Math.abs(wideSplit85.rail.width - 288) <= 1,
+        `1920: the 85% rail is ${wideSplit85.rail.width}px, expected 288 (inside the clamp)`,
     );
     assert.ok(
-        Math.abs(wideScale60.width / wideScale60.height - 16 / 9) < 0.02,
-        '1920: the 60% picture is not 16:9',
+        wideSplit85.rail.width >= 280 && wideSplit85.rail.width <= 560,
+        `1920: the 85% rail (${wideSplit85.rail.width}px) escaped 280–560`,
     );
+    assert.ok(Math.abs(wideSplit85.videoShare - 0.85) < 0.01, `1920: the 85% picture owns ${(wideSplit85.videoShare * 100).toFixed(1)}% of the row`);
+    assert.ok(Math.abs(wideSplit85.aspect - 16 / 9) < 0.02, '1920: the 85% picture is not 16:9');
+    assert.ok(wideSplit85.documentWidth <= wideSplit85.viewport.width + 1, '1920: the 85% split causes horizontal overflow');
+    const wideSplit60 = await dragWatchDivider(widePage, 60);
+    assert.ok(wideSplit60, '1920: split state missing after dragging to 60');
+    assert.equal(wideSplit60.divider?.now, '60', `1920: aria-valuenow is ${wideSplit60.divider?.now} after dragging to 60`);
+    assert.ok(Math.abs(wideSplit60.rail.width - 560) <= 1, `1920: the 60% rail did not clamp at 560px (${wideSplit60.rail.width}px)`);
     assert.ok(
-        Math.abs((wideScale60.x + wideScale60.width / 2) - (wideScale60.stage.x + wideScale60.stage.width / 2)) <= 2
-        && Math.abs((wideScale60.y + wideScale60.height / 2) - (wideScale60.stage.y + wideScale60.stage.height / 2)) <= 2,
-        '1920: the 60% picture is not centred on the stage',
+        wideSplit60.rail.width >= 280 && wideSplit60.rail.width <= 560,
+        `1920: the 60% rail (${wideSplit60.rail.width}px) escaped 280–560`,
     );
+    assert.ok(Math.abs(wideSplit60.aspect - 16 / 9) < 0.02, '1920: the 60% picture is not 16:9');
+    assert.ok(wideSplit60.documentWidth <= wideSplit60.viewport.width + 1, '1920: the 60% split causes horizontal overflow');
+    summary.screenshots.push(shot('1920-split-60'));
+    await widePage.screenshot({ path: shot('1920-split-60') });
+    // Back to 75/25, then widen the picture to 85% for the 32px font ceiling
+    // below (the 480px default rail would keep 2cqi just under 32 at 2048).
+    await resetWatchDivider(widePage);
+    const wideSplitRestored = await watchSplitState(widePage);
     assert.ok(
-        wideScale60.x >= wideScale60.stage.x - 1 && wideScale60.right <= wideScale60.stage.right + 1
-        && wideScale60.y >= wideScale60.stage.y - 1 && wideScale60.bottom <= wideScale60.stage.bottom + 1,
-        '1920: the 60% picture overflows the stage',
+        Math.abs((wideSplitRestored?.rail.width ?? 0) - 480) <= 1,
+        '1920: the double-click reset did not restore the 480px rail',
     );
-    assert.ok(wideScale60.documentWidth <= wideScale60.viewport.width + 1, '1920: the 60% picture causes horizontal overflow');
-    summary.screenshots.push(shot('1920-scale-60'));
-    await widePage.screenshot({ path: shot('1920-scale-60') });
-    await chooseVideoScale(widePage, 100);
-    const wideRestored100 = await videoScaleState(widePage);
-    assert.ok(
-        wideRestored100 && Math.abs(wideRestored100.width - wideScale100.width) <= 1,
-        '1920: 100% did not restore the maximum picture',
-    );
-    summary.p2_22.scale1920 = {
-        width100: Math.round(wideScale100.width),
-        width60: Math.round(wideScale60.width),
-        ratio60: Math.round(wideScale60.width / wideScale100.width * 1000) / 1000,
-        aspect60: Math.round(wideScale60.width / wideScale60.height * 1000) / 1000,
+    const wideSplitCapped = await nudgeWatchDivider(widePage, 'End');
+    assert.equal(wideSplitCapped?.divider?.now, '85', '1920: End did not move the split to 85');
+    summary.p2_25.split1920 = {
+        defaultRail: Math.round(wideSplitDefault.rail.width * 10) / 10,
+        railAt85: Math.round(wideSplit85.rail.width * 10) / 10,
+        railAt60: Math.round(wideSplit60.rail.width * 10) / 10,
+        videoShareAt85: Math.round(wideSplit85.videoShare * 1000) / 1000,
     };
     // P2-11 follow-up: the English ceiling is 32px (2rem). A window wide enough
     // for 2cqi to exceed it must clamp there instead of growing further.

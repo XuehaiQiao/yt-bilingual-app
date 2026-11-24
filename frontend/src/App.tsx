@@ -118,21 +118,27 @@ import {
 } from './lib/teachingAnalysis';
 import {
   clampSplitRatio,
+  clampWatchSplitRatio,
   DEFAULT_SPLIT_RATIO,
-  DEFAULT_WATCH_VIDEO_SCALE,
+  DEFAULT_WATCH_SPLIT_RATIO,
+  clearLegacyWatchVideoScale,
   loadSplitRatio,
   loadTranscriptLayout,
   cycleWatchSubtitleMode,
   loadWatchMode,
+  loadWatchSplitRatio,
   loadWatchSubtitleMode,
-  loadWatchVideoScale,
   MAX_SPLIT_RATIO,
+  MAX_WATCH_SPLIT_RATIO,
   MIN_SPLIT_RATIO,
+  MIN_WATCH_SPLIT_RATIO,
   saveSplitRatio,
   saveTranscriptLayout,
   saveWatchMode,
+  saveWatchSplitRatio,
   saveWatchSubtitleMode,
-  saveWatchVideoScale,
+  WATCH_SPLIT_KEY_STEP,
+  watchRailWidthCss,
   type TranscriptLayout,
   type WatchMode,
   type WatchSubtitleMode,
@@ -433,6 +439,17 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const [transcriptLayout, setTranscriptLayout] = useState<TranscriptLayout>(loadTranscriptLayout);
   const [leftRatio, setLeftRatio] = useState<number>(loadSplitRatio);
   const [isResizing, setIsResizing] = useState(false);
+  // P2-25: 观影模式 splits its row between the picture column and the rolling
+  // gloss rail. The ratio is the picture column's share (55–85, default
+  // 75/25); the rail takes the remainder and is clamped to 280–560px. It is
+  // written while no drag is in flight, like the transcript split ratio above.
+  const [watchSplitRatio, setWatchSplitRatio] = useState<number>(loadWatchSplitRatio);
+  const [isWatchResizing, setIsWatchResizing] = useState(false);
+  // P2-25: pointerdown only arms the watch split drag; the full-page shield
+  // mounts after the first few pixels of movement, so a plain click (and the
+  // double-click reset) still targets the divider itself. `beginWatchSplitDrag`
+  // keeps the window listeners here so an unmount can drop an in-flight drag.
+  const watchSplitDragRef = useRef<{ move: (event: PointerEvent) => void; end: () => void } | null>(null);
   // The docked-right transcript is a desktop layout: mobile has exactly one
   // scroll container (layout §6.3), so a `split` preference saved on desktop
   // must not reorder the mobile page (summary before transcript). The stored
@@ -461,10 +478,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // preference stored separately from the watch flag. `off` stops mounting the
   // overlay entirely so the video's native captions are usable untouched.
   const [watchSubtitleMode, setWatchSubtitleMode] = useState<WatchSubtitleMode>(loadWatchSubtitleMode);
-  // P2-22: 画面大小 — 60–100% of the largest 16:9 box the watch stage fits.
-  // A device preference with its own key; <768 always paints 100% (the top bar
-  // hides the control there, see `showVideoScale`).
-  const [watchVideoScale, setWatchVideoScale] = useState<number>(loadWatchVideoScale);
   // P2-20: the subtitle only docks while the picture is actually playing. The
   // YouTube state comes from VideoPlayer; local SRT episodes use the existing
   // `isSubtitlePlaying` timer. `watchPlaybackActiveRef` lets the pointer-activity
@@ -911,18 +924,38 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   useEffect(() => {
     saveWatchSubtitleMode(watchSubtitleMode);
   }, [watchSubtitleMode]);
-  // P2-22: 画面大小 has its own key as well; 100% is written once on mount so
-  // a fresh device has an explicit value the top bar can restore after reload.
+  // P2-25: the watch split ratio has its own key, written once a drag settles
+  // (keyboard nudges and double-click reset persist immediately).
   useEffect(() => {
-    saveWatchVideoScale(watchVideoScale);
-  }, [watchVideoScale]);
+    if (!isWatchResizing) saveWatchSplitRatio(watchSplitRatio);
+  }, [watchSplitRatio, isWatchResizing]);
+  // P2-22's picture-size preference is gone; drop it once so an upgraded
+  // device does not keep a layout value that no longer means anything.
+  useEffect(() => {
+    clearLegacyWatchVideoScale();
+  }, []);
 
-  // While dragging the divider a transparent shield covers the page (and the
+  // Drop an in-flight watch split drag when the video view unmounts (route
+  // change); the effect that owns the pointerup/pointercancel pair below only
+  // sees an armed drag once it has actually moved.
+  useEffect(() => () => {
+    const drag = watchSplitDragRef.current;
+    if (!drag) return;
+    window.removeEventListener('pointermove', drag.move);
+    window.removeEventListener('pointerup', drag.end);
+    window.removeEventListener('pointercancel', drag.end);
+    watchSplitDragRef.current = null;
+  }, []);
+
+  // While dragging either divider a transparent shield covers the page (and the
   // video iframe, which would otherwise swallow pointermove). Releasing
   // anywhere — including outside the window — ends the drag.
   useEffect(() => {
-    if (!isResizing) return;
-    const stop = () => setIsResizing(false);
+    if (!isResizing && !isWatchResizing) return;
+    const stop = () => {
+      setIsResizing(false);
+      setIsWatchResizing(false);
+    };
     window.addEventListener('pointerup', stop);
     window.addEventListener('pointercancel', stop);
     window.addEventListener('blur', stop);
@@ -937,7 +970,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       document.body.style.userSelect = prevUserSelect;
       document.body.style.cursor = prevCursor;
     };
-  }, [isResizing]);
+  }, [isResizing, isWatchResizing]);
 
   // Streaming translation: progress info + abort handle + deferred seek
   const [translationProgress, setTranslationProgress] = useState<{ done: number; total: number; stage?: string } | null>(null);
@@ -2729,6 +2762,55 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     setLeftRatio(clampSplitRatio(next));
   };
 
+  // P2-25: the watch divider owns the same gestures on the picture/rail split.
+  // The pointer position is read against the watch row (the fullscreen wrapper,
+  // same as the transcript split above), so the picture share follows the
+  // divider under the pointer; the rail itself is CSS-clamped in App.
+  const beginWatchSplitDrag = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    // Keep the embedded iframe from starting its own drag; focus explicitly
+    // because preventDefault also suppresses the browser's default focus.
+    event.preventDefault();
+    event.currentTarget.focus();
+    const row = fullscreenWrapperRef.current;
+    if (!row) return;
+    const rect = row.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const startX = event.clientX;
+    let dragging = false;
+    watchSplitDragRef.current?.end();
+    const move = (moveEvent: PointerEvent) => {
+      if (!dragging && Math.abs(moveEvent.clientX - startX) < 4) return;
+      if (!dragging) {
+        dragging = true;
+        setIsWatchResizing(true);
+      }
+      setWatchSplitRatio(clampWatchSplitRatio(((moveEvent.clientX - rect.left) / rect.width) * 100));
+    };
+    const end = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+      if (watchSplitDragRef.current?.end === end) watchSplitDragRef.current = null;
+      if (dragging) setIsWatchResizing(false);
+    };
+    watchSplitDragRef.current = { move, end };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+  }, []);
+
+  const handleWatchSplitKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    let next: number | null = null;
+    if (e.key === 'ArrowLeft') next = watchSplitRatio - WATCH_SPLIT_KEY_STEP;
+    else if (e.key === 'ArrowRight') next = watchSplitRatio + WATCH_SPLIT_KEY_STEP;
+    else if (e.key === 'Home') next = MIN_WATCH_SPLIT_RATIO;
+    else if (e.key === 'End') next = MAX_WATCH_SPLIT_RATIO;
+    else return;
+    e.preventDefault();
+    setWatchSplitRatio(clampWatchSplitRatio(next));
+  };
+
   // Single-sentence loop: jump back when playback passes the pinned block
   useEffect(() => {
     if (!loopEnabled || !loopBlockRef.current) return;
@@ -2744,6 +2826,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      // P2-25: a focused split divider owns ←/→/Home/End; the same key press
+      // must not also seek the transcript.
+      if (target.closest?.('[role="separator"]')) return;
 
       switch (e.key) {
         case ' ':
@@ -3457,38 +3542,20 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // removes the old "video on top + a large dead-black area below" layout
   // without ever letting the media overflow 1440/1920/375. `video-area` keeps
   // `container-type: inline-size` for the P2-11 fluid subtitle scale.
-  // P2-22: 画面大小 multiplies that largest 16:9 box by the stored ratio (60 /
-  // 75 / 100%). Width only — `aspect-video` keeps the height, and the stage's
-  // flex centring keeps it horizontally/vertically centred, so the picture
-  // never leaves the stage. <768 always uses the untouched full-width picture
-  // (the top bar hides the control there).
-  const effectiveWatchVideoScale = isCompactViewport
-    ? DEFAULT_WATCH_VIDEO_SCALE
-    : watchVideoScale;
-  const watchVideoScaleRatio = effectiveWatchVideoScale / 100;
-  const watchVideoWidthStyle: React.CSSProperties | undefined = !watchModeActive
-    ? undefined
-    : isWideViewport
-      ? {
-        width: watchVideoScaleRatio >= 1
-          ? 'min(100%, calc(100cqh * 16 / 9))'
-          : `calc(min(100%, calc(100cqh * 16 / 9)) * ${watchVideoScaleRatio})`,
-      }
-      : isCompactViewport || watchVideoScaleRatio >= 1
-        ? undefined
-        : { width: `${effectiveWatchVideoScale}%` };
+  // P2-25: 观影模式 no longer scales the picture itself. The picture column
+  // keeps the largest 16:9 box that fits the stage (P2-15), while the divider
+  // controls how much of the row that column gets (the rail is clamped).
+  // <768 keeps the untouched full-width top-pinned picture + drawer.
   const mediaStage = (
     <div
       ref={videoAreaRef}
       data-testid="video-area"
       data-watch-mode={watchModeActive ? 'on' : 'off'}
-      data-watch-scale={watchModeActive ? effectiveWatchVideoScale : undefined}
       className={
         watchModeActive
           ? '[container-type:inline-size] relative flex-none w-full aspect-video bg-transparent'
           : '[container-type:inline-size] flex-none w-full aspect-video min-h-[180px] relative bg-transparent max-h-[62%]'
       }
-      style={watchVideoWidthStyle}
     >
       {isLocalSubtitle && !hasLocalVideo ? (
         <LocalEpisodeStage
@@ -4056,9 +4123,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             source={metadata?.channel || featureLabel}
             subtitleMode={watchSubtitleMode}
             onSubtitleModeChange={setWatchSubtitleMode}
-            videoScale={effectiveWatchVideoScale}
-            onVideoScaleChange={setWatchVideoScale}
-            showVideoScale={!isCompactViewport}
             onBack={() => back()}
             onExit={toggleWatchMode}
           />
@@ -4100,25 +4164,52 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               )}
             </div>
             {isWideViewport && (
-              <WatchGlossPanel
-                variant="rail"
-                blockId={watchBlockId}
-                enText={watchBlock?.en_text}
-                videoId={videoId}
-                blockStart={watchBlock?.start ?? 0}
-                sourceTitle={metadata?.title}
-                glosses={watchGlosses}
-                languagePoints={watchLanguagePoints}
-                showLanguagePoints={showLanguagePoints}
-                status={teachingNotesStatus}
-                onRequestAnalysis={handleTeachingNotesRetry}
-                onRequestLogin={onRequestLogin}
-                favorites={favorites}
-                onAddFavorite={handleAddFavorite}
-                onRemoveFavorite={handleRemoveFavoriteQuiet}
-                isGuest={status === 'guest'}
-                targetLang={targetLang}
-              />
+              <>
+                {/* P2-25: 观影模式's only split control. The picture column owns
+                    55–85% of the row (default 75/25); the rail takes the
+                    remainder, clamped to 280–560px so the default keeps the
+                    familiar 360px rail on 1440. Pointer drag and ←/→ write the
+                    same `watchSplitRatio`; double-click restores 75/25. */}
+                <div
+                  data-testid="watch-split-divider"
+                  data-ratio={Math.round(watchSplitRatio)}
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={t('watchMode.splitDividerAria')}
+                  aria-valuemin={MIN_WATCH_SPLIT_RATIO}
+                  aria-valuemax={MAX_WATCH_SPLIT_RATIO}
+                  aria-valuenow={Math.round(watchSplitRatio)}
+                  tabIndex={0}
+                  title={t('watchMode.splitDividerTitle')}
+                  onPointerDown={beginWatchSplitDrag}
+                  onKeyDown={handleWatchSplitKeyDown}
+                  onDoubleClick={() => setWatchSplitRatio(DEFAULT_WATCH_SPLIT_RATIO)}
+                  className="group/watch-divider relative flex w-2 flex-none cursor-col-resize touch-none select-none items-center justify-center"
+                >
+                  <span className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors duration-200 ${isWatchResizing ? 'bg-brand/60' : 'bg-line-subtle group-hover/watch-divider:bg-line-strong'}`} />
+                  <span className={`relative h-8 w-1 rounded-full transition-[background-color,opacity] duration-200 ${isWatchResizing ? 'bg-brand/70' : 'bg-fg-muted/60 opacity-0 group-hover/watch-divider:opacity-100 group-focus-visible/watch-divider:opacity-100'}`} />
+                </div>
+                <WatchGlossPanel
+                  variant="rail"
+                  railWidth={watchRailWidthCss(watchSplitRatio)}
+                  blockId={watchBlockId}
+                  enText={watchBlock?.en_text}
+                  videoId={videoId}
+                  blockStart={watchBlock?.start ?? 0}
+                  sourceTitle={metadata?.title}
+                  glosses={watchGlosses}
+                  languagePoints={watchLanguagePoints}
+                  showLanguagePoints={showLanguagePoints}
+                  status={teachingNotesStatus}
+                  onRequestAnalysis={handleTeachingNotesRetry}
+                  onRequestLogin={onRequestLogin}
+                  favorites={favorites}
+                  onAddFavorite={handleAddFavorite}
+                  onRemoveFavorite={handleRemoveFavoriteQuiet}
+                  isGuest={status === 'guest'}
+                  targetLang={targetLang}
+                />
+              </>
             )}
           </>
         ) : (
@@ -4202,11 +4293,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         )}
         {/* Drag shield: covers the video iframe (which would otherwise swallow
             pointermove) and suppresses text selection while dragging. */}
-        {isResizing && createPortal(
+        {(isResizing || isWatchResizing) && createPortal(
           <div
             data-testid="resize-shield"
             className="fixed inset-0 z-[60] cursor-col-resize select-none"
-            onPointerMove={handleResizeMove}
+            onPointerMove={isResizing ? handleResizeMove : undefined}
             onContextMenu={(e) => e.preventDefault()}
           />,
           document.body

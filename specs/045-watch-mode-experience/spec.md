@@ -1,6 +1,6 @@
 # 045 — 观影模式体验设计
 
-> 状态：**已实现（P2-15 沉浸壳层 + 舞台居中/环境光 + 字幕三态；P2-16 词条栏重做 + 收藏 + 移动底部抽屉，2026-11-24；P2-17 字幕避让原生控制条/句内高亮/词条行与字号统一/Esc 退观影，2026-11-24；P2-19 词条行「我已掌握」开关 + 收藏互斥，2026-11-24；P2-21 词条行卡片 + 视口内指针 + 抬高 10% + 字幕 92% 宽，2026-11-24；P2-22 指针限定画面区 + 画面大小 60–100% 可调，2026-11-24；保留 YouTube 原生控制条）** ｜ 依据：用户“观影模式效果不好，要更细节、体验更好的版本”
+> 状态：**已实现（P2-15 沉浸壳层 + 舞台居中/环境光 + 字幕三态；P2-16 词条栏重做 + 收藏 + 移动底部抽屉，2026-11-24；P2-17 字幕避让原生控制条/句内高亮/词条行与字号统一/Esc 退观影，2026-11-24；P2-19 词条行「我已掌握」开关 + 收藏互斥，2026-11-24；P2-21 词条行卡片 + 视口内指针 + 抬高 10% + 字幕 92% 宽，2026-11-24；P2-22 指针限定画面区；P2-25 视频/词条分栏比例可调（替代画面大小缩放），2026-11-24；保留 YouTube 原生控制条）** ｜ 依据：用户“观影模式效果不好，要更细节、体验更好的版本”
 > 目标稿：`docs/design/watch-mode/mock-{desktop,mobile,empty,subtitle}.png`。实现落点见 §12。
 
 ## 1. 问题诊断（当前实现）
@@ -34,7 +34,7 @@
 4. **黑边是构图**：用环境光/模糊背景填充，而不是留死黑。
 5. **不假装**：无分析/无词条时给明确、克制的状态，不画假内容。
 6. **连续性**：播放位置、观影偏好、词条滚动位置在会话内不丢；跨视频重置词条历史。
-7. **可调**：字幕字号/位置/单双语、画面大小（P2-22：60/75/100%）、词条栏开合，是学习工具的基本控制。
+7. **可调**：字幕字号/位置/单双语、视频与词条栏的分栏比例（P2-25：55–85%，默认 75/25）、词条栏开合，是学习工具的基本控制。
 
 ## 4. 桌面（≥1280）
 
@@ -42,7 +42,7 @@
 
 ```
 ┌───────────────────────────────────────────────┬──────────────┐
-│ [返回] 标题 · 观影模式       [画面大小] [CC] [退出] │  滚动词条     │
+│ [返回] 标题 · 观影模式                    [CC] [退出] │  滚动词条     │
 │                                               │              │
 │           16:9 画面（居中，环境光）           │  当前句目标   │
 │                                               │  ─────────   │
@@ -54,10 +54,10 @@
 
 > **本期决策（P2-15）**：图中底部传输条**不在本期**——YouTube 原生播放控制条与原生 CC 入口**保留**（自定义传输条、外层快捷键 Space/←→/J/L/F/W 留待后续；本期只加 `C`）。顶部浮层**不设「设置」按钮**（不新增假设置入口）。
 
-- **移除**普通顶栏与 LearningHeader 常驻；只保留浮层顶部条（返回、标题+来源、观影模式 chip、**画面大小（P2-22）**、CC、退出），2.5s 后淡出；鼠标/触摸/键盘活动出现。
-- **画面大小（P2-22）**：顶栏「画面大小」按钮（`Scaling` 图标 + 当前百分比）→ 60 / 75 / 100 三档单选菜单；100% = 现有最大 16:9 画面；<100% 时画面宽度按比例缩小（`aspect-video` 保持 16:9，舞台居中，四周环境光，不裁切/不溢出）；偏好 `yt_bilingual_watch_video_scale` 刷新后保留；<768 强制 100% 且不渲染该控件。
+- **移除**普通顶栏与 LearningHeader 常驻；只保留浮层顶部条（返回、标题+来源、观影模式 chip、CC、退出），2.5s 后淡出；鼠标/触摸/键盘活动出现。P2-25 移除了 P2-22 的「画面大小」按钮：画面大小与分栏比例是同一语义，不能有两个互相冲突的控件。
+- **分栏比例（P2-25）**：≥1280 时视频列与词条 rail 之间是可拖拽分隔条（`role=separator`、`aria-orientation=vertical`、`aria-valuemin=55/aria-valuemax=85/aria-valuenow`、`tabIndex=0`；1px 线 + 中间 handle，hover/focus 可见）。视频列占 55–85%（默认 75），rail 取剩余宽度并 clamp 到 280–560px；指针拖动调整，键盘 ←/→ 每次 ±2%，双击恢复 75；偏好 `yt_bilingual_watch_split_ratio` 刷新后保留。<768 与 768–1279 都不渲染分隔条（视频置顶 + 抽屉）。
 - 舞台占满剩余视口；视频 `object-fit: contain`，16:9 居中；上下黑边用低饱和环境光/模糊画面填充。
-- 右侧词条栏 **360px 固定宽**（P2-16，`w-[360px]`），与画面之间 1px 分隔线，不抢画面。
+- 右侧词条栏宽度由分栏比例驱动（P2-25；默认 1440 = 360px、1920 = 480px，clamp 280–560px），与画面之间是可拖拽分隔条（1px 线 + 中间 handle），不抢画面。
 - 控制条浮在画面下缘，自动隐藏；不占布局高度。
 - 退出不再用画面中央的按钮；退出在顶部浮层。`Esc`：退出网页全屏后**自动退出观影**（P2-17；只响应「本容器全屏 → 非全屏」的真实退出，初始/未全屏/路由清理不触发）。
 
@@ -89,7 +89,7 @@
 
 ### 4.3 词条栏（P2-16 已实现）
 
-- **360px 固定 rail**（≥1280）；标题「滚动词条」+ 当前句词数「本句 N」（小号、低对比、tabular）。
+- **rail 宽度由分栏比例驱动**（≥1280；默认 1440=360px、1920=480px，clamp 280–560px）；标题「滚动词条」+ 当前句词数「本句 N」（小号、低对比、tabular）。
 - 当前句目标置顶，紧贴 rail 顶部三行内；历史向下顺延，旧条目 `opacity: .55`，越旧越淡（每句约 −.035，下限 .32；最多 30 句）。
 - 每条：词/短语（词 amber `warning-fg` / 语言点 sky）+ 释义（次级色）；**P2-21 每条行卡片**：低对比圆角背景 `bg-surface-2/35`（当前句 `bg-surface-2/50`，略强）、行间 4px；**无**分组标题、kind 徽章、整句上文、边框、分割线（行卡片是背景，不是分割线/边框）。
 - **统一单行（P2-17）**：词汇与语言点都是「左词/短语，右释义」一行；右列 `text-right`、`break-words` 可换行；语言点解释不再另起一行。标题略增至 `text-dialog`。
@@ -126,7 +126,7 @@
 └─────────────────────────┘
 ```
 
-- 顶部仍是 P2-15 的浮层条（返回/标题/CC/退出），移动端隐藏“观影模式”chip 给标题让位；不显示普通 tab。**P2-22：<768 不渲染「画面大小」控件，画面强制 100%**（平板 768–1279 仍可缩小）。
+- 顶部仍是 P2-15 的浮层条（返回/标题/CC/退出），移动端隐藏“观影模式”chip 给标题让位；不显示普通 tab。**P2-25：<1280（含 375）不渲染分栏分隔条/比例控件**，视频保持整宽置顶 + 底部抽屉。
 - **视频 16:9 置顶**：左右 8px，紧接浮层条下方；**不再在整页垂直居中留大片空白**；字幕仍按 P2-11 流体字号在画面内下缘，避开原生控制条。
 - **视频原生控制条保留**（P2-15 决策）：不新增自定义播放/进度条，也不遮挡 iframe 底部的原生控件。
 - 词条用**底部抽屉**替代旧右上浮窗：默认展开、占据视频以下全部剩余高度（`flex-1`，375 实测约 550px）；拖拽手柄可点击收起/展开（本期不做复杂手势）；面板 `mt-auto` 锚定底部，收起后只留手柄+标题（约 93px）。
@@ -167,7 +167,7 @@
 6. **性能**：首句字幕不等待分析；分析不产生新 AI 调用；切换句子无布局跳动。
 7. **字幕模式**：双语/仅英文/关闭三态可切换并持久化；关闭后播放器仍正常、词条栏仍可用；不出现双英文字幕被我们强行叠加。
 8. **指标**：首句可读时间、词条打开率、收藏率、10 分钟留存、退出率（上线后埋点）。
-9. **桌面词条栏（P2-16）**：360px；标题+本句数；当前句置顶且在顶部三行内（2px 标记、无“当前句”文字）；历史 opacity 渐隐；无 headings/badges/context/empty；收藏星标默认 .6 / hover/focus 1、已收藏实心；可见按钮只有收藏（无未实现的 ✓/设置）；无分析态紧凑且有生成入口、不铺满。
+9. **桌面词条栏（P2-16）**：默认 75/25 时 1440 rail = 360px、1920 = 480px（280–560 clamp）；标题+本句数；当前句置顶且在顶部三行内（2px 标记、无“当前句”文字）；历史 opacity 渐隐；无 headings/badges/context/empty；收藏星标默认 .6 / hover/focus 1、已收藏实心；可见按钮只有收藏（无未实现的 ✓/设置）；无分析态紧凑且有生成入口、不铺满。
 10. **移动抽屉（P2-16）**：视频 16:9 置顶（不再整页垂直居中）；抽屉默认展开、占剩余高度、可点击手柄收起/展开、不覆盖视频与原生控制条；375 无横向溢出；CC 三态/退出可用；旧右上浮窗不存在。
 11. **收藏（P2-16）**：一键加/取消；App 顶栏「单词本」计数同步；写入失败星标回滚且行内说明；游客不写接口。
 12. **字幕避让（P2-17 / P2-21）**：视口内指针活跃时字幕在 bottom 10%（实测画面下缘 gap ~12%，native 控制栏上方约 10–14px，不遮原生控制条）；屏幕外 pointermove/pointerdown 不唤醒；静止 4s 后落到 0%（暂停不落底）；移动指针恢复；过渡 200ms、reduced-motion 直切。
@@ -176,7 +176,7 @@
 13. **词条行/字号（P2-17）**：词汇与语言点均「左词/短语 + 右释义」同一行，右列 `text-right` 可换行；375 16/14px、1440 约 19.5/16px、1920 22/18px；标题略增。
 14. **字幕高亮（P2-17）**：标亮词橙底、语言点/文化点蓝底；点优先不重叠；文本完整；切句更新；关闭不渲染；无 HTML 注入。
 15. **Esc（P2-17）**：本容器全屏中按 Esc / 浏览器退出 → 自动退出观影（布局恢复、入口按钮回、偏好 off、不重复调 exitFullscreen）；初始/未全屏/路由切走/请求被拒不误触发；点「退出观影」仍正常。
-16. **画面大小（P2-22）**：顶栏「画面大小」有图标+aria，菜单 60/75/100 可切换并即时生效；100% 为现有最大 16:9；60%/75% 宽度约为 100% 的 60%/75%（误差 <1%），16:9、水平/垂直居中、不溢出；刷新后保留；100% 恢复最大；字幕随画面缩小不裁切；<768 强制 100% 且无控件，375 与之前一致。
+16. **分栏比例（P2-25）**：≥1280 分隔条存在且 `role=separator`/aria-valuemin 55/aria-valuemax 85/aria-valuenow 75；默认视频 75% / rail 25%（1440 rail 360px）；拖到 60 → 视频约 60.6%（rail 撞 560 上限），拖到 85 → 视频约 80%（rail 撞 280 下限），16:9 居中不溢出；键盘 ←/→ 每次 2%（aria-valuenow 同步）、双击恢复 75；刷新保留；1920 rail 始终 280–560；<1280 无分隔条，375 视频整宽 + 抽屉不变。
 17. **指针限定（P2-22）**：鼠标在滚动词条栏/浮层顶栏/舞台黑边/视口外移动不抬字幕；画面内 pointermove/pointerdown/pointerover（进入画面）抬；触摸按同一目标规则；键盘仍抬；4s 落底、暂停不落底不变。
 
 ## 9. 实施顺序与状态
@@ -184,8 +184,8 @@
 | 步骤 | 状态 |
 |---|---|
 | 1. 壳层/舞台 + 顶部浮层 + 桌面/移动布局（不碰数据） | **P2-15 已完成**：双 chrome 不渲染、浮层五项、2.5s 淡出、舞台居中 + 环境光 |
-| 2. 字幕排版/字号/位置/设置 | **P2-15 已完成三态 + scrim**（P2-11 流体字号；**P2-17 避让原生控制条两档 + 句内橙/蓝高亮**；**P2-22 指针限定画面区 + 画面大小 60/75/100%**）；逐词 karaoke 仍非目标 |
-| 3. 词条栏/抽屉 + 收藏/已掌握 | **P2-16 已完成**：360 rail、本句数、当前句置顶/标记、历史渐隐、☆ 收藏、紧凑空态；移动 16:9 置顶 + 底部抽屉（默认展开/可收起）；**P2-17 统一单行 + 流体字号**；**P2-19 ✓ 我已掌握 + 收藏互斥** |
+| 2. 字幕排版/字号/位置/设置 | **P2-15 已完成三态 + scrim**（P2-11 流体字号；**P2-17 避让原生控制条两档 + 句内橙/蓝高亮**；**P2-22 指针限定画面区；P2-25 分栏比例（替代画面大小）**）；逐词 karaoke 仍非目标 |
+| 3. 词条栏/抽屉 + 收藏/已掌握 | **P2-16 已完成**：rail（P2-25 宽度改为分栏比例驱动）、本句数、当前句置顶/标记、历史渐隐、☆ 收藏、紧凑空态；移动 16:9 置顶 + 底部抽屉（默认展开/可收起）；**P2-17 统一单行 + 流体字号**；**P2-19 ✓ 我已掌握 + 收藏互斥** |
 | 4. 控制条/键盘/状态 | **本期跳过自定义控制条**；只加 `C`/`Esc` 语义（P2-17 Esc 退全屏即退观影） |
 | 5. 空态/加载/失败 + 可访问性 | **P2-16 完成词条栏范围内的紧凑空态/行内失败/游客提示**；播放器级状态仍按 P2-15 |
 | 6. 视觉 QA + 375/768/1440/1920 + 连续观看测试 | P2-15 覆盖 375/1440/1920 截图与几何断言；768/连续 10 分钟待后续 |
@@ -218,7 +218,7 @@ YouTube Theater Mode、Netflix/Apple TV 播放器、Language Reactor、Lingopie�
 
 | 内容 | 位置 |
 |---|---|
-| 360px 固定 rail；标题「滚动词条」+「本句 N」；当前句置顶 + 2px 竖线标记；历史按句 opacity 渐隐（.55 → .32）；无 headings/badges/context/placeholder；轨迹底部提示「最多保留最近 30 句」 | `frontend/src/components/WatchGlossPanel.tsx` |
+| rail 宽度由 P2-25 分栏比例驱动（默认 1440 360px、1920 480px，clamp 280–560）；标题「滚动词条」+「本句 N」；当前句置顶 + 2px 竖线标记；历史按句 opacity 渐隐（.55 → .32）；无 headings/badges/context/placeholder；轨迹底部提示「最多保留最近 30 句」 | `frontend/src/components/WatchGlossPanel.tsx` |
 | hover/focus 显示 ☆ 收藏（已收藏实心）；抽屉上常显 44px 星标；失败/游客行内说明并回滚；rail 只有收藏一个可见操作（无未实现 ✓/设置） | `frontend/src/components/WatchGlossPanel.tsx` |
 | 无分析紧凑空态（说明 + 既有 028「生成词条」GET），不铺满 rail | `frontend/src/components/WatchGlossPanel.tsx`、`frontend/src/App.tsx` |
 | 收藏接线：App 传 `favorites`／`onAddFavorite`／`onRemoveFavorite`；面板构造 vocabulary draft（`vocab-<videoId>-<word>`、start=blockStart、context_en=当前句、source_kind=video/ref/title）；App 顶栏计数同源同步；删除走 `report:false` 静默回滚 | `frontend/src/App.tsx`、`frontend/src/components/WatchGlossPanel.tsx` |
@@ -264,14 +264,14 @@ YouTube Theater Mode、Netflix/Apple TV 播放器、Language Reactor、Lingopie�
 | 字幕宽 `min(96ch,92%)`（容器字号 = 英文流体字号，`ch` 随字号缩放）；scrim `sm:px-6`；1440 实测 85.2%、1920 87.3%，375 正常换行不裁切 | `frontend/src/components/WatchSubtitleOverlay.tsx` |
 | 验收：视口外 pointer 保持落底、视口内 pointermove/pointerdown 抬高；词条卡 alpha 当前 .5 / 历史 .35、行间 4px、操作组 .6；抬高 7–14% band、落底 0；1440/1920 宽度 ≥85%；375/1440/1920 截图；2× PASS | `scripts/watch-mode-acceptance.mjs` |
 
-## 17. 落地记录（P2-22，2026-11-24）
+## 17. 落地记录（P2-22 指针区域 + P2-25 分栏比例，2026-11-24）
 
 | 内容 | 位置 |
 |---|---|
 | 字幕唤醒只认画面内 pointer/touch：window `pointermove`/`pointerdown`/`pointerover` 的 `event.target` 必须位于 `video-area`（`contains`），并保留 P2-21 视口坐标过滤（`pointerover` 覆盖进入跨域 iframe 的边界）；`touchstart` 同目标过滤；`keydown` 始终唤醒；滚动词条栏/顶栏/舞台黑边/视口外都不抬 | `frontend/src/App.tsx` |
-| 画面大小偏好：`watchVideoScale` 60–100、key `yt_bilingual_watch_video_scale`、默认 100、三档预设 60/75/100；load/save/clamp 与分键存储 | `frontend/src/lib/layout.ts` |
-| 顶栏「画面大小」控件：`Scaling` 图标 + 当前百分比 + aria「画面大小：{{scale}}%」；`role=menu` + 三个 `menuitemradio`（`aria-checked`）、Arrow/Home/End/Escape 键盘、与 CC 菜单互斥、外点关闭；100% 为最大画面 | `frontend/src/components/WatchTopBar.tsx` |
-| mediaStage 宽度按比例：≥1280 `calc(min(100%, calc(100cqh * 16 / 9)) * ratio)`（100% 保持原式）；768–1279 按舞台宽百分比；<768 强制 100%；`aspect-video` + 舞台居中 → 16:9、居中、不溢出；`data-watch-scale` 供验收 | `frontend/src/App.tsx` |
-| 字幕随画面缩放（`video-area` 容器查询不变），60% 时仍 17/15px 下限、不裁切 | `frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/App.tsx` |
-| 文案（画面大小/菜单/提示，中越） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
-| 验收：rail/topbar/window-target pointer+touch 保持落底、画面内 pointerover/pointerdown/真实 pointermove/键盘抬高；1440 与 1920 的 100/75/60 宽度比与 16:9/居中/不溢出、刷新保留、100% 恢复；375 无控件且 100%；`1440-scale-60`/`1920-scale-60` 截图；P2-10～P2-21 零回归；2× PASS | `scripts/watch-mode-acceptance.mjs` |
+| 分栏比例偏好：`watchSplitRatio` 55–85（默认 75）、`WATCH_SPLIT_RATIO_KEY = yt_bilingual_watch_split_ratio`、`WATCH_SPLIT_KEY_STEP = 2`、rail clamp 280–560、`watchRailWidthCss()`；P2-22 的 `yt_bilingual_watch_video_scale` 一次性清理 | `frontend/src/lib/layout.ts` |
+| 分隔条（仅 ≥1280 观影模式）：`role=separator` / `aria-orientation=vertical` / `aria-valuemin/max/now` / `tabIndex=0`；1px 线 + 中间 handle；指针拖动（`resize-shield`）、←/→ ±2%、Home/End 边界、双击恢复 75；拖动结束写 localStorage | `frontend/src/App.tsx` |
+| rail 宽度由比例驱动：`WatchGlossPanel` 接收 `railWidth`（`clamp(280px, (100-ratio)%, 560px)`），删除 `w-[360px]`；视频列 `flex-1` 取剩余宽度，16:9 居中不溢出 | `frontend/src/components/WatchGlossPanel.tsx`、`frontend/src/App.tsx` |
+| 移除 P2-22 画面缩放：顶栏不再有「画面大小」控件（`Scaling` 菜单删除），`watchVideoScale`/`data-watch-scale`/mediaStage 缩放宽度删除；浮层顶栏只保留返回/标题+来源/chip/CC/退出 | `frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
+| 文案（分隔条 aria/title，中越） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
+| 验收：rail/topbar/window-target pointer+touch 保持落底、画面内 pointerover/pointerdown/真实 pointermove/键盘抬高；1440 默认 75/25（rail 360）、拖到 60/85 的 clamp 宽度与 16:9/不溢出、键盘 ±2%/aria/双击重置、刷新保留；1920 rail ∈ [280,560]；375 无分隔条、视频整宽 + 抽屉；`1440-watch-split`/`1920-watch-split` 截图；P2-10～P2-24 零回归；2× PASS | `scripts/watch-mode-acceptance.mjs` |

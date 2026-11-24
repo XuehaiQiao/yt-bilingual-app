@@ -2,13 +2,14 @@
 //
 // The immersive shell renders no AppShell top bar and no LearningHeader; this
 // is the only chrome the watch stage keeps: back, title + source, the
-// 观影模式 chip, the 画面大小 (picture size) control, the subtitle (CC) control
-// and 退出观影. It floats over the top of the watch stage, fades out after 2.5s
-// of pointer/keyboard stillness and comes back on any pointer, touch or key
-// activity. The two popovers are real controls backed by real persisted
-// preferences (subtitle mode / picture scale) — there is no fake settings
-// button. The YouTube embed keeps its own controls and its native CC entry
-// (P2-15 §3), so the top bar never invents a second, fake settings surface.
+// 观影模式 chip, the subtitle (CC) control and 退出观影. It floats over the top
+// of the watch stage, fades out after 2.5s of pointer/keyboard stillness and
+// comes back on any pointer, touch or key activity. The CC popover is a real
+// control backed by a real persisted preference (subtitle mode) — there is no
+// fake settings button. P2-25 removed the P2-22 画面大小 popover: picture size
+// and the picture/rail split are one semantic (the watch split divider), so
+// the top bar must not carry a second, conflicting size control. The YouTube
+// embed keeps its own controls and its native CC entry (P2-15 §3).
 import {
   useCallback,
   useEffect,
@@ -17,13 +18,12 @@ import {
   type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { Check, Minimize2, Scaling, Subtitles } from 'lucide-react';
+import { Check, Minimize2, Subtitles } from 'lucide-react';
 import { BackButton } from './ui/BackButton';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import {
   WATCH_SUBTITLE_MODES,
-  WATCH_VIDEO_SCALES,
   type WatchSubtitleMode,
 } from '../lib/layout';
 
@@ -51,11 +51,6 @@ interface WatchTopBarProps {
   source?: string;
   subtitleMode: WatchSubtitleMode;
   onSubtitleModeChange: (mode: WatchSubtitleMode) => void;
-  /** P2-22: current picture size, a percentage of the largest 16:9 box. */
-  videoScale: number;
-  onVideoScaleChange: (scale: number) => void;
-  /** P2-22: below 768 the picture always fills the width, so no control. */
-  showVideoScale?: boolean;
   onBack: () => void;
   /** Leaves 观影模式 (layout + page fullscreen), same path as the old toggle. */
   onExit: () => void;
@@ -66,30 +61,23 @@ export function WatchTopBar({
   source,
   subtitleMode,
   onSubtitleModeChange,
-  videoScale,
-  onVideoScaleChange,
-  showVideoScale = true,
   onBack,
   onExit,
 }: WatchTopBarProps) {
   const { t } = useI18n();
   const [idle, setIdle] = useState(false);
   const [open, setOpen] = useState(false);
-  const [scaleOpen, setScaleOpen] = useState(false);
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
   const barRef = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const scaleMenuRef = useRef<HTMLDivElement | null>(null);
-  const scaleTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const scaleItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const idleTimer = useRef<number | null>(null);
   // A ref mirrors the "do not hide" condition so the window activity listeners
   // can stay stable across renders (no re-binding on every menu/focus/hover
   // change). It is written in an effect, never during render.
-  const keepAlive = open || scaleOpen || focused || hovered;
+  const keepAlive = open || focused || hovered;
   const keepAliveRef = useRef(keepAlive);
   useEffect(() => {
     keepAliveRef.current = keepAlive;
@@ -144,22 +132,19 @@ export function WatchTopBar({
     }
   }, [keepAlive, clearIdleTimer, scheduleIdle]);
 
-  // Close either popover on an outside pointer press.
+  // Close the popover on an outside pointer press.
   useEffect(() => {
-    if (!open && !scaleOpen) return;
+    if (!open) return;
     const onOutside = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
-      if (open && !(menuRef.current?.contains(target) || triggerRef.current?.contains(target))) {
+      if (!(menuRef.current?.contains(target) || triggerRef.current?.contains(target))) {
         setOpen(false);
-      }
-      if (scaleOpen && !(scaleMenuRef.current?.contains(target) || scaleTriggerRef.current?.contains(target))) {
-        setScaleOpen(false);
       }
     };
     window.addEventListener('pointerdown', onOutside);
     return () => window.removeEventListener('pointerdown', onOutside);
-  }, [open, scaleOpen]);
+  }, [open]);
 
   // Focus the checked mode when the CC menu opens (arrow-key entry point).
   useEffect(() => {
@@ -167,13 +152,6 @@ export function WatchTopBar({
     const index = Math.max(0, WATCH_SUBTITLE_MODES.indexOf(subtitleMode));
     itemRefs.current[index]?.focus();
   }, [open, subtitleMode]);
-
-  // Same for the picture-size menu: focus the current preset.
-  useEffect(() => {
-    if (!scaleOpen) return;
-    const index = Math.max(0, WATCH_VIDEO_SCALES.indexOf(videoScale));
-    scaleItemRefs.current[index]?.focus();
-  }, [scaleOpen, videoScale]);
 
   const closeMenu = useCallback((returnFocus: boolean) => {
     setOpen(false);
@@ -184,16 +162,6 @@ export function WatchTopBar({
     onSubtitleModeChange(mode);
     closeMenu(true);
   }, [closeMenu, onSubtitleModeChange]);
-
-  const closeScaleMenu = useCallback((returnFocus: boolean) => {
-    setScaleOpen(false);
-    if (returnFocus) scaleTriggerRef.current?.focus();
-  }, []);
-
-  const selectScale = useCallback((scale: number) => {
-    onVideoScaleChange(scale);
-    closeScaleMenu(true);
-  }, [closeScaleMenu, onVideoScaleChange]);
 
   const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const count = WATCH_SUBTITLE_MODES.length;
@@ -218,28 +186,6 @@ export function WatchTopBar({
     }
   };
 
-  const onScaleMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const count = WATCH_VIDEO_SCALES.length;
-    const current = scaleItemRefs.current.findIndex((item) => item === document.activeElement);
-    const move = (next: number) => {
-      event.preventDefault();
-      scaleItemRefs.current[(next + count) % count]?.focus();
-    };
-    switch (event.key) {
-      case 'ArrowDown': move(current + 1); break;
-      case 'ArrowUp': move(current - 1); break;
-      case 'Home': move(0); break;
-      case 'End': move(count - 1); break;
-      case 'Escape':
-        event.preventDefault();
-        closeScaleMenu(true);
-        break;
-      case 'Tab':
-        setScaleOpen(false);
-        break;
-    }
-  };
-
   const onBarBlur = (event: ReactFocusEvent<HTMLElement>) => {
     const next = event.relatedTarget as Node | null;
     if (!next || !event.currentTarget.contains(next)) setFocused(false);
@@ -247,7 +193,6 @@ export function WatchTopBar({
 
   const modeLabel = t(MODE_LABEL_KEYS[subtitleMode]);
   const subtitleAria = t('watchMode.subtitleToggleAria', { mode: modeLabel });
-  const scaleAria = t('watchMode.videoScaleAria', { scale: videoScale });
 
   return (
     <header
@@ -299,84 +244,6 @@ export function WatchTopBar({
       </span>
 
       <div className="relative flex shrink-0 items-center gap-1">
-        {showVideoScale && (
-          <button
-            ref={scaleTriggerRef}
-            type="button"
-            data-testid="watch-video-size-toggle"
-            data-scale={videoScale}
-            aria-haspopup="menu"
-            aria-expanded={scaleOpen}
-            aria-label={scaleAria}
-            title={scaleAria}
-            onClick={() => {
-              setOpen(false);
-              setScaleOpen((previous) => !previous);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                setOpen(false);
-                setScaleOpen(true);
-              } else if (event.key === 'Escape') {
-                closeScaleMenu(false);
-              }
-            }}
-            className={`inline-flex h-9 items-center gap-1.5 rounded-control px-2.5 text-micro font-semibold tracking-wide transition-colors ${
-              scaleOpen
-                ? 'bg-state-selected text-fg-primary'
-                : 'text-fg-secondary hover:bg-state-hover hover:text-fg-primary'
-            }`}
-          >
-            <Scaling aria-hidden="true" className="h-4 w-4" />
-            <span data-testid="watch-video-size-value" className="tabular-nums">{videoScale}%</span>
-          </button>
-        )}
-
-        {showVideoScale && scaleOpen && (
-          <div
-            ref={scaleMenuRef}
-            role="menu"
-            aria-label={t('watchMode.videoScaleMenuAria')}
-            data-testid="watch-video-size-menu"
-            onKeyDown={onScaleMenuKeyDown}
-            className="absolute right-0 top-full z-popover mt-2 w-[min(15rem,calc(100vw-1.5rem))] overflow-hidden rounded-card border border-line-strong bg-app/95 shadow-elev-2 backdrop-blur-xl"
-          >
-            <p className="px-3 pb-1 pt-2.5 text-micro font-semibold uppercase tracking-wider text-fg-muted">
-              {t('watchMode.videoScaleMenuAria')}
-            </p>
-            {WATCH_VIDEO_SCALES.map((scale, index) => {
-              const checked = scale === videoScale;
-              return (
-                <button
-                  key={scale}
-                  ref={(node) => { scaleItemRefs.current[index] = node; }}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={checked}
-                  data-testid={`watch-video-scale-${scale}`}
-                  data-scale={scale}
-                  onClick={() => selectScale(scale)}
-                  className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors ${
-                    checked
-                      ? 'bg-brand/10 text-fg-primary'
-                      : 'text-fg-secondary hover:bg-state-hover hover:text-fg-primary'
-                  }`}
-                >
-                  <span className="block text-ui font-medium tabular-nums">{scale}%</span>
-                  {checked && <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-400" />}
-                </button>
-              );
-            })}
-            <p
-              data-testid="watch-video-size-hint"
-              className="border-t border-line-subtle px-3 py-2.5 text-micro leading-relaxed text-fg-muted"
-            >
-              {t('watchMode.videoScaleHint')}
-            </p>
-          </div>
-        )}
-
         <button
           ref={triggerRef}
           type="button"
@@ -386,14 +253,10 @@ export function WatchTopBar({
           aria-expanded={open}
           aria-label={subtitleAria}
           title={subtitleAria}
-          onClick={() => {
-            setScaleOpen(false);
-            setOpen((previous) => !previous);
-          }}
+          onClick={() => setOpen((previous) => !previous)}
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown') {
               event.preventDefault();
-              setScaleOpen(false);
               setOpen(true);
             } else if (event.key === 'Escape') {
               closeMenu(false);

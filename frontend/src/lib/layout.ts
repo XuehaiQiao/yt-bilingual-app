@@ -113,39 +113,69 @@ export function cycleWatchSubtitleMode(mode: WatchSubtitleMode): WatchSubtitleMo
     return WATCH_SUBTITLE_MODES[(index + 1) % WATCH_SUBTITLE_MODES.length];
 }
 
-// ── Watch-mode picture size (specs/045 §4.1 / P2-22) ───────────────────────
-// 画面大小: the watch stage keeps the largest centred 16:9 box at 100% and
-// scales the picture down to 60% of that box, leaving the ambient stage
-// visible around it. Stored per device next to (not inside) the watch flag and
-// the caption preference, so entering / leaving 观影模式 never resets it.
-export const WATCH_VIDEO_SCALE_KEY = 'yt_bilingual_watch_video_scale';
+// ── Watch-mode split ratio (specs/045 §4.1 / P2-25) ────────────────────────
+// 观影模式 is a two-column shell: the picture column + the rolling gloss rail.
+// The ratio is the picture column's share of that row (55–85, default 75/25);
+// the rail takes the remainder but is clamped to 280–560px, so ultra-wide
+// windows never grow an unusable rail and 1440 keeps the familiar 360px rail
+// (25%). The divider writes this key; entering/leaving the mode never resets it.
+export const WATCH_SPLIT_RATIO_KEY = 'yt_bilingual_watch_split_ratio';
 
-export const DEFAULT_WATCH_VIDEO_SCALE = 100;
-export const MIN_WATCH_VIDEO_SCALE = 60;
-export const MAX_WATCH_VIDEO_SCALE = 100;
+export const DEFAULT_WATCH_SPLIT_RATIO = 75;
+export const MIN_WATCH_SPLIT_RATIO = 55;
+export const MAX_WATCH_SPLIT_RATIO = 85;
 
-/** The presets the floating top bar exposes; 100% is the existing maximum. */
-export const WATCH_VIDEO_SCALES: readonly number[] = [60, 75, 100];
+/** Arrow-key step on the split divider, in percentage points. */
+export const WATCH_SPLIT_KEY_STEP = 2;
 
-export function clampWatchVideoScale(percent: number): number {
-    if (!Number.isFinite(percent)) return DEFAULT_WATCH_VIDEO_SCALE;
-    return Math.min(MAX_WATCH_VIDEO_SCALE, Math.max(MIN_WATCH_VIDEO_SCALE, Math.round(percent)));
+export const MIN_WATCH_RAIL_WIDTH = 280;
+export const MAX_WATCH_RAIL_WIDTH = 560;
+
+export function clampWatchSplitRatio(percent: number): number {
+    if (!Number.isFinite(percent)) return DEFAULT_WATCH_SPLIT_RATIO;
+    const clamped = Math.min(MAX_WATCH_SPLIT_RATIO, Math.max(MIN_WATCH_SPLIT_RATIO, percent));
+    // Sub-percent precision keeps a pointer drag continuous, not steppy.
+    return Math.round(clamped * 100) / 100;
 }
 
-export function loadWatchVideoScale(): number {
+export function loadWatchSplitRatio(): number {
     try {
-        const raw = localStorage.getItem(WATCH_VIDEO_SCALE_KEY);
-        if (raw == null) return DEFAULT_WATCH_VIDEO_SCALE;
-        return clampWatchVideoScale(Number.parseFloat(raw));
+        const raw = localStorage.getItem(WATCH_SPLIT_RATIO_KEY);
+        if (raw == null) return DEFAULT_WATCH_SPLIT_RATIO;
+        return clampWatchSplitRatio(Number.parseFloat(raw));
     } catch {
         // Private-mode storage failures must never break the learning view.
-        return DEFAULT_WATCH_VIDEO_SCALE;
+        return DEFAULT_WATCH_SPLIT_RATIO;
     }
 }
 
-export function saveWatchVideoScale(percent: number): void {
+export function saveWatchSplitRatio(percent: number): void {
     try {
-        localStorage.setItem(WATCH_VIDEO_SCALE_KEY, String(clampWatchVideoScale(percent)));
+        localStorage.setItem(WATCH_SPLIT_RATIO_KEY, String(clampWatchSplitRatio(percent)));
+    } catch {
+        // Private-mode storage failures must never break the learning view.
+    }
+}
+
+/**
+ * Rail width for a given picture share: `clamp(280px, (100 - ratio)%, 560px)`.
+ * The percentage resolves against the watch row, so the default keeps the
+ * 1440 rail at 360px and grows it to 480px at 1920; the clamp keeps both
+ * extremes usable on narrower/wider desktop windows.
+ */
+export function watchRailWidthCss(percent: number): string {
+    const railShare = 100 - clampWatchSplitRatio(percent);
+    return `clamp(${MIN_WATCH_RAIL_WIDTH}px, ${railShare}%, ${MAX_WATCH_RAIL_WIDTH}px)`;
+}
+
+// P2-22 stored the picture scale here. P2-25 removed the picture-size control
+// (the split ratio replaced it), so the old value is meaningless; the key is
+// only kept so an upgrade can clean it up once.
+export const LEGACY_WATCH_VIDEO_SCALE_KEY = 'yt_bilingual_watch_video_scale';
+
+export function clearLegacyWatchVideoScale(): void {
+    try {
+        localStorage.removeItem(LEGACY_WATCH_VIDEO_SCALE_KEY);
     } catch {
         // Private-mode storage failures must never break the learning view.
     }

@@ -13,16 +13,23 @@ import {
 } from '../lib/ignoredWords';
 import { setWordMastered } from '../lib/review';
 import { writeGuestMastered } from '../lib/wordMastery';
+import { DEFAULT_WATCH_SPLIT_RATIO, watchRailWidthCss } from '../lib/layout';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import type { TeachingNotesStatus } from './TeachingNotesPanel';
 
 interface WatchGlossPanelProps {
     /**
-     * `rail` — the ≥1280 fixed right column (360px, specs/045 §4.3).
+     * `rail` — the ≥1280 fixed right column (width driven by the P2-25 split
+     *          ratio: the remainder of the row, clamped to 280–560px).
      * `drawer` — the <1280 bottom sheet below the 16:9 picture (specs/045 §5).
      * P2-16 removed the old floating pill/panel over the media.
      */
     variant?: 'rail' | 'drawer';
+    /**
+     * P2-25: CSS width for the rail, computed by App from the split ratio
+     * (`watchRailWidthCss`). The drawer ignores it and keeps `w-full`.
+     */
+    railWidth?: string;
     /** Block id of the sentence being spoken; null before the first cue. */
     blockId: string | null;
     /**
@@ -672,17 +679,21 @@ const GlossHeader: React.FC<{ wordCount: number }> = ({ wordCount }) => {
  * words the transcript already marks in ruby plus that sentence's language
  * points. P2-09 keeps a per-sentence history (current on top, revisited
  * sentences move instead of duplicating); P2-12 strips the chrome; P2-16 makes
- * it the target design: a 360px rail with 「滚动词条」+ 本句词数, a 2px marker on
+ * it the target design: a rail with 「滚动词条」+ 本句词数, a 2px marker on
  * the current sentence, fading history and a one-click favorite star, while
  * the <1280 presentation becomes a bottom drawer under a top-pinned 16:9
  * picture instead of a floating layer over the media. P2-21 adds the row card
  * background and keeps the rail actions at opacity .6 (1 on hover/focus).
+ * P2-25 replaced the fixed 360px width: the rail now takes the remainder of
+ * the watch row and App passes `railWidth` (280–560px clamp), so the learner
+ * can trade picture width for the gloss window with the split divider.
  *
  * It never issues an AI call of its own — the only action it exposes is the
  * existing cached analysis entry (`onRequestAnalysis`).
  */
 const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
     variant = 'rail',
+    railWidth,
     blockId,
     enText,
     videoId,
@@ -1093,7 +1104,8 @@ const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
         <aside
             data-testid="watch-gloss-rail"
             data-status={status}
-            className="hidden h-full w-[360px] shrink-0 flex-col border-l border-line-subtle bg-surface/40 backdrop-blur-xl xl:flex"
+            style={{ width: railWidth ?? watchRailWidthCss(DEFAULT_WATCH_SPLIT_RATIO) }}
+            className="hidden h-full shrink-0 flex-col border-l border-line-subtle bg-surface/40 backdrop-blur-xl xl:flex"
         >
             <GlossHeader wordCount={wordCount} />
             <div
