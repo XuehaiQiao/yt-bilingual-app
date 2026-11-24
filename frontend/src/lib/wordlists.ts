@@ -382,6 +382,34 @@ export async function deleteCustomWordlist(id: string): Promise<void> {
     throw new WordlistsApiError(response.status, message, code);
 }
 
+/**
+ * `POST /api/wordlists/{id}/backfill-cefr` — fill the rows whose CEFR is empty
+ * from the 10k frequency table (A1–C1 only; existing values are never
+ * overwritten; C1+/unknown stay empty). Idempotent: a second call updates 0.
+ * 403/404 mean "this list is not yours (or an older backend)"; 503 means the
+ * frequency table is unavailable.
+ */
+export interface BackfillCefrResult {
+    /** Rows updated by this call. */
+    updated: number;
+    /** Every item in the list. */
+    total: number;
+    /** Items still without a CEFR after this call (C1+ / unknown). */
+    remaining: number;
+}
+
+export async function backfillCustomWordlistCefr(id: string): Promise<BackfillCefrResult> {
+    const data = await request<unknown>(
+        `/api/wordlists/${encodeURIComponent(id)}/backfill-cefr`,
+        { method: 'POST' },
+    );
+    const record = isRecord(data) ? data : {};
+    const count = (key: string): number => (
+        Number.isFinite(record[key]) ? Math.max(0, Number(record[key])) : 0
+    );
+    return { updated: count('updated'), total: count('total'), remaining: count('remaining') };
+}
+
 // ── CEFR 10k lemma 词形表（specs/040-cefr-lemma-list）──────────────────────
 //
 // `GET /api/vocabulary/lemma-list?q=&level=&sort=&page=&pageSize=` is a public

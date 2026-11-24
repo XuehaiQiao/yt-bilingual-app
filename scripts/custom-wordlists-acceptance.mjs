@@ -16,6 +16,10 @@
 //      review UI is paused;
 //   E) server-side search + 50/page pagination;
 //   F) 删除词表 asks first (cancel keeps it), confirms, deletes the table only;
+//      P2-29 adds the explicit Trash2 quick-delete beside ⋯ and asserts both
+//      entries open the same confirm;
+//   F2) P2-29 legacy CEFR: opening an old list auto-backfills blanks once and
+//      reloads (existing values kept, C1+ stays blank, no loop on re-open);
 //   G) 全部加入复习（N） is hidden: no bulk button, no review POST;
 //   H) review UI paused (specs/013 2026-11-22): a direct #/app/practice/review
 //      link falls back to #/app/practice, no review card, no queue request;
@@ -123,6 +127,18 @@ function createState() {
             { id: 'wl-1', name: '旅行词汇', createdAt: 1763000000000, items: [ABUNDANT, CANDID] },
             { id: 'wl-2', name: '大词表', createdAt: 1763000100000, items: makeItems('word', 60) },
             { id: 'wl-3', name: 'My words', createdAt: 1763000200000, items: [{ ...CANDID, word: 'lucid', translation: '清晰的' }] },
+            // P2-29: imported before auto-CEFR — two blank rows, one C1+ (stays blank).
+            {
+                id: 'wl-4',
+                name: '旧词表',
+                createdAt: 1763000300000,
+                items: [
+                    { id: 'it-old-abandon', word: 'abandon', translation: '放弃', phonetic: null, cefr: null, example: null },
+                    { id: 'it-old-the', word: 'the', translation: '这', phonetic: null, cefr: null, example: null },
+                    { id: 'it-old-candid', word: 'candid', translation: '坦率的', phonetic: null, cefr: 'A2', example: null },
+                    { id: 'it-old-sesquipedalian', word: 'sesquipedalian', translation: '冗长的', phonetic: null, cefr: null, example: null },
+                ],
+            },
         ],
         favorites: [],
         favoriteDeletes: [],
@@ -135,6 +151,8 @@ function createState() {
         deletes: [],
         renames: [],
         itemDeletes: [],
+        /** P2-29: `{id,updated}` per POST /backfill-cefr call. */
+        backfillCalls: [],
         /** Item id whose DELETE fails (partial batch failure case). */
         failItemDelete: null,
         reviewQueue: null,
@@ -339,6 +357,25 @@ async function installMocks(context, state) {
                 return respond({ deleted: ids.length, itemCount: list.items.length });
             }
         }
+        // P2-29: CEFR backfill — fills blank rows, never overwrites, leaves
+        // C1+ (here sesquipedalian) blank so the auto call stays one-shot.
+        const backfillMatch = pathname.match(/^\/api\/wordlists\/([^/]+)\/backfill-cefr$/);
+        if (backfillMatch && method === 'POST') {
+            const id = decodeURIComponent(backfillMatch[1]);
+            const list = state.lists.find((entry) => entry.id === id);
+            if (!list) return fail(404, 'wordlist not found');
+            const levels = { abandon: 'B1', the: 'A1' };
+            let updated = 0;
+            for (const item of list.items) {
+                if (!item.cefr && levels[item.word]) {
+                    item.cefr = levels[item.word];
+                    updated += 1;
+                }
+            }
+            state.backfillCalls.push({ id, updated });
+            const remaining = list.items.filter((item) => !item.cefr).length;
+            return respond({ updated, total: list.items.length, remaining });
+        }
         const pageMatch = pathname.match(/^\/api\/wordlists\/([^/]+)$/);
         if (pageMatch) {
             const id = decodeURIComponent(pageMatch[1]);
@@ -461,6 +498,7 @@ assert.deepEqual(
         'vocab-tab-mine', 'vocab-tab-mastered', 'vocab-tab-phrases',
         'vocab-tab-cefr', 'vocab-tab-gre', 'vocab-tab-cet4', 'vocab-tab-cet6',
         'vocab-tab-custom-wl-1', 'vocab-tab-custom-wl-2', 'vocab-tab-custom-wl-3',
+        'vocab-tab-custom-wl-4',
     ],
     `custom tabs must follow the built-in tabs: ${tabOrder.join(' / ')}`,
 );
@@ -614,6 +652,71 @@ assert.equal(
     'true',
 );
 assert.equal(await page.$$eval('[data-testid="vocab-custom-row"]', (rows) => rows.length), 2);
+
+// ── C2) P2-29 legacy CEFR backfill: opening an old list fills blanks once ──
+// The list was imported before auto-CEFR (two blanks). Opening it must POST
+// /backfill-cefr once, reload, and show the new badges. A null CEFR means the
+// word is outside the 10k list (= C1+) and must render as a C1+ badge.
+const backfillBefore = state.backfillCalls.length;
+await page.getByTestId('vocab-tab-custom-wl-4').click();
+await page.getByTestId('vocab-custom-list').waitFor();
+await page.waitForFunction(() => (
+    document.querySelector('[data-testid="vocab-custom-level-abandon"]')?.textContent?.trim() === 'B1'
+), null, { timeout: 10000 });
+assert.equal(await page.getByTestId('vocab-custom-level-the').innerText(), 'A1');
+assert.equal(await page.getByTestId('vocab-custom-level-candid').innerText(), 'A2',
+    'an existing CEFR is kept even when the frequency table would say B1');
+assert.equal(await page.getByTestId('vocab-custom-level-sesquipedalian').innerText(), 'C1+',
+    'a null CEFR (outside the 10k list) renders as C1+, never —');
+assert.equal(await page.getByTestId('vocab-custom-level-sesquipedalian').getAttribute('title'),
+    '不在词表（C1+）');
+assert.deepEqual(state.backfillCalls.slice(backfillBefore), [{ id: 'wl-4', updated: 2 }],
+    'the auto backfill runs exactly once for the opened legacy list');
+// Re-opening the same list must not fire a second auto backfill (ref marker).
+await page.getByTestId('vocab-tab-mine').click();
+await page.waitForSelector('[data-testid="vocab-mine-panel"]');
+await page.getByTestId('vocab-tab-custom-wl-4').click();
+await page.getByTestId('vocab-custom-list').waitFor();
+await page.waitForTimeout(400);
+assert.equal(state.backfillCalls.length, backfillBefore + 1,
+    'the one-shot marker prevents a C1+ row from looping the auto call');
+
+// P2-29: C1+ is a first-class level on custom lists — level filter includes it.
+await page.getByTestId('vocab-custom-filter').click();
+await page.getByTestId('vocab-custom-filter-menu').waitFor();
+assert.equal(await page.getByTestId('vocab-custom-level-c1plus').count(), 1,
+    'the custom level filter offers C1+');
+await page.getByTestId('vocab-custom-level-c1plus').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 1);
+assert.equal(await page.getByTestId('vocab-custom-row').getAttribute('data-word'), 'sesquipedalian',
+    'the C1+ filter shows exactly the words without an A1–C1 match');
+// The active-filter clear chip resets it (and proves C1+ is a normal filter).
+await page.getByTestId('vocab-custom-clear-filters').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 4);
+assert.equal(await page.getByTestId('vocab-custom-clear-filters').count(), 0,
+    'clearing the filter removes the clear chip');
+
+// Sorting by level puts C1+ after C1 (A1 → A2 → B1 → C1 → C1+).
+await page.getByTestId('vocab-custom-sort').click();
+await page.getByTestId('vocab-custom-sort-menu').waitFor();
+await page.getByTestId('vocab-custom-sort-level').click();
+await page.waitForFunction(() => (
+    document.querySelector('[data-testid="vocab-custom-row"]')?.getAttribute('data-word') === 'the'
+));
+assert.deepEqual(
+    await page.$$eval('[data-testid="vocab-custom-row"]', (rows) => rows.map((row) => row.getAttribute('data-word'))),
+    ['the', 'candid', 'abandon', 'sesquipedalian'],
+    'level sort keeps C1+ last',
+);
+// The export prints the same C1+ label (null rows are not left blank).
+const cefrCsv = await grabDownload(page, 'vocab-custom-export-csv');
+const cefrLine = cefrCsv.text.split('\n').find((line) => line.startsWith('"sesquipedalian"'));
+assert.ok(cefrLine && cefrLine.endsWith('"C1+"'), `the C1+ export cell is C1+: ${cefrLine}`);
+await page.getByTestId('vocab-custom-sort').click();
+await page.getByTestId('vocab-custom-sort-menu').waitFor();
+await page.getByTestId('vocab-custom-sort-alpha').click();
+await page.waitForFunction(() => document.querySelectorAll('[data-testid="vocab-custom-row"]').length === 4);
+await page.screenshot({ path: `${SHOTS}/p2-29-cefr-backfill-1440.png`, fullPage: false });
 
 // ── D) star-only favorite + 标为已掌握 on a custom list (shared WordTable) ─
 await page.getByTestId('vocab-tab-custom-wl-1').click();
@@ -1027,10 +1130,22 @@ await page.getByTestId('vocab-custom-rename-dialog').waitFor({ state: 'hidden', 
 await page.waitForFunction(() => document.querySelector('[data-testid="vocab-tab-custom-wl-1"]')?.textContent?.includes('旅行词汇 2'));
 assert.deepEqual(state.renames, [{ id: 'wl-1', name: '旅行词汇 2' }]);
 
-// Delete-table menu: cancel keeps it, confirm deletes the table only.
+// P2-29: manual 「补全等级」 menu item hits the endpoint (no blanks here → 0).
 await page.getByTestId('vocab-custom-menu-trigger').click();
 await page.getByTestId('vocab-custom-menu').waitFor();
-await page.getByTestId('vocab-custom-delete').click();
+await page.getByTestId('vocab-custom-backfill').click();
+await page.waitForTimeout(400);
+assert.equal(state.backfillCalls.at(-1).id, 'wl-1');
+assert.equal(state.backfillCalls.at(-1).updated, 0);
+
+// P2-29: the explicit Trash2 button next to ⋯ is the quick delete entry. It
+// shares the confirm; the ⋯ menu item stays too (both open one dialog).
+const quickDelete = page.getByTestId('vocab-custom-delete-quick');
+assert.equal(await quickDelete.isVisible(), true);
+assert.equal(await quickDelete.getAttribute('aria-label'), '删除词表');
+assert.equal(await quickDelete.getAttribute('title'), '删除词表');
+await page.screenshot({ path: `${SHOTS}/p2-29-delete-cefr-1440.png`, fullPage: false });
+await quickDelete.click();
 await page.getByTestId('vocab-custom-delete-confirm').waitFor();
 assert.match(await page.getByTestId('vocab-custom-delete-confirm').innerText(), /只会删除这个词表/);
 await page.getByTestId('vocab-custom-delete-confirm-cancel').click();
@@ -1038,9 +1153,18 @@ await page.getByTestId('vocab-custom-delete-confirm').waitFor({ state: 'hidden' 
 assert.equal(state.deletes.length, 0);
 assert.equal(await page.getByTestId('vocab-tab-custom-wl-1').count(), 1);
 
+// The ⋯ menu keeps the delete item; cancel keeps the table.
 await page.getByTestId('vocab-custom-menu-trigger').click();
 await page.getByTestId('vocab-custom-menu').waitFor();
+assert.equal(await page.getByTestId('vocab-custom-delete').isVisible(), true);
 await page.getByTestId('vocab-custom-delete').click();
+await page.getByTestId('vocab-custom-delete-confirm').waitFor();
+await page.getByTestId('vocab-custom-delete-confirm-cancel').click();
+await page.getByTestId('vocab-custom-delete-confirm').waitFor({ state: 'hidden' });
+assert.equal(state.deletes.length, 0);
+
+// Confirm through the quick button: the table disappears, 我的收藏 is active.
+await quickDelete.click();
 await page.getByTestId('vocab-custom-delete-confirm').waitFor();
 await page.getByTestId('vocab-custom-delete-confirm-confirm').click();
 await page.waitForFunction(() => !document.querySelector('[data-testid="vocab-tab-custom-wl-1"]'));
@@ -1085,10 +1209,13 @@ const overflow = await page.evaluate(() => ({
 }));
 assert.ok(overflow.doc <= overflow.view + 1, `document overflows horizontally: ${JSON.stringify(overflow)}`);
 assert.ok(overflow.body <= overflow.view + 1, `body overflows horizontally: ${JSON.stringify(overflow)}`);
+assert.equal(await page.getByTestId('vocab-custom-delete-quick').isVisible(), true,
+    'P2-29: the quick delete keeps the header usable at 375');
 assert.equal(await page.getByTestId('vocab-custom-export-tsv').isVisible(), true,
     'P0-16: the custom export stays reachable at 375');
 await page.waitForFunction(() => document.querySelectorAll('[data-testid="toast"]').length === 0,
     null, { timeout: 12000 }).catch(() => {});
+await page.screenshot({ path: `${SHOTS}/p2-29-delete-cefr-375.png`, fullPage: false });
 await page.screenshot({ path: `${SHOTS}/p0-16-375-custom-export.png`, fullPage: false });
 // P0-15 at 375: the compact select-all selects every filtered custom item
 // (58 after the cross-page delete in §E2) without overflowing.
@@ -1169,4 +1296,5 @@ console.log('custom-wordlists acceptance: PASS');
 console.log(`  checks passed: ${assertionsPassed}`);
 console.log(`  wordlists fetched: ${state.wordlistCalls} · imports: ${state.importBodies.length}`);
 console.log(`  deletes: ${state.deletes.join(', ')} · review POSTs: ${state.reviewPosts.length} · review queue calls: ${state.queueCalls} · define calls: ${state.defineCalls}`);
+console.log(`  CEFR backfill calls: ${state.backfillCalls.map((call) => `${call.id}:${call.updated}`).join(', ') || 'none'}`);
 console.log(`  screenshots: ${SHOTS}/custom-wordlists-*.png`);

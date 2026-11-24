@@ -53,6 +53,7 @@ import {
     Play,
     Repeat,
     Search,
+    Sparkles,
     Star,
     Trash2,
     Tv,
@@ -107,6 +108,7 @@ import {
     type ReviewWordState,
 } from '../lib/review';
 import {
+    backfillCustomWordlistCefr,
     deleteCustomWordlist,
     deleteCustomWordlistItems,
     fetchAllCustomWordlistItems,
@@ -576,6 +578,14 @@ export function VocabularyBookScreen({
     const [customSort, setCustomSort] = useState<CustomSort>('alpha');
     const [customLevel, setCustomLevel] = useState<MineLevel>('');
     const [customUnmasteredOnly, setCustomUnmasteredOnly] = useState(false);
+    /**
+     * P2-29: lists whose one automatic CEFR backfill already ran in this mount.
+     * The auto call is silent and refreshes once; the marker is what stops
+     * C1+ rows (which stay empty by design) from triggering it forever.
+     */
+    const cefrBackfillAttempted = useRef<Set<string>>(new Set());
+    /** Synchronous guard for the manual 「补全等级」 menu item. */
+    const cefrBackfillInFlight = useRef(false);
     /** P0-16: the list whose export is fetching all rows (its buttons disable). */
     const [exportBusy, setExportBusy] = useState<string | null>(null);
     /** Synchronous in-flight guard: two clicks in one tick read the same render state. */
@@ -2495,6 +2505,23 @@ export function VocabularyBookScreen({
                 if (controller.signal.aborted) return;
                 setCustomItems(data.items);
                 setCustomLoadPhase('ready');
+                // P2-29: legacy lists imported before auto-CEFR have blank
+                // levels. Backfill them once per list/mount, then reload so the
+                // badges appear. Deliberately silent: a failure must not block
+                // the list, and the attempt marker prevents a C1+ row (which
+                // stays blank by design) from looping.
+                const needsCefr = data.items.some((item) => !item.cefr);
+                if (!needsCefr || cefrBackfillAttempted.current.has(activeCustomListId)) return;
+                cefrBackfillAttempted.current.add(activeCustomListId);
+                void backfillCustomWordlistCefr(activeCustomListId)
+                    .then((result) => {
+                        if (result.updated > 0 && !controller.signal.aborted) {
+                            setCustomNonce((value) => value + 1);
+                        }
+                    })
+                    .catch(() => {
+                        // Silent by design; the ⋯ menu exposes a manual retry.
+                    });
             })
             .catch(async (error) => {
                 if (controller.signal.aborted || (error as Error)?.name === 'AbortError') return;
@@ -4305,6 +4332,33 @@ export function VocabularyBookScreen({
     };
 
     /**
+     * P2-29: manual 「补全等级」 for a list imported before auto-CEFR. The auto
+     * pass already runs on open; this is the retry path when that silent call
+     * failed. Only `updated > 0` reloads; the server never overwrites a value.
+     */
+    const handleBackfillCefr = async () => {
+        const list = activeCustomList;
+        if (!list || cefrBackfillInFlight.current) return;
+        cefrBackfillInFlight.current = true;
+        try {
+            const result = await backfillCustomWordlistCefr(list.id);
+            if (result.updated > 0) {
+                toast.success(
+                    t('vocab.custom.backfillSuccess', { count: formatNumber(result.updated) }),
+                    { dedupeKey: 'wordlist:cefr-backfill' },
+                );
+                setCustomNonce((value) => value + 1);
+            } else {
+                toast.info(t('vocab.custom.backfillNone'), { dedupeKey: 'wordlist:cefr-backfill' });
+            }
+        } catch {
+            toast.error(t('vocab.custom.backfillError'), { dedupeKey: 'wordlist:cefr-backfill' });
+        } finally {
+            cefrBackfillInFlight.current = false;
+        }
+    };
+
+    /**
      * 全部加入复习（N）: fetch every item through the server's 200/page cap,
      * then POST each word with its meaning snapshot. Nothing is reported as
      * done before the server confirms; failed words are counted, not hidden.
@@ -4367,14 +4421,17 @@ export function VocabularyBookScreen({
         const list = activeCustomList;
         const listId = list.id;
         const needle = customQuery.trim().toLowerCase();
+        // P2-29: the 10k table's C1+ band is deliberately not stored in the DB
+        // (backfill writes A1–C1 only), so `cefr = null` means "outside the 10k
+        // list" and is shown as C1+ — the same convention as 我的单词.
+        const displayLevel = (item: CustomWordlistItem): string => item.cefr || 'C1+';
         const levelRank = (item: CustomWordlistItem): number => {
-            const index = (VOCABULARY_CEFR_LEVELS as readonly string[]).indexOf(item.cefr ?? '');
+            const index = (VOCABULARY_CEFR_LEVELS as readonly string[]).indexOf(displayLevel(item));
             return index >= 0 ? index : OFF_LIST_RANK;
         };
         const filtered = customItems.filter((item) => {
             if (customLevel) {
-                if (customLevel === 'C1+') return false; // 自定义词表只存 A1–C1
-                if ((item.cefr ?? '').toUpperCase() !== customLevel) return false;
+                if (displayLevel(item).toUpperCase() !== customLevel) return false;
             }
             if (customUnmasteredOnly && masteredWords.has(normalizeMasteryWord(item.word))) return false;
             if (needle) {
@@ -4439,7 +4496,7 @@ export function VocabularyBookScreen({
             { header: t('vocab.export.col.word'), value: (item) => item.word },
             { header: t('vocab.export.col.phonetic'), value: (item) => item.phonetic },
             { header: t('vocab.export.col.translation'), value: (item) => item.translation },
-            { header: t('vocab.export.col.level'), value: (item) => item.cefr },
+            { header: t('vocab.export.col.level'), value: (item) => displayLevel(item) },
         ];
         // List identifier in the file name; non-ASCII names use the list id.
         const customBaseName = (() => {
@@ -4475,8 +4532,8 @@ export function VocabularyBookScreen({
                 word: item.word,
                 phonetic: item.phonetic,
                 translation: item.translation,
-                level: item.cefr || '—',
-                levelTitle: item.cefr ? `CEFR ${item.cefr}` : undefined,
+                level: displayLevel(item),
+                levelTitle: item.cefr ? `CEFR ${item.cefr}` : t('vocab.level.beyond'),
                 revealed: customRevealed.has(item.word),
                 onActivate: hideChinese ? () => toggleCustomReveal(item.word) : undefined,
                 favored,
@@ -4541,7 +4598,7 @@ export function VocabularyBookScreen({
                         <div className="min-w-0 space-y-1">
                             <p className="text-micro text-fg-muted">{t('vocab.level')}</p>
                             <p className="text-caption text-fg-strong">
-                                {item.cefr || t('vocab.custom.noLevel')}
+                                {displayLevel(item)}
                             </p>
                         </div>
                     </div>
@@ -4595,7 +4652,7 @@ export function VocabularyBookScreen({
                         {t('vocab.custom.hint')}
                         <span className="ms-2 font-medium text-fg-strong">{list.name}</span>
                     </p>
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="ms-auto flex flex-wrap items-center gap-1.5">
                         {REVIEW_UI_ENABLED && (
                             <Button
                                 size="sm"
@@ -4634,6 +4691,16 @@ export function VocabularyBookScreen({
                                     onSelect: openRenameDialog,
                                 },
                                 {
+                                    id: 'backfill',
+                                    label: t('vocab.custom.backfill'),
+                                    icon: <Sparkles />,
+                                    title: t('vocab.custom.backfillHint'),
+                                    testId: 'vocab-custom-backfill',
+                                    onSelect: () => {
+                                        void handleBackfillCefr();
+                                    },
+                                },
+                                {
                                     id: 'delete',
                                     label: t('vocab.custom.delete'),
                                     icon: <Trash2 />,
@@ -4642,6 +4709,17 @@ export function VocabularyBookScreen({
                                 },
                             ]}
                         />
+                        {/* P2-29: explicit delete next to ⋯ — the menu item stays. */}
+                        <button
+                            type="button"
+                            data-testid="vocab-custom-delete-quick"
+                            aria-label={t('vocab.custom.delete')}
+                            title={t('vocab.custom.delete')}
+                            onClick={() => setCustomDeleteOpen(true)}
+                            className="inline-flex h-control-md w-9 items-center justify-center rounded-control text-danger-fg transition-colors hover:bg-danger/10"
+                        >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </button>
                     </div>
                 </div>
 
@@ -4669,8 +4747,7 @@ export function VocabularyBookScreen({
                             {
                                 id: 'level',
                                 label: t('vocab.filter.level'),
-                                options: levelFilterOptions(customLevel, 'vocab-custom-level')
-                                    .filter((option) => option.value !== 'C1+'),
+                                options: levelFilterOptions(customLevel, 'vocab-custom-level'),
                             },
                             {
                                 id: 'unmastered',

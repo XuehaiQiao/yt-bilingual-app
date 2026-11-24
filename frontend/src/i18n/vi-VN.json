@@ -2596,6 +2596,11 @@
   "vocab.custom.deleteConfirm": "Xóa danh sách",
   "vocab.custom.deleteSuccess": "Đã xóa \"{{name}}\"",
   "vocab.custom.deleteError": "Xóa thất bại, vui lòng thử lại.",
+  "vocab.custom.backfill": "Bổ sung cấp độ",
+  "vocab.custom.backfillHint": "Dùng bảng tần suất 10k để bổ sung cấp độ A1–C1 cho các từ còn thiếu; cấp độ đã có sẽ không bị ghi đè.",
+  "vocab.custom.backfillSuccess": "Đã bổ sung cấp độ cho {{count}} từ",
+  "vocab.custom.backfillNone": "Không có cấp độ nào cần bổ sung",
+  "vocab.custom.backfillError": "Bổ sung cấp độ thất bại, vui lòng thử lại.",
   "vocab.custom.addAll": "Thêm tất cả vào ôn tập ({{count}})",
   "vocab.custom.addAllTitle": "Thêm toàn bộ \"{{name}}\" vào ôn tập?",
   "vocab.custom.addAllDesc": "Tổng {{count}} từ; từ đã có trong ôn tập sẽ không bị thêm trùng, nghĩa đã có sẽ không bị ghi đè.",
@@ -2669,6 +2674,5 @@
   "vocab.custom.renameEmpty": "Hãy nhập tên bảng từ.",
   "vocab.custom.renameSuccess": "Đã đổi tên thành \"{{name}}\"",
   "vocab.custom.renameError": "Đổi tên thất bại, hãy thử lại.",
-  "vocab.custom.noLevel": "Chưa phân cấp độ",
   "vocab.toolbar.filterValue": "Lọc: {{values}}"
 }

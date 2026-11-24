@@ -16,6 +16,8 @@
   分解写法的 ``cafe\u0301`` 视为同一个词。
 - **自动 CEFR**：导入行没提供 CEFR 时按 10k 频表整批匹配（只写 A1–C1；
   C1+/未知留空），显式合法值不覆盖；频表不可用只降级留空，不挡导入。
+- **存量 CEFR 回填**：老词表里 ``cefr`` 为空的行可整表补 A1–C1（同一匹配
+  口径、不覆盖已有值、事务内一次提交、重复调用幂等）；频表不可用 → 503。
 - **释义快照不在这里**：加入复习时由 ``srs.add_word(definition=...)`` 写入
   ``word_states.definition``，本模块只负责词表存储。
 
@@ -786,3 +788,89 @@ def delete_wordlist_items(user_id: str, list_id: str, item_ids) -> dict:
     finally:
         conn.close()
     return {"status": "ok", "deleted": len(item_ids), "itemCount": item_count}
+
+
+# ---------------------------------------------------------------------------
+# 存量 CEFR 回填
+# ---------------------------------------------------------------------------
+
+def backfill_list_cefr(user_id: str, list_id: str) -> dict:
+    """给一张词表里 ``cefr`` 为空的行补 A1–C1（specs/038 §2，存量数据）。
+
+    - 归属校验：词表不存在或不属于当前用户 → :class:`WordlistNotFound`（404）；
+    - 只更新 ``cefr IS NULL`` 或空串的行；已有值（含显式提供的）一律不覆盖；
+    - 匹配口径复用 :func:`vocabulary.level_map_for_words`（频表整表只加载
+      一次）：只写 ``A1/A2/B1/B2/C1``；``C1+``、多词短语、非法 token 留空；
+    - 频表不可用 → :class:`WordlistUnavailable`（503），整笔不写；
+    - 整笔 ``BEGIN IMMEDIATE`` 事务；失败回滚，绝不落半批；
+    - 返回 ``{updated,total,remaining}`` = 本次更新行数 / 表内词条总数 /
+      更新后仍缺 CEFR 的行数；重复调用幂等（第二次 ``updated=0``）。
+    """
+    user_id = _require_user_id(user_id)
+    if not isinstance(list_id, str) or not list_id.strip():
+        raise WordlistNotFound("词表不存在。")
+    list_id = list_id.strip()
+
+    conn = _connect()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT 1 FROM user_wordlists WHERE id = ? AND user_id = ?",
+            (list_id, user_id),
+        ).fetchone()
+        if row is None:
+            raise WordlistNotFound("词表不存在。")
+        total = int(
+            conn.execute(
+                "SELECT COUNT(*) AS n FROM user_wordlist_items WHERE list_id = ?",
+                (list_id,),
+            ).fetchone()["n"]
+            or 0
+        )
+        missing = conn.execute(
+            "SELECT id, word FROM user_wordlist_items "
+            "WHERE list_id = ? AND (cefr IS NULL OR TRIM(cefr) = '') "
+            "ORDER BY position ASC, rowid ASC",
+            (list_id,),
+        ).fetchall()
+        updated = 0
+        if missing:
+            try:
+                levels = vocabulary.level_map_for_words(
+                    [entry["word"] for entry in missing]
+                )
+            except vocabulary.VocabularyError as exc:
+                _LOGGER.warning("词表 CEFR 回填不可用（频表缺失）：%s", exc)
+                raise WordlistUnavailable(
+                    "CEFR 频表不可用，暂时无法补全等级。"
+                ) from exc
+            updates = []
+            for entry in missing:
+                level = levels.get(entry["word"])
+                if level in CEFR_LEVELS:
+                    updates.append((level, entry["id"]))
+            if updates:
+                conn.executemany(
+                    "UPDATE user_wordlist_items SET cefr = ? WHERE id = ?",
+                    updates,
+                )
+                updated = len(updates)
+        remaining = int(
+            conn.execute(
+                "SELECT COUNT(*) AS n FROM user_wordlist_items "
+                "WHERE list_id = ? AND (cefr IS NULL OR TRIM(cefr) = '')",
+                (list_id,),
+            ).fetchone()["n"]
+            or 0
+        )
+        conn.commit()
+    except sqlite3.OperationalError as exc:
+        conn.rollback()
+        _translate_db_error(exc)
+        raise
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+    return {"updated": updated, "total": total, "remaining": remaining}

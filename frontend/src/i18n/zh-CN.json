@@ -2596,6 +2596,11 @@
   "vocab.custom.deleteConfirm": "删除词表",
   "vocab.custom.deleteSuccess": "已删除「{{name}}」",
   "vocab.custom.deleteError": "删除失败，请重试。",
+  "vocab.custom.backfill": "补全等级",
+  "vocab.custom.backfillHint": "用 10k 词频表给缺失的单词补 A1–C1 等级；已有等级不会被覆盖。",
+  "vocab.custom.backfillSuccess": "已补全 {{count}} 个词的等级",
+  "vocab.custom.backfillNone": "没有需要补全的等级",
+  "vocab.custom.backfillError": "补全等级失败，请重试。",
   "vocab.custom.addAll": "全部加入复习（{{count}}）",
   "vocab.custom.addAllTitle": "把「{{name}}」全部加入复习？",
   "vocab.custom.addAllDesc": "共 {{count}} 个词；已在复习里的词不会重复添加，已有释义不会被覆盖。",
@@ -2669,6 +2674,5 @@
   "vocab.custom.renameEmpty": "请输入词表名称。",
   "vocab.custom.renameSuccess": "已重命名为「{{name}}」",
   "vocab.custom.renameError": "重命名失败，请重试。",
-  "vocab.custom.noLevel": "未分等级",
   "vocab.toolbar.filterValue": "筛选：{{values}}"
 }

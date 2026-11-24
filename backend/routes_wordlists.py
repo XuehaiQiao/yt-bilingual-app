@@ -12,6 +12,7 @@
 - ``GET    /api/wordlists``         当前用户全部词表（按创建时间升序）
 - ``GET    /api/wordlists/{id}``    词表详情（page/pageSize/q 分页搜索）
 - ``PATCH  /api/wordlists/{id}``    重命名词表（≤80、同用户唯一）
+- ``POST   /api/wordlists/{id}/backfill-cefr``  给存量空 CEFR 补 A1–C1
 - ``DELETE /api/wordlists/{id}``    删除词表（条目级联删除；不影响收藏/复习）
 - ``DELETE /api/wordlists/{id}/items``  按 id 批量删除词条（1–500、整笔事务）
 
@@ -22,7 +23,8 @@
 - 403：游客或未登录；
 - 404：词表不存在或不属于当前用户（不泄露存在性）；
 - 413：APKG 文件 > 50MB 或 collection 解压后超限；
-- 503：未跑 ``0028_user_wordlists`` 迁移；APKG 所需 ``zstandard`` 依赖缺失。
+- 503：未跑 ``0028_user_wordlists`` 迁移；APKG 所需 ``zstandard`` 依赖缺失；
+  CEFR 回填时 10k 频表不可用。
 """
 from __future__ import annotations
 
@@ -238,6 +240,26 @@ def rename_wordlist(list_id: str, payload: RenameRequest, request: Request):
     try:
         return wordlists.rename_wordlist(user["id"], list_id, payload.name)
     except Exception as exc:  # noqa: BLE001
+        _raise_wordlist_error(exc)
+        raise  # pragma: no cover
+
+
+@router.post("/api/wordlists/{list_id}/backfill-cefr")
+def backfill_wordlist_cefr(list_id: str, request: Request):
+    """给存量词表补全 CEFR（打开老词表时前端自动调用一次，也可手动触发）。
+
+    - 需登录；游客 403；
+    - 词表不存在或不属于当前用户 → 404（不泄露存在性）；
+    - 只处理 ``cefr`` 为空的行，用 10k 频表批量匹配并只写 A1–C1；
+      已有值不覆盖；``C1+``/未知/多词短语留空；整笔事务、幂等；
+    - 无请求体（因此没有 400 入参分支；非法 id 按不存在处理）；
+    - 频表不可用 → 503，不落半批；
+    - 返回 ``{updated,total,remaining}``：本次更新数 / 表内总数 / 仍缺 CEFR 数。
+    """
+    user = _require_login(request)
+    try:
+        return wordlists.backfill_list_cefr(user["id"], list_id)
+    except Exception as exc:  # noqa: BLE001 - 统一映射领域错误
         _raise_wordlist_error(exc)
         raise  # pragma: no cover
 

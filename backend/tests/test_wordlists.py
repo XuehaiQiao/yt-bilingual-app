@@ -9,7 +9,9 @@
 4. 限额：每人 10 表、每表 10000 行、越界不落半张表；
 5. 同名自动 ``(2)/(3)``、name ≤80、文件名默认名；
 6. 分页 + 搜索（单词 / 释义 / 中文）；
-7. 删除级联条目、跨用户隔离（越权 404）、游客 403。
+7. 删除级联条目、跨用户隔离（越权 404）、游客 403；
+8. 存量 CEFR 回填：只补空值、不覆盖已有、C1+ 留空、幂等、归属/游客、
+   频表不可用 503、7511 行整表一次通过。
 
 数据库在 conftest 的 tmp_path 下，通过真实 Alembic CLI 迁移到 head；不联网。
 """
@@ -188,6 +190,7 @@ def test_guests_are_forbidden_on_every_endpoint(make_client):
             ).status_code
             == 403
         )
+        assert guest.post("/api/wordlists/any-id/backfill-cefr").status_code == 403
 
 
 # ---------------------------------------------------------------------------
@@ -784,7 +787,148 @@ def test_delete_items_missing_or_other_users_list_is_404(wl_db, other_client):
 
 
 # ---------------------------------------------------------------------------
-# 10. 纯函数校验（不经 HTTP）
+# 10. 存量 CEFR 回填
+# ---------------------------------------------------------------------------
+
+def _backfill(client, list_id):
+    return client.post(f"/api/wordlists/{list_id}/backfill-cefr")
+
+
+def _clear_cefr(list_id, word_keys, empty_string=False):
+    """把指定行改成 NULL / 空串，模拟早于自动 CEFR 的存量数据。"""
+    value = "" if empty_string else None
+    placeholders = ",".join("?" for _ in word_keys)
+    with sqlite3.connect(config.AUTH_DB_PATH) as conn:
+        conn.execute(
+            "UPDATE user_wordlist_items SET cefr = ? "
+            f"WHERE list_id = ? AND word_key IN ({placeholders})",
+            (value, list_id, *word_keys),
+        )
+
+
+def _cefr_by_word(list_id):
+    return {
+        row["word_key"]: row["cefr"]
+        for row in _db_rows(
+            "SELECT word_key, cefr FROM user_wordlist_items WHERE list_id = ?",
+            (list_id,),
+        )
+    }
+
+
+def test_backfill_cefr_fills_only_blank_rows_and_keeps_existing(wl_db):
+    """只补 NULL/空串；已有值（含用户显式给的）不覆盖；C1+/短语留空。"""
+    client = wl_db
+    created = _import(
+        client,
+        [
+            {"word": "the"},
+            {"word": "abandon"},
+            {"word": "sesquipedalian"},
+            {"word": "ice cream"},
+            {"word": "banana", "cefr": "A2"},  # 显式值：频表是 B2，不能覆盖
+        ],
+        name="存量回填",
+    ).json()["list"]
+    list_id = created["id"]
+    _clear_cefr(list_id, ["the"], empty_string=True)  # 空串也当缺失
+    _clear_cefr(list_id, ["abandon", "sesquipedalian", "ice cream"])
+
+    response = _backfill(client, list_id)
+    assert response.status_code == 200, response.text
+    assert response.json() == {"updated": 2, "total": 5, "remaining": 2}
+    assert _cefr_by_word(list_id) == {
+        "the": "A1",
+        "abandon": "B1",
+        "sesquipedalian": None,
+        "ice cream": None,
+        "banana": "A2",
+    }
+
+    # 第二次调用幂等：没有空行可补，不产生写入。
+    again = _backfill(client, list_id)
+    assert again.status_code == 200, again.text
+    assert again.json() == {"updated": 0, "total": 5, "remaining": 2}
+
+
+def test_backfill_cefr_7511_rows_updates_all_in_one_pass(wl_db, monkeypatch):
+    """7,511 行老词表整表一次匹配（频表只加载一次），不逐行/不设 100 上限。"""
+    client = wl_db
+    words = [f"zqx{_code(index)}" for index in range(7511)]
+    created = _import(client, [{"word": word} for word in words], name="GRE 存量")
+    assert created.status_code == 201, created.text
+    list_id = created.json()["list"]["id"]
+    # 这些编造词不在频表里，导入时 CEFR 全是空——正好模拟存量表。
+    assert _db_rows(
+        "SELECT COUNT(*) AS n FROM user_wordlist_items "
+        "WHERE list_id = ? AND cefr IS NULL",
+        (list_id,),
+    )[0]["n"] == 7511
+
+    calls = []
+
+    def fake_levels(batch):
+        calls.append(len(batch))
+        return {word: "B1" for word in batch}
+
+    monkeypatch.setattr(vocabulary, "level_map_for_words", fake_levels)
+    response = _backfill(client, list_id)
+    assert response.status_code == 200, response.text
+    assert response.json() == {"updated": 7511, "total": 7511, "remaining": 0}
+    assert calls == [7511]  # 整表一次，不是每 100 个切一刀
+    assert _db_rows(
+        "SELECT COUNT(*) AS n FROM user_wordlist_items "
+        "WHERE list_id = ? AND cefr = 'B1'",
+        (list_id,),
+    )[0]["n"] == 7511
+
+    # 幂等：第二次没有空行 → updated=0，数据不变。
+    assert _backfill(client, list_id).json() == {
+        "updated": 0,
+        "total": 7511,
+        "remaining": 0,
+    }
+
+
+def test_backfill_cefr_on_empty_list_is_noop(wl_db):
+    client = wl_db
+    created = _import(client, [{"word": "apple"}], name="空表").json()["list"]
+    list_id = created["id"]
+    _delete_items(client, list_id, _item_ids(list_id))
+
+    response = _backfill(client, list_id)
+    assert response.status_code == 200, response.text
+    assert response.json() == {"updated": 0, "total": 0, "remaining": 0}
+
+
+def test_backfill_cefr_requires_owner_and_existing_list(wl_db, other_client):
+    client = wl_db
+    mine = _import(client, [{"word": "zqxone"}], name="我的").json()["list"]
+
+    assert _backfill(other_client, mine["id"]).status_code == 404
+    assert _backfill(client, "does-not-exist").status_code == 404
+    # 越权/不存在都不该写别人的数据。
+    assert _cefr_by_word(mine["id"]) == {"zqxone": None}
+
+
+def test_backfill_cefr_returns_503_when_frequency_table_unavailable(
+    wl_db, monkeypatch
+):
+    client = wl_db
+    created = _import(client, [{"word": "zqxone"}], name="降级").json()["list"]
+
+    def unavailable(_words):
+        raise vocabulary.VocabularyUnavailable("频表缺失（测试）")
+
+    monkeypatch.setattr(vocabulary, "level_map_for_words", unavailable)
+    response = _backfill(client, created["id"])
+    assert response.status_code == 503, response.text
+    assert "频表不可用" in response.json()["detail"]
+    assert _cefr_by_word(created["id"]) == {"zqxone": None}
+
+
+# ---------------------------------------------------------------------------
+# 11. 纯函数校验（不经 HTTP）
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize(
