@@ -47,8 +47,8 @@
 | `routes_user.py` | `/api/define`（词典：`targetLang` 决定缓存目录与 prompt 语言；语境缓存 → 本地 ECDICT（**仅 zh-CN**）→「已配 Key 的候选模型」；vi-VN 跳过 ECDICT 直接 LLM，只有 DeepSeek Key 也能查；缺省 `model` 时 zh 候选链首选 `DEFAULT_MODEL`、其他语言首选该语言路线；走 LLM 的响应带实际使用的 `model` / `modelName`，本地命中带 `source: local`；响应带 `targetLang`，可选 `pos_label` / `example_translation`；模型结果写按语言隔离的缓存并带 `senses`，旧缓存读取时自动补全）、`/api/favorites`（M1 ④ 按条 API：POST/GET/DELETE + 旧 PUT 兼容 + `?since=` 增量；文件锁 + 原子写，见下文「收藏按条 API」）、`/api/subscriptions`；`/api/define` 先扣词典日配额，超限返回 **429** |
 | `srs.py` | **复习调度与词状态读写（M2）**：`review(word_state, rating, now)` 纯函数走 FSRS-6（PyPI `fsrs` 6.3.3，目标保持率 0.9、关闭 fuzz 保证确定性）；`add_word` 幂等建词（重复添加不重置进度，只补来源；可选 `definition` 用户释义快照，**仅当现有值为空时写入**，不覆盖）；`get_due` 到期词 + 新词队列；`record_answer` 同一事务更新状态并追加 `review_logs` 快照；连续 3 次 `again` 自动 suspend，`set_suspended` 手工暂停/恢复；`get_stats` 今日到期/已复习/新词/连续天数。表由 `0006_review_engine` 创建，`mastered` / `definition` 由 `0027` / `0029` 原地加列，运行时不建表；时间全部毫秒 UTC |
 | `routes_review.py` | 复习引擎 HTTP 路由（**需登录，游客 403**）：`POST /api/review/words`（可选 `definition` 释义快照，仅空时写入）、`PATCH /api/review/words`（标记/撤销「已掌握」，幂等，不存在则建行）、`GET /api/review/words`（缺省全部词；`?mastered=1` = 已掌握列表；`?state=new,review` 按词状态筛选）、`GET /api/review/queue`、`POST /api/review/answer`、`GET /api/review/stats`、`GET /api/review/suspended`（暂停词列表，省略 `targetLang` = 全部语言）、`POST/DELETE /api/review/suspend`；另**临时承载**单词本的 `GET /api/vocabulary/seen`（见 specs/005 v1.1，等 `routes_vocabulary.py` 的并行改动稳定后搬回）；契约与错误语义见下文「复习引擎」与 [specs/013](../specs/013-review-engine/spec.md) |
-| `wordlists.py` | **自定义词表（specs/038）**：服务端独立校验（拉丁字母/连字符/撇号/变音、≤40 字符 ≤5 词、`NFC + casefold` 去重、CEFR 仅 A1/A2/B1/B2/C1）、限额（每人 ≤10 表、每表 ≤5000 行、name ≤80、同名加 `(2)`）、全无效或校验失败 >50% 阻止导入；一次导入在 `BEGIN IMMEDIATE` 事务里写词表 + 全部条目（失败整笔回滚），删除时显式先删条目（FK `ON DELETE CASCADE` 兜底）；表由 `0028_user_wordlists` 创建，运行时不建表 |
-| `routes_wordlists.py` | 自定义词表 HTTP 路由（**需登录，游客 403**）：`POST /api/wordlists/import`（201 `{list, skipped}`）、`GET /api/wordlists`、`GET /api/wordlists/{id}?page&pageSize&q`、`PATCH /api/wordlists/{id}`（重命名）、`DELETE /api/wordlists/{id}`、`DELETE /api/wordlists/{id}/items`（批量删条目）；越权/不存在 404、参数与限额 400、未迁移 503；契约见下文「自定义词表导入」与 [specs/038](../specs/038-custom-wordlists/spec.md) |
+| `wordlists.py` | **自定义词表（specs/038）**：服务端独立校验（拉丁字母/连字符/撇号/变音、≤40 字符 ≤5 词、`NFC + casefold` 去重、CEFR 仅 A1/A2/B1/B2/C1）、限额（每人 ≤10 表、每表 ≤10000 行、name ≤80、同名加 `(2)`）、全无效或校验失败 >50% 阻止导入；一次导入在 `BEGIN IMMEDIATE` 事务里写词表 + 全部条目（失败整笔回滚），删除时显式先删条目（FK `ON DELETE CASCADE` 兜底）；表由 `0028_user_wordlists` 创建，运行时不建表 |
+| `routes_wordlists.py` | 自定义词表 HTTP 路由（**需登录，游客 403**）：`POST /api/wordlists/import`（201 `{list, skipped}`）、`POST /api/wordlists/apkg-parse`（Anki `.apkg` 解析；≤50 MB，返回牌组/模型/notes）、`GET /api/wordlists`、`GET /api/wordlists/{id}?page&pageSize&q`、`PATCH /api/wordlists/{id}`（重命名）、`DELETE /api/wordlists/{id}`、`DELETE /api/wordlists/{id}/items`（批量删条目）；越权/不存在 404、参数与限额 400、未迁移 503；契约见下文「自定义词表导入」与 [specs/038](../specs/038-custom-wordlists/spec.md) |
 | `quiz.py` | **理解题生成与作答（M3）**：读当前用户已有双语字幕缓存（video / local_show，≥8 句）→ 按 `(content_hash, prompt_version)` 缓存出 3 道题 → 两道闸（结构：mcq 4 选 1 / tf 判断；内容：英文题面不混中文、题目与证据句相关）→ 写 `content_items` / `questions` / `attempts` → 返回证据 block 与秒/毫秒时间点；失败重试 1 次，仍失败该题 `rejected`；表由 `0007_quiz` 创建，运行时不建表；作答写 `learning_events(quiz_answer)` |
 | `routes_quiz.py` | 理解题 HTTP 路由（**需登录，游客 403**）：`POST /api/lesson/start`、`GET /api/lesson/{id}/questions`、`POST /api/lesson/answer`、`GET /api/lesson/{id}/result`；契约与错误语义见下文「理解题」与 [specs/014](../specs/014-quiz/spec.md) |
 | `course.py` | **课程（specs/029 + 030）**：静态课程读 `content/course/*.json`（`COURSE_DIR`，schema `linguatrek.course-lesson.v1`），生成课程读 `generated_courses`（只认本人）；两类合并成列表/详情（题目脱敏，不含 `answer`/`explain`）；attempt 开始/恢复（同一用户同一课程唯一 `in_progress`）、首次作答（重复同 choice 幂等、换 choice 409）、步骤/产出保存（≤2000 字符）、完成后按题目数评分、事件写入（≤2KB）；所有查询校验 `user_id` 归属，越权 404；表由 `0021_course_mvp` / `0022_generated_courses` 创建，运行时不建表 |
@@ -228,7 +228,7 @@ data/                                  # DATA_DIR（gitignore）
 
 ## 自定义词表导入（specs/038，需登录）
 
-登录用户把 CSV / Anki 纯文本 TSV 导入成独立词表（**不解析 `.apkg`**、不自动
+登录用户把 CSV / Anki 纯文本 TSV 或 `.apkg` 导入成独立词表（`.apkg` 走
 调 AI 补释义）。词表归属账号：游客/未登录统一 **403**，本地不做导入。前端
 预览统计只是体验层，**服务端会独立再校验一遍**（否则直接调接口就能把中文/
 数字/超长词写进来）。表由 `0028_user_wordlists` 创建；`word_states.definition`
@@ -236,7 +236,7 @@ data/                                  # DATA_DIR（gitignore）
 
 | 端点 | 请求 | 成功 | 失败 |
 |---|---|---|---|
-| `POST /api/wordlists/import` | `{name?, filename?, items:[{word,translation?,phonetic?,cefr?,example?}]}`；≤5000 行 | `201 {list:{id,name,itemCount,createdAt}, skipped}`；`skipped` = 无效行 + 重复行 | `400` 无有效词条 / 校验失败 >50% / 超过 10 表 / 超过 5000 行；`403` 游客；`503` 未迁移 |
+| `POST /api/wordlists/import` | `{name?, filename?, items:[{word,translation?,phonetic?,cefr?,example?}]}`；≤10000 行 | `201 {list:{id,name,itemCount,createdAt}, skipped}`；`skipped` = 无效行 + 重复行 | `400` 无有效词条 / 校验失败 >50% / 超过 10 表 / 超过 10000 行；`403` 游客；`503` 未迁移 |
 | `GET /api/wordlists` | — | `200 {lists:[{id,name,itemCount,createdAt}]}`；按创建时间升序（新导入排最后） | `403`；`503` |
 | `GET /api/wordlists/{id}?page=1&pageSize=50&q=` | `page≥1`、`pageSize 1–200`（默认 50）；`q` 同时匹配单词与释义 | `200 {id,name,items:[{id,word,translation,phonetic,cefr,example}],total,page,pageSize,hasMore}`；`id` 可直接用于批量删条目的 `itemIds` | `404` 不存在/不属于当前用户（不泄露存在性）；`422` 分页越界；`403`；`503` |
 | `DELETE /api/wordlists/{id}` | — | `200 {status:"ok",deleted:true}`；条目一起删除，**不影响**已收藏/已加入复习的词 | `404`；`403`；`503` |
@@ -248,7 +248,7 @@ data/                                  # DATA_DIR（gitignore）
   `NFC + casefold`（同表重复只留第一条、保留原词形）。CEFR 只接受
   `A1/A2/B1/B2/C1`（大小写不敏感，其它值忽略为 null）；音标/释义/例句按原样存。
 - **命名与限额**：`name` ≤80 字，同名自动加 `(2)`；缺省用上传文件名（去扩展名），
-  再缺省「导入词表」。每人 ≤10 张表、每表 ≤5000 词；文件 ≤2 MB 由前端预览阶段
+  再缺省「导入词表」。每人 ≤10 张表、每表 ≤10000 词；文件 ≤2 MB 由前端预览阶段
   拦截，服务端按行数/表数兜底。
 - **事务性**：一次导入在同一个 `BEGIN IMMEDIATE` 事务里写词表 + 全部条目，
   任何一步失败整笔回滚，不落半张表。删除词表显式先删条目（迁移里的 FK
