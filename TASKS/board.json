@@ -1464,7 +1464,9 @@
         "frontend/src/components/AdminConsoleScreen.tsx",
         "frontend/src/components/AdminQuotasPanel.tsx",
         "specs/001-streaming-pipeline/spec.md",
-        "specs/019-reading/spec.md"
+        "specs/019-reading/spec.md",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json"
       ],
       "shared_writes": [],
       "deps": [
