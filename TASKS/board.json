@@ -1100,6 +1100,28 @@
       "deps": [
         "P2-17"
       ]
+    },
+    {
+      "id": "P2-19",
+      "file": "TASKS/P2-19-watch-mastered.md",
+      "status": "claimed",
+      "owner": "watch-mastered-impl",
+      "write_scope": [
+        "frontend/src/components/WatchGlossPanel.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/watch-mode-acceptance.mjs",
+        "specs/044-watch-mode/spec.md",
+        "specs/045-watch-mode-experience/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/App.tsx",
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-18"
+      ]
     }
   ]
 }
