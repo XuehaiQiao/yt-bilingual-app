@@ -1271,7 +1271,7 @@
     {
       "id": "P2-27",
       "file": "TASKS/P2-27-model-selection-billing.md",
-      "status": "claimed",
+      "status": "merged",
       "owner": "lead",
       "write_scope": [
         "backend/ai/quota.py",
