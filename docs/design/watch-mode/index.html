@@ -27,7 +27,7 @@
   .gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}
   .grow{flex:1;min-width:0}
   .desktop-frame{position:fixed;inset:0;display:none;flex-direction:column;background:var(--bg)}
-  html[data-state="desktop"] .desktop-frame,html[data-state="empty"] .desktop-frame{display:flex}
+  html[data-state="desktop"] .desktop-frame,html[data-state="empty"] .desktop-frame,html[data-state="subtitle"] .desktop-frame{display:flex}
   .mobile-frame{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#050506}
   html[data-state="mobile"] .mobile-frame{display:flex}
 
@@ -87,6 +87,16 @@
   .ctrl-sep{width:1px;height:18px;background:rgba(255,255,255,.12);margin:0 2px}
   .rate{font-size:11px;font-weight:600;color:rgba(255,255,255,.8);padding:0 4px}
   .cc{position:relative;font-size:9px;font-weight:700;letter-spacing:.02em;border:1px solid rgba(255,255,255,.4);border-radius:4px;padding:1px 3px}
+  .cc-menu{display:none;position:absolute;right:24px;top:58px;width:238px;border-radius:14px;border:1px solid var(--line-2);background:rgba(18,19,25,.97);backdrop-filter:blur(22px);box-shadow:0 18px 50px rgba(0,0,0,.55);padding:8px;z-index:9}
+  html[data-state="subtitle"] .cc-menu{display:block}
+  .cc-menu-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-4);padding:5px 10px 7px}
+  .cc-option{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:9px;text-align:left;color:var(--fg-2)}
+  .cc-option:hover{background:rgba(255,255,255,.06)}
+  .cc-option .label{font-size:12px;font-weight:600;color:var(--fg);flex:none}
+  .cc-option .desc{font-size:10px;color:var(--fg-4);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cc-option .check{margin-left:auto;color:var(--brand);font-size:12px}
+  .cc-option.selected{background:rgba(139,124,246,.12)}
+  .cc-hint{border-top:1px solid var(--line);margin-top:5px;padding:9px 10px 3px;font-size:10px;line-height:1.45;color:var(--fg-4)}
 
   /* ————— rail ————— */
   .rail{position:relative;z-index:3;width:360px;flex:0 0 360px;border-left:1px solid var(--line);background:linear-gradient(180deg,rgba(16,17,22,.92),rgba(10,11,14,.94));backdrop-filter:blur(20px);padding:20px 20px 18px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
@@ -162,7 +172,7 @@
 <script>
   const p=new URLSearchParams(location.search);
   const state=p.get('state')||'desktop';
-  if(['desktop','mobile','empty'].includes(state)) document.documentElement.dataset.state=state;
+  if(['desktop','mobile','empty','subtitle'].includes(state)) document.documentElement.dataset.state=state;
 </script>
 
 <!-- ───────────── desktop / empty ───────────── -->
@@ -192,6 +202,13 @@
             <div class="en">Small <span class="word">habits</span> quietly shape the way a whole day feels.</div>
             <div class="zh">小习惯悄悄塑造一整天的感受。</div>
           </div>
+        </div>
+        <div class="cc-menu" role="menu" aria-label="字幕模式">
+          <div class="cc-menu-title">字幕</div>
+          <button class="cc-option selected" role="menuitemradio" aria-checked="true"><span class="label">双语</span><span class="desc">英文 + 中文</span><span class="check">✓</span></button>
+          <button class="cc-option" role="menuitemradio" aria-checked="false"><span class="label">仅英文</span><span class="desc">隐藏中文</span></button>
+          <button class="cc-option" role="menuitemradio" aria-checked="false"><span class="label">关闭</span><span class="desc">使用视频原生字幕</span></button>
+          <div class="cc-hint">若已开启视频原生字幕，建议选择「关闭」，避免两层字幕重叠。</div>
         </div>
         <div class="controls">
           <button class="ctrl big" aria-label="播放">▶</button>
