@@ -1353,6 +1353,23 @@
       "deps": [
         "P2-28"
       ]
+    },
+    {
+      "id": "P2-31",
+      "file": "TASKS/P2-31-translation-p0.md",
+      "status": "claimed",
+      "owner": "trans-p0-impl",
+      "write_scope": [
+        "backend/llm.py",
+        "backend/translate.py",
+        "backend/config.py",
+        "backend/tests/test_translation_hardening.py",
+        "backend/tests/test_ai_ledger.py",
+        "specs/001-streaming-pipeline/spec.md",
+        "docs/reports/translation-tuning-2026-11-24.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
