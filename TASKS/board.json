@@ -1189,8 +1189,8 @@
     {
       "id": "P2-23",
       "file": "TASKS/P2-23-apkg-backend.md",
-      "status": "claimed",
-      "owner": "apkg-backend-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/apkg_import.py",
         "backend/routes_wordlists.py",
