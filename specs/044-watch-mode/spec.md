@@ -1,6 +1,6 @@
 # 044 — 观影模式（最小版）
 
-> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源；2026-11-24 P2-15 沉浸壳层 + 字幕三态 + 保留原生控制条；P2-16 360 rail + 收藏 + 移动抽屉；P2-17 字幕落底/高亮/词条行统一/字号/Esc 退观影）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
+> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源；2026-11-24 P2-15 沉浸壳层 + 字幕三态 + 保留原生控制条；P2-16 360 rail + 收藏 + 移动抽屉；P2-17 字幕落底/高亮/词条行统一/字号/Esc 退观影；P2-19 词条行「我已掌握」开关 + 收藏互斥）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
 > 成本：0（只读已有分析缓存，不新增 AI 调用）。
 
 ## 1. 开关与布局
@@ -58,6 +58,7 @@
 - **字号流体（P2-17）**：词/短语 `clamp(1rem, 0.8vw + 0.5rem, 1.375rem)`（16→22px），释义 `clamp(0.875rem, 0.55vw + 0.5rem, 1.125rem)`（14→18px）；375 / 1440 / 1920 明显递增，取代旧 11–14px 固定字号；`text-ui` / `text-caption` 保留为回退类
 - **历史渐隐（P2-16）**：当前句 opacity 1；历史从 .55 起按年龄递减（约 −.035/句，下限 .32），越旧越淡
 - **收藏（P2-16）**：hover/focus 显示 ☆（抽屉常显、44px 触摸目标），已收藏实心；一键写 App 既有 vocabulary favorites（`vocab-<videoId>-<word>`、start=blockStart、context_en=当前句、source_kind=video/source_ref=videoId/source_title=标题）；App 顶栏「单词本」计数同步；失败/游客行内回滚说明；不提供未实现的 ✓/设置
+- **已掌握（P2-19）**：收藏星旁同一 `ml-auto` 操作组增加 ✓ 圆形开关（lucide `Check`；rail hover/focus 出现、抽屉常显 44px；已掌握绿色实心、未空心）；`data-testid="watch-gloss-mastered"` + `data-mastered` + `aria-pressed` + `aria-label`（含词）。状态只读 `useIgnoredWords`（`word_states.mastered` / 游客本地表），当前句与历史行同源。登录写 `PATCH /api/review/words {lemma, mastered, targetLang, definition=释义}`，成功后 `refreshIgnored(targetLang)` 并以响应为准；游客只写 `yt_bilingual_guest_mastered_words`（`writeGuestMastered` + `refreshIgnored()`，不调 API）；busy 防重复，失败行内回滚说明。**互斥（specs/005）**：标记成功后若同词有收藏则 `onRemoveFavorite(id)`；删除失败 → 回滚 mastered=false（API/游客写回）并显示行内错误；取消已掌握不恢复收藏（ADR-0001）
 - **按句累积（P2-09）**：当前句词条固定在顶部；切到下一句时新句插到顶部，旧句条目向下顺延，直到滚出窗口/超过 30 句
 - **去重**：同一 `blockId` 再次出现（回看/跳转）只把原条目移到顶部，不重复插入；条目按 `blockId` 唯一
 - **滚动**：新句出现时 `scrollTop = 0`；用户手动向下滚动后不再强制拉回，滚回顶部后恢复自动跟随
@@ -79,6 +80,7 @@
 - 历史顺延：新句在顶部、旧词仍在、同一句去重移顶、新句自动回顶、手动滚动不被拉回、空句不生成条目且旧条目保留
 - P2-16 桌面：rail 恰为 360；标题+本句数；当前句置顶且在顶部三行内；历史 opacity 递减；无 headings/badges/context/empty；收藏星标 hover/focus 出现、已收藏实心；rail 可见操作只有收藏；无分析空态紧凑、有生成入口
 - P2-16 收藏：一键加/取消；POST 体为 vocabulary draft（id/videoId/start/en_text/zh_text/context_en/source_kind=video/source_ref/source_title）；App 顶栏计数加 1/减 1；失败星标回滚且行内说明；游客不写接口
+- P2-19 已掌握：每行词/语言点都有 ✓ 与 ☆ 并列在 `ml-auto` 操作组（rail hover/focus、抽屉常显）；登录 PATCH 体含 lemma/mastered/targetLang/definition，成功后 `GET /api/review/words?mastered=1` 回读，pressed/绿色实心与历史行同步；刷新后仍为已掌握；取消 PATCH mastered=false 且不恢复收藏；游客只写 `yt_bilingual_guest_mastered_words`（刷新后仍在），全程不调 review API；PATCH 500 → 行内错误 + 视觉回滚；互斥 DELETE 失败 → PATCH false 回滚 + 行内说明；375 两个操作均 ≥44px、标记后词 16/释义 14px 仍同行不溢出
 - P2-16 移动（375）：视频 16:9 置顶（8px 边距，不再整页垂直居中）；抽屉默认展开、占剩余高度、可点击手柄收起/展开、不覆盖视频/原生控制条、375 无横向溢出；CC 三态与退出仍可用；旧右上浮窗不存在
 - 词条行（P2-17）：词汇与语言点均一行「词/短语左，释义右」，右列 `text-right` 可换行；语言点解释不再下一行；375 词 16px / 释义 14px，1440 约 19.5/16px，1920 22/18px，三档明显递增
 - 字幕避让（P2-17）：指针活跃时字幕抬高（bottom ~15%，不遮原生控制条），静止 4s 后落到底缘（bottom ~0.5%）；移动指针恢复抬高；过渡 200ms，reduced-motion 直切
@@ -103,13 +105,15 @@
 | 学习视图接线（观看 shell、教学面板/摘要/字幕工具栏不渲染、当前句取 `activeTranscriptIndex`，向词条窗传 `blockId`/`enText`/`videoId`/`blockStart`/`sourceTitle`/favorites 回调） | `frontend/src/App.tsx` |
 | P2-16 词条栏/抽屉/收藏（360 rail、本句数、当前句置顶+2px 标记、历史渐隐、hover/focus ☆、失败/游客行内回滚、紧凑空态；<1280 视频置顶 + 底部抽屉默认展开/可收起/手柄/安全区） | `frontend/src/components/WatchGlossPanel.tsx`、`frontend/src/App.tsx`、`frontend/src/components/WatchTopBar.tsx` |
 | P2-16 App 收藏接线（`favorites`/`onAddFavorite`/`onRemoveFavorite`；删除路径 `report:false` 静默回滚；顶栏计数同源） | `frontend/src/App.tsx` |
+| P2-19 已掌握（`MasteredButton` 圆形 Check，rail hover/focus / 抽屉 44px；`useIgnoredWords` 单一来源；登录 PATCH + `refreshIgnored(targetLang)`、游客 `writeGuestMastered` + `refreshIgnored()`；busy；失败行内回滚；成功后 DELETE 同词收藏、失败回滚 mastered=false；`targetLang` 由 App 两处传入） | `frontend/src/components/WatchGlossPanel.tsx`、`frontend/src/App.tsx` |
+| P2-19 文案（已掌握/取消/失败/互斥回滚，中越） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
 | P2-17 App 接线（观影模式跟踪指针活跃 → `watchSubtitleRaised`，4s 静止落底；`pageFullscreenRef` 区分「真实退出本容器全屏」与初始/路由/失败；向字幕窗传 `glosses`/`languagePoints`/`raised`/`dock`） | `frontend/src/App.tsx` |
 | P2-15 沉浸壳层（AppShell `hideTopbar` 不渲染顶栏；LearningHeader 不渲染；浮层顶栏 `WatchTopBar`：返回/标题+来源/chip/CC/退出，2.5s 淡出，指针/触摸/键盘唤醒） | `frontend/src/components/AppShell.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
 | P2-15 舞台（`watch-stage` 尺寸容器 + 16:9 画面水平/垂直居中 + 环境光/模糊层填充黑边） | `frontend/src/App.tsx` |
 | P2-15 字幕三态（`watchSubtitleMode` 持久化与循环；双语/仅英文/关闭；关闭不挂载覆盖层；渐变 scrim） | `frontend/src/lib/layout.ts`、`frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
 | P2-15 原生控制条保留（不做自定义播放/进度条；退出按钮从播放器浮层移到顶栏） | `frontend/src/components/VideoPlayer.tsx` |
 | 文案（zh-CN / vi-VN） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
-| 验收脚本（开关持久化、布局/教学面板、播放/跳转跟句、滚动词条（标题/连续列表/无 context/heading/kind/empty/border、空句跳过、长词长释义 375 换行）、字幕英主中辅字号与流体缩放（375/1440 普通/观影/1920/全屏 stub）、历史顺延/去重/滚动、reduced-motion、网页全屏 stub 断言/失败降级、1440+1920+375 截图；P2-15 追加：双 chrome 不渲染/浮层顶栏五项与 2.5s 淡出/舞台居中与环境光/字幕三态与持久化与 C 键/CC 菜单键盘/原生控制条保留/切换不重载；P2-17 追加：抬高/落底两档与 200ms 过渡 + 指针恢复、词条行同线/右对齐/字号三档、橙/蓝高亮与完整文本、ESC→watch off、初始/路由/拒绝全屏不误触发） | `scripts/watch-mode-acceptance.mjs` |
+| 验收脚本（开关持久化、布局/教学面板、播放/跳转跟句、滚动词条（标题/连续列表/无 context/heading/kind/empty/border、空句跳过、长词长释义 375 换行）、字幕英主中辅字号与流体缩放（375/1440 普通/观影/1920/全屏 stub）、历史顺延/去重/滚动、reduced-motion、网页全屏 stub 断言/失败降级、1440+1920+375 截图；P2-15 追加：双 chrome 不渲染/浮层顶栏五项与 2.5s 淡出/舞台居中与环境光/字幕三态与持久化与 C 键/CC 菜单键盘/原生控制条保留/切换不重载；P2-17 追加：抬高/落底两档与 200ms 过渡 + 指针恢复、词条行同线/右对齐/字号三档、橙/蓝高亮与完整文本、ESC→watch off、初始/路由/拒绝全屏不误触发；P2-19 追加：收藏星级操作组/aria/绿色实心、PATCH+回读+刷新持久、取消不恢复收藏、互斥 DELETE 失败回滚、PATCH 500 回滚、游客本地表写入/刷新/撤销零 API、375 44px 与不挤爆截图） | `scripts/watch-mode-acceptance.mjs` |
 
 词条数据只读既有教学分析（specs/028）：`wordGlossesByBlock`（来源见 §3「数据来源（P2-13）」）+ `languagePointsByBlock`；
 无分析态的重试按钮复用 `GET /api/teaching-analysis/{content_ref}`，本规格不新增任何 AI 调用。

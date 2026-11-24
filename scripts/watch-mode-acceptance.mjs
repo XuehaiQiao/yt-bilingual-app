@@ -98,6 +98,17 @@
 //      amber span, idioms / culture points a sky span, ranges never overlap
 //      (points win), the full sentence text is preserved, the highlight follows
 //      the sentence, and the `off` mode renders none of it.
+//  21. P2-19 「我已掌握」: every word/point row carries a circle+check beside
+//      the star in the same action group (rail hover/focus, drawer always on,
+//      44px on touch). Signed-in: true → PATCH `/api/review/words`
+//      {lemma, mastered, targetLang, definition=gloss}, then the mastered list
+//      is re-read (aria-pressed + filled green from the shared store); false →
+//      PATCH mastered=false, the favorite is NOT restored (ADR-0001). Mutual
+//      exclusion: a successful mark deletes the same word's favorite; a failed
+//      DELETE rolls the mark back (PATCH false) with an inline error. A failed
+//      PATCH rolls the visual mark back inline. Guests write only
+//      `yt_bilingual_guest_mastered_words` (never the API). History rows and
+//      the page share one `useIgnoredWords` source; 375/1440 stay un-squeezed.
 //
 // Run (needs `npm run dev` on :5173; Playwright lives in scripts/node_modules):
 //   node scripts/watch-mode-acceptance.mjs
@@ -318,6 +329,52 @@ const AUTHORITATIVE_ANALYSIS = {
     idioms: [],
 };
 
+// P2-19: a free-library video carries its analysis inside the payload and is
+// public, so a guest can see real gloss rows (guests get no AI call otherwise).
+// This is the only surface that exercises the guest-only local mastered table.
+const LIBRARY_VIDEO_ID = 'acceptance-watch-library';
+const LIBRARY_ANALYSIS = {
+    ...ANALYSIS,
+    contentRef: LIBRARY_VIDEO_ID,
+    contentHash: 'hash-watch-library',
+    highlights: {
+        0: [{ en_word: 'habits', zh_word: '习惯', color: '' }],
+        1: [{ en_word: 'breakfast', zh_word: '早餐', color: '' }],
+    },
+    idioms: [
+        { blockId: 1, phrase: 'before breakfast', meaning: '早餐前', quote: 'A short walk before breakfast…' },
+    ],
+    culture: [],
+};
+const LIBRARY_PAYLOAD = {
+    id: LIBRARY_VIDEO_ID,
+    title: 'Library Watch Acceptance',
+    channel: 'LinguaTrek Test',
+    duration: 24,
+    level: 'B1',
+    youtubeId: 'acceptance-watch-library-video',
+    free: true,
+    source: 'youtube',
+    // The rolling gloss reads the transcript's per-block highlights directly
+    // for library videos (unlike article paragraphs).
+    blocks: BLOCKS.map((block, index) => ({
+        ...block,
+        highlights: index === 0
+            ? [{ en_word: 'habits', zh_word: '习惯', color: '' }]
+            : index === 1
+                ? [{ en_word: 'breakfast', zh_word: '早餐', color: '' }]
+                : [],
+    })),
+    // The backend merges the analysis into the payload (specs/028): idioms /
+    // culture live at the top level, block highlights sit on the blocks — not
+    // under a nested `analysis` field.
+    videoId: LIBRARY_VIDEO_ID,
+    targetLang: 'zh-CN',
+    analysisVersion: 'v5',
+    idioms: LIBRARY_ANALYSIS.idioms,
+    culture: [],
+};
+
 const HISTORY_ITEMS = [
     { videoId: VIDEO_ID, filename: HISTORY_FILE, title: METADATA.title, channel: METADATA.channel },
     { videoId: HISTORY_VIDEO_ID, filename: HISTORY_VIDEO_FILE, title: 'History Clip', channel: METADATA.channel },
@@ -429,6 +486,11 @@ async function createContext(browser, {
     favoritesSeed = [],
     favoritePostStatus = 200,
     favoriteDeleteStatus = 200,
+    // P2-19: mastered acceptance knobs. `seededMastered` = master list the
+    // server already holds; `masteredPatchStatus` drives the rollback run.
+    seededMastered = [],
+    masteredPatchStatus = 200,
+    masteredPatchDelayMs = 0,
 } = {}) {
     const context = await browser.newContext({
         viewport: { width, height },
@@ -458,8 +520,29 @@ async function createContext(browser, {
     // P2-16: the per-item favorites store survives reloads inside one context,
     // so "add → reload → star still filled" is a real persistence check.
     const favoriteStore = favoritesSeed.map((item) => ({ ...item }));
+    // P2-19: the mastered list is server state: PATCH updates it, the GET the
+    // ignored-words store reads returns it, so a reload keeps the mark.
+    const masteredStore = new Set(
+        seededMastered.map((word) => String(word).trim().toLowerCase()).filter(Boolean),
+    );
+    const masteredWord = (lemma) => ({
+        id: `word-${lemma}`,
+        lemma,
+        targetLang: 'zh-CN',
+        state: 'review',
+        dueAt: 0,
+        stability: null,
+        difficulty: null,
+        reps: 0,
+        lapses: 0,
+        failStreak: 0,
+        lastReviewedAt: null,
+        createdAt: 1763000000000,
+        sources: [],
+        mastered: true,
+    });
 
-    await context.route('**/api/**', (route) => {
+    await context.route('**/api/**', async (route) => {
         const request = route.request();
         if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
         const pathname = new URL(request.url()).pathname;
@@ -481,6 +564,9 @@ async function createContext(browser, {
         if (pathname === `/api/history/${HISTORY_FILE}`) return respond(videoPayload(VIDEO_ID, BLOCKS));
         if (pathname === `/api/history/${HISTORY_VIDEO_FILE}`) return respond(videoPayload(HISTORY_VIDEO_ID, HISTORY_BLOCKS, 'History Clip'));
         if (pathname === `/api/history/${EMPTY_HISTORY_FILE}`) return respond(videoPayload(EMPTY_VIDEO_ID, EMPTY_BLOCKS));
+        // P2-19: public library video payload (analysis included) for the
+        // guest-only mastered path — guest players have no teaching endpoint.
+        if (pathname === `/api/library/videos/${LIBRARY_VIDEO_ID}`) return respond(LIBRARY_PAYLOAD);
         // P2-13 fixtures: the first payload owns its analysis, the second one is
         // overridden by the endpoint below.
         if (pathname === `/api/history/${PAYLOAD_HISTORY_FILE}`) return respond(PAYLOAD_ANALYSIS_PAYLOAD);
@@ -561,6 +647,36 @@ async function createContext(browser, {
             });
         }
         if (pathname === '/api/placement/profile') return respond({ profile: null, preliminary: true, sampleSize: 0, disclaimer: '' });
+        // P2-19: `useIgnoredWords` reads GET ...?mastered=1; the watch check
+        // PATCHes the same path. The store is the server truth here, so a
+        // refresh/reload must see the post-write mark (never a fake echo).
+        if (pathname === '/api/review/words') {
+            if (request.method() === 'PATCH') {
+                if (masteredPatchStatus !== 200) {
+                    // Delay first so a double click can prove the busy guard.
+                    if (masteredPatchDelayMs > 0) await sleep(masteredPatchDelayMs);
+                    return respond({ detail: 'mastered patch failed (acceptance stub)' }, masteredPatchStatus);
+                }
+                const body = request.postDataJSON() || {};
+                const lemma = typeof body.lemma === 'string' ? body.lemma.trim() : '';
+                const normalized = lemma.toLowerCase();
+                if (!normalized) return respond({ detail: 'lemma required' }, 422);
+                if (body.mastered === true) masteredStore.add(normalized);
+                else masteredStore.delete(normalized);
+                return respond({
+                    status: 'ok',
+                    word: { ...masteredWord(lemma), mastered: body.mastered === true, definition: body.definition ?? null },
+                });
+            }
+            const masteredOnly = new URL(request.url()).searchParams.get('mastered') === '1';
+            const words = masteredOnly ? [...masteredStore].map((lemma) => masteredWord(lemma)) : [];
+            return respond({
+                targetLang: 'zh-CN',
+                now: Date.now(),
+                total: words.length,
+                words,
+            });
+        }
         if (pathname === '/api/review/stats') {
             return respond({
                 targetLang: 'zh-CN', now: Date.now(), today: '2026-11-23', dueToday: 0, dueNow: 0,
@@ -642,6 +758,17 @@ async function openVideo(page, videoId) {
     // P2-15: the entry toggle only exists outside watch mode, so the learning
     // shell itself is the readiness signal (a persisted watch preference opens
     // the page straight into the immersive shell).
+    await page.locator('[data-testid="learning-scroll"]').waitFor({ state: 'attached', timeout: 20000 });
+}
+
+/**
+ * P2-19: the free-library payload carries its own analysis, so a guest sees
+ * real gloss rows there (the guest AI gate is untouched). Direct route restore
+ * only reads the public payload — no process/teaching-analysis request.
+ */
+async function openLibraryVideo(page, itemId) {
+    await page.goto(`${BASE}/#/app/content/learn/library/${itemId}`, { waitUntil: 'domcontentloaded' });
+    await page.locator('[data-testid="video-area"]').waitFor({ state: 'visible', timeout: 20000 });
     await page.locator('[data-testid="learning-scroll"]').waitFor({ state: 'attached', timeout: 20000 });
 }
 
@@ -1663,9 +1790,9 @@ try {
     const railHint = await page.locator('[data-testid="watch-gloss-rail-hint"]').innerText();
     assert.ok(railHint.includes('30'), `the rail lost its history hint: ${railHint}`);
     assert.equal(
-        await page.locator('[data-testid="watch-gloss-rail"] button:not([data-testid="watch-gloss-favorite"])').count(),
+        await page.locator('[data-testid="watch-gloss-rail"] button:not([data-testid="watch-gloss-favorite"]):not([data-testid="watch-gloss-mastered"])').count(),
         0,
-        'the rail must not show unimplemented ✓ / settings actions',
+        'the rail must not show unimplemented / settings actions',
     );
     const breakfastRow = page.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'breakfast' });
     assert.equal(await breakfastRow.count(), 1, 'cue 1 has no breakfast row for the favorite check');
@@ -1696,6 +1823,64 @@ try {
         'the favorite star does not appear on keyboard focus',
     );
     assert.equal(await breakfastStar.getAttribute('data-favorited'), 'false');
+    // — P2-19: the 已掌握 circle+check is a sibling of the star in the same
+    //   `ml-auto` action group, revealed by the same hover/focus. It starts
+    //   unchecked and names itself with the row's word. —
+    const breakfastMastered = breakfastRow.locator('[data-testid="watch-gloss-mastered"]');
+    assert.equal(await breakfastMastered.count(), 1, 'the word row has no 已掌握 toggle');
+    assert.equal(await breakfastMastered.getAttribute('data-mastered'), 'false');
+    assert.equal(await breakfastMastered.getAttribute('aria-pressed'), 'false');
+    assert.match(
+        await breakfastMastered.getAttribute('aria-label') ?? '',
+        /breakfast/,
+        'the 已掌握 aria-label does not name the word',
+    );
+    assert.equal(
+        await breakfastMastered.locator('[data-testid="watch-gloss-mastered-indicator"]').getAttribute('data-state'),
+        'unchecked',
+    );
+    const masteredActionGeometry = await breakfastRow.evaluate((row) => {
+        const star = row.querySelector('[data-testid="watch-gloss-favorite"]');
+        const check = row.querySelector('[data-testid="watch-gloss-mastered"]');
+        const group = check?.parentElement ?? null;
+        const box = (el) => {
+            const rect = el.getBoundingClientRect();
+            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, right: rect.right, centerY: rect.y + rect.height / 2 };
+        };
+        return {
+            star: star ? box(star) : null,
+            check: check ? box(check) : null,
+            groupClass: group?.getAttribute('class') ?? '',
+            groupDisplay: group ? getComputedStyle(group).display : null,
+            starOpacity: star ? parseFloat(getComputedStyle(star).opacity) : null,
+            checkOpacity: check ? parseFloat(getComputedStyle(check).opacity) : null,
+        };
+    });
+    assert.ok(
+        masteredActionGeometry.star && masteredActionGeometry.check,
+        `star / 已掌握 box missing: ${JSON.stringify(masteredActionGeometry)}`,
+    );
+    assert.ok(
+        masteredActionGeometry.groupClass.includes('ml-auto'),
+        'the star and 已掌握 do not share the ml-auto action group',
+    );
+    assert.equal(masteredActionGeometry.groupDisplay, 'flex', 'the action group is not a single row');
+    assert.ok(
+        Math.abs(masteredActionGeometry.star.centerY - masteredActionGeometry.check.centerY) <= 1.5,
+        'the 已掌握 toggle is not aligned with the star',
+    );
+    assert.ok(
+        masteredActionGeometry.star.right <= masteredActionGeometry.check.x + 1,
+        'the 已掌握 toggle is not beside the star',
+    );
+    assert.ok(
+        masteredActionGeometry.star.height >= 31 && masteredActionGeometry.star.height <= 33,
+        `the rail star is not the 32px control (${masteredActionGeometry.star.height}px)`,
+    );
+    assert.ok(
+        masteredActionGeometry.checkOpacity > 0.9 && masteredActionGeometry.starOpacity > 0.9,
+        'the action group is not revealed by row hover/focus',
+    );
     await breakfastStar.click();
     await page.waitForFunction(
         () => {
@@ -2054,6 +2239,199 @@ try {
     await desktop.close();
 
     // ═════════════════════════════════════════════════════════════════════
+    // 1440 — P2-19: the mastered toggle PATCHes the server, re-reads the
+    // mastered list (not a local echo), keeps history rows in sync, survives a
+    // reload, and enforces the favorite mutual exclusion. `breakfast` starts
+    // with a seeded favorite so the first mark has a favorite to remove.
+    // ═════════════════════════════════════════════════════════════════════
+    const masteredContext = await createContext(browser, {
+        watchOn: true,
+        favoritesSeed: [{
+            id: `vocab-${VIDEO_ID}-breakfast`,
+            type: 'vocabulary',
+            videoId: VIDEO_ID,
+            start: 12,
+            en_text: 'breakfast',
+            zh_text: '早餐',
+            added_at: 1763000000000,
+        }],
+    });
+    const masteredPage = await masteredContext.newPage();
+    const masteredErrors = [];
+    const masteredPatches = [];
+    const masteredReads = [];
+    const masteredFavoriteWrites = [];
+    masteredPage.on('pageerror', (error) => masteredErrors.push(String(error)));
+    masteredPage.on('request', (request) => {
+        const url = new URL(request.url());
+        if (url.pathname === '/api/review/words') {
+            if (request.method() === 'PATCH') {
+                try { masteredPatches.push(request.postDataJSON()); } catch { masteredPatches.push(null); }
+            } else if (url.searchParams.get('mastered') === '1') {
+                masteredReads.push(url.search);
+            }
+        }
+        if (url.pathname.startsWith('/api/favorites') && request.method() !== 'GET') {
+            let body = null;
+            try { body = request.postDataJSON(); } catch { body = null; }
+            masteredFavoriteWrites.push({ method: request.method(), path: url.pathname, body });
+        }
+    });
+    await openVideo(masteredPage, VIDEO_ID);
+    await seekToGlossedCue(masteredPage);
+    await pausePlayback(masteredPage);
+    if (!(await overlayText(masteredPage))?.includes('A short walk')) {
+        await masteredPage.keyboard.press('ArrowRight');
+        await waitForOverlay(masteredPage, 'A short walk');
+        await pausePlayback(masteredPage);
+    }
+    await waitForRailText(masteredPage, '早餐');
+    const masteredRow = masteredPage.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'breakfast' });
+    const masteredBtn = masteredRow.locator('[data-testid="watch-gloss-mastered"]');
+    await masteredRow.hover();
+    assert.equal(await masteredBtn.getAttribute('data-mastered'), 'false');
+    await masteredBtn.click();
+    await masteredPage.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'breakfast');
+            return row?.querySelector('[data-testid="watch-gloss-mastered"]')?.getAttribute('data-mastered') === 'true';
+        },
+        null,
+        { timeout: 5000 },
+    );
+    // The aria/title language flips with the pressed state, and the circle is
+    // the solid success-green mastered state (not a local-only tint).
+    assert.equal(await masteredBtn.getAttribute('aria-pressed'), 'true');
+    assert.match(await masteredBtn.getAttribute('aria-label') ?? '', /breakfast/);
+    assert.equal(
+        await masteredBtn.locator('[data-testid="watch-gloss-mastered-indicator"]').getAttribute('data-state'),
+        'checked',
+    );
+    assert.match(
+        await masteredBtn.locator('[data-testid="watch-gloss-mastered-indicator"]').getAttribute('class') ?? '',
+        /bg-success/,
+        'the mastered circle is not solid green',
+    );
+    const masteredWriteDeadline = Date.now() + 8000;
+    let masteredMark = null;
+    let masteredUnfavorite = null;
+    while (Date.now() < masteredWriteDeadline && !(masteredMark && masteredUnfavorite)) {
+        masteredMark = masteredPatches.find((body) => body?.lemma === 'breakfast' && body?.mastered === true) ?? null;
+        masteredUnfavorite = masteredFavoriteWrites.find(
+            (entry) => entry.method === 'DELETE' && entry.path.includes(`vocab-${VIDEO_ID}-breakfast`),
+        ) ?? null;
+        if (!masteredMark || !masteredUnfavorite) await sleep(50);
+    }
+    assert.ok(masteredMark, 'the mastered toggle did not PATCH /api/review/words');
+    assert.equal(masteredMark.targetLang, 'zh-CN', 'the mastered PATCH lost targetLang');
+    assert.equal(masteredMark.definition, '早餐', 'the mastered PATCH lost the meaning snapshot');
+    assert.ok(masteredUnfavorite, 'marking mastered did not remove the same word favorite');
+    await masteredPage.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'breakfast');
+            return row?.querySelector('[data-testid="watch-gloss-favorite"]')?.getAttribute('data-favorited') === 'false';
+        },
+        null,
+        { timeout: 5000 },
+    );
+
+    // The same shared store drives history rows: go back one sentence and the
+    // previous sentence's breakfast row is still pressed.
+    await masteredPage.keyboard.press('ArrowLeft');
+    await waitForOverlay(masteredPage, 'Small habits');
+    await pausePlayback(masteredPage);
+    await waitForGlossEntries(masteredPage, 2);
+    const historyMasteredRow = masteredPage.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'breakfast' });
+    assert.equal(
+        await historyMasteredRow.locator('[data-testid="watch-gloss-mastered"]').getAttribute('data-mastered'),
+        'true',
+        'a history row lost the mastered state',
+    );
+    assert.ok(masteredReads.length >= 1, 'the panel never re-read GET /api/review/words?mastered=1');
+
+    // Reload: the mark comes back from GET ?mastered=1 (server truth), not
+    // from a local mirror/optimistic row.
+    await masteredPage.reload({ waitUntil: 'domcontentloaded' });
+    await masteredPage.locator('[data-testid="watch-gloss-rail"]').waitFor({ state: 'visible', timeout: 20000 });
+    await seekToGlossedCue(masteredPage);
+    await pausePlayback(masteredPage);
+    if (!(await overlayText(masteredPage))?.includes('A short walk')) {
+        await masteredPage.keyboard.press('ArrowRight');
+        await waitForOverlay(masteredPage, 'A short walk');
+        await pausePlayback(masteredPage);
+    }
+    await waitForRailText(masteredPage, '早餐');
+    const reloadedMasteredRow = masteredPage.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'breakfast' });
+    const reloadedMasteredBtn = reloadedMasteredRow.locator('[data-testid="watch-gloss-mastered"]');
+    await reloadedMasteredRow.hover();
+    await masteredPage.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'breakfast');
+            return row?.querySelector('[data-testid="watch-gloss-mastered"]')?.getAttribute('data-mastered') === 'true';
+        },
+        null,
+        { timeout: 5000 },
+    );
+    assert.equal(await reloadedMasteredBtn.getAttribute('aria-pressed'), 'true', 'the reload lost the mastered mark');
+    summary.screenshots.push(shot('1440-gloss-mastered'));
+    await masteredPage.screenshot({ path: shot('1440-gloss-mastered') });
+
+    // Unmark: PATCH mastered=false; the removed favorite must NOT come back
+    // (ADR-0001: 已掌握 is not a favorite).
+    const favoritePostsBeforeUnmark = masteredFavoriteWrites.filter((entry) => entry.method === 'POST').length;
+    await reloadedMasteredBtn.click();
+    await masteredPage.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'breakfast');
+            return row?.querySelector('[data-testid="watch-gloss-mastered"]')?.getAttribute('data-mastered') === 'false';
+        },
+        null,
+        { timeout: 5000 },
+    );
+    const unmarkDeadline = Date.now() + 8000;
+    let masteredUnmark = null;
+    while (Date.now() < unmarkDeadline && !masteredUnmark) {
+        masteredUnmark = masteredPatches.find((body) => body?.lemma === 'breakfast' && body?.mastered === false) ?? null;
+        if (!masteredUnmark) await sleep(50);
+    }
+    assert.ok(masteredUnmark, 'unmarking did not PATCH mastered=false');
+    await sleep(300);
+    assert.equal(
+        await reloadedMasteredRow.locator('[data-testid="watch-gloss-favorite"]').getAttribute('data-favorited'),
+        'false',
+        'unmarking restored the favorite (ADR-0001 forbids it)',
+    );
+    assert.equal(
+        masteredFavoriteWrites.filter((entry) => entry.method === 'POST').length,
+        favoritePostsBeforeUnmark,
+        'unmarking wrote a favorite again',
+    );
+    await exitWatchMode(masteredPage);
+    assert.equal(
+        (await masteredPage.locator('[data-testid="reading-wordbook-count"]').innerText()).trim(),
+        '0',
+        'the App top-bar count still counts the removed favorite',
+    );
+    summary.mastered = {
+        patch: `${masteredMark.lemma}:${masteredMark.mastered}`,
+        targetLang: masteredMark.targetLang,
+        definition: masteredMark.definition,
+        readBack: `${masteredReads.length} × GET ?mastered=1`,
+        mutualExclusion: 'mark → DELETE favorite; unmark keeps it removed',
+        reload: 'pressed from GET ?mastered=1',
+        aria: 'aria-pressed / data-mastered / indicator checked',
+        historyRow: 'reflected',
+        inlineFailureRollback: 'covered below',
+        guest: 'local table only (covered below)',
+    };
+    assert.deepEqual(masteredErrors, [], `mastered page errors: ${JSON.stringify(masteredErrors)}`);
+    await masteredContext.close();
+
+    // ═════════════════════════════════════════════════════════════════════
     // 1440 — P2-16: write failures roll back inline (add AND remove), guests
     // get an inline login hint instead of an invisible rejected write.
     // ═════════════════════════════════════════════════════════════════════
@@ -2074,6 +2452,7 @@ try {
     const failurePage = await failureContext.newPage();
     const failureErrors = [];
     const failureWrites = [];
+    const failurePatches = [];
     failurePage.on('pageerror', (error) => failureErrors.push(String(error)));
     failurePage.on('request', (request) => {
         const url = new URL(request.url());
@@ -2082,10 +2461,18 @@ try {
             try { body = request.postDataJSON(); } catch { body = null; }
             failureWrites.push({ method: request.method(), path: url.pathname, body });
         }
+        if (url.pathname === '/api/review/words' && request.method() === 'PATCH') {
+            try { failurePatches.push(request.postDataJSON()); } catch { failurePatches.push(null); }
+        }
     });
     await openVideo(failurePage, VIDEO_ID);
     await seekToGlossedCue(failurePage);
     await pausePlayback(failurePage);
+    if (!(await overlayText(failurePage))?.includes('Small habits')) {
+        await failurePage.keyboard.press('ArrowLeft');
+        await waitForOverlay(failurePage, 'Small habits');
+        await pausePlayback(failurePage);
+    }
     await waitForRailText(failurePage, '习惯');
     const habitsRow = failurePage.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'habits' });
     const habitsStar = habitsRow.locator('[data-testid="watch-gloss-favorite"]');
@@ -2121,8 +2508,129 @@ try {
         failureWrites.some((entry) => entry.method === 'POST') && failureWrites.some((entry) => entry.method === 'DELETE'),
         'the failure run did not exercise both favorite writes',
     );
+
+    // — P2-19 mutual exclusion rollback: PATCH true succeeds, the favorite
+    //   DELETE fails, so the mark must be undone (PATCH false) and the row must
+    //   say why — never leave a word both mastered and saved. —
+    const failureHabitsRow = failurePage.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'habits' });
+    const failureHabitsMastered = failureHabitsRow.locator('[data-testid="watch-gloss-mastered"]');
+    await failureHabitsRow.hover();
+    await failureHabitsMastered.click();
+    const masteredError = failureHabitsRow.locator('..').locator('[data-testid="watch-gloss-mastered-error"]');
+    await masteredError.waitFor({ state: 'visible', timeout: 8000 });
+    assert.ok(
+        (await masteredError.innerText()).includes('没能移除该词的收藏'),
+        `mutex rollback did not explain itself inline: ${await masteredError.innerText()}`,
+    );
+    await failurePage.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'habits');
+            return row?.querySelector('[data-testid="watch-gloss-mastered"]')?.getAttribute('data-mastered') === 'false';
+        },
+        null,
+        { timeout: 8000 },
+    );
+    assert.equal(
+        await failureHabitsMastered.getAttribute('aria-pressed'),
+        'false',
+        'a failed favorite removal left the row looking mastered',
+    );
+    assert.equal(
+        await failureHabitsRow.locator('[data-testid="watch-gloss-favorite"]').getAttribute('data-favorited'),
+        'true',
+        'a failed favorite removal must keep the seeded star',
+    );
+    const mutexRollbackDeadline = Date.now() + 8000;
+    let mutexMark = null;
+    let mutexUndo = null;
+    while (Date.now() < mutexRollbackDeadline && !(mutexMark && mutexUndo)) {
+        mutexMark = failurePatches.find((body) => body?.lemma === 'habits' && body?.mastered === true) ?? null;
+        mutexUndo = failurePatches.find((body) => body?.lemma === 'habits' && body?.mastered === false) ?? null;
+        if (!mutexMark || !mutexUndo) await sleep(50);
+    }
+    assert.ok(mutexMark, 'the mutex run did not PATCH mastered=true');
+    assert.ok(mutexUndo, 'the failed favorite removal did not roll mastered back with PATCH false');
+    summary.screenshots.push(shot('1440-gloss-mastered-rollback'));
+    await failurePage.screenshot({ path: shot('1440-gloss-mastered-rollback') });
     assert.deepEqual(failureErrors, [], `favorite failure page errors: ${JSON.stringify(failureErrors)}`);
     await failureContext.close();
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 1440 — P2-19: a failed mastered PATCH rolls the visual mark back and
+    // explains itself inline; no favorite is touched.
+    // ═════════════════════════════════════════════════════════════════════
+    const masteredFailContext = await createContext(browser, {
+        watchOn: true,
+        masteredPatchStatus: 500,
+        // Keep the row busy long enough that the double click below proves the
+        // in-flight guard / disabled state (busy 防重复) instead of racing.
+        masteredPatchDelayMs: 500,
+    });
+    const masteredFailPage = await masteredFailContext.newPage();
+    const masteredFailErrors = [];
+    const masteredFailWrites = [];
+    const masteredFailFavorites = [];
+    masteredFailPage.on('pageerror', (error) => masteredFailErrors.push(String(error)));
+    masteredFailPage.on('request', (request) => {
+        const url = new URL(request.url());
+        if (url.pathname === '/api/review/words' && request.method() === 'PATCH') {
+            try { masteredFailWrites.push(request.postDataJSON()); } catch { masteredFailWrites.push(null); }
+        }
+        if (url.pathname.startsWith('/api/favorites') && request.method() !== 'GET') {
+            masteredFailFavorites.push(request.method());
+        }
+    });
+    await openVideo(masteredFailPage, VIDEO_ID);
+    await seekToGlossedCue(masteredFailPage);
+    await pausePlayback(masteredFailPage);
+    if (!(await overlayText(masteredFailPage))?.includes('A short walk')) {
+        await masteredFailPage.keyboard.press('ArrowRight');
+        await waitForOverlay(masteredFailPage, 'A short walk');
+        await pausePlayback(masteredFailPage);
+    }
+    await waitForRailText(masteredFailPage, '早餐');
+    const failRow = masteredFailPage.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'breakfast' });
+    const failMastered = failRow.locator('[data-testid="watch-gloss-mastered"]');
+    await failRow.hover();
+    await failMastered.click();
+    // Busy 防重复: a rapid second press while the first PATCH is in flight must
+    // not send a second write (the button is disabled and the ref guards).
+    await failMastered.evaluate((el) => { el.click(); el.click(); });
+    const failError = failRow.locator('..').locator('[data-testid="watch-gloss-mastered-error"]');
+    await failError.waitFor({ state: 'visible', timeout: 5000 });
+    assert.ok(
+        (await failError.innerText()).includes('标记失败'),
+        `a failed mastered PATCH did not explain itself inline: ${await failError.innerText()}`,
+    );
+    assert.equal(await failMastered.getAttribute('data-mastered'), 'false', 'a failed mastered PATCH left the row pressed');
+    assert.equal(await failMastered.getAttribute('aria-pressed'), 'false');
+    assert.equal(
+        masteredFailWrites.filter((body) => body?.lemma === 'breakfast').length,
+        1,
+        `busy guard let a duplicate mastered PATCH through: ${JSON.stringify(masteredFailWrites)}`,
+    );
+    assert.equal(
+        await failMastered.locator('[data-testid="watch-gloss-mastered-indicator"]').getAttribute('data-state'),
+        'unchecked',
+    );
+    assert.deepEqual(
+        masteredFailFavorites,
+        [],
+        `a failed mastered PATCH touched the favorites: ${JSON.stringify(masteredFailFavorites)}`,
+    );
+    assert.ok(
+        masteredFailWrites.some((body) => body?.lemma === 'breakfast' && body?.mastered === true),
+        'the failed run never sent the mastered PATCH',
+    );
+    assert.deepEqual(masteredFailErrors, [], `mastered PATCH failure page errors: ${JSON.stringify(masteredFailErrors)}`);
+    summary.masteredInlineFailure = {
+        patch: 'true rejected 500',
+        row: 'rolled back (aria-pressed=false, indicator unchecked)',
+        message: 'inline watch-gloss-mastered-error',
+        favoriteTouched: false,
+    };
+    await masteredFailContext.close();
 
     // Guests get no teaching analysis at all (specs/045 §6: no guest AI call),
     // so the watch gloss surface must say 登录后查看本句词条 instead of inventing
@@ -2146,6 +2654,117 @@ try {
     assert.deepEqual(guestWrites, [], `a guest favorite must not write: ${JSON.stringify(guestWrites)}`);
     assert.deepEqual(guestErrors, [], `guest favorite page errors: ${JSON.stringify(guestErrors)}`);
     await guestContext.close();
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 1440 — P2-19 guest: the public library payload gives a guest real gloss
+    // rows; 已掌握 writes ONLY the local table (`yt_bilingual_guest_mastered_words`
+    // — the same table the word book's 「我会了」 reads), never the API, and
+    // survives a reload. Unmarking clears it again.
+    // ═════════════════════════════════════════════════════════════════════
+    const guestLibraryContext = await createContext(browser, { watchOn: true, guest: true });
+    const guestLibraryPage = await guestLibraryContext.newPage();
+    const guestLibraryErrors = [];
+    const guestLibraryReviewCalls = [];
+    guestLibraryPage.on('pageerror', (error) => guestLibraryErrors.push(String(error)));
+    guestLibraryPage.on('request', (request) => {
+        const url = new URL(request.url());
+        if (url.pathname === '/api/review/words') {
+            guestLibraryReviewCalls.push({ method: request.method(), path: url.pathname, search: url.search });
+        }
+    });
+    await openLibraryVideo(guestLibraryPage, LIBRARY_VIDEO_ID);
+    await guestLibraryPage.locator('[data-testid="watch-gloss-rail"]').waitFor({ state: 'visible', timeout: 20000 });
+    await seekToGlossedCue(guestLibraryPage);
+    await pausePlayback(guestLibraryPage);
+    if (!(await overlayText(guestLibraryPage))?.includes('Small habits')) {
+        await guestLibraryPage.keyboard.press('ArrowLeft');
+        await waitForOverlay(guestLibraryPage, 'Small habits');
+        await pausePlayback(guestLibraryPage);
+    }
+    await waitForRailText(guestLibraryPage, '习惯');
+    assert.equal(
+        await guestLibraryPage.evaluate(() => localStorage.getItem('yt_bilingual_guest_mastered_words')),
+        null,
+        'the guest mastered table did not start empty',
+    );
+    const guestHabitsRow = guestLibraryPage.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'habits' });
+    const guestMastered = guestHabitsRow.locator('[data-testid="watch-gloss-mastered"]');
+    await guestHabitsRow.hover();
+    assert.equal(await guestMastered.getAttribute('data-mastered'), 'false');
+    await guestMastered.click();
+    await guestLibraryPage.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'habits');
+            return row?.querySelector('[data-testid="watch-gloss-mastered"]')?.getAttribute('data-mastered') === 'true';
+        },
+        null,
+        { timeout: 5000 },
+    );
+    const guestTable = await guestLibraryPage.evaluate(() => JSON.parse(
+        localStorage.getItem('yt_bilingual_guest_mastered_words') ?? '[]',
+    ));
+    assert.deepEqual(guestTable, ['habits'], `the guest table did not get the mastered word: ${JSON.stringify(guestTable)}`);
+    assert.equal(await guestMastered.getAttribute('aria-pressed'), 'true');
+    assert.deepEqual(
+        guestLibraryReviewCalls,
+        [],
+        `a guest mastered write called the review API: ${JSON.stringify(guestLibraryReviewCalls)}`,
+    );
+    await guestLibraryPage.reload({ waitUntil: 'domcontentloaded' });
+    await guestLibraryPage.locator('[data-testid="watch-gloss-rail"]').waitFor({ state: 'visible', timeout: 20000 });
+    await seekToGlossedCue(guestLibraryPage);
+    await pausePlayback(guestLibraryPage);
+    if (!(await overlayText(guestLibraryPage))?.includes('Small habits')) {
+        await guestLibraryPage.keyboard.press('ArrowLeft');
+        await waitForOverlay(guestLibraryPage, 'Small habits');
+        await pausePlayback(guestLibraryPage);
+    }
+    await waitForRailText(guestLibraryPage, '习惯');
+    await guestLibraryPage.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'habits');
+            return row?.querySelector('[data-testid="watch-gloss-mastered"]')?.getAttribute('data-mastered') === 'true';
+        },
+        null,
+        { timeout: 5000 },
+    );
+    const guestReloadedRow = guestLibraryPage.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'habits' });
+    summary.screenshots.push(shot('1440-gloss-mastered-guest'));
+    await guestLibraryPage.screenshot({ path: shot('1440-gloss-mastered-guest') });
+    await guestReloadedRow.hover();
+    await guestReloadedRow.locator('[data-testid="watch-gloss-mastered"]').click();
+    await guestLibraryPage.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'habits');
+            return row?.querySelector('[data-testid="watch-gloss-mastered"]')?.getAttribute('data-mastered') === 'false';
+        },
+        null,
+        { timeout: 5000 },
+    );
+    assert.deepEqual(
+        await guestLibraryPage.evaluate(() => JSON.parse(
+            localStorage.getItem('yt_bilingual_guest_mastered_words') ?? '[]',
+        )),
+        [],
+        'unmarking did not clear the guest mastered table',
+    );
+    assert.deepEqual(
+        guestLibraryReviewCalls,
+        [],
+        `a guest mastered undo called the review API: ${JSON.stringify(guestLibraryReviewCalls)}`,
+    );
+    assert.deepEqual(guestLibraryErrors, [], `guest mastered page errors: ${JSON.stringify(guestLibraryErrors)}`);
+    summary.masteredGuest = {
+        table: 'yt_bilingual_guest_mastered_words',
+        write: 'habits',
+        readBack: 'survives reload',
+        undo: 'cleared',
+        apiCalls: 0,
+    };
+    await guestLibraryContext.close();
 
     // ═════════════════════════════════════════════════════════════════════
     // 1440 — P2-13: payload-merged analysis glosses without the endpoint
@@ -2497,7 +3116,14 @@ try {
     const phoneContext = await createContext(browser, { width: 375, height: 812, hasTouch: true, watchOn: true });
     const phone = await phoneContext.newPage();
     const phoneErrors = [];
+    const phoneMasteredPatches = [];
     phone.on('pageerror', (error) => phoneErrors.push(String(error)));
+    phone.on('request', (request) => {
+        const url = new URL(request.url());
+        if (url.pathname === '/api/review/words' && request.method() === 'PATCH') {
+            try { phoneMasteredPatches.push(request.postDataJSON()); } catch { phoneMasteredPatches.push(null); }
+        }
+    });
     await openVideo(phone, VIDEO_ID);
     assert.equal(await phone.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on');
     assert.equal(await phone.locator('[data-testid="watch-gloss-rail"]').count(), 0, 'rail must not mount below 1280');
@@ -2532,6 +3158,77 @@ try {
     assert.ok(phoneGlossType.wordRow.sameLine, '375: the gloss definition is not on the label line');
     assert.equal(phoneGlossType.wordRow.definitionRect.textAlign, 'right', '375: the gloss definition is not right-aligned');
     assert.ok(phoneGlossType.wordRow.definitionRect.left > phoneGlossType.wordRow.labelRect.left, '375: the definition is not to the right of the word');
+    // — P2-19 on the touch drawer: both row actions are always visible and the
+    //   已掌握 target is ≥44px; adding it must not squeeze the row (the 16/14px
+    //   single-line contract measured above still holds after the mark). —
+    const phoneWordRow = phone.locator('[data-testid="watch-gloss-word"]').first();
+    const phoneActionState = await phoneWordRow.evaluate((row) => {
+        const box = (el) => {
+            if (!el) return null;
+            const rect = el.getBoundingClientRect();
+            return {
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+                right: rect.right,
+                opacity: parseFloat(getComputedStyle(el).opacity),
+            };
+        };
+        return {
+            word: row.getAttribute('data-word'),
+            star: box(row.querySelector('[data-testid="watch-gloss-favorite"]')),
+            check: box(row.querySelector('[data-testid="watch-gloss-mastered"]')),
+            label: box(row.querySelector('[data-testid="watch-gloss-word-text"]')),
+            definition: box(row.querySelector('[data-testid="watch-gloss-definition"]')),
+        };
+    });
+    assert.ok(phoneActionState.star && phoneActionState.check, `375: the row action group is missing: ${JSON.stringify(phoneActionState)}`);
+    assert.ok(
+        phoneActionState.check.width >= 44 && phoneActionState.check.height >= 44,
+        `375: the 已掌握 touch target is ${phoneActionState.check.width}×${phoneActionState.check.height}, not ≥44px`,
+    );
+    assert.ok(
+        phoneActionState.star.width >= 44 && phoneActionState.star.height >= 44,
+        `375: the star touch target is ${phoneActionState.star.width}×${phoneActionState.star.height}, not ≥44px`,
+    );
+    assert.ok(
+        phoneActionState.check.opacity > 0.9 && phoneActionState.star.opacity > 0.9,
+        '375: the drawer actions are not always visible',
+    );
+    assert.ok(phoneActionState.check.right <= 375, '375: the 已掌握 target overflows the viewport');
+    assert.ok(
+        phoneActionState.check.x >= phoneActionState.star.right - 1,
+        '375: the 已掌握 target does not sit beside the star',
+    );
+    const phoneMasteredBtn = phoneWordRow.locator('[data-testid="watch-gloss-mastered"]');
+    await phoneMasteredBtn.click();
+    await phone.waitForFunction(
+        () => {
+            const row = document.querySelector('[data-testid="watch-gloss-word"]');
+            return row?.querySelector('[data-testid="watch-gloss-mastered"]')?.getAttribute('data-mastered') === 'true';
+        },
+        null,
+        { timeout: 5000 },
+    );
+    assert.equal(await phoneMasteredBtn.getAttribute('aria-pressed'), 'true');
+    const phoneMarkDeadline = Date.now() + 5000;
+    let phoneMark = null;
+    while (Date.now() < phoneMarkDeadline && !phoneMark) {
+        phoneMark = phoneMasteredPatches.find((body) => body?.lemma === phoneActionState.word) ?? null;
+        if (!phoneMark) await sleep(50);
+    }
+    assert.ok(phoneMark, '375: the 已掌握 toggle did not PATCH the mastered mark');
+    assert.equal(phoneMark.mastered, true);
+    // The row did not get squeezed: same single line, same fluid 16/14px floors.
+    const phoneRowAfterMark = await glossRowState(phone);
+    assert.equal(phoneRowAfterMark.wordFont, 16, `375: the mastered toggle changed the word font to ${phoneRowAfterMark.wordFont}px`);
+    assert.equal(phoneRowAfterMark.definitionFont, 14, `375: the mastered toggle changed the definition font to ${phoneRowAfterMark.definitionFont}px`);
+    assert.ok(phoneRowAfterMark.wordRow?.sameLine, '375: the mastered toggle pushed the definition off the label line');
+    const phoneOverflowAfterMark = await phone.evaluate(() => document.documentElement.scrollWidth);
+    assert.ok(phoneOverflowAfterMark <= 375 + 1, `375: the mastered toggle caused horizontal overflow (${phoneOverflowAfterMark}px)`);
+    summary.screenshots.push(shot('375-gloss-mastered'));
+    await phone.screenshot({ path: shot('375-gloss-mastered') });
     const overflow375 = await phone.evaluate(() => ({
         documentWidth: document.documentElement.scrollWidth,
         viewport: window.innerWidth,
@@ -2688,6 +3385,12 @@ try {
             expandedHeight: Math.round(phoneDrawer.height * 10) / 10,
             collapsedHeight: Math.round(collapsedDrawer.height * 10) / 10,
             coversVideo: false,
+        },
+        glossActions: {
+            star: `${Math.round(phoneActionState.star.width)}×${Math.round(phoneActionState.star.height)} always visible`,
+            mastered: `${Math.round(phoneActionState.check.width)}×${Math.round(phoneActionState.check.height)} always visible`,
+            mark: `${phoneMark.lemma ?? phoneActionState.word}:${phoneMark.mastered} (PATCH)`,
+            rowAfterMark: `${phoneRowAfterMark.wordFont}/${phoneRowAfterMark.definitionFont}px, same line, no overflow`,
         },
         overflow: overflow375.documentWidth <= overflow375.viewport + 1 ? 'none' : 'overflow',
     };

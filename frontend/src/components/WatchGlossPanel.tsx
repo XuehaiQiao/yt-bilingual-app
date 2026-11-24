@@ -1,8 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LogIn, Sparkles, Star } from 'lucide-react';
+import { Check, LogIn, Sparkles, Star } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import { cn } from '../lib/cn';
 import type { FavoriteDraft, FavoriteItem } from '../lib/favorites';
+import {
+    addIgnored,
+    getIgnoredWords,
+    normalizeIgnoredWord,
+    refreshIgnored,
+    removeIgnored,
+    useIgnoredWords,
+} from '../lib/ignoredWords';
+import { setWordMastered } from '../lib/review';
+import { writeGuestMastered } from '../lib/wordMastery';
 import type { InlineLanguagePoint } from './TranscriptBlock';
 import type { TeachingNotesStatus } from './TeachingNotesPanel';
 
@@ -49,6 +59,11 @@ interface WatchGlossPanelProps {
     onRemoveFavorite: (id: string) => Promise<boolean>;
     /** Guests may read but not save; a star press explains it inline. */
     isGuest?: boolean;
+    /**
+     * P2-19: the review deck's target language (App's live `targetLang`). The
+     * mastered PATCH is scoped by it, and every read-back uses the same value.
+     */
+    targetLang: string;
 }
 
 /** One sentence's gloss snapshot, kept so earlier sentences stay readable. */
@@ -103,6 +118,16 @@ interface FavoriteRowState {
     message?: string;
 }
 
+/**
+ * P2-19: one row message slot with the surface that produced it. Mastery and
+ * favorites write failures both surface under the row, but each keeps its own
+ * stable test id (`watch-gloss-favorite-error` / `watch-gloss-mastered-error`).
+ */
+interface RowFeedbackEntry {
+    message: string;
+    testId: 'watch-gloss-favorite-error' | 'watch-gloss-mastered-error';
+}
+
 interface GlossEntryBodyProps {
     entry: WatchGlossEntry;
     isCurrent: boolean;
@@ -113,10 +138,14 @@ interface GlossEntryBodyProps {
     showLanguagePoints: boolean;
     alwaysShowActions: boolean;
     /** Row key (`blockId:word`) → transient inline error / guest hint. */
-    feedback: Readonly<Record<string, string>>;
+    feedback: Readonly<Record<string, RowFeedbackEntry>>;
     busyKeys: ReadonlySet<string>;
+    masteredBusyKeys: ReadonlySet<string>;
     favoriteOf: (word: string) => FavoriteItem | undefined;
+    /** P2-19: shared `useIgnoredWords` membership, normalized per word. */
+    masteredOf: (word: string) => boolean;
     onToggleFavorite: (key: string, word: string, gloss: string) => void;
+    onToggleMastered: (key: string, word: string, gloss: string) => void;
 }
 
 /**
@@ -150,7 +179,7 @@ const FavoriteButton: React.FC<{
                 onToggle();
             }}
             className={cn(
-                'ml-auto flex shrink-0 items-center justify-center rounded-control transition-opacity motion-reduce:transition-none',
+                'flex shrink-0 items-center justify-center rounded-control transition-opacity motion-reduce:transition-none',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60',
                 alwaysShow ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
                 alwaysShow ? 'h-11 w-11' : 'h-8 w-8',
@@ -165,14 +194,75 @@ const FavoriteButton: React.FC<{
     );
 };
 
-const RowFeedback: React.FC<{ message?: string }> = ({ message }) => (
-    message ? (
+/**
+ * P2-19: 「我已掌握」 sits beside the favorite star in the same `ml-auto`
+ * action group. It is one circle + check glyph in both states; the mastered
+ * state is a solid success-green circle, the unmarked state only a hollow
+ * ring. The 44px box is the touch target on the drawer; the rail is hover /
+ * focus revealed like the star. Writes are owned by the panel: the state comes
+ * from the shared ignored-words store, never from a local mirror, so the
+ * word book / reading highlights / history rows all read the same mark.
+ */
+const MasteredButton: React.FC<{
+    word: string;
+    mastered: boolean;
+    busy: boolean;
+    alwaysShow: boolean;
+    onToggle: () => void;
+}> = ({ word, mastered, busy, alwaysShow, onToggle }) => {
+    const { t } = useI18n();
+    const label = mastered
+        ? t('watchMode.masteredRemove', { word })
+        : t('watchMode.masteredAdd', { word });
+    return (
+        <button
+            type="button"
+            data-testid="watch-gloss-mastered"
+            data-word={word}
+            data-mastered={mastered ? 'true' : 'false'}
+            aria-label={label}
+            aria-pressed={mastered}
+            aria-busy={busy || undefined}
+            title={label}
+            disabled={busy}
+            onClick={(event) => {
+                event.stopPropagation();
+                onToggle();
+            }}
+            className={cn(
+                'flex shrink-0 items-center justify-center rounded-full transition-opacity motion-reduce:transition-none',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/50',
+                alwaysShow ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                alwaysShow ? 'h-11 w-11' : 'h-8 w-8',
+                busy && 'opacity-60',
+            )}
+        >
+            <span
+                data-testid="watch-gloss-mastered-indicator"
+                data-state={mastered ? 'checked' : 'unchecked'}
+                aria-hidden="true"
+                className={cn(
+                    'inline-flex items-center justify-center rounded-full border transition-colors motion-reduce:transition-none',
+                    alwaysShow ? 'h-6 w-6' : 'h-5 w-5',
+                    mastered
+                        ? 'border-success bg-success text-app'
+                        : 'border-line-strong text-fg-muted hover:border-success/50 hover:text-success-fg',
+                )}
+            >
+                <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />
+            </span>
+        </button>
+    );
+};
+
+const RowFeedback: React.FC<{ entry?: RowFeedbackEntry }> = ({ entry }) => (
+    entry ? (
         <p
             role="alert"
-            data-testid="watch-gloss-favorite-error"
+            data-testid={entry.testId}
             className="mt-0.5 pl-3 text-micro leading-relaxed text-danger-fg"
         >
-            {message}
+            {entry.message}
         </p>
     ) : null
 );
@@ -193,8 +283,11 @@ const GlossRow: React.FC<{
     alwaysShowActions: boolean;
     favorited: boolean;
     busy: boolean;
-    feedback?: string;
+    mastered: boolean;
+    masteredBusy: boolean;
+    feedback?: RowFeedbackEntry;
     onToggle: () => void;
+    onToggleMastered: () => void;
 }> = ({
     testId,
     kind,
@@ -204,8 +297,11 @@ const GlossRow: React.FC<{
     alwaysShowActions,
     favorited,
     busy,
+    mastered,
+    masteredBusy,
     feedback,
     onToggle,
+    onToggleMastered,
 }) => (
     <li className="min-w-0">
         <div
@@ -240,15 +336,24 @@ const GlossRow: React.FC<{
             >
                 {gloss}
             </span>
-            <FavoriteButton
-                word={label}
-                gloss={gloss}
-                state={{ favorited, busy }}
-                alwaysShow={alwaysShowActions}
-                onToggle={onToggle}
-            />
+            <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                <FavoriteButton
+                    word={label}
+                    gloss={gloss}
+                    state={{ favorited, busy }}
+                    alwaysShow={alwaysShowActions}
+                    onToggle={onToggle}
+                />
+                <MasteredButton
+                    word={label}
+                    mastered={mastered}
+                    busy={masteredBusy}
+                    alwaysShow={alwaysShowActions}
+                    onToggle={onToggleMastered}
+                />
+            </div>
         </div>
-        <RowFeedback message={feedback} />
+        <RowFeedback entry={feedback} />
     </li>
 );
 
@@ -269,15 +374,25 @@ const GlossEntryBody: React.FC<GlossEntryBodyProps> = ({
     alwaysShowActions,
     feedback,
     busyKeys,
+    masteredBusyKeys,
     favoriteOf,
+    masteredOf,
     onToggleFavorite,
+    onToggleMastered,
 }) => {
     const points = showLanguagePoints ? entry.points : [];
 
     const rowFeedback = (word: string) => feedback[`${entry.blockId}:${word}`];
     const rowBusy = (word: string) => busyKeys.has(`${entry.blockId}:${word}`);
+    const rowMasteredBusy = (word: string) => masteredBusyKeys.has(`${entry.blockId}:${word}`);
     const rowFavorite = (word: string) => Boolean(favoriteOf(word));
+    const rowMastered = (word: string) => masteredOf(word);
     const rowToggle = (word: string, gloss: string) => onToggleFavorite(
+        `${entry.blockId}:${word}`,
+        word,
+        gloss,
+    );
+    const rowToggleMastered = (word: string, gloss: string) => onToggleMastered(
         `${entry.blockId}:${word}`,
         word,
         gloss,
@@ -306,8 +421,11 @@ const GlossEntryBody: React.FC<GlossEntryBodyProps> = ({
                             alwaysShowActions={alwaysShowActions}
                             favorited={rowFavorite(word)}
                             busy={rowBusy(word)}
+                            mastered={rowMastered(word)}
+                            masteredBusy={rowMasteredBusy(word)}
                             feedback={rowFeedback(word)}
                             onToggle={() => rowToggle(word, gloss)}
+                            onToggleMastered={() => rowToggleMastered(word, gloss)}
                         />
                     ))}
                 </ul>
@@ -328,8 +446,11 @@ const GlossEntryBody: React.FC<GlossEntryBodyProps> = ({
                             alwaysShowActions={alwaysShowActions}
                             favorited={rowFavorite(point.text)}
                             busy={rowBusy(point.text)}
+                            mastered={rowMastered(point.text)}
+                            masteredBusy={rowMasteredBusy(point.text)}
                             feedback={rowFeedback(point.text)}
                             onToggle={() => rowToggle(point.text, point.meaning ?? '')}
+                            onToggleMastered={() => rowToggleMastered(point.text, point.meaning ?? '')}
                         />
                     ))}
                 </ul>
@@ -348,10 +469,13 @@ interface GlossBodyProps {
     onRequestAnalysis: () => void;
     onRequestLogin?: () => void;
     alwaysShowActions: boolean;
-    feedback: Readonly<Record<string, string>>;
+    feedback: Readonly<Record<string, RowFeedbackEntry>>;
     busyKeys: ReadonlySet<string>;
+    masteredBusyKeys: ReadonlySet<string>;
     favoriteOf: (word: string) => FavoriteItem | undefined;
+    masteredOf: (word: string) => boolean;
     onToggleFavorite: (key: string, word: string, gloss: string) => void;
+    onToggleMastered: (key: string, word: string, gloss: string) => void;
 }
 
 const StatusSkeleton: React.FC = () => {
@@ -395,8 +519,11 @@ const GlossBody: React.FC<GlossBodyProps> = ({
     alwaysShowActions,
     feedback,
     busyKeys,
+    masteredBusyKeys,
     favoriteOf,
+    masteredOf,
     onToggleFavorite,
+    onToggleMastered,
 }) => {
     const { t } = useI18n();
 
@@ -482,8 +609,11 @@ const GlossBody: React.FC<GlossBodyProps> = ({
                         alwaysShowActions={alwaysShowActions}
                         feedback={feedback}
                         busyKeys={busyKeys}
+                        masteredBusyKeys={masteredBusyKeys}
                         favoriteOf={favoriteOf}
+                        masteredOf={masteredOf}
                         onToggleFavorite={onToggleFavorite}
+                        onToggleMastered={onToggleMastered}
                     />
                 );
             })}
@@ -544,20 +674,27 @@ const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
     onAddFavorite,
     onRemoveFavorite,
     isGuest = false,
+    targetLang,
 }) => {
     const { t } = useI18n();
+    // P2-19: the single shared source of 已掌握 membership (server list for
+    // signed-in users, the guest local table otherwise). Every history row for
+    // the same word re-renders from this store, never from a local mirror.
+    const ignored = useIgnoredWords();
     // P2-16: the drawer is expanded by default — on a phone a collapsed drawer
     // is effectively no gloss window at all (specs/045 §5).
     const [open, setOpen] = useState(true);
     const [history, setHistory] = useState<WatchGlossEntry[]>([]);
-    const [feedback, setFeedback] = useState<Readonly<Record<string, string>>>({});
+    const [feedback, setFeedback] = useState<Readonly<Record<string, RowFeedbackEntry>>>({});
     const [busyKeys, setBusyKeys] = useState<ReadonlySet<string>>(() => new Set());
+    const [masteredBusyKeys, setMasteredBusyKeys] = useState<ReadonlySet<string>>(() => new Set());
     const scrollRef = useRef<HTMLDivElement | null>(null);
     // True while the newest sentence may pull the window back to the top; a
     // manual scroll down turns it off until the learner scrolls back up.
     const stickToTopRef = useRef(true);
     const lastVideoRef = useRef<string | null>(videoId ?? null);
     const inFlightRef = useRef<Set<string>>(new Set());
+    const masteredInFlightRef = useRef<Set<string>>(new Set());
     const feedbackTimersRef = useRef<Map<string, number>>(new Map());
 
     const currentEntry = useMemo<WatchGlossEntry | null>(() => {
@@ -636,8 +773,29 @@ const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
         favoritesById.get(`vocab-${videoId}-${word}`) ?? favoritesByWord.get(favoriteWordKey(word))
     ), [favoritesById, favoritesByWord, videoId]);
 
-    const flash = useCallback((key: string, message: string) => {
-        setFeedback((previous) => ({ ...previous, [key]: message }));
+    // P2-19: exact casefolded membership, the same rule the reading highlight
+    // filter / word book use (`normalizeIgnoredWord` = trim + lower-case).
+    const masteredOf = useCallback((word: string) => {
+        const normalized = normalizeIgnoredWord(word);
+        return normalized.length > 0 && ignored.words.has(normalized);
+    }, [ignored.words]);
+
+    /** Drop the row's current message before a new write (one slot per row). */
+    const clearRowFeedback = useCallback((key: string) => {
+        setFeedback((previous) => {
+            if (!(key in previous)) return previous;
+            const next = { ...previous };
+            delete next[key];
+            return next;
+        });
+    }, []);
+
+    const flash = useCallback((
+        key: string,
+        message: string,
+        testId: RowFeedbackEntry['testId'] = 'watch-gloss-favorite-error',
+    ) => {
+        setFeedback((previous) => ({ ...previous, [key]: { message, testId } }));
         const timers = feedbackTimersRef.current;
         const existing = timers.get(key);
         if (existing !== undefined) window.clearTimeout(existing);
@@ -668,12 +826,7 @@ const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
         if (inFlightRef.current.has(key)) return;
         inFlightRef.current.add(key);
         setBusyKeys((previous) => new Set(previous).add(key));
-        setFeedback((previous) => {
-            if (!(key in previous)) return previous;
-            const next = { ...previous };
-            delete next[key];
-            return next;
-        });
+        clearRowFeedback(key);
         try {
             const existing = favoriteOf(word);
             if (existing) {
@@ -710,6 +863,7 @@ const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
         }
     }, [
         blockStart,
+        clearRowFeedback,
         enText,
         favoriteOf,
         flash,
@@ -719,6 +873,134 @@ const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
         sourceTitle,
         t,
         videoId,
+    ]);
+
+    /**
+     * P2-19 write path for one row's 已掌握 mark.
+     *
+     * Signed-in: PATCH `{lemma, mastered, targetLang, definition}` (the meaning
+     * snapshot is the row's gloss, P0-13) and then re-read the authoritative
+     * mastered list with `refreshIgnored(targetLang)`. The response is
+     * authoritative for the post-write mark (specs/013).
+     * Guest: the existing local table (`writeGuestMastered`) only — never the
+     * API — then the same `refreshIgnored()` so the shared store re-renders.
+     * Throws so the caller can show the localized row message and roll back.
+     */
+    const applyMastered = useCallback(async (word: string, mastered: boolean, gloss: string) => {
+        if (isGuest) {
+            writeGuestMastered(word, mastered);
+            await refreshIgnored();
+            return;
+        }
+        const result = await setWordMastered({
+            lemma: word,
+            mastered,
+            targetLang,
+            definition: gloss.trim() || undefined,
+        });
+        const masteredNow = result.word.mastered === true;
+        await refreshIgnored(targetLang);
+        if (masteredNow !== mastered) throw new Error(t('watchMode.masteredFailed'));
+    }, [isGuest, t, targetLang]);
+
+    /**
+     * P2-19 reverse write after a failed mutual-exclusion DELETE: put the mark
+     * back to `false` through the same mode's write path. Returns `true` only
+     * when the undo landed (guest: table membership; signed-in: PATCH response
+     * + the re-read list) so the row copy never claims an undo that did not
+     * happen.
+     */
+    const rollbackMastered = useCallback(async (word: string, gloss: string): Promise<boolean> => {
+        const normalized = normalizeIgnoredWord(word);
+        try {
+            if (isGuest) {
+                writeGuestMastered(word, false);
+                await refreshIgnored();
+            } else {
+                const rollback = await setWordMastered({
+                    lemma: word,
+                    mastered: false,
+                    targetLang,
+                    definition: gloss.trim() || undefined,
+                });
+                if (rollback.word.mastered !== false) return false;
+                await refreshIgnored(targetLang);
+            }
+            return !getIgnoredWords().has(normalized);
+        } catch {
+            // Best effort; stay honest about the failed rollback.
+            return false;
+        }
+    }, [isGuest, targetLang]);
+
+    const toggleMastered = useCallback(async (key: string, word: string, gloss: string) => {
+        const lemma = word.trim();
+        if (!lemma || masteredInFlightRef.current.has(key)) return;
+        const normalized = normalizeIgnoredWord(lemma);
+        const wasMastered = getIgnoredWords().has(normalized);
+        const next = !wasMastered;
+        masteredInFlightRef.current.add(key);
+        setMasteredBusyKeys((previous) => new Set(previous).add(key));
+        clearRowFeedback(key);
+        // Signed-in readers get the immediate page update from the store; the
+        // guest write below emits its own store update. A failed write restores
+        // the pre-click state (never a success-looking row).
+        if (!isGuest) {
+            if (next) addIgnored(lemma);
+            else removeIgnored(lemma);
+        }
+        try {
+            try {
+                await applyMastered(lemma, next, gloss);
+            } catch {
+                if (wasMastered) addIgnored(lemma);
+                else removeIgnored(lemma);
+                flash(key, t('watchMode.masteredFailed'), 'watch-gloss-mastered-error');
+                return;
+            }
+            // Undoing a mark never brings the favorite back (ADR-0001).
+            if (!next) return;
+            // specs/005 §已掌握与收藏互斥: a mastered word is not a favorite.
+            // Remove the same word's favorite AFTER the mark landed.
+            const favorite = favoriteOf(lemma);
+            if (!favorite) return;
+            let removed = false;
+            try {
+                removed = await onRemoveFavorite(favorite.id);
+            } catch {
+                // App's remove path resolves `false`; a throw is treated the
+                // same way (the star was rolled back, the mark must be undone).
+                removed = false;
+            }
+            if (removed) return;
+            // The DELETE failed and App restored the star: undo the mark rather
+            // than leave the word in both states.
+            const rolledBack = await rollbackMastered(lemma, gloss);
+            flash(
+                key,
+                t(rolledBack
+                    ? 'watchMode.masteredFavoriteFailed'
+                    : 'watchMode.masteredFavoriteRollbackFailed'),
+                'watch-gloss-mastered-error',
+            );
+        } finally {
+            masteredInFlightRef.current.delete(key);
+            setMasteredBusyKeys((previous) => {
+                if (!previous.has(key)) return previous;
+                const nextBusy = new Set(previous);
+                nextBusy.delete(key);
+                return nextBusy;
+            });
+        }
+    }, [
+        applyMastered,
+        clearRowFeedback,
+        favoriteOf,
+        flash,
+        isGuest,
+        onRemoveFavorite,
+        rollbackMastered,
+        t,
     ]);
 
     const wordCount = currentEntry?.words.length ?? 0;
@@ -734,8 +1016,11 @@ const WatchGlossPanelInner: React.FC<WatchGlossPanelProps> = ({
             alwaysShowActions={variant === 'drawer'}
             feedback={feedback}
             busyKeys={busyKeys}
+            masteredBusyKeys={masteredBusyKeys}
             favoriteOf={favoriteOf}
+            masteredOf={masteredOf}
             onToggleFavorite={(key, word, gloss) => { void toggleFavorite(key, word, gloss); }}
+            onToggleMastered={(key, word, gloss) => { void toggleMastered(key, word, gloss); }}
         />
     );
 

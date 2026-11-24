@@ -1,6 +1,6 @@
 # 045 — 观影模式体验设计
 
-> 状态：**已实现（P2-15 沉浸壳层 + 舞台居中/环境光 + 字幕三态；P2-16 词条栏重做 + 收藏 + 移动底部抽屉，2026-11-24；P2-17 字幕避让原生控制条/句内高亮/词条行与字号统一/Esc 退观影，2026-11-24；保留 YouTube 原生控制条）** ｜ 依据：用户“观影模式效果不好，要更细节、体验更好的版本”
+> 状态：**已实现（P2-15 沉浸壳层 + 舞台居中/环境光 + 字幕三态；P2-16 词条栏重做 + 收藏 + 移动底部抽屉，2026-11-24；P2-17 字幕避让原生控制条/句内高亮/词条行与字号统一/Esc 退观影，2026-11-24；P2-19 词条行「我已掌握」开关 + 收藏互斥，2026-11-24；保留 YouTube 原生控制条）** ｜ 依据：用户“观影模式效果不好，要更细节、体验更好的版本”
 > 目标稿：`docs/design/watch-mode/mock-{desktop,mobile,empty,subtitle}.png`。实现落点见 §12。
 
 ## 1. 问题诊断（当前实现）
@@ -93,11 +93,12 @@
 - 每条：词/短语（词 amber `warning-fg` / 语言点 sky）+ 释义（次级色）；**无**分组标题、kind 徽章、整句上文、边框、分割线。
 - **统一单行（P2-17）**：词汇与语言点都是「左词/短语，右释义」一行；右列 `text-right`、`break-words` 可换行；语言点解释不再另起一行。标题略增至 `text-dialog`。
 - **字号流体（P2-17）**：词/短语 `clamp(1rem, 0.8vw + 0.5rem, 1.375rem)`（16→22px），释义 `clamp(0.875rem, 0.55vw + 0.5rem, 1.125rem)`（14→18px）；375/1440/1920 明显递增；`text-ui`/`text-caption` 保留为回退。
-- 操作只在 hover/focus 时出现：**☆ 收藏**（已收藏实心 amber）；触屏抽屉上常显（44px 触摸目标）。不显示未实现的 ✓ 已掌握 / 设置；不新增假入口。
+- 操作只在 hover/focus 时出现：**☆ 收藏**（已收藏实心 amber）+ **✓ 我已掌握**（P2-19，圆形 Check；已掌握绿色实心、未空心）；触屏抽屉上两项都常显（各 44px 触摸目标），与星并列在同一 `ml-auto` 操作组。不新增假入口/设置。
 - 当前句词行左侧 2px 竖线标记（词 amber / 语言点 sky），不使用“当前句”文字；历史不显示标记。
 - 空句不生成条目；当前句无词时保留历史，不显示“本句无生词”；header 本句数显示 0。
 - 无分析时：栏内只留一条紧凑说明 + 既有「生成词条」入口（复用 028 GET，不新增 AI），**不铺满空白**；加载中显示 2 行骨架。
 - 收藏写入走 App 既有 optimistic favorites：`FavoriteDraft = { type: vocabulary, id: vocab-<videoId>-<word>, videoId, start: 当前块 start, en_text: word, zh_text: gloss, context_en: 当前句, source_kind: video, source_ref: videoId, source_title: 视频标题 }`；App 顶栏/侧栏「单词本」计数同步。失败或游客在词行内回滚并说明（不弹全屏/不假装成功）。
+- **已掌握写入（P2-19）**：状态只取 `useIgnoredWords`（登录 = `word_states.mastered`；游客 = `yt_bilingual_guest_mastered_words`），当前句与历史行同一来源。登录 `PATCH /api/review/words {lemma, mastered, targetLang, definition=释义}`，成功后 `refreshIgnored(targetLang)` 并以响应为准；游客 `writeGuestMastered` + `refreshIgnored()`，不调 API。busy 防重复；失败行内回滚说明。**互斥（specs/005）**：标记成功后若同词有收藏则移除；删除失败回滚 mastered=false 并显示行内错误；取消已掌握不恢复收藏（ADR-0001）。
 
 ### 4.4 控制条（本期不实现）
 
@@ -129,7 +130,7 @@
 - **视频原生控制条保留**（P2-15 决策）：不新增自定义播放/进度条，也不遮挡 iframe 底部的原生控件。
 - 词条用**底部抽屉**替代旧右上浮窗：默认展开、占据视频以下全部剩余高度（`flex-1`，375 实测约 550px）；拖拽手柄可点击收起/展开（本期不做复杂手势）；面板 `mt-auto` 锚定底部，收起后只留手柄+标题（约 93px）。
 - 抽屉不与画面重叠（`panel.y ≥ video.bottom`），因此不遮视频原生控制条；375 无横向溢出。
-- 抽屉内容与桌面 rail 同一组件/断言：标题+本句数、当前句 2px 标记、历史渐隐、收藏星标常显（44px 触摸目标）、无 headings/context/placeholder。
+- 抽屉内容与桌面 rail 同一组件/断言：标题+本句数、当前句 2px 标记、历史渐隐、收藏星标 + ✓ 已掌握常显（各 44px 触摸目标）、无 headings/context/placeholder；两项标记后行内词 16px/释义 14px 仍同行不溢出。
 - 退出在顶部栏；CC 三态与 `C` 键在移动端同样可用；安全区底部 `env(safe-area-inset-bottom)`。
 
 ## 6. 空态/加载/失败/登录
@@ -141,9 +142,12 @@
 | 分析失败 | 一句说明 + 重试；保留已缓存内容（若有） | 不阻塞播放、不自动重试刷屏 |
 | 未登录 | 说明 + 登录；视频可看 | 不弹全屏登录墙 |
 | 当前句无词 | 保留历史，不显示占位；本句数 0 | 不留白块、不显示“本句无生词” |
-| 游客 | 不请求 AI 分析；词条栏提示登录后查看/生成 | 不假装有词条、不显示收藏星标 |
+| 游客 | 不请求 AI 分析；普通视频词条栏提示登录后查看/生成；免费库 payload 自带分析时按真实词条展示（含 P2-19 本地「我已掌握」） | 不假装有词条、不请求 AI；收藏仍走登录提示，已掌握只写本机表 |
 | 收藏失败 | 乐观星标回滚 + 词行内说明；顶栏计数不变 | 不假装成功、不弹全屏、不刷 toast |
 | 游客收藏 | 行内提示登录后收藏（词条栏本身先提示登录） | 不发送任何收藏写请求 |
+| 已掌握失败 | 乐观标记回滚 + 词行内说明（`watch-gloss-mastered-error`） | 不假装成功、不弹全屏、不刷 toast |
+| 游客已掌握 | 只写本地表（同单词本「我会了」），刷新后仍在 | 不发送任何 review/收藏写请求 |
+| 互斥删除失败 | 回滚 mastered=false + 行内说明；不留下「已掌握 + 已收藏」 | 不隐藏错误、不假称已回滚 |
 
 ## 7. 视觉 token
 
@@ -176,7 +180,7 @@
 |---|---|
 | 1. 壳层/舞台 + 顶部浮层 + 桌面/移动布局（不碰数据） | **P2-15 已完成**：双 chrome 不渲染、浮层五项、2.5s 淡出、舞台居中 + 环境光 |
 | 2. 字幕排版/字号/位置/设置 | **P2-15 已完成三态 + scrim**（P2-11 流体字号；**P2-17 避让原生控制条两档 + 句内橙/蓝高亮**）；逐词 karaoke 仍非目标 |
-| 3. 词条栏/抽屉 + 收藏/已掌握 | **P2-16 已完成**：360 rail、本句数、当前句置顶/标记、历史渐隐、☆ 收藏、紧凑空态；移动 16:9 置顶 + 底部抽屉（默认展开/可收起）；**P2-17 统一单行 + 流体字号**；✓ 已掌握仍非本期（只保留收藏） |
+| 3. 词条栏/抽屉 + 收藏/已掌握 | **P2-16 已完成**：360 rail、本句数、当前句置顶/标记、历史渐隐、☆ 收藏、紧凑空态；移动 16:9 置顶 + 底部抽屉（默认展开/可收起）；**P2-17 统一单行 + 流体字号**；**P2-19 ✓ 我已掌握 + 收藏互斥** |
 | 4. 控制条/键盘/状态 | **本期跳过自定义控制条**；只加 `C`/`Esc` 语义（P2-17 Esc 退全屏即退观影） |
 | 5. 空态/加载/失败 + 可访问性 | **P2-16 完成词条栏范围内的紧凑空态/行内失败/游客提示**；播放器级状态仍按 P2-15 |
 | 6. 视觉 QA + 375/768/1440/1920 + 连续观看测试 | P2-15 覆盖 375/1440/1920 截图与几何断言；768/连续 10 分钟待后续 |
@@ -218,7 +222,7 @@ YouTube Theater Mode、Netflix/Apple TV 播放器、Language Reactor、Lingopie�
 | 文案（zh-CN / vi-VN：本句数、收藏、抽屉手柄、rail 提示） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
 | 验收（P2-16 rail/空态/收藏计数/失败回滚/游客 + 移动 16:9 置顶/抽屉/收起/375 + 1440/1920/375 截图 + P2-10/11/12/13/15 零回归） | `scripts/watch-mode-acceptance.mjs` |
 
-**已知边界**：iframe 不暴露原生 CC 状态，我们不读取/不控制；用户自行开启原生字幕时应选择「关闭」。✓ 已掌握/发音仍未实现，本期只提供收藏；移动端无自定义传输条（P2-15 决策，原生控制条保留）。
+**已知边界**：iframe 不暴露原生 CC 状态，我们不读取/不控制；用户自行开启原生字幕时应选择「关闭」。✓ 已掌握已在 P2-19 实现（收藏星旁圆形开关，登录/游客同一 store）；发音仍未实现；移动端无自定义传输条（P2-15 决策，原生控制条保留）。
 
 ## 14. 落地记录（P2-17，2026-11-24）
 
@@ -230,3 +234,16 @@ YouTube Theater Mode、Netflix/Apple TV 播放器、Language Reactor、Lingopie�
 | 词条字号流体：词 `clamp(1rem, 0.8vw + 0.5rem, 1.375rem)`（16→22px）、释义 `clamp(0.875rem, 0.55vw + 0.5rem, 1.125rem)`（14→18px）；`text-ui`/`text-caption` 回退 | `frontend/src/components/WatchGlossPanel.tsx` |
 | Esc：`fullscreenchange` 里用 `pageFullscreenRef` 判断「本容器全屏 → 非全屏」并 `setWatchMode('off')`；初始同步、请求被拒、他人全屏、路由切走（主动清 ref 后释放）不触发；点「退出观影」仍走原路径 | `frontend/src/App.tsx` |
 | 验收：抬高/落底两档 + 2.6s 等待 + 指针恢复 + 200ms 过渡（reduced-motion 0ms）、词条行同线/right/字号三档（375 16/14、1440 ~19.5/16、1920 22/18）、橙/蓝高亮与完整文本、ESC→watch off、初始/路由/拒绝全屏不误触发；P2-10/11/12/13/15/16 零回归；2× PASS | `scripts/watch-mode-acceptance.mjs` |
+
+## 15. 落地记录（P2-19，2026-11-24）
+
+| 内容 | 位置 |
+|---|---|
+| 词条行「我已掌握」圆形 Check（lucide，rail hover/focus 出现 / 抽屉常显 44px；绿色实心=已掌握、空心=未；`data-testid="watch-gloss-mastered"`、`data-mastered`、`aria-pressed`、`aria-label` 含词；与 ☆ 同一 `ml-auto` 组） | `frontend/src/components/WatchGlossPanel.tsx` |
+| 状态单一来源 `useIgnoredWords`：登录 `word_states.mastered`、游客本地表；当前句与历史行同源，取消后恢复标亮 | `frontend/src/lib/ignoredWords.ts`、`frontend/src/components/WatchGlossPanel.tsx` |
+| 写入：登录 `PATCH /api/review/words {lemma, mastered, targetLang, definition=释义}` + `refreshIgnored(targetLang)`（响应为准）；游客 `writeGuestMastered` + `refreshIgnored()`（不调 API）；busy 防重复、失败行内回滚 | `frontend/src/components/WatchGlossPanel.tsx` |
+| 互斥（specs/005）：标记成功后移除同词收藏；DELETE 失败 → PATCH mastered=false 回滚 + 行内说明；取消已掌握不恢复收藏（ADR-0001） | `frontend/src/components/WatchGlossPanel.tsx` |
+| App 向 rail/drawer 两处 `WatchGlossPanel` 传 `targetLang`；文案（zh-CN / vi-VN：已掌握/取消/失败/互斥回滚） | `frontend/src/App.tsx`、`frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
+| 验收：rail 操作组/aria/绿色实心、登录 PATCH 体 + 回读 + 刷新持久、取消不恢复收藏、互斥 DELETE 失败回滚、PATCH 500 回滚、游客库视频本地表写入/刷新/撤销零 API、375 两操作 ≥44px 且 16/14px 仍同行不溢出；1440/375 截图 + P2-10/11/12/13/15/16/17/18 零回归 | `scripts/watch-mode-acceptance.mjs` |
+
+**已知边界**：游客普通 YouTube 视频仍无 AI 分析（词条栏先提示登录）；游客的已掌握只在本机（不跨设备/不上传）；发音仍未实现。

@@ -3981,6 +3981,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                   onAddFavorite={handleAddFavorite}
                   onRemoveFavorite={handleRemoveFavoriteQuiet}
                   isGuest={status === 'guest'}
+                  targetLang={targetLang}
                 />
               )}
             </div>
@@ -4002,6 +4003,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
                 onAddFavorite={handleAddFavorite}
                 onRemoveFavorite={handleRemoveFavoriteQuiet}
                 isGuest={status === 'guest'}
+                targetLang={targetLang}
               />
             )}
           </>
