@@ -1418,8 +1418,8 @@
     {
       "id": "P2-34",
       "file": "TASKS/P2-34-quota-units.md",
-      "status": "claimed",
-      "owner": "quota-units-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/ai/quota.py",
         "backend/translate.py",
@@ -1450,8 +1450,8 @@
     {
       "id": "P2-35",
       "file": "TASKS/P2-35-timing.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "timing-impl",
       "write_scope": [
         "backend/pipeline_timing.py",
         "backend/routes_videos.py",
