@@ -1390,6 +1390,28 @@
       "deps": [
         "P2-31"
       ]
+    },
+    {
+      "id": "P2-33",
+      "file": "TASKS/P2-33-token-aware-batching.md",
+      "status": "claimed",
+      "owner": "batching-impl",
+      "write_scope": [
+        "backend/translation_batching.py",
+        "backend/translate.py",
+        "backend/routes_videos.py",
+        "backend/reading.py",
+        "backend/tests/test_translation_batching.py",
+        "backend/tests/test_streaming_pipeline.py",
+        "backend/tests/test_reading.py",
+        "specs/001-streaming-pipeline/spec.md",
+        "specs/019-reading/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-31",
+        "P2-32"
+      ]
     }
   ]
 }
