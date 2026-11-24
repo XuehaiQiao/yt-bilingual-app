@@ -1012,8 +1012,8 @@
     {
       "id": "P2-15",
       "file": "TASKS/P2-15-watch-immersive-shell.md",
-      "status": "claimed",
-      "owner": "watch-shell-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
         "frontend/src/components/AppShell.tsx",
