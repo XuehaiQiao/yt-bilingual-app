@@ -1142,6 +1142,26 @@
       "deps": [
         "P2-19"
       ]
+    },
+    {
+      "id": "P2-21",
+      "file": "TASKS/P2-21-watch-visual-fixes.md",
+      "status": "claimed",
+      "owner": "watch-visual-impl",
+      "write_scope": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/WatchSubtitleOverlay.tsx",
+        "frontend/src/components/WatchGlossPanel.tsx",
+        "scripts/watch-mode-acceptance.mjs",
+        "specs/044-watch-mode/spec.md",
+        "specs/045-watch-mode-experience/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/App.tsx"
+      ],
+      "deps": [
+        "P2-20"
+      ]
     }
   ]
 }
