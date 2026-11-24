@@ -1294,7 +1294,17 @@
         "backend/migrations/versions/0031_quota_overrides.py",
         "backend/tests/test_quota_admin.py",
         "backend/tests/test_migrations.py",
-        "specs/047-quota-admin/spec.md"
+        "specs/047-quota-admin/spec.md",
+        "backend/tests/test_ability_migrations.py",
+        "backend/tests/test_balance_billing.py",
+        "backend/tests/test_book_chapter_translation.py",
+        "backend/tests/test_book_import.py",
+        "backend/tests/test_course_generation.py",
+        "backend/tests/test_course_mvp.py",
+        "backend/tests/test_difficulty_migrations.py",
+        "backend/tests/test_events.py",
+        "backend/tests/test_reading.py",
+        "backend/tests/test_teaching_analysis.py"
       ],
       "shared_writes": [],
       "deps": []
