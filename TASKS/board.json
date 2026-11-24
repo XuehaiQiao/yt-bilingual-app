@@ -1285,8 +1285,8 @@
     {
       "id": "P2-28",
       "file": "TASKS/P2-28-quota-backend.md",
-      "status": "claimed",
-      "owner": "quota-admin-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/quota_config.py",
         "backend/ai/quota.py",
