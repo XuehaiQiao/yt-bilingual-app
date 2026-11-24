@@ -1104,8 +1104,8 @@
     {
       "id": "P2-19",
       "file": "TASKS/P2-19-watch-mastered.md",
-      "status": "claimed",
-      "owner": "watch-mastered-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/WatchGlossPanel.tsx",
         "frontend/src/App.tsx",
@@ -1126,7 +1126,7 @@
     {
       "id": "P2-20",
       "file": "TASKS/P2-20-subtitle-bottom-paused.md",
-      "status": "pending",
+      "status": "claimed",
       "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
