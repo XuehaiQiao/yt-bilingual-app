@@ -1146,8 +1146,8 @@
     {
       "id": "P2-21",
       "file": "TASKS/P2-21-watch-visual-fixes.md",
-      "status": "claimed",
-      "owner": "watch-visual-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
         "frontend/src/components/WatchSubtitleOverlay.tsx",
