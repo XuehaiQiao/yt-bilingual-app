@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="zh-CN" data-state="desktop">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>观影模式 · 设计目标稿</title>
+<style>
+  :root{
+    --bg:#08090b; --app:#0b0c0f; --panel:#101116; --panel-2:#15161c;
+    --fg:#f4f4f5; --fg-2:#d4d4d8; --fg-3:#a1a1aa; --fg-4:#71717a;
+    --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.12);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.14);
+    --sky:#7dd3fc; --sky-soft:rgba(125,211,252,.12);
+    --brand:#8b7cf6;
+    --shadow:0 30px 80px rgba(0,0,0,.55);
+    --radius:18px;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+  button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+  .icon{width:18px;height:18px;display:inline-block;vertical-align:middle}
+  .muted{color:var(--fg-3)}
+  .small{font-size:12px}
+  .row{display:flex;align-items:center}
+  .gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}
+  .grow{flex:1;min-width:0}
+  .desktop-frame{position:fixed;inset:0;display:none;flex-direction:column;background:var(--bg)}
+  html[data-state="desktop"] .desktop-frame,html[data-state="empty"] .desktop-frame{display:flex}
+  .mobile-frame{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#050506}
+  html[data-state="mobile"] .mobile-frame{display:flex}
+
+  /* ————— ambient / stage ————— */
+  .ambient{position:absolute;inset:0;overflow:hidden;background:
+    radial-gradient(80% 60% at 30% 0%,rgba(63,66,120,.34),transparent 60%),
+    radial-gradient(60% 50% at 80% 20%,rgba(120,72,40,.18),transparent 65%),
+    linear-gradient(180deg,#0b0c12,#07080b 60%,#050506);}
+  .ambient:before,.ambient:after{content:"";position:absolute;filter:blur(70px);opacity:.55}
+  .ambient:before{width:52vw;height:52vw;left:-12vw;top:-24vw;border-radius:50%;background:rgba(88,95,180,.30)}
+  .ambient:after{width:38vw;height:38vw;right:-8vw;bottom:-18vw;border-radius:50%;background:rgba(180,120,60,.18)}
+  .vignette{position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 35%,transparent 40%,rgba(0,0,0,.42) 100%);pointer-events:none}
+
+  .topbar{position:relative;z-index:4;height:64px;display:flex;align-items:center;padding:0 24px;gap:12px;
+    background:linear-gradient(180deg,rgba(0,0,0,.55),transparent);}
+  .topbar .back{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;color:var(--fg-2)}
+  .topbar .back:hover{background:rgba(255,255,255,.06)}
+  .title-wrap{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+  .title-wrap .title{font-size:14px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+  .title-wrap .meta{font-size:11px;color:var(--fg-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+  .mode-chip{margin-left:8px;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border:1px solid var(--line-2);border-radius:999px;background:rgba(255,255,255,.045);font-size:11px;color:var(--fg-2);backdrop-filter:blur(12px)}
+  .dot{width:5px;height:5px;border-radius:50%;background:var(--brand);box-shadow:0 0 10px rgba(139,124,246,.9)}
+  .top-actions{margin-left:auto;display:flex;align-items:center;gap:4px}
+  .ghost-btn{height:34px;padding:0 10px;border-radius:10px;display:inline-flex;align-items:center;gap:7px;color:var(--fg-2);font-size:12px}
+  .ghost-btn:hover{background:rgba(255,255,255,.06);color:var(--fg)}
+  .ghost-btn.primary{background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--fg)}
+
+  .desktop-main{position:relative;z-index:3;flex:1;min-height:0;display:flex;padding:0 0 18px 24px;gap:18px}
+  .stage{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;padding:0 6px 0 0}
+  .video-shell{position:relative;width:min(100%,calc((100vh - 150px) * 16 / 9));max-height:calc(100vh - 150px);aspect-ratio:16/9;border-radius:var(--radius);overflow:hidden;background:#101116;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.06)}
+  .video-art{position:absolute;inset:0;background:
+    radial-gradient(60% 80% at 70% 30%,rgba(244,168,92,.30),transparent 60%),
+    radial-gradient(50% 70% at 20% 70%,rgba(74,110,180,.34),transparent 65%),
+    linear-gradient(135deg,#26252e 0%,#16171e 45%,#1e1714 100%);}
+  .video-art:before{content:"";position:absolute;inset:0;background:
+    radial-gradient(38% 50% at 62% 46%,rgba(255,210,160,.16),transparent 70%),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 5px);mix-blend-mode:screen;opacity:.7}
+  .video-art:after{content:"";position:absolute;left:0;right:0;bottom:0;height:55%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.62))}
+  .video-subject{position:absolute;left:9%;bottom:13%;width:40%;height:56%;border-radius:46% 46% 16% 16%/38% 38% 12% 12%;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.22));filter:blur(1px);opacity:.55;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .video-subject:before{content:"";position:absolute;left:34%;top:-28%;width:34%;height:34%;border-radius:50%;background:rgba(255,255,255,.10)}
+  .video-meta{position:absolute;left:22px;top:18px;display:flex;gap:8px;align-items:center;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+  .video-meta span{padding:5px 8px;border:1px solid rgba(255,255,255,.12);border-radius:6px;background:rgba(0,0,0,.22);backdrop-filter:blur(8px)}
+
+  .caption-layer{position:absolute;left:0;right:0;bottom:66px;display:flex;flex-direction:column;align-items:center;padding:46px 48px 18px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.32) 32%,rgba(0,0,0,.72));pointer-events:none}
+  .caption{width:min(68ch,92%);text-align:center;text-wrap:balance}
+  .caption .en{font-size:clamp(20px,2.1cqi,32px);line-height:1.28;font-weight:600;letter-spacing:-.012em;color:#fff;text-shadow:0 1px 24px rgba(0,0,0,.5)}
+  .caption .zh{margin-top:7px;font-size:clamp(15px,1.7cqi,20px);line-height:1.45;font-weight:400;color:rgba(255,255,255,.78);letter-spacing:.01em}
+  .caption .word{color:#fde68a;background:linear-gradient(180deg,transparent 62%,rgba(251,191,36,.18) 62%);border-radius:2px;padding:0 1px}
+
+  .controls{position:absolute;left:0;right:0;bottom:0;height:66px;padding:0 20px;display:flex;align-items:center;gap:14px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.58) 60%,rgba(0,0,0,.72));opacity:.95}
+  .ctrl{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;color:rgba(255,255,255,.88)}
+  .ctrl.big{width:38px;height:38px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.12);border-radius:50%}
+  .time{font-size:11px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .track{flex:1;height:3px;background:rgba(255,255,255,.18);border-radius:99px;position:relative;min-width:60px}
+  .track:before{content:"";position:absolute;left:0;top:0;bottom:0;width:58%;border-radius:99px;background:linear-gradient(90deg,#c4b5fd,#f0abfc)}
+  .track:after{content:"";position:absolute;left:58%;top:50%;width:11px;height:11px;border-radius:50%;background:#fff;transform:translate(-50%,-50%);box-shadow:0 2px 10px rgba(0,0,0,.4)}
+  .ctrl-sep{width:1px;height:18px;background:rgba(255,255,255,.12);margin:0 2px}
+  .rate{font-size:11px;font-weight:600;color:rgba(255,255,255,.8);padding:0 4px}
+  .cc{position:relative;font-size:9px;font-weight:700;letter-spacing:.02em;border:1px solid rgba(255,255,255,.4);border-radius:4px;padding:1px 3px}
+
+  /* ————— rail ————— */
+  .rail{position:relative;z-index:3;width:360px;flex:0 0 360px;border-left:1px solid var(--line);background:linear-gradient(180deg,rgba(16,17,22,.92),rgba(10,11,14,.94));backdrop-filter:blur(20px);padding:20px 20px 18px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+  .rail-head{display:flex;align-items:center;gap:9px;padding-bottom:2px}
+  .rail-head h2{font-size:14px;line-height:1.2;font-weight:650;letter-spacing:-.01em;margin:0;color:var(--fg)}
+  .rail-head .count{margin-left:auto;font-size:11px;color:var(--fg-4);font-variant-numeric:tabular-nums}
+  .normal-rail{display:flex;flex-direction:column;flex:1;min-height:0}
+  html[data-state="empty"] .normal-rail,html[data-state="empty"] .rail-foot,html[data-state="empty"] .rail-head .count{display:none}
+  .rail-body{flex:1;min-height:0;overflow:hidden;position:relative;padding-top:4px}
+  .target-list{display:flex;flex-direction:column}
+  .target{position:relative;display:flex;align-items:center;gap:12px;padding:11px 0 11px 12px;min-height:46px}
+  .target.current:before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:2px;border-radius:2px;background:linear-gradient(180deg,var(--brand),rgba(139,124,246,.25))}
+  .target .word{font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--fg);white-space:nowrap}
+  .target .word.amber{color:#fcd34d}
+  .target .word.sky{color:#bae6fd}
+  .target .meaning{font-size:13px;color:var(--fg-3);text-align:right;line-height:1.35;min-width:0}
+  .target .actions{display:flex;align-items:center;gap:2px;margin-left:auto;flex:0 0 auto;opacity:.55}
+  .target.current .actions{opacity:.9}
+  .target .act{width:28px;height:28px;display:grid;place-items:center;border-radius:8px;color:var(--fg-3)}
+  .target .act:hover{background:rgba(255,255,255,.07);color:var(--fg)}
+  .target .act.saved{color:var(--amber)}
+  .history{opacity:.52;filter:saturate(.8)}
+  .history .target{padding-top:9px;padding-bottom:9px;min-height:40px}
+  .history .target .word{font-size:14px;font-weight:500}
+  .history .target .meaning{font-size:12px}
+  .rail-fade{position:absolute;left:0;right:0;bottom:0;height:44px;background:linear-gradient(180deg,transparent,rgba(10,11,14,.96));pointer-events:none}
+  .rail-foot{font-size:10px;line-height:1.5;color:var(--fg-4);border-top:1px solid var(--line);padding-top:12px}
+  .skel{height:38px;border-radius:8px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,.08),rgba(255,255,255,.04));background-size:200% 100%;animation:shimmer 1.8s linear infinite;margin-bottom:8px}
+  @keyframes shimmer{to{background-position:-200% 0}}
+
+  /* empty rail */
+  .empty-rail{display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;height:100%;padding:0 16px}
+  html[data-state="empty"] .empty-rail{display:flex}
+  html[data-state="empty"] .normal-rail{display:none}
+  .empty-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.045);border:1px solid var(--line);color:var(--fg-3);margin-bottom:2px}
+  .empty-rail h3{font-size:14px;margin:0;color:var(--fg)}
+  .empty-rail p{font-size:12px;line-height:1.55;color:var(--fg-3);margin:0;max-width:220px}
+  .empty-rail .generate{margin-top:6px;height:32px;padding:0 13px;border-radius:9px;background:rgba(255,255,255,.08);border:1px solid var(--line-2);font-size:12px;display:inline-flex;align-items:center;gap:7px;color:var(--fg)}
+  .empty-rail .hint{font-size:10px;color:var(--fg-4);margin-top:2px}
+
+  /* ————— mobile ————— */
+  .phone{width:375px;height:812px;border-radius:34px;overflow:hidden;background:var(--bg);position:relative;box-shadow:0 40px 120px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.08)}
+  .m-status{height:44px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 8px;font-size:11px;color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums}
+  .m-top{height:44px;display:flex;align-items:center;padding:0 10px;gap:2px}
+  .m-top .icon-btn{width:40px;height:40px;display:grid;place-items:center;border-radius:10px;color:var(--fg-2)}
+  .m-top .m-title{flex:1;min-width:0;text-align:center;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+  .m-video{position:relative;margin:0 8px;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#15161c;border:1px solid rgba(255,255,255,.07)}
+  .m-caption{position:absolute;left:0;right:0;bottom:0;padding:26px 14px 10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.68));text-align:center}
+  .m-caption .en{font-size:17px;line-height:1.25;font-weight:600;color:#fff;text-wrap:balance}
+  .m-caption .zh{font-size:13px;line-height:1.4;color:rgba(255,255,255,.76);margin-top:3px}
+  .m-controls{display:flex;align-items:center;gap:10px;padding:8px 14px 6px;color:var(--fg-2)}
+  .m-controls .play{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.10);display:grid;place-items:center;border:1px solid rgba(255,255,255,.10)}
+  .m-controls .time{font-size:10px;color:var(--fg-3);font-variant-numeric:tabular-nums}
+  .m-controls .track{height:2px}
+  .m-controls .track:after{width:9px;height:9px}
+  .m-controls .mini{width:28px;height:28px;display:grid;place-items:center;border-radius:8px;color:var(--fg-3)}
+  .sheet{position:absolute;left:8px;right:8px;bottom:8px;height:430px;border-radius:20px 20px 16px 16px;background:linear-gradient(180deg,rgba(22,23,29,.98),rgba(13,14,18,.99));border:1px solid rgba(255,255,255,.10);box-shadow:0 -20px 60px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
+  .sheet-handle{width:34px;height:4px;border-radius:99px;background:rgba(255,255,255,.18);margin:9px auto 4px;flex:none}
+  .sheet-head{display:flex;align-items:center;gap:8px;padding:5px 16px 8px;flex:none}
+  .sheet-head h2{font-size:13px;margin:0;font-weight:650;letter-spacing:-.01em}
+  .sheet-head .count{margin-left:auto;font-size:10px;color:var(--fg-4);font-variant-numeric:tabular-nums}
+  .sheet-body{flex:1;min-height:0;overflow:hidden;padding:0 14px 10px}
+  .sheet .target{padding:9px 0 9px 10px;min-height:42px;gap:10px}
+  .sheet .target .word{font-size:15px}
+  .sheet .target .meaning{font-size:12px}
+  .sheet .target .actions{opacity:.65}
+  .sheet .history{opacity:.48}
+  .sheet-foot{padding:8px 16px 12px;border-top:1px solid var(--line);font-size:10px;color:var(--fg-4);flex:none}
+  .m-home{position:absolute;left:50%;bottom:5px;width:118px;height:4px;border-radius:99px;background:rgba(255,255,255,.5);transform:translateX(-50%)}
+</style>
+</head>
+<body>
+<script>
+  const p=new URLSearchParams(location.search);
+  const state=p.get('state')||'desktop';
+  if(['desktop','mobile','empty'].includes(state)) document.documentElement.dataset.state=state;
+</script>
+
+<!-- ───────────── desktop / empty ───────────── -->
+<div class="desktop-frame">
+  <div class="ambient"></div><div class="vignette"></div>
+  <header class="topbar">
+    <button class="back" aria-label="返回">‹</button>
+    <div class="title-wrap">
+      <div class="title">Small Habits, Big Changes</div>
+      <div class="meta">BBC Learning English · 12:34 / 18:20</div>
+    </div>
+    <span class="mode-chip"><span class="dot"></span>观影模式</span>
+    <div class="top-actions">
+      <button class="ghost-btn" aria-label="设置">⚙</button>
+      <button class="ghost-btn primary">退出观影</button>
+    </div>
+  </header>
+
+  <main class="desktop-main">
+    <section class="stage">
+      <div class="video-shell">
+        <div class="video-art"></div>
+        <div class="video-subject"></div>
+        <div class="video-meta"><span>LEARNING ENGLISH</span><span>EP. 42</span></div>
+        <div class="caption-layer">
+          <div class="caption">
+            <div class="en">Small <span class="word">habits</span> quietly shape the way a whole day feels.</div>
+            <div class="zh">小习惯悄悄塑造一整天的感受。</div>
+          </div>
+        </div>
+        <div class="controls">
+          <button class="ctrl big" aria-label="播放">▶</button>
+          <span class="time">12:34</span>
+          <div class="track"></div>
+          <span class="time">18:20</span>
+          <button class="ctrl" aria-label="回退5秒">↺</button>
+          <button class="ctrl" aria-label="前进5秒">↻</button>
+          <span class="ctrl-sep"></span>
+          <span class="rate">1.0x</span>
+          <button class="ctrl" aria-label="字幕"><span class="cc">CC</span></button>
+          <button class="ctrl" aria-label="设置">⚙</button>
+          <button class="ctrl" aria-label="全屏">⛶</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="rail">
+      <div class="rail-head">
+        <h2>滚动词条</h2>
+        <span class="count">本句 3</span>
+      </div>
+      <div class="normal-rail">
+        <div class="rail-body">
+          <div class="target-list">
+            <div class="target current">
+              <span class="word amber">habits</span>
+              <span class="meaning">习惯</span>
+              <span class="actions">
+                <button class="act saved" aria-label="已收藏">★</button>
+                <button class="act" aria-label="已掌握">✓</button>
+              </span>
+            </div>
+            <div class="target current">
+              <span class="word sky">shape the way</span>
+              <span class="meaning">塑造……的方式</span>
+              <span class="actions">
+                <button class="act" aria-label="收藏">☆</button>
+                <button class="act" aria-label="已掌握">✓</button>
+              </span>
+            </div>
+            <div class="target current">
+              <span class="word amber">quietly</span>
+              <span class="meaning">悄悄地</span>
+              <span class="actions">
+                <button class="act" aria-label="收藏">☆</button>
+                <button class="act" aria-label="已掌握">✓</button>
+              </span>
+            </div>
+          </div>
+          <div class="history">
+            <div class="target"><span class="word amber">kettle</span><span class="meaning">水壶</span><span class="actions"><button class="act" aria-label="收藏">☆</button></span></div>
+            <div class="target"><span class="word sky">stay still</span><span class="meaning">保持不动</span><span class="actions"><button class="act" aria-label="收藏">☆</button></span></div>
+            <div class="target"><span class="word amber">breakfast</span><span class="meaning">早餐</span><span class="actions"><button class="act" aria-label="收藏">☆</button></span></div>
+            <div class="target"><span class="word amber">steady</span><span class="meaning">稳定的</span><span class="actions"><button class="act" aria-label="收藏">☆</button></span></div>
+            <div class="target"><span class="word sky">wake up</span><span class="meaning">醒来</span><span class="actions"><button class="act" aria-label="收藏">☆</button></span></div>
+            <div class="target"><span class="word amber">gentle</span><span class="meaning">温和的</span><span class="actions"><button class="act" aria-label="收藏">☆</button></span></div>
+            <div class="target"><span class="word sky">a whole day</span><span class="meaning">一整天</span><span class="actions"><button class="act" aria-label="收藏">☆</button></span></div>
+            <div class="target"><span class="word amber">routine</span><span class="meaning">日常惯例</span><span class="actions"><button class="act" aria-label="收藏">☆</button></span></div>
+            <div class="target"><span class="word amber">feel</span><span class="meaning">感觉</span><span class="actions"><button class="act" aria-label="收藏">☆</button></span></div>
+          </div>
+          <div class="rail-fade"></div>
+        </div>
+        <div class="rail-foot">词条随播放自动顺延 · 最多保留最近 30 句</div>
+      </div>
+      <div class="empty-rail">
+        <div class="empty-icon">✦</div>
+        <h3>本片还没有词条</h3>
+        <p>生成后可逐句查看标亮词与语言点；播放不会中断。</p>
+        <button class="generate">✦ 生成词条</button>
+        <span class="hint">只需生成一次，之后自动缓存</span>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- ───────────── mobile ───────────── -->
+<div class="mobile-frame">
+  <div class="phone">
+    <div class="m-status"><span>9:41</span><span>●●●  ⌁  ▰</span></div>
+    <div class="m-top">
+      <button class="icon-btn">‹</button>
+      <div class="m-title">Small Habits, Big Changes</div>
+      <button class="icon-btn">⋯</button>
+    </div>
+    <div class="m-video">
+      <div class="video-art"></div><div class="video-subject"></div><div class="vignette"></div>
+      <div class="m-caption">
+        <div class="en">Small <span class="word">habits</span> quietly shape the way a whole day feels.</div>
+        <div class="zh">小习惯悄悄塑造一整天的感受。</div>
+      </div>
+    </div>
+    <div class="m-controls">
+      <button class="play">▶</button>
+      <span class="time">12:34</span>
+      <div class="track"></div>
+      <span class="time">18:20</span>
+      <button class="mini">CC</button>
+      <button class="mini">⛶</button>
+    </div>
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2>滚动词条</h2><span class="count">本句 3</span></div>
+      <div class="sheet-body">
+        <div class="target current"><span class="word amber">habits</span><span class="meaning">习惯</span><span class="actions"><button class="act saved">★</button></span></div>
+        <div class="target current"><span class="word sky">shape the way</span><span class="meaning">塑造……的方式</span><span class="actions"><button class="act">☆</button></span></div>
+        <div class="target current"><span class="word amber">quietly</span><span class="meaning">悄悄地</span><span class="actions"><button class="act">☆</button></span></div>
+        <div class="history">
+          <div class="target"><span class="word amber">kettle</span><span class="meaning">水壶</span><span class="actions"><button class="act">☆</button></span></div>
+          <div class="target"><span class="word sky">stay still</span><span class="meaning">保持不动</span><span class="actions"><button class="act">☆</button></span></div>
+          <div class="target"><span class="word amber">breakfast</span><span class="meaning">早餐</span><span class="actions"><button class="act">☆</button></span></div>
+          <div class="target"><span class="word amber">steady</span><span class="meaning">稳定的</span><span class="actions"><button class="act">☆</button></span></div>
+          <div class="target"><span class="word sky">wake up</span><span class="meaning">醒来</span><span class="actions"><button class="act">☆</button></span></div>
+        </div>
+      </div>
+      <div class="sheet-foot">上拉查看更早词条 · 最多 30 句</div>
+    </div>
+    <div class="m-home"></div>
+  </div>
+</div>
+</body>
+</html>
