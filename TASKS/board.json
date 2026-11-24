@@ -1357,8 +1357,8 @@
     {
       "id": "P2-31",
       "file": "TASKS/P2-31-translation-p0.md",
-      "status": "claimed",
-      "owner": "trans-p0-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/llm.py",
         "backend/translate.py",
