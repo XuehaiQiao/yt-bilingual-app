@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0031_quota_overrides"
+HEAD = "0032_pipeline_timing"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -88,6 +88,8 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "account_ledger", "credit_holds", "model_prices",
         # 0031：单用户每日额度覆盖（specs/047）。
         "quota_overrides",
+        # 0032：翻译/分析计时（P2-35）。
+        "pipeline_timing",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD

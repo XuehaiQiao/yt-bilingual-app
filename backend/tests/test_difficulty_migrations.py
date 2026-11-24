@@ -18,7 +18,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0031_quota_overrides"
+HEAD = "0032_pipeline_timing"
 PREVIOUS = "0015_assessment_sessions"
 
 

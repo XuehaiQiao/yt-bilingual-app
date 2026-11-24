@@ -48,6 +48,7 @@ import config
 import guest
 import invites
 import observability
+import pipeline_timing
 import quota_config
 import ratelimit
 
@@ -792,6 +793,48 @@ def admin_users(
 def admin_usage(days: int = 7, _user: dict = Depends(require_admin)):
     """按天 × 功能聚合 ai_usage（calls / tokens / est_cost_usd）。"""
     return build_usage(days=days)
+
+
+@router.get("/pipeline-timing")
+def admin_pipeline_timing(
+    from_: str | None = Query(default=None, alias="from"),
+    to: str | None = Query(default=None, alias="to"),
+    feature: str | None = Query(default=None),
+    limit: int = Query(default=50),
+    _user: dict = Depends(require_admin),
+):
+    """翻译/分析计时（P2-35）：按 feature 的样本数/成功率/P50/P95/max + 最近行。
+
+    ``from`` / ``to`` 是 ``pipeline_timing.day`` 的 ``YYYY-MM-DD``（含 to 当天），
+    缺省最近 7 天（今天-6 .. 今天）。空数据是正常结果（200 + ``rows=[]``）；
+    feature 未知 / 日期非法 / limit 越界 400；表未迁移或不可读 503。
+    """
+    day_to = (to or "").strip() or _today_str()
+    day_from = (from_ or "").strip() or _day_str(
+        _now_local() - timedelta(days=6)
+    )
+    for label, value in (("from", day_from), ("to", day_to)):
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"{label} 需要 YYYY-MM-DD 格式。"
+            ) from exc
+    if not 1 <= limit <= 200:
+        raise HTTPException(status_code=400, detail="limit 需要在 1–200 之间。")
+    selected = feature.strip() if feature else None
+    if selected is not None and not pipeline_timing.feature_known(selected):
+        raise HTTPException(
+            status_code=400, detail=f"未知 feature：{selected}。"
+        )
+    try:
+        return pipeline_timing.aggregate(
+            day_from, day_to, feature=selected, recent_limit=limit
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except pipeline_timing.PipelineTimingUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get("/health")

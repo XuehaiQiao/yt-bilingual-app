@@ -66,11 +66,13 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
+import { apiFetch } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { displayUsername } from '../lib/username';
 import { toast } from '../lib/toast';
 import { Dialog } from './ui/Dialog';
 import { BackButton } from './ui/BackButton';
+import { Button } from './ui/Button';
 import { Tabs, tabPanelProps } from './ui/Tabs';
 import { Segmented } from './ui/Segmented';
 import { Switch } from './ui/Switch';
@@ -260,6 +262,81 @@ function fallbackErrorText(error: unknown, fallback: string): string {
   if (error instanceof AdminApiError && error.message) return error.message;
   if (error instanceof TypeError) return fallback;
   return fallback;
+}
+
+// ── Pipeline timing (P2-35) ────────────────────────────────────────────────
+//
+// The ops tab shows per-feature translation/analysis timings recorded by the
+// backend `pipeline_timing` table. The card owns only this console component,
+// so the request helper lives here instead of growing `lib/admin.ts`; it mirrors
+// `lib/admin.ts#requestJson` (non-2xx → AdminApiError with backend detail).
+
+interface AdminPipelineTimingRow {
+  feature: string;
+  samples: number;
+  okSamples: number;
+  okRate: number | null;
+  p50Ms: number | null;
+  p95Ms: number | null;
+  maxMs: number | null;
+  avgMs: number | null;
+  batchSamples: number;
+}
+
+interface AdminPipelineTiming {
+  from: string;
+  to: string;
+  feature: string | null;
+  rows: AdminPipelineTimingRow[];
+}
+
+async function fetchAdminPipelineTiming(range: {
+  from: string;
+  to: string;
+}): Promise<AdminPipelineTiming> {
+  const params = new URLSearchParams({ from: range.from, to: range.to });
+  const response = await apiFetch(`/api/admin/pipeline-timing?${params.toString()}`);
+  if (!response.ok) {
+    let detail = '';
+    try {
+      const body = (await response.json()) as { detail?: unknown };
+      detail = typeof body.detail === 'string' ? body.detail : '';
+    } catch {
+      // Non-JSON body: fall through to the HTTP status fallback.
+    }
+    throw new AdminApiError(detail || `HTTP ${response.status}`, response.status);
+  }
+  try {
+    return (await response.json()) as AdminPipelineTiming;
+  } catch {
+    throw new AdminApiError('invalid admin payload', -1);
+  }
+}
+
+const TIMING_FEATURE_LABEL_KEYS: Record<string, TranslationKey> = {
+  video_translation: 'admin.feature.video_translation',
+  sse_translate: 'admin.feature.sse_translate',
+  video_analysis: 'admin.feature.video_analysis',
+  book_translation: 'admin.feature.book_translation',
+};
+
+function timingFeatureLabel(feature: string, t: (key: TranslationKey) => string): string {
+  const key = TIMING_FEATURE_LABEL_KEYS[feature];
+  return key ? t(key) : adminFeatureLabel(feature, t);
+}
+
+function formatTimingMs(
+  value: number | null,
+  formatNumber: (value: number) => string,
+): string {
+  return value == null ? '—' : `${formatNumber(Math.round(value))} ms`;
+}
+
+function formatTimingRate(
+  value: number | null,
+  formatNumber: (value: number) => string,
+): string {
+  return value == null ? '—' : `${formatNumber(Math.round(value * 1000) / 10)}%`;
 }
 
 function SectionTitle({
@@ -2216,6 +2293,174 @@ export interface AdminConsoleScreenProps {
   onDenied: () => void;
 }
 
+/**
+ * P2-35: per-feature pipeline timings (samples / success rate / P50 / P95 /
+ * max) from `GET /api/admin/pipeline-timing`, default last 7 days. The table
+ * owns its horizontal scroll (`Table minWidth`) so 375px only scrolls it.
+ */
+function PipelineTimingPanel({
+  refreshNonce,
+  onAuthError,
+}: {
+  refreshNonce: number;
+  onAuthError: () => void;
+}) {
+  const { t, formatNumber } = useI18n();
+  const [from, setFrom] = useState(() => dayString(-6));
+  const [to, setTo] = useState(() => dayString(0));
+  const [range, setRange] = useState(() => ({ from: dayString(-6), to: dayString(0) }));
+  const [data, setData] = useState<AdminPipelineTiming | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const requestRef = useRef(0);
+
+  const load = useCallback(async (nextRange: { from: string; to: string }) => {
+    const requestId = ++requestRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const next = await fetchAdminPipelineTiming(nextRange);
+      if (requestId !== requestRef.current) return;
+      setData(next);
+    } catch (err) {
+      if (requestId !== requestRef.current) return;
+      if (err instanceof AdminApiError && (err.status === 401 || err.status === 403)) {
+        onAuthError();
+        return;
+      }
+      setError(fallbackErrorText(err, t('admin.timing.loadError')));
+    } finally {
+      if (requestId === requestRef.current) setLoading(false);
+    }
+  }, [onAuthError, t]);
+
+  useEffect(() => {
+    void load(range);
+  }, [load, range, refreshNonce]);
+
+  const rows = data?.rows ?? [];
+
+  return (
+    <div>
+      <SectionTitle
+        id="admin-timing-title"
+        title={t('admin.timing.title')}
+        subtitle={t('admin.timing.subtitle')}
+        action={
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="block min-w-0">
+              <span className="block text-caption text-fg-muted">{t('admin.billing.from')}</span>
+              <span className="mt-1 inline-flex rounded-control border border-line-subtle bg-surface-2/60 focus-within:ring-2 focus-within:ring-brand/60">
+                <input
+                  data-testid="admin-timing-from"
+                  type="date"
+                  value={from}
+                  onChange={(event) => setFrom(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      setRange({ from, to });
+                    }
+                  }}
+                  className="h-control-md rounded-control bg-transparent px-2 text-ui tabular-nums text-fg-strong outline-none"
+                />
+              </span>
+            </label>
+            <label className="block min-w-0">
+              <span className="block text-caption text-fg-muted">{t('admin.billing.to')}</span>
+              <span className="mt-1 inline-flex rounded-control border border-line-subtle bg-surface-2/60 focus-within:ring-2 focus-within:ring-brand/60">
+                <input
+                  data-testid="admin-timing-to"
+                  type="date"
+                  value={to}
+                  onChange={(event) => setTo(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      setRange({ from, to });
+                    }
+                  }}
+                  className="h-control-md rounded-control bg-transparent px-2 text-ui tabular-nums text-fg-strong outline-none"
+                />
+              </span>
+            </label>
+            <Button
+              variant="secondary"
+              size="md"
+              loading={loading}
+              iconLeft={loading ? undefined : <Search aria-hidden="true" />}
+              onClick={() => setRange({ from, to })}
+              disabled={!from || !to}
+              testId="admin-timing-apply"
+            >
+              {t('admin.billing.apply')}
+            </Button>
+          </div>
+        }
+      />
+
+      <p data-testid="admin-timing-range" className="mt-3 text-caption text-fg-muted tabular-nums">
+        {t('admin.timing.range', {
+          from: data?.from ?? range.from,
+          to: data?.to ?? range.to,
+        })}
+      </p>
+
+      <div className="mt-2">
+        {error ? (
+          <ErrorBanner
+            message={error}
+            onRetry={() => { void load(range); }}
+            retryLabel={t('admin.retry')}
+          />
+        ) : (
+          <div className="rounded-card border border-line-subtle bg-surface/40 overflow-hidden">
+            <Table
+              testId="admin-timing-table"
+              minWidth={640}
+              caption={t('admin.timing.title')}
+            >
+              <TableHeader>
+                <tr>
+                  <TableHeaderCell nowrap>{t('admin.timing.col.feature')}</TableHeaderCell>
+                  <TableHeaderCell numeric nowrap>{t('admin.timing.col.samples')}</TableHeaderCell>
+                  <TableHeaderCell numeric nowrap>{t('admin.timing.col.successRate')}</TableHeaderCell>
+                  <TableHeaderCell numeric nowrap>{t('admin.timing.col.p50')}</TableHeaderCell>
+                  <TableHeaderCell numeric nowrap>{t('admin.timing.col.p95')}</TableHeaderCell>
+                  <TableHeaderCell numeric nowrap>{t('admin.timing.col.max')}</TableHeaderCell>
+                </tr>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.feature}>
+                    <TableCell nowrap>{timingFeatureLabel(row.feature, t)}</TableCell>
+                    <TableCell numeric nowrap>{formatNumber(row.samples)}</TableCell>
+                    <TableCell numeric nowrap>{formatTimingRate(row.okRate, formatNumber)}</TableCell>
+                    <TableCell numeric nowrap>{formatTimingMs(row.p50Ms, formatNumber)}</TableCell>
+                    <TableCell numeric nowrap>{formatTimingMs(row.p95Ms, formatNumber)}</TableCell>
+                    <TableCell numeric nowrap>{formatTimingMs(row.maxMs, formatNumber)}</TableCell>
+                  </TableRow>
+                ))}
+                {!loading && rows.length === 0 && (
+                  <TableMessageRow colSpan={6}>
+                    {t('admin.timing.empty')}
+                  </TableMessageRow>
+                )}
+                {loading && rows.length === 0 && (
+                  <TableMessageRow colSpan={6}>
+                    <Loader2 className="w-5 h-5 text-fg-muted animate-spin inline-block" />
+                    <span className="sr-only">{t('admin.timing.loading')}</span>
+                  </TableMessageRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminConsoleScreenProps) {
   const { t, language, formatNumber, formatDate } = useI18n();
   const { user, isAdmin } = useAuth();
@@ -2281,6 +2526,8 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
   const [billingNonce, setBillingNonce] = useState(0);
   // Quota tab owns its data; the console refresh button bumps this nonce.
   const [quotasNonce, setQuotasNonce] = useState(0);
+  // Pipeline timing card owns its data; the console refresh button bumps this.
+  const [timingNonce, setTimingNonce] = useState(0);
 
   const usersRequestRef = useRef(0);
   const invitesRequestRef = useRef(0);
@@ -2498,6 +2745,7 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
     else {
       void loadUsage();
       void loadHealth();
+      setTimingNonce((current) => current + 1);
     }
   };
 
@@ -3816,6 +4064,10 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
                   </div>
                 )}
               </div>
+            </div>
+
+            <div>
+              <PipelineTimingPanel refreshNonce={timingNonce} onAuthError={deny} />
             </div>
 
             <div>

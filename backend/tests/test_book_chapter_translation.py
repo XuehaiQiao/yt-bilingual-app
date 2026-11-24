@@ -48,7 +48,7 @@ from tests.migration_utils import (
 
 TEMPLATE_DB = "book-translation-template"
 SOURCE_URL = "https://www.gutenberg.org/cache/epub/999/pg999.txt"
-HEAD = "0031_quota_overrides"
+HEAD = "0032_pipeline_timing"
 
 # 四个章节：1 有完整本地中译；2/3 完全未译；4 只有第一段本地中译。
 SOURCE = """*** START OF THE PROJECT GUTENBERG EBOOK TEST BOOK ***

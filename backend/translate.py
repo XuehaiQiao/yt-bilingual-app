@@ -15,6 +15,7 @@ import time
 import billing
 import languages
 import llm
+import pipeline_timing
 import storage
 import translation_batching
 from ai import quota
@@ -821,7 +822,12 @@ async def retranslate_marked_blocks(
     batch_units = quota.units_per_batch(
         feature, [len(batch) for batch in index_batches]
     )
+    started = time.perf_counter()
+    all_ok = True
     for batch_index, batch_indices in enumerate(index_batches):
+        batch_started = time.perf_counter()
+        batch_ok = False
+        attempts = 0
         batch_blocks = [{
             "id": transcript[idx].get("id"),
             "start": transcript[idx]["start"],
@@ -832,6 +838,7 @@ async def retranslate_marked_blocks(
         max_retries = 5
         retry_delay = 15
         for attempt in range(max_retries):
+            attempts = attempt + 1
             try:
                 batch_result = await process_llm_batch(
                     batch_blocks,
@@ -844,6 +851,7 @@ async def retranslate_marked_blocks(
                 for j, idx in enumerate(batch_indices):
                     if j < len(batch_result):
                         transcript[idx] = batch_result[j]
+                batch_ok = True
                 await asyncio.sleep(llm.batch_pause(model))
                 break
             except Exception as e:
@@ -859,6 +867,39 @@ async def retranslate_marked_blocks(
                 else:
                     print(f"Re-translation batch failed: {e}")
                     break
+
+        if not batch_ok:
+            all_ok = False
+        # P2-35：补译路径同样落计时（本地剧集 feature=local_show 由这里覆盖）。
+        pipeline_timing.record(
+            feature=feature,
+            event="batch",
+            content_ref=data.get("videoId"),
+            batch_index=batch_index,
+            batch_count=len(index_batches),
+            duration_ms=round((time.perf_counter() - batch_started) * 1000, 2),
+            concurrency=1,
+            ok=batch_ok,
+            meta={
+                "attempts": attempts,
+                "translated": sum(
+                    1
+                    for idx in batch_indices
+                    if not needs_retranslation(transcript[idx].get("zh_text", ""))
+                ),
+            },
+        )
+
+    pipeline_timing.record(
+        feature=feature,
+        event="total",
+        content_ref=data.get("videoId"),
+        batch_count=len(index_batches),
+        total_ms=round((time.perf_counter() - started) * 1000, 2),
+        concurrency=1,
+        ok=all_ok,
+        meta={"translated": len(mock_indices)},
+    )
 
     data["transcript"] = transcript
     # 正常写盘时补齐语言元数据（旧中文缓存也在此补 target_lang，不批量改写）。
@@ -897,12 +938,43 @@ def _stream_translate_concurrency() -> int:
 
 
 def _stream_timing(**fields) -> None:
-    """一行结构化计时日志；``feature=sse_translate`` 是检索锚点。"""
+    """一行结构化计时日志 + 一行 ``pipeline_timing`` 落盘（P2-35）。
+
+    ``feature=sse_translate`` 是检索锚点。stdout 日志字段保持原样（不额外
+    添加 content_ref/job_id）；落盘失败静默，绝不影响 SSE 事件序。
+    """
+    log_fields = {
+        key: value
+        for key, value in fields.items()
+        if key not in ("content_ref", "job_id")
+    }
     _timing_logger.info(
         json.dumps(
-            {"feature": "sse_translate", **fields}, ensure_ascii=False, default=str
+            {"feature": "sse_translate", **log_fields},
+            ensure_ascii=False,
+            default=str,
         )
     )
+    try:
+        pipeline_timing.record(
+            feature="sse_translate",
+            event=fields.get("event") or "total",
+            content_ref=fields.get("content_ref"),
+            job_id=fields.get("job_id"),
+            batch_index=fields.get("batch_index"),
+            batch_count=fields.get("batch_count"),
+            duration_ms=fields.get("batch_ms"),
+            total_ms=fields.get("total_ms"),
+            concurrency=fields.get("concurrency"),
+            ok=fields.get("ok"),
+            meta={
+                key: fields[key]
+                for key in fields
+                if key in pipeline_timing.META_KEYS
+            },
+        )
+    except Exception:  # noqa: BLE001 - 计时落盘失败不能改变流式行为
+        pass
 
 
 def _persist_stream_payload(payload: dict, save_path: str) -> None:
@@ -922,6 +994,8 @@ async def _stream_translate(
     feature: str = "translate",
     user_id: str | None = None,
     target_lang: str | None = None,
+    content_ref: str | None = None,
+    job_id: str | None = None,
 ):
     """Translate the given transcript indices batch by batch.
 
@@ -1085,6 +1159,9 @@ async def _stream_translate(
                 queue_wait_ms=queue_wait_ms,
                 batch_ms=batch_ms,
                 concurrency=concurrency,
+                ok=translated_count > 0,
+                content_ref=content_ref,
+                job_id=job_id,
             )
             yield {
                 "blocks": [transcript[i] for i in batches[expected]],
@@ -1116,4 +1193,7 @@ async def _stream_translate(
             concurrency=concurrency,
             translated=translated,
             outcome=outcome,
+            ok=outcome == "done",
+            content_ref=content_ref,
+            job_id=job_id,
         )

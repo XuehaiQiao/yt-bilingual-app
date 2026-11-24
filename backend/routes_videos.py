@@ -35,6 +35,7 @@ import languages
 import billing
 import llm
 import local_shows
+import pipeline_timing
 import storage
 import teaching_analysis
 import translation_batching
@@ -337,10 +338,41 @@ def _video_translation_concurrency() -> int:
 
 
 def _timing_log(feature: str, **fields) -> None:
-    """一行结构化计时日志；``feature`` 是检索锚点（视频翻译/教学分析）。"""
+    """一行结构化计时日志 + 一行 ``pipeline_timing`` 落盘（P2-35）。
+
+    ``feature`` 是检索锚点（视频翻译/教学分析）。stdout 日志格式与字段保持
+    不变；落盘失败在 ``pipeline_timing.record`` 内部静默，绝不影响翻译。
+    """
     logger.info(
         json.dumps({"feature": feature, **fields}, ensure_ascii=False, default=str)
     )
+    try:
+        ok = fields.get("ok")
+        if ok is None and "outcome" in fields:
+            ok = fields["outcome"] == "ok"
+        batch_index = fields.get("batch_index")
+        if batch_index is None and fields.get("batch") is not None:
+            # stdout 的 batch 是 1 起（batch_no）；表里统一 0 起。
+            batch_index = max(0, int(fields["batch"]) - 1)
+        pipeline_timing.record(
+            feature=feature,
+            event=fields.get("event") or "total",
+            content_ref=fields.get("content_ref"),
+            job_id=fields.get("job_id"),
+            batch_index=batch_index,
+            batch_count=fields.get("batch_count"),
+            duration_ms=fields.get("duration_ms"),
+            total_ms=fields.get("total_ms"),
+            concurrency=fields.get("concurrency"),
+            ok=ok,
+            meta={
+                key: fields[key]
+                for key in fields
+                if key in pipeline_timing.META_KEYS
+            },
+        )
+    except Exception:  # noqa: BLE001 - 计时落盘失败不能改变翻译/日志语义
+        pass
 
 
 async def _translate_video_batch(
@@ -353,6 +385,7 @@ async def _translate_video_batch(
     user_id: str,
     lang: str,
     quota_units: int,
+    content_ref: str | None = None,
 ) -> tuple[list, float]:
     """翻译一个批次（retry/回退语义与旧串行循环逐行一致），返回 (blocks, duration_ms)。
 
@@ -423,6 +456,7 @@ async def _translate_video_batch(
             attempts=attempts,
             fallback=fallback,
             outcome=outcome,
+            content_ref=content_ref,
         )
 
 
@@ -432,6 +466,7 @@ async def _translate_video_blocks(
     model: str,
     user_id: str,
     lang: str,
+    content_ref: str | None = None,
 ) -> list:
     """视频 blocks 切批并行翻译，结果按原 batch 顺序合并（P1-18）。
 
@@ -490,6 +525,7 @@ async def _translate_video_blocks(
                     user_id=user_id,
                     lang=lang,
                     quota_units=batch_units[index],
+                    content_ref=content_ref,
                 )
                 results[index] = batch_result
                 durations.append({"batch": index + 1, "duration_ms": duration_ms})
@@ -518,10 +554,11 @@ async def _translate_video_blocks(
             concurrency=concurrency,
             batch_durations_ms=sorted(durations, key=lambda item: item["batch"]),
             ok=ok,
+            content_ref=content_ref,
         )
 
 
-async def _attach_video_analysis(payload: dict, **kwargs):
+async def _attach_video_analysis(payload: dict, *, job_id: str | None = None, **kwargs):
     """调用教学分析并记录 ``feature=video_analysis total_ms``（返回值/异常语义不变）。"""
     started = time.perf_counter()
     result = None
@@ -531,8 +568,10 @@ async def _attach_video_analysis(payload: dict, **kwargs):
     finally:
         _timing_log(
             "video_analysis",
+            event="total",
             total_ms=round((time.perf_counter() - started) * 1000, 2),
             content_ref=kwargs.get("content_ref"),
+            job_id=job_id,
             level=kwargs.get("level"),
             ok=result is not None,
         )
@@ -630,7 +669,7 @@ async def process_video(request: VideoRequest, http_request: Request):
 
     # 翻译批次并行（默认 2 路、1–3 可调）：顺序/回退/限流语义见 _translate_video_blocks。
     processed_blocks = await _translate_video_blocks(
-        blocks, model=model, user_id=user_id, lang=lang
+        blocks, model=model, user_id=user_id, lang=lang, content_ref=video_id
     )
 
     # Generate summary based on original English blocks
@@ -1030,7 +1069,8 @@ async def _cached_stream_gen(
         async for update in _stream_translate(
             transcript, pending, cached, cached_path,
             model=model, vocab_level=vocab_level, user_id=user_id,
-            target_lang=lang,
+            target_lang=lang, content_ref=cached.get("videoId") or "",
+            job_id=job_id,
         ):
             # 并行批次下用生成器按批序累计的「实际已翻句数」推进进度：
             # 不能读整份 transcript（后完成批次可能已先落盘，进度会跳变）。
@@ -1058,6 +1098,7 @@ async def _cached_stream_gen(
         content_ref=cached.get("videoId") or "",
         model=model,
         user_id=user_id,
+        job_id=job_id,
     )
     if analysis is not None:
         updated_cursor = _translated_cursor(transcript)
@@ -1249,7 +1290,7 @@ async def _fresh_stream_gen(
     async for update in _stream_translate(
         transcript, list(range(total)), payload, save_path,
         model=model, vocab_level=vocab_level, user_id=user_id,
-        target_lang=lang,
+        target_lang=lang, content_ref=video_id, job_id=job_id,
     ):
         # 同续传路径：进度用生成器按批序累计的已翻句数，不读整份 transcript。
         cursor = update.pop("translated", None)
@@ -1274,6 +1315,7 @@ async def _fresh_stream_gen(
         content_ref=video_id,
         model=model,
         user_id=user_id,
+        job_id=job_id,
     )
     if analysis is not None:
         updated_cursor = _translated_cursor(transcript)

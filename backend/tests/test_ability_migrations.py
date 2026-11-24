@@ -20,7 +20,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0031_quota_overrides"
+HEAD = "0032_pipeline_timing"
 BEFORE = "0013_user_profile"
 
 

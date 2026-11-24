@@ -47,6 +47,7 @@ import httpx
 import config
 import languages
 import llm
+import pipeline_timing
 import translation_batching
 from ai import quota
 
@@ -1533,6 +1534,7 @@ async def translate_article(
 ) -> dict:
     """翻译一篇的缺失段落；已有译文不重译，失败段写 ``[未翻译]`` 可重试。"""
     lang = languages.resolve_target_lang(target_lang)
+    started = time.perf_counter()
     article, paragraphs, existing = await asyncio.to_thread(
         _load_for_translation, user_id, article_id, lang
     )
@@ -1566,6 +1568,17 @@ async def translate_article(
         failures = {idx: UNTRANSLATED_MARKER for idx, _ in missing}
         await asyncio.to_thread(
             _write_translations, article_id, lang, failures, None
+        )
+        # P2-35：无可用模型也是一次失败样本（0 批、有耗时），便于看失败率。
+        pipeline_timing.record(
+            feature="reading",
+            event="total",
+            content_ref=article_id,
+            batch_count=0,
+            total_ms=round((time.perf_counter() - started) * 1000, 2),
+            concurrency=1,
+            ok=False,
+            meta={"failed_paragraphs": len(missing)},
         )
         return {
             "articleId": article["articleId"],
@@ -1618,6 +1631,7 @@ async def translate_article(
             )
         batches += 1
 
+        batch_started = time.perf_counter()
         translations, used_model, error = await _translate_batch(
             batch, lang, user_id, candidates
         )
@@ -1650,8 +1664,36 @@ async def translate_article(
             )
             failed_indices.extend(failed)
 
+        pipeline_timing.record(
+            feature="reading",
+            event="batch",
+            content_ref=article_id,
+            batch_index=batches - 1,
+            batch_count=len(missing_batches),
+            duration_ms=round((time.perf_counter() - batch_started) * 1000, 2),
+            concurrency=1,
+            ok=not failed,
+            meta={
+                "translated": len(success),
+                "failed_paragraphs": len(failed),
+            },
+        )
+
     failed_indices.sort()
     failed_count = len(failed_indices)
+    pipeline_timing.record(
+        feature="reading",
+        event="total",
+        content_ref=article_id,
+        batch_count=len(missing_batches),
+        total_ms=round((time.perf_counter() - started) * 1000, 2),
+        concurrency=1,
+        ok=failed_count == 0,
+        meta={
+            "translated": total - failed_count,
+            "failed_paragraphs": failed_count,
+        },
+    )
     return {
         "articleId": article["articleId"],
         "targetLang": lang,

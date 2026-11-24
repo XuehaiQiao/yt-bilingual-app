@@ -55,6 +55,7 @@ import books
 import config
 import languages
 import llm
+import pipeline_timing
 import ratelimit
 from ai import quota
 
@@ -649,6 +650,13 @@ def _cached_payload(payload: dict, lang: str, cached_row: dict | None) -> dict:
     }
 
 
+def _as_int_or_none(value) -> int | None:
+    """批次下标/计数清洗：非整数（含 bool）返回 None，交给落盘层置空。"""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
+
+
 def _log_translation_timing(
     *,
     book_id: str,
@@ -686,6 +694,38 @@ def _log_translation_timing(
         json.dumps(timing, ensure_ascii=False),
         failed_paragraphs,
     )
+    if status == "cached":
+        # 纯缓存命中没调模型；落表只会把 P50 拖向 0，不算翻译样本。
+        return
+    content_ref = f"{book_id}:{number}"
+    try:
+        for item in timing:
+            pipeline_timing.record(
+                feature="book_translation",
+                event="batch",
+                content_ref=content_ref,
+                batch_index=_as_int_or_none(item.get("batch")),
+                batch_count=batch_count,
+                duration_ms=item.get("duration_ms"),
+                concurrency=concurrency,
+                ok=bool(item.get("ok")),
+                meta={"translated": _as_int_or_none(item.get("translated"))},
+            )
+        pipeline_timing.record(
+            feature="book_translation",
+            event="total",
+            content_ref=content_ref,
+            batch_count=batch_count,
+            total_ms=total_ms,
+            concurrency=concurrency,
+            ok=status == "done",
+            meta={
+                "status": status,
+                "failed_paragraphs": failed_paragraphs,
+            },
+        )
+    except Exception:  # noqa: BLE001 - 计时失败不能改变书翻译语义（record 本不抛）
+        pass
 
 
 async def translate_chapter(

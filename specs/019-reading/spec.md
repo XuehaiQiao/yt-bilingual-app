@@ -134,6 +134,10 @@
 - 失败段写 `article_translations.text = "[未翻译]"`、`model = NULL`，本次响应
   `status: "partial"` + `failedIndices`；下次再调只补这些段。
 - 完全没有可用模型时同样写 `[未翻译]`（不写假译文），`batches=0`。
+- 计时（P2-35）：每篇的批与收尾各追加一行 `pipeline_timing`
+  （`feature=reading`、`content_ref=articleId`、`batch_count`、
+  `duration_ms`/`total_ms`、`concurrency`、`ok`）；不存正文/用户 id，写入失败
+  静默、不影响翻译返回；管理台按 feature 看样本数/成功率/P50/P95/max。
 - 幂等：全部已有译文时 `status: "cached"`、`batches=0`、不调模型。
 - 错误：400（targetLang 非法）、404（文章不存在/别人的）、429（AI 配额或预算）、
   503（未迁移）。
