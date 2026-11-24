@@ -1312,8 +1312,8 @@
     {
       "id": "P2-29",
       "file": "TASKS/P2-29-wordlist-delete-cefr.md",
-      "status": "claimed",
-      "owner": "wordlist-fix-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/VocabularyBookScreen.tsx",
         "frontend/src/lib/wordlists.ts",
