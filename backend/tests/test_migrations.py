@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0030_qwen_prices"
+HEAD = "0031_quota_overrides"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -86,6 +86,8 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "account_deletion_requests", "data_export_jobs", "admin_audit_log",
         # M3a：余额 / 流水 / 预占 / 价格表。
         "account_ledger", "credit_holds", "model_prices",
+        # 0031：单用户每日额度覆盖（specs/047）。
+        "quota_overrides",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD
@@ -1852,3 +1854,92 @@ def test_qwen_price_migration_seeds_versions_and_aliases(tmp_path):
     # 再升级把价补回来。
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
     assert set(_qwen_rows()) == set(expected)
+
+
+def test_quota_overrides_schema_constraints_and_rollback(tmp_path):
+    """0031：复合主键 (user_id, feature)、非负 CHECK、可重复升降级（specs/047）。"""
+    db = tmp_path / "app.db"
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
+    assert "quota_overrides" in table_names(db)
+
+    overrides = columns(db, "quota_overrides")
+    assert list(overrides) == [
+        "user_id",
+        "feature",
+        "limit_units",
+        "reason",
+        "created_by",
+        "created_at_ms",
+        "updated_at_ms",
+    ]
+    # 复合主键 (user_id, feature)：PRAGMA 里的 pk 位分别是 1 / 2。
+    assert overrides["user_id"]["pk"] == 1
+    assert overrides["feature"]["pk"] == 2
+    for required in ("user_id", "feature", "limit_units", "created_at_ms", "updated_at_ms"):
+        assert overrides[required]["notnull"] == 1, required
+    for optional in ("reason", "created_by"):
+        assert overrides[optional]["notnull"] == 0, optional
+
+    with sqlite3.connect(db) as conn:
+        conn.execute(
+            "INSERT INTO quota_overrides "
+            "(user_id, feature, limit_units, reason, created_by, "
+            " created_at_ms, updated_at_ms) "
+            "VALUES ('u1', 'analysis', 0, '客服临时关闭', 'admin-1', 1000, 1000)"
+        )
+        # 唯一 (user_id, feature)：重复插入被主键挡下（应用层用 UPSERT）。
+        try:
+            conn.execute(
+                "INSERT INTO quota_overrides "
+                "(user_id, feature, limit_units, created_at_ms, updated_at_ms) "
+                "VALUES ('u1', 'analysis', 5, 1001, 1001)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("quota_overrides (user_id, feature) 主键应阻止重复")
+        # 0 合法（= 关闭功能），负数被 CHECK 拒绝。
+        assert conn.execute(
+            "SELECT limit_units FROM quota_overrides "
+            "WHERE user_id = 'u1' AND feature = 'analysis'"
+        ).fetchone()[0] == 0
+        try:
+            conn.execute(
+                "INSERT INTO quota_overrides "
+                "(user_id, feature, limit_units, created_at_ms, updated_at_ms) "
+                "VALUES ('u1', 'quiz', -1, 1002, 1002)"
+            )
+        except sqlite3.IntegrityError:
+            pass
+        else:
+            raise AssertionError("quota_overrides.limit_units 应拒绝负数")
+        # 同一功能不同用户互不影响。
+        conn.execute(
+            "INSERT INTO quota_overrides "
+            "(user_id, feature, limit_units, created_at_ms, updated_at_ms) "
+            "VALUES ('u2', 'analysis', 7, 1003, 1003)"
+        )
+        conn.commit()
+
+    # 回滚到 0030：只删本迁移的新表；再升级重新建空表（数据不回填）。
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0030_qwen_prices"), "downgrade 0030"
+    )
+    assert revision(db) == "0030_qwen_prices"
+    assert "quota_overrides" not in table_names(db)
+
+    # 幂等：假装版本在 0031（表其实已被删），再降级一次不能报 no such table。
+    assert_alembic_ok(
+        run_alembic(db, "stamp", "0031_quota_overrides"), "stamp 0031 (no table)"
+    )
+    assert_alembic_ok(
+        run_alembic(db, "downgrade", "0030_qwen_prices"),
+        "downgrade 0030 (table already gone)",
+    )
+    assert revision(db) == "0030_qwen_prices"
+
+    assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head (again)")
+    assert revision(db) == HEAD
+    assert "quota_overrides" in table_names(db)
+    with sqlite3.connect(db) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM quota_overrides").fetchone()[0] == 0

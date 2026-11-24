@@ -3,11 +3,13 @@
 配额口径（计划书 §7.4「配额与预算」，P0-05 起单一事实源）：
 
 1. **每用户每功能日限额**：``ai_quota`` 里 ``(user_id, day, feature)`` 的
-   ``used_units`` 原子 UPSERT 递增；**上限只取 config** —— ``limit_for()``
-   （免费额度默认值见 ``config.AI_DAILY_QUOTA_*``：翻译 60 批 ≈ 120 分钟视频、
-   总结 10 次、词典 200 次、本地剧集 60 批、理解题 30 个 lesson）。行内
-   ``limit_units`` 只是消费时的审计快照，**不参与判断**（P0-05：同一用户同一天
-   不再因不同进程的 env 上限出现 374/30 与 374/400 两套判断）。
+   ``used_units`` 原子 UPSERT 递增；**上限来自 ``quota_config`` 的三层解析**
+   （单用户覆盖 > 后台全局默认 > ``config.AI_DAILY_QUOTA_*``，见 specs/047），
+   由 ``limit_for(feature, user_id)`` 统一读出并把解析结果显式传给
+   ``ledger.check_and_consume_quota(limit=...)``。行内 ``limit_units`` 只是
+   消费时的审计快照，**不参与判断**（P0-05：同一用户同一天不再因不同进程的
+   env 上限出现 374/30 与 374/400 两套判断）。覆盖表未迁移时运行时只按默认层
+   继续（fail-open + 告警），管理 API 则返回 503。
 2. **每用户日预算**：``ai_usage`` 当日 SUM ≥ ``AI_DAILY_BUDGET_USER_USD``
    → ``BudgetExceeded``。
 3. **全局日预算**：全站当日 SUM ≥ ``AI_DAILY_BUDGET_GLOBAL_USD``
@@ -43,23 +45,18 @@ import billing
 import config
 import languages
 import llm
+import quota_config
 from ai import ledger
 from ai.ledger import KNOWN_FEATURES, QuotaExceeded
 
 logger = logging.getLogger(__name__)
 
-_FEATURE_LIMIT_ATTRS = {
-    "translate": "AI_DAILY_QUOTA_TRANSLATE_BATCHES",
-    "summary": "AI_DAILY_QUOTA_SUMMARY",
-    "define": "AI_DAILY_QUOTA_DEFINE",
-    "local_show": "AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES",
-    "quiz": "AI_DAILY_QUOTA_QUIZ",
-    "reading": "AI_DAILY_QUOTA_READING_BATCHES",
-    "analysis": "AI_DAILY_QUOTA_ANALYSIS",
-    "course_generation": "AI_DAILY_QUOTA_COURSE_GENERATION",
-}
+# 单一事实源在 ``quota_config``；这里保留旧名做兼容别名（course_generator /
+# teaching_analysis 的注释仍指向它）。
+_FEATURE_LIMIT_ATTRS = quota_config.FEATURE_LIMIT_ATTRS
 
 _warned_missing_tables = False
+_warned_missing_overrides = False
 
 
 class BudgetExceeded(QuotaExceeded):
@@ -101,15 +98,50 @@ def rethrow_billing_error(exc: BaseException) -> None:
         raise exc
 
 
-def limit_for(feature: str) -> int:
-    """某功能的**用户**每日免费额度（0 = 关闭该功能）；上限的唯一来源。"""
+def _warn_override_unavailable_once() -> None:
+    global _warned_missing_overrides
+    if _warned_missing_overrides:
+        return
+    _warned_missing_overrides = True
+    logger.warning(
+        "quota_overrides 表不可用（未跑 0031 迁移），本次只按全局默认/env 计算额度；"
+        "上线前必须运行 `alembic upgrade head`。",
+    )
+
+
+def _effective_limits(
+    feature: str, user_id: str | None = None
+) -> tuple[int, str, int, int | None]:
+    """``quota_config.effective_limit`` 的运行时包装：覆盖表不可用时 fail-open。
+
+    运行时（AI 请求）不能因为「升级顺序」把翻译/查词整条链路打死，所以缺表时
+    只按默认层（全局默认 > env）继续并记一次 WARNING；管理 API 走
+    ``quota_config`` 的严格版本（503）。非用户主体（ops/sponsored）不使用用户
+    覆盖，按无 user_id 解析。
+    """
+    if user_id and ledger.is_ops_subject(user_id):
+        user_id = None
+    try:
+        return quota_config.effective_limit(feature, user_id)
+    except quota_config.QuotaConfigUnavailable as exc:
+        _warn_override_unavailable_once()
+        logger.debug("用户额度覆盖不可用，只按默认层继续：%s", exc)
+        limit, source = quota_config.default_limit(feature)
+        return limit, source, limit, None
+
+
+def limit_for(feature: str, user_id: str | None = None) -> int:
+    """某功能对某用户的**生效**每日额度（0 = 关闭该功能）；上限的唯一来源。
+
+    解析顺序：单用户覆盖 > 后台全局默认（``app_settings.ai_quota_defaults``）>
+    ``config.AI_DAILY_QUOTA_*``（见 ``quota_config.effective_limit``）。
+    ``user_id=None`` 保留旧调用签名（只看默认层）；覆盖表未迁移时运行时只按
+    默认层继续（fail-open），不抛异常。
+    """
     if feature not in KNOWN_FEATURES:
         raise ValueError(f"未知 AI 功能：{feature!r}（见 ai.ledger.KNOWN_FEATURES）")
-    attr = _FEATURE_LIMIT_ATTRS[feature]
-    try:
-        return max(0, int(getattr(config, attr, 0)))
-    except (TypeError, ValueError):
-        return 0
+    limit, _source, _default, _override = _effective_limits(feature, user_id)
+    return limit
 
 
 def ops_limit_for(feature: str) -> int:
@@ -129,23 +161,35 @@ def ops_limit_for(feature: str) -> int:
 
 
 def snapshot(user_id: str | None, feature: str, day: str | None = None) -> dict:
-    """权威配额快照（读侧唯一入口）：used 取 ``ai_quota``，limit 只取 config。
+    """权威配额快照（读侧唯一入口）：used 取 ``ai_quota``，limit 取三层解析。
 
     返回 ``{subject, feature, day, used_units, limit_units, remaining,
-    limit_source, audit_limit_units, independent}``：
+    limit_source, default_limit, override_limit, audit_limit_units, independent}``：
 
-    - 用户主体：``limit_units = limit_for(feature)``（config）；
+    - 用户主体：``limit_units = limit_for(feature, user_id)``（覆盖 > 全局默认
+      > env）；``limit_source`` ∈ ``user_override`` / ``default`` / ``config``，
+      ``default_limit`` 是默认层值，``override_limit`` 是覆盖值（无则 ``None``）；
     - 非用户主体：``limit_units = ops_limit_for(feature)``，0 时返回 ``None``
-      （表示不设功能级上限）；
+      （表示不设功能级上限）；``limit_source`` 仍是 ``config``（独立配额来自
+      ``AI_OPS_DAILY_QUOTA``），``default_limit`` 等于该独立配额；
     - ``audit_limit_units`` 是 ``ai_quota.limit_units`` 审计快照，只供排查，
-      不参与任何判定；``limit_source`` 恒为 ``config``。
-    - 未迁移/读库失败按 0 已用处理（这是展示接口，不能把页面打死）。
+      不参与任何判定；
+    - 未迁移/读库失败按 0 已用处理（这是展示接口，不能把页面打死）；用户覆盖
+      表未迁移时只按默认层展示（运行时 fail-open，管理 API 另行 503）。
     """
     if feature not in KNOWN_FEATURES:
         raise ValueError(f"未知 AI 功能：{feature!r}（见 ai.ledger.KNOWN_FEATURES）")
     resolved_day = day or ledger.day_of()
     independent = ledger.is_ops_subject(user_id)
-    limit = ops_limit_for(feature) if independent else limit_for(feature)
+    if independent:
+        limit = ops_limit_for(feature)
+        limit_source = "config"
+        default_limit: int | None = limit
+        override_limit: int | None = None
+    else:
+        limit, limit_source, default_limit, override_limit = _effective_limits(
+            feature, user_id
+        )
     unlimited = independent and limit <= 0
 
     used = 0
@@ -169,7 +213,9 @@ def snapshot(user_id: str | None, feature: str, day: str | None = None) -> dict:
         "used_units": used,
         "limit_units": None if unlimited else limit,
         "remaining": None if unlimited else max(0, limit - used),
-        "limit_source": "config",
+        "limit_source": limit_source,
+        "default_limit": default_limit,
+        "override_limit": override_limit,
         "audit_limit_units": audit_limit,
         "independent": independent,
     }
@@ -239,6 +285,9 @@ def _fail_open_result(feature: str, units: int, day: str | None, lang: str) -> d
         "used_units": None,
         "limit_units": None,
         "remaining": None,
+        "limit_source": None,
+        "default_limit": None,
+        "override_limit": None,
         "units": max(1, int(units)),
         "target_lang": lang,
     }
@@ -274,6 +323,9 @@ def _consume_ops_quota(
                 "used_units": None,
                 "limit_units": None,
                 "remaining": None,
+                "limit_source": "config",
+                "default_limit": limit,
+                "override_limit": None,
                 "units": max(1, int(units)),
                 "target_lang": target_lang,
             }
@@ -287,6 +339,9 @@ def _consume_ops_quota(
         )
         result["ops"] = True
         result["enforced"] = True
+        result["limit_source"] = "config"
+        result["default_limit"] = limit
+        result["override_limit"] = None
         return result
     except sqlite3.OperationalError as exc:
         if not _is_missing_db_error(exc):
@@ -321,8 +376,11 @@ def check_and_consume_quota(
     上界 × 候选链最高价」都付不起时直接 402，避免先扣掉日额度却调用不了模型。
     余额为 0 且配额也用尽时优先返 402（用户可行动）；全站预算仍是 429（系统保护）。
 
-    P0-05：功能配额上限只取 ``limit_for(feature)``（config）；``ai_quota.limit_units``
-    只是审计快照，不再参与判断。
+    P0-05：功能配额上限由 ``limit_for(feature, user_id)`` 的三层解析决定
+    （单用户覆盖 > 后台全局默认 > config，specs/047），且**显式**传给
+    ``ledger.check_and_consume_quota(limit=...)``，保证判定/报错/审计快照同源；
+    ``ai_quota.limit_units`` 只是审计快照，不再参与判断。返回结果额外带
+    ``limit_source`` / ``default_limit`` / ``override_limit``。
     """
     resolved_lang = languages.normalize_code(target_lang) or languages.DEFAULT_TARGET_LANG
 
@@ -350,10 +408,23 @@ def check_and_consume_quota(
 
     try:
         ensure_within_budget(user_id, day)
+        # 先解析生效额度（覆盖 > 全局默认 > env），再显式传给账本：判定、429
+        # 文案与审计快照都用同一个 limit，避免多进程/多层配置出现两套上限。
+        limit, limit_source, default_limit, override_limit = _effective_limits(
+            feature, user_id
+        )
         result = ledger.check_and_consume_quota(
-            user_id, feature, units, day=day, target_lang=resolved_lang
+            user_id,
+            feature,
+            units,
+            limit=limit,
+            day=day,
+            target_lang=resolved_lang,
         )
         result["enforced"] = True
+        result["limit_source"] = limit_source
+        result["default_limit"] = default_limit
+        result["override_limit"] = override_limit
         return result
     except sqlite3.OperationalError as exc:
         if not _is_missing_db_error(exc):

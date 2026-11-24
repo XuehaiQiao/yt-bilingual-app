@@ -20,7 +20,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0030_qwen_prices"
+HEAD = "0031_quota_overrides"
 BEFORE = "0013_user_profile"
 
 

@@ -6,7 +6,10 @@
 - ``GET  /api/admin/users``：在原有字段上增加 username / credits / status；
 - ``POST /api/admin/users/{id}/credits``：手动调余额（原子更新 + 流水，不允许负余额）；
 - ``PATCH /api/admin/users/{id}``：封禁/解封（不能封自己或最后一个管理员）；
-- ``GET/PUT /api/admin/settings``：维护模式与公告。
+- ``GET/PUT /api/admin/settings``：维护模式与公告；
+- ``GET/PUT /api/admin/quotas``（specs/047）：每日额度默认值与预算只读展示；
+- ``PUT /api/admin/quotas/defaults``：改全局默认额度（``null`` 回退 env）；
+- ``GET/PUT /api/admin/quotas/users/{id}``：单用户额度覆盖（``null`` 清除）。
 
 身份（见 config.py / routes_auth.py / specs/021-admin）：
 
@@ -38,12 +41,14 @@ from pydantic import AliasChoices, BaseModel, Field
 import account
 import account_lifecycle
 import alerts
+import auth_db
 import behavior_events
 import billing
 import config
 import guest
 import invites
 import observability
+import quota_config
 import ratelimit
 
 logger = logging.getLogger("linguatrek.admin")
@@ -112,6 +117,23 @@ class SettingsUpdateRequest(BaseModel):
 
     maintenance_mode: bool | None = None
     announcement: str | None = None
+
+
+class QuotaDefaultsRequest(BaseModel):
+    """``PUT /quotas/defaults``：``{limits:{feature:int|null}}``（specs/047）。
+
+    值类型用 ``object`` 让非整数走本模块的 400 校验（而不是 pydantic 422）；
+    ``null`` = 删除该键、回退 env/config。
+    """
+
+    limits: dict[str, object] = Field(default_factory=dict)
+
+
+class QuotaUserUpdateRequest(BaseModel):
+    """``PUT /quotas/users/{id}``：``{overrides:{feature:int|null}, reason}``。"""
+
+    overrides: dict[str, object] = Field(default_factory=dict)
+    reason: object = None
 
 
 class InviteCreateRequest(BaseModel):
@@ -1215,6 +1237,197 @@ def admin_update_settings(
         },
     )
     return current
+
+
+# ---------------------------------------------------------------------------
+# 每日额度（specs/047）：全局默认 + 单用户覆盖（只读预算展示）
+# ---------------------------------------------------------------------------
+
+def _quota_budgets() -> dict:
+    """预算只读展示（specs/047 §2：本期不改预算，只展示）。"""
+
+    def _usd(attr: str) -> float:
+        try:
+            return round(max(0.0, float(getattr(config, attr, 0) or 0)), 6)
+        except (TypeError, ValueError):
+            return 0.0
+
+    return {
+        "userDailyUsd": _usd("AI_DAILY_BUDGET_USER_USD"),
+        "globalDailyUsd": _usd("AI_DAILY_BUDGET_GLOBAL_USD"),
+    }
+
+
+def _quota_user_summary(user: dict) -> dict:
+    """额度页展示的用户信息（不含 password_hash 等敏感字段）。"""
+    return {
+        "id": user["id"],
+        "email": user.get("email"),
+        "username": user.get("username"),
+        "status": user.get("status"),
+    }
+
+
+def _quota_used_today(user_id: str) -> dict[str, int]:
+    """今天各功能的已用额度（``ai_quota.used_units``；表缺失按 0）。"""
+    used: dict[str, int] = {}
+    with _db() as conn:
+        if conn is None or not _table_exists(conn, "ai_quota"):
+            return used
+        try:
+            rows = conn.execute(
+                "SELECT feature, used_units FROM ai_quota "
+                "WHERE user_id = ? AND day = ?",
+                (user_id, _today_str()),
+            ).fetchall()
+        except sqlite3.Error as exc:
+            logger.warning("读取今日额度用量失败（按 0 展示）：%s", exc)
+            return used
+    for row in rows:
+        try:
+            used[row["feature"]] = int(row["used_units"] or 0)
+        except (TypeError, ValueError):
+            used[row["feature"]] = 0
+    return used
+
+
+def _quota_features_for_user(user: dict) -> list[dict]:
+    """某用户 8 个功能的默认/覆盖/生效/今日已用/剩余/来源。
+
+    覆盖表未迁移时由 ``quota_config`` 抛 ``QuotaConfigUnavailable``（调用方 503）；
+    已用数从 ``ai_quota`` 只读取，读失败按 0（展示接口不因一条统计 500）。
+    """
+    user_id = user["id"]
+    used_map = _quota_used_today(user_id)
+    features: list[dict] = []
+    for feature in quota_config.QUOTA_FEATURES:
+        limit, source, default_limit, override_limit = quota_config.effective_limit(
+            feature, user_id
+        )
+        used = used_map.get(feature, 0)
+        features.append(
+            {
+                "feature": feature,
+                "defaultLimit": default_limit,
+                "overrideLimit": override_limit,
+                "effectiveLimit": limit,
+                "usedToday": used,
+                "remaining": max(0, limit - used),
+                "source": source,
+            }
+        )
+    return features
+
+
+def _quota_payload(user: dict) -> dict:
+    return {
+        "user": _quota_user_summary(user),
+        "features": _quota_features_for_user(user),
+    }
+
+
+@router.get("/quotas")
+def admin_get_quotas(_user: dict = Depends(require_admin)):
+    """额度面板：8 个功能的默认值/来源（只读 env 兜底与后台默认）+ 预算。
+
+    返回 ``{features:[{feature,defaultLimit,source}], budgets:{userDailyUsd,
+    globalDailyUsd}}``；``source`` ∈ ``default``（后台默认）/``config``（env）。
+    """
+    return {
+        "features": quota_config.snapshot_defaults(),
+        "budgets": _quota_budgets(),
+    }
+
+
+@router.put("/quotas/defaults")
+def admin_update_quota_defaults(
+    payload: QuotaDefaultsRequest,
+    request: Request,
+    user: dict = Depends(require_admin),
+):
+    """改全局默认额度（一次影响所有未单独覆盖的用户）。
+
+    - ``{limits:{feature:int|null}}``：整数 = 设为该值（``0`` = 关闭功能）；
+      ``null`` = 删除该键、回退 ``config.AI_DAILY_QUOTA_*``；
+    - 校验 feature 属于 8 个额度功能、limit 在 ``0..1_000_000``（400）；
+    - ``app_settings`` 未迁移 → 503；写后清缓存并审计（前后值/操作者）。
+    """
+    try:
+        result = quota_config.set_defaults(payload.limits)
+    except quota_config.QuotaConfigUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    _audit(
+        request,
+        user["id"],
+        "admin.quota.defaults_update",
+        target_type="app_settings",
+        target_id=quota_config.DEFAULTS_KEY,
+        detail={"changes": result["changes"], "stored": result["stored"]},
+    )
+    return {
+        "features": quota_config.snapshot_defaults(),
+        "budgets": _quota_budgets(),
+        "changes": result["changes"],
+    }
+
+
+@router.get("/quotas/users/{user_id}")
+def admin_get_user_quotas(user_id: str, _user: dict = Depends(require_admin)):
+    """单用户额度明细（默认/覆盖/生效/今日已用/剩余/来源）；用户不存在 404。"""
+    target = auth_db.get_user_by_id(user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="用户不存在。")
+    try:
+        return _quota_payload(target)
+    except quota_config.QuotaConfigUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
+
+@router.put("/quotas/users/{user_id}")
+def admin_update_user_quotas(
+    user_id: str,
+    payload: QuotaUserUpdateRequest,
+    request: Request,
+    user: dict = Depends(require_admin),
+):
+    """设置/清除单用户额度覆盖（覆盖优先于全局默认；清除后回继承）。
+
+    - ``{overrides:{feature:int|null}, reason}``：整数 = 覆盖（``0`` = 关闭该
+      功能），``null`` = 删除覆盖、回继承默认；``reason`` 必填（1–200 字）；
+    - 用户不存在 404；覆盖表未迁移 503；校验失败 400；
+    - 一次请求的全部覆盖写在**一个事务**里，写后清缓存并审计（含 before/after）。
+    """
+    target = auth_db.get_user_by_id(user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="用户不存在。")
+    try:
+        reason = billing.validate_reason(payload.reason)
+    except billing.InvalidBillingRequest as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    try:
+        result = quota_config.apply_overrides(
+            user_id,
+            payload.overrides,
+            reason=reason,
+            created_by=user["id"],
+        )
+        response_payload = _quota_payload(target)
+    except quota_config.QuotaConfigUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    _audit(
+        request,
+        user["id"],
+        "admin.quota.user_override_update",
+        target_type="user",
+        target_id=user_id,
+        detail={"changes": result["changes"], "reason": reason},
+    )
+    response_payload["changes"] = result["changes"]
+    return response_payload
 
 
 @router.post("/alerts/test")

@@ -18,7 +18,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0030_qwen_prices"
+HEAD = "0031_quota_overrides"
 PREVIOUS = "0015_assessment_sessions"
 
 

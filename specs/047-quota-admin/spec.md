@@ -1,7 +1,14 @@
 # 047 — 管理员可见/可调的每日额度
 
-> 状态：待实现 ｜ 2026-11-24
+> 状态：**后端已实现（2026-11-24，P2-28；管理台 UI 待实现）** ｜ 2026-11-24
 > 现状：额度只来自 env/config（`AI_DAILY_QUOTA_*`），管理员前台看不到、改不了；用户只会在 429 时知道超限。
+>
+> 代码落点：`backend/quota_config.py`（三层解析/缓存/校验）、`backend/ai/quota.py`
+> （`limit_for` / `snapshot` / `check_and_consume_quota`）、`backend/routes_admin.py`
+> （`/api/admin/quotas*` 四个端点）、`backend/migrations/versions/0031_quota_overrides.py`
+> （覆盖表）、`backend/tests/test_quota_admin.py`（验收）、`backend/tests/test_migrations.py`
+> （head 0031 + 回滚）、`backend/tests/test_quota_ops_subject.py`、`backend/tests/test_ai_ledger.py`
+> （旧配额语义零回归）。
 
 ## 1. 成熟产品做法（参考）
 
@@ -51,3 +58,27 @@ Stripe Billing entitlements、OpenAI usage limits、AWS Service Quotas、GitHub 
 - 单用户覆盖优先于默认；清除后回继承；0 生效；其他用户不受影响。
 - 审计有字段/前后值/操作者；一次修改一个事务。
 - 用户 429 文案仍可用；管理台 375/1440；现有计费/配额测试零回归。
+
+## 7. 后端实现落点（P2-28 回填，2026-11-24）
+
+- **配置层** `backend/quota_config.py`：`QUOTA_FEATURES`（8 个有用户额度的功能；
+  `books` / `discover` 没有用户额度，配置它们返回 400）→ `limit 0..1_000_000`
+  （`0` = 关闭，无「无限」语义）。全局默认存 `app_settings.ai_quota_defaults`
+  （JSON，只记显式项；`null` 删键回退 env，全部回退时整行删除）；单用户覆盖存
+  `quota_overrides`。进程内 5s 缓存（按 `AUTH_DB_PATH` 隔离），写后
+  `invalidate()` 立即失效。覆盖表缺表：管理 API 抛 `QuotaConfigUnavailable` → 503；
+  运行时 `ai.quota` 捕获后只按默认层继续（fail-open + 一次 WARNING，不阻断 AI 链路）。
+- **运行时** `backend/ai/quota.py`：`limit_for(feature, user_id=None)` 走
+  `quota_config.effective_limit`（覆盖 > 默认 > config，返回
+  `limit/source/default_limit/override_limit`）；`check_and_consume_quota` 把
+  effective limit **显式**传给 `ledger.check_and_consume_quota(limit=...)`，429 与
+  `snapshot` 的 `limit_source/default_limit/override_limit` 同源。ops/sponsored
+  语义不变（仍 `ops_limit_for`，不使用用户覆盖）。
+- **API**（全部 `require_admin`）：
+  - `GET /api/admin/quotas` → `{features:[{feature,defaultLimit,source}], budgets:{userDailyUsd,globalDailyUsd}}`；
+  - `PUT /api/admin/quotas/defaults` `{limits:{feature:int|null}}` → 同上 `features` + `changes`（`from/to` 为存储值语义，`null` 表示回退 env）；
+  - `GET /api/admin/quotas/users/{id}` → `{user:{id,email,username,status}, features:[{feature,defaultLimit,overrideLimit,effectiveLimit,usedToday,remaining,source}]}`；
+  - `PUT /api/admin/quotas/users/{id}` `{overrides:{feature:int|null}, reason}` → 同样的用户额度体 + `changes`；`reason` 必填 1–200 字。
+  - 错误：校验/空对象 400、用户不存在 404、表未迁移 503；写操作一个事务 + 清缓存 + `admin_quota` 审计（`admin.quota.defaults_update` / `admin.quota.user_override_update`，含操作者、目标、before/after、reason）。
+- **未做**：管理台前端表格/编辑 UI（本期只交付后端契约；375/1440 布局与前端交互另卡）。
+- **验收测试**：`backend/tests/test_quota_admin.py`（默认/覆盖/0/清除/隔离/缓存/TTL/审计/权限/404/503/端到端 429）；`backend/tests/test_migrations.py`（head 0031 + 复合主键/CHECK/回滚/幂等）。
