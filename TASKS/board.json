@@ -1298,6 +1298,30 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-29",
+      "file": "TASKS/P2-29-wordlist-delete-cefr.md",
+      "status": "claimed",
+      "owner": "wordlist-fix-impl",
+      "write_scope": [
+        "frontend/src/components/VocabularyBookScreen.tsx",
+        "frontend/src/lib/wordlists.ts",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "backend/wordlists.py",
+        "backend/routes_wordlists.py",
+        "backend/tests/test_wordlists.py",
+        "scripts/custom-wordlists-acceptance.mjs",
+        "specs/038-custom-wordlists/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-24",
+        "P2-26"
+      ]
     }
   ]
 }
