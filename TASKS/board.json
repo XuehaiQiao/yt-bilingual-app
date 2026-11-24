@@ -1370,6 +1370,24 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-32",
+      "file": "TASKS/P2-32-analysis-off-critical-path.md",
+      "status": "claimed",
+      "owner": "analysis-p0-impl",
+      "write_scope": [
+        "backend/routes_videos.py",
+        "backend/tests/test_streaming_pipeline.py",
+        "backend/tests/test_video_pipeline_timing.py",
+        "frontend/src/components/ReaderScreen.tsx",
+        "specs/001-streaming-pipeline/spec.md",
+        "specs/019-reading/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-31"
+      ]
     }
   ]
 }
