@@ -1498,7 +1498,8 @@
         "backend/README.md",
         "backend/tests/test_local_video_translate.py",
         "backend/tests/test_book_import.py",
-        "docs/reports/translation-p1-implementation-2026-11-24.md"
+        "docs/reports/translation-p1-implementation-2026-11-24.md",
+        "backend/tests/test_ai_login_billing.py"
       ],
       "shared_writes": [],
       "deps": [
