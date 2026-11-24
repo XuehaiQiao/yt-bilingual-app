@@ -1166,8 +1166,8 @@
     {
       "id": "P2-22",
       "file": "TASKS/P2-22-watch-size-activity.md",
-      "status": "claimed",
-      "owner": "watch-size-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
         "frontend/src/components/WatchTopBar.tsx",
@@ -1207,8 +1207,8 @@
     {
       "id": "P2-24",
       "file": "TASKS/P2-24-apkg-frontend.md",
-      "status": "pending",
-      "owner": "apkg-frontend-impl",
+      "status": "claimed",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/WordlistImportDialog.tsx",
         "frontend/src/lib/wordlistParse.ts",
