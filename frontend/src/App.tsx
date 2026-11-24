@@ -32,7 +32,7 @@ import { useReadingHighlights } from './lib/useReadingHighlights';
 import { loadLanguagePointsEnabled } from './lib/highlightLayers';
 import { TeachingNotesPanel, type TeachingNotesStatus } from './components/TeachingNotesPanel';
 import { WatchSubtitleOverlay } from './components/WatchSubtitleOverlay';
-import { WatchTopBar } from './components/WatchTopBar';
+import { WATCH_TOPBAR_IDLE_MS, WatchTopBar } from './components/WatchTopBar';
 import { WatchGlossPanel } from './components/WatchGlossPanel';
 import { addFavorite, fetchFavorites, removeFavorite, type FavoriteDraft, type FavoriteItem } from './lib/favorites';
 import { ChannelVideoList } from './components/ChannelVideoList';
@@ -480,6 +480,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // whether the document is still trapped in *our* fullscreen.
   const fullscreenTargetRef = useRef<Element | null>(null);
   const [pageFullscreen, setPageFullscreen] = useState(false);
+  // Mirrors `pageFullscreen` for the fullscreenchange handler: the handler is
+  // registered once, so it must read the previous value from a ref to tell a
+  // real exit from the initial sync.
+  const pageFullscreenRef = useRef(false);
 
   const enterPageFullscreen = useCallback(() => {
     const node = fullscreenWrapperRef.current;
@@ -516,8 +520,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   }, []);
 
   // Browsers can leave fullscreen without the toggle (ESC, browser chrome,
-  // another fullscreen request). The watch layout is deliberately kept; only
-  // the state flag follows the document.
+  // another fullscreen request). P2-17: leaving OUR page fullscreen also leaves
+  // 观影模式 — the mode requested that fullscreen, so it must not outlive it.
+  // Only the transition "we owned it → document is not fullscreen" counts: the
+  // initial sync, a rejected request, a route change (which releases fullscreen
+  // itself, see below) and someone else's fullscreen must never flip the mode.
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const sync = () => {
@@ -527,12 +534,63 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
         && (element === fullscreenWrapperRef.current || element === fullscreenTargetRef.current),
       );
       if (owns) fullscreenTargetRef.current = element;
+      const wasOurs = pageFullscreenRef.current;
+      pageFullscreenRef.current = owns;
       setPageFullscreen(owns);
+      if (wasOurs && element === null) setWatchMode('off');
     };
     sync();
     document.addEventListener('fullscreenchange', sync);
     return () => document.removeEventListener('fullscreenchange', sync);
   }, []);
+
+  // P2-17: the watch subtitle dodges the native YouTube control strip. Any
+  // pointer / touch / key activity lifts it clear of the controls (bottom
+  // ~15%); 2.5s of stillness — the same contract as the floating top bar — lets
+  // both settle to the lower edge of the video (bottom ~4%). The mode itself
+  // only enables the listeners; outside the watch shell the overlay is not
+  // mounted and the timer stays cleared.
+  const [watchSubtitleRaised, setWatchSubtitleRaised] = useState(true);
+  const watchSubtitleIdleTimerRef = useRef<number | null>(null);
+
+  const clearWatchSubtitleIdleTimer = useCallback(() => {
+    if (watchSubtitleIdleTimerRef.current !== null) {
+      window.clearTimeout(watchSubtitleIdleTimerRef.current);
+      watchSubtitleIdleTimerRef.current = null;
+    }
+  }, []);
+
+  const raiseWatchSubtitle = useCallback(() => {
+    setWatchSubtitleRaised(true);
+    clearWatchSubtitleIdleTimer();
+    watchSubtitleIdleTimerRef.current = window.setTimeout(() => {
+      watchSubtitleIdleTimerRef.current = null;
+      setWatchSubtitleRaised(false);
+    }, WATCH_TOPBAR_IDLE_MS);
+  }, [clearWatchSubtitleIdleTimer]);
+
+  useEffect(() => {
+    if (!watchModeActive) {
+      clearWatchSubtitleIdleTimer();
+      // Re-entering the mode must start from the raised position, not from the
+      // docked one the previous session ended on.
+      setWatchSubtitleRaised(true);
+      return;
+    }
+    raiseWatchSubtitle();
+    const onActivity = () => raiseWatchSubtitle();
+    window.addEventListener('pointermove', onActivity, { passive: true });
+    window.addEventListener('pointerdown', onActivity, { passive: true });
+    window.addEventListener('touchstart', onActivity, { passive: true });
+    window.addEventListener('keydown', onActivity);
+    return () => {
+      window.removeEventListener('pointermove', onActivity);
+      window.removeEventListener('pointerdown', onActivity);
+      window.removeEventListener('touchstart', onActivity);
+      window.removeEventListener('keydown', onActivity);
+      clearWatchSubtitleIdleTimer();
+    };
+  }, [watchModeActive, raiseWatchSubtitle, clearWatchSubtitleIdleTimer]);
 
   const toggleWatchMode = useCallback(() => {
     const entering = !watchModeActive;
@@ -1382,8 +1440,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Leaving the video route must not leave the page in the watch shell's
   // fullscreen. The browser usually exits fullscreen when the element is
   // removed, but not every engine/embed does; this explicit pass is silent.
+  // P2-17: this is a route change, not an ESC exit — forget that the shell
+  // owned fullscreen first, so fullscreenchange cannot turn 观影模式 off.
   useEffect(() => {
     if (isLearningView) return;
+    pageFullscreenRef.current = false;
     exitPageFullscreen();
     setPageFullscreen(false);
   }, [isLearningView, exitPageFullscreen]);
@@ -3356,6 +3417,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               mode={watchSubtitleMode}
               enText={watchBlock?.en_text}
               zhText={watchBlock?.zh_text}
+              glosses={watchGlosses}
+              languagePoints={watchLanguagePoints}
+              raised={watchSubtitleRaised}
+              dock={!watchSubtitleRaised}
             />
           )}
         </VideoPlayer>

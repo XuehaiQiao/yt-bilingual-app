@@ -67,6 +67,18 @@ const HISTORY_OPACITY = 0.55;
 const HISTORY_OPACITY_STEP = 0.035;
 const HISTORY_OPACITY_FLOOR = 0.32;
 
+/**
+ * P2-17: the gloss rows scale with the viewport instead of sitting at the old
+ * 14/13px token sizes. The fractions are viewport widths, not container
+ * queries: the 360px rail keeps its width, so a 1440/1920 screen gets a larger
+ * row without making the rail wider (the user asked for "随屏幕尺寸变化").
+ *   word / phrase  clamp(1rem, 0.8vw + 0.5rem, 1.375rem)  → 16px … 22px
+ *   definition     clamp(0.875rem, 0.55vw + 0.5rem, 1.125rem) → 14px … 18px
+ * `text-ui` / `text-caption` stay on the elements as the no-clamp fallback.
+ */
+const WORD_FLUID_SIZE = 'clamp(1rem, 0.8vw + 0.5rem, 1.375rem)';
+const GLOSS_FLUID_SIZE = 'clamp(0.875rem, 0.55vw + 0.5rem, 1.125rem)';
+
 const historyOpacity = (age: number, hasCurrent: boolean) => {
     const rank = hasCurrent ? Math.max(0, age - 1) : age;
     return Math.max(HISTORY_OPACITY_FLOOR, HISTORY_OPACITY - HISTORY_OPACITY_STEP * rank);
@@ -166,10 +178,87 @@ const RowFeedback: React.FC<{ message?: string }> = ({ message }) => (
 );
 
 /**
+ * P2-17: one unified row for both kinds of entry — the word / phrase on the
+ * left, its definition on the right, same line, the definition wrapping and
+ * right-aligned. Before this the language point stacked its meaning under the
+ * phrase while vocabulary put it beside the word; both now share this row, the
+ * 2px current-sentence marker, the favorite star and the inline feedback.
+ */
+const GlossRow: React.FC<{
+    testId: 'watch-gloss-word' | 'watch-gloss-language-point';
+    kind: 'word' | 'point';
+    label: string;
+    gloss: string;
+    isCurrent: boolean;
+    alwaysShowActions: boolean;
+    favorited: boolean;
+    busy: boolean;
+    feedback?: string;
+    onToggle: () => void;
+}> = ({
+    testId,
+    kind,
+    label,
+    gloss,
+    isCurrent,
+    alwaysShowActions,
+    favorited,
+    busy,
+    feedback,
+    onToggle,
+}) => (
+    <li className="min-w-0">
+        <div
+            data-testid={testId}
+            data-word={kind === 'word' ? label : undefined}
+            className="group relative flex min-w-0 items-start gap-2 py-0.5 pl-3 pr-0.5"
+        >
+            {isCurrent && (
+                <span
+                    aria-hidden="true"
+                    data-testid={kind === 'word' ? 'watch-gloss-current-marker' : undefined}
+                    className={cn(
+                        'absolute bottom-1 left-0 top-1 w-0.5 rounded-full',
+                        kind === 'word' ? 'bg-warning-fg/80' : 'bg-sky-400/70',
+                    )}
+                />
+            )}
+            <span
+                data-testid={kind === 'word' ? 'watch-gloss-word-text' : 'watch-gloss-point-text'}
+                style={{ fontSize: WORD_FLUID_SIZE }}
+                className={cn(
+                    'min-w-0 break-words text-ui font-medium leading-snug',
+                    kind === 'word' ? 'text-warning-fg' : 'text-sky-300',
+                )}
+            >
+                {label}
+            </span>
+            <span
+                data-testid="watch-gloss-definition"
+                style={{ fontSize: GLOSS_FLUID_SIZE }}
+                className="min-w-0 flex-1 break-words text-right text-caption leading-relaxed text-fg-secondary"
+            >
+                {gloss}
+            </span>
+            <FavoriteButton
+                word={label}
+                gloss={gloss}
+                state={{ favorited, busy }}
+                alwaysShow={alwaysShowActions}
+                onToggle={onToggle}
+            />
+        </div>
+        <RowFeedback message={feedback} />
+    </li>
+);
+
+/**
  * One sentence's block in the rolling gloss list. P2-12 stripped the chrome:
  * no sentence context, no section headings, no kind badges and no empty
  * placeholders. P2-16 adds the current-sentence marker (a 2px bar, never a
- * border) and the hover/focus favorite star; history dims with age.
+ * border) and the hover/focus favorite star; history dims with age. P2-17
+ * unifies vocabulary and language-point rows into one left-label / right-
+ * definition line (specs/045 §4.3).
  */
 const GlossEntryBody: React.FC<GlossEntryBodyProps> = ({
     entry,
@@ -207,38 +296,19 @@ const GlossEntryBody: React.FC<GlossEntryBodyProps> = ({
             {entry.words.length > 0 && (
                 <ul data-testid="watch-gloss-words" className="space-y-0.5">
                     {entry.words.map(([word, gloss]) => (
-                        <li key={word} className="min-w-0">
-                            <div
-                                data-testid="watch-gloss-word"
-                                data-word={word}
-                                className="group relative flex min-w-0 items-start gap-2 py-0.5 pl-3 pr-0.5"
-                            >
-                                {isCurrent && (
-                                    <span
-                                        aria-hidden="true"
-                                        data-testid="watch-gloss-current-marker"
-                                        className="absolute bottom-1 left-0 top-1 w-0.5 rounded-full bg-warning-fg/80"
-                                    />
-                                )}
-                                <span className="min-w-0 break-words text-ui font-medium text-warning-fg">
-                                    {word}
-                                </span>
-                                <span className="min-w-0 flex-1 break-words text-caption leading-relaxed text-fg-secondary">
-                                    {gloss}
-                                </span>
-                                <FavoriteButton
-                                    word={word}
-                                    gloss={gloss}
-                                    state={{
-                                        favorited: rowFavorite(word),
-                                        busy: rowBusy(word),
-                                    }}
-                                    alwaysShow={alwaysShowActions}
-                                    onToggle={() => rowToggle(word, gloss)}
-                                />
-                            </div>
-                            <RowFeedback message={rowFeedback(word)} />
-                        </li>
+                        <GlossRow
+                            key={word}
+                            testId="watch-gloss-word"
+                            kind="word"
+                            label={word}
+                            gloss={gloss}
+                            isCurrent={isCurrent}
+                            alwaysShowActions={alwaysShowActions}
+                            favorited={rowFavorite(word)}
+                            busy={rowBusy(word)}
+                            feedback={rowFeedback(word)}
+                            onToggle={() => rowToggle(word, gloss)}
+                        />
                     ))}
                 </ul>
             )}
@@ -248,41 +318,19 @@ const GlossEntryBody: React.FC<GlossEntryBodyProps> = ({
                     className={entry.words.length > 0 ? 'mt-1.5 space-y-1' : 'space-y-1'}
                 >
                     {points.map((point, index) => (
-                        <li
+                        <GlossRow
                             key={`${point.text}-${index}`}
-                            data-testid="watch-gloss-language-point"
-                            className="group relative min-w-0 pl-3"
-                        >
-                            {isCurrent && (
-                                <span
-                                    aria-hidden="true"
-                                    className="absolute bottom-1 left-0 top-1 w-0.5 rounded-full bg-sky-400/70"
-                                />
-                            )}
-                            <div className="flex min-w-0 items-start gap-2">
-                                <div className="min-w-0 flex-1">
-                                    <p className="min-w-0 break-words text-ui font-medium text-sky-300">
-                                        {point.text}
-                                    </p>
-                                    {point.meaning && (
-                                        <p className="mt-0.5 break-words text-caption leading-relaxed text-fg-secondary">
-                                            {point.meaning}
-                                        </p>
-                                    )}
-                                </div>
-                                <FavoriteButton
-                                    word={point.text}
-                                    gloss={point.meaning ?? ''}
-                                    state={{
-                                        favorited: rowFavorite(point.text),
-                                        busy: rowBusy(point.text),
-                                    }}
-                                    alwaysShow={alwaysShowActions}
-                                    onToggle={() => rowToggle(point.text, point.meaning ?? '')}
-                                />
-                            </div>
-                            <RowFeedback message={rowFeedback(point.text)} />
-                        </li>
+                            testId="watch-gloss-language-point"
+                            kind="point"
+                            label={point.text}
+                            gloss={point.meaning ?? ''}
+                            isCurrent={isCurrent}
+                            alwaysShowActions={alwaysShowActions}
+                            favorited={rowFavorite(point.text)}
+                            busy={rowBusy(point.text)}
+                            feedback={rowFeedback(point.text)}
+                            onToggle={() => rowToggle(point.text, point.meaning ?? '')}
+                        />
                     ))}
                 </ul>
             )}
@@ -450,7 +498,7 @@ const GlossHeader: React.FC<{ wordCount: number }> = ({ wordCount }) => {
             data-testid="watch-gloss-header"
             className="flex flex-none items-center justify-between gap-3 px-5 py-3"
         >
-            <h2 className="min-w-0 truncate text-section font-semibold tracking-tight text-fg-primary">
+            <h2 className="min-w-0 truncate text-dialog font-semibold tracking-tight text-fg-primary">
                 {t('watchMode.glossTitle')}
             </h2>
             <span

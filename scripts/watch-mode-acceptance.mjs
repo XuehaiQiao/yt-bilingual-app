@@ -38,10 +38,12 @@
 //   7. 1440, 1920 and 375 screenshots, no horizontal overflow at 375.
 //   8. P2-10 page fullscreen: the retired player fullscreen button is gone; the
 //      watch toggle calls `requestFullscreen()` on the learning shell inside the
-//      click gesture, leaving watch mode calls `exitFullscreen()`, an ESC-style
-//      browser exit keeps the watch layout and only syncs `data-page-fullscreen`,
-//      a rejected/missing Fullscreen API degrades to the layout silently, and a
+//      click gesture, leaving watch mode calls `exitFullscreen()`, a
+//      rejected/missing Fullscreen API degrades to the layout silently, and a
 //      route change cleans up the page fullscreen (all via a page-side stub).
+//      P2-17 changed the ESC contract: a real exit from OUR page fullscreen
+//      leaves 观影模式 too, while the initial sync, a route change and a
+//      fullscreen we never owned must not flip the mode.
 //   9. P2-13 gloss source: a history payload that already carries
 //      `analysis.v5` + block highlights + idioms (its teaching-analysis
 //      endpoint 404s) still paints transcript ruby (`data-gloss`) and the
@@ -63,10 +65,12 @@
 //      keeps working while the overlay is off. The native-caption coexistence
 //      copy is visible and nothing reads/controls the iframe's own CC state.
 //  13. P2-15 native controls: YouTube keeps its own control bar and native CC
-//      entry — no custom transport/progress bar is added and the subtitle scrim
-//      clears the bottom strip those controls live in.
-//  14. P2-10 / P2-11 / P2-12 / P2-13 keep their previous coverage verbatim
-//      (only the watch toggle → top-bar exit selector moved).
+//      entry — no custom transport/progress bar is added. P2-17: the raised
+//      subtitle clears the bottom strip those controls live in; the docked
+//      position is only used once both have gone quiet.
+//  14. P2-10 / P2-11 / P2-12 / P2-13 keep their previous coverage (the P2-10
+//      ESC assertion was revised by P2-17 above; the watch toggle → top-bar
+//      exit selector moved in P2-15).
 //  15. P2-16 desktop rail: exactly 360px, 「滚动词条」+ 本句词数, current
 //      sentence target pinned on top inside three rows with a 2px marker,
 //      fading history, no headings / context / placeholder, and a hover/focus
@@ -81,6 +85,19 @@
 //  17. P2-16 favorites: failed add/remove roll back inline (stars restored),
 //      and a guest gets an inline login/analysis state instead of invented
 //      words or a rejected write.
+//  18. P2-17 subtitle dock: pointer / touch / key activity raises the English
+//      line above the native control strip (~15% bottom); 2.5s of stillness
+//      docks it at the lower video edge (~4% bottom) through a 200ms bottom
+//      transition (instant under reduced motion); pointer movement restores
+//      the raised position.
+//  19. P2-17 gloss rows: vocabulary and language points share one row — label
+//      left, right-aligned definition on the SAME line, wrapping — and the
+//      type is fluid (~16→22 / 14→18px) across 375 / 1440 / 1920 with a
+//      slightly larger 「滚动词条」 title.
+//  20. P2-17 subtitle highlight: the current sentence's glossed words get an
+//      amber span, idioms / culture points a sky span, ranges never overlap
+//      (points win), the full sentence text is preserved, the highlight follows
+//      the sentence, and the `off` mode renders none of it.
 //
 // Run (needs `npm run dev` on :5173; Playwright lives in scripts/node_modules):
 //   node scripts/watch-mode-acceptance.mjs
@@ -772,6 +789,116 @@ async function waitForOverlay(page, fragment, timeout = 10000) {
     );
 }
 
+// ── P2-17 helpers ─────────────────────────────────────────────────────────
+// The subtitle has two positions: raised (clear of the native control strip)
+// while the learner is active, docked (bottom ~4%) after 2.5s of stillness.
+// Distances are reported both against the overlay's own media box and against
+// `video-area`, because the native control strip belongs to the latter.
+const subtitlePositionState = (page) => page.evaluate(() => {
+    const overlay = document.querySelector('[data-testid="watch-subtitle-overlay"]');
+    const media = document.querySelector('[data-testid="video-area"]');
+    if (!overlay) return null;
+    const rect = overlay.getBoundingClientRect();
+    const parentRect = overlay.parentElement.getBoundingClientRect();
+    const mediaRect = media ? media.getBoundingClientRect() : null;
+    const style = getComputedStyle(overlay);
+    const durations = style.transitionDuration.split(',').map((value) => {
+        const trimmed = value.trim();
+        return trimmed.endsWith('ms') ? parseFloat(trimmed) : parseFloat(trimmed) * 1000;
+    });
+    return {
+        dock: overlay.getAttribute('data-dock'),
+        raised: overlay.getAttribute('data-raised'),
+        bottom: rect.bottom,
+        bottomGap: parentRect.bottom - rect.bottom,
+        parentHeight: parentRect.height,
+        mediaBottomGap: mediaRect ? mediaRect.bottom - rect.bottom : null,
+        mediaHeight: mediaRect ? mediaRect.height : null,
+        pointerEvents: style.pointerEvents,
+        transitionProperty: style.transitionProperty,
+        transitionMs: Math.max(...durations),
+    };
+});
+
+/** P2-17: the in-sentence highlight spans, their text and their classes. */
+const subtitleHighlightState = (page) => page.evaluate(() => {
+    const en = document.querySelector('[data-testid="watch-subtitle-en"]');
+    if (!en) return null;
+    return {
+        text: (en.textContent ?? '').trim(),
+        highlights: [...en.querySelectorAll('[data-testid="watch-subtitle-highlight"]')].map((el) => ({
+            text: el.textContent ?? '',
+            kind: el.getAttribute('data-kind'),
+            className: el.getAttribute('class') ?? '',
+            background: getComputedStyle(el).backgroundColor,
+            color: getComputedStyle(el).color,
+        })),
+    };
+});
+
+/**
+ * P2-17: one row = left label + right definition. `sameLine` is the row-layout
+ * contract (the language point's definition used to sit under its phrase), and
+ * `definitionRect.textAlign` must be `right` for both kinds.
+ */
+const glossRowState = (page) => page.evaluate(() => {
+    const read = (el) => {
+        if (!el) return null;
+        const style = getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        return {
+            fontSize: parseFloat(style.fontSize),
+            textAlign: style.textAlign,
+            top: rect.top,
+            bottom: rect.bottom,
+            left: rect.left,
+            right: rect.right,
+            width: rect.width,
+        };
+    };
+    const rows = [...document.querySelectorAll(
+        '[data-testid="watch-gloss-word"], [data-testid="watch-gloss-language-point"]',
+    )].map((row) => {
+        const label = row.querySelector('[data-testid="watch-gloss-word-text"], [data-testid="watch-gloss-point-text"]');
+        const definition = row.querySelector('[data-testid="watch-gloss-definition"]');
+        const labelRect = read(label);
+        const definitionRect = read(definition);
+        const entry = row.closest('[data-testid="watch-gloss-entry"]');
+        return {
+            testId: row.getAttribute('data-testid'),
+            labelText: label?.textContent ?? '',
+            glossText: definition?.textContent ?? '',
+            current: entry?.getAttribute('data-current') === 'true',
+            labelRect,
+            definitionRect,
+            sameLine: Boolean(
+                labelRect && definitionRect && Math.abs(labelRect.top - definitionRect.top) <= 2,
+            ),
+        };
+    });
+    const currentRows = rows.filter((row) => row.current);
+    const wordRow = currentRows.find((row) => row.testId === 'watch-gloss-word')
+        ?? rows.find((row) => row.testId === 'watch-gloss-word')
+        ?? null;
+    const pointRow = currentRows.find((row) => row.testId === 'watch-gloss-language-point')
+        ?? rows.find((row) => row.testId === 'watch-gloss-language-point')
+        ?? null;
+    return {
+        rows,
+        currentRows,
+        wordRow,
+        pointRow,
+        wordFont: wordRow?.labelRect?.fontSize ?? null,
+        definitionFont: wordRow?.definitionRect?.fontSize ?? null,
+    };
+});
+
+const waitForGlossWord = (page, timeout = 10000) => page.waitForFunction(
+    () => document.querySelector('[data-testid="watch-gloss-word"]') !== null,
+    null,
+    { timeout },
+);
+
 // Land on cue 0 or cue 1 (both carry glosses) regardless of how far playback
 // progressed while the page was loading. Robust against slow dev-server starts
 // where "ArrowRight from before the first cue" would otherwise overshoot.
@@ -1182,6 +1309,20 @@ try {
     assert.ok(overlay0.includes('小习惯悄悄塑造一整天的感受。'), `overlay missing Chinese: ${overlay0}`);
     assert.ok(overlay0.includes('Small habits quietly shape'), `overlay missing English: ${overlay0}`);
     assert.ok(!overlay0.includes('Nobody moves'), 'overlay must only render the current sentence');
+    // — P2-17: the sentence keeps every character; only the current glossed
+    //   word is wrapped, and it carries the amber word treatment. —
+    const cue0Highlight = await subtitleHighlightState(page);
+    assert.ok(cue0Highlight, 'cue 0 subtitle highlight state missing');
+    assert.equal(
+        cue0Highlight.text,
+        'Small habits quietly shape the way a whole day feels.',
+        'the subtitle highlight changed the sentence text',
+    );
+    assert.equal(cue0Highlight.highlights.length, 1, 'cue 0 should highlight exactly its one glossed word');
+    assert.equal(cue0Highlight.highlights[0].text, 'habits');
+    assert.equal(cue0Highlight.highlights[0].kind, 'word');
+    assert.match(cue0Highlight.highlights[0].className, /(^|\s)bg-amber-400\/20(\s|$)/, 'the glossed word is not amber');
+    assert.match(cue0Highlight.highlights[0].className, /(^|\s)text-amber-100(\s|$)/, 'the glossed word lost the amber text tone');
     const zhBox = await boxOf(page, 'watch-subtitle-zh');
     const enBox = await boxOf(page, 'watch-subtitle-en');
     assert.ok(enBox && zhBox && enBox.y < zhBox.y, 'English must sit above Chinese');
@@ -1261,29 +1402,65 @@ try {
     assert.match(fluidFallback.zh, /(^|\s)text-body-zh(\s|$)/, 'Chinese line dropped the text-body-zh fallback');
     assert.equal(fluidFallback.supportsCqi, true, 'this browser cannot check the cqi declaration');
 
-    // — geometry: the overlay clears the player controls and lets clicks pass —
-    const overlayRect = await page.evaluate(() => {
-        const el = document.querySelector('[data-testid="watch-subtitle-overlay"]');
-        const parent = el ? el.parentElement : null;
-        if (!el || !parent) return null;
-        const a = el.getBoundingClientRect();
-        const p = parent.getBoundingClientRect();
-        return {
-            bottomGap: p.bottom - a.bottom,
-            parentHeight: p.height,
-            pointerEvents: getComputedStyle(el).pointerEvents,
-        };
-    });
-    assert.ok(overlayRect, 'overlay geometry missing');
-    assert.equal(overlayRect.pointerEvents, 'none', 'overlay must never intercept clicks');
-    assert.ok(
-        overlayRect.bottomGap >= overlayRect.parentHeight * 0.12 - 1,
-        `overlay sits ${overlayRect.bottomGap}px from the bottom (<12% of ${overlayRect.parentHeight})`,
+    // — P2-17: while the learner is active the subtitle clears the native
+    //   control strip; 2.5s of stillness docks it at the lower edge (the
+    //   native controls have faded out too); pointer movement raises it
+    //   again. The bottom change is a 200ms transition. —
+    await page.keyboard.press('Shift');
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-raised') === 'true',
+        null,
+        { timeout: 5000 },
     );
-    const overlay = await boxOf(page, 'watch-subtitle-overlay');
+    await sleep(260); // let the 200ms bottom transition settle
+    const raisedOverlay = await subtitlePositionState(page);
+    assert.ok(raisedOverlay, 'overlay geometry missing');
+    assert.equal(raisedOverlay.pointerEvents, 'none', 'overlay must never intercept clicks');
+    assert.ok(
+        raisedOverlay.mediaBottomGap >= raisedOverlay.mediaHeight * 0.12 - 1,
+        `raised overlay sits ${raisedOverlay.mediaBottomGap}px from the video bottom (<12% of ${raisedOverlay.mediaHeight})`,
+    );
+    assert.match(
+        raisedOverlay.transitionProperty,
+        /(^|[\s,])bottom([\s,]|$)/,
+        `the subtitle does not transition its bottom (${raisedOverlay.transitionProperty})`,
+    );
+    assert.ok(
+        raisedOverlay.transitionMs >= 190 && raisedOverlay.transitionMs <= 210,
+        `the subtitle bottom transition is ${raisedOverlay.transitionMs}ms, expected 200ms`,
+    );
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-dock') === 'true',
+        null,
+        { timeout: 7000 },
+    );
+    await sleep(260);
+    const dockedOverlay = await subtitlePositionState(page);
+    assert.ok(
+        dockedOverlay.bottomGap <= dockedOverlay.parentHeight * 0.06 + 1,
+        `docked overlay sits ${dockedOverlay.bottomGap}px above the lower edge (>6% of ${dockedOverlay.parentHeight})`,
+    );
+    assert.ok(
+        raisedOverlay.bottomGap - dockedOverlay.bottomGap >= raisedOverlay.parentHeight * 0.08,
+        'the subtitle did not visibly drop between the raised and docked positions',
+    );
+    const railBoxForPointer = await boxOf(page, 'watch-gloss-rail');
+    await page.mouse.move((railBoxForPointer?.x ?? 1200) + 60, 360);
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-raised') === 'true',
+        null,
+        { timeout: 5000 },
+    );
+    await sleep(260);
+    const raisedAgain = await subtitlePositionState(page);
+    assert.ok(
+        Math.abs(raisedAgain.bottomGap - raisedOverlay.bottomGap) <= 2,
+        `pointer movement did not restore the raised position (${raisedAgain.bottomGap} vs ${raisedOverlay.bottomGap})`,
+    );
+
     // P2-15 §3: the YouTube embed keeps its native control bar and native CC
-    // entry. The watch shell adds no transport UI of its own, and the subtitle
-    // scrim must clear the bottom strip those native controls live in.
+    // entry. The watch shell adds no transport UI of its own, and the raised
+    // subtitle scrim must clear the bottom strip those native controls live in.
     assert.equal(await page.locator('[data-testid="video-fullscreen-toggle"]').count(), 0, 'retired fullscreen button is still mounted');
     assert.equal(await page.locator('[data-testid="watch-mode-toggle"]').count(), 0, 'the entry toggle must not sit over the picture in watch mode');
     assert.equal(
@@ -1303,12 +1480,17 @@ try {
         'the player surface no longer fills the 16:9 media box — the native YouTube control bar and its native CC entry need that space',
     );
     assert.ok(
-        overlay.bottom <= mediaBox.bottom - 0.12 * mediaBox.height + 1,
+        raisedAgain.mediaBottomGap >= raisedAgain.mediaHeight * 0.12 - 1,
         'the subtitle scrim intrudes into the bottom strip where the native controls live',
     );
 
     // — gloss rail content matches the analysis for cue 0 —
     assert.equal(await page.locator('[data-testid="watch-gloss-word"]').count(), 1);
+    // P2-17: the title grew slightly along with the row type.
+    const glossTitleFont = await page.evaluate(() => parseFloat(
+        getComputedStyle(document.querySelector('[data-testid="watch-gloss-rail"] h2')).fontSize,
+    ));
+    assert.ok(glossTitleFont >= 18, `the gloss rail title is only ${glossTitleFont}px`);
     assert.ok((await page.locator('[data-testid="watch-gloss-word"]').first().innerText()).includes('habits'));
     assert.ok((await page.locator('[data-testid="watch-gloss-word"]').first().innerText()).includes('习惯'));
     assert.equal(await page.locator('[data-testid="watch-gloss-language-point"]').count(), 0, 'cue 0 has no language point');
@@ -1330,6 +1512,44 @@ try {
     // P2-12: the idiom/culture kind badge (and its data-kind hook) is gone.
     assert.equal(await point.getAttribute('data-kind'), null, 'language point still exposes a kind badge hook');
     assert.ok(!pointText.includes('习语') && !pointText.includes('文化'), `language point still shows a kind badge: ${pointText}`);
+
+    // — P2-17: inside cue 1 the idiom contains the glossed word "breakfast".
+    //   Language points win, so one blue range covers the phrase and no amber
+    //   fragment leaks out; the full sentence text is preserved. —
+    const cue1Highlight = await subtitleHighlightState(page);
+    assert.ok(cue1Highlight, 'cue 1 subtitle highlight state missing');
+    assert.equal(
+        cue1Highlight.text,
+        'A short walk before breakfast makes the whole day feel slower.',
+        'the subtitle highlight changed the cue 1 text',
+    );
+    assert.equal(
+        cue1Highlight.highlights.length,
+        1,
+        'overlapping word + idiom ranges must collapse to one highlight (idiom wins)',
+    );
+    assert.equal(cue1Highlight.highlights[0].text, 'before breakfast');
+    assert.equal(cue1Highlight.highlights[0].kind, 'point');
+    assert.match(cue1Highlight.highlights[0].className, /(^|\s)bg-sky-400\/20(\s|$)/, 'the idiom is not blue');
+    assert.match(cue1Highlight.highlights[0].className, /(^|\s)text-sky-100(\s|$)/, 'the idiom lost the blue text tone');
+
+    // — P2-17: vocabulary and language points share one row layout: label on
+    //   the left, definition right-aligned on the SAME line, both fluid. —
+    const cue1GlossRows = await glossRowState(page);
+    assert.equal(cue1GlossRows.currentRows.length, 2, 'cue 1 (current entry) should show one word row and one language-point row');
+    assert.ok(cue1GlossRows.wordRow && cue1GlossRows.pointRow, 'cue 1 lost its word or language-point row');
+    for (const row of [cue1GlossRows.wordRow, cue1GlossRows.pointRow]) {
+        assert.ok(row.sameLine, `${row.testId}: the definition is not on the same line as the label`);
+        assert.equal(row.definitionRect.textAlign, 'right', `${row.testId}: the definition is not right-aligned`);
+    }
+    assert.ok(
+        cue1GlossRows.wordFont >= 18 && cue1GlossRows.wordFont <= 21,
+        `1440 gloss word font ${cue1GlossRows.wordFont}px is not the ~19.5px fluid tier`,
+    );
+    assert.ok(
+        cue1GlossRows.definitionFont >= 15 && cue1GlossRows.definitionFont <= 17,
+        `1440 gloss definition font ${cue1GlossRows.definitionFont}px is not the ~16px fluid tier`,
+    );
 
     // ═════════════════════════════════════════════════════════════════════
     // P2-15 §4 — 字幕三态: bilingual | english | off (persisted, C, CC menu)
@@ -1720,10 +1940,35 @@ try {
     summary.desktop = {
         railWidth: Math.round(rail.width * 10) / 10,
         videoColumnWidth: Math.round(videoColumn.width * 10) / 10,
-        overlayBottomGap: Math.round(overlayRect.bottomGap * 10) / 10,
+        overlayBottomGap: Math.round(raisedOverlay.bottomGap * 10) / 10,
         mediaHeight: Math.round((mediaStageWatch?.height ?? 0) * 10) / 10,
         analysisRequests: analysisCalls.length,
         subtitleFontPx: { en: subtitleTypography.en.fontSize, zh: subtitleTypography.zh.fontSize },
+        p2_17: {
+            subtitleDock: {
+                raisedBottomGap: Math.round(raisedOverlay.bottomGap * 10) / 10,
+                dockedBottomGap: Math.round(dockedOverlay.bottomGap * 10) / 10,
+                transitionMs: raisedOverlay.transitionMs,
+                pointerRestoresRaised: 'pass',
+            },
+            subtitleHighlight: {
+                word: cue0Highlight.highlights[0]?.text,
+                wordClass: 'bg-amber-400/20 text-amber-100',
+                point: cue1Highlight.highlights[0]?.text,
+                pointClass: 'bg-sky-400/20 text-sky-100',
+                pointWinsOverWord: cue1Highlight.highlights.length === 1,
+                textPreserved: cue1Highlight.text === 'A short walk before breakfast makes the whole day feel slower.',
+                injection: 'none (text slices, no dangerouslySetInnerHTML)',
+            },
+            glossRows: {
+                wordFont1440: cue1GlossRows.wordFont,
+                definitionFont1440: cue1GlossRows.definitionFont,
+                wordSameLine: cue1GlossRows.wordRow?.sameLine ?? false,
+                pointSameLine: cue1GlossRows.pointRow?.sameLine ?? false,
+                definitionAlign: 'right',
+                titleFont: glossTitleFont,
+            },
+        },
         fluidType: {
             normal1440: {
                 en: normalType.en,
@@ -2125,21 +2370,29 @@ try {
         { timeout: 5000 },
     );
 
-    // — ESC / browser chrome leaves fullscreen: the watch layout survives —
+    // — P2-17: ESC / browser chrome leaves OUR page fullscreen, so the mode
+    //   that requested it leaves too. The release must be the browser's (the
+    //   app must not call exitFullscreen after the document already left); the
+    //   layout and the entry toggle return and the preference persists off. —
     await fsPage.evaluate(() => window.__fsStub.escape());
     await waitFullscreen(false);
+    await fsPage.waitForFunction(
+        () => document.querySelector('[data-testid="learning-scroll"]')?.getAttribute('data-watch-mode') === 'off',
+        null,
+        { timeout: 5000 },
+    );
     fsState = await readFs();
-    assert.equal(fsState.watch, 'on', 'a browser-initiated fullscreen exit must keep the watch layout');
-    assert.equal(fsState.topbar, true, 'a browser-initiated fullscreen exit must keep the floating top bar');
+    assert.equal(fsState.watch, 'off', 'ESC out of our page fullscreen must leave 观影模式 (P2-17)');
+    assert.equal(fsState.topbar, false, 'the floating top bar must unmount with the watch layout');
+    assert.equal(fsState.entryToggle, true, 'the 观影模式 entry toggle must come back after ESC');
     assert.equal(fsState.pageFullscreen, 'off', 'page-fullscreen state did not follow the document');
     assert.equal(fsState.exits, 0, 'the app must not call exitFullscreen after the browser already exited');
-
-    // — leaving watch after ESC only restores the layout (no spurious exit) —
-    await exitWatchMode(fsPage);
-    fsState = await readFs();
-    assert.equal(fsState.watch, 'off');
-    assert.equal(fsState.exits, 0, 'leaving the watch layout out of fullscreen must not call exitFullscreen');
-    assert.equal(fsState.topbar, false, 'the floating top bar must unmount after leaving watch mode');
+    assert.equal(
+        await fsPage.evaluate(() => localStorage.getItem('yt_bilingual_watch_mode')),
+        'off',
+        'ESC must persist 观影模式 off',
+    );
+    await fsPage.locator('[data-testid="teaching-notes-panel"]').waitFor({ state: 'visible', timeout: 10000 });
 
     // — re-enter, then leave: exit is called while the shell owns fullscreen —
     await enterWatchMode(fsPage);
@@ -2160,6 +2413,13 @@ try {
     fsState = await readFs();
     assert.equal(fsState.exits, 2, 'leaving the video route must clean up page fullscreen');
     assert.equal(fsState.watch, null, 'the watch shell must be unmounted after leaving the video route');
+    // P2-17: releasing fullscreen because the route unmounted is NOT an ESC
+    // exit — the 观影模式 preference must survive the navigation.
+    assert.equal(
+        await fsPage.evaluate(() => localStorage.getItem('yt_bilingual_watch_mode')),
+        'on',
+        'a route change must not turn 观影模式 off (only a real fullscreen exit may)',
+    );
 
     // — back to the video: watch mode persists, fullscreen needs a gesture —
     await openVideo(fsPage, VIDEO_ID);
@@ -2167,7 +2427,7 @@ try {
     assert.equal(
         await fsPage.getAttribute('[data-testid="learning-scroll"]', 'data-page-fullscreen'),
         'off',
-        'returning to the video page must not restore fullscreen without a user gesture',
+        'returning to the video page must not restore fullscreen without a user gesture (and must not exit the mode)',
     );
     await exitWatchMode(fsPage);
 
@@ -2186,6 +2446,12 @@ try {
     assert.equal(fsState.element, null, 'a rejected request must not enter fullscreen');
     assert.equal(fsState.pageFullscreen, 'off');
     assert.equal(fsState.topbar, true, 'the rejected request must keep the watch layout');
+    // P2-17: a fullscreenchange that is not a "we owned it → no fullscreen"
+    // transition must not flip the mode. The rejected request never owned
+    // fullscreen, so the event is a no-op (initial / never-fullscreen guard).
+    await fsPage.evaluate(() => document.dispatchEvent(new Event('fullscreenchange')));
+    await sleep(150);
+    assert.equal(await fsPage.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on', 'a fullscreenchange without our fullscreen must not leave 观影模式');
     assert.deepEqual(fsErrors, [], `rejected fullscreen request raised a page error: ${JSON.stringify(fsErrors)}`);
 
     // — missing API (mobile / iframe): layout-only fallback, no requests —
@@ -2211,7 +2477,9 @@ try {
     summary.pageFullscreen = {
         requests: fsState.requests,
         exits: fsState.exits,
-        escKeepsWatchLayout: true,
+        escExitsWatch: true,
+        initialSyncLeavesWatch: 'untouched',
+        routeChangeLeavesWatch: 'on (preference survives)',
         rejectedRequest: 'layout-only',
         missingApi: 'layout-only',
         fluidGrowth: {
@@ -2252,6 +2520,16 @@ try {
         { timeout: 5000 },
     );
     await seekToGlossedCue(phone);
+    await waitForGlossWord(phone);
+    // P2-17: 375 is the floor tier of the fluid gloss type — word 16px,
+    // definition 14px, definition still right-aligned on the label's line.
+    const phoneGlossType = await glossRowState(phone);
+    assert.ok(phoneGlossType.wordRow, '375: no gloss word row to measure');
+    assert.equal(phoneGlossType.wordFont, 16, `375 gloss word font ${phoneGlossType.wordFont}px is not the 16px floor`);
+    assert.equal(phoneGlossType.definitionFont, 14, `375 gloss definition font ${phoneGlossType.definitionFont}px is not the 14px floor`);
+    assert.ok(phoneGlossType.wordRow.sameLine, '375: the gloss definition is not on the label line');
+    assert.equal(phoneGlossType.wordRow.definitionRect.textAlign, 'right', '375: the gloss definition is not right-aligned');
+    assert.ok(phoneGlossType.wordRow.definitionRect.left > phoneGlossType.wordRow.labelRect.left, '375: the definition is not to the right of the word');
     const overflow375 = await phone.evaluate(() => ({
         documentWidth: document.documentElement.scrollWidth,
         viewport: window.innerWidth,
@@ -2396,6 +2674,7 @@ try {
         documentWidth: overflow375.documentWidth,
         viewport: overflow375.viewport,
         subtitleFontPx: { en: phoneSubtitle.en.fontSize, zh: phoneSubtitle.zh.fontSize },
+        glossFontPx: { word: phoneGlossType.wordFont, definition: phoneGlossType.definitionFont },
         video: {
             width: Math.round(phoneVideo.width * 10) / 10,
             height: Math.round(phoneVideo.height * 10) / 10,
@@ -2537,8 +2816,32 @@ try {
     await openVideo(widePage, VIDEO_ID);
     await seekToGlossedCue(widePage);
     await pausePlayback(widePage);
+    await waitForGlossWord(widePage);
     const wideType = await subtitleType(widePage);
     assert.ok(wideType.en && wideType.zh, '1920 subtitle lines missing');
+    // P2-17: 1920 is the cap tier of the fluid gloss type — word 22px,
+    // definition 18px — and 1440 sits strictly between 375 and 1920.
+    const wideGlossType = await glossRowState(widePage);
+    assert.equal(wideGlossType.wordFont, 22, `1920 gloss word font ${wideGlossType.wordFont}px is not the 22px ceiling`);
+    assert.equal(wideGlossType.definitionFont, 18, `1920 gloss definition font ${wideGlossType.definitionFont}px is not the 18px ceiling`);
+    assert.ok(wideGlossType.wordRow?.sameLine, '1920: the gloss definition is not on the label line');
+    assert.equal(wideGlossType.wordRow?.definitionRect.textAlign, 'right', '1920: the gloss definition is not right-aligned');
+    assert.ok(
+        cue1GlossRows.wordFont > phoneGlossType.wordFont + 2,
+        `gloss word font must grow 375 → 1440 (${phoneGlossType.wordFont}px → ${cue1GlossRows.wordFont}px)`,
+    );
+    assert.ok(
+        wideGlossType.wordFont > cue1GlossRows.wordFont + 1,
+        `gloss word font must grow 1440 → 1920 (${cue1GlossRows.wordFont}px → ${wideGlossType.wordFont}px)`,
+    );
+    assert.ok(
+        cue1GlossRows.definitionFont > phoneGlossType.definitionFont + 1,
+        `gloss definition font must grow 375 → 1440 (${phoneGlossType.definitionFont}px → ${cue1GlossRows.definitionFont}px)`,
+    );
+    assert.ok(
+        wideGlossType.definitionFont > cue1GlossRows.definitionFont + 1,
+        `gloss definition font must grow 1440 → 1920 (${cue1GlossRows.definitionFont}px → ${wideGlossType.definitionFont}px)`,
+    );
     assert.ok(
         wideType.en.fontSize > subtitleTypography.en.fontSize,
         `1920 English ${wideType.en.fontSize}px must be larger than 1440 watch ${subtitleTypography.en.fontSize}px`,
