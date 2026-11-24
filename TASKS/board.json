@@ -1281,6 +1281,23 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-28",
+      "file": "TASKS/P2-28-quota-backend.md",
+      "status": "claimed",
+      "owner": "quota-admin-impl",
+      "write_scope": [
+        "backend/quota_config.py",
+        "backend/ai/quota.py",
+        "backend/routes_admin.py",
+        "backend/migrations/versions/0031_quota_overrides.py",
+        "backend/tests/test_quota_admin.py",
+        "backend/tests/test_migrations.py",
+        "specs/047-quota-admin/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
