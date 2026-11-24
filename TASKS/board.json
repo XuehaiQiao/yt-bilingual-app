@@ -1621,8 +1621,8 @@
     {
       "id": "P2-42",
       "file": "TASKS/P2-42-v11-feedback-admin.md",
-      "status": "claimed",
-      "owner": "feedback-admin-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/AdminFeedbackPanel.tsx",
         "frontend/src/components/AdminConsoleScreen.tsx",
