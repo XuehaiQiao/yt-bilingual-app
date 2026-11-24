@@ -1310,3 +1310,53 @@ def test_article_analysis_cache_hit_costs_no_quota_and_hides_reason(
     assert _db_scalar(
         "SELECT COUNT(*) FROM ai_quota WHERE feature = 'analysis'"
     ) == 0
+
+
+# ---------------------------------------------------------------------------
+# 4d. 配额单位（P2-34）：1 单位 = 10 段，多批按累计段数分配
+# ---------------------------------------------------------------------------
+
+def _quota_used(user_id: str, feature: str) -> int:
+    with sqlite3.connect(config.AUTH_DB_PATH) as conn:
+        row = conn.execute(
+            "SELECT used_units FROM ai_quota WHERE user_id = ? AND feature = ?",
+            (user_id, feature),
+        ).fetchone()
+    return int(row[0]) if row else 0
+
+
+@pytest.mark.parametrize(("count", "expected_units"), [(10, 1), (11, 2), (20, 2)])
+def test_translate_article_charges_units_by_paragraphs(
+    reading_client, llm_stub, count, expected_units
+):
+    """10 段 = 1 单位、11 段 = 2 单位；首批 5 段 + 稳定 15 段不重复取整。"""
+    paragraphs = _paragraphs(count)
+    article_id = _article_id(reading_client, paragraphs)
+    llm_stub.response = _translations(*range(count))
+
+    response = _translate(reading_client, article_id)
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["status"] == "done"
+    assert data["translated"] == count
+    # 10 段切成 5+5 两批，但只占 1 单位；11 段 = 5+6 → 2 单位。
+    assert data["batches"] == (2 if count > 5 else 1)
+    assert _quota_used(reading_client.user_id, "reading") == expected_units
+
+
+def test_translate_cached_article_charges_no_extra_units(reading_client, llm_stub):
+    article_id = _article_id(reading_client, _paragraphs(20))
+    llm_stub.response = _translations(*range(20))
+
+    first = _translate(reading_client, article_id)
+    assert first.status_code == 200
+    assert first.json()["batches"] == 2
+    used = _quota_used(reading_client.user_id, "reading")
+    assert used == 2
+
+    again = _translate(reading_client, article_id)
+    assert again.status_code == 200
+    assert again.json()["status"] == "cached"
+    assert again.json()["batches"] == 0
+    assert _quota_used(reading_client.user_id, "reading") == used
+    assert len(llm_stub.calls) == 2, "只调用两批，不重译"

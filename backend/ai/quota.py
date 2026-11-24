@@ -21,6 +21,22 @@
 与**全局日预算**约束；``ai_usage`` 照记 tokens/成本供审计。读侧统一用
 :func:`snapshot`（used 取库、limit 取 config）。
 
+**单位口径（P2-34）**：``ai_quota.used_units`` 记录的不是「批次数」，而是
+**内容量单位**，换算统一走 :func:`units_for_blocks`：
+
+- ``translate`` / ``local_show``：1 单位 = 100 个字幕 blocks；
+- ``reading``：1 单位 = 10 段文章；
+- 其他功能（``summary`` / ``define`` / ``quiz`` / ``analysis`` /
+  ``course_generation``）：1 次 = 1 单位。
+
+每批至少扣 1 单位（``max(1, ceil(内容量 / 每单位量))``）；同一次生成里多批
+按**累计内容量**分配单位（:func:`units_per_batch`）：合计 = ``ceil(总内容量 /
+每单位量)``，如 1,372 blocks = 14 单位、10 段文章 = 1 单位，不会因为切小批而
+被重复向上取整。因此默认 60 单位 ≈ 视频 6,000 blocks/日、文章 600 段/日。
+**旧行不可直接与新语义比较**：切换前写入的 ``ai_quota.used_units`` 是「批次数」，
+只能当历史审计数据看，不要换算或与新单位混算。``ai_quota`` 表结构不变，也没有
+数据迁移。
+
 超限统一抛 ``QuotaExceeded``（``status_code = 429``）。未跑 ``0003_cost_ledger``
 迁移的库**fail-open**（记日志、不阻断 AI 功能）——这是为了让升级过程中应用
 仍可用；上线前必须跑迁移，否则配额不会生效。
@@ -38,7 +54,9 @@
 from __future__ import annotations
 
 import logging
+import math
 import sqlite3
+from collections.abc import Sequence
 
 import alerts
 import billing
@@ -57,6 +75,72 @@ _FEATURE_LIMIT_ATTRS = quota_config.FEATURE_LIMIT_ATTRS
 
 _warned_missing_tables = False
 _warned_missing_overrides = False
+
+#: 内容量 → 配额单位的换算（P2-34）。``None``/未登记功能按「1 次 = 1 单位」。
+BLOCKS_PER_UNIT = 100
+PARAGRAPHS_PER_UNIT = 10
+_CONTENT_PER_UNIT: dict[str, int] = {
+    "translate": BLOCKS_PER_UNIT,
+    "local_show": BLOCKS_PER_UNIT,
+    "reading": PARAGRAPHS_PER_UNIT,
+}
+
+
+def units_for_blocks(feature: str, n: int | float | None) -> int:
+    """把一批的内容量换算成配额单位（P2-34 唯一换算入口）。
+
+    - ``translate`` / ``local_show``：1 单位 = 100 blocks（字幕块）；
+    - ``reading``：1 单位 = 10 段（段落）；
+    - 其他功能：1 次 = 1 单位（与旧行为一致）。
+
+    规则：向上取整、**每批至少 1 单位**；``0`` / 负数 / ``None`` / 非法值都按
+    1 处理（空批不会走到扣费，这里只是兜底，避免「0 块」绕过配额硬闸）。
+    非整数 ``n``（如 100.5）按 ``int`` 截断后再换算。
+    """
+    try:
+        count = max(0, int(n or 0))
+    except (TypeError, ValueError):
+        count = 0
+    per_unit = _CONTENT_PER_UNIT.get(feature)
+    if per_unit is None:
+        return 1
+    return max(1, math.ceil(count / per_unit))
+
+
+def units_per_batch(feature: str, batch_sizes: Sequence[int]) -> list[int]:
+    """把一串批次的内容量换算成**每批新增**的配额单位（P2-34 批量入口）。
+
+    口径：第 k 批新增单位 = ``ceil(前 k 批累计内容量 / 每单位量)`` 减去前
+    ``k-1`` 批已分配的单位。这样多批合计正好是 ``ceil(总内容量 / 每单位量)``：
+
+    - 1,372 blocks（translate）→ 合计 14 单位，无论切成几个小批；
+    - 10 段（reading）→ 合计 1 单位（若按每批各自取整，5+5 会误算成 2）。
+
+    返回值与 ``batch_sizes`` 等长、元素 ≥0：中间批次可能是 0（该批落在前面
+    批次已经买下的同一个单位里，调用方改走只读闸门
+    :func:`ensure_quota_available`，不要重复占额度）。空批（size 0）返回 0；
+    负数/非法值按 0 处理。非内容型功能每批固定 1 单位。
+    """
+    per_unit = _CONTENT_PER_UNIT.get(feature)
+    sizes: list[int] = []
+    for size in batch_sizes:
+        try:
+            sizes.append(max(0, int(size or 0)))
+        except (TypeError, ValueError):
+            sizes.append(0)
+    if per_unit is None:
+        return [1 if size > 0 else 0 for size in sizes]
+
+    allocated = 0
+    cumulative = 0
+    units: list[int] = []
+    for size in sizes:
+        cumulative += size
+        target = math.ceil(cumulative / per_unit) if cumulative > 0 else 0
+        added = max(0, target - allocated)
+        allocated += added
+        units.append(added)
+    return units
 
 
 class BudgetExceeded(QuotaExceeded):
@@ -350,6 +434,84 @@ def _consume_ops_quota(
         return {**_fail_open_result(feature, units, resolved_day, target_lang), "ops": True}
 
 
+def ensure_quota_available(
+    user_id: str | None,
+    feature: str,
+    *,
+    day: str | None = None,
+    target_lang: str | None = None,
+) -> dict:
+    """只做闸门检查、**不扣减**（P2-34 多批累计单位用）。
+
+    多批一次生成时，单位按累计内容量分配给前面的批；后续批落在已购单位内
+    （新增单位为 0），不再扣减。但「0 = 关闭该功能」、日预算耗尽、并发下别的
+    请求已把额度用光这三种情况仍必须拦住，所以这类批调用本函数走同源判定：
+    日预算 → 功能日配额 ``remaining <= 0`` → 429（文案/字段与扣减路径一致）。
+    余额 402 已由真正购买单位的批检查，这里不再重复预检。
+
+    表未初始化时与 ``check_and_consume_quota`` 一样 fail-open（记日志、放行）。
+    返回形状与扣减路径兼容，``units=0``、``used_units`` 不变。
+    """
+    if feature not in KNOWN_FEATURES:
+        raise ValueError(f"未知 AI 功能：{feature!r}（见 ai.ledger.KNOWN_FEATURES）")
+    resolved_lang = languages.normalize_code(target_lang) or languages.DEFAULT_TARGET_LANG
+    resolved_day = day or ledger.day_of()
+    if not user_id:
+        return {
+            "allowed": True,
+            "anonymous": True,
+            "enforced": False,
+            "feature": feature,
+            "day": resolved_day,
+            "used_units": None,
+            "limit_units": None,
+            "remaining": None,
+            "limit_source": None,
+            "default_limit": None,
+            "override_limit": None,
+            "units": 0,
+            "target_lang": resolved_lang,
+        }
+
+    try:
+        if ledger.is_ops_subject(user_id):
+            _check_ops_budget(resolved_day)
+        else:
+            ensure_within_budget(user_id, resolved_day)
+        snap = snapshot(user_id, feature, resolved_day)
+        remaining = snap["remaining"]
+        if remaining is not None and remaining <= 0:
+            # 0 = 关闭功能时 remaining 也是 0：必须在调用模型前拦住。
+            raise QuotaExceeded(
+                feature,
+                day=resolved_day,
+                used_units=snap["used_units"],
+                limit_units=snap["limit_units"],
+                units=0,
+                user_id=user_id,
+            )
+        return {**snap, "allowed": True, "enforced": True, "units": 0, "target_lang": resolved_lang}
+    except sqlite3.OperationalError as exc:
+        if not _is_missing_db_error(exc):
+            raise
+        _warn_missing_tables_once()
+        return {
+            "allowed": True,
+            "anonymous": False,
+            "enforced": False,
+            "feature": feature,
+            "day": resolved_day,
+            "used_units": None,
+            "limit_units": None,
+            "remaining": None,
+            "limit_source": None,
+            "default_limit": None,
+            "override_limit": None,
+            "units": 0,
+            "target_lang": resolved_lang,
+        }
+
+
 def check_and_consume_quota(
     user_id: str | None,
     feature: str,
@@ -542,14 +704,19 @@ def degradation_chain(
 
 
 __all__ = [
+    "BLOCKS_PER_UNIT",
     "BudgetExceeded",
+    "PARAGRAPHS_PER_UNIT",
     "QuotaExceeded",
     "check_and_consume_quota",
     "degradation_chain",
+    "ensure_quota_available",
     "ensure_within_budget",
     "is_domestic_region",
     "limit_for",
     "ops_limit_for",
     "rethrow_billing_error",
     "snapshot",
+    "units_for_blocks",
+    "units_per_batch",
 ]

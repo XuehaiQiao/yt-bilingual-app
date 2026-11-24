@@ -78,7 +78,7 @@ def _install_batch_fake(
     """替换 routes_videos.process_llm_batch：记录批次、可加延迟/失败/硬闸。"""
     state = state if state is not None else {}
 
-    async def fake(blocks, model=None, user_id=None, target_lang=None):
+    async def fake(blocks, model=None, user_id=None, target_lang=None, quota_units=None):
         index = len(calls)
         calls.append([block["id"] for block in blocks])
         state["inflight"] = state.get("inflight", 0) + 1
@@ -300,7 +300,7 @@ def _install_endpoint_fakes(monkeypatch, blocks: list[dict], calls: list[list[in
         lambda _raw: [dict(block) for block in blocks],
     )
 
-    async def fake_batch(blocks, model=None, user_id=None, target_lang=None):
+    async def fake_batch(blocks, model=None, user_id=None, target_lang=None, quota_units=None):
         calls.append([block["id"] for block in blocks])
         await asyncio.sleep(0.02)
         return _translated(blocks)
@@ -390,6 +390,7 @@ def test_sse_stream_keeps_batch_order_progress_and_cache(client, history_dir, mo
         feature="translate",
         user_id=None,
         target_lang=None,
+        quota_units=None,
     ):
         return _translated(batch)
 

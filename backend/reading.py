@@ -1591,16 +1591,31 @@ async def translate_article(
     failed_indices: list[int] = []
     used_models: set[str] = set()
     batches = 0
+    # P2-34：单位按「累计段数」分配（1 单位 = 10 段），多批合计正好是
+    # ceil(缺失段数/10)；某批跨不进新单位时该批为 0，不再重复扣。
+    batch_units = quota.units_per_batch(
+        "reading", [len(batch) for batch in missing_batches]
+    )
 
-    for batch in missing_batches:
-        # 每批占 1 个「读文章」日配额；超限抛 QuotaExceeded（路由 429）。
-        await asyncio.to_thread(
-            quota.check_and_consume_quota,
-            user_id,
-            "reading",
-            1,
-            target_lang=lang,
-        )
+    for batch, units in zip(missing_batches, batch_units):
+        if units > 0:
+            # 超限抛 QuotaExceeded（路由 429）；重试/降级不重复扣。
+            await asyncio.to_thread(
+                quota.check_and_consume_quota,
+                user_id,
+                "reading",
+                units,
+                target_lang=lang,
+            )
+        else:
+            # 落在已购单位内的批：不重复扣，但仍要过只读闸门（0 = 关闭、
+            # 并发请求把额度用光时不能继续调用模型）。
+            await asyncio.to_thread(
+                quota.ensure_quota_available,
+                user_id,
+                "reading",
+                target_lang=lang,
+            )
         batches += 1
 
         translations, used_model, error = await _translate_batch(

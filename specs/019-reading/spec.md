@@ -122,8 +122,12 @@
   token-aware 分批送模型（P2-33）：首批 ≤5 段抢首屏，之后每批 ≤20 段且
   单批 ≤2,000 源 token（4 字符 ≈ 1 token 的英文近似）；单段超预算仍单独成批，
   不产生空批，段序不变。
-- 每批先扣 1 个 `feature=reading` 日配额（`AI_DAILY_QUOTA_READING_BATCHES`，
-  默认 60 批/日），并用 `quota.degradation_chain` 走统一降级链；成功调用经
+- 每批按**内容量**扣 `feature=reading` 日配额（P2-34：1 单位 = 10 段，
+  `AI_DAILY_QUOTA_READING_BATCHES` 保留 env 名，默认 60 单位 ≈ 600 段/日）；
+  多批按累计段数分配单位（`quota.units_per_batch`），合计 =
+  `ceil(缺失段数/10)`——10 段 = 1 单位、11 段 = 2 单位，不会因首批 5 段 +
+  稳定批拆小而被逐批向上取整；落在已购单位内的批不重复扣。并用
+  `quota.degradation_chain` 走统一降级链；成功调用经
   `llm.usage_scope("reading", user_id, target_lang=…)` 写入 `ai_usage`。
 - 模型返回 JSON `{"translations":[{"idx":0,"text":"..."}]}`；按 idx 对齐，
   允许围栏/乱序/部分返回；vi-VN 译文含 CJK 视为该段失败。
@@ -214,7 +218,8 @@ tmp 库真实 Alembic 迁移）：
 - SSRF：私网/回环/链路本地/元数据/非 http(s)/域名解析到内网/重定向到内网；
 - 抓取边界：重定向 ≤3、2MB、超时/非网页/无正文 → 422；
 - 翻译：zh/vi 分语言、幂等、只补缺失、失败标 `[未翻译]` 后重试、无可用模型、
-  配额 429、非法语言 400、模型输出容错解析；
+  配额 429、非法语言 400、模型输出容错解析；配额单位（P2-34）：10 段 = 1 单位、
+  11 段 = 2 单位、20 段 = 2 单位，缓存命中不再扣；
 - 进度/列表/删除级联/跨用户 404/游客 403/未迁移 503。
 
 全量：`cd backend && venv/bin/python -m pytest tests -q`（本规格完成时 445 绿；

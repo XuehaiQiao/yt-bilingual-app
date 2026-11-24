@@ -561,3 +561,120 @@ def test_define_uses_admin_default_and_user_override(migrated, monkeypatch):
     assert cleared.status_code == 200, cleared.text
     allowed = migrated.post("/api/define", json={"word": "quotadelta"})
     assert allowed.status_code == 200, allowed.text
+
+
+# ---------------------------------------------------------------------------
+# 6. 单位换算（P2-34）：1 单位 = 内容量，不再按「批」
+# ---------------------------------------------------------------------------
+
+def test_units_for_blocks_conversion():
+    # translate / local_show：1 单位 = 100 blocks
+    assert quota.units_for_blocks("translate", 20) == 1
+    assert quota.units_for_blocks("translate", 100) == 1
+    assert quota.units_for_blocks("translate", 101) == 2
+    assert quota.units_for_blocks("translate", 1372) == 14  # 1,372-block 视频
+    assert quota.units_for_blocks("local_show", 100) == 1
+    assert quota.units_for_blocks("local_show", 101) == 2
+    # reading：1 单位 = 10 段
+    assert quota.units_for_blocks("reading", 10) == 1
+    assert quota.units_for_blocks("reading", 11) == 2
+    assert quota.units_for_blocks("reading", 20) == 2
+    # 其他功能：1 次 = 1 单位，与内容量无关
+    for feature in ("summary", "define", "quiz", "analysis", "course_generation"):
+        assert quota.units_for_blocks(feature, 0) == 1
+        assert quota.units_for_blocks(feature, 500) == 1
+    # 常量与换算口径同源，便于管理台/文档引用
+    assert quota.BLOCKS_PER_UNIT == 100
+    assert quota.PARAGRAPHS_PER_UNIT == 10
+
+
+def test_units_for_blocks_boundaries_never_zero():
+    """空/负数/非法值按 1 兜底：0 块不能变成 0 单位绕过配额硬闸。"""
+    for n in (0, -5, None, "bad", 0.4):
+        assert quota.units_for_blocks("translate", n) == 1
+        assert quota.units_for_blocks("reading", n) == 1
+
+
+def test_multi_unit_consume_and_429_reports_units(migrated):
+    """一次扣多个单位：used/limit/units 都要进 429 文案与结果。"""
+    guest = "guest:quota-units"
+    quota_config.apply_overrides(
+        guest, {"reading": 3}, reason="测试单位", created_by="admin-test"
+    )
+    units = quota.units_for_blocks("reading", 11)
+    assert units == 2
+
+    first = quota.check_and_consume_quota(guest, "reading", units)
+    assert first["used_units"] == 2
+    assert first["units"] == 2
+    assert first["limit_units"] == 3
+
+    with pytest.raises(QuotaExceeded) as excinfo:
+        quota.check_and_consume_quota(guest, "reading", units)
+    assert excinfo.value.units == 2
+    assert excinfo.value.used_units == 2
+    assert excinfo.value.limit_units == 3
+    assert "本次需 2" in str(excinfo.value)
+
+
+def test_zero_limit_still_closes_multi_unit_feature(migrated):
+    """0 = 关闭：即使一次要扣多个单位，也直接 429（limit=0）。"""
+    guest = "guest:quota-units-off"
+    quota_config.apply_overrides(
+        guest, {"translate": 0}, reason="测试关闭", created_by="admin-test"
+    )
+    with pytest.raises(QuotaExceeded) as excinfo:
+        quota.check_and_consume_quota(
+            guest, "translate", quota.units_for_blocks("translate", 101)
+        )
+    assert excinfo.value.limit_units == 0
+    assert excinfo.value.used_units == 0
+    assert quota.snapshot(guest, "translate")["remaining"] == 0
+
+
+def test_units_per_batch_uses_cumulative_content():
+    """多批按累计内容量分配单位，避免每小批各自向上取整。"""
+    # 10 段 → 5+5 两批也只要 1 单位；11 段 = 2 单位；20 段 = 2 单位。
+    assert quota.units_per_batch("reading", [5, 5]) == [1, 0]
+    assert quota.units_per_batch("reading", [5, 6]) == [1, 1]
+    assert quota.units_per_batch("reading", [5, 15]) == [1, 1]
+    # 1,372 blocks 的首批 10 + 稳定 40 → 合计 14 单位（不是每批各 1）。
+    sizes = [10] + [40] * 34 + [2]
+    assert sum(sizes) == 1372
+    units = quota.units_per_batch("translate", sizes)
+    assert len(units) == len(sizes)
+    assert all(unit >= 0 for unit in units)
+    assert sum(units) == 14
+    # 空批/非法值不产生负单位；其他功能每批仍 1 次 = 1 单位。
+    assert quota.units_per_batch("translate", []) == []
+    assert quota.units_per_batch("translate", [0, -3]) == [0, 0]
+    assert quota.units_per_batch("analysis", [1, 1, 1]) == [1, 1, 1]
+
+
+def test_ensure_quota_available_checks_without_consuming(migrated):
+    """落在已购单位内的批：只查闸门，不写 ai_quota；额度用光/关闭仍 429。"""
+    guest = "guest:quota-check-only"
+    quota_config.apply_overrides(
+        guest, {"reading": 1}, reason="测试只读闸门", created_by="admin-test"
+    )
+    result = quota.ensure_quota_available(guest, "reading")
+    assert result["allowed"] is True
+    assert result["units"] == 0
+    assert result["remaining"] == 1
+    assert quota.snapshot(guest, "reading")["used_units"] == 0, "只读不能扣减"
+
+    quota.check_and_consume_quota(guest, "reading", 1)
+    with pytest.raises(QuotaExceeded) as excinfo:
+        quota.ensure_quota_available(guest, "reading")
+    assert excinfo.value.units == 0
+    assert excinfo.value.limit_units == 1
+    assert excinfo.value.used_units == 1
+    assert quota.snapshot(guest, "reading")["used_units"] == 1
+
+    # 0 = 关闭：只读闸门也必须在调用模型前拦住。
+    quota_config.apply_overrides(
+        guest, {"reading": 0}, reason="测试关闭", created_by="admin-test"
+    )
+    with pytest.raises(QuotaExceeded) as excinfo:
+        quota.ensure_quota_available(guest, "reading")
+    assert excinfo.value.limit_units == 0

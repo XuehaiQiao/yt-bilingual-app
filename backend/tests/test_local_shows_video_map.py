@@ -287,3 +287,54 @@ def test_import_script_write_episodes_merges_and_stays_idempotent(tmp_path):
     _, count, changed = import_playlist.write_episodes(str(show_dir), entries)
     assert (count, changed) == (2, 0)
     assert Path(path).read_bytes() == before
+
+
+# ----------------------------------------------------
+# /api/process-subtitle：P2-34 配额单位（1 单位 = 100 blocks）
+# ----------------------------------------------------
+
+def _srt_timestamp(seconds: int) -> str:
+    return f"00:{seconds // 60:02d}:{seconds % 60:02d}"
+
+
+def _srt_with_blocks(count: int) -> str:
+    entries = []
+    for index in range(count):
+        start = index * 2
+        entries.append(
+            f"{index + 1}\n"
+            f"{_srt_timestamp(start)},000 --> {_srt_timestamp(start + 2)},000\n"
+            f"Sentence number {index + 1}.\n"
+        )
+    return "\n".join(entries)
+
+
+def test_process_subtitle_token_aware_batches_and_units(
+    client, show_dir, history_dir, monkeypatch
+):
+    """100 blocks → P2-33 切批（10/40/40/10），且只按累计量扣 1 个单位。"""
+    (show_dir / "S01" / "E01.srt").write_text(
+        _srt_with_blocks(100), encoding="utf-8"
+    )
+    calls: list[dict] = []
+
+    async def fake_process_llm_batch(blocks, model=None, vocab_level=None, **kwargs):
+        calls.append({"size": len(blocks), **kwargs})
+        return [
+            {"id": block["id"], "zh_text": "中文翻译", "highlights": []}
+            for block in blocks
+        ]
+
+    monkeypatch.setattr(routes_content, "process_llm_batch", fake_process_llm_batch)
+    monkeypatch.setattr(llm, "batch_pause", lambda model: 0)
+
+    response = client.post(
+        "/api/process-subtitle",
+        json={"show_id": SHOW_ID, "season": 1, "episode": 1},
+    )
+    assert response.status_code == 200, response.text
+
+    assert [call["size"] for call in calls] == [10, 40, 40, 10]
+    assert all(call.get("feature") == "local_show" for call in calls)
+    # 累计 100 blocks = 1 单位：只有第 1 批真正扣减，后续批不重复占额度。
+    assert [call.get("quota_units") for call in calls] == [1, 0, 0, 0]

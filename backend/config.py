@@ -531,15 +531,18 @@ INVITE_CODE_MAX_USES = _bounded_int_env("INVITE_CODE_MAX_USES", 1, 1, 10)
 INVITE_CODE_PEPPER = os.environ.get("INVITE_CODE_PEPPER", "")
 
 
-# 免费额度（每日，0 = 关闭该功能）。翻译按「批」计：1 批 ≤20 个字幕块 ≈ 2 分钟
-# 视频，60 批 ≈ 120 分钟；本地剧集同理，单独一行便于运营区分功能成本。
+# 免费额度（每日，0 = 关闭该功能）。P2-34 起按「内容单位」计，不按批：
+# translate/local_show 1 单位 = 100 个字幕块，reading 1 单位 = 10 段；每批按
+# max(1, ceil(内容量/每单位量)) 扣，默认 60 单位 ≈ 视频 6,000 blocks/日
+# （名义容量；P2-33 按批切分后每批至少 1 单位）、文章 600 段/日。env 名保留
+# *BATCHES 只为兼容旧部署，语义已改为「单位」；不改默认值、不迁移表。
 AI_DAILY_QUOTA_TRANSLATE_BATCHES = _int_env("AI_DAILY_QUOTA_TRANSLATE_BATCHES", 60)
 AI_DAILY_QUOTA_SUMMARY = _int_env("AI_DAILY_QUOTA_SUMMARY", 10)
 AI_DAILY_QUOTA_DEFINE = _int_env("AI_DAILY_QUOTA_DEFINE", 200)
 AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES = _int_env("AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES", 60)
 # M3 理解题：每用户每日「生成一个 lesson 的题目」次数（缓存命中不占额度）。
 AI_DAILY_QUOTA_QUIZ = _int_env("AI_DAILY_QUOTA_QUIZ", 30)
-# V1 读文章：每用户每日翻译批次数（1 批 = 默认 10 段；已有译文/失败重试只算缺失段）。
+# V1 读文章：每用户每日翻译单位数（1 单位 = 10 段；已有译文/失败重试只算缺失段）。
 AI_DAILY_QUOTA_READING_BATCHES = _int_env("AI_DAILY_QUOTA_READING_BATCHES", 60)
 # AI 教学分析（高亮/习语/文化点，specs/028）：每用户每日「生成一份内容分析」
 # 次数。缓存命中（同 content_hash + level + target_lang）不占额度、零模型调用。

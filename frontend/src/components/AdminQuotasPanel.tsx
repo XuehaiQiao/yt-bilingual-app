@@ -155,6 +155,30 @@ function LimitValue({
   );
 }
 
+/** P2-34: content-based quota units; other features stay 1 call = 1 unit. */
+const QUOTA_UNIT_HINT_KEYS: Partial<Record<string, TranslationKey>> = {
+  translate: 'admin.quotas.unit.translate',
+  local_show: 'admin.quotas.unit.translate',
+  reading: 'admin.quotas.unit.reading',
+};
+
+function QuotaFeatureLabel({ feature }: { feature: string }) {
+  const { t } = useI18n();
+  const hintKey = QUOTA_UNIT_HINT_KEYS[feature];
+  return (
+    <span className="flex min-w-0 flex-col gap-0.5">
+      <span className="font-medium text-fg-strong">
+        {adminFeatureLabel(feature, t)}
+      </span>
+      {hintKey && (
+        <span className="text-micro leading-relaxed text-fg-muted">
+          {t(hintKey)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export interface AdminQuotasPanelProps {
   /** Bumped by the console refresh button to refetch both cards. */
   refreshNonce: number;
@@ -641,7 +665,7 @@ export function AdminQuotasPanel({ refreshNonce, onAuthError }: AdminQuotasPanel
                       return (
                         <TableRow key={row.feature} data-testid="admin-quota-default-row">
                           <TableCell nowrap>
-                            <span className="font-medium text-fg-strong">{label}</span>
+                            <QuotaFeatureLabel feature={row.feature} />
                           </TableCell>
                           <TableCell>
                             <span className="inline-flex flex-wrap items-center gap-1.5">
@@ -736,6 +760,9 @@ export function AdminQuotasPanel({ refreshNonce, onAuthError }: AdminQuotasPanel
                   <span>{defaultsSaveError}</span>
                 </p>
               )}
+              <p className="mt-3 text-micro leading-relaxed text-fg-muted">
+                {t('admin.quotas.defaults.unitNote')}
+              </p>
               <p className="mt-3 text-micro leading-relaxed text-fg-muted">
                 {t('admin.quotas.defaults.envNote')}
               </p>
@@ -1012,7 +1039,7 @@ export function AdminQuotasPanel({ refreshNonce, onAuthError }: AdminQuotasPanel
                       return (
                         <TableRow key={row.feature} data-testid="admin-quota-user-row">
                           <TableCell nowrap>
-                            <span className="font-medium text-fg-strong">{label}</span>
+                            <QuotaFeatureLabel feature={row.feature} />
                           </TableCell>
                           <TableCell numeric nowrap>
                             <LimitValue

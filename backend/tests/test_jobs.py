@@ -78,6 +78,7 @@ def _install_fakes(monkeypatch):
         feature="translate",
         user_id=None,
         target_lang=None,
+        quota_units=None,
     ):
         calls.append([block["id"] for block in blocks])
         return [

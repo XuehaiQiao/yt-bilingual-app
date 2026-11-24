@@ -536,6 +536,7 @@ async def process_llm_batch(
     feature: str = "translate",
     user_id: str | None = None,
     target_lang: str | None = None,
+    quota_units: int | None = None,
 ) -> list:
     """用配置的大模型翻译一批字幕块（带日配额、降级链与账本归属）。
 
@@ -549,8 +550,15 @@ async def process_llm_batch(
       ``{"r":[{"i": id, "t": 译文}]}``；解析同时兼容旧
       ``blocks/id/en_text/zh_text``；
     - ``vocab_level`` 保留在签名里仅作旧调用兼容，翻译 prompt 不再使用；
-    - 翻译前先原子扣一次本批的日配额（**重试/补缺都不再扣**）；超限抛
-      ``QuotaExceeded``（429 语义），不再盲目重试/白花钱；
+    - 翻译前先原子扣一次本批的日配额（**重试/补缺都不再扣**）；单位按内容量
+      换算（P2-34）：``translate``/``local_show`` 1 单位 = 100 blocks，即
+      ``max(1, ceil(len(blocks)/100))``；超限抛 ``QuotaExceeded``（429 语义），
+      不再盲目重试/白花钱；
+    - ``quota_units`` 给「一次生成切成多批」的调用方用：由
+      ``quota.units_per_batch`` 按累计内容量预分配，本批传 0 表示它落在前面
+      批次已买下的同一个单位里——不重复扣减，但仍走只读闸门
+      （``quota.ensure_quota_available``，0 = 关闭/额度用光时照样 429）；
+      缺省按本批内容量换算。
     - 稳定性：空/纯空白响应、完全不可解析 JSON 各自在同一候选重试 1 次，
       仍失败才换候选；缺失 id 只补缺失子集一次，仍缺标 ``[未翻译]``；
       单次调用 90s deadline，超时按失败进入降级；越南语 CJK 语言错误同一
@@ -571,9 +579,21 @@ async def process_llm_batch(
         )
 
     feature, user_id = _resolve_feature_user(feature, user_id)
-    # 硬闸：本批先占 1 个单位。QuotaExceeded 故意放在 mock 兜底之外——
-    # 额度不足不能被「模拟翻译」伪装成成功。整条重试/补缺路径共用这 1 次。
-    quota.check_and_consume_quota(user_id, feature, target_lang=lang)
+    # 硬闸：本批先占配额单位（P2-34：1 单位 = 100 blocks；多批调用方按累计
+    # 内容量预分配，quota_units=0 表示本批已被前面的单位覆盖）。QuotaExceeded
+    # 故意放在 mock 兜底之外——额度不足不能被「模拟翻译」伪装成成功。整条
+    # 重试/补缺路径共用这一次扣减。
+    units = (
+        quota.units_for_blocks(feature, len(blocks))
+        if quota_units is None
+        else max(0, int(quota_units))
+    )
+    if units > 0:
+        quota.check_and_consume_quota(user_id, feature, units, target_lang=lang)
+    elif quota_units is not None:
+        # 本批落在前面批次已买下的单位里：不重复扣，但仍要过闸门（0 = 关闭、
+        # 日预算/额度已被并发请求用光时不能继续调用模型）。
+        quota.ensure_quota_available(user_id, feature, target_lang=lang)
 
     # vocab_level 不在翻译 prompt 里使用：高亮/习语/文化点由独立的教学分析
     # 管线生成（按内容+等级+语言缓存），避免每个翻译批次重复生成教学内容。
@@ -789,9 +809,19 @@ async def retranslate_marked_blocks(
         return data
 
     print(f"Re-translating {len(mock_indices)} blocks in {os.path.basename(cache_path)}...")
-    batch_size = 20
-    for batch_start in range(0, len(mock_indices), batch_size):
-        batch_indices = mock_indices[batch_start:batch_start + batch_size]
+    # 自愈补译与正常翻译共用 P2-33 token-aware 切批（首批 ≤10、稳定 ≤40、
+    # 单批 ≤2,000 源 token）：每批配额按批内容量计（P2-34）。
+    index_batches = translation_batching.chunk_by_budget(
+        mock_indices,
+        lambda index: transcript[index].get("en_text") or "",
+        translation_batching.VIDEO_FIRST_BATCH_SIZE,
+        translation_batching.VIDEO_STEADY_BATCH_SIZE,
+        translation_batching.VIDEO_MAX_SOURCE_TOKENS,
+    )
+    batch_units = quota.units_per_batch(
+        feature, [len(batch) for batch in index_batches]
+    )
+    for batch_index, batch_indices in enumerate(index_batches):
         batch_blocks = [{
             "id": transcript[idx].get("id"),
             "start": transcript[idx]["start"],
@@ -809,6 +839,7 @@ async def retranslate_marked_blocks(
                     feature=feature,
                     user_id=user_id,
                     target_lang=lang,
+                    quota_units=batch_units[batch_index] if attempt == 0 else 0,
                 )
                 for j, idx in enumerate(batch_indices):
                     if j < len(batch_result):
@@ -922,6 +953,11 @@ async def _stream_translate(
     if batch_count == 0:
         return
     concurrency = min(_stream_translate_concurrency(), batch_count)
+    # P2-34：1 单位 = 100 blocks，按累计 blocks 预分配每批单位（并发下各批
+    # 只扣自己的增量；合计 = ceil(待翻 blocks/100)）。
+    batch_units = quota.units_per_batch(
+        feature, [len(batch) for batch in batches]
+    )
 
     outcomes: asyncio.Queue = asyncio.Queue()
     lane_slots = asyncio.Semaphore(concurrency)
@@ -982,6 +1018,7 @@ async def _stream_translate(
                     feature=feature,
                     user_id=user_id,
                     target_lang=lang,
+                    quota_units=batch_units[batch_index],
                 )
             except asyncio.CancelledError:
                 raise

@@ -122,6 +122,7 @@ def _install_batch_fake(
         feature="translate",
         user_id=None,
         target_lang=None,
+        quota_units=None,
     ):
         index = _batch_index(blocks)
         state["calls"].append([block["id"] for block in blocks])

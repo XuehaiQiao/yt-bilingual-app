@@ -15,6 +15,8 @@ from __future__ import annotations
 import asyncio
 import json
 
+import pytest
+
 import config
 import llm
 import translate
@@ -401,3 +403,195 @@ def test_default_deadline_is_90s_and_llm_timeout_untouched():
 
     source = inspect.getsource(llm.generate_json_async)
     assert "wait_for" not in source
+
+
+# ---------------------------------------------------------------------------
+# 6. 配额单位（P2-34）：1 单位 = 100 blocks，每批只扣一次
+# ---------------------------------------------------------------------------
+
+def _many_blocks(n: int) -> list[dict]:
+    return [
+        {"id": i + 1, "text": f"Sentence number {i + 1}.", "start": float(i), "end": float(i + 1)}
+        for i in range(n)
+    ]
+
+
+@pytest.mark.parametrize(("n", "units"), [(20, 1), (100, 1), (101, 2), (1372, 14)])
+def test_process_llm_batch_charges_units_by_block_count(monkeypatch, n, units):
+    """translate：1 单位 = 100 blocks；1,372 blocks 换算为 14 单位。"""
+    monkeypatch.setattr(
+        llm,
+        "generate_json",
+        lambda prompt, model=None: _new_schema(
+            [(i + 1, f"译文{i + 1}") for i in range(n)]
+        ),
+    )
+    _single_candidate(monkeypatch)
+    charged: list[tuple] = []
+
+    def fake_quota(*args, **kwargs):
+        charged.append((args, kwargs))
+
+    monkeypatch.setattr(translate.quota, "check_and_consume_quota", fake_quota)
+
+    result = asyncio.run(
+        translate.process_llm_batch(_many_blocks(n), model="model-a", user_id="u1")
+    )
+    assert len(result) == n
+    assert len(charged) == 1, "整批只扣一次"
+    _, feature, passed_units = charged[0][0]
+    assert feature == "translate"
+    assert passed_units == units
+
+
+def test_process_llm_batch_local_show_uses_100_blocks_per_unit(monkeypatch):
+    monkeypatch.setattr(
+        llm,
+        "generate_json",
+        lambda prompt, model=None: _new_schema(
+            [(i + 1, f"译文{i + 1}") for i in range(101)]
+        ),
+    )
+    _single_candidate(monkeypatch)
+    charged: list[int] = []
+    monkeypatch.setattr(
+        translate.quota,
+        "check_and_consume_quota",
+        lambda *args, **kwargs: charged.append(args[2]),
+    )
+
+    asyncio.run(
+        translate.process_llm_batch(
+            _many_blocks(101), model="model-a", feature="local_show", user_id="u1"
+        )
+    )
+    assert charged == [2], "local_show 也是 100 blocks/单位"
+
+
+def test_process_llm_batch_empty_batch_charges_nothing(monkeypatch):
+    charged: list = []
+    monkeypatch.setattr(
+        translate.quota,
+        "check_and_consume_quota",
+        lambda *args, **kwargs: charged.append(1),
+    )
+    assert asyncio.run(translate.process_llm_batch([], model="model-a", user_id="u1")) == []
+    assert charged == []
+
+
+def test_1372_block_video_costs_14_units_under_default_limit():
+    """1,372-block 视频按累计 blocks 计 14 单位，默认 60 单位不会中途 429。"""
+    import translation_batching
+
+    blocks = _many_blocks(1372)
+    batches = translation_batching.chunk_by_budget(
+        blocks,
+        lambda block: block["text"],
+        translation_batching.VIDEO_FIRST_BATCH_SIZE,
+        translation_batching.VIDEO_STEADY_BATCH_SIZE,
+        translation_batching.VIDEO_MAX_SOURCE_TOKENS,
+    )
+    units = translate.quota.units_per_batch(
+        "translate", [len(batch) for batch in batches]
+    )
+    assert len(batches) > 14, "P2-33 会把视频切成小批（首批 10、稳定 40）"
+    assert sum(units) == 14
+    assert sum(units) < config.AI_DAILY_QUOTA_TRANSLATE_BATCHES, "60 单位内可跑完"
+    # 文章口径同样按累计段数：20 段 = 2 单位（首批 5 + 稳定 15）。
+    article_batches = translation_batching.chunk_by_budget(
+        _many_blocks(20),
+        lambda block: block["text"],
+        translation_batching.ARTICLE_FIRST_BATCH_SIZE,
+        translation_batching.ARTICLE_STEADY_BATCH_SIZE,
+        translation_batching.ARTICLE_MAX_SOURCE_TOKENS,
+    )
+    assert sum(
+        translate.quota.units_per_batch(
+            "reading", [len(batch) for batch in article_batches]
+        )
+    ) == 2
+
+
+def test_covered_batch_checks_gate_without_charging(monkeypatch):
+    """quota_units=0：落在已购单位内，不扣减但要走只读闸门。"""
+    monkeypatch.setattr(
+        llm,
+        "generate_json",
+        lambda prompt, model=None: _new_schema([(1, "第一句。")]),
+    )
+    _single_candidate(monkeypatch)
+    consumed: list = []
+    gated: list = []
+    monkeypatch.setattr(
+        translate.quota,
+        "check_and_consume_quota",
+        lambda *args, **kwargs: consumed.append(args),
+    )
+    monkeypatch.setattr(
+        translate.quota,
+        "ensure_quota_available",
+        lambda *args, **kwargs: gated.append(args),
+    )
+
+    result = asyncio.run(
+        translate.process_llm_batch(
+            _blocks(1), model="model-a", user_id="u1", quota_units=0
+        )
+    )
+    assert result[0]["zh_text"] == "第一句。"
+    assert consumed == [], "覆盖批不得重复扣减"
+    assert len(gated) == 1, "但必须做只读闸门检查"
+
+
+def test_stream_translate_allocates_cumulative_units(monkeypatch, tmp_path):
+    """SSE 流式 101 blocks 切 4 批，但累计只占 2 单位（1 单位=100 blocks）。"""
+    transcript = [
+        {
+            "id": index + 1,
+            "start": float(index),
+            "end": float(index) + 1,
+            "en_text": f"Sentence number {index + 1}.",
+            "zh_text": "",
+            "highlights": [],
+        }
+        for index in range(101)
+    ]
+    payload = {"videoId": "unit-test", "transcript": transcript}
+    save_path = tmp_path / "unit-test.json"
+    save_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    units: list[int] = []
+
+    async def fake(blocks, **kwargs):
+        units.append(kwargs.get("quota_units"))
+        return [
+            {
+                "id": block["id"],
+                "start": block["start"],
+                "end": block["end"],
+                "en_text": block["en_text"],
+                "zh_text": "译文",
+                "highlights": [],
+            }
+            for block in blocks
+        ]
+
+    monkeypatch.setattr(translate, "process_llm_batch", fake)
+    monkeypatch.setattr(llm, "batch_pause", lambda model=None: 0)
+
+    async def run() -> None:
+        async for _update in translate._stream_translate(
+            transcript,
+            list(range(101)),
+            payload,
+            str(save_path),
+            model="model-a",
+            user_id="u1",
+            target_lang="zh-CN",
+        ):
+            pass
+
+    asyncio.run(run())
+    assert len(units) == 4, "101 blocks 切成 10/40/40/11 四批"
+    assert units == [1, 0, 0, 1], "累计 101 blocks = 2 单位，只在前两批边界扣"
+    assert sum(units) == 2

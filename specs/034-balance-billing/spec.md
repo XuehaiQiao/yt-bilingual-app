@@ -287,6 +287,26 @@ balanceUsd, availableMicroUsd, availableUsd}`；错误：400 参数/负余额、
 日预算与余额独立：`AI_DAILY_BUDGET_USER_USD`（默认 $1/天）与
 `AI_DAILY_BUDGET_GLOBAL_USD`（默认 $20/天）不变；`$2.00` 总额度不等于每天可花 $2。
 
+### 8.1 功能日配额的「单位」口径（P2-34）
+
+`ai_quota.used_units` 记录的是**内容量单位**，不是「批次数」；换算统一走
+`ai.quota.units_for_blocks`（单批）与 `ai.quota.units_per_batch`（多批累计分配）：
+
+| 功能 | 单位 | 每批/每次扣减 |
+|---|---|---|
+| `translate` / `local_show` | 1 单位 = 100 blocks | 按累计 blocks 分配，合计 = `ceil(blocks/100)` |
+| `reading` | 1 单位 = 10 段 | 按累计段数分配，合计 = `ceil(段数/10)` |
+| `summary` / `define` / `quiz` / `analysis` / `course_generation` | 1 次 = 1 单位 | 不变 |
+
+- 同一次生成的多批按**累计内容量**分配单位，不会因为 P2-33 把内容切成小批而
+  被每批各自向上取整：1,372 blocks 视频合计 14 单位，10 段文章合计 1 单位；
+- 每批最多扣一次；落在已购单位内的批不重复扣（单位增量 0），重试/降级复用
+  首次扣减；超限仍是 429（`code=quota_exceeded`），不改 402/429 语义；
+- 默认 60 单位的语义：视频名义 6,000 blocks/日、文章 600 段/日；
+  `AI_DAILY_QUOTA_*_BATCHES` 环境变量名保留兼容，语义已改为「单位」；
+- **`ai_quota` 表结构不变、无数据迁移**。切换前写入的 `used_units` 是旧「批」
+  口径，只能当历史审计数据，不能按 100 blocks/10 段换算或与新单位混算。
+
 ## 9. 价格读取
 
 优先 `model_prices`（`effective_from_ms <= now` 的最新一条）；无行时用
@@ -351,7 +371,9 @@ balanceUsd, availableMicroUsd, availableUsd}`；错误：400 参数/负余额、
 6. `llm.generate` 集成：有价预占→结算、缺价不扣、provider 失败释放、结算失败
    保留 hold、无账号不扣；
 7. 402 JSON 形状 + 不先扣日配额、429 仍生效、402 优先于 429；
-8. 价格版本生效；billing summary 统计未计费行。
+8. 价格版本生效；billing summary 统计未计费行；
+9. 配额单位（P2-34）：20/100/101 blocks 与 10/11 段换算、多批累计分配
+   （1,372 blocks = 14 单位、10 段 = 1 单位）、0/非法边界不绕过硬闸、0 = 关闭。
 
 验收命令：
 

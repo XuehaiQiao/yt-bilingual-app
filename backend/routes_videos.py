@@ -17,6 +17,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import AliasChoices, BaseModel, Field
 
+from ai import quota
 from ai.ledger import QuotaExceeded
 from config import (
     DEFAULT_MODEL,
@@ -351,8 +352,13 @@ async def _translate_video_batch(
     model: str,
     user_id: str,
     lang: str,
+    quota_units: int,
 ) -> tuple[list, float]:
-    """翻译一个批次（retry/回退语义与旧串行循环逐行一致），返回 (blocks, duration_ms)。"""
+    """翻译一个批次（retry/回退语义与旧串行循环逐行一致），返回 (blocks, duration_ms)。
+
+    P2-34：``quota_units`` 由 ``_translate_video_blocks`` 按累计 blocks 预分配
+    （1 单位 = 100 blocks）；只有第一次尝试扣减，重试不再重复扣。
+    """
     started = time.perf_counter()
     attempts = 0
     fallback = False
@@ -368,7 +374,8 @@ async def _translate_video_batch(
             attempts = attempt + 1
             try:
                 batch_result = await process_llm_batch(
-                    batch, model=model, user_id=user_id, target_lang=lang
+                    batch, model=model, user_id=user_id, target_lang=lang,
+                    quota_units=quota_units if attempt == 0 else 0,
                 )
                 success = True
                 break  # Break out of retry loop
@@ -447,6 +454,11 @@ async def _translate_video_blocks(
     )
     batch_count = len(batches)
     concurrency = min(_video_translation_concurrency(), batch_count)
+    # P2-34：1 单位 = 100 blocks，按累计 blocks 给每批分配单位（合计 =
+    # ceil(总 blocks/100)，如 1,372 blocks = 14 单位），不再按批各取整。
+    batch_units = quota.units_per_batch(
+        "translate", [len(batch) for batch in batches]
+    )
     print(
         f"Processing {len(blocks)} blocks in {batch_count} token-aware batches "
         f"(first≤{translation_batching.VIDEO_FIRST_BATCH_SIZE}, "
@@ -477,6 +489,7 @@ async def _translate_video_blocks(
                     model=model,
                     user_id=user_id,
                     lang=lang,
+                    quota_units=batch_units[index],
                 )
                 results[index] = batch_result
                 durations.append({"batch": index + 1, "duration_ms": duration_ms})

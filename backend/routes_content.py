@@ -18,6 +18,8 @@ import llm
 import local_shows
 import storage
 import teaching_analysis
+import translation_batching
+from ai import quota
 from ai.ledger import QuotaExceeded
 from config import SENTENCES_DIR, SUBTITLES_DIR
 from transcripts import group_srt_blocks, parse_srt
@@ -290,19 +292,30 @@ async def process_subtitle(request: SubtitleRequest, http_request: Request):
         metadata, request.show_id, request.season, request.episode
     )
 
-    # Process through the selected model (same batching as YouTube)
+    # Process through the selected model（与 YouTube 共用 P2-33 token-aware 分批：
+    # 首批 ≤10、稳定期 ≤40 blocks、单批 ≤2,000 源 token；每批按内容量扣配额，
+    # P2-34 起 local_show 1 单位 = 100 blocks，至少 1 单位）。
     processed_blocks = []
-    batch_size = 20
     has_mock_fallback = False  # Track if any batch used mock
 
+    batches = translation_batching.chunk_by_budget(
+        blocks,
+        lambda block: block.get("text") or "",
+        translation_batching.VIDEO_FIRST_BATCH_SIZE,
+        translation_batching.VIDEO_STEADY_BATCH_SIZE,
+        translation_batching.VIDEO_MAX_SOURCE_TOKENS,
+    )
     print(
         f"Processing {len(blocks)} subtitle blocks for {show_title} "
-        f"S{request.season:02d}E{request.episode:02d} [{lang}]..."
+        f"S{request.season:02d}E{request.episode:02d} [{lang}] "
+        f"in {len(batches)} token-aware batches..."
     )
+    # P2-34：1 单位 = 100 blocks，按累计 blocks 给每批分配单位（合计 =
+    # ceil(总 blocks/100)）；重试沿用首批已扣的单位，不重复扣。
+    batch_units = quota.units_per_batch("local_show", [len(batch) for batch in batches])
 
-    for i in range(0, len(blocks), batch_size):
-        batch = blocks[i:i + batch_size]
-        print(f"Processing batch {i//batch_size + 1}/{(len(blocks)-1)//batch_size + 1}")
+    for batch_no, batch in enumerate(batches, start=1):
+        print(f"Processing batch {batch_no}/{len(batches)}")
 
         max_retries = 5
         retry_delay = 15
@@ -314,6 +327,7 @@ async def process_subtitle(request: SubtitleRequest, http_request: Request):
                 batch_result = await process_llm_batch(
                     batch, model=model, feature="local_show", user_id=user_id,
                     target_lang=lang,
+                    quota_units=batch_units[batch_no - 1] if attempt == 0 else 0,
                 )
                 processed_blocks.extend(batch_result)
                 # 批间停顿按 provider 的限流节奏走（Gemini 4s / DeepSeek 1s），
