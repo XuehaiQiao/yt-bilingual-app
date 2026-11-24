@@ -1248,6 +1248,25 @@
       "deps": [
         "P2-22"
       ]
+    },
+    {
+      "id": "P2-26",
+      "file": "TASKS/P2-26-wordlist-auto-cefr.md",
+      "status": "claimed",
+      "owner": "auto-cefr-impl",
+      "write_scope": [
+        "backend/wordlists.py",
+        "backend/vocabulary.py",
+        "backend/tests/test_wordlists.py",
+        "backend/tests/test_apkg_import.py",
+        "specs/038-custom-wordlists/spec.md",
+        "specs/046-apkg-import/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-23",
+        "P2-24"
+      ]
     }
   ]
 }
