@@ -1,14 +1,16 @@
 # 047 — 管理员可见/可调的每日额度
 
-> 状态：**后端已实现（2026-11-24，P2-28；管理台 UI 待实现）** ｜ 2026-11-24
-> 现状：额度只来自 env/config（`AI_DAILY_QUOTA_*`），管理员前台看不到、改不了；用户只会在 429 时知道超限。
+> 状态：**后端（P2-28）+ 管理台 UI（P2-30）已实现** ｜ 2026-11-24
+> 背景：此前额度只来自 env/config（`AI_DAILY_QUOTA_*`），管理员前台看不到、改不了；用户只会在 429 时知道超限。P2-28/P2-30 之后管理台可看可调。
 >
 > 代码落点：`backend/quota_config.py`（三层解析/缓存/校验）、`backend/ai/quota.py`
 > （`limit_for` / `snapshot` / `check_and_consume_quota`）、`backend/routes_admin.py`
 > （`/api/admin/quotas*` 四个端点）、`backend/migrations/versions/0031_quota_overrides.py`
 > （覆盖表）、`backend/tests/test_quota_admin.py`（验收）、`backend/tests/test_migrations.py`
 > （head 0031 + 回滚）、`backend/tests/test_quota_ops_subject.py`、`backend/tests/test_ai_ledger.py`
-> （旧配额语义零回归）。
+> （旧配额语义零回归）；管理台 `frontend/src/components/AdminQuotasPanel.tsx`、
+> `frontend/src/components/AdminConsoleScreen.tsx`（「额度」tab）、
+> `frontend/src/lib/admin.ts`（类型 + 4 个 API）、`scripts/admin-quotas-acceptance.mjs`。
 
 ## 1. 成熟产品做法（参考）
 
@@ -80,5 +82,22 @@ Stripe Billing entitlements、OpenAI usage limits、AWS Service Quotas、GitHub 
   - `GET /api/admin/quotas/users/{id}` → `{user:{id,email,username,status}, features:[{feature,defaultLimit,overrideLimit,effectiveLimit,usedToday,remaining,source}]}`；
   - `PUT /api/admin/quotas/users/{id}` `{overrides:{feature:int|null}, reason}` → 同样的用户额度体 + `changes`；`reason` 必填 1–200 字。
   - 错误：校验/空对象 400、用户不存在 404、表未迁移 503；写操作一个事务 + 清缓存 + `admin_quota` 审计（`admin.quota.defaults_update` / `admin.quota.user_override_update`，含操作者、目标、before/after、reason）。
-- **未做**：管理台前端表格/编辑 UI（本期只交付后端契约；375/1440 布局与前端交互另卡）。
+- **管理台 UI**（P2-30，2026-11-24）：
+  - `AdminConsoleScreen` 新增「额度」tab（`Gauge` 图标，`quotasNonce` 走控制台刷新）；
+    `AdminQuotasPanel.tsx` 两张卡：全局默认 / 单用户额度。
+  - 全局默认卡：8 功能表格（功能中文 label、默认值输入、来源 badge「后台默认/环境变量」、
+    行内「恢复」），只提交改动项（对比当前展示的默认值；`0` 显示「关闭」）；
+    行恢复与「全部回退环境默认」把该功能标记为待回退（`null`），保存后回继承 env；
+    保存/重置/loading/错误/成功齐全；写后用响应重建表格（无需二次请求）。
+  - 预算卡：用户日预算 / 全站日预算只读（`formatUsdNumber`；无输入控件）。
+  - 单用户卡：搜索框 300ms 防抖调 `fetchAdminUsers({search, limit: 8})`；
+    选中后 `GET /api/admin/quotas/users/{id}` 渲染 8 行的默认/覆盖/生效/今日已用/剩余/来源；
+    覆盖输入留空=继承、`0`=关闭；reason 必填 1–200 字（超长/空值前端拦截）；
+    保存只提交改动项，清除全部覆盖先经 `ConfirmDialog` 再提交 `null`；
+    400/404/503 行内（`role="alert"`）错误、失败保留草稿可重试。
+  - 375：`<Table minWidth>` 自管横向滚动，页面零横向溢出；输入/图标按钮有
+    `aria-label`、`aria-invalid` 与可见 focus ring；中越文案齐全。
+  - 验收：`node scripts/admin-quotas-acceptance.mjs`（mock 4 个 API；A–F 6 组、
+    73 断言，含 400/404/503、只提交 changed、0/清除、375/1440 截图与 vi-VN 无中文）；
+    既有 `check:balance` / `check:invite` / `check:account` 零回归。
 - **验收测试**：`backend/tests/test_quota_admin.py`（默认/覆盖/0/清除/隔离/缓存/TTL/审计/权限/404/503/端到端 429）；`backend/tests/test_migrations.py`（head 0031 + 复合主键/CHECK/回滚/幂等）。

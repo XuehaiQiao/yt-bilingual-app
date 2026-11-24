@@ -39,6 +39,7 @@ import {
   Copy,
   Database,
   DollarSign,
+  Gauge,
   HardDrive,
   LayoutDashboard,
   ListChecks,
@@ -85,6 +86,7 @@ import {
 } from './ui/Table';
 import {
   AdminApiError,
+  adminFeatureLabel,
   adjustAdminUserBalance,
   createAdminInvites,
   executeAdminDeletion,
@@ -138,6 +140,7 @@ import {
 } from '../lib/billing';
 import { DELETE_CONFIRM_WORD, lifecycleErrorKey } from '../lib/accountLifecycle';
 import { LanguageMenu } from './LanguageMenu';
+import { AdminQuotasPanel } from './AdminQuotasPanel';
 
 const PAGE_SIZE = 20;
 const LEDGER_PAGE_SIZE = 50;
@@ -165,6 +168,7 @@ type AdminTab =
   | 'overview'
   | 'users'
   | 'billing'
+  | 'quotas'
   | 'invites'
   | 'deletions'
   | 'audit'
@@ -179,29 +183,13 @@ const TABS: ReadonlyArray<{
   { id: 'overview', labelKey: 'admin.tab.overview', icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
   { id: 'users', labelKey: 'admin.tab.users', icon: <Users className="w-3.5 h-3.5" /> },
   { id: 'billing', labelKey: 'admin.tab.billing', icon: <Wallet className="w-3.5 h-3.5" /> },
+  { id: 'quotas', labelKey: 'admin.tab.quotas', icon: <Gauge className="w-3.5 h-3.5" /> },
   { id: 'invites', labelKey: 'admin.tab.invites', icon: <Ticket className="w-3.5 h-3.5" /> },
   { id: 'deletions', labelKey: 'admin.tab.deletions', icon: <CalendarClock className="w-3.5 h-3.5" /> },
   { id: 'audit', labelKey: 'admin.tab.audit', icon: <ScrollText className="w-3.5 h-3.5" /> },
   { id: 'settings', labelKey: 'admin.tab.settings', icon: <SlidersHorizontal className="w-3.5 h-3.5" /> },
   { id: 'ops', labelKey: 'admin.tab.ops', icon: <Activity className="w-3.5 h-3.5" /> },
 ];
-
-const FEATURE_LABEL_KEYS: Record<string, TranslationKey> = {
-  translate: 'admin.feature.translate',
-  summary: 'admin.feature.summary',
-  define: 'admin.feature.define',
-  local_show: 'admin.feature.local_show',
-  quiz: 'admin.feature.quiz',
-  reading: 'admin.feature.reading',
-  books: 'admin.feature.books',
-  analysis: 'admin.feature.analysis',
-  course_generation: 'admin.feature.course_generation',
-};
-
-function featureLabel(feature: string, t: (key: TranslationKey) => string): string {
-  const key = FEATURE_LABEL_KEYS[feature];
-  return key ? t(key) : feature;
-}
 
 /** Local `YYYY-MM-DD` for a day offset from today (billing summary range). */
 function dayString(offsetDays = 0): string {
@@ -1334,7 +1322,7 @@ function BillingPanel({ refreshNonce, onAuthError }: BillingPanelProps) {
                     caption={t('admin.billing.byFeature')}
                     firstHeader={t('admin.billing.feature')}
                     rows={summary.byFeature}
-                    labelOf={(row) => featureLabel(row.key, t)}
+                    labelOf={(row) => adminFeatureLabel(row.key, t)}
                   />
                 </div>
               </div>
@@ -2291,6 +2279,8 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
   const [ledgerTarget, setLedgerTarget] = useState<{ row: AdminUserRow; nonce: number } | null>(null);
   // Billing tab owns its data; the console refresh button bumps this nonce.
   const [billingNonce, setBillingNonce] = useState(0);
+  // Quota tab owns its data; the console refresh button bumps this nonce.
+  const [quotasNonce, setQuotasNonce] = useState(0);
 
   const usersRequestRef = useRef(0);
   const invitesRequestRef = useRef(0);
@@ -2500,6 +2490,7 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
     if (tab === 'overview') void loadStats();
     else if (tab === 'users') void loadUsers(offset, search);
     else if (tab === 'billing') setBillingNonce((current) => current + 1);
+    else if (tab === 'quotas') setQuotasNonce((current) => current + 1);
     else if (tab === 'invites') void loadInvites(inviteOffset, inviteStatus);
     else if (tab === 'deletions') void loadDeletions(deletionOffset, deletionFilter);
     else if (tab === 'audit') void loadAudit(auditOffset);
@@ -2516,7 +2507,9 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
       ? usersLoading
       : tab === 'billing'
         ? false
-        : tab === 'invites'
+        : tab === 'quotas'
+          ? false
+          : tab === 'invites'
           ? invitesLoading
           : tab === 'deletions'
             ? deletionLoading
@@ -3029,6 +3022,11 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
         {/* ── Billing / AI cost summary (M3b / specs/034) ──────────────── */}
         {tab === 'billing' && (
           <BillingPanel refreshNonce={billingNonce} onAuthError={deny} />
+        )}
+
+        {/* ── Daily quotas (specs/047) ─────────────────────────────────── */}
+        {tab === 'quotas' && (
+          <AdminQuotasPanel refreshNonce={quotasNonce} onAuthError={deny} />
         )}
 
         {/* ── Invite codes (M1 G1) ─────────────────────────────────────── */}
@@ -3783,7 +3781,7 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
                         {usageRows.map((row) => (
                           <TableRow key={`${row.day}:${row.feature}`}>
                             <TableCell nowrap muted className="text-caption tabular-nums">{row.day}</TableCell>
-                            <TableCell nowrap>{featureLabel(row.feature, t)}</TableCell>
+                            <TableCell nowrap>{adminFeatureLabel(row.feature, t)}</TableCell>
                             <TableCell numeric nowrap>{formatNumber(row.calls)}</TableCell>
                             <TableCell numeric nowrap muted>{formatNumber(row.inputTokens)}</TableCell>
                             <TableCell numeric nowrap muted>{formatNumber(row.outputTokens)}</TableCell>

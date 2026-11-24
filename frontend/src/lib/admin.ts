@@ -5,6 +5,7 @@
 // only writes the console performs. Every call goes through `apiFetch`, so the
 // httpOnly session cookie and the shared 401 handling apply unchanged.
 import { apiFetch } from './api';
+import type { TranslationKey } from '../i18n';
 import type {
   AdminBalanceAdjustResult,
   AdminBalanceDirection,
@@ -596,4 +597,141 @@ export function fetchAdminAudit(options: {
   if (options.offset != null) params.set('offset', String(options.offset));
   const query = params.toString();
   return requestJson<AdminAuditPage>(`/api/admin/audit${query ? `?${query}` : ''}`);
+}
+
+// ── Daily AI quotas (specs/047-quota-admin) ───────────────────────────────
+//
+// The backend resolves a feature limit in three layers:
+// user override (`quota_overrides`) > global default (`app_settings`
+// `ai_quota_defaults`) > env/config (`AI_DAILY_QUOTA_*`). `0` disables the
+// feature (there is no "unlimited"); `null` means "delete the stored value and
+// inherit the next layer down". Every write returns the refreshed table so the
+// panel never has to guess the post-write state.
+
+/** Feature label keys shared by the billing and quota panels. */
+export const ADMIN_FEATURE_LABEL_KEYS: Record<string, TranslationKey> = {
+  translate: 'admin.feature.translate',
+  summary: 'admin.feature.summary',
+  define: 'admin.feature.define',
+  local_show: 'admin.feature.local_show',
+  quiz: 'admin.feature.quiz',
+  reading: 'admin.feature.reading',
+  books: 'admin.feature.books',
+  analysis: 'admin.feature.analysis',
+  course_generation: 'admin.feature.course_generation',
+};
+
+/** Localized feature name; unknown features fall back to the raw key. */
+export function adminFeatureLabel(
+  feature: string,
+  t: (key: TranslationKey) => string,
+): string {
+  const key = ADMIN_FEATURE_LABEL_KEYS[feature];
+  return key ? t(key) : feature;
+}
+
+export type AdminQuotaSource = 'config' | 'default' | 'user_override';
+
+export interface AdminQuotaBudgets {
+  /** Read-only per-user daily USD budget (env-configured this phase). */
+  userDailyUsd: number;
+  /** Read-only site-wide daily USD budget (env-configured this phase). */
+  globalDailyUsd: number;
+}
+
+export interface AdminQuotaDefaultRow {
+  feature: string;
+  /** Current default limit: app_settings value, or env/config when absent. */
+  defaultLimit: number;
+  /** `default` = stored app_settings override; `config` = env fallback. */
+  source: 'default' | 'config';
+}
+
+export interface AdminQuotaDefaults {
+  features: AdminQuotaDefaultRow[];
+  budgets: AdminQuotaBudgets;
+}
+
+/**
+ * One changed feature as returned by both PUT endpoints. `from`/`to` are
+ * *stored* values, so `null` means "inherits the layer below".
+ */
+export interface AdminQuotaChange {
+  from: number | null;
+  to: number | null;
+}
+
+export interface AdminQuotaDefaultsResponse extends AdminQuotaDefaults {
+  changes?: Record<string, AdminQuotaChange>;
+}
+
+export interface AdminQuotaUserSummary {
+  id: string;
+  email: string | null;
+  username: string | null;
+  status: string | null;
+}
+
+export interface AdminQuotaUserFeature {
+  feature: string;
+  defaultLimit: number;
+  /** `null` = no per-user override (inherits the default). */
+  overrideLimit: number | null;
+  effectiveLimit: number;
+  usedToday: number;
+  remaining: number;
+  source: AdminQuotaSource;
+}
+
+export interface AdminQuotaUser {
+  user: AdminQuotaUserSummary;
+  features: AdminQuotaUserFeature[];
+}
+
+export interface AdminQuotaUserUpdateResponse extends AdminQuotaUser {
+  changes?: Record<string, AdminQuotaChange>;
+}
+
+/** `GET /api/admin/quotas` — 8 default limits + read-only budgets. */
+export function fetchAdminQuotas(): Promise<AdminQuotaDefaults> {
+  return requestJson<AdminQuotaDefaults>('/api/admin/quotas');
+}
+
+/**
+ * `PUT /api/admin/quotas/defaults` — `null` deletes the stored value and
+ * falls back to env/config. Empty object is rejected by the backend (400).
+ */
+export function updateAdminQuotaDefaults(
+  limits: Record<string, number | null>,
+): Promise<AdminQuotaDefaultsResponse> {
+  return requestJson<AdminQuotaDefaultsResponse>('/api/admin/quotas/defaults', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ limits }),
+  });
+}
+
+/** `GET /api/admin/quotas/users/{id}` — 404 unknown user, 503 missing table. */
+export function fetchAdminUserQuotas(userId: string): Promise<AdminQuotaUser> {
+  return requestJson<AdminQuotaUser>(
+    `/api/admin/quotas/users/${encodeURIComponent(userId)}`,
+  );
+}
+
+/**
+ * `PUT /api/admin/quotas/users/{id}` — set overrides (`0` disables) or clear
+ * them with `null`; `reason` is required (1–200 chars) and audited.
+ */
+export function updateAdminUserQuotas(
+  userId: string,
+  input: { overrides: Record<string, number | null>; reason: string },
+): Promise<AdminQuotaUserUpdateResponse> {
+  return requestJson<AdminQuotaUserUpdateResponse>(
+    `/api/admin/quotas/users/${encodeURIComponent(userId)}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ overrides: input.overrides, reason: input.reason }),
+    },
+  );
 }
