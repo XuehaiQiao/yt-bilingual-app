@@ -1439,7 +1439,8 @@
         "backend/tests/test_local_shows_video_map.py",
         "backend/tests/test_jobs.py",
         "backend/tests/test_video_pipeline_timing.py",
-        "backend/tests/test_streaming_pipeline.py"
+        "backend/tests/test_streaming_pipeline.py",
+        "backend/routes_videos.py"
       ],
       "shared_writes": [],
       "deps": [

@@ -20,6 +20,7 @@
 - `backend/tests/test_quota_admin.py`、`test_reading.py`、`test_translation_hardening.py`、相关
 - `frontend/src/components/AdminQuotasPanel.tsx`（单位说明）
 - `frontend/src/i18n/zh-CN.json`、`vi-VN.json`
+- `backend/routes_videos.py`（经典路径累计 quota_units 传参）
 - `backend/routes_content.py`（local_show token-aware 分批）
 - `backend/tests/test_library_content.py`、`test_local_shows_video_map.py`
 - `backend/tests/test_jobs.py`、`test_video_pipeline_timing.py`、`test_streaming_pipeline.py`（stub 接 **kwargs）
