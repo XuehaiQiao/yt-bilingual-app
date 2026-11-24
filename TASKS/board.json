@@ -1336,8 +1336,8 @@
     {
       "id": "P2-30",
       "file": "TASKS/P2-30-quota-admin-ui.md",
-      "status": "claimed",
-      "owner": "quota-ui-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/components/AdminQuotasPanel.tsx",
         "frontend/src/components/AdminConsoleScreen.tsx",
