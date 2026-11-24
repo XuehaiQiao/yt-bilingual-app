@@ -17,7 +17,7 @@ import { BackButton } from './components/ui/BackButton';
 import { AuthProvider, useAuth } from './lib/auth';
 import { allowAi } from './lib/aiGate';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
-import { getLanguageMeta, getRuntimeTargetLang } from './i18n';
+import { getLanguageMeta, getRuntimeLanguage, getRuntimeTargetLang } from './i18n';
 import type { TranslationKey } from './i18n';
 import { ModelProvider } from './lib/model';
 import { useNav } from './lib/useNav';
@@ -58,6 +58,7 @@ import { PrivacyPolicyScreen } from './components/PrivacyPolicyScreen';
 import { TermsScreen } from './components/TermsScreen';
 import { AdminConsoleScreen } from './components/AdminConsoleScreen';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { Onboarding } from './components/Onboarding';
 import { AppShell, type ProfileSectionId } from './components/AppShell';
 import { LearningHeader } from './components/LearningHeader';
 import { LocalVideoLearning } from './components/LocalVideoLearning';
@@ -77,6 +78,12 @@ import { ProfileScreen } from './components/ProfileScreen';
 import { VocabularyBookScreen } from './components/VocabularyBookScreen';
 import { toast, describeApiError } from './lib/toast';
 import { selectMyWords } from './lib/myWords';
+import {
+  clearAuthLinkToken,
+  confirmEmailVerification,
+  emailVerificationMessage,
+  readAuthLinkToken,
+} from './lib/user';
 import { formatMicroUsd } from './lib/billing';
 import { getReviewStats, REVIEW_UI_ENABLED, type ReviewStats } from './lib/review';
 import { startLesson, QuizApiError, type LessonQuestions } from './lib/quiz';
@@ -5056,6 +5063,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           />
         )}
       </AnimatePresence>
+
+      {/* v1.1 first-run guide. Self-gating on localStorage; mounted with the
+          app shell so it also appears for guests before they sign up. */}
+      <Onboarding />
     </div>
   );
 }
@@ -5247,9 +5258,39 @@ function LoginView({ next }: { next: string | null }) {
 // top bar offers "游客 · 登录保存". Clicking it overlays the auth screen instead
 // of replacing the app, so a guest who changes their mind keeps their video.
 function AuthGate() {
-  const { status, isAdmin } = useAuth();
+  const { status, isAdmin, refreshSession } = useAuth();
   const { t } = useI18n();
   const [showAuth, setShowAuth] = useState(false);
+  // v1.1 email-verification link while signed in. `#/login?verify=<token>` is
+  // otherwise redirected straight into the app (the session already exists), so
+  // the token has to be consumed here before that rewrite: confirm, refresh the
+  // session (to clear the account banner) and only then let the redirect run.
+  const verifyLink = readAuthLinkToken();
+  const pendingVerifyToken = verifyLink?.kind === 'verify' && status === 'authenticated'
+    ? verifyLink.token
+    : null;
+  const [verifyLinkSettled, setVerifyLinkSettled] = useState(false);
+
+  useEffect(() => {
+    if (!pendingVerifyToken) return;
+    let cancelled = false;
+    void confirmEmailVerification(pendingVerifyToken)
+      .then(() => {
+        if (!cancelled) toast.success(t('auth.verify.success'));
+      })
+      .catch((err) => {
+        if (!cancelled) toast.error(emailVerificationMessage(err, getRuntimeLanguage()));
+      })
+      .finally(() => {
+        if (cancelled) return;
+        clearAuthLinkToken();
+        setVerifyLinkSettled(true);
+        void refreshSession();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingVerifyToken, refreshSession, t]);
   const {
     view: publicView,
     app,
@@ -5278,9 +5319,12 @@ function AuthGate() {
   // #/login later in the same session — a hand-edited URL — is also redirected.
   useEffect(() => {
     if (status !== 'authenticated' || publicView !== 'login') return;
+    // A signed-in visitor arriving from an email-verification link must stay on
+    // the login URL until the token is consumed (see the effect above).
+    if (pendingVerifyToken && !verifyLinkSettled) return;
     window.history.replaceState(window.history.state, '', loginNext ?? '#/app/content');
     syncPublicView();
-  }, [status, publicView, loginNext, syncPublicView]);
+  }, [status, publicView, loginNext, syncPublicView, pendingVerifyToken, verifyLinkSettled]);
 
   // ⛔ Dev-only component matrix. Not a `NavState`: the normal route model
   // never sees it, it has no navigation entry, and a deep link is the only

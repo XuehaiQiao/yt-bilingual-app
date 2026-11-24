@@ -17,6 +17,7 @@ import type {
 } from '../lib/quiz';
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
+import { AIGeneratedBadge } from './AIGeneratedBadge';
 import { SubHeader } from './ui/SubHeader';
 
 interface QuizScreenProps {
@@ -426,9 +427,12 @@ export const QuizScreen: React.FC<QuizScreenProps> = ({
                 transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
                 className="glass-card rounded-3xl p-5 sm:p-8"
             >
-                <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">
-                    {t(current.questionType === 'mcq' ? 'quiz.type.mcq' : 'quiz.type.tf')}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-block text-micro font-medium px-2 py-0.5 rounded-full border border-brand/20 bg-brand/10 text-brand-300">
+                        {t(current.questionType === 'mcq' ? 'quiz.type.mcq' : 'quiz.type.tf')}
+                    </span>
+                    <AIGeneratedBadge kind="quiz" testId="quiz-ai-badge" />
+                </div>
                 <h2
                     data-testid="quiz-prompt"
                     className="mt-3 text-lg sm:text-xl font-medium leading-relaxed text-zinc-50 break-words"

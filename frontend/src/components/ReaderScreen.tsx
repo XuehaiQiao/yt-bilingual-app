@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
+import { AIGeneratedBadge } from './AIGeneratedBadge';
 import { ReadingHighlightToggle } from './ReadingHighlight';
 import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
 import { useReadingAudio } from '../lib/useReadingAudio';
@@ -1151,6 +1152,11 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                             total: formatNumber(stats.total),
                         })}
                     </p>
+                    <AIGeneratedBadge
+                        kind="translation"
+                        testId="reader-ai-translation-generate"
+                        className="mt-2"
+                    />
                     {translating && stats.total > 0 && (
                         <div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                             <div
@@ -1306,6 +1312,9 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                     />
                 )}
                 {article && translationToggle}
+                {article && (
+                    <AIGeneratedBadge kind="translation" testId="reader-ai-translation" />
+                )}
             </div>
 
             <div

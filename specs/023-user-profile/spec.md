@@ -299,3 +299,7 @@
 验收：`npx tsc -b`、`npm run check:i18n`、`npm run build` 通过；Playwright
 （系统 Chrome，5173，mock `/api/admin/*`）23/23 通过，截图
 `/tmp/admin-console-shots/`。
+
+## 2026-11-25 v1.1 P0 前端落点
+
+用户页新增「今日额度」（`GET /api/quota`：剩余/重置时间/各功能用量/0=关闭，`frontend/src/components/QuotaPanel.tsx`，仅登录态）、「反馈与纠错」（`POST /api/feedback`：分类/描述/自动 requestId/成功回执，`FeedbackDialog.tsx`，入口在「关于」区）与「验证邮箱」提示（`emailVerified=false` 时显示 + 重发 `POST /api/auth/email-verification/request`）；找回/重置密码与邮箱验证链接落在 `AuthScreen.tsx`（`#/login?reset=<token>` / `?verify=<token>`）。中越文案见 `frontend/src/i18n/{zh-CN,vi-VN}.json`。

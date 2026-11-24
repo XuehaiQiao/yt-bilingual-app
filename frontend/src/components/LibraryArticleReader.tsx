@@ -9,6 +9,7 @@ import { BookOpen, Languages } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
 import type { LibraryArticle } from '../lib/library';
 import { difficultyBadge, fetchDifficultyBatch, type DifficultyItem } from '../lib/difficulty';
+import { AIGeneratedBadge } from './AIGeneratedBadge';
 import { ReadingHighlightToggle } from './ReadingHighlight';
 import { ReadingAudioBar, ReadingAudioTrigger } from './ReadingAudioBar';
 import { useReadingAudio } from '../lib/useReadingAudio';
@@ -330,6 +331,7 @@ export function LibraryArticleReader({
                                 {t('library.article.translation.hidden')}
                             </button>
                         </div>
+                        <AIGeneratedBadge kind="translation" testId="library-ai-translation" />
                         <ReadingHighlightToggle
                             testId="library-highlight-toggle"
                             enabled={highlight.enabled}

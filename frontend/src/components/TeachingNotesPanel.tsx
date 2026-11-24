@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { BookOpen, ChevronDown, LogIn, RefreshCw, Sparkles } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
+import { AIGeneratedBadge } from './AIGeneratedBadge';
 import type { TeachingAnalysis } from '../lib/teachingAnalysis';
 
 export type TeachingNotesStatus =
@@ -246,6 +247,9 @@ const TeachingNotesPanelInner: React.FC<TeachingNotesPanelProps> = ({
                     <h2 className="text-[17px] font-semibold tracking-tight text-zinc-100 group-hover:text-blue-300 transition-colors">
                         {t('teachingNotes.title')}
                     </h2>
+                    {analysis && (
+                        <AIGeneratedBadge kind="analysis" testId="teaching-notes-ai-badge" />
+                    )}
                     {analysis && (
                         <span
                             data-testid="teaching-notes-counts"

@@ -44,6 +44,7 @@ import {
 import { describeApiError } from '../lib/toast';
 import { useI18n } from '../i18n/I18nProvider';
 import { Dialog } from './ui/Dialog';
+import { AIGeneratedBadge } from './AIGeneratedBadge';
 import { SubHeader } from './ui/SubHeader';
 import { PageContainer } from './layout/PageContainer';
 import { PageGrid } from './layout/PageGrid';
@@ -674,6 +675,7 @@ export function ExamScreen({ isGuest, onClose, parentLabel, onRequestLogin }: Ex
                     <span className="rounded-full border border-white/5 bg-zinc-800/60 px-2 py-0.5 text-[11px] font-medium text-zinc-400 tabular-nums">
                         {t('exam.quiz.band', { band: currentItem.band })}
                     </span>
+                    <AIGeneratedBadge kind="quiz" testId="exam-ai-badge" />
                     {flagged[currentItem.itemId] && (
                         <span
                             data-testid="exam-flag-state"

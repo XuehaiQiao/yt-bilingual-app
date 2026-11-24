@@ -28,6 +28,12 @@ export interface AuthUser {
     username?: string | null;
     credits?: number;
     status?: string;
+    /**
+     * v1.1 (P2-38): whether the account's email is verified. Optional so an old
+     * backend never breaks the shell; the account page only prompts when the
+     * server explicitly says `false` (old users are not forced to verify).
+     */
+    emailVerified?: boolean;
 }
 
 // `guest` is the normal "not logged in" state since M1 ⑧: the backend issues an

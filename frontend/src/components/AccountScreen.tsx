@@ -24,6 +24,9 @@ import {
   Loader2,
   Lock,
   LogOut,
+  MailCheck,
+  MessageSquarePlus,
+  Compass,
   Pencil,
   RefreshCw,
   ShieldCheck,
@@ -42,12 +45,16 @@ import { PageHeader } from './ui/PageHeader';
 import { PageContainer } from './layout/PageContainer';
 import { toast, describeApiError } from '../lib/toast';
 import { displayUsername, usernameInitial, usernameProblem } from '../lib/username';
+import { requestEmailVerification } from '../lib/user';
 import { loadVocabLevel, saveVocabLevel, VOCAB_LEVEL_EVENT, VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
 import { formatMicroUsd, formatUsdNumber } from '../lib/billing';
 import { LanguageSettingsModal } from './LanguageSettingsModal';
 import { AccountDataSection, PendingDeletionCard } from './AccountDataSection';
+import { FeedbackDialog } from './FeedbackDialog';
 import { ModelBar } from './ModelBar';
+import { openOnboarding } from './Onboarding';
 import { PwaInstallButton } from './PwaInstallButton';
+import { QuotaPanel } from './QuotaPanel';
 import { VocabAxis } from './ui/Axis';
 import { Button } from './ui/Button';
 
@@ -175,6 +182,11 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
+  // v1.1: feedback dialog + optional email verification. Old accounts stay
+  // untouched: the banner only appears when the server says `emailVerified:false`.
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [verifyResending, setVerifyResending] = useState(false);
+  const [verifySent, setVerifySent] = useState(false);
   // The CEFR axis now lives here (moved out of the content page); the choice
   // is stored immediately and drives word highlighting in later content.
   const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
@@ -284,6 +296,20 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const resendEmailVerification = async () => {
+    if (verifyResending) return;
+    setVerifyResending(true);
+    try {
+      await requestEmailVerification();
+      setVerifySent(true);
+      toast.success(t('account.emailVerify.sent'));
+    } catch (err) {
+      toast.error(await describeApiError(err));
+    } finally {
+      setVerifyResending(false);
+    }
   };
 
   const refreshAction = isAuthenticated && (
@@ -482,6 +508,26 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
             </span>
           )}
         </SettingRow>
+
+        <button
+          type="button"
+          data-testid="account-onboarding"
+          onClick={openOnboarding}
+          className="w-full flex items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-state-hover"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <Compass className="w-4 h-4 text-fg-muted shrink-0" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-fg-strong">
+                {t('account.settings.onboarding')}
+              </span>
+              <span className="mt-0.5 block text-xs text-fg-muted">
+                {t('account.settings.onboardingHint')}
+              </span>
+            </span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-fg-muted shrink-0" aria-hidden="true" />
+        </button>
       </div>
     </section>
   );
@@ -515,6 +561,26 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
             <span className="text-sm font-medium text-zinc-200">{t('account.about.blog')}</span>
           </span>
           <ChevronRight className="w-4 h-4 text-zinc-600 shrink-0" />
+        </button>
+
+        <button
+          type="button"
+          data-testid="account-feedback"
+          onClick={() => setFeedbackOpen(true)}
+          className="w-full flex items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-state-hover"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <MessageSquarePlus className="w-4 h-4 text-fg-muted shrink-0" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-fg-strong">
+                {t('account.about.feedback')}
+              </span>
+              <span className="mt-0.5 block text-xs text-fg-muted">
+                {t('account.about.feedbackHint')}
+              </span>
+            </span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-fg-muted shrink-0" aria-hidden="true" />
         </button>
 
         {/* The two legal pages are real public routes (M4): plain anchors leave
@@ -598,6 +664,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
         </PageContainer>
 
         <LanguageSettingsModal isOpen={languageOpen} onClose={() => setLanguageOpen(false)} />
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       </div>
     );
   }
@@ -737,6 +804,41 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
             </p>
           </div>
         </header>
+
+        {/* v1.1 email verification is optional: old accounts keep working, the
+            prompt only appears when the backend explicitly reports `false`. */}
+        {user?.emailVerified === false && !isPendingDeletion && (
+          <section
+            data-testid="account-email-unverified"
+            role="status"
+            className="mt-5 flex flex-wrap items-start gap-3 rounded-2xl border border-warning/20 bg-warning/[0.06] p-4"
+          >
+            <MailCheck className="w-5 h-5 text-warning-fg shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-fg-strong">{t('account.emailVerify.title')}</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-fg-muted">{t('account.emailVerify.body')}</p>
+            </div>
+            {verifySent ? (
+              <span
+                data-testid="account-email-verify-sent"
+                className="shrink-0 text-xs font-medium text-success-fg"
+              >
+                {t('account.emailVerify.sent')}
+              </span>
+            ) : (
+              <Button
+                variant="secondary"
+                size="md"
+                loading={verifyResending}
+                onClick={() => { void resendEmailVerification(); }}
+                testId="account-email-verify-resend"
+                iconLeft={<MailCheck className="w-4 h-4" />}
+              >
+                {t('account.emailVerify.resend')}
+              </Button>
+            )}
+          </section>
+        )}
 
         {loadError && (
           <section
@@ -916,6 +1018,10 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
         </motion.section>
         )}
 
+        <div className="mt-8">
+          <QuotaPanel />
+        </div>
+
         {settingsSection}
         {aboutSection}
 
@@ -958,6 +1064,7 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
       </PageContainer>
 
       <LanguageSettingsModal isOpen={languageOpen} onClose={() => setLanguageOpen(false)} />
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 };
