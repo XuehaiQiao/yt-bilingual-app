@@ -1041,8 +1041,8 @@
     {
       "id": "P2-16",
       "file": "TASKS/P2-16-watch-gloss-mobile.md",
-      "status": "claimed",
-      "owner": "watch-gloss-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
         "frontend/src/components/WatchGlossPanel.tsx",
