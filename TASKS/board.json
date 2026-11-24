@@ -1374,8 +1374,8 @@
     {
       "id": "P2-32",
       "file": "TASKS/P2-32-analysis-off-critical-path.md",
-      "status": "claimed",
-      "owner": "analysis-p0-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/routes_videos.py",
         "backend/tests/test_streaming_pipeline.py",
