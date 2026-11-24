@@ -1547,8 +1547,8 @@
     {
       "id": "P2-39",
       "file": "TASKS/P2-39-v11-feedback-quota.md",
-      "status": "claimed",
-      "owner": "feedback-quota-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/feedback.py",
         "backend/routes_feedback.py",
@@ -1557,7 +1557,9 @@
         "backend/main.py",
         "backend/routes_admin.py",
         "backend/tests/test_feedback.py",
-        "backend/tests/test_user_quota.py"
+        "backend/tests/test_user_quota.py",
+        "specs/048-feedback-quota/spec.md",
+        "frontend/src/components/QuotaPanel.tsx"
       ],
       "shared_writes": [],
       "deps": [

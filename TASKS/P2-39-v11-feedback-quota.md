@@ -22,3 +22,7 @@
 - 反馈入表（0033）、限流/非法 400、游客可用；admin 列表/状态
 - /api/quota 401 未登录；数值与 admin 口径一致；0=关闭；重置时间正确
 - 全量 pytest；preflight
+
+## integration
+- `specs/048-feedback-quota/spec.md`
+- `frontend/src/components/QuotaPanel.tsx`（source=user_override 徽章兼容）
