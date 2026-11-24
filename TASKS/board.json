@@ -1252,8 +1252,8 @@
     {
       "id": "P2-26",
       "file": "TASKS/P2-26-wordlist-auto-cefr.md",
-      "status": "claimed",
-      "owner": "auto-cefr-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/wordlists.py",
         "backend/vocabulary.py",
