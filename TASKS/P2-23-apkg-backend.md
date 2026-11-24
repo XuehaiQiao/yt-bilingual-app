@@ -9,6 +9,9 @@
 - `backend/routes_wordlists.py`
 - `backend/main.py`（如路由已 include 则无需）
 - `backend/requirements.txt`（zstandard）
+- `backend/wordlists.py`（MAX_ITEMS 5000→10000 + 文档串）
+- `backend/tests/test_wordlists.py`（限额断言）
+- `specs/038-custom-wordlists/spec.md`（限额文案）
 - `backend/wordlists.py`（MAX_ITEMS 5000→10000）
 - `backend/tests/test_apkg_import.py`（新建）
 - `backend/tests/test_wordlists.py`（上限断言）

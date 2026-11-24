@@ -1198,7 +1198,8 @@
         "backend/tests/test_apkg_import.py",
         "specs/046-apkg-import/spec.md",
         "backend/wordlists.py",
-        "backend/tests/test_wordlists.py"
+        "backend/tests/test_wordlists.py",
+        "specs/038-custom-wordlists/spec.md"
       ],
       "shared_writes": [],
       "deps": []
