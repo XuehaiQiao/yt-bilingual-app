@@ -1405,7 +1405,9 @@
         "backend/tests/test_streaming_pipeline.py",
         "backend/tests/test_reading.py",
         "specs/001-streaming-pipeline/spec.md",
-        "specs/019-reading/spec.md"
+        "specs/019-reading/spec.md",
+        "backend/tests/test_jobs.py",
+        "backend/tests/test_video_pipeline_timing.py"
       ],
       "shared_writes": [],
       "deps": [

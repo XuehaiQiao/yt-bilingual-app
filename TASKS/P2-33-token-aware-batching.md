@@ -19,7 +19,9 @@
 - `backend/reading.py`（文章分批）
 - `backend/tests/test_translation_batching.py`（新建）
 - `backend/tests/test_streaming_pipeline.py`（进度/批数断言如影响）
-- `backend/tests/test_reading.py`（批数断言如影响）
+- `backend/tests/test_reading.py`
+- `backend/tests/test_jobs.py`
+- `backend/tests/test_video_pipeline_timing.py`（批数断言如影响）
 - `specs/001-streaming-pipeline/spec.md`
 - `specs/019-reading/spec.md`
 
