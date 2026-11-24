@@ -5,21 +5,24 @@
 1. 迁移 0020：表/列/唯一缓存键/索引/回滚/重复迁移幂等；
 2. content_hash：同内容稳定、内容变化/prompt 版本维度隔离；
 3. 等级/语言归一化：六档 + 旧考试 id 映射、非法值 400、默认档 orbit；
-4. prompt：只标高于等级的词/短语、quote 必须能在原文找到、目标语言名；
+4. prompt：内容级 prompt 用六档候选词并集、无等级阈值；v5 回退 prompt 仍
+   带等级描述；quote 必须能在原文找到、目标语言名；
 5. 校验闸：en_word/zh_word/quote 子串约束、未知 block 丢弃、译文找不到时
    **整条丢弃**（无释义不标）、颜色强制、单 block ≤20 条、习语 20/文化点 10 上限；
 6. 候选词：非句首专名不入候选、句首普通词保留、语料级句首专名兜底
    （Toto 型；长内容分批仍按整篇统计）、与 classify 同源（同一 word_rules
    规则）；
-7. 缓存：首次生成一次模型调用，第二次命中零调用；等级/语言/内容隔离；
-   旧版本（v4）缓存行/旧版本 payload 不复用；
-8. 并发：同 key 并发只跑一次模型（后到者复用缓存）；
+7. 内容级缓存（P2-37）：六档连续只 1 次模型调用、1 行内容级缓存；每档
+   payload 的词集合 = 该档旧候选规则（本地筛选等价）；idioms/culture 只生成
+   一次并复用；空 gloss/失败/并发/配额口径；
+8. 旧缓存兼容：analysis.v5 per-level 行在回退开关下可读、不删除；内容级
+   模式下按新版本重生成；
 9. 失败不写半成品、可重试；缺 0020 表时 AnalysisUnavailable（内部静默跳过）；
 10. 合并：按 block id 覆盖 highlights、清掉旧等级残留、idioms/culture/
-   analysisVersion 写进 payload；旧缓存没有分析字段时保持原样；旧版本
-   合并字段（v4）在升级合并时丢弃、旧版本分析不写入；
+    analysisVersion 写进 payload；旧缓存没有分析字段时保持原样；旧版本
+    合并字段（v4）在升级合并时丢弃、旧版本分析不写入；
 11. 端到端：翻译 prompt 不再请求 highlights；流式处理在翻译后合并分析并落盘；
-    GET /api/teaching-analysis（登录、缓存命中免费、等级/内容变化重生成）。
+    GET /api/teaching-analysis（登录、缓存命中免费、换等级零模型调用）。
 
 全部离线：LLM 全部 monkeypatch；数据库在 conftest 的 tmp_path 下用真实
 Alembic CLI 迁移；不联网。
@@ -325,6 +328,7 @@ def test_normalize_level_and_language_reject_invalid_values():
 # ---------------------------------------------------------------------------
 
 def test_analysis_prompt_states_level_rules_and_block_input():
+    """v5 回退 prompt 仍按等级描述（旧路径行为不变）。"""
     normalized = teaching_analysis.normalize_blocks(BLOCKS)
     prompt = teaching_analysis.build_prompt(normalized[:1], "moonwalk", "zh-CN")
     assert "CEFR B1" in prompt  # 该等级的词汇量描述（只标高于它的词）
@@ -336,6 +340,28 @@ def test_analysis_prompt_states_level_rules_and_block_input():
     assert "never" in prompt.lower()
     assert BLOCKS[0]["en_text"] in prompt
     assert BLOCKS[0]["zh_text"] in prompt
+
+
+def test_content_prompt_uses_candidate_union_without_level_filter():
+    """内容级 prompt：候选词 = 六档并集、无等级阈值；输出是 glosses 字典。"""
+    normalized = teaching_analysis.normalize_blocks(BLOCKS)
+    union = teaching_analysis._content_candidates_for_blocks(normalized)
+    prompt = teaching_analysis.build_content_prompt(normalized, "zh-CN", union)
+    blocks = json.loads(prompt.rsplit("Blocks:\n", 1)[-1])
+    by_id = {str(block["blockId"]): block for block in blocks}
+    assert by_id["1"]["candidates"] == union["1"]
+    assert by_id["2"]["candidates"] == union["2"]
+    # 并集覆盖每一档的候选词（否则高等级的释义会缺）。
+    for level in teaching_analysis.LEVEL_IDS:
+        per_level = teaching_analysis._candidate_words_for_blocks(normalized, level)
+        for block_id, words in per_level.items():
+            assert set(union[block_id]) >= set(words)
+    # 不做等级筛选：prompt 不得出现等级阈值说明。
+    assert "LEARNER LEVEL" not in prompt
+    assert "glosses" in prompt and "idioms" in prompt and "culture" in prompt
+    assert "en_word" in prompt and "zh_word" in prompt and "quote" in prompt
+    assert "Simplified Chinese" in prompt or "Chinese" in prompt
+    assert BLOCKS[0]["en_text"] in prompt and BLOCKS[0]["zh_text"] in prompt
 
 
 # ---------------------------------------------------------------------------
@@ -577,19 +603,21 @@ def test_ensure_generates_once_then_cache_hit_is_free(analysis_db, llm_stub):
     first, second = asyncio.run(run())
     assert len(llm_stub.prompts) == 1
     assert first == second
-    assert first["analysisVersion"] == "analysis.v5"
+    assert first["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
     assert first["level"] == "liftoff"
     assert first["targetLang"] == "zh-CN"
     assert first["contentHash"] == teaching_analysis.content_hash(BLOCKS)
     assert first["highlights"]  # 两个 block 都有高亮
     assert first["idioms"] and first["culture"]
     assert _row_count() == 1
+    # 内容级行：level 标记为 __content__，不是 per-level 行。
+    assert [row[2] for row in _rows()] == [teaching_analysis.CONTENT_LEVEL]
 
 
 def test_ensure_analysis_does_not_hit_rows_from_older_analysis_version(
     analysis_db, llm_stub
 ):
-    """specs/028 v1.1：v4 旧行按新键不命中，不批量回填，按需重生成 v5。"""
+    """specs/028：v4 旧行按新键不命中，不批量回填，按需重生成当前版本。"""
     content_hash_value = teaching_analysis.content_hash(BLOCKS)
     with sqlite3.connect(config.AUTH_DB_PATH) as conn:
         conn.execute(
@@ -606,10 +634,10 @@ def test_ensure_analysis_does_not_hit_rows_from_older_analysis_version(
     result = asyncio.run(
         teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
     )
-    assert result["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION == "analysis.v5"
+    assert result["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
     assert len(llm_stub.prompts) == 1
     # 旧行保留、新行另写（版本是缓存键的一部分），不删除也不回填。
-    assert sorted(row[4] for row in _rows()) == ["analysis.v4", "analysis.v5"]
+    assert sorted(row[4] for row in _rows()) == ["analysis.v4", "analysis.v6"]
 
 
 def test_ensure_analysis_regenerates_payload_with_old_version_marker(
@@ -620,10 +648,10 @@ def test_ensure_analysis_regenerates_payload_with_old_version_marker(
     stale = {
         "analysisVersion": "analysis.v4",
         "glossAttempted": True,
-        "level": "liftoff",
+        "level": teaching_analysis.CONTENT_LEVEL,
         "targetLang": "zh-CN",
         "contentHash": content_hash_value,
-        "highlights": {"1": [{"en_word": "museum", "zh_word": "旧版释义"}]},
+        "glosses": {"1": {"museum": "旧版释义"}},
         "idioms": [],
         "culture": [],
         "model": "old-model",
@@ -642,7 +670,7 @@ def test_ensure_analysis_regenerates_payload_with_old_version_marker(
     result = asyncio.run(
         teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
     )
-    assert result["analysisVersion"] == "analysis.v5"
+    assert result["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
     assert "旧版释义" not in json.dumps(result, ensure_ascii=False)
     assert len(llm_stub.prompts) == 1
 
@@ -673,7 +701,7 @@ def test_ensure_analysis_candidates_use_the_whole_text_across_batches(
     assert "Toto" not in second[0]["candidates"]
 
 
-def test_ensure_level_isolation_regenerates(analysis_db, llm_stub):
+def test_ensure_level_switch_does_not_regenerate(analysis_db, llm_stub):
     async def run():
         moon = await teaching_analysis.ensure_analysis(BLOCKS, "moonwalk", "zh-CN")
         inter = await teaching_analysis.ensure_analysis(BLOCKS, "interstellar", "zh-CN")
@@ -681,12 +709,85 @@ def test_ensure_level_isolation_regenerates(analysis_db, llm_stub):
         return moon, inter, moon_again
 
     moon, inter, moon_again = asyncio.run(run())
-    assert len(llm_stub.prompts) == 2
+    assert len(llm_stub.prompts) == 1, "换等级只做本地筛选，不得调模型"
     assert moon["level"] == "moonwalk"
     assert inter["level"] == "interstellar"
     assert inter["contentHash"] == moon["contentHash"]
     assert moon_again == moon
-    assert {row[2] for row in _rows()} == {"moonwalk", "interstellar"}
+    assert {row[2] for row in _rows()} == {teaching_analysis.CONTENT_LEVEL}
+
+
+def test_six_levels_share_one_content_generation(analysis_db, llm_stub, monkeypatch):
+    """P2-37 验收：A1–C2 六档连续打开，只 1 次内容级模型调用、1 行缓存。"""
+    consumed: list[tuple] = []
+
+    def fake_quota(user_id, feature, units=1, **kwargs):
+        consumed.append((user_id, feature, units))
+
+    monkeypatch.setattr(
+        teaching_analysis.quota, "check_and_consume_quota", fake_quota
+    )
+
+    normalized = teaching_analysis.normalize_blocks(BLOCKS)
+    expected_by_level = {
+        level: teaching_analysis._candidate_words_for_blocks(normalized, level)
+        for level in teaching_analysis.LEVEL_IDS
+    }
+
+    async def run():
+        results = {}
+        for level in teaching_analysis.LEVEL_IDS:
+            results[level] = await teaching_analysis.ensure_analysis(
+                BLOCKS, level, "zh-CN", user_id="u1"
+            )
+        return results
+
+    results = asyncio.run(run())
+    assert len(llm_stub.prompts) == 1, "六档共用一次内容级生成"
+    assert len(consumed) == 1 and consumed[0][1] == "analysis"
+    assert _row_count() == 1
+    row = _rows()[0]
+    assert row[2] == teaching_analysis.CONTENT_LEVEL
+    assert row[4] == teaching_analysis.ANALYSIS_VERSION
+
+    # 每档 payload 的词集合/顺序 = 旧 per-level 候选规则（本地筛选等价）。
+    for level, payload in results.items():
+        assert payload["level"] == level
+        assert payload["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
+        expected = expected_by_level[level]
+        got = {
+            block_id: [item["en_word"] for item in items]
+            for block_id, items in payload["highlights"].items()
+        }
+        assert got == expected, level
+    # supernova（C2）无候选词 → 无高亮，但 idioms/culture 仍复用同一份。
+    assert results["supernova"]["highlights"] == {}
+    assert results["supernova"]["idioms"] == results["liftoff"]["idioms"]
+    assert results["supernova"]["culture"] == results["liftoff"]["culture"]
+
+
+def test_content_cache_stores_gloss_dictionary_and_candidate_union(
+    analysis_db, llm_stub
+):
+    """内容级行存 glosses 字典 + candidateWords（六档并集），不存正文/prompt。"""
+    asyncio.run(teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN"))
+    content_hash_value = teaching_analysis.content_hash(BLOCKS)
+    cached = teaching_analysis.load_cached(
+        content_hash_value, teaching_analysis.CONTENT_LEVEL, "zh-CN"
+    )
+    assert cached is not None
+    normalized = teaching_analysis.normalize_blocks(BLOCKS)
+    union = teaching_analysis._content_candidates_for_blocks(normalized)
+    zh_by_block = {str(block["id"]): block["zh"] for block in normalized}
+    assert cached["candidateWords"] == union
+    for block_id, words in union.items():
+        glosses = cached["glosses"][block_id]
+        assert set(glosses) == set(words)
+        for zh_word in glosses.values():
+            assert zh_word and zh_word in zh_by_block[block_id]
+    # 不把整份正文/prompt 写进缓存 meta（idioms/culture 的 quote 是分析内容）。
+    assert "transcript" not in cached and "prompt" not in cached
+    assert "You are an expert" not in json.dumps(cached, ensure_ascii=False)
 
 
 def test_ensure_target_language_isolation(analysis_db, llm_stub):
@@ -701,8 +802,8 @@ def test_ensure_target_language_isolation(analysis_db, llm_stub):
     assert vi["targetLang"] == "vi-VN"
     assert "Vietnamese" in llm_stub.prompts[1]
     assert {(row[2], row[3]) for row in _rows()} == {
-        ("moonwalk", "zh-CN"),
-        ("moonwalk", "vi-VN"),
+        (teaching_analysis.CONTENT_LEVEL, "zh-CN"),
+        (teaching_analysis.CONTENT_LEVEL, "vi-VN"),
     }
 
 
@@ -793,7 +894,191 @@ def test_cache_hit_does_not_consume_quota(analysis_db, llm_stub, monkeypatch):
         await teaching_analysis.ensure_analysis(BLOCKS, "orbit", "zh-CN", user_id="u1")
 
     asyncio.run(run())
-    assert [(item[1], item[2]) for item in consumed] == [("analysis", 1), ("analysis", 1)]
+    # 内容级分析：换等级命中同一行，只扣 1 单位（旧口径同档位 2 次生成 = 2 单位）。
+    assert [(item[1], item[2]) for item in consumed] == [("analysis", 1)]
+
+
+def test_content_gloss_switch_off_reads_legacy_v5_rows(analysis_db, llm_stub, monkeypatch):
+    """回退开关：旧 analysis.v5 per-level 行可读、可复用、不删除、零模型调用。"""
+    content_hash_value = teaching_analysis.content_hash(BLOCKS)
+    normalized = teaching_analysis.normalize_blocks(BLOCKS)
+    candidate_words = teaching_analysis._candidate_words_for_blocks(
+        normalized, "liftoff"
+    )
+    zh_by_block = {str(block["id"]): block["zh"] for block in normalized}
+    legacy_highlights = {
+        block_id: [
+            {"en_word": word, "zh_word": zh_by_block[block_id][:2],
+             "color": HIGHLIGHT_COLOR}
+            for word in words
+        ]
+        for block_id, words in candidate_words.items()
+    }
+    with sqlite3.connect(config.AUTH_DB_PATH) as conn:
+        conn.execute(
+            "INSERT INTO content_teaching_analysis "
+            "(id, content_ref, content_hash, level, target_lang, analysis_version, "
+            "payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "legacy-v5-row",
+                VIDEO_ID,
+                content_hash_value,
+                "liftoff",
+                "zh-CN",
+                teaching_analysis.LEGACY_ANALYSIS_VERSION,
+                json.dumps({
+                    "analysisVersion": teaching_analysis.LEGACY_ANALYSIS_VERSION,
+                    "glossAttempted": True,
+                    "level": "liftoff",
+                    "targetLang": "zh-CN",
+                    "contentHash": content_hash_value,
+                    "highlights": legacy_highlights,
+                    "idioms": [{
+                        "blockId": 1,
+                        "phrase": "opens at nine",
+                        "meaning": "九点开门",
+                        "quote": "The museum opens at nine",
+                    }],
+                    "culture": [],
+                    "model": "legacy-model",
+                    "createdAt": 1,
+                }, ensure_ascii=False),
+                1,
+            ),
+        )
+
+    monkeypatch.setattr(config, "ANALYSIS_CONTENT_GLOSS", False, raising=False)
+    result = asyncio.run(
+        teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
+    )
+    assert llm_stub.prompts == [], "旧 v5 行命中不得调模型"
+    assert result["analysisVersion"] == teaching_analysis.LEGACY_ANALYSIS_VERSION
+    assert result["level"] == "liftoff"
+    assert result["highlights"] == legacy_highlights
+    assert _row_count() == 1, "只读缓存，不新增行"
+
+    # 开关打开：v5 行不算内容级缓存，按新版本生成一次；旧行保留不删除。
+    monkeypatch.setattr(config, "ANALYSIS_CONTENT_GLOSS", True, raising=False)
+    fresh = asyncio.run(
+        teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
+    )
+    assert fresh["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
+    assert len(llm_stub.prompts) == 1
+    assert sorted(row[4] for row in _rows()) == [
+        teaching_analysis.LEGACY_ANALYSIS_VERSION,
+        teaching_analysis.ANALYSIS_VERSION,
+    ]
+
+
+def test_content_gloss_switch_off_writes_per_level_v5_rows(analysis_db, llm_stub, monkeypatch):
+    """回退开关下的生成路径仍是旧的按等级口径（两档 = 两次生成、两行 v5）。"""
+    monkeypatch.setattr(config, "ANALYSIS_CONTENT_GLOSS", False, raising=False)
+
+    async def run():
+        return (
+            await teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN"),
+            await teaching_analysis.ensure_analysis(BLOCKS, "orbit", "zh-CN"),
+        )
+
+    liftoff, orbit = asyncio.run(run())
+    assert len(llm_stub.prompts) == 2
+    assert liftoff["analysisVersion"] == teaching_analysis.LEGACY_ANALYSIS_VERSION
+    assert orbit["analysisVersion"] == teaching_analysis.LEGACY_ANALYSIS_VERSION
+    assert {row[2] for row in _rows()} == {"liftoff", "orbit"}
+    assert {row[4] for row in _rows()} == {teaching_analysis.LEGACY_ANALYSIS_VERSION}
+
+
+def test_content_row_with_empty_glosses_regenerates_once(analysis_db, llm_stub):
+    """旧空 gloss 内容行（无 glossAttempted）重生成一次；之后不再死循环。"""
+    content_hash_value = teaching_analysis.content_hash(BLOCKS)
+    teaching_analysis.save_cached(
+        VIDEO_ID,
+        content_hash_value,
+        teaching_analysis.CONTENT_LEVEL,
+        "zh-CN",
+        {
+            "analysisVersion": teaching_analysis.ANALYSIS_VERSION,
+            "level": teaching_analysis.CONTENT_LEVEL,
+            "targetLang": "zh-CN",
+            "contentHash": content_hash_value,
+            "glosses": {"1": {"museum": ""}},
+            "idioms": [],
+            "culture": [],
+        },
+    )
+    result = asyncio.run(
+        teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
+    )
+    assert len(llm_stub.prompts) == 1
+    assert result["highlights"], "译文就绪后应重新生成有效 gloss"
+
+    # 再读：行已带 glossAttempted，零调用（不因部分词无释义反复重试）。
+    again = asyncio.run(
+        teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
+    )
+    assert len(llm_stub.prompts) == 1
+    assert again["highlights"] == result["highlights"]
+
+
+def test_content_row_with_gloss_attempted_and_empty_glosses_is_terminal(
+    analysis_db, llm_stub
+):
+    """已尝试过且模型确实给不出释义：不再重生成（无死循环），返回空高亮。"""
+    content_hash_value = teaching_analysis.content_hash(BLOCKS)
+    teaching_analysis.save_cached(
+        VIDEO_ID,
+        content_hash_value,
+        teaching_analysis.CONTENT_LEVEL,
+        "zh-CN",
+        {
+            "analysisVersion": teaching_analysis.ANALYSIS_VERSION,
+            "glossAttempted": True,
+            "level": teaching_analysis.CONTENT_LEVEL,
+            "targetLang": "zh-CN",
+            "contentHash": content_hash_value,
+            "glosses": {"1": {"museum": ""}},
+            "idioms": [],
+            "culture": [],
+        },
+    )
+    result = asyncio.run(
+        teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN")
+    )
+    assert llm_stub.prompts == []
+    assert result["highlights"] == {}
+
+
+def test_content_gloss_is_revalidated_against_current_translation():
+    """等级 payload 构造时按当前译文再校验：译文变了 → 无法核对的释义丢弃。"""
+    normalized = teaching_analysis.normalize_blocks(BLOCKS)
+    content = {
+        "analysisVersion": teaching_analysis.ANALYSIS_VERSION,
+        "glossAttempted": True,
+        "level": teaching_analysis.CONTENT_LEVEL,
+        "targetLang": "zh-CN",
+        "contentHash": teaching_analysis.content_hash(BLOCKS),
+        "glosses": {"1": {"museum": "博物馆", "nine": "九点"}},
+        "idioms": [],
+        "culture": [],
+        "model": "m",
+        "createdAt": 1,
+    }
+    payload = teaching_analysis._level_payload_from_content(content, normalized, "liftoff")
+    words = {
+        item["en_word"]
+        for item in payload["highlights"].get("1", [])
+    }
+    assert "museum" in words and "nine" in words
+
+    changed = copy.deepcopy(BLOCKS)
+    changed[0]["zh_text"] = "展馆九点开门。"
+    changed_normalized = teaching_analysis.normalize_blocks(changed)
+    payload = teaching_analysis._level_payload_from_content(
+        content, changed_normalized, "liftoff"
+    )
+    words = {item["en_word"] for item in payload["highlights"].get("1", [])}
+    assert "museum" not in words, "zh_word 不在新译文里 → 整条丢弃"
+    assert "nine" in words, "译文仍包含的释义保留"
 
 
 # ---------------------------------------------------------------------------
@@ -810,7 +1095,7 @@ def test_merge_into_payload_replaces_highlights_by_block_id():
         {"en_word": "Visitors", "zh_word": "", "color": "old"}
     ]
     analysis = {
-        "analysisVersion": "analysis.v5",
+        "analysisVersion": teaching_analysis.ANALYSIS_VERSION,
         "level": "moonwalk",
         "highlights": {
             "1": [
@@ -839,7 +1124,7 @@ def test_merge_into_payload_replaces_highlights_by_block_id():
     assert payload["transcript"][1]["highlights"] == []
     assert payload["idioms"][0]["phrase"] == "opens at nine"
     assert payload["culture"][0]["term"] == "front desk"
-    assert payload["analysisVersion"] == "analysis.v5"
+    assert payload["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
 
 
 def test_merge_into_payload_drops_stale_v4_fields_before_merging():
@@ -865,12 +1150,12 @@ def test_merge_into_payload_drops_stale_v4_fields_before_merging():
     ]
     # 新分析没有 highlights 字段：若沿用了旧字段，两个 block 的旧高亮会留下。
     analysis = {
-        "analysisVersion": "analysis.v5",
+        "analysisVersion": teaching_analysis.ANALYSIS_VERSION,
         "idioms": [],
         "culture": [],
     }
     assert teaching_analysis.merge_into_payload(payload, analysis) is True
-    assert payload["analysisVersion"] == "analysis.v5"
+    assert payload["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
     assert "highlights" not in payload["transcript"][0]
     assert "highlights" not in payload["transcript"][1]
     assert payload["idioms"] == [] and payload["culture"] == []
@@ -907,7 +1192,7 @@ def test_merge_into_payload_drops_cached_highlights_without_gloss():
     """旧缓存/模型输出里 zh 为空的条目，合并时也整条丢弃（不再渲染无释义高亮）。"""
     payload = {"transcript": copy.deepcopy(BLOCKS)}
     analysis = {
-        "analysisVersion": "analysis.v5",
+        "analysisVersion": teaching_analysis.ANALYSIS_VERSION,
         "highlights": {
             "1": [{"en_word": "museum", "zh_word": ""}],
             "2": [
@@ -925,7 +1210,7 @@ def test_merge_into_payload_drops_cached_highlights_without_gloss():
         "zh_word": "买票",
         "color": HIGHLIGHT_COLOR,
     }]
-    assert payload["analysisVersion"] == "analysis.v5"
+    assert payload["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
 
 
 def test_merge_into_payload_keeps_old_cache_compatible():
@@ -1118,7 +1403,7 @@ def test_cached_stream_merges_analysis_and_zero_extra_calls(
             encoding="utf-8"
         )
     )
-    assert written["analysisVersion"] == "analysis.v5"
+    assert written["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
     assert written["idioms"] and written["culture"]
     assert all(block["highlights"] for block in written["transcript"])
 
@@ -1134,12 +1419,19 @@ def test_cached_stream_merges_analysis_and_zero_extra_calls(
     )
 
     third = stream("orbit")
-    assert len(llm_stub.prompts) == 2, "换等级必须重新生成"
+    assert len(llm_stub.prompts) == 1, "换等级由本地筛选，零模型调用"
     third_batches = [data for name, data in third if name == "batch"]
     assert third_batches and any(
         block["highlights"] for block in third_batches[0]["blocks"]
     )
-    assert len(_rows()) == 2
+    # 等级筛选真的生效：orbit（阈值更高）不显示 liftoff 的 museum/nine。
+    orbit_words = {
+        item["en_word"]
+        for block in third_batches[0]["blocks"]
+        for item in block["highlights"]
+    }
+    assert "museum" not in orbit_words
+    assert len(_rows()) == 1, "六档共享同一行内容级缓存"
 
 
 def test_cached_stream_legacy_payload_without_analysis_is_unchanged(
@@ -1232,7 +1524,7 @@ def test_fresh_stream_attaches_analysis_after_translation(
             encoding="utf-8"
         )
     )
-    assert written["analysisVersion"] == "analysis.v5"
+    assert written["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
     assert written["idioms"] and written["culture"]
 
 
@@ -1255,7 +1547,7 @@ def test_api_returns_analysis_and_caches(analysis_db, history_dir, llm_stub):
     payload = first.json()
     assert payload["contentRef"] == VIDEO_ID
     assert payload["level"] == "liftoff"
-    assert payload["analysisVersion"] == "analysis.v5"
+    assert payload["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
     assert payload["highlights"] and payload["idioms"] and payload["culture"]
     assert len(llm_stub.prompts) == 1
 
@@ -1268,7 +1560,8 @@ def test_api_returns_analysis_and_caches(analysis_db, history_dir, llm_stub):
     assert len(llm_stub.prompts) == 1, "缓存命中不得再调模型"
 
 
-def test_api_different_level_regenerates(analysis_db, history_dir, llm_stub):
+def test_api_different_level_reuses_content_cache(analysis_db, history_dir, llm_stub):
+    """同一内容的两个等级：端点只生成一次内容级分析，第二次零模型调用。"""
     _seed_cache(history_dir)
     first = analysis_db.get(
         f"/api/teaching-analysis/{VIDEO_ID}", params={"level": "liftoff"}
@@ -1279,7 +1572,12 @@ def test_api_different_level_regenerates(analysis_db, history_dir, llm_stub):
     assert first.status_code == 200 and second.status_code == 200
     assert first.json()["level"] == "liftoff"
     assert second.json()["level"] == "supernova"
-    assert len(llm_stub.prompts) == 2
+    assert first.json()["highlights"] and first.json()["idioms"]
+    # supernova（C2）阈值最高：没有候选词释义，但 idioms/culture 复用同一份。
+    assert second.json()["highlights"] == {}
+    assert second.json()["idioms"] == first.json()["idioms"]
+    assert second.json()["culture"] == first.json()["culture"]
+    assert len(llm_stub.prompts) == 1
 
 
 def test_api_validation_and_not_found(analysis_db, history_dir, llm_stub):

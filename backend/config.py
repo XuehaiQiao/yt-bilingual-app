@@ -547,6 +547,10 @@ AI_DAILY_QUOTA_READING_BATCHES = _int_env("AI_DAILY_QUOTA_READING_BATCHES", 60)
 # AI 教学分析（高亮/习语/文化点，specs/028）：每用户每日「生成一份内容分析」
 # 次数。缓存命中（同 content_hash + level + target_lang）不占额度、零模型调用。
 AI_DAILY_QUOTA_ANALYSIS = _int_env("AI_DAILY_QUOTA_ANALYSIS", 30)
+# P2-37：内容级 gloss 字典开关（默认开）。开启时同一 content_hash + target_lang
+# 只生成**一次**全等级候选词的语境释义 + idioms/culture，六档切换零模型调用、
+# 零额外配额；设 0/false/no/off 回退旧的按等级生成（读/写 analysis.v5 行）。
+ANALYSIS_CONTENT_GLOSS = _bool_env("ANALYSIS_CONTENT_GLOSS", True)
 # 课程生成（specs/030）：每用户每日「生成一节课」次数；缓存命中（同源内容 +
 # 等级 + 语言 + prompt 版本）不占额度、零模型调用。
 AI_DAILY_QUOTA_COURSE_GENERATION = _int_env(

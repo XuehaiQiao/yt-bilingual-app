@@ -128,7 +128,7 @@ def _quota_row(db, user_id: str = "u1", feature: str = "analysis", day: str = DA
 
 
 class _LlmStub:
-    """教学分析桩：按 prompt 生成合法 analysis.v5 JSON，不碰真实 provider/计费。"""
+    """教学分析桩：按 prompt 的候选词生成合法分析 JSON（P2-37 内容级同形）。"""
 
     def __init__(self) -> None:
         self.prompts: list[str] = []
@@ -348,7 +348,11 @@ def test_sponsored_subject_is_recorded_as_sponsored(quota_db):
 
 
 def test_ops_then_user_analysis_still_generates(quota_db, llm_stub, monkeypatch):
-    """预热不占用户额度：ops 生成后，用户当天新档位分析仍能生成。"""
+    """预热不占用户额度：ops 生成内容级分析后，用户换档位只读缓存、零配额。
+
+    P2-37：同一内容 + 语言只生成一次内容级 gloss，六档切换由本地筛选，
+    不再为「新档位」调模型/占配额。
+    """
     monkeypatch.setattr(config, "AI_DAILY_QUOTA_ANALYSIS", 30, raising=False)
     monkeypatch.setattr(config, "AI_OPS_DAILY_QUOTA", {}, raising=False)
 
@@ -364,7 +368,7 @@ def test_ops_then_user_analysis_still_generates(quota_db, llm_stub, monkeypatch)
         cached = await teaching_analysis.ensure_analysis(
             BLOCKS, "liftoff", "zh-CN", user_id="u1"
         )
-        # 用户新档位：真要生成；用户额度仍是满的 30。
+        # 用户新档位：同一内容级缓存命中（零模型调用），用户额度不消耗。
         fresh = await teaching_analysis.ensure_analysis(
             BLOCKS, "orbit", "zh-CN", user_id="u1"
         )
@@ -373,10 +377,12 @@ def test_ops_then_user_analysis_still_generates(quota_db, llm_stub, monkeypatch)
     warm, cached, fresh = asyncio.run(run())
     assert warm == cached
     assert fresh["level"] == "orbit"
-    assert len(llm_stub.prompts) == 2, "ops 一次 + 用户新档位一次"
+    assert len(llm_stub.prompts) == 1, "内容级分析一次生成；换档位由本地筛选"
     today = ledger.day_of()
     assert _quota_row(quota_db, user_id=OPS_SUBJECT) is None
-    assert _quota_row(quota_db, user_id="u1", day=today) == (1, 30)
+    assert _quota_row(quota_db, user_id="u1", day=today) is None, (
+        "ops 预热 + 用户换档位缓存命中都不占用户额度"
+    )
 
 
 # ---------------------------------------------------------------------------

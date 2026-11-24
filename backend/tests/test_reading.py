@@ -1269,29 +1269,30 @@ def test_article_analysis_cache_hit_costs_no_quota_and_hides_reason(
         for p in detail["paragraphs"]
     ]
     normalized = teaching_analysis.normalize_blocks(blocks)
-    level = "liftoff"
-    # 缓存命中判定会按该等级的候选词重新核对：必须有可核对的 zh_word，
-    # 否则视为旧规则产出的过期高亮。这里按真实候选生成一份「有效」缓存。
-    candidates = teaching_analysis._candidate_words_for_blocks(normalized, level)
-    highlights = {
-        str(block["id"]): [
-            {"en_word": word, "zh_word": block["zh"][:2] or "--"}
-            for word in candidates.get(str(block["id"]), [])
-        ]
-        for block in normalized
+    # P2-37：内容级 gloss 行（六档共用）。缓存命中判定会按该等级候选词本地
+    # 筛选，这里按真实候选并集生成一份「有效」内容缓存。
+    candidates = teaching_analysis._content_candidates_for_blocks(normalized)
+    zh_by_block = {str(block["id"]): block["zh"] for block in normalized}
+    glosses = {
+        block_id: {word: zh_by_block[block_id][:2] for word in words}
+        for block_id, words in candidates.items()
+        if zh_by_block.get(block_id)
     }
     teaching_analysis.save_cached(
         f"article:{article_id}",
         teaching_analysis.content_hash(normalized),
-        level,
+        teaching_analysis.CONTENT_LEVEL,
         "zh-CN",
         {
             "analysisVersion": teaching_analysis.ANALYSIS_VERSION,
-            "level": level,
+            "glossAttempted": True,
+            "level": teaching_analysis.CONTENT_LEVEL,
             "targetLang": "zh-CN",
-            "highlights": highlights,
+            "contentHash": teaching_analysis.content_hash(normalized),
+            "candidateWords": candidates,
+            "glosses": glosses,
             "idioms": [{
-                "blockId": 0,
+                "blockId": detail["paragraphs"][0]["idx"],
                 "phrase": "Paragraph 1",
                 "meaning": "第一段",
                 "quote": detail["paragraphs"][0]["text"],
@@ -1300,6 +1301,7 @@ def test_article_analysis_cache_hit_costs_no_quota_and_hides_reason(
         },
     )
 
+    level = "liftoff"
     payload = reading_client.get(
         f"/api/article/{article_id}",
         params={"targetLang": "zh-CN", "level": level},
