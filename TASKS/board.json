@@ -1084,7 +1084,7 @@
     {
       "id": "P2-18",
       "file": "TASKS/P2-18-subtitle-dock-fix.md",
-      "status": "claimed",
+      "status": "merged",
       "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
