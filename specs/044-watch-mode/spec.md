@@ -1,6 +1,6 @@
 # 044 — 观影模式（最小版）
 
-> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源；2026-11-24 P2-15 沉浸壳层 + 字幕三态 + 保留原生控制条）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
+> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源；2026-11-24 P2-15 沉浸壳层 + 字幕三态 + 保留原生控制条；P2-16 360 rail + 收藏 + 移动抽屉）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
 > 成本：0（只读已有分析缓存，不新增 AI 调用）。
 
 ## 1. 开关与布局
@@ -42,22 +42,24 @@
 - 偏好：`watchSubtitleMode: bilingual | english | off`，localStorage key `yt_bilingual_watch_subtitle_mode`，默认 `bilingual`；与 `watchMode` 分键存储，开关观影模式不重置字幕偏好
 - **双语**：英文主 + 中文辅（默认）；**仅英文**：只渲染英文行；**关闭**：整个覆盖层不渲染（不挂载），使用视频原生字幕
 - 切换入口：浮层顶栏 CC 按钮 → 三项菜单（双语 / 仅英文 / 关闭，带「关闭后使用视频原生字幕」说明）；键盘 `C` 循环「双语 → 仅英文 → 关闭 → 双语」
-- 切换 **不重载 iframe、不丢播放位置**，不触发任何分析请求；关闭后词条窗仍可用（P2-16 再重做词条栏）
+- 切换 **不重载 iframe、不丢播放位置**，不触发任何分析请求；关闭后词条栏/抽屉仍可用（P2-16 已重做）
 - **不读取、不控制** iframe 的原生 CC 状态；原生字幕共存靠用户选择「关闭」，不自动检测、不自动叠加
 
-## 3. 滚动词条窗（P2-12 精简）
+## 3. 滚动词条栏 / 抽屉（P2-12 精简；P2-16 目标稿）
 
-- 标题：`watchMode.glossTitle` =「滚动词条」（zh-CN）/「Từ cuộn」（vi-VN）；rail 与 floating 共用同一 key
-- ≥1280：右侧固定栏（320–360）；<1280：浮层（容器边界/标题栏保留，不属于条目分割线）
+- 标题：`watchMode.glossTitle` =「滚动词条」（zh-CN）/「Từ cuộn」（vi-VN）；标题右侧「本句 N」= 当前句 highlight 词数；rail 与抽屉共用同一 key
+- ≥1280：右侧固定 rail **360px**；<1280：视频置顶 + 底部抽屉（默认展开、占剩余高度、点击手柄收起/展开；P2-16 取代旧 floating）
 - 内容 = 当前句的难度标亮词（wordGlossesByBlock）+ 语言点（idioms/culture），只显示词/文本与释义
 - **数据来源（P2-13）**：`wordGlossesByBlock` 以页面实际渲染的 `displayTranscript[].highlights` 为准——历史 payload 自带 `analysis.v5` 合并块（block highlights）且 endpoint 不可用（404）时，payload 的块高亮直接生效；endpoint 可用时它已由 `applyTeachingAnalysisHighlights` 覆盖，分析留空的块保持空，不回填旧 payload。`languagePointsByBlock`（idioms/culture）仍只来自分析。免费文章阅读器例外：段落不在 `transcript` 里，仍按段落索引读分析高亮。
 - **精简（P2-12）**：不显示整句英文上文与当前句圆点、不显示「生词 / 语言点」分组标题、不显示习语/文化 kind 徽章、不显示「本句无生词」或任何逐句/全局空态占位；条目无卡片边框/底纹，条目之间无分割线
-- **连续列表**：词（amber）+ 释义（右对齐、次级色）；语言点文本（sky）+ 释义（下一行、次级色）；同一句先词后语言点，句与句之间只留间距、无分组
+- **连续列表（P2-16）**：当前句置顶；词（amber `warning-fg`）+ 释义（次级色，紧随词后）；语言点文本（sky）+ 释义（下一行、次级色）；同一句先词后语言点，句与句之间只留间距、无分组；当前句词行左侧 2px 竖线（词 amber / 语言点 sky），历史无标记
+- **历史渐隐（P2-16）**：当前句 opacity 1；历史从 .55 起按年龄递减（约 −.035/句，下限 .32），越旧越淡
+- **收藏（P2-16）**：hover/focus 显示 ☆（抽屉常显、44px 触摸目标），已收藏实心；一键写 App 既有 vocabulary favorites（`vocab-<videoId>-<word>`、start=blockStart、context_en=当前句、source_kind=video/source_ref=videoId/source_title=标题）；App 顶栏「单词本」计数同步；失败/游客行内回滚说明；不提供未实现的 ✓/设置
 - **按句累积（P2-09）**：当前句词条固定在顶部；切到下一句时新句插到顶部，旧句条目向下顺延，直到滚出窗口/超过 30 句
 - **去重**：同一 `blockId` 再次出现（回看/跳转）只把原条目移到顶部，不重复插入；条目按 `blockId` 唯一
 - **滚动**：新句出现时 `scrollTop = 0`；用户手动向下滚动后不再强制拉回，滚回顶部后恢复自动跟随
 - **空句**：不生成条目、不显示占位；旧条目原样保留，当前句标记随空句消失
-- **状态**：loading/error/login/未分析仍按原逻辑整块呈现；分析 `ready` 但还没有任何条目时同样不渲染占位
+- **状态**：loading/error/login/未分析仍按原逻辑呈现；无分析改为**紧凑**说明 + 既有「生成词条」入口，不铺满 rail；分析 `ready` 但还没有任何条目时同样不渲染占位
 - 长词/长释义用 `break-words` 换行，375/1440 不横向溢出
 - 不同视频（`contentRef` 变化）重置历史，避免跨视频的 blockId 串档
 - 不新增 AI 调用；只读缓存
@@ -68,19 +70,22 @@
 - 当前句字幕与词条随播放/跳转更新；切句不闪整条字幕
 - 字幕英文在主位、中文在辅位，375/1440 不裁切/不溢出
 - 字号随媒体区宽度流体缩放（P2-11）：375 恰为 17/15 下限；1440 观影字号 > 1440 普通布局；1920 观影 > 1440 观影；全屏（stub）下视频窗加宽字号继续变大；任意档位英文 > 中文；长句不横向裁切/溢出
-- 词条窗标题「滚动词条」（vi「Từ cuộn」，rail 与 floating 一致）
+- 词条窗标题「滚动词条」+「本句 N」（vi「Từ cuộn」，rail 与抽屉一致）
 - 词条窗为连续列表：无整句英文上文/当前句圆点、无「生词/语言点」小标题、无习语/文化 kind 徽章、无「本句无生词」/逐句/全局空态占位；条目无卡片边框/底纹，条目之间无分割线
 - 词条窗数据与页面 ruby/语言点一致；词 amber + 释义、语言点 sky + 释义下一行；375/1440 排版紧凑，长词/长释义换行不横向溢出
 - 历史顺延：新句在顶部、旧词仍在、同一句去重移顶、新句自动回顶、手动滚动不被拉回、空句不生成条目且旧条目保留
+- P2-16 桌面：rail 恰为 360；标题+本句数；当前句置顶且在顶部三行内；历史 opacity 递减；无 headings/badges/context/empty；收藏星标 hover/focus 出现、已收藏实心；rail 可见操作只有收藏；无分析空态紧凑、有生成入口
+- P2-16 收藏：一键加/取消；POST 体为 vocabulary draft（id/videoId/start/en_text/zh_text/context_en/source_kind=video/source_ref/source_title）；App 顶栏计数加 1/减 1；失败星标回滚且行内说明；游客不写接口
+- P2-16 移动（375）：视频 16:9 置顶（8px 边距，不再整页垂直居中）；抽屉默认展开、占剩余高度、可点击手柄收起/展开、不覆盖视频/原生控制条、375 无横向溢出；CC 三态与退出仍可用；旧右上浮窗不存在
 - 网页全屏（P2-10）：进入观影调用全屏 API、退出观影调用 exit；ESC/浏览器退出全屏后布局仍是观影且状态同步；API 不存在或被拒时不报错、布局正常；路由切走退出清理
 - 播放器控件只有观影/退出观影按钮，无旧全屏按钮（`video-fullscreen-toggle` 不存在）
 - 沉浸壳层：观影模式不渲染 AppShell 顶栏与 LearningHeader；浮层顶栏含返回/标题+来源/观影模式 chip/CC/退出，2.5s 静止淡出、鼠标/触摸/键盘出现；无假设置按钮
-- 舞台：16:9 画面在剩余区域居中，环境光填充黑边，1440/1920/375 不溢出；全屏仍只全屏观影容器
+- 舞台：≥1280 的 16:9 画面在剩余区域居中、环境光填充黑边；<1280 视频 16:9 置顶、抽屉占剩余高度；1440/1920/375 不溢出；全屏仍只全屏观影容器
 - 原生控制条：YouTube 控制条与 CC 入口保留，无自定义传输条；字幕 scrim 不压住控制条
 - 字幕三态：双语/仅英文/关闭可切换并持久化（默认双语）；关闭后覆盖层不渲染、词条仍可用；`C` 循环；CC 菜单可点击/键盘操作；切换不重载播放器、不丢播放位置；不读取 iframe CC 状态
 - 现有播放/字幕/听读/验收脚本零回归；1440/1920/375 截图
 
-## 5. 实现落点（2026-11-23）
+## 5. 实现落点（2026-11-23；P2-16 2026-11-24）
 
 | 内容 | 位置 |
 |---|---|
@@ -89,7 +94,9 @@
 | 网页全屏（进入手势内 `requestFullscreen()` 于学习 shell、退出条件 `exitFullscreen()`、ESC 保留布局、失败/不支持静默、路由/卸载清理、`data-page-fullscreen` 状态） | `frontend/src/App.tsx` |
 | 单句字幕窗（英上中下、17/15px token 回退、`clamp(…2cqi…)`/`clamp(…1.7cqi…)` 随媒体区宽度流体缩放、玻璃条、`pointer-events-none`、无当前句隐藏、无动画；媒体区 `container-type: inline-size`） | `frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/App.tsx` |
 | 滚动词条窗（P2-12：标题「滚动词条」/「Từ cuộn」；无整句上文/圆点、无分组标题、无 kind 徽章、无逐句及全局空态占位、无条目边框/底纹/分割线；词 amber + 释义、语言点 sky + 释义下一行；≥1280 固定右栏 `clamp(20rem,24vw,22.5rem)`；<1280 浮层；loading/error/login/无分析态；P2-09 最近 30 句历史/去重/滚动/空句跳过） | `frontend/src/components/WatchGlossPanel.tsx` |
-| 学习视图接线（观看 shell、教学面板/摘要/字幕工具栏不渲染、当前句取 `activeTranscriptIndex`，向词条窗传 `blockId`/`enText`/`contentRef`） | `frontend/src/App.tsx` |
+| 学习视图接线（观看 shell、教学面板/摘要/字幕工具栏不渲染、当前句取 `activeTranscriptIndex`，向词条窗传 `blockId`/`enText`/`videoId`/`blockStart`/`sourceTitle`/favorites 回调） | `frontend/src/App.tsx` |
+| P2-16 词条栏/抽屉/收藏（360 rail、本句数、当前句置顶+2px 标记、历史渐隐、hover/focus ☆、失败/游客行内回滚、紧凑空态；<1280 视频置顶 + 底部抽屉默认展开/可收起/手柄/安全区） | `frontend/src/components/WatchGlossPanel.tsx`、`frontend/src/App.tsx`、`frontend/src/components/WatchTopBar.tsx` |
+| P2-16 App 收藏接线（`favorites`/`onAddFavorite`/`onRemoveFavorite`；删除路径 `report:false` 静默回滚；顶栏计数同源） | `frontend/src/App.tsx` |
 | P2-15 沉浸壳层（AppShell `hideTopbar` 不渲染顶栏；LearningHeader 不渲染；浮层顶栏 `WatchTopBar`：返回/标题+来源/chip/CC/退出，2.5s 淡出，指针/触摸/键盘唤醒） | `frontend/src/components/AppShell.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
 | P2-15 舞台（`watch-stage` 尺寸容器 + 16:9 画面水平/垂直居中 + 环境光/模糊层填充黑边） | `frontend/src/App.tsx` |
 | P2-15 字幕三态（`watchSubtitleMode` 持久化与循环；双语/仅英文/关闭；关闭不挂载覆盖层；渐变 scrim） | `frontend/src/lib/layout.ts`、`frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |

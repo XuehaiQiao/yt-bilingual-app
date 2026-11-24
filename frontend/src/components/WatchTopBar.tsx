@@ -230,7 +230,7 @@ export function WatchTopBar({
 
       <span
         data-testid="watch-topbar-chip"
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line-subtle bg-app/70 px-2 py-0.5 text-micro font-medium text-fg-secondary backdrop-blur-md"
+        className="hidden shrink-0 items-center gap-1.5 rounded-full border border-line-subtle bg-app/70 px-2 py-0.5 text-micro font-medium text-fg-secondary backdrop-blur-md sm:inline-flex"
       >
         <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-brand" />
         {t('watchMode.chip')}

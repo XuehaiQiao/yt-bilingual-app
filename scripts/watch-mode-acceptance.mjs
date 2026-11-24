@@ -67,6 +67,20 @@
 //      clears the bottom strip those controls live in.
 //  14. P2-10 / P2-11 / P2-12 / P2-13 keep their previous coverage verbatim
 //      (only the watch toggle → top-bar exit selector moved).
+//  15. P2-16 desktop rail: exactly 360px, 「滚动词条」+ 本句词数, current
+//      sentence target pinned on top inside three rows with a 2px marker,
+//      fading history, no headings / context / placeholder, and a hover/focus
+//      favorite star that writes one vocabulary draft
+//      (`vocab-<video>-<word>`, type/source_kind=video, start=blockStart,
+//      context_en=current sentence) and syncs the App top-bar count.
+//  16. P2-16 mobile: the 16:9 picture is pinned to the top (8px margins), the
+//      gloss window is a bottom drawer that owns the remaining height, is
+//      expanded by default, collapses/expands from its handle, never covers
+//      the picture/native controls, and 375 has no overflow; subtitle modes,
+//      CC and exit keep working. The old floating pill is gone.
+//  17. P2-16 favorites: failed add/remove roll back inline (stars restored),
+//      and a guest gets an inline login/analysis state instead of invented
+//      words or a rejected write.
 //
 // Run (needs `npm run dev` on :5173; Playwright lives in scripts/node_modules):
 //   node scripts/watch-mode-acceptance.mjs
@@ -393,6 +407,11 @@ async function createContext(browser, {
     reducedMotion = 'no-preference',
     hasTouch = false,
     watchOn = false,
+    // P2-16: favorites acceptance knobs.
+    guest = false,
+    favoritesSeed = [],
+    favoritePostStatus = 200,
+    favoriteDeleteStatus = 200,
 } = {}) {
     const context = await browser.newContext({
         viewport: { width, height },
@@ -419,6 +438,10 @@ async function createContext(browser, {
         body: YT_STUB,
     }));
 
+    // P2-16: the per-item favorites store survives reloads inside one context,
+    // so "add → reload → star still filled" is a real persistence check.
+    const favoriteStore = favoritesSeed.map((item) => ({ ...item }));
+
     await context.route('**/api/**', (route) => {
         const request = route.request();
         if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
@@ -431,6 +454,7 @@ async function createContext(browser, {
         });
 
         if (pathname === '/api/auth/me') {
+            if (guest) return respond({ user: null, isAdmin: false, guest: true });
             return respond({ user: { id: 'u-watch', email: 'watch@example.com' }, isAdmin: false, guest: false });
         }
         if (pathname === '/api/auth/registration') {
@@ -471,7 +495,45 @@ async function createContext(browser, {
                 }),
             });
         }
-        if (pathname === '/api/favorites') return respond([]);
+        // P2-16: favorites use the per-item API. Writes echo the draft back in
+        // the server shape (`time`/`text`/`translation` + flattened meta), so
+        // the App's optimistic row and its top-bar count update exactly like
+        // they do against the real backend. The two status knobs drive the
+        // inline rollback acceptance runs.
+        if (pathname === '/api/favorites') {
+            if (request.method() === 'POST') {
+                if (favoritePostStatus !== 200) {
+                    return respond({ detail: 'favorite write failed (acceptance stub)' }, favoritePostStatus);
+                }
+                const body = request.postDataJSON() || {};
+                const meta = body && typeof body.meta === 'object' && body.meta ? body.meta : {};
+                const stored = {
+                    id: body.id,
+                    type: body.type,
+                    videoId: body.videoId,
+                    start: body.time,
+                    en_text: body.text,
+                    zh_text: body.translation,
+                    added_at: body.addedAt,
+                    ...meta,
+                };
+                if (!favoriteStore.some((item) => item.id === stored.id)) favoriteStore.push(stored);
+                return respond(stored);
+            }
+            return respond(favoriteStore);
+        }
+        if (pathname.startsWith('/api/favorites/')) {
+            if (request.method() === 'DELETE') {
+                if (favoriteDeleteStatus !== 200) {
+                    return respond({ detail: 'favorite delete failed (acceptance stub)' }, favoriteDeleteStatus);
+                }
+                const id = decodeURIComponent(pathname.slice('/api/favorites/'.length));
+                const index = favoriteStore.findIndex((item) => item.id === id);
+                if (index >= 0) favoriteStore.splice(index, 1);
+                return respond({});
+            }
+            return respond({});
+        }
         if (pathname === '/api/subscriptions') return respond([]);
         if (pathname === '/api/shows') return respond({ shows: [] });
         if (pathname === '/api/sentences/levels') return respond([]);
@@ -847,10 +909,16 @@ try {
     await stubFullscreen(page);
     const pageErrors = [];
     const apiRequests = [];
+    const favoriteWrites = [];
     page.on('pageerror', (error) => pageErrors.push(String(error)));
     page.on('request', (request) => {
         const url = new URL(request.url());
         if (url.pathname.startsWith('/api/')) apiRequests.push({ method: request.method(), path: url.pathname });
+        if (url.pathname.startsWith('/api/favorites')) {
+            let body = null;
+            try { body = request.postDataJSON(); } catch { body = null; }
+            favoriteWrites.push({ method: request.method(), path: url.pathname, body });
+        }
     });
 
     await openVideo(page, VIDEO_ID);
@@ -1052,10 +1120,10 @@ try {
         'the letterbox above/below the picture is too small for an ambient stage',
     );
 
-    // — the ≥1280 gloss window is a fixed right rail, 320–360 wide —
+    // — P2-16 / specs/045 §4.3: the ≥1280 gloss window is a fixed 360px rail —
     const rail = await boxOf(page, 'watch-gloss-rail');
     assert.ok(rail, 'gloss rail missing at 1440');
-    assert.ok(rail.width >= 320 && rail.width <= 360, `rail width ${rail.width} outside 320–360`);
+    assert.ok(Math.abs(rail.width - 360) <= 1, `rail width ${rail.width} is not 360`);
     const videoColumn = await boxOf(page, 'video-column');
     const shell = await boxOf(page, 'learning-scroll');
     assert.ok(videoColumn && shell, 'video column / shell missing');
@@ -1065,11 +1133,17 @@ try {
     assert.ok(Math.abs(shell.x + shell.width - (rail.x + rail.width)) < 2, 'rail does not end at the shell edge');
     const mediaStageWatch = await boxOf(page, 'video-area');
     assert.ok((mediaStageWatch?.height ?? 0) > 900 * 0.62 * 0.9, 'watch mode did not enlarge the media stage');
-    // P2-12: the rail and the floating layer share the renamed title.
+    // P2-16: title「滚动词条」+ the current sentence's word count. Before the
+    // first cue there is no current sentence, so the count is 0.
     assert.equal(
         (await page.locator('[data-testid="watch-gloss-rail"] h2').innerText()).trim(),
         '滚动词条',
         'gloss window title is not 滚动词条',
+    );
+    assert.equal(
+        (await page.locator('[data-testid="watch-gloss-count"]').innerText()).trim(),
+        '本句 0',
+        'the rail header does not carry the current sentence word count',
     );
 
     // — before the first cue there is no current sentence → overlay hidden —
@@ -1079,6 +1153,31 @@ try {
     await page.keyboard.press('ArrowRight');
     await waitForOverlay(page, 'Small habits');
     await waitForRailText(page, '习惯');
+    // P2-16: current sentence target pinned on top (within three rows), header
+    // count matches that sentence's words, and only the current entry carries
+    // the 2px marker (no "当前句" text).
+    assert.equal(
+        (await page.locator('[data-testid="watch-gloss-count"]').innerText()).trim(),
+        '本句 1',
+        'the rail header count did not follow the current sentence',
+    );
+    const currentEntryPinned = await page.evaluate(() => {
+        const scroll = document.querySelector('[data-testid="watch-gloss-scroll"]');
+        const current = document.querySelector('[data-testid="watch-gloss-entry"][data-current="true"]');
+        if (!scroll || !current) return null;
+        return {
+            firstBlockId: document.querySelector('[data-testid="watch-gloss-entry"]')?.getAttribute('data-block-id'),
+            offsetTop: current.getBoundingClientRect().top - scroll.getBoundingClientRect().top,
+            markerCount: document.querySelectorAll('[data-testid="watch-gloss-current-marker"]').length,
+        };
+    });
+    assert.ok(currentEntryPinned, 'no current gloss entry after cue 0');
+    assert.equal(currentEntryPinned.firstBlockId, '0', 'the current sentence is not the first gloss entry');
+    assert.ok(
+        currentEntryPinned.offsetTop <= 120,
+        `the current sentence target sits ${currentEntryPinned.offsetTop}px down (must be within three rows)`,
+    );
+    assert.equal(currentEntryPinned.markerCount, 1, 'the current sentence must carry exactly one 2px marker per word row');
     const overlay0 = await overlayText(page);
     assert.ok(overlay0.includes('小习惯悄悄塑造一整天的感受。'), `overlay missing Chinese: ${overlay0}`);
     assert.ok(overlay0.includes('Small habits quietly shape'), `overlay missing English: ${overlay0}`);
@@ -1336,10 +1435,102 @@ try {
     await chooseSubtitleMode(page, 'bilingual');
     assert.equal(await page.locator('[data-testid="watch-subtitle-zh"]').count(), 1, 'restoring 双语 did not bring the Chinese line back');
 
+    // ═════════════════════════════════════════════════════════════════════
+    // P2-16 §4.3 — favorite star on hover/focus, one-click vocabulary draft
+    // ═════════════════════════════════════════════════════════════════════
+    const railHint = await page.locator('[data-testid="watch-gloss-rail-hint"]').innerText();
+    assert.ok(railHint.includes('30'), `the rail lost its history hint: ${railHint}`);
+    assert.equal(
+        await page.locator('[data-testid="watch-gloss-rail"] button:not([data-testid="watch-gloss-favorite"])').count(),
+        0,
+        'the rail must not show unimplemented ✓ / settings actions',
+    );
+    const breakfastRow = page.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'breakfast' });
+    assert.equal(await breakfastRow.count(), 1, 'cue 1 has no breakfast row for the favorite check');
+    const breakfastStar = breakfastRow.locator('[data-testid="watch-gloss-favorite"]');
+    assert.ok(await breakfastStar.count(), 'the word row has no favorite star');
+    // The star is part of the hover/focus disclosure, not permanent chrome.
+    await page.mouse.move(720, 300);
+    await sleep(150);
+    assert.equal(
+        parseFloat(await breakfastStar.evaluate((el) => getComputedStyle(el).opacity)),
+        0,
+        'the favorite star is visible before hover/focus',
+    );
+    await breakfastRow.hover();
+    await page.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'breakfast');
+            const star = row?.querySelector('[data-testid="watch-gloss-favorite"]');
+            return Boolean(star) && parseFloat(getComputedStyle(star).opacity) > 0.9;
+        },
+        null,
+        { timeout: 5000 },
+    );
+    await breakfastStar.focus();
+    assert.ok(
+        parseFloat(await breakfastStar.evaluate((el) => getComputedStyle(el).opacity)) > 0.9,
+        'the favorite star does not appear on keyboard focus',
+    );
+    assert.equal(await breakfastStar.getAttribute('data-favorited'), 'false');
+    await breakfastStar.click();
+    await page.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'breakfast');
+            return row?.querySelector('[data-testid="watch-gloss-favorite"]')?.getAttribute('data-favorited') === 'true';
+        },
+        null,
+        { timeout: 5000 },
+    );
+    assert.match(
+        await breakfastStar.locator('svg').getAttribute('class'),
+        /fill-warning-fg/,
+        'the saved star is not filled',
+    );
+    const favoriteDeadline = Date.now() + 5000;
+    let favoritePost = null;
+    while (Date.now() < favoriteDeadline && !favoritePost) {
+        favoritePost = favoriteWrites.find(
+            (entry) => entry.method === 'POST' && entry.body?.id === `vocab-${VIDEO_ID}-breakfast`,
+        ) ?? null;
+        if (!favoritePost) await sleep(50);
+    }
+    assert.ok(favoritePost, 'the favorite star did not POST a vocabulary favorite');
+    assert.equal(favoritePost.body.type, 'vocabulary');
+    assert.equal(favoritePost.body.videoId, VIDEO_ID);
+    assert.equal(favoritePost.body.text, 'breakfast');
+    assert.equal(favoritePost.body.translation, '早餐');
+    assert.equal(favoritePost.body.time, 12, 'the favorite start must be the current block start');
+    assert.equal(
+        favoritePost.body.meta?.context_en,
+        'A short walk before breakfast makes the whole day feel slower.',
+        'the favorite lost the current-sentence context',
+    );
+    assert.equal(favoritePost.body.meta?.source_kind, 'video');
+    assert.equal(favoritePost.body.meta?.source_ref, VIDEO_ID);
+    assert.equal(favoritePost.body.meta?.source_title, 'Watch Mode Acceptance');
+    summary.screenshots.push(shot('1440-gloss-favorite'));
+    await page.screenshot({ path: shot('1440-gloss-favorite') });
+
     // — P2-09 history: cue 1 on top, cue 0 still below, no repetition —
     await waitForGlossEntries(page, 2);
     await waitForCurrentEntry(page, '1');
     assert.deepEqual(await glossBlockIds(page), ['1', '0'], 'cue 1 should sit above cue 0');
+    // P2-16: current sentence full strength, history dimmed (oldest faintest).
+    const historyOpacity = await page.locator('[data-testid="watch-gloss-entry"]').evaluateAll(
+        (entries) => entries.map((entry) => ({
+            current: entry.getAttribute('data-current'),
+            opacity: parseFloat(getComputedStyle(entry).opacity),
+        })),
+    );
+    assert.equal(historyOpacity[0].current, 'true');
+    assert.equal(historyOpacity[0].opacity, 1, 'the current sentence must not be dimmed');
+    assert.ok(
+        historyOpacity[1].opacity < 0.75 && historyOpacity[1].opacity >= 0.3,
+        `history opacity ${historyOpacity[1].opacity} is outside the .3–.75 fade band`,
+    );
     assert.equal(await page.locator('[data-testid="watch-gloss-word"]').count(), 2, 'words from both sentences should remain visible');
     assert.ok(
         (await page.locator('[data-testid="watch-gloss-word"]').allInnerTexts()).some((text) => text.includes('habits')),
@@ -1401,6 +1592,13 @@ try {
     assert.equal(await page.locator('[data-testid="watch-topbar"]').count(), 0, 'the floating top bar must unmount when watch mode ends');
     assert.equal(await page.locator('[data-testid="top-bar"]').count(), 1, 'the AppShell top bar did not come back after watch mode');
     assert.equal(await page.locator('[data-testid="learning-header"]').count(), 1, 'the LearningHeader did not come back after watch mode');
+    // P2-16: the App top-bar word-book count already reflects the watch star
+    // (favorites are one App-owned store; no separate watch list).
+    assert.equal(
+        (await page.locator('[data-testid="reading-wordbook-count"]').innerText()).trim(),
+        '1',
+        'the App top-bar favorites count did not sync with the watch favorite',
+    );
     assert.equal(await page.locator('[data-testid="watch-gloss-rail"]').count(), 0);
     assert.equal(await page.locator('[data-testid="watch-subtitle-overlay"]').count(), 0);
     assert.equal(await page.locator('[data-testid="split-divider"]').count(), 1, 'split layout not restored after watch off');
@@ -1435,6 +1633,38 @@ try {
     // Back to the default for the screenshot and the remaining checks.
     await chooseSubtitleMode(page, 'bilingual');
     assert.equal(await page.locator('[data-testid="watch-subtitle-zh"]').count(), 1, 'bilingual did not restore the Chinese line');
+
+    // — P2-16: the favorite survived the reload (real GET), and a one-click
+    //   remove takes the filled star back to empty. —
+    if (!(await overlayText(page))?.includes('A short walk')) {
+        await page.keyboard.press('ArrowRight');
+        await waitForOverlay(page, 'A short walk');
+    }
+    await waitForRailText(page, '早餐');
+    await pausePlayback(page);
+    const persistedRow = page.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'breakfast' });
+    const persistedStar = persistedRow.locator('[data-testid="watch-gloss-favorite"]');
+    await persistedRow.hover();
+    assert.equal(await persistedStar.getAttribute('data-favorited'), 'true', 'the favorite did not survive the reload');
+    await persistedStar.click();
+    await page.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'breakfast');
+            return row?.querySelector('[data-testid="watch-gloss-favorite"]')?.getAttribute('data-favorited') === 'false';
+        },
+        null,
+        { timeout: 5000 },
+    );
+    const removeDeadline = Date.now() + 5000;
+    let favoriteDelete = null;
+    while (Date.now() < removeDeadline && !favoriteDelete) {
+        favoriteDelete = favoriteWrites.find(
+            (entry) => entry.method === 'DELETE' && entry.path.includes(`vocab-${VIDEO_ID}-breakfast`),
+        ) ?? null;
+        if (!favoriteDelete) await sleep(50);
+    }
+    assert.ok(favoriteDelete, 'the filled star did not DELETE the favorite');
     summary.screenshots.push(shot('1440'));
     await page.screenshot({ path: shot('1440') });
 
@@ -1443,6 +1673,14 @@ try {
     await page.evaluate(() => { window.location.hash = '#/app/content/learn/youtube/acceptance-watch-empty'; });
     await page.locator('[data-testid="watch-gloss-no-analysis"]').waitFor({ state: 'visible', timeout: 20000 });
     assert.ok((await page.locator('[data-testid="watch-gloss-no-analysis"]').innerText()).includes('本片还没有词条'));
+    // P2-16: the empty state is one compact explanation + the existing generate
+    // entry — it must not stretch to fill the 360px rail.
+    const emptyBox = await boxOf(page, 'watch-gloss-no-analysis');
+    const emptyRail = await boxOf(page, 'watch-gloss-rail');
+    assert.ok(emptyBox && emptyRail, 'no-analysis state / rail missing');
+    assert.ok(emptyBox.height < 220, `the no-analysis state fills the rail (${emptyBox.height}px tall)`);
+    assert.ok(Math.abs(emptyRail.width - 360) <= 1, 'the 360px rail changed in the no-analysis state');
+    assert.equal(await page.locator('[data-testid="watch-gloss-generate"]').count(), 1, 'the no-analysis state lost the generate entry');
     await page.locator('[data-testid="watch-gloss-generate"]').click();
     const refetchDeadline = Date.now() + 10000;
     while (
@@ -1469,6 +1707,15 @@ try {
     const aiCalls = apiRequests.filter((entry) => /^\/api\/(process-|translate|define|quiz|course)/.test(entry.path));
     assert.deepEqual(aiCalls, [], `unexpected AI/processing calls: ${JSON.stringify(aiCalls)}`);
 
+    // — P2-16: removing the watch favorite also rolls the App top-bar count
+    //   back (same store, one source of truth). —
+    await exitWatchMode(page);
+    assert.equal(
+        (await page.locator('[data-testid="reading-wordbook-count"]').innerText()).trim(),
+        '0',
+        'the App top-bar favorites count did not roll back after the watch remove',
+    );
+
     assert.deepEqual(pageErrors, [], `page errors: ${JSON.stringify(pageErrors)}`);
     summary.desktop = {
         railWidth: Math.round(rail.width * 10) / 10,
@@ -1489,14 +1736,37 @@ try {
                 mediaWidth: Math.round(watchType.mediaWidth * 10) / 10,
             },
         },
-        history: { accumulated: 2, dedupe: 'pass', emptySentence: 'skipped' },
+        history: {
+            accumulated: 2,
+            dedupe: 'pass',
+            emptySentence: 'skipped',
+            currentOpacity: historyOpacity[0].opacity,
+            olderOpacity: Math.round(historyOpacity[1].opacity * 100) / 100,
+        },
         glossRoll: {
             title: '滚动词条',
+            railWidth: Math.round(rail.width * 10) / 10,
+            headerCount: '本句 1',
+            currentPinned: 'top',
+            currentMarker: '2px bar (no border)',
+            historyFade: 'opacity .55 → .32 by age',
             sentenceContext: 'removed',
             sectionHeadings: 'removed',
             kindBadge: 'removed',
             emptyPlaceholder: 'removed',
             entryChrome: 'borderless',
+        },
+        favorites: {
+            star: 'hover/focus on rail, always visible in drawer',
+            addWrite: `${favoritePost.method} ${favoritePost.body?.id}`,
+            start: favoritePost.body?.time,
+            contextEn: favoritePost.body?.meta?.context_en,
+            source: `${favoritePost.body?.meta?.source_kind}/${favoritePost.body?.meta?.source_ref}/${favoritePost.body?.meta?.source_title}`,
+            topbarCountAfterAdd: 1,
+            removeWrite: favoriteDelete ? `${favoriteDelete.method} ${favoriteDelete.path}` : 'DELETE',
+            topbarCountAfterRemove: 0,
+            failure: 'inline rollback (add + remove)',
+            guest: 'login hint; no write, no invented words',
         },
         // P2-15: immersive shell / stage / subtitle modes / native controls.
         immersiveShell: {
@@ -1535,6 +1805,100 @@ try {
         },
     };
     await desktop.close();
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 1440 — P2-16: write failures roll back inline (add AND remove), guests
+    // get an inline login hint instead of an invisible rejected write.
+    // ═════════════════════════════════════════════════════════════════════
+    const failureContext = await createContext(browser, {
+        watchOn: true,
+        favoritePostStatus: 500,
+        favoriteDeleteStatus: 500,
+        favoritesSeed: [{
+            id: `vocab-${VIDEO_ID}-habits`,
+            type: 'vocabulary',
+            videoId: VIDEO_ID,
+            start: 8,
+            en_text: 'habits',
+            zh_text: '习惯',
+            added_at: 1763000000000,
+        }],
+    });
+    const failurePage = await failureContext.newPage();
+    const failureErrors = [];
+    const failureWrites = [];
+    failurePage.on('pageerror', (error) => failureErrors.push(String(error)));
+    failurePage.on('request', (request) => {
+        const url = new URL(request.url());
+        if (url.pathname.startsWith('/api/favorites')) {
+            let body = null;
+            try { body = request.postDataJSON(); } catch { body = null; }
+            failureWrites.push({ method: request.method(), path: url.pathname, body });
+        }
+    });
+    await openVideo(failurePage, VIDEO_ID);
+    await seekToGlossedCue(failurePage);
+    await pausePlayback(failurePage);
+    await waitForRailText(failurePage, '习惯');
+    const habitsRow = failurePage.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'habits' });
+    const habitsStar = habitsRow.locator('[data-testid="watch-gloss-favorite"]');
+    await failurePage.waitForFunction(
+        () => {
+            const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+            const row = rows.find((item) => item.getAttribute('data-word') === 'habits');
+            return row?.querySelector('[data-testid="watch-gloss-favorite"]')?.getAttribute('data-favorited') === 'true';
+        },
+        null,
+        { timeout: 5000 },
+    );
+    await habitsRow.hover();
+    await habitsStar.click();
+    const removeError = habitsRow.locator('..').locator('[data-testid="watch-gloss-favorite-error"]');
+    await removeError.waitFor({ state: 'visible', timeout: 5000 });
+    assert.ok((await removeError.innerText()).includes('取消收藏失败'), `remove failure did not explain itself inline: ${await removeError.innerText()}`);
+    assert.equal(await habitsStar.getAttribute('data-favorited'), 'true', 'a failed remove must roll the filled star back');
+
+    await failurePage.keyboard.press('ArrowRight');
+    await waitForOverlay(failurePage, 'A short walk');
+    await pausePlayback(failurePage);
+    await waitForRailText(failurePage, '早餐');
+    const addRow = failurePage.locator('[data-testid="watch-gloss-word"]').filter({ hasText: 'breakfast' });
+    const addStar = addRow.locator('[data-testid="watch-gloss-favorite"]');
+    await addRow.hover();
+    await addStar.click();
+    const addError = addRow.locator('..').locator('[data-testid="watch-gloss-favorite-error"]');
+    await addError.waitFor({ state: 'visible', timeout: 5000 });
+    assert.ok((await addError.innerText()).includes('收藏失败'), `add failure did not explain itself inline: ${await addError.innerText()}`);
+    assert.equal(await addStar.getAttribute('data-favorited'), 'false', 'a failed add must roll the optimistic star back');
+    assert.ok(
+        failureWrites.some((entry) => entry.method === 'POST') && failureWrites.some((entry) => entry.method === 'DELETE'),
+        'the failure run did not exercise both favorite writes',
+    );
+    assert.deepEqual(failureErrors, [], `favorite failure page errors: ${JSON.stringify(failureErrors)}`);
+    await failureContext.close();
+
+    // Guests get no teaching analysis at all (specs/045 §6: no guest AI call),
+    // so the watch gloss surface must say 登录后查看本句词条 instead of inventing
+    // stars for words that do not exist, and it must never write a favorite.
+    const guestContext = await createContext(browser, { watchOn: true, guest: true });
+    const guestPage = await guestContext.newPage();
+    const guestErrors = [];
+    const guestWrites = [];
+    guestPage.on('pageerror', (error) => guestErrors.push(String(error)));
+    guestPage.on('request', (request) => {
+        const url = new URL(request.url());
+        if (url.pathname.startsWith('/api/favorites') && request.method() !== 'GET') {
+            guestWrites.push({ method: request.method(), path: url.pathname });
+        }
+    });
+    await openVideo(guestPage, VIDEO_ID);
+    await waitForRailText(guestPage, '登录后查看本句词条');
+    assert.equal(await guestPage.locator('[data-testid="watch-gloss-word"]').count(), 0, 'a guest must not see invented glosses');
+    assert.equal(await guestPage.locator('[data-testid="watch-gloss-favorite"]').count(), 0, 'a guest must not get favorite stars without glosses');
+    await sleep(200);
+    assert.deepEqual(guestWrites, [], `a guest favorite must not write: ${JSON.stringify(guestWrites)}`);
+    assert.deepEqual(guestErrors, [], `guest favorite page errors: ${JSON.stringify(guestErrors)}`);
+    await guestContext.close();
 
     // ═════════════════════════════════════════════════════════════════════
     // 1440 — P2-13: payload-merged analysis glosses without the endpoint
@@ -1865,7 +2229,6 @@ try {
     const phoneErrors = [];
     phone.on('pageerror', (error) => phoneErrors.push(String(error)));
     await openVideo(phone, VIDEO_ID);
-
     assert.equal(await phone.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on');
     assert.equal(await phone.locator('[data-testid="watch-gloss-rail"]').count(), 0, 'rail must not mount below 1280');
     // P2-15 §1: the phone shell is immersive too — neither app chrome renders,
@@ -1881,7 +2244,8 @@ try {
         null,
         { timeout: 6000 },
     );
-    await phone.touchscreen.tap(4, 260);
+    // Tap the picture (not the drawer handle right below it) to reveal the bar.
+    await phone.touchscreen.tap(4, 160);
     await phone.waitForFunction(
         () => document.querySelector('[data-testid="watch-topbar"]')?.getAttribute('data-idle') === 'false',
         null,
@@ -1929,70 +2293,101 @@ try {
     assert.ok(!phoneSubtitle.en.clipped && !phoneSubtitle.zh.clipped, '375 subtitle text is horizontally clipped');
     assert.ok(phoneSubtitle.insideWidth && phoneSubtitle.insideMedia, '375 subtitle overlay overflows the media stage');
     assert.equal(phoneSubtitle.pointerEvents, 'none', '375 overlay must stay pointer-events-none');
-    // P2-15 §2 at 375: the 16:9 media is centred on the ambient stage and the
-    // whole watch shell stays inside the viewport.
-    const phoneStage = await phone.evaluate(() => {
-        const box = (id) => {
-            const element = document.querySelector(`[data-testid="${id}"]`);
-            if (!element) return null;
-            const rect = element.getBoundingClientRect();
-            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, right: rect.right, bottom: rect.bottom };
-        };
-        return {
-            stage: box('watch-stage'),
-            video: box('video-area'),
-            ambient: box('watch-stage-ambient'),
-            documentWidth: document.documentElement.scrollWidth,
-            viewport: { width: window.innerWidth, height: window.innerHeight },
-        };
-    });
-    assert.ok(phoneStage.stage && phoneStage.video && phoneStage.ambient, '375: watch stage / media / ambient missing');
+    // P2-16 / specs/045 §5 at 375: the 16:9 picture is pinned to the top (not
+    // vertically centred in the page), and the gloss window is a bottom drawer
+    // that owns the remaining height without covering the picture or its
+    // native YouTube control bar.
+    const phoneTopbarBox = await boxOf(phone, 'watch-topbar');
+    const phoneStageBox = await boxOf(phone, 'watch-stage');
+    const phoneVideo = await boxOf(phone, 'video-area');
+    const phoneDrawer = await boxOf(phone, 'watch-gloss-panel');
+    const phoneScroll = await boxOf(phone, 'watch-gloss-scroll');
+    const phoneAmbient = await boxOf(phone, 'watch-stage-ambient');
+    assert.ok(phoneTopbarBox && phoneStageBox && phoneVideo && phoneDrawer && phoneScroll && phoneAmbient, `375: top bar / stage / video / drawer / scroll / ambient missing: ${JSON.stringify({ phoneTopbarBox, phoneStageBox, phoneVideo, phoneDrawer, phoneScroll, phoneAmbient })}`);
     assert.ok(
-        Math.abs((phoneStage.video.x + phoneStage.video.width / 2) - (phoneStage.stage.x + phoneStage.stage.width / 2)) <= 2,
-        '375: the media is not horizontally centred on the stage',
+        Math.abs(phoneVideo.width - (375 - 16)) <= 2,
+        `375: the top-pinned 16:9 picture should span the 8px-margin width, got ${phoneVideo.width}px`,
+    );
+    const phoneAspect = phoneVideo.width / phoneVideo.height;
+    assert.ok(Math.abs(phoneAspect - 16 / 9) < 0.02, `375: the picture is not 16:9 (${phoneAspect.toFixed(3)})`);
+    assert.ok(
+        phoneVideo.y - phoneTopbarBox.height <= 12,
+        `375: the picture is not pinned below the top bar (video y ${phoneVideo.y}, bar ${phoneTopbarBox.height})`,
+    );
+    assert.ok(phoneVideo.y < 812 / 2, '375: the picture header consumes more than half the page');
+    assert.ok(phoneVideo.bottom <= phoneDrawer.y + 1, '375: the gloss drawer overlaps the picture (and its native controls)');
+    assert.ok(
+        Math.abs(phoneDrawer.bottom - 812) <= 2,
+        `375: the drawer does not reach the viewport bottom (${phoneDrawer.bottom})`,
     );
     assert.ok(
-        phoneStage.video.y >= phoneStage.stage.y - 1 && phoneStage.video.bottom <= phoneStage.stage.bottom + 1,
-        '375: the media overflows the watch stage vertically',
+        phoneDrawer.height >= 480,
+        `375: the expanded drawer only owns ${phoneDrawer.height}px of the remaining height`,
     );
-    assert.ok(phoneStage.documentWidth <= phoneStage.viewport.width + 1, '375: watch shell overflows horizontally');
+    assert.equal(
+        await phone.getAttribute('[data-testid="watch-gloss-panel"]', 'data-open'),
+        'true',
+        '375: the drawer must be expanded by default',
+    );
+    assert.ok(phoneScroll.height > 200, `375: the drawer list is only ${phoneScroll.height}px tall`);
+    assert.equal(await phone.locator('[data-testid="watch-gloss-toggle"]').count(), 0, '375: the old floating gloss pill must be gone');
     assert.ok(
-        Math.abs(phoneStage.ambient.height - phoneStage.stage.height) < 2,
-        '375: the ambient layer does not fill the letterbox',
+        Math.abs(phoneAmbient.height - phoneStageBox.height) < 2,
+        '375: the ambient layer does not fill the (now top-pinned) stage',
     );
-    // P2-15 §4 at 375: 关闭 removes the overlay while the floating gloss entry
-    // keeps working; restore 双语 for the screenshot.
+    assert.ok(phoneStageBox.y >= phoneTopbarBox.height - 2 && phoneStageBox.bottom <= phoneDrawer.y + 1, '375: the stage must sit between the top bar and the drawer');
+    const phoneHeaderCount = (await phone.locator('[data-testid="watch-gloss-count"]').innerText()).trim();
+    const phoneCurrentWords = await phone.locator('[data-testid="watch-gloss-entry"][data-current="true"] [data-testid="watch-gloss-word"]').count();
+    assert.equal(phoneHeaderCount, `本句 ${phoneCurrentWords}`, '375: the drawer header count does not match the current sentence');
+    // The drawer is collapsible via its handle (click only; no gesture needed).
+    await phone.locator('[data-testid="watch-gloss-drawer-handle"]').click();
+    await phone.waitForFunction(
+        () => document.querySelector('[data-testid="watch-gloss-panel"]')?.getAttribute('data-open') === 'false',
+        null,
+        { timeout: 5000 },
+    );
+    assert.equal(await phone.locator('[data-testid="watch-gloss-scroll"]').count(), 0, '375: the collapsed drawer still renders its list');
+    const collapsedDrawer = await boxOf(phone, 'watch-gloss-panel');
+    assert.ok(collapsedDrawer && collapsedDrawer.height <= 100, `375: the collapsed drawer is ${collapsedDrawer?.height}px tall`);
+    assert.ok(collapsedDrawer.bottom >= 800, '375: the collapsed drawer lost its bottom anchor');
+    summary.screenshots.push(shot('375-drawer-collapsed'));
+    await phone.screenshot({ path: shot('375-drawer-collapsed') });
+    await phone.locator('[data-testid="watch-gloss-drawer-handle"]').click();
+    await phone.waitForFunction(
+        () => document.querySelector('[data-testid="watch-gloss-panel"]')?.getAttribute('data-open') === 'true',
+        null,
+        { timeout: 5000 },
+    );
+    assert.equal(await phone.locator('[data-testid="watch-gloss-scroll"]').count(), 1, '375: expanding the drawer did not restore its list');
+    // P2-15 §4 at 375: 关闭 removes the overlay while the drawer keeps working;
+    // restore 双语 for the screenshot.
     await chooseSubtitleMode(phone, 'off');
     assert.equal(await phone.locator('[data-testid="watch-subtitle-overlay"]').count(), 0, '375: 关闭 must not render the overlay');
-    assert.equal(await phone.locator('[data-testid="watch-gloss-toggle"]').count(), 1, '375: the gloss entry disappeared with the subtitles off');
+    assert.equal(await phone.locator('[data-testid="watch-gloss-panel"]').count(), 1, '375: the gloss drawer disappeared with the subtitles off');
+    assert.equal(await phone.getAttribute('[data-testid="watch-gloss-panel"]', 'data-open'), 'true', '375: the drawer closed with the subtitles off');
     await chooseSubtitleMode(phone, 'bilingual');
     assert.equal(await phone.locator('[data-testid="watch-subtitle-zh"]').count(), 1, '375: 双语 did not restore the Chinese line');
-    // Collapsed: the subtitle window is visible and the floating gloss entry
-    // sits on the media without covering it.
+    // P2-16: the drawer carries the same target design as the rail — title +
+    // count, no headings / context / empty placeholder.
+    assert.equal(
+        (await phone.locator('[data-testid="watch-gloss-panel"] h2').innerText()).trim(),
+        '滚动词条',
+        '375: the drawer title is not 滚动词条',
+    );
+    assert.equal(await phone.locator('[data-testid="watch-gloss-panel"] h3').count(), 0, '375: drawer section headings must be gone');
+    assert.equal(await phone.locator('[data-testid="watch-gloss-entry-context"]').count(), 0, '375: drawer context line must be gone');
+    assert.equal(await phone.locator('[data-testid="watch-gloss-empty"]').count(), 0, '375: drawer placeholder must be gone');
+    assert.ok(await phone.locator('[data-testid="watch-gloss-word"]').count() > 0, '375: the drawer has no glossed word');
     summary.screenshots.push(shot('375'));
     await phone.screenshot({ path: shot('375') });
-    // Expanded: the <1280 floating gloss layer (D1-1) carries the same words
-    // under the P2-12 title, with no headings / context / placeholder.
-    await phone.locator('[data-testid="watch-gloss-toggle"]').click();
-    await phone.locator('[data-testid="watch-gloss-panel"]').waitFor({ state: 'visible', timeout: 10000 });
-    assert.equal(
-        (await phone.locator('[data-testid="watch-gloss-toggle"]').innerText()).trim(),
-        '滚动词条',
-        'floating gloss toggle title is not 滚动词条',
-    );
-    assert.equal(await phone.locator('[data-testid="watch-gloss-panel"] h3').count(), 0, 'floating gloss section headings must be gone');
-    assert.equal(await phone.locator('[data-testid="watch-gloss-entry-context"]').count(), 0, 'floating gloss context line must be gone');
-    assert.equal(await phone.locator('[data-testid="watch-gloss-empty"]').count(), 0, 'floating gloss placeholder must be gone');
-    const phoneWord = (await phone.locator('[data-testid="watch-gloss-word"]').first().innerText()).trim();
-    assert.ok(phoneWord.length > 0, 'floating gloss window has no glossed word');
-    summary.screenshots.push(shot('375-gloss'));
-    await phone.screenshot({ path: shot('375-gloss') });
+    summary.screenshots.push(shot('375-drawer'));
+    await phone.screenshot({ path: shot('375-drawer') });
     // Watch OFF on the phone restores the stacked column + teaching panel.
     await exitWatchMode(phone);
     assert.equal(await phone.locator('[data-testid="watch-topbar"]').count(), 0, '375: the floating top bar must unmount after watch off');
     assert.equal(await phone.locator('[data-testid="top-bar"]').count(), 1, '375: the AppShell top bar did not come back after watch off');
     assert.equal(await phone.locator('[data-testid="learning-header"]').count(), 1, '375: the LearningHeader did not come back after watch off');
-    assert.equal(await phone.locator('[data-testid="watch-gloss-toggle"]').count(), 0);
+    assert.equal(await phone.locator('[data-testid="watch-gloss-panel"]').count(), 0);
     assert.equal(await phone.locator('[data-testid="watch-subtitle-overlay"]').count(), 0);
     assert.equal(await phone.locator('[data-testid="transcript-column"]').count(), 1, 'stacked transcript column missing after watch off');
     assert.equal(await phone.evaluate(() => localStorage.getItem('yt_bilingual_watch_mode')), 'off');
@@ -2001,6 +2396,19 @@ try {
         documentWidth: overflow375.documentWidth,
         viewport: overflow375.viewport,
         subtitleFontPx: { en: phoneSubtitle.en.fontSize, zh: phoneSubtitle.zh.fontSize },
+        video: {
+            width: Math.round(phoneVideo.width * 10) / 10,
+            height: Math.round(phoneVideo.height * 10) / 10,
+            aspect: Math.round(phoneAspect * 1000) / 1000,
+            topPinned: true,
+        },
+        drawer: {
+            defaultOpen: true,
+            expandedHeight: Math.round(phoneDrawer.height * 10) / 10,
+            collapsedHeight: Math.round(collapsedDrawer.height * 10) / 10,
+            coversVideo: false,
+        },
+        overflow: overflow375.documentWidth <= overflow375.viewport + 1 ? 'none' : 'overflow',
     };
     await phoneContext.close();
 
@@ -2027,9 +2435,10 @@ try {
     await advanceToSentence('The room stays');
     await advanceToSentence('Then the kettle');
 
-    await historyPage.locator('[data-testid="watch-gloss-toggle"]').click();
+    // P2-16: the drawer is expanded by default — no toggle to open it.
     await historyPage.locator('[data-testid="watch-gloss-panel"]').waitFor({ state: 'visible', timeout: 10000 });
-    assert.equal(await historyPage.locator('[data-testid="watch-gloss-rail"]').count(), 0, 'history run must use the floating variant at 375');
+    assert.equal(await historyPage.getAttribute('[data-testid="watch-gloss-panel"]', 'data-open'), 'true', 'history run: the drawer must start expanded');
+    assert.equal(await historyPage.locator('[data-testid="watch-gloss-rail"]').count(), 0, 'history run must use the drawer variant at 375');
     await waitForGlossEntries(historyPage, 4);
     const historyInitial = await scrollMetrics(historyPage);
     assert.equal(historyInitial.scrollTop, 0, 'newest sentence should start at scrollTop 0');
@@ -2044,6 +2453,21 @@ try {
         ['4', '3', '1', '0'],
         'history should be newest-first and skip the empty sentence',
     );
+    // P2-16: the current sentence is full strength; every earlier sentence is
+    // dimmed and the fade only gets deeper with age.
+    const historyOpacities = await historyPage.locator('[data-testid="watch-gloss-entry"]').evaluateAll(
+        (entries) => entries.map((entry) => parseFloat(getComputedStyle(entry).opacity)),
+    );
+    assert.equal(historyOpacities[0], 1, 'the current sentence must stay full strength');
+    for (let index = 1; index < historyOpacities.length; index += 1) {
+        assert.ok(historyOpacities[index] < 0.75, `history entry ${index} is not dimmed (${historyOpacities[index]})`);
+        if (index > 1) {
+            assert.ok(
+                historyOpacities[index] <= historyOpacities[index - 1] + 0.001,
+                'older history entries must not be brighter than newer ones',
+            );
+        }
+    }
     assert.equal(await historyPage.locator('[data-testid="watch-gloss-empty"]').count(), 0, 'history must not contain a placeholder entry');
     assert.equal(await historyPage.locator('[data-testid="watch-gloss-entry-context"]').count(), 0, 'history must not render sentence context');
     const historyPanelText = await historyPage.locator('[data-testid="watch-gloss-panel"]').innerText();
@@ -2146,11 +2570,13 @@ try {
             stage: box('watch-stage'),
             video: box('video-area'),
             ambient: box('watch-stage-ambient'),
+            rail: box('watch-gloss-rail'),
             documentWidth: document.documentElement.scrollWidth,
             viewport: { width: window.innerWidth, height: window.innerHeight },
         };
     });
     assert.equal(wideShell.topbarCount, 1, '1920: watch top bar missing');
+    assert.ok(wideShell.rail && Math.abs(wideShell.rail.width - 360) <= 1, '1920: the gloss rail is not 360px');
     assert.equal(wideShell.topBar, 0, '1920: AppShell top bar rendered in watch mode');
     assert.equal(wideShell.learningHeader, 0, '1920: LearningHeader rendered in watch mode');
     assert.ok(wideShell.topbar && Math.abs(wideShell.topbar.width - 1920) < 2 && wideShell.topbar.y <= 1, '1920: watch top bar is not full-width at the viewport top');

@@ -1210,19 +1210,28 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     }
   }, [t]);
 
-  /** Resolves `true` only after DELETE succeeded (callers pair it with a write). */
-  const removeFavoriteOptimistically = useCallback(async (id: string): Promise<boolean> => {
+  /**
+   * Resolves `true` only after DELETE succeeded (callers pair it with a write).
+   * `report: false` keeps the shared toast quiet for call sites that own their
+   * own inline feedback (P2-16 watch gloss stars); the optimistic row is still
+   * rolled back on failure.
+   */
+  const removeFavoriteOptimistically = useCallback(async (
+    id: string,
+    options?: { report?: boolean },
+  ): Promise<boolean> => {
+    const report = options?.report !== false;
     const removed = favorites.find(f => f.id === id);
     setFavorites(prev => prev.filter(f => f.id !== id));
     try {
       await removeFavorite(id);
-      toast.success(t('vocab.toast.removed'), { dedupeKey: 'favorites:removed' });
+      if (report) toast.success(t('vocab.toast.removed'), { dedupeKey: 'favorites:removed' });
       return true;
     } catch (err) {
       if (removed) {
         setFavorites(prev => (prev.some(f => f.id === id) ? prev : [...prev, removed]));
       }
-      toast.error(await describeApiError(err));
+      if (report) toast.error(await describeApiError(err));
       return false;
     }
   }, [favorites, t]);
@@ -1284,6 +1293,14 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   };
 
   const handleRemoveFavorite = (id: string) => removeFavoriteOptimistically(id);
+
+  /**
+   * P2-16: the watch gloss star owns its own inline failure message, so the
+   * shared remove path stays quiet (rollback still happens).
+   */
+  const handleRemoveFavoriteQuiet = useCallback((id: string) => (
+    removeFavoriteOptimistically(id, { report: false })
+  ), [removeFavoriteOptimistically]);
 
   /**
    * P1-10: the word book's new-favorite path. It goes through the same
@@ -3302,7 +3319,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           ? '[container-type:inline-size] relative flex-none w-full aspect-video bg-transparent'
           : '[container-type:inline-size] flex-none w-full aspect-video min-h-[180px] relative bg-transparent max-h-[62%]'
       }
-      style={watchModeActive ? { width: 'min(100%, calc(100cqh * 16 / 9))' } : undefined}
+      style={watchModeActive && isWideViewport ? { width: 'min(100%, calc(100cqh * 16 / 9))' } : undefined}
     >
       {isLocalSubtitle && !hasLocalVideo ? (
         <LocalEpisodeStage
@@ -3342,23 +3359,6 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             />
           )}
         </VideoPlayer>
-      )}
-
-      {/* <1280: the gloss window floats over the media instead of a side rail
-          (D1-1); it stays collapsed until the learner opens it. */}
-      {watchModeActive && !isWideViewport && (
-        <WatchGlossPanel
-          variant="floating"
-          blockId={watchBlockId}
-          enText={watchBlock?.en_text}
-          contentRef={videoId}
-          glosses={watchGlosses}
-          languagePoints={watchLanguagePoints}
-          showLanguagePoints={showLanguagePoints}
-          status={teachingNotesStatus}
-          onRequestAnalysis={handleTeachingNotesRetry}
-          onRequestLogin={onRequestLogin}
-        />
       )}
 
       {/* Free library banner: makes it obvious the bilingual subtitles are
@@ -3416,11 +3416,20 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Ambient cinema stage: the blurred dark environment light fills the
   // letterbox instead of leaving flat black, always behind the picture and
   // never intercepting a pointer (the YouTube iframe keeps every click).
+  //
+  // P2-16 mobile: the stage no longer centres the picture in the whole page.
+  // Below 1280 the 16:9 box is pinned to the top (8px side margin) and the
+  // gloss window becomes a bottom drawer that owns the remaining height
+  // (specs/045 §5); 1280+ keeps the P2-15 centred cinema stage.
   const watchStage = (
     <div
       data-testid="watch-stage"
       data-ambient="on"
-      className="[container-type:size] relative flex flex-1 min-h-0 w-full items-center justify-center overflow-hidden bg-app"
+      className={
+        isWideViewport
+          ? '[container-type:size] relative flex flex-1 min-h-0 w-full items-center justify-center overflow-hidden bg-app'
+          : 'relative flex w-full flex-none items-center justify-center overflow-hidden bg-app px-2 pb-2 pt-1'
+      }
     >
       <div
         data-testid="watch-stage-ambient"
@@ -3885,19 +3894,49 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               className="w-full flex-1 min-h-0 md:h-full flex flex-col min-w-0"
             >
               {watchStage}
+              {/* P2-16 / specs/045 §5: below 1280 the gloss window is a bottom
+                  drawer under the top-pinned picture, not a floating layer
+                  over the video. It is expanded by default and owns the
+                  remaining height (collapsible via its drag handle). */}
+              {!isWideViewport && (
+                <WatchGlossPanel
+                  variant="drawer"
+                  blockId={watchBlockId}
+                  enText={watchBlock?.en_text}
+                  videoId={videoId}
+                  blockStart={watchBlock?.start ?? 0}
+                  sourceTitle={metadata?.title}
+                  glosses={watchGlosses}
+                  languagePoints={watchLanguagePoints}
+                  showLanguagePoints={showLanguagePoints}
+                  status={teachingNotesStatus}
+                  onRequestAnalysis={handleTeachingNotesRetry}
+                  onRequestLogin={onRequestLogin}
+                  favorites={favorites}
+                  onAddFavorite={handleAddFavorite}
+                  onRemoveFavorite={handleRemoveFavoriteQuiet}
+                  isGuest={status === 'guest'}
+                />
+              )}
             </div>
             {isWideViewport && (
               <WatchGlossPanel
                 variant="rail"
                 blockId={watchBlockId}
                 enText={watchBlock?.en_text}
-                contentRef={videoId}
+                videoId={videoId}
+                blockStart={watchBlock?.start ?? 0}
+                sourceTitle={metadata?.title}
                 glosses={watchGlosses}
                 languagePoints={watchLanguagePoints}
                 showLanguagePoints={showLanguagePoints}
                 status={teachingNotesStatus}
                 onRequestAnalysis={handleTeachingNotesRetry}
                 onRequestLogin={onRequestLogin}
+                favorites={favorites}
+                onAddFavorite={handleAddFavorite}
+                onRemoveFavorite={handleRemoveFavoriteQuiet}
+                isGuest={status === 'guest'}
               />
             )}
           </>
