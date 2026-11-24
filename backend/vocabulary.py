@@ -1132,6 +1132,33 @@ def _rank_for_level_token(
     return None
 
 
+def level_map_for_words(words: Sequence[str]) -> Dict[str, Optional[str]]:
+    """内部批量判级（导入路径用）：**不限词数**，频表只加载一次。
+
+    判定口径与 :func:`level_for_words` 一致（复用 :func:`_rank_for_level_token`
+    与同一 token 校验）：
+
+    - 在 CEFR 10k 频表（含屈折 forms 折回 lemma）→ A1–C1；
+    - 合法英文词但不在频表 → ``C1+``；
+    - 非法 token（空、含数字/符号、超长、多词短语）→ ``null``。
+
+    响应键保留输入的大小写与词形；空 token 跳过，同一键重复时后者覆盖。
+    空输入返回 ``{}``——导入可能没有任何待匹配条目，不该因此报 400。
+    """
+    tokens = [str(word).strip() for word in words if str(word).strip()]
+    if not tokens:
+        return {}
+    wordlist = _load_wordlist()
+    result: Dict[str, Optional[str]] = {}
+    for token in tokens:
+        if len(token) > MAX_TOKEN_CHARS or not _TOKEN_RE.fullmatch(token):
+            result[token] = None
+            continue
+        rank = _rank_for_level_token(wordlist, token)
+        result[token] = CEFR_BEYOND if rank is None else wordlist.level_for_rank(rank)
+    return result
+
+
 def level_for_words(words: Sequence[str]) -> Dict[str, Optional[str]]:
     """把词映射到 A1–C1 / C1+ / null。
 
@@ -1142,6 +1169,8 @@ def level_for_words(words: Sequence[str]) -> Dict[str, Optional[str]]:
     - 非法 token（空、含数字/符号、超长）→ ``null``。
 
     响应键保留用户输入的大小写与词形；同一键重复时后者覆盖。
+    公共 API 的 ``words`` 上限（:data:`MAX_LEVEL_WORDS`）保持不变；
+    不限词数的批量入口见 :func:`level_map_for_words`。
     """
     tokens = [str(word).strip() for word in words if str(word).strip()]
     if not tokens:
@@ -1150,12 +1179,4 @@ def level_for_words(words: Sequence[str]) -> Dict[str, Optional[str]]:
         raise VocabularyInvalid(
             f"words 最多 {MAX_LEVEL_WORDS} 个（收到 {len(tokens)} 个）。"
         )
-    wordlist = _load_wordlist()
-    result: Dict[str, Optional[str]] = {}
-    for token in tokens:
-        if len(token) > MAX_TOKEN_CHARS or not _TOKEN_RE.fullmatch(token):
-            result[token] = None
-            continue
-        rank = _rank_for_level_token(wordlist, token)
-        result[token] = CEFR_BEYOND if rank is None else wordlist.level_for_rank(rank)
-    return result
+    return level_map_for_words(tokens)

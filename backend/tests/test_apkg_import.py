@@ -28,6 +28,7 @@ import pytest
 
 import apkg_import
 import config
+import vocabulary
 from tests.migration_utils import assert_alembic_ok, run_alembic
 
 # ---------------------------------------------------------------------------
@@ -455,6 +456,39 @@ def test_missing_file_400(client):
 GRE_COUNT = 7512
 
 
+def test_apkg_notes_auto_match_cefr_on_import(client, tmp_path):
+    """APKG notes 只有单词/释义，导入时同样自动匹配 CEFR（specs/046）。"""
+    assert_alembic_ok(
+        run_alembic(config.AUTH_DB_PATH, "upgrade", "head"), "upgrade head (auto cefr)"
+    )
+    notes = [
+        (1001, "abandon\x1f/əˈbændən/\x1f放弃\x1f例句", 2),
+        (1001, "the\x1f/ðə/\x1f这\x1f例句", 2),
+        (1001, "sesquipedalian\x1f/ˌseskwɪpɪˈdeɪliən/\x1f极长词\x1f例句", 2),
+    ]
+    parsed = _post(client, _legacy_apkg(tmp_path, notes=notes), filename="auto.apkg")
+    assert parsed.status_code == 200, parsed.text
+    body = parsed.json()
+    assert [note["word"] for note in body["notes"]] == [
+        "abandon",
+        "the",
+        "sesquipedalian",
+    ]
+
+    items = [
+        {"word": note["word"], "translation": note["translation"]}
+        for note in body["notes"]
+    ]
+    imported = client.post(
+        "/api/wordlists/import", json={"name": "APKG 自动 CEFR", "items": items}
+    )
+    assert imported.status_code == 201, imported.text
+    assert imported.json()["list"]["itemCount"] == 3
+    assert imported.json()["skipped"] == 0
+    detail = client.get(f"/api/wordlists/{imported.json()['list']['id']}").json()
+    assert [item["cefr"] for item in detail["items"]] == ["B1", "A1", None]
+
+
 def _letters(index: int) -> str:
     letters = "abcdefghijklmnopqrstuvwxyz"
     high, rest = divmod(index, 26 * 26)
@@ -508,7 +542,7 @@ def _gre_like_db(path) -> None:
         conn.close()
 
 
-def test_gre_like_7512_notes_30mb_and_full_import(client, tmp_path):
+def test_gre_like_7512_notes_30mb_and_full_import(client, tmp_path, monkeypatch):
     db_path = tmp_path / "gre.sqlite"
     _gre_like_db(db_path)
     assert_alembic_ok(
@@ -551,9 +585,19 @@ def test_gre_like_7512_notes_30mb_and_full_import(client, tmp_path):
         {"word": note["word"], "translation": note["translation"]}
         for note in body["notes"]
     ]
+    load_calls = []
+    original_load = vocabulary._load_wordlist
+
+    def counting_load():
+        load_calls.append(1)
+        return original_load()
+
+    monkeypatch.setattr(vocabulary, "_load_wordlist", counting_load)
     imported = client.post(
         "/api/wordlists/import", json={"name": "GRE", "items": items}
     )
     assert imported.status_code == 201, imported.text
     assert imported.json()["list"]["itemCount"] == GRE_COUNT
     assert imported.json()["skipped"] == 0
+    # 7,512 词整批自动匹配：频表只加载一次（不是每词/每 100 词一次）。
+    assert load_calls == [1]

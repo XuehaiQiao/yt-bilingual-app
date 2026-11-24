@@ -20,6 +20,7 @@ import sqlite3
 import pytest
 
 import config
+import vocabulary
 import wordlists
 from tests.migration_utils import assert_alembic_ok, run_alembic
 
@@ -270,6 +271,109 @@ def test_cefr_whitelist(wl_db):
     assert response.status_code == 201, response.text
     stored = [item["cefr"] for item in _detail(client, response.json()["list"]["id"]).json()["items"]]
     assert stored == ["A1", "A2", "B1", "B2", "C1", None, None, None, None]
+
+
+def test_auto_cefr_fills_missing_levels_with_one_table_load(wl_db, monkeypatch):
+    """未提供 CEFR → 按 10k 频表自动匹配；整张词表只加载一次频表。
+
+    走 CSV 流程（客户端解析 CSV 后仍调用同一个导入接口，``filename`` 为
+    ``.csv``）：abandon=B1、the=A1；C1+ / 短语 / 非 ASCII 词留空。
+    """
+    client = wl_db
+    load_calls = []
+    original_load = vocabulary._load_wordlist
+
+    def counting_load():
+        load_calls.append(1)
+        return original_load()
+
+    monkeypatch.setattr(vocabulary, "_load_wordlist", counting_load)
+
+    response = _import(
+        client,
+        [
+            {"word": "abandon", "translation": "放弃"},
+            {"word": "The"},
+            {"word": "banana"},
+            {"word": "sesquipedalian"},  # 不在 10k 频表 → C1+ → 留空
+            {"word": "ice cream"},  # 多词短语不拆词判级 → 留空
+            {"word": "café"},  # 非 ASCII token → 留空
+        ],
+        filename="我的词表.csv",
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["list"]["name"] == "我的词表"
+    assert body["list"]["itemCount"] == 6
+    assert body["skipped"] == 0
+    assert load_calls == [1]
+
+    detail = _detail(client, body["list"]["id"]).json()
+    assert [item["cefr"] for item in detail["items"]] == [
+        "B1",
+        "A1",
+        "B2",
+        None,
+        None,
+        None,
+    ]
+
+
+def test_auto_cefr_keeps_explicit_and_ignores_invalid_cefr(wl_db):
+    """合法显式 CEFR 不被频表覆盖；非法显式值仍按原规则忽略（留空）。"""
+    client = wl_db
+    response = _import(
+        client,
+        [
+            {"word": "banana", "cefr": "a2"},  # 频表是 B2，但用户值优先
+            {"word": "abandon", "cefr": "C1"},
+            {"word": "cherry", "cefr": "C2"},  # 非法 → 忽略，且不自动补
+            {"word": "the"},  # 没提供 → 自动 A1
+        ],
+        name="显式 CEFR",
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["skipped"] == 0
+    stored = [
+        item["cefr"]
+        for item in _detail(client, response.json()["list"]["id"]).json()["items"]
+    ]
+    assert stored == ["A2", "C1", None, "A1"]
+
+
+def test_import_degrades_to_blank_cefr_when_frequency_table_unavailable(
+    wl_db, monkeypatch
+):
+    """频表不可用时导入不失败，CEFR 留空（只是展示列，不挡导入）。"""
+
+    def unavailable(_words):
+        raise vocabulary.VocabularyUnavailable("频表缺失（测试）")
+
+    monkeypatch.setattr(vocabulary, "level_map_for_words", unavailable)
+    client = wl_db
+    response = _import(client, [{"word": "abandon"}, {"word": "the"}], name="降级")
+    assert response.status_code == 201, response.text
+    assert response.json()["list"]["itemCount"] == 2
+    stored = [
+        item["cefr"]
+        for item in _detail(client, response.json()["list"]["id"]).json()["items"]
+    ]
+    assert stored == [None, None]
+
+
+def test_level_map_for_words_has_no_100_cap_and_keeps_token_semantics():
+    """内部批量判级：无 100 上限；C1+ 与 null 可区分；键保留原大小写。"""
+    words = ["the", "abandon", "sesquipedalian", "ice cream", "The"] * 31
+    assert len(words) > 100
+    levels = vocabulary.level_map_for_words(words)
+    assert levels == {
+        "the": "A1",
+        "abandon": "B1",
+        "sesquipedalian": "C1+",
+        "ice cream": None,
+        "The": "A1",
+    }
+    assert vocabulary.level_map_for_words([]) == {}
 
 
 # ---------------------------------------------------------------------------

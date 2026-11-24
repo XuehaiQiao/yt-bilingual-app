@@ -8,6 +8,8 @@
 - `.apkg`（Anki 导出包）≤ **50 MB**
 - 读取 `collection.anki2` / `collection.anki21` / `collection.anki21b`（后者 zstd）
 - 只取**文本字段**：单词、释义；可附带 phonetic/CEFR/example（APKG 一般没有，留空）
+- 未提供 CEFR 的 note 在导入时按 10k 频表自动匹配 A1–C1（`C1+`/未知留空），
+  用户无需在 Anki 字段里准备 CEFR；规则与 [specs/038](../038-custom-wordlists/spec.md) §2 一致
 - 忽略媒体、复习记录、学习进度、模板/样式
 - 最多解析 **10000 条 notes**；超过则截断并在响应标记 `truncated`（`total` 仍是全量条数）
 - 只支持登录用户（与自定义词表一致；游客 403）
@@ -68,6 +70,8 @@ word=`单词`、translation=`解释`、phonetic=`音标`。
 - 合成 APKG：legacy `.anki2`、`.anki21`、`.anki21b`（zstd）各一条
 - 真实 GRE 包（30MB / 7512 notes / 字段 单词+音标+解释）：解析 7512 全量、不 413，
   映射 word/translation/phonetic 正确，并全量导入词表（≤10000）
+- APKG 导入后未提供 CEFR 的 note 走频表自动匹配（abandon=B1、the=A1；`C1+` 留空），
+  整批只加载一次频表
 - 解析：牌组/模型/字段/notes 正确；HTML 清洗；10000 截断；损坏包 400；大文件 413
 - 前端：APKG 选文件→配置→确认→导入；牌组/模型/字段切换；预览；无效行拦截；游客不上传（403 文案）
 - 现有 CSV/TSV/TXT 导入零回归；词表上限/去重/唯一名不变

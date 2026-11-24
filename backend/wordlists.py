@@ -14,6 +14,8 @@
   校验全部 id 都属于该词表再删，删后重新统计 ``item_count``（不靠减法推算）。
 - **去重键**：``NFC + casefold``（保留第一条的原词形）。``café`` / ``CAFÉ`` /
   分解写法的 ``cafe\u0301`` 视为同一个词。
+- **自动 CEFR**：导入行没提供 CEFR 时按 10k 频表整批匹配（只写 A1–C1；
+  C1+/未知留空），显式合法值不覆盖；频表不可用只降级留空，不挡导入。
 - **释义快照不在这里**：加入复习时由 ``srs.add_word(definition=...)`` 写入
   ``word_states.definition``，本模块只负责词表存储。
 
@@ -22,6 +24,7 @@
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import sqlite3
@@ -31,6 +34,7 @@ from datetime import datetime, timezone
 
 import config
 import languages
+import vocabulary
 
 MAX_LISTS = 10
 MAX_ITEMS = 10000
@@ -64,6 +68,8 @@ _TOKEN_RE = re.compile(
     rf"(?:['\u2019\u2011-][{_LETTER}][{_LETTER}{_MARK}]*)*$"
 )
 _WHITESPACE_RE = re.compile(r"\s+")
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class WordlistError(Exception):
@@ -282,12 +288,48 @@ def _unique_name(conn: sqlite3.Connection, user_id: str, base: str) -> str:
 # 导入
 # ---------------------------------------------------------------------------
 
+def _cefr_provided(raw) -> bool:
+    """导入行是否显式写了 CEFR（非空字符串；值是否合法另由白名单判定）。"""
+    return isinstance(raw, str) and bool(raw.strip())
+
+
+def _fill_auto_cefr(items: list[dict]) -> None:
+    """给未提供 CEFR 的条目按 10k 频表补 A1–C1（specs/038 §2）。
+
+    - 只写 ``A1/A2/B1/B2/C1``；``C1+``（不在频表）、非法 token、多词短语留空；
+    - 显式提供过 CEFR 的条目（即使值非法被忽略）不再匹配，避免覆盖用户输入；
+    - 频表缺失/损坏只记 warning、整批留空：CEFR 是展示列，不该挡住导入。
+
+    调用方一次传入整张词表，频表只加载一次（复用
+    :func:`vocabulary.level_map_for_words`）。
+    """
+    pending = [
+        item
+        for item in items
+        if item["cefr"] is None and not item.get("cefr_provided")
+    ]
+    if not pending:
+        return
+    try:
+        levels = vocabulary.level_map_for_words([item["word"] for item in pending])
+    except vocabulary.VocabularyError as exc:
+        _LOGGER.warning("词表导入自动匹配 CEFR 不可用，CEFR 留空：%s", exc)
+        return
+    for item in pending:
+        level = levels.get(item["word"])
+        if level in CEFR_LEVELS:
+            item["cefr"] = level
+
+
 def _prepare_items(items) -> tuple[list[dict], int, int]:
     """校验 + 去重；返回 ``(有效条目, 总行数, 校验失败行数)``。
 
     重复行（同表同 ``word_key``）只留第一条，计入 ``skipped`` 但**不算**
     校验失败——否则一张「100 个词 + 100 个重复」的正常词表会被误判成
     「看起来不是英文词表」。
+
+    每条有效条目额外带内部标记 ``cefr_provided``（原始行是否显式写了
+    CEFR），供 :func:`_fill_auto_cefr` 判断是否自动匹配；不落库。
     """
     try:
         rows = list(items or [])
@@ -308,6 +350,7 @@ def _prepare_items(items) -> tuple[list[dict], int, int]:
         if item["word_key"] in seen:
             continue
         seen.add(item["word_key"])
+        item["cefr_provided"] = _cefr_provided(row.get("cefr"))
         cleaned.append(item)
     return cleaned, len(rows), invalid
 
@@ -326,7 +369,9 @@ def import_wordlist(
 
     - 有效行 0 → 400；校验失败行 > 50% → 400（不落库）；
     - 每人表数达到 :data:`MAX_LISTS` 时 400；
-    - 同名自动加 ``(2)``；返回的 ``skipped`` = 无效行 + 重复行。
+    - 同名自动加 ``(2)``；返回的 ``skipped`` = 无效行 + 重复行；
+    - 未提供 CEFR 的条目按 10k 频表自动匹配 A1–C1（``C1+``/未知留空），
+      显式提供合法 CEFR 的条目保留原值（specs/038 §2）。
     """
     user_id = _require_user_id(user_id)
     cleaned, total, invalid = _prepare_items(items)
@@ -337,6 +382,7 @@ def import_wordlist(
             f"无效行过多（{invalid}/{total}，超过 50%），这看起来不是英文词表。"
         )
     skipped = total - len(cleaned)
+    _fill_auto_cefr(cleaned)
     now_value = _coerce_ms(now)
     source_filename = _sanitize_filename(filename)
 
