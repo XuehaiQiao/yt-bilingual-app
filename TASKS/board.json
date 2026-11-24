@@ -1200,6 +1200,27 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-24",
+      "file": "TASKS/P2-24-apkg-frontend.md",
+      "status": "claimed",
+      "owner": "apkg-frontend-impl",
+      "write_scope": [
+        "frontend/src/components/WordlistImportDialog.tsx",
+        "frontend/src/lib/wordlistParse.ts",
+        "frontend/src/lib/wordlists.ts",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/apkg-import-acceptance.mjs",
+        "specs/046-apkg-import/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-23"
+      ]
     }
   ]
 }
