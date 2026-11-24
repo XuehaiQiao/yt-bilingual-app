@@ -16,6 +16,7 @@
 - `backend/routes_videos.py`、`translate.py`、`reading.py`、`book_translation.py`（只加记录）
 - migration 0032（若用表）
 - `backend/routes_admin.py`、`frontend/src/components/AdminConsoleScreen.tsx` 或 AdminQuotasPanel
+- 11 个既有 head 断言测试（test_ability_migrations / test_balance_billing / test_book_chapter_translation / test_book_import / test_course_generation / test_course_mvp / test_difficulty_migrations / test_events / test_migrations / test_reading / test_teaching_analysis）
 - tests/specs
 
 ## acceptance

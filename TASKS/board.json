@@ -1466,7 +1466,18 @@
         "specs/001-streaming-pipeline/spec.md",
         "specs/019-reading/spec.md",
         "frontend/src/i18n/zh-CN.json",
-        "frontend/src/i18n/vi-VN.json"
+        "frontend/src/i18n/vi-VN.json",
+        "backend/tests/test_ability_migrations.py",
+        "backend/tests/test_balance_billing.py",
+        "backend/tests/test_book_chapter_translation.py",
+        "backend/tests/test_book_import.py",
+        "backend/tests/test_course_generation.py",
+        "backend/tests/test_course_mvp.py",
+        "backend/tests/test_difficulty_migrations.py",
+        "backend/tests/test_events.py",
+        "backend/tests/test_migrations.py",
+        "backend/tests/test_reading.py",
+        "backend/tests/test_teaching_analysis.py"
       ],
       "shared_writes": [],
       "deps": [
