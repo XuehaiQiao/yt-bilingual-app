@@ -345,3 +345,33 @@
 - `cd backend && venv/bin/python -m pytest -q` → **1529 passed**（P2-31 新增 `tests/test_translation_hardening.py` 15 例；旧测试全绿）。
 - `node scripts/agent-preflight.mjs --card P2-31 --base 759eaf5` → 通过（新增测试先 `git add -N` 纳入检查）。说明：卡 `base_sha=e891f15` 早于卡登记提交 `759eaf5`，直接用卡 base 会把 `TASKS/P2-31-translation-p0.md`、`TASKS/board.json` 两个已提交文件算成本次改动；故以 HEAD 为 base 复核写域。
 - 未提交（按卡要求），改动仅限卡 `write_scope`。
+
+---
+
+## 11. P0 后续实测：Qwen 关闭 thinking 后（2026-11-24）
+
+> 直接 provider 调用；`thinking:{"type":"disabled"}`；temperature 0.2 / JSON mode；文章/视频同一实验语料；每配置 2 次。
+
+### 结果
+
+| 任务 | bs | wall（关闭 thinking） | 关闭前 wall | completion tokens | reasoning |
+|---|---:|---:|---:|---:|---:|
+| 文章 | 5 | 8.83–9.92s | 56.3s | 425–479 | 0 |
+| 文章 | 10 | 14.41–16.12s | 95.9s | 930–944 | 0 |
+| 文章 | 20 | 22.49–28.57s | 121.6s / 180s timeout | 1,934–1,959 | 0 |
+| 视频 | 20 | 7.54–8.18s | 13.6s | 641–649 | 0 |
+| 视频 | 40 | 11.73–13.50s | 41.7s | 1,272–1,273 | 0 |
+
+- **reasoning 完全消失**；文章 bs20 从 121s→22–29s，视频 bs40 从 41.7s→11.7–13.5s。
+- JSON 输出：文章/视频的 ID 覆盖率 100%（一次视频响应是顶层数组，不是 `{"r":...}`；应用 `_extract_block_list` 能兼容，提示词仍建议对象）。
+- 成本（按 P1-20 价格）：
+  - 文章 bs20：Qwen 约 **994 µUSD/篇** vs DeepSeek **2,794 µUSD/篇**（约 **-64%**）
+  - 视频 bs40：Qwen 约 **604 µUSD/40 blocks** vs DeepSeek **2,198 µUSD/40 blocks**（约 **-72%**）
+
+### 判断更新
+
+- 之前“Qwen 文章成本 1.4–3× DeepSeek”的结论**只成立于 thinking 开启时**；关闭后 Qwen 反而显著便宜。
+- 但 Qwen 仍比 DeepSeek 慢约 **1.5–2.5×**（文章 bs20 22–29s vs 11.5s；视频 bs40 11.7–13.5s vs 5.7s）。
+- 质量：本批 2 次翻译文本可读、ID 完整，但没有盲评/人工金标，不能宣布质量等同。
+- **默认策略不变**：交互首屏仍用 DeepSeek；Qwen 可作为**后台/离线/成本敏感**路径候选，或稳定期后续批（不影响首屏）的 A/B 候选。
+- 需要补一次正式质量盲评（Qwen vs DeepSeek，同一批文章/视频，至少 10 段/20 块、双评委）后再决定是否路由。
