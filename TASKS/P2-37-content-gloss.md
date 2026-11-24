@@ -24,6 +24,7 @@
 - `backend/config.py`（开关）
 - `backend/tests/test_teaching_analysis.py`
 - `backend/tests/test_reading.py`（如缓存断言）
+- `backend/tests/test_quota_ops_subject.py`（更新 6 档缓存/配额过期断言）
 - `specs/028-teaching-analysis/spec.md`（如存在）
 - `docs/reports/translation-tuning-2026-11-24.md`（状态回填）
 

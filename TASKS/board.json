@@ -1517,7 +1517,8 @@
         "backend/tests/test_teaching_analysis.py",
         "backend/tests/test_reading.py",
         "specs/028-teaching-analysis/spec.md",
-        "docs/reports/translation-tuning-2026-11-24.md"
+        "docs/reports/translation-tuning-2026-11-24.md",
+        "backend/tests/test_quota_ops_subject.py"
       ],
       "shared_writes": [],
       "deps": [
