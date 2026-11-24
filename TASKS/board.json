@@ -1524,6 +1524,90 @@
       "deps": [
         "P2-35"
       ]
+    },
+    {
+      "id": "P2-38",
+      "file": "TASKS/P2-38-v11-schema-auth.md",
+      "status": "claimed",
+      "owner": "schema-auth-impl",
+      "write_scope": [
+        "backend/migrations/versions/0033_v1_1_launch.py",
+        "backend/emailer.py",
+        "backend/config.py",
+        "backend/routes_auth.py",
+        "backend/auth_db.py",
+        "backend/account_lifecycle.py",
+        "backend/tests/",
+        "specs/032-invite-registration/spec.md",
+        "specs/033-account-lifecycle/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": []
+    },
+    {
+      "id": "P2-39",
+      "file": "TASKS/P2-39-v11-feedback-quota.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "backend/feedback.py",
+        "backend/routes_feedback.py",
+        "backend/routes_user.py",
+        "backend/routes_account.py",
+        "backend/main.py",
+        "backend/routes_admin.py",
+        "backend/tests/test_feedback.py",
+        "backend/tests/test_user_quota.py"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-38"
+      ]
+    },
+    {
+      "id": "P2-40",
+      "file": "TASKS/P2-40-v11-frontend.md",
+      "status": "claimed",
+      "owner": "v11-frontend-impl",
+      "write_scope": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/AuthScreen.tsx",
+        "frontend/src/components/AccountScreen.tsx",
+        "frontend/src/components/ProfileScreen.tsx",
+        "frontend/src/components/TodayScreen.tsx",
+        "frontend/src/components/WelcomeScreen.tsx",
+        "frontend/src/components/FeedbackDialog.tsx",
+        "frontend/src/components/QuotaPanel.tsx",
+        "frontend/src/components/AIGeneratedBadge.tsx",
+        "frontend/src/components/Onboarding.tsx",
+        "frontend/src/lib/auth.ts",
+        "frontend/src/lib/user.ts",
+        "frontend/src/lib/quota.ts",
+        "frontend/src/lib/feedback.ts",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/v11-p0-acceptance.mjs"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-38",
+        "P2-39"
+      ]
+    },
+    {
+      "id": "P2-41",
+      "file": "TASKS/P2-41-v11-ops.md",
+      "status": "claimed",
+      "owner": "v11-ops-impl",
+      "write_scope": [
+        "docs/reports/v1.1-launch-migration-2026-11-25.md",
+        "docs/checklists/",
+        "scripts/"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
