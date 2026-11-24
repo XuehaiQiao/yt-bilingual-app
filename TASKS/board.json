@@ -1228,8 +1228,8 @@
     {
       "id": "P2-25",
       "file": "TASKS/P2-25-watch-split-ratio.md",
-      "status": "claimed",
-      "owner": "watch-split-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
         "frontend/src/components/WatchTopBar.tsx",
