@@ -1484,6 +1484,26 @@
         "P2-33",
         "P2-34"
       ]
+    },
+    {
+      "id": "P2-36",
+      "file": "TASKS/P2-36-quota-config-cleanup.md",
+      "status": "claimed",
+      "owner": "quota-cleanup-impl",
+      "write_scope": [
+        "backend/routes_local_video.py",
+        "backend/book_import.py",
+        "backend/config.py",
+        "backend/routes_content.py",
+        "backend/README.md",
+        "backend/tests/test_local_video_translate.py",
+        "backend/tests/test_book_import.py",
+        "docs/reports/translation-p1-implementation-2026-11-24.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-34"
+      ]
     }
   ]
 }
