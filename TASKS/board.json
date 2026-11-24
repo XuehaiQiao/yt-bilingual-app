@@ -1122,6 +1122,26 @@
       "deps": [
         "P2-18"
       ]
+    },
+    {
+      "id": "P2-20",
+      "file": "TASKS/P2-20-subtitle-bottom-paused.md",
+      "status": "claimed",
+      "owner": "lead",
+      "write_scope": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/WatchSubtitleOverlay.tsx",
+        "frontend/src/components/WatchTopBar.tsx",
+        "scripts/watch-mode-acceptance.mjs",
+        "specs/044-watch-mode/spec.md",
+        "specs/045-watch-mode-experience/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/App.tsx"
+      ],
+      "deps": [
+        "P2-19"
+      ]
     }
   ]
 }
