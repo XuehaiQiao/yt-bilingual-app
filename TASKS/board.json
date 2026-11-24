@@ -1509,8 +1509,8 @@
     {
       "id": "P2-37",
       "file": "TASKS/P2-37-content-gloss.md",
-      "status": "claimed",
-      "owner": "gloss-dict-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/teaching_analysis.py",
         "backend/config.py",
