@@ -91,7 +91,9 @@
 //      (instant under reduced motion); in-viewport pointer movement restores
 //      the raised position. P2-21: raised bottom is 10% (measured media gap
 //      ~7–14% of the picture height) and pointer events outside the viewport
-//      (clientX/Y beyond 0..innerWidth/Height) are ignored.
+//      (clientX/Y beyond 0..innerWidth/Height) are ignored; P2-22 narrows the
+//      accepted box to the picture itself: rail / top bar / window-target
+//      activity keeps the subtitle docked while a picture target raises it.
 //  19. P2-17 gloss rows: vocabulary and language points share one row — label
 //      left, right-aligned definition on the SAME line, wrapping — and the
 //      type is fluid (~16→22 / 14→18px) across 375 / 1440 / 1920 with a
@@ -119,6 +121,18 @@
 //      sits at bottom 10% (~7–14% media gap) and only in-viewport pointer
 //      events wake it; the sentence box is min(96ch,92%) so 1440/1920 use ≥85%
 //      of the picture width without clipping (375 unchanged).
+//  23. P2-22 画面大小: the floating top bar exposes a 画面大小 popover with the
+//      60 / 75 / 100% presets (`yt_bilingual_watch_video_scale`, default 100).
+//      The watch-mode picture width is scaled while `aspect-video`
+//      keeps 16:9, the stage keeps it centred, nothing overflows, the subtitle
+//      container-query type follows the smaller picture, the choice survives a
+//      reload, 100% restores the previous maximum, and <768 forces 100% with
+//      no control at all (375 unchanged).
+//  24. P2-22 activity region: pointermove/pointerdown/pointerover only raise
+//      the subtitle when their target lives inside `video-area` (touchstart
+//      follows the same target rule); rail / top bar / stage-letterbox /
+//      window-target activity stays docked, keyboard still raises, and the
+//      P2-21 out-of-viewport coordinate filter keeps its coverage.
 //
 // Run (needs `npm run dev` on :5173; Playwright lives in scripts/node_modules):
 //   node scripts/watch-mode-acceptance.mjs
@@ -848,6 +862,29 @@ async function chooseSubtitleMode(page, mode) {
     );
 }
 
+// ── P2-22 画面大小 helpers ────────────────────────────────────────────────
+async function openVideoSizeMenu(page) {
+    await revealWatchTopbar(page);
+    await page.locator('[data-testid="watch-video-size-toggle"]').click();
+    await page.locator('[data-testid="watch-video-size-menu"]').waitFor({ state: 'visible', timeout: 5000 });
+}
+
+async function chooseVideoScale(page, scale) {
+    await openVideoSizeMenu(page);
+    await page.locator(`[data-testid="watch-video-scale-${scale}"]`).click();
+    await page.locator('[data-testid="watch-video-size-menu"]').waitFor({ state: 'detached', timeout: 5000 });
+    await page.waitForFunction(
+        (expected) => localStorage.getItem('yt_bilingual_watch_video_scale') === expected,
+        String(scale),
+        { timeout: 5000 },
+    );
+    await page.waitForFunction(
+        (expected) => document.querySelector('[data-testid="video-area"]')?.getAttribute('data-watch-scale') === expected,
+        String(scale),
+        { timeout: 5000 },
+    );
+}
+
 const subtitleModeState = (page) => page.evaluate(() => ({
     toggleMode: document.querySelector('[data-testid="watch-subtitle-toggle"]')?.getAttribute('data-mode') ?? null,
     stored: localStorage.getItem('yt_bilingual_watch_subtitle_mode'),
@@ -950,6 +987,62 @@ const dispatchPointer = (page, type, clientX, clientY) => page.evaluate((payload
         isPrimary: true,
     }));
 }, { type, clientX, clientY });
+
+/**
+ * P2-22: dispatch pointer activity whose TARGET is the given element (the
+ * event still bubbles to the window listener, exactly like a real pointer move
+ * over the gloss rail or the top bar). The P2-21 helper above dispatches on
+ * `window`, whose target is never inside the picture.
+ */
+const dispatchPointerOn = (page, type, testId, clientX, clientY) => page.evaluate((payload) => {
+    const element = document.querySelector(`[data-testid="${payload.testId}"]`);
+    if (!element) throw new Error(`missing element for pointer activity: ${payload.testId}`);
+    element.dispatchEvent(new PointerEvent(payload.type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: payload.clientX,
+        clientY: payload.clientY,
+        pointerType: 'mouse',
+        isPrimary: true,
+    }));
+}, { type, testId, clientX, clientY });
+
+/** P2-22: touch activity targeted at one element (target-filter coverage). */
+const dispatchTouchOn = (page, testId) => page.evaluate((payload) => {
+    const element = document.querySelector(`[data-testid="${payload.testId}"]`);
+    if (!element) throw new Error(`missing element for touch activity: ${payload.testId}`);
+    element.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true }));
+}, { testId });
+
+/**
+ * P2-22 画面大小: the picture box, the ambient stage and the size control in
+ * one snapshot. `share` is the picture width as a fraction of the 100% width.
+ */
+const videoScaleState = (page) => page.evaluate(() => {
+    const video = document.querySelector('[data-testid="video-area"]');
+    const stage = document.querySelector('[data-testid="watch-stage"]');
+    if (!video || !stage) return null;
+    const v = video.getBoundingClientRect();
+    const s = stage.getBoundingClientRect();
+    const toggle = document.querySelector('[data-testid="watch-video-size-toggle"]');
+    return {
+        width: v.width,
+        height: v.height,
+        x: v.x,
+        y: v.y,
+        right: v.right,
+        bottom: v.bottom,
+        stage: { x: s.x, y: s.y, width: s.width, height: s.height, right: s.right, bottom: s.bottom },
+        toggle: toggle ? {
+            scale: toggle.getAttribute('data-scale'),
+            aria: toggle.getAttribute('aria-label'),
+            expanded: toggle.getAttribute('aria-expanded'),
+        } : null,
+        stored: localStorage.getItem('yt_bilingual_watch_video_scale'),
+        documentWidth: document.documentElement.scrollWidth,
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+    };
+});
 
 const overlayText = (page) => page.evaluate(() => {
     const el = document.querySelector('[data-testid="watch-subtitle-overlay"]');
@@ -1265,7 +1358,7 @@ const scrollMetrics = (page) => page.locator('[data-testid="watch-gloss-scroll"]
 }));
 
 const browser = await chromium.launch({ executablePath: CHROME, headless: true });
-const summary = { status: 'PASS', head: HEAD, screenshots: [], p2_21: {} };
+const summary = { status: 'PASS', head: HEAD, screenshots: [], p2_21: {}, p2_22: {} };
 
 try {
     // ═════════════════════════════════════════════════════════════════════
@@ -1350,8 +1443,8 @@ try {
     assert.ok(topbarInitial, 'watch top bar missing');
     assert.deepEqual(
         [...topbarInitial.buttons].sort(),
-        ['watch-subtitle-toggle', 'watch-topbar-back', 'watch-topbar-exit'],
-        'the watch top bar must expose exactly back / CC / exit — no fake settings button',
+        ['watch-subtitle-toggle', 'watch-topbar-back', 'watch-topbar-exit', 'watch-video-size-toggle'],
+        'the watch top bar must expose exactly back / 画面大小 / CC / exit — no fake settings button',
     );
     assert.equal(
         (await page.locator('[data-testid="watch-topbar-chip"]').innerText()).trim(),
@@ -1708,15 +1801,20 @@ try {
         raisedOverlay.bottomGap - dockedOverlay.bottomGap >= raisedOverlay.parentHeight * 0.07,
         'the subtitle did not visibly drop between the raised and docked positions',
     );
-    // — P2-21: only pointer activity INSIDE the viewport may wake the subtitle.
-    //   Synthetic out-of-view coordinates exercise the same window listeners
-    //   the browser would notify during an edge drag / on another display. —
+    // — P2-21/P2-22: only pointer/touch activity whose TARGET sits inside the
+    //   picture may wake the subtitle. Out-of-viewport coordinates are ignored
+    //   (P2-21); so is every in-viewport event whose target is the gloss rail,
+    //   the top bar or the window itself (P2-22) — moving the mouse along the
+    //   rolling gloss rail used to lift the sentence through the coordinate
+    //   rule alone. Synthetic events exercise the same window listeners the
+    //   browser would notify during an edge drag, on another display, or while
+    //   the learner scrolls the word rows. —
     const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
     const assertStillDocked = async (label) => {
         await sleep(300);
         const state = await subtitlePositionState(page);
         assert.ok(state, `${label}: overlay missing`);
-        assert.equal(state.raised, 'false', `${label}: an out-of-viewport pointer event raised the subtitle`);
+        assert.equal(state.raised, 'false', `${label}: a non-picture pointer/touch event raised the subtitle`);
         assert.equal(state.dock, 'true', `${label}: the subtitle lost its dock state`);
     };
     await dispatchPointer(page, 'pointermove', -20, 220);
@@ -1729,9 +1827,69 @@ try {
     await assertStillDocked('pointerdown left of the viewport');
     await dispatchPointer(page, 'pointerdown', 240, viewport.height + 30);
     await assertStillDocked('pointerdown below the viewport');
-    // In-view pointerdown is still activity: it lifts the sentence, same as a
-    // real pointer move (which is checked next, from the next dock).
+    // P2-22: in-viewport coordinates are no longer enough — the event has to
+    // land on the picture. A window-target event at the picture centre (the
+    // old P2-21 pass path) must stay docked now.
+    await dispatchPointer(page, 'pointermove', Math.round(viewport.width / 2), 240);
+    await assertStillDocked('in-viewport pointermove dispatched on window');
     await dispatchPointer(page, 'pointerdown', Math.round(viewport.width / 2), 240);
+    await assertStillDocked('in-viewport pointerdown dispatched on window');
+    // The user-reported path: the mouse moves over the rolling gloss rail.
+    const railBoxForPointer = await boxOf(page, 'watch-gloss-rail');
+    const railPoint = {
+        x: Math.round((railBoxForPointer?.x ?? 1200) + 60),
+        y: 360,
+    };
+    await dispatchPointerOn(page, 'pointermove', 'watch-gloss-rail', railPoint.x, railPoint.y);
+    await assertStillDocked('pointermove over the gloss rail');
+    await dispatchPointerOn(page, 'pointerdown', 'watch-gloss-rail', railPoint.x, railPoint.y);
+    await assertStillDocked('pointerdown over the gloss rail');
+    // The floating top bar is chrome, not picture.
+    const topbarBoxForPointer = await boxOf(page, 'watch-topbar');
+    await dispatchPointerOn(
+        page,
+        'pointermove',
+        'watch-topbar',
+        Math.round(viewport.width / 2),
+        Math.round((topbarBoxForPointer?.height ?? 56) / 2),
+    );
+    await assertStillDocked('pointermove over the top bar');
+    // Touch uses the same target rule: a finger on the rail is not picture
+    // activity, a finger on the picture is.
+    await dispatchTouchOn(page, 'watch-gloss-rail');
+    await assertStillDocked('touchstart over the gloss rail');
+    // The ambient letterbox belongs to the stage, not the picture.
+    await dispatchTouchOn(page, 'watch-stage-ambient');
+    await assertStillDocked('touchstart over the stage ambient layer');
+    // Crossing INTO the picture is the only pointer signal a cross-origin
+    // YouTube iframe lets the parent page see: `pointerover` there still raises.
+    await dispatchPointerOn(page, 'pointerover', 'watch-gloss-rail', railPoint.x, railPoint.y);
+    await assertStillDocked('pointerover over the gloss rail');
+    await dispatchPointerOn(page, 'pointerover', 'video-area', Math.round(viewport.width / 2), 300);
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-raised') === 'true',
+        null,
+        { timeout: 5000 },
+    );
+    await sleep(260);
+    const raisedByPointerOver = await subtitlePositionState(page);
+    assert.ok(
+        Math.abs(raisedByPointerOver.bottomGap - raisedOverlay.bottomGap) <= 2,
+        `picture pointerover did not restore the raised position (${raisedByPointerOver.bottomGap} vs ${raisedOverlay.bottomGap})`,
+    );
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-dock') === 'true',
+        null,
+        { timeout: 7000 },
+    );
+    // — the picture itself still raises: synthetic pointerdown on `video-area`,
+    //   then a REAL pointer move over the embed surface. —
+    const videoBoxForPointer = await boxOf(page, 'video-area');
+    const videoPoint = {
+        x: Math.round(videoBoxForPointer.x + videoBoxForPointer.width / 2),
+        y: Math.round(videoBoxForPointer.y + videoBoxForPointer.height / 2),
+    };
+    await dispatchPointerOn(page, 'pointerdown', 'video-area', videoPoint.x, videoPoint.y);
     await page.waitForFunction(
         () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-raised') === 'true',
         null,
@@ -1741,15 +1899,14 @@ try {
     const raisedByPointerDown = await subtitlePositionState(page);
     assert.ok(
         Math.abs(raisedByPointerDown.bottomGap - raisedOverlay.bottomGap) <= 2,
-        `in-viewport pointerdown did not restore the raised position (${raisedByPointerDown.bottomGap} vs ${raisedOverlay.bottomGap})`,
+        `picture pointerdown did not restore the raised position (${raisedByPointerDown.bottomGap} vs ${raisedOverlay.bottomGap})`,
     );
     await page.waitForFunction(
         () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-dock') === 'true',
         null,
         { timeout: 7000 },
     );
-    const railBoxForPointer = await boxOf(page, 'watch-gloss-rail');
-    await page.mouse.move((railBoxForPointer?.x ?? 1200) + 60, 360);
+    await page.mouse.move(videoPoint.x, videoPoint.y);
     await page.waitForFunction(
         () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-raised') === 'true',
         null,
@@ -1759,11 +1916,39 @@ try {
     const raisedAgain = await subtitlePositionState(page);
     assert.ok(
         Math.abs(raisedAgain.bottomGap - raisedOverlay.bottomGap) <= 2,
-        `pointer movement did not restore the raised position (${raisedAgain.bottomGap} vs ${raisedOverlay.bottomGap})`,
+        `pointer movement inside the picture did not restore the raised position (${raisedAgain.bottomGap} vs ${raisedOverlay.bottomGap})`,
+    );
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-dock') === 'true',
+        null,
+        { timeout: 7000 },
+    );
+    await page.mouse.move(railPoint.x, railPoint.y);
+    await assertStillDocked('real pointer move over the gloss rail');
+    // Keyboard activity is not pointer activity: it always raises (P2-22 kept
+    // the keyboard path unconditioned).
+    await page.keyboard.press('Shift');
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-raised') === 'true',
+        null,
+        { timeout: 5000 },
+    );
+    await sleep(260);
+    const raisedByKeyboard = await subtitlePositionState(page);
+    assert.ok(
+        Math.abs(raisedByKeyboard.bottomGap - raisedOverlay.bottomGap) <= 2,
+        `keyboard activity did not restore the raised position (${raisedByKeyboard.bottomGap} vs ${raisedOverlay.bottomGap})`,
     );
     summary.p2_21.pointerFilter = {
         outOfViewport: 'pointermove/pointerdown ignored (dock kept)',
-        inViewport: 'pointermove raises, pointerdown raises',
+        inViewport: 'target must sit inside the picture (P2-22)',
+    };
+    summary.p2_22.pointerFilter = {
+        rail: 'pointermove/pointerdown/pointerover/touchstart keep the subtitle docked',
+        topbar: 'pointermove keeps the subtitle docked',
+        windowInViewport: 'in-viewport coordinates alone no longer raise',
+        picture: 'pointerdown + pointerover + real pointermove raise',
+        keyboard: 'keydown still raises',
     };
     summary.p2_21.raised = {
         bottomPx: Math.round(raisedAgain.bottomGap * 10) / 10,
@@ -2244,6 +2429,131 @@ try {
     assert.equal(await glossEntryCount(page), 2, 'moving forward duplicated an existing sentence');
     assert.equal(await page.locator('[data-testid="watch-gloss-word"]').count(), 2, 'history lost a word after the revisit');
 
+    // — P2-22 画面大小: the floating top bar exposes 60 / 75 / 100% presets.
+    //   100% is the existing maximum; the picture keeps 16:9, stays centred on
+    //   the ambient stage and never overflows; the choice persists. —
+    const size100 = await videoScaleState(page);
+    assert.ok(size100, '1440: picture / stage missing for the picture-size check');
+    assert.ok(size100.toggle, '1440: the 画面大小 control is missing from the watch top bar');
+    assert.equal(size100.toggle.scale, '100', '1440: the picture did not start at 100%');
+    assert.match(size100.toggle.aria ?? '', /画面大小/, '1440: the picture-size control has no aria label');
+    const aspect100 = size100.width / size100.height;
+    assert.ok(Math.abs(aspect100 - 16 / 9) < 0.02, `1440: the 100% picture is not 16:9 (${aspect100.toFixed(3)})`);
+    assert.ok(
+        Math.abs((size100.x + size100.width / 2) - (size100.stage.x + size100.stage.width / 2)) <= 2
+        && Math.abs((size100.y + size100.height / 2) - (size100.stage.y + size100.stage.height / 2)) <= 2,
+        '1440: the 100% picture is not centred on the stage',
+    );
+    assert.ok(
+        size100.x >= size100.stage.x - 1 && size100.right <= size100.stage.right + 1
+        && size100.y >= size100.stage.y - 1 && size100.bottom <= size100.stage.bottom + 1,
+        '1440: the 100% picture overflows the stage',
+    );
+    assert.equal(size100.stored, '100', '1440: the default 100% was not persisted');
+
+    await openVideoSizeMenu(page);
+    summary.screenshots.push(shot('1440-size-menu'));
+    await page.screenshot({ path: shot('1440-size-menu') });
+    for (const scale of [60, 75, 100]) {
+        assert.equal(
+            await page.locator(`[data-testid="watch-video-scale-${scale}"]`).count(),
+            1,
+            `1440: the 画面大小 menu lost the ${scale}% preset`,
+        );
+    }
+    assert.equal(
+        await page.locator('[data-testid="watch-video-scale-100"]').getAttribute('aria-checked'),
+        'true',
+        '1440: the 画面大小 menu does not mark the current 100% preset',
+    );
+    assert.equal(
+        await page.locator('[data-testid="watch-video-scale-60"]').getAttribute('aria-checked'),
+        'false',
+        '1440: a non-current picture-size preset is marked as checked',
+    );
+    await page.locator('[data-testid="watch-video-scale-75"]').click();
+    await page.locator('[data-testid="watch-video-size-menu"]').waitFor({ state: 'detached', timeout: 5000 });
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="video-area"]')?.getAttribute('data-watch-scale') === '75',
+        null,
+        { timeout: 5000 },
+    );
+    assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_video_scale')), '75');
+    const size75 = await videoScaleState(page);
+    assert.ok(size75, '1440: picture state missing after choosing 75%');
+    assert.ok(
+        Math.abs(size75.width / size100.width - 0.75) <= 0.01,
+        `1440: 75% picture is ${(size75.width / size100.width * 100).toFixed(1)}% of the 100% width`,
+    );
+    assert.ok(
+        Math.abs(size75.width / size75.height - 16 / 9) < 0.02,
+        `1440: the 75% picture is not 16:9 (${(size75.width / size75.height).toFixed(3)})`,
+    );
+    assert.ok(
+        Math.abs((size75.x + size75.width / 2) - (size75.stage.x + size75.stage.width / 2)) <= 2
+        && Math.abs((size75.y + size75.height / 2) - (size75.stage.y + size75.stage.height / 2)) <= 2,
+        '1440: the 75% picture is not centred on the stage',
+    );
+    assert.ok(
+        size75.x >= size75.stage.x - 1 && size75.right <= size75.stage.right + 1
+        && size75.y >= size75.stage.y - 1 && size75.bottom <= size75.stage.bottom + 1,
+        '1440: the 75% picture overflows the stage',
+    );
+    assert.ok(size75.documentWidth <= size75.viewport.width + 1, '1440: the 75% picture causes horizontal overflow');
+
+    await chooseVideoScale(page, 60);
+    await sleep(150);
+    const size60 = await videoScaleState(page);
+    assert.ok(size60, '1440: picture state missing after choosing 60%');
+    assert.ok(
+        Math.abs(size60.width / size100.width - 0.60) <= 0.01,
+        `1440: 60% picture is ${(size60.width / size100.width * 100).toFixed(1)}% of the 100% width`,
+    );
+    assert.ok(
+        Math.abs(size60.width / size60.height - 16 / 9) < 0.02,
+        `1440: the 60% picture is not 16:9 (${(size60.width / size60.height).toFixed(3)})`,
+    );
+    assert.ok(
+        Math.abs((size60.x + size60.width / 2) - (size60.stage.x + size60.stage.width / 2)) <= 2
+        && Math.abs((size60.y + size60.height / 2) - (size60.stage.y + size60.stage.height / 2)) <= 2,
+        '1440: the 60% picture is not centred on the stage',
+    );
+    assert.ok(
+        size60.x >= size60.stage.x - 1 && size60.right <= size60.stage.right + 1
+        && size60.y >= size60.stage.y - 1 && size60.bottom <= size60.stage.bottom + 1,
+        '1440: the 60% picture overflows the stage',
+    );
+    assert.ok(size60.documentWidth <= size60.viewport.width + 1, '1440: the 60% picture causes horizontal overflow');
+    // The subtitle scales with the picture (container query), not with the page.
+    const size60Type = await subtitleType(page);
+    assert.ok(size60Type.en && size60Type.zh, '1440: subtitle lines missing at 60%');
+    assert.ok(
+        size60Type.en.fontSize >= 17 && !size60Type.en.clipped && !size60Type.zh.clipped,
+        `1440: the 60% subtitle is clipped or below the 17px floor (${size60Type.en.fontSize}px)`,
+    );
+    assert.ok(size60Type.insideMedia && size60Type.insideViewport, '1440: the 60% subtitle overflows the picture');
+    assert.equal(await page.getAttribute('[data-testid="watch-video-size-toggle"]', 'data-scale'), '60');
+    summary.screenshots.push(shot('1440-scale-60'));
+    await page.screenshot({ path: shot('1440-scale-60') });
+    summary.p2_22.scale1440 = {
+        width100: Math.round(size100.width),
+        width75: Math.round(size75.width),
+        width60: Math.round(size60.width),
+        ratio75: Math.round(size75.width / size100.width * 1000) / 1000,
+        ratio60: Math.round(size60.width / size100.width * 1000) / 1000,
+        aspect60: Math.round(size60.width / size60.height * 1000) / 1000,
+    };
+
+    // — 100% restores the existing maximum —
+    await chooseVideoScale(page, 100);
+    const restored100 = await videoScaleState(page);
+    assert.ok(restored100, '1440: picture state missing after restoring 100%');
+    assert.ok(
+        Math.abs(restored100.width - size100.width) <= 1 && Math.abs(restored100.height - size100.height) <= 1,
+        `1440: 100% did not restore the maximum picture (${restored100.width}×${restored100.height} vs ${size100.width}×${size100.height})`,
+    );
+    assert.equal(restored100.stored, '100');
+
     // — turn watch mode off through the floating top bar: stacked/split layout,
     //   both app chromes and the teaching panel return —
     await exitWatchMode(page);
@@ -2270,9 +2580,11 @@ try {
 
     // — persistence across a reload: watch mode AND the subtitle preference —
     await enterWatchMode(page);
-    // Park the caption preference on 仅英文 so the reload has to restore a
-    // non-default mode, not merely fall back to bilingual.
+    // Park the caption preference on 仅英文 and the picture size on 75% so the
+    // reload has to restore two non-default preferences, not merely fall back
+    // to their defaults.
     await chooseSubtitleMode(page, 'english');
+    await chooseVideoScale(page, 75);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.locator('[data-testid="watch-gloss-rail"]').waitFor({ state: 'visible', timeout: 20000 });
     assert.equal(await page.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'on');
@@ -2283,6 +2595,34 @@ try {
     assert.ok(await page.locator('[data-testid="watch-topbar"]').count(), 'reloading in watch mode lost the floating top bar');
     assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_subtitle_mode')), 'english', 'the subtitle preference did not persist across a reload');
     assert.equal(await page.getAttribute('[data-testid="watch-subtitle-toggle"]', 'data-mode'), 'english', 'the reloaded top bar did not restore 仅英文');
+    // — P2-22: 画面大小 survives the reload as well (75% parked above) —
+    assert.equal(await page.evaluate(() => localStorage.getItem('yt_bilingual_watch_video_scale')), '75', 'the picture size did not persist across a reload');
+    assert.equal(await page.getAttribute('[data-testid="watch-video-size-toggle"]', 'data-scale'), '75', 'the reloaded top bar did not restore the 75% picture size');
+    const reloadedScale = await videoScaleState(page);
+    assert.ok(reloadedScale, '1440: picture state missing after the reload');
+    assert.ok(
+        Math.abs(reloadedScale.width / size100.width - 0.75) <= 0.01,
+        `1440: the reloaded 75% picture is ${(reloadedScale.width / size100.width * 100).toFixed(1)}% of the 100% width`,
+    );
+    assert.ok(
+        Math.abs(reloadedScale.width / reloadedScale.height - 16 / 9) < 0.02,
+        '1440: the reloaded 75% picture is not 16:9',
+    );
+    await openVideoSizeMenu(page);
+    assert.equal(
+        await page.locator('[data-testid="watch-video-scale-75"]').getAttribute('aria-checked'),
+        'true',
+        '1440: the reloaded 画面大小 menu does not mark 75%',
+    );
+    await page.keyboard.press('Escape');
+    await page.locator('[data-testid="watch-video-size-menu"]').waitFor({ state: 'detached', timeout: 5000 });
+    // Restore the maximum for the remaining checks and the screenshot.
+    await chooseVideoScale(page, 100);
+    const afterReload100 = await videoScaleState(page);
+    assert.ok(
+        afterReload100 && Math.abs(afterReload100.width - size100.width) <= 1,
+        '1440: 100% did not restore the maximum picture after the reload',
+    );
 
     await seekToGlossedCue(page);
     await page.waitForFunction(
@@ -3542,6 +3882,23 @@ try {
     );
     const phoneAspect = phoneVideo.width / phoneVideo.height;
     assert.ok(Math.abs(phoneAspect - 16 / 9) < 0.02, `375: the picture is not 16:9 (${phoneAspect.toFixed(3)})`);
+    // — P2-22: <768 forces 100% and hides the 画面大小 control; the phone keeps
+    //   the untouched full-width picture it had before this card. —
+    assert.equal(
+        await phone.locator('[data-testid="watch-video-size-toggle"]').count(),
+        0,
+        '375: the 画面大小 control must not render below 768',
+    );
+    assert.equal(
+        await phone.getAttribute('[data-testid="video-area"]', 'data-watch-scale'),
+        '100',
+        '375: the picture size is not forced to 100%',
+    );
+    assert.equal(
+        await phone.evaluate(() => localStorage.getItem('yt_bilingual_watch_video_scale')),
+        '100',
+        '375: the stored picture size was not normalised to 100%',
+    );
     assert.ok(
         phoneVideo.y - phoneTopbarBox.height <= 12,
         `375: the picture is not pinned below the top bar (video y ${phoneVideo.y}, bar ${phoneTopbarBox.height})`,
@@ -3870,6 +4227,51 @@ try {
     );
     summary.screenshots.push(shot('1920'));
     await widePage.screenshot({ path: shot('1920') });
+    // — P2-22 at 1920: the same 60% preset keeps the 16:9 picture centred and
+    //   inside the larger stage, and 100% restores the 1920 maximum. —
+    const wideScale100 = await videoScaleState(widePage);
+    assert.ok(wideScale100?.toggle, '1920: the 画面大小 control is missing');
+    assert.ok(
+        Math.abs(wideScale100.width - wideShell.video.width) <= 1,
+        '1920: the default picture width drifted from the 100% geometry',
+    );
+    await chooseVideoScale(widePage, 60);
+    await sleep(150);
+    const wideScale60 = await videoScaleState(widePage);
+    assert.ok(wideScale60, '1920: picture state missing after choosing 60%');
+    assert.ok(
+        Math.abs(wideScale60.width / wideScale100.width - 0.60) <= 0.01,
+        `1920: 60% picture is ${(wideScale60.width / wideScale100.width * 100).toFixed(1)}% of the 100% width`,
+    );
+    assert.ok(
+        Math.abs(wideScale60.width / wideScale60.height - 16 / 9) < 0.02,
+        '1920: the 60% picture is not 16:9',
+    );
+    assert.ok(
+        Math.abs((wideScale60.x + wideScale60.width / 2) - (wideScale60.stage.x + wideScale60.stage.width / 2)) <= 2
+        && Math.abs((wideScale60.y + wideScale60.height / 2) - (wideScale60.stage.y + wideScale60.stage.height / 2)) <= 2,
+        '1920: the 60% picture is not centred on the stage',
+    );
+    assert.ok(
+        wideScale60.x >= wideScale60.stage.x - 1 && wideScale60.right <= wideScale60.stage.right + 1
+        && wideScale60.y >= wideScale60.stage.y - 1 && wideScale60.bottom <= wideScale60.stage.bottom + 1,
+        '1920: the 60% picture overflows the stage',
+    );
+    assert.ok(wideScale60.documentWidth <= wideScale60.viewport.width + 1, '1920: the 60% picture causes horizontal overflow');
+    summary.screenshots.push(shot('1920-scale-60'));
+    await widePage.screenshot({ path: shot('1920-scale-60') });
+    await chooseVideoScale(widePage, 100);
+    const wideRestored100 = await videoScaleState(widePage);
+    assert.ok(
+        wideRestored100 && Math.abs(wideRestored100.width - wideScale100.width) <= 1,
+        '1920: 100% did not restore the maximum picture',
+    );
+    summary.p2_22.scale1920 = {
+        width100: Math.round(wideScale100.width),
+        width60: Math.round(wideScale60.width),
+        ratio60: Math.round(wideScale60.width / wideScale100.width * 1000) / 1000,
+        aspect60: Math.round(wideScale60.width / wideScale60.height * 1000) / 1000,
+    };
     // P2-11 follow-up: the English ceiling is 32px (2rem). A window wide enough
     // for 2cqi to exceed it must clamp there instead of growing further.
     await widePage.setViewportSize({ width: 2048, height: 1152 });

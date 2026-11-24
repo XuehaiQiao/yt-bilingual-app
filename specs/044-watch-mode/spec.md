@@ -1,6 +1,6 @@
 # 044 — 观影模式（最小版）
 
-> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源；2026-11-24 P2-15 沉浸壳层 + 字幕三态 + 保留原生控制条；P2-16 360 rail + 收藏 + 移动抽屉；P2-17 字幕落底/高亮/词条行统一/字号/Esc 退观影；P2-19 词条行「我已掌握」开关 + 收藏互斥；P2-20 暂停不落底 + 落底 0%；P2-21 词条行卡片 + 视口内指针才唤醒 + 抬高 10% + 字幕 92% 宽）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
+> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源；2026-11-24 P2-15 沉浸壳层 + 字幕三态 + 保留原生控制条；P2-16 360 rail + 收藏 + 移动抽屉；P2-17 字幕落底/高亮/词条行统一/字号/Esc 退观影；P2-19 词条行「我已掌握」开关 + 收藏互斥；P2-20 暂停不落底 + 落底 0%；P2-21 词条行卡片 + 视口内指针才唤醒 + 抬高 10% + 字幕 92% 宽；P2-22 指针限定画面区 + 画面大小 60–100% 可调）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
 > 成本：0（只读已有分析缓存，不新增 AI 调用）。
 
 ## 1. 开关与布局
@@ -21,6 +21,16 @@
 - **刷新 / 直达链接**：观影模式会持久化，但网页全屏**不会**自动恢复——浏览器要求用户手势，只有点击「观影模式」才进入全屏；此时布局仍是观影态
 
 
+## 1c. 画面大小（P2-22）
+
+- `watchVideoScale: 60–100`（整数百分比，默认 **100**），localStorage key `yt_bilingual_watch_video_scale`；与 `watchMode`、字幕三态分键存储，进入/退出观影模式都不重置
+- 入口：浮层顶栏「画面大小」按钮（lucide `Scaling` 图标 + 当前百分比 + `aria-label`「画面大小：{{scale}}%」）→ 60 / 75 / 100 三档菜单（`role=menuitemradio`、`aria-checked`）；选择后立即生效，无需刷新
+- 100% = 现有最大画面（≥1280 为 `min(100%, 100cqh * 16 / 9)`，即同时适配舞台宽高的最大 16:9 矩形）；<100% 时宽度乘以比例，`aspect-video` 保持 16:9，舞台 flex 居中保持水平/垂直居中，四周露出环境光，不裁切、不溢出
+- 768–1279px（非 1280+ 宽屏档）：舞台不是尺寸容器，宽度直接按舞台宽度的百分比缩放（`60%/75%`），仍 16:9 居中
+- **<768：强制 100% 且不渲染「画面大小」控件**，375 画面与 P2-22 之前完全一致
+- 字幕容器 `video-area` 仍是 `container-type: inline-size`：缩小画面时字幕字号随画面宽度流体缩小（clamp 下限 17/15px），不裁切
+
+
 ## 2. 单句字幕窗
 
 - 绝对定位在视频区下缘（玻璃配方 `bg-zinc-950/70 backdrop-blur-md border-t border-white/5`）
@@ -32,7 +42,7 @@
   - **回退**：`text-section`（17px）/ `text-body-zh`（15px）token 保留在元素上；不支持 `cqi` 的引擎会丢弃无效的 inline 声明，回退到 token 固定字号，不出现无字号
 - 行高沿用 `leading-snug`，居中、`text-balance`；字号不写裸 px
 - 随播放推进更新；无当前句时隐藏
-- **避让原生控制条（P2-17；P2-21 修订）**：App 在观影模式跟踪指针活跃（`pointermove` / `pointerdown` / `touchstart` / `keydown`）。**P2-21：只接受视口内的 `pointermove`/`pointerdown`**（`clientX/Y` 在 `0..innerWidth / 0..innerHeight`；屏幕外/越界坐标忽略），`touchstart`/`keydown` 保持。活跃时字幕抬高到**播放器盒的 10%**（实测约 12% 画面高度，位于原生控制栏上方约 10–14px），避开 YouTube 原生控制条；**静止 4s** 后落到视频底缘（**0%**，与原生控制条约 4s 消失对齐）。`bottom` 过渡 200ms；`prefers-reduced-motion` 下直切（过渡时长为 0）
+- **避让原生控制条（P2-17；P2-21/P2-22 修订）**：App 在观影模式跟踪指针活跃（`pointermove` / `pointerdown` / `touchstart` / `keydown`）。**P2-22：只有 `event.target` 位于 `video-area` 容器内才算画面活跃**（`pointermove`/`pointerdown`/`pointerover`；`pointerover` 覆盖跨域 YouTube iframe 边界进入画面，iframe 内部移动对父页不可见）——滚动词条栏、浮层顶栏、舞台黑边、页面其它区域的指针/触摸不唤醒字幕；键盘始终唤醒。**P2-21 保留**：`pointermove`/`pointerdown` 还须 `clientX/Y` 在视口内（`0..innerWidth / 0..innerHeight`）作第二道保护。活跃时字幕抬高到**播放器盒的 10%**（实测约 12% 画面高度，位于原生控制栏上方约 10–14px），避开 YouTube 原生控制条；**静止 4s** 后落到视频底缘（**0%**，与原生控制条约 4s 消失对齐）。`bottom` 过渡 200ms；`prefers-reduced-motion` 下直切（过渡时长为 0）
 - **句内高亮（P2-17）**：英文句内把当前句词条标亮——词汇橙底（`bg-amber-400/20 text-amber-100`），习语/文化点蓝底（`bg-sky-400/20 text-sky-100`）；按文本匹配包 `<span>`，**不用 `dangerouslySetInnerHTML`**；范围不重叠（语言点优先），保留完整原句文本（含标点/空格）；切句更新；字幕关闭时不渲染。中文行暂不高亮
 - `pointer-events` 分层：字幕窗不拦截播放器点击
 - 375 与 1440 都在媒体区内换行，不横向裁切、不溢出画面
@@ -84,7 +94,8 @@
 - P2-19 已掌握：每行词/语言点都有 ✓ 与 ☆ 并列在 `ml-auto` 操作组（rail 默认 .6、hover/focus 1；抽屉常显）；登录 PATCH 体含 lemma/mastered/targetLang/definition，成功后 `GET /api/review/words?mastered=1` 回读，pressed/绿色实心与历史行同步；刷新后仍为已掌握；取消 PATCH mastered=false 且不恢复收藏；游客只写 `yt_bilingual_guest_mastered_words`（刷新后仍在），全程不调 review API；PATCH 500 → 行内错误 + 视觉回滚；互斥 DELETE 失败 → PATCH false 回滚 + 行内说明；375 两个操作均 ≥44px、标记后词 16/释义 14px 仍同行不溢出
 - P2-16 移动（375）：视频 16:9 置顶（8px 边距，不再整页垂直居中）；抽屉默认展开、占剩余高度、可点击手柄收起/展开、不覆盖视频/原生控制条、375 无横向溢出；CC 三态与退出仍可用；旧右上浮窗不存在
 - 词条行（P2-17）：词汇与语言点均一行「词/短语左，释义右」，右列 `text-right` 可换行；语言点解释不再下一行；375 词 16px / 释义 14px，1440 约 19.5/16px，1920 22/18px，三档明显递增
-- 字幕避让（P2-17 / P2-21）：视口内指针（或触摸/键盘）活跃时字幕抬高（bottom 10%，实测画面下缘 gap 约 12%；屏幕外 pointermove/pointerdown 不唤醒），静止 4s 后落到底缘（bottom 0%）；移动指针恢复抬高；过渡 200ms，reduced-motion 直切
+- 字幕避让（P2-17 / P2-21 / P2-22）：画面内指针（或触摸/键盘）活跃时字幕抬高（bottom 10%，实测画面下缘 gap 约 12%）；滚动词条栏/浮层顶栏/舞台黑边/屏幕外 pointermove、pointerdown、touchstart 都不唤醒；画面内 pointer 移动恢复抬高；键盘始终唤醒；静止 4s 后落到底缘（bottom 0%，暂停不落底）；过渡 200ms，reduced-motion 直切
+- 画面大小（P2-22）：100% 为现有最大 16:9；60/75% 宽度按比例缩小（实测 60% ≈ 0.60、75% ≈ 0.75，误差 <1%），16:9、水平/垂直居中、不溢出；刷新后保留；100% 可恢复最大；375 强制 100% 且无控件；字幕随画面缩小不裁切
 - 字幕宽度（P2-21）：1440/1920 字幕盒 ≥85% 视频宽（实测 85.2% / 87.3%），长句不裁切；375 换行正常
 - 字幕高亮（P2-17）：英文句内标亮词橙底、语言点/文化点蓝底；点优先、范围不重叠；文本完整；切句更新；关闭字幕不渲染；中文行不高亮
 - 网页全屏（P2-10 / P2-17 修订）：进入观影调用全屏 API、退出观影调用 exit；**ESC/浏览器真实退出本容器全屏 → 自动退出观影**（布局恢复、偏好转 off）；初始/未全屏、路由切走不误触发；API 不存在或被拒时不报错、布局正常
@@ -109,7 +120,7 @@
 | P2-16 App 收藏接线（`favorites`/`onAddFavorite`/`onRemoveFavorite`；删除路径 `report:false` 静默回滚；顶栏计数同源） | `frontend/src/App.tsx` |
 | P2-19 已掌握（`MasteredButton` 圆形 Check，rail 默认 .6 / hover 1、抽屉 44px；`useIgnoredWords` 单一来源；登录 PATCH + `refreshIgnored(targetLang)`、游客 `writeGuestMastered` + `refreshIgnored()`；busy；失败行内回滚；成功后 DELETE 同词收藏、失败回滚 mastered=false；`targetLang` 由 App 两处传入） | `frontend/src/components/WatchGlossPanel.tsx`、`frontend/src/App.tsx` |
 | P2-19 文案（已掌握/取消/失败/互斥回滚，中越） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
-| P2-17 App 接线（观影模式跟踪视口内指针活跃 → `watchSubtitleRaised`，4s 静止落底；P2-21 越界坐标忽略；`pageFullscreenRef` 区分「真实退出本容器全屏」与初始/路由/失败；向字幕窗传 `glosses`/`languagePoints`/`raised`/`dock`） | `frontend/src/App.tsx` |
+| P2-17 App 接线（观影模式跟踪指针活跃 → `watchSubtitleRaised`，4s 静止落底；P2-21 越界坐标忽略；**P2-22 目标须在 `video-area` 内（`event.target` containment），键盘不受限、`touchstart` 同目标过滤**；`pageFullscreenRef` 区分「真实退出本容器全屏」与初始/路由/失败；向字幕窗传 `glosses`/`languagePoints`/`raised`/`dock`） | `frontend/src/App.tsx` |
 | P2-15 沉浸壳层（AppShell `hideTopbar` 不渲染顶栏；LearningHeader 不渲染；浮层顶栏 `WatchTopBar`：返回/标题+来源/chip/CC/退出，2.5s 淡出，指针/触摸/键盘唤醒） | `frontend/src/components/AppShell.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
 | P2-15 舞台（`watch-stage` 尺寸容器 + 16:9 画面水平/垂直居中 + 环境光/模糊层填充黑边） | `frontend/src/App.tsx` |
 | P2-15 字幕三态（`watchSubtitleMode` 持久化与循环；双语/仅英文/关闭；关闭不挂载覆盖层；渐变 scrim） | `frontend/src/lib/layout.ts`、`frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
@@ -130,3 +141,15 @@
 | 抬高态 `bottom: 10%`（实测画面下缘 gap 12.1%，控制栏上方约 10–14px）；落底 `0%`；200ms 过渡与 reduced-motion 直切不变 | `frontend/src/components/WatchSubtitleOverlay.tsx` |
 | 字幕宽度 `min(96ch,92%)`，`ch` 跟随英文流体字号；scrim 边距 `sm:px-6`；1440 实测 85.2%、1920 87.3%，375 正常换行不裁切 | `frontend/src/components/WatchSubtitleOverlay.tsx` |
 | 验收：视口外 `pointermove`/`pointerdown` 保持落底、视口内 `pointermove` 与 `pointerdown` 均抬高；词条卡 alpha 当前 .5 / 历史 .35、行间 4px、操作组默认 .6；抬高 7–14% band、落底 0；1440/1920 宽度 ≥85%；375/1440/1920 截图；2× PASS | `scripts/watch-mode-acceptance.mjs` |
+
+## 7. 落地记录（P2-22，2026-11-24）
+
+| 内容 | 位置 |
+|---|---|
+| 指针/触摸活动限定画面区：window `pointermove`/`pointerdown`/`pointerover` 须 `event.target` 在 `videoAreaRef` 容器内，且保留 P2-21 视口坐标过滤（`pointerover` 让跨域 iframe 的进入边界事件也算画面活跃）；`touchstart` 同目标过滤；`keydown` 始终唤醒 | `frontend/src/App.tsx` |
+| 画面大小偏好：`watchVideoScale` 60–100（默认 100）、`WATCH_VIDEO_SCALE_KEY = yt_bilingual_watch_video_scale`、`WATCH_VIDEO_SCALES = [60,75,100]`、load/save/clamp；与观影开关/字幕三态分键 | `frontend/src/lib/layout.ts` |
+| 浮层顶栏「画面大小」控件（`Scaling` 图标 + 当前百分比 + `aria-label`；`role=menu`/`menuitemradio` 三档；键盘 Arrow/Home/End/Escape；与 CC 菜单互斥、外点关闭） | `frontend/src/components/WatchTopBar.tsx` |
+| mediaStage 宽度：≥1280 `calc(min(100%, calc(100cqh * 16 / 9)) * ratio)`（100% 保持原式）；768–1279 按舞台宽度百分比；<768 强制 100%；`aspect-video` + 舞台居中保证 16:9、居中、不溢出；`data-watch-scale` 供验收 | `frontend/src/App.tsx` |
+| 字幕容器查询沿用 `video-area`：画面缩小后字号随宽度流体缩小（17/15px 下限），不裁切 | `frontend/src/App.tsx`、`frontend/src/components/WatchSubtitleOverlay.tsx` |
+| 文案（画面大小/菜单/提示，中越） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
+| 验收：rail/topbar/window-target 的 pointer、touch 均保持落底，画面内 pointerover/pointerdown + 真实 pointermove 抬高，键盘抬高；1440 100/75/60 宽度比 ≈ 1/0.75/0.60、16:9、居中、不溢出、刷新保留、100% 恢复；1920 60% 同断言；375 无控件且 100%；`1440-scale-60`/`1920-scale-60` 截图；2× PASS | `scripts/watch-mode-acceptance.mjs` |

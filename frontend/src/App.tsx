@@ -119,17 +119,20 @@ import {
 import {
   clampSplitRatio,
   DEFAULT_SPLIT_RATIO,
+  DEFAULT_WATCH_VIDEO_SCALE,
   loadSplitRatio,
   loadTranscriptLayout,
   cycleWatchSubtitleMode,
   loadWatchMode,
   loadWatchSubtitleMode,
+  loadWatchVideoScale,
   MAX_SPLIT_RATIO,
   MIN_SPLIT_RATIO,
   saveSplitRatio,
   saveTranscriptLayout,
   saveWatchMode,
   saveWatchSubtitleMode,
+  saveWatchVideoScale,
   type TranscriptLayout,
   type WatchMode,
   type WatchSubtitleMode,
@@ -458,6 +461,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // preference stored separately from the watch flag. `off` stops mounting the
   // overlay entirely so the video's native captions are usable untouched.
   const [watchSubtitleMode, setWatchSubtitleMode] = useState<WatchSubtitleMode>(loadWatchSubtitleMode);
+  // P2-22: 画面大小 — 60–100% of the largest 16:9 box the watch stage fits.
+  // A device preference with its own key; <768 always paints 100% (the top bar
+  // hides the control there, see `showVideoScale`).
+  const [watchVideoScale, setWatchVideoScale] = useState<number>(loadWatchVideoScale);
   // P2-20: the subtitle only docks while the picture is actually playing. The
   // YouTube state comes from VideoPlayer; local SRT episodes use the existing
   // `isSubtitlePlaying` timer. `watchPlaybackActiveRef` lets the pointer-activity
@@ -551,15 +558,27 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   }, []);
 
   // P2-17: the watch subtitle dodges the native YouTube control strip. Pointer
-  // activity inside the viewport / touch / key activity lifts it clear of the
+  // activity inside the picture / touch / key activity lifts it clear of the
   // controls (bottom ~10%, P2-21); 4s of stillness lets both settle to the
-  // lower edge of the video (bottom 0%). P2-21 also drops pointer
-  // move/down events whose coordinates fall outside the viewport: they cannot
-  // reveal controls the learner can see, so they must not raise the sentence.
+  // lower edge of the video (bottom 0%). P2-21 drops pointer move/down events
+  // whose coordinates fall outside the viewport: they cannot reveal controls
+  // the learner can see, so they must not raise the sentence.
+  // P2-22 narrows the box again to the picture itself: an event only counts
+  // when its `target` sits inside `video-area`. Moving over the rolling gloss
+  // rail / the floating top bar / the page around the picture no longer lifts
+  // the sentence (coordinates alone could not tell those apart from the
+  // picture). Keyboard activity still always raises, and `touchstart` uses the
+  // same target filter; the P2-21 viewport coordinate check stays as a second
+  // guard for synthetic / out-of-window pointer events.
+  // The YouTube embed is cross-origin: moves INSIDE the iframe never reach this
+  // page, but crossing the iframe boundary still produces a `pointerover` whose
+  // target is the picture. That boundary event counts too, so entering the
+  // video raises the sentence exactly like moving over the rest of the picture.
   // The mode itself only enables the listeners; outside the watch shell the
   // overlay is not mounted and the timer stays cleared.
   const [watchSubtitleRaised, setWatchSubtitleRaised] = useState(true);
   const watchSubtitleIdleTimerRef = useRef<number | null>(null);
+  const videoAreaRef = useRef<HTMLDivElement | null>(null);
 
   const clearWatchSubtitleIdleTimer = useCallback(() => {
     if (watchSubtitleIdleTimerRef.current !== null) {
@@ -592,26 +611,41 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     // P2-21: pointer activity only counts inside the viewport. Coordinates in
     // `0..innerWidth / 0..innerHeight` are the same box the native controls
     // live in; anything beyond it (edge drags, another display, synthetic
-    // events) is ignored instead of lifting the subtitle. Touch / keyboard
-    // activity carries no meaningful coordinate and stays accepted.
+    // events) is ignored instead of lifting the subtitle.
+    // P2-22: the target must also live inside the picture; the gloss rail, the
+    // top bar or the page around it are activity, but not picture activity.
     const isInViewport = (event: PointerEvent) => {
       const { clientX, clientY } = event;
       return Number.isFinite(clientX) && Number.isFinite(clientY)
         && clientX >= 0 && clientY >= 0
         && clientX <= window.innerWidth && clientY <= window.innerHeight;
     };
+    const isInsideVideoArea = (target: EventTarget | null) => {
+      const container = videoAreaRef.current;
+      return Boolean(container && target instanceof Node && container.contains(target));
+    };
     const onPointerActivity = (event: PointerEvent) => {
-      if (isInViewport(event)) raiseWatchSubtitle();
+      if (isInsideVideoArea(event.target) && isInViewport(event)) raiseWatchSubtitle();
+    };
+    const onPointerOver = (event: PointerEvent) => {
+      if (isInsideVideoArea(event.target) && isInViewport(event)) raiseWatchSubtitle();
+    };
+    // Touch has no meaningful viewport coordinate, so it keeps the target rule
+    // only: a finger on the picture raises, a finger on the rail does not.
+    const onTouchActivity = (event: TouchEvent) => {
+      if (isInsideVideoArea(event.target)) raiseWatchSubtitle();
     };
     const onActivity = () => raiseWatchSubtitle();
     window.addEventListener('pointermove', onPointerActivity, { passive: true });
     window.addEventListener('pointerdown', onPointerActivity, { passive: true });
-    window.addEventListener('touchstart', onActivity, { passive: true });
+    window.addEventListener('pointerover', onPointerOver, { passive: true });
+    window.addEventListener('touchstart', onTouchActivity, { passive: true });
     window.addEventListener('keydown', onActivity);
     return () => {
       window.removeEventListener('pointermove', onPointerActivity);
       window.removeEventListener('pointerdown', onPointerActivity);
-      window.removeEventListener('touchstart', onActivity);
+      window.removeEventListener('pointerover', onPointerOver);
+      window.removeEventListener('touchstart', onTouchActivity);
       window.removeEventListener('keydown', onActivity);
       clearWatchSubtitleIdleTimer();
     };
@@ -877,6 +911,11 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   useEffect(() => {
     saveWatchSubtitleMode(watchSubtitleMode);
   }, [watchSubtitleMode]);
+  // P2-22: 画面大小 has its own key as well; 100% is written once on mount so
+  // a fresh device has an explicit value the top bar can restore after reload.
+  useEffect(() => {
+    saveWatchVideoScale(watchVideoScale);
+  }, [watchVideoScale]);
 
   // While dragging the divider a transparent shield covers the page (and the
   // video iframe, which would otherwise swallow pointermove). Releasing
@@ -3418,16 +3457,38 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // removes the old "video on top + a large dead-black area below" layout
   // without ever letting the media overflow 1440/1920/375. `video-area` keeps
   // `container-type: inline-size` for the P2-11 fluid subtitle scale.
+  // P2-22: 画面大小 multiplies that largest 16:9 box by the stored ratio (60 /
+  // 75 / 100%). Width only — `aspect-video` keeps the height, and the stage's
+  // flex centring keeps it horizontally/vertically centred, so the picture
+  // never leaves the stage. <768 always uses the untouched full-width picture
+  // (the top bar hides the control there).
+  const effectiveWatchVideoScale = isCompactViewport
+    ? DEFAULT_WATCH_VIDEO_SCALE
+    : watchVideoScale;
+  const watchVideoScaleRatio = effectiveWatchVideoScale / 100;
+  const watchVideoWidthStyle: React.CSSProperties | undefined = !watchModeActive
+    ? undefined
+    : isWideViewport
+      ? {
+        width: watchVideoScaleRatio >= 1
+          ? 'min(100%, calc(100cqh * 16 / 9))'
+          : `calc(min(100%, calc(100cqh * 16 / 9)) * ${watchVideoScaleRatio})`,
+      }
+      : isCompactViewport || watchVideoScaleRatio >= 1
+        ? undefined
+        : { width: `${effectiveWatchVideoScale}%` };
   const mediaStage = (
     <div
+      ref={videoAreaRef}
       data-testid="video-area"
       data-watch-mode={watchModeActive ? 'on' : 'off'}
+      data-watch-scale={watchModeActive ? effectiveWatchVideoScale : undefined}
       className={
         watchModeActive
           ? '[container-type:inline-size] relative flex-none w-full aspect-video bg-transparent'
           : '[container-type:inline-size] flex-none w-full aspect-video min-h-[180px] relative bg-transparent max-h-[62%]'
       }
-      style={watchModeActive && isWideViewport ? { width: 'min(100%, calc(100cqh * 16 / 9))' } : undefined}
+      style={watchVideoWidthStyle}
     >
       {isLocalSubtitle && !hasLocalVideo ? (
         <LocalEpisodeStage
@@ -3995,6 +4056,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
             source={metadata?.channel || featureLabel}
             subtitleMode={watchSubtitleMode}
             onSubtitleModeChange={setWatchSubtitleMode}
+            videoScale={effectiveWatchVideoScale}
+            onVideoScaleChange={setWatchVideoScale}
+            showVideoScale={!isCompactViewport}
             onBack={() => back()}
             onExit={toggleWatchMode}
           />

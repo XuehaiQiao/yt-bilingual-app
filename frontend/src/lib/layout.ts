@@ -113,6 +113,44 @@ export function cycleWatchSubtitleMode(mode: WatchSubtitleMode): WatchSubtitleMo
     return WATCH_SUBTITLE_MODES[(index + 1) % WATCH_SUBTITLE_MODES.length];
 }
 
+// ── Watch-mode picture size (specs/045 §4.1 / P2-22) ───────────────────────
+// 画面大小: the watch stage keeps the largest centred 16:9 box at 100% and
+// scales the picture down to 60% of that box, leaving the ambient stage
+// visible around it. Stored per device next to (not inside) the watch flag and
+// the caption preference, so entering / leaving 观影模式 never resets it.
+export const WATCH_VIDEO_SCALE_KEY = 'yt_bilingual_watch_video_scale';
+
+export const DEFAULT_WATCH_VIDEO_SCALE = 100;
+export const MIN_WATCH_VIDEO_SCALE = 60;
+export const MAX_WATCH_VIDEO_SCALE = 100;
+
+/** The presets the floating top bar exposes; 100% is the existing maximum. */
+export const WATCH_VIDEO_SCALES: readonly number[] = [60, 75, 100];
+
+export function clampWatchVideoScale(percent: number): number {
+    if (!Number.isFinite(percent)) return DEFAULT_WATCH_VIDEO_SCALE;
+    return Math.min(MAX_WATCH_VIDEO_SCALE, Math.max(MIN_WATCH_VIDEO_SCALE, Math.round(percent)));
+}
+
+export function loadWatchVideoScale(): number {
+    try {
+        const raw = localStorage.getItem(WATCH_VIDEO_SCALE_KEY);
+        if (raw == null) return DEFAULT_WATCH_VIDEO_SCALE;
+        return clampWatchVideoScale(Number.parseFloat(raw));
+    } catch {
+        // Private-mode storage failures must never break the learning view.
+        return DEFAULT_WATCH_VIDEO_SCALE;
+    }
+}
+
+export function saveWatchVideoScale(percent: number): void {
+    try {
+        localStorage.setItem(WATCH_VIDEO_SCALE_KEY, String(clampWatchVideoScale(percent)));
+    } catch {
+        // Private-mode storage failures must never break the learning view.
+    }
+}
+
 // ── Desktop sidebar ────────────────────────────────────────────────────────
 // The ≥lg navigation rail is 240px expanded and 72px collapsed (icon-only).
 // The preference survives reloads; the shell itself stays stateless.
