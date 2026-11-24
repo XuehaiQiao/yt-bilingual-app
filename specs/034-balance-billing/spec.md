@@ -256,6 +256,13 @@ balanceUsd, availableMicroUsd, availableUsd}`；错误：400 参数/负余额、
 - 进程崩溃：`expires_at_ms`（默认 30 分钟）过期后，`reserve` 与
   `expire_stale_holds()` 会把仍 active 的 hold 标 `expired`，可用余额恢复。
 
+### 7.5 显式选择的模型优先进入降级链（P2-27）
+
+`degradation_chain(preferred_model=...)` 必须把「目录内 + Key 可用 + 有可核实价格」的
+显式首选模型放在链首；只有首选不可用/缺价时才回落到 `DEFAULT_MODEL` 或更便宜的可用模型。
+否则用户选 Qwen 后实际仍调用 DeepSeek，账本 `model_id` 也记成 DeepSeek，管理台与用户选择不一致。
+缺价的显式首选仍放链首，由严格计费返回 `503 model_unpriced`，不静默换模型。
+
 ### 7.4 402 不能被降级链吞掉
 
 `InsufficientBalance` 是计费域异常（`billing.BillingError`），不是模型失败：

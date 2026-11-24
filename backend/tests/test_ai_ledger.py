@@ -289,6 +289,16 @@ def test_degradation_chain_cn_excludes_gemini(monkeypatch):
     assert quota.degradation_chain("translate", "premium")[0] == "cheap"
 
 
+def test_degradation_chain_honors_explicit_priced_preferred(monkeypatch):
+    """P2-27: 用户显式选中可用且有价的模型时，它必须在链首，而不是 DEFAULT。"""
+    _install_fake_catalog(monkeypatch)
+    monkeypatch.setattr(config, "DEFAULT_MODEL", "cheap", raising=False)
+    monkeypatch.setattr(llm, "DEFAULT_MODEL", "cheap", raising=False)
+    monkeypatch.setattr(config, "AI_MODEL_REGION", "auto", raising=False)
+    chain = quota.degradation_chain("translate", "premium")
+    assert chain[0] == "premium", chain
+    assert "cheap" in chain
+
 def test_degradation_chain_overseas_includes_gemini(monkeypatch):
     _install_fake_catalog(monkeypatch)
     monkeypatch.setattr(config, "DEFAULT_MODEL", "google-x", raising=False)

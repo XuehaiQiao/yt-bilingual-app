@@ -424,7 +424,15 @@ def degradation_chain(
     ):
         explicit_unpriced = preferred_model
 
-    current: str | None = explicit_unpriced
+    # P2-27: an explicitly selected model that is available *and priced* must
+    # lead the chain. Previously only the unpriced case was honoured, so the
+    # default (deepseek-chat) silently won over the user's Qwen selection and
+    # every ledger row was written against the default model.
+    current: str | None = None
+    if preferred_model and preferred_model in available:
+        current = preferred_model
+    if current is None:
+        current = explicit_unpriced
     if current is None and config.DEFAULT_MODEL in available:
         current = config.DEFAULT_MODEL
     if current is None and available:
