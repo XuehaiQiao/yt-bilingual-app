@@ -2492,18 +2492,34 @@ async def translate_chapter(
         raise BookImportUnavailable("当前没有可用的 AI 模型，暂时无法翻译。")
 
     batches = _translation_batches(missing)
+    # P2-36：1 单位 = 10 段，按累计段数给每批分配单位（合计 = ceil(缺失段数/10)），
+    # 不再每批固定扣 1；20 段分 8+8+4 只扣 2 单位。批内候选重试/缺失补译共用
+    # 这一次扣减，不重复扣。
+    batch_units = quota.units_per_batch(
+        "reading", [len(batch) for batch in batches]
+    )
     failed_indices: list[int] = []
     used_models: set[str] = set()
     used_batches = 0
-    for batch in batches:
-        # 每个模型批次占 1 个「读文章」日配额；超限抛 QuotaExceeded（路由 429）。
-        await asyncio.to_thread(
-            quota.check_and_consume_quota,
-            user_id,
-            "reading",
-            1,
-            target_lang=lang,
-        )
+    for batch, units in zip(batches, batch_units):
+        if units > 0:
+            # 超限抛 QuotaExceeded（路由 429）。
+            await asyncio.to_thread(
+                quota.check_and_consume_quota,
+                user_id,
+                "reading",
+                units,
+                target_lang=lang,
+            )
+        else:
+            # 落在已购单位内的批：不重复扣，但仍要过只读闸门（0 = 关闭、
+            # 并发请求把额度用光时不能继续调用模型）。
+            await asyncio.to_thread(
+                quota.ensure_quota_available,
+                user_id,
+                "reading",
+                target_lang=lang,
+            )
         used_batches += 1
         translations, used_model, error = await _translate_batch(
             batch, lang, user_id, candidates

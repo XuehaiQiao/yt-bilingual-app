@@ -23,6 +23,8 @@ import billing
 import languages
 import teaching_analysis
 import translate
+import translation_batching
+from ai import quota
 from ai.ledger import QuotaExceeded
 
 logger = logging.getLogger("linguatrek.local_video")
@@ -32,7 +34,6 @@ router = APIRouter(tags=["local-video"])
 MAX_BLOCKS = 2000
 MAX_TEXT_CHARS = 500_000
 MAX_TITLE_CHARS = 200
-TRANSLATE_BATCH = 20
 
 
 class LocalBlock(BaseModel):
@@ -98,16 +99,31 @@ async def process_local_video(payload: LocalVideoRequest, request: Request):
     except languages.UnsupportedLanguage as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    # P2-33/P2-36：与视频共用 token-aware 切批——首批 ≤10 blocks 抢首屏、
+    # 稳定期 ≤40 blocks、单批 ≤2,000 源 token（单条超预算仍单独成批）。
+    batches = translation_batching.chunk_by_budget(
+        normalized,
+        lambda block: block["text"],
+        translation_batching.VIDEO_FIRST_BATCH_SIZE,
+        translation_batching.VIDEO_STEADY_BATCH_SIZE,
+        translation_batching.VIDEO_MAX_SOURCE_TOKENS,
+    )
+    # P2-34/P2-36：1 单位 = 100 blocks，按累计 blocks 给每批分配单位（合计 =
+    # ceil(总 blocks/100)，如 120 blocks = 2 单位），不再按批各取整。
+    batch_units = quota.units_per_batch(
+        "translate", [len(batch) for batch in batches]
+    )
+
     translated: list[dict] = []
     try:
-        for start in range(0, len(normalized), TRANSLATE_BATCH):
-            batch = normalized[start:start + TRANSLATE_BATCH]
+        for batch, units in zip(batches, batch_units):
             result = await translate.process_llm_batch(
                 batch,
                 vocab_level=payload.level,
                 feature="translate",
                 user_id=user_id,
                 target_lang=lang,
+                quota_units=units,
             )
             translated.extend(result)
     except billing.BillingError:

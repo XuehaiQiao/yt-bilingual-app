@@ -76,7 +76,7 @@
 | `routes_reading.py` | 读文章 HTTP 路由（**需登录，游客 403**）：`POST /api/article/import`、`POST /api/article/{id}/translate`、`GET /api/article/{id}`、`GET /api/articles`、`DELETE /api/article/{id}`、`PUT /api/article/{id}/progress`；`GET /api/article/{id}` 可选 `?level=` 附带教学分析（显式传才执行）；契约/错误语义见下文「读文章」与 [specs/019](../specs/019-reading/spec.md) |
 | `routes_blog.py` | 官方博客 HTTP 路由（**公开只读，无需登录**）：`GET /api/blog/posts`、`GET /api/blog/posts/{slug}`、`GET /api/blog/feed.xml`；只读 `content/blog/*.md`，自带 front matter 校验、HTML 转义 + 链接白名单的轻量 Markdown 渲染、RSS 2.0；无数据库/无迁移；见下文「官方博客」与 [specs/020](../specs/020-blog/spec.md) |
 | `routes_books.py` | 公版书阅读库 HTTP 路由（**公开只读，无需登录**）：`GET /api/books`、`GET /api/books/{id}`、`GET /api/books/{id}/chapters/{n}`；书单/译文只读 `content/books/`，**英文原文每次从 sourceUrl 实时抓取、不落库**；章节响应 `no-store`，源站失败 503，按 IP 限速；章节可选 `?level=` 附带教学分析（需登录、缓存命中免费）；见 `content/books/README.md` |
-| `book_import.py` | **导入公版书（产品化）**：只允许 Project Gutenberg（`/ebooks/{id}`、`/cache/epub/{id}/pg{id}.txt`、`/files/{id}/...txt`）与 Standard Ebooks（`/ebooks/{author}/{slug}`，章节从目录页解析）；URL/重定向白名单、8MB/20s/≤200 章/单章 ≤200KB；Gutenberg 用 Gutendex/文本头取元数据并切章，SE 取目录 XHTML 链接；原文**不落库/不落盘**，读章每次实时抓取；译文缓存在 `imported_book_translations`（`feature=reading` 配额，只补缺失段）；表由 `0018_imported_books` 创建，运行时不建表 |
+| `book_import.py` | **导入公版书（产品化）**：只允许 Project Gutenberg（`/ebooks/{id}`、`/cache/epub/{id}/pg{id}.txt`、`/files/{id}/...txt`）与 Standard Ebooks（`/ebooks/{author}/{slug}`，章节从目录页解析）；URL/重定向白名单、8MB/20s/≤200 章/单章 ≤200KB；Gutenberg 用 Gutendex/文本头取元数据并切章，SE 取目录 XHTML 链接；原文**不落库/不落盘**，读章每次实时抓取；译文缓存在 `imported_book_translations`（`feature=reading` 配额，1 单位 = 10 段、按累计段数扣，只补缺失段）；表由 `0018_imported_books` 创建，运行时不建表 |
 | `routes_book_import.py` | 导入公版书 HTTP 路由（**需登录，游客 401**）：`POST /api/books/import/preview`、`POST /api/books/import`（10 本/天/用户、幂等）、`GET /api/books/imported`、`GET /api/books/imported/{id}`、`GET /api/books/imported/{id}/chapters/{n}`、`POST /api/books/imported/{id}/chapters/{n}/translate`、`DELETE /api/books/imported/{id}`；读章源站失败 503，预览/导入解析失败 422 |
 | `local_epub.py` | **本地 EPUB 上传（specs/031 M1）**：标准库 `zipfile` + `xml.etree` 解析 EPUB3/EPUB2（metadata / spine / EPUB3 nav / EPUB2 NCX / 纯文本段落 / 封面）；拒绝 DRM（`META-INF/encryption.xml`、加密条目）、zip bomb、路径穿越、非英文、无正文；限制 30MB / 解压 200MB / 300 章 / 单章 1MB；章节与封面原子写入 `USER_DATA_DIR/<user_id>/imported-books/<book_id>/`，preview 暂存 5 分钟（`.upload-staging/`） |
 | `routes_book_upload.py` | 本地 EPUB HTTP 路由（**需登录，游客 401**）：`POST /api/books/upload/preview`（multipart，返回 `uploadToken` + 元数据 + 封面 DataURL）、`POST /api/books/upload`（`uploadToken` 或 `file` + `rightsAccepted=true`，同 SHA-256 幂等）、`GET /api/books/imported/{id}/cover`；配额 20 本/100MB/10 次/天，错误 400/413/422/429/503 |
@@ -1005,7 +1005,9 @@ backend/venv/bin/python -m pytest tests/test_wordlist.py tests/test_difficulty.p
 ### 翻译（`feature=reading`）
 
 - 按目标语言读已有译文；**已有且不是 `[未翻译]` 的段不重译**，只把缺失段按
-  10 段/批送模型；每批先扣 1 个 `AI_DAILY_QUOTA_READING_BATCHES`（默认 60/日），
+  token-aware 分批送模型（首批 ≤5 段、稳定期 ≤20 段且单批 ≤2,000 源 token）；
+  配额按**累计段数**折算（1 单位 = 10 段，20 段 = 2 单位，多批合计不会重复
+  向上取整）；本批新增单位为 0 时只走只读闸门、不重复扣，超限抛 429。
   成功调用按 `llm.usage_scope("reading", user_id, target_lang=…)` 写 `ai_usage`。
 - 模型选择走统一 `quota.degradation_chain(feature="reading")`；返回 JSON
   `{"translations":[{"idx":0,"text":"…"}]}`，按 idx 对齐，容忍围栏/乱序/部分返回；
@@ -1024,8 +1026,7 @@ backend/venv/bin/python -m pytest tests/test_wordlist.py tests/test_difficulty.p
 | `READING_MAX_PARAGRAPHS` | 200 | 单篇最多段数 |
 | `READING_MAX_PARAGRAPH_CHARS` | 4000 | 单段最多字符 |
 | `READING_MAX_TEXT_CHARS` | 2000000 | 粘贴正文整体上限 |
-| `READING_TRANSLATE_BATCH_SIZE` | 10 | 每批送模型段数 |
-| `AI_DAILY_QUOTA_READING_BATCHES` | 60 | 每用户每日翻译批次数 |
+| `AI_DAILY_QUOTA_READING_BATCHES` | 60 | 每用户每日翻译单位数（1 单位 = 10 段） |
 | `RATE_LIMIT_READING_PER_MINUTE` | 10 | 导入次数/分钟/用户（0=关闭） |
 
 ### 测试与手动实测
@@ -1496,7 +1497,7 @@ GROUP BY feature ORDER BY usd DESC;
 
 ### 三层配额（硬闸，不是提醒）
 
-1. 每用户每功能日限额：`AI_DAILY_QUOTA_TRANSLATE_BATCHES=60`（1 批 ≤20 块 ≈ 2 分钟视频，≈120 分钟/日）、`AI_DAILY_QUOTA_SUMMARY=10`、`AI_DAILY_QUOTA_DEFINE=200`、`AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES=60`、`AI_DAILY_QUOTA_COURSE_GENERATION=5`（课程生成，缓存命中不占）；0 = 关闭该功能。
+1. 每用户每功能日限额（P2-34 起按**内容单位**计，env 名保留 `*BATCHES` 兼容旧部署）：`AI_DAILY_QUOTA_TRANSLATE_BATCHES=60`（`translate`/`local_show` 1 单位 = 100 blocks ≈ 2 分钟视频，≈120 分钟/日；多批按累计内容量分配，不按批重复取整）、`AI_DAILY_QUOTA_READING_BATCHES=60`（1 单位 = 10 段文章 ≈ 600 段/日）、`AI_DAILY_QUOTA_SUMMARY=10`、`AI_DAILY_QUOTA_DEFINE=200`、`AI_DAILY_QUOTA_LOCAL_SHOW_BATCHES=60`、`AI_DAILY_QUOTA_COURSE_GENERATION=5`（课程生成，缓存命中不占）；0 = 关闭该功能。
 2. 每用户日预算：`AI_DAILY_BUDGET_USER_USD`（默认 1.0，0 = 不启用）。
 3. 全局日预算：`AI_DAILY_BUDGET_GLOBAL_USD`（默认 20.0，0 = 不启用）。
 

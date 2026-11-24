@@ -6,6 +6,7 @@
 import asyncio
 import json
 import os
+import time
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import AliasChoices, BaseModel, Field
@@ -16,6 +17,7 @@ import guest
 import languages
 import llm
 import local_shows
+import pipeline_timing
 import storage
 import teaching_analysis
 import translation_batching
@@ -292,6 +294,9 @@ async def process_subtitle(request: SubtitleRequest, http_request: Request):
         metadata, request.show_id, request.season, request.episode
     )
 
+    video_id = f"{request.show_id}-S{request.season:02d}E{request.episode:02d}"
+    started = time.perf_counter()
+
     # Process through the selected model（与 YouTube 共用 P2-33 token-aware 分批：
     # 首批 ≤10、稳定期 ≤40 blocks、单批 ≤2,000 源 token；每批按内容量扣配额，
     # P2-34 起 local_show 1 单位 = 100 blocks，至少 1 单位）。
@@ -316,6 +321,7 @@ async def process_subtitle(request: SubtitleRequest, http_request: Request):
 
     for batch_no, batch in enumerate(batches, start=1):
         print(f"Processing batch {batch_no}/{len(batches)}")
+        batch_started = time.perf_counter()
 
         max_retries = 5
         retry_delay = 15
@@ -356,8 +362,36 @@ async def process_subtitle(request: SubtitleRequest, http_request: Request):
             mock_result = await mock_llm_processing(batch, target_lang=lang)
             processed_blocks.extend(mock_result)
 
+        # P2-36：主生成路径也落 pipeline_timing（补译/自愈路径之外），
+        # 管理台才能看到 local_show 的真实 P50/P95；落盘失败不影响翻译。
+        pipeline_timing.record(
+            feature="local_show",
+            event="batch",
+            content_ref=video_id,
+            batch_index=batch_no - 1,
+            batch_count=len(batches),
+            duration_ms=round((time.perf_counter() - batch_started) * 1000, 2),
+            concurrency=1,
+            ok=success,
+            meta={"translated": len(batch_result) if success else 0},
+        )
+
+    pipeline_timing.record(
+        feature="local_show",
+        event="total",
+        content_ref=video_id,
+        batch_count=len(batches),
+        total_ms=round((time.perf_counter() - started) * 1000, 2),
+        concurrency=1,
+        ok=not has_mock_fallback,
+        meta={
+            "translated": len(processed_blocks),
+            "fallback": has_mock_fallback,
+        },
+    )
+
     result_payload = stamp_payload_language({
-        "videoId": f"{request.show_id}-S{request.season:02d}E{request.episode:02d}",
+        "videoId": video_id,
         "metadata": metadata,
         "transcript": processed_blocks,
         # 本地剧集的 summary 是固定集名标签，不是模型生成的总结；

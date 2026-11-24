@@ -216,10 +216,10 @@ pipeline_timing(
 
 | 项 | 状态 | 影响 |
 |---|---|---|
-| `routes_local_video.py` | 仍按批扣单位 | 本地视频长内容可能多扣 |
-| `book_import.py` | 仍按批扣 | 导入书配额未按段落折算 |
-| `local_show` 主生成路径 | timing 只覆盖补译/自愈 | 主生成暂无 P50/P95 |
-| `READING_TRANSLATE_BATCH_SIZE` | 配置/README 已失效 | 文档误导，待清理 |
+| `routes_local_video.py` | P2-36 已修：token-aware 分批 + 累计单位 | 120 blocks 只扣 2 单位 |
+| `book_import.py` | P2-36 已修：按累计段数扣（1 单位 = 10 段） | 20 段 = 2 单位，不再每批 1 |
+| `local_show` 主生成路径 | P2-36 已补 timing total/batch | 主生成也有 P50/P95 |
+| 失效的「每批段数」阅读配置 | P2-36 已删除（config/README/docs） | 不再有文档误导 |
 | Qwen 路由 | 未启用 | 质量盲评未完成双评委/人工金标 |
 | 分析内容级 gloss 字典 | 未做 | 6 档等级仍重算 |
 | UI 浏览器实测 | 待管理员会话过一眼 | 类型/构建/验收已过，未人工看 |
@@ -256,8 +256,8 @@ P1 已完成：
 
 下一步 P2：
 
-1. 修 `routes_local_video.py` / `book_import.py` 配额口径
-2. 清理失效 `READING_TRANSLATE_BATCH_SIZE`
+1. ✅ P2-36 已修 `routes_local_video.py` / `book_import.py` 配额口径
+2. ✅ P2-36 已清理失效的「每批段数」阅读配置
 3. 分析内容级 gloss 字典
 4. Qwen 第二评委 + 人工 pairwise 后再决定路由
 5. 用真实 7 天 timing 数据校准 10/40、5/20 与 2k 预算

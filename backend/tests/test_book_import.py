@@ -111,6 +111,22 @@ CHAPTER II
 *** END OF THE PROJECT GUTENBERG EBOOK THE TEST BOOK ***
 """
 
+# P2-36：20 段单章，用于验证 8+8+4 分 3 批、累计只扣 2 单位（1 单位 = 10 段）。
+GUTENBERG_LONG_TEXT = (
+    "The Project Gutenberg eBook of The Long Test Book\n\n"
+    "This eBook is for the use of anyone anywhere in the United States.\n\n"
+    "Title: The Long Test Book\n\n"
+    "Author: Author, Test\n\n"
+    "Language: English\n\n"
+    "*** START OF THE PROJECT GUTENBERG EBOOK THE LONG TEST BOOK ***\n\n"
+    "CHAPTER I\n\n"
+    + "\n\n".join(
+        f"Long paragraph number {index} about a quiet morning."
+        for index in range(1, 21)
+    )
+    + "\n\n*** END OF THE PROJECT GUTENBERG EBOOK THE LONG TEST BOOK ***\n"
+)
+
 GUTENBERG_OTHER_TEXT = GUTENBERG_TEXT.replace(
     "The Test Book", "Another Test Book"
 ).replace("CHAPTER I", "Chapter I").replace("CHAPTER II", "Chapter II")
@@ -1053,6 +1069,46 @@ def test_translate_chapter_writes_cache_and_uses_quota(
     ]
 
 
+def test_translation_batches_20_paragraphs_are_8_8_4_with_two_units():
+    """P2-36：20 段按 8+8+4 切 3 批；累计单位 = 2（不是每批 1 共 3）。"""
+    missing = [(index, "Short paragraph.") for index in range(20)]
+    batches = book_import._translation_batches(missing)
+    assert [len(batch) for batch in batches] == [8, 8, 4]
+    assert quota.units_per_batch(
+        "reading", [len(batch) for batch in batches]
+    ) == [1, 1, 0]
+
+
+def test_translate_20_paragraphs_charges_two_units(
+    book_client, web, llm_stub, monkeypatch
+):
+    """端到端：20 段一章 → 3 次模型调用、只扣 2 单位；0 单位批只过闸门。"""
+    web.pages[GUTENBERG_TEXT_URL] = GUTENBERG_LONG_TEXT
+    book_id = import_url(book_client)["bookId"]
+
+    gate_calls = []
+    original_gate = book_import.quota.ensure_quota_available
+
+    def _spy_gate(*args, **kwargs):
+        gate_calls.append((args, kwargs))
+        return original_gate(*args, **kwargs)
+
+    monkeypatch.setattr(book_import.quota, "ensure_quota_available", _spy_gate)
+
+    response = book_client.post(
+        f"/api/books/imported/{book_id}/chapters/1/translate", json={}
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["total"] == 20
+    assert payload["translated"] == 20
+    assert payload["batches"] == 3
+    assert len(llm_stub.calls) == 3, "20 段应按 8+8+4 切 3 批"
+    assert quota_used(config.AUTH_DB_PATH, book_client.user_id) == 2
+    # 第 3 批落在前两批已买下的第 2 个单位里：不扣减，但必须过只读闸门。
+    assert len(gate_calls) == 1
+
+
 def test_translate_cache_hit_does_not_call_model_or_quota(
     book_client, web, llm_stub
 ):
@@ -1212,3 +1268,16 @@ def test_public_books_series_still_works(make_client):
         response = client.get("/api/books")
     assert response.status_code == 200
     assert response.json()["series"]
+
+
+def test_p2_36_reading_batch_size_config_removed():
+    """P2-36：失效的「每批段数」配置已删除，代码/README/docs 不再引用。"""
+    assert not hasattr(config, "READING_TRANSLATE_BATCH_SIZE")
+    for path in (
+        REPO_ROOT / "backend" / "config.py",
+        REPO_ROOT / "backend" / "README.md",
+        REPO_ROOT / "docs/reports/translation-p1-implementation-2026-11-24.md",
+    ):
+        assert "READING_TRANSLATE_BATCH_SIZE" not in path.read_text(
+            encoding="utf-8"
+        ), f"{path} 仍引用已删除的 READING_TRANSLATE_BATCH_SIZE"
