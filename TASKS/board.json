@@ -1488,8 +1488,8 @@
     {
       "id": "P2-36",
       "file": "TASKS/P2-36-quota-config-cleanup.md",
-      "status": "claimed",
-      "owner": "quota-cleanup-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/routes_local_video.py",
         "backend/book_import.py",
