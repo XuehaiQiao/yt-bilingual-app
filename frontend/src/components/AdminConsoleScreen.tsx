@@ -41,6 +41,7 @@ import {
   DollarSign,
   Gauge,
   HardDrive,
+  Inbox,
   LayoutDashboard,
   ListChecks,
   Loader2,
@@ -142,6 +143,7 @@ import {
 } from '../lib/billing';
 import { DELETE_CONFIRM_WORD, lifecycleErrorKey } from '../lib/accountLifecycle';
 import { LanguageMenu } from './LanguageMenu';
+import { AdminFeedbackPanel } from './AdminFeedbackPanel';
 import { AdminQuotasPanel } from './AdminQuotasPanel';
 
 const PAGE_SIZE = 20;
@@ -169,6 +171,7 @@ const SUCCESS_BUTTON =
 type AdminTab =
   | 'overview'
   | 'users'
+  | 'feedback'
   | 'billing'
   | 'quotas'
   | 'invites'
@@ -184,6 +187,7 @@ const TABS: ReadonlyArray<{
 }> = [
   { id: 'overview', labelKey: 'admin.tab.overview', icon: <LayoutDashboard className="w-3.5 h-3.5" /> },
   { id: 'users', labelKey: 'admin.tab.users', icon: <Users className="w-3.5 h-3.5" /> },
+  { id: 'feedback', labelKey: 'admin.tab.feedback', icon: <Inbox className="w-3.5 h-3.5" /> },
   { id: 'billing', labelKey: 'admin.tab.billing', icon: <Wallet className="w-3.5 h-3.5" /> },
   { id: 'quotas', labelKey: 'admin.tab.quotas', icon: <Gauge className="w-3.5 h-3.5" /> },
   { id: 'invites', labelKey: 'admin.tab.invites', icon: <Ticket className="w-3.5 h-3.5" /> },
@@ -2526,6 +2530,8 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
   const [billingNonce, setBillingNonce] = useState(0);
   // Quota tab owns its data; the console refresh button bumps this nonce.
   const [quotasNonce, setQuotasNonce] = useState(0);
+  // Feedback tab owns its data; the console refresh button bumps this nonce.
+  const [feedbackNonce, setFeedbackNonce] = useState(0);
   // Pipeline timing card owns its data; the console refresh button bumps this.
   const [timingNonce, setTimingNonce] = useState(0);
 
@@ -2738,6 +2744,7 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
     else if (tab === 'users') void loadUsers(offset, search);
     else if (tab === 'billing') setBillingNonce((current) => current + 1);
     else if (tab === 'quotas') setQuotasNonce((current) => current + 1);
+    else if (tab === 'feedback') setFeedbackNonce((current) => current + 1);
     else if (tab === 'invites') void loadInvites(inviteOffset, inviteStatus);
     else if (tab === 'deletions') void loadDeletions(deletionOffset, deletionFilter);
     else if (tab === 'audit') void loadAudit(auditOffset);
@@ -2757,7 +2764,9 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
         ? false
         : tab === 'quotas'
           ? false
-          : tab === 'invites'
+          : tab === 'feedback'
+            ? false
+            : tab === 'invites'
           ? invitesLoading
           : tab === 'deletions'
             ? deletionLoading
@@ -3275,6 +3284,11 @@ export function AdminConsoleScreen({ onClose, parentLabel, onDenied }: AdminCons
         {/* ── Daily quotas (specs/047) ─────────────────────────────────── */}
         {tab === 'quotas' && (
           <AdminQuotasPanel refreshNonce={quotasNonce} onAuthError={deny} />
+        )}
+
+        {/* ── Feedback inbox (specs/048 / P2-42) ───────────────────────── */}
+        {tab === 'feedback' && (
+          <AdminFeedbackPanel refreshNonce={feedbackNonce} onAuthError={deny} />
         )}
 
         {/* ── Invite codes (M1 G1) ─────────────────────────────────────── */}

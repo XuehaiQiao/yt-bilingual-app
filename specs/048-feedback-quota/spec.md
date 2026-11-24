@@ -1,6 +1,6 @@
 # 048 — 用户额度透明 + 反馈/纠错（v1.1 P0）
 
-> 状态：**后端（P2-39）已实现** ｜ 2026-11-25 ｜ base `7ddccf2`，证据 `HEAD 5c99559`
+> 状态：**后端（P2-39）与管理台（P2-42）已实现** ｜ 2026-11-25 ｜ 后端 base `7ddccf2`，证据 `HEAD 5c99559`；管理台 base `507247e`（未提交，证据见 §8）
 > 背景：额度一直是「看不见的闸」——用户只会在 429 时知道超限（047 只解决管理台可看可调）；
 > 出了问题也没有产品内出口，只能靠外部渠道描述（还常常缺 requestId/页面）。
 > 048 补上两条**面向用户**的只读/写入出口：`GET /api/quota`（今日额度透明）与
@@ -168,4 +168,35 @@ created_at_ms INTEGER / resolved_at_ms INTEGER NULL / admin_note TEXT NULL`；
   `user_override`（本卡契约），而已合并的 `QuotaPanel.tsx` 只在
   `item.source === 'override'` 时显示「单独配置」徽章；不改后端枚举（会与
   047/管理端口径冲突），前端加一行兼容或改枚举即可；
-- 管理台 UI 由前端卡（P2-40 之后）接入，本卡只交付 API 与载荷契约。
+- 管理台 UI 已由 P2-42 接入（见 §8）；本卡（P2-39）只交付 API 与载荷契约。
+
+## 8. 管理台前端（P2-42）
+
+- 入口：`AdminConsoleScreen.tsx` 新增 `feedback` tab（图标 `Inbox`），沿用既有
+  `Tabs` / 权限门禁 / 顶部刷新（`refreshNonce` ↔ `feedbackNonce`）与
+  `activeLoading`；面板单独渲染，未登录/非管理员仍由 `AdminConsoleScreen` 的
+  `deny()` 统一处理。
+- 组件：`frontend/src/components/AdminFeedbackPanel.tsx`（新建）——单卡片：
+  - 筛选 `open` / `resolved` / `all`，每次切换都重新请求（`limit=50`，与后端
+    `DEFAULT_LIST_LIMIT` 同口径）；接口**没有 offset**，超出部分在卡片底部提示
+    「仅最近 50 条」，不伪造翻页；
+  - 列表列：状态 / 分类 / 内容（两行截断，标题可看全文）/ 用户或游客 /
+    requestId / 来源页 / 提交时间 / 处理；
+  - 展开行内编辑：状态只能选 `open` / `resolved`（`in_progress` / `closed` 行
+    不预选，只改备注不会改状态），`adminNote` 去空白后保存，留空 = `null` 清空；
+    保存走 `PATCH /api/admin/feedback/{id}`，成功后重新拉取列表（行随筛选移动）；
+  - 三态齐全：skeleton 首载 / 错误 `ErrorPanel`（可重试，失败不渲染空态）/
+    `EmptyState`（按筛选切换标题 +「查看全部反馈」）；保存错误按 400/404/503
+    映射为本地文案并保留草稿。
+- **来源页列的现实**：0033 没有 `page` 列（§7），列表统一显示「未记录」并在表下
+  写明原因；`AdminFeedbackRow.page` 为可选字段，将来 API 补上即可自动显示。
+- API 客户端：`lib/admin.ts` 增加 `AdminFeedbackRow/Page/Status` 与
+  `fetchAdminFeedback({status,limit})`、`updateAdminFeedback(id,{status?,adminNote?})`。
+- i18n：`admin.tab.feedback` + `admin.feedback.*`（56 条）中越双语；
+  `npm run check:i18n` 通过。
+- 验收：`scripts/admin-feedback-acceptance.mjs`（mock GET/PATCH、管理员登录态、
+  筛选、处理成功/失败、空态、1440/375 布局、vi-VN 无中文），6 项 72 断言 PASS；
+  截图 `/tmp/admin-feedback-shots/`（1440-list/detail/empty/load-error/save-error/vi、
+  375-list）。`admin-quotas-acceptance.mjs` 73 断言零回归。
+- 已知边界：`Total > items` 时只展示最近一页；`in_progress/closed` 行需先改选
+  再保存（见上），本期没有批量处理与按分类/用户筛选。

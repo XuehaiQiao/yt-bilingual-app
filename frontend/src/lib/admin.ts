@@ -735,3 +735,90 @@ export function updateAdminUserQuotas(
     },
   );
 }
+
+// ── Feedback inbox (specs/048-feedback-quota / P2-39, admin UI P2-42) ──────
+//
+// `GET /api/admin/feedback` returns `{items, total, limit, status}` — `total` is
+// the filtered count, `limit` 1–200 (default 50) and there is **no offset**, so
+// the console can only show the most recent page. `PATCH` returns the updated
+// row itself (not wrapped) and accepts `{status?, adminNote?}` with at least one
+// field; `adminNote: null` clears the stored note.
+//
+// The backend whitelists four statuses (`open` / `in_progress` / `resolved` /
+// `closed`); the console filter exposes open / resolved / all and the per-row
+// editor only the two binary states, but the row type keeps the full union so
+// an unknown status degrades to its raw label instead of being mislabelled.
+//
+// 0033 has no `page` column (the submission page only goes to the server log),
+// so `page` is optional here: the list renders the value when a future API adds
+// it and shows "未记录" otherwise — never a fabricated page.
+
+export type AdminFeedbackStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+
+/** Filter values the console offers (`all` = no status filter). */
+export type AdminFeedbackStatusFilter = 'open' | 'resolved' | 'all';
+
+export interface AdminFeedbackRow {
+  /** Integer table primary key (PATCH path segment). */
+  id: number;
+  /** NULL for guest submissions — there is no account to link back to. */
+  userId: string | null;
+  /** Client-generated correlation id; also echoed in the request log. */
+  requestId: string | null;
+  category: string;
+  message: string;
+  /** User-provided follow-up channel (admin-only); null when not given. */
+  contact: string | null;
+  status: AdminFeedbackStatus | string;
+  /** Epoch milliseconds. */
+  createdAt: number;
+  /** Epoch milliseconds; set when the row first entered a terminal status. */
+  resolvedAt: number | null;
+  adminNote: string | null;
+  /** Not stored by 0033; rendered when a future payload provides it. */
+  page?: string | null;
+}
+
+export interface AdminFeedbackPage {
+  items: AdminFeedbackRow[];
+  /** Filtered total, not just this page's length. */
+  total: number;
+  limit: number;
+  status: AdminFeedbackStatusFilter | null;
+}
+
+export interface AdminFeedbackUpdateInput {
+  status?: AdminFeedbackStatus;
+  /** `null` clears the note; omitting the field keeps it unchanged. */
+  adminNote?: string | null;
+}
+
+export function fetchAdminFeedback(
+  options: { status?: AdminFeedbackStatusFilter; limit?: number } = {},
+): Promise<AdminFeedbackPage> {
+  const params = new URLSearchParams();
+  if (options.status) params.set('status', options.status);
+  if (options.limit != null) params.set('limit', String(options.limit));
+  const query = params.toString();
+  return requestJson<AdminFeedbackPage>(
+    `/api/admin/feedback${query ? `?${query}` : ''}`,
+  );
+}
+
+/** `PATCH /api/admin/feedback/{id}` — status and/or admin note; audited. */
+export function updateAdminFeedback(
+  feedbackId: number,
+  input: AdminFeedbackUpdateInput,
+): Promise<AdminFeedbackRow> {
+  return requestJson<AdminFeedbackRow>(
+    `/api/admin/feedback/${encodeURIComponent(String(feedbackId))}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.adminNote !== undefined ? { adminNote: input.adminNote } : {}),
+      }),
+    },
+  );
+}
