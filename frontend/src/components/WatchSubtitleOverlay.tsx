@@ -78,7 +78,7 @@ const ZH_FLUID_SIZE = 'clamp(0.9375rem, 1.7cqi, 1.625rem)';
 
 /** Same position contract as the top bar: 2.5s of stillness (App.tsx timer). */
 const RAISED_BOTTOM = '15%';
-const DOCKED_BOTTOM = '4%';
+const DOCKED_BOTTOM = '0.5%';
 
 type HighlightKind = 'word' | 'point';
 
@@ -209,7 +209,7 @@ const WatchSubtitleOverlayInner: React.FC<WatchSubtitleOverlayProps> = ({
             {/* Scrim, not a band: the gradient is transparent at the top and
                 only dark enough behind the type, so the picture runs through it
                 (specs/045 §4.2). Safe edges keep the text off the iframe sides. */}
-            <div className="bg-gradient-to-t from-app/80 via-app/45 to-transparent px-4 pb-4 pt-6 sm:px-12 sm:pt-10 xl:pt-16">
+            <div className="bg-gradient-to-t from-app/80 via-app/45 to-transparent px-4 pb-2 pt-6 sm:px-12 sm:pt-10 xl:pt-16">
                 <div className="mx-auto w-full max-w-[min(68ch,86%)] text-center">
                     <p
                         data-testid="watch-subtitle-en"

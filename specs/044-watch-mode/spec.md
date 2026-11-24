@@ -32,7 +32,7 @@
   - **回退**：`text-section`（17px）/ `text-body-zh`（15px）token 保留在元素上；不支持 `cqi` 的引擎会丢弃无效的 inline 声明，回退到 token 固定字号，不出现无字号
 - 行高沿用 `leading-snug`，居中、`text-balance`；字号不写裸 px
 - 随播放推进更新；无当前句时隐藏
-- **避让原生控制条（P2-17）**：App 在观影模式跟踪指针活跃（`pointermove` / `pointerdown` / `touchstart` / `keydown`）。活跃时字幕抬高到画面下缘约 **15%**（约 14–16%），避开 YouTube 原生控制条；**静止 2.5s** 后落到视频底缘（约 **4%**，此时原生控制条也已自动隐藏）。`bottom` 过渡 200ms；`prefers-reduced-motion` 下直切（过渡时长为 0）
+- **避让原生控制条（P2-17）**：App 在观影模式跟踪指针活跃（`pointermove` / `pointerdown` / `touchstart` / `keydown`）。活跃时字幕抬高到画面下缘约 **15%**（约 14–16%），避开 YouTube 原生控制条；**静止 4s** 后落到视频底缘（约 **0.5%**，与原生控制条约 4s 消失对齐）。`bottom` 过渡 200ms；`prefers-reduced-motion` 下直切（过渡时长为 0）
 - **句内高亮（P2-17）**：英文句内把当前句词条标亮——词汇橙底（`bg-amber-400/20 text-amber-100`），习语/文化点蓝底（`bg-sky-400/20 text-sky-100`）；按文本匹配包 `<span>`，**不用 `dangerouslySetInnerHTML`**；范围不重叠（语言点优先），保留完整原句文本（含标点/空格）；切句更新；字幕关闭时不渲染。中文行暂不高亮
 - `pointer-events` 分层：字幕窗不拦截播放器点击
 - 375 与 1440 都在媒体区内换行，不横向裁切、不溢出画面
@@ -81,7 +81,7 @@
 - P2-16 收藏：一键加/取消；POST 体为 vocabulary draft（id/videoId/start/en_text/zh_text/context_en/source_kind=video/source_ref/source_title）；App 顶栏计数加 1/减 1；失败星标回滚且行内说明；游客不写接口
 - P2-16 移动（375）：视频 16:9 置顶（8px 边距，不再整页垂直居中）；抽屉默认展开、占剩余高度、可点击手柄收起/展开、不覆盖视频/原生控制条、375 无横向溢出；CC 三态与退出仍可用；旧右上浮窗不存在
 - 词条行（P2-17）：词汇与语言点均一行「词/短语左，释义右」，右列 `text-right` 可换行；语言点解释不再下一行；375 词 16px / 释义 14px，1440 约 19.5/16px，1920 22/18px，三档明显递增
-- 字幕避让（P2-17）：指针活跃时字幕抬高（bottom ~15%，不遮原生控制条），静止 2.5s 后落到底缘（bottom ~4%）；移动指针恢复抬高；过渡 200ms，reduced-motion 直切
+- 字幕避让（P2-17）：指针活跃时字幕抬高（bottom ~15%，不遮原生控制条），静止 4s 后落到底缘（bottom ~0.5%）；移动指针恢复抬高；过渡 200ms，reduced-motion 直切
 - 字幕高亮（P2-17）：英文句内标亮词橙底、语言点/文化点蓝底；点优先、范围不重叠；文本完整；切句更新；关闭字幕不渲染；中文行不高亮
 - 网页全屏（P2-10 / P2-17 修订）：进入观影调用全屏 API、退出观影调用 exit；**ESC/浏览器真实退出本容器全屏 → 自动退出观影**（布局恢复、偏好转 off）；初始/未全屏、路由切走不误触发；API 不存在或被拒时不报错、布局正常
 - 播放器控件只有观影/退出观影按钮，无旧全屏按钮（`video-fullscreen-toggle` 不存在）
@@ -103,7 +103,7 @@
 | 学习视图接线（观看 shell、教学面板/摘要/字幕工具栏不渲染、当前句取 `activeTranscriptIndex`，向词条窗传 `blockId`/`enText`/`videoId`/`blockStart`/`sourceTitle`/favorites 回调） | `frontend/src/App.tsx` |
 | P2-16 词条栏/抽屉/收藏（360 rail、本句数、当前句置顶+2px 标记、历史渐隐、hover/focus ☆、失败/游客行内回滚、紧凑空态；<1280 视频置顶 + 底部抽屉默认展开/可收起/手柄/安全区） | `frontend/src/components/WatchGlossPanel.tsx`、`frontend/src/App.tsx`、`frontend/src/components/WatchTopBar.tsx` |
 | P2-16 App 收藏接线（`favorites`/`onAddFavorite`/`onRemoveFavorite`；删除路径 `report:false` 静默回滚；顶栏计数同源） | `frontend/src/App.tsx` |
-| P2-17 App 接线（观影模式跟踪指针活跃 → `watchSubtitleRaised`，2.5s 静止落底；`pageFullscreenRef` 区分「真实退出本容器全屏」与初始/路由/失败；向字幕窗传 `glosses`/`languagePoints`/`raised`/`dock`） | `frontend/src/App.tsx` |
+| P2-17 App 接线（观影模式跟踪指针活跃 → `watchSubtitleRaised`，4s 静止落底；`pageFullscreenRef` 区分「真实退出本容器全屏」与初始/路由/失败；向字幕窗传 `glosses`/`languagePoints`/`raised`/`dock`） | `frontend/src/App.tsx` |
 | P2-15 沉浸壳层（AppShell `hideTopbar` 不渲染顶栏；LearningHeader 不渲染；浮层顶栏 `WatchTopBar`：返回/标题+来源/chip/CC/退出，2.5s 淡出，指针/触摸/键盘唤醒） | `frontend/src/components/AppShell.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
 | P2-15 舞台（`watch-stage` 尺寸容器 + 16:9 画面水平/垂直居中 + 环境光/模糊层填充黑边） | `frontend/src/App.tsx` |
 | P2-15 字幕三态（`watchSubtitleMode` 持久化与循环；双语/仅英文/关闭；关闭不挂载覆盖层；渐变 scrim） | `frontend/src/lib/layout.ts`、`frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |

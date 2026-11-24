@@ -87,7 +87,7 @@
 //      words or a rejected write.
 //  18. P2-17 subtitle dock: pointer / touch / key activity raises the English
 //      line above the native control strip (~15% bottom); 2.5s of stillness
-//      docks it at the lower video edge (~4% bottom) through a 200ms bottom
+//      docks it at the lower video edge (~0.5% bottom) through a 200ms bottom
 //      transition (instant under reduced motion); pointer movement restores
 //      the raised position.
 //  19. P2-17 gloss rows: vocabulary and language points share one row — label
@@ -791,7 +791,7 @@ async function waitForOverlay(page, fragment, timeout = 10000) {
 
 // ── P2-17 helpers ─────────────────────────────────────────────────────────
 // The subtitle has two positions: raised (clear of the native control strip)
-// while the learner is active, docked (bottom ~4%) after 2.5s of stillness.
+// while the learner is active, docked (bottom ~0.5%) after 2.5s of stillness.
 // Distances are reported both against the overlay's own media box and against
 // `video-area`, because the native control strip belongs to the latter.
 const subtitlePositionState = (page) => page.evaluate(() => {
@@ -1403,7 +1403,7 @@ try {
     assert.equal(fluidFallback.supportsCqi, true, 'this browser cannot check the cqi declaration');
 
     // — P2-17: while the learner is active the subtitle clears the native
-    //   control strip; 2.5s of stillness docks it at the lower edge (the
+    //   control strip; 4s of stillness docks it at the lower edge (the
     //   native controls have faded out too); pointer movement raises it
     //   again. The bottom change is a 200ms transition. —
     await page.keyboard.press('Shift');
@@ -1437,7 +1437,7 @@ try {
     await sleep(260);
     const dockedOverlay = await subtitlePositionState(page);
     assert.ok(
-        dockedOverlay.bottomGap <= dockedOverlay.parentHeight * 0.06 + 1,
+        dockedOverlay.bottomGap <= dockedOverlay.parentHeight * 0.03 + 1,
         `docked overlay sits ${dockedOverlay.bottomGap}px above the lower edge (>6% of ${dockedOverlay.parentHeight})`,
     );
     assert.ok(
@@ -1484,16 +1484,18 @@ try {
         'the subtitle scrim intrudes into the bottom strip where the native controls live',
     );
 
-    // — gloss rail content matches the analysis for cue 0 —
-    assert.equal(await page.locator('[data-testid="watch-gloss-word"]').count(), 1);
+    // — gloss rail content matches the analysis; history may already contain
+    //   more than one cue after the 4s dock wait (P2-18), so do not pin count=1.
+    const glossWordTexts = await page.locator('[data-testid="watch-gloss-word"]').allInnerTexts();
+    assert.ok(glossWordTexts.length >= 1, 'gloss rail lost the current word');
     // P2-17: the title grew slightly along with the row type.
     const glossTitleFont = await page.evaluate(() => parseFloat(
         getComputedStyle(document.querySelector('[data-testid="watch-gloss-rail"] h2')).fontSize,
     ));
     assert.ok(glossTitleFont >= 18, `the gloss rail title is only ${glossTitleFont}px`);
-    assert.ok((await page.locator('[data-testid="watch-gloss-word"]').first().innerText()).includes('habits'));
-    assert.ok((await page.locator('[data-testid="watch-gloss-word"]').first().innerText()).includes('习惯'));
-    assert.equal(await page.locator('[data-testid="watch-gloss-language-point"]').count(), 0, 'cue 0 has no language point');
+    assert.ok(glossWordTexts.some((text) => text.includes('habits')), 'gloss rail lost habits');
+    assert.ok(glossWordTexts.some((text) => text.includes('习惯')), 'gloss rail lost the habits gloss');
+    assert.ok((await page.locator('[data-testid="watch-gloss-language-point"]').count()) <= 1, 'unexpected language-point history');
     // P2-12: the sentence context, the current-sentence dot, the words /
     // language-point headings and any empty placeholder are gone.
     assert.equal(await page.locator('[data-testid="watch-gloss-entry-context"]').count(), 0, 'sentence context line must be gone');

@@ -32,7 +32,7 @@ import { useReadingHighlights } from './lib/useReadingHighlights';
 import { loadLanguagePointsEnabled } from './lib/highlightLayers';
 import { TeachingNotesPanel, type TeachingNotesStatus } from './components/TeachingNotesPanel';
 import { WatchSubtitleOverlay } from './components/WatchSubtitleOverlay';
-import { WATCH_TOPBAR_IDLE_MS, WatchTopBar } from './components/WatchTopBar';
+import { WATCH_SUBTITLE_DOCK_MS, WatchTopBar } from './components/WatchTopBar';
 import { WatchGlossPanel } from './components/WatchGlossPanel';
 import { addFavorite, fetchFavorites, removeFavorite, type FavoriteDraft, type FavoriteItem } from './lib/favorites';
 import { ChannelVideoList } from './components/ChannelVideoList';
@@ -566,7 +566,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     watchSubtitleIdleTimerRef.current = window.setTimeout(() => {
       watchSubtitleIdleTimerRef.current = null;
       setWatchSubtitleRaised(false);
-    }, WATCH_TOPBAR_IDLE_MS);
+    }, WATCH_SUBTITLE_DOCK_MS);
   }, [clearWatchSubtitleIdleTimer]);
 
   useEffect(() => {

@@ -26,6 +26,8 @@ import {
 
 /** "2.5s 静止淡出" (specs/045 §4.1): one constant, also asserted by the script. */
 export const WATCH_TOPBAR_IDLE_MS = 2500;
+/** Native YouTube controls fade at ~4s; the subtitle waits for that, not the chrome's 2.5s. */
+export const WATCH_SUBTITLE_DOCK_MS = 4000;
 
 const MODE_LABEL_KEYS: Record<WatchSubtitleMode, TranslationKey> = {
   bilingual: 'watchMode.subtitleMode.bilingual',
