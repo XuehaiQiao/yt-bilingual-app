@@ -1505,6 +1505,24 @@
       "deps": [
         "P2-34"
       ]
+    },
+    {
+      "id": "P2-37",
+      "file": "TASKS/P2-37-content-gloss.md",
+      "status": "claimed",
+      "owner": "gloss-dict-impl",
+      "write_scope": [
+        "backend/teaching_analysis.py",
+        "backend/config.py",
+        "backend/tests/test_teaching_analysis.py",
+        "backend/tests/test_reading.py",
+        "specs/028-teaching-analysis/spec.md",
+        "docs/reports/translation-tuning-2026-11-24.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-35"
+      ]
     }
   ]
 }
