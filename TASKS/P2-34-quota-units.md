@@ -19,6 +19,9 @@
 - `backend/config.py`（默认/文案如需要）
 - `backend/tests/test_quota_admin.py`、`test_reading.py`、`test_translation_hardening.py`、相关
 - `frontend/src/components/AdminQuotasPanel.tsx`（单位说明）
+- `frontend/src/i18n/zh-CN.json`、`vi-VN.json`
+- `backend/routes_content.py`（local_show token-aware 分批）
+- `backend/tests/test_library_content.py`、`test_local_shows_video_map.py`
 - `specs/034-balance-billing/spec.md`、`specs/001`、`specs/019`
 
 ## acceptance
