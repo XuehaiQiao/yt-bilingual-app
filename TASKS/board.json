@@ -1207,7 +1207,7 @@
     {
       "id": "P2-24",
       "file": "TASKS/P2-24-apkg-frontend.md",
-      "status": "claimed",
+      "status": "merged",
       "owner": "lead",
       "write_scope": [
         "frontend/src/components/WordlistImportDialog.tsx",
