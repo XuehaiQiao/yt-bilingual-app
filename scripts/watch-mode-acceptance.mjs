@@ -1634,6 +1634,14 @@ try {
     await waitForOverlay(page, 'A short walk', 12000);
     await waitForRailText(page, '早餐', 12000);
     await pausePlayback(page);
+    // P2-20: paused playback must never dock the subtitle, even after the 4s
+    // window that would dock it while playing.
+    await sleep(4500);
+    assert.equal(
+        await page.getAttribute('[data-testid="watch-subtitle-overlay"]', 'data-raised'),
+        'true',
+        'a paused video kept the subtitle raised',
+    );
     assert.equal(await page.locator('[data-testid="watch-gloss-language-point"]').count(), 1);
     const point = page.locator('[data-testid="watch-gloss-language-point"]').first();
     const pointText = await point.innerText();

@@ -458,6 +458,12 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // preference stored separately from the watch flag. `off` stops mounting the
   // overlay entirely so the video's native captions are usable untouched.
   const [watchSubtitleMode, setWatchSubtitleMode] = useState<WatchSubtitleMode>(loadWatchSubtitleMode);
+  // P2-20: the subtitle only docks while the picture is actually playing. The
+  // YouTube state comes from VideoPlayer; local SRT episodes use the existing
+  // `isSubtitlePlaying` timer. `watchPlaybackActiveRef` lets the pointer-activity
+  // handler see the latest value without re-registering its listeners.
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const watchPlaybackActiveRef = useRef(false);
   // ≥1280: the gloss window is a fixed right column; below that it is a
   // floating layer over the media (D1-1). JS gating keeps exactly one of the
   // two presentations mounted, so the panel's DOM (and test ids) stay unique.
@@ -563,6 +569,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   const raiseWatchSubtitle = useCallback(() => {
     setWatchSubtitleRaised(true);
     clearWatchSubtitleIdleTimer();
+    // Paused video: keep the sentence off the bottom edge indefinitely. The
+    // playback effect below starts the 4s timer again when playback resumes.
+    if (!watchPlaybackActiveRef.current) return;
     watchSubtitleIdleTimerRef.current = window.setTimeout(() => {
       watchSubtitleIdleTimerRef.current = null;
       setWatchSubtitleRaised(false);
@@ -1008,6 +1017,28 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   useEffect(() => {
     if (!useSubtitleTimer) pauseSubtitleTimer();
   }, [useSubtitleTimer, pauseSubtitleTimer]);
+
+  // P2-20: paused = never dock. `isLocalSubtitle` owns the timer clock; a real
+  // VIDEO own the player callback. Keep the ref synchronous with the state so
+  // pointer activity while paused cannot schedule a dock either.
+  useEffect(() => {
+    const active = isLocalSubtitle ? isSubtitlePlaying : isVideoPlaying;
+    watchPlaybackActiveRef.current = active;
+    if (!watchModeActive) return;
+    if (!active) {
+      clearWatchSubtitleIdleTimer();
+      setWatchSubtitleRaised(true);
+      return;
+    }
+    raiseWatchSubtitle();
+  }, [
+    watchModeActive,
+    isLocalSubtitle,
+    isSubtitlePlaying,
+    isVideoPlaying,
+    raiseWatchSubtitle,
+    clearWatchSubtitleIdleTimer,
+  ]);
 
   // Each newly mapped local episode starts with a clean embed-error state.
   useEffect(() => {
@@ -3405,7 +3436,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           playToggleCommand={playToggleCommand}
           onPlayerReady={hasLocalVideo ? () => setLocalVideoError(false) : undefined}
           onPlayerError={hasLocalVideo ? () => setLocalVideoError(true) : undefined}
-          onPlaybackStateChange={(playing) => { if (!playing) pauseWatch(); }}
+          onPlaybackStateChange={(playing) => {
+            setIsVideoPlaying(playing);
+            if (!playing) pauseWatch();
+          }}
           watchMode={watchModeActive}
           onToggleWatchMode={watchModeAvailable ? toggleWatchMode : undefined}
         >

@@ -78,7 +78,7 @@ const ZH_FLUID_SIZE = 'clamp(0.9375rem, 1.7cqi, 1.625rem)';
 
 /** Same position contract as the top bar: 2.5s of stillness (App.tsx timer). */
 const RAISED_BOTTOM = '15%';
-const DOCKED_BOTTOM = '0.5%';
+const DOCKED_BOTTOM = '0%';
 
 type HighlightKind = 'word' | 'point';
 

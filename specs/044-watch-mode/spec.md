@@ -1,6 +1,6 @@
 # 044 — 观影模式（最小版）
 
-> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源；2026-11-24 P2-15 沉浸壳层 + 字幕三态 + 保留原生控制条；P2-16 360 rail + 收藏 + 移动抽屉；P2-17 字幕落底/高亮/词条行统一/字号/Esc 退观影；P2-19 词条行「我已掌握」开关 + 收藏互斥）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
+> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源；2026-11-24 P2-15 沉浸壳层 + 字幕三态 + 保留原生控制条；P2-16 360 rail + 收藏 + 移动抽屉；P2-17 字幕落底/高亮/词条行统一/字号/Esc 退观影；P2-19 词条行「我已掌握」开关 + 收藏互斥；P2-20 暂停不落底 + 落底 0%）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
 > 成本：0（只读已有分析缓存，不新增 AI 调用）。
 
 ## 1. 开关与布局
@@ -32,7 +32,7 @@
   - **回退**：`text-section`（17px）/ `text-body-zh`（15px）token 保留在元素上；不支持 `cqi` 的引擎会丢弃无效的 inline 声明，回退到 token 固定字号，不出现无字号
 - 行高沿用 `leading-snug`，居中、`text-balance`；字号不写裸 px
 - 随播放推进更新；无当前句时隐藏
-- **避让原生控制条（P2-17）**：App 在观影模式跟踪指针活跃（`pointermove` / `pointerdown` / `touchstart` / `keydown`）。活跃时字幕抬高到画面下缘约 **15%**（约 14–16%），避开 YouTube 原生控制条；**静止 4s** 后落到视频底缘（约 **0.5%**，与原生控制条约 4s 消失对齐）。`bottom` 过渡 200ms；`prefers-reduced-motion` 下直切（过渡时长为 0）
+- **避让原生控制条（P2-17）**：App 在观影模式跟踪指针活跃（`pointermove` / `pointerdown` / `touchstart` / `keydown`）。活跃时字幕抬高到画面下缘约 **15%**（约 14–16%），避开 YouTube 原生控制条；**静止 4s** 后落到视频底缘（约 **0%**，与原生控制条约 4s 消失对齐）。`bottom` 过渡 200ms；`prefers-reduced-motion` 下直切（过渡时长为 0）
 - **句内高亮（P2-17）**：英文句内把当前句词条标亮——词汇橙底（`bg-amber-400/20 text-amber-100`），习语/文化点蓝底（`bg-sky-400/20 text-sky-100`）；按文本匹配包 `<span>`，**不用 `dangerouslySetInnerHTML`**；范围不重叠（语言点优先），保留完整原句文本（含标点/空格）；切句更新；字幕关闭时不渲染。中文行暂不高亮
 - `pointer-events` 分层：字幕窗不拦截播放器点击
 - 375 与 1440 都在媒体区内换行，不横向裁切、不溢出画面
@@ -83,7 +83,7 @@
 - P2-19 已掌握：每行词/语言点都有 ✓ 与 ☆ 并列在 `ml-auto` 操作组（rail hover/focus、抽屉常显）；登录 PATCH 体含 lemma/mastered/targetLang/definition，成功后 `GET /api/review/words?mastered=1` 回读，pressed/绿色实心与历史行同步；刷新后仍为已掌握；取消 PATCH mastered=false 且不恢复收藏；游客只写 `yt_bilingual_guest_mastered_words`（刷新后仍在），全程不调 review API；PATCH 500 → 行内错误 + 视觉回滚；互斥 DELETE 失败 → PATCH false 回滚 + 行内说明；375 两个操作均 ≥44px、标记后词 16/释义 14px 仍同行不溢出
 - P2-16 移动（375）：视频 16:9 置顶（8px 边距，不再整页垂直居中）；抽屉默认展开、占剩余高度、可点击手柄收起/展开、不覆盖视频/原生控制条、375 无横向溢出；CC 三态与退出仍可用；旧右上浮窗不存在
 - 词条行（P2-17）：词汇与语言点均一行「词/短语左，释义右」，右列 `text-right` 可换行；语言点解释不再下一行；375 词 16px / 释义 14px，1440 约 19.5/16px，1920 22/18px，三档明显递增
-- 字幕避让（P2-17）：指针活跃时字幕抬高（bottom ~15%，不遮原生控制条），静止 4s 后落到底缘（bottom ~0.5%）；移动指针恢复抬高；过渡 200ms，reduced-motion 直切
+- 字幕避让（P2-17）：指针活跃时字幕抬高（bottom ~15%，不遮原生控制条），静止 4s 后落到底缘（bottom 0%）；移动指针恢复抬高；过渡 200ms，reduced-motion 直切
 - 字幕高亮（P2-17）：英文句内标亮词橙底、语言点/文化点蓝底；点优先、范围不重叠；文本完整；切句更新；关闭字幕不渲染；中文行不高亮
 - 网页全屏（P2-10 / P2-17 修订）：进入观影调用全屏 API、退出观影调用 exit；**ESC/浏览器真实退出本容器全屏 → 自动退出观影**（布局恢复、偏好转 off）；初始/未全屏、路由切走不误触发；API 不存在或被拒时不报错、布局正常
 - 播放器控件只有观影/退出观影按钮，无旧全屏按钮（`video-fullscreen-toggle` 不存在）
@@ -113,7 +113,7 @@
 | P2-15 字幕三态（`watchSubtitleMode` 持久化与循环；双语/仅英文/关闭；关闭不挂载覆盖层；渐变 scrim） | `frontend/src/lib/layout.ts`、`frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
 | P2-15 原生控制条保留（不做自定义播放/进度条；退出按钮从播放器浮层移到顶栏） | `frontend/src/components/VideoPlayer.tsx` |
 | 文案（zh-CN / vi-VN） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
-| 验收脚本（开关持久化、布局/教学面板、播放/跳转跟句、滚动词条（标题/连续列表/无 context/heading/kind/empty/border、空句跳过、长词长释义 375 换行）、字幕英主中辅字号与流体缩放（375/1440 普通/观影/1920/全屏 stub）、历史顺延/去重/滚动、reduced-motion、网页全屏 stub 断言/失败降级、1440+1920+375 截图；P2-15 追加：双 chrome 不渲染/浮层顶栏五项与 2.5s 淡出/舞台居中与环境光/字幕三态与持久化与 C 键/CC 菜单键盘/原生控制条保留/切换不重载；P2-17 追加：抬高/落底两档与 200ms 过渡 + 指针恢复、词条行同线/右对齐/字号三档、橙/蓝高亮与完整文本、ESC→watch off、初始/路由/拒绝全屏不误触发；P2-19 追加：收藏星级操作组/aria/绿色实心、PATCH+回读+刷新持久、取消不恢复收藏、互斥 DELETE 失败回滚、PATCH 500 回滚、游客本地表写入/刷新/撤销零 API、375 44px 与不挤爆截图） | `scripts/watch-mode-acceptance.mjs` |
+| 验收脚本（开关持久化、布局/教学面板、播放/跳转跟句、滚动词条（标题/连续列表/无 context/heading/kind/empty/border、空句跳过、长词长释义 375 换行）、字幕英主中辅字号与流体缩放（375/1440 普通/观影/1920/全屏 stub）、历史顺延/去重/滚动、reduced-motion、网页全屏 stub 断言/失败降级、1440+1920+375 截图；P2-15 追加：双 chrome 不渲染/浮层顶栏五项与 2.5s 淡出/舞台居中与环境光/字幕三态与持久化与 C 键/CC 菜单键盘/原生控制条保留/切换不重载；P2-17 追加：抬高/落底两档与 200ms 过渡 + 指针恢复、词条行同线/右对齐/字号三档、橙/蓝高亮与完整文本、ESC→watch off、初始/路由/拒绝全屏不误触发；P2-19 追加：收藏星级操作组/aria/绿色实心、PATCH+回读+刷新持久、取消不恢复收藏、互斥 DELETE 失败回滚、PATCH 500 回滚、游客本地表写入/刷新/撤销零 API、375 44px 与不挤爆截图；P2-20 追加：落底 0%、暂停 4.5s 仍 raised） | `scripts/watch-mode-acceptance.mjs` |
 
 词条数据只读既有教学分析（specs/028）：`wordGlossesByBlock`（来源见 §3「数据来源（P2-13）」）+ `languagePointsByBlock`；
 无分析态的重试按钮复用 `GET /api/teaching-analysis/{content_ref}`，本规格不新增任何 AI 调用。
