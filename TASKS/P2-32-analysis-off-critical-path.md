@@ -18,6 +18,8 @@ P0：正文/字幕先出，教学分析异步补，不阻塞首屏。
 - `backend/tests/test_video_pipeline_timing.py`（如事件序）
 - `frontend/src/components/ReaderScreen.tsx`
 - `scripts/reader-analysis-acceptance.mjs` 或相关阅读验收（如存在）
+- `backend/tests/test_teaching_analysis.py`
+- `scripts/p0-04-analysis-acceptance.mjs`
 - `specs/001-streaming-pipeline/spec.md`
 - `specs/019-reading/spec.md`
 

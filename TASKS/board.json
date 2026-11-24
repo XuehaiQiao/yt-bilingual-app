@@ -1382,7 +1382,9 @@
         "backend/tests/test_video_pipeline_timing.py",
         "frontend/src/components/ReaderScreen.tsx",
         "specs/001-streaming-pipeline/spec.md",
-        "specs/019-reading/spec.md"
+        "specs/019-reading/spec.md",
+        "backend/tests/test_teaching_analysis.py",
+        "scripts/p0-04-analysis-acceptance.mjs"
       ],
       "shared_writes": [],
       "deps": [
