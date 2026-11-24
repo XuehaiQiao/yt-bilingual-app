@@ -33,3 +33,11 @@
 ## acceptance
 - 找回密码/额度/反馈/引导/AI 标识可用；旧用户登录/数据不变
 - 桌面 1440 验收；tsc/build/i18n；旧脚本零回归；preflight
+
+- `frontend/src/components/ReaderScreen.tsx`
+- `frontend/src/components/LibraryArticleReader.tsx`
+- `frontend/src/components/TeachingNotesPanel.tsx`
+- `frontend/src/components/QuizScreen.tsx`
+- `frontend/src/components/ExamScreen.tsx`
+- `frontend/src/lib/auth.tsx`
+- `specs/023-user-profile/spec.md`

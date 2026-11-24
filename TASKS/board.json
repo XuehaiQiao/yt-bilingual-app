@@ -1586,7 +1586,14 @@
         "frontend/src/lib/feedback.ts",
         "frontend/src/i18n/zh-CN.json",
         "frontend/src/i18n/vi-VN.json",
-        "scripts/v11-p0-acceptance.mjs"
+        "scripts/v11-p0-acceptance.mjs",
+        "frontend/src/components/ReaderScreen.tsx",
+        "frontend/src/components/LibraryArticleReader.tsx",
+        "frontend/src/components/TeachingNotesPanel.tsx",
+        "frontend/src/components/QuizScreen.tsx",
+        "frontend/src/components/ExamScreen.tsx",
+        "frontend/src/lib/auth.tsx",
+        "specs/023-user-profile/spec.md"
       ],
       "shared_writes": [
         "frontend/src/i18n/"
