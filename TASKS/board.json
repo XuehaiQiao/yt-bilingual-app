@@ -1126,7 +1126,7 @@
     {
       "id": "P2-20",
       "file": "TASKS/P2-20-subtitle-bottom-paused.md",
-      "status": "claimed",
+      "status": "pending",
       "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
