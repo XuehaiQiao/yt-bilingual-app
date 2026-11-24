@@ -28,7 +28,7 @@ interface WatchSubtitleOverlayProps {
     /**
      * P2-17: position against the video's lower edge. Pointer / touch / key
      * activity sets `raised` so the sentence clears the native YouTube control
-     * strip; 2.5s of stillness sets `dock` so the sentence settles on the
+     * strip; 4s of playback stillness sets `dock` so the sentence settles on the
      * lower edge together with the now-hidden native controls. `raised` wins
      * when a caller passes both.
      */
@@ -48,12 +48,19 @@ interface WatchSubtitleOverlayProps {
  *
  * P2-17 (dock / raise): the native YouTube controls and this sentence share the
  * lower edge, so only one of them may live there at a time. While the learner
- * is moving the pointer / touching / pressing keys the sentence sits at
- * `bottom-[15%]`, above the native control strip. After 2.5s of stillness
- * (App.tsx owns the timer, the same 2.5s contract as the floating top bar) it
- * drops to `bottom-[4%]` — the native controls have faded out by then too. The
- * 200ms bottom transition is removed under `prefers-reduced-motion`, where the
- * two positions switch instantly (specs/044 §2).
+ * is moving the pointer inside the viewport / touching / pressing keys the
+ * sentence sits at `bottom-10%` (P2-21: lowered from 15% so it clears the
+ * native control bar by a small, consistent gap), above the native control
+ * strip. After 4s of stillness (App.tsx owns the timer) it drops to
+ * `bottom-0%` — the native controls have faded out by then too. The 200ms
+ * `transition-[bottom]` class is dropped under `prefers-reduced-motion`, where
+ * the two positions switch instantly (specs/044 §2).
+ *
+ * P2-21 (width): the sentence box is `min(96ch, 92%)` of the player's inner
+ * width, so 1440 / 1920 use ≥85% of the picture width instead of the old
+ * `min(68ch, 86%)` narrow column. The scrim keeps a small safe edge; the 92%
+ * cap is what actually binds, so English / Chinese still wrap without clipping
+ * at 375.
  *
  * P2-17 (highlight): matching words from `glosses` are wrapped in an amber
  * `<span>`, matching idioms / culture points from `languagePoints` in a blue
@@ -76,8 +83,8 @@ interface WatchSubtitleOverlayProps {
 const EN_FLUID_SIZE = 'clamp(1.0625rem, 2cqi, 2rem)';
 const ZH_FLUID_SIZE = 'clamp(0.9375rem, 1.7cqi, 1.625rem)';
 
-/** Same position contract as the top bar: 2.5s of stillness (App.tsx timer). */
-const RAISED_BOTTOM = '15%';
+/** 4s of playback stillness docks the sentence (App.tsx timer, P2-17/P2-20). */
+const RAISED_BOTTOM = '10%';
 const DOCKED_BOTTOM = '0%';
 
 type HighlightKind = 'word' | 'point';
@@ -209,8 +216,15 @@ const WatchSubtitleOverlayInner: React.FC<WatchSubtitleOverlayProps> = ({
             {/* Scrim, not a band: the gradient is transparent at the top and
                 only dark enough behind the type, so the picture runs through it
                 (specs/045 §4.2). Safe edges keep the text off the iframe sides. */}
-            <div className="bg-gradient-to-t from-app/80 via-app/45 to-transparent px-4 pb-2 pt-6 sm:px-12 sm:pt-10 xl:pt-16">
-                <div className="mx-auto w-full max-w-[min(68ch,86%)] text-center">
+            <div className="bg-gradient-to-t from-app/80 via-app/45 to-transparent px-4 pb-2 pt-6 sm:px-6 sm:pt-10 xl:pt-16">
+                {/* P2-21: the `ch` cap must scale with the sentence type, not
+                    with the root 16px — so the box carries the English fluid
+                    size and the 92% cap stays the binding limit at 1440/1920
+                    (96ch only takes over on very large picture widths). */}
+                <div
+                    className="mx-auto w-full max-w-[min(96ch,92%)] text-center"
+                    style={{ fontSize: EN_FLUID_SIZE }}
+                >
                     <p
                         data-testid="watch-subtitle-en"
                         style={{ fontSize: EN_FLUID_SIZE }}

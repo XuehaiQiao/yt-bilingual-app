@@ -550,12 +550,14 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
     return () => document.removeEventListener('fullscreenchange', sync);
   }, []);
 
-  // P2-17: the watch subtitle dodges the native YouTube control strip. Any
-  // pointer / touch / key activity lifts it clear of the controls (bottom
-  // ~15%); 2.5s of stillness — the same contract as the floating top bar — lets
-  // both settle to the lower edge of the video (bottom ~4%). The mode itself
-  // only enables the listeners; outside the watch shell the overlay is not
-  // mounted and the timer stays cleared.
+  // P2-17: the watch subtitle dodges the native YouTube control strip. Pointer
+  // activity inside the viewport / touch / key activity lifts it clear of the
+  // controls (bottom ~10%, P2-21); 4s of stillness lets both settle to the
+  // lower edge of the video (bottom 0%). P2-21 also drops pointer
+  // move/down events whose coordinates fall outside the viewport: they cannot
+  // reveal controls the learner can see, so they must not raise the sentence.
+  // The mode itself only enables the listeners; outside the watch shell the
+  // overlay is not mounted and the timer stays cleared.
   const [watchSubtitleRaised, setWatchSubtitleRaised] = useState(true);
   const watchSubtitleIdleTimerRef = useRef<number | null>(null);
 
@@ -587,14 +589,28 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       return;
     }
     raiseWatchSubtitle();
+    // P2-21: pointer activity only counts inside the viewport. Coordinates in
+    // `0..innerWidth / 0..innerHeight` are the same box the native controls
+    // live in; anything beyond it (edge drags, another display, synthetic
+    // events) is ignored instead of lifting the subtitle. Touch / keyboard
+    // activity carries no meaningful coordinate and stays accepted.
+    const isInViewport = (event: PointerEvent) => {
+      const { clientX, clientY } = event;
+      return Number.isFinite(clientX) && Number.isFinite(clientY)
+        && clientX >= 0 && clientY >= 0
+        && clientX <= window.innerWidth && clientY <= window.innerHeight;
+    };
+    const onPointerActivity = (event: PointerEvent) => {
+      if (isInViewport(event)) raiseWatchSubtitle();
+    };
     const onActivity = () => raiseWatchSubtitle();
-    window.addEventListener('pointermove', onActivity, { passive: true });
-    window.addEventListener('pointerdown', onActivity, { passive: true });
+    window.addEventListener('pointermove', onPointerActivity, { passive: true });
+    window.addEventListener('pointerdown', onPointerActivity, { passive: true });
     window.addEventListener('touchstart', onActivity, { passive: true });
     window.addEventListener('keydown', onActivity);
     return () => {
-      window.removeEventListener('pointermove', onActivity);
-      window.removeEventListener('pointerdown', onActivity);
+      window.removeEventListener('pointermove', onPointerActivity);
+      window.removeEventListener('pointerdown', onPointerActivity);
       window.removeEventListener('touchstart', onActivity);
       window.removeEventListener('keydown', onActivity);
       clearWatchSubtitleIdleTimer();

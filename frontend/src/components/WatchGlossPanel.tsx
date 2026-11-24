@@ -77,6 +77,15 @@ interface WatchGlossEntry {
 /** P2-09: keep the recent sentences, oldest fall off the bottom. */
 const MAX_HISTORY_ENTRIES = 30;
 
+/**
+ * P2-21: each row sits on a low-contrast rounded card. It is a background, not
+ * a divider: the row keeps no border and the entry keeps none either, so the
+ * P2-12 "no card chrome / no dividers" contract only gains one flat surface
+ * layer. The current sentence is a touch stronger than history.
+ */
+const ROW_CARD_CLASS = 'rounded-control bg-surface-2/35';
+const ROW_CARD_CURRENT_CLASS = 'rounded-control bg-surface-2/50';
+
 /** P2-16: current sentence full strength; history fades with age (specs/045 §4.3). */
 const HISTORY_OPACITY = 0.55;
 const HISTORY_OPACITY_STEP = 0.035;
@@ -150,9 +159,10 @@ interface GlossEntryBodyProps {
 
 /**
  * P2-16: the favorite star is revealed by hover/focus on the rail and stays
- * visible on the touch drawer (there is no hover on a phone). A failed write
- * has already been rolled back by App, so the star returns to its empty state
- * and the row explains what happened inline.
+ * visible on the touch drawer (there is no hover on a phone). P2-21 keeps it
+ * discoverable on the rail at rest (opacity .6 → 1 on hover/focus). A failed
+ * write has already been rolled back by App, so the star returns to its empty
+ * state and the row explains what happened inline.
  */
 const FavoriteButton: React.FC<{
     word: string;
@@ -181,7 +191,10 @@ const FavoriteButton: React.FC<{
             className={cn(
                 'flex shrink-0 items-center justify-center rounded-control transition-opacity motion-reduce:transition-none',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60',
-                alwaysShow ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                // P2-21: the rail keeps the action quietly discoverable
+                // (opacity ≥ .6) instead of hiding it completely; hover/focus
+                // brings it to full strength.
+                alwaysShow ? 'opacity-100' : 'opacity-60 group-hover:opacity-100 group-focus-within:opacity-100',
                 alwaysShow ? 'h-11 w-11' : 'h-8 w-8',
                 state.favorited ? 'text-warning-fg' : 'text-fg-muted hover:text-fg-primary',
             )}
@@ -232,7 +245,7 @@ const MasteredButton: React.FC<{
             className={cn(
                 'flex shrink-0 items-center justify-center rounded-full transition-opacity motion-reduce:transition-none',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/50',
-                alwaysShow ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                alwaysShow ? 'opacity-100' : 'opacity-60 group-hover:opacity-100 group-focus-within:opacity-100',
                 alwaysShow ? 'h-11 w-11' : 'h-8 w-8',
                 busy && 'opacity-60',
             )}
@@ -273,6 +286,11 @@ const RowFeedback: React.FC<{ entry?: RowFeedbackEntry }> = ({ entry }) => (
  * right-aligned. Before this the language point stacked its meaning under the
  * phrase while vocabulary put it beside the word; both now share this row, the
  * 2px current-sentence marker, the favorite star and the inline feedback.
+ *
+ * P2-21: the row carries a low-contrast rounded card background (current
+ * sentence slightly stronger) and the list leaves 4px between rows; the card
+ * is a surface, never a border/divider, and the actions never shrink the
+ * label/definition columns (`shrink-0` action group + `min-w-0` text).
  */
 const GlossRow: React.FC<{
     testId: 'watch-gloss-word' | 'watch-gloss-language-point';
@@ -307,7 +325,11 @@ const GlossRow: React.FC<{
         <div
             data-testid={testId}
             data-word={kind === 'word' ? label : undefined}
-            className="group relative flex min-w-0 items-start gap-2 py-0.5 pl-3 pr-0.5"
+            data-current={isCurrent ? 'true' : 'false'}
+            className={cn(
+                'group relative flex min-w-0 items-start gap-2 py-1.5 pl-3 pr-2.5',
+                isCurrent ? ROW_CARD_CURRENT_CLASS : ROW_CARD_CLASS,
+            )}
         >
             {isCurrent && (
                 <span
@@ -363,7 +385,8 @@ const GlossRow: React.FC<{
  * placeholders. P2-16 adds the current-sentence marker (a 2px bar, never a
  * border) and the hover/focus favorite star; history dims with age. P2-17
  * unifies vocabulary and language-point rows into one left-label / right-
- * definition line (specs/045 §4.3).
+ * definition line (specs/045 §4.3). P2-21 adds the row card background and the
+ * 4px row gap; the entry itself still has no border/background/divider.
  */
 const GlossEntryBody: React.FC<GlossEntryBodyProps> = ({
     entry,
@@ -409,7 +432,7 @@ const GlossEntryBody: React.FC<GlossEntryBodyProps> = ({
             className={cn('min-w-0', isCurrent && 'relative')}
         >
             {entry.words.length > 0 && (
-                <ul data-testid="watch-gloss-words" className="space-y-0.5">
+                <ul data-testid="watch-gloss-words" className="space-y-1">
                     {entry.words.map(([word, gloss]) => (
                         <GlossRow
                             key={word}
@@ -433,7 +456,7 @@ const GlossEntryBody: React.FC<GlossEntryBodyProps> = ({
             {points.length > 0 && (
                 <ul
                     data-testid="watch-gloss-language-points"
-                    className={entry.words.length > 0 ? 'mt-1.5 space-y-1' : 'space-y-1'}
+                    className={entry.words.length > 0 ? 'mt-1 space-y-1' : 'space-y-1'}
                 >
                     {points.map((point, index) => (
                         <GlossRow
@@ -652,7 +675,8 @@ const GlossHeader: React.FC<{ wordCount: number }> = ({ wordCount }) => {
  * it the target design: a 360px rail with 「滚动词条」+ 本句词数, a 2px marker on
  * the current sentence, fading history and a one-click favorite star, while
  * the <1280 presentation becomes a bottom drawer under a top-pinned 16:9
- * picture instead of a floating layer over the media.
+ * picture instead of a floating layer over the media. P2-21 adds the row card
+ * background and keeps the rail actions at opacity .6 (1 on hover/focus).
  *
  * It never issues an AI call of its own — the only action it exposes is the
  * existing cached analysis entry (`onRequestAnalysis`).

@@ -1,6 +1,6 @@
 # 045 — 观影模式体验设计
 
-> 状态：**已实现（P2-15 沉浸壳层 + 舞台居中/环境光 + 字幕三态；P2-16 词条栏重做 + 收藏 + 移动底部抽屉，2026-11-24；P2-17 字幕避让原生控制条/句内高亮/词条行与字号统一/Esc 退观影，2026-11-24；P2-19 词条行「我已掌握」开关 + 收藏互斥，2026-11-24；保留 YouTube 原生控制条）** ｜ 依据：用户“观影模式效果不好，要更细节、体验更好的版本”
+> 状态：**已实现（P2-15 沉浸壳层 + 舞台居中/环境光 + 字幕三态；P2-16 词条栏重做 + 收藏 + 移动底部抽屉，2026-11-24；P2-17 字幕避让原生控制条/句内高亮/词条行与字号统一/Esc 退观影，2026-11-24；P2-19 词条行「我已掌握」开关 + 收藏互斥，2026-11-24；P2-21 词条行卡片 + 视口内指针 + 抬高 10% + 字幕 92% 宽，2026-11-24；保留 YouTube 原生控制条）** ｜ 依据：用户“观影模式效果不好，要更细节、体验更好的版本”
 > 目标稿：`docs/design/watch-mode/mock-{desktop,mobile,empty,subtitle}.png`。实现落点见 §12。
 
 ## 1. 问题诊断（当前实现）
@@ -63,9 +63,9 @@
 ### 4.2 字幕
 
 - 英文主内容：`clamp(1.0625rem, 2cqi, 2rem)`（17→32px），600；中文辅助：`clamp(0.9375rem, 1.7cqi, 1.625rem)`（15→26px），400（P2-11 终稿，随媒体区宽度流体缩放）。
-- 最大 2 行，行宽 `min(68ch, 86%)`；`text-wrap: balance`。
-- 背景：下缘渐变 scrim（透明→`rgba(0,0,0,.72)`），**不是**通栏实色带；左右留 48px 安全边。
-- **避让原生控制条（P2-17）**：指针/触摸/键盘活跃时字幕抬高到画面下缘约 **15%**（避开原生控制条）；静止 **4s** 后落到视频底缘约 **0%**（与原生控制条约 4s 消失对齐）；`bottom` 过渡 **200ms**，`prefers-reduced-motion` 直切。App 跟踪活跃状态，字幕窗只接收 `raised`/`dock`。
+- 长句换行不裁切，行宽 `min(96ch, 92%)`（P2-21 由 `min(68ch, 86%)` 放宽；`ch` 跟随英文流体字号，92% 在 1440/1920 实际生效，字幕盒占视频宽 ≥85%）；`text-wrap: balance`。
+- 背景：下缘渐变 scrim（透明→`rgba(0,0,0,.72)`），**不是**通栏实色带；左右保留安全边（P2-21：`sm:px-6` + 92% 上限，1440 实测字幕盒距画面边缘约 80px）。
+- **避让原生控制条（P2-17；P2-21 修订）**：**视口内**指针/触摸/键盘活跃时字幕抬高到播放器盒的 **10%**（实测画面下缘 gap 约 12%，原生控制栏上方约 10–14px；屏幕外 `pointermove`/`pointerdown` 不唤醒）；播放中静止 **4s** 后落到视频底缘 **0%**（与原生控制条约 4s 消失对齐），暂停时不落底（P2-20）；`bottom` 过渡 **200ms**，`prefers-reduced-motion` 直切。App 跟踪活跃状态，字幕窗只接收 `raised`/`dock`。
 - **句内高亮（P2-17）**：英文句内词汇橙底（`bg-amber-400/20 text-amber-100`）、习语/文化点蓝底（`bg-sky-400/20 text-sky-100`）；范围不重叠（点优先），保留完整文本，不使用 `dangerouslySetInnerHTML`；切句更新；字幕关闭时不渲染。中文行暂不高亮。
 - 字幕不可点击（避免误触 iframe）；未来可做“点词查词”再单独评估。
 
@@ -90,10 +90,10 @@
 
 - **360px 固定 rail**（≥1280）；标题「滚动词条」+ 当前句词数「本句 N」（小号、低对比、tabular）。
 - 当前句目标置顶，紧贴 rail 顶部三行内；历史向下顺延，旧条目 `opacity: .55`，越旧越淡（每句约 −.035，下限 .32；最多 30 句）。
-- 每条：词/短语（词 amber `warning-fg` / 语言点 sky）+ 释义（次级色）；**无**分组标题、kind 徽章、整句上文、边框、分割线。
+- 每条：词/短语（词 amber `warning-fg` / 语言点 sky）+ 释义（次级色）；**P2-21 每条行卡片**：低对比圆角背景 `bg-surface-2/35`（当前句 `bg-surface-2/50`，略强）、行间 4px；**无**分组标题、kind 徽章、整句上文、边框、分割线（行卡片是背景，不是分割线/边框）。
 - **统一单行（P2-17）**：词汇与语言点都是「左词/短语，右释义」一行；右列 `text-right`、`break-words` 可换行；语言点解释不再另起一行。标题略增至 `text-dialog`。
 - **字号流体（P2-17）**：词/短语 `clamp(1rem, 0.8vw + 0.5rem, 1.375rem)`（16→22px），释义 `clamp(0.875rem, 0.55vw + 0.5rem, 1.125rem)`（14→18px）；375/1440/1920 明显递增；`text-ui`/`text-caption` 保留为回退。
-- 操作只在 hover/focus 时出现：**☆ 收藏**（已收藏实心 amber）+ **✓ 我已掌握**（P2-19，圆形 Check；已掌握绿色实心、未空心）；触屏抽屉上两项都常显（各 44px 触摸目标），与星并列在同一 `ml-auto` 操作组。不新增假入口/设置。
+- 操作组：**☆ 收藏**（已收藏实心 amber）+ **✓ 我已掌握**（P2-19，圆形 Check；已掌握绿色实心、未空心）；**桌面默认 opacity .6（≥.6），hover/focus 升到 1**，不挤压词/释义两列；触屏抽屉上两项都常显（各 44px 触摸目标），与星并列在同一 `ml-auto` 操作组。不新增假入口/设置。
 - 当前句词行左侧 2px 竖线标记（词 amber / 语言点 sky），不使用“当前句”文字；历史不显示标记。
 - 空句不生成条目；当前句无词时保留历史，不显示“本句无生词”；header 本句数显示 0。
 - 无分析时：栏内只留一条紧凑说明 + 既有「生成词条」入口（复用 028 GET，不新增 AI），**不铺满空白**；加载中显示 2 行骨架。
@@ -166,10 +166,12 @@
 6. **性能**：首句字幕不等待分析；分析不产生新 AI 调用；切换句子无布局跳动。
 7. **字幕模式**：双语/仅英文/关闭三态可切换并持久化；关闭后播放器仍正常、词条栏仍可用；不出现双英文字幕被我们强行叠加。
 8. **指标**：首句可读时间、词条打开率、收藏率、10 分钟留存、退出率（上线后埋点）。
-9. **桌面词条栏（P2-16）**：360px；标题+本句数；当前句置顶且在顶部三行内（2px 标记、无“当前句”文字）；历史 opacity 渐隐；无 headings/badges/context/empty；收藏星标 hover/focus 出现、已收藏实心；可见按钮只有收藏（无未实现的 ✓/设置）；无分析态紧凑且有生成入口、不铺满。
+9. **桌面词条栏（P2-16）**：360px；标题+本句数；当前句置顶且在顶部三行内（2px 标记、无“当前句”文字）；历史 opacity 渐隐；无 headings/badges/context/empty；收藏星标默认 .6 / hover/focus 1、已收藏实心；可见按钮只有收藏（无未实现的 ✓/设置）；无分析态紧凑且有生成入口、不铺满。
 10. **移动抽屉（P2-16）**：视频 16:9 置顶（不再整页垂直居中）；抽屉默认展开、占剩余高度、可点击手柄收起/展开、不覆盖视频与原生控制条；375 无横向溢出；CC 三态/退出可用；旧右上浮窗不存在。
 11. **收藏（P2-16）**：一键加/取消；App 顶栏「单词本」计数同步；写入失败星标回滚且行内说明；游客不写接口。
-12. **字幕避让（P2-17）**：指针活跃时字幕在 bottom ~15%（不遮原生控制条）；静止 4s 后落到 0%；移动指针恢复；过渡 200ms、reduced-motion 直切。
+12. **字幕避让（P2-17 / P2-21）**：视口内指针活跃时字幕在 bottom 10%（实测画面下缘 gap ~12%，native 控制栏上方约 10–14px，不遮原生控制条）；屏幕外 pointermove/pointerdown 不唤醒；静止 4s 后落到 0%（暂停不落底）；移动指针恢复；过渡 200ms、reduced-motion 直切。
+12b. **字幕宽度（P2-21）**：1440/1920 字幕盒 ≥85% 视频宽（实测 85.2% / 87.3%），长句不裁切；375 换行正常。
+12c. **词条行卡片（P2-21）**：每行低对比圆角背景（当前句略强，alpha .5 vs .35），行间 4px，无边框/分割线；操作组默认 .6、hover/focus 1，抽屉常显且不挤压词/释义。
 13. **词条行/字号（P2-17）**：词汇与语言点均「左词/短语 + 右释义」同一行，右列 `text-right` 可换行；375 16/14px、1440 约 19.5/16px、1920 22/18px；标题略增。
 14. **字幕高亮（P2-17）**：标亮词橙底、语言点/文化点蓝底；点优先不重叠；文本完整；切句更新；关闭不渲染；无 HTML 注入。
 15. **Esc（P2-17）**：本容器全屏中按 Esc / 浏览器退出 → 自动退出观影（布局恢复、入口按钮回、偏好 off、不重复调 exitFullscreen）；初始/未全屏/路由切走/请求被拒不误触发；点「退出观影」仍正常。
@@ -228,12 +230,12 @@ YouTube Theater Mode、Netflix/Apple TV 播放器、Language Reactor、Lingopie�
 
 | 内容 | 位置 |
 |---|---|
-| 字幕避让原生控制条：App 在观影模式监听 `pointermove` / `pointerdown` / `touchstart` / `keydown`，活跃时字幕 `bottom ~15%`；静止 2.5s（与浮层顶栏同一常量 `WATCH_TOPBAR_IDLE_MS`）落到底缘 `bottom ~4%`；`bottom` 过渡 200ms，reduced-motion 下 0ms 直切 | `frontend/src/App.tsx`、`frontend/src/components/WatchSubtitleOverlay.tsx` |
+| 字幕避让原生控制条：App 在观影模式监听视口内 `pointermove` / `pointerdown`（P2-21 越界坐标忽略）/ `touchstart` / `keydown`，活跃时字幕 `bottom 10%`（P2-21 由 15% 下调）；播放中静止 4s 落到底缘 `bottom 0%`（P2-20：暂停不落底）；`bottom` 过渡 200ms，reduced-motion 下 0ms 直切 | `frontend/src/App.tsx`、`frontend/src/components/WatchSubtitleOverlay.tsx` |
 | 字幕窗接收 `dock` / `raised`（两档 bottom）与 `glosses` / `languagePoints`（句内高亮）；点优先、范围不重叠；文本切片渲染，无 `dangerouslySetInnerHTML`；橙 `bg-amber-400/20 text-amber-100`、蓝 `bg-sky-400/20 text-sky-100`；切句更新，关闭不渲染 | `frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/App.tsx` |
-| 词条行统一：词汇与语言点同一个 `GlossRow`（左词/短语 + 右释义 `text-right`/可换行 + 2px 标记 + ☆ 收藏 + 行内错误）；语言点释义不再另起一行；标题升 `text-dialog` | `frontend/src/components/WatchGlossPanel.tsx` |
+| 词条行统一：词汇与语言点同一个 `GlossRow`（左词/短语 + 右释义 `text-right`/可换行 + 2px 标记 + ☆ 收藏 + 行内错误）；语言点释义不再另起一行；标题升 `text-dialog`；P2-21 行卡片 `bg-surface-2/35`、当前句 `/50`、行间 4px、操作组默认 .6 | `frontend/src/components/WatchGlossPanel.tsx` |
 | 词条字号流体：词 `clamp(1rem, 0.8vw + 0.5rem, 1.375rem)`（16→22px）、释义 `clamp(0.875rem, 0.55vw + 0.5rem, 1.125rem)`（14→18px）；`text-ui`/`text-caption` 回退 | `frontend/src/components/WatchGlossPanel.tsx` |
 | Esc：`fullscreenchange` 里用 `pageFullscreenRef` 判断「本容器全屏 → 非全屏」并 `setWatchMode('off')`；初始同步、请求被拒、他人全屏、路由切走（主动清 ref 后释放）不触发；点「退出观影」仍走原路径 | `frontend/src/App.tsx` |
-| 验收：抬高/落底两档 + 暂停不落底 / 恢复 4s 等待 + 指针恢复 + 200ms 过渡（reduced-motion 0ms）、词条行同线/right/字号三档（375 16/14、1440 ~19.5/16、1920 22/18）、橙/蓝高亮与完整文本、ESC→watch off、初始/路由/拒绝全屏不误触发；P2-10/11/12/13/15/16 零回归；2× PASS | `scripts/watch-mode-acceptance.mjs` |
+| 验收：抬高/落底两档 + 暂停不落底 / 恢复 4s 等待 + 指针恢复 + 200ms 过渡（reduced-motion 0ms）、词条行同线/right/字号三档（375 16/14、1440 ~19.5/16、1920 22/18）、橙/蓝高亮与完整文本、ESC→watch off、初始/路由/拒绝全屏不误触发；P2-21：视口外 pointer 不唤醒/视口内 pointermove+pointerdown 唤醒、抬高 7–14% band（实测 12.1%）、落底 0、1440/1920 字幕盒 ≥85%（85.2%/87.3%）、行卡片 alpha/4px/当前句更强、操作组默认 .6、375 不挤压；P2-10/11/12/13/15/16 零回归；2× PASS | `scripts/watch-mode-acceptance.mjs` |
 
 ## 15. 落地记录（P2-19，2026-11-24）
 
@@ -247,3 +249,14 @@ YouTube Theater Mode、Netflix/Apple TV 播放器、Language Reactor、Lingopie�
 | 验收：rail 操作组/aria/绿色实心、登录 PATCH 体 + 回读 + 刷新持久、取消不恢复收藏、互斥 DELETE 失败回滚、PATCH 500 回滚、游客库视频本地表写入/刷新/撤销零 API、375 两操作 ≥44px 且 16/14px 仍同行不溢出；1440/375 截图 + P2-10/11/12/13/15/16/17/18 零回归 | `scripts/watch-mode-acceptance.mjs` |
 
 **已知边界**：游客普通 YouTube 视频仍无 AI 分析（词条栏先提示登录）；游客的已掌握只在本机（不跨设备/不上传）；发音仍未实现。
+
+## 16. 落地记录（P2-21，2026-11-24）
+
+| 内容 | 位置 |
+|---|---|
+| 词条行低对比圆角卡片：`bg-surface-2/35`，当前句 `bg-surface-2/50`；行/条目无边框无阴影、无分割线；行间 4px（含词列表与语言点列表之间）；操作组 32px 图标不挤压右对齐释义 | `frontend/src/components/WatchGlossPanel.tsx` |
+| 操作组默认 `opacity: .6`、hover/focus 1；抽屉常显 44px；收藏/已掌握状态与写路径不变（P2-16/P2-19） | `frontend/src/components/WatchGlossPanel.tsx` |
+| 指针过滤：仅 `pointermove`/`pointerdown` 的 `clientX/Y ∈ 0..innerWidth/0..innerHeight` 唤醒字幕，屏幕外/越界忽略；`touchstart`/`keydown` 保持；暂停仍不落底 | `frontend/src/App.tsx` |
+| 抬高态 `bottom: 10%`（实测画面下缘 gap 12.1%，原生控制栏上方约 10–14px）；落底 `0%`；过渡/reduced-motion 不变 | `frontend/src/components/WatchSubtitleOverlay.tsx` |
+| 字幕宽 `min(96ch,92%)`（容器字号 = 英文流体字号，`ch` 随字号缩放）；scrim `sm:px-6`；1440 实测 85.2%、1920 87.3%，375 正常换行不裁切 | `frontend/src/components/WatchSubtitleOverlay.tsx` |
+| 验收：视口外 pointer 保持落底、视口内 pointermove/pointerdown 抬高；词条卡 alpha 当前 .5 / 历史 .35、行间 4px、操作组 .6；抬高 7–14% band、落底 0；1440/1920 宽度 ≥85%；375/1440/1920 截图；2× PASS | `scripts/watch-mode-acceptance.mjs` |

@@ -86,10 +86,12 @@
 //      and a guest gets an inline login/analysis state instead of invented
 //      words or a rejected write.
 //  18. P2-17 subtitle dock: pointer / touch / key activity raises the English
-//      line above the native control strip (~15% bottom); 2.5s of stillness
-//      docks it at the lower video edge (~0.5% bottom) through a 200ms bottom
-//      transition (instant under reduced motion); pointer movement restores
-//      the raised position.
+//      line above the native control strip; 4s of playback stillness docks it
+//      at the lower video edge (0% bottom) through a 200ms bottom transition
+//      (instant under reduced motion); in-viewport pointer movement restores
+//      the raised position. P2-21: raised bottom is 10% (measured media gap
+//      ~7–14% of the picture height) and pointer events outside the viewport
+//      (clientX/Y beyond 0..innerWidth/Height) are ignored.
 //  19. P2-17 gloss rows: vocabulary and language points share one row — label
 //      left, right-aligned definition on the SAME line, wrapping — and the
 //      type is fluid (~16→22 / 14→18px) across 375 / 1440 / 1920 with a
@@ -109,6 +111,14 @@
 //      PATCH rolls the visual mark back inline. Guests write only
 //      `yt_bilingual_guest_mastered_words` (never the API). History rows and
 //      the page share one `useIgnoredWords` source; 375/1440 stay un-squeezed.
+//  22. P2-21 visual fixes: each word/point row sits on a low-contrast rounded
+//      card (current sentence slightly stronger) with 4px between rows and no
+//      border/divider (P2-12 semantics kept); the star + 已掌握 group is at
+//      opacity .6 at rest on the rail and 1 on hover/focus (drawer always on,
+//      44px) without squeezing the label/definition; the raised subtitle now
+//      sits at bottom 10% (~7–14% media gap) and only in-viewport pointer
+//      events wake it; the sentence box is min(96ch,92%) so 1440/1920 use ≥85%
+//      of the picture width without clipping (375 unchanged).
 //
 // Run (needs `npm run dev` on :5173; Playwright lives in scripts/node_modules):
 //   node scripts/watch-mode-acceptance.mjs
@@ -900,6 +910,47 @@ const subtitleType = (page) => page.evaluate(() => {
     };
 });
 
+/**
+ * P2-21: the sentence box is min(96ch, 92%) of the player's padded width, so
+ * 1440 / 1920 must use at least 85% of the picture width (375 keeps wrapping).
+ * Both lines are block children of the same box, so their measured widths
+ * should agree; `insideMediaX` proves the box never leaves the picture.
+ */
+const subtitleWidthState = (page) => page.evaluate(() => {
+    const media = document.querySelector('[data-testid="video-area"]');
+    const en = document.querySelector('[data-testid="watch-subtitle-en"]');
+    const zh = document.querySelector('[data-testid="watch-subtitle-zh"]');
+    if (!media || !en) return null;
+    const mediaRect = media.getBoundingClientRect();
+    const read = (element) => {
+        if (!element) return null;
+        const rect = element.getBoundingClientRect();
+        return { width: rect.width, left: rect.left, right: rect.right };
+    };
+    const enRect = read(en);
+    const zhRect = read(zh);
+    return {
+        mediaWidth: mediaRect.width,
+        enWidth: enRect.width,
+        zhWidth: zhRect ? zhRect.width : null,
+        enShare: enRect.width / mediaRect.width,
+        zhShare: zhRect ? zhRect.width / mediaRect.width : null,
+        insideMediaX: enRect.left >= mediaRect.left - 1 && enRect.right <= mediaRect.right + 1,
+    };
+});
+
+/** P2-21: dispatch pointer activity with explicit viewport coordinates. */
+const dispatchPointer = (page, type, clientX, clientY) => page.evaluate((payload) => {
+    window.dispatchEvent(new PointerEvent(payload.type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: payload.clientX,
+        clientY: payload.clientY,
+        pointerType: 'mouse',
+        isPrimary: true,
+    }));
+}, { type, clientX, clientY });
+
 const overlayText = (page) => page.evaluate(() => {
     const el = document.querySelector('[data-testid="watch-subtitle-overlay"]');
     return el ? el.innerText.replace(/\s+/g, ' ').trim() : null;
@@ -1096,45 +1147,101 @@ async function waitForCurrentEntry(page, blockId, timeout = 10000) {
 }
 
 /**
- * P2-12: the rolling list must stay chrome-free — no entry card border or
- * background, no divider between entries — and text must never overflow its
- * window (long words/glosses wrap instead of widening it).
+ * P2-12 / P2-21: the rolling list keeps its chrome-free semantics — entries have
+ * no border, background or divider — while each word / language-point row now
+ * sits on a low-contrast rounded card (current sentence slightly stronger) and
+ * rows are 4px apart. Text must never overflow its window (long words/glosses
+ * wrap instead of widening it).
  */
 async function assertGlossListChrome(page, rootTestId, label) {
     const result = await page.evaluate((rootSelector) => {
         const root = document.querySelector(rootSelector);
-        const nodes = [...document.querySelectorAll(
+        if (!root) return null;
+        const nodes = [...root.querySelectorAll(
             '[data-testid="watch-gloss-entry"], [data-testid="watch-gloss-word"], [data-testid="watch-gloss-language-point"]',
         )];
-        const rootRect = root ? root.getBoundingClientRect() : null;
+        const rootRect = root.getBoundingClientRect();
+        const alphaOf = (value) => {
+            const match = value.match(/rgba?\(([^)]+)\)/);
+            if (!match) return null;
+            const parts = match[1].split(',').map((part) => parseFloat(part.trim()));
+            return parts.length === 4 ? parts[3] : 1;
+        };
+        const lists = [...root.querySelectorAll(
+            '[data-testid="watch-gloss-words"], [data-testid="watch-gloss-language-points"]',
+        )];
+        // 4px applies both between rows inside one list and between the words
+        // list and the language-points list of the same sentence.
+        const entryListGaps = [...root.querySelectorAll('[data-testid="watch-gloss-entry"]')].flatMap((entry) => {
+            const entryLists = [...entry.querySelectorAll(':scope > ul')];
+            return entryLists.slice(1).map((list) => parseFloat(getComputedStyle(list).marginTop) || 0);
+        });
         return {
             count: nodes.length,
+            entryCount: root.querySelectorAll('[data-testid="watch-gloss-entry"]').length,
             overflowItems: nodes.filter((node) => node.scrollWidth > node.clientWidth + 1).length,
-            outsideItems: rootRect
-                ? nodes.filter((node) => node.getBoundingClientRect().right > rootRect.right + 1).length
-                : -1,
-            rootScrollWidth: root ? root.scrollWidth : null,
-            rootClientWidth: root ? root.clientWidth : null,
+            outsideItems: nodes.filter((node) => node.getBoundingClientRect().right > rootRect.right + 1).length,
+            rootScrollWidth: root.scrollWidth,
+            rootClientWidth: root.clientWidth,
+            rowGaps: [
+                ...lists.flatMap((list) => [...list.children].slice(1)
+                    .map((item) => parseFloat(getComputedStyle(item).marginTop) || 0)),
+                ...entryListGaps,
+            ],
             chrome: nodes.map((node) => {
                 const style = getComputedStyle(node);
+                const entry = node.closest('[data-testid="watch-gloss-entry"]');
+                const testId = node.getAttribute('data-testid');
+                const isRow = testId === 'watch-gloss-word' || testId === 'watch-gloss-language-point';
                 return {
-                    testId: node.getAttribute('data-testid'),
+                    testId,
+                    isRow,
+                    current: isRow && entry?.getAttribute('data-current') === 'true',
                     borders: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth]
                         .map((value) => parseFloat(value) || 0),
                     background: style.backgroundColor,
+                    backgroundAlpha: alphaOf(style.backgroundColor),
                     backgroundImage: style.backgroundImage,
                     boxShadow: style.boxShadow,
+                    borderRadius: parseFloat(style.borderTopLeftRadius) || 0,
                 };
             }),
         };
     }, `[data-testid="${rootTestId}"]`);
 
+    assert.ok(result, `${label}: gloss window is missing`);
     assert.ok(result.count > 0, `${label}: no gloss entries to inspect`);
     for (const node of result.chrome) {
         assert.deepEqual(node.borders, [0, 0, 0, 0], `${label}: ${node.testId} still draws a card border/divider`);
-        assert.equal(node.background, 'rgba(0, 0, 0, 0)', `${label}: ${node.testId} still draws a card background`);
         assert.equal(node.backgroundImage, 'none', `${label}: ${node.testId} still draws a background texture`);
         assert.equal(node.boxShadow, 'none', `${label}: ${node.testId} still draws a card shadow`);
+        if (node.isRow) {
+            // P2-21: the row card is a low-contrast surface, not a divider —
+            // a subtle alpha and the 8px control radius, never a border.
+            assert.ok(
+                node.backgroundAlpha !== null && node.backgroundAlpha >= 0.25 && node.backgroundAlpha <= 0.6,
+                `${label}: ${node.testId} row card alpha ${node.backgroundAlpha} is not low-contrast`,
+            );
+            assert.ok(node.borderRadius >= 7, `${label}: ${node.testId} row card is not rounded (${node.borderRadius}px)`);
+        } else {
+            assert.equal(node.background, 'rgba(0, 0, 0, 0)', `${label}: ${node.testId} still draws a card background`);
+            assert.equal(node.borderRadius, 0, `${label}: ${node.testId} entry gained a rounded card`);
+        }
+    }
+    // P2-21: the current sentence's row cards are slightly stronger than history.
+    const currentAlphas = result.chrome.filter((node) => node.isRow && node.current).map((node) => node.backgroundAlpha);
+    const historyAlphas = result.chrome.filter((node) => node.isRow && !node.current).map((node) => node.backgroundAlpha);
+    if (currentAlphas.length > 0 && historyAlphas.length > 0) {
+        for (const historyAlpha of historyAlphas) {
+            assert.ok(
+                Math.min(...currentAlphas) >= historyAlpha + 0.05,
+                `${label}: current row card (${Math.min(...currentAlphas)}) is not stronger than history (${historyAlpha})`,
+            );
+        }
+    }
+    assert.ok(result.rowGaps.length > 0, `${label}: no multi-row list to measure the 4px gap`);
+    for (const gap of result.rowGaps) {
+        assert.ok(Math.abs(gap - 4) <= 0.5, `${label}: row gap is ${gap}px, not 4px`);
     }
     assert.equal(result.overflowItems, 0, `${label}: gloss text is clipped/overflows its row (long word or gloss)`);
     assert.equal(result.outsideItems, 0, `${label}: gloss content spills outside the window`);
@@ -1142,7 +1249,13 @@ async function assertGlossListChrome(page, rootTestId, label) {
         result.rootScrollWidth <= result.rootClientWidth + 1,
         `${label}: the gloss window scrolls horizontally (${result.rootScrollWidth} > ${result.rootClientWidth})`,
     );
-    return { entries: result.count };
+    return {
+        entries: result.count,
+        entryCount: result.entryCount,
+        rowGapPx: result.rowGaps[0],
+        currentAlpha: currentAlphas[0] ?? null,
+        historyAlpha: historyAlphas[0] ?? null,
+    };
 }
 
 const scrollMetrics = (page) => page.locator('[data-testid="watch-gloss-scroll"]').evaluate((el) => ({
@@ -1152,7 +1265,7 @@ const scrollMetrics = (page) => page.locator('[data-testid="watch-gloss-scroll"]
 }));
 
 const browser = await chromium.launch({ executablePath: CHROME, headless: true });
-const summary = { status: 'PASS', head: HEAD, screenshots: [] };
+const summary = { status: 'PASS', head: HEAD, screenshots: [], p2_21: {} };
 
 try {
     // ═════════════════════════════════════════════════════════════════════
@@ -1493,6 +1606,23 @@ try {
         overlayFit1440 && overlayFit1440.insideWidth && overlayFit1440.insideMedia,
         `subtitle overlay overflows at 1440: ${JSON.stringify(overlayFit1440)}`,
     );
+    // P2-21: the sentence box now spans ≥85% of the picture width at 1440.
+    const subtitleWidth1440 = await subtitleWidthState(page);
+    assert.ok(subtitleWidth1440, '1440 subtitle width state missing');
+    assert.ok(
+        subtitleWidth1440.enShare >= 0.85,
+        `1440 subtitle box uses ${(subtitleWidth1440.enShare * 100).toFixed(1)}% of the ${Math.round(subtitleWidth1440.mediaWidth)}px picture, expected ≥85%`,
+    );
+    assert.ok(
+        subtitleWidth1440.zhShare === null || subtitleWidth1440.zhShare >= 0.85,
+        `1440 Chinese line uses ${((subtitleWidth1440.zhShare ?? 0) * 100).toFixed(1)}% of the picture, expected ≥85%`,
+    );
+    assert.ok(subtitleWidth1440.insideMediaX, '1440 subtitle box leaves the picture horizontally');
+    summary.p2_21.width1440 = {
+        mediaWidth: Math.round(subtitleWidth1440.mediaWidth),
+        enWidth: Math.round(subtitleWidth1440.enWidth),
+        share: Math.round(subtitleWidth1440.enShare * 1000) / 1000,
+    };
 
     // — P2-11: watch mode widens the media stage, so the same fluid formula
     // resolves larger than the normal layout (and stays below the 32px cap so
@@ -1543,9 +1673,16 @@ try {
     const raisedOverlay = await subtitlePositionState(page);
     assert.ok(raisedOverlay, 'overlay geometry missing');
     assert.equal(raisedOverlay.pointerEvents, 'none', 'overlay must never intercept clicks');
+    // P2-21: raised bottom is 10% of the player box, which measures as ~7–14%
+    // of the picture height (the 16px player gutter adds to the media gap).
+    const raisedGapRatio = raisedOverlay.mediaBottomGap / raisedOverlay.mediaHeight;
     assert.ok(
-        raisedOverlay.mediaBottomGap >= raisedOverlay.mediaHeight * 0.12 - 1,
-        `raised overlay sits ${raisedOverlay.mediaBottomGap}px from the video bottom (<12% of ${raisedOverlay.mediaHeight})`,
+        raisedGapRatio >= 0.07 && raisedGapRatio <= 0.14,
+        `raised overlay sits ${(raisedGapRatio * 100).toFixed(1)}% of ${raisedOverlay.mediaHeight}px from the video bottom, expected 7–14%`,
+    );
+    assert.ok(
+        Math.abs(raisedOverlay.bottomGap - raisedOverlay.parentHeight * 0.10) <= 2,
+        `raised bottom is ${raisedOverlay.bottomGap}px, expected the 10% contract (${(raisedOverlay.parentHeight * 0.10).toFixed(1)}px)`,
     );
     assert.match(
         raisedOverlay.transitionProperty,
@@ -1568,8 +1705,48 @@ try {
         `docked overlay sits ${dockedOverlay.bottomGap}px above the lower edge (>6% of ${dockedOverlay.parentHeight})`,
     );
     assert.ok(
-        raisedOverlay.bottomGap - dockedOverlay.bottomGap >= raisedOverlay.parentHeight * 0.08,
+        raisedOverlay.bottomGap - dockedOverlay.bottomGap >= raisedOverlay.parentHeight * 0.07,
         'the subtitle did not visibly drop between the raised and docked positions',
+    );
+    // — P2-21: only pointer activity INSIDE the viewport may wake the subtitle.
+    //   Synthetic out-of-view coordinates exercise the same window listeners
+    //   the browser would notify during an edge drag / on another display. —
+    const viewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
+    const assertStillDocked = async (label) => {
+        await sleep(300);
+        const state = await subtitlePositionState(page);
+        assert.ok(state, `${label}: overlay missing`);
+        assert.equal(state.raised, 'false', `${label}: an out-of-viewport pointer event raised the subtitle`);
+        assert.equal(state.dock, 'true', `${label}: the subtitle lost its dock state`);
+    };
+    await dispatchPointer(page, 'pointermove', -20, 220);
+    await assertStillDocked('pointermove left of the viewport');
+    await dispatchPointer(page, 'pointermove', viewport.width + 40, 220);
+    await assertStillDocked('pointermove right of the viewport');
+    await dispatchPointer(page, 'pointermove', 240, viewport.height + 30);
+    await assertStillDocked('pointermove below the viewport');
+    await dispatchPointer(page, 'pointerdown', -10, 240);
+    await assertStillDocked('pointerdown left of the viewport');
+    await dispatchPointer(page, 'pointerdown', 240, viewport.height + 30);
+    await assertStillDocked('pointerdown below the viewport');
+    // In-view pointerdown is still activity: it lifts the sentence, same as a
+    // real pointer move (which is checked next, from the next dock).
+    await dispatchPointer(page, 'pointerdown', Math.round(viewport.width / 2), 240);
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-raised') === 'true',
+        null,
+        { timeout: 5000 },
+    );
+    await sleep(260);
+    const raisedByPointerDown = await subtitlePositionState(page);
+    assert.ok(
+        Math.abs(raisedByPointerDown.bottomGap - raisedOverlay.bottomGap) <= 2,
+        `in-viewport pointerdown did not restore the raised position (${raisedByPointerDown.bottomGap} vs ${raisedOverlay.bottomGap})`,
+    );
+    await page.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-overlay"]')?.getAttribute('data-dock') === 'true',
+        null,
+        { timeout: 7000 },
     );
     const railBoxForPointer = await boxOf(page, 'watch-gloss-rail');
     await page.mouse.move((railBoxForPointer?.x ?? 1200) + 60, 360);
@@ -1584,6 +1761,15 @@ try {
         Math.abs(raisedAgain.bottomGap - raisedOverlay.bottomGap) <= 2,
         `pointer movement did not restore the raised position (${raisedAgain.bottomGap} vs ${raisedOverlay.bottomGap})`,
     );
+    summary.p2_21.pointerFilter = {
+        outOfViewport: 'pointermove/pointerdown ignored (dock kept)',
+        inViewport: 'pointermove raises, pointerdown raises',
+    };
+    summary.p2_21.raised = {
+        bottomPx: Math.round(raisedAgain.bottomGap * 10) / 10,
+        mediaGapRatio: Math.round(raisedAgain.mediaBottomGap / raisedAgain.mediaHeight * 1000) / 1000,
+        dockedBottomPx: Math.round(dockedOverlay.bottomGap * 10) / 10,
+    };
 
     // P2-15 §3: the YouTube embed keeps its native control bar and native CC
     // entry. The watch shell adds no transport UI of its own, and the raised
@@ -1606,10 +1792,21 @@ try {
         Math.abs(playerSurface.width - mediaBox.width) < 2 && Math.abs(playerSurface.height - mediaBox.height) < 2,
         'the player surface no longer fills the 16:9 media box — the native YouTube control bar and its native CC entry need that space',
     );
-    assert.ok(
-        raisedAgain.mediaBottomGap >= raisedAgain.mediaHeight * 0.12 - 1,
-        'the subtitle scrim intrudes into the bottom strip where the native controls live',
+    assert.equal(
+        await page.getAttribute('[data-testid="watch-subtitle-overlay"]', 'data-raised'),
+        'true',
+        'the in-viewport pointer move did not keep the subtitle raised',
     );
+    assert.ok(
+        raisedAgain.mediaBottomGap / raisedAgain.mediaHeight >= 0.07
+        && raisedAgain.mediaBottomGap / raisedAgain.mediaHeight <= 0.14,
+        `the subtitle scrim sits ${(raisedAgain.mediaBottomGap / raisedAgain.mediaHeight * 100).toFixed(1)}% above the picture bottom (expected 7–14%)`,
+    );
+    // The pointer-filter run spends >4s docked; if playback has moved past cue 1,
+    // walk back so the cue-1 assertions below still see their sentence.
+    if (!(await overlayText(page))?.includes('A short walk')) {
+        await page.keyboard.press('ArrowLeft');
+    }
 
     // — gloss rail content matches the analysis; history may already contain
     //   more than one cue after the 4s dock wait (P2-18), so do not pin count=1.
@@ -1806,24 +2003,71 @@ try {
     assert.equal(await breakfastRow.count(), 1, 'cue 1 has no breakfast row for the favorite check');
     const breakfastStar = breakfastRow.locator('[data-testid="watch-gloss-favorite"]');
     assert.ok(await breakfastStar.count(), 'the word row has no favorite star');
-    // The star is part of the hover/focus disclosure, not permanent chrome.
+    // P2-21: the action group is quietly discoverable at rest (opacity ≥ .6)
+    // instead of invisible; hover/focus brings both controls to full strength.
     await page.mouse.move(720, 300);
-    await sleep(150);
-    assert.equal(
-        parseFloat(await breakfastStar.evaluate((el) => getComputedStyle(el).opacity)),
-        0,
-        'the favorite star is visible before hover/focus',
+    await sleep(300);
+    const restActionOpacity = await page.evaluate(() => {
+        const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
+        const row = rows.find((item) => item.getAttribute('data-word') === 'breakfast');
+        const read = (testId) => {
+            const el = row?.querySelector(`[data-testid="${testId}"]`);
+            return el ? parseFloat(getComputedStyle(el).opacity) : null;
+        };
+        return { star: read('watch-gloss-favorite'), mastered: read('watch-gloss-mastered') };
+    });
+    assert.ok(
+        restActionOpacity.star !== null && restActionOpacity.star >= 0.6 && restActionOpacity.star < 0.85,
+        `the rail star rests at opacity ${restActionOpacity.star}, expected .6–≈.6 (not hidden, not full)`,
     );
+    assert.ok(
+        restActionOpacity.mastered !== null && restActionOpacity.mastered >= 0.6 && restActionOpacity.mastered < 0.85,
+        `the rail 已掌握 rests at opacity ${restActionOpacity.mastered}, expected ≥.6`,
+    );
+    summary.p2_21.railActionsAtRest = restActionOpacity;
     await breakfastRow.hover();
     await page.waitForFunction(
         () => {
             const rows = [...document.querySelectorAll('[data-testid="watch-gloss-word"]')];
             const row = rows.find((item) => item.getAttribute('data-word') === 'breakfast');
-            const star = row?.querySelector('[data-testid="watch-gloss-favorite"]');
-            return Boolean(star) && parseFloat(getComputedStyle(star).opacity) > 0.9;
+            const opacityOf = (testId) => {
+                const el = row?.querySelector(`[data-testid="${testId}"]`);
+                return el ? parseFloat(getComputedStyle(el).opacity) : 0;
+            };
+            return opacityOf('watch-gloss-favorite') > 0.99 && opacityOf('watch-gloss-mastered') > 0.99;
         },
         null,
         { timeout: 5000 },
+    );
+    // P2-21: the always-visible action group must not squeeze or overlap the
+    // label / definition columns.
+    const rowLayout = await breakfastRow.evaluate((row) => {
+        const box = (element) => {
+            if (!element) return null;
+            const rect = element.getBoundingClientRect();
+            return { x: rect.x, right: rect.right, width: rect.width };
+        };
+        const check = row.querySelector('[data-testid="watch-gloss-mastered"]');
+        return {
+            label: box(row.querySelector('[data-testid="watch-gloss-word-text"]')),
+            definition: box(row.querySelector('[data-testid="watch-gloss-definition"]')),
+            actions: box(check?.parentElement),
+            overflow: row.scrollWidth > row.clientWidth + 1,
+        };
+    });
+    assert.ok(rowLayout.label && rowLayout.definition && rowLayout.actions, `row layout boxes missing: ${JSON.stringify(rowLayout)}`);
+    assert.ok(!rowLayout.overflow, 'the visible action group makes the row overflow');
+    assert.ok(
+        rowLayout.definition.width >= 40,
+        `the action group squeezes the definition to ${rowLayout.definition.width}px`,
+    );
+    assert.ok(
+        rowLayout.definition.right <= rowLayout.actions.x - 3,
+        `the action group overlaps the definition (${rowLayout.definition.right} > ${rowLayout.actions.x - 3})`,
+    );
+    assert.ok(
+        rowLayout.label.right <= rowLayout.definition.right,
+        'the definition is not to the right of the word',
     );
     await breakfastStar.focus();
     assert.ok(
@@ -1954,7 +2198,10 @@ try {
     const railText = await page.locator('[data-testid="watch-gloss-rail"]').innerText();
     assert.ok(!railText.includes('A short walk') && !railText.includes('Small habits'), 'sentence context is still rendered in the rail');
     assert.ok(!railText.includes('生词') && !railText.includes('语言点'), 'gloss section headings are still rendered');
-    await assertGlossListChrome(page, 'watch-gloss-rail', '1440 rail');
+    const railCardChrome = await assertGlossListChrome(page, 'watch-gloss-rail', '1440 rail');
+    summary.p2_21.railCard = railCardChrome;
+    summary.screenshots.push(shot('1440-gloss-card'));
+    await page.screenshot({ path: shot('1440-gloss-card') });
     const cue1Scroll = await scrollMetrics(page);
     assert.equal(cue1Scroll.scrollTop, 0, 'a new sentence should leave the window at the top');
 
@@ -3488,7 +3735,8 @@ try {
     assert.ok((await topAfterNew.innerText()).includes('蒸汽'), 'new sentence words are missing after manual scroll');
     // P2-12: cue 5 carries the long word + long gloss; it must wrap inside the
     // 375 panel (all five entries are in the DOM, cue 5 on top).
-    await assertGlossListChrome(historyPage, 'watch-gloss-panel', '375 history');
+    const phoneCardChrome = await assertGlossListChrome(historyPage, 'watch-gloss-panel', '375 history');
+    summary.p2_21.phoneCard = phoneCardChrome;
 
     // Back at the top by hand: auto-follow resumes on the next sentence.
     await historyPage.locator('[data-testid="watch-gloss-scroll"]').evaluate((el) => {
@@ -3568,6 +3816,19 @@ try {
     assert.ok(wideType.en.fontSize > wideType.zh.fontSize, '1920 English must stay above Chinese');
     assert.ok(!wideType.en.clipped && !wideType.zh.clipped, '1920 subtitle text is horizontally clipped');
     assert.ok(wideType.insideMedia && wideType.insideViewport, '1920 subtitle overlay overflows the media stage');
+    // P2-21: 1920 keeps the widened sentence box (≥85% of the picture width).
+    const subtitleWidth1920 = await subtitleWidthState(widePage);
+    assert.ok(subtitleWidth1920, '1920 subtitle width state missing');
+    assert.ok(
+        subtitleWidth1920.enShare >= 0.85,
+        `1920 subtitle box uses ${(subtitleWidth1920.enShare * 100).toFixed(1)}% of the ${Math.round(subtitleWidth1920.mediaWidth)}px picture, expected ≥85%`,
+    );
+    assert.ok(subtitleWidth1920.insideMediaX, '1920 subtitle box leaves the picture horizontally');
+    summary.p2_21.width1920 = {
+        mediaWidth: Math.round(subtitleWidth1920.mediaWidth),
+        enWidth: Math.round(subtitleWidth1920.enWidth),
+        share: Math.round(subtitleWidth1920.enShare * 1000) / 1000,
+    };
     // P2-15 §1/§2 at 1920: the floating top bar spans the viewport and the
     // centred ambient stage has no dead-black band or overflow.
     const wideShell = await widePage.evaluate(() => {
