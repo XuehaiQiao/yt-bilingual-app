@@ -10,8 +10,8 @@
 单词本顶栏（导出按钮同排）「导入词表」。**需登录**：游客点击 → 登录浮层，不做本地导入。
 
 ### 三步弹窗（复用 `ui/Dialog`）
-1. **选文件**：拖拽/点选 `.csv` / `.tsv` / `.txt`（UTF-8，兼容 BOM）；≤2 MB、≤5000 行；
-   超限不读入并提示。Anki 用户走「导出 → 纯文本」的 TSV；**不解析 `.apkg`**。
+1. **选文件**：拖拽/点选 `.csv` / `.tsv` / `.txt`（UTF-8，兼容 BOM）；≤2 MB、≤10000 行；
+   超限不读入并提示。Anki 用户走「导出 → 纯文本」的 TSV；`.apkg` 单独由 [specs/046](../046-apkg-import/spec.md) 解析。
 2. **预览与列映射**：自动识别分隔符（逗号/Tab）与首行表头；显示前 5 行；
    映射下拉：单词（必填）、释义、音标、CEFR、例句（可选）。
    实时统计「共 N 行 / 有效 M / 跳过 K」，无效行给前 5 条原因。
@@ -54,7 +54,7 @@
 
 | 端点 | 请求 | 成功 |
 |---|---|---|
-| `POST /api/wordlists/import` | `{name?, filename?, items:[{word,translation?,phonetic?,cefr?,example?}]}` ≤5000 | `201 {list:{id,name,itemCount,createdAt}, skipped}`；超过 10 表/5000 行/全无效 400 |
+| `POST /api/wordlists/import` | `{name?, filename?, items:[{word,translation?,phonetic?,cefr?,example?}]}` ≤10000 | `201 {list:{id,name,itemCount,createdAt}, skipped}`；超过 10 表/10000 行/全无效 400 |
 | `GET /api/wordlists` | — | `200 {lists:[{id,name,itemCount,createdAt}]}` |
 | `GET /api/wordlists/{id}?page=1&pageSize=50&q=` | `page≥1`、`pageSize 1–200` | `200 {id,name,items:[{id,word,translation,phonetic,cefr,example}],total,page,pageSize,hasMore}`；`id` 可直接用于 `DELETE /items` 的 `itemIds` |
 | `DELETE /api/wordlists/{id}` | — | `200 {status:"ok",deleted:true}`；不存在 404 |
@@ -66,7 +66,7 @@
 
 ## 6. 限额与存储
 
-- 每人 ≤10 个自定义词表；每表 ≤5000 词；文件 ≤2 MB。
+- 每人 ≤10 个自定义词表；每表 ≤10000 词；文件 ≤2 MB。
 - 自定义词表词数计入任务 7 的存储配额统计。
 - 删除词表级联删条目；不影响收藏/复习状态。
 
@@ -78,12 +78,12 @@
 - [ ] 三动作：加入我的单词（来源=词表）、加入复习（带 definition 快照）、标已掌握；幂等且失败可重试。
 - [ ] 释义优先级：词表释义优先；缺释义显示 `—`；复习卡显示快照而非再调 `/api/define`；已有快照不被覆盖。
 - [ ] 删除词表：条目级联删除，收藏与复习状态保留。
-- [ ] 限额：第 11 个表 / 第 5001 行 / 超大文件被拒绝并给明确错误。
+- [ ] 限额：第 11 个表 / 第 10001 行 / 超大文件被拒绝并给明确错误。
 - [ ] 375/1440 可用、中越 i18n 对齐、`gate-receipt` G1 P0=0、后端 pytest 绿。
 
 ## 8. 非目标（v1）
 
-- 不解析 Anki `.apkg`（zip + SQLite）；用「导出纯文本」TSV 覆盖。
+- v1 不解析 Anki `.apkg`（zip + SQLite）；用「导出纯文本」TSV 覆盖。APKG 导入见 [specs/046](../046-apkg-import/spec.md)。
 - 不自定义词表**重命名**与**勾选删除词条**之外的行内编辑（不支持逐条改词/加词/排序）。
 - 不在导入时自动 AI 补释义（可选后续，需计费与确认）。
 - 不做导入历史/版本。

@@ -6,7 +6,7 @@
 2. 服务端词条校验：英文/拉丁/变音/连字符/撇号/短语、纯数字/中文/符号/超长
    拒绝，CEFR 白名单，``skipped`` 计数；
 3. ``NFC + casefold`` 去重（保留第一条原词形）；
-4. 限额：每人 10 表、每表 5000 行、越界不落半张表；
+4. 限额：每人 10 表、每表 10000 行、越界不落半张表；
 5. 同名自动 ``(2)/(3)``、name ≤80、文件名默认名；
 6. 分页 + 搜索（单词 / 释义 / 中文）；
 7. 删除级联条目、跨用户隔离（越权 404）、游客 403。
@@ -365,19 +365,19 @@ def test_ten_lists_per_user_then_reject_eleventh(wl_db):
     assert len(_lists(client)) == 10
 
 
-def test_five_thousand_rows_cap(wl_db):
+def test_ten_thousand_rows_cap(wl_db):
     client = wl_db
-    too_many = [{"word": f"word{_code(index)}"} for index in range(5001)]
+    too_many = [{"word": f"word{_code(index)}"} for index in range(10001)]
     rejected = _import(client, too_many, name="超限")
     assert rejected.status_code == 400
-    assert "5000" in rejected.json()["detail"]
+    assert "10000" in rejected.json()["detail"]
     assert _lists(client) == []
 
-    exact = [{"word": f"term{_code(index)}"} for index in range(5000)]
+    exact = [{"word": f"term{_code(index)}"} for index in range(10000)]
     accepted = _import(client, exact, name="上限内")
     assert accepted.status_code == 201, accepted.text
-    assert accepted.json()["list"]["itemCount"] == 5000
-    assert _detail(client, accepted.json()["list"]["id"], pageSize=1).json()["total"] == 5000
+    assert accepted.json()["list"]["itemCount"] == 10000
+    assert _detail(client, accepted.json()["list"]["id"], pageSize=1).json()["total"] == 10000
 
 
 # ---------------------------------------------------------------------------

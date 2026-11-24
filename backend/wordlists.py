@@ -17,7 +17,7 @@
 - **释义快照不在这里**：加入复习时由 ``srs.add_word(definition=...)`` 写入
   ``word_states.definition``，本模块只负责词表存储。
 
-常量与限额（spec §6）：每人 ≤10 张表、每表 ≤5000 词、name ≤80 字、
+常量与限额（spec §6）：每人 ≤10 张表、每表 ≤10000 词、name ≤80 字、
 单词 ≤40 字符且 ≤5 个词的短语。
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ import config
 import languages
 
 MAX_LISTS = 10
-MAX_ITEMS = 5000
+MAX_ITEMS = 10000
 MAX_NAME_LENGTH = 80
 MAX_WORD_LENGTH = 40
 MAX_WORD_TOKENS = 5

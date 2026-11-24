@@ -6,7 +6,9 @@
 
 端点：
 
-- ``POST   /api/wordlists/import``  导入一张词表（≤5000 行，整笔事务）→ 201
+- ``POST   /api/wordlists/import``  导入一张词表（≤10000 行，整笔事务）→ 201
+- ``POST   /api/wordlists/apkg-parse`` 解析 Anki ``.apkg``（multipart ``file``，
+  只读解析、不入库；≤50MB）→ decks/models/notes
 - ``GET    /api/wordlists``         当前用户全部词表（按创建时间升序）
 - ``GET    /api/wordlists/{id}``    词表详情（page/pageSize/q 分页搜索）
 - ``PATCH  /api/wordlists/{id}``    重命名词表（≤80、同用户唯一）
@@ -15,24 +17,30 @@
 
 错误语义：
 
-- 400：无有效词条 / 无效行 > 50% / 超过 10 张表 / 超过 5000 行 / name 非法 /
-  重名 / itemIds 数量越界或有不属于该词表的 id；
+- 400：无有效词条 / 无效行 > 50% / 超过 10 张表 / 超过 10000 行 / name 非法 /
+  重名 / itemIds 数量越界或有不属于该词表的 id；APKG 非法/无 notes/格式不支持；
 - 403：游客或未登录；
 - 404：词表不存在或不属于当前用户（不泄露存在性）；
-- 503：未跑 ``0028_user_wordlists`` 迁移。
+- 413：APKG 文件 > 50MB 或 collection 解压后超限；
+- 503：未跑 ``0028_user_wordlists`` 迁移；APKG 所需 ``zstandard`` 依赖缺失。
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 
+import apkg_import
 import wordlists
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["wordlists"])
+
+# APKG 上传按块读，超过上限立即 413（与本地 EPUB 上传同一策略）。
+_APKG_READ_CHUNK = 1024 * 1024
 
 
 class ImportItemIn(BaseModel):
@@ -111,6 +119,63 @@ def import_wordlist(payload: ImportRequest, request: Request):
         _raise_wordlist_error(exc)
         raise  # pragma: no cover - _raise_wordlist_error 必抛
     return result
+
+
+def _human_size(value: int) -> str:
+    if value >= 1024 * 1024:
+        return f"{value // (1024 * 1024)}MB"
+    return f"{max(1, value // 1024)}KB"
+
+
+def _read_apkg_upload(upload: UploadFile | None) -> tuple[bytes, str]:
+    """流式读取 multipart 文件并校验扩展名/大小；超限立即 413。"""
+    if upload is None:
+        raise HTTPException(status_code=400, detail="请选择要解析的 .apkg 文件。")
+    filename = apkg_import.display_filename(upload.filename)
+    if not filename.lower().endswith(".apkg"):
+        raise HTTPException(status_code=400, detail="只支持 .apkg 格式的 Anki 导出包。")
+    limit = apkg_import.max_upload_bytes()
+    chunks: list[bytes] = []
+    total = 0
+    try:
+        while True:
+            chunk = upload.file.read(_APKG_READ_CHUNK)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > limit:
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"APKG 文件超过 {_human_size(limit)} 上限。",
+                )
+            chunks.append(chunk)
+    except HTTPException:
+        raise
+    except OSError as exc:
+        raise HTTPException(
+            status_code=400, detail="读取上传文件失败，请重试。"
+        ) from exc
+    if not chunks:
+        raise HTTPException(status_code=400, detail="APKG 文件为空。")
+    return b"".join(chunks), filename
+
+
+@router.post("/api/wordlists/apkg-parse")
+async def parse_apkg_upload(request: Request, file: UploadFile | None = File(None)):
+    """解析 Anki ``.apkg`` 的牌组/笔记类型/notes（只读，不入库）。
+
+    - 需登录（游客 403）；只接受 ``.apkg``，流式读取 ≤50MB（413）；
+    - ZIP 只读 collection 成员，不解压媒体；``.anki21b`` 走 zstd；
+    - 读取与解析都放在线程池，避免阻塞事件循环；
+    - 返回 ``decks/models/notes/total/truncated``；没 notes/格式不支持 → 400，
+      缺 ``zstandard`` → 503。
+    """
+    _require_login(request)
+    data, filename = await asyncio.to_thread(_read_apkg_upload, file)
+    try:
+        return await asyncio.to_thread(apkg_import.parse_apkg, data, filename)
+    except apkg_import.ApkgError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @router.get("/api/wordlists")

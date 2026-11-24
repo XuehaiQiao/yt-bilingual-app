@@ -21,6 +21,11 @@ python-dotenv>=1.0.0
 # EPUB upload (POST /api/books/upload, /api/books/upload/preview).
 python-multipart>=0.0.9
 
+# Anki .apkg import (specs/046): collection.anki21b is a zstd-compressed SQLite
+# file. Imported lazily by apkg_import.py — if missing, .anki21b returns 503
+# while legacy .anki2/.anki21 still parse.
+zstandard>=0.25.0
+
 # Database migrations (baseline users/sessions + learning_events). Alembic pulls
 # SQLAlchemy>=2.0; application code still uses plain sqlite3. Commands run from
 # backend/: venv/bin/alembic upgrade head  (see backend/migrations/README.md).
