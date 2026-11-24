@@ -98,6 +98,7 @@ import routes_difficulty
 import routes_discover
 import routes_events
 import routes_exam
+import routes_feedback
 import routes_library
 import routes_local_video
 import routes_placement
@@ -408,6 +409,7 @@ app.include_router(routes_account.router)
 app.include_router(routes_account_lifecycle.router)
 app.include_router(routes_admin.router)
 app.include_router(routes_admin_lifecycle.router)
+app.include_router(routes_feedback.router)
 app.include_router(routes_videos.router)
 app.include_router(routes_content.router)
 app.include_router(routes_difficulty.router)

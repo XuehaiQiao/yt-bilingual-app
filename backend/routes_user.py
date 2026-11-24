@@ -9,11 +9,15 @@
 import contextlib
 import hashlib
 import json
+import logging
 import math
 import os
+import sqlite3
 import tempfile
 import threading
 import time
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import AliasChoices, BaseModel, Field
@@ -24,12 +28,17 @@ except ImportError:  # pragma: no cover - 项目只在 macOS/Linux 上跑
     fcntl = None
 
 import ai_auth
+import config
+import guest
 import languages
 import llm
 import local_dict
+import quota_config
 import storage
-from ai import quota
+from ai import ledger, quota
 from config import DEFAULT_MODEL, MODEL_CATALOG, model_route_for, resolve_model
+
+logger = logging.getLogger("linguatrek.routes_user")
 
 router = APIRouter()
 
@@ -861,3 +870,136 @@ async def save_subscriptions(request: dict):
     with open(storage.subscriptions_file(), "w", encoding="utf-8") as f:
         json.dump(subs, f, ensure_ascii=False, indent=2)
     return {"status": "ok", "count": len(subs)}
+
+
+# ====================================================
+# User daily quota (v1.1 P0 / P2-39, specs/048)
+# ====================================================
+#
+# 只读展示**当前登录用户**的 8 个每日 AI 额度。口径与管理员
+# ``GET /api/admin/quotas/users/{id}``（specs/047）完全一致：
+#
+# - ``limit`` / ``source`` 来自 ``quota_config.effective_limit()``：单用户覆盖 >
+#   后台全局默认（``app_settings.ai_quota_defaults``）> ``config.AI_DAILY_QUOTA_*``；
+#   ``0`` = 关闭该功能（与 specs/047 一致，**不提供「无限」**）；
+# - ``used`` 取 ``ai_quota.used_units`` 的当天行（``ledger.day_of()`` 日桶，
+#   与账本/管理台同口径）；表缺失、无行或读失败一律按 0——这是展示接口，
+#   不能因为一条统计把页面打成 500；
+# - ``resetAt`` = ``AI_QUOTA_TIMEZONE`` 下的**次日 00:00**（ISO8601 带偏移，
+#   例如 ``2026-11-26T00:00:00+08:00``）；每个 feature 上也带一份，前端按
+#   ``Date.parse`` 直接可用；
+# - ``quota_overrides`` 表未迁移 → 503（与管理接口同口径）：宁可告诉用户
+#   「服务暂不可用」，也不拿默认值冒充生效额度。
+#
+# 身份语义（specs/048）：未登录且还没有游客身份（没有 ``ln_guest`` Cookie）→
+# **401**；已经带游客身份 Cookie → **403**（额度按账号每日重置，游客没有可
+# 持久化的额度，提示登录）。前端把 401 当会话过期、403 当普通错误，两者都不该
+# 出现在登录用户身上。
+
+#: 时区配置缺省值（与 ``ai.ledger`` / ``routes_admin`` 同源）。
+QUOTA_FALLBACK_TIMEZONE = "Asia/Shanghai"
+
+
+def _quota_timezone() -> ZoneInfo:
+    """额度日边界时区；非法配置回落 UTC（不能让展示接口 500）。"""
+    name = getattr(config, "AI_QUOTA_TIMEZONE", QUOTA_FALLBACK_TIMEZONE) or (
+        QUOTA_FALLBACK_TIMEZONE
+    )
+    try:
+        return ZoneInfo(name)
+    except Exception:  # noqa: BLE001 - 时区配置错误不该阻断额度查询
+        logger.warning("AI_QUOTA_TIMEZONE=%r 非法，额度重置时间按 UTC 计算。", name)
+        return ZoneInfo("UTC")
+
+
+def _quota_reset_at(moment: datetime | None = None) -> str:
+    """下一次重置时刻：``AI_QUOTA_TIMEZONE`` 下的次日 00:00（ISO8601）。"""
+    tz = _quota_timezone()
+    current = (moment or datetime.now(tz)).astimezone(tz)
+    next_midnight = (current + timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    return next_midnight.isoformat()
+
+
+def _quota_used_today(user_id: str) -> dict[str, int]:
+    """今天各功能的已用额度（``ai_quota.used_units``；表缺失/读失败按 0）。"""
+    path = str(getattr(config, "AUTH_DB_PATH", "") or "")
+    if not path or not os.path.exists(path):
+        return {}
+    conn = None
+    try:
+        conn = sqlite3.connect(path, timeout=10)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA query_only = ON")
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ai_quota'"
+        ).fetchone()
+        if exists is None:
+            return {}
+        rows = conn.execute(
+            "SELECT feature, used_units FROM ai_quota WHERE user_id = ? AND day = ?",
+            (user_id, ledger.day_of()),
+        ).fetchall()
+    except sqlite3.Error as exc:
+        logger.warning("读取今日额度用量失败（按 0 展示）：%s", exc)
+        return {}
+    finally:
+        if conn is not None:
+            conn.close()
+    used: dict[str, int] = {}
+    for row in rows:
+        try:
+            used[str(row["feature"])] = max(0, int(row["used_units"] or 0))
+        except (TypeError, ValueError):
+            used[str(row["feature"])] = 0
+    return used
+
+
+@router.get("/api/quota")
+def get_user_quota(request: Request):
+    """当前用户的每日 AI 额度：``{day, resetAt, timezone, features:[…]}``。
+
+    只读；不改变任何计数器，也不影响运行时配额判定（判定仍在
+    ``ai.quota.check_and_consume_quota``）。未登录 401、游客 403、未迁移 503。
+    """
+    user = getattr(request.state, "user", None)
+    if not isinstance(user, dict) or not user.get("id"):
+        if request.cookies.get(guest.COOKIE_NAME):
+            raise HTTPException(
+                status_code=403,
+                detail="游客没有每日额度记录；登录后可查看各功能的使用量与重置时间。",
+            )
+        raise HTTPException(status_code=401, detail="未登录")
+
+    user_id = user["id"]
+    used_map = _quota_used_today(user_id)
+    reset_at = _quota_reset_at()
+    features: list[dict] = []
+    try:
+        for feature in quota_config.QUOTA_FEATURES:
+            limit, source, _default_limit, _override_limit = (
+                quota_config.effective_limit(feature, user_id)
+            )
+            used = used_map.get(feature, 0)
+            features.append(
+                {
+                    "feature": feature,
+                    "limit": limit,
+                    "used": used,
+                    "remaining": max(0, limit - used),
+                    "resetAt": reset_at,
+                    "source": source,
+                }
+            )
+    except quota_config.QuotaConfigUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    return {
+        "day": ledger.day_of(),
+        "resetAt": reset_at,
+        "timezone": str(
+            getattr(config, "AI_QUOTA_TIMEZONE", QUOTA_FALLBACK_TIMEZONE)
+            or QUOTA_FALLBACK_TIMEZONE
+        ),
+        "features": features,
+    }

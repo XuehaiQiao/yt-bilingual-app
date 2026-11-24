@@ -92,7 +92,7 @@ function FeatureRow({ item }: { item: QuotaFeatureUsage }) {
             ? t('quota.feature.closedHint')
             : t('quota.feature.used', { used: formatNumber(Math.max(0, used)) })}
         </span>
-        {item.source === 'override' && (
+        {(item.source === 'override' || item.source === 'user_override') && (
           <span className="shrink-0 rounded-full border border-line-subtle bg-surface-2/60 px-1.5 py-0.5">
             {t('quota.feature.override')}
           </span>
