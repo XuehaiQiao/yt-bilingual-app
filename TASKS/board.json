@@ -1196,7 +1196,9 @@
         "backend/routes_wordlists.py",
         "backend/requirements.txt",
         "backend/tests/test_apkg_import.py",
-        "specs/046-apkg-import/spec.md"
+        "specs/046-apkg-import/spec.md",
+        "backend/wordlists.py",
+        "backend/tests/test_wordlists.py"
       ],
       "shared_writes": [],
       "deps": []

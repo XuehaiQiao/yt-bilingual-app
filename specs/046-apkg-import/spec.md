@@ -5,11 +5,11 @@
 
 ## 1. 支持范围
 
-- `.apkg`（Anki 导出包）≤ **20 MB**
+- `.apkg`（Anki 导出包）≤ **50 MB**
 - 读取 `collection.anki2` / `collection.anki21` / `collection.anki21b`（后者 zstd）
 - 只取**文本字段**：单词、释义；可附带 phonetic/CEFR/example（APKG 一般没有，留空）
 - 忽略媒体、复习记录、学习进度、模板/样式
-- 最多解析 **5000 条 notes**；超过则截断并在响应标记 `truncated`
+- 最多解析 **10000 条 notes**；超过则截断并在响应标记 `truncated`
 - 只支持登录用户（与自定义词表一致；游客 403）
 
 ## 2. 后端解析 API
@@ -31,7 +31,7 @@
 
 - `400`：不是合法 APKG / 无 notes / 不支持的 collection 格式
 - `403`：未登录
-- `413`：文件 >20 MB
+- `413`：文件 >50 MB
 - `503`：zstd 依赖缺失/解析暂不可用
 
 安全：
@@ -44,7 +44,7 @@
 
 保留现有三步，但 `.apkg` 增加一个配置步骤：
 
-1. 选文件：接受 `.csv/.tsv/.txt/.apkg`；APKG ≤20 MB
+1. 选文件：接受 `.csv/.tsv/.txt/.apkg`；APKG ≤50 MB
 2. **APKG 配置**：选牌组 → 选笔记类型（若多种）→ 选「词字段」「释义字段」；显示过滤后条数与预览
 3. 映射/确认：沿用现有词表校验与确认（把 APKG 行转成两列：词、释义）
 4. 导入：复用 `/api/wordlists/import`
@@ -57,7 +57,7 @@
 ## 4. 验收
 
 - 合成 APKG：legacy `.anki2`、`.anki21`、`.anki21b`（zstd）各一条
-- 解析：牌组/模型/字段/notes 正确；HTML 清洗；5000 截断；损坏包 400；大文件 413
+- 解析：牌组/模型/字段/notes 正确；HTML 清洗；10000 截断；损坏包 400；大文件 413
 - 前端：APKG 选文件→配置→确认→导入；牌组/模型/字段切换；预览；无效行拦截；游客不上传（403 文案）
 - 现有 CSV/TSV/TXT 导入零回归；词表上限/去重/唯一名不变
 - 375/1440 截图；`tsc/build/i18n/gate`；pytest 全量；preflight
