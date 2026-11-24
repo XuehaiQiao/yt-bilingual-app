@@ -47,6 +47,7 @@ import httpx
 import config
 import languages
 import llm
+import translation_batching
 from ai import quota
 
 logger = logging.getLogger("linguatrek.reading")
@@ -61,7 +62,6 @@ DEFAULT_MAX_REDIRECTS = 3
 DEFAULT_MAX_PARAGRAPHS = 200
 DEFAULT_MAX_PARAGRAPH_CHARS = 4000
 DEFAULT_MAX_TEXT_CHARS = 2_000_000
-DEFAULT_TRANSLATE_BATCH_SIZE = 10
 
 _URL_MAX_CHARS = 2048
 _TITLE_MAX_CHARS = 300
@@ -275,11 +275,6 @@ def _max_paragraph_chars() -> int:
 def _max_text_chars() -> int:
     value = _int_attr("READING_MAX_TEXT_CHARS", DEFAULT_MAX_TEXT_CHARS)
     return value if value > 0 else DEFAULT_MAX_TEXT_CHARS
-
-
-def _translate_batch_size() -> int:
-    value = _int_attr("READING_TRANSLATE_BATCH_SIZE", DEFAULT_TRANSLATE_BATCH_SIZE)
-    return value if value > 0 else DEFAULT_TRANSLATE_BATCH_SIZE
 
 
 def count_words(text: str) -> int:
@@ -1584,13 +1579,20 @@ async def translate_article(
             "batches": 0,
         }
 
-    batch_size = _translate_batch_size()
+    # P2-33：token-aware 分批——首批 ≤5 段抢首屏，之后每批 ≤20 段且
+    # ≤2,000 源 token（单段超预算仍单独成批）；每批仍只扣 1 次配额。
+    missing_batches = translation_batching.chunk_by_budget(
+        missing,
+        lambda item: item[1],
+        translation_batching.ARTICLE_FIRST_BATCH_SIZE,
+        translation_batching.ARTICLE_STEADY_BATCH_SIZE,
+        translation_batching.ARTICLE_MAX_SOURCE_TOKENS,
+    )
     failed_indices: list[int] = []
     used_models: set[str] = set()
     batches = 0
 
-    for start in range(0, len(missing), batch_size):
-        batch = missing[start : start + batch_size]
+    for batch in missing_batches:
         # 每批占 1 个「读文章」日配额；超限抛 QuotaExceeded（路由 429）。
         await asyncio.to_thread(
             quota.check_and_consume_quota,

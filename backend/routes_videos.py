@@ -36,6 +36,7 @@ import llm
 import local_shows
 import storage
 import teaching_analysis
+import translation_batching
 from transcripts import (
     canonical_watch_url,
     extract_video_id,
@@ -306,13 +307,14 @@ async def estimate_cost(url: str, targetLang: str | None = None):
 # ---------------------------------------------------------------------------
 # 经典处理路径：翻译批次并行 + 结构化计时（P1-18）
 # ---------------------------------------------------------------------------
-# 批大小与流式路径保持一致（20）。并发只作用在「英文已就绪、待翻译」的批次上：
+# 批大小与流式路径共用 token-aware 策略（P2-33，见 ``translation_batching``）：
+# 首批 ≤10 blocks、稳定期 ≤40 blocks、单批源 token ≤2,000。并发只作用在
+# 「英文已就绪、待翻译」的批次上：
 #   - 结果按 batch 下标回填，block 顺序与串行完全一致；
 #   - 每个批次仍走原来的 retry / 429 退避 / mock 回退 / 计费硬闸语义，批次内不拆；
 #   - provider 限流靠 `llm.batch_pause(model)`：每条并发通道跑完一批先停一拍再领
 #     下一批，等于「同一时刻最多 concurrency 个请求在途」；
 #   - 计费/配额硬闸（BillingError/QuotaExceeded）照旧直接抛出，并取消剩余通道。
-VIDEO_TRANSLATION_BATCH_SIZE = 20
 VIDEO_TRANSLATION_CONCURRENCY_DEFAULT = 2
 VIDEO_TRANSLATION_CONCURRENCY_MAX = 3
 
@@ -423,9 +425,11 @@ async def _translate_video_blocks(
     model: str,
     user_id: str,
     lang: str,
-    batch_size: int = VIDEO_TRANSLATION_BATCH_SIZE,
 ) -> list:
     """视频 blocks 切批并行翻译，结果按原 batch 顺序合并（P1-18）。
+
+    P2-33：切批走 ``translation_batching.chunk_by_budget``——首批 ≤10 blocks、
+    稳定期 ≤40 blocks、单批 ≤2,000 源 token；单条超预算仍单独成批。
 
     断点/进度语义不在这里：经典路径一次性返回最终 payload；流式路径在
     ``translate._stream_translate`` 内对批次做有序并行（P1-19），逐批落盘与
@@ -434,14 +438,20 @@ async def _translate_video_blocks(
     if not blocks:
         return []
 
-    batches = [
-        blocks[start:start + batch_size]
-        for start in range(0, len(blocks), batch_size)
-    ]
+    batches = translation_batching.chunk_by_budget(
+        blocks,
+        lambda block: block.get("text") or "",
+        translation_batching.VIDEO_FIRST_BATCH_SIZE,
+        translation_batching.VIDEO_STEADY_BATCH_SIZE,
+        translation_batching.VIDEO_MAX_SOURCE_TOKENS,
+    )
     batch_count = len(batches)
     concurrency = min(_video_translation_concurrency(), batch_count)
     print(
-        f"Processing {len(blocks)} blocks in {batch_count} batches of {batch_size} "
+        f"Processing {len(blocks)} blocks in {batch_count} token-aware batches "
+        f"(first≤{translation_batching.VIDEO_FIRST_BATCH_SIZE}, "
+        f"steady≤{translation_batching.VIDEO_STEADY_BATCH_SIZE}, "
+        f"≤{translation_batching.VIDEO_MAX_SOURCE_TOKENS} tokens) "
         f"[{lang}] concurrency={concurrency}..."
     )
 

@@ -2,6 +2,7 @@
 
 **状态：** 已实现（2026-11-15，仅后端；阅读器前端下一轮）｜
 **对应代码：** `backend/reading.py`、`backend/routes_reading.py`、
+`backend/translation_batching.py`（P2-33 分批策略）、
 `backend/migrations/versions/0011_reading.py`；测试 `backend/tests/test_reading.py`。
 
 > 用户需求 #3「读文章」（计划书 §1.3 第 3 条 / §5.3 V1 文章阅读器）。V1 的
@@ -118,7 +119,9 @@
 ```
 
 - 按目标语言查已有译文；**已有且非 `[未翻译]` 的段不重译**，只把缺失段按
-  10 段/批送模型。
+  token-aware 分批送模型（P2-33）：首批 ≤5 段抢首屏，之后每批 ≤20 段且
+  单批 ≤2,000 源 token（4 字符 ≈ 1 token 的英文近似）；单段超预算仍单独成批，
+  不产生空批，段序不变。
 - 每批先扣 1 个 `feature=reading` 日配额（`AI_DAILY_QUOTA_READING_BATCHES`，
   默认 60 批/日），并用 `quota.degradation_chain` 走统一降级链；成功调用经
   `llm.usage_scope("reading", user_id, target_lang=…)` 写入 `ai_usage`。

@@ -5,7 +5,8 @@
 1. 并发配置 ``SSE_TRANSLATE_CONCURRENCY``：默认 2，1–3 生效，非法值回落 2；
 2. 3 批延迟 mock（0.24 / 0.12 / 0.04s，完成顺序与批序相反）：
    - wall time ≈ 最慢一批（串行应为三者之和），证明批次确实并行；
-   - ``batch`` 事件仍按批序（1–20 / 21–40 / 41–45）产出，前端按 id 合并无需改；
+   - ``batch`` 事件仍按批序产出（P2-33 后为 1–10 / 11–50 / 51–85），
+     前端按 id 合并无需改；
 3. 每批完成即落盘（写锁串行），中途取消后未翻译块仍标记、续跑只补缺失；
 4. 取消：在途批次被取消，没有泄漏 task；
 5. 402/额度硬闸：立即中断所有在途批次并透传（不落 mock、不等前一批）；
@@ -13,7 +14,8 @@
 7. 端点集成：``/api/process-video-stream`` 的 batch 顺序/进度不变，402 → SSE
    error 事件带稳定 code；
 8. 计时日志：``feature=sse_translate``，每批 batch_index/queue_wait_ms/batch_ms/
-   concurrency，收尾 total_ms/first_batch_ms。
+   concurrency，收尾 total_ms/first_batch_ms；
+9. P2-33：首批 10 / 稳定 40 / 源 token ≤2,000 的切批边界。
 
 全部离线：字幕/元数据/LLM 均 monkeypatch，目录在 tmp_path。
 """
@@ -42,7 +44,6 @@ METADATA = {
     "upload_date": "20240101",
     "thumbnail": "",
 }
-BATCH = 20
 
 
 # ---------------------------------------------------------------------------
@@ -75,8 +76,11 @@ def _payload(transcript: list[dict]) -> dict:
 
 
 def _batch_index(blocks: list[dict]) -> int:
-    """批下标（0 起）：id 1–20 → 0，21–40 → 1……"""
-    return (int(blocks[0]["id"]) - 1) // BATCH
+    """批下标（0 起）：首批 10 块，之后每批 40 块。"""
+    first_id = int(blocks[0]["id"])
+    if first_id <= 10:
+        return 0
+    return 1 + (first_id - 11) // 40
 
 
 async def _translate_blocks(blocks: list[dict], prefix: str = "译文") -> list[dict]:
@@ -271,7 +275,7 @@ def test_parallel_batches_keep_order_and_persist(monkeypatch, tmp_path, caplog):
     monkeypatch.setenv("SSE_TRANSLATE_CONCURRENCY", "3")
     caplog.set_level(logging.INFO, logger="linguatrek.translate")
 
-    transcript = _transcript(45)  # 3 批：20 / 20 / 5
+    transcript = _transcript(85)  # 3 批：10 / 40 / 35（P2-33）
     payload = _payload(transcript)
     save_path = tmp_path / "cache.json"
     save_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -304,14 +308,14 @@ def test_parallel_batches_keep_order_and_persist(monkeypatch, tmp_path, caplog):
 
     # batch 事件按批序；block 顺序与串行路径完全一致。
     ids = [block["id"] for update in updates for block in update["blocks"]]
-    assert ids == list(range(1, 46))
-    assert [len(update["blocks"]) for update in updates] == [20, 20, 5]
+    assert ids == list(range(1, 86))
+    assert [len(update["blocks"]) for update in updates] == [10, 40, 35]
     assert [update["progress"] for update in updates] == [
-        {"done": 20, "total": 45},
-        {"done": 40, "total": 45},
-        {"done": 45, "total": 45},
+        {"done": 10, "total": 85},
+        {"done": 50, "total": 85},
+        {"done": 85, "total": 85},
     ]
-    assert [update["translated"] for update in updates] == [20, 40, 45]
+    assert [update["translated"] for update in updates] == [10, 50, 85]
 
     # 每批完成即落盘（3 次），最终缓存全量译文。
     assert len(persisted) == 3
@@ -340,12 +344,54 @@ def test_parallel_batches_keep_order_and_persist(monkeypatch, tmp_path, caplog):
     assert total["total_ms"] >= total["first_batch_ms"]
     assert total["total_ms"] < 340
     assert total["outcome"] == "done"
-    assert total["translated"] == 45
+    assert total["translated"] == 85
+
+
+def test_stream_translate_splits_batches_by_source_token_budget(monkeypatch, tmp_path):
+    """P2-33：1200 字符/块 ≈ 300 token → 2,000 预算下每批 6 块，而非 10/40 条。"""
+    monkeypatch.setenv("SSE_TRANSLATE_CONCURRENCY", "1")
+    transcript = _transcript(24)
+    for block in transcript:
+        block["en_text"] = "x" * 1200
+    payload = _payload(transcript)
+    save_path = tmp_path / "cache.json"
+    save_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    calls: list[list[int]] = []
+
+    async def fake(blocks, model=None, vocab_level=None, **_kwargs):
+        calls.append([block["id"] for block in blocks])
+        return await _translate_blocks(blocks)
+
+    monkeypatch.setattr(translate, "process_llm_batch", fake)
+    monkeypatch.setattr(llm, "batch_pause", lambda model=None: 0)
+
+    async def scenario():
+        updates = []
+        async for update in translate._stream_translate(
+            transcript,
+            list(range(len(transcript))),
+            payload,
+            str(save_path),
+            model="deepseek-chat",
+            target_lang="zh-CN",
+        ):
+            updates.append(update)
+        return updates
+
+    updates = asyncio.run(scenario())
+
+    assert [len(update["blocks"]) for update in updates] == [6, 6, 6, 6]
+    assert [update["progress"]["done"] for update in updates] == [6, 12, 18, 24]
+    assert [
+        block["id"] for update in updates for block in update["blocks"]
+    ] == list(range(1, 25))
+    assert all(len(call) <= 6 for call in calls), "单批不得超过源 token 预算"
 
 
 def test_default_concurrency_is_two(monkeypatch, tmp_path):
     monkeypatch.delenv("SSE_TRANSLATE_CONCURRENCY", raising=False)
-    transcript = _transcript(45)
+    transcript = _transcript(85)
     payload = _payload(transcript)
     save_path = tmp_path / "cache.json"
     save_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -379,7 +425,7 @@ def test_default_concurrency_is_two(monkeypatch, tmp_path):
 
 def test_batch_pause_paces_batch_starts(monkeypatch, tmp_path):
     monkeypatch.setenv("SSE_TRANSLATE_CONCURRENCY", "3")
-    transcript = _transcript(45)
+    transcript = _transcript(85)
     payload = _payload(transcript)
     save_path = tmp_path / "cache.json"
     save_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -414,7 +460,7 @@ def test_batch_pause_paces_batch_starts(monkeypatch, tmp_path):
 
 def test_cancel_cancels_inflight_and_resume_only_missing(monkeypatch, tmp_path):
     monkeypatch.setenv("SSE_TRANSLATE_CONCURRENCY", "2")
-    transcript = _transcript(45)
+    transcript = _transcript(85)
     payload = _payload(transcript)
     save_path = tmp_path / "cache.json"
     save_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -457,7 +503,7 @@ def test_cancel_cancels_inflight_and_resume_only_missing(monkeypatch, tmp_path):
     assert close_elapsed < 1.0, f"取消后仍等了 {close_elapsed:.2f}s"
     assert leaked == [], f"取消后泄漏 task：{leaked}"
     assert state["cancelled"] >= 1, "在途批次没有被取消"
-    assert [block["id"] for block in first["blocks"]] == list(range(1, 21))
+    assert [block["id"] for block in first["blocks"]] == list(range(1, 11))
     # 只有第 1 批完成落盘；其余块仍是未翻译标记（可自愈）。
     assert len(persisted) == 1
     saved = json.loads(save_path.read_text(encoding="utf-8"))
@@ -466,9 +512,9 @@ def test_cancel_cancels_inflight_and_resume_only_missing(monkeypatch, tmp_path):
         for block in saved["transcript"]
         if translate.needs_retranslation(block["zh_text"])
     ]
-    assert markers == list(range(21, 46))
+    assert markers == list(range(11, 86))
 
-    # 续跑：只把缺失块送模型，已翻好的 20 句一个都不再送。
+    # 续跑：只把缺失块送模型，已翻好的 10 句一个都不再送。
     monkeypatch.setattr(llm, "batch_pause", lambda model=None: 0)
     state["calls"].clear()
     pending = [
@@ -490,7 +536,7 @@ def test_cancel_cancels_inflight_and_resume_only_missing(monkeypatch, tmp_path):
 
     asyncio.run(resume())
     resumed_ids = [block_id for batch in state["calls"] for block_id in batch]
-    assert sorted(resumed_ids) == list(range(21, 46))
+    assert sorted(resumed_ids) == list(range(11, 86))
 
     final = json.loads(save_path.read_text(encoding="utf-8"))
     assert all(
@@ -522,7 +568,7 @@ def test_cancel_cancels_inflight_and_resume_only_missing(monkeypatch, tmp_path):
 )
 def test_billing_error_aborts_immediately(monkeypatch, tmp_path, failure):
     monkeypatch.setenv("SSE_TRANSLATE_CONCURRENCY", "2")
-    transcript = _transcript(45)
+    transcript = _transcript(85)
     payload = _payload(transcript)
     save_path = tmp_path / "cache.json"
     save_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -569,7 +615,7 @@ def test_billing_error_aborts_immediately(monkeypatch, tmp_path, failure):
 
 def test_failed_batch_stays_untranslated_and_heals(monkeypatch, tmp_path):
     monkeypatch.setenv("SSE_TRANSLATE_CONCURRENCY", "2")
-    transcript = _transcript(45)
+    transcript = _transcript(85)
     payload = _payload(transcript)
     save_path = tmp_path / "cache.json"
     save_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -595,10 +641,10 @@ def test_failed_batch_stays_untranslated_and_heals(monkeypatch, tmp_path):
     updates = asyncio.run(scenario())
 
     assert [block["id"] for update in updates for block in update["blocks"]] == list(
-        range(1, 46)
+        range(1, 86)
     )
-    assert [update["translated"] for update in updates] == [20, 20, 25]
-    assert [update["progress"]["done"] for update in updates] == [20, 40, 45]
+    assert [update["translated"] for update in updates] == [10, 10, 45]
+    assert [update["progress"]["done"] for update in updates] == [10, 50, 85]
     # 失败批也「完成即写盘」（内容是该批未翻译标记），次数仍为批数。
     assert len(persisted) == 3
     saved = json.loads(save_path.read_text(encoding="utf-8"))
@@ -607,7 +653,7 @@ def test_failed_batch_stays_untranslated_and_heals(monkeypatch, tmp_path):
         for block in saved["transcript"]
         if translate.needs_retranslation(block["zh_text"])
     ]
-    assert markers == list(range(21, 41))
+    assert markers == list(range(11, 51))
 
     # 自愈：下次只补失败的那一批。
     state["calls"].clear()
@@ -630,7 +676,7 @@ def test_failed_batch_stays_untranslated_and_heals(monkeypatch, tmp_path):
 
     asyncio.run(resume())
     assert [block_id for batch in state["calls"] for block_id in batch] == list(
-        range(21, 41)
+        range(11, 51)
     )
 
 
@@ -641,7 +687,7 @@ def test_failed_batch_stays_untranslated_and_heals(monkeypatch, tmp_path):
 def test_sse_endpoint_keeps_batch_order_with_parallel_batches(
     client, history_dir, monkeypatch, caplog
 ):
-    blocks = _transcript(45)
+    blocks = _transcript(85)
     state: dict = {}
     # 批 1 最慢、批 3 最快 —— 完成顺序反着来，SSE 仍须按批序。
     _install_endpoint_fakes(
@@ -657,11 +703,11 @@ def test_sse_endpoint_keeps_batch_order_with_parallel_batches(
     assert names == ["meta", "batch", "batch", "batch", "stage", "summary", "done"]
 
     batches = [data for name, data in events if name == "batch"]
-    assert [data["progress"]["done"] for data in batches] == [20, 40, 45]
-    assert [data["cursor"] for data in batches] == [20, 40, 45]
+    assert [data["progress"]["done"] for data in batches] == [10, 50, 85]
+    assert [data["cursor"] for data in batches] == [10, 50, 85]
     assert [
         block["id"] for data in batches for block in data["blocks"]
-    ] == list(range(1, 46))
+    ] == list(range(1, 86))
     assert all(
         block["zh_text"].startswith("译文")
         for data in batches
@@ -683,7 +729,7 @@ def test_sse_endpoint_keeps_batch_order_with_parallel_batches(
 
 
 def test_sse_endpoint_402_emits_error_event(client, monkeypatch):
-    blocks = _transcript(45)
+    blocks = _transcript(85)
     failure = billing.InsufficientBalance(
         balance_micro_usd=0,
         required_micro_usd=1000,

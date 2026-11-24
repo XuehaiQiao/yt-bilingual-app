@@ -860,6 +860,30 @@ def test_translate_vi_is_isolated_from_zh(reading_client, llm_stub):
     assert zh["paragraphs"][0]["translation"].startswith("中文译文")
 
 
+def test_translate_article_first_batch_small_then_steady(reading_client, llm_stub):
+    """P2-33：20 段 → 首批 5 段 + 稳定批 15 段，每批仍各扣 1 次配额。"""
+    paragraphs = _paragraphs(20)
+    article_id = _article_id(reading_client, paragraphs)
+    llm_stub.response = _translations(*range(20))
+
+    response = _translate(reading_client, article_id)
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["status"] == "done"
+    assert data["total"] == 20
+    assert data["translated"] == 20
+    assert data["failed"] == 0
+    assert data["batches"] == 2
+    assert len(llm_stub.calls) == 2
+    assert _prompt_indices(llm_stub.calls[0][0]) == list(range(5)), "首批 5 段"
+    assert _prompt_indices(llm_stub.calls[1][0]) == list(range(5, 20))
+
+    detail = reading_client.get(
+        f"/api/article/{article_id}?targetLang=zh-CN"
+    ).json()
+    assert detail["stats"] == {"total": 20, "translated": 20, "untranslated": 0}
+
+
 def test_translate_only_fills_missing_paragraphs(reading_client, llm_stub):
     article_id = _article_id(reading_client)
     assert _translate(reading_client, article_id).status_code == 200

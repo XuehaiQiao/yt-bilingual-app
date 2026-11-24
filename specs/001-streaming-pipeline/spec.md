@@ -1,6 +1,6 @@
 # 规格：字幕流式管线
 
-**状态：** 已实现 ｜ **对应代码：** `backend/routes_videos.py`（`process_video_stream`）、`backend/translate.py`（`_stream_translate`、`process_llm_batch`、`_align_processed_blocks`）、`backend/llm.py`（OpenAI 兼容 payload）、`backend/config.py`（`MODEL_CATALOG`）、`backend/jobs.py` + `backend/migrations/versions/0005_jobs.py`（任务表/续传，M1 ⑤）、`frontend/src/lib/transcript.ts`、`frontend/src/lib/jobs.ts`、`frontend/src/App.tsx`、`frontend/src/components/ModelBar.tsx`
+**状态：** 已实现 ｜ **对应代码：** `backend/routes_videos.py`（`process_video_stream`）、`backend/translate.py`（`_stream_translate`、`process_llm_batch`、`_align_processed_blocks`）、`backend/translation_batching.py`（P2-33 分批策略）、`backend/llm.py`（OpenAI 兼容 payload）、`backend/config.py`（`MODEL_CATALOG`）、`backend/jobs.py` + `backend/migrations/versions/0005_jobs.py`（任务表/续传，M1 ⑤）、`frontend/src/lib/transcript.ts`、`frontend/src/lib/jobs.ts`、`frontend/src/App.tsx`、`frontend/src/components/ModelBar.tsx`
 
 ---
 
@@ -31,6 +31,7 @@
 - **必须**（P2-31）：单批翻译有 90s deadline（`translate.TRANSLATE_BATCH_TIMEOUT_SECONDS`），超时取消当前调用并按失败进入降级链；其他 LLM 调用仍走 provider 的 180s timeout，不受影响。
 - **应当**（P2-31）：Qwen 目录项用模型级 `thinking_disabled` 标记，OpenAI 兼容 payload 只对该标记发 `thinking:{"type":"disabled"}`；DeepSeek/其他 provider 不发未验证的未知参数。
 - **必须**（P2-32）：缓存命中（含续传）的首屏不被教学分析阻塞——事件序固定为 `meta` 先出（不带分析）→ 需要补译时逐批 `batch` → 分析成功后一次 `batch` 回传更新后的 blocks（**无 pending 也发**）→ `summary`/`done`；分析失败只影响增强，不阻断字幕/总结/完成。
+- **必须**（P2-33）：翻译按「条数 + 源 token 预算」切批（`backend/translation_batching.py`）：首批 ≤10 blocks 抢首屏，之后每批 ≤40 blocks，且单批 ≤2,000 源 token（`max(1, ceil(len/4))` 的英文近似，不是精确 tokenizer）；单条超预算仍单独成批、不丢弃，不产生空批；批序、并发、逐批落盘、progress/断点、取消与 402 语义都不变；经典路径 `_translate_video_blocks` 共用同一策略。
 
 ## 验收标准
 - [ ] 给定一个有英文字幕的视频，粘贴后数秒内英文字幕可见且可播放。
@@ -44,6 +45,7 @@
 - [ ] （P2-31）空响应/不可解析 JSON 各自同候选最多重试 1 次；仍失败才降级；整条重试路径只扣 1 次配额。
 - [ ] （P2-31）缺失 id 只补缺失子集一次，仍缺标 `[未翻译]`；单批 90s 超时进入降级，不会挂到 180s。
 - [ ] （P2-32）缓存命中且无未翻译句：`meta` 先到且不含教学分析，分析完成后用 `batch` 更新 blocks；分析慢/失败时 `meta` 仍立即返回，`summary`/`done` 不被阻断。
+- [ ] （P2-33）40 块 → 10 / 30 两批（首批小、稳定批 ≤40）；长 block 让源 token 超 2,000 时提前切批；单条超预算仍单独送、不丢弃；SSE 进度/批序/断点与经典路径顺序不变。
 
 ## 边界与非目标
 - 只处理英文源字幕 → 中文翻译。

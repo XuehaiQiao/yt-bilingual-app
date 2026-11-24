@@ -127,7 +127,7 @@ def test_translation_concurrency_default_and_clamp(monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_parallel_batches_speed_up_wall_time_and_keep_order(monkeypatch):
-    blocks = _blocks(61)  # 4 批：20 / 20 / 20 / 1
+    blocks = _blocks(61)  # P2-33：3 批：10 / 40 / 11
     monkeypatch.setattr(llm, "batch_pause", lambda model=None: 0)
 
     calls: list[list[int]] = []
@@ -149,9 +149,10 @@ def test_parallel_batches_speed_up_wall_time_and_keep_order(monkeypatch):
 
     # 顺序：输出 block id 严格按输入顺序，不是完成顺序。
     assert [block["id"] for block in parallel] == list(range(1, 62))
-    # 每批只送一次（4 批），批次之间无重叠 id。
+    # 每批只送一次（3 批），批次之间无重叠 id。
     flattened = [block_id for batch in calls for block_id in batch]
-    assert len(calls) == 4
+    assert len(calls) == 3
+    assert [len(call) for call in calls] == [10, 40, 11]
     assert sorted(flattened) == list(range(1, 62))
 
     # 同参数下串行（并发 1）作基线：并行 wall time 应明显更短。
@@ -181,7 +182,7 @@ def test_parallel_batches_speed_up_wall_time_and_keep_order(monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_batch_pause_still_paces_parallel_batches(monkeypatch):
-    blocks = _blocks(41)  # 3 批，并发 2：两条通道各在「非最后一批」后停一拍
+    blocks = _blocks(41)  # 2 批：10 / 31，并发 2
     monkeypatch.setenv("VIDEO_TRANSLATION_CONCURRENCY", "2")
     pause_calls: list = []
 
@@ -205,8 +206,8 @@ def test_batch_pause_still_paces_parallel_batches(monkeypatch):
     elapsed = time.perf_counter() - started
 
     assert [block["id"] for block in out] == list(range(1, 42))
-    # 批 1、批 2 之后各停一拍（批 3 是最后一批，不再停）。
-    assert pause_calls == ["deepseek-chat", "deepseek-chat"]
+    # 批 1 跑完后停一拍再领下一批；批 2 是最后一批，不再停。
+    assert pause_calls == ["deepseek-chat"]
     assert elapsed >= 0.12, "batch_pause 的限流等待没有生效"
 
 
@@ -215,11 +216,11 @@ def test_batch_pause_still_paces_parallel_batches(monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_failed_batch_falls_back_to_mock_without_retry(monkeypatch):
-    blocks = _blocks(41)  # 3 批；批 2 的首个 id 是 21
+    blocks = _blocks(41)  # 2 批：10 / 31；批 2 的首个 id 是 11
     monkeypatch.setenv("VIDEO_TRANSLATION_CONCURRENCY", "2")
     monkeypatch.setattr(llm, "batch_pause", lambda model=None: 0)
     calls: list[list[int]] = []
-    _install_batch_fake(monkeypatch, calls=calls, fail_when_first_id=21)
+    _install_batch_fake(monkeypatch, calls=calls, fail_when_first_id=11)
 
     mock_calls: list[list[int]] = []
 
@@ -239,13 +240,13 @@ def test_failed_batch_falls_back_to_mock_without_retry(monkeypatch):
     )
 
     assert [block["id"] for block in out] == list(range(1, 42))
-    assert len(calls) == 3, "每个批次只调用一次（非 429 错误不重试）"
-    assert mock_calls == [list(range(21, 41))], "只有失败的批次回退 mock"
+    assert len(calls) == 2, "每个批次只调用一次（非 429 错误不重试）"
+    assert mock_calls == [list(range(11, 42))], "只有失败的批次回退 mock"
     zh_by_id = {block["id"]: block["zh_text"] for block in out}
     assert zh_by_id[1] == "译文1"
-    assert zh_by_id[21] == "mock-21"
-    assert zh_by_id[40] == "mock-40"
-    assert zh_by_id[41] == "译文41"
+    assert zh_by_id[10] == "译文10"
+    assert zh_by_id[11] == "mock-11"
+    assert zh_by_id[41] == "mock-41"
 
 
 # ---------------------------------------------------------------------------
@@ -253,11 +254,11 @@ def test_failed_batch_falls_back_to_mock_without_retry(monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_billing_hard_gate_aborts_without_mock(monkeypatch):
-    blocks = _blocks(61)  # 4 批；批 2 的首个 id 是 21
+    blocks = _blocks(61)  # 3 批：10 / 40 / 11；批 2 的首个 id 是 11
     monkeypatch.setenv("VIDEO_TRANSLATION_CONCURRENCY", "2")
     monkeypatch.setattr(llm, "batch_pause", lambda model=None: 0)
     calls: list[list[int]] = []
-    _install_batch_fake(monkeypatch, calls=calls, billing_when_first_id=21)
+    _install_batch_fake(monkeypatch, calls=calls, billing_when_first_id=11)
 
     mock_calls: list = []
 
@@ -280,7 +281,7 @@ def test_billing_hard_gate_aborts_without_mock(monkeypatch):
     assert mock_calls == [], "计费硬闸不能被 mock 兜底吞掉"
     sent = [block_id for batch in calls for block_id in batch]
     assert len(sent) == len(set(sent)), "同一批次不能被重复送进模型"
-    assert len(calls) <= 4
+    assert len(calls) <= 3
 
 
 # ---------------------------------------------------------------------------
@@ -330,7 +331,7 @@ def _timing_records(caplog) -> list[dict]:
 def test_process_video_runs_batches_parallel_and_logs_timing(
     client, monkeypatch, caplog
 ):
-    blocks = _blocks(41)  # 3 批
+    blocks = _blocks(41)  # P2-33：2 批：10 / 31
     calls: list[list[int]] = []
     _install_endpoint_fakes(monkeypatch, blocks, calls)
     monkeypatch.setenv("VIDEO_TRANSLATION_CONCURRENCY", "2")
@@ -341,7 +342,7 @@ def test_process_video_runs_batches_parallel_and_logs_timing(
     payload = response.json()
 
     assert [block["id"] for block in payload["transcript"]] == list(range(1, 42))
-    assert len(calls) == 3
+    assert len(calls) == 2
     assert payload["summary"] == "测试总结"
 
     timing = _timing_records(caplog)
@@ -352,9 +353,9 @@ def test_process_video_runs_batches_parallel_and_logs_timing(
     ]
     assert len(totals) == 1
     total = totals[0]
-    assert total["batch_count"] == 3
+    assert total["batch_count"] == 2
     assert total["concurrency"] == 2
-    assert len(total["batch_durations_ms"]) == 3
+    assert len(total["batch_durations_ms"]) == 2
     assert total["total_ms"] > 0
     assert total["ok"] is True
 
@@ -363,8 +364,8 @@ def test_process_video_runs_batches_parallel_and_logs_timing(
         for item in timing
         if item["feature"] == "video_translation" and item.get("event") == "batch"
     ]
-    assert len(batch_lines) == 3
-    assert sorted(item["batch"] for item in batch_lines) == [1, 2, 3]
+    assert len(batch_lines) == 2
+    assert sorted(item["batch"] for item in batch_lines) == [1, 2]
     assert all(item["duration_ms"] >= 0 for item in batch_lines)
     assert all(item["concurrency"] == 2 for item in batch_lines)
 
@@ -428,9 +429,9 @@ def test_sse_stream_keeps_batch_order_progress_and_cache(client, history_dir, mo
             current = None
 
     names = [name for name, _ in events]
-    assert names == ["meta", "batch", "batch", "batch", "stage", "summary", "done"]
+    assert names == ["meta", "batch", "batch", "stage", "summary", "done"]
     batches = [payload for name, payload in events if name == "batch"]
-    assert [item["progress"]["done"] for item in batches] == [20, 40, 41]
+    assert [item["progress"]["done"] for item in batches] == [10, 41]
     streamed_ids = [block["id"] for item in batches for block in item["blocks"]]
     assert streamed_ids == list(range(1, 42))
 

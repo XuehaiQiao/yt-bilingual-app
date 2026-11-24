@@ -16,6 +16,7 @@ import billing
 import languages
 import llm
 import storage
+import translation_batching
 from ai import quota
 from ai.ledger import QuotaExceeded
 from config import DEFAULT_MODEL
@@ -837,14 +838,15 @@ async def retranslate_marked_blocks(
 
 
 # ---------------------------------------------------------------------------
-# SSE 流式翻译：批次并行（P1-19）
+# SSE 流式翻译：批次并行（P1-19）+ token-aware 分批（P2-33）
 # ---------------------------------------------------------------------------
 # 目标：默认 2 批并行（``SSE_TRANSLATE_CONCURRENCY``，1–3 可调），同时保持
 # 「batch 事件按批序、每批完成即落盘、断点续传、取消/402 立即中断」。
+# 批大小不再固定 20：首批 ≤10 blocks、稳定期 ≤40 blocks、单批源 token ≤2,000
+# （共享策略见 ``translation_batching``）。
 SSE_TRANSLATE_CONCURRENCY_ENV = "SSE_TRANSLATE_CONCURRENCY"
 SSE_TRANSLATE_CONCURRENCY_DEFAULT = 2
 SSE_TRANSLATE_CONCURRENCY_MAX = 3
-SSE_TRANSLATE_BATCH_SIZE = 20
 
 _timing_logger = logging.getLogger("linguatrek.translate")
 
@@ -900,15 +902,22 @@ async def _stream_translate(
     P1-19：批次并行（默认 2、1–3 可调）但仍**按批序**产出事件——
     后完成的批次在内存队列里等前一批；每批完成即回填 + 持写锁落盘；客户端
     取消时 ``finally`` 取消所有在途批次；402/额度硬闸立即中断并透传。
+
+    P2-33：分批改为 token-aware（``translation_batching.chunk_by_budget``）：
+    首批 ≤10 blocks 抢首屏，之后每批 ≤40 blocks 且 ≤2,000 源 token；批序、
+    并发、队列、落盘、progress、断点、取消/402 语义都不变。
     """
     lang = languages.resolve_target_lang(
         target_lang if target_lang is not None else payload_target_lang(payload)
     )
     total = len(indices)
-    batches = [
-        indices[start:start + SSE_TRANSLATE_BATCH_SIZE]
-        for start in range(0, total, SSE_TRANSLATE_BATCH_SIZE)
-    ]
+    batches = translation_batching.chunk_by_budget(
+        indices,
+        lambda index: transcript[index].get("en_text") or "",
+        translation_batching.VIDEO_FIRST_BATCH_SIZE,
+        translation_batching.VIDEO_STEADY_BATCH_SIZE,
+        translation_batching.VIDEO_MAX_SOURCE_TOKENS,
+    )
     batch_count = len(batches)
     if batch_count == 0:
         return

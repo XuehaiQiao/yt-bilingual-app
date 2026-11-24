@@ -2,10 +2,10 @@
 
 覆盖：
 
-1. 首次请求创建 job：SSE meta 带 jobId，每批落盘后 cursor 前进（20 → 40 → 45）；
+1. 首次请求创建 job：SSE meta 带 jobId，每批落盘后 cursor 前进（P2-33 后：10 → 45）；
 2. 断线（流被取消）→ job 落成 partial、cursor 停在第 1 批，``GET /api/jobs/{id}``
    返回 canResume=true；
-3. 带 jobId + from 续传：只补 ``[未翻译]`` 的句子，已落盘的 20 句不再调模型
+3. 带 jobId + from 续传：只补 ``[未翻译]`` 的句子，已落盘的 10 句不再调模型
    （断言 LLM 调用次数与 block id 都没有重复）；
 4. 前端没带 jobId 直接重新提交 URL：复用同一条未完成 job（幂等），同样不重复生成；
 5. 已完成的 job 再重连：只回放 meta/summary/done，不调模型；
@@ -37,7 +37,7 @@ from tests.migration_utils import assert_alembic_ok, run_alembic
 URL = "https://www.youtube.com/watch?v=jobtest0001"
 VIDEO_ID = "jobtest0001"
 TOTAL_BLOCKS = 45
-BATCH_SIZE = 20
+BATCH_SIZE = 10  # P2-33：首批 10 块；45 块 = 10 + 35
 
 METADATA = {
     "title": "Jobs Test",
@@ -182,9 +182,9 @@ def test_stream_creates_job_and_advances_cursor(migrated, monkeypatch):
     assert meta["resumed"] is False
 
     batches = [data for name, data in events if name == "batch"]
-    assert [batch["cursor"] for batch in batches] == [20, 40, 45]
-    assert [batch["jobId"] for batch in batches] == [job_id] * 3
-    assert [len(block_ids) for block_ids in calls] == [20, 20, 5]
+    assert [batch["cursor"] for batch in batches] == [10, 45]
+    assert [batch["jobId"] for batch in batches] == [job_id] * 2
+    assert [len(block_ids) for block_ids in calls] == [10, 35]
 
     snapshot = migrated.get(f"/api/jobs/{job_id}")
     assert snapshot.status_code == 200, snapshot.text
@@ -236,11 +236,11 @@ def test_resume_after_drop_only_generates_missing_blocks(migrated, monkeypatch):
     assert meta["cursor"] == BATCH_SIZE
     assert meta["from"] == BATCH_SIZE, "POST body 的 from 别名应被解析"
 
-    # 续传只补第 21–45 句；第 1 批（1–20）一个都没再送进模型。
+    # 续传只补第 11–45 句；第 1 批（1–10）一个都没再送进模型。
     resumed_ids = [block_id for batch in calls[1:] for block_id in batch]
     assert sorted(resumed_ids) == list(range(BATCH_SIZE + 1, TOTAL_BLOCKS + 1))
     assert len(calls) == 3, f"总调用批次应为 3（1 批断线前 + 2 批续传），实际 {calls}"
-    assert [batch["cursor"] for name, batch in events if name == "batch"] == [40, TOTAL_BLOCKS]
+    assert [batch["cursor"] for name, batch in events if name == "batch"] == [20, TOTAL_BLOCKS]
 
     done = migrated.get(f"/api/jobs/{job_id}").json()
     assert done["status"] == "done"
@@ -261,7 +261,7 @@ def test_resume_after_drop_during_summary_skips_translation(migrated, monkeypatc
     monkeypatch.setattr(routes_videos, "summarize_video_transcript", cancelled_summary)
     response = migrated.post("/api/process-video-stream", json={"url": URL})
     events = _events(response)
-    assert [name for name, _ in events] == ["meta", "batch", "batch", "batch", "stage"]
+    assert [name for name, _ in events] == ["meta", "batch", "batch", "stage"]
     job_id = events[0][1]["jobId"]
 
     snapshot = migrated.get(f"/api/jobs/{job_id}").json()
@@ -457,10 +457,10 @@ def test_stream_still_works_without_jobs_table(client, monkeypatch):
     assert response.status_code == 200, response.text
     events = _events(response)
     assert [name for name, _ in events] == [
-        "meta", "batch", "batch", "batch", "stage", "summary", "done",
+        "meta", "batch", "batch", "stage", "summary", "done",
     ]
     assert dict(events)["meta"]["jobId"] is None
-    assert len(calls) == 3
+    assert len(calls) == 2
     # 查任务/续传在旧库上也是明确 404，而不是 500。
     assert client.get("/api/jobs/whatever").status_code == 404
     assert client.post(
