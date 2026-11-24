@@ -1528,8 +1528,8 @@
     {
       "id": "P2-38",
       "file": "TASKS/P2-38-v11-schema-auth.md",
-      "status": "claimed",
-      "owner": "schema-auth-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/migrations/versions/0033_v1_1_launch.py",
         "backend/emailer.py",
@@ -1547,8 +1547,8 @@
     {
       "id": "P2-39",
       "file": "TASKS/P2-39-v11-feedback-quota.md",
-      "status": "pending",
-      "owner": "",
+      "status": "claimed",
+      "owner": "feedback-quota-impl",
       "write_scope": [
         "backend/feedback.py",
         "backend/routes_feedback.py",
