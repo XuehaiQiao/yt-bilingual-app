@@ -22,6 +22,7 @@
 - `frontend/src/i18n/zh-CN.json`、`vi-VN.json`
 - `backend/routes_content.py`（local_show token-aware 分批）
 - `backend/tests/test_library_content.py`、`test_local_shows_video_map.py`
+- `backend/tests/test_jobs.py`、`test_video_pipeline_timing.py`、`test_streaming_pipeline.py`（stub 接 **kwargs）
 - `specs/034-balance-billing/spec.md`、`specs/001`、`specs/019`
 
 ## acceptance

@@ -1436,7 +1436,10 @@
         "frontend/src/i18n/vi-VN.json",
         "backend/routes_content.py",
         "backend/tests/test_library_content.py",
-        "backend/tests/test_local_shows_video_map.py"
+        "backend/tests/test_local_shows_video_map.py",
+        "backend/tests/test_jobs.py",
+        "backend/tests/test_video_pipeline_timing.py",
+        "backend/tests/test_streaming_pipeline.py"
       ],
       "shared_writes": [],
       "deps": [
