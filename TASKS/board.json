@@ -1567,8 +1567,8 @@
     {
       "id": "P2-40",
       "file": "TASKS/P2-40-v11-frontend.md",
-      "status": "claimed",
-      "owner": "v11-frontend-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
         "frontend/src/components/AuthScreen.tsx",
