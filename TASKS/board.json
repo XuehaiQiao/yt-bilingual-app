@@ -1185,6 +1185,21 @@
       "deps": [
         "P2-21"
       ]
+    },
+    {
+      "id": "P2-23",
+      "file": "TASKS/P2-23-apkg-backend.md",
+      "status": "claimed",
+      "owner": "apkg-backend-impl",
+      "write_scope": [
+        "backend/apkg_import.py",
+        "backend/routes_wordlists.py",
+        "backend/requirements.txt",
+        "backend/tests/test_apkg_import.py",
+        "specs/046-apkg-import/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
