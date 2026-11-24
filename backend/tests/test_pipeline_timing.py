@@ -407,7 +407,7 @@ def test_migration_0032_upgrade_downgrade_is_idempotent(tmp_path):
     )
     assert "pipeline_timing" not in table_names(db)
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
-    assert revision(db) == "0032_pipeline_timing"
+    assert revision(db) == "0033_v1_1_launch"
     assert "pipeline_timing" in table_names(db)
     assert list(columns(db, "pipeline_timing")) == [
         "id",

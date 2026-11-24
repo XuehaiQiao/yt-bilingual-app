@@ -26,7 +26,7 @@ from tests.migration_utils import (
 )
 
 BASELINE = "0001_baseline"
-HEAD = "0032_pipeline_timing"
+HEAD = "0033_v1_1_launch"
 
 
 def _make_legacy_db(db_path, monkeypatch) -> dict:
@@ -90,6 +90,8 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "quota_overrides",
         # 0032：翻译/分析计时（P2-35）。
         "pipeline_timing",
+        # 0033：账号找回 token / 反馈（v1.1 P0）。
+        "auth_tokens", "feedback",
         "alembic_version",
     } <= tables
     assert revision(db) == HEAD
@@ -136,6 +138,7 @@ def test_upgrade_head_from_empty_db(tmp_path):
         "credits",
         "status",
         "balance_micro_usd",
+        "email_verified_at",
     ]
     assert users["id"]["pk"] == 1
     assert users["id"]["notnull"] == 0  # 与 auth_db.py 的 `id TEXT PRIMARY KEY` 一致
@@ -152,6 +155,9 @@ def test_upgrade_head_from_empty_db(tmp_path):
     assert users["balance_micro_usd"]["type"].upper() == "INTEGER"
     assert users["balance_micro_usd"]["notnull"] == 1
     assert str(users["balance_micro_usd"]["default"]) == "0"
+    # 0033：邮箱验证时间为可空 INTEGER（NULL = 未验证，旧用户不强制验证）。
+    assert users["email_verified_at"]["type"].upper() == "INTEGER"
+    assert users["email_verified_at"]["notnull"] == 0
 
     # 0025：ai_usage 的计费快照列（历史行由迁移标 legacy）。
     usage_columns = columns(db, "ai_usage")

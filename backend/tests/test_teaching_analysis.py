@@ -215,7 +215,7 @@ def _sse_events(response) -> list[tuple[str, dict]]:
 def test_migration_0020_schema_and_downgrade(tmp_path):
     db = tmp_path / "app.db"
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
-    assert revision(db) == "0032_pipeline_timing"
+    assert revision(db) == "0033_v1_1_launch"
     assert "content_teaching_analysis" in table_names(db)
 
     columns_ = columns(db, "content_teaching_analysis")

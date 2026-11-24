@@ -315,7 +315,7 @@ def test_migration_downgrade_keeps_users_and_usage(tmp_path, monkeypatch):
     ]
 
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head again")
-    assert revision(db) == "0032_pipeline_timing"
+    assert revision(db) == "0033_v1_1_launch"
     # 回滚后余额列重建为 0，再按 D-3 给 active 用户补发。
     assert _balance(db, "keep") == BONUS
 
@@ -338,7 +338,7 @@ def test_public_signup_grants_bonus_in_one_transaction(client_upgraded, billing_
     assert me.status_code == 200
     # 契约不变：user 对象不新增余额字段（余额走 summary）。
     assert set(me.json()["user"]) == {
-        "id", "email", "username", "credits", "status"
+        "id", "email", "username", "credits", "status", "emailVerified"
     }
 
     summary = client_upgraded.get("/api/user/summary").json()

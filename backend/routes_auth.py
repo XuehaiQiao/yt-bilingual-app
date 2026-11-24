@@ -22,6 +22,19 @@
                                                   inviteSignupEnabled, inviteRequired,
                                                   registrationClosed}
                                                   公开只读；注册页据此决定是否显示邀请码。
+- POST /api/auth/password-reset/request {"email"} -> **恒 200** {"ok":true}
+                                                  不枚举邮箱是否存在；命中则发一次性重置
+                                                  邮件（token 只存 hash、30 分钟、限流）。
+- POST /api/auth/password-reset/confirm {"token","password"} -> 200 {"ok":true}
+                                                  无效/已用 400；过期 410；改密成功会
+                                                  失效该用户全部旧会话（不影响其他用户）。
+- POST /api/auth/email-verification/request（需登录） -> 202 {"ok":true}
+                                                  已验证/限流/邮件失败也 202，不泄露细节。
+- POST /api/auth/email-verification/confirm {"token"} -> 200 {"ok":true}
+                                                  无效/已用 400；过期 410。
+
+登录态 user 对象自 v1.1 起追加 ``emailVerified``（布尔，旧字段不变）；旧用户
+``email_verified_at=NULL`` → false，但**不强制验证、不强制改密**，登录/使用不受限。
 
 Cookie：`ln_session`，httpOnly、SameSite=Lax、Path=/、Max-Age 30 天；
 `Secure` 由 `COOKIE_SECURE=1` 控制（本地 HTTP 默认关）。游客 Cookie `ln_guest`
@@ -44,6 +57,7 @@ import account
 import auth_db
 import auth_lockout
 import config
+import emailer
 import guest
 import invites
 import ability
@@ -71,6 +85,19 @@ _EMAIL_RE = re.compile(
 
 MIN_PASSWORD_LENGTH = 8
 
+# 账号找回 / 邮箱验证请求限流（进程内固定窗口；进程重启即清空）。
+# 密码重置请求无论是否命中限流都返回 200（不枚举邮箱），限流只决定「是否真发信」；
+# 第二道闸是 auth_db 里按邮箱统计的窗口计数（跨进程仍有效）。
+RESET_REQUEST_WINDOW_SECONDS = 15 * 60
+RESET_REQUEST_MAX_PER_IP = 5
+RESET_REQUEST_MAX_PER_EMAIL = 3
+VERIFY_REQUEST_WINDOW_SECONDS = 15 * 60
+VERIFY_REQUEST_MAX_PER_USER = 3
+VERIFY_REQUEST_MAX_PER_EMAIL = 3
+
+_recovery_attempts: dict[str, list[float]] = {}
+_recovery_lock = threading.Lock()
+
 
 class Credentials(BaseModel):
     email: str
@@ -87,6 +114,25 @@ class Credentials(BaseModel):
     )
 
 
+class PasswordResetRequest(BaseModel):
+    """密码重置申请；非法/缺失邮箱也返回 200（不枚举），不在这里 422。"""
+
+    email: object = None
+
+
+class PasswordResetConfirm(BaseModel):
+    """密码重置确认：token + 新密码；字段类型用 object 以便统一 400。"""
+
+    token: object = None
+    password: object = None
+
+
+class EmailVerificationConfirm(BaseModel):
+    """邮箱验证确认：token（链接里的明文一次性串）。"""
+
+    token: object = None
+
+
 def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
@@ -99,6 +145,34 @@ def _prune_failures(ip: str, now: float) -> list[float]:
     else:
         _login_failures.pop(ip, None)
     return attempts
+
+
+def _recovery_recent(key: str, window_seconds: float, now: float) -> int:
+    """账号找回/验证请求的固定窗口计数（调用方持 ``_recovery_lock``）。"""
+    cutoff = now - window_seconds
+    attempts = [ts for ts in _recovery_attempts.get(key, []) if ts > cutoff]
+    if attempts:
+        _recovery_attempts[key] = attempts
+    else:
+        _recovery_attempts.pop(key, None)
+    return len(attempts)
+
+
+def _recovery_record(key: str, now: float) -> None:
+    with _recovery_lock:
+        _recovery_attempts.setdefault(key, []).append(now)
+
+
+def _recovery_limited(key: str, window_seconds: float, limit: int) -> bool:
+    now = time.time()
+    with _recovery_lock:
+        return _recovery_recent(key, window_seconds, now) >= limit
+
+
+def reset_auth_recovery_throttle() -> None:
+    """清空账号找回/邮箱验证请求限流状态（测试/运维排障用）。"""
+    with _recovery_lock:
+        _recovery_attempts.clear()
 
 
 def _is_rate_limited(ip: str) -> bool:
@@ -138,18 +212,30 @@ def _lockout_error(status: auth_lockout.LockStatus) -> HTTPException:
     )
 
 
-def _validate_signup(email: str, password: str) -> str:
-    """注册参数校验：邮箱格式 / 密码 >= 8；返回规范化后的邮箱。"""
-    email = auth_db.normalize_email(email)
+def _validate_email(email: object) -> str:
+    """邮箱格式校验（注册与密码重置共用）；返回规范化邮箱，非法抛 400。"""
+    normalized = auth_db.normalize_email(email) if isinstance(email, str) else ""
     if (
-        not email
-        or len(email) > 254
-        or "@" not in email
-        or not _EMAIL_RE.match(email)
+        not normalized
+        or len(normalized) > 254
+        or "@" not in normalized
+        or not _EMAIL_RE.match(normalized)
     ):
         raise HTTPException(status_code=400, detail="邮箱格式不正确。")
-    if len(password) < MIN_PASSWORD_LENGTH:
+    return normalized
+
+
+def _validate_password(password: object) -> str:
+    """密码策略（注册与密码重置共用）：至少 8 个字符；非法抛 400。"""
+    if not isinstance(password, str) or len(password) < MIN_PASSWORD_LENGTH:
         raise HTTPException(status_code=400, detail="密码至少需要 8 个字符。")
+    return password
+
+
+def _validate_signup(email: object, password: object) -> str:
+    """注册参数校验：邮箱格式 / 密码 >= 8；返回规范化后的邮箱。"""
+    email = _validate_email(email)
+    _validate_password(password)
     return email
 
 
@@ -176,8 +262,14 @@ def clear_session_cookie(response: Response) -> None:
 
 
 def _public_user(user: dict) -> dict:
-    """只暴露契约里的字段，绝不把 password_hash 带出。"""
-    return account.public_user(user)
+    """只暴露契约里的字段，绝不把 password_hash 带出。
+
+    v1.1 追加 ``emailVerified``（旧字段/顺序不变）：NULL 验证时间 = false；
+    旧用户保持 false，但登录与其它功能**不受限制**。
+    """
+    data = account.public_user(user)
+    data["emailVerified"] = bool(user.get("email_verified_at"))
+    return data
 
 
 def _signup_error(status_code: int, code: str, detail: str) -> JSONResponse:
@@ -364,6 +456,179 @@ def me(request: Request):
         "user": _public_user(user),
         "isAdmin": config.is_admin_email(user["email"]),
     }
+
+
+# ---------------------------------------------------------------------------
+# 账号找回 / 邮箱验证（v1.1 P0，迁移 0033；契约见模块 docstring）
+# ---------------------------------------------------------------------------
+
+_RESET_TOKEN_UNAVAILABLE = "账号找回暂不可用：请先运行数据库迁移（0033）。"
+_VERIFY_TOKEN_UNAVAILABLE = "邮箱验证暂不可用：请先运行数据库迁移（0033）。"
+_RESET_LINK_INVALID = "链接无效或已使用，请重新申请。"
+_RESET_LINK_EXPIRED = "链接已过期，请重新申请。"
+_VERIFY_LINK_INVALID = "验证链接无效或已使用。"
+
+
+@router.post("/password-reset/request")
+def password_reset_request(
+    request: Request,
+    payload: PasswordResetRequest | None = None,
+):
+    """申请密码重置：**无论邮箱是否存在都返回 200 {"ok":true}**（防枚举）。
+
+    - 非法/不存在的邮箱：照常返回，不签发 token、不发邮件；
+    - 同一 IP 15 分钟 > 5 次 / 同一邮箱 15 分钟 > 3 封：静默跳过；
+    - 邮件发送失败只记日志，绝不让客户端 500（也不回显 token）；
+    - 未迁移（缺 0033）同样返回 200，账号找回不可用但不影响登录/注册。
+    """
+    ip = _client_ip(request)
+    rate_key = f"reset-ip:{ip}"
+    if _recovery_limited(
+        rate_key, RESET_REQUEST_WINDOW_SECONDS, RESET_REQUEST_MAX_PER_IP
+    ):
+        logger.info("密码重置请求超限，静默跳过：ip=%s", ip)
+        return {"ok": True}
+    _recovery_record(rate_key, time.time())
+
+    email = payload.email if payload is not None else None
+    normalized = None
+    if isinstance(email, str):
+        try:
+            normalized = _validate_email(email)
+        except HTTPException:
+            normalized = None
+    if not normalized:
+        return {"ok": True}
+
+    user = auth_db.get_user_by_email(normalized)
+    if user is None:
+        return {"ok": True}
+
+    try:
+        recent = auth_db.count_recent_auth_tokens(
+            normalized,
+            auth_db.PURPOSE_PASSWORD_RESET,
+            window_ms=RESET_REQUEST_WINDOW_SECONDS * 1000,
+        )
+        if recent >= RESET_REQUEST_MAX_PER_EMAIL:
+            logger.info("密码重置请求超限（邮箱窗口），静默跳过")
+            return {"ok": True}
+        token = auth_db.create_auth_token(
+            normalized,
+            auth_db.PURPOSE_PASSWORD_RESET,
+            user["id"],
+            ttl_ms=auth_db.PASSWORD_RESET_TTL_MS,
+        )
+    except auth_db.AuthTokensUnavailable:
+        logger.warning("密码重置不可用：auth_tokens 表未迁移（0033）")
+        return {"ok": True}
+
+    try:
+        emailer.send_password_reset(normalized, token)
+    except emailer.EmailSendError:
+        # 具体原因已由 emailer 记日志（不含 token）；对外仍恒 200。
+        logger.warning("密码重置邮件未发出（申请仍返回成功）")
+    return {"ok": True}
+
+
+@router.post("/password-reset/confirm")
+def password_reset_confirm(payload: PasswordResetConfirm):
+    """用一次性 token 设置新密码；无效 400、过期 410、未迁移 503。
+
+    密码策略先于 token 消费校验：密码太短不会烧掉 token，用户可改正后重试。
+    成功后会删除该用户的全部旧会话（其它用户会话不受影响）。
+    """
+    token = payload.token
+    if not isinstance(token, str) or not token.strip():
+        raise HTTPException(status_code=400, detail=_RESET_LINK_INVALID)
+    password = _validate_password(payload.password)
+    try:
+        record = auth_db.consume_auth_token(
+            token, auth_db.PURPOSE_PASSWORD_RESET
+        )
+    except auth_db.AuthTokenExpired:
+        raise HTTPException(status_code=410, detail=_RESET_LINK_EXPIRED)
+    except auth_db.AuthTokenInvalid:
+        raise HTTPException(status_code=400, detail=_RESET_LINK_INVALID)
+    except auth_db.AuthTokensUnavailable:
+        raise HTTPException(status_code=503, detail=_RESET_TOKEN_UNAVAILABLE)
+
+    password_hash = auth_db.hash_password(password)
+    if not auth_db.set_password_hash(record["user_id"], password_hash):
+        # token 签发后用户被硬删除：链接同样视为无效。
+        raise HTTPException(status_code=400, detail=_RESET_LINK_INVALID)
+    return {"ok": True}
+
+
+@router.post("/email-verification/request", status_code=202)
+def email_verification_request(request: Request):
+    """登录用户申请邮箱验证邮件：202，限流/已/失败都不泄露细节。
+
+    已验证用户直接 202 且不再发信；未迁移（缺 0033）也 202（功能降级但不报错，
+    旧库用户仍可正常登录/使用——**不强制验证**）。
+    """
+    user = getattr(request.state, "user", None)
+    if not user:
+        raise HTTPException(status_code=401, detail="未登录")
+    if user.get("email_verified_at"):
+        return {"ok": True}
+
+    rate_key = f"verify-user:{user['id']}"
+    if _recovery_limited(
+        rate_key, VERIFY_REQUEST_WINDOW_SECONDS, VERIFY_REQUEST_MAX_PER_USER
+    ):
+        logger.info("邮箱验证请求超限，静默跳过：user=%s", user["id"])
+        return {"ok": True}
+    _recovery_record(rate_key, time.time())
+
+    email = user.get("email") or ""
+    try:
+        recent = auth_db.count_recent_auth_tokens(
+            email,
+            auth_db.PURPOSE_EMAIL_VERIFY,
+            window_ms=VERIFY_REQUEST_WINDOW_SECONDS * 1000,
+        )
+        if recent >= VERIFY_REQUEST_MAX_PER_EMAIL:
+            logger.info("邮箱验证请求超限（邮箱窗口），静默跳过")
+            return {"ok": True}
+        token = auth_db.create_auth_token(
+            email,
+            auth_db.PURPOSE_EMAIL_VERIFY,
+            user["id"],
+            ttl_ms=auth_db.EMAIL_VERIFY_TTL_MS,
+        )
+    except auth_db.AuthTokensUnavailable:
+        logger.warning("邮箱验证不可用：auth_tokens 表未迁移（0033）")
+        return {"ok": True}
+
+    try:
+        emailer.send_email_verification(
+            email, token, username=user.get("username")
+        )
+    except emailer.EmailSendError:
+        logger.warning("邮箱验证邮件未发出（申请仍返回成功）")
+    return {"ok": True}
+
+
+@router.post("/email-verification/confirm")
+def email_verification_confirm(payload: EmailVerificationConfirm):
+    """用一次性 token 标记邮箱已验证；无效 400、过期 410、未迁移 503。"""
+    token = payload.token
+    if not isinstance(token, str) or not token.strip():
+        raise HTTPException(status_code=400, detail=_VERIFY_LINK_INVALID)
+    try:
+        record = auth_db.consume_auth_token(
+            token, auth_db.PURPOSE_EMAIL_VERIFY
+        )
+    except auth_db.AuthTokenExpired:
+        raise HTTPException(status_code=410, detail="验证链接已过期，请重新申请。")
+    except auth_db.AuthTokenInvalid:
+        raise HTTPException(status_code=400, detail=_VERIFY_LINK_INVALID)
+    except auth_db.AuthTokensUnavailable:
+        raise HTTPException(status_code=503, detail=_VERIFY_TOKEN_UNAVAILABLE)
+
+    auth_db.mark_email_verified(record["user_id"])
+    return {"ok": True}
 
 
 @router.post("/claim-guest")

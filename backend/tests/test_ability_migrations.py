@@ -20,7 +20,7 @@ from tests.migration_utils import (
     table_names,
 )
 
-HEAD = "0032_pipeline_timing"
+HEAD = "0033_v1_1_launch"
 BEFORE = "0013_user_profile"
 
 

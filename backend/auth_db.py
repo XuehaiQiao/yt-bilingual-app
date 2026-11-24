@@ -97,7 +97,7 @@ def _connect() -> sqlite3.Connection:
 
 
 def _ensure_user_profile_columns(conn: sqlite3.Connection) -> None:
-    """旧库兼容：补上 0013 引入的三列（迁移仍是 schema 真源）。
+    """旧库兼容：补上 0013 三列 + 0025 余额列 + 0033 邮箱验证列（迁移仍是真源）。
 
     `CREATE TABLE IF NOT EXISTS` 不会改已存在的表；旧部署不跑迁移时直接 SELECT
     /INSERT 新列会报 "no such column"。这里只做幂等的 ADD COLUMN，保证「不跑
@@ -122,6 +122,10 @@ def _ensure_user_profile_columns(conn: sqlite3.Connection) -> None:
             "ALTER TABLE users ADD COLUMN balance_micro_usd "
             "INTEGER NOT NULL DEFAULT 0"
         )
+    # 0033（v1.1）：邮箱验证时间列。旧库不跑迁移也要能登录/读 me（NULL =
+    # 未验证；不强制验证），迁移仍是 schema 真源。
+    if "email_verified_at" not in columns:
+        conn.execute("ALTER TABLE users ADD COLUMN email_verified_at INTEGER")
     # 旧行回填显示名（与 0013 迁移同一口径）；新库/新用户不受影响。
     conn.execute(
         "UPDATE users SET username = CASE "
@@ -212,7 +216,7 @@ def _verify_dummy_password(password: str) -> None:
 
 _USER_FIELDS = (
     "id, email, password_hash, username, credits, status, created_at, "
-    "balance_micro_usd"
+    "balance_micro_usd, email_verified_at"
 )
 
 
@@ -393,6 +397,7 @@ def authenticate(email: str, password: str) -> dict | None:
         "credits": user["credits"],
         "balance_micro_usd": user.get("balance_micro_usd"),
         "status": user["status"],
+        "email_verified_at": user.get("email_verified_at"),
     }
 
 
@@ -440,7 +445,7 @@ def get_session(token: str) -> dict | None:
     with _db() as conn:
         row = conn.execute(
             "SELECT s.user_id, s.expires_at, u.email, u.username, u.credits, "
-            "u.status, u.balance_micro_usd "
+            "u.status, u.balance_micro_usd, u.email_verified_at "
             "FROM sessions s JOIN users u ON u.id = s.user_id "
             "WHERE s.token_hash = ?",
             (token_hash,),
@@ -460,6 +465,7 @@ def get_session(token: str) -> dict | None:
         "credits": row["credits"],
         "balance_micro_usd": row["balance_micro_usd"],
         "status": row["status"],
+        "email_verified_at": row["email_verified_at"],
     }
 
 
@@ -491,3 +497,205 @@ def delete_user_sessions(
             "DELETE FROM sessions WHERE user_id = ?", (user_id,)
         )
         return max(0, int(cursor.rowcount or 0))
+
+
+# ---------------------------------------------------------------------------
+# 账号找回 / 邮箱验证 token（v1.1 P0，迁移 0033_v1_1_launch）
+#
+# 表：``auth_tokens(id, user_id, purpose, token_hash, expires_at_ms,
+# used_at_ms, created_at_ms, email)``。口径与 sessions 一致：
+#
+# - 明文 token 只出现在邮件/链接里，库里只存 ``sha256(token)``；
+# - **单次消费**：``used_at_ms IS NULL`` 才可用，消费用条件 UPDATE 原子占位，
+#   并发的两次确认只有一次成功（另一次按「已使用」拒绝）；
+# - **过期**：``expires_at_ms <= now`` 拒绝；过期行在签发新 token 时顺手清理；
+# - **限流**：路由按 IP/用户做内存限速，这里提供按邮箱的窗口计数（跨进程
+#   仍有效的第二道闸）；
+# - 表由 Alembic 管理（**不**在 ``_init_schema`` 里建）：未迁移的旧库调用这些
+#   函数会抛 :class:`AuthTokensUnavailable`，由路由降级为「不发送但不报错/503」，
+#   绝不让账号找回把登录/注册一起带崩。
+# ---------------------------------------------------------------------------
+
+PURPOSE_PASSWORD_RESET = "password_reset"
+PURPOSE_EMAIL_VERIFY = "email_verify"
+TOKEN_PURPOSES = (PURPOSE_PASSWORD_RESET, PURPOSE_EMAIL_VERIFY)
+
+# 密码重置链接 30 分钟内有效；邮箱验证链接 24 小时。
+PASSWORD_RESET_TTL_MS = 30 * 60 * 1000
+EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000
+
+
+class AuthTokensUnavailable(Exception):
+    """``auth_tokens`` 表不存在（未跑 0033 迁移）；路由据此降级，不 500。"""
+
+
+class AuthTokenInvalid(Exception):
+    """token 不存在 / 用途不符 / 已使用。"""
+
+
+class AuthTokenExpired(AuthTokenInvalid):
+    """token 过期（HTTP 映射为 410，提示重新申请）。"""
+
+
+def now_ms() -> int:
+    """当前毫秒时间戳（账号找回相关时间列统一口径）。"""
+    return int(time.time() * 1000)
+
+
+def _require_auth_tokens(conn: sqlite3.Connection) -> None:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = 'auth_tokens'"
+    ).fetchone()
+    if row is None:
+        raise AuthTokensUnavailable(
+            "auth_tokens 表未迁移（缺 0033_v1_1_launch）；"
+            "请先运行 backend/venv/bin/alembic upgrade head。"
+        )
+
+
+def _cleanup_expired_auth_tokens(conn: sqlite3.Connection, now: int) -> None:
+    """删除过期 token 行；未过期但已使用的行保留到过期（防重放）。"""
+    conn.execute("DELETE FROM auth_tokens WHERE expires_at_ms <= ?", (now,))
+
+
+def create_auth_token(
+    email: str,
+    purpose: str,
+    user_id: str,
+    *,
+    ttl_ms: int,
+) -> str:
+    """签发一次性 token，返回明文（只发给邮件，不入库/不进日志）。
+
+    调用方负责已经确认用户存在；``email`` 会规范化后与 user_id 一起入库。
+    签发前顺手清理过期行。未迁移库抛 :class:`AuthTokensUnavailable`。
+    """
+    if purpose not in TOKEN_PURPOSES:
+        raise ValueError(f"未知 token 用途：{purpose}")
+    normalized = normalize_email(email)
+    now = now_ms()
+    raw = secrets.token_urlsafe(32)
+    conn = _connect()
+    try:
+        _require_auth_tokens(conn)
+        _cleanup_expired_auth_tokens(conn, now)
+        conn.execute(
+            "INSERT INTO auth_tokens "
+            "(user_id, purpose, token_hash, expires_at_ms, used_at_ms, "
+            "created_at_ms, email) "
+            "VALUES (?, ?, ?, ?, NULL, ?, ?)",
+            (
+                user_id,
+                purpose,
+                hash_token(raw),
+                now + max(0, int(ttl_ms)),
+                now,
+                normalized,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return raw
+
+
+def count_recent_auth_tokens(
+    email: str, purpose: str, *, window_ms: int
+) -> int:
+    """统计窗口内为该邮箱签发的 token 数（请求限流；跨进程有效）。"""
+    normalized = normalize_email(email)
+    cutoff = now_ms() - max(0, int(window_ms))
+    conn = _connect()
+    try:
+        _require_auth_tokens(conn)
+        row = conn.execute(
+            "SELECT COUNT(*) FROM auth_tokens "
+            "WHERE email = ? AND purpose = ? AND created_at_ms >= ?",
+            (normalized, purpose, cutoff),
+        ).fetchone()
+        return int(row[0]) if row else 0
+    finally:
+        conn.close()
+
+
+def consume_auth_token(token: str, purpose: str) -> dict:
+    """原子消费 token；成功返回 ``{user_id, email, id}``。
+
+    失败抛 :class:`AuthTokenInvalid`（不存在/用途不符/已使用）或
+    :class:`AuthTokenExpired`（过期），未迁移库抛 :class:`AuthTokensUnavailable`。
+    返回的 ``email`` 是签发时快照（用户可能已改邮箱，改密/验证请用 user_id）。
+    """
+    if not isinstance(token, str) or not token:
+        raise AuthTokenInvalid("token 为空")
+    token_hash = hash_token(token.strip())
+    now = now_ms()
+    conn = _connect()
+    try:
+        _require_auth_tokens(conn)
+        row = conn.execute(
+            "SELECT id, user_id, email, expires_at_ms, used_at_ms "
+            "FROM auth_tokens WHERE token_hash = ? AND purpose = ?",
+            (token_hash, purpose),
+        ).fetchone()
+        if row is None:
+            raise AuthTokenInvalid("token 不存在")
+        if row["used_at_ms"] is not None:
+            raise AuthTokenInvalid("token 已使用")
+        if int(row["expires_at_ms"]) <= now:
+            raise AuthTokenExpired("token 已过期")
+        cursor = conn.execute(
+            "UPDATE auth_tokens SET used_at_ms = ? "
+            "WHERE id = ? AND used_at_ms IS NULL",
+            (now, row["id"]),
+        )
+        if int(cursor.rowcount or 0) == 0:
+            # 并发消费：另一次请求抢到了。
+            raise AuthTokenInvalid("token 已使用")
+        conn.commit()
+        return {
+            "id": row["id"],
+            "user_id": row["user_id"],
+            "email": row["email"],
+        }
+    finally:
+        conn.close()
+
+
+def set_password_hash(
+    user_id: str, password_hash: str, *, invalidate_sessions: bool = True
+) -> bool:
+    """写新密码哈希；``invalidate_sessions=True`` 时删除该用户全部会话。
+
+    只影响被重置密码的这个用户，**不做全局会话批量失效**（其它用户不受影响）。
+    返回用户行是否存在（并发硬删除后可能为 False）。
+    """
+    conn = _connect()
+    try:
+        cursor = conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (password_hash, user_id),
+        )
+        existed = bool(cursor.rowcount)
+        conn.commit()
+    finally:
+        conn.close()
+    if existed and invalidate_sessions:
+        delete_user_sessions(user_id)
+    return existed
+
+
+def mark_email_verified(user_id: str) -> bool:
+    """标记邮箱已验证；已有时间戳不覆盖，返回本次是否新写入。"""
+    now = now_ms()
+    conn = _connect()
+    try:
+        cursor = conn.execute(
+            "UPDATE users SET email_verified_at = ? "
+            "WHERE id = ? AND email_verified_at IS NULL",
+            (now, user_id),
+        )
+        updated = bool(cursor.rowcount)
+        conn.commit()
+    finally:
+        conn.close()
+    return updated

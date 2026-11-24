@@ -36,6 +36,7 @@ import account_lifecycle  # noqa: E402
 import alerts  # noqa: E402
 import config  # noqa: E402
 import discover  # noqa: E402
+import emailer  # noqa: E402
 import jobs  # noqa: E402
 import llm  # noqa: E402
 import local_dict  # noqa: E402
@@ -90,9 +91,26 @@ def isolated_data(tmp_path, monkeypatch):
     monkeypatch.setenv("LOCAL_DICT_PATH", str(tmp_path / "ecdict.db"))
     local_dict.reset()
 
+    # 邮件（v1.1 账号找回/邮箱验证）：测试永远不连真实 SMTP，未配置时写
+    # tmp 下的 dev outbox；需要测「已配置 SMTP」的用例自行 monkeypatch。
+    monkeypatch.setattr(config, "SMTP_HOST", "", raising=False)
+    monkeypatch.setattr(config, "SMTP_PORT", 587, raising=False)
+    monkeypatch.setattr(config, "SMTP_SSL", False, raising=False)
+    monkeypatch.setattr(config, "SMTP_STARTTLS", True, raising=False)
+    monkeypatch.setattr(config, "SMTP_USER", "", raising=False)
+    monkeypatch.setattr(config, "SMTP_PASSWORD", "", raising=False)
+    monkeypatch.setattr(config, "SMTP_FROM", "", raising=False)
+    monkeypatch.setattr(
+        config, "EMAIL_OUTBOX_DIR", str(tmp_path / "mail-outbox"), raising=False
+    )
+    monkeypatch.setattr(
+        config, "PUBLIC_BASE_URL", "http://test.local", raising=False
+    )
+
     # 模块级全局缓存，用例之间要清干净，避免串味
     routes_videos._prefetch_cache.clear()
     routes_auth.reset_login_throttle()
+    routes_auth.reset_auth_recovery_throttle()
     # 任务表执行权/告警标记是进程内状态，按用例隔离。
     jobs.reset_active_jobs()
     jobs.reset_warned_state()
@@ -117,6 +135,7 @@ def isolated_data(tmp_path, monkeypatch):
 
     routes_videos._prefetch_cache.clear()
     routes_auth.reset_login_throttle()
+    routes_auth.reset_auth_recovery_throttle()
     # 任务表执行权/告警标记是进程内状态，按用例隔离。
     jobs.reset_active_jobs()
     jobs.reset_warned_state()
@@ -158,6 +177,8 @@ def offline_guard(monkeypatch):
         raise AssertionError("离线测试中禁止真实外部调用")
 
     monkeypatch.setattr(alerts, "_default_transport", _blocked_transport)
+    # 邮件发送同理：只有显式 mock 的用例才「发送」，避免误连 SMTP。
+    monkeypatch.setattr(emailer, "_smtp_send", _blocked)
 
 
 @contextlib.contextmanager

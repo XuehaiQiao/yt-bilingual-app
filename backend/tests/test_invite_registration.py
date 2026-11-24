@@ -338,7 +338,10 @@ def test_valid_invite_registers_and_consumes_code(make_client, invite_only):
         assert response.status_code == 201, response.text
         user = response.json()["user"]
         assert user["email"] == "invited@example.com"
-        assert set(user) == {"id", "email", "username", "credits", "status"}
+        assert set(user) == {
+            "id", "email", "username", "credits", "status",
+            "emailVerified",
+        }
         assert user["credits"] == 0
         assert user["status"] == "active"
         # 注册即登录

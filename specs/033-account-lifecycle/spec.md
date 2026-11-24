@@ -36,7 +36,9 @@
 | D-2 备份 | 每日 7 份 + 离机 30 天；删除后最长残留 30 天并披露 | 文案 `backupRetentionDays=30`；删除逻辑不碰备份 |
 | D-5 导出 | **ZIP（JSON + 用户文件）**；1 次/24h、3 次/30 天；临时文件 24h；密码确认；1 个进行中 | `account_export` / `data_export_jobs` |
 
-无邮箱验证/通知；忘记密码只能人工客服核验（本轮不提供 HTTP 找回）。
+无邮件/短信/站内通知；**v1.1（P2-38）起**已提供邮箱验证与自助找回密码（见
+`specs/032` §13），密码重置走一次性邮件 token；删除冷静期内 `/api/auth/*`
+仍放行，用户可先找回密码再取消/导出。
 
 ## 4. 状态机与访问控制
 
@@ -165,6 +167,8 @@ SQLite 事务覆盖阶段 1 与阶段 3；文件系统无法与 SQLite 同事务
 | 对象 | 处理 |
 |---|---|
 | `sessions` | 按 user_id 删（最先） |
+| `auth_tokens` | 按 user_id 删（v1.1 P2-38 新表，含邮箱快照；旧库无表时跳过） |
+| `feedback` | 按 user_id 删（v1.1 P2-38 新表；匿名反馈 `user_id IS NULL` 无法归属，保留） |
 | `invite_redemptions` | 按 user_id 删；邀请码 used_count 是聚合，不动 |
 | `ai_usage` / `ai_quota` | 按 user_id 删原始行；不删公共缓存 |
 | `learning_events` | `user_id = ? OR pseudonym_id = HMAC(salt,user_id)` 双口径删 |
@@ -203,7 +207,9 @@ SQLite 事务覆盖阶段 1 与阶段 3；文件系统无法与 SQLite 同事务
 
 ### 6.3 删除后验证
 
-- `users` / `sessions` 无行；各业务表按 user_id/pseudonym/子表关联为 0；
+- `users` / `sessions` 无行；`auth_tokens` 无该用户行（含邮箱快照不残留）；
+  `feedback` 只保留 `user_id IS NULL` 的匿名反馈；
+- 各业务表按 user_id/pseudonym/子表关联为 0；
 - `data/users/<id>/`、`data/exports/<id>/` 不存在；
 - 旧 Cookie 请求 `GET /api/auth/me` → `{user:null, guest:true}`；
 - 旧密码登录 401；
@@ -384,6 +390,10 @@ files/books/<bookId>/
 | `backend/main.py` | pending 中间件限制 |
 | `backend/account.py` | `deletion_pending` 状态常量 |
 | `backend/routes_admin.py` | 既有写操作审计钩子 |
+| `backend/migrations/versions/0033_v1_1_launch.py` | v1.1 auth_tokens / feedback / email_verified_at |
+| `backend/auth_db.py` | token 签发/单次消费/密码更新/邮箱验证标记 |
+| `backend/emailer.py` | SMTP 可插拔 + dev outbox（账号找回/验证邮件） |
+| `backend/routes_auth.py` | 密码重置/邮箱验证端点（P2-38） |
 | `backend/run_due_deletions.py` | 到期删除安全脚本（dry-run 默认） |
 | `backend/tests/test_account_lifecycle.py` | 删除/迁移/审计/失败重试测试 |
 | `backend/tests/test_account_export.py` | 导出/限流/token/过期/路径测试 |

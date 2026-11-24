@@ -88,7 +88,10 @@ def test_signup_returns_user_and_sets_cookie(make_client):
         body = response.json()
         assert set(body) == {"user"}
         # 0013 起 user 增加 username / credits / status（specs/023）。
-        assert set(body["user"]) == {"id", "email", "username", "credits", "status"}
+        assert set(body["user"]) == {
+            "id", "email", "username", "credits", "status",
+            "emailVerified",
+        }
         assert body["user"]["email"] == "alice@example.com", "email 必须统一小写"
         assert body["user"]["username"] == "alice", "旧客户端不传 username 时回落 email 前缀"
         assert body["user"]["credits"] == 0

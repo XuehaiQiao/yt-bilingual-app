@@ -301,7 +301,7 @@ def quota_used(db_path: Path, user_id: str, feature: str = "reading") -> int:
 def test_migration_0018_schema_and_downgrade(tmp_path):
     db = tmp_path / "app.db"
     assert_alembic_ok(run_alembic(db, "upgrade", "head"), "upgrade head")
-    assert revision(db) == "0032_pipeline_timing"
+    assert revision(db) == "0033_v1_1_launch"
 
     tables = table_names(db)
     assert "imported_books" in tables

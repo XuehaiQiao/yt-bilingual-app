@@ -937,6 +937,24 @@ def _delete_business_rows(
 
     # 1) 会话先断线（复用 auth_db.delete_user_sessions，与提交删除同一条路径）。
     counts["sessions"] = auth_db.delete_user_sessions(user_id, conn=conn)
+    # 1b) v1.1（0033）账号找回/邮箱验证 token 含邮箱快照，属个人数据，随账号删除；
+    #     未迁移旧库没有该表时跳过（_count_delete 已处理）。
+    _count_delete(
+        conn,
+        counts,
+        "auth_tokens",
+        "DELETE FROM auth_tokens WHERE user_id = ?",
+        (user_id,),
+    )
+    # 1c) v1.1（0033）反馈可能含用户自填的正文/联系方式，硬删除时一并清掉；
+    #     匿名反馈（user_id IS NULL）无法归属，保留。
+    _count_delete(
+        conn,
+        counts,
+        "feedback",
+        "DELETE FROM feedback WHERE user_id = ?",
+        (user_id,),
+    )
     _count_delete(
         conn,
         counts,

@@ -4,6 +4,8 @@
 保证 GEMINI_API_KEY 等在任何 Gemini 调用之前就已加载。
 """
 import os
+import tempfile
+
 from dotenv import load_dotenv
 
 # Load .env file (for GEMINI_API_KEY etc.)
@@ -845,3 +847,31 @@ if FEISHU_ALERTS_ENABLED and not FEISHU_WEBHOOK_URL:
         "⚠️  FEISHU_ALERTS_ENABLED=1 但 FEISHU_WEBHOOK_URL 为空："
         "告警只记录判定结果/日志，不会发送到飞书。"
     )
+
+# --- v1.1 账号找回 / 邮箱验证邮件（P2-38，见 backend/emailer.py）---
+#
+# SMTP 可插拔：``SMTP_HOST`` 与 ``SMTP_FROM`` 都非空时走真实 SMTP；否则邮件写入
+# **dev outbox**（``EMAIL_OUTBOX_DIR``，默认系统临时目录下的
+# ``linguatrek-email-outbox``），一封邮件一个 0600 JSON 文件，方便本地联调。
+# 生产必须配置 SMTP；token/正文**永不进日志**（dev outbox 文件里才有明文）。
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+# 587 = STARTTLS（默认）；465 部署可设 SMTP_SSL=1 走 SMTPS；25 需显式关 STARTTLS。
+SMTP_PORT = _int_env("SMTP_PORT", 587)
+SMTP_SSL = _bool_env("SMTP_SSL", False)
+SMTP_STARTTLS = _bool_env("SMTP_STARTTLS", True)
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+# 密码只放 env，不写仓库、不进日志/测试快照。
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+# 发件人；未设时回落到 SMTP_USER（SMTP 模式下两者都空 = 不发送、走 outbox）。
+SMTP_FROM = os.environ.get("SMTP_FROM", "").strip() or SMTP_USER
+SMTP_TIMEOUT_SECONDS = min(max(_float_env("SMTP_TIMEOUT_SECONDS", 10.0), 3.0), 30.0)
+
+# 前端/公开站点根地址，用于拼重置密码/邮箱验证链接（末尾斜杠会被去掉）。
+PUBLIC_BASE_URL = (
+    os.environ.get("PUBLIC_BASE_URL", "").strip() or "http://127.0.0.1:5173"
+).rstrip("/")
+# dev outbox 目录（SMTP 未配置时使用；测试指向 tmp，禁止写仓库）。
+EMAIL_OUTBOX_DIR = os.environ.get(
+    "EMAIL_OUTBOX_DIR",
+    os.path.join(tempfile.gettempdir(), "linguatrek-email-outbox"),
+)
