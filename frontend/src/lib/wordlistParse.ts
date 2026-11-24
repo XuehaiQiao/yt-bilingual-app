@@ -6,7 +6,7 @@
 // The backend re-validates (§2: 客户端 + 服务端都做); this module must not be
 // more permissive than the spec:
 //
-//   * `.csv` / `.tsv` / `.txt`, UTF-8 (a BOM is fine), ≤2 MB, ≤5000 data rows;
+//   * `.csv` / `.tsv` / `.txt`, UTF-8 (a BOM is fine), ≤2 MB, ≤10000 data rows;
 //   * RFC 4180 quoting: `""` escapes, newlines inside quotes, CRLF/CR/LF;
 //   * delimiter auto-detection (comma / Tab) and optional header row;
 //   * word column: must contain A–Z/a–z; hyphens, apostrophes and diacritics
@@ -16,17 +16,29 @@
 //   * CEFR only A1/A2/B1/B2/C1 (anything else is ignored, never guessed);
 //   * >50% invalid rows blocks the import ("this is not an English word list").
 //
+// `.apkg` (specs/046) is never parsed here: the backend reads the Anki package
+// and returns decks/models/notes; this module only owns the size/extension
+// limits and the default field→column guess used by the wizard.
+//
 // Pure functions only — the component owns the File object and the UI state.
 
 export const WORDLIST_MAX_BYTES = 2 * 1024 * 1024;
-export const WORDLIST_MAX_ROWS = 5000;
+/**
+ * Text files: at most 10000 data rows; the backend import endpoint accepts the
+ * same ceiling. The APKG wizard also feeds its selected notes through this
+ * limit, so a real 7512-note Anki deck imports in full (specs/046 §1).
+ */
+export const WORDLIST_MAX_ROWS = 10000;
 export const WORDLIST_MAX_NAME_LENGTH = 80;
 export const WORDLIST_MAX_WORD_LENGTH = 40;
 export const WORDLIST_MAX_WORD_COUNT = 5;
 export const WORDLIST_MAX_LISTS = 10;
 export const WORDLIST_PAGE_SIZE = 50;
 
-export const WORDLIST_FILE_EXTENSIONS = ['.csv', '.tsv', '.txt'] as const;
+/** Anki `.apkg` export: uploaded to the backend for parsing, ≤50 MB (specs/046). */
+export const WORDLIST_APKG_MAX_BYTES = 50 * 1024 * 1024;
+
+export const WORDLIST_FILE_EXTENSIONS = ['.csv', '.tsv', '.txt', '.apkg'] as const;
 
 export type WordlistDelimiter = ',' | '\t';
 
@@ -445,15 +457,94 @@ export function validateWordlistRows(
     };
 }
 
-/** `.csv` / `.tsv` / `.txt`, case-insensitive; no extension is rejected. */
+/**
+ * `.csv` / `.tsv` / `.txt` / `.apkg`, case-insensitive; no extension is
+ * rejected. Callers must branch on {@link isApkgFileName} first: `.apkg` is
+ * uploaded as-is and never read as text.
+ */
 export function isWordlistFileName(fileName: string): boolean {
     const lower = fileName.trim().toLowerCase();
     return WORDLIST_FILE_EXTENSIONS.some((extension) => lower.endsWith(extension));
 }
 
+/** Anki export package (specs/046); routed to `POST /api/wordlists/apkg-parse`. */
+export function isApkgFileName(fileName: string): boolean {
+    return fileName.trim().toLowerCase().endsWith('.apkg');
+}
+
 /** Size check before `File.text()` (never read a file the backend would reject). */
 export function isWordlistSizeAllowed(bytes: number): boolean {
     return Number.isFinite(bytes) && bytes >= 0 && bytes <= WORDLIST_MAX_BYTES;
+}
+
+/** APKG size check (50 MB) before the multipart upload starts. */
+export function isApkgSizeAllowed(bytes: number): boolean {
+    return Number.isFinite(bytes) && bytes >= 0 && bytes <= WORDLIST_APKG_MAX_BYTES;
+}
+
+/** The three text roles the APKG step maps onto model fields (specs/046 §3). */
+export type ApkgFieldMap = {
+    word: number | null;
+    translation: number | null;
+    phonetic: number | null;
+};
+
+// Anki field names are user-authored; these aliases cover the stock templates
+// (Front/Back), the common word-list conventions and the real GRE deck
+// (`单词 / 音标 / 解释 / 例句`). Matching is case-insensitive, on whole names.
+const APKG_FIELD_ALIASES: Record<'word' | 'translation' | 'phonetic', readonly string[]> = {
+    word: [
+        'word', 'words', 'term', 'headword', 'head word', 'vocabulary', 'vocab',
+        'spelling', 'front', 'text', 'expression', '单词', '词', '词汇', '生词',
+        '词条', '单字', 'từ', 'từ vựng',
+    ],
+    translation: [
+        'translation', 'meaning', 'definition', 'back', 'zh', 'chinese',
+        'vietnamese', 'explanation', 'gloss', '释义', '解释', '中文', '意思',
+        '翻译', '义项', '注释', 'nghĩa', 'bản dịch', 'dịch',
+    ],
+    phonetic: [
+        'phonetic', 'phonetics', 'ipa', 'pronunciation', 'pronounce', 'reading',
+        'pinyin', '音标', '发音', '读音', '拼音', 'phiên âm', 'cách đọc',
+    ],
+};
+
+function normalizeApkgFieldName(value: string): string {
+    return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function apkgFieldAliasIndex(fields: readonly string[], role: keyof typeof APKG_FIELD_ALIASES): number | null {
+    const aliases = APKG_FIELD_ALIASES[role];
+    for (let index = 0; index < fields.length; index += 1) {
+        if (aliases.includes(normalizeApkgFieldName(fields[index]))) return index;
+    }
+    return null;
+}
+
+/**
+ * Default APKG field mapping: the word is the first field, then the phonetic
+ * field is picked by its name (`音标` / `IPA` / `Front` templates), and the
+ * translation by its name (`解释` / `Meaning` / `Back`). Without a name hint the
+ * translation falls back to the first remaining non-empty field, so a plain
+ * two-field deck still maps word/translation to 0/1.
+ */
+export function defaultApkgFieldMap(fields: readonly string[]): ApkgFieldMap {
+    const word = fields.length > 0 ? 0 : null;
+    const phonetic = apkgFieldAliasIndex(fields, 'phonetic');
+    let translation = apkgFieldAliasIndex(fields, 'translation');
+    if (translation === word || translation === phonetic) translation = null;
+    if (translation == null) {
+        for (let index = 0; index < fields.length; index += 1) {
+            if (index === word || index === phonetic) continue;
+            translation = index;
+            break;
+        }
+    }
+    return {
+        word,
+        translation,
+        phonetic: phonetic === word ? null : phonetic,
+    };
 }
 
 /** Default list name = file stem, the way the spec names it (§1 step 3). */

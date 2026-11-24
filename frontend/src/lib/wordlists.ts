@@ -39,7 +39,7 @@ export interface CustomWordlistPage {
     hasMore: boolean;
 }
 
-/** `POST /api/wordlists/import` payload: ≤5000 validated entries. */
+/** `POST /api/wordlists/import` payload: ≤10000 validated entries. */
 export interface ImportWordlistInput {
     name: string;
     filename: string;
@@ -176,7 +176,7 @@ export async function fetchCustomWordlistPage(
 /**
  * Load every item of one list (client-side paging / sorting / filtering,
  * specs/005 §统一词表 UI). The server caps each page at 200 and a list at
- * 5000 words, so the loop is bounded; an aborted signal stops between pages.
+ * 10000 words, so the loop is bounded; an aborted signal stops between pages.
  */
 export async function fetchAllCustomWordlistItems(
     id: string,
@@ -184,7 +184,7 @@ export async function fetchAllCustomWordlistItems(
 ): Promise<{ items: CustomWordlistItem[]; total: number }> {
     const items: CustomWordlistItem[] = [];
     let total = 0;
-    for (let page = 1; page <= 25; page += 1) {
+    for (let page = 1; page <= 50; page += 1) {
         const data = await fetchCustomWordlistPage(id, { page, pageSize: 200, signal });
         total = data.total;
         items.push(...data.items);
@@ -250,6 +250,122 @@ export async function importCustomWordlist(input: ImportWordlistInput): Promise<
     return {
         list,
         skipped: Number.isFinite(data.skipped) ? Math.max(0, Number(data.skipped)) : 0,
+    };
+}
+
+// ── Anki `.apkg` parse（specs/046-apkg-import §2）─────────────────────────
+//
+// The browser never unzips or reads the SQLite collection: the package is
+// uploaded as multipart `file` and the backend answers decks / models / notes.
+// The wizard then turns the chosen deck+model into two or three local columns
+// and reuses the normal validation + `/api/wordlists/import` path.
+//
+// Status codes the dialog distinguishes: 400 (not an APKG / no notes),
+// 403 (guest or expired session), 413 (>50 MB), 503 (parser unavailable).
+export interface ApkgWordlistDeck {
+    id: string;
+    name: string;
+    /** Notes in this deck, before the model filter (server count). */
+    noteCount: number;
+}
+
+export interface ApkgWordlistModel {
+    id: string;
+    name: string;
+    /** Field names in template order; the wizard maps word/translation onto them. */
+    fields: string[];
+}
+
+export interface ApkgWordlistNote {
+    deckId: string;
+    modelId: string;
+    /** One cell per model field; already HTML-cleaned by the backend. */
+    fields: string[];
+}
+
+export interface ApkgWordlistResult {
+    fileName: string;
+    decks: ApkgWordlistDeck[];
+    models: ApkgWordlistModel[];
+    notes: ApkgWordlistNote[];
+    total: number;
+    /** True when the server capped the parse (10000 notes, specs/046 §1). */
+    truncated: boolean;
+}
+
+function normalizeId(value: unknown): string {
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    return '';
+}
+
+function normalizeApkgDeck(value: unknown): ApkgWordlistDeck | null {
+    if (!isRecord(value)) return null;
+    const id = normalizeId(value.id);
+    if (!id) return null;
+    return {
+        id,
+        name: typeof value.name === 'string' && value.name.trim() ? value.name.trim() : id,
+        noteCount: Number.isFinite(value.noteCount) ? Math.max(0, Number(value.noteCount)) : 0,
+    };
+}
+
+function normalizeApkgModel(value: unknown): ApkgWordlistModel | null {
+    if (!isRecord(value)) return null;
+    const id = normalizeId(value.id);
+    if (!id) return null;
+    const fields = Array.isArray(value.fields)
+        ? value.fields.map((field) => (typeof field === 'string' ? field : '')).filter((field) => field.trim() !== '')
+        : [];
+    return {
+        id,
+        name: typeof value.name === 'string' && value.name.trim() ? value.name.trim() : id,
+        fields,
+    };
+}
+
+function normalizeApkgNote(value: unknown): ApkgWordlistNote | null {
+    if (!isRecord(value)) return null;
+    const deckId = normalizeId(value.deckId);
+    const modelId = normalizeId(value.modelId);
+    if (!deckId || !modelId) return null;
+    const fields = Array.isArray(value.fields)
+        ? value.fields.map((field) => (typeof field === 'string' ? field : ''))
+        : [];
+    return { deckId, modelId, fields };
+}
+
+/**
+ * `POST /api/wordlists/apkg-parse` — upload one `.apkg` (multipart `file`) and
+ * return its decks/models/notes. The dialog checks the 50 MB limit first.
+ */
+export async function parseApkgWordlist(file: File): Promise<ApkgWordlistResult> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    const data = await request<unknown>('/api/wordlists/apkg-parse', {
+        method: 'POST',
+        body: form,
+    });
+    if (!isRecord(data)) throw new WordlistsApiError(500, 'invalid apkg payload');
+    const decks = (Array.isArray(data.decks) ? data.decks : [])
+        .map(normalizeApkgDeck)
+        .filter((deck): deck is ApkgWordlistDeck => deck !== null);
+    const models = (Array.isArray(data.models) ? data.models : [])
+        .map(normalizeApkgModel)
+        .filter((model): model is ApkgWordlistModel => model !== null);
+    const notes = (Array.isArray(data.notes) ? data.notes : [])
+        .map(normalizeApkgNote)
+        .filter((note): note is ApkgWordlistNote => note !== null);
+    const total = Number.isFinite(data.total) ? Math.max(0, Number(data.total)) : notes.length;
+    return {
+        fileName: typeof data.fileName === 'string' && data.fileName.trim()
+            ? data.fileName.trim()
+            : file.name,
+        decks,
+        models,
+        notes,
+        total: Math.max(total, notes.length),
+        truncated: data.truncated === true,
     };
 }
 

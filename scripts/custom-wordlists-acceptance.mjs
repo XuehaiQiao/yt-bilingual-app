@@ -536,14 +536,14 @@ assert.match(await page.getByTestId('wordlist-import-dialog').innerText(), /清�
 await page.getByTestId('wordlist-import-back').click();
 await page.getByTestId('wordlist-import-browse').waitFor();
 
-// B0e) >5000 rows is rejected before the preview/upload.
-const tooMany = ['word', ...Array.from({ length: 5001 }, (_, index) => `word${index}`)].join('\n');
+// B0e) >10000 rows is rejected before the preview/upload.
+const tooMany = ['word', ...Array.from({ length: 10001 }, (_, index) => `word${index}`)].join('\n');
 await page.getByTestId('wordlist-import-file').setInputFiles({
     name: 'huge-rows.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from(tooMany, 'utf8'),
 });
-await page.locator('[role="alert"]', { hasText: '超过 5000 行' }).waitFor({ timeout: 10000 });
+await page.locator('[role="alert"]', { hasText: '超过 10000 行' }).waitFor({ timeout: 10000 });
 assert.equal(state.importBodies.length, 0);
 assert.equal(await page.getByTestId('wordlist-import-importing').count(), 0);
 
