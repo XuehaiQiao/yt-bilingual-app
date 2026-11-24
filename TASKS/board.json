@@ -996,7 +996,7 @@
     {
       "id": "P2-14",
       "file": "TASKS/P2-14-watch-experience-design.md",
-      "status": "claimed",
+      "status": "merged",
       "owner": "lead",
       "write_scope": [
         "specs/045-watch-mode-experience/spec.md",
