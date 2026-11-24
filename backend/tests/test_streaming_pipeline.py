@@ -708,3 +708,137 @@ def test_sse_endpoint_402_emits_error_event(client, monkeypatch):
     assert [name for name, _ in events] == ["meta", "error"]
     assert events[1][1]["code"] == "insufficient_balance"
     assert elapsed < 2.0, f"402 没有立即中断：{elapsed:.2f}s"
+
+
+# ---------------------------------------------------------------------------
+# 8. P2-32：缓存命中时 meta 先出，教学分析完成后补 batch（无 pending 也发）
+# ---------------------------------------------------------------------------
+
+def _seed_translated_cache(history_dir, count: int = 3):
+    """写一份已全部翻译的缓存（无 pending），返回 (path, payload)。"""
+    payload = {
+        "videoId": VIDEO_ID,
+        "metadata": dict(METADATA),
+        "transcript": [
+            {**block, "zh_text": f"译文{block['id']}"}
+            for block in _transcript(count)
+        ],
+        "summary": "测试总结",
+        "model": "deepseek-chat",
+        "studyCount": 1,
+        "target_lang": "zh-CN",
+    }
+    path = history_dir / f"Test_Channel_20240101_{VIDEO_ID}.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    return path, payload
+
+
+def _analysis_batch_fake(calls: list[str | None]):
+    """把高亮合并进 payload 的 attach_to_payload 桩，并记录调用等级。"""
+    async def fake_analysis(payload, **kwargs):
+        calls.append(kwargs.get("level"))
+        for block in payload["transcript"]:
+            block["highlights"] = [{
+                "en_word": "Sentence",
+                "zh_word": "句子",
+                "color": translate.HIGHLIGHT_COLOR,
+            }]
+        payload["analysisVersion"] = teaching_analysis.ANALYSIS_VERSION
+        payload["idioms"] = []
+        payload["culture"] = []
+        return {"level": kwargs.get("level") or "orbit"}
+
+    return fake_analysis
+
+
+def test_cached_stream_meta_is_yielded_before_analysis_even_without_pending(
+    tmp_path, monkeypatch,
+):
+    """无 pending 缓存：第一条事件必须是 meta，且此刻分析还没被调用；随后 batch。"""
+    cached_path = tmp_path / "cache.json"
+    transcript = [
+        {**block, "zh_text": f"译文{block['id']}"}
+        for block in _transcript(3)
+    ]
+    cached = {
+        "videoId": VIDEO_ID,
+        "metadata": dict(METADATA),
+        "transcript": transcript,
+        "summary": "测试总结",
+        "model": "deepseek-chat",
+        "studyCount": 1,
+        "target_lang": "zh-CN",
+    }
+    cached_path.write_text(json.dumps(cached, ensure_ascii=False), encoding="utf-8")
+    calls: list[str | None] = []
+    monkeypatch.setattr(
+        teaching_analysis, "attach_to_payload", _analysis_batch_fake(calls)
+    )
+
+    async def collect():
+        gen = routes_videos._cached_stream_gen(
+            str(cached_path),
+            cached,
+            lang="zh-CN",
+            model="deepseek-chat",
+            vocab_level="orbit",
+            job=None,
+            requested_from=0,
+            resumed=False,
+            user_id="u-cache",
+        )
+        first = await gen.__anext__()
+        calls_after_meta = list(calls)
+        rest = [event async for event in gen]
+        return first, calls_after_meta, rest
+
+    first, calls_after_meta, rest = asyncio.run(collect())
+    # meta 已经被产出时，教学分析一次都还没调用 —— 首屏不等分析。
+    assert calls_after_meta == []
+    assert "event: meta" in first
+
+    events = _sse_events(SimpleNamespace(text=first + "".join(rest)))
+    assert [name for name, _ in events] == ["meta", "batch", "summary", "done"]
+    meta = events[0][1]
+    assert all(not block["highlights"] for block in meta["blocks"]), (
+        "meta 不得等分析后再发（首屏不能带分析）"
+    )
+    batch = events[1][1]
+    assert all(block["highlights"] for block in batch["blocks"])
+    assert batch["cursor"] == batch["total"] == 3
+    assert batch["jobId"] is None
+    assert calls == ["orbit"], "分析应恰好调用一次，且使用请求等级"
+
+
+def test_cached_stream_endpoint_emits_analysis_batch_after_meta_without_pending(
+    client, history_dir, monkeypatch
+):
+    """端点口径：纯缓存秒开的事件序是 meta → batch（分析）→ summary → done。"""
+    _seed_translated_cache(history_dir)
+    calls: list[str | None] = []
+    monkeypatch.setattr(
+        teaching_analysis, "attach_to_payload", _analysis_batch_fake(calls)
+    )
+
+    response = client.post(
+        "/api/process-video-stream",
+        json={"url": URL, "vocab_level": "orbit"},
+    )
+    assert response.status_code == 200, response.text
+    events = _sse_events(response)
+    assert [name for name, _ in events] == ["meta", "batch", "summary", "done"]
+    meta = events[0][1]
+    assert meta["cached"] is True and meta["jobId"] is None
+    assert all(not block["highlights"] for block in meta["blocks"])
+    batch = events[1][1]
+    assert all(block["highlights"] for block in batch["blocks"])
+    assert batch["progress"] == {"done": 3, "total": 3}
+    assert calls == ["orbit"]
+
+    written = json.loads(
+        (history_dir / f"Test_Channel_20240101_{VIDEO_ID}.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert written["analysisVersion"] == teaching_analysis.ANALYSIS_VERSION
+    assert all(block["highlights"] for block in written["transcript"])

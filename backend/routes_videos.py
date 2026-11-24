@@ -962,7 +962,12 @@ async def _cached_stream_gen(
     resumed: bool,
     user_id: str,
 ):
-    """已有缓存：补译 ``[未翻译]`` 的 block（续传走同一条路），再补总结。
+    """已有缓存：先秒开（meta），再补译 ``[未翻译]`` 的 block（续传走同一条路），
+    最后补教学分析/总结。
+
+    事件序（P2-32）：``meta``（不带分析）→ 需要补译时逐批 ``batch`` → 分析成功后
+    一次 ``batch``（即使没有补译也会发）→ 末尾 ``summary``/``done``。分析是增强，
+    失败/耗时都不会挡在首屏前面。
 
     续传语义：要补哪些句子由缓存里的 ``[未翻译]`` 标记决定，与 ``from`` 无关——
     这样「已翻好的句子」永远不会再花钱；``from`` 只用于事件/进度展示。
@@ -978,18 +983,9 @@ async def _cached_stream_gen(
         if needs_retranslation(block.get("zh_text", ""))
     ]
 
-    # 纯缓存打开：先把该等级的教学分析补齐/合并，meta 里就能带上正确的高亮。
-    # 有未翻译句时等翻译完成后再分析，并用 batch 事件回传（见下方）。
-    if not pending:
-        await _attach_video_analysis(
-            cached,
-            level=vocab_level,
-            target_lang=lang,
-            content_ref=cached.get("videoId") or "",
-            model=model,
-            user_id=user_id,
-        )
-
+    # P2-32：meta 永远先出——正文/字幕是首屏，教学分析绝不挡在它前面。
+    # 分析在 meta 之后补（有未翻译句时等翻译完成再补），成功后用既有 batch
+    # 事件回传更新后的 blocks，前端按 id 合并即可显示高亮。
     yield _event("meta", {
         "videoId": cached.get("videoId"),
         "metadata": cached.get("metadata", {}),
@@ -1029,26 +1025,26 @@ async def _cached_stream_gen(
                 "jobId": job_id,
             })
 
-    # 有未翻译句时上面才翻译；翻译完成后再做教学分析（一次模型调用/按等级缓存），
-    # 用既有 batch 事件回传更新后的 blocks，前端按 id 合并即可显示高亮。
-    if pending:
-        analysis = await _attach_video_analysis(
-            cached,
-            level=vocab_level,
-            target_lang=lang,
-            content_ref=cached.get("videoId") or "",
-            model=model,
-            user_id=user_id,
-        )
-        if analysis is not None:
-            updated_cursor = _translated_cursor(transcript)
-            yield _event("batch", {
-                "blocks": transcript,
-                "progress": {"done": updated_cursor, "total": total},
-                "cursor": updated_cursor,
-                "total": total,
-                "jobId": job_id,
-            })
+    # 教学分析是增强：失败只影响高亮，绝不阻断字幕/总结/完成事件（P2-32）。
+    # 无论有没有补译，分析都在 meta（以及补译批次）之后做；成功后用 batch
+    # 回传更新后的 blocks。纯缓存秒开的 jobId 为 None，这里同样适用。
+    analysis = await _attach_video_analysis(
+        cached,
+        level=vocab_level,
+        target_lang=lang,
+        content_ref=cached.get("videoId") or "",
+        model=model,
+        user_id=user_id,
+    )
+    if analysis is not None:
+        updated_cursor = _translated_cursor(transcript)
+        yield _event("batch", {
+            "blocks": transcript,
+            "progress": {"done": updated_cursor, "total": total},
+            "cursor": updated_cursor,
+            "total": total,
+            "jobId": job_id,
+        })
 
     # 上次失败留下的"无法生成总结"占位不能就这么回给用户：用这次选的模型重试一次。
     summary = cached.get("summary", "")

@@ -1,17 +1,20 @@
-// P0-04 acceptance: article analysis failures are visible and retryable.
+// P0-04 + P2-32 acceptance: article analysis is async, visible and retryable.
 //
-// Proves the article reader no longer turns a failed language layer into an
-// empty state:
-//   1. `analysisUnavailableReason=quota_exceeded` (used/limit) renders a
-//      non-blocking inline hint ("今日分析额度已用完（30/30），明天 0 点恢复")
-//      with a retry button; the English body and word lookup keep working;
-//   2. the page payload already carries the reason, so opening the article does
-//      NOT fire a second analysis request; clicking retry fires exactly one and
-//      the hint disappears once the analysis arrives (ruby appears);
-//   3. `model_error` shows different copy than the quota failure;
-//   4. a 403 on retry is still the sign-in hint, not an analysis error, and the
+// Proves the article reader paints the body before the language layer and no
+// longer turns a failed analysis into an empty state:
+//   1. opening the article sends `GET /api/article/{id}` WITHOUT `level`, so
+//      the body is readable while the level-scoped analysis request is still
+//      pending (the mocked analysis response is held until the test releases it);
+//   2. `analysisUnavailableReason=quota_exceeded` (used/limit) from the
+//      background analysis renders a non-blocking inline hint
+//      ("今日分析额度已用完（30/30），明天 0 点恢复") with a retry button; the
+//      English body and word lookup keep working;
+//   3. clicking retry fires exactly one new level-scoped request and the hint
+//      disappears once the analysis arrives (ruby appears);
+//   4. `model_error` shows different copy than the quota failure;
+//   5. a 403 on retry is still the sign-in hint, not an analysis error, and the
 //      body stays readable;
-//   5. success (payload analysis) shows no hint at all.
+//   6. successful background analysis shows no hint at all.
 //
 // Every /api/** call is mocked; no backend/database/LLM is touched.
 //
@@ -78,6 +81,14 @@ const QUOTA_PAYLOAD = {
     analysisUsed: 30,
     analysisLimit: 30,
     analysisResetAt: '2026-11-23T00:00:00+08:00',
+};
+
+// P2-32: opening the article asks for the body only (`level` absent). The
+// level-scoped analysis then arrives from a second, background request.
+const BODY_PLAIN = {
+    ...ARTICLE_BASE,
+    paragraphs: paragraphs(),
+    stats: { total: 2, translated: 2, untranslated: 0 },
 };
 
 const MODEL_PAYLOAD = {
@@ -166,9 +177,19 @@ async function openArticle(scenario) {
     const pageErrors = [];
     page.on('pageerror', (error) => pageErrors.push(String(error)));
     const articleRequests = [];
+    let analysisResponses = 0;
     let defineCalls = 0;
     // `scenario.mode` starts at scenario.initial and advances on every retry.
     let mode = scenario.initial;
+    // P2-32: hold the level-scoped analysis response until the body is visibly
+    // on screen, so "body first" is proven instead of timing-dependent.
+    let released = false;
+    let releaseGate;
+    const gate = new Promise((resolve) => { releaseGate = resolve; });
+    const releaseAnalysis = () => {
+        released = true;
+        releaseGate();
+    };
 
     await context.route('**/api/**', async (route) => {
         const request = route.request();
@@ -252,14 +273,21 @@ async function openArticle(scenario) {
             return respond({ articles: [SUMMARY] });
         }
         if (pathname === '/api/article/art1' && method === 'GET') {
+            const level = url.searchParams.get('level');
+            const requestMode = mode;
             articleRequests.push({
-                level: url.searchParams.get('level'),
+                level,
                 targetLang: url.searchParams.get('targetLang'),
-                mode,
+                mode: requestMode,
             });
-            if (mode === 'quota') return respond(QUOTA_PAYLOAD);
-            if (mode === 'model') return respond(MODEL_PAYLOAD);
-            if (mode === 'login') return fail(403, '需要登录才能继续（会话可能已过期），请重新登录后重试。');
+            // First paint: no level, no analysis — the body must render now.
+            if (!level) return respond(BODY_PLAIN);
+            // 8s safety net: a failed assertion must not leave this route hanging.
+            if (!released) await Promise.race([gate, sleep(8000)]);
+            analysisResponses += 1;
+            if (requestMode === 'quota') return respond(QUOTA_PAYLOAD);
+            if (requestMode === 'model') return respond(MODEL_PAYLOAD);
+            if (requestMode === 'login') return fail(403, '需要登录才能继续（会话可能已过期），请重新登录后重试。');
             return respond(OK_PAYLOAD);
         }
 
@@ -270,12 +298,8 @@ async function openArticle(scenario) {
     await page.goto(`${BASE}#/app/content/reader/art1`, { waitUntil: 'domcontentloaded' });
     await page.locator('[data-testid=app-shell]').waitFor({ state: 'visible', timeout: 15000 });
     await page.locator('[data-testid=reader-en-0]').waitFor({ state: 'visible', timeout: 15000 });
-    await sleep(700); // classify pass paints the difficulty layer
 
-    // The article payload is the one request on open — no automatic re-request.
-    // React StrictMode dev double-mounts the screen, so the open may be
-    // requested twice; what matters is that the payload reason stops *further*
-    // automatic requests (and that each request carries the analysis level).
+    // React StrictMode dev double-mounts the screen, so settle before counting.
     const settle = async () => {
         let last = -1;
         for (let i = 0; i < 10; i += 1) {
@@ -285,12 +309,35 @@ async function openArticle(scenario) {
         }
         return articleRequests.length;
     };
-    const openCount = await settle();
+    await settle();
+
+    const bodyRequests = articleRequests.filter((request) => request.level === null);
+    const analysisRequests = articleRequests.filter((request) => request.level === 'orbit');
     assert.ok(
-        openCount >= 1 && openCount <= 2,
-        `${scenario.name}: unexpected open request count ${openCount}`,
+        bodyRequests.length >= 1 && bodyRequests.length <= 2,
+        `${scenario.name}: expected 1-2 body requests, got ${bodyRequests.length}`,
     );
-    assert.equal(articleRequests[0].level, 'orbit', `${scenario.name}: analysis level not requested on open`);
+    assert.ok(
+        analysisRequests.length >= 1 && analysisRequests.length <= 2,
+        `${scenario.name}: expected 1-2 background analysis requests, got ${analysisRequests.length}`,
+    );
+    assert.equal(
+        articleRequests[0].level,
+        null,
+        `${scenario.name}: the article body must be requested without an analysis level`,
+    );
+    // P2-32: the analysis response is still held by the mocked route. The body
+    // is already readable, which proves the first paint never waits on it.
+    assert.equal(
+        analysisResponses,
+        0,
+        `${scenario.name}: analysis responded before the test released it`,
+    );
+    assert.ok(
+        (await page.locator('[data-testid=reader-en-0]').innerText()).includes('quiet power'),
+        `${scenario.name}: body text missing while analysis is pending`,
+    );
+    releaseAnalysis();
 
     const shot = async (name) => {
         await page.screenshot({ path: `${SHOTS}/${name}.png` });
@@ -302,7 +349,10 @@ async function openArticle(scenario) {
         context,
         shot,
         articleRequests,
-        openCount,
+        get analysisRequests() {
+            return articleRequests.filter((request) => request.level === 'orbit');
+        },
+        openCount: analysisRequests.length,
         get defineCalls() { return defineCalls; },
         advance(nextMode) { mode = nextMode; },
         async close() {
@@ -352,12 +402,17 @@ const retryButton = (page) => page.locator('[data-testid=reader-analysis-retry]'
         { timeout: 10000 },
     );
     await sleep(300);
+    const afterRetry = session.analysisRequests;
     assert.equal(
-        session.articleRequests.length,
+        afterRetry.length,
         session.openCount + 1,
-        `retry must fire exactly one new request (open ${session.openCount}, now ${session.articleRequests.length})`,
+        `retry must fire exactly one new analysis request (open ${session.openCount}, now ${afterRetry.length})`,
     );
-    assert.equal(session.articleRequests[1].level, 'orbit', 'retry dropped the level parameter');
+    assert.equal(afterRetry[afterRetry.length - 1].level, 'orbit', 'retry dropped the level parameter');
+    assert.ok(
+        session.analysisRequests.every((request) => request.level === 'orbit'),
+        'every background analysis request must carry the current level',
+    );
     await page.locator('[data-testid=reader-en-0] [data-language-point]').first().waitFor({
         state: 'visible',
         timeout: 10000,
@@ -384,6 +439,7 @@ const retryButton = (page) => page.locator('[data-testid=reader-analysis-retry]'
 {
     const session = await openArticle({ name: 'retry-403', initial: 'quota' });
     const { page } = session;
+    await hint(page).waitFor({ state: 'visible', timeout: 10000 });
     session.advance('login');
     await retryButton(page).click();
     await page.locator('[data-testid=reader-analysis-login]').waitFor({
@@ -412,12 +468,12 @@ const retryButton = (page) => page.locator('[data-testid=reader-analysis-retry]'
     });
     await sleep(600);
     assert.ok(
-        session.articleRequests.length <= 2,
-        `success payload must not refetch analysis (got ${session.articleRequests.length} requests)`,
+        session.analysisRequests.length <= 2,
+        `success payload must not refetch analysis (got ${session.analysisRequests.length} analysis requests)`,
     );
     await session.shot('p0-04-success-no-hint');
     await session.close();
 }
 
 await browser.close();
-console.log('\nP0-04 analysis acceptance: PASS');
+console.log('\nP0-04 + P2-32 reading analysis acceptance: PASS');

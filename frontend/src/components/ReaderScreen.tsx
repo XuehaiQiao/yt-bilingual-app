@@ -307,9 +307,12 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     const highlight = useReadingHighlights(
         article ? article.paragraphs.map((paragraph) => paragraph.text) : [],
     );
-    // Analysis: the level-aware article payload wins; when the reader switches
-    // the CEFR stop (or turns the layer on later) the shared hook asks the same
-    // endpoint for the new level. No shell-level refetch bookkeeping remains.
+    // Analysis: enhancement-only (P2-32). `openArticle` fetches the body at
+    // `level=null` so the article paints first; the shared hook then asks the
+    // same endpoint for the current CEFR stop in the background. A level-scoped
+    // payload (from `refreshTranslations`, after translation) still wins when it
+    // matches the current level. `articleAnalysisLevel` remembers which level
+    // the payload was requested at, so failure fields never leak across levels.
     const articleIdForAnalysis = article?.articleId ?? null;
     // Level the open payload was requested at: an `analysisUnavailableReason`
     // in that payload only applies to this level (a switch asks again below).
@@ -496,13 +499,13 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
         restoreIdxRef.current = null;
         saveErrorToastRef.current = false;
         try {
-            const analysisLevel = !isGuest && (showLanguagePoints || highlight.enabled)
-                ? highlight.level
-                : null;
-            const detail = await getArticle(articleId, targetLang, analysisLevel);
+            // First paint is body-only (P2-32): omit `level` so no analysis is
+            // generated/awaited here. `useReadingAnalysis` requests the current
+            // level in the background once the article is on screen.
+            const detail = await getArticle(articleId, targetLang, null);
             if (!mountedRef.current || selectedIdRef.current !== articleId) return;
             setArticle(detail);
-            setArticleAnalysisLevel(analysisLevel);
+            setArticleAnalysisLevel(null);
             const maxIdx = Math.max(0, detail.paragraphs.length - 1);
             const startIdx = Math.min(Math.max(0, detail.progress?.paragraphIdx ?? 0), maxIdx);
             currentIdxRef.current = startIdx;
@@ -519,7 +522,7 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
                 setArticleLoading(false);
             }
         }
-    }, [flushProgress, highlight.level, isGuest, showLanguagePoints, targetLang]);
+    }, [flushProgress, targetLang]);
 
     // Favorites "出处" jump: open the requested article instead of the list.
     // App remounts this screen when a different target arrives, so this runs
@@ -659,14 +662,16 @@ export const ReaderScreen: React.FC<ReaderScreenProps> = ({
     }, [isGuest, loadList, flushProgress]);
 
     const refreshTranslations = useCallback(async (articleId: string) => {
+        // Not first paint: after translating, ask for the article at the current
+        // analysis level so the refreshed payload carries the language layer.
+        const analysisLevel = !isGuest && (showLanguagePoints || highlight.enabled)
+            ? highlight.level
+            : null;
         try {
-            const detail = await getArticle(
-                articleId,
-                targetLang,
-                !isGuest && (showLanguagePoints || highlight.enabled) ? highlight.level : null,
-            );
+            const detail = await getArticle(articleId, targetLang, analysisLevel);
             if (mountedRef.current && selectedIdRef.current === articleId) {
                 setArticle(detail);
+                setArticleAnalysisLevel(analysisLevel);
             }
         } catch {
             // Best-effort polling: the translate call itself reports failures.

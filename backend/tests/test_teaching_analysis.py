@@ -1108,7 +1108,11 @@ def test_cached_stream_merges_analysis_and_zero_extra_calls(
     first = stream("liftoff")
     meta = dict(first)["meta"]
     assert len(llm_stub.prompts) == 1
-    assert all(block["highlights"] for block in meta["blocks"])
+    # P2-32：meta 先到且不带分析；分析完成后用 batch 回传带高亮的 blocks。
+    assert all(not block["highlights"] for block in meta["blocks"])
+    first_batches = [data for name, data in first if name == "batch"]
+    assert len(first_batches) == 1
+    assert all(block["highlights"] for block in first_batches[0]["blocks"])
     written = json.loads(
         (history_dir / f"Test_Channel_20240101_{VIDEO_ID}.json").read_text(
             encoding="utf-8"
@@ -1120,11 +1124,21 @@ def test_cached_stream_merges_analysis_and_zero_extra_calls(
 
     second = stream("liftoff")
     assert len(llm_stub.prompts) == 1, "同内容+等级+语言第二次必须零模型调用"
-    assert dict(second)["meta"]["blocks"][0]["highlights"] == meta["blocks"][0]["highlights"]
+    second_batches = [data for name, data in second if name == "batch"]
+    assert second_batches and all(
+        block["highlights"] for block in second_batches[0]["blocks"]
+    )
+    assert (
+        second_batches[0]["blocks"][0]["highlights"]
+        == first_batches[0]["blocks"][0]["highlights"]
+    )
 
     third = stream("orbit")
     assert len(llm_stub.prompts) == 2, "换等级必须重新生成"
-    assert any(block["highlights"] for block in dict(third)["meta"]["blocks"])
+    third_batches = [data for name, data in third if name == "batch"]
+    assert third_batches and any(
+        block["highlights"] for block in third_batches[0]["blocks"]
+    )
     assert len(_rows()) == 2
 
 

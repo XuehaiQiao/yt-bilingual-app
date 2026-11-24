@@ -131,10 +131,16 @@
 - 错误：400（targetLang 非法）、404（文章不存在/别人的）、429（AI 配额或预算）、
   503（未迁移）。
 
-### `GET /api/article/{id}?targetLang=`
+### `GET /api/article/{id}?targetLang=&level=`
 
 返回文章标题/站点/词数 + 段落（每段带 `translation`、`translationModel`、
 `translationFailed`）+ 当前语言统计 + 当前用户进度：
+
+`level` 可选（specs/028）：不传时**不调用教学分析**，只返回正文（首屏用）；
+传 CEFR 等级时才合并该等级的分析（命中缓存零模型调用），失败仍 200，顶层带
+`analysisUnavailableReason`（+ 可得的 `analysisUsed`/`analysisLimit`/
+`analysisResetAt`），前端显示非阻断提示。P2-32 起前端打开文章先用无 `level`
+的请求渲染正文，再由 `useReadingAnalysis` 在后台按当前等级请求分析。
 
 ```json
 {
@@ -231,6 +237,11 @@ scheme 地址全部 422；删除后 404；第二个用户读第一用户文章 4
 - **单点取词（2026-11-17）**：全屏 click-away 层命中单词时改为切换词卡，而不是
   只关卡片；触屏没有 hover，也能一次点击切到第二个词。书籍段落补齐
   `data-lookup-context`，hover 切词与点击一致。
+- **首屏不等分析（P2-32）**：`openArticle` 先发不带 `level` 的
+  `GET /api/article/{id}` 渲染正文；语言点由 `useReadingAnalysis` 在后台用
+  `loadArticleAnalysis` 按当前等级拉取，加载中/失败都不阻塞正文（失败仍走
+  P0-04 的非阻断提示 + 重试）。`refreshTranslations` 不在首屏，翻译后仍可带
+  `level` 刷新（同时更新 `articleAnalysisLevel`）。
 - 回归：`scripts/reader-layout-test.mjs`（Playwright，mock `/api/**`，截图
   `/tmp/reader-layout-shots/`）覆盖自创文章/免费文章/书籍点词、1440 两栏对齐、
   1024 断点、375 上下布局、仅原文单栏、进度/翻译/分享回归。

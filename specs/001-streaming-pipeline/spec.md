@@ -30,6 +30,7 @@
 - **必须**（P2-31）：输出 id 覆盖不足时统计缺失 id，只对缺失子集同候选补译一次（不整批重发）；补译后仍缺的块标 `[未翻译]`，交由下次加载自愈。
 - **必须**（P2-31）：单批翻译有 90s deadline（`translate.TRANSLATE_BATCH_TIMEOUT_SECONDS`），超时取消当前调用并按失败进入降级链；其他 LLM 调用仍走 provider 的 180s timeout，不受影响。
 - **应当**（P2-31）：Qwen 目录项用模型级 `thinking_disabled` 标记，OpenAI 兼容 payload 只对该标记发 `thinking:{"type":"disabled"}`；DeepSeek/其他 provider 不发未验证的未知参数。
+- **必须**（P2-32）：缓存命中（含续传）的首屏不被教学分析阻塞——事件序固定为 `meta` 先出（不带分析）→ 需要补译时逐批 `batch` → 分析成功后一次 `batch` 回传更新后的 blocks（**无 pending 也发**）→ `summary`/`done`；分析失败只影响增强，不阻断字幕/总结/完成。
 
 ## 验收标准
 - [ ] 给定一个有英文字幕的视频，粘贴后数秒内英文字幕可见且可播放。
@@ -42,6 +43,7 @@
 - [ ] （P2-31）新 prompt 输入无 `start/end`、输出无 `en_text` 回显；新 `r/i/t` 与旧 `blocks/id/en_text/zh_text` 响应都能按 id 正确对齐，`en_text/start/end` 由输入回填。
 - [ ] （P2-31）空响应/不可解析 JSON 各自同候选最多重试 1 次；仍失败才降级；整条重试路径只扣 1 次配额。
 - [ ] （P2-31）缺失 id 只补缺失子集一次，仍缺标 `[未翻译]`；单批 90s 超时进入降级，不会挂到 180s。
+- [ ] （P2-32）缓存命中且无未翻译句：`meta` 先到且不含教学分析，分析完成后用 `batch` 更新 blocks；分析慢/失败时 `meta` 仍立即返回，`summary`/`done` 不被阻断。
 
 ## 边界与非目标
 - 只处理英文源字幕 → 中文翻译。
