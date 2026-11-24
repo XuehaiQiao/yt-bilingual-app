@@ -1332,6 +1332,27 @@
         "P2-24",
         "P2-26"
       ]
+    },
+    {
+      "id": "P2-30",
+      "file": "TASKS/P2-30-quota-admin-ui.md",
+      "status": "claimed",
+      "owner": "quota-ui-impl",
+      "write_scope": [
+        "frontend/src/components/AdminQuotasPanel.tsx",
+        "frontend/src/components/AdminConsoleScreen.tsx",
+        "frontend/src/lib/admin.ts",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json",
+        "scripts/admin-quotas-acceptance.mjs",
+        "specs/047-quota-admin/spec.md"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": [
+        "P2-28"
+      ]
     }
   ]
 }
