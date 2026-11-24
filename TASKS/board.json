@@ -1599,8 +1599,8 @@
     {
       "id": "P2-41",
       "file": "TASKS/P2-41-v11-ops.md",
-      "status": "claimed",
-      "owner": "v11-ops-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "docs/reports/v1.1-launch-migration-2026-11-25.md",
         "docs/checklists/",
