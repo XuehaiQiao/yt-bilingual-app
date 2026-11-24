@@ -1412,6 +1412,54 @@
         "P2-31",
         "P2-32"
       ]
+    },
+    {
+      "id": "P2-34",
+      "file": "TASKS/P2-34-quota-units.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "backend/ai/quota.py",
+        "backend/translate.py",
+        "backend/reading.py",
+        "backend/config.py",
+        "backend/tests/test_quota_admin.py",
+        "backend/tests/test_reading.py",
+        "backend/tests/test_translation_hardening.py",
+        "frontend/src/components/AdminQuotasPanel.tsx",
+        "specs/034-balance-billing/spec.md",
+        "specs/001-streaming-pipeline/spec.md",
+        "specs/019-reading/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-33"
+      ]
+    },
+    {
+      "id": "P2-35",
+      "file": "TASKS/P2-35-timing.md",
+      "status": "pending",
+      "owner": "",
+      "write_scope": [
+        "backend/pipeline_timing.py",
+        "backend/routes_videos.py",
+        "backend/translate.py",
+        "backend/reading.py",
+        "backend/book_translation.py",
+        "backend/routes_admin.py",
+        "backend/migrations/versions/0032_pipeline_timing.py",
+        "backend/tests/test_pipeline_timing.py",
+        "frontend/src/components/AdminConsoleScreen.tsx",
+        "frontend/src/components/AdminQuotasPanel.tsx",
+        "specs/001-streaming-pipeline/spec.md",
+        "specs/019-reading/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-33",
+        "P2-34"
+      ]
     }
   ]
 }
