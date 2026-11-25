@@ -1712,7 +1712,7 @@
     {
       "id": "P2-47",
       "file": "TASKS/P2-47-recent-identity.md",
-      "status": "claimed",
+      "status": "merged",
       "owner": "lead",
       "write_scope": [
         "frontend/src/App.tsx",
