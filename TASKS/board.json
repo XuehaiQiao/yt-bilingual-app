@@ -1689,7 +1689,8 @@
         "frontend/src/lib/teachingAnalysis.ts"
       ],
       "shared_writes": [],
-      "deps": []
+      "deps": [],
+      "description": "v1.0 缓存黑屏 + 本地视频观影 + 切换观影不重载"
     },
     {
       "id": "P2-46",

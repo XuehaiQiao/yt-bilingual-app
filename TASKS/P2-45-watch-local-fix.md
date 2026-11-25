@@ -5,10 +5,13 @@
 - base_sha: e50cecf
 
 ## 问题
+0) 进入/退出观影模式会重新加载视频（条件分支导致 VideoPlayer unmount/remount）；要求保持播放位置/播放状态，不中断播放。
 1) v1.0 已有缓存的视频，在 v1.1 打开观影模式会黑屏
 2) 本地视频没有观影模式
 
 ## 要求
+0) 优先让同一个 VideoPlayer 实例跨 watch/normal 布局存活；若无法稳定复用，至少保存 currentTime/playing 并在 onReady 恢复，不能回到 0。
+
 1) 找出 v1.0 缓存 payload 与 v1.1 观影模式的兼容缺口并修复；不得要求用户重新翻译/清缓存
 2) 本地视频（有本地媒体文件，hasLocalVideo）支持观影模式；纯字幕本地剧集是否支持按现有契约判断，至少不回归
 3) 保留：YouTube 观影模式、字幕 dock、滚动 gloss、分屏比例、全屏、退出/返回、SSE/缓存历史
