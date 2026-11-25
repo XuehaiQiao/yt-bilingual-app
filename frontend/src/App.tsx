@@ -477,9 +477,10 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // It lives beside the two layout preferences and writes its own storage key,
   // so toggling it never resets the transcript placement or the split ratio.
   const [watchMode, setWatchMode] = useState<WatchMode>(loadWatchMode);
-  // Local episodes have no teaching analysis (D1-2), so the mode never applies
-  // to them — even when the preference was switched on for YouTube videos.
-  const watchModeAvailable = !isLocalSubtitle;
+  // P2-45: a local episode mapped to a real video (`hasLocalVideo`) drives the
+  // same VideoPlayer as a YouTube clip, so 观影模式 applies to it too. A pure
+  // SRT episode keeps its simulated stage and stays out of the mode.
+  const watchModeAvailable = hasLocalVideo || !isLocalSubtitle;
   const watchModeActive = watchMode === 'on' && watchModeAvailable;
   // 字幕三态 (specs/045 §4.2.1): bilingual | english | off, one device-level
   // preference stored separately from the watch flag. `off` stops mounting the
@@ -673,9 +674,9 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
 
   const toggleWatchMode = useCallback(() => {
     const entering = !watchModeActive;
-    // The mode swap rewires the shell, so the embed remounts. Carry the
-    // playhead over (the new player seeks on ready) instead of restarting.
-    setSeekCommand({ time: currentTimeRef.current, timestamp: Date.now() });
+    // P2-45: the stage frame is shared by both layouts, so the VideoPlayer stays
+    // mounted across the swap — no seek/resume command is needed here, and a
+    // paused video must stay paused (the old code re-played it on ready).
     setWatchMode((previous) => (previous === 'on' ? 'off' : 'on'));
     // Page fullscreen is part of entering the mode. Both calls stay inside the
     // click gesture: `requestFullscreen()` outside a user gesture is denied.
@@ -3671,26 +3672,36 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Below 1280 the 16:9 box is pinned to the top (8px side margin) and the
   // gloss window becomes a bottom drawer that owns the remaining height
   // (specs/045 §5); 1280+ keeps the P2-15 centred cinema stage.
-  const watchStage = (
+  // P2-45: the stage frame is mounted in BOTH layouts so toggling 观影模式
+  // never unmounts the VideoPlayer (and its YouTube iframe) — the same DOM node
+  // keeps playing across the layout swap. In the normal layout the frame is
+  // `display: contents` (zero box; the picture stays pinned to the top of the
+  // column). In 观影模式 it becomes the ambient cinema stage. The ambient layer
+  // comes AFTER the picture in DOM order and paints behind it with a negative
+  // z-index inside this isolated stacking context, so it can never cover the
+  // iframe or its native controls.
+  const mediaStageFrame = (
     <div
-      data-testid="watch-stage"
-      data-ambient="on"
-      className={
-        isWideViewport
-          ? '[container-type:size] relative flex flex-1 min-h-0 w-full items-center justify-center overflow-hidden bg-app'
-          : 'relative flex w-full flex-none items-center justify-center overflow-hidden bg-app px-2 pb-2 pt-1'
-      }
+      data-testid={watchModeActive ? 'watch-stage' : undefined}
+      data-ambient={watchModeActive ? 'on' : undefined}
+      className={watchModeActive
+        ? (isWideViewport
+          ? '[container-type:size] relative isolate flex flex-1 min-h-0 w-full items-center justify-center overflow-hidden bg-app'
+          : 'relative isolate flex w-full flex-none items-center justify-center overflow-hidden bg-app px-2 pb-2 pt-1')
+        : 'contents'}
     >
-      <div
-        data-testid="watch-stage-ambient"
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-      >
-        <div className="absolute -left-[8%] -top-[22%] h-[80%] w-[62%] rounded-full bg-brand/[0.14] blur-3xl" />
-        <div className="absolute -bottom-[26%] -right-[6%] h-[76%] w-[54%] rounded-full bg-warning/10 blur-3xl" />
-        <div className="absolute inset-0 bg-gradient-to-b from-app/40 via-transparent to-app/50" />
-      </div>
       {mediaStage}
+      {watchModeActive && (
+        <div
+          data-testid="watch-stage-ambient"
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+        >
+          <div className="absolute -left-[8%] -top-[22%] h-[80%] w-[62%] rounded-full bg-brand/[0.14] blur-3xl" />
+          <div className="absolute -bottom-[26%] -right-[6%] h-[76%] w-[54%] rounded-full bg-warning/10 blur-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-b from-app/40 via-transparent to-app/50" />
+        </div>
+      )}
     </div>
   );
 
@@ -4143,7 +4154,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
               data-testid="video-column"
               className="w-full flex-1 min-h-0 md:h-full flex flex-col min-w-0"
             >
-              {watchStage}
+              {mediaStageFrame}
               {/* P2-16 / specs/045 §5: below 1280 the gloss window is a bottom
                   drawer under the top-pinned picture, not a floating layer
                   over the video. It is expanded by default and owns the
@@ -4229,7 +4240,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
           style={{ '--left-w': `${leftRatio}%` } as React.CSSProperties}
           className="w-full max-md:h-auto md:h-full md:w-[var(--left-w)] flex flex-col min-w-0 shrink-0"
         >
-          {mediaStage}
+          {mediaStageFrame}
           {!isLocalSubtitle && channelBar}
 
           {isTranscriptExpanded ? (

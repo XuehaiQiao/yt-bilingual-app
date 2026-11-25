@@ -1,6 +1,6 @@
 # 044 — 观影模式（最小版）
 
-> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源；2026-11-24 P2-15 沉浸壳层 + 字幕三态 + 保留原生控制条；P2-16 360 rail + 收藏 + 移动抽屉；P2-17 字幕落底/高亮/词条行统一/字号/Esc 退观影；P2-19 词条行「我已掌握」开关 + 收藏互斥；P2-20 暂停不落底 + 落底 0%；P2-21 词条行卡片 + 视口内指针才唤醒 + 抬高 10% + 字幕 92% 宽；P2-22 指针限定画面区；P2-25 视频/词条分栏比例可调，取代画面缩放）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
+> 状态：**已实现（2026-11-23，P2-08；P2-09 字号/历史；P2-10 接管网页全屏；P2-11 字幕字号流体缩放；P2-12 滚动词条精简；P2-13 payload 分析词条来源；2026-11-24 P2-15 沉浸壳层 + 字幕三态 + 保留原生控制条；P2-16 360 rail + 收藏 + 移动抽屉；P2-17 字幕落底/高亮/词条行统一/字号/Esc 退观影；P2-19 词条行「我已掌握」开关 + 收藏互斥；P2-20 暂停不落底 + 落底 0%；P2-21 词条行卡片 + 视口内指针才唤醒 + 抬高 10% + 字幕 92% 宽；P2-22 指针限定画面区；P2-25 视频/词条分栏比例可调，取代画面缩放；P2-45 覆盖 v1.0 缓存并扩展到映射真实视频的本地剧集）** ｜ 依据：`docs/计划-v1.1.md` 任务 1（D1-1/D1-2 已拍板：只做看视频页；≥1280 右侧固定词条栏）
 > 成本：0（只读已有分析缓存，不新增 AI 调用）。
 
 ## 1. 开关与布局
@@ -22,7 +22,6 @@
 
 
 ## 1c. 视频/词条分栏比例（P2-25；替代 P2-22 画面缩放）
-
 - 用户澄清：要调的是**视频窗口与滚动词条窗口的分栏比例**，不是把视频在舞台里缩放。P2-25 移除 P2-22 的「画面大小 60/75/100」控件与 `watchVideoScale` 缩放逻辑，避免两个控件语义冲突。
 - `watchSplitRatio`：视频列占整行的百分比，**55–85，默认 75**（75/25），localStorage key `yt_bilingual_watch_split_ratio`；与 `watchMode`、字幕三态分键存储，进入/退出观影模式都不重置。
 - 桌面 ≥1280 才显示分隔条（现有的 rail 只在 xl 出现；768–1279 与 <768 都是视频置顶 + 抽屉，无分隔条、无比例控件）。
@@ -31,6 +30,18 @@
 - rail 宽度 = 行剩余宽度，CSS `clamp(280px, (100 - ratio)%, 560px)`；视频列取剩余宽度（`flex-1`），16:9 由舞台尺寸容器保持居中、不溢出。默认 1440 → rail 360px（25%），1920 → 480px；拖到极端时 rail 先触 280/560 边界，视频列吸收差额（比例数值仍是 aria-valuenow）。
 - 拖动使用与普通布局同一个 `resize-shield`（覆盖 iframe），`pointerup/pointercancel/blur` 收尾；拖动中不写 localStorage。
 - `video-area` 仍是 `container-type: inline-size`，字幕字号随视频列宽度流体缩放（clamp 下限 17/15px），更小的视频列不裁切。
+
+
+## 1d. 适用内容、v1.0 缓存与播放连续性（P2-45）
+
+- **适用内容**：看视频页的 YouTube 视频、免费资源库视频，以及**映射到真实视频的本地剧集**（`metadata.is_local_subtitle === true` 且 `metadata.youtube_video_id` 非空，即 `hasLocalVideo`）。映射剧集与 YouTube 共用同一个 `VideoPlayer` 与观影壳层（滚动词条、退出/返回、全屏、分栏比例全部复用）。
+- **纯字幕本地剧集**（只有 SRT、无真实视频）：没有画面，不提供观影模式；即使本地偏好为 `on` 也不进入观影壳层（`watchModeAvailable = false`）。
+- **v1.0 缓存兼容**：旧缓存可能缺 `target_lang`（后端读取时按当前语言盖章并回落 `zh-CN`）、缺 `analysisLevel`/`duration`/合并分析字段，甚至 transcript block **完全没有 `highlights` 键**。这些都不能导致黑屏或要求重新翻译/清缓存：
+  - 读取路径后端按缺省值继续返回 transcript/summary/videoId（`payload_target_lang` 缺字段按 `zh-CN`）；
+  - 前端叠加教学分析高亮时，`sameHighlights(null | undefined, mapped)` 视为空列表（commit `46f3ad3`），不回退、不抛错；
+  - 无合并分析时仍按原 block 的旧高亮回退；端点分析返回后按 028 语义覆盖。
+- **播放连续性**：进入/退出观影模式不得重新加载视频。两套布局共用同一个 **stage frame**：普通布局下该 frame 为 `display: contents`（零盒子，视频继续钉在左列顶部），观影模式下同一个 DOM 元素变成 `watch-stage`（尺寸容器 + 环境光）。`watch-stage-ambient` 在 DOM 中排在画面之后，靠 `isolate` 上下文 + `-z-10` 画在画面背后，不能覆盖 iframe 或原生控件。因此 `VideoPlayer`/YouTube iframe 在切换中保持同一个实例与播放位置；切换时**不**下发 seek/play 命令，暂停中的视频保持暂停。
+- 验收：v1.0 形状 payload（无 `highlights` 的 block）能进/出观影模式，字幕与词条来自端点分析且页面不空白；toggle 前后 `video-player` DOM 节点同一、YouTube 实例数不变、`currentTime` 不回 0；暂停后退出仍为暂停。映射真实视频的本地剧集可进/出观影模式且控件不重叠；纯 SRT 剧集无入口、偏好 on 仍是普通布局。
 
 
 ## 2. 单句字幕窗
@@ -113,7 +124,7 @@
 | 内容 | 位置 |
 |---|---|
 | `watchMode` off/on 持久化（key `yt_bilingual_watch_mode`；与 stacked/split、左列比例分键存储） | `frontend/src/lib/layout.ts` |
-| 播放器工具栏入口（图标+文字、`aria-pressed`、悬停/触屏可见；切换携带播放进度，不重新起播；**无独立全屏按钮**） | `frontend/src/components/VideoPlayer.tsx` |
+| 播放器工具栏入口（图标+文字、`aria-pressed`、悬停/触屏可见；**P2-45：切换不重载 iframe — 两布局共用 stage frame，同一个 VideoPlayer 实例跨布局存活，播放位置不重置、暂停保持暂停**；**无独立全屏按钮**） | `frontend/src/components/VideoPlayer.tsx`、`frontend/src/App.tsx` |
 | 网页全屏（进入手势内 `requestFullscreen()` 于学习 shell、退出条件 `exitFullscreen()`、失败/不支持静默、路由/卸载清理、`data-page-fullscreen` 状态；**P2-17：本容器全屏 → 非全屏（ESC/浏览器 chrome）自动 `setWatchMode('off')`，初始/未全屏/路由清理不误触发**） | `frontend/src/App.tsx` |
 | 单句字幕窗（英上中下、17/15px token 回退、`clamp(…2cqi…)`/`clamp(…1.7cqi…)` 随媒体区宽度流体缩放、玻璃条、`pointer-events-none`、无当前句隐藏；媒体区 `container-type: inline-size`；**P2-17：`dock`/`raised` 两档 bottom（0% / 10%，P2-21 由 15% 下调）、200ms 过渡、reduced-motion 直切、`glosses`+`languagePoints` 句内橙/蓝高亮（文本切片，无 HTML 注入）；P2-21：`min(96ch,92%)` 宽、`ch` 随英文流体字号缩放**） | `frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/App.tsx` |
 | 滚动词条窗（P2-12：标题「滚动词条」/「Từ cuộn」；无整句上文/圆点、无分组标题、无 kind 徽章、无逐句及全局空态占位、无条目边框/底纹/分割线；≥1280 固定右栏；<1280 浮层；loading/error/login/无分析态；P2-09 最近 30 句历史/去重/滚动/空句跳过；**P2-17：词汇与语言点统一「左词/短语 + 右释义」单行、右列 `text-right` 可换行、字体 `clamp` 16→22 / 14→18；P2-21：行低对比圆角卡片 `bg-surface-2/35`（当前 `/50`）、行间 4px、无边框/分割线**） | `frontend/src/components/WatchGlossPanel.tsx` |
@@ -124,11 +135,11 @@
 | P2-19 文案（已掌握/取消/失败/互斥回滚，中越） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
 | P2-17 App 接线（观影模式跟踪指针活跃 → `watchSubtitleRaised`，4s 静止落底；P2-21 越界坐标忽略；**P2-22 目标须在 `video-area` 内（`event.target` containment），键盘不受限、`touchstart` 同目标过滤**；`pageFullscreenRef` 区分「真实退出本容器全屏」与初始/路由/失败；向字幕窗传 `glosses`/`languagePoints`/`raised`/`dock`） | `frontend/src/App.tsx` |
 | P2-15 沉浸壳层（AppShell `hideTopbar` 不渲染顶栏；LearningHeader 不渲染；浮层顶栏 `WatchTopBar`：返回/标题+来源/chip/CC/退出，2.5s 淡出，指针/触摸/键盘唤醒） | `frontend/src/components/AppShell.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
-| P2-15 舞台（`watch-stage` 尺寸容器 + 16:9 画面水平/垂直居中 + 环境光/模糊层填充黑边） | `frontend/src/App.tsx` |
+| P2-15 舞台（`watch-stage` 尺寸容器 + 16:9 画面水平/垂直居中 + 环境光/模糊层填充黑边；**P2-45：stage frame 两布局共用 — 普通布局 `display: contents`、观影模式同一 DOM 变为 stage；ambient 在画面之后、`isolate` + `-z-10` 画在背后**） | `frontend/src/App.tsx` |
 | P2-15 字幕三态（`watchSubtitleMode` 持久化与循环；双语/仅英文/关闭；关闭不挂载覆盖层；渐变 scrim） | `frontend/src/lib/layout.ts`、`frontend/src/components/WatchSubtitleOverlay.tsx`、`frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
 | P2-15 原生控制条保留（不做自定义播放/进度条；退出按钮从播放器浮层移到顶栏） | `frontend/src/components/VideoPlayer.tsx` |
 | 文案（zh-CN / vi-VN） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
-| 验收脚本（开关持久化、布局/教学面板、播放/跳转跟句、滚动词条（标题/连续列表/无 context/heading/kind/empty/border、空句跳过、长词长释义 375 换行）、字幕英主中辅字号与流体缩放（375/1440 普通/观影/1920/全屏 stub）、历史顺延/去重/滚动、reduced-motion、网页全屏 stub 断言/失败降级、1440+1920+375 截图；P2-15 追加：双 chrome 不渲染/浮层顶栏五项与 2.5s 淡出/舞台居中与环境光/字幕三态与持久化与 C 键/CC 菜单键盘/原生控制条保留/切换不重载；P2-17 追加：抬高/落底两档与 200ms 过渡 + 指针恢复、词条行同线/右对齐/字号三档、橙/蓝高亮与完整文本、ESC→watch off、初始/路由/拒绝全屏不误触发；P2-19 追加：收藏星级操作组/aria/绿色实心、PATCH+回读+刷新持久、取消不恢复收藏、互斥 DELETE 失败回滚、PATCH 500 回滚、游客本地表写入/刷新/撤销零 API、375 44px 与不挤爆截图；P2-20 追加：落底 0%、暂停 4.5s 仍 raised；P2-21 追加：视口外 pointer 不唤醒/视口内 pointermove+pointerdown 唤醒、抬高 10%（7–14% 实测 band）、1440/1920 字幕盒 ≥85%、词条行卡片/4px/当前句更强/操作组默认 .6、375 不挤压 + 截图；P2-25 追加：默认 75/25 rail 360、拖到 60/85 的 clamp 行为、键盘 ±2%/aria/双击重置、刷新保留、1920 rail 280–560、375 无分隔条 + 截图） | `scripts/watch-mode-acceptance.mjs` |
+| 验收脚本（开关持久化、布局/教学面板、播放/跳转跟句、滚动词条（标题/连续列表/无 context/heading/kind/empty/border、空句跳过、长词长释义 375 换行）、字幕英主中辅字号与流体缩放（375/1440 普通/观影/1920/全屏 stub）、历史顺延/去重/滚动、reduced-motion、网页全屏 stub 断言/失败降级、1440+1920+375 截图；P2-15 追加：双 chrome 不渲染/浮层顶栏五项与 2.5s 淡出/舞台居中与环境光/字幕三态与持久化与 C 键/CC 菜单键盘/原生控制条保留/切换不重载；P2-17 追加：抬高/落底两档与 200ms 过渡 + 指针恢复、词条行同线/右对齐/字号三档、橙/蓝高亮与完整文本、ESC→watch off、初始/路由/拒绝全屏不误触发；P2-19 追加：收藏星级操作组/aria/绿色实心、PATCH+回读+刷新持久、取消不恢复收藏、互斥 DELETE 失败回滚、PATCH 500 回滚、游客本地表写入/刷新/撤销零 API、375 44px 与不挤爆截图；P2-20 追加：落底 0%、暂停 4.5s 仍 raised；P2-21 追加：视口外 pointer 不唤醒/视口内 pointermove+pointerdown 唤醒、抬高 10%（7–14% 实测 band）、1440/1920 字幕盒 ≥85%、词条行卡片/4px/当前句更强/操作组默认 .6、375 不挤压 + 截图；P2-25 追加：默认 75/25 rail 360、拖到 60/85 的 clamp 行为、键盘 ±2%/aria/双击重置、刷新保留、1920 rail 280–560、375 无分隔条 + 截图；P2-45 追加：v1.0 payload（block 无 `highlights`、缺 target_lang/analysisLevel/duration）不空白且可进出观影；toggle 前后 player DOM 节点同一、YouTube 实例数不变、currentTime 不回 0、暂停后退出仍暂停；映射真实视频的本地剧集可进出观影且控件不重叠；纯 SRT 剧集无入口、偏好 on 仍普通布局 + 截图） | `scripts/watch-mode-acceptance.mjs` |
 
 词条数据只读既有教学分析（specs/028）：`wordGlossesByBlock`（来源见 §3「数据来源（P2-13）」）+ `languagePointsByBlock`；
 无分析态的重试按钮复用 `GET /api/teaching-analysis/{content_ref}`，本规格不新增任何 AI 调用。
@@ -155,3 +166,12 @@
 | 移除 P2-22 画面缩放：顶栏不再有「画面大小」控件，`watchVideoScale`/`data-watch-scale`/mediaStage 缩放宽度全部删除；浮层顶栏只保留返回/标题+来源/chip/CC/退出 | `frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
 | 文案（分栏分隔条 aria/title，中越） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
 | 验收：1440 默认 75/25 → rail 360；拖到 60/85 的 clamp 后宽度、16:9、不溢出；键盘 ←/→ 每步 2%、aria-valuenow、双击重置；刷新保留；1920 rail ∈ [280,560]；375 无分隔条且视频整宽；`1440-watch-split`/`1920-watch-split` 截图；2× PASS | `scripts/watch-mode-acceptance.mjs` |
+
+## 8. 落地记录（P2-45，2026-11-25）
+
+| 内容 | 位置 |
+|---|---|
+| 播放连续性：`mediaStageFrame` 两布局共用。普通布局 `display: contents`；观影模式同一元素是 `watch-stage` 尺寸容器；`watch-stage-ambient` 排在画面之后、`isolate` + `-z-10`。`toggleWatchMode` 不再下发 seek（旧实现每次切换都 seek 且 onReady 强制播放）。验收断言 player DOM 节点同一、YouTube 实例数不变、currentTime 不回 0、暂停保持 | `frontend/src/App.tsx` |
+| 本地剧集可用：`watchModeAvailable = hasLocalVideo || !isLocalSubtitle`；映射真实视频的本地剧集复用同一个 `VideoPlayer` 与观影壳层（滚动词条/退出/全屏/分栏），纯 SRT 剧集仍不提供 | `frontend/src/App.tsx` |
+| v1.0 缓存兼容：`sameHighlights` 接受 `undefined | null` 的 block.highlights（旧缓存可能整块没有 highlights 键）；高亮叠加按空列表处理，不抛错、不要求重新翻译/清缓存（根因已由 `46f3ad3` 修复，本卡只加回归） | `frontend/src/lib/teachingAnalysis.ts` |
+| 验收：watch-mode-acceptance 新增 P2-45 段（legacy v1.0 payload + 播放连续性 + 本地映射剧集 + 纯 SRT），1440 截图；tsc/build/i18n/gate/preflight 全绿 | `scripts/watch-mode-acceptance.mjs` |

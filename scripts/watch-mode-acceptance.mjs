@@ -413,6 +413,9 @@ const HISTORY_ITEMS = [
         title: 'Endpoint Authoritative Clip',
         channel: METADATA.channel,
     },
+    // P2-45: a v1.0-shaped cache (no target_lang / analysisLevel / block
+    // highlights). Opening it must not blank the page or the watch shell.
+    { videoId: 'legacyWatch1', filename: 'Legacy_Channel_20050424_legacyWatch1.json', title: 'Legacy V1 Cache', channel: 'Legacy Channel' },
 ];
 
 const videoPayload = (videoId, blocks, title) => ({
@@ -441,6 +444,93 @@ const AUTHORITATIVE_PAYLOAD = {
     analysisVersion: 'analysis.v5',
 };
 
+// ── P2-45 fixtures ────────────────────────────────────────────────────────
+// v1.0 cache payloads predate `target_lang`, `analysisLevel`, `duration` and
+// the merged teaching analysis, and their blocks can arrive WITHOUT a
+// `highlights` key at all. That shape used to crash `sameHighlights` while the
+// current-level analysis was overlaid, blanking the whole page (the reported
+// black screen). This fixture keeps the exact v1.0 shape; the analysis
+// endpoint below supplies the glosses the way v1.1 does.
+const LEGACY_VIDEO_ID = 'legacyWatch1';
+const LEGACY_HISTORY_FILE = `Legacy_Channel_20050424_${LEGACY_VIDEO_ID}.json`;
+const LEGACY_PAYLOAD = {
+    videoId: LEGACY_VIDEO_ID,
+    metadata: {
+        title: 'Legacy V1 Cache',
+        channel: 'Legacy Channel',
+        channel_url: 'https://www.youtube.com/@legacy-channel',
+        upload_date: '20050424',
+        thumbnail: 'https://i.ytimg.com/vi/legacyWatch1/hqdefault.jpg',
+    },
+    summary: '旧缓存总结：这段视频来自 v1.0。',
+    transcript: BLOCKS.slice(0, 2).map(({ highlights, ...block }) => block),
+    model: 'deepseek-chat',
+    studyCount: 7,
+};
+const LEGACY_ANALYSIS = {
+    ...ANALYSIS,
+    contentRef: LEGACY_VIDEO_ID,
+    contentHash: 'hash-p245-legacy',
+    highlights: {
+        0: [{ en_word: 'habits', zh_word: '习惯', color: '' }],
+        1: [{ en_word: 'walk', zh_word: '散步', color: '' }],
+    },
+    idioms: [],
+    culture: [],
+};
+
+// P2-45: a local episode mapped to a real video. It drives VideoPlayer exactly
+// like a YouTube clip, so 观影模式 must be available and reusable.
+const LOCAL_VIDEO_SHOW_ID = 'acceptance-local-show';
+const LOCAL_VIDEO_ID = 'acceptance-local-video';
+const LOCAL_VIDEO_HISTORY_FILE = `${LOCAL_VIDEO_SHOW_ID}_S01E01.json`;
+const LOCAL_VIDEO_PAYLOAD = {
+    videoId: LOCAL_VIDEO_SHOW_ID,
+    metadata: {
+        title: 'Acceptance Local Show S01E01',
+        channel: 'LinguaTrek Local',
+        is_local_subtitle: true,
+        youtube_video_id: LOCAL_VIDEO_ID,
+        duration: 24,
+    },
+    summary: '',
+    transcript: [
+        {
+            id: 0,
+            start: 0,
+            end: 8,
+            en_text: 'A local episode mapped to a real video keeps its watch mode.',
+            zh_text: '映射到真实视频的本地剧集也可以进入观影模式。',
+            highlights: [],
+        },
+    ],
+};
+
+// P2-45: a pure-subtitle local episode (no real media). Its simulated stage is
+// not a video, so 观影模式 stays unavailable — even with the persisted
+// preference switched on by a previous YouTube clip.
+const LOCAL_SRT_SHOW_ID = 'acceptance-local-srt';
+const LOCAL_SRT_HISTORY_FILE = `${LOCAL_SRT_SHOW_ID}_S01E02.json`;
+const LOCAL_SRT_PAYLOAD = {
+    videoId: LOCAL_SRT_SHOW_ID,
+    metadata: {
+        title: 'Acceptance Local Show S01E02',
+        channel: 'LinguaTrek Local',
+        is_local_subtitle: true,
+    },
+    summary: '',
+    transcript: [
+        {
+            id: 0,
+            start: 0,
+            end: 8,
+            en_text: 'Only subtitles — the simulated stage has no video.',
+            zh_text: '只有字幕，模拟舞台没有视频。',
+            highlights: [],
+        },
+    ],
+};
+
 const cors = {
     'access-control-allow-origin': ORIGIN,
     'access-control-allow-credentials': 'true',
@@ -453,9 +543,12 @@ const cors = {
 // player whose clock actually advances while "playing". No network, no iframe.
 const YT_STUB = `(() => {
   const now = () => Date.now();
+  window.__ytPlayerCount = 0;
   function Player(element, options) {
     const events = (options && options.events) || {};
     const self = this;
+    window.__ytPlayerCount += 1;
+    window.__ytPlayer = self;
     this._state = -1;
     this._time = 0;
     this._playingSince = now();
@@ -598,6 +691,12 @@ async function createContext(browser, {
         // overridden by the endpoint below.
         if (pathname === `/api/history/${PAYLOAD_HISTORY_FILE}`) return respond(PAYLOAD_ANALYSIS_PAYLOAD);
         if (pathname === `/api/history/${AUTHORITATIVE_HISTORY_FILE}`) return respond(AUTHORITATIVE_PAYLOAD);
+        // P2-45: v1.0-shaped cache (blocks without `highlights`) plus the two
+        // local-episode contracts (mapped video vs pure SRT).
+        if (pathname === `/api/history/${LEGACY_HISTORY_FILE}`) return respond(LEGACY_PAYLOAD);
+        if (pathname === `/api/history/${LOCAL_VIDEO_HISTORY_FILE}`) return respond(LOCAL_VIDEO_PAYLOAD);
+        if (pathname === `/api/history/${LOCAL_SRT_HISTORY_FILE}`) return respond(LOCAL_SRT_PAYLOAD);
+        if (pathname === `/api/teaching-analysis/${LEGACY_VIDEO_ID}`) return respond(LEGACY_ANALYSIS);
         if (pathname === `/api/teaching-analysis/${VIDEO_ID}`) return respond(ANALYSIS);
         if (pathname === `/api/teaching-analysis/${HISTORY_VIDEO_ID}`) return respond(HISTORY_ANALYSIS);
         if (pathname === `/api/teaching-analysis/${EMPTY_VIDEO_ID}`) {
@@ -4302,6 +4401,228 @@ try {
         capFontPx: cappedType.en.fontSize,
     };
     await wideContext.close();
+
+    // ═════════════════════════════════════════════════════════════════════
+    // P2-45 — v1.0 cache compatibility + local episodes in 观影模式
+    //   1. a v1.0-shaped history payload (blocks without `highlights`, no
+    //      target_lang / analysisLevel / duration / merged analysis) opens the
+    //      watch shell and paints the sentence + analysis glosses — the shape
+    //      that used to crash `sameHighlights` and blank the page;
+    //   2. entering / leaving 观影模式 keeps the SAME VideoPlayer DOM node and
+    //      the same YouTube player instance: the playhead never resets to 0
+    //      and a paused video stays paused across the layout swap;
+    //   3. a local episode mapped to a real video enters / exits 观影模式 with
+    //      the same shell, floating top bar and gloss rail;
+    //   4. a pure-SRT local episode stays out of the mode even when the saved
+    //      preference is on (its simulated stage has no video).
+    // ═════════════════════════════════════════════════════════════════════
+    const compatContext = await createContext(browser);
+    const compatPage = await compatContext.newPage();
+    const compatErrors = [];
+    compatPage.on('pageerror', (error) => compatErrors.push(String(error)));
+    await stubFullscreen(compatPage);
+    summary.p2_45 = {};
+
+    // The analysis response is what used to crash the render: the legacy
+    // blocks have no `highlights`, and the endpoint overlay normalises them.
+    // Wait for it before judging the shell (and before toggling) so the
+    // regression is deterministic.
+    const legacyAnalysisResponse = compatPage.waitForResponse(
+        (response) => response.url().includes(`/api/teaching-analysis/${LEGACY_VIDEO_ID}`),
+        { timeout: 15000 },
+    ).catch(() => null);
+    await openVideo(compatPage, LEGACY_VIDEO_ID);
+    await legacyAnalysisResponse;
+    await sleep(250);
+    assert.ok(
+        await compatPage.locator('[data-testid="video-player"]').count(),
+        'P2-45: a v1.0 cache without block highlights blanked the page',
+    );
+    assert.equal(
+        await compatPage.getAttribute('[data-testid="video-player"]', 'data-video-id'),
+        LEGACY_VIDEO_ID,
+        'P2-45: v1.0 cache lost its video id',
+    );
+    assert.equal(
+        await compatPage.locator('[data-testid="watch-mode-toggle"]').count(),
+        1,
+        'P2-45: the v1.0 cache has no 观影模式 entry',
+    );
+
+    // P2-45 playback continuity: remember the exact player node / instance
+    // and playhead before the layout swap.
+    await compatPage.waitForFunction(
+        () => typeof window.__ytPlayer?.getCurrentTime === 'function'
+            && window.__ytPlayer.getCurrentTime() > 0.4,
+        null,
+        { timeout: 10000 },
+    );
+    await compatPage.evaluate(() => {
+        window.__p245Node = document.querySelector('[data-testid="video-player"]');
+        window.__p245Players = window.__ytPlayerCount;
+        window.__p245Time = window.__ytPlayer.getCurrentTime();
+    });
+    await enterWatchMode(compatPage);
+    const continuityEnter = await compatPage.evaluate(() => ({
+        sameNode: window.__p245Node === document.querySelector('[data-testid="video-player"]'),
+        playerCount: window.__ytPlayerCount,
+        time: window.__ytPlayer.getCurrentTime(),
+        state: window.__ytPlayer.getPlayerState(),
+    }));
+    assert.equal(continuityEnter.sameNode, true, 'P2-45: entering watch mode remounted the VideoPlayer');
+    assert.equal(
+        continuityEnter.playerCount,
+        await compatPage.evaluate(() => window.__p245Players),
+        'P2-45: entering watch mode recreated the YouTube player',
+    );
+    assert.ok(
+        continuityEnter.time >= (await compatPage.evaluate(() => window.__p245Time)) - 0.25,
+        `P2-45: entering watch mode reset the playhead to ${continuityEnter.time}s`,
+    );
+    assert.equal(
+        await compatPage.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'),
+        'on',
+    );
+    assert.equal(
+        await compatPage.locator('[data-testid="watch-topbar"]').count(),
+        1,
+        'P2-45: v1.0 cache watch shell is missing the floating top bar',
+    );
+    await seekToGlossedCue(compatPage);
+    await compatPage.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-en"]') !== null,
+        null,
+        { timeout: 10000 },
+    );
+    await waitForGlossWord(compatPage);
+    const legacyOverlay = await overlayText(compatPage);
+    assert.ok(
+        legacyOverlay && (legacyOverlay.includes('Small habits') || legacyOverlay.includes('A short walk')),
+        `P2-45: v1.0 cache sentence overlay is wrong (${legacyOverlay})`,
+    );
+    assert.ok(
+        await compatPage.locator('[data-testid="watch-gloss-rail"]').count(),
+        'P2-45: v1.0 cache lost the rolling gloss rail',
+    );
+    summary.screenshots.push(shot('1440-p245-legacy-v1'));
+    await compatPage.screenshot({ path: shot('1440-p245-legacy-v1') });
+
+    // Pause, then leave the mode: the same player node must stay paused and
+    // keep its playhead (the old implementation remounted and auto-played).
+    await pausePlayback(compatPage);
+    await compatPage.waitForFunction(
+        () => window.__ytPlayer.getPlayerState() === 2,
+        null,
+        { timeout: 5000 },
+    );
+    const pausedTime = await compatPage.evaluate(() => window.__ytPlayer.getCurrentTime());
+    await exitWatchMode(compatPage);
+    const continuityExit = await compatPage.evaluate(() => ({
+        sameNode: window.__p245Node === document.querySelector('[data-testid="video-player"]'),
+        playerCount: window.__ytPlayerCount,
+        time: window.__ytPlayer.getCurrentTime(),
+        state: window.__ytPlayer.getPlayerState(),
+    }));
+    assert.equal(continuityExit.sameNode, true, 'P2-45: leaving watch mode remounted the VideoPlayer');
+    assert.equal(continuityExit.playerCount, continuityEnter.playerCount, 'P2-45: leaving watch mode recreated the YouTube player');
+    assert.equal(continuityExit.state, 2, 'P2-45: leaving watch mode resumed a paused video');
+    assert.ok(
+        Math.abs(continuityExit.time - pausedTime) <= 0.3,
+        `P2-45: leaving watch mode moved the playhead (${pausedTime}s → ${continuityExit.time}s)`,
+    );
+    assert.equal(await compatPage.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'), 'off');
+    assert.equal(
+        await compatPage.locator('[data-testid="watch-mode-toggle"]').count(),
+        1,
+        'P2-45: leaving watch mode did not restore the entry toggle',
+    );
+    summary.p2_45.legacyV1 = {
+        overlay: legacyOverlay.trim(),
+        glossRail: true,
+        continuity: {
+            sameNode: continuityEnter.sameNode && continuityExit.sameNode,
+            playerCount: continuityExit.playerCount,
+            pausedState: continuityExit.state,
+        },
+    };
+
+    // 2. Local episode mapped to a real video — 观影模式 must be available.
+    await compatPage.goto(
+        `${BASE}/#/app/content/learn/local/${LOCAL_VIDEO_SHOW_ID}/S01E01`,
+        { waitUntil: 'domcontentloaded' },
+    );
+    await compatPage.locator('[data-testid="video-area"]').waitFor({ state: 'visible', timeout: 20000 });
+    await compatPage.waitForFunction(
+        (expected) => document.querySelector('[data-testid="video-player"]')?.getAttribute('data-video-id') === expected,
+        LOCAL_VIDEO_ID,
+        { timeout: 20000 },
+    );
+    assert.equal(
+        await compatPage.locator('[data-testid="local-media-placeholder"]').count(),
+        0,
+        'P2-45: the mapped local episode fell back to the simulated stage',
+    );
+    assert.equal(
+        await compatPage.locator('[data-testid="watch-mode-toggle"]').count(),
+        1,
+        'P2-45: a local episode with a real video has no 观影模式 entry',
+    );
+    await enterWatchMode(compatPage);
+    assert.equal(
+        await compatPage.locator('[data-testid="watch-topbar"]').count(),
+        1,
+        'P2-45: local episode watch shell is missing the floating top bar',
+    );
+    await compatPage.waitForFunction(
+        () => document.querySelector('[data-testid="watch-subtitle-en"]') !== null,
+        null,
+        { timeout: 10000 },
+    );
+    assert.equal(
+        await compatPage.locator('[data-testid="watch-gloss-rail"]').count(),
+        1,
+        'P2-45: local episode watch shell lost the rolling gloss rail',
+    );
+    const localBox = await compatPage.locator('[data-testid="video-area"]').boundingBox();
+    assert.ok(localBox && localBox.width > 0 && localBox.height > 0, 'P2-45: local episode watch picture collapsed');
+    summary.screenshots.push(shot('1440-p245-local-video-watch'));
+    await compatPage.screenshot({ path: shot('1440-p245-local-video-watch') });
+    await exitWatchMode(compatPage);
+    assert.equal(
+        await compatPage.locator('[data-testid="learning-header"]').count(),
+        1,
+        'P2-45: leaving watch mode did not restore the learning header for the local episode',
+    );
+    summary.p2_45.localVideo = {
+        id: LOCAL_VIDEO_ID,
+        picture: { width: Math.round(localBox.width), height: Math.round(localBox.height) },
+    };
+
+    // 3. Pure-SRT local episode: no watch entry, and a persisted "on"
+    // preference must not force the simulated stage into the watch shell.
+    await compatPage.goto(
+        `${BASE}/#/app/content/learn/local/${LOCAL_SRT_SHOW_ID}/S01E02`,
+        { waitUntil: 'domcontentloaded' },
+    );
+    // The persisted preference belongs to the previous (video) episode; arm it
+    // and hard-reload this route so the restore path starts from a clean state.
+    await compatPage.evaluate(() => localStorage.setItem('yt_bilingual_watch_mode', 'on'));
+    await compatPage.reload({ waitUntil: 'domcontentloaded' });
+    await compatPage.locator('[data-testid="local-media-placeholder"]').waitFor({ state: 'visible', timeout: 20000 });
+    assert.equal(
+        await compatPage.locator('[data-testid="watch-mode-toggle"]').count(),
+        0,
+        'P2-45: a pure-SRT local episode must not offer 观影模式',
+    );
+    assert.equal(
+        await compatPage.getAttribute('[data-testid="learning-scroll"]', 'data-watch-mode'),
+        'off',
+        'P2-45: a persisted watch preference forced the pure-SRT episode into watch mode',
+    );
+    assert.equal(await compatPage.locator('[data-testid="watch-topbar"]').count(), 0);
+    summary.p2_45.pureSrt = { watchToggle: 0, watchMode: 'off' };
+    assert.deepEqual(compatErrors, [], `P2-45 page errors: ${JSON.stringify(compatErrors)}`);
+    await compatContext.close();
 
     // ═════════════════════════════════════════════════════════════════════
     // reduced motion — the watch layers carry no animation/transition

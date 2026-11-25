@@ -275,3 +275,11 @@ YouTube Theater Mode、Netflix/Apple TV 播放器、Language Reactor、Lingopie�
 | 移除 P2-22 画面缩放：顶栏不再有「画面大小」控件（`Scaling` 菜单删除），`watchVideoScale`/`data-watch-scale`/mediaStage 缩放宽度删除；浮层顶栏只保留返回/标题+来源/chip/CC/退出 | `frontend/src/components/WatchTopBar.tsx`、`frontend/src/App.tsx` |
 | 文案（分隔条 aria/title，中越） | `frontend/src/i18n/zh-CN.json`、`vi-VN.json` |
 | 验收：rail/topbar/window-target pointer+touch 保持落底、画面内 pointerover/pointerdown/真实 pointermove/键盘抬高；1440 默认 75/25（rail 360）、拖到 60/85 的 clamp 宽度与 16:9/不溢出、键盘 ±2%/aria/双击重置、刷新保留；1920 rail ∈ [280,560]；375 无分隔条、视频整宽 + 抽屉；`1440-watch-split`/`1920-watch-split` 截图；P2-10～P2-24 零回归；2× PASS | `scripts/watch-mode-acceptance.mjs` |
+
+## 18. 落地记录（P2-45，2026-11-25）
+
+- **播放不中断**：观影/普通两套布局共用同一个 `watch-stage` frame；普通布局下 `display: contents`，观影模式下同一 DOM 成为舞台。进入/退出观影不再 unmount `VideoPlayer`，YouTube iframe 不重载，播放位置与暂停状态原样保留（旧实现在切换时 seek 并在 onReady 强制 `playVideo()`，会打断暂停）。
+- **环境光层**：`watch-stage-ambient` 保持在画面之后的 DOM 顺序，由 `isolate` 堆叠上下文与 `-z-10` 压到画面下方，不拦截指针、不覆盖原生控制条。
+- **适用内容扩展**：本地剧集映射到真实视频（`hasLocalVideo`）时同样可进/出观影模式，复用现有的滚动词条、退出、全屏与分栏比例；纯字幕本地剧集不提供观影模式，持久化偏好在它上面不生效。
+- **v1.0 缓存不中断学习**：旧缓存的 block 可能没有 `highlights` 键；分析高亮叠加按空列表处理（`46f3ad3`），不黑屏、不要求重新翻译或清缓存。
+- 验收：`scripts/watch-mode-acceptance.mjs` 的 P2-45 段断言 player DOM 节点同一、YouTube 实例数不变、currentTime 不回 0、暂停后退出仍暂停；v1.0 payload 与本地剧集（映射/纯 SRT）行为符合规格。
