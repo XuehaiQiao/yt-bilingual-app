@@ -1685,7 +1685,8 @@
         "scripts/watch-mode-acceptance.mjs",
         "scripts/local-video-acceptance.mjs",
         "specs/044-watch-mode/spec.md",
-        "specs/045-watch-mode-experience/spec.md"
+        "specs/045-watch-mode-experience/spec.md",
+        "frontend/src/lib/teachingAnalysis.ts"
       ],
       "shared_writes": [],
       "deps": []

@@ -227,9 +227,17 @@ export interface HighlightableBlock {
     highlights: TeachingHighlight[];
 }
 
-function sameHighlights(a: TeachingHighlight[], b: TeachingHighlight[]): boolean {
-    return a.length === b.length
-        && a.every((entry, index) => (
+function sameHighlights(
+    a: TeachingHighlight[] | undefined | null,
+    b: TeachingHighlight[],
+): boolean {
+    // v1.0 history payloads can carry blocks without a `highlights` key at
+    // all. Treat that as an empty list, not a crash: analysis overlays are
+    // allowed to replace legacy highlights, but the absence of the field is
+    // a valid legacy shape.
+    const left = Array.isArray(a) ? a : [];
+    return left.length === b.length
+        && left.every((entry, index) => (
             entry.en_word === b[index].en_word
             && entry.zh_word === b[index].zh_word
             && entry.color === b[index].color
@@ -259,7 +267,8 @@ export function applyTeachingAnalysisHighlights<T extends HighlightableBlock>(
                     color: TEACHING_HIGHLIGHT_COLOR,
                 }))
             : [];
-        if (sameHighlights(block.highlights, mapped)) return block;
+        const current = Array.isArray(block.highlights) ? block.highlights : [];
+        if (sameHighlights(current, mapped)) return block;
         changed = true;
         return { ...block, highlights: mapped };
     });
