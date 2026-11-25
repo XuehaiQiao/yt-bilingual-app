@@ -1721,6 +1721,20 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-48",
+      "file": "TASKS/P2-48-single-account-tab.md",
+      "status": "merged",
+      "owner": "lead",
+      "write_scope": [
+        "frontend/src/lib/auth.tsx",
+        "scripts/auth-cross-tab-acceptance.mjs",
+        "specs/023-user-profile/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [],
+      "base_sha": "19a035d"
     }
   ]
 }
