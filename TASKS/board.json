@@ -1650,6 +1650,24 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-44",
+      "file": "TASKS/P2-44-level-first-gloss.md",
+      "status": "claimed",
+      "owner": "level-first-impl",
+      "write_scope": [
+        "backend/teaching_analysis.py",
+        "backend/tests/test_teaching_analysis.py",
+        "backend/tests/test_reading.py",
+        "backend/tests/test_quota_ops_subject.py",
+        "specs/028-teaching-analysis/spec.md",
+        "docs/reports/translation-tuning-2026-11-24.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-37"
+      ]
     }
   ]
 }
