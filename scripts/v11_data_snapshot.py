@@ -260,8 +260,19 @@ def fmt_mapping(mapping) -> str:
     return ",".join("%s:%s" % (k, mapping[k]) for k in sorted(mapping))
 
 
-def compare_snapshots(pre: "dict", post: "dict", allow_new: "set[str]") -> "tuple[int, int, int]":
-    """返回 (fail, warn, pass)。比较前/后两份快照。"""
+def compare_snapshots(
+    pre: "dict", post: "dict", allow_new: "set[str]",
+    allow_row_change: "set[str] | None" = None,
+    allow_hash_change: "set[str] | None" = None,
+) -> "tuple[int, int, int]":
+    """返回 (fail, warn, pass)。比较前/后两份快照。
+
+    ``allow_row_change`` / ``allow_hash_change`` 只用于**已登记的跨版本预期
+    变化**（例如 0030 插入 model_prices 行、0027/0029 给 word_states 加列）。
+    未登记的变化仍然 FAIL；不要用它们掩盖未知差异。
+    """
+    allow_row_change = allow_row_change or set()
+    allow_hash_change = allow_hash_change or set()
     fails = warns = passes = 0
 
     def ok(msg):
@@ -321,14 +332,27 @@ def compare_snapshots(pre: "dict", post: "dict", allow_new: "set[str]") -> "tupl
 
     # ---- 行数与内容哈希（共同表）----
     row_mismatch = []
+    expected_row_change = []
     hash_mismatch = []
+    expected_hash_change = []
     for table in common:
         before = pre_tables[table]
         after = post_tables[table]
         if before["rows"] != after["rows"]:
-            row_mismatch.append("%s(%s->%s)" % (table, before["rows"], after["rows"]))
+            label = "%s(%s->%s)" % (table, before["rows"], after["rows"])
+            if table in allow_row_change:
+                expected_row_change.append(label)
+            else:
+                row_mismatch.append(label)
         elif after["sha256"] and before["sha256"] != after["sha256"]:
-            hash_mismatch.append(table)
+            if table in allow_hash_change:
+                expected_hash_change.append(table)
+            else:
+                hash_mismatch.append(table)
+    if expected_row_change:
+        ok("预期行数变化：%s" % ",".join(expected_row_change))
+    if expected_hash_change:
+        ok("预期内容哈希变化：%s" % ",".join(expected_hash_change))
     if row_mismatch:
         bad("行数变化：%s" % ",".join(row_mismatch))
     else:
@@ -402,6 +426,14 @@ def main(argv: "list[str]") -> int:
         "--ignore-column", action="append", default=[],
         help="比对哈希时忽略的列，`表.列`；默认已忽略 users.email_verified_at",
     )
+    parser.add_argument(
+        "--allow-row-change", action="append", default=[],
+        help="允许行数变化（可重复/逗号分隔），只用于已登记的跨版本预期",
+    )
+    parser.add_argument(
+        "--allow-hash-change", action="append", default=[],
+        help="允许内容哈希变化（可重复/逗号分隔），只用于已登记的跨版本预期",
+    )
     parser.add_argument("--quiet", action="store_true", help="只输出结论行")
     args = parser.parse_args(argv)
 
@@ -443,7 +475,15 @@ def main(argv: "list[str]") -> int:
             % (pre.get("format"), FORMAT_VERSION))
 
     allow_new = {t.strip() for t in args.allow_new.split(",") if t.strip()}
-    fails, warns, passes = compare_snapshots(pre, snapshot, allow_new)
+    allow_row_change = {
+        t.strip() for value in args.allow_row_change for t in value.split(",") if t.strip()
+    }
+    allow_hash_change = {
+        t.strip() for value in args.allow_hash_change for t in value.split(",") if t.strip()
+    }
+    fails, warns, passes = compare_snapshots(
+        pre, snapshot, allow_new, allow_row_change, allow_hash_change
+    )
     print("[SUMMARY] PASS=%s WARN=%s FAIL=%s" % (passes, warns, fails))
     if fails:
         print("迁移校验：FAIL（%s 项）" % fails)

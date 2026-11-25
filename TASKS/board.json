@@ -1638,6 +1638,18 @@
       "deps": [
         "P2-39"
       ]
+    },
+    {
+      "id": "P2-43",
+      "file": "TASKS/P2-43-snapshot-allowances.md",
+      "status": "merged",
+      "owner": "lead",
+      "write_scope": [
+        "scripts/v11_data_snapshot.py",
+        "TASKS/P2-43-snapshot-allowances.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
