@@ -1654,8 +1654,8 @@
     {
       "id": "P2-44",
       "file": "TASKS/P2-44-level-first-gloss.md",
-      "status": "claimed",
-      "owner": "level-first-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/teaching_analysis.py",
         "backend/tests/test_teaching_analysis.py",
