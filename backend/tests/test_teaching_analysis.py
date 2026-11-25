@@ -5,16 +5,18 @@
 1. 迁移 0020：表/列/唯一缓存键/索引/回滚/重复迁移幂等；
 2. content_hash：同内容稳定、内容变化/prompt 版本维度隔离；
 3. 等级/语言归一化：六档 + 旧考试 id 映射、非法值 400、默认档 orbit；
-4. prompt：内容级 prompt 用六档候选词并集、无等级阈值；v5 回退 prompt 仍
-   带等级描述；quote 必须能在原文找到、目标语言名；
+4. prompt：内容级 prompt 给定候选词、无等级阈值；增量补词时可选不要求
+   idioms/culture；v5 回退 prompt 仍带等级描述；quote 必须能在原文找到、
+   目标语言名；
 5. 校验闸：en_word/zh_word/quote 子串约束、未知 block 丢弃、译文找不到时
    **整条丢弃**（无释义不标）、颜色强制、单 block ≤20 条、习语 20/文化点 10 上限；
 6. 候选词：非句首专名不入候选、句首普通词保留、语料级句首专名兜底
    （Toto 型；长内容分批仍按整篇统计）、与 classify 同源（同一 word_rules
    规则）；
-7. 内容级缓存（P2-37）：六档连续只 1 次模型调用、1 行内容级缓存；每档
-   payload 的词集合 = 该档旧候选规则（本地筛选等价）；idioms/culture 只生成
-   一次并复用；空 gloss/失败/并发/配额口径；
+7. 内容级缓存（P2-37 / P2-44 level-first）：首屏只生成**当前等级**候选词
+   （≤20/block）→ 同档第二次 0 调用；切到未覆盖档位只补缺失词、不重复要求
+   idioms/culture；覆盖后 0 调用；旧 v6 全量行（六档并集）直接复用；每档
+   payload 的词集合 = 该档候选规则；空 gloss/失败/并发/配额口径；
 8. 旧缓存兼容：analysis.v5 per-level 行在回退开关下可读、不删除；内容级
    模式下按新版本重生成；
 9. 失败不写半成品、可重试；缺 0020 表时 AnalysisUnavailable（内部静默跳过）；
@@ -75,6 +77,26 @@ BLOCKS = [
         "en_text": "Visitors can buy tickets at the front desk.",
         "zh_text": "游客可以在前台买票。",
         "highlights": [],
+    },
+]
+
+
+# P2-44 level-first：这段文本的 A2+ 词超过 MAX_CANDIDATES_PER_BLOCK（20），
+# 所以 liftoff 候选会在第 20 个词（glimpse）处截断；fragile/generous/vague
+# （B2）与 flibbertigibbet（C1+）只有更高档位才会选到——正好用来验证
+# 「首次只生成当前等级候选、不含其他档」与「切档只补缺失词」。
+LEVEL_FIRST_BLOCKS = [
+    {
+        "id": 1,
+        "en_text": (
+            "The garden memory nature silver tomorrow village weather winter "
+            "circle coffee dinner holiday object planet visitors desk delicious "
+            "enormous silence glimpse fragile generous vague flibbertigibbet."
+        ),
+        "zh_text": (
+            "花园记忆自然银明天村庄天气冬天圆圈咖啡晚餐假期物体行星"
+            "访客书桌美味巨大寂静一瞥脆弱慷慨模糊。"
+        ),
     },
 ]
 
@@ -342,26 +364,45 @@ def test_analysis_prompt_states_level_rules_and_block_input():
     assert BLOCKS[0]["zh_text"] in prompt
 
 
-def test_content_prompt_uses_candidate_union_without_level_filter():
-    """内容级 prompt：候选词 = 六档并集、无等级阈值；输出是 glosses 字典。"""
+def test_content_prompt_uses_given_candidates_without_level_filter():
+    """内容级 prompt：只列给定候选词、无等级阈值；输出是 glosses 字典。"""
     normalized = teaching_analysis.normalize_blocks(BLOCKS)
-    union = teaching_analysis._content_candidates_for_blocks(normalized)
-    prompt = teaching_analysis.build_content_prompt(normalized, "zh-CN", union)
+    candidates = teaching_analysis._content_candidates_for_blocks(normalized)
+    prompt = teaching_analysis.build_content_prompt(normalized, "zh-CN", candidates)
     blocks = json.loads(prompt.rsplit("Blocks:\n", 1)[-1])
     by_id = {str(block["blockId"]): block for block in blocks}
-    assert by_id["1"]["candidates"] == union["1"]
-    assert by_id["2"]["candidates"] == union["2"]
-    # 并集覆盖每一档的候选词（否则高等级的释义会缺）。
+    assert by_id["1"]["candidates"] == candidates["1"]
+    assert by_id["2"]["candidates"] == candidates["2"]
+    # 旧全量口径的并集覆盖每一档的候选词（否则高等级的释义会缺）。
     for level in teaching_analysis.LEVEL_IDS:
         per_level = teaching_analysis._candidate_words_for_blocks(normalized, level)
         for block_id, words in per_level.items():
-            assert set(union[block_id]) >= set(words)
+            assert set(candidates[block_id]) >= set(words)
     # 不做等级筛选：prompt 不得出现等级阈值说明。
     assert "LEARNER LEVEL" not in prompt
     assert "glosses" in prompt and "idioms" in prompt and "culture" in prompt
     assert "en_word" in prompt and "zh_word" in prompt and "quote" in prompt
     assert "Simplified Chinese" in prompt or "Chinese" in prompt
     assert BLOCKS[0]["en_text"] in prompt and BLOCKS[0]["zh_text"] in prompt
+
+
+def test_content_prompt_can_skip_idioms_and_culture():
+    """增量补词：已有 idioms/culture 时 prompt 不再要求它们（不重复花钱）。"""
+    normalized = teaching_analysis.normalize_blocks(LEVEL_FIRST_BLOCKS)
+    candidates = teaching_analysis._candidate_words_for_blocks(normalized, "liftoff")
+    prompt = teaching_analysis.build_content_prompt(
+        normalized, "zh-CN", candidates, include_idioms=False, include_culture=False
+    )
+    assert '"glosses"' in prompt
+    assert '"idioms"' not in prompt and '"culture"' not in prompt
+    assert "At most 20" not in prompt and "At most 10" not in prompt
+    blocks = json.loads(prompt.rsplit("Blocks:\n", 1)[-1])
+    assert blocks[0]["candidates"] == candidates["1"]
+    # 首次生成（默认）仍要求 idioms/culture。
+    default_prompt = teaching_analysis.build_content_prompt(
+        normalized, "zh-CN", candidates
+    )
+    assert '"idioms"' in default_prompt and '"culture"' in default_prompt
 
 
 # ---------------------------------------------------------------------------
@@ -702,6 +743,7 @@ def test_ensure_analysis_candidates_use_the_whole_text_across_batches(
 
 
 def test_ensure_level_switch_does_not_regenerate(analysis_db, llm_stub):
+    """切到更窄档位（候选 ⊂ 已覆盖）→ 只做本地筛选，零模型调用。"""
     async def run():
         moon = await teaching_analysis.ensure_analysis(BLOCKS, "moonwalk", "zh-CN")
         inter = await teaching_analysis.ensure_analysis(BLOCKS, "interstellar", "zh-CN")
@@ -718,7 +760,7 @@ def test_ensure_level_switch_does_not_regenerate(analysis_db, llm_stub):
 
 
 def test_six_levels_share_one_content_generation(analysis_db, llm_stub, monkeypatch):
-    """P2-37 验收：A1–C2 六档连续打开，只 1 次内容级模型调用、1 行缓存。"""
+    """level-first：从 A1 起六档连续打开，后续档位候选都被首屏覆盖 → 1 次调用。"""
     consumed: list[tuple] = []
 
     def fake_quota(user_id, feature, units=1, **kwargs):
@@ -766,28 +808,218 @@ def test_six_levels_share_one_content_generation(analysis_db, llm_stub, monkeypa
     assert results["supernova"]["culture"] == results["liftoff"]["culture"]
 
 
-def test_content_cache_stores_gloss_dictionary_and_candidate_union(
+def test_content_cache_stores_level_first_candidates_and_glosses(
     analysis_db, llm_stub
 ):
-    """内容级行存 glosses 字典 + candidateWords（六档并集），不存正文/prompt。"""
-    asyncio.run(teaching_analysis.ensure_analysis(BLOCKS, "liftoff", "zh-CN"))
-    content_hash_value = teaching_analysis.content_hash(BLOCKS)
+    """level-first：首行只存**当前等级**候选词 + 对应 glosses，不存正文/prompt。"""
+    asyncio.run(
+        teaching_analysis.ensure_analysis(LEVEL_FIRST_BLOCKS, "liftoff", "zh-CN")
+    )
+    content_hash_value = teaching_analysis.content_hash(LEVEL_FIRST_BLOCKS)
     cached = teaching_analysis.load_cached(
         content_hash_value, teaching_analysis.CONTENT_LEVEL, "zh-CN"
     )
     assert cached is not None
-    normalized = teaching_analysis.normalize_blocks(BLOCKS)
+    normalized = teaching_analysis.normalize_blocks(LEVEL_FIRST_BLOCKS)
+    level_candidates = teaching_analysis._candidate_words_for_blocks(
+        normalized, "liftoff"
+    )
     union = teaching_analysis._content_candidates_for_blocks(normalized)
     zh_by_block = {str(block["id"]): block["zh"] for block in normalized}
-    assert cached["candidateWords"] == union
-    for block_id, words in union.items():
+    assert cached["candidateWords"] == level_candidates
+    for block_id, words in level_candidates.items():
         glosses = cached["glosses"][block_id]
         assert set(glosses) == set(words)
         for zh_word in glosses.values():
             assert zh_word and zh_word in zh_by_block[block_id]
+    # 该文本确有更高档专属词：首行不覆盖它们（不再一次性生成六档并集）。
+    assert set(union["1"]) > set(level_candidates["1"])
+    assert "flibbertigibbet" not in cached["glosses"]["1"]
     # 不把整份正文/prompt 写进缓存 meta（idioms/culture 的 quote 是分析内容）。
     assert "transcript" not in cached and "prompt" not in cached
     assert "You are an expert" not in json.dumps(cached, ensure_ascii=False)
+
+
+def test_first_generation_uses_only_current_level_candidates(analysis_db, llm_stub):
+    """首屏 = 当前等级候选词（≤20/block），不含只能由更高档位选到的词。"""
+    asyncio.run(
+        teaching_analysis.ensure_analysis(LEVEL_FIRST_BLOCKS, "liftoff", "zh-CN")
+    )
+    assert len(llm_stub.prompts) == 1
+    normalized = teaching_analysis.normalize_blocks(LEVEL_FIRST_BLOCKS)
+    expected = teaching_analysis._candidate_words_for_blocks(normalized, "liftoff")
+    prompt_blocks = json.loads(llm_stub.prompts[0].rsplit("Blocks:\n", 1)[-1])
+    assert prompt_blocks[0]["candidates"] == expected["1"]
+    assert len(prompt_blocks[0]["candidates"]) == (
+        teaching_analysis.MAX_CANDIDATES_PER_BLOCK
+    )
+    asked = set(prompt_blocks[0]["candidates"])
+    for level in ("moonwalk", "interstellar", "deep-space"):
+        per_level = teaching_analysis._candidate_words_for_blocks(normalized, level)
+        extra = set(per_level.get("1", [])) - set(expected["1"])
+        assert extra, f"{level} 应选出 liftoff 没有的词"
+        assert not (extra & asked), f"{level} 专属词不应出现在首次 prompt"
+
+
+def test_switching_level_only_adds_missing_words_and_reuses_points(
+    analysis_db, llm_stub, monkeypatch
+):
+    """切到未覆盖档位：只补缺失词（1 次调用），idioms/culture 不重复生成。"""
+    consumed: list[tuple] = []
+
+    def fake_quota(user_id, feature, units=1, **kwargs):
+        consumed.append((user_id, feature, units))
+
+    monkeypatch.setattr(
+        teaching_analysis.quota, "check_and_consume_quota", fake_quota
+    )
+
+    async def run():
+        first = await teaching_analysis.ensure_analysis(
+            LEVEL_FIRST_BLOCKS, "liftoff", "zh-CN", user_id="u1"
+        )
+        second = await teaching_analysis.ensure_analysis(
+            LEVEL_FIRST_BLOCKS, "moonwalk", "zh-CN", user_id="u1"
+        )
+        return first, second
+
+    first, second = asyncio.run(run())
+    assert len(llm_stub.prompts) == 2, "首屏 1 次 + 切档补缺失 1 次"
+
+    normalized = teaching_analysis.normalize_blocks(LEVEL_FIRST_BLOCKS)
+    liftoff_words = teaching_analysis._candidate_words_for_blocks(
+        normalized, "liftoff"
+    )["1"]
+    moonwalk_words = teaching_analysis._candidate_words_for_blocks(
+        normalized, "moonwalk"
+    )["1"]
+    expected_missing = [
+        word for word in moonwalk_words if word not in set(liftoff_words)
+    ]
+    assert expected_missing == ["fragile", "generous", "vague", "flibbertigibbet"]
+    incremental_blocks = json.loads(
+        llm_stub.prompts[1].rsplit("Blocks:\n", 1)[-1]
+    )
+    assert incremental_blocks[0]["candidates"] == expected_missing
+    # 已有习语/文化点 → 增量 prompt 不再要求它们。
+    assert '"idioms"' in llm_stub.prompts[0]
+    assert '"idioms"' not in llm_stub.prompts[1]
+    assert '"culture"' not in llm_stub.prompts[1]
+    assert "At most 20" not in llm_stub.prompts[1]
+
+    # glosses 合并：两档候选词都有释义；请求清单也累积。
+    content_hash_value = teaching_analysis.content_hash(LEVEL_FIRST_BLOCKS)
+    cached = teaching_analysis.load_cached(
+        content_hash_value, teaching_analysis.CONTENT_LEVEL, "zh-CN"
+    )
+    expected_all = set(liftoff_words) | set(expected_missing)
+    assert set(cached["glosses"]["1"]) == expected_all
+    assert set(cached["candidateWords"]["1"]) == expected_all
+    assert second["idioms"] == first["idioms"]
+    assert second["culture"] == first["culture"]
+    assert [item["en_word"] for item in second["highlights"]["1"]] == moonwalk_words
+    assert [(item[1], item[2]) for item in consumed] == [
+        ("analysis", 1),
+        ("analysis", 1),
+    ], "首次 + 补缺失各扣 1 单位（不再六档整体重算）"
+
+    # 已覆盖的档位（更高/更低）再打开：0 模型调用。
+    for level in ("deep-space", "orbit", "liftoff", "supernova"):
+        asyncio.run(
+            teaching_analysis.ensure_analysis(LEVEL_FIRST_BLOCKS, level, "zh-CN")
+        )
+    assert len(llm_stub.prompts) == 2
+    assert teaching_analysis.load_cached(
+        content_hash_value, teaching_analysis.CONTENT_LEVEL, "zh-CN"
+    ) == cached, "覆盖后的请求只读缓存，不再写行"
+
+
+def test_unglossable_missing_words_are_not_requested_again(
+    analysis_db, monkeypatch
+):
+    """请求过但模型给不出释义的词 → 记进 candidateWords，不反复重试。"""
+    prompts: list[str] = []
+
+    async def fake_generate(prompt, model=None):
+        prompts.append(prompt)
+        data = _analysis_from_prompt(prompt)
+        data["highlights"] = [
+            item for item in data["highlights"] if item["en_word"] != "fragile"
+        ]
+        return json.dumps(data, ensure_ascii=False)
+
+    monkeypatch.setattr(llm, "generate_json_async", fake_generate)
+
+    asyncio.run(
+        teaching_analysis.ensure_analysis(LEVEL_FIRST_BLOCKS, "liftoff", "zh-CN")
+    )
+    moon = asyncio.run(
+        teaching_analysis.ensure_analysis(LEVEL_FIRST_BLOCKS, "moonwalk", "zh-CN")
+    )
+    assert len(prompts) == 2
+    assert "fragile" not in {item["en_word"] for item in moon["highlights"]["1"]}
+    # 第二次同档：缺释义的词在 candidateWords 里（请求过）→ 0 调用。
+    again = asyncio.run(
+        teaching_analysis.ensure_analysis(LEVEL_FIRST_BLOCKS, "moonwalk", "zh-CN")
+    )
+    assert len(prompts) == 2
+    assert again == moon
+    # 更高档位只要 flibbertigibbet（已在 moonwalk 那轮请求过）→ 0 调用。
+    asyncio.run(
+        teaching_analysis.ensure_analysis(LEVEL_FIRST_BLOCKS, "deep-space", "zh-CN")
+    )
+    assert len(prompts) == 2
+
+
+def test_old_full_union_content_row_is_reused_for_any_level(analysis_db, llm_stub):
+    """旧 v6 全量行（六档并集）覆盖当前等级时直接复用，不重算、不删除。"""
+    normalized = teaching_analysis.normalize_blocks(LEVEL_FIRST_BLOCKS)
+    union = teaching_analysis._content_candidates_for_blocks(normalized)
+    content_hash_value = teaching_analysis.content_hash(LEVEL_FIRST_BLOCKS)
+    glosses = {
+        block_id: {word: "花园" for word in words}
+        for block_id, words in union.items()
+    }
+    teaching_analysis.save_cached(
+        VIDEO_ID,
+        content_hash_value,
+        teaching_analysis.CONTENT_LEVEL,
+        "zh-CN",
+        {
+            "analysisVersion": teaching_analysis.ANALYSIS_VERSION,
+            "glossAttempted": True,
+            "level": teaching_analysis.CONTENT_LEVEL,
+            "targetLang": "zh-CN",
+            "contentHash": content_hash_value,
+            "candidateWords": union,
+            "glosses": glosses,
+            "idioms": [{
+                "blockId": 1,
+                "phrase": "The garden",
+                "meaning": "花园",
+                "quote": LEVEL_FIRST_BLOCKS[0]["en_text"],
+            }],
+            "culture": [],
+            "model": "old-v6-model",
+            "createdAt": 1,
+        },
+    )
+
+    async def run():
+        return {
+            level: await teaching_analysis.ensure_analysis(
+                LEVEL_FIRST_BLOCKS, level, "zh-CN"
+            )
+            for level in ("liftoff", "moonwalk", "interstellar", "deep-space")
+        }
+
+    results = asyncio.run(run())
+    assert llm_stub.prompts == [], "旧全量行覆盖当前等级 → 零模型调用"
+    for level, payload in results.items():
+        expected = teaching_analysis._candidate_words_for_blocks(normalized, level)
+        got = [item["en_word"] for item in payload["highlights"].get("1", [])]
+        assert got == expected["1"], level
+        assert payload["idioms"][0]["phrase"] == "The garden"
 
 
 def test_ensure_target_language_isolation(analysis_db, llm_stub):
@@ -889,12 +1121,13 @@ def test_cache_hit_does_not_consume_quota(analysis_db, llm_stub, monkeypatch):
     )
 
     async def run():
-        await teaching_analysis.ensure_analysis(BLOCKS, "moonwalk", "zh-CN", user_id="u1")
-        await teaching_analysis.ensure_analysis(BLOCKS, "moonwalk", "zh-CN", user_id="u1")
         await teaching_analysis.ensure_analysis(BLOCKS, "orbit", "zh-CN", user_id="u1")
+        await teaching_analysis.ensure_analysis(BLOCKS, "orbit", "zh-CN", user_id="u1")
+        # moonwalk（B2+）候选 ⊂ orbit（B1+）候选 → 缓存已覆盖 → 不再生成。
+        await teaching_analysis.ensure_analysis(BLOCKS, "moonwalk", "zh-CN", user_id="u1")
 
     asyncio.run(run())
-    # 内容级分析：换等级命中同一行，只扣 1 单位（旧口径同档位 2 次生成 = 2 单位）。
+    # level-first：首次按 orbit 生成扣 1 单位；同档/更窄档命中同一行，零额外配额。
     assert [(item[1], item[2]) for item in consumed] == [("analysis", 1)]
 
 

@@ -1,13 +1,18 @@
 """AI 教学分析：语境释义（gloss/highlight）/ 习语（idiom）/ 文化点（culture）。
 
-``analysis.v6`` 起采用**内容级 gloss 字典**（P2-37）：同一
-``content_hash + target_lang`` 只生成一次分析，其中 ``glosses`` 覆盖六个
-CEFR 高亮档候选词的并集；每个等级的 payload 由本地按
-:func:`_candidate_words_for_blocks` 筛选候选词、构造既有 ``highlights`` 形状。
-因此 A1–C2 六档切换**零模型调用**、零额外配额；只有内容变化或目标语言变化
-才重新生成。``analysis.v6`` 仍包含 ``highlights``，但它们的用途是给**基础层
-已标出的高于当前 CEFR 的词**提供当下语境的中文释义；前端不会把 AI 选出的词
-当作高亮依据，也不会让不在基础层的词显示释义。
+``analysis.v6`` 起采用**内容级 gloss 字典**（P2-37 / P2-44 level-first）：
+同一 ``content_hash + target_lang`` 只有一行内容级缓存，``glosses`` 是**按需
+渐进累积**的词表。首次生成只要求**当前等级**的候选词
+（:func:`_candidate_words_for_blocks`，≤20/block，与旧 v5 同量级）；换到一个
+缓存还没覆盖的档位时，只对**缺少**的词发一次增量 prompt，已有释义的词不再
+要求；``idioms``/``culture`` 只在首次生成（已有则不重复要求）。旧的 v6 全量
+行（六档候选并集）覆盖当前档位时直接复用、不重算。每个等级的 payload 由本地
+按 :func:`_candidate_words_for_blocks` 筛选候选词、构造既有 ``highlights``
+形状：缓存覆盖当前档位的请求**零模型调用**、零额外配额，只有内容变化、目标
+语言变化或档位扩词（缓存尚未覆盖）才生成。``analysis.v6`` 仍包含
+``highlights``，但它们的用途是给**基础层已标出的高于当前 CEFR 的词**提供当下
+语境的中文释义；前端不会把 AI 选出的词当作高亮依据，也不会让不在基础层的词
+显示释义。
 
 背景（specs/028）：旧翻译调用在每一批 prompt 里顺带要求模型为每个 block 生成
 ``highlights``——同一视频每翻一次、每换一批都要重复生成同样的教学内容，成本
@@ -15,12 +20,13 @@ CEFR 高亮档候选词的并集；每个等级的 payload 由本地按
 
 - **翻译只管译文**（``translate.process_llm_batch`` 不再请求 highlights）；
 - **v6 内容级分析**：缓存键 ``(content_hash, "__content__", target_lang,
-  analysis.v6)``，一次生成全等级候选词并集 + idioms/culture；
+  analysis.v6)``，按**当前等级**候选词渐进生成（缺什么补什么）+ 首次生成
+  idioms/culture；
 - **v5 回退**（``config.ANALYSIS_CONTENT_GLOSS=0``）：沿用旧口径，按
   ``(content_hash, level, target_lang, analysis.v5)`` 逐档生成/读取，旧 v5
   行原样可读、不删除；
-- 同一内容同一语言，第一个请求生成一次，之后所有用户/所有打开、所有等级
-  **零模型调用**；换目标语言或内容变化才重新生成；
+- 同一内容同一语言：第一个请求按当前档位生成，之后缓存覆盖的档位**零模型
+  调用**；换到尚未覆盖的档位只补缺失词，不会六档整篇重算；
 - 不生成题目：理解题走既有 ``/api/lesson/*``（quiz.py，按用户+内容缓存）。
 
 缓存表 ``content_teaching_analysis`` 由 Alembic ``0020`` 创建，运行时只读写；
@@ -29,15 +35,15 @@ CEFR 高亮档候选词的并集；每个等级的 payload 由本地按
 
 校验闸（只保留可核对的条目，不编造）：
 
-1. ``glosses[].en_word`` 必须是该 block 英文原文的子串，且在该 block 的候选词
-   并集里（内容级）或该等级的候选词里（v5 回退）；
+1. ``glosses[].en_word`` 必须是该 block 英文原文的子串，且在该次请求的候选词
+   里（内容级：当前等级的候选词；增量时只有缺失词；v5 回退：该等级候选词）；
 2. ``glosses[].zh_word`` 必须是该 block 目标语言译文的子串——找不到就
    **整条丢弃**（无释义不标）；不得返回「有高亮、无释义」的条目；
    按等级构造 payload 时按当前译文**再校验一次**；
 3. ``idioms[].quote`` / ``culture[].quote`` 必须是该 block 英文原文的子串；
 4. 指向未知 block、空字段、重复条目的高亮/习语/文化点直接丢弃；
 5. 单内容最多 20 条习语、10 条文化点；每 block 最多 20 条候选词语境释义
-   （内容级缓存的 gloss 上限 = 六档候选并集上限 120/block）。
+   （内容级缓存累积的 gloss 上限仍为 ``MAX_CONTENT_CANDIDATES_PER_BLOCK``）。
 
 幂等/并发：进程内按 ``(hash, level, target_lang, version)`` 加锁，同 key 并发
 只跑一次模型；**只有全部批次成功才写缓存**，失败不落半成品、下次可重试。
@@ -73,7 +79,8 @@ logger = logging.getLogger("linguatrek.teaching_analysis")
 
 # prompt/校验口径版本：缓存键的一部分；改 prompt 或校验规则时递增，旧分析
 # 自动失效重生成（旧行保留，便于回滚/排查）。
-# v6（P2-37）：内容级 gloss 字典（全等级候选词并集一次生成，按等级本地筛选）。
+# v6（P2-37）：内容级 gloss 字典。P2-44 起改成 **level-first 渐进**——首次只
+# 生成当前等级候选词，换档位只补缺失词；缓存键/版本不变（旧全量行直接复用）。
 ANALYSIS_VERSION = "analysis.v6"
 # v5：旧的「按等级」分析行版本。仅回退开关（ANALYSIS_CONTENT_GLOSS=0）读写；
 # 旧行原样保留、可读、不删除。
@@ -510,19 +517,20 @@ def _merge_parts(parts: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 内容级 gloss 字典（P2-37）：一次生成全等级候选词并集，按等级本地筛选
+# 内容级 gloss 字典（P2-37 / P2-44）：level-first 渐进累积，按等级本地筛选
 # ---------------------------------------------------------------------------
 
 
 def _content_candidates_for_blocks(blocks: list[dict]) -> dict[str, list[str]]:
-    """六个 CEFR 档候选词的并集（按 block）。
+    """六个 CEFR 档候选词的并集（按 block）——**旧 v6 全量口径**，保留向后兼容。
 
-    内容级分析只生成一次，所以 prompt 必须覆盖**任何等级**可能展示的词：
-    对 :data:`LEVEL_IDS` 逐档调用 :func:`_candidate_words_for_blocks` 再取
-    并集。每档列表本身已按等级阈值筛选并 ≤20/block；并集按
-    :data:`MAX_CONTENT_CANDIDATES_PER_BLOCK`（六档 × 20）封顶，避免长内容
-    prompt 无界膨胀。顺序：先低档后高档、档内保持原文词序，便于比对与稳定
-    序列化（按等级构造 payload 时仍用该等级自己的候选顺序/数量）。
+    P2-44 起首屏不再用它生成 prompt（level-first：首次只要求当前等级候选词），
+    它仍用于两处：1) 识别/测试旧 v6 全量缓存行（``candidateWords`` = 该并集，
+    覆盖当前等级时直接复用）；2) 需要「任何等级都可能展示的词」的调用方。
+
+    并集按 :data:`MAX_CONTENT_CANDIDATES_PER_BLOCK`（六档 × 20）封顶，避免长
+    内容 prompt 无界膨胀。顺序：先低档后高档、档内保持原文词序，便于比对与
+    稳定序列化（按等级构造 payload 时仍用该等级自己的候选顺序/数量）。
     """
     union: dict[str, list[str]] = {}
     seen: dict[str, set[str]] = {}
@@ -540,6 +548,116 @@ def _content_candidates_for_blocks(blocks: list[dict]) -> dict[str, list[str]]:
                 used.add(key)
                 bucket.append(word)
     return {block_id: words for block_id, words in union.items() if words}
+
+
+def _cached_glossed_words(
+    content: dict,
+    normalized: list[dict],
+) -> dict[str, set[str]]:
+    """缓存里**已有可核对释义**的词（按 block，casefold）。
+
+    「可核对」与 :func:`_level_payload_from_content` 同一口径：``zh_word`` 必须
+    是非空、且是**当前译文**的子串。译文更新后对不上的释义不算覆盖——该词会
+    被重新要求一次（自愈），而不是永远显示不出来的「假覆盖」。
+    """
+    glosses = content.get("glosses") if isinstance(content, dict) else None
+    if not isinstance(glosses, dict):
+        return {}
+    covered: dict[str, set[str]] = {}
+    for block in normalized:
+        block_id = str(block.get("id"))
+        mapping = glosses.get(block_id)
+        if not isinstance(mapping, dict):
+            continue
+        words = covered.setdefault(block_id, set())
+        for en_word, zh_word in mapping.items():
+            text = _clean_text(zh_word)
+            if not en_word or not text:
+                continue
+            if block.get("zh") and _substring(text, block["zh"]):
+                words.add(str(en_word).casefold())
+    return covered
+
+
+def _cached_requested_words(content: dict) -> dict[str, set[str]] | None:
+    """缓存记录里「已经要求过释义」的词（``candidateWords``）；旧行返回 None。
+
+    ``candidateWords`` 是渐进累积的请求清单：模型对某个词确实给不出自然释义
+    （校验闸整条丢弃）时，该词留在请求清单里但不在 ``glosses`` 里。下次不能
+    因为它「缺释义」就再发一次 prompt——那会把「打开一次调一次」的旧问题换个
+    位置带回来。返回 ``None`` 表示行里没有这份记录（P2-37 之前的手工/损坏行）。
+    """
+    if not isinstance(content, dict):
+        return None
+    raw = content.get("candidateWords")
+    if not isinstance(raw, dict):
+        return None
+    requested: dict[str, set[str]] = {}
+    for block_id, words in raw.items():
+        requested[str(block_id)] = {
+            str(word).casefold() for word in (words or []) if str(word).strip()
+        }
+    return requested
+
+
+def _pending_candidates_for_level(
+    content: dict | None,
+    normalized: list[dict],
+    level: str,
+) -> dict[str, list[str]]:
+    """当前等级候选词里还没有着落的词（level-first 渐进缓存命中判断）。
+
+    - 已有可核对释义 → 覆盖（``_cached_glossed_words``）；
+    - ``candidateWords`` 里要求过、但模型没给出自然释义 → 也算处理过，不重试；
+    - ``content`` 为 None（缓存未命中）→ 当前等级全部候选词；
+    - 没有 ``candidateWords`` 的旧行（P2-37 之前的手工/损坏行）且
+      ``glossAttempted`` 为真 → 视为整篇已尝试过，返回空（沿用旧「已尝试即
+      终态」语义，不凭空重试）。
+
+    返回 ``{blockId: [当前等级的缺失候选词]}``；空字典 = 当前等级已覆盖，
+    调用方可以零模型调用直接复用缓存行。
+    """
+    candidates = _candidate_words_for_blocks(normalized, level)
+    if not candidates:
+        return {}
+    if not isinstance(content, dict):
+        return {block_id: list(words) for block_id, words in candidates.items()}
+    covered = _cached_glossed_words(content, normalized)
+    requested = _cached_requested_words(content)
+    if requested is None:
+        if content.get("glossAttempted") is True:
+            return {}
+        requested = {}
+    pending: dict[str, list[str]] = {}
+    for block_id, words in candidates.items():
+        known = covered.get(block_id, set()) | requested.get(block_id, set())
+        missing = [word for word in words if word.casefold() not in known]
+        if missing:
+            pending[block_id] = missing
+    return pending
+
+
+def _merge_candidate_words(
+    base: dict | None,
+    extra: dict[str, list[str]],
+) -> dict[str, list[str]]:
+    """合并两份「要求过释义」的词表（旧记录在前、新增在后，大小写不敏感去重）。"""
+    merged: dict[str, list[str]] = {}
+    seen: dict[str, set[str]] = {}
+    for source in (base or {}, extra or {}):
+        for block_id, words in source.items():
+            key = str(block_id)
+            bucket = merged.setdefault(key, [])
+            used = seen.setdefault(key, set())
+            for word in words or []:
+                folded = str(word).casefold()
+                if not folded or folded in used:
+                    continue
+                if len(bucket) >= MAX_CONTENT_CANDIDATES_PER_BLOCK:
+                    break
+                used.add(folded)
+                bucket.append(str(word))
+    return {block_id: words for block_id, words in merged.items() if words}
 
 
 def _clean_glosses(
@@ -965,13 +1083,20 @@ def build_content_prompt(
     blocks: list[dict],
     target_lang: str,
     candidates: dict[str, list[str]] | None = None,
+    *,
+    include_idioms: bool = True,
+    include_culture: bool = True,
 ) -> str:
-    """内容级分析 prompt：候选词并集 + idioms/culture，不做等级筛选。
+    """内容级分析 prompt：候选词（当前等级 / 增量缺失词）+ 可选的 idioms/culture。
 
-    同一份结果复用于六个 CEFR 档（各档在本地筛自己的候选词），因此这里
-    **不能**出现等级阈值/「只标高于该档的词」之类的指令；要求模型为每个
-    候选词给出该语境下的译文子串释义。输出键用 ``glosses``（校验同时兼容
-    旧形状 ``highlights``）。
+    level-first（P2-44）：候选词由调用方按整个文本算好后传入（首次 = 当前
+    等级的 ``_candidate_words_for_blocks``，≤20/block；增量 = 只缺的词）。这里
+    **不能**出现等级阈值/「只标高于该档的词」之类的指令——哪些词被要求由
+    服务端候选规则决定，模型只负责给这些词在该语境下的译文子串释义。输出键
+    用 ``glosses``（校验同时兼容旧形状 ``highlights``）。
+
+    ``include_idioms`` / ``include_culture`` 为假时 prompt 不再要求对应输出：
+    增量补词时习语/文化点已经在缓存里，不重复生成、不重复花钱。
     """
     target_name = languages.prompt_name(target_lang)
     candidates = (
@@ -986,22 +1111,55 @@ def build_content_prompt(
         }
         for block in blocks
     ]
+    requests = [
+        '1. "glosses": for every word in that block\'s "candidates" list, return\n'
+        "   exactly one entry with that exact English word and its contextual\n"
+        f"   {target_name} gloss (zh_word) copied from the translation. Do not add\n"
+        "   words that are not in the candidates list; if no natural gloss exists,\n"
+        "   omit that word — entries without a verifiable zh_word are discarded."
+    ]
+    shape = [
+        '  "glosses": [\n'
+        '    {"blockId": <id>, "en_word": "<exact English substring>",\n'
+        '      "zh_word": "<exact ' + target_name + ' substring>"}\n'
+        "  ]"
+    ]
+    if include_idioms:
+        requests.append(
+            f'{len(requests) + 1}. "idioms": interesting idioms / phrasal verbs /\n'
+            "   fixed expressions that are actually used in the text. At most 20\n"
+            "   in total."
+        )
+        shape.append(
+            '  "idioms": [\n'
+            '    {"blockId": <id>, "phrase": "<English idiom/phrase>",\n'
+            '      "meaning": "<short ' + target_name + ' meaning>",\n'
+            '      "quote": "<exact English substring>"}\n'
+            "  ]"
+        )
+    if include_culture:
+        requests.append(
+            f'{len(requests) + 1}. "culture": culture-specific references,\n'
+            "   allusions, customs, brands, places, people or wordplay a learner\n"
+            "   may not know. At most 10 in total."
+        )
+        shape.append(
+            '  "culture": [\n'
+            '    {"blockId": <id>, "term": "<English term>",\n'
+            '      "note": "<short ' + target_name + ' note>",\n'
+            '      "quote": "<exact English substring>"}\n'
+            "  ]"
+        )
+    body_shape = ",\n".join(shape)
+    instruction_block = "\n".join(requests)
     return f"""
-You are an expert English-{target_name} teacher building one reusable study
+You are an expert English-{target_name} teacher building a reusable study
 glossary for a piece of content (a video transcript, article or book chapter).
-The same glossary is reused for learners at every level, so gloss every
-candidate word listed below (other layers decide who sees which word).
+The candidate list below is exactly the set of words we need glosses for; do
+not add or pick your own words.
 
 For the blocks below, produce:
-1. "glosses": for every word in that block's "candidates" list, return exactly
-   one entry with that exact English word and its contextual {target_name}
-   gloss (zh_word) copied from the translation. Do not add words that are not
-   in the candidates list; if no natural gloss exists, omit that word — entries
-   without a verifiable zh_word are discarded.
-2. "idioms": interesting idioms / phrasal verbs / fixed expressions that are
-   actually used in the text. At most 20 in total.
-3. "culture": culture-specific references, allusions, customs, brands, places,
-   people or wordplay a learner may not know. At most 10 in total.
+{instruction_block}
 
 HARD RULES (entries that break them are discarded):
 - "en_word" must be copied exactly from that block's English text (a substring).
@@ -1016,18 +1174,7 @@ HARD RULES (entries that break them are discarded):
 
 Return ONLY one JSON object, no prose and no markdown fence:
 {{
-  "glosses": [
-    {{"blockId": <id>, "en_word": "<exact English substring>",
-      "zh_word": "<exact {target_name} substring>"}}
-  ],
-  "idioms": [
-    {{"blockId": <id>, "phrase": "<English idiom/phrase>",
-      "meaning": "<short {target_name} meaning>", "quote": "<exact English substring>"}}
-  ],
-  "culture": [
-    {{"blockId": <id>, "term": "<English term>",
-      "note": "<short {target_name} note>", "quote": "<exact English substring>"}}
-  ]
+{body_shape}
 }}
 
 Blocks:
@@ -1194,19 +1341,28 @@ async def _generate_content_batch(
     model: str | None,
     user_id: str | None,
     candidates: dict[str, list[str]] | None = None,
+    include_idioms: bool = True,
+    include_culture: bool = True,
 ) -> tuple[dict, str]:
-    """内容级单批生成：候选词并集 + idioms/culture，按降级链重试候选模型。
+    """内容级单批生成：候选词（当前等级/缺失词）+ 可选 idioms/culture。
 
     与 :func:`_generate_one_batch` 的区别：prompt 不含等级阈值、输出是
-    ``glosses`` 字典（六个等级共用）。``candidates`` 仍由调用方按整个文本
-    算好后传入（跨批的语料级专名兜底不能分叉）。
+    ``glosses`` 字典。``candidates`` 由调用方按整个文本算好后传入（跨批的
+    语料级专名兜底不能分叉）；增量补词时只有缺失词。``include_idioms`` /
+    ``include_culture`` 为假 = 缓存里已有习语/文化点，prompt 不重复要求。
     """
     candidates = (
         candidates
         if candidates is not None
         else _content_candidates_for_blocks(batch)
     )
-    prompt = build_content_prompt(batch, target_lang, candidates)
+    prompt = build_content_prompt(
+        batch,
+        target_lang,
+        candidates,
+        include_idioms=include_idioms,
+        include_culture=include_culture,
+    )
     models = quota.degradation_chain(feature=FEATURE, preferred_model=model)
     if not models:
         raise AnalysisFailed("当前没有可用模型，教学分析已跳过。")
@@ -1261,25 +1417,47 @@ async def _ensure_content_analysis(
     content_hash_value: str,
     target_lang: str,
     *,
+    level: str,
     content_ref: str,
     model: str | None,
     actor: str | None,
 ) -> dict:
-    """确保当前版本的内容级 gloss 分析行（缓存命中零模型调用、零配额）。"""
+    """确保内容级 gloss 行覆盖**当前等级**候选词（level-first 渐进）。
+
+    1) 缓存命中且当前等级候选词都已有可核对释义 → 零模型调用、零配额；
+    2) 否则只生成当前等级还缺的词（首次 = 当前等级候选，≤20/block；切档 =
+       只补缺失词），仍按 :data:`MAX_BLOCKS_PER_CALL` 分批；
+    3) ``idioms``/``culture`` 只在缓存里没有时要求，已有不重复生成；
+    4) 合并进同一行（缓存键不变）；旧 v6 全量行覆盖当前等级时直接命中，不重算。
+    """
+
+    def _usable(row: dict | None) -> dict | None:
+        """缓存行可用于渐进合并（None = 未命中/版本不符/空释义旧行要重生成）。"""
+        if row is None:
+            return None
+        return None if _content_cache_is_stale(row, normalized) else row
+
     # 1) 缓存命中：零模型调用、零配额。
-    cached = await asyncio.to_thread(
-        load_cached, content_hash_value, CONTENT_LEVEL, target_lang
+    cached = _usable(
+        await asyncio.to_thread(
+            load_cached, content_hash_value, CONTENT_LEVEL, target_lang
+        )
     )
-    if cached is not None and not _content_cache_is_stale(cached, normalized):
+    if cached is not None and not _pending_candidates_for_level(
+        cached, normalized, level
+    ):
         return cached
 
     # 2) 同 key 串行化；拿到锁后重查，第二个并发请求复用第一个的结果。
     lock = _lock_for(content_hash_value, CONTENT_LEVEL, target_lang)
     async with lock:
-        cached = await asyncio.to_thread(
-            load_cached, content_hash_value, CONTENT_LEVEL, target_lang
+        cached = _usable(
+            await asyncio.to_thread(
+                load_cached, content_hash_value, CONTENT_LEVEL, target_lang
+            )
         )
-        if cached is not None and not _content_cache_is_stale(cached, normalized):
+        pending = _pending_candidates_for_level(cached, normalized, level)
+        if cached is not None and not pending:
             return cached
 
         # 只有真的要走模型才占一条「教学分析」日配额（缓存命中已返回）。
@@ -1291,36 +1469,67 @@ async def _ensure_content_analysis(
             target_lang=target_lang,
         )
 
+        base_glosses: dict = {}
+        base_candidate_words: dict | None = None
+        base_idioms: list[dict] = []
+        base_culture: list[dict] = []
+        if isinstance(cached, dict):
+            raw_glosses = cached.get("glosses")
+            base_glosses = raw_glosses if isinstance(raw_glosses, dict) else {}
+            raw_candidates = cached.get("candidateWords")
+            base_candidate_words = (
+                raw_candidates if isinstance(raw_candidates, dict) else None
+            )
+            base_idioms = list(cached.get("idioms") or [])
+            base_culture = list(cached.get("culture") or [])
+        include_idioms = not base_idioms
+        include_culture = not base_culture
+
         parts: list[dict] = []
         used_models: list[str] = []
-        # 六个等级的候选并集按整个文本算一次（语料级兜底跨 block 生效），再按
-        # 批切片；逐批统计会让「非句首大写实例在另一批」的句首专名漏判。
-        candidates = _content_candidates_for_blocks(normalized)
+        # 缺词按整个文本算一次（语料级专名兜底跨 block 生效），再按批切片；
+        # 逐批统计会让「非句首大写实例在另一批」的句首专名漏判。
         for start in range(0, len(normalized), MAX_BLOCKS_PER_CALL):
             batch = normalized[start:start + MAX_BLOCKS_PER_CALL]
+            batch_candidates = {
+                str(block["id"]): list(pending.get(str(block["id"]), []))
+                for block in batch
+            }
+            has_words = any(batch_candidates.values())
+            if not has_words and not (include_idioms or include_culture):
+                # 这批没有要补的词、也不生成习语/文化点 → 不白调一次模型。
+                continue
             part, used_model = await _generate_content_batch(
                 batch,
                 target_lang,
                 model=model,
                 user_id=actor,
-                candidates=candidates,
+                candidates=batch_candidates,
+                include_idioms=include_idioms,
+                include_culture=include_culture,
             )
             parts.append(part)
             used_models.append(used_model)
 
-        merged = _merge_content_parts(parts)
+        merged = _merge_content_parts(
+            ([{"glosses": base_glosses}] if base_glosses else []) + parts
+        )
         payload = {
             "analysisVersion": ANALYSIS_VERSION,
             "glossAttempted": True,
             "level": CONTENT_LEVEL,
             "targetLang": target_lang,
             "contentHash": content_hash_value,
-            # 生成时使用的候选并集：可追溯「哪些词被要求释义」（不含正文/prompt）。
-            "candidateWords": candidates,
+            # 渐进累积的「要求过释义」清单：可追溯每次要求了哪些词（不含
+            # 正文/prompt）。缺释义的词留在这里，下次不再重复要求。
+            "candidateWords": _merge_candidate_words(base_candidate_words, pending),
             "glosses": merged["glosses"],
-            "idioms": merged["idioms"],
-            "culture": merged["culture"],
-            "model": used_models[-1] if used_models else None,
+            # 习语/文化点只生成一次：缓存里已有就原样保留，不从增量结果里取。
+            "idioms": base_idioms or merged["idioms"],
+            "culture": base_culture or merged["culture"],
+            "model": used_models[-1] if used_models else (
+                cached.get("model") if isinstance(cached, dict) else None
+            ),
             "createdAt": now_ms(),
         }
         # 3) 全部分析成功才写缓存（失败不写半成品，下次可重试）。
@@ -1438,12 +1647,13 @@ async def ensure_analysis(
     user_id: str | None = None,
     subject: str | None = None,
 ) -> dict:
-    """确保一份内容在某等级/语言下的教学分析（缓存命中零模型调用）。
+    """确保一份内容在某等级/语言下的教学分析（缓存覆盖当前等级即零调用）。
 
-    内容级 gloss 开关打开（默认）时：同一 ``content_hash + target_lang``
-    只生成一次全等级候选词 gloss + idioms/culture，随后按等级本地筛选构造
-    payload——六档切换零模型调用、零额外配额。开关关闭时回退到旧的按等级
-    生成（缓存键版本 ``analysis.v5``）。
+    内容级 gloss 开关打开（默认）时走 **level-first 渐进**：首次只要求当前
+    等级的候选词（≤20/block）+ idioms/culture；缓存已覆盖当前等级 → 零模型
+    调用、零额外配额；换到缓存还没覆盖的档位 → 只补该档缺失的词，习语/文化点
+    不重复生成；旧 v6 全量行覆盖当前档位时直接复用。开关关闭时回退到旧的按
+    等级生成（缓存键版本 ``analysis.v5``）。
 
     返回 payload：``{highlights, idioms, culture, analysisVersion, level,
     targetLang, contentHash, model, createdAt}``（与旧版同形）。失败抛
@@ -1475,6 +1685,7 @@ async def ensure_analysis(
             normalized,
             content_hash_value,
             lang,
+            level=canonical_level,
             content_ref=content_ref,
             model=model,
             actor=actor,
@@ -1701,13 +1912,19 @@ def reusable_cached_analysis(
 ) -> dict | None:
     """只读探测全局分析缓存：命中当前版本返回 payload，否则 ``None``。
 
-    **零模型调用、不占配额、不写 ``ai_usage``**。可复用判定与
+    **零模型调用、不占配额、不写 ``ai_usage``**。数据源与
     :func:`ensure_analysis` 的缓存命中完全一致——同一张
     ``content_teaching_analysis`` 表：内容级模式读
     ``(content_hash, "__content__", target_lang, ANALYSIS_VERSION)`` 再按等级
     本地构造 payload；v5 回退模式读
     ``(content_hash, level, target_lang, LEGACY_ANALYSIS_VERSION)``。因此
     「合并进 payload 的分析」与「只读端点返回的分析」必然同源、同可见性。
+
+    level-first（P2-44）下内容级行是**渐进累积**的：缓存里还没有当前等级某
+    些词的释义时，这里照样按已有释义构造 payload（部分高亮，不报错）——只读
+    路径绝不生成。若调用方需要「当前等级是否已完整覆盖」，用
+    :func:`_pending_candidates_for_level` 判断（例如预热脚本应据此决定是否
+    仍要生成；注意那是内部函数，跨模块调用请先评估）。
 
     参数非法抛 :class:`AnalysisInvalidRequest`（``content_hash`` 传了但与内容
     不一致同样 400）；缓存表缺失抛 :class:`AnalysisUnavailable`。
