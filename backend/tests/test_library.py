@@ -221,6 +221,26 @@ def test_article_detail_is_original_bilingual_and_counted(make_client):
     assert topics == {"science", "technology", "life"}
 
 
+def test_article_api_level_is_editorial_not_computed(make_client):
+    """P2-46：``/api/library`` 的 level 永远来自内容 JSON 的编辑级。
+
+    算法级 cefrInput 只由 ``/api/content/difficulty`` 提供；即使本地库已有
+    ``free-app-hidden-cost`` 的 B1 算法行，文章详情也必须返回编辑级 B2，
+    否则前端无法区分「编辑级」与「算法级」两套口径。
+    """
+    article_id = "free-app-hidden-cost"
+    source = json.loads(
+        (LIBRARY_DIR / "articles" / f"{article_id}.json").read_text(encoding="utf-8")
+    )
+    with make_client() as client:
+        detail = client.get(f"/api/library/articles/{article_id}").json()
+        index = client.get("/api/library").json()
+    assert detail["level"] == source["level"]
+    assert "cefrInput" not in detail
+    summary = next(article for article in index["articles"] if article["id"] == article_id)
+    assert summary["level"] == source["level"]
+
+
 def test_gutenberg_articles_have_provenance_and_own_translation(make_client):
     manifest = json.loads(GUTENBERG_MANIFEST.read_text(encoding="utf-8"))
     items = manifest["items"]

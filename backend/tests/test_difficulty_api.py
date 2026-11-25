@@ -7,14 +7,18 @@
 from __future__ import annotations
 
 import json
+import urllib.parse
 from pathlib import Path
 
 import pytest
 
 import config
+import content_difficulty
 import difficulty
 from tests.conftest import TEST_USER_EMAIL
 from tests.migration_utils import assert_alembic_ok, run_alembic
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 VIDEO_ID = "test-video"
 ARTICLE_ID = "test-article"
@@ -316,3 +320,176 @@ def test_admin_recompute_success_and_idempotent(difficulty_env, monkeypatch):
     assert single_missing.status_code == 404
 
 
+
+# ---------------------------------------------------------------------------
+# 分级口径与只读审计（P2-46）
+# ---------------------------------------------------------------------------
+
+def _audit_item(report: dict, kind: str, ref: str) -> dict:
+    return next(
+        item
+        for item in report["items"]
+        if item["kind"] == kind and item["ref"] == ref
+    )
+
+
+def test_computed_row_keeps_editorial_level(difficulty_env):
+    """有算法行时，``level`` 仍是编辑级，``cefrInput`` 才是算法级（不互相覆盖）。"""
+    computed = difficulty.recompute("article", ARTICLE_ID)
+    row = difficulty.get_row("article", ARTICLE_ID)
+    assert row["level"] == "A2"
+    assert row["cefrInput"] == computed["cefrInput"]
+
+    payload = difficulty_env.get(
+        f"/api/content/difficulty?kind=article&ref={ARTICLE_ID}"
+    ).json()
+    assert payload["source"] == "computed"
+    assert payload["level"] == "A2"
+    assert payload["cefrInput"] == computed["cefrInput"]
+
+
+def test_audit_report_separates_levels_and_is_read_only(difficulty_env):
+    first = difficulty.recompute("video", VIDEO_ID)
+    before = difficulty.get_rows([("video", VIDEO_ID)])
+    report = content_difficulty.build_report()
+    after = difficulty.get_rows([("video", VIDEO_ID)])
+
+    # 只读：审计前后 content_difficulty 不变。
+    assert before == after
+    assert report["schema"] == content_difficulty.AUDIT_SCHEMA
+    assert report["summary"]["total"] == 3
+    assert report["summary"]["local"]["computed"] == 1
+    assert report["summary"]["local"]["legacy"] == 2
+    item = _audit_item(report, "video", VIDEO_ID)
+    assert item["editorialLevel"] == "B1"
+    assert item["computedLevel"] == first["cefrInput"]
+    assert item["localDisplay"] == first["cefrInput"]
+    assert item["localSource"] == "computed"
+    assert item["storedEditorialLevel"] == "B1"
+    assert item["editorialDistance"] == 1
+    assert report["summary"]["displayChangesFromEditorial"] == 1
+    assert [entry["ref"] for entry in report["plan"]["localMissing"]] == [
+        ARTICLE_ID,
+        CURATED_ID,
+    ]
+
+
+def test_audit_flags_remote_legacy_display_mismatch(difficulty_env):
+    first = difficulty.recompute("video", VIDEO_ID)
+    remote = {
+        ("video", VIDEO_ID): {
+            "kind": "video",
+            "ref": VIDEO_ID,
+            "level": "B1",
+            "cefrInput": None,
+            "source": "legacy",
+        }
+    }
+    report = content_difficulty.build_report(remote_loader=lambda _items: remote)
+
+    item = _audit_item(report, "video", VIDEO_ID)
+    assert item["localDisplay"] == first["cefrInput"] != "B1"
+    assert item["remote"]["display"] == "B1"
+    assert item["displayMatch"] is False
+    summary = report["summary"]["remote"]
+    assert summary["returned"] == 1
+    assert summary["computed"] == 0
+    assert summary["legacy"] == 1
+    assert summary["missing"] == 2
+    assert summary["displayMismatch"] == 1
+    assert report["mismatches"][0]["ref"] == VIDEO_ID
+
+
+def test_audit_marks_c2_outside_algorithm():
+    """C2 内容没有算法级是设计行为（difficulty.v1 只输出 A1–C1+），不是缺数据。"""
+    item = content_difficulty.audit_item(
+        "video", "c2-sample", editorial_level="C2", row=None, remote=None
+    )
+    assert item["localSource"] == "legacy"
+    assert item["algorithmEligible"] is False
+    assert item["localDisplay"] == "C2"
+
+
+def test_fetch_remote_batches_at_most_50(monkeypatch):
+    calls: list[str] = []
+
+    def fake_urlopen(request, timeout=0):
+        calls.append(request.full_url)
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(request.full_url).query)
+        raw_items = query["items"][0].split(",")
+        assert len(raw_items) <= 50
+        payload = {
+            "items": [
+                {
+                    "kind": raw.split(":", 1)[0],
+                    "ref": raw.split(":", 1)[1],
+                    "level": "A2",
+                    "cefrInput": None,
+                    "source": "legacy",
+                }
+                for raw in raw_items
+            ]
+        }
+
+        class _Response:
+            def read(self):
+                return json.dumps(payload).encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        return _Response()
+
+    monkeypatch.setattr(content_difficulty.urllib.request, "urlopen", fake_urlopen)
+    refs = [("article", f"a{index}") for index in range(95)]
+    remote = content_difficulty.fetch_remote("https://example.test", refs)
+    assert len(remote) == 95
+    sizes = [
+        len(urllib.parse.parse_qs(urllib.parse.urlparse(call).query)["items"][0].split(","))
+        for call in calls
+    ]
+    assert sizes == [40, 40, 15]
+
+
+def test_fetch_remote_reports_unavailable(monkeypatch):
+    def boom(*args, **kwargs):
+        raise content_difficulty.urllib.error.URLError("connection refused")
+
+    monkeypatch.setattr(content_difficulty.urllib.request, "urlopen", boom)
+    with pytest.raises(content_difficulty.AuditUnavailable):
+        content_difficulty.fetch_remote("https://example.test", [("article", "a")])
+
+
+def test_real_article_local_computed_vs_remote_legacy(migrated):
+    """P2-46 现场：本地有 B1 算法行显示 B1；线上缺行回退编辑级 B2。"""
+    article_id = "free-app-hidden-cost"
+    source = json.loads(
+        (REPO_ROOT / "content" / "library" / "articles" / f"{article_id}.json")
+        .read_text(encoding="utf-8")
+    )
+    editorial = source["level"]
+    computed = difficulty.recompute("article", article_id)["cefrInput"]
+    assert editorial == "B2"
+    assert computed is not None
+
+    report = content_difficulty.build_report(
+        remote_loader=lambda items: {
+            ("article", article_id): {
+                "kind": "article",
+                "ref": article_id,
+                "level": editorial,
+                "cefrInput": None,
+                "source": "legacy",
+            }
+        }
+    )
+    item = _audit_item(report, "article", article_id)
+    assert item["localSource"] == "computed"
+    assert item["localDisplay"] == computed
+    assert item["remote"]["display"] == editorial
+    assert item["displayMatch"] is (computed == editorial)
+    if computed != editorial:
+        assert item["displayMatch"] is False

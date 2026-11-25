@@ -10,6 +10,10 @@
 视频**不下载视频文件**：只存字幕块与元数据，播放仍走 YouTube 嵌入；路径见
 ``content/library/README.md``。
 
+``level`` 是**编辑级**（内容 JSON 的人工标注，A1–C2），不是算法难度；
+算法级 ``cefrInput`` 只由 ``/api/content/difficulty`` 返回（specs/026）。
+两者允许不等，前端徽章按 ``cefrInput ?? level`` 展示（P2-46）。
+
 教学分析（specs/028；specs/024 2026-11-22 修订）：两个详情端点额外接受可选
 ``level``（028 高亮档 ``liftoff…supernova``，非法 400）与可选 ``targetLang``
 （缺省 ``zh-CN``，非法 400）。**只有显式传 ``level`` 才动分析**：
