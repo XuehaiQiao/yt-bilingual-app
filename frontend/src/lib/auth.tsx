@@ -145,6 +145,32 @@ interface ClaimPayload {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// One browser profile has exactly one backend session (the httpOnly
+// `ln_session` cookie is shared by every tab). A second tab signing in or out
+// therefore changes the identity of the first tab too. Broadcast that change
+// and let the stale tab reload, instead of keeping A's UI while every request
+// already runs as B. This is deliberately a reload, not a soft state merge:
+// module caches / local-only accumulators are reset with the page.
+const AUTH_SYNC_KEY = 'ln_auth_sync_v1';
+const AUTH_SYNC_CHANNEL = 'ln-auth-sync-v1';
+
+function announceAuthChange(): void {
+    try {
+        localStorage.setItem(AUTH_SYNC_KEY, String(Date.now()));
+    } catch {
+        // Private mode / storage disabled: BroadcastChannel below still works.
+    }
+    try {
+        if (typeof BroadcastChannel !== 'undefined') {
+            const channel = new BroadcastChannel(AUTH_SYNC_CHANNEL);
+            channel.postMessage('auth-change');
+            channel.close();
+        }
+    } catch {
+        // No cross-tab channel: the next page load still uses the new cookie.
+    }
+}
+
 /**
  * Owns the session state. Mount it once, above the app shell:
  * `GET /api/auth/me` decides between the auth screen and the app, while any
@@ -167,6 +193,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         statusRef.current = next;
         setUser(nextUser);
         setStatus(next);
+    }, []);
+
+    // Another tab changed the shared session cookie. Reload this document so
+    // the stale account's React state, Today history and local caches cannot
+    // survive under the new identity.
+    useEffect(() => {
+        const reload = () => window.location.reload();
+        const onStorage = (event: StorageEvent) => {
+            if (event.key === AUTH_SYNC_KEY) reload();
+        };
+        let channel: BroadcastChannel | null = null;
+        try {
+            if (typeof BroadcastChannel !== 'undefined') {
+                channel = new BroadcastChannel(AUTH_SYNC_CHANNEL);
+                channel.addEventListener('message', reload);
+            }
+        } catch {
+            channel = null;
+        }
+        window.addEventListener('storage', onStorage);
+        return () => {
+            window.removeEventListener('storage', onStorage);
+            try { channel?.close(); } catch { /* already closed */ }
+        };
     }, []);
 
     // Boot: ask the backend who is logged in. A 401 is the legacy anonymous
@@ -286,6 +336,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await claimGuest();
         setDataRevision((revision) => revision + 1);
         applyAuthState('authenticated', nextUser);
+        announceAuthChange();
         // Fire-and-forget: the app must not wait on a flag request to finish
         // signing in; the entry appears as soon as `/me` answers.
         void syncAdminFlag();
@@ -330,6 +381,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setDataRevision((revision) => revision + 1);
             setIsAdmin(false);
             applyAuthState('anonymous', null);
+            announceAuthChange();
         }
     }, [applyAuthState]);
 
@@ -340,6 +392,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setDataRevision((revision) => revision + 1);
         setIsAdmin(false);
         applyAuthState('anonymous', null);
+        announceAuthChange();
     }, [applyAuthState]);
 
     // Used after cancelling a deletion: `/api/auth/me` carries `status`, which

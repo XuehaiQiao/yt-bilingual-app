@@ -303,3 +303,12 @@
 ## 2026-11-25 v1.1 P0 前端落点
 
 用户页新增「今日额度」（`GET /api/quota`：剩余/重置时间/各功能用量/0=关闭，`frontend/src/components/QuotaPanel.tsx`，仅登录态）、「反馈与纠错」（`POST /api/feedback`：分类/描述/自动 requestId/成功回执，`FeedbackDialog.tsx`，入口在「关于」区）与「验证邮箱」提示（`emailVerified=false` 时显示 + 重发 `POST /api/auth/email-verification/request`）；找回/重置密码与邮箱验证链接落在 `AuthScreen.tsx`（`#/login?reset=<token>` / `?verify=<token>`）。中越文案见 `frontend/src/i18n/{zh-CN,vi-VN}.json`。
+
+## 单浏览器单活跃账号（P2-48，v1.1.1）
+
+同一浏览器 profile 的 `ln_session` cookie 是共享的，因此**同一时间只允许一个活跃账号**：
+
+- 登录/注册/退出/本地清会话会广播 `ln_auth_sync_v1`；
+- 其他 tab 收到后强制 reload，重新 `/api/auth/me`，不保留上一账号的 React/本地状态；
+- 不实现多账号切换器；需要同时登录多账号请使用独立浏览器 profile / 隐身窗口；
+- 账号切换后的服务端数据仍按 cookie 身份隔离；前端本地缓存另见缓存审计。
