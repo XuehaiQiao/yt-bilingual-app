@@ -1708,6 +1708,19 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-47",
+      "file": "TASKS/P2-47-recent-identity.md",
+      "status": "claimed",
+      "owner": "lead",
+      "write_scope": [
+        "frontend/src/App.tsx",
+        "scripts/recent-identity-acceptance.mjs",
+        "specs/027-behavior-events/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }

@@ -4799,6 +4799,7 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
       default:
         return (
           <TodayScreen
+            key={`${status}:${user?.id ?? ''}:${dataRevision}`}
             isGuest={status === 'guest'}
             reviewStats={reviewStats}
             reviewStatsLoading={reviewStatsLoading}
