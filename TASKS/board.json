@@ -1695,8 +1695,8 @@
     {
       "id": "P2-46",
       "file": "TASKS/P2-46-difficulty-mismatch.md",
-      "status": "claimed",
-      "owner": "difficulty-fix-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/content_difficulty.py",
         "backend/routes_library.py",
