@@ -1152,31 +1152,55 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // Channel Subscriptions logic — load from backend, sync to backend
   const [subscriptions, setSubscriptions] = useState<{ id: string, name: string }[]>([]);
   const subsLoaded = useRef(false);
+  // Bumped on every account/data revision. A late response from the previous
+  // identity must not overwrite the new identity's favorites/subscriptions.
+  const privateLoadEpoch = useRef(0);
 
   // Load favorites & subscriptions from backend on mount, and again after a
   // guest claim (`dataRevision`): login merges the guest directory server-side,
   // so the already-mounted app must refetch instead of keeping guest data.
   useEffect(() => {
+    // P0-1/P0-2 (cache audit): favorites and subscriptions are user-private.
+    // Never fall back to an unscoped localStorage mirror here: on a failed
+    // read that would show account A's words/channels to account B, and the
+    // subscriptions effect could then write them into B's server account.
+    let cancelled = false;
+    const epoch = ++privateLoadEpoch.current;
     favoritesLoaded.current = false;
     subsLoaded.current = false;
+    setFavorites([]);
+    setSubscriptions([]);
+
     fetchFavorites()
-      .then(data => { setFavorites(data); favoritesLoaded.current = true; })
-      .catch(() => {
-        // Fallback to localStorage
-        const saved = localStorage.getItem('yt_bilingual_favorites');
-        if (saved) {
-          try { setFavorites(JSON.parse(saved)); } catch { localStorage.removeItem('yt_bilingual_favorites'); }
-        }
+      .then(data => {
+        if (cancelled || epoch !== privateLoadEpoch.current) return;
+        setFavorites(data);
         favoritesLoaded.current = true;
-      });
-    apiFetch('/api/subscriptions')
-      .then(r => r.json())
-      .then(data => { setSubscriptions(data); subsLoaded.current = true; })
+      })
       .catch(() => {
-        const saved = localStorage.getItem('yt_bilingual_subs');
-        if (saved) setSubscriptions(JSON.parse(saved));
-        subsLoaded.current = true;
+        if (cancelled || epoch !== privateLoadEpoch.current) return;
+        // Leave the list empty and loaded=false so no write-back can run.
+        setFavorites([]);
+        favoritesLoaded.current = false;
       });
+
+    apiFetch('/api/subscriptions')
+      .then(async r => {
+        if (!r.ok) throw new Error(await describeApiError(r));
+        return r.json();
+      })
+      .then(data => {
+        if (cancelled || epoch !== privateLoadEpoch.current) return;
+        setSubscriptions(Array.isArray(data) ? data : []);
+        subsLoaded.current = true;
+      })
+      .catch(() => {
+        if (cancelled || epoch !== privateLoadEpoch.current) return;
+        setSubscriptions([]);
+        subsLoaded.current = false;
+      });
+
+    return () => { cancelled = true; };
   }, [dataRevision]);
 
   // 我的单词 is the favorites list itself (ADR-0001): the saved-word count is
@@ -1188,15 +1212,15 @@ function AppContent({ onRequestLogin }: { onRequestLogin?: () => void }) {
   // whole-file PUT path still exists server-side for legacy clients (see
   // lib/favorites.replaceAllFavorites), but the app never sends it: two tabs
   // using PUT would overwrite each other again.
-  useEffect(() => {
-    if (!favoritesLoaded.current) return; // Don't save on initial load
-    localStorage.setItem('yt_bilingual_favorites', JSON.stringify(favorites));
-  }, [favorites]);
+  // LocalStorage is intentionally no longer a favorites/subscriptions mirror:
+  // it is a browser-wide key and can survive account switches. The server is
+  // the only source of truth for both lists.
 
-  // Sync subscriptions to backend + localStorage whenever they change
+  // Sync subscriptions to backend when the signed-in user changes the list.
+  // Only a successful load arms this effect; a failed read leaves it disabled,
+  // so an old mirror can never be written into the next account.
   useEffect(() => {
     if (!subsLoaded.current) return;
-    localStorage.setItem('yt_bilingual_subs', JSON.stringify(subscriptions));
     apiFetch('/api/subscriptions', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

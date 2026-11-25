@@ -1735,6 +1735,18 @@
       "shared_writes": [],
       "deps": [],
       "base_sha": "19a035d"
+    },
+    {
+      "id": "P2-49",
+      "file": "TASKS/P2-49-cache-p0-favorites.md",
+      "status": "merged",
+      "owner": "lead",
+      "write_scope": [
+        "frontend/src/App.tsx",
+        "TASKS/P2-49-cache-p0-favorites.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
