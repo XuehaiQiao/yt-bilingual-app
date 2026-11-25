@@ -235,3 +235,14 @@ docker compose run --rm -T -v /srv/ln/app/scripts:/app/scripts:ro app \
 | 2026-11-17 | 内容供给补齐：新增 30 篇 Gutenberg 公版短文（总 64 篇），回填后 `content_difficulty` 可推荐 **100 条**（3 视频 + 67 文章 + 30 curated），供给 gate 开启（`match_v0`），报告见 `docs/reports/content-supply-2026-11-17.json` |
 | 2026-11-21 | v1.1 D8-2：种子画像不出带，推荐改用词汇点估计当单档带（A1–C1），不再回退默认 `A2–B1`（见 [specs/025](../025-ability/spec.md)） |
 | 2026-11-26 | P2-46：明确编辑级/算法级/展示级三种口径不混用；新增只读对比 `backend/content_difficulty.py` + `scripts/content-difficulty-backfill.py`（报告含 `plan`，不写库）；给出生产回填/缓存/容器步骤。线上 `content_difficulty` 全缺行，故同一文章本地算法 B1、线上回退编辑 B2 |
+
+## 分级口径决策（2026-11-26）
+
+**算法级 `content_difficulty.cefr_input` 是展示的唯一准绳。**
+
+- 编辑级 `level` 只保留两处用途：
+  1. 算法缺行时的临时兜底（生产回填完成前）
+  2. 算法无法覆盖的内容（例如 5 条 `C2` 超出算法域）
+- 页面徽章、筛选、推荐展示都以算法级为准，不再优先编辑级。
+- 算法明显不合理的条目（如 `eci-stand-verb` 编辑 A1 / 算法 B2）**不手工改展示等级**；按“后期优化算法”处理，先在审计报告里登记。
+- 生产必须补齐 147 条算法行（本地已有）；回填前按 `scripts/content-difficulty-backfill.py` 只读审计，回填后用同一脚本复核 `displayMismatch=0`。
