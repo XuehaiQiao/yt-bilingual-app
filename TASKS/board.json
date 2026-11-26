@@ -1751,8 +1751,8 @@
     {
       "id": "P2-50",
       "file": "TASKS/P2-50-storage-scope.md",
-      "status": "claimed",
-      "owner": "storage-scope-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "frontend/src/lib/storageScope.ts",
         "frontend/src/lib/progress.ts",
