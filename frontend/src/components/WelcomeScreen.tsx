@@ -13,6 +13,7 @@
 import {
   ArrowRight,
   BarChart3,
+  BookOpen,
   CalendarCheck,
   Captions,
   Compass,
@@ -21,9 +22,10 @@ import {
   Link2,
   ListChecks,
   LogIn,
+  MonitorPlay,
   Newspaper,
   PlayCircle,
-  Repeat,
+  Sparkles,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useI18n } from '../i18n/I18nProvider';
@@ -56,6 +58,12 @@ interface Feature {
   body: TranslationKey;
 }
 
+interface FeatureGroup {
+  title: TranslationKey;
+  subtitle: TranslationKey;
+  items: Feature[];
+}
+
 interface Idea {
   icon: LucideIcon;
   title: TranslationKey;
@@ -86,36 +94,58 @@ const IDEAS: Idea[] = [
   },
 ];
 
-const FEATURES: Feature[] = [
+const FEATURE_GROUPS: FeatureGroup[] = [
   {
-    icon: Captions,
-    title: 'welcome.feature.subtitles.title',
-    body: 'welcome.feature.subtitles.body',
+    title: 'welcome.features.content.title',
+    subtitle: 'welcome.features.content.subtitle',
+    items: [
+      {
+        icon: Library,
+        title: 'welcome.feature.library.title',
+        body: 'welcome.feature.library.body',
+      },
+      {
+        icon: BookOpen,
+        title: 'welcome.feature.reading.title',
+        body: 'welcome.feature.reading.body',
+      },
+      {
+        icon: MonitorPlay,
+        title: 'welcome.feature.local.title',
+        body: 'welcome.feature.local.body',
+      },
+    ],
   },
   {
-    icon: ListChecks,
-    title: 'welcome.feature.quiz.title',
-    body: 'welcome.feature.quiz.body',
-  },
-  {
-    icon: Repeat,
-    title: 'welcome.feature.fsrs.title',
-    body: 'welcome.feature.fsrs.body',
-  },
-  {
-    icon: Gauge,
-    title: 'welcome.feature.ability.title',
-    body: 'welcome.feature.ability.body',
-  },
-  {
-    icon: CalendarCheck,
-    title: 'welcome.feature.report.title',
-    body: 'welcome.feature.report.body',
-  },
-  {
-    icon: Library,
-    title: 'welcome.feature.library.title',
-    body: 'welcome.feature.library.body',
+    title: 'welcome.features.ai.title',
+    subtitle: 'welcome.features.ai.subtitle',
+    items: [
+      {
+        icon: Captions,
+        title: 'welcome.feature.subtitles.title',
+        body: 'welcome.feature.subtitles.body',
+      },
+      {
+        icon: Sparkles,
+        title: 'welcome.feature.language.title',
+        body: 'welcome.feature.language.body',
+      },
+      {
+        icon: ListChecks,
+        title: 'welcome.feature.quiz.title',
+        body: 'welcome.feature.quiz.body',
+      },
+      {
+        icon: Gauge,
+        title: 'welcome.feature.ability.title',
+        body: 'welcome.feature.ability.body',
+      },
+      {
+        icon: CalendarCheck,
+        title: 'welcome.feature.report.title',
+        body: 'welcome.feature.report.body',
+      },
+    ],
   },
 ];
 
@@ -139,7 +169,7 @@ const STEPS: Step[] = [
 
 const HERO_CHIPS: TranslationKey[] = [
   'welcome.hero.chip.subtitles',
-  'welcome.hero.chip.review',
+  'welcome.hero.chip.ai',
   'welcome.hero.chip.ability',
 ];
 
@@ -212,22 +242,34 @@ export function WelcomeScreen() {
         </PublicContainer>
       </section>
 
-      {/* 核心功能: the loop from real content to evidence. */}
+      {/* 核心功能: two pillars — open content first, then AI personalisation. */}
       <section id="features" className={SECTION}>
         <PublicContainer className="py-14 sm:py-20">
           <p className={EYEBROW}>{t('welcome.features.eyebrow')}</p>
           <h2 className={H2}>{t('welcome.features.title')}</h2>
           <p className={`mt-3 max-w-2xl ${BODY}`}>{t('welcome.features.subtitle')}</p>
 
-          <div className="mt-9 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, body }) => (
-              <article key={title} className={`${SURFACE_CARD} p-5 sm:p-6`}>
-                <span className={ICON_TILE}>
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <h3 className="mt-4 text-ui font-semibold tracking-tight text-fg-primary">{t(title)}</h3>
-                <p className={`mt-2 ${BODY}`}>{t(body)}</p>
-              </article>
+          <div className="mt-10 space-y-10">
+            {FEATURE_GROUPS.map((group) => (
+              <div key={group.title}>
+                <div className="max-w-2xl">
+                  <h3 className="text-section font-semibold tracking-tight text-fg-primary">
+                    {t(group.title)}
+                  </h3>
+                  <p className={`mt-2 ${BODY}`}>{t(group.subtitle)}</p>
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                  {group.items.map(({ icon: Icon, title, body }) => (
+                    <article key={title} className={`${SURFACE_CARD} p-5 sm:p-6`}>
+                      <span className={ICON_TILE}>
+                        <Icon className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      <h4 className="mt-4 text-ui font-semibold tracking-tight text-fg-primary">{t(title)}</h4>
+                      <p className={`mt-2 ${BODY}`}>{t(body)}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </PublicContainer>

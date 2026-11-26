@@ -1800,6 +1800,21 @@
       "deps": [
         "P2-49"
       ]
+    },
+    {
+      "id": "P2-52",
+      "file": "TASKS/P2-52-homepage-copy.md",
+      "status": "merged",
+      "owner": "lead",
+      "write_scope": [
+        "frontend/src/components/WelcomeScreen.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json"
+      ],
+      "shared_writes": [
+        "frontend/src/i18n/"
+      ],
+      "deps": []
     }
   ]
 }
