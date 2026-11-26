@@ -62,6 +62,12 @@
 
 ## 端点契约（全部需登录；游客/未登录 403）
 
+> **缓存（P2-51）**：本规格全部 `/api/article*` 响应由
+> `backend/main.py` 的 `default_api_cache_policy` 中间件补
+> `Cache-Control: private, no-store` + `Vary: Cookie`（含 403/404/503）。
+> 文章标题、正文、译文与进度按用户隔离，同一 URL 不同账号内容不同，
+> **不得**加公共缓存或跨用户共享的 ETag/Last-Modified。
+
 ### `POST /api/article/import`
 
 请求（二选一）：

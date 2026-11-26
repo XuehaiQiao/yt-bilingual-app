@@ -41,6 +41,11 @@
   进入 `/admin`（或 `#admin`）也被 toast 拦回首页；中越双语；375px 下表格横向滚动，不撑破页面。
 - **G5 限速**：`/api/admin/*` 按登录用户 30 次/分钟（进程内固定窗口，复用
   `backend/ratelimit.py`；`RATE_LIMIT_ADMIN_PER_MINUTE` 可配，0 = 关闭）。
+- **G6 缓存边界（P2-51）**：`/api/admin/*` 装的是**其他用户**的数据，统一由
+  `backend/main.py` 的 `default_api_cache_policy` 中间件补
+  `Cache-Control: private, no-store` + `Vary: Cookie`（含 401/403/404/503）；
+  任何共享缓存/代理/CDN 都不得回放，管理员响应也不进浏览器 HTTP 缓存。
+  公开只读端点（`/api/library`、`/api/books` 等）的显式 `public` 策略不受影响。
 
 ## 非目标
 
@@ -264,6 +269,8 @@
 
 - `backend/venv/bin/python -m py_compile *.py` 通过；
 - `pytest tests -q` 全绿（现有 457 + 本规格新增）；
+- （P2-51）`/api/admin/*` 响应头含 `private, no-store` + `Vary: Cookie`（含 403
+  错误响应），公开端点 `public` 缓存不回归；
 - 前端 `npx tsc -b`、`npm run check:i18n`、`npm run build` 通过；
 - 8001 临时实例（`/tmp` 数据）：设 `ADMIN_EMAILS` 后管理员四端点 200，
   普通用户 403，未登录 401；stats 数值与手工造数一致；

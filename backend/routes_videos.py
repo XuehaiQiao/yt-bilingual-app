@@ -1605,7 +1605,13 @@ def list_history(targetLang: str | None = None):
 
     每个条目带 ``updatedAt``（历史 JSON 文件 mtime 的毫秒 UTC 时间戳；stat
     失败取不到 mtime 时为 0，表示未知）。列表按 ``updatedAt`` 降序（最新优先）。
+
+    P2-51：无身份时**显式返回空列表**，绝不回落到 ``config.HISTORY_DIR``
+    （那里是遗留的全站共享目录）。HTTP 路径的游客身份由 main.py 中间件保证；
+    这个分支只防「绕过中间件的脚本/异常调用」读到旧全局数据。
     """
+    if storage.active_identity() is None:
+        return []
     lang = _target_lang_or_400(targetLang)
     files = []
     history_root = storage.history_dir(lang)
@@ -1659,7 +1665,11 @@ async def get_history(
 
     ``level`` 可选：传了才按该 CEFR 高亮档 ensure/合并教学分析（命中缓存零
     模型调用）；不传保持旧行为，不在普通打开历史时产生 AI 成本。
+
+    P2-51：无身份按 404 处理，绝不从全局 ``config.HISTORY_DIR`` 命中文件。
     """
+    if storage.active_identity() is None:
+        raise HTTPException(status_code=404, detail="History file not found")
     lang = _target_lang_or_400(targetLang)
     # Guard against path traversal — only bare filenames inside the language dir
     if os.path.basename(filename) != filename:
@@ -1743,7 +1753,13 @@ async def get_history(
 
 @router.delete("/api/history/{filename}")
 async def delete_history(filename: str, targetLang: str | None = None):
-    """只删**当前目标语言**的一份缓存；同一视频的另一语言缓存保留。"""
+    """只删**当前目标语言**的一份缓存；同一视频的另一语言缓存保留。
+
+    P2-51：无身份按 404 处理——绝不允许绕过身份中间件的调用删到全局
+    ``config.HISTORY_DIR`` 里的遗留文件。
+    """
+    if storage.active_identity() is None:
+        raise HTTPException(status_code=404, detail="History file not found")
     lang = _target_lang_or_400(targetLang)
     # Guard against path traversal and against deleting non-video metadata files
     if os.path.basename(filename) != filename or not filename.endswith('.json'):

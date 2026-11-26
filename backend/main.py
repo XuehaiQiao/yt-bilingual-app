@@ -42,8 +42,10 @@
 - exam.py            考试题库校验 / 抽题 / 评分 / 历史（V2）
 - observability.py   结构化访问日志 / request_id / 只读 /healthz
 
-请求链路（从外到内）：CORS → 访问日志（request_id）→ API_AUTH_KEY → 身份
-（会话 Cookie / 游客 Cookie，含进程内限速 429）→ 路由。
+请求链路（从外到内）：CORS → 缓存默认值（P2-51）→ 访问日志（request_id）→
+API_AUTH_KEY → 身份（会话 Cookie / 游客 Cookie，含进程内限速 429）→ 路由。
+未显式声明 `Cache-Control` 的 `/api/*` 响应统一补 `private, no-store` +
+`Vary: Cookie`（见下方 `default_api_cache_policy`）。
 
 身份规则（M1 ⑧ 游客态，见 guest.py）：
 
@@ -402,6 +404,45 @@ async def structured_access_log(request, call_next):
     最外层给所有响应（含异常兜底的 500）补上跨域头。
     """
     return await observability.record_request(request, call_next)
+
+
+# P2-51：认证 API 的缓存默认值。只在响应**没有**显式 `Cache-Control` 时补，
+# 所以 /api/library（public, max-age=300）、/api/books（public, max-age=300）、
+# /api/recommendations（private, max-age=600）、SSE（no-cache）等既有策略不受
+# 影响。注册在访问日志之后（比它更外层），才能覆盖身份中间件的 401/403/503；
+# CORS 仍最后注册、在最外层，由它继续追加 Vary: Origin。
+_DEFAULT_PRIVATE_CACHE_CONTROL = "private, no-store"
+_LOGOUT_PATH = "/api/auth/logout"
+
+
+@app.middleware("http")
+async def default_api_cache_policy(request, call_next):
+    """给未声明缓存策略的 `/api/*` 响应补「私有、不存储」默认值（P2-51）。
+
+    认证 API 过去依赖「没写指令所以不会被共享缓存」这一默认结果；一旦前置
+    CDN / 代理 / 中间盒开始缓存，同一 URL 不同用户的响应就会串号。这里在响应
+    层兜底：未显式写 `Cache-Control` 的 `/api/*` 一律 `private, no-store` +
+    `Vary: Cookie`，已显式写的不覆盖（公开只读端点保持 public 缓存）。错误
+    响应（401/403/404/503）同样适用；静态资源与 `/health*` 不在范围内。
+
+    退出登录额外补 `Clear-Site-Data: "cache"`：清掉浏览器里的私有 HTTP 缓存，
+    但**不带** `"storage"`（localStorage / IndexedDB 由前端 storageScope 管理，
+    见 P2-50），避免误清偏好与学习进度。
+    """
+    response = await call_next(request)
+    path = request.url.path
+    if not _is_api_path(path):
+        return response
+    if "cache-control" not in response.headers:
+        response.headers["Cache-Control"] = _DEFAULT_PRIVATE_CACHE_CONTROL
+        vary = response.headers.get("vary")
+        if not vary:
+            response.headers["Vary"] = "Cookie"
+        elif "cookie" not in vary.lower():
+            response.headers["Vary"] = f"{vary}, Cookie"
+    if request.method == "POST" and path == _LOGOUT_PATH:
+        response.headers.setdefault("Clear-Site-Data", '"cache"')
+    return response
 
 
 app.include_router(routes_auth.router)
