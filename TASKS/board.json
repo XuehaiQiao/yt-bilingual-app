@@ -1747,6 +1747,55 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-50",
+      "file": "TASKS/P2-50-storage-scope.md",
+      "status": "claimed",
+      "owner": "storage-scope-impl",
+      "write_scope": [
+        "frontend/src/lib/storageScope.ts",
+        "frontend/src/lib/progress.ts",
+        "frontend/src/lib/books.ts",
+        "frontend/src/lib/importedBooks.ts",
+        "frontend/src/lib/sentences.ts",
+        "frontend/src/lib/wordMastery.ts",
+        "frontend/src/lib/ignoredWords.ts",
+        "frontend/src/lib/jobs.ts",
+        "frontend/src/lib/auth.tsx",
+        "frontend/src/App.tsx",
+        "frontend/src/components/Onboarding.tsx",
+        "frontend/src/components/AccountScreen.tsx",
+        "frontend/src/lib/discover.ts",
+        "frontend/src/components/DiscoverScreen.tsx",
+        "scripts/cache-isolation-acceptance.mjs",
+        "specs/023-user-profile/spec.md",
+        "specs/044-watch-mode/spec.md",
+        "specs/045-watch-mode-experience/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-49"
+      ]
+    },
+    {
+      "id": "P2-51",
+      "file": "TASKS/P2-51-cache-headers.md",
+      "status": "claimed",
+      "owner": "cache-headers-impl",
+      "write_scope": [
+        "backend/main.py",
+        "backend/routes_videos.py",
+        "backend/tests/test_cache_headers.py",
+        "backend/tests/test_videos.py",
+        "specs/001-streaming-pipeline/spec.md",
+        "specs/019-reading/spec.md",
+        "specs/021-admin/spec.md"
+      ],
+      "shared_writes": [],
+      "deps": [
+        "P2-49"
+      ]
     }
   ]
 }
