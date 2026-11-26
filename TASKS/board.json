@@ -1785,8 +1785,8 @@
     {
       "id": "P2-51",
       "file": "TASKS/P2-51-cache-headers.md",
-      "status": "claimed",
-      "owner": "cache-headers-impl",
+      "status": "merged",
+      "owner": "lead",
       "write_scope": [
         "backend/main.py",
         "backend/routes_videos.py",
