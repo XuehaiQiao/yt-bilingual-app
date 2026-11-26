@@ -1771,7 +1771,11 @@
         "scripts/cache-isolation-acceptance.mjs",
         "specs/023-user-profile/spec.md",
         "specs/044-watch-mode/spec.md",
-        "specs/045-watch-mode-experience/spec.md"
+        "specs/045-watch-mode-experience/spec.md",
+        "frontend/src/lib/settings.ts",
+        "frontend/src/lib/model.tsx",
+        "frontend/src/i18n/zh-CN.json",
+        "frontend/src/i18n/vi-VN.json"
       ],
       "shared_writes": [],
       "deps": [

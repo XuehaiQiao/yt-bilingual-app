@@ -24,3 +24,8 @@
 - 旧账号重新登录仍看到自己的进度（迁移/scope 正确）
 - 设备偏好（布局/语言/音频）保持共享
 - tsc/build/i18n/旧脚本零回归；preflight
+
+- `frontend/src/lib/settings.ts`
+- `frontend/src/lib/model.tsx`
+- `frontend/src/i18n/zh-CN.json`
+- `frontend/src/i18n/vi-VN.json`
