@@ -18,6 +18,7 @@ import {
 } from 'react';
 import { apiFetch } from './api';
 import { loadModel, saveModel } from './settings';
+import { subscribeStorageScope } from './storageScope';
 import { describeApiError } from './toast';
 
 /** One entry of GET /api/models — the single catalog the backend owns. */
@@ -55,6 +56,11 @@ export function ModelProvider({ children }: { children: ReactNode }) {
   // old ModelBar used: never paint a stale selection over a newer one.
   const requestRef = useRef(0);
   const mountedRef = useRef(true);
+  // P2-50: the provider mounts once (above AuthGate) but the identity can
+  // change later (guest → account in the same tab). Only a resolved catalog can
+  // re-derive the effective model, so a scope activation before the first
+  // catalog response is already covered by the initial reload.
+  const catalogLoadedRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -90,13 +96,23 @@ export function ModelProvider({ children }: { children: ReactNode }) {
       if (!mountedRef.current || requestRef.current !== requestId) return;
       setError(await describeApiError(err));
     } finally {
-      if (mountedRef.current && requestRef.current === requestId) setLoading(false);
+      if (mountedRef.current && requestRef.current === requestId) {
+        catalogLoadedRef.current = true;
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // Identity switched: re-read the scoped `last_model` and re-derive the
+  // effective model (the saved choice may now be empty → backend default).
+  useEffect(() => subscribeStorageScope(() => {
+    if (!catalogLoadedRef.current) return;
+    void reload();
+  }), [reload]);
 
   const selectModel = useCallback((id: string) => {
     const option = models.find(model => model.id === id);

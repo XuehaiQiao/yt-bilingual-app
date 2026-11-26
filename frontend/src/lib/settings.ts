@@ -1,5 +1,17 @@
 // Learner profile settings (persisted in localStorage).
+//
+// P2-50: both settings describe the *learner*, so they live in the
+// identity-scoped namespace (`lib/storageScope.ts`) instead of browser-wide v1
+// keys. They are copied out of the v1 key by the one-time migration.
+import { readScopedText, writeScopedText, STORAGE_STORES } from './storageScope';
 
+/**
+ * Legacy v1 key. Kept because `useReadingHighlights` filters cross-tab
+ * `storage` events by this exact key (that module is outside the P2-50 write
+ * scope). `saveVocabLevel` mirrors the new value here as a notification
+ * channel only — **no reader in this build loads its value**, so it can never
+ * leak one account's level into another's highlights.
+ */
 export const VOCAB_LEVEL_KEY = 'yt_bilingual_vocab_level';
 
 // Six levels along a vocabulary-size axis (~4k → 20k+ words), named after a
@@ -31,7 +43,7 @@ const LEGACY_LEVELS: Record<string, VocabLevelId> = {
 export const VOCAB_LEVEL_EVENT = 'yt-bilingual:vocab-level';
 
 export function loadVocabLevel(): VocabLevelId {
-    const saved = localStorage.getItem(VOCAB_LEVEL_KEY) || '';
+    const saved = readScopedText(STORAGE_STORES.vocabLevel) || '';
     if (VOCAB_LEVELS.some(l => l.id === saved)) return saved as VocabLevelId;
     if (saved in LEGACY_LEVELS) return LEGACY_LEVELS[saved];
     return 'orbit';
@@ -44,12 +56,19 @@ export function loadVocabLevel(): VocabLevelId {
  * choice exists it is never overwritten, even when the profile later changes.
  */
 export function hasSavedVocabLevel(): boolean {
-    const saved = localStorage.getItem(VOCAB_LEVEL_KEY) || '';
+    const saved = readScopedText(STORAGE_STORES.vocabLevel) || '';
     return VOCAB_LEVELS.some(l => l.id === saved) || saved in LEGACY_LEVELS;
 }
 
 export function saveVocabLevel(level: VocabLevelId) {
-    localStorage.setItem(VOCAB_LEVEL_KEY, level);
+    writeScopedText(STORAGE_STORES.vocabLevel, level);
+    // Cross-tab notification channel (see VOCAB_LEVEL_KEY above); the scoped
+    // key can never be matched by the reader's legacy-name filter.
+    try {
+        localStorage.setItem(VOCAB_LEVEL_KEY, level);
+    } catch {
+        // Private mode / quota: the scoped write above is the source of truth.
+    }
     window.dispatchEvent(new CustomEvent<VocabLevelId>(VOCAB_LEVEL_EVENT, { detail: level }));
 }
 
@@ -76,16 +95,20 @@ export function vocabLevelFromCefr(band: string | null | undefined): VocabLevelI
     return CEFR_TO_VOCAB_LEVEL[matches[matches.length - 1]] ?? null;
 }
 
-// Current global model, chosen in the home-screen model bar. Every LLM call
+// Current model, chosen in the home-screen model bar. Every LLM call
 // (translation, local shows, dictionary) reads it so they all follow the same
 // provider; when nothing is saved yet the bar seeds it from the backend
 // default returned by GET /api/models.
+//
+// P2-50: the choice is per learner (a shared device must not silently spend
+// account B's credits on account A's model), so it is scoped like the level.
+/** Legacy v1 key (migration source only; never read by this build). */
 export const MODEL_KEY = 'yt_bilingual_last_model';
 
 export function loadModel(): string {
-    return localStorage.getItem(MODEL_KEY) || '';
+    return readScopedText(STORAGE_STORES.lastModel) || '';
 }
 
 export function saveModel(modelId: string) {
-    if (modelId) localStorage.setItem(MODEL_KEY, modelId);
+    if (modelId) writeScopedText(STORAGE_STORES.lastModel, modelId);
 }

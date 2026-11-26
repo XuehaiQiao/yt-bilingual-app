@@ -30,6 +30,7 @@ import {
     type DiscoverResult,
 } from '../lib/discover';
 import { loadModel } from '../lib/settings';
+import { SESSION_STORES, sessionScopedKey } from '../lib/storageScope';
 import { useI18n } from '../i18n/I18nProvider';
 import type { TranslationKey } from '../i18n';
 import { EstimateDialog, type EstimateDialogHandle } from './EstimateDialog';
@@ -65,11 +66,13 @@ interface ModelsPayload {
     default?: string;
 }
 
-const STORAGE_PREFIX = 'yt_bilingual_discover_last';
 const BADGE = 'inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border';
 
+// P2-50: the last search belongs to the identity that ran it. sessionStorage
+// alone is tab-scoped, not account-scoped, so a same-tab account switch would
+// otherwise show B the previous account's search term + candidates.
 function storageKey(targetLang: string): string {
-    return `${STORAGE_PREFIX}:${targetLang}`;
+    return sessionScopedKey(`${SESSION_STORES.discoverLast}:${targetLang}`);
 }
 
 /**

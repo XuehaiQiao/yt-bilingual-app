@@ -7,12 +7,12 @@
 //     column. A failed or degraded load is silent and leaves the set empty: the
 //     filter fails open, so a request failure can never remove highlights, block
 //     reading, or invent an error surface.
-//   - guest: the local ignore table in `lib/wordMastery.ts` (localStorage
-//     `yt_bilingual_guest_mastered_words`, the same table the word book's
-//     「我会了」 group reads). It is never uploaded, and signed-in users never
-//     read it. The brief suggested a fresh `yt_bilingual_ignored_words` key;
-//     reusing the existing table keeps one source for one semantic (team charter
-//     §4.5) instead of splitting the guest ignore state across two keys.
+//   - guest: the local ignore table in `lib/wordMastery.ts` (the guest bucket of
+//     `lib/storageScope.ts`, the same table the word book's 「我会了」 group
+//     reads). It is never uploaded, and signed-in users never read it. The brief
+//     suggested a fresh `yt_bilingual_ignored_words` key; reusing the existing
+//     table keeps one source for one semantic (team charter §4.5) instead of
+//     splitting the guest ignore state across two keys.
 //
 // The highlight *rules* are not duplicated here. This module only answers
 // *which* words are already known: classify requests, the proper-noun list and
@@ -23,11 +23,12 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { useAuth } from './auth';
 import { getMasteredWords } from './review';
 import {
-    GUEST_MASTERED_KEY,
+    guestMasteredKey,
     normalizeMasteryWord,
     readGuestMastered,
     writeGuestMastered,
 } from './wordMastery';
+import { subscribeStorageScope } from './storageScope';
 
 /** `guest` reads localStorage; `signedIn` reads the server mastered list. */
 export type IgnoredWordsMode = 'guest' | 'signedIn';
@@ -222,6 +223,20 @@ function applyAuthMode(signedIn: boolean): void {
 }
 
 /**
+ * P2-50: an identity switch (A → B on the same tab) changes the storage
+ * namespace. Drop the singleton so the next `applyAuthMode` re-reads the guest
+ * table / refetches the account's mastered list instead of keeping A's words.
+ */
+function resetForScopeChange(): void {
+    signedInApplied = false;
+    snapshot = null;
+    requestSeq += 1;
+    inFlight = null;
+}
+
+subscribeStorageScope(resetForScopeChange);
+
+/**
  * React binding: returns the ignored set and keeps the store in sync with the
  * session. Every consumer re-renders when the set changes (useSyncExternalStore),
  * which is what makes a newly mastered word disappear from the current page
@@ -238,7 +253,7 @@ export function useIgnoredWords(): IgnoredWordsSnapshot {
     useEffect(() => {
         const onStorage = (event: StorageEvent) => {
             // Cross-tab guest edits only; signed-in users never read that table.
-            if (event.key === GUEST_MASTERED_KEY) syncGuestWords();
+            if (event.key === guestMasteredKey()) syncGuestWords();
         };
         window.addEventListener('storage', onStorage);
         return () => window.removeEventListener('storage', onStorage);

@@ -9,6 +9,12 @@
 //
 //   yt_bilingual_onboarding_v1 = { done: true, at: <ms> }
 //
+// P2-50 keeps this key **device-level on purpose** (product decision, audit
+// P2-2/P3-5): the guide is about this machine's first run, not about a learner,
+// so it deliberately does NOT go through `lib/storageScope.ts`. The cost is
+// that a second account on the same device does not see the guide again; the
+// 我的 · 设置 entry reopens it on demand.
+//
 // It renders for guests too: `guest` is the normal pre-signup state, and the
 // first-run guide is exactly what a visitor needs before creating an account.
 import { useCallback, useEffect, useState } from 'react';

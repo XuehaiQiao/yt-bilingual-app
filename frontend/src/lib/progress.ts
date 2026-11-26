@@ -1,6 +1,11 @@
 // Per-video playback progress, persisted locally for resume & history cards.
+//
+// P2-50: the map is user-private, so it lives in the identity-scoped namespace
+// (`lib/storageScope.ts`) instead of the browser-wide v1 key. The v1 key is
+// copied into the first identity's scope by the one-time migration.
+import { readScoped, writeScoped, STORAGE_STORES } from './storageScope';
 
-const PROGRESS_KEY = 'yt_bilingual_progress';
+const PROGRESS_STORE = STORAGE_STORES.progress;
 const MAX_ENTRIES = 200;
 
 export interface ProgressEntry {
@@ -12,11 +17,10 @@ export interface ProgressEntry {
 type ProgressMap = Record<string, ProgressEntry>;
 
 export function loadProgressMap(): ProgressMap {
-    try {
-        return JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
-    } catch {
-        return {};
-    }
+    const parsed = readScoped<unknown>(PROGRESS_STORE, null);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as ProgressMap)
+        : {};
 }
 
 export function getProgress(videoId: string): ProgressEntry | null {
@@ -33,14 +37,14 @@ export function saveProgress(videoId: string, time: number, duration: number) {
             .slice(0, ids.length - MAX_ENTRIES)
             .forEach(id => delete map[id]);
     }
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(map));
+    writeScoped(PROGRESS_STORE, map);
 }
 
 export function clearProgress(videoId: string) {
     const map = loadProgressMap();
     if (videoId in map) {
         delete map[videoId];
-        localStorage.setItem(PROGRESS_KEY, JSON.stringify(map));
+        writeScoped(PROGRESS_STORE, map);
     }
 }
 

@@ -11,6 +11,7 @@
 // historical; the value is in the current target language).
 import { api, apiFetch } from './api';
 import { getRuntimeTargetLang } from '../i18n';
+import { readScoped, writeScoped, STORAGE_STORES } from './storageScope';
 
 export type ImportedSourceType = 'gutenberg' | 'standard_ebooks' | 'local_epub';
 
@@ -767,7 +768,8 @@ export async function deleteImportedBook(bookId: string): Promise<void> {
 // Reading progress (local only; imported books are per-account anyway)
 // ---------------------------------------------------------------------------
 
-const PROGRESS_KEY = 'yt_bilingual_imported_books_progress';
+// P2-50: user-private reading positions, namespace by identity (see storageScope).
+const PROGRESS_STORE = STORAGE_STORES.importedBooksProgress;
 const MAX_BOOK_ENTRIES = 100;
 
 export interface ImportedBookProgress {
@@ -785,12 +787,8 @@ export interface ImportedBookProgressEntry extends ImportedBookProgress {
 type ProgressMap = Record<string, ImportedBookProgress>;
 
 function loadProgressMap(): ProgressMap {
-    try {
-        const parsed = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}') as unknown;
-        return isRecord(parsed) ? (parsed as ProgressMap) : {};
-    } catch {
-        return {};
-    }
+    const parsed: unknown = readScoped<ProgressMap | null>(PROGRESS_STORE, null);
+    return isRecord(parsed) ? (parsed as ProgressMap) : {};
 }
 
 export function getImportedBookProgress(bookId: string): ImportedBookProgress | null {
@@ -843,9 +841,5 @@ export function saveImportedBookProgress(
             .slice(0, ids.length - MAX_BOOK_ENTRIES)
             .forEach((id) => delete map[id]);
     }
-    try {
-        localStorage.setItem(PROGRESS_KEY, JSON.stringify(map));
-    } catch {
-        // Storage full/blocked: progress is a convenience, never block reading.
-    }
+    writeScoped(PROGRESS_STORE, map);
 }

@@ -17,6 +17,11 @@ import {
 import { apiFetch, subscribeToUnauthorized } from './api';
 import { t } from '../i18n';
 import { describeApiError, toast } from './toast';
+import {
+    currentStorageScope,
+    mergeGuestScopeIntoUser,
+    setStorageScope,
+} from './storageScope';
 
 export interface AuthUser {
     id: string;
@@ -154,6 +159,23 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTH_SYNC_KEY = 'ln_auth_sync_v1';
 const AUTH_SYNC_CHANNEL = 'ln-auth-sync-v1';
 
+/**
+ * P2-50: every identity transition must finish before the shell renders under
+ * the new status, otherwise the first frame (and the effects it runs) would read
+ * the previous identity's scoped localStorage. `guest`/`anonymous` both map to
+ * the guest bucket: the backend keeps a guest directory for signed-out visitors,
+ * and the legacy 401 path has no local data of its own.
+ */
+function activateStorageScope(user: AuthUser | null): void {
+    if (user?.id) {
+        const next = `u:${user.id}` as const;
+        if (currentStorageScope() !== next) setStorageScope('user', user.id);
+        return;
+    }
+    // Also runs the one-time legacy migration on the first boot after upgrade.
+    setStorageScope('guest');
+}
+
 function announceAuthChange(): void {
     try {
         localStorage.setItem(AUTH_SYNC_KEY, String(Date.now()));
@@ -230,6 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const res = await apiFetch('/api/auth/me');
                 if (cancelled) return;
                 if (res.status === 401) {
+                    activateStorageScope(null);
                     applyAuthState('anonymous', null);
                     return;
                 }
@@ -237,15 +260,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const data = (await res.json().catch(() => null)) as UserPayload | null;
                 if (cancelled) return;
                 if (!data?.guest && data?.user?.email) {
+                    // Scope is settled *before* the status publishes so the
+                    // first authenticated render already reads `u:<id>`.
+                    activateStorageScope(data.user);
                     setIsAdmin(data.isAdmin === true);
                     applyAuthState('authenticated', data.user);
                     return;
                 }
                 setIsAdmin(false);
+                activateStorageScope(null);
                 applyAuthState('guest', null);
             } catch (err) {
                 if (cancelled) return;
                 setIsAdmin(false);
+                activateStorageScope(null);
                 applyAuthState('anonymous', null);
                 // Offline is an expected state now that the shell is cached:
                 // the global offline marker explains it, so don't claim the
@@ -265,6 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (statusRef.current !== 'authenticated') return;
         toast.info(t('errors.sessionExpired'));
         setIsAdmin(false);
+        activateStorageScope(null);
         applyAuthState('anonymous', null);
     }), [applyAuthState]);
 
@@ -334,6 +363,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const nextUser = payload?.user;
         if (!nextUser?.email) throw new Error(t('errors.missingUser'));
         await claimGuest();
+        // Guest-scope learning data moves into this account *before* the scope
+        // flips, then the guest bucket is emptied (audit §4.3 claim merge), so
+        // the next guest on this device cannot inherit it.
+        if (nextUser.id) mergeGuestScopeIntoUser(nextUser.id);
+        activateStorageScope(nextUser);
         setDataRevision((revision) => revision + 1);
         applyAuthState('authenticated', nextUser);
         announceAuthChange();
@@ -365,6 +399,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = (await res.json().catch(() => null)) as UserPayload | null;
         const nextUser = data?.user;
         if (!nextUser?.email) throw new Error(t('errors.missingUser'));
+        activateStorageScope(nextUser);
         applyAuthState('authenticated', nextUser);
         return nextUser;
     }, [applyAuthState]);
@@ -380,6 +415,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } finally {
             setDataRevision((revision) => revision + 1);
             setIsAdmin(false);
+            activateStorageScope(null);
             applyAuthState('anonymous', null);
             announceAuthChange();
         }
@@ -391,6 +427,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const clearSession = useCallback(() => {
         setDataRevision((revision) => revision + 1);
         setIsAdmin(false);
+        activateStorageScope(null);
         applyAuthState('anonymous', null);
         announceAuthChange();
     }, [applyAuthState]);
@@ -403,12 +440,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const res = await apiFetch('/api/auth/me');
             if (res.status === 401) {
                 setIsAdmin(false);
+                activateStorageScope(null);
                 applyAuthState('anonymous', null);
                 return;
             }
             if (!res.ok) return;
             const data = (await res.json().catch(() => null)) as UserPayload | null;
             if (!data?.guest && data?.user?.email) {
+                activateStorageScope(data.user);
                 setIsAdmin(data.isAdmin === true);
                 applyAuthState('authenticated', data.user);
             }
@@ -416,6 +455,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Keep the current session; the next navigation retries.
         }
     }, [applyAuthState]);
+
+    // bfcache (P2-50 / cache audit §4.9): a page restored from the back-forward
+    // cache keeps the *old DOM* — the frozen render of whatever identity was
+    // signed in when it was cached — while the httpOnly session cookie may now
+    // belong to another account (shared browser profile, another tab switched).
+    // Reload so `/me` re-resolves the identity and every scoped read starts from
+    // the correct namespace. The sessionStorage mark breaks a reload loop if a
+    // browser re-enters bfcache on restore; the fallback only refreshes `/me`.
+    useEffect(() => {
+        const BFCACHE_RELOAD_MARK = 'yt_bilingual.bfcache_reload_at';
+        const readMark = (): number => {
+            try {
+                return Number(window.sessionStorage.getItem(BFCACHE_RELOAD_MARK) || 0);
+            } catch {
+                return 0;
+            }
+        };
+        const onPageShow = (event: PageTransitionEvent) => {
+            if (!event.persisted) {
+                // A normal (fresh) load clears the loop guard.
+                try {
+                    window.sessionStorage.removeItem(BFCACHE_RELOAD_MARK);
+                } catch {
+                    // Private mode: nothing to clear.
+                }
+                return;
+            }
+            const mark = readMark();
+            if (mark && Date.now() - mark < 10_000) {
+                // Already reloaded once for this restore: re-resolve `/me`
+                // instead of reloading forever.
+                void refreshSession();
+                return;
+            }
+            try {
+                window.sessionStorage.setItem(BFCACHE_RELOAD_MARK, String(Date.now()));
+            } catch {
+                // Still reload once; the guard only matters for loops.
+            }
+            window.location.reload();
+        };
+        window.addEventListener('pageshow', onPageShow);
+        return () => window.removeEventListener('pageshow', onPageShow);
+    }, [refreshSession]);
 
     return (
         <AuthContext.Provider value={{

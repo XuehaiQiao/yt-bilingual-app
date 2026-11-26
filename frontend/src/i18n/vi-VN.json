@@ -2924,6 +2924,11 @@
   "account.emailVerify.resend": "Gửi email xác minh",
   "account.settings.onboarding": "Hướng dẫn ban đầu",
   "account.settings.onboardingHint": "Xem lại ba bước \"xem video → tra từ → ôn tập\".",
+  "account.settings.clearLocalData": "Xóa dữ liệu học trên máy này",
+  "account.settings.clearLocalDataHint": "Xóa tiến độ sách/video, điểm danh câu, từ \"Tôi đã biết\" của khách và cấp độ đã lưu trên máy; tài khoản trên đám mây không bị ảnh hưởng.",
+  "account.settings.clearLocalDataConfirmTitle": "Xóa dữ liệu học trên máy này?",
+  "account.settings.clearLocalDataConfirmDesc": "Tiến độ sách/video, điểm danh câu, từ \"Tôi đã biết\" của khách và cấp độ của mọi danh tính trong trình duyệt này sẽ bị xóa; tùy chọn thiết bị (bố cục, ngôn ngữ, giọng đọc) được giữ lại. Không thể hoàn tác.",
+  "account.settings.clearLocalDataConfirmAction": "Xóa dữ liệu học",
   "account.about.feedback": "Góp ý và báo lỗi",
   "account.about.feedbackHint": "Báo lỗi, báo dịch sai hoặc đề xuất tính năng.",
   "auth.recovery.unavailable": "Dịch vụ tạm thời không khả dụng, vui lòng thử lại sau."

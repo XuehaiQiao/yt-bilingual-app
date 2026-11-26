@@ -30,6 +30,7 @@ import {
   Pencil,
   RefreshCw,
   ShieldCheck,
+  Trash2,
   BookMarked,
   UserRound,
   Wallet,
@@ -47,6 +48,8 @@ import { toast, describeApiError } from '../lib/toast';
 import { displayUsername, usernameInitial, usernameProblem } from '../lib/username';
 import { requestEmailVerification } from '../lib/user';
 import { loadVocabLevel, saveVocabLevel, VOCAB_LEVEL_EVENT, VOCAB_LEVELS, type VocabLevelId } from '../lib/settings';
+import { clearLocalLearningData } from '../lib/storageScope';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 import { formatMicroUsd, formatUsdNumber } from '../lib/billing';
 import { LanguageSettingsModal } from './LanguageSettingsModal';
 import { AccountDataSection, PendingDeletionCard } from './AccountDataSection';
@@ -182,6 +185,9 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
+  // P2-50 escape hatch: legacy v1 data could only be attributed to the first
+  // identity that booted after the upgrade, so the user needs a local reset.
+  const [clearDataOpen, setClearDataOpen] = useState(false);
   // v1.1: feedback dialog + optional email verification. Old accounts stay
   // untouched: the banner only appears when the server says `emailVerified:false`.
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -191,6 +197,16 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
   // is stored immediately and drives word highlighting in later content.
   const [vocabLevel, setVocabLevel] = useState<VocabLevelId>(loadVocabLevel);
   const vocabLevelMeta = VOCAB_LEVELS.find((level) => level.id === vocabLevel) ?? VOCAB_LEVELS[0];
+
+  // Clears *every* identity's learning bucket on this device (the attribution
+  // rule can put a previous account's v1 data under a namespace the current
+  // user cannot see), then reloads so mounted screens drop their in-memory
+  // copies. Device preferences and the onboarding flag are kept.
+  const handleClearLocalData = () => {
+    clearLocalLearningData();
+    setClearDataOpen(false);
+    window.location.reload();
+  };
 
   const handleVocabLevelChange = (level: VocabLevelId) => {
     if (level === vocabLevel) return;
@@ -528,6 +544,26 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
           </span>
           <ChevronRight className="w-4 h-4 text-fg-muted shrink-0" aria-hidden="true" />
         </button>
+
+        <button
+          type="button"
+          data-testid="account-clear-local-data"
+          onClick={() => setClearDataOpen(true)}
+          className="w-full flex items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-state-hover"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <Trash2 className="w-4 h-4 text-red-400/80 shrink-0" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-fg-strong">
+                {t('account.settings.clearLocalData')}
+              </span>
+              <span className="mt-0.5 block text-xs text-fg-muted">
+                {t('account.settings.clearLocalDataHint')}
+              </span>
+            </span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-fg-muted shrink-0" aria-hidden="true" />
+        </button>
       </div>
     </section>
   );
@@ -664,7 +700,16 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
         </PageContainer>
 
         <LanguageSettingsModal isOpen={languageOpen} onClose={() => setLanguageOpen(false)} />
-      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+        <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+        <ConfirmDialog
+          open={clearDataOpen}
+          title={t('account.settings.clearLocalDataConfirmTitle')}
+          description={t('account.settings.clearLocalDataConfirmDesc')}
+          confirmLabel={t('account.settings.clearLocalDataConfirmAction')}
+          onConfirm={handleClearLocalData}
+          onClose={() => setClearDataOpen(false)}
+          testId="clear-local-data-dialog"
+        />
       </div>
     );
   }
@@ -1065,6 +1110,15 @@ export const AccountScreen: React.FC<AccountScreenProps> = ({
 
       <LanguageSettingsModal isOpen={languageOpen} onClose={() => setLanguageOpen(false)} />
       <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      <ConfirmDialog
+        open={clearDataOpen}
+        title={t('account.settings.clearLocalDataConfirmTitle')}
+        description={t('account.settings.clearLocalDataConfirmDesc')}
+        confirmLabel={t('account.settings.clearLocalDataConfirmAction')}
+        onConfirm={handleClearLocalData}
+        onClose={() => setClearDataOpen(false)}
+        testId="clear-local-data-dialog"
+      />
     </div>
   );
 };

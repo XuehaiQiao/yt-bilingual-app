@@ -5,7 +5,17 @@
 // this store: their 已掌握 group is served by
 // `GET /api/review/words?mastered=1` and updated from the PATCH response, so
 // this module must never grow a second mirror for them.
-export const GUEST_MASTERED_KEY = 'yt_bilingual_guest_mastered_words';
+//
+// P2-50: the table is guest-private, so it lives in the guest bucket of
+// `lib/storageScope.ts` instead of a browser-wide key (a later guest on the
+// same device must not inherit an earlier guest/account's 「我会了」). The v1
+// key is copied into the guest bucket by the one-time migration.
+import { readScoped, scopedKey, writeScoped, STORAGE_STORES } from './storageScope';
+
+/** The guest-table localStorage key for the *current* scope (guest normally). */
+export function guestMasteredKey(): string {
+    return scopedKey(STORAGE_STORES.guestMastered);
+}
 
 /** Normalize a word for set membership; the same word must match everywhere. */
 export function normalizeMasteryWord(word: string): string {
@@ -13,21 +23,17 @@ export function normalizeMasteryWord(word: string): string {
 }
 
 function readWords(): Set<string> {
-    try {
-        const raw = localStorage.getItem(GUEST_MASTERED_KEY);
-        if (!raw) return new Set();
-        const parsed: unknown = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return new Set();
-        return new Set(
-            parsed
-                .filter((word): word is string => typeof word === 'string')
-                .map(normalizeMasteryWord)
-                .filter(Boolean),
-        );
-    } catch {
+    const parsed = readScoped<unknown>(STORAGE_STORES.guestMastered, null);
+    if (!Array.isArray(parsed)) {
         // Private mode / corrupt value: degrade to "nothing marked locally".
         return new Set();
     }
+    return new Set(
+        parsed
+            .filter((word): word is string => typeof word === 'string')
+            .map(normalizeMasteryWord)
+            .filter(Boolean),
+    );
 }
 
 /** Every locally ignored word for the guest (normalized). */
@@ -42,9 +48,5 @@ export function writeGuestMastered(word: string, mastered: boolean): void {
     const words = readWords();
     if (mastered) words.add(normalized);
     else words.delete(normalized);
-    try {
-        localStorage.setItem(GUEST_MASTERED_KEY, JSON.stringify(Array.from(words).sort()));
-    } catch {
-        // Non-fatal: the row state still updates for this session.
-    }
+    writeScoped(STORAGE_STORES.guestMastered, Array.from(words).sort());
 }

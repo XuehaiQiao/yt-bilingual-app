@@ -8,11 +8,18 @@
 // Why sessionStorage (not localStorage): a job belongs to *this* tab's stream.
 // A new tab opened days later must not reconnect to a stale task; closing the
 // tab drops the record, which matches "刷新/断线接着看" without cross-tab noise.
+//
+// P2-50: the record is identity-scoped inside sessionStorage. Switching
+// accounts in the same tab must not resume the previous account's job (the
+// backend already 403s, but the stale record itself must go too).
 import { apiFetch } from './api';
 import type { LanguageCode } from '../i18n';
+import { SESSION_STORES, sessionScopedKey } from './storageScope';
 
-/** sessionStorage key (same `yt_bilingual_` prefix as the other stores). */
-export const PENDING_JOB_KEY = 'yt_bilingual_pending_job';
+/** Current identity's sessionStorage key for the pending job. */
+export function pendingJobKey(): string {
+    return sessionScopedKey(SESSION_STORES.pendingJob);
+}
 
 /** What we remember between page loads: enough to ask the server and reconnect. */
 export interface PendingJob {
@@ -75,11 +82,11 @@ export function loadPendingJob(): PendingJob | null {
     const store = storage();
     if (!store) return null;
     try {
-        const raw = store.getItem(PENDING_JOB_KEY);
+        const raw = store.getItem(pendingJobKey());
         if (!raw) return null;
         const parsed: unknown = JSON.parse(raw);
         if (!isPendingJob(parsed)) {
-            store.removeItem(PENDING_JOB_KEY);
+            store.removeItem(pendingJobKey());
             return null;
         }
         return {
@@ -98,7 +105,7 @@ export function savePendingJob(job: PendingJob): void {
     const store = storage();
     if (!store) return;
     try {
-        store.setItem(PENDING_JOB_KEY, JSON.stringify(job));
+        store.setItem(pendingJobKey(), JSON.stringify(job));
     } catch {
         // Quota/private mode: losing the record only costs a manual resubmit.
     }
@@ -134,7 +141,7 @@ export function clearPendingJob(match?: {
     if (match?.videoId && pending.videoId !== match.videoId) return;
     const store = storage();
     try {
-        store?.removeItem(PENDING_JOB_KEY);
+        store?.removeItem(pendingJobKey());
     } catch {
         // Ignore: a stale record is harmless — resume checks the server first.
     }

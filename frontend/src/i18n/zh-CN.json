@@ -2924,6 +2924,11 @@
   "account.emailVerify.resend": "发送验证邮件",
   "account.settings.onboarding": "新手引导",
   "account.settings.onboardingHint": "再看一遍「看视频 → 查词 → 复习」的三步说明。",
+  "account.settings.clearLocalData": "清除本机学习数据",
+  "account.settings.clearLocalDataHint": "删除本机保存的书/视频进度、句子打卡、游客「我会了」和本机档位；云端账号不受影响。",
+  "account.settings.clearLocalDataConfirmTitle": "清除本机学习数据？",
+  "account.settings.clearLocalDataConfirmDesc": "本浏览器所有身份的书/视频进度、句子打卡、游客「我会了」与档位都会被删除，设备偏好（布局、语言、朗读）保留。此操作不可撤销。",
+  "account.settings.clearLocalDataConfirmAction": "清除学习数据",
   "account.about.feedback": "反馈与纠错",
   "account.about.feedbackHint": "报告问题、翻译错误或功能建议。",
   "auth.recovery.unavailable": "服务暂不可用，请稍后再试。"
