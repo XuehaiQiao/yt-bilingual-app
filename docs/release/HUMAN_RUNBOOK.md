@@ -8,6 +8,7 @@
 | 需要 | 说明 |
 |---|---|
 | Agent 报告 | `/tmp/release/<version>-<sha>/release-report.md`，`status=GO` |
+| Release 输入 | `/tmp/release-input.yaml`（版本/SHA/迁移/回填/回滚镜像） |
 | 生产目录 | `/srv/ln/app` |
 | 生产备份目录 | `/srv/ln/backups` |
 | 离机存储 | rclone/对象存储，能列出文件 |
@@ -42,6 +43,7 @@ docker images | grep linguatrek
 
 - [ ] 新镜像 tag = release SHA
 - [ ] 旧生产镜像 tag 仍存在（回滚用）
+- [ ] 已记录旧生产镜像 tag：`OLD_IMAGE=<tag>`
 - [ ] `APP_VERSION` 正确
 
 打 tag（候选验收通过后；失败不复用同名 tag）：

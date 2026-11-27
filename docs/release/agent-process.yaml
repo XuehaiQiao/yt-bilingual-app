@@ -14,6 +14,8 @@ repo:
     - docs/release/HUMAN_RUNBOOK.md
     - docs/release/agent-report.schema.json
 
+inputs_file: /tmp/release-input.yaml
+
 inputs:
   required:
     - version          # vX.Y.Z or vX.Y.Z-rc.N
