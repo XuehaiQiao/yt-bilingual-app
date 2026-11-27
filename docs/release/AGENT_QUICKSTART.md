@@ -71,6 +71,12 @@ npx playwright install chromium
 - **注意**：部分脚本使用 `channel: 'chrome'`，需要系统安装 Google Chrome；只装 Playwright chromium 不够。Linux 请安装 `google-chrome`，或按脚本注释改为 `executablePath`。
 - 验收脚本若因浏览器/harness 缺失无法跑，必须写 SKIP 原因，不能静默跳过。
 
+如果 8000/5173 已有服务在跑：
+
+- 不要假设它跑的是 `release_sha` 的代码；
+- 让 Release Owner 确认/重启，或在干净环境重新启动；
+- 否则验收结果不能作为本版本证据（NO_GO）。
+
 本地服务未启动时：
 
 ```bash

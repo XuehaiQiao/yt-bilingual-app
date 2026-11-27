@@ -99,7 +99,7 @@ phases:
           release_sha: '^[0-9a-f]{7,40}$'
           release_type: '^(code|copy|schema|data|auth_cache|cost_security)$'
           repo_root: '^/'
-          rollback_image: '.+'
+          rollback_image: '^[A-Za-z0-9][A-Za-z0-9._:/-]*$'
       - action: require_inputs
         when: includes_migration == true
         fields: [production_backup_path, migration_rehearsal_command, migration_verify_command, rollback_db_revision]
