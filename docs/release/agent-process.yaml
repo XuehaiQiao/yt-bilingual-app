@@ -1,0 +1,139 @@
+# 语途 Release Agent 固定流程
+# 机器可读；Agent 只执行 environment: local 的步骤，production 一律 human_gate。
+version: 1
+process: linguatrek-release
+owner: Release Owner
+inputs:
+  version: "vX.Y.Z"              # required
+  release_sha: "<git-sha>"       # required
+  release_type: "code"           # code | copy | schema | data | auth_cache | cost_security
+  includes_migration: false
+  includes_backfill: false
+  stack: "docker"                # docker | baremetal
+  app_dir: "/srv/ln/app"         # production only; agents must not use
+  local_api: "http://127.0.0.1:8000"
+  local_web: "http://127.0.0.1:5173"
+
+policy:
+  environment: local_only
+  production_actions: forbidden
+  destructive_actions: forbidden
+  secrets: never_print
+  stop_on_first_failure: true
+  human_gate_before: production_deploy
+
+allowed:
+  - read_repo
+  - run_pytest
+  - run_frontend_gates
+  - run_local_acceptance
+  - inspect_local_logs
+  - copy_local_db_to_tmp
+  - run_migration_on_tmp_copy
+  - write_release_report
+forbidden:
+  - ssh_or_remote_production
+  - docker_compose_up_on_production
+  - alembic_upgrade_on_production
+  - delete_backups
+  - rotate_or_read_credentials
+  - change_dns_smtp_provider
+  - tag_or_push_without_owner
+
+phases:
+  - id: p0-input
+    owner: agent
+    steps:
+      - verify version matches /^v\d+\.\d+\.\d+(-rc\.\d+)?$/
+      - verify release_sha is 7-40 hex chars
+      - verify includes_migration/backfill are booleans
+      - set output artifacts dir /tmp/release/<version>-<sha>/
+    fail_if: [missing_input, dirty_worktree_at_start]
+  - id: p1-repo
+    owner: agent
+    steps:
+      - command: "git status --porcelain"
+        expect: ""
+      - command: "git rev-parse --short HEAD"
+        expect: "$release_sha"
+      - command: "git log -1 --oneline"
+    fail_if: [dirty, sha_mismatch]
+  - id: p2-backend
+    owner: agent
+    steps:
+      - command: "cd backend && venv/bin/python -m pytest tests -q"
+        expect_exit: 0
+        record: pytest_summary
+      - command: "cd backend && venv/bin/python -m compileall -q ."
+        expect_exit: 0
+      - command: "cd backend && venv/bin/alembic heads"
+        expect: "single_head"
+      - command: "cd backend && venv/bin/alembic current"
+        record: local_current
+  - id: p3-frontend
+    owner: agent
+    steps:
+      - command: "cd frontend && npx tsc -b"
+        expect_exit: 0
+      - command: "cd frontend && npm run build"
+        expect_exit: 0
+      - command: "cd frontend && npm run check:i18n"
+        expect_exit: 0
+        record: i18n_summary
+  - id: p4-acceptance
+    owner: agent
+    steps:
+      - command: "node scripts/cache-isolation-acceptance.mjs"
+        expect_exit: 0
+      - command: "node scripts/watch-mode-acceptance.mjs"
+        expect_exit: 0
+      - command: "node scripts/v11-p0-acceptance.mjs"
+        expect_exit: 0
+      - command: "run every scripts/*acceptance*.mjs with per-script timeout 300s"
+        record: acceptance_matrix
+        allow_skip: only_if_documented_harness_dependency
+    fail_if: [unexplained_failure, silent_skip]
+  - id: p5-migration
+    owner: agent
+    when: includes_migration or includes_backfill
+    steps:
+      - copy_production_backup_to_tmp
+      - command: "run scripts/rehearse_v11_migration.sh --source-data /tmp/release-copy"
+        note: adapt script to current migration; never touch production
+      - verify: upgrade_current_equals_head
+      - verify: old_table_hashes_match_allowlist
+      - verify: downgrade_if_safe
+      - verify: restore_works
+      - verify: backfill_dry_run_and_audit
+    fail_if: [rehearsal_fail, missing_backup, destructive_downgrade]
+  - id: p6-report
+    owner: agent
+    steps:
+      - write_json report to /tmp/release/<version>-<sha>/release-report.json
+      - write_markdown summary to /tmp/release/<version>-<sha>/release-report.md
+      - include: checks, evidence_paths, blockers, rollback_image, migration_notes
+      - status: GO | NO_GO
+      - human_gate: true
+      - command: "stop; do not deploy"
+
+report_schema:
+  version: string
+  release_sha: string
+  status: "GO" | "NO_GO"
+  checks:
+    - id: string
+      status: "PASS" | "FAIL" | "SKIP"
+      detail: string
+      evidence: string
+  blockers: [string]
+  rollback_image: string
+  migration_notes: string
+  acceptance: {pass: number, fail: number, skip: number}
+  generated_at: ISO8601
+
+human_handoff:
+  required: true
+  before: production_deploy
+  owner: Release Owner
+  must_review: [release-report.md, checklist, blockers]
+  production_steps: docs/release/HUMAN_RUNBOOK.md

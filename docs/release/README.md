@@ -415,3 +415,21 @@ git push origin vX.Y.Z
 - 迁移失败：停写，按备份恢复/降级；不连续重试写库
 - 冒烟失败：立即回滚代码，保留现场日志
 - 24h 内异常：按回滚矩阵处理，不删证据
+
+---
+
+## 16. Agent / 人工边界
+
+| 步骤 | Agent | 开发者本人 |
+|---|---|---|
+| 代码、测试、构建、本地验收 | ✅ | 复核 |
+| 数据副本迁移演练 | ✅ | 复核 |
+| 生成 release report | ✅ | 阅读 |
+| 生产 SSH/凭据/DNS/SMTP/供应商限额 | ❌ | ✅ |
+| 生产备份/离机副本 | ❌（只能给命令） | ✅ |
+| 生产迁移/回填 | ❌ | ✅ 或明确授权后由 Release Owner 执行 |
+| 生产冒烟 | 部分只读检查 | ✅ 浏览器/真邮箱/管理员 |
+| Go/No-Go/回滚决定 | ❌ | ✅ |
+
+- Agent 固定流程：[agent-process.yaml](./agent-process.yaml) + [report schema](./agent-report.schema.json)
+- 人工逐步手册：[HUMAN_RUNBOOK.md](./HUMAN_RUNBOOK.md)
