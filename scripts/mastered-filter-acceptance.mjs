@@ -43,7 +43,7 @@ for (const name of ['ok', 'equal', 'deepEqual', 'match']) {
 
 const BASE = process.env.APP_URL || 'http://127.0.0.1:5199/';
 const SHOTS = '/tmp';
-const GUEST_KEY = 'yt_bilingual_guest_mastered_words';
+const GUEST_KEY = 'yt_bilingual.v2.guest.guest_mastered_words';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 // A throwaway page that mounts the real WordPopover with the real providers,
 // so the guest branch (unreachable in the app because word lookup is behind the

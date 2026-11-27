@@ -675,7 +675,10 @@ await page.locator('[data-testid=book-translation-0]').waitFor({ state: 'visible
 await page.locator('[data-testid=book-chapter-1]').waitFor({ state: 'visible' });
 await page.locator('[data-testid=book-reader-series-link]').waitFor({ state: 'visible' });
 // Book progress still lands in localStorage (existing behavior).
-const bookProgress = await page.evaluate(() => localStorage.getItem('yt_bilingual_books_progress'));
+const bookProgress = await page.evaluate(() => {
+  const key = Object.keys(localStorage).find((item) => item.endsWith('.books_progress'));
+  return key ? localStorage.getItem(key) : null;
+});
 assert.ok(bookProgress && bookProgress.includes('b1'), `book progress missing: ${bookProgress}`);
 
 assert.equal(pageErrors.length, 0, `page errors: ${pageErrors.join('\n')}`);

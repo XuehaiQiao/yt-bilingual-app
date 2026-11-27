@@ -113,7 +113,7 @@
 //      exclusion: a successful mark deletes the same word's favorite; a failed
 //      DELETE rolls the mark back (PATCH false) with an inline error. A failed
 //      PATCH rolls the visual mark back inline. Guests write only
-//      `yt_bilingual_guest_mastered_words` (never the API). History rows and
+//      `yt_bilingual.v2.guest.guest_mastered_words` (never the API). History rows and
 //      the page share one `useIgnoredWords` source; 375/1440 stay un-squeezed.
 //  22. P2-21 visual fixes: each word/point row sits on a low-contrast rounded
 //      card (current sentence slightly stronger) with 4px between rows and no
@@ -3353,7 +3353,7 @@ try {
     // ═════════════════════════════════════════════════════════════════════
     // 1440 — P2-19 guest: the public library payload gives a guest real gloss
     // rows; 已掌握 writes ONLY the local table (`yt_bilingual_guest_mastered_words`
-    // — the same table the word book's 「我会了」 reads), never the API, and
+    // — the same scoped table the word book's 「我会了」 reads), never the API, and
     // survives a reload. Unmarking clears it again.
     // ═════════════════════════════════════════════════════════════════════
     const guestLibraryContext = await createContext(browser, { watchOn: true, guest: true });
@@ -3378,7 +3378,7 @@ try {
     }
     await waitForRailText(guestLibraryPage, '习惯');
     assert.equal(
-        await guestLibraryPage.evaluate(() => localStorage.getItem('yt_bilingual_guest_mastered_words')),
+        await guestLibraryPage.evaluate(() => localStorage.getItem('yt_bilingual.v2.guest.guest_mastered_words')),
         null,
         'the guest mastered table did not start empty',
     );
@@ -3397,7 +3397,7 @@ try {
         { timeout: 5000 },
     );
     const guestTable = await guestLibraryPage.evaluate(() => JSON.parse(
-        localStorage.getItem('yt_bilingual_guest_mastered_words') ?? '[]',
+        localStorage.getItem('yt_bilingual.v2.guest.guest_mastered_words') ?? '[]',
     ));
     assert.deepEqual(guestTable, ['habits'], `the guest table did not get the mastered word: ${JSON.stringify(guestTable)}`);
     assert.equal(await guestMastered.getAttribute('aria-pressed'), 'true');
@@ -3441,7 +3441,7 @@ try {
     );
     assert.deepEqual(
         await guestLibraryPage.evaluate(() => JSON.parse(
-            localStorage.getItem('yt_bilingual_guest_mastered_words') ?? '[]',
+            localStorage.getItem('yt_bilingual.v2.guest.guest_mastered_words') ?? '[]',
         )),
         [],
         'unmarking did not clear the guest mastered table',

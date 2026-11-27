@@ -53,7 +53,7 @@ for (const name of ['ok', 'equal', 'deepEqual', 'match']) {
 
 const BASE = process.env.APP_URL || 'http://localhost:5199/';
 const SHOTS = '/tmp';
-const GUEST_KEY = 'yt_bilingual_guest_mastered_words';
+const GUEST_KEY = 'yt_bilingual.v2.guest.guest_mastered_words';
 
 const MASTERED_BASE = ['abundant', 'meticulous', 'reluctant'];
 // 60 rows total → two 50/page pages (the last page shows the remainder).
