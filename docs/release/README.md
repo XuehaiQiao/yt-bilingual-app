@@ -399,7 +399,7 @@ git push origin vX.Y.Z
 | 阶段 | 自动化 |
 |---|---|
 | PR | backend pytest、frontend tsc/build/i18n、相关 acceptance |
-| 每日 | `scripts/*acceptance*.mjs` 全量 + 缓存隔离 |
+| 每日 | `bash scripts/release-acceptance-suite.sh` + 缓存隔离 |
 | release tag | 构建镜像、生成 release notes 草稿 |
 | 生产前 | 备份状态、迁移 head、预算/密钥检查 |
 | 生产后 | health/API 冒烟、24h 指标汇总 |

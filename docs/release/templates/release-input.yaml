@@ -10,6 +10,7 @@ local_api: "http://127.0.0.1:8000"
 local_web: "http://127.0.0.1:5173"
 
 # 如有迁移/回填，Release Owner 必须提供可执行命令/脚本；没有就停，不要即兴。
+production_backup_path: ""   # 人工已完成的备份包路径；Agent 只读复制
 migration_rehearsal_command: ""
 backfill_dry_run_command: ""
 backfill_apply_command: ""

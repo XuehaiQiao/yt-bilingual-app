@@ -26,6 +26,8 @@ cp docs/release/templates/release-input.yaml /tmp/release-input.yaml
 ```bash
 git rev-parse --show-toplevel
 cd "$(git rev-parse --show-toplevel)"
+git fetch origin
+git checkout <release_sha>
 git status --porcelain   # 必须为空
 git rev-parse --short HEAD
 ```
@@ -87,8 +89,8 @@ bash scripts/release-acceptance-suite.sh
 /tmp/release/<version>-<sha>/
   release-report.json
   release-report.md
-  acceptance.tsv
-  logs/
+  acceptance/acceptance.tsv
+  acceptance/logs/
 ```
 
 报告必须符合 `docs/release/agent-report.schema.json`。

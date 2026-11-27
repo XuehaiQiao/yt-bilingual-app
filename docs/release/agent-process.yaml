@@ -23,6 +23,7 @@ inputs:
     - includes_backfill
     - rollback_image
   optional:
+    - production_backup_path
     - migration_rehearsal_command
     - backfill_dry_run_command
     - backfill_apply_command
@@ -63,6 +64,8 @@ forbidden:
 bootstrap:
   - command: "git rev-parse --show-toplevel"
     record: repo_root
+  - command: "git fetch origin"
+  - command: "git checkout {{ release_sha }}"
   - command: "git status --porcelain"
     expect: ""
   - command: "git rev-parse --short HEAD"
@@ -139,11 +142,11 @@ phases:
     owner: agent
     cwd: "{{ repo_root }}"
     steps:
-      - command: "bash scripts/release-acceptance-suite.sh"
+      - command: "OUT=/tmp/release/{{ version }}-{{ release_sha }}/acceptance bash scripts/release-acceptance-suite.sh"
         expect_exit: 0
         timeout_seconds: 1800
         record: acceptance_matrix
-        artifacts: /tmp/release/acceptance/acceptance.tsv
+        artifacts: "/tmp/release/{{ version }}-{{ release_sha }}/acceptance/acceptance.tsv"
     fail_if: [unexplained_failure, silent_skip]
     notes: |
       Per-script timeout is 300s. A known harness dependency may be SKIP only if
@@ -154,8 +157,7 @@ phases:
     when: includes_migration == true or includes_backfill == true
     steps:
       - action: copy_production_backup_to_tmp
-        source: "{{ production_backup_path }}"
-        target: /tmp/release-copy
+        command: "cp -a {{ production_backup_path }} /tmp/release-copy"
         note: only if Release Owner provided an already-made backup; agent never pulls from production
       - command: "{{ migration_rehearsal_command }}"
         expect_exit: 0
