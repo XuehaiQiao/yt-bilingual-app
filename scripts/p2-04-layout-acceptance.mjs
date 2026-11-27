@@ -544,6 +544,17 @@ const assertPage = async ({ name, prefix, url, ready, railIds }) => {
     // ── 1920: container widens to 1360 and centered, still two columns ───
     await page.setViewportSize({ width: 1920, height: 900 });
     await sleep(300);
+    // The 2xl container switch can land one frame after resize in a cold browser.
+    // Wait for the expected width, but let the assertions below report a real
+    // CSS regression if it never arrives.
+    await page.waitForFunction(
+        ({ testId, expected }) => {
+            const el = document.querySelector(`[data-testid="${testId}-layout"]`);
+            return Boolean(el) && Math.abs(el.getBoundingClientRect().width - expected) <= 2;
+        },
+        { testId: prefix, expected: 1360 },
+        { timeout: 5000 },
+    ).catch(() => {});
     const at1920 = await metrics(prefix);
     await page.screenshot({ path: SHOT(name, 1920) });
     assertNoOverflow(`${name} 1920`, at1920);
