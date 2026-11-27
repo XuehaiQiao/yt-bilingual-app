@@ -1,18 +1,36 @@
-# 语途 Release Agent 固定流程
-# 机器可读；Agent 只执行 environment: local 的步骤，production 一律 human_gate。
-version: 1
+# LinguaTrek Release Agent — fixed, context-free process.
+# The agent runs ONLY local steps. Production is always a human gate.
+version: 2
 process: linguatrek-release
 owner: Release Owner
+
+repo:
+  root: "{{ repo_root }}"                 # absolute path, from release-input.yaml
+  required_files:
+    - AGENTS.md
+    - backend/venv/bin/python
+    - backend/venv/bin/alembic
+    - frontend/node_modules
+    - docs/release/HUMAN_RUNBOOK.md
+    - docs/release/agent-report.schema.json
+
 inputs:
-  version: "vX.Y.Z"              # required
-  release_sha: "<git-sha>"       # required
-  release_type: "code"           # code | copy | schema | data | auth_cache | cost_security
-  includes_migration: false
-  includes_backfill: false
-  stack: "docker"                # docker | baremetal
-  app_dir: "/srv/ln/app"         # production only; agents must not use
-  local_api: "http://127.0.0.1:8000"
-  local_web: "http://127.0.0.1:5173"
+  required:
+    - version          # vX.Y.Z or vX.Y.Z-rc.N
+    - release_sha      # 7-40 hex chars
+    - release_type     # code | copy | schema | data | auth_cache | cost_security
+    - includes_migration
+    - includes_backfill
+    - rollback_image
+  optional:
+    - migration_rehearsal_command
+    - backfill_dry_run_command
+    - backfill_apply_command
+    - backfill_audit_command
+  local:
+    local_api: "http://127.0.0.1:8000"
+    local_web: "http://127.0.0.1:5173"
+  missing_input_policy: STOP_AND_ASK_RELEASE_OWNER
 
 policy:
   environment: local_only
@@ -24,6 +42,8 @@ policy:
 
 allowed:
   - read_repo
+  - start_local_services_if_absent
+  - stop_local_services_it_started
   - run_pytest
   - run_frontend_gates
   - run_local_acceptance
@@ -40,100 +60,153 @@ forbidden:
   - change_dns_smtp_provider
   - tag_or_push_without_owner
 
+bootstrap:
+  - command: "git rev-parse --show-toplevel"
+    record: repo_root
+  - command: "git status --porcelain"
+    expect: ""
+  - command: "git rev-parse --short HEAD"
+    expect: "{{ release_sha }}"
+  - command: "mkdir -p /tmp/release/{{ version }}-{{ release_sha }}"
+  - command: "command -v git python3 node npm curl sqlite3"
+    fail_if: "missing tool"
+  - check_local_service:
+      name: api
+      url: "{{ local_api }}/healthz"
+      if_absent: start_backend
+  - check_local_service:
+      name: web
+      url: "{{ local_web }}/"
+      if_absent: start_frontend
+
 phases:
   - id: p0-input
     owner: agent
     steps:
-      - verify version matches /^v\d+\.\d+\.\d+(-rc\.\d+)?$/
-      - verify release_sha is 7-40 hex chars
-      - verify includes_migration/backfill are booleans
-      - set output artifacts dir /tmp/release/<version>-<sha>/
-    fail_if: [missing_input, dirty_worktree_at_start]
+      - action: validate_input
+        rules:
+          version: '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$'
+          release_sha: '^[0-9a-f]{7,40}$'
+          release_type: '^(code|copy|schema|data|auth_cache|cost_security)$'
+      - action: require_inputs
+        when: includes_migration == true
+        fields: [migration_rehearsal_command]
+      - action: require_inputs
+        when: includes_backfill == true
+        fields: [backfill_dry_run_command, backfill_apply_command, backfill_audit_command]
+    fail_if: [missing_input, invalid_input]
+
   - id: p1-repo
     owner: agent
     steps:
-      - command: "git status --porcelain"
-        expect: ""
-      - command: "git rev-parse --short HEAD"
-        expect: "$release_sha"
       - command: "git log -1 --oneline"
-    fail_if: [dirty, sha_mismatch]
+      - command: "git merge-base --is-ancestor {{ release_sha }} HEAD"
+        expect_exit: 0
+      - command: "git rev-parse --short HEAD"
+        expect: "{{ release_sha }}"
+    fail_if: [sha_mismatch, dirty_worktree]
+
   - id: p2-backend
     owner: agent
+    cwd: "{{ repo_root }}/backend"
     steps:
-      - command: "cd backend && venv/bin/python -m pytest tests -q"
+      - command: "venv/bin/python -m pytest tests -q"
         expect_exit: 0
+        timeout_seconds: 900
         record: pytest_summary
-      - command: "cd backend && venv/bin/python -m compileall -q ."
+      - command: "venv/bin/python -m compileall -q ."
         expect_exit: 0
-      - command: "cd backend && venv/bin/alembic heads"
-        expect: "single_head"
-      - command: "cd backend && venv/bin/alembic current"
+      - command: "venv/bin/alembic heads"
+        expect: single_head
+      - command: "venv/bin/alembic current"
         record: local_current
+    fail_if: [pytest_failed, compile_failed, multiple_heads]
+
   - id: p3-frontend
     owner: agent
+    cwd: "{{ repo_root }}/frontend"
     steps:
-      - command: "cd frontend && npx tsc -b"
+      - command: "npx tsc -b"
         expect_exit: 0
-      - command: "cd frontend && npm run build"
+      - command: "npm run build"
         expect_exit: 0
-      - command: "cd frontend && npm run check:i18n"
+      - command: "npm run check:i18n"
         expect_exit: 0
         record: i18n_summary
+    fail_if: [tsc_failed, build_failed, i18n_failed]
+
   - id: p4-acceptance
     owner: agent
+    cwd: "{{ repo_root }}"
     steps:
-      - command: "node scripts/cache-isolation-acceptance.mjs"
+      - command: "bash scripts/release-acceptance-suite.sh"
         expect_exit: 0
-      - command: "node scripts/watch-mode-acceptance.mjs"
-        expect_exit: 0
-      - command: "node scripts/v11-p0-acceptance.mjs"
-        expect_exit: 0
-      - command: "run every scripts/*acceptance*.mjs with per-script timeout 300s"
+        timeout_seconds: 1800
         record: acceptance_matrix
-        allow_skip: only_if_documented_harness_dependency
+        artifacts: /tmp/release/acceptance/acceptance.tsv
     fail_if: [unexplained_failure, silent_skip]
+    notes: |
+      Per-script timeout is 300s. A known harness dependency may be SKIP only if
+      documented in the report with a reason and owner; never silently skip.
+
   - id: p5-migration
     owner: agent
-    when: includes_migration or includes_backfill
+    when: includes_migration == true or includes_backfill == true
     steps:
-      - copy_production_backup_to_tmp
-      - command: "run scripts/rehearse_v11_migration.sh --source-data /tmp/release-copy"
-        note: adapt script to current migration; never touch production
-      - verify: upgrade_current_equals_head
-      - verify: old_table_hashes_match_allowlist
-      - verify: downgrade_if_safe
-      - verify: restore_works
-      - verify: backfill_dry_run_and_audit
+      - action: copy_production_backup_to_tmp
+        source: "{{ production_backup_path }}"
+        target: /tmp/release-copy
+        note: only if Release Owner provided an already-made backup; agent never pulls from production
+      - command: "{{ migration_rehearsal_command }}"
+        expect_exit: 0
+        record: migration_rehearsal
+      - action: verify
+        name: upgrade_current_equals_head
+      - action: verify
+        name: old_table_hashes_match_allowlist
+      - action: verify
+        name: downgrade_if_safe
+      - action: verify
+        name: restore_works
+      - command: "{{ backfill_dry_run_command }}"
+        when: includes_backfill == true
+        expect_exit: 0
+      - command: "{{ backfill_apply_command }}"
+        when: includes_backfill == true
+        expect_exit: 0
+      - command: "{{ backfill_audit_command }}"
+        when: includes_backfill == true
+        expect_exit: 0
     fail_if: [rehearsal_fail, missing_backup, destructive_downgrade]
+    if_missing_command: STOP_ASK_RELEASE_OWNER
+
   - id: p6-report
     owner: agent
     steps:
-      - write_json report to /tmp/release/<version>-<sha>/release-report.json
-      - write_markdown summary to /tmp/release/<version>-<sha>/release-report.md
-      - include: checks, evidence_paths, blockers, rollback_image, migration_notes
-      - status: GO | NO_GO
-      - human_gate: true
-      - command: "stop; do not deploy"
+      - action: write_json
+        path: "/tmp/release/{{ version }}-{{ release_sha }}/release-report.json"
+        schema: docs/release/agent-report.schema.json
+      - action: write_markdown
+        path: "/tmp/release/{{ version }}-{{ release_sha }}/release-report.md"
+      - action: set_status
+        value: GO_IF_ALL_CHECKS_PASS_ELSE_NO_GO
+      - action: human_gate
+        before: production_deploy
+        message: "Stop here. Human reads HUMAN_RUNBOOK.md and executes production."
 
-report_schema:
-  version: string
-  release_sha: string
-  status: "GO | NO_GO"
-  checks:
-    - id: string
-      status: "PASS | FAIL | SKIP"
-      detail: string
-      evidence: string
-  blockers: [string]
-  rollback_image: string
-  migration_notes: string
-  acceptance: {pass: number, fail: number, skip: number}
-  generated_at: ISO8601
+cleanup:
+  - action: stop_local_services
+    only: services_started_by_agent
+  - action: keep_artifacts
+    paths:
+      - "/tmp/release/{{ version }}-{{ release_sha }}"
 
 human_handoff:
   required: true
   before: production_deploy
   owner: Release Owner
-  must_review: [release-report.md, checklist, blockers]
+  must_review:
+    - release-report.md
+    - release-report.json
+    - version-release-checklist.md
   production_steps: docs/release/HUMAN_RUNBOOK.md

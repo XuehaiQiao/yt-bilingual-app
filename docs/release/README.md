@@ -418,11 +418,19 @@ git push origin vX.Y.Z
 
 ---
 
-## 16. Agent / 人工边界
+## 16. 无上下文 Agent 入口
+
+- 快速启动：[AGENT_QUICKSTART.md](./AGENT_QUICKSTART.md)
+- 输入模板：[templates/release-input.yaml](./templates/release-input.yaml)
+- 固定流程：[agent-process.yaml](./agent-process.yaml)
+- 全量验收：`bash scripts/release-acceptance-suite.sh`
+
+## 17. Agent / 人工边界
 
 | 步骤 | Agent | 开发者本人 |
 |---|---|---|
-| 代码、测试、构建、本地验收 | ✅ | 复核 |
+| 代码、测试、本地前端构建、本地验收 | ✅ | 复核 |
+| 生产镜像构建 / tag / 部署 | ❌ | ✅ |
 | 数据副本迁移演练 | ✅ | 复核 |
 | 生成 release report | ✅ | 阅读 |
 | 生产 SSH/凭据/DNS/SMTP/供应商限额 | ❌ | ✅ |
@@ -433,3 +441,24 @@ git push origin vX.Y.Z
 
 - Agent 固定流程：[agent-process.yaml](./agent-process.yaml) + [report schema](./agent-report.schema.json)
 - 人工逐步手册：[HUMAN_RUNBOOK.md](./HUMAN_RUNBOOK.md)
+
+---
+
+## 18. 通用性约定（换版本只改输入，不改流程）
+
+1. **版本差异只允许出现在**：
+   - `templates/release-input.yaml`（版本、SHA、是否迁移/回填、演练/回填命令）
+   - 该版本 release notes / checklist
+   - 版本专用迁移/回填脚本
+2. **流程文件不写死版本号**：`agent-process.yaml` 不含 v1.1.1 专属路径/脚本名。
+3. **新增迁移时**必须提供：
+   - `migration_rehearsal_command`
+   - 回填时的 `backfill_dry_run_command` / `backfill_apply_command` / `backfill_audit_command`
+   - 没有就由 Release Owner 补；Agent 不得即兴执行。
+4. **新增 acceptance 脚本**只要命名匹配 `scripts/*acceptance*.mjs`，自动进入全量套件；依赖专用 harness 的必须在脚本头注释并让 Agent 在报告中写 SKIP 原因。
+5. **仓库结构变化时**先改 `agent-process.yaml` 的 `repo.required_files` 和 `bootstrap`，不要靠口头约定。
+6. **已知限制**：
+   - Agent 不能读生产 `.env`、不能执行生产迁移
+   - 自动化只到本地门禁 + 数据副本演练
+   - 生产镜像构建、备份、迁移、冒烟、回滚由人完成
+7. **每次复盘**：如果某次门禁漏了问题，先把检查项写进 `templates/version-release-checklist.md`，再发下一个版本。

@@ -10,6 +10,8 @@
 - 是否含缓存/身份变更：否 / 是
 - 回滚目标镜像：
 - 回滚目标 DB 版本：
+- Agent 报告：`/tmp/release/<version>-<sha>/release-report.md`
+- Release 输入：`/tmp/release-input.yaml`
 
 ## 1. 范围与冻结
 
@@ -18,6 +20,14 @@
 - [ ] 无冻结后夹带
 - [ ] 已知问题已列
 - [ ] 文案/中越 i18n 已审
+
+## 1.5 候选构建
+
+- [ ] release SHA 干净
+- [ ] 新镜像 tag = release SHA
+- [ ] 旧生产镜像 tag 仍存在
+- [ ] git tag 已创建/推送（候选通过后）
+- [ ] `APP_VERSION` 正确
 
 ## 2. 本地门禁
 

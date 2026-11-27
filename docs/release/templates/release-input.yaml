@@ -1,0 +1,21 @@
+# 每次发版复制到 /tmp/release-input.yaml 并填写。
+# 无上下文的 Agent 只依赖本文件 + docs/release/AGENT_QUICKSTART.md。
+version: "vX.Y.Z"
+release_sha: "<7-40 git sha>"
+release_type: code        # code | copy | schema | data | auth_cache | cost_security
+includes_migration: false
+includes_backfill: false
+repo_root: "<absolute path to yt-bilingual-app>"
+local_api: "http://127.0.0.1:8000"
+local_web: "http://127.0.0.1:5173"
+
+# 如有迁移/回填，Release Owner 必须提供可执行命令/脚本；没有就停，不要即兴。
+migration_rehearsal_command: ""
+backfill_dry_run_command: ""
+backfill_apply_command: ""
+backfill_audit_command: ""
+
+# 生产发布由人执行；Agent 只生成 handoff。
+rollback_image: "<previous image tag>"
+release_owner: "<name>"
+notes: ""
