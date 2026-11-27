@@ -13,7 +13,7 @@
 - 是否含迁移/回填
 - 回滚镜像 tag
 - `repo_root`（仓库绝对路径）
-- 如含迁移/回填：本机备份副本路径与验收/回填/审计命令
+- 如含迁移/回填：`production_backup_path` 必须是 Release Owner 已复制到本机 `/tmp` 的副本（不要读 `/srv/ln/backups`），以及迁移验收/回填/审计命令
 
 没有这些，**停止并询问**，不要猜。
 
@@ -68,6 +68,7 @@ npx playwright install chromium
   export CHROME_PATH="$(cd scripts && node -e 'console.log(require("playwright").chromium.executablePath())')"
   ```
 - **Linux/CI** 不能依赖脚本里写死的 macOS Chrome 路径；必须设置上述环境变量。
+- **注意**：部分脚本使用 `channel: 'chrome'`，需要系统安装 Google Chrome；只装 Playwright chromium 不够。Linux 请安装 `google-chrome`，或按脚本注释改为 `executablePath`。
 - 验收脚本若因浏览器/harness 缺失无法跑，必须写 SKIP 原因，不能静默跳过。
 
 本地服务未启动时：
