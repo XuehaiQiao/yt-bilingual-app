@@ -11,7 +11,10 @@ local_web: "http://127.0.0.1:5173"
 
 # 如有迁移/回填，Release Owner 必须提供宿主可执行命令/脚本；没有就停，不要即兴。
 # migration_* / backfill_* 命令在 Agent 本机执行，只读副本，不得碰生产。
-production_backup_path: ""   # 必须先由人复制到本机 /tmp；禁止填 /srv/ln/backups
+# 命令可读取：RELEASE_DATA_DIR=/tmp/release-copy、AUTH_DB_PATH=/tmp/release-copy/app.db、
+# USER_DATA_DIR=/tmp/release-copy/users。
+production_backup_path: ""   # 人已解包的备份数据目录（含 app.db/users），放 /tmp；禁止 /srv/ln/backups
+rollback_db_revision: ""     # 迁移前 alembic current；用于人工降级
 migration_rehearsal_command: ""  # includes_migration=true 时必填；宿主可执行
 migration_verify_command: ""     # includes_migration/backfill=true 时必填；校验 upgrade/downgrade/restore
 backfill_dry_run_command: ""

@@ -51,11 +51,11 @@ test -d frontend/node_modules
 test -d scripts/node_modules
 ```
 
-如果 `scripts/node_modules` 不存在：
+任一项缺失：
 
 ```bash
-cd scripts
-npm ci
+./setup.sh                      # backend venv + frontend deps
+cd scripts && npm ci            # Playwright acceptance deps
 npx playwright install chromium
 ```
 
@@ -134,9 +134,10 @@ ONLY=admin-feedback OUT=/tmp/release-debug bash scripts/release-acceptance-suite
 - 每个 `scripts/*acceptance*.mjs` 一条，`id` = 文件名去掉 `.mjs`
 - `status` 从 `acceptance.tsv` 取 PASS/FAIL/TIMEOUT/SKIP
 - `evidence` = 对应 log 路径
-- SKIP 必须在 `detail` 写原因；没有原因的 SKIP 视为 FAIL
+- 发布 GO 要求 **0 SKIP**；SKIP 只用于本地调试，报告中出现 SKIP/TIMEOUT 即 `NO_GO`
+- 重试通过（`retry-pass`）按 PASS 记录，但保留首次/重试日志
 - `acceptance.pass/fail/skip` 直接来自 TSV 计数
-- 全 PASS 且 blockers 为空才写 `status: GO`，否则 `NO_GO`
+- 全 PASS（无 SKIP/TIMEOUT）且 blockers 为空才写 `status: GO`，否则 `NO_GO`
 
 ## 6. 交接
 

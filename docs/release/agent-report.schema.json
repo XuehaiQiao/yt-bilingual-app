@@ -2,35 +2,144 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LinguaTrek Release Agent Report",
   "type": "object",
-  "required": ["version", "release_sha", "status", "checks", "blockers", "rollback_image", "generated_at"],
+  "required": [
+    "version",
+    "release_sha",
+    "status",
+    "checks",
+    "blockers",
+    "rollback_image",
+    "generated_at"
+  ],
   "properties": {
-    "version": {"type": "string", "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?$"},
-    "release_sha": {"type": "string", "minLength": 7},
-    "status": {"enum": ["GO", "NO_GO"]},
+    "version": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?$"
+    },
+    "release_sha": {
+      "type": "string",
+      "minLength": 7
+    },
+    "status": {
+      "enum": [
+        "GO",
+        "NO_GO"
+      ]
+    },
     "checks": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "status", "detail"],
+        "required": [
+          "id",
+          "status",
+          "detail"
+        ],
         "properties": {
-          "id": {"type": "string"},
-          "status": {"enum": ["PASS", "FAIL", "SKIP"]},
-          "detail": {"type": "string"},
-          "evidence": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              "SKIP",
+              "TIMEOUT"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          }
         }
+      },
+      "minItems": 1
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string"
       }
     },
-    "blockers": {"type": "array", "items": {"type": "string"}},
-    "rollback_image": {"type": "string"},
-    "migration_notes": {"type": "string"},
+    "rollback_image": {
+      "type": "string"
+    },
+    "migration_notes": {
+      "type": "string"
+    },
     "acceptance": {
       "type": "object",
       "properties": {
-        "pass": {"type": "integer", "minimum": 0},
-        "fail": {"type": "integer", "minimum": 0},
-        "skip": {"type": "integer", "minimum": 0}
+        "pass": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fail": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skip": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
-    "generated_at": {"type": "string", "format": "date-time"}
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "pytest": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "integer"
+        },
+        "passed": {
+          "type": "integer"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "evidence": {
+          "type": "string"
+        }
+      }
+    },
+    "frontend": {
+      "type": "object",
+      "properties": {
+        "tsc": {
+          "type": "string"
+        },
+        "build": {
+          "type": "string"
+        },
+        "i18n": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        }
+      }
+    },
+    "migration": {
+      "type": "object",
+      "properties": {
+        "rehearsed": {
+          "type": "boolean"
+        },
+        "verify": {
+          "type": "string"
+        },
+        "backfill_audit": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        }
+      }
+    }
   }
 }

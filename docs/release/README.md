@@ -436,7 +436,7 @@ git push origin vX.Y.Z
 | 生产 SSH/凭据/DNS/SMTP/供应商限额 | ❌ | ✅ |
 | 生产备份/离机副本 | ❌（只能给命令） | ✅ |
 | 生产迁移/回填 | ❌ | ✅ 或明确授权后由 Release Owner 执行 |
-| 生产冒烟 | 部分只读检查 | ✅ 浏览器/真邮箱/管理员 |
+| 生产冒烟 | ❌（不碰生产） | ✅ 浏览器/真邮箱/管理员 |
 | Go/No-Go/回滚决定 | ❌ | ✅ |
 
 - Agent 固定流程：[agent-process.yaml](./agent-process.yaml) + [report schema](./agent-report.schema.json)

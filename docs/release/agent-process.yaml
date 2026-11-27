@@ -99,14 +99,15 @@ phases:
           release_sha: '^[0-9a-f]{7,40}$'
           release_type: '^(code|copy|schema|data|auth_cache|cost_security)$'
           repo_root: '^/'
+          rollback_image: '.+'
       - action: require_inputs
         when: includes_migration == true
-        fields: [production_backup_path, migration_rehearsal_command, migration_verify_command]
+        fields: [production_backup_path, migration_rehearsal_command, migration_verify_command, rollback_db_revision]
         non_empty: true
         path_prefix: /tmp/
       - action: require_inputs
         when: includes_backfill == true
-        fields: [production_backup_path, migration_verify_command, backfill_dry_run_command, backfill_apply_command, backfill_audit_command]
+        fields: [production_backup_path, migration_verify_command, backfill_dry_run_command, backfill_apply_command, backfill_audit_command, rollback_db_revision]
         non_empty: true
         path_prefix: /tmp/
     fail_if: [missing_input, invalid_input, empty_command]
@@ -159,20 +160,25 @@ phases:
     steps:
       - command: "OUT=/tmp/release/{{ version }}-{{ release_sha }}/acceptance SKIP=\"{{ skip_scripts }}\" SKIP_REASON=\"{{ skip_reason }}\" bash scripts/release-acceptance-suite.sh"
         expect_exit: 0
-        timeout_seconds: 1800
+        timeout_seconds: 7200
         record: acceptance_matrix
         artifacts: "/tmp/release/{{ version }}-{{ release_sha }}/acceptance/acceptance.tsv"
     fail_if: [unexplained_failure, silent_skip]
     notes: |
       The suite writes one TSV row per script (PASS/FAIL/TIMEOUT/SKIP).
-      SKIP is allowed only when skip_reason is non-empty and the script is
-      genuinely dependent on an unavailable harness; otherwise NO_GO.
+      For release, SKIP is diagnostic only and forces NO_GO; do not use it
+      to bypass a failing harness. Retry-pass is recorded and allowed.
 
   - id: p5-migration
     owner: agent
+    cwd: "{{ repo_root }}"
     when: includes_migration == true or includes_backfill == true
+    environment:
+      RELEASE_DATA_DIR: /tmp/release-copy
+      AUTH_DB_PATH: /tmp/release-copy/app.db
+      USER_DATA_DIR: /tmp/release-copy/users
     steps:
-      - command: "cp -a \"{{ production_backup_path }}\" /tmp/release-copy"
+      - command: "rm -rf /tmp/release-copy && cp -a \"{{ production_backup_path }}\" /tmp/release-copy"
         expect_exit: 0
         note: production_backup_path must already be a LOCAL copy under /tmp; never /srv/ln/backups
       - command: "{{ migration_rehearsal_command }}"
@@ -199,6 +205,7 @@ phases:
 
   - id: p6-report
     owner: agent
+    cwd: "{{ repo_root }}"
     steps:
       - action: write_json
         path: "/tmp/release/{{ version }}-{{ release_sha }}/release-report.json"

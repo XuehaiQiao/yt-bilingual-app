@@ -35,9 +35,11 @@ export VERSION="<vX.Y.Z>"
 export RELEASE_SHA="$(git rev-parse --short HEAD)"
 export IMAGE_TAG="$RELEASE_SHA"
 export APP_VERSION="$VERSION"
-export OLD_IMAGE="$(docker inspect -f '{{.Config.Image}}' linguatrek-app-1 2>/dev/null || true)"
-echo "old image: $OLD_IMAGE"
-test -n "$OLD_IMAGE" || { echo "找不到旧镜像 tag，先确认回滚目标"; exit 1; }
+export OLD_IMAGE_REF="$(docker inspect -f '{{.Config.Image}}' linguatrek-app-1 2>/dev/null || true)"
+export OLD_IMAGE_TAG="${OLD_IMAGE_REF##*:}"
+echo "old image: $OLD_IMAGE_REF (tag $OLD_IMAGE_TAG)"
+test -n "$OLD_IMAGE_TAG" || { echo "找不到旧镜像 tag，先确认回滚目标"; exit 1; }
+docker compose run --rm --no-deps app alembic current | awk '/^[0-9]/{print $1; exit}' | tee /tmp/rollback-db-revision.txt
 ```
 
 构建**新镜像**（不要跳过；生产回滚靠旧 tag）：
@@ -51,7 +53,7 @@ docker images | grep linguatrek
 
 - [ ] 新镜像 tag = release SHA
 - [ ] 旧生产镜像 tag 仍存在（回滚用）
-- [ ] 已记录旧生产镜像 tag：`OLD_IMAGE=<tag>`
+- [ ] 已记录旧生产镜像 tag：`OLD_IMAGE_TAG=<tag>`（完整引用在 `OLD_IMAGE_REF`）
 - [ ] `APP_VERSION` 正确
 
 打 tag（候选验收通过后；失败不复用同名 tag）：
@@ -93,15 +95,17 @@ sha256sum /srv/ln/backups/linguatrek-backup-*.tar.gz | tail
 - [ ] 解压列表可读：`tar -tzf <包> | head`
 - [ ] 恢复到临时目录验证（不覆盖 /data）：
 ```bash
-mkdir -p /tmp/restore-check
+mkdir -p /srv/ln/restore-check
 docker compose run --rm --no-deps \
-  -v /srv/ln/backups:/backups \
+  -v /srv/ln/backups:/backups:ro \
   -v /srv/ln/app/scripts:/scripts:ro \
+  -v /srv/ln/restore-check:/restore-check \
   --entrypoint /bin/bash app \
-  /scripts/restore.sh /backups/<backup>.tar.gz --to /tmp/restore-check
+  /scripts/restore.sh /backups/<backup>.tar.gz --to /restore-check
 ```
-- [ ] 复制到离机存储
-- [ ] 远端能列出
+- [ ] 复制到离机存储（示例：`rclone copy /srv/ln/backups/ remote:linguatrek-backups/`）
+- [ ] 远端能列出：`rclone ls remote:linguatrek-backups/ | tail`
+- [ ] 远端 SHA 与本地一致：`rclone sha256sum remote:linguatrek-backups/<file>`
 - [ ] 记录文件名/SHA
 
 **没有离机副本，不要继续。**
@@ -233,8 +237,10 @@ DB 保留新版本；旧代码通常兼容增量表/列。
 
 ```bash
 docker compose stop app
-export IMAGE_TAG="$OLD_IMAGE"          # 回旧代码，避免新代码配旧 schema
-docker compose run --rm --no-deps app alembic downgrade <previous-revision>
+export IMAGE_TAG="$OLD_IMAGE_TAG"      # 回旧代码，避免新代码配旧 schema
+export ROLLBACK_DB_REVISION="$(cat /tmp/rollback-db-revision.txt)"
+test -n "$ROLLBACK_DB_REVISION" || { echo "缺少回滚 DB revision"; exit 1; }
+docker compose run --rm --no-deps app alembic downgrade "$ROLLBACK_DB_REVISION"
 docker compose up -d
 ```
 

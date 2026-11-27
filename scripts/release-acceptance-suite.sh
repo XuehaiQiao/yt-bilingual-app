@@ -34,8 +34,16 @@ export PLAYWRIGHT_CHROMIUM_EXECUTABLE="${PLAYWRIGHT_CHROMIUM_EXECUTABLE:-$CHROME
 
 mkdir -p "$OUT/logs"
 TSV="$OUT/acceptance.tsv"
+META="$OUT/meta.txt"
 : > "$TSV"
-pass=0; fail=0; skip=0
+{
+  echo "suite=release-acceptance"
+  echo "app_url=$WEB"
+  echo "api_url=$API"
+  echo "repo_head=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+  echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+} > "$META"
+pass=0; fail=0; skip=0; total=0
 
 if ! command -v timeout >/dev/null 2>&1; then
   echo "ERROR: timeout not found (install coreutils)" >&2
@@ -48,6 +56,7 @@ for f in "$ROOT"/scripts/*acceptance*.mjs; do
   if [ -n "$ONLY" ] && ! printf '%s\n' "$name" | grep -Eq "$ONLY"; then
     continue
   fi
+  total=$((total+1))
   if [ -n "$SKIP" ] && printf '%s\n' "$name" | grep -Eq "$SKIP"; then
     if [ -z "$SKIP_REASON" ]; then
       printf 'FAIL\t%s\t0s\t-\tskip requested without reason\n' "$name" | tee -a "$TSV"
@@ -82,5 +91,7 @@ for f in "$ROOT"/scripts/*acceptance*.mjs; do
   else status=FAIL; note="-"; fail=$((fail+1)); fi
   printf '%s\t%s\t%ss\t%s\t%s\n' "$status" "$name" "$elapsed" "$log" "$note" | tee -a "$TSV"
 done
-printf '\nPASS=%s FAIL=%s SKIP=%s\n' "$pass" "$fail" "$skip"
-[ "$fail" -eq 0 ]
+printf '\nTOTAL=%s PASS=%s FAIL=%s SKIP=%s\n' "$total" "$pass" "$fail" "$skip"
+# A release gate requires at least one executed acceptance and zero SKIP.
+# SKIP exists only for local debugging; it can never produce a GO report.
+[ "$total" -gt 0 ] && [ "$fail" -eq 0 ] && [ "$skip" -eq 0 ]
