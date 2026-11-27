@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="语途 LinguaTrek 章鱼标志">
+  <rect width="512" height="512" rx="112" fill="#09090B"/>
+  <path d="M150 238C150 170 196 128 256 128C316 128 362 170 362 238V270C362 310 330 336 286 336H226C182 336 150 310 150 270V238Z" fill="#0A84FF"/>
+  <circle cx="220" cy="238" r="14" fill="#09090B"/>
+  <circle cx="292" cy="238" r="14" fill="#09090B"/>
+  <path d="M236 270C244 280 268 280 276 270" fill="none" stroke="#09090B" stroke-width="12" stroke-linecap="round"/>
+  <g fill="none" stroke="#0A84FF" stroke-width="22" stroke-linecap="round">
+    <path d="M196 332C184 360 184 384 196 404"/>
+    <path d="M232 336C224 370 226 394 238 414"/>
+    <path d="M278 336C286 370 284 394 272 414"/>
+    <path d="M316 332C328 360 328 384 316 404"/>
+  </g>
+  <circle cx="196" cy="414" r="11" fill="#0A84FF"/>
+  <circle cx="316" cy="414" r="11" fill="#0A84FF"/>
+</svg>

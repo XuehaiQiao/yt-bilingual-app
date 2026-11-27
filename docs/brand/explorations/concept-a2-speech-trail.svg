@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="语途 LinguaTrek 语音轨迹标志">
+  <rect width="512" height="512" rx="112" fill="#09090B"/>
+  <path d="M156 146H356C388 146 412 170 412 202V278C412 310 388 334 356 334H300L266 374L250 334H156C124 334 100 310 100 278V202C100 170 124 146 156 146Z"
+        fill="none" stroke="#0A84FF" stroke-width="28" stroke-linejoin="round"/>
+  <circle cx="218" cy="388" r="9" fill="#0A84FF"/>
+  <circle cx="252" cy="404" r="12" fill="#0A84FF"/>
+  <circle cx="292" cy="416" r="16" fill="#0A84FF"/>
+</svg>
