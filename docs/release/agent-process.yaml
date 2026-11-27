@@ -119,10 +119,10 @@ phases:
 report_schema:
   version: string
   release_sha: string
-  status: "GO" | "NO_GO"
+  status: "GO | NO_GO"
   checks:
     - id: string
-      status: "PASS" | "FAIL" | "SKIP"
+      status: "PASS | FAIL | SKIP"
       detail: string
       evidence: string
   blockers: [string]
