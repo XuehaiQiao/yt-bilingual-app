@@ -40,8 +40,8 @@
   `frontend/src/components/VocabularyBookScreen.tsx`（tab + 工具栏 + 服务端分页 + 三态）、
   `frontend/src/components/VocabularyRows.tsx`（只读 `LemmaTable`，无星标/勾选/编辑/批量/导出）。
 - 文案：`frontend/src/i18n/zh-CN.json`、`frontend/src/i18n/vi-VN.json`。
-- 验收：`backend/tests/test_lemma_list.py`（真实 10k 数据）、
-  `scripts/cefr-lemma-acceptance.mjs`（UI，mock 后端）、截图 `/tmp/p1-02-*.png`。
+- 验收：`backend/tests/test_lemma_list.py`（真实 10k 数据）。
+  UI 脚本 `scripts/cefr-lemma-acceptance.mjs` 已随本功能退役删除（P2-53）；当前词族验收以 `scripts/word-family-acceptance.mjs` 为准。
 - 「词形」tab 用独立测试钩子 `vocab-lemma-tab`（不属于既有 `vocab-tab-*`
   命名空间），因此 `mastered-tab` / `mastered-filter` / `wordbook-v12` 三个既有
   验收脚本的 tab 顺序与计数断言保持原样、零回归。

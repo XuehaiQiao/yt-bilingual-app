@@ -1815,6 +1815,19 @@
         "frontend/src/i18n/"
       ],
       "deps": []
+    },
+    {
+      "id": "P2-53",
+      "file": "TASKS/P2-53-retire-stale-acceptance.md",
+      "status": "merged",
+      "owner": "lead",
+      "write_scope": [
+        "scripts/cefr-lemma-acceptance.mjs",
+        "specs/040-cefr-lemma-list/spec.md",
+        "TASKS/P2-53-retire-stale-acceptance.md"
+      ],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
