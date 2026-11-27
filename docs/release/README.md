@@ -374,3 +374,44 @@ cp docs/release/templates/version-release-checklist.md \
 
 填写、逐项打勾、存档。  
 流程本身变更时改本文件，不另起一套。
+
+---
+
+## 13. Git tag 与发布标识
+
+候选验收通过后：
+
+```bash
+git status --porcelain          # 必须空
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+- tag 必须指向 release SHA
+- 镜像 tag 用 release SHA，`APP_VERSION` 用 `vX.Y.Z`
+- 生产验证通过后再发 release notes；tag 不随生产结果移动
+- 如候选失败，删除本地/远端 tag 后重来，不复用同名 tag
+
+---
+
+## 14. 自动化建议（逐步补齐）
+
+| 阶段 | 自动化 |
+|---|---|
+| PR | backend pytest、frontend tsc/build/i18n、相关 acceptance |
+| 每日 | `scripts/*acceptance*.mjs` 全量 + 缓存隔离 |
+| release tag | 构建镜像、生成 release notes 草稿 |
+| 生产前 | 备份状态、迁移 head、预算/密钥检查 |
+| 生产后 | health/API 冒烟、24h 指标汇总 |
+
+**不要自动化生产迁移本身**：迁移必须有人确认备份、窗口和回滚。
+
+---
+
+## 15. 失败处理
+
+- 本地门禁失败：修到绿，不进入候选
+- 构建失败：不部署，旧版本继续跑
+- 迁移失败：停写，按备份恢复/降级；不连续重试写库
+- 冒烟失败：立即回滚代码，保留现场日志
+- 24h 内异常：按回滚矩阵处理，不删证据
