@@ -1828,6 +1828,15 @@
       ],
       "shared_writes": [],
       "deps": []
+    },
+    {
+      "id": "P2-54",
+      "file": "TASKS/P2-54-local-video-watch-deferred.md",
+      "status": "deferred",
+      "owner": "unassigned",
+      "write_scope": [],
+      "shared_writes": [],
+      "deps": []
     }
   ]
 }
