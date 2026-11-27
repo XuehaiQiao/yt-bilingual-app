@@ -435,7 +435,7 @@ git push origin vX.Y.Z
 | 生成 release report | ✅ | 阅读 |
 | 生产 SSH/凭据/DNS/SMTP/供应商限额 | ❌ | ✅ |
 | 生产备份/离机副本 | ❌（只能给命令） | ✅ |
-| 生产迁移/回填 | ❌ | ✅ 或明确授权后由 Release Owner 执行 |
+| 生产迁移/回填 | ❌ | ✅（由 Release Owner 执行） |
 | 生产冒烟 | ❌（不碰生产） | ✅ 浏览器/真邮箱/管理员 |
 | Go/No-Go/回滚决定 | ❌ | ✅ |
 

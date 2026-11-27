@@ -39,7 +39,8 @@ export OLD_IMAGE_REF="$(docker inspect -f '{{.Config.Image}}' linguatrek-app-1 2
 export OLD_IMAGE_TAG="${OLD_IMAGE_REF##*:}"
 echo "old image: $OLD_IMAGE_REF (tag $OLD_IMAGE_TAG)"
 test -n "$OLD_IMAGE_TAG" || { echo "找不到旧镜像 tag，先确认回滚目标"; exit 1; }
-docker compose run --rm --no-deps app alembic current | awk '/^[0-9]/{print $1; exit}' | tee /tmp/rollback-db-revision.txt
+IMAGE_TAG="$OLD_IMAGE_TAG" docker compose run --rm --no-deps app alembic current \
+  | awk '/^[0-9]/{print $1; exit}' | tee /tmp/rollback-db-revision.txt
 ```
 
 构建**新镜像**（不要跳过；生产回滚靠旧 tag）：
