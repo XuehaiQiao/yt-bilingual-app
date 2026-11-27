@@ -13,14 +13,7 @@
 气泡不是封闭的图标，而是从一句话延伸出一段路。  
 它不承诺“打卡完成”，只表示：**从这段内容出发，继续往前走。**
 
-## 2. 为什么不是章鱼
-
-项目原有的章鱼是**吉祥物**，有亲和力，但作为主标志在 32px 下细节过多，也不直接表达「语言 + 路径」。
-
-本方案保留章鱼作为可选的插画/吉祥物，不把吉祥物和主标志混在一起。  
-主标志负责识别，章鱼负责性格。
-
-## 3. 色彩
+## 2. 色彩
 
 | 用途 | 色值 |
 |---|---|
@@ -32,7 +25,7 @@
 只用品牌蓝 + 中性色，不使用渐变、发光或第二强调色。  
 这与产品的设计系统一致：单一交互蓝，深色界面，克制。
 
-## 4. 文件
+## 3. 文件
 
 ### 主标志
 
@@ -58,16 +51,15 @@
 |---|---|
 | `lockup-horizontal-dark.svg` | 深色底透明版 |
 | `lockup-horizontal-dark-bg.png` | 深色底预览/直接使用 |
-| `lockup-horizontal-light.svg/png` | 浅色底 |
+| `lockup-horizontal-light.svg` / `.png` | 浅色底 |
 | `lockup-stacked-dark.svg` | 竖版透明 |
 | `lockup-stacked-dark-bg.png` | 竖版深色底 |
 
 ### 预览
 
 - `logo-preview.png`：完整品牌预览
-- `explorations/logo-directions.png`：早期三个方向（含章鱼方案）
 
-## 5. 使用规则
+## 4. 使用规则
 
 ### 最小尺寸
 
@@ -85,17 +77,17 @@
 - 不给标志加阴影、描边、渐变、发光
 - 不把蓝色标志放在低对比度背景上
 - 不在图标内部再加文字
-- 不用旧章鱼图替代主标志
 
-## 6. 与产品结合
+## 5. 与产品结合
 
-当前线上仍是旧图标；确认方案后再替换：
+已接入前端静态资源（待下一次部署生效）：
 
 - `app-icon-512.png` → `frontend/public/hero_icon.png`
 - `app-icon-180.png` → `frontend/public/apple-touch-icon.png`
-- `favicon-32.png` → favicon
-- `lockup-horizontal-dark-bg.png` → 官网/README 顶部品牌组合
+- `favicon-32.png` → `frontend/public/favicon-32.png` / `index.html`
+- PWA：`pwa-192.png`、`pwa-512.png`、`pwa-maskable-512.png`
+- `lockup-horizontal-dark-bg.png` 可用于官网/README 顶部品牌组合
 
 > 锁定组合中的「语途 / LinguaTrek」目前使用系统无衬线字体。跨平台印刷或投放时优先使用 PNG；若必须用 SVG，建议先转曲/嵌入字体。
 
-替换前先在实际页面 1440 / 390 两种宽度检查；不要把本目录的探索稿直接上线。
+替换后需在实际页面 1440 / 390 两种宽度检查。

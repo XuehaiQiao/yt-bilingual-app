@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/readme_octopus.png" alt="语途（LinguaTrek）标志" width="96" />
+<img src="docs/brand/app-icon-512.png" alt="语途（LinguaTrek）标志" width="96" />
 
 # 语途（LinguaTrek）
 

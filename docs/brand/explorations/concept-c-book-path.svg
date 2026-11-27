@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="语途 LinguaTrek 书页路径标志">
-  <rect width="512" height="512" rx="112" fill="#09090B"/>
-  <path d="M150 330C150 300 176 276 206 276H250V352H206C176 352 150 360 150 330Z" fill="#0A84FF"/>
-  <path d="M362 330C362 300 336 276 306 276H262V352H306C336 352 362 360 362 330Z" fill="#0A84FF"/>
-  <path d="M256 276V352" stroke="#09090B" stroke-width="18" stroke-linecap="round"/>
-  <path d="M206 246C226 208 286 208 306 246" fill="none" stroke="#0A84FF" stroke-width="24" stroke-linecap="round"/>
-  <circle cx="256" cy="190" r="24" fill="#0A84FF"/>
-</svg>

@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="语途 LinguaTrek 轨迹气泡标志">
-  <rect width="512" height="512" rx="112" fill="#09090B"/>
-  <path d="M196 150H324C356 150 380 174 380 206V260C380 292 356 316 324 316H300C294 344 310 368 342 378"
-        fill="none" stroke="#0A84FF" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="354" cy="381" r="23" fill="#0A84FF"/>
-  <circle cx="302" cy="345" r="10" fill="#0A84FF"/>
-</svg>
