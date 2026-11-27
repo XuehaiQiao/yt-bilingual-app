@@ -12,6 +12,8 @@
 - `release_type`
 - 是否含迁移/回填
 - 回滚镜像 tag
+- `repo_root`（仓库绝对路径）
+- 如含迁移/回填：本机备份副本路径与验收/回填/审计命令
 
 没有这些，**停止并询问**，不要猜。
 
@@ -42,11 +44,31 @@ git rev-parse --short HEAD
 ## 3. 环境检查
 
 ```bash
-command -v git python3 node npm curl sqlite3
+command -v git python3 node npm curl sqlite3 timeout
 test -x backend/venv/bin/python
 test -x backend/venv/bin/alembic
 test -d frontend/node_modules
+test -d scripts/node_modules
 ```
+
+如果 `scripts/node_modules` 不存在：
+
+```bash
+cd scripts
+npm ci
+npx playwright install chromium
+```
+
+浏览器：
+
+- Playwright 自带 chromium（推荐）：`npx playwright install chromium`
+- 脚本通常支持 `CHROME_PATH`；也可以设置 `PLAYWRIGHT_CHROMIUM_EXECUTABLE`
+- 示例（在 `scripts/` 下）：
+  ```bash
+  export CHROME_PATH="$(cd scripts && node -e 'console.log(require("playwright").chromium.executablePath())')"
+  ```
+- **Linux/CI** 不能依赖脚本里写死的 macOS Chrome 路径；必须设置上述环境变量。
+- 验收脚本若因浏览器/harness 缺失无法跑，必须写 SKIP 原因，不能静默跳过。
 
 本地服务未启动时：
 
@@ -78,8 +100,19 @@ curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:5173/
 全量 acceptance：
 
 ```bash
-bash scripts/release-acceptance-suite.sh
+OUT=/tmp/release/<version>-<sha>/acceptance \
+  bash scripts/release-acceptance-suite.sh
 ```
+
+套件默认对失败脚本重试一次（`RETRY=0` 可关闭）；重试通过会写 `retry-pass`，报告中要保留首次/重试日志。两次都失败 = NO_GO。
+
+单脚本调试：
+
+```bash
+ONLY=admin-feedback OUT=/tmp/release-debug bash scripts/release-acceptance-suite.sh
+```
+
+依赖 harness 的脚本必须用 `SKIP` + `SKIP_REASON` 显式跳过，并写进报告。
 
 ## 5. 产出
 
@@ -94,6 +127,15 @@ bash scripts/release-acceptance-suite.sh
 ```
 
 报告必须符合 `docs/release/agent-report.schema.json`。
+
+`checks[]` 映射规则：
+
+- 每个 `scripts/*acceptance*.mjs` 一条，`id` = 文件名去掉 `.mjs`
+- `status` 从 `acceptance.tsv` 取 PASS/FAIL/TIMEOUT/SKIP
+- `evidence` = 对应 log 路径
+- SKIP 必须在 `detail` 写原因；没有原因的 SKIP 视为 FAIL
+- `acceptance.pass/fail/skip` 直接来自 TSV 计数
+- 全 PASS 且 blockers 为空才写 `status: GO`，否则 `NO_GO`
 
 ## 6. 交接
 
@@ -111,4 +153,4 @@ bash scripts/release-acceptance-suite.sh
 - 生产迁移/回填
 - 读/打印密钥
 - 删除备份
-- 自行 tag/push（除非 Release Owner 明确授权）
+- **自行 tag/push（任何情况下都不行；tag 由 Release Owner 在候选验收通过后执行）**

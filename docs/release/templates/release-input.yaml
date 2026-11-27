@@ -9,12 +9,16 @@ repo_root: "<absolute path to yt-bilingual-app>"
 local_api: "http://127.0.0.1:8000"
 local_web: "http://127.0.0.1:5173"
 
-# 如有迁移/回填，Release Owner 必须提供可执行命令/脚本；没有就停，不要即兴。
-production_backup_path: ""   # 人工已完成的备份包路径；Agent 只读复制
-migration_rehearsal_command: ""
+# 如有迁移/回填，Release Owner 必须提供宿主可执行命令/脚本；没有就停，不要即兴。
+# migration_* / backfill_* 命令在 Agent 本机执行，只读副本，不得碰生产。
+production_backup_path: ""   # 必须先由人复制到本机 /tmp；禁止填 /srv/ln/backups
+migration_rehearsal_command: ""  # includes_migration=true 时必填；宿主可执行
+migration_verify_command: ""     # includes_migration/backfill=true 时必填；校验 upgrade/downgrade/restore
 backfill_dry_run_command: ""
 backfill_apply_command: ""
 backfill_audit_command: ""
+skip_scripts: ""       # optional regex, e.g. 'harness-only-'; must pair with skip_reason
+skip_reason: ""
 
 # 生产发布由人执行；Agent 只生成 handoff。
 rollback_image: "<previous image tag>"

@@ -1,5 +1,8 @@
 # vX.Y.Z 发布检查单
 
+> 执行人：Agent 负责 §1.5–§4（本地门禁/构建候选）；人工负责 §5–§10（生产）。  
+> Agent 不填生产部分；人工不要把 Agent 的本地 PASS 当成生产 PASS。
+
 - Release Owner：
 - 版本：
 - Release SHA：

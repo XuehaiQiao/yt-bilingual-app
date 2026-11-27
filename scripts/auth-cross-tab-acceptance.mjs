@@ -5,9 +5,11 @@
 // Uses the real local frontend (5173) and only exercises the broadcast/reload
 // path; no credentials or backend writes are needed.
 import { chromium } from 'playwright';
+import { existsSync } from 'node:fs';
 
 const BASE = process.env.APP_BASE || 'http://127.0.0.1:5173';
-const browser = await chromium.launch();
+const chrome = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const browser = await chromium.launch(existsSync(chrome) ? { executablePath: chrome } : {});
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const first = await context.newPage();
 const second = await context.newPage();

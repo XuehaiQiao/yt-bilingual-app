@@ -9,8 +9,10 @@
    - docs/release/agent-process.yaml
    - docs/release/templates/release-input.yaml
 2. 让 Release Owner 提供 version / release_sha / release_type /
-   includes_migration / includes_backfill / rollback_image；
-   缺失就停，不要猜。
+   includes_migration / includes_backfill / rollback_image / repo_root；
+   如含迁移或回填，还要 production_backup_path（本机副本）、
+   migration_rehearsal_command、migration_verify_command、
+   backfill_*_command。缺失或空串就停，不要猜。
 3. 把输入写到 /tmp/release-input.yaml。
 4. 严格按 agent-process.yaml 跑 p0–p6。
    - 只跑本地命令

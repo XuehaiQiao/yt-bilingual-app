@@ -18,6 +18,10 @@
 
 如果 Agent 报告 `NO_GO` 或有 blocker：停止。
 
+```bash
+cat /tmp/release-input.yaml
+```
+
 ## 1. 确认版本、构建候选、打 tag
 
 ```bash
@@ -31,13 +35,17 @@ export VERSION="<vX.Y.Z>"
 export RELEASE_SHA="$(git rev-parse --short HEAD)"
 export IMAGE_TAG="$RELEASE_SHA"
 export APP_VERSION="$VERSION"
+export OLD_IMAGE="$(docker inspect -f '{{.Config.Image}}' linguatrek-app-1 2>/dev/null || true)"
+echo "old image: $OLD_IMAGE"
+test -n "$OLD_IMAGE" || { echo "找不到旧镜像 tag，先确认回滚目标"; exit 1; }
 ```
 
 构建**新镜像**（不要跳过；生产回滚靠旧 tag）：
 
 ```bash
 docker compose build --pull
-docker compose config | grep -E 'image:|APP_VERSION' | head
+grep -E '^APP_VERSION=' .env
+docker compose config | grep -E 'image:' | head
 docker images | grep linguatrek
 ```
 
@@ -83,6 +91,15 @@ sha256sum /srv/ln/backups/linguatrek-backup-*.tar.gz | tail
 
 - [ ] 备份包非 0
 - [ ] 解压列表可读：`tar -tzf <包> | head`
+- [ ] 恢复到临时目录验证（不覆盖 /data）：
+```bash
+mkdir -p /tmp/restore-check
+docker compose run --rm --no-deps \
+  -v /srv/ln/backups:/backups \
+  -v /srv/ln/app/scripts:/scripts:ro \
+  --entrypoint /bin/bash app \
+  /scripts/restore.sh /backups/<backup>.tar.gz --to /tmp/restore-check
+```
 - [ ] 复制到离机存储
 - [ ] 远端能列出
 - [ ] 记录文件名/SHA
@@ -126,20 +143,24 @@ docker compose run --rm --no-deps app alembic current
 命令必须来自 `release-input.yaml` 或 release notes；不要即兴写 SQL。
 
 ```bash
+mkdir -p /srv/ln/reports
 # dry-run
 docker compose run --rm --no-deps \
   -v /srv/ln/app/scripts:/app/scripts:ro \
-  app python /app/scripts/<backfill>.py --dry-run --report /tmp/backfill-dry.json
+  -v /srv/ln/reports:/reports \
+  app python /app/scripts/<backfill>.py --dry-run --report /reports/backfill-dry.json
 
 # 正式
 docker compose run --rm --no-deps \
   -v /srv/ln/app/scripts:/app/scripts:ro \
-  app python /app/scripts/<backfill>.py --report /tmp/backfill.json
+  -v /srv/ln/reports:/reports \
+  app python /app/scripts/<backfill>.py --report /reports/backfill.json
 
 # 审计
 docker compose run --rm --no-deps \
   -v /srv/ln/app/scripts:/app/scripts:ro \
-  app python /app/scripts/<audit>.py --out /tmp/audit.json
+  -v /srv/ln/reports:/reports \
+  app python /app/scripts/<audit>.py --out /reports/audit.json
 ```
 
 - [ ] dry-run failed=0
@@ -212,6 +233,7 @@ DB 保留新版本；旧代码通常兼容增量表/列。
 
 ```bash
 docker compose stop app
+export IMAGE_TAG="$OLD_IMAGE"          # 回旧代码，避免新代码配旧 schema
 docker compose run --rm --no-deps app alembic downgrade <previous-revision>
 docker compose up -d
 ```

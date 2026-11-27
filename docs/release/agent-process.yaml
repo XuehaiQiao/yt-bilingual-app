@@ -1,20 +1,20 @@
 # LinguaTrek Release Agent — fixed, context-free process.
-# The agent runs ONLY local steps. Production is always a human gate.
-version: 2
+# Agent runs ONLY local steps. Production is always a human gate.
+version: 3
 process: linguatrek-release
 owner: Release Owner
+inputs_file: /tmp/release-input.yaml
 
 repo:
-  root: "{{ repo_root }}"                 # absolute path, from release-input.yaml
+  root: "{{ repo_root }}"                 # required absolute path from release-input.yaml
   required_files:
     - AGENTS.md
     - backend/venv/bin/python
     - backend/venv/bin/alembic
     - frontend/node_modules
+    - scripts/node_modules
     - docs/release/HUMAN_RUNBOOK.md
     - docs/release/agent-report.schema.json
-
-inputs_file: /tmp/release-input.yaml
 
 inputs:
   required:
@@ -24,16 +24,21 @@ inputs:
     - includes_migration
     - includes_backfill
     - rollback_image
+    - repo_root        # absolute path; must contain .git
   optional:
     - production_backup_path
     - migration_rehearsal_command
+    - migration_verify_command
     - backfill_dry_run_command
     - backfill_apply_command
     - backfill_audit_command
+    - skip_scripts
+    - skip_reason
   local:
     local_api: "http://127.0.0.1:8000"
     local_web: "http://127.0.0.1:5173"
   missing_input_policy: STOP_AND_ASK_RELEASE_OWNER
+  empty_string_is_missing: true
 
 policy:
   environment: local_only
@@ -42,6 +47,7 @@ policy:
   secrets: never_print
   stop_on_first_failure: true
   human_gate_before: production_deploy
+  tag_and_push: human_only
 
 allowed:
   - read_repo
@@ -49,9 +55,11 @@ allowed:
   - stop_local_services_it_started
   - run_pytest
   - run_frontend_gates
+  - install_local_test_dependencies
   - run_local_acceptance
   - inspect_local_logs
-  - copy_local_db_to_tmp
+  - run_local_migrations
+  - copy_local_backup_to_tmp
   - run_migration_on_tmp_copy
   - write_release_report
 forbidden:
@@ -59,20 +67,17 @@ forbidden:
   - docker_compose_up_on_production
   - alembic_upgrade_on_production
   - delete_backups
-  - rotate_or_read_credentials
+  - read_production_env_or_credentials
   - change_dns_smtp_provider
-  - tag_or_push_without_owner
+  - tag_or_push
+  - read_from_srv_ln_backups
 
 bootstrap:
-  - command: "git rev-parse --show-toplevel"
-    record: repo_root
-  - command: "git fetch origin"
-  - command: "git checkout {{ release_sha }}"
-  - command: "git status --porcelain"
+  - command: "test -d \"{{ repo_root }}/.git\""
+  - command: "cd \"{{ repo_root }}\" && git fetch origin"
+  - command: "cd \"{{ repo_root }}\" && git checkout \"{{ release_sha }}\""
+  - command: "cd \"{{ repo_root }}\" && git status --porcelain"
     expect: ""
-  - command: "git rev-parse --short HEAD"
-    expect: "{{ release_sha }}"
-  - command: "mkdir -p /tmp/release/{{ version }}-{{ release_sha }}"
   - command: "command -v git python3 node npm curl sqlite3"
     fail_if: "missing tool"
   - check_local_service:
@@ -93,33 +98,41 @@ phases:
           version: '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$'
           release_sha: '^[0-9a-f]{7,40}$'
           release_type: '^(code|copy|schema|data|auth_cache|cost_security)$'
+          repo_root: '^/'
       - action: require_inputs
         when: includes_migration == true
-        fields: [migration_rehearsal_command]
+        fields: [production_backup_path, migration_rehearsal_command, migration_verify_command]
+        non_empty: true
+        path_prefix: /tmp/
       - action: require_inputs
         when: includes_backfill == true
-        fields: [backfill_dry_run_command, backfill_apply_command, backfill_audit_command]
-    fail_if: [missing_input, invalid_input]
+        fields: [production_backup_path, migration_verify_command, backfill_dry_run_command, backfill_apply_command, backfill_audit_command]
+        non_empty: true
+        path_prefix: /tmp/
+    fail_if: [missing_input, invalid_input, empty_command]
 
   - id: p1-repo
     owner: agent
     steps:
-      - command: "git log -1 --oneline"
-      - command: "git merge-base --is-ancestor {{ release_sha }} HEAD"
+      - command: "cd \"{{ repo_root }}\" && git log -1 --oneline"
+      - command: "cd \"{{ repo_root }}\" && test \"$(git rev-parse HEAD)\" = \"$(git rev-parse \"{{ release_sha }}\")\""
         expect_exit: 0
-      - command: "git rev-parse --short HEAD"
-        expect: "{{ release_sha }}"
+      - command: "cd \"{{ repo_root }}\" && git rev-parse --short HEAD"
+        record: head_short
     fail_if: [sha_mismatch, dirty_worktree]
 
   - id: p2-backend
     owner: agent
     cwd: "{{ repo_root }}/backend"
     steps:
+      - command: "venv/bin/alembic upgrade head"
+        expect_exit: 0
+        record: local_migration_applied
       - command: "venv/bin/python -m pytest tests -q"
         expect_exit: 0
         timeout_seconds: 900
         record: pytest_summary
-      - command: "venv/bin/python -m compileall -q ."
+      - command: "venv/bin/python -m compileall -q -x '(^|/)(venv|tests)/' ."
         expect_exit: 0
       - command: "venv/bin/alembic heads"
         expect: single_head
@@ -144,45 +157,45 @@ phases:
     owner: agent
     cwd: "{{ repo_root }}"
     steps:
-      - command: "OUT=/tmp/release/{{ version }}-{{ release_sha }}/acceptance bash scripts/release-acceptance-suite.sh"
+      - command: "OUT=/tmp/release/{{ version }}-{{ release_sha }}/acceptance SKIP=\"{{ skip_scripts }}\" SKIP_REASON=\"{{ skip_reason }}\" bash scripts/release-acceptance-suite.sh"
         expect_exit: 0
         timeout_seconds: 1800
         record: acceptance_matrix
         artifacts: "/tmp/release/{{ version }}-{{ release_sha }}/acceptance/acceptance.tsv"
     fail_if: [unexplained_failure, silent_skip]
     notes: |
-      Per-script timeout is 300s. A known harness dependency may be SKIP only if
-      documented in the report with a reason and owner; never silently skip.
+      The suite writes one TSV row per script (PASS/FAIL/TIMEOUT/SKIP).
+      SKIP is allowed only when skip_reason is non-empty and the script is
+      genuinely dependent on an unavailable harness; otherwise NO_GO.
 
   - id: p5-migration
     owner: agent
     when: includes_migration == true or includes_backfill == true
     steps:
-      - action: copy_production_backup_to_tmp
-        command: "cp -a {{ production_backup_path }} /tmp/release-copy"
-        note: only if Release Owner provided an already-made backup; agent never pulls from production
+      - command: "cp -a \"{{ production_backup_path }}\" /tmp/release-copy"
+        expect_exit: 0
+        note: production_backup_path must already be a LOCAL copy under /tmp; never /srv/ln/backups
       - command: "{{ migration_rehearsal_command }}"
+        when: includes_migration == true
         expect_exit: 0
         record: migration_rehearsal
-      - action: verify
-        name: upgrade_current_equals_head
-      - action: verify
-        name: old_table_hashes_match_allowlist
-      - action: verify
-        name: downgrade_if_safe
-      - action: verify
-        name: restore_works
+      - command: "{{ migration_verify_command }}"
+        expect_exit: 0
+        record: migration_verify
       - command: "{{ backfill_dry_run_command }}"
         when: includes_backfill == true
         expect_exit: 0
+        record: backfill_dry_run
       - command: "{{ backfill_apply_command }}"
         when: includes_backfill == true
         expect_exit: 0
+        record: backfill_apply
       - command: "{{ backfill_audit_command }}"
         when: includes_backfill == true
         expect_exit: 0
-    fail_if: [rehearsal_fail, missing_backup, destructive_downgrade]
-    if_missing_command: STOP_ASK_RELEASE_OWNER
+        record: backfill_audit
+    fail_if: [rehearsal_fail, verify_fail, backfill_fail, missing_backup, destructive_downgrade]
+    if_missing_or_empty: STOP_ASK_RELEASE_OWNER
 
   - id: p6-report
     owner: agent
@@ -192,8 +205,10 @@ phases:
         schema: docs/release/agent-report.schema.json
       - action: write_markdown
         path: "/tmp/release/{{ version }}-{{ release_sha }}/release-report.md"
+      - action: map_acceptance_checks
+        rule: "one checks[] entry per scripts/*acceptance*.mjs; id=basename without .mjs; status from acceptance.tsv; evidence=log path; SKIP needs skip_reason"
       - action: set_status
-        value: GO_IF_ALL_CHECKS_PASS_ELSE_NO_GO
+        rule: "GO if every required check is PASS and blockers is empty; otherwise NO_GO"
       - action: human_gate
         before: production_deploy
         message: "Stop here. Human reads HUMAN_RUNBOOK.md and executes production."
@@ -210,7 +225,6 @@ human_handoff:
   before: production_deploy
   owner: Release Owner
   must_review:
-    - release-report.md
-    - release-report.json
-    - version-release-checklist.md
+    - "/tmp/release/{{ version }}-{{ release_sha }}/release-report.md"
+    - "docs/release/templates/version-release-checklist.md"
   production_steps: docs/release/HUMAN_RUNBOOK.md
