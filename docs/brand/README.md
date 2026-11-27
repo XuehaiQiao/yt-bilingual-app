@@ -38,7 +38,8 @@
 
 | 文件 | 用途 |
 |---|---|
-| `mark-dark.svg` | 深色 App 图标 / 深色底 |
+| `mark-dark.svg` | 品牌主标志（圆角深色底，适合展示） |
+| `app-icon.svg` | App 图标母版（满版深色，交给系统裁圆角） |
 | `mark-blue.svg` | 透明底，蓝色标志 |
 | `mark-white.svg` | 透明底，白色单色 |
 | `mark-black.svg` | 透明底，黑色单色 |
@@ -47,9 +48,9 @@
 
 | 文件 | 尺寸 |
 |---|---|
-| `app-icon-512.png` | 512×512 |
-| `app-icon-180.png` | 180×180（Apple Touch） |
-| `favicon-32.png` | 32×32 |
+| `app-icon-512.png` | 512×512，满版深色 |
+| `app-icon-180.png` | 180×180（Apple Touch），满版深色 |
+| `favicon-32.png` | 32×32，透明圆角 |
 
 ### 横版 / 竖版组合
 
@@ -94,5 +95,7 @@
 - `app-icon-180.png` → `frontend/public/apple-touch-icon.png`
 - `favicon-32.png` → favicon
 - `lockup-horizontal-dark-bg.png` → 官网/README 顶部品牌组合
+
+> 锁定组合中的「语途 / LinguaTrek」目前使用系统无衬线字体。跨平台印刷或投放时优先使用 PNG；若必须用 SVG，建议先转曲/嵌入字体。
 
 替换前先在实际页面 1440 / 390 两种宽度检查；不要把本目录的探索稿直接上线。
